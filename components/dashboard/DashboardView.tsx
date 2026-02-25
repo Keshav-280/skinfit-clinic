@@ -50,7 +50,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const healthOverviewCards = [
   { title: "Routine Consistency", value: 85, color: "text-teal-400", strokeColor: "rgb(45, 212, 191)", label: "AM/PM Schedule" },
   { title: "Hydration Level", value: 92, color: "text-sky-400", strokeColor: "rgb(56, 189, 248)", label: "Skin Moisture" },
-  { title: "Post-Care Score", value: 98, color: "text-violet-400", strokeColor: "rgb(167, 139, 250)", label: "Procedure Aftercare" },
 ];
 
 function HealthOverviewCard({ title, value, color, strokeColor, label, delay = 0 }: (typeof healthOverviewCards)[0] & { delay?: number }) {
@@ -117,86 +116,100 @@ export function DashboardView({
 
   return (
     <div className="space-y-6">
-      {/* Patient Health Overview */}
+      {/* Top Row: Routine | Skin Score | Hydration */}
       <section>
-        <div className="mb-3 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {healthOverviewCards.map((card, i) => (
-            <HealthOverviewCard key={card.title} {...card} delay={i * 0.1} />
-          ))}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {/* Left: Routine Consistency */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0 }}
+          >
+            <HealthOverviewCard {...healthOverviewCards[0]} delay={0} />
+          </motion.div>
+
+          {/* Center: Your Skin Score */}
+          <motion.section
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="flex flex-col items-center rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6"
+          >
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              Your Skin Score
+            </h2>
+            <div className="relative flex h-40 w-40 items-center justify-center">
+              <svg
+                width={SVG_SIZE}
+                height={SVG_SIZE}
+                className="absolute"
+                style={{ transform: "rotate(-90deg)" }}
+              >
+                <circle
+                  cx={SVG_SIZE / 2}
+                  cy={SVG_SIZE / 2}
+                  r={RADIUS}
+                  fill="none"
+                  stroke="rgb(39 39 42)"
+                  strokeWidth={STROKE_WIDTH}
+                />
+                {latestScan && (
+                  <motion.circle
+                    cx={SVG_SIZE / 2}
+                    cy={SVG_SIZE / 2}
+                    r={RADIUS}
+                    fill="none"
+                    stroke="rgb(45 212 191)"
+                    strokeWidth={STROKE_WIDTH}
+                    strokeLinecap="round"
+                    strokeDasharray={CIRCUMFERENCE}
+                    initial={{ strokeDashoffset: CIRCUMFERENCE }}
+                    animate={{ strokeDashoffset: strokeOffset }}
+                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+                    style={{
+                      filter: "drop-shadow(0 0 8px rgba(45, 212, 191, 0.5))",
+                    }}
+                  />
+                )}
+              </svg>
+              <div className="relative z-10 flex h-full w-full items-center justify-center">
+                <div className="text-center">
+                  <span className="text-4xl font-bold text-teal-400">
+                    {latestScan?.skinScore ?? "--"}
+                  </span>
+                  <span className="block text-sm text-zinc-500">/100</span>
+                </div>
+              </div>
+            </div>
+            {latestScan?.createdAt && (
+              <p className="mt-3 text-xs text-zinc-500">
+                Last scan: {new Date(latestScan.createdAt).toLocaleDateString()}
+              </p>
+            )}
+          </motion.section>
+
+          {/* Right: Hydration Level */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <HealthOverviewCard {...healthOverviewCards[1]} delay={0} />
+          </motion.div>
         </div>
       </section>
 
-      {/* Top Section - Score Ring (appears first) */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col items-center rounded-3xl border border-zinc-800 bg-zinc-900/50 p-8"
+      {/* Recommendation Banner */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+        className="rounded-2xl border border-zinc-800 bg-zinc-800/50 px-6 py-4"
       >
-        <h2 className="mb-6 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          Your Skin Score
-        </h2>
-        <div className="relative flex h-40 w-40 items-center justify-center">
-          <svg
-            width={SVG_SIZE}
-            height={SVG_SIZE}
-            className="absolute"
-            style={{ transform: "rotate(-90deg)" }}
-          >
-            {/* Background track */}
-            <circle
-              cx={SVG_SIZE / 2}
-              cy={SVG_SIZE / 2}
-              r={RADIUS}
-              fill="none"
-              stroke="rgb(39 39 42)"
-              strokeWidth={STROKE_WIDTH}
-            />
-            {/* Animated teal ring */}
-            {latestScan && (
-              <motion.circle
-                cx={SVG_SIZE / 2}
-                cy={SVG_SIZE / 2}
-                r={RADIUS}
-                fill="none"
-                stroke="rgb(45 212 191)"
-                strokeWidth={STROKE_WIDTH}
-                strokeLinecap="round"
-                strokeDasharray={CIRCUMFERENCE}
-                initial={{ strokeDashoffset: CIRCUMFERENCE }}
-                animate={{ strokeDashoffset: strokeOffset }}
-                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                style={{
-                  filter: "drop-shadow(0 0 8px rgba(45, 212, 191, 0.5))",
-                }}
-              />
-            )}
-          </svg>
-          <div className="relative z-10 flex h-full w-full items-center justify-center">
-            <div className="text-center">
-              <span className="text-4xl font-bold text-teal-400">
-                {latestScan?.skinScore ?? "--"}
-              </span>
-              <span className="block text-sm text-zinc-500">/100</span>
-            </div>
-          </div>
-        </div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 0.5 }}
-          className="mt-6 w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-800/50 px-5 py-4"
-        >
-          <p className="text-center text-sm leading-relaxed text-zinc-300">
-            {aiSummary}
-          </p>
-        </motion.div>
-        {latestScan?.createdAt && (
-          <p className="mt-3 text-xs text-zinc-500">
-            Last scan: {new Date(latestScan.createdAt).toLocaleDateString()}
-          </p>
-        )}
-      </motion.section>
+        <p className="text-center text-sm leading-relaxed text-zinc-300">
+          {aiSummary}
+        </p>
+      </motion.div>
 
       {/* Middle Section - Skin Parameters (staggered 2nd) */}
       <motion.section
