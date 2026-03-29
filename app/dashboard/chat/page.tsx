@@ -61,51 +61,56 @@ const messages = [
   },
 ];
 
+const CARD_SHADOW = "rounded-[22px] border border-zinc-100 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)]";
+
 export default function ChatPage() {
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex h-[calc(100vh-100px)] gap-6"
+      className="flex min-h-[calc(100vh-120px)] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"
     >
-      {/* Left Sidebar - Contact List */}
-      <div className="flex w-1/3 min-w-0 flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50">
-        {/* Search */}
-        <div className="border-b border-zinc-800 p-4">
-          <div className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5">
-            <Search className="h-4 w-4 shrink-0 text-zinc-500" />
+      {/* Sidebar */}
+      <div
+        className={`flex w-full min-w-0 flex-col overflow-hidden md:w-[min(100%,320px)] md:shrink-0 ${CARD_SHADOW}`}
+      >
+        <div className="border-b border-zinc-100 p-4">
+          <h1 className="mb-3 text-center text-xl font-bold text-zinc-900 md:hidden">
+            Chat
+          </h1>
+          <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-zinc-400" />
             <input
               type="text"
               placeholder="Search messages or doctors..."
-              className="w-full bg-transparent text-sm text-white placeholder:text-zinc-500 focus:outline-none"
+              className="w-full bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
             />
           </div>
         </div>
 
-        {/* Contact List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="max-h-[240px] flex-1 overflow-y-auto md:max-h-none">
           {contacts.map((contact) => {
             const Icon = contact.icon;
             return (
               <div
                 key={contact.id}
-                className={`flex cursor-pointer items-center gap-3 border-b border-zinc-800 px-4 py-4 transition-colors hover:bg-zinc-800/50 ${
-                  contact.isActive ? "bg-teal-400/10" : ""
+                className={`flex cursor-pointer items-center gap-3 border-b border-zinc-100 px-4 py-4 transition-colors hover:bg-zinc-50 ${
+                  contact.isActive ? "bg-[#E0F0ED]/60" : ""
                 }`}
               >
-                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-800">
-                  <Icon className="h-5 w-5 text-teal-400" />
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E0F0ED]">
+                  <Icon className="h-5 w-5 text-[#6B8E8E]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">
+                  <p className="truncate text-sm font-medium text-zinc-900">
                     {contact.name}
                   </p>
                   <p className="truncate text-xs text-zinc-500">
                     {contact.snippet}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs text-zinc-500">
+                <span className="shrink-0 text-xs text-zinc-400">
                   {contact.time}
                 </span>
               </div>
@@ -114,33 +119,34 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Right Main - Chat Window */}
-      <div className="relative flex w-2/3 min-w-0 flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50">
-        {/* Chat Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+      {/* Chat */}
+      <div
+        className={`relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden ${CARD_SHADOW}`}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800">
-                <Bot className="h-5 w-5 text-teal-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E0F0ED]">
+                <Bot className="h-5 w-5 text-[#6B8E8E]" />
               </div>
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-zinc-900 bg-emerald-500" />
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
             </div>
             <div>
-              <p className="font-semibold text-white">SkinFit AI Assistant</p>
-              <p className="text-xs text-emerald-400">Online</p>
+              <p className="font-semibold text-zinc-900">SkinFit AI Assistant</p>
+              <p className="text-xs text-emerald-600">Online</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-teal-400"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-teal-700"
               title="Voice call"
             >
               <Phone className="h-4 w-4" />
             </button>
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-teal-400"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-teal-700"
               title="Video call"
             >
               <Video className="h-4 w-4" />
@@ -148,8 +154,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Message Area */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto bg-[#FDF9F0]/30 p-4 sm:p-6">
           <div className="flex flex-col gap-4">
             {messages.map((msg) => (
               <div
@@ -159,10 +164,10 @@ export default function ChatPage() {
                 }`}
               >
                 <div
-                  className={`max-w-[80%] px-4 py-2.5 ${
+                  className={`max-w-[85%] px-4 py-2.5 sm:max-w-[80%] ${
                     msg.sender === "patient"
-                      ? "bg-teal-600 text-white rounded-l-2xl rounded-tr-2xl"
-                      : "bg-zinc-800 text-zinc-300 rounded-r-2xl rounded-tl-2xl"
+                      ? "rounded-l-2xl rounded-tr-2xl bg-teal-600 text-white"
+                      : "rounded-r-2xl rounded-tl-2xl border border-zinc-100 bg-white text-zinc-800 shadow-sm"
                   }`}
                 >
                   <p className="text-sm leading-relaxed">{msg.text}</p>
@@ -172,12 +177,11 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Input Area */}
-        <div className="border-t border-zinc-800 p-4">
-          <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800/50 px-4 py-2">
+        <div className="border-t border-zinc-100 bg-white p-4">
+          <div className="flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2">
             <button
               type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-700 hover:text-teal-400"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-white hover:text-teal-700"
               title="Attach file"
             >
               <Paperclip className="h-5 w-5" />
@@ -185,7 +189,7 @@ export default function ChatPage() {
             <input
               type="text"
               placeholder="Type a message..."
-              className="max-h-24 flex-1 bg-transparent px-2 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none"
+              className="max-h-24 flex-1 bg-transparent px-2 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
             />
             <button
               type="button"

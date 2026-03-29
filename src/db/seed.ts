@@ -1,10 +1,25 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { DEMO_LOGIN_EMAIL } from "../lib/auth/demo-login";
-import { dateOnlyFromYmd, localCalendarYmd } from "../lib/date-only";
+import {
+  dateOnlyFromYmd,
+  localCalendarYmd,
+} from "../lib/date-only";
+import {
+  DEFAULT_PRIORITY_REMINDERS,
+  getDefaultScheduleEvents,
+} from "../lib/defaultSchedulesData";
 import { db } from "./index";
-import { users, skinScans, appointments, dailyLogs } from "./schema";
+import {
+  users,
+  skinScans,
+  appointments,
+  dailyLogs,
+  visitNotes,
+  priorityReminders,
+  scheduleEvents,
+} from "./schema";
 
 const DEMO_PATIENT_EMAIL = DEMO_LOGIN_EMAIL;
 const DEMO_PATIENT_PASSWORD = "SkinFitDemo2024!";
@@ -70,38 +85,71 @@ async function seed() {
     console.log("✓ Demo patient:", patient.email);
     console.log("✓ Demo doctor:", doctor.email);
 
-    // 2. Sample skin scan (once per empty history)
-    const existingScans = await db
-      .select({ id: skinScans.id })
+    // 2. Sample skin_scans (up to 3 rows, staggered dates; higher metric = healthier)
+    const [{ n: skinScanCount }] = await db
+      .select({ n: count() })
       .from(skinScans)
-      .where(eq(skinScans.userId, patient.id))
-      .limit(1);
+      .where(eq(skinScans.userId, patient.id));
 
-    if (existingScans.length === 0) {
-      const [scan] = await db
-        .insert(skinScans)
-        .values({
-          userId: patient.id,
-          originalImageUrl:
-            "https://example.com/scans/test-patient-original.jpg",
-          annotatedImageUrl:
-            "https://example.com/scans/test-patient-annotated.jpg",
-          skinScore: 88,
-          analysisResults: {
-            acne: 10,
-            wrinkles: 20,
-            pigmentation: 15,
-            hydration: 85,
-            texture: 90,
-            redness: 8,
-            darkCircles: 25,
-            poreSize: 12,
-          },
-        })
-        .returning();
-      console.log("✓ Created skin scan with score:", scan.skinScore);
+    const have = Number(skinScanCount);
+    const templates = [
+      {
+        skinScore: 82,
+        daysAgo: 7,
+        analysisResults: {
+          acne: 90,
+          wrinkles: 84,
+          texture: 43,
+          pigmentation: 65,
+          hydration: 65,
+          eczema: 55,
+        },
+      },
+      {
+        skinScore: 74,
+        daysAgo: 48,
+        analysisResults: {
+          acne: 76,
+          wrinkles: 72,
+          texture: 52,
+          pigmentation: 62,
+          hydration: 58,
+          eczema: 50,
+        },
+      },
+      {
+        skinScore: 68,
+        daysAgo: 95,
+        analysisResults: {
+          acne: 68,
+          wrinkles: 65,
+          texture: 38,
+          pigmentation: 55,
+          hydration: 52,
+          eczema: 45,
+        },
+      },
+    ];
+
+    for (let i = have; i < 3; i++) {
+      const t = templates[i];
+      const createdAt = new Date();
+      createdAt.setDate(createdAt.getDate() - t.daysAgo);
+      await db.insert(skinScans).values({
+        userId: patient.id,
+        originalImageUrl: "https://example.com/scans/demo-original.jpg",
+        annotatedImageUrl: "https://example.com/scans/demo-annotated.jpg",
+        skinScore: t.skinScore,
+        analysisResults: t.analysisResults,
+        createdAt,
+      });
+    }
+    if (have < 3) {
+      console.log(
+        `✓ Added ${3 - have} skin scan(s) for demo patient (minimum 3 rows with different dates)`
+      );
     } else {
-      console.log("✓ Skin scan already present; skipping");
+      console.log("✓ Skin scans already present (≥3); skipping seed inserts");
     }
 
     // 3. Appointments (only if none yet)
@@ -167,6 +215,131 @@ async function seed() {
       console.log("✓ Created daily log for today");
     } else {
       console.log("✓ Daily log for today already present; skipping");
+    }
+
+    // 5. Visit history & doctor notes (same demo copy as UI; skip if row exists for that date)
+    const visitSeeds = [
+      {
+        ymd: "2025-10-15",
+        doctorName: "Dr. Ruby Sachdev",
+        notes:
+          "Skin is responding well to the new PM routine. Increasing hydration serum to twice daily. Acne lesions reduced by ~40%. Continue current treatment.",
+      },
+      {
+        ymd: "2025-10-01",
+        doctorName: "Dr. Ruby Sachdev",
+        notes:
+          "Baseline assessment complete. Started gentle cleanser + Vitamin C + SPF for AM. Retinol 0.3% introduced for PM. Follow-up in 2 weeks.",
+      },
+      {
+        ymd: "2025-09-20",
+        doctorName: "Dr. Ruby Sachdev",
+        notes:
+          "Initial consultation. Skin type: combination. Primary concerns: acne, uneven tone. AI scan score: 72. Treatment plan discussed.",
+      },
+    ];
+
+    let visitNotesInserted = 0;
+    for (const v of visitSeeds) {
+      const visitDate = dateOnlyFromYmd(v.ymd);
+      const existing = await db
+        .select({ id: visitNotes.id })
+        .from(visitNotes)
+        .where(
+          and(
+            eq(visitNotes.userId, patient.id),
+            eq(visitNotes.visitDate, visitDate)
+          )
+        )
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(visitNotes).values({
+          userId: patient.id,
+          visitDate,
+          doctorName: v.doctorName,
+          notes: v.notes,
+        });
+        visitNotesInserted += 1;
+      }
+    }
+    if (visitNotesInserted > 0) {
+      console.log(`✓ Added ${visitNotesInserted} visit note(s) for demo patient`);
+    } else {
+      console.log("✓ Visit notes already present for demo dates; skipping");
+    }
+
+    // 6. Priority reminders (schedules page checklist)
+    let remindersInserted = 0;
+    for (const r of DEFAULT_PRIORITY_REMINDERS) {
+      const exists = await db
+        .select({ id: priorityReminders.id })
+        .from(priorityReminders)
+        .where(
+          and(
+            eq(priorityReminders.userId, patient.id),
+            eq(priorityReminders.sortOrder, r.sortOrder)
+          )
+        )
+        .limit(1);
+      if (exists.length === 0) {
+        await db.insert(priorityReminders).values({
+          userId: patient.id,
+          title: r.title,
+          priority: r.priority,
+          sortOrder: r.sortOrder,
+          completed: false,
+        });
+        remindersInserted += 1;
+      }
+    }
+    if (remindersInserted > 0) {
+      console.log(`✓ Added ${remindersInserted} priority reminder(s)`);
+    } else {
+      console.log("✓ Priority reminders already present; skipping");
+    }
+
+    // 7. Schedule / calendar events (this month + next month from seed run date)
+    let scheduleInserted = 0;
+    for (const s of getDefaultScheduleEvents()) {
+      const eventDate = dateOnlyFromYmd(s.ymd);
+      const exists = await db
+        .select({ id: scheduleEvents.id })
+        .from(scheduleEvents)
+        .where(
+          and(
+            eq(scheduleEvents.userId, patient.id),
+            eq(scheduleEvents.eventDate, eventDate),
+            eq(scheduleEvents.title, s.title)
+          )
+        )
+        .limit(1);
+      if (exists.length === 0) {
+        await db.insert(scheduleEvents).values({
+          userId: patient.id,
+          eventDate,
+          eventTimeHm: s.timeHm,
+          title: s.title,
+          completed: false,
+        });
+        scheduleInserted += 1;
+      } else {
+        await db
+          .update(scheduleEvents)
+          .set({ eventTimeHm: s.timeHm })
+          .where(
+            and(
+              eq(scheduleEvents.userId, patient.id),
+              eq(scheduleEvents.eventDate, eventDate),
+              eq(scheduleEvents.title, s.title),
+              isNull(scheduleEvents.eventTimeHm)
+            )
+          );
+      }
+    }
+    if (scheduleInserted > 0) {
+      console.log(`✓ Added ${scheduleInserted} schedule event(s)`);
+    } else {
+      console.log("✓ Schedule events already present; skipping");
     }
 
     console.log("\n✅ Seeding completed successfully!");

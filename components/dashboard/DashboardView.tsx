@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Sun, Moon, SunMoon, ChevronsUp } from "lucide-react";
 import { normalizeRoutineSteps } from "@/src/lib/routine";
+import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import { DashboardJournal } from "./DashboardJournal";
 
 const PINK = "#F8A5B2";
@@ -29,10 +30,16 @@ export type TodayJournalLog = {
   routinePmSteps?: boolean[] | null;
 } | null;
 
+export type SkinScanHistoryItem = {
+  id: string;
+  skinScore: number;
+  createdAt: string;
+  analysisResults: unknown;
+};
+
 interface DashboardViewProps {
-  latestScan: { skinScore: number; createdAt: Date; analysisResults?: unknown } | null;
+  skinScanHistory: SkinScanHistoryItem[];
   todayLog: TodayJournalLog;
-  params: SkinParam[];
   amItems: string[];
   pmItems: string[];
   routineScore?: number;
@@ -132,9 +139,8 @@ function ParamCell({ label, value }: SkinParam) {
 }
 
 export function DashboardView({
-  latestScan,
+  skinScanHistory,
   todayLog,
-  params,
   amItems,
   pmItems,
   routineScore = 80,
@@ -144,9 +150,35 @@ export function DashboardView({
   const router = useRouter();
   const displayDate = format(new Date(), "dd/MM/yy");
 
+  const [selectedScanIdx, setSelectedScanIdx] = useState(0);
+  const scanIdsKey = useMemo(
+    () => skinScanHistory.map((s) => s.id).join("|"),
+    [skinScanHistory]
+  );
+
+  useEffect(() => {
+    setSelectedScanIdx(0);
+  }, [scanIdsKey]);
+
+  const selectedScan =
+    skinScanHistory.length > 0
+      ? skinScanHistory[Math.min(selectedScanIdx, skinScanHistory.length - 1)]
+      : null;
+
+  const latestScan = skinScanHistory[0] ?? null;
+
+  const params = useMemo(
+    () => analysisResultsToParams(selectedScan?.analysisResults ?? null),
+    [selectedScan]
+  );
+
   const skinPercent = latestScan
     ? Math.min(100, Math.max(0, Math.round(latestScan.skinScore)))
     : 40;
+
+  const skinParamsDate = selectedScan
+    ? format(new Date(selectedScan.createdAt), "dd/MM/yy")
+    : displayDate;
 
   const [routine, setRoutine] = useState(() => ({
     am: normalizeRoutineSteps(
@@ -216,15 +248,6 @@ export function DashboardView({
 
   const amDone = routine.am;
   const pmDone = routine.pm;
-
-  const gridParams = useMemo(() => {
-    const labels = ["Acne", "Wrinkle", "Pores", "Pigmentation", "Hydration", "Eczema"];
-    const byLabel = Object.fromEntries(params.map((p) => [p.label, p.value]));
-    return labels.map((label) => ({
-      label,
-      value: typeof byLabel[label] === "number" ? byLabel[label] : 0,
-    }));
-  }, [params]);
 
   return (
     <div className="space-y-6 text-zinc-900">
@@ -361,12 +384,38 @@ export function DashboardView({
       <section
         className="rounded-[22px] bg-white p-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)] md:p-6"
       >
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-bold text-zinc-900">Skin Parameters</h2>
-          <span className="text-sm font-medium text-zinc-500">{displayDate}</span>
+          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            {skinScanHistory.length > 1 ? (
+              <>
+                <label className="sr-only" htmlFor="dashboard-skin-scan">
+                  Select a past skin scan
+                </label>
+                <select
+                  id="dashboard-skin-scan"
+                  value={selectedScanIdx}
+                  onChange={(e) => setSelectedScanIdx(Number(e.target.value))}
+                  className="max-w-full rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/30"
+                >
+                  {skinScanHistory.map((s, i) => (
+                    <option key={s.id} value={i}>
+                      {format(new Date(s.createdAt), "MMM d, yyyy")} — score{" "}
+                      {s.skinScore}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : null}
+            <span className="text-sm font-medium text-zinc-500 sm:text-right">
+              {skinScanHistory.length > 0
+                ? `Scan date: ${skinParamsDate}`
+                : "No scans yet — showing sample targets"}
+            </span>
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {gridParams.map((p) => (
+          {params.map((p) => (
             <ParamCell key={p.label} {...p} />
           ))}
         </div>

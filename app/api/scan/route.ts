@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { eq } from "drizzle-orm";
 import { db } from "../../../src/db";
-import { scans } from "../../../src/db/schema";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { scans, skinScans, users } from "../../../src/db/schema";
+import { getSessionUserId } from "../../../src/lib/auth/get-session";
+import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
 
 const LABELS = ["Wrinkle", "Acne", "Pigmentation", "Texture Irregularity"];
 
@@ -53,12 +54,24 @@ export async function POST(request: NextRequest) {
       overall_score: randomInt(50, 98),
     };
 
+    const eczemaScore = Math.min(
+      100,
+      Math.max(
+        0,
+        Math.round(
+          (metrics.hydration + metrics.acne + metrics.texture) / 3
+        )
+      )
+    );
+
     const detected_regions = generateDetectedRegions();
 
-    // Generate AI summary via OpenAI
-    let aiSummary = "";
-    if (process.env.OPENAI_API_KEY) {
+    // Prefer OpenAI when configured; otherwise (or on failure) use dummy templates.
+    let aiSummary = buildDummyAiSummary(metrics);
+    const openaiKey = process.env.OPENAI_API_KEY?.trim();
+    if (openaiKey) {
       try {
+        const openai = new OpenAI({ apiKey: openaiKey });
         const completion = await openai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [
@@ -74,20 +87,39 @@ export async function POST(request: NextRequest) {
           ],
           max_tokens: 80,
         });
-        aiSummary = completion.choices[0]?.message?.content?.trim() ?? "";
+        const text = completion.choices[0]?.message?.content?.trim();
+        if (text) aiSummary = text;
       } catch (err) {
         console.error("OpenAI summary error:", err);
       }
     }
 
-    // Get first user for now (no auth)
-    const user = await db.query.users.findFirst();
+    const userId = await getSessionUserId();
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Sign in to save a skin scan." },
+        { status: 401 }
+      );
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
     if (!user) {
       return NextResponse.json(
-        { success: false, error: "No user found" },
+        { success: false, error: "User not found" },
         { status: 400 }
       );
     }
+
+    const analysisResults = {
+      acne: metrics.acne,
+      wrinkles: metrics.wrinkles,
+      texture: metrics.texture,
+      pigmentation: metrics.pigmentation,
+      hydration: metrics.hydration,
+      eczema: eczemaScore,
+    };
 
     // Insert scan into database
     const [inserted] = await db
@@ -103,8 +135,17 @@ export async function POST(request: NextRequest) {
         hydration: metrics.hydration,
         texture: metrics.texture,
         aiSummary: aiSummary || null,
+        annotations: detected_regions,
       })
       .returning();
+
+    await db.insert(skinScans).values({
+      userId: user.id,
+      originalImageUrl: imageDataUri,
+      annotatedImageUrl: imageDataUri,
+      skinScore: metrics.overall_score,
+      analysisResults,
+    });
 
     return NextResponse.json({
       success: true,

@@ -66,9 +66,6 @@ export function LoginForm() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
               Patient Login
             </h1>
-            <p className="mt-2 text-slate-600">
-              Email is prefilled for the demo patient — edit if needed, then sign in.
-            </p>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-5">

@@ -29,6 +29,12 @@ export const appointmentTypeEnum = pgEnum("appointment_type", [
   "scan-review",
 ]);
 
+export const reminderPriorityEnum = pgEnum("reminder_priority", [
+  "high",
+  "medium",
+  "low",
+]);
+
 // Users
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -132,6 +138,58 @@ export const appointments = pgTable("appointments", {
   type: appointmentTypeEnum("type").notNull().default("consultation"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Doctor visit notes shown on patient treatment history (per visit date). */
+export const visitNotes = pgTable("visit_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  visitDate: date("visit_date", { mode: "date" }).notNull(),
+  doctorName: varchar("doctor_name", { length: 255 }).notNull(),
+  notes: text("notes").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Dashboard “Priority reminders” checklist (per user, ordered). */
+export const priorityReminders = pgTable(
+  "priority_reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    priority: reminderPriorityEnum("priority").notNull().default("medium"),
+    sortOrder: integer("sort_order").notNull(),
+    completed: boolean("completed").notNull().default(false),
+    /** When the user marked the reminder done (for history). */
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userSortUidx: uniqueIndex("priority_reminders_user_sort_uidx").on(
+      table.userId,
+      table.sortOrder
+    ),
+  })
+);
+
+/** Calendar / “Upcoming schedule” entries (patient-facing; can be synced from another app). */
+export const scheduleEvents = pgTable("schedule_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  eventDate: date("event_date", { mode: "date" }).notNull(),
+  /** Local time of day `HH:mm` (24h), e.g. `14:30`. Null = all-day. */
+  eventTimeHm: varchar("event_time", { length: 5 }),
+  title: text("title").notNull(),
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Relations: users <-> scans (one-to-many)
