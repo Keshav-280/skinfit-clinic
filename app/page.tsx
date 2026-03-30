@@ -79,7 +79,7 @@ export default function Home() {
               <Sparkles className="h-5 w-5" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white">
-              SkinFit
+              SkinnFit
             </span>
           </Link>
 
@@ -157,7 +157,7 @@ export default function Home() {
                 <div className="flex h-full items-center justify-center p-6 pt-12">
                   <div className="text-center">
                     <div className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-teal-500/20" />
-                    <p className="text-sm text-zinc-500">SkinFit App</p>
+                    <p className="text-sm text-zinc-500">SkinnFit App</p>
                   </div>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export default function Home() {
                   <div className="flex h-full items-center justify-center p-4 pt-8">
                     <div className="text-center">
                       <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-teal-500/20" />
-                      <p className="text-xs text-zinc-500">SkinFit App</p>
+                      <p className="text-xs text-zinc-500">SkinnFit App</p>
                     </div>
                   </div>
                 </div>
@@ -342,10 +342,10 @@ export default function Home() {
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-bold tracking-tight">SkinFit</span>
+            <span className="text-lg font-bold tracking-tight">SkinnFit</span>
           </div>
           <p className="text-sm text-zinc-500">
-            © {new Date().getFullYear()} SkinFit Clinic. All rights reserved.
+            © {new Date().getFullYear()} SkinnFit Clinic. All rights reserved.
           </p>
           <div className="mt-4 flex justify-center gap-6 text-sm">
             <Link href="/services" className="text-zinc-400 hover:text-teal-400">

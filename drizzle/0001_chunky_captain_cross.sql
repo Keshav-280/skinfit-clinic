@@ -1,0 +1,1 @@
+DROP INDEX "chat_threads_user_assistant_uidx";

@@ -51,7 +51,7 @@ export function LoginForm() {
               <Sparkles className="h-8 w-8 text-white" />
             </div>
             <span className="text-3xl font-bold tracking-tight text-white">
-              SkinFit
+              SkinnFit
             </span>
           </div>
           <p className="text-lg leading-relaxed text-teal-50">

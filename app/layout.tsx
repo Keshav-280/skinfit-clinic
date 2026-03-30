@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SkinFit Clinic",
+  title: "SkinnFit Clinic",
   description: "Advanced AI-powered skin care and dermatology clinic.",
 };
 

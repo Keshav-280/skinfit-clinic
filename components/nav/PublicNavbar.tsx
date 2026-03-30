@@ -20,7 +20,7 @@ export function PublicNavbar() {
           </span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-semibold text-slate-900">
-              SkinFit Clinic
+              SkinnFit Clinic
             </span>
             <span className="text-xs text-slate-500">
               Skin · Aesthetics · Wellness

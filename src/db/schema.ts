@@ -200,3 +200,42 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const scansRelations = relations(scans, ({ one }) => ({
   user: one(users),
 }));
+
+// Chat (plain message history; Dr. Ruby & Clinic Support)
+export const chatAssistantEnum = pgEnum("chat_assistant_id", [
+  "ai",
+  "doctor",
+  "support",
+]);
+
+export const chatSenderEnum = pgEnum("chat_sender", [
+  "patient",
+  "doctor",
+  "support",
+]);
+
+export const chatThreads = pgTable(
+  "chat_threads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    assistantId: chatAssistantEnum("assistant_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  }
+);
+
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  threadId: uuid("thread_id")
+    .notNull()
+    .references(() => chatThreads.id, { onDelete: "cascade" }),
+  sender: chatSenderEnum("sender").notNull(),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

@@ -70,7 +70,7 @@ export function ScrollHero() {
               <div className="flex h-full items-center justify-center p-6 pt-12">
                 <div className="text-center">
                   <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-teal-500/20" />
-                  <p className="text-sm text-zinc-500">SkinFit App</p>
+                  <p className="text-sm text-zinc-500">SkinnFit App</p>
                 </div>
               </div>
             </div>

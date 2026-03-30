@@ -122,7 +122,7 @@ export default function BlogPage() {
               <Sparkles className="h-5 w-5" />
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-800">
-              SkinFit
+              SkinnFit
             </span>
           </Link>
 
@@ -246,7 +246,7 @@ export default function BlogPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 shadow-lg">
                   <Sparkles className="h-5 w-5" />
                 </div>
-                <span className="text-xl font-bold">SkinFit</span>
+                <span className="text-xl font-bold">SkinnFit</span>
               </div>
               <p className="text-sm text-slate-400">
                 Advanced AI-powered dermatology clinic offering personalized skincare
@@ -316,7 +316,7 @@ export default function BlogPage() {
 
           <div className="mt-12 border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
             <p>
-              © {new Date().getFullYear()} SkinFit Clinic. All rights reserved. |
+              © {new Date().getFullYear()} SkinnFit Clinic. All rights reserved. |
               Privacy Policy | Terms of Service
             </p>
           </div>
