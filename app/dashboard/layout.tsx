@@ -27,7 +27,7 @@ export default function DashboardLayout({
 
           <div className="flex items-center gap-2">
             <Link
-              href="/dashboard"
+              href="/dashboard/profile"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-teal-50 text-teal-600 transition-colors hover:bg-teal-100"
               title="Profile"
             >

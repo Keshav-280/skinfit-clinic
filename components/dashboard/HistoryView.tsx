@@ -44,9 +44,19 @@ export interface VisitNoteRecord {
   notes: string;
 }
 
+export interface PatientInfo {
+  name: string;
+  email: string;
+  phone: string | null;
+  age: number | null;
+  skinType: string | null;
+  primaryGoal: string | null;
+}
+
 interface HistoryViewProps {
   scans: ScanRecord[];
   visitNotes: VisitNoteRecord[];
+  patient: PatientInfo;
 }
 
 type ReportListItem =
@@ -89,7 +99,7 @@ function buildLabAndScanReports(scans: ScanRecord[]): ReportListItem[] {
   return [...fromScans, ...fromLabs].sort((a, b) => b.sortTime - a.sortTime);
 }
 
-export function HistoryView({ scans, visitNotes }: HistoryViewProps) {
+export function HistoryView({ scans, visitNotes, patient }: HistoryViewProps) {
   const labAndScanReports = useMemo(
     () => buildLabAndScanReports(scans),
     [scans]
@@ -110,17 +120,51 @@ export function HistoryView({ scans, visitNotes }: HistoryViewProps) {
               <User className="h-12 w-12 text-[#6B8E8E]" />
             </div>
           </div>
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold text-zinc-900">Test Patient</h2>
-            <p className="text-sm text-zinc-600">Age: 28</p>
+          <div className="min-w-0 flex-1 space-y-1">
+            <h2 className="text-xl font-bold text-zinc-900">{patient.name}</h2>
+            <p className="truncate text-sm text-zinc-600">{patient.email}</p>
             <p className="text-sm text-zinc-600">
-              Skin Type:{" "}
-              <span className="font-semibold text-teal-700">Combination</span>
+              Phone:{" "}
+              {patient.phone ? (
+                <span className="font-medium text-zinc-800">{patient.phone}</span>
+              ) : (
+                <span className="text-zinc-400">Not set</span>
+              )}
             </p>
             <p className="text-sm text-zinc-600">
-              Primary Goal:{" "}
-              <span className="font-semibold text-teal-700">Acne Reduction</span>
+              Age:{" "}
+              {patient.age != null ? (
+                <span className="font-medium text-zinc-800">{patient.age}</span>
+              ) : (
+                <span className="text-zinc-400">Not set</span>
+              )}
             </p>
+            <p className="text-sm text-zinc-600">
+              Skin type:{" "}
+              {patient.skinType ? (
+                <span className="font-semibold text-teal-700">
+                  {patient.skinType}
+                </span>
+              ) : (
+                <span className="text-zinc-400">Not set</span>
+              )}
+            </p>
+            <p className="text-sm text-zinc-600">
+              Primary goal:{" "}
+              {patient.primaryGoal ? (
+                <span className="font-semibold text-teal-700">
+                  {patient.primaryGoal}
+                </span>
+              ) : (
+                <span className="text-zinc-400">Not set</span>
+              )}
+            </p>
+            <Link
+              href="/dashboard/profile"
+              className="mt-3 inline-block text-sm font-medium text-teal-600 hover:text-teal-700"
+            >
+              Edit profile
+            </Link>
           </div>
         </div>
       </motion.section>

@@ -52,10 +52,6 @@ export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    if (scanResults) setReportOpen(true);
-  }, [scanResults]);
-
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -190,6 +186,7 @@ export default function ScanPage() {
       const json = await res.json();
       if (json.success && json.data) {
         setScanResults(json.data);
+        setReportOpen(true);
         setStep("results");
         router.refresh();
       } else {

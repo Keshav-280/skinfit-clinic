@@ -13,8 +13,26 @@ export default async function HistoryPage() {
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
+    columns: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      age: true,
+      skinType: true,
+      primaryGoal: true,
+    },
   });
   if (!user) redirect("/login");
+
+  const patient = {
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    age: user.age,
+    skinType: user.skinType,
+    primaryGoal: user.primaryGoal,
+  };
 
   const scansList = user
     ? await db.query.scans.findMany({
@@ -80,7 +98,11 @@ export default async function HistoryPage() {
       <h1 className="text-center text-2xl font-bold tracking-tight text-zinc-900">
         Treatment History
       </h1>
-      <HistoryView scans={scanRecords} visitNotes={visitRecords} />
+      <HistoryView
+        scans={scanRecords}
+        visitNotes={visitRecords}
+        patient={patient}
+      />
     </div>
   );
 }

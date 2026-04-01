@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { X } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { useCallback, useRef, useState } from "react";
+import { Download, X } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
 import { Cormorant_Garamond } from "next/font/google";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
+import { downloadScanReportPdf } from "@/src/lib/downloadScanReportPdf";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -127,15 +129,63 @@ export function SkinScanReportBody({
   onClose,
   className = "",
 }: SkinScanReportBodyProps) {
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
 
+  const handleDownloadPdf = useCallback(async () => {
+    const el = reportRef.current;
+    if (!el) return;
+    setPdfLoading(true);
+    try {
+      await downloadScanReportPdf(
+        el,
+        `skin-scan-report-${format(scanDate, "yyyy-MM-dd-HHmm")}.pdf`
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [scanDate]);
+
+  const faceImgCrossOrigin =
+    imageUrl.startsWith("http://") || imageUrl.startsWith("https://")
+      ? ("anonymous" as const)
+      : undefined;
+
   return (
+    <div className={`relative w-full max-w-3xl ${className}`}>
+      <div className="absolute right-3 top-3 z-30 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleDownloadPdf}
+          disabled={pdfLoading}
+          className="flex h-10 items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-3 text-xs font-semibold text-zinc-600 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:bg-white hover:text-zinc-900 disabled:opacity-60"
+          title="Download report as PDF"
+        >
+          <Download className="h-4 w-4 shrink-0" aria-hidden />
+          {pdfLoading ? "…" : "PDF"}
+        </button>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/75 text-zinc-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:border-white hover:bg-white hover:text-zinc-900 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-[0.97]"
+            aria-label="Close"
+          >
+            <X className="h-[15px] w-[15px] stroke-[1.75]" />
+          </button>
+        ) : null}
+      </div>
+
     <motion.div
+      ref={reportRef}
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: easeOut }}
-      className={`relative w-full max-w-3xl overflow-hidden rounded-[22px] border border-white/60 ${className}`}
+      className="relative w-full overflow-hidden rounded-[22px] border border-white/60"
       style={{
         backgroundColor: BEIGE,
         boxShadow: `
@@ -149,17 +199,6 @@ export function SkinScanReportBody({
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white/35 to-transparent"
         aria-hidden
       />
-
-      {onClose ? (
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-zinc-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:border-white hover:bg-white hover:text-zinc-900 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-[0.97]"
-          aria-label="Close"
-        >
-          <X className="h-[15px] w-[15px] stroke-[1.75]" />
-        </button>
-      ) : null}
 
       <div className="relative px-5 pb-28 pt-9 sm:px-9 sm:pb-32">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto_1fr] lg:items-start lg:gap-5">
@@ -204,6 +243,7 @@ export function SkinScanReportBody({
                 src={imageUrl}
                 alt="Your scan"
                 className="h-full w-full object-cover"
+                crossOrigin={faceImgCrossOrigin}
               />
               {regions.map((region, i) => (
                 <motion.div
@@ -382,6 +422,7 @@ export function SkinScanReportBody({
                 src={src}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                crossOrigin="anonymous"
               />
               <div
                 className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/[0.08] to-transparent opacity-0 transition group-hover:opacity-100"
@@ -404,5 +445,6 @@ export function SkinScanReportBody({
         </div>
       </div>
     </motion.div>
+    </div>
   );
 }

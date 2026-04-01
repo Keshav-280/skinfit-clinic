@@ -40,6 +40,10 @@ async function seed() {
         email: DEMO_PATIENT_EMAIL,
         passwordHash: patientHash,
         role: "patient",
+        age: 28,
+        skinType: "Combination",
+        primaryGoal: "Acne reduction",
+        phone: "+1 555 010 0199",
       })
       .onConflictDoUpdate({
         target: users.email,
@@ -47,6 +51,10 @@ async function seed() {
           passwordHash: patientHash,
           name: "Demo Patient",
           role: "patient",
+          age: 28,
+          skinType: "Combination",
+          primaryGoal: "Acne reduction",
+          phone: "+1 555 010 0199",
         },
       });
 
@@ -57,6 +65,7 @@ async function seed() {
         email: DOCTOR_EMAIL,
         passwordHash: doctorHash,
         role: "doctor",
+        phone: "+1 555 010 0299",
       })
       .onConflictDoUpdate({
         target: users.email,
@@ -64,6 +73,7 @@ async function seed() {
           passwordHash: doctorHash,
           name: "Dr. Sarah Chen",
           role: "doctor",
+          phone: "+1 555 010 0299",
         },
       });
 

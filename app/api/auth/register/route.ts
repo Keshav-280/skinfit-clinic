@@ -7,11 +7,14 @@ import { users } from "@/src/db/schema";
 import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
+import { validateRegistrationPhone } from "@/src/lib/auth/phone";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD = 8;
+const MAX_NAME = 255;
 
 export async function POST(req: Request) {
-  let body: { email?: string; password?: string };
+  let body: { name?: string; email?: string; password?: string; phone?: string };
   try {
     body = await req.json();
   } catch {
@@ -21,9 +24,26 @@ export async function POST(req: Request) {
     );
   }
 
+  const name =
+    typeof body.name === "string" ? body.name.trim().slice(0, MAX_NAME) : "";
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
+  const phoneRaw = typeof body.phone === "string" ? body.phone : "";
 
+  const phoneCheck = validateRegistrationPhone(phoneRaw);
+  if (!phoneCheck.ok) {
+    return NextResponse.json(
+      { error: "INVALID_PHONE", message: phoneCheck.message },
+      { status: 400 }
+    );
+  }
+
+  if (!name) {
+    return NextResponse.json(
+      { error: "NAME_REQUIRED", message: "Please enter your name." },
+      { status: 400 }
+    );
+  }
   if (!email) {
     return NextResponse.json(
       { error: "EMAIL_REQUIRED", message: "Please enter your email." },
@@ -39,49 +59,31 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (!password) {
+  if (password.length < MIN_PASSWORD) {
     return NextResponse.json(
-      { error: "PASSWORD_REQUIRED", message: "Please enter your password." },
+      {
+        error: "PASSWORD_TOO_SHORT",
+        message: `Password must be at least ${MIN_PASSWORD} characters.`,
+      },
       { status: 400 }
     );
   }
 
   const normalizedEmail = email.toLowerCase();
 
-  const [user] = await db
-    .select()
+  const [existing] = await db
+    .select({ id: users.id })
     .from(users)
     .where(eq(users.email, normalizedEmail))
     .limit(1);
 
-  if (!user) {
+  if (existing) {
     return NextResponse.json(
       {
-        error: "USER_NOT_FOUND",
-        message: "We couldn't find an account with that email.",
+        error: "EMAIL_TAKEN",
+        message: "An account with this email already exists. Try signing in.",
       },
-      { status: 401 }
-    );
-  }
-
-  const passwordOk = await bcrypt.compare(password, user.passwordHash);
-  if (!passwordOk) {
-    return NextResponse.json(
-      {
-        error: "INVALID_CREDENTIALS",
-        message: "Incorrect email or password.",
-      },
-      { status: 401 }
-    );
-  }
-
-  if (user.role !== "patient") {
-    return NextResponse.json(
-      {
-        error: "NOT_PATIENT",
-        message: "This portal is for patients only.",
-      },
-      { status: 403 }
+      { status: 409 }
     );
   }
 
@@ -99,12 +101,37 @@ export async function POST(req: Request) {
     );
   }
 
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const [inserted] = await db
+    .insert(users)
+    .values({
+      name,
+      email: normalizedEmail,
+      phone: phoneCheck.value,
+      passwordHash,
+      role: "patient",
+    })
+    .returning({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: users.role,
+    });
+
+  if (!inserted) {
+    return NextResponse.json(
+      { error: "CREATE_FAILED", message: "Could not create account." },
+      { status: 500 }
+    );
+  }
+
   const token = await createSessionToken(
     {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
+      id: inserted.id,
+      email: inserted.email,
+      role: inserted.role,
+      name: inserted.name,
     },
     secret
   );
@@ -120,6 +147,11 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    user: { id: user.id, email: user.email, name: user.name },
+    user: {
+      id: inserted.id,
+      email: inserted.email,
+      name: inserted.name,
+      phone: phoneCheck.value,
+    },
   });
 }

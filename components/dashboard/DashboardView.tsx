@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Sun, Moon, SunMoon, ChevronsUp } from "lucide-react";
@@ -156,9 +156,11 @@ export function DashboardView({
     [skinScanHistory]
   );
 
-  useEffect(() => {
+  const [prevScanIdsKey, setPrevScanIdsKey] = useState(scanIdsKey);
+  if (prevScanIdsKey !== scanIdsKey) {
+    setPrevScanIdsKey(scanIdsKey);
     setSelectedScanIdx(0);
-  }, [scanIdsKey]);
+  }
 
   const selectedScan =
     skinScanHistory.length > 0
@@ -180,6 +182,17 @@ export function DashboardView({
     ? format(new Date(selectedScan.createdAt), "dd/MM/yy")
     : displayDate;
 
+  const routineSourceKey = useMemo(
+    () =>
+      `${JSON.stringify(todayLog?.routineAmSteps ?? null)}|${JSON.stringify(todayLog?.routinePmSteps ?? null)}|${amItems.length}|${pmItems.length}`,
+    [
+      todayLog?.routineAmSteps,
+      todayLog?.routinePmSteps,
+      amItems.length,
+      pmItems.length,
+    ]
+  );
+
   const [routine, setRoutine] = useState(() => ({
     am: normalizeRoutineSteps(
       todayLog?.routineAmSteps,
@@ -193,7 +206,9 @@ export function DashboardView({
     ),
   }));
 
-  useEffect(() => {
+  const [prevRoutineKey, setPrevRoutineKey] = useState(routineSourceKey);
+  if (prevRoutineKey !== routineSourceKey) {
+    setPrevRoutineKey(routineSourceKey);
     setRoutine({
       am: normalizeRoutineSteps(
         todayLog?.routineAmSteps,
@@ -206,7 +221,7 @@ export function DashboardView({
         undefined
       ),
     });
-  }, [todayLog, amItems.length, pmItems.length]);
+  }
 
   const persistRoutine = useCallback(
     async (nextAm: boolean[], nextPm: boolean[]) => {

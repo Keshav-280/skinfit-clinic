@@ -16,7 +16,10 @@ const links = [
 function isActive(href: string, pathname: string | null): boolean {
   if (!pathname) return false;
   if (href === "/dashboard") {
-    return pathname === "/dashboard" || pathname === "/dashboard/";
+    const isRoot =
+      pathname === "/dashboard" || pathname === "/dashboard/";
+    if (!isRoot) return false;
+    return true;
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

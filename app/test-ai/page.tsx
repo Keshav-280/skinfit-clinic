@@ -5,7 +5,7 @@ import { UploadCloud, Loader2 } from "lucide-react";
 
 export default function TestAIPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiResult, setAiResult] = useState<any>(null);
+  const [aiResult, setAiResult] = useState<unknown>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,13 +61,13 @@ export default function TestAIPage() {
         {isAnalyzing ? "Analyzing Clinical Data..." : "Upload Test Image"}
       </label>
 
-      {aiResult && (
+      {aiResult != null ? (
         <div className="mt-8 w-full max-w-3xl bg-black rounded-xl border border-zinc-800 p-4 overflow-x-auto">
           <pre className="text-green-400 text-sm font-mono">
             {JSON.stringify(aiResult, null, 2)}
           </pre>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

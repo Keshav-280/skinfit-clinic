@@ -40,8 +40,14 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
+  /** Set at signup (required); nullable for legacy rows before this column existed. */
+  phone: varchar("phone", { length: 32 }),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: userRoleEnum("role").notNull().default("patient"),
+  /** Optional profile fields (editable on /dashboard/profile). */
+  age: integer("age"),
+  skinType: varchar("skin_type", { length: 100 }),
+  primaryGoal: varchar("primary_goal", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
