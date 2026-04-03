@@ -36,25 +36,35 @@ export default async function HistoryPage() {
     primaryGoal: user.primaryGoal,
   };
 
-  const scansList = user
-    ? await db.query.scans.findMany({
-        where: eq(scans.userId, user.id),
-        columns: {
-          id: true,
-          scanName: true,
-          imageUrl: true,
-          overallScore: true,
-          acne: true,
-          pigmentation: true,
-          wrinkles: true,
-          hydration: true,
-          texture: true,
-          createdAt: true,
-          aiSummary: true,
-        },
-        orderBy: [desc(scans.createdAt)],
-      })
-    : [];
+  const [scansList, visitsList] = await Promise.all([
+    db.query.scans.findMany({
+      where: eq(scans.userId, user.id),
+      columns: {
+        id: true,
+        scanName: true,
+        imageUrl: true,
+        overallScore: true,
+        acne: true,
+        pigmentation: true,
+        wrinkles: true,
+        hydration: true,
+        texture: true,
+        createdAt: true,
+        aiSummary: true,
+      },
+      orderBy: [desc(scans.createdAt)],
+    }),
+    db.query.visitNotes.findMany({
+      where: eq(visitNotes.userId, user.id),
+      columns: {
+        id: true,
+        visitDate: true,
+        doctorName: true,
+        notes: true,
+      },
+      orderBy: [desc(visitNotes.visitDate)],
+    }),
+  ]);
 
   const scanRecords = scansList.map((s) => {
     const eczema = Math.min(
@@ -75,17 +85,6 @@ export default async function HistoryPage() {
       createdAt: s.createdAt,
       aiSummary: s.aiSummary ?? null,
     };
-  });
-
-  const visitsList = await db.query.visitNotes.findMany({
-    where: eq(visitNotes.userId, user.id),
-    columns: {
-      id: true,
-      visitDate: true,
-      doctorName: true,
-      notes: true,
-    },
-    orderBy: [desc(visitNotes.visitDate)],
   });
 
   const visitRecords = visitsList.map((v) => ({

@@ -10,8 +10,11 @@ import {
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { slotDateAndHmToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
+import { notifyPatientAppointmentEmail } from "@/src/lib/email/notifyPatientAppointmentEmail";
 import { formatPatientAppointmentConfirmationMessage } from "@/src/lib/patientGoogleCalendarHelp";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
+
+const APPOINTMENT_CONFIRM_EMAIL_SUBJECT = "SkinnFit Clinic — Appointment confirmed";
 
 export async function POST(
   req: Request,
@@ -101,15 +104,23 @@ export async function POST(
     .where(eq(users.id, request.doctorId))
     .limit(1);
 
+  const confirmationMd = formatPatientAppointmentConfirmationMessage({
+    dateTimeUtc: dateTime,
+    slotYmd,
+    slotTimeHm: slot.slotTimeHm,
+    slotEndTimeHm: slot.slotEndTimeHm ?? null,
+    doctorNameRaw: doctorRow?.name,
+  });
+
   await sendClinicSupportMessage({
     patientId: request.patientId,
-    text: formatPatientAppointmentConfirmationMessage({
-      dateTimeUtc: dateTime,
-      slotYmd,
-      slotTimeHm: slot.slotTimeHm,
-      slotEndTimeHm: slot.slotEndTimeHm ?? null,
-      doctorNameRaw: doctorRow?.name,
-    }),
+    text: confirmationMd,
+  });
+
+  void notifyPatientAppointmentEmail({
+    patientId: request.patientId,
+    subject: APPOINTMENT_CONFIRM_EMAIL_SUBJECT,
+    markdownBody: confirmationMd,
   });
 
   return NextResponse.json({

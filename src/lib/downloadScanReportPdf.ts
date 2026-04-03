@@ -1,12 +1,7 @@
 /**
  * Renders a DOM node to a multi-page A4 PDF (client-only).
  */
-export async function downloadScanReportPdf(
-  element: HTMLElement,
-  filename: string
-): Promise<void> {
-  // Ensure images inside the report load before rendering.
-  // We cap the wait time to avoid browser auto-download blocking.
+async function renderReportToJsPdf(element: HTMLElement) {
   const imgs = Array.from(element.querySelectorAll("img"));
   const waitForImages = Promise.allSettled(
     imgs.map((img) => {
@@ -24,19 +19,14 @@ export async function downloadScanReportPdf(
     new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
   ]);
 
-  // Small delay to allow layout/paint after image load.
   await new Promise((r) => setTimeout(r, 250));
 
-  // Use html2canvas-pro directly (not html2pdf.js), so color functions like
-  // oklab()/lab()/lch() render correctly for the PDF.
   const html2canvas = (await import("html2canvas-pro")).default;
   const { jsPDF } = await import("jspdf");
 
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
-    // Allow tainted images so cross-origin images still render into the canvas.
-    // html2canvas-pro is used to properly handle oklab/lab/lch color functions.
     allowTaint: true,
     foreignObjectRendering: false,
     logging: false,
@@ -55,7 +45,6 @@ export async function downloadScanReportPdf(
   const usableWidthMm = pageWidthMm - marginMm * 2;
   const usableHeightMm = pageHeightMm - marginMm * 2;
 
-  // Crop the big canvas into A4 chunks (same approach as html2pdf.js).
   const pxFullHeight = canvas.height;
   const pxPageHeight = Math.round(
     (canvas.width * usableHeightMm) / usableWidthMm
@@ -64,7 +53,10 @@ export async function downloadScanReportPdf(
 
   for (let page = 0; page < nPages; page++) {
     const pageCanvas = document.createElement("canvas");
-    const pageHeightPx = Math.min(pxPageHeight, pxFullHeight - page * pxPageHeight);
+    const pageHeightPx = Math.min(
+      pxPageHeight,
+      pxFullHeight - page * pxPageHeight
+    );
     pageCanvas.width = canvas.width;
     pageCanvas.height = pageHeightPx;
 
@@ -84,7 +76,6 @@ export async function downloadScanReportPdf(
     );
 
     const imgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-    // Convert px height -> mm height using the same scaling factor as width.
     const pageHeightMmActualUnclamped =
       (pageHeightPx * usableWidthMm) / canvas.width;
     const pageHeightMmActual = Math.min(
@@ -103,5 +94,20 @@ export async function downloadScanReportPdf(
     );
   }
 
+  return pdf;
+}
+
+export async function renderScanReportPdfBlob(
+  element: HTMLElement
+): Promise<Blob> {
+  const pdf = await renderReportToJsPdf(element);
+  return pdf.output("blob");
+}
+
+export async function downloadScanReportPdf(
+  element: HTMLElement,
+  filename: string
+): Promise<void> {
+  const pdf = await renderReportToJsPdf(element);
   pdf.save(filename);
 }

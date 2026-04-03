@@ -18,7 +18,11 @@ import {
   clinicCancellationKindFromRequestRow,
 } from "@/src/lib/clinicCancellationNotice";
 import { formatPatientAppointmentConfirmationMessage } from "@/src/lib/patientGoogleCalendarHelp";
+import { notifyPatientAppointmentEmail } from "@/src/lib/email/notifyPatientAppointmentEmail";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
+
+const APPOINTMENT_CONFIRM_EMAIL_SUBJECT = "SkinnFit Clinic — Appointment confirmed";
+const APPOINTMENT_UPDATE_EMAIL_SUBJECT = "SkinnFit Clinic — Appointment update";
 import { CLINIC_DOCTOR_EMAIL } from "@/src/lib/clinicDoctor";
 import { slotDateAndHmToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
 import { isValidSlotEndAfterStart } from "@/src/lib/slotTimeHm";
@@ -377,41 +381,53 @@ export async function POST(req: Request) {
 
       for (const r of reqs) {
         if (r.status === "cancelled") continue;
+        const slotCancelMd = clinicCancellationChatMessage({
+          kind: clinicCancellationKindFromRequestRow(r),
+          slotYmd,
+          slotTimeHm,
+          slotEndTimeHm,
+          reason,
+        });
         try {
           await sendClinicSupportMessage({
             patientId: r.patientId,
-            text: clinicCancellationChatMessage({
-              kind: clinicCancellationKindFromRequestRow(r),
-              slotYmd,
-              slotTimeHm,
-              slotEndTimeHm,
-              reason,
-            }),
+            text: slotCancelMd,
           });
           notifiedUserIds.add(r.patientId);
         } catch (notifyErr) {
           console.error("clinic-dev deleteSlot notify (request):", notifyErr);
         }
+        void notifyPatientAppointmentEmail({
+          patientId: r.patientId,
+          subject: APPOINTMENT_UPDATE_EMAIL_SUBJECT,
+          markdownBody: slotCancelMd,
+        });
       }
 
       for (const appt of matchingAppts) {
         if (linkedApptIds.has(appt.id)) continue;
         if (notifiedUserIds.has(appt.userId)) continue;
+        const orphanCancelMd = clinicCancellationChatMessage({
+          kind: "confirmed_visit",
+          slotYmd,
+          slotTimeHm,
+          slotEndTimeHm,
+          reason,
+        });
         try {
           await sendClinicSupportMessage({
             patientId: appt.userId,
-            text: clinicCancellationChatMessage({
-              kind: "confirmed_visit",
-              slotYmd,
-              slotTimeHm,
-              slotEndTimeHm,
-              reason,
-            }),
+            text: orphanCancelMd,
           });
           notifiedUserIds.add(appt.userId);
         } catch (notifyErr) {
           console.error("clinic-dev deleteSlot notify (orphan appt):", notifyErr);
         }
+        void notifyPatientAppointmentEmail({
+          patientId: appt.userId,
+          subject: APPOINTMENT_UPDATE_EMAIL_SUBJECT,
+          markdownBody: orphanCancelMd,
+        });
       }
 
       const apptIds = [
@@ -593,15 +609,21 @@ export async function POST(req: Request) {
         .from(users)
         .where(eq(users.id, reqRow.doctorId))
         .limit(1);
+      const confirmMd = formatPatientAppointmentConfirmationMessage({
+        dateTimeUtc: dateTime,
+        slotYmd,
+        slotTimeHm: slot.slotTimeHm,
+        slotEndTimeHm: slot.slotEndTimeHm ?? null,
+        doctorNameRaw: docUser?.name,
+      });
       await sendClinicSupportMessage({
         patientId: reqRow.patientId,
-        text: formatPatientAppointmentConfirmationMessage({
-          dateTimeUtc: dateTime,
-          slotYmd,
-          slotTimeHm: slot.slotTimeHm,
-          slotEndTimeHm: slot.slotEndTimeHm ?? null,
-          doctorNameRaw: docUser?.name,
-        }),
+        text: confirmMd,
+      });
+      void notifyPatientAppointmentEmail({
+        patientId: reqRow.patientId,
+        subject: APPOINTMENT_CONFIRM_EMAIL_SUBJECT,
+        markdownBody: confirmMd,
       });
     }
 
@@ -698,15 +720,21 @@ export async function POST(req: Request) {
         .from(users)
         .where(eq(users.id, reqRow.doctorId))
         .limit(1);
+      const confirmMdReq = formatPatientAppointmentConfirmationMessage({
+        dateTimeUtc: dateTime,
+        slotYmd,
+        slotTimeHm: slot.slotTimeHm,
+        slotEndTimeHm: slot.slotEndTimeHm ?? null,
+        doctorNameRaw: docUser?.name,
+      });
       await sendClinicSupportMessage({
         patientId: reqRow.patientId,
-        text: formatPatientAppointmentConfirmationMessage({
-          dateTimeUtc: dateTime,
-          slotYmd,
-          slotTimeHm: slot.slotTimeHm,
-          slotEndTimeHm: slot.slotEndTimeHm ?? null,
-          doctorNameRaw: docUser?.name,
-        }),
+        text: confirmMdReq,
+      });
+      void notifyPatientAppointmentEmail({
+        patientId: reqRow.patientId,
+        subject: APPOINTMENT_CONFIRM_EMAIL_SUBJECT,
+        markdownBody: confirmMdReq,
       });
     }
 
@@ -763,15 +791,21 @@ export async function POST(req: Request) {
     const { slotYmd, slotTimeHm, slotEndTimeHm } = await slotYmdHmForDoctorSlotId(
       reqRow.doctorSlotId
     );
+    const cancelLatestMd = clinicCancellationChatMessage({
+      kind: clinicCancellationKindFromRequestRow(reqRow),
+      slotYmd,
+      slotTimeHm,
+      slotEndTimeHm,
+      reason,
+    });
     await sendClinicSupportMessage({
       patientId: reqRow.patientId,
-      text: clinicCancellationChatMessage({
-        kind: clinicCancellationKindFromRequestRow(reqRow),
-        slotYmd,
-        slotTimeHm,
-        slotEndTimeHm,
-        reason,
-      }),
+      text: cancelLatestMd,
+    });
+    void notifyPatientAppointmentEmail({
+      patientId: reqRow.patientId,
+      subject: APPOINTMENT_UPDATE_EMAIL_SUBJECT,
+      markdownBody: cancelLatestMd,
     });
 
     return NextResponse.json({
@@ -826,15 +860,21 @@ export async function POST(req: Request) {
     const { slotYmd, slotTimeHm, slotEndTimeHm } = await slotYmdHmForDoctorSlotId(
       reqRow.doctorSlotId
     );
+    const cancelReqMd = clinicCancellationChatMessage({
+      kind: clinicCancellationKindFromRequestRow(reqRow),
+      slotYmd,
+      slotTimeHm,
+      slotEndTimeHm,
+      reason,
+    });
     await sendClinicSupportMessage({
       patientId: reqRow.patientId,
-      text: clinicCancellationChatMessage({
-        kind: clinicCancellationKindFromRequestRow(reqRow),
-        slotYmd,
-        slotTimeHm,
-        slotEndTimeHm,
-        reason,
-      }),
+      text: cancelReqMd,
+    });
+    void notifyPatientAppointmentEmail({
+      patientId: reqRow.patientId,
+      subject: APPOINTMENT_UPDATE_EMAIL_SUBJECT,
+      markdownBody: cancelReqMd,
     });
 
     return NextResponse.json({

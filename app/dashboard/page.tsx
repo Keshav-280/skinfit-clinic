@@ -21,16 +21,25 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const skinScanRows = await db.query.skinScans.findMany({
-    where: eq(skinScans.userId, user.id),
-    orderBy: [desc(skinScans.createdAt)],
-    columns: {
-      id: true,
-      skinScore: true,
-      createdAt: true,
-      analysisResults: true,
-    },
-  });
+  const todayDateOnly = dateOnlyFromYmd(localCalendarYmd());
+  const [skinScanRows, todayLog] = await Promise.all([
+    db.query.skinScans.findMany({
+      where: eq(skinScans.userId, user.id),
+      orderBy: [desc(skinScans.createdAt)],
+      columns: {
+        id: true,
+        skinScore: true,
+        createdAt: true,
+        analysisResults: true,
+      },
+    }),
+    db.query.dailyLogs.findFirst({
+      where: and(
+        eq(dailyLogs.userId, user.id),
+        eq(dailyLogs.date, todayDateOnly)
+      ),
+    }),
+  ]);
 
   const skinScanHistory = skinScanRows.map((r) => ({
     id: r.id,
@@ -38,14 +47,6 @@ export default async function DashboardPage() {
     createdAt: r.createdAt.toISOString(),
     analysisResults: r.analysisResults,
   }));
-
-  const todayDateOnly = dateOnlyFromYmd(localCalendarYmd());
-  const todayLog = await db.query.dailyLogs.findFirst({
-    where: and(
-      eq(dailyLogs.userId, user.id),
-      eq(dailyLogs.date, todayDateOnly)
-    ),
-  });
 
   const amItems = [...AM_ROUTINE_ITEMS];
   const pmItems = [...PM_ROUTINE_ITEMS];

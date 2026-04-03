@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { after } from "next/server";
 import { Sparkles, User } from "lucide-react";
 import { DashboardNav } from "./dashboard-nav";
 import { LogoutButton } from "./logout-button";
@@ -15,8 +16,17 @@ export default async function DashboardLayout({
 }) {
   const userId = await getSessionUserId();
   if (userId) {
-    await markPastAppointmentsCompleted();
-    await runAppointmentReminders();
+    // Don’t block HTML: run after response (uses platform waitUntil on Vercel).
+    after(async () => {
+      try {
+        await Promise.all([
+          markPastAppointmentsCompleted(),
+          runAppointmentReminders(),
+        ]);
+      } catch (e) {
+        console.error("dashboard appointment sync", e);
+      }
+    });
   }
 
   return (

@@ -6,7 +6,9 @@ import { SkinScanReportBody } from "./SkinScanReportBody";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
 export interface ScanReportPageClientProps {
+  scanId: number;
   userName: string;
+  userEmail: string | null;
   scanTitle: string | null;
   imageUrl: string;
   regions: ReportRegion[];
@@ -18,7 +20,9 @@ export interface ScanReportPageClientProps {
 }
 
 export function ScanReportPageClient({
+  scanId,
   userName,
+  userEmail,
   scanTitle,
   imageUrl,
   regions,
@@ -64,6 +68,8 @@ export function ScanReportPageClient({
 
       <div className="mx-auto flex w-full justify-center">
         <SkinScanReportBody
+          scanId={scanId}
+          defaultShareEmail={userEmail}
           userName={userName}
           imageUrl={imageUrl}
           regions={regions}

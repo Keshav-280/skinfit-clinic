@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, X } from "lucide-react";
+import { Download, Mail, Share2, X } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
 import { Cormorant_Garamond } from "next/font/google";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
-import { downloadScanReportPdf } from "@/src/lib/downloadScanReportPdf";
+import {
+  downloadScanReportPdf,
+  renderScanReportPdfBlob,
+} from "@/src/lib/downloadScanReportPdf";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -123,6 +126,10 @@ export interface SkinScanReportBodyProps {
   /** Renders the close control (e.g. in the post-scan modal). */
   onClose?: () => void;
   className?: string;
+  /** Saved scan id (history page). Enables “Share → email” when set. */
+  scanId?: number;
+  /** Pre-fill share recipient (e.g. patient’s account email). */
+  defaultShareEmail?: string | null;
 }
 
 export function SkinScanReportBody({
@@ -138,10 +145,17 @@ export function SkinScanReportBody({
   autoCloseAfterDownload = false,
   onClose,
   className = "",
+  scanId,
+  defaultShareEmail = null,
 }: SkinScanReportBodyProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareEmail, setShareEmail] = useState(() => defaultShareEmail?.trim() ?? "");
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareDone, setShareDone] = useState(false);
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
 
@@ -192,6 +206,59 @@ export function SkinScanReportBody({
     }
   }, [scanDate, autoCloseAfterDownload, autoDownload]);
 
+  useEffect(() => {
+    const d = defaultShareEmail?.trim();
+    if (d) setShareEmail(d);
+  }, [defaultShareEmail]);
+
+  const handleShareByEmail = useCallback(async () => {
+    if (!scanId || scanId < 1) return;
+    const el = reportRef.current;
+    if (!el) return;
+    const trimmed = shareEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setShareError("Enter a valid email address.");
+      return;
+    }
+    setShareError(null);
+    setShareDone(false);
+    setShareBusy(true);
+    try {
+      await new Promise<void>((resolve) =>
+        window.requestAnimationFrame(() =>
+          window.requestAnimationFrame(() => resolve())
+        )
+      );
+      const blob = await renderScanReportPdfBlob(el);
+      const filename = `ai-scan-report-${format(scanDate, "yyyy-MM-dd-HHmm")}.pdf`;
+      const fd = new FormData();
+      fd.set("toEmail", trimmed);
+      fd.set("file", blob, filename);
+      fd.set("filename", filename);
+      const res = await fetch(`/api/scans/${scanId}/share-email`, {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!res.ok) {
+        if (res.status === 503 && data.error === "EMAIL_NOT_CONFIGURED") {
+          throw new Error("Email is not configured on this server.");
+        }
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Could not send email."
+        );
+      }
+      setShareDone(true);
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : "Send failed.");
+    } finally {
+      setShareBusy(false);
+    }
+  }, [scanId, shareEmail, scanDate]);
+
   const didAutoDownloadRef = useRef(false);
   useEffect(() => {
     if (!autoDownload) return;
@@ -212,7 +279,8 @@ export function SkinScanReportBody({
 
   return (
     <div className={`relative w-full max-w-3xl ${className}`}>
-      <div className="absolute right-3 top-3 z-30 flex items-center gap-2">
+      <div className="absolute right-3 top-3 z-30 flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={handleDownloadPdf}
@@ -223,6 +291,24 @@ export function SkinScanReportBody({
           <Download className="h-4 w-4 shrink-0" aria-hidden />
           {pdfLoading ? "…" : "PDF"}
         </button>
+        {typeof scanId === "number" && scanId > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setShareOpen((o) => !o);
+              setShareError(null);
+              setShareDone(false);
+            }}
+            className={`flex h-10 items-center gap-1.5 rounded-full border border-white bg-white px-3 text-xs font-semibold shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:bg-white disabled:opacity-60 ${
+              shareOpen ? "text-teal-800 ring-2 ring-teal-200/80" : "text-zinc-600 hover:text-zinc-900"
+            }`}
+            title="Share report"
+            aria-expanded={shareOpen}
+          >
+            <Share2 className="h-4 w-4 shrink-0" aria-hidden />
+            Share
+          </button>
+        ) : null}
         {onClose ? (
           <button
             type="button"
@@ -232,6 +318,54 @@ export function SkinScanReportBody({
           >
             <X className="h-[15px] w-[15px] stroke-[1.75]" />
           </button>
+        ) : null}
+        </div>
+        {shareOpen && typeof scanId === "number" && scanId > 0 ? (
+          <div className="w-[min(100vw-2rem,20rem)] rounded-2xl border border-zinc-200/90 bg-white/95 p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              Share report
+            </p>
+            <div className="mt-2 flex items-center gap-2 text-zinc-400">
+              <div className="h-px flex-1 bg-zinc-200" />
+              <span className="text-[10px] font-medium uppercase tracking-wide">
+                Email
+              </span>
+              <div className="h-px flex-1 bg-zinc-200" />
+            </div>
+            <p className="mt-2 text-[11px] leading-snug text-zinc-500">
+              Sends the same PDF as download via email (works with Gmail and
+              other providers).
+            </p>
+            <label className="mt-2 block text-[11px] font-medium text-zinc-600">
+              To
+              <input
+                type="email"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                placeholder="name@gmail.com"
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
+                autoComplete="email"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void handleShareByEmail()}
+              disabled={shareBusy || pdfLoading}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+              style={{ backgroundColor: BTN }}
+            >
+              <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {shareBusy ? "Sending…" : "Send by email"}
+            </button>
+            {shareError ? (
+              <p className="mt-2 text-[11px] text-rose-600">{shareError}</p>
+            ) : null}
+            {shareDone ? (
+              <p className="mt-2 text-[11px] font-medium text-teal-800">
+                Sent. Check the inbox (and spam).
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
       {pdfError ? (

@@ -30,34 +30,37 @@ export default async function ScanReportPage({
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
+  const [user, row] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, userId),
+    }),
+    db.query.scans.findFirst({
+      where: and(eq(scans.id, id), eq(scans.userId, userId)),
+      columns: {
+        id: true,
+        scanName: true,
+        imageUrl: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        hydration: true,
+        aiSummary: true,
+        annotations: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+
   if (!user) notFound();
-
-  const row = await db.query.scans.findFirst({
-    where: and(eq(scans.id, id), eq(scans.userId, userId)),
-    columns: {
-      id: true,
-      scanName: true,
-      imageUrl: true,
-      overallScore: true,
-      acne: true,
-      wrinkles: true,
-      hydration: true,
-      aiSummary: true,
-      annotations: true,
-      createdAt: true,
-    },
-  });
-
   if (!row) notFound();
 
   const regions = parseScanRegions(row.annotations);
 
   return (
     <ScanReportPageClient
+      scanId={row.id}
       userName={user.name?.trim() || "there"}
+      userEmail={user.email?.trim() || null}
       scanTitle={row.scanName}
       imageUrl={row.imageUrl}
       regions={regions}
