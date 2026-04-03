@@ -5,7 +5,10 @@ import { cookies } from "next/headers";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import {
+  getSessionUserIdFromRequest,
+  getSessionUserProfileFromRequest,
+} from "@/src/lib/auth/get-session";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
 import {
@@ -20,8 +23,16 @@ import {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export async function GET(req: Request) {
+  const user = await getSessionUserProfileFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+  return NextResponse.json({ user });
+}
+
 export async function PATCH(req: Request) {
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
@@ -252,6 +263,7 @@ export async function PATCH(req: Request) {
     maxAge: 60 * 60 * 24 * 7,
   });
 
+  const nativeClient = req.headers.get("x-skinfit-client") === "native";
   return NextResponse.json({
     ok: true,
     user: {
@@ -265,5 +277,6 @@ export async function PATCH(req: Request) {
       primaryGoal: nextGoal,
       appointmentReminderHoursBefore: nextReminderHours,
     },
+    ...(nativeClient ? { token } : {}),
   });
 }

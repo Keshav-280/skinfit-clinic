@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { and, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scans } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 
 const TEST_SCAN_NAME = "AI skin analysis";
 
 export async function DELETE(req: Request) {
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }

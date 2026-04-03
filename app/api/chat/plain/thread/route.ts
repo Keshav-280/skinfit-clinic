@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { chatThreads } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 
 export async function POST(req: Request) {
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }

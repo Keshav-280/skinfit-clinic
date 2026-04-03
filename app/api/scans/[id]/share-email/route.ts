@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { escapeHtml } from "@/src/lib/email/markdownToEmailPlain";
 import {
   getClinicNotificationEmail,
@@ -29,7 +29,7 @@ export async function POST(
     );
   }
 
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }

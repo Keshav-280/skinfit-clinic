@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, asc, eq, gte, lte, or } from "drizzle-orm";
 import { db } from "@/src/db";
 import { appointments, users, appointmentRequests } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { parseYmdToDateOnly } from "@/src/lib/date-only";
 
 function parseYmdParam(name: string, url: URL): Date | null {
@@ -20,7 +20,7 @@ function endOfYmdUTC(dateOnly: Date) {
 }
 
 export async function GET(req: Request) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const url = new URL(req.url);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads, users } from "@/src/db/schema";
+import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
 
 const ACTIONS = ["listThreads", "messages", "reply"] as const;
 type DevAction = (typeof ACTIONS)[number];
@@ -171,6 +172,8 @@ export async function POST(req: Request) {
       sender: "doctor",
       text,
     });
+
+    void notifyPatientNewClinicChat(patientId, text);
 
     return NextResponse.json({ ok: true, patientId, threadId: thread.id });
   }

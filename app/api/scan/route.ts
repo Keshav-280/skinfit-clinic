@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { eq } from "drizzle-orm";
 import { db } from "../../../src/db";
 import { scans, skinScans, users } from "../../../src/db/schema";
-import { getSessionUserId } from "../../../src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "../../../src/lib/auth/get-session";
 import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
 
 const LABELS = ["Wrinkle", "Acne", "Pigmentation", "Texture Irregularity"];
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const userId = await getSessionUserId();
+    const userId = await getSessionUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "Sign in to save a skin scan." },

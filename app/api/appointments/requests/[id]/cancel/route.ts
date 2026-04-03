@@ -6,7 +6,7 @@ import {
   appointments,
   doctorSlots,
 } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import {
   clinicCancellationChatMessage,
   clinicCancellationKindFromRequestRow,
@@ -21,7 +21,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { id: requestId } = await params;

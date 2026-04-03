@@ -65,6 +65,8 @@ export const users = pgTable("users", {
   appointmentReminderHoursBefore: integer("appointment_reminder_hours_before")
     .notNull()
     .default(24),
+  /** Expo push token for native app alerts (nullable). */
+  expoPushToken: text("expo_push_token"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

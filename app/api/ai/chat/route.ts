@@ -10,7 +10,7 @@ import {
   users,
   visitNotes,
 } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { utcInstantToClinicWallYmdHm } from "@/src/lib/clinicSlotUtcInstant";
 import { localCalendarYmd, dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/date-only";
 import OpenAI from "openai";
@@ -269,7 +269,7 @@ function finalizeReplyText(reply: string): string {
 }
 
 export async function POST(req: Request) {
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }

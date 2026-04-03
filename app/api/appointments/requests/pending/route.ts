@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { appointmentRequests, doctorSlots, users } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 
 export async function GET(req: Request) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const url = new URL(req.url);

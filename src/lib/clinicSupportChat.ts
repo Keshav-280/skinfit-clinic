@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
+import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
 
 export async function sendClinicSupportMessage(params: {
   patientId: string;
@@ -33,4 +34,6 @@ export async function sendClinicSupportMessage(params: {
     sender: sender as never,
     text: params.text,
   });
+
+  void notifyPatientNewClinicChat(params.patientId, params.text);
 }

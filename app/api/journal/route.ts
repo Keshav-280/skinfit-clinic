@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, desc, eq, lt } from "drizzle-orm";
 import { db } from "@/src/db";
 import { dailyLogs } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import {
   AM_ROUTINE_LEN,
   normalizeRoutineSteps,
@@ -15,7 +15,7 @@ import {
 } from "@/src/lib/date-only";
 
 export async function GET(req: Request) {
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
@@ -87,7 +87,7 @@ function serializeLog(row: LogRow) {
 }
 
 export async function POST(req: Request) {
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
@@ -188,7 +188,7 @@ export async function POST(req: Request) {
 
 /** Update AM/PM step checklists only (immediate toggle); creates the daily row if missing. */
 export async function PATCH(req: Request) {
-  const userId = await getSessionUserId();
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }

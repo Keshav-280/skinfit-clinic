@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
 import { runAppointmentReminders } from "@/src/lib/runAppointmentReminders";
 
@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
  * Lightweight trigger for due pre-visit Clinic Support reminders.
  * Called from the client (e.g. chat) because SPA navigations may not re-run the dashboard layout.
  */
-export async function POST() {
-  const userId = await getSessionUserId();
+export async function POST(req: Request) {
+  const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }

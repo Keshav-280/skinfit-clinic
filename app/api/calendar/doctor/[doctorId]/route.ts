@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, asc, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { db } from "@/src/db";
 import { doctorSlots, appointments, users } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { slotKeyFromStoredAppointmentInstant } from "@/src/lib/clinicSlotUtcInstant";
 import {
   parseYmdToDateOnly,
@@ -27,7 +27,7 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ doctorId: string }> }
 ) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { doctorId } = await params;

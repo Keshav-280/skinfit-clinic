@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 
 function clampText(s: unknown, maxLen: number): string | null {
   if (typeof s !== "string") return null;
@@ -13,7 +13,7 @@ function clampText(s: unknown, maxLen: number): string | null {
 }
 
 export async function POST(req: Request) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }

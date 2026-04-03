@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/src/db";
 import { doctorSlots, users } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { ymdHmStringsToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
 import { dateOnlyFromYmd, ymdFromDateOnly, parseYmdToDateOnly, localCalendarYmd } from "@/src/lib/date-only";
 import { doctorSlotOverlapsExisting } from "@/src/lib/doctorSlotOverlap";
@@ -18,7 +18,7 @@ function defaultRangeFromTo() {
 }
 
 export async function GET(req: Request) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const url = new URL(req.url);
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   let body: unknown;

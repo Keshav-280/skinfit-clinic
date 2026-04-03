@@ -58,12 +58,22 @@ export function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: unknown;
+        error?: unknown;
+      };
       if (!res.ok) {
-        setError(
+        const fromApi =
           typeof data.message === "string"
             ? data.message
-            : "Something went wrong. Please try again."
+            : typeof data.error === "string"
+              ? data.error.replace(/_/g, " ")
+              : null;
+        setError(
+          fromApi ??
+            (res.status >= 500
+              ? `Server error (${res.status}). Check the terminal or hosting logs.`
+              : "Something went wrong. Please try again.")
         );
         return;
       }

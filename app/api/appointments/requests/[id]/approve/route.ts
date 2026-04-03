@@ -7,7 +7,7 @@ import {
   doctorSlots,
   users,
 } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { slotDateAndHmToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
 import { notifyPatientAppointmentEmail } from "@/src/lib/email/notifyPatientAppointmentEmail";
@@ -20,7 +20,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const sessionUserId = await getSessionUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
   if (!sessionUserId) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { id: requestId } = await params;

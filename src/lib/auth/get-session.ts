@@ -6,6 +6,32 @@ import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { verifySessionToken } from "@/src/lib/auth/session";
 
+async function sessionUserIdFromBearerToken(
+  bearerHeader: string | null
+): Promise<string | null> {
+  if (!bearerHeader?.startsWith("Bearer ")) return null;
+  const token = bearerHeader.slice(7).trim();
+  const secret = getSessionSecret();
+  if (!token || !secret) return null;
+  try {
+    const { sub } = await verifySessionToken(token, secret);
+    return sub || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Use in Route Handlers so native clients can send `Authorization: Bearer <jwt>`. */
+export async function getSessionUserIdFromRequest(
+  req: Request
+): Promise<string | null> {
+  const fromBearer = await sessionUserIdFromBearerToken(
+    req.headers.get("authorization")
+  );
+  if (fromBearer) return fromBearer;
+  return getSessionUserId();
+}
+
 export async function getSessionUserId(): Promise<string | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
@@ -34,9 +60,9 @@ export type SessionUserProfile = {
   appointmentReminderHoursBefore: number;
 };
 
-export async function getSessionUserProfile(): Promise<SessionUserProfile | null> {
-  const id = await getSessionUserId();
-  if (!id) return null;
+async function sessionUserProfileById(
+  id: string
+): Promise<SessionUserProfile | null> {
   const [row] = await db
     .select({
       id: users.id,
@@ -53,4 +79,18 @@ export async function getSessionUserProfile(): Promise<SessionUserProfile | null
     .where(eq(users.id, id))
     .limit(1);
   return row ?? null;
+}
+
+export async function getSessionUserProfile(): Promise<SessionUserProfile | null> {
+  const id = await getSessionUserId();
+  if (!id) return null;
+  return sessionUserProfileById(id);
+}
+
+export async function getSessionUserProfileFromRequest(
+  req: Request
+): Promise<SessionUserProfile | null> {
+  const id = await getSessionUserIdFromRequest(req);
+  if (!id) return null;
+  return sessionUserProfileById(id);
 }

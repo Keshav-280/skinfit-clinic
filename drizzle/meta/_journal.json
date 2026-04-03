@@ -50,6 +50,13 @@
       "when": 1775400000000,
       "tag": "0006_patient_cleared_chat_at",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775500000000,
+      "tag": "0007_expo_push_token",
+      "breakpoints": true
     }
   ]
 }
