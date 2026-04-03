@@ -23,19 +23,22 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-[#FDF9F0]">
       {/* Premium Top Navbar */}
       <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+          <Link
+            href="/dashboard"
+            className="flex min-w-0 shrink-0 items-center gap-2"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-md">
               <Sparkles className="h-4 w-4" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-slate-800">
+            <span className="truncate text-base font-bold tracking-tight text-slate-800 sm:text-lg">
               SkinnFit
             </span>
           </Link>
 
           <DashboardNav />
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <DashboardClinicSupportBell />
             <Link
               href="/dashboard/profile"

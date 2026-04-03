@@ -251,10 +251,13 @@ export default function SchedulesPageClient({
   initialActiveReminders,
   initialCompletedHistory,
   initialScheduleEvents,
+  initialCalendarTab = "mine",
 }: {
   initialActiveReminders: PriorityReminderRow[];
   initialCompletedHistory: CompletedReminderHistoryRow[];
   initialScheduleEvents: ScheduleEventRow[];
+  /** When `calendar=doctor` is in the URL (e.g. from scan report “Book now”). */
+  initialCalendarTab?: CalendarTab;
 }) {
   const router = useRouter();
   const [activeReminders, setActiveReminders] = useState<ActiveReminderDisplay[]>(
@@ -267,7 +270,9 @@ export default function SchedulesPageClient({
   const [view, setView] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
-  const [calendarTab, setCalendarTab] = useState<CalendarTab>("mine");
+  const [calendarTab, setCalendarTab] = useState<CalendarTab>(
+    () => initialCalendarTab
+  );
 
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [doctorId, setDoctorId] = useState<string | null>(null);
@@ -301,6 +306,16 @@ export default function SchedulesPageClient({
   useEffect(() => {
     setScheduleEvents(initialScheduleEvents);
   }, [initialScheduleEvents]);
+
+  useEffect(() => {
+    if (initialCalendarTab !== "doctor") return;
+    const el = document.getElementById("schedules-doctor-calendar");
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [initialCalendarTab]);
 
   useEffect(() => {
     // Load doctors for the doctor-calendar dropdown.
@@ -747,6 +762,7 @@ export default function SchedulesPageClient({
       </motion.section>
 
       <motion.section
+        id="schedules-doctor-calendar"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.5 }}

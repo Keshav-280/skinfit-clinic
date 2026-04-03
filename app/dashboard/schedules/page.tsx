@@ -48,7 +48,19 @@ function cmpCalendarEventRows(
   return a.title.localeCompare(b.title);
 }
 
-export default async function SchedulesPage() {
+function initialCalendarTabFromSearch(
+  sp?: { [key: string]: string | string[] | undefined }
+): "mine" | "doctor" {
+  const cal = sp?.calendar;
+  const s = Array.isArray(cal) ? cal[0] : cal;
+  return s === "doctor" ? "doctor" : "mine";
+}
+
+export default async function SchedulesPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 
@@ -177,12 +189,16 @@ export default async function SchedulesPage() {
     cmpCalendarEventRows
   );
 
+  const initialCalendarTab = initialCalendarTabFromSearch(searchParams);
+
   return (
     <div className="space-y-6">
       <SchedulesPageClient
+        key={initialCalendarTab === "doctor" ? "sched-cal-doctor" : "sched-cal-mine"}
         initialActiveReminders={initialActiveReminders}
         initialCompletedHistory={initialCompletedHistory}
         initialScheduleEvents={initialScheduleEvents}
+        initialCalendarTab={initialCalendarTab}
       />
     </div>
   );

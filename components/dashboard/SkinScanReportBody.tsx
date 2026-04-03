@@ -518,7 +518,7 @@ export function SkinScanReportBody({
             To know your skin better
           </p>
           <Link
-            href="/contact"
+            href="/dashboard/schedules?calendar=doctor#schedules-doctor-calendar"
             className="rounded-[14px] px-12 py-3.5 text-[13px] font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(109,140,142,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(109,140,142,0.4)] active:translate-y-0 active:scale-[0.98]"
             style={{ backgroundColor: BTN }}
           >
