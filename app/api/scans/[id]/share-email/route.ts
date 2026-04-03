@@ -9,6 +9,7 @@ import {
   isSmtpConfigured,
   sendSmtpMessage,
 } from "@/src/lib/email/smtpMail";
+import { readWebFormData, type WebFormData } from "@/src/lib/webRequestFormData";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +49,9 @@ export async function POST(
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  let form: FormData;
+  let form: WebFormData;
   try {
-    form = await req.formData();
+    form = await readWebFormData(req);
   } catch {
     return NextResponse.json({ error: "INVALID_FORM" }, { status: 400 });
   }

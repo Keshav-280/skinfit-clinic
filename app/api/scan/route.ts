@@ -5,6 +5,7 @@ import { db } from "../../../src/db";
 import { scans, skinScans, users } from "../../../src/db/schema";
 import { getSessionUserIdFromRequest } from "../../../src/lib/auth/get-session";
 import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
+import { readWebFormData } from "../../../src/lib/webRequestFormData";
 
 const LABELS = ["Wrinkle", "Acne", "Pigmentation", "Texture Irregularity"];
 
@@ -25,7 +26,7 @@ function generateDetectedRegions() {
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    const formData = await readWebFormData(request);
     const image = formData.get("image");
     const scanName = (formData.get("scanName") as string) || "Untitled Scan";
 
