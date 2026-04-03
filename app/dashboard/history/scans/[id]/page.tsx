@@ -5,6 +5,7 @@ import { scans, users } from "../../../../../src/db/schema";
 import { getSessionUserId } from "../../../../../src/lib/auth/get-session";
 import { parseScanRegions } from "../../../../../src/lib/parseScanAnnotations";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
+import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
 
 export default async function ScanReportPage({
   params,
@@ -39,7 +40,6 @@ export default async function ScanReportPage({
       columns: {
         id: true,
         scanName: true,
-        imageUrl: true,
         overallScore: true,
         acne: true,
         wrinkles: true,
@@ -62,7 +62,7 @@ export default async function ScanReportPage({
       userName={user.name?.trim() || "there"}
       userEmail={user.email?.trim() || null}
       scanTitle={row.scanName}
-      imageUrl={row.imageUrl}
+      imageUrl={patientScanImagePath(row.id)}
       regions={regions}
       metrics={{
         acne: row.acne,

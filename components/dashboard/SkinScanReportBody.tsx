@@ -375,7 +375,6 @@ export function SkinScanReportBody({
       ) : null}
 
     <motion.div
-      ref={reportRef}
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: easeOut }}
@@ -389,12 +388,15 @@ export function SkinScanReportBody({
           `,
       }}
     >
+      {/* PDF / email: hero + Overview/Causes only (see data-pdf-section). Treatment videos & Book stay on-screen only. */}
+      <div ref={reportRef} className="relative w-full">
+      <div data-pdf-section className="relative w-full">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent"
         aria-hidden
       />
 
-      <div className="relative px-5 pb-28 pt-9 sm:px-9 sm:pb-32">
+      <div className="relative px-5 pb-16 pt-9 sm:px-9 sm:pb-20">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto_1fr] lg:items-start lg:gap-5">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -509,12 +511,19 @@ export function SkinScanReportBody({
             ))}
           </motion.div>
         </div>
+      </div>
+      </div>
 
+      {/* Own PDF section so html2canvas slices never cut through the score card (short single capture). */}
+      <div
+        data-pdf-section
+        className="relative z-10 -mt-[4.5rem] flex w-full justify-center px-5 sm:-mt-24 sm:px-9"
+      >
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.18, duration: 0.45, ease: easeOut }}
-          className="absolute bottom-0 left-1/2 z-10 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 translate-y-1/2 rounded-[20px] border border-white bg-white px-5 py-6 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.12),0_8px_16px_-4px_rgba(0,0,0,0.06)] backdrop-blur-sm sm:px-9 sm:py-7"
+          className="w-[calc(100%-0.5rem)] max-w-lg rounded-[20px] border border-white bg-white px-5 py-6 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.12),0_8px_16px_-4px_rgba(0,0,0,0.06)] backdrop-blur-sm sm:px-9 sm:py-7"
         >
           <div className="flex flex-col items-stretch gap-5 sm:flex-row sm:items-center sm:gap-8">
             <div className="min-w-0 flex-1">
@@ -552,6 +561,7 @@ export function SkinScanReportBody({
       </div>
 
       <div
+        data-pdf-section
         className="relative mt-16 border-t border-white px-5 py-12 sm:px-9 sm:py-14"
         style={{
           background: `linear-gradient(180deg, ${TEAL_BAND} 0%, #d8ebe6 100%)`,
@@ -589,9 +599,10 @@ export function SkinScanReportBody({
           </div>
         </div>
       </div>
+      </div>
 
       <div
-        className="relative px-5 pb-12 pt-14 sm:px-9"
+        className="relative px-5 pb-10 pt-14 sm:px-9"
         style={{ backgroundColor: BEIGE }}
       >
         <div
@@ -647,7 +658,13 @@ export function SkinScanReportBody({
             );
           })}
         </div>
-        <div className="mt-12 flex flex-col items-center gap-4">
+      </div>
+
+      <div
+        className="relative px-5 pb-12 pt-2 sm:px-9"
+        style={{ backgroundColor: BEIGE }}
+      >
+        <div className="flex flex-col items-center gap-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
             To know your skin better
           </p>

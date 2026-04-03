@@ -8,6 +8,7 @@ import {
   type ScanReportPdfPayload,
 } from "./scanReportPdfHtml";
 
+/** Same report content and section order as the web dashboard PDF (expo-print HTML, not html2canvas). */
 export type { ScanReportPdfPayload };
 
 /** URL-safe file base (ASCII) so Android/iOS keep the name when saving to Files / Downloads. */

@@ -314,6 +314,9 @@ export function HistoryView({ scans, visitNotes, patient }: HistoryViewProps) {
                     src={scan.imageUrl}
                     alt={scan.scanName || "AI scan"}
                     className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
                   />
                   <div className="absolute right-2 top-2 rounded-lg bg-white/95 px-2 py-1 text-lg font-bold text-teal-700 shadow-sm">
                     {scan.overallScore}

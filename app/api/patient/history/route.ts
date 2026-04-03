@@ -5,6 +5,7 @@ import { scans, users, visitNotes } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { displayUserPhone } from "@/src/lib/auth/phone";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
+import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
@@ -44,7 +45,6 @@ export async function GET(request: Request) {
       columns: {
         id: true,
         scanName: true,
-        imageUrl: true,
         overallScore: true,
         acne: true,
         pigmentation: true,
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     return {
       id: s.id,
       scanName: s.scanName,
-      imageUrl: s.imageUrl,
+      imageUrl: patientScanImagePath(s.id),
       overallScore: s.overallScore,
       acne: s.acne,
       pigmentation: s.pigmentation,

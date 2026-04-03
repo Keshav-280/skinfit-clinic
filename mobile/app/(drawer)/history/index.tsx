@@ -16,6 +16,10 @@ import {
 
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import {
+  embedScanImageForPdf,
+  resolveAuthenticatedScanImageSource,
+} from "@/lib/resolveScanImage";
 import { shareScanReportPdf, type ScanReportPdfPayload } from "@/lib/scanReportPdf";
 
 type ScanRow = {
@@ -122,12 +126,13 @@ export default function HistoryListScreen() {
         token,
         { method: "GET" }
       );
+      const imageUrl = await embedScanImageForPdf(detail.imageUrl, token);
       const payload: ScanReportPdfPayload = {
         userName: detail.userName,
         userAge: detail.userAge,
         userSkinType: detail.userSkinType,
         scanTitle: detail.scanTitle,
-        imageUrl: detail.imageUrl,
+        imageUrl,
         metrics: detail.metrics,
         aiSummary: detail.aiSummary,
         scanDateIso: detail.scanDateIso,
@@ -229,7 +234,7 @@ export default function HistoryListScreen() {
             <View key={scan.id} style={[styles.scanCard, CARD]}>
               <View style={styles.scanImageWrap}>
                 <Image
-                  source={{ uri: scan.imageUrl }}
+                  source={resolveAuthenticatedScanImageSource(scan.imageUrl, token)}
                   style={styles.scanImage}
                   resizeMode="cover"
                 />

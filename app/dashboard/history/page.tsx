@@ -7,6 +7,7 @@ import { HistoryView } from "../../../components/dashboard/HistoryView";
 import { getSessionUserId } from "../../../src/lib/auth/get-session";
 import { ymdFromDateOnly } from "../../../src/lib/date-only";
 import { displayUserPhone } from "../../../src/lib/auth/phone";
+import { patientScanImagePath } from "../../../src/lib/patientScanImagePath";
 
 export default async function HistoryPage() {
   const userId = await getSessionUserId();
@@ -42,7 +43,6 @@ export default async function HistoryPage() {
       columns: {
         id: true,
         scanName: true,
-        imageUrl: true,
         overallScore: true,
         acne: true,
         pigmentation: true,
@@ -74,7 +74,7 @@ export default async function HistoryPage() {
     return {
       id: s.id,
       scanName: s.scanName,
-      imageUrl: s.imageUrl,
+      imageUrl: patientScanImagePath(s.id),
       overallScore: s.overallScore,
       acne: s.acne,
       pigmentation: s.pigmentation,

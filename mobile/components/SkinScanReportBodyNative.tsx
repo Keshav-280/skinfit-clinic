@@ -1,6 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import type { ImageSourcePropType } from "react-native";
 import {
   Image,
   Platform,
@@ -55,7 +56,7 @@ type Props = {
   userAge: number;
   userSkinType: string;
   scanTitle: string | null;
-  imageUrl: string;
+  imageSource: ImageSourcePropType;
   regions: ReportRegion[];
   metrics: ReportMetricsNative;
   aiSummary: string | null;
@@ -82,7 +83,7 @@ export function SkinScanReportBodyNative({
   userAge,
   userSkinType,
   scanTitle,
-  imageUrl,
+  imageSource,
   regions,
   metrics,
   aiSummary,
@@ -151,7 +152,7 @@ export function SkinScanReportBodyNative({
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
               />
-              <Image source={{ uri: imageUrl }} style={styles.faceImg} resizeMode="cover" />
+              <Image source={imageSource} style={styles.faceImg} resizeMode="cover" />
               {regions.map((region, i) => (
                 <View
                   key={i}

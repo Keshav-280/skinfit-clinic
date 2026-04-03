@@ -268,7 +268,9 @@ export default function SchedulesPageClient({
   );
   const [scheduleEvents, setScheduleEvents] = useState(initialScheduleEvents);
   const [view, setView] = useState<"month" | "week">("month");
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  /** Null until client mount so SSR + first paint match (avoids React #418: server UTC vs browser local). */
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  const [todayBanner, setTodayBanner] = useState("");
 
   const [calendarTab, setCalendarTab] = useState<CalendarTab>(
     () => initialCalendarTab
@@ -306,6 +308,12 @@ export default function SchedulesPageClient({
   useEffect(() => {
     setScheduleEvents(initialScheduleEvents);
   }, [initialScheduleEvents]);
+
+  useEffect(() => {
+    const now = new Date();
+    setCurrentDate(now);
+    setTodayBanner(format(now, "EEEE, MMM do"));
+  }, []);
 
   useEffect(() => {
     if (initialCalendarTab !== "doctor") return;
@@ -439,8 +447,9 @@ export default function SchedulesPageClient({
     [router]
   );
 
-  const calendarCells: (Date | null)[] =
-    view === "month"
+  const calendarCells: (Date | null)[] = !currentDate
+    ? Array.from({ length: view === "month" ? 42 : 7 }, () => null)
+    : view === "month"
       ? (() => {
           const start = startOfMonth(currentDate);
           const end = endOfMonth(currentDate);
@@ -462,29 +471,37 @@ export default function SchedulesPageClient({
           end: endOfWeek(currentDate, WEEK_OPTS),
         });
 
-  const handlePrev = () =>
-    view === "month"
-      ? setCurrentDate((d) => subMonths(d, 1))
-      : setCurrentDate((d) => subWeeks(d, 1));
-  const handleNext = () =>
-    view === "month"
-      ? setCurrentDate((d) => addMonths(d, 1))
-      : setCurrentDate((d) => addWeeks(d, 1));
+  const handlePrev = () => {
+    if (!currentDate) return;
+    if (view === "month") setCurrentDate((d) => (d ? subMonths(d, 1) : d));
+    else setCurrentDate((d) => (d ? subWeeks(d, 1) : d));
+  };
+  const handleNext = () => {
+    if (!currentDate) return;
+    if (view === "month") setCurrentDate((d) => (d ? addMonths(d, 1) : d));
+    else setCurrentDate((d) => (d ? addWeeks(d, 1) : d));
+  };
 
-  const headerLabel =
-    view === "month"
+  const headerLabel = !currentDate
+    ? "\u00a0"
+    : view === "month"
       ? format(currentDate, "MMMM yyyy")
       : `Week of ${format(startOfWeek(currentDate, WEEK_OPTS), "MMM d")} – ${format(endOfWeek(currentDate, WEEK_OPTS), "MMM d, yyyy")}`;
 
   const listEvents = useMemo(
     () =>
-      view === "month"
-        ? eventsInMonth(scheduleEvents, currentDate)
-        : eventsInWeek(scheduleEvents, currentDate),
+      !currentDate
+        ? []
+        : view === "month"
+          ? eventsInMonth(scheduleEvents, currentDate)
+          : eventsInWeek(scheduleEvents, currentDate),
     [view, scheduleEvents, currentDate]
   );
 
   const doctorRange = useMemo(() => {
+    if (!currentDate) {
+      return { from: "", to: "" };
+    }
     if (view === "month") {
       return {
         from: localYmd(startOfMonth(currentDate)),
@@ -498,7 +515,7 @@ export default function SchedulesPageClient({
   }, [view, currentDate]);
 
   const refreshDoctorCalendar = useCallback(async () => {
-    if (!doctorId) return;
+    if (!doctorId || !doctorRange.from || !doctorRange.to) return;
     setDoctorLoading(true);
     setDoctorError(null);
     try {
@@ -535,17 +552,17 @@ export default function SchedulesPageClient({
   }, [router, calendarTab, refreshDoctorCalendar]);
 
   useEffect(() => {
-    if (calendarTab !== "doctor") return;
+    if (calendarTab !== "doctor" || !currentDate) return;
     void refreshDoctorCalendar();
-  }, [calendarTab, refreshDoctorCalendar]);
+  }, [calendarTab, currentDate, refreshDoctorCalendar]);
 
   useEffect(() => {
-    if (calendarTab !== "doctor" || !doctorId) return;
+    if (calendarTab !== "doctor" || !doctorId || !currentDate) return;
     const id = setInterval(() => {
       void refreshDoctorCalendar();
     }, 25_000);
     return () => clearInterval(id);
-  }, [calendarTab, doctorId, refreshDoctorCalendar]);
+  }, [calendarTab, doctorId, currentDate, refreshDoctorCalendar]);
 
   async function submitDoctorRequest() {
     if (!doctorId || !requestSlot) return;
@@ -636,8 +653,8 @@ export default function SchedulesPageClient({
         transition={{ delay: 0.1, duration: 0.5 }}
         className={CARD}
       >
-        <p className="mb-1 text-sm text-zinc-500">
-          {format(new Date(), "EEEE, MMM do")}
+        <p className="mb-1 min-h-[1.25rem] text-sm text-zinc-500">
+          {todayBanner || "\u00a0"}
         </p>
         <h3 className="mb-4 text-lg font-bold text-zinc-900">
           Priority Reminders
@@ -732,10 +749,12 @@ export default function SchedulesPageClient({
                   </span>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <span className="text-xs text-zinc-500">
-                      {format(
-                        parseISO(item.completedAtIso),
-                        "MMM d, yyyy · h:mm a"
-                      )}
+                      {currentDate
+                        ? format(
+                            parseISO(item.completedAtIso),
+                            "MMM d, yyyy · h:mm a"
+                          )
+                        : "\u00a0"}
                     </span>
                     <span
                       className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${

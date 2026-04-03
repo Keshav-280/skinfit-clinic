@@ -15,6 +15,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { SkinScanReportBodyNative } from "@/components/SkinScanReportBodyNative";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import {
+  embedScanImageForPdf,
+  resolveAuthenticatedScanImageSource,
+} from "@/lib/resolveScanImage";
 import { shareScanReportPdf, type ScanReportPdfPayload } from "@/lib/scanReportPdf";
 
 type ScanDetail = {
@@ -81,12 +85,13 @@ export default function ScanDetailScreen() {
     if (!row) return;
     setPdfLoading(true);
     try {
+      const imageUrl = await embedScanImageForPdf(row.imageUrl, token);
       const payload: ScanReportPdfPayload = {
         userName: row.userName,
         userAge: row.userAge,
         userSkinType: row.userSkinType,
         scanTitle: row.scanTitle,
-        imageUrl: row.imageUrl,
+        imageUrl,
         metrics: row.metrics,
         aiSummary: row.aiSummary,
         scanDateIso: row.scanDateIso,
@@ -100,7 +105,7 @@ export default function ScanDetailScreen() {
     } finally {
       setPdfLoading(false);
     }
-  }, [row]);
+  }, [row, token]);
 
   if (error && !row) {
     return (
@@ -147,7 +152,7 @@ export default function ScanDetailScreen() {
         userAge={row.userAge}
         userSkinType={row.userSkinType}
         scanTitle={row.scanTitle}
-        imageUrl={row.imageUrl}
+        imageSource={resolveAuthenticatedScanImageSource(row.imageUrl, token)}
         regions={row.regions}
         metrics={row.metrics}
         aiSummary={row.aiSummary}

@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
+import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 
 export async function GET(
   req: Request,
@@ -30,7 +31,6 @@ export async function GET(
       columns: {
         id: true,
         scanName: true,
-        imageUrl: true,
         overallScore: true,
         acne: true,
         wrinkles: true,
@@ -57,7 +57,7 @@ export async function GET(
     userAge: user.age ?? 18,
     userSkinType: user.skinType?.trim() || "—",
     scanTitle: row.scanName,
-    imageUrl: row.imageUrl,
+    imageUrl: patientScanImagePath(row.id),
     regions,
     metrics: {
       acne: row.acne,
