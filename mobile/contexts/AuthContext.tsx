@@ -1,4 +1,3 @@
-import * as SecureStore from "expo-secure-store";
 import {
   createContext,
   useCallback,
@@ -15,11 +14,22 @@ import {
   registerForPushAndSyncToken,
   unregisterPushToken,
 } from "@/lib/pushNotifications";
+import {
+  sessionDelete,
+  sessionGet,
+  sessionSet,
+} from "@/lib/sessionStorageNativeOrWeb";
 
 const TOKEN_KEY = "skinfit_session_token";
 const USER_KEY = "skinfit_user_json";
 
-export type AuthUser = { id: string; email: string; name: string };
+export type AuthUser = {
+  id: string;
+  email: string;
+  name: string;
+  /** When false, patient should complete kAI onboarding (native). */
+  onboardingComplete?: boolean;
+};
 
 type AuthContextValue = {
   token: string | null;
@@ -32,6 +42,10 @@ type AuthContextValue = {
     token?: string;
     user: { id: string; name: string; email: string };
   }) => Promise<void>;
+  /** After baseline onboarding finishes — updates local session without re-login. */
+  markOnboardingComplete: () => Promise<void>;
+  /** Refresh `user` from GET /api/user/profile (e.g. gate routing). */
+  refreshUserFromProfile: (bearerToken: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const [t, u] = await Promise.all([
-          SecureStore.getItemAsync(TOKEN_KEY),
-          SecureStore.getItemAsync(USER_KEY),
+          sessionGet(TOKEN_KEY),
+          sessionGet(USER_KEY),
         ]);
         if (cancelled) return;
         setToken(t);
@@ -88,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let data: {
       ok?: boolean;
       token?: string;
-      user?: AuthUser;
+      user?: AuthUser & { onboardingComplete?: boolean };
       message?: string;
       error?: string;
     } = {};
@@ -107,9 +121,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!data.token || !data.user) {
       throw new Error("Server did not return a session token.");
     }
-    await SecureStore.setItemAsync(TOKEN_KEY, data.token);
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
-    setUser(data.user);
+    const nextUser: AuthUser = {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      onboardingComplete:
+        typeof data.user.onboardingComplete === "boolean"
+          ? data.user.onboardingComplete
+          : true,
+    };
+    await sessionSet(TOKEN_KEY, data.token);
+    await sessionSet(USER_KEY, JSON.stringify(nextUser));
+    setUser(nextUser);
     setToken(data.token);
 
     if (Platform.OS !== "web") {
@@ -129,11 +152,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* offline or expired session — still sign out locally */
       }
     }
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await SecureStore.deleteItemAsync(USER_KEY);
+    await sessionDelete(TOKEN_KEY);
+    await sessionDelete(USER_KEY);
     setToken(null);
     setUser(null);
   }, [token]);
+
+  const markOnboardingComplete = useCallback(async () => {
+    const u = user;
+    if (!u) return;
+    const next: AuthUser = { ...u, onboardingComplete: true };
+    await sessionSet(USER_KEY, JSON.stringify(next));
+    setUser(next);
+  }, [user]);
+
+  const refreshUserFromProfile = useCallback(async (bearerToken: string) => {
+    let res: Response;
+    try {
+      res = await fetch(apiUrl("/api/user/profile"), {
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+          "X-Skinfit-Client": "native",
+        },
+      });
+    } catch {
+      return;
+    }
+    const text = await res.text().catch(() => "");
+    let data: { user?: AuthUser & { onboardingComplete?: boolean } } = {};
+    try {
+      data = text ? (JSON.parse(text) as typeof data) : {};
+    } catch {
+      return;
+    }
+    if (!data.user) return;
+    const next: AuthUser = {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      onboardingComplete:
+        typeof data.user.onboardingComplete === "boolean"
+          ? data.user.onboardingComplete
+          : true,
+    };
+    await sessionSet(USER_KEY, JSON.stringify(next));
+    setUser(next);
+  }, []);
 
   const applySessionFromProfile = useCallback(
     async (data: {
@@ -141,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: { id: string; name: string; email: string };
     }) => {
       if (data.token) {
-        await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+        await sessionSet(TOKEN_KEY, data.token);
         setToken(data.token);
         if (Platform.OS !== "web") {
           void registerForPushAndSyncToken(data.token, {
@@ -154,11 +218,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: data.user.id,
         name: data.user.name,
         email: data.user.email,
+        onboardingComplete: user?.onboardingComplete ?? true,
       };
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(next));
+      await sessionSet(USER_KEY, JSON.stringify(next));
       setUser(next);
     },
-    []
+    [user?.onboardingComplete]
   );
 
   const value = useMemo(
@@ -169,8 +234,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       applySessionFromProfile,
+      markOnboardingComplete,
+      refreshUserFromProfile,
     }),
-    [token, user, ready, signIn, signOut, applySessionFromProfile]
+    [
+      token,
+      user,
+      ready,
+      signIn,
+      signOut,
+      applySessionFromProfile,
+      markOnboardingComplete,
+      refreshUserFromProfile,
+    ]
   );
 
   return (

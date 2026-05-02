@@ -133,7 +133,12 @@ export async function POST(req: Request) {
     const nativeClient = req.headers.get("x-skinfit-client") === "native";
     return NextResponse.json({
       ok: true,
-      user: { id: user.id, email: user.email, name: user.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        onboardingComplete: user.onboardingComplete ?? true,
+      },
       ...(nativeClient ? { token } : {}),
     });
   } catch (e) {

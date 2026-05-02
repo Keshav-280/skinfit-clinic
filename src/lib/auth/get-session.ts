@@ -56,6 +56,8 @@ export type SessionUserProfile = {
   age: number | null;
   skinType: string | null;
   primaryGoal: string | null;
+  /** kAI onboarding finished (questionnaire + baseline scan). */
+  onboardingComplete: boolean;
   /** Hours before a visit to receive a Clinic Support chat reminder; 0 = off. */
   appointmentReminderHoursBefore: number;
   /** IANA timezone for routine reminder clock times. */
@@ -65,6 +67,8 @@ export type SessionUserProfile = {
   /** Local times `HH:mm` (24h). */
   routineAmReminderHm: string;
   routinePmReminderHm: string;
+  /** Show cycle day field on dashboard journal when true. */
+  cycleTrackingEnabled: boolean;
 };
 
 async function sessionUserProfileById(
@@ -80,11 +84,13 @@ async function sessionUserProfileById(
       age: users.age,
       skinType: users.skinType,
       primaryGoal: users.primaryGoal,
+      onboardingComplete: users.onboardingComplete,
       appointmentReminderHoursBefore: users.appointmentReminderHoursBefore,
       timezone: users.timezone,
       routineRemindersEnabled: users.routineRemindersEnabled,
       routineAmReminderHm: users.routineAmReminderHm,
       routinePmReminderHm: users.routinePmReminderHm,
+      cycleTrackingEnabled: users.cycleTrackingEnabled,
     })
     .from(users)
     .where(eq(users.id, id))

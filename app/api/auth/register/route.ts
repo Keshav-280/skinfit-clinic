@@ -124,6 +124,7 @@ export async function POST(req: Request) {
       phone: phoneCheck.nationalDigits,
       passwordHash,
       role: "patient",
+      onboardingComplete: false,
     })
     .returning({
       id: users.id,
@@ -166,6 +167,7 @@ export async function POST(req: Request) {
       name: inserted.name,
       phoneCountryCode,
       phone: phoneCheck.nationalDigits,
+      onboardingComplete: false,
     },
   });
 }

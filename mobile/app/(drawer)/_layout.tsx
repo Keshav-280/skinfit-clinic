@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Redirect } from "expo-router";
+import { Redirect, type Href } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
@@ -21,7 +21,7 @@ function iconForRoute(name: string, color: string, size: number) {
 }
 
 export default function DrawerLayout() {
-  const { ready, token } = useAuth();
+  const { ready, token, user } = useAuth();
 
   if (!ready) {
     return (
@@ -33,6 +33,10 @@ export default function DrawerLayout() {
 
   if (!token) {
     return <Redirect href="/login" />;
+  }
+
+  if (user?.onboardingComplete === false) {
+    return <Redirect href={"/onboarding" as Href} />;
   }
 
   return (

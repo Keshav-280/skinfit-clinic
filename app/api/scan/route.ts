@@ -5,8 +5,12 @@ import { db } from "../../../src/db";
 import { scans, skinScans, users } from "../../../src/db/schema";
 import { getSessionUserIdFromRequest } from "../../../src/lib/auth/get-session";
 import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
-import { runFaceAnalysisService } from "../../../src/lib/faceAnalysisInference";
+import { runFaceAnalysisServiceV2 } from "../../../src/lib/faceAnalysisInferenceV2";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../src/lib/faceScanCaptures";
+import {
+  inferenceParamsToRows,
+  insertParameterScoresForScan,
+} from "../../../src/lib/insertParameterScores";
 import { readWebFormData } from "../../../src/lib/webRequestFormData";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
@@ -34,7 +38,6 @@ function randomSeverity15(): number {
   return Math.round((1 + Math.random() * 4) * 10) / 10;
 }
 
-/** 1–5 clinical-style scores for report (dummy path only). */
 function generateClinicalFeatureScores() {
   return {
     active_acne: randomSeverity15(),
@@ -69,7 +72,6 @@ function clinicalScoresFromModelFeatureScores(
   };
 }
 
-/** Face-relative marker positions (percent) — biased toward cheeks / forehead / jaw. */
 function generateDetectedRegions(): Array<{
   issue: string;
   coordinates: { x: number; y: number };
@@ -105,6 +107,69 @@ function generateDetectedRegions(): Array<{
   return out;
 }
 
+function severityToClarity(s: number) {
+  const x = Math.max(1, Math.min(5, s));
+  return Math.round(100 - ((x - 1) / 4) * 100);
+}
+
+/** Offline / fallback: four AI-like scores + eight pending (no fake clinical values for pending). */
+function buildDummyKaiV2() {
+  const mfs = generateClinicalFeatureScores();
+  const acne100 = severityToClarity(mfs.active_acne);
+  const wr100 = severityToClarity(mfs.wrinkle_severity);
+  const el100 = severityToClarity(mfs.sagging_volume);
+  const sq100 = severityToClarity(mfs.skin_quality);
+  const overall = Math.round((acne100 + wr100 + el100 + sq100) / 4);
+  const params = {
+    acne_pimples: { value: acne100, source: "ai" as const, severity_flag: false },
+    wrinkles: {
+      value: wr100,
+      source: "ai" as const,
+      severity_flag: false,
+      extras: { dynamic_wrinkle_proxy: 0.2, static_wrinkle_proxy: 0.15 },
+    },
+    elasticity: { value: el100, source: "ai" as const, severity_flag: false },
+    skin_quality: { value: sq100, source: "ai" as const, severity_flag: false },
+    acne_scars: { value: null, source: "pending" as const, severity_flag: false },
+    pores: { value: null, source: "pending" as const, severity_flag: false },
+    pigmentation: { value: null, source: "pending" as const, severity_flag: false },
+    uniformity: { value: null, source: "pending" as const, severity_flag: false },
+    sebum: { value: null, source: "pending" as const, severity_flag: false },
+    hydration: { value: null, source: "pending" as const, severity_flag: false },
+    redness: { value: null, source: "pending" as const, severity_flag: false },
+    tone_evenness: { value: null, source: "pending" as const, severity_flag: false },
+    uv_damage: { value: null, source: "pending" as const, severity_flag: false },
+  };
+  const texture100 = Math.round(
+    (severityToClarity(mfs.sagging_volume) +
+      severityToClarity(mfs.under_eye) +
+      severityToClarity(mfs.hair_health)) /
+      3
+  );
+  return {
+    overallKaiScore: overall,
+    params,
+    legacyMetrics: {
+      acne: acne100,
+      wrinkles: wr100,
+      pigmentation: 72,
+      hydration: sq100,
+      texture: texture100,
+      overall_score: overall,
+    },
+    modelFeatureScores: {
+      active_acne: mfs.active_acne,
+      skin_quality: mfs.skin_quality,
+      wrinkle_severity: mfs.wrinkle_severity,
+      sagging_volume: mfs.sagging_volume,
+      under_eye: mfs.under_eye,
+      hair_health: mfs.hair_health,
+      pigmentation_model: mfs.pigmentation_model,
+    },
+    detected_regions: generateDetectedRegions(),
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await readWebFormData(request);
@@ -113,53 +178,44 @@ export async function POST(request: NextRequest) {
     const multiRaw = formData
       .getAll("images")
       .filter((x): x is File => x instanceof File && x.size > 0);
-    const single = formData.get("image");
 
-    let imageDataUri: string;
-    let faceCaptureImages: Array<{ label: string; dataUri: string }> | null = null;
-    let scanFileForModel!: File;
-
-    if (multiRaw.length > 0) {
-      if (multiRaw.length !== FACE_SCAN_CAPTURE_STEPS.length) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Provide exactly ${FACE_SCAN_CAPTURE_STEPS.length} face images in order.`,
-          },
-          { status: 400 }
-        );
-      }
-      const entries: Array<{ label: string; dataUri: string }> = [];
-      for (let i = 0; i < multiRaw.length; i++) {
-        const file = multiRaw[i];
-        const label = FACE_SCAN_CAPTURE_STEPS[i].id;
-        const buf = Buffer.from(await file.arrayBuffer());
-        entries.push({
-          label,
-          dataUri: bufferToDataUri(buf, file.type || "image/jpeg"),
-        });
-        if (i === 0) {
-          scanFileForModel = new File(
-            [buf],
-            file.name || "scan.jpg",
-            { type: file.type || "image/jpeg" }
-          );
-        }
-      }
-      faceCaptureImages = entries;
-      imageDataUri = entries[0].dataUri;
-    } else if (single instanceof File) {
-      const buf = Buffer.from(await single.arrayBuffer());
-      imageDataUri = bufferToDataUri(buf, single.type || "image/jpeg");
-      scanFileForModel = new File([buf], single.name || "scan.jpg", {
-        type: single.type || "image/jpeg",
-      });
-    } else {
+    if (multiRaw.length !== FACE_SCAN_CAPTURE_STEPS.length) {
       return NextResponse.json(
-        { success: false, error: "No image file provided" },
+        {
+          success: false,
+          error: `Provide exactly ${FACE_SCAN_CAPTURE_STEPS.length} face images in order (${FACE_SCAN_CAPTURE_STEPS.map((s) => s.id).join(", ")}).`,
+        },
         { status: 400 }
       );
     }
+
+    const entries: Array<{ label: string; dataUri: string }> = [];
+    const filesForV2: Record<
+      "centre" | "left" | "right" | "eyes_closed" | "smiling",
+      File
+    > = {} as Record<
+      "centre" | "left" | "right" | "eyes_closed" | "smiling",
+      File
+    >;
+
+    const keys = ["centre", "left", "right", "eyes_closed", "smiling"] as const;
+
+    for (let i = 0; i < multiRaw.length; i++) {
+      const file = multiRaw[i];
+      const label = FACE_SCAN_CAPTURE_STEPS[i].id;
+      const buf = Buffer.from(await file.arrayBuffer());
+      entries.push({
+        label,
+        dataUri: bufferToDataUri(buf, file.type || "image/jpeg"),
+      });
+      const k = keys[i];
+      filesForV2[k] = new File([buf], file.name || `${k}.jpg`, {
+        type: file.type || "image/jpeg",
+      });
+    }
+
+    const faceCaptureImages = entries;
+    const imageDataUri = entries[0].dataUri;
 
     const inferenceBase = process.env.FACE_ANALYSIS_SERVICE_URL?.trim();
     const inferenceSecret = process.env.FACE_ANALYSIS_SERVICE_SECRET?.trim();
@@ -171,7 +227,8 @@ export async function POST(request: NextRequest) {
       ? Math.max(5_000, parseInt(inferenceTimeoutRaw, 10) || 120_000)
       : 120_000;
 
-    let modelFeatureScores: ReturnType<typeof generateClinicalFeatureScores>;
+    let overallKaiScore: number;
+    let v2params: Record<string, unknown>;
     let metrics: {
       acne: number;
       pigmentation: number;
@@ -181,35 +238,34 @@ export async function POST(request: NextRequest) {
       overall_score: number;
       clinical_scores: ReturnType<typeof clinicalScoresFromModelFeatureScores>;
     };
+    let modelFeatureScores: Record<string, number | null>;
     let detected_regions: ReturnType<typeof generateDetectedRegions>;
     let overlayDataUri: string | undefined;
 
     if (inferenceBase) {
       try {
-        const inf = await runFaceAnalysisService(scanFileForModel, {
+        const inf = await runFaceAnalysisServiceV2(filesForV2, {
           baseUrl: inferenceBase,
           apiKey: inferenceSecret,
           timeoutMs: inferenceTimeoutMs,
         });
-        modelFeatureScores = {
-          active_acne: inf.modelFeatureScores.active_acne ?? 2.5,
-          skin_quality: inf.modelFeatureScores.skin_quality ?? 2.5,
-          wrinkle_severity: inf.modelFeatureScores.wrinkle_severity ?? 2.5,
-          sagging_volume: inf.modelFeatureScores.sagging_volume ?? 2.5,
-          under_eye: inf.modelFeatureScores.under_eye ?? 2.5,
-          hair_health: inf.modelFeatureScores.hair_health ?? 2.5,
-          pigmentation_model: inf.modelFeatureScores.pigmentation_model ?? null,
-        };
+        overallKaiScore = inf.overallKaiScore;
+        v2params = inf.params as Record<string, unknown>;
+        const lm = inf.legacyMetrics;
+        modelFeatureScores = inf.modelFeatureScores;
         metrics = {
-          ...inf.metrics,
-          clinical_scores: clinicalScoresFromModelFeatureScores(
-            inf.modelFeatureScores
-          ),
+          acne: lm.acne,
+          pigmentation: lm.pigmentation,
+          wrinkles: lm.wrinkles,
+          hydration: lm.hydration,
+          texture: lm.texture,
+          overall_score: lm.overall_score,
+          clinical_scores: clinicalScoresFromModelFeatureScores(modelFeatureScores),
         };
         detected_regions = inf.detected_regions;
         overlayDataUri = inf.overlayDataUri;
       } catch (err) {
-        console.error("Face analysis service error:", err);
+        console.error("Face analysis v2 error:", err);
         if (!allowDummyInferenceFallback) {
           const msg =
             err instanceof Error ? err.message : "Face analysis failed";
@@ -224,47 +280,31 @@ export async function POST(request: NextRequest) {
           );
         }
         await new Promise((resolve) => setTimeout(resolve, 2500));
-        modelFeatureScores = generateClinicalFeatureScores();
+        const dummy = buildDummyKaiV2();
+        overallKaiScore = dummy.overallKaiScore;
+        v2params = dummy.params;
+        modelFeatureScores = dummy.modelFeatureScores;
         metrics = {
-          acne: randomInt(0, 100),
-          pigmentation: randomInt(0, 100),
-          wrinkles: randomInt(0, 100),
-          hydration: randomInt(0, 100),
-          texture: randomInt(0, 100),
-          overall_score: randomInt(50, 98),
-          clinical_scores: {
-            active_acne: modelFeatureScores.active_acne,
-            skin_quality: modelFeatureScores.skin_quality,
-            wrinkle_severity: modelFeatureScores.wrinkle_severity,
-            sagging_volume: modelFeatureScores.sagging_volume,
-            under_eye: modelFeatureScores.under_eye,
-            hair_health: modelFeatureScores.hair_health,
-            pigmentation_model: modelFeatureScores.pigmentation_model,
-          },
+          ...dummy.legacyMetrics,
+          clinical_scores: clinicalScoresFromModelFeatureScores(
+            dummy.modelFeatureScores
+          ),
         };
-        detected_regions = generateDetectedRegions();
+        detected_regions = dummy.detected_regions;
       }
     } else {
       await new Promise((resolve) => setTimeout(resolve, 2500));
-      modelFeatureScores = generateClinicalFeatureScores();
+      const dummy = buildDummyKaiV2();
+      overallKaiScore = dummy.overallKaiScore;
+      v2params = dummy.params;
+      modelFeatureScores = dummy.modelFeatureScores;
       metrics = {
-        acne: randomInt(0, 100),
-        pigmentation: randomInt(0, 100),
-        wrinkles: randomInt(0, 100),
-        hydration: randomInt(0, 100),
-        texture: randomInt(0, 100),
-        overall_score: randomInt(50, 98),
-        clinical_scores: {
-          active_acne: modelFeatureScores.active_acne,
-          skin_quality: modelFeatureScores.skin_quality,
-          wrinkle_severity: modelFeatureScores.wrinkle_severity,
-          sagging_volume: modelFeatureScores.sagging_volume,
-          under_eye: modelFeatureScores.under_eye,
-          hair_health: modelFeatureScores.hair_health,
-          pigmentation_model: modelFeatureScores.pigmentation_model,
-        },
+        ...dummy.legacyMetrics,
+        clinical_scores: clinicalScoresFromModelFeatureScores(
+          dummy.modelFeatureScores
+        ),
       };
-      detected_regions = generateDetectedRegions();
+      detected_regions = dummy.detected_regions;
     }
 
     const eczemaScore = Math.min(
@@ -277,7 +317,6 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Prefer OpenAI when configured; otherwise (or on failure) use dummy templates.
     let aiSummary = buildDummyAiSummary(metrics);
     const openaiKey = process.env.OPENAI_API_KEY?.trim();
     if (openaiKey) {
@@ -330,6 +369,8 @@ export async function POST(request: NextRequest) {
       pigmentation: metrics.pigmentation,
       hydration: metrics.hydration,
       eczema: eczemaScore,
+      kaiOverallScore: overallKaiScore,
+      kaiParams: v2params,
     };
 
     const scanRowBase = {
@@ -346,6 +387,8 @@ export async function POST(request: NextRequest) {
       annotations: detected_regions,
       scores: {
         modelFeatureScores: modelFeatureScores as Record<string, number | null>,
+        overallKaiScore,
+        kaiParams: v2params,
         ...(overlayDataUri ? { overlayDataUri } : {}),
       },
     };
@@ -360,10 +403,7 @@ export async function POST(request: NextRequest) {
         })
         .returning();
     } catch (insertErr) {
-      if (
-        faceCaptureImages &&
-        isMissingFaceCaptureColumn(insertErr)
-      ) {
+      if (faceCaptureImages && isMissingFaceCaptureColumn(insertErr)) {
         [inserted] = await db
           .insert(scans)
           .values({
@@ -374,6 +414,21 @@ export async function POST(request: NextRequest) {
       } else {
         throw insertErr;
       }
+    }
+
+    if (inserted?.id != null) {
+      const paramRows = inferenceParamsToRows(
+        v2params as Record<
+          string,
+          {
+            value: number | null;
+            source: string;
+            severity_flag?: boolean;
+            extras?: unknown;
+          }
+        >
+      );
+      await insertParameterScoresForScan(db, inserted.id, paramRows);
     }
 
     await db.insert(skinScans).values({
@@ -388,6 +443,8 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         metrics,
+        overallKaiScore,
+        kaiParams: v2params,
         detected_regions,
         ai_summary: aiSummary,
         id: inserted?.id,

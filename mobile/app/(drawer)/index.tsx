@@ -1,3 +1,4 @@
+import { Audio } from "expo-av";
 import { format, addDays, subDays, parseISO } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -38,6 +39,10 @@ type TodayLog = {
   pmRoutine?: boolean;
   routineAmSteps?: boolean[] | null;
   routinePmSteps?: boolean[] | null;
+  dietType?: string | null;
+  sunExposure?: string | null;
+  cycleDay?: number | null;
+  comments?: string | null;
 } | null;
 
 type HomeData = {
@@ -45,12 +50,27 @@ type HomeData = {
   todayLog: TodayLog;
   amItems: string[];
   pmItems: string[];
+  kaiSkinScore: number;
+  weeklyDeltaScore: number;
+  lifestyleAlignmentScore: number;
   routineScore: number;
   weeklyChangePercent: number;
   doctorFeedback: string;
+  todayFocus: { message: string; sourceParam: string | null };
+  streakCurrent: number;
+  streakLongest: number;
+  cycleTrackingEnabled: boolean;
+  doctorVoiceNote: {
+    id: string;
+    audioDataUri: string;
+    createdAt: string;
+  } | null;
+  doctorVoiceNoteIsNew: boolean;
 };
 
 const MOODS = ["Neutral", "Great", "Okay", "Low", "Stressed"] as const;
+const DIETS = ["heavy", "balanced", "light"] as const;
+const SUNS = ["low", "moderate", "high"] as const;
 
 export default function DashboardScreen() {
   const { token } = useAuth();
@@ -74,6 +94,11 @@ export default function DashboardScreen() {
   const [journalLoading, setJournalLoading] = useState(false);
   const [journalSaving, setJournalSaving] = useState(false);
   const [journalHint, setJournalHint] = useState<string | null>(null);
+  const [dietType, setDietType] = useState<string>("balanced");
+  const [sunExposure, setSunExposure] = useState<string>("low");
+  const [cycleDay, setCycleDay] = useState("");
+  const [doctorReply, setDoctorReply] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
 
   const loadHome = useCallback(async () => {
     if (!token) return;
@@ -86,7 +111,24 @@ export default function DashboardScreen() {
         method: "GET",
       }
     );
-    setData(json);
+    setData({
+      ...json,
+      kaiSkinScore: json.kaiSkinScore ?? 0,
+      weeklyDeltaScore:
+        json.weeklyDeltaScore ?? json.weeklyChangePercent ?? 0,
+      lifestyleAlignmentScore:
+        json.lifestyleAlignmentScore ?? json.routineScore ?? 0,
+      todayFocus: json.todayFocus ?? {
+        message:
+          "Log your routine and water today — consistency drives your kAI trends.",
+        sourceParam: null,
+      },
+      streakCurrent: json.streakCurrent ?? 0,
+      streakLongest: json.streakLongest ?? 0,
+      cycleTrackingEnabled: json.cycleTrackingEnabled ?? false,
+      doctorVoiceNote: json.doctorVoiceNote ?? null,
+      doctorVoiceNoteIsNew: json.doctorVoiceNoteIsNew ?? false,
+    });
     setSelectedScanIdx(0);
     const am = normalizeRoutineSteps(
       json.todayLog?.routineAmSteps,
@@ -140,6 +182,15 @@ export default function DashboardScreen() {
           setMood(String(entry.mood ?? "Neutral"));
           setAmRoutine(Boolean(entry.amRoutine));
           setPmRoutine(Boolean(entry.pmRoutine));
+          const d = typeof entry.dietType === "string" ? entry.dietType : "balanced";
+          setDietType(DIETS.includes(d as (typeof DIETS)[number]) ? d : "balanced");
+          const s = typeof entry.sunExposure === "string" ? entry.sunExposure : "low";
+          setSunExposure(SUNS.includes(s as (typeof SUNS)[number]) ? s : "low");
+          setCycleDay(
+            typeof entry.cycleDay === "number" && entry.cycleDay > 0
+              ? String(entry.cycleDay)
+              : ""
+          );
         } else {
           setSleep("0");
           setStress("5");
@@ -148,6 +199,9 @@ export default function DashboardScreen() {
           setMood("Neutral");
           setAmRoutine(false);
           setPmRoutine(false);
+          setDietType("balanced");
+          setSunExposure("low");
+          setCycleDay("");
         }
       } catch {
         setJournalHint("Could not load journal for that day.");
@@ -173,9 +227,11 @@ export default function DashboardScreen() {
     [selectedScan?.analysisResults]
   );
 
-  const skinPercent = latestScan
-    ? Math.min(100, Math.max(0, Math.round(latestScan.skinScore)))
-    : 40;
+  const kaiSkinScore = data
+    ? Math.min(100, Math.max(0, Math.round(data.kaiSkinScore)))
+    : latestScan
+      ? Math.min(100, Math.max(0, Math.round(latestScan.skinScore)))
+      : 40;
 
   async function persistRoutine(nextAm: boolean[], nextPm: boolean[]) {
     if (!token) return;
@@ -223,6 +279,11 @@ export default function DashboardScreen() {
     setJournalSaving(true);
     setJournalHint(null);
     try {
+      const cycRaw = Number.parseInt(cycleDay, 10);
+      const cyc =
+        cycleDay.trim() === "" || Number.isNaN(cycRaw)
+          ? null
+          : Math.min(35, Math.max(1, cycRaw));
       await apiJson(`/api/journal`, token, {
         method: "POST",
         body: JSON.stringify({
@@ -234,6 +295,9 @@ export default function DashboardScreen() {
           mood,
           amRoutine,
           pmRoutine,
+          dietType,
+          sunExposure,
+          cycleDay: cyc && cyc > 0 ? cyc : null,
         }),
       });
     } catch {
@@ -272,9 +336,21 @@ export default function DashboardScreen() {
       <Text style={styles.h1}>Dashboard</Text>
 
       <View style={styles.gauges}>
-        <Gauge label="Skin Score" value={skinPercent} />
-        <Gauge label="Consistency" value={data.routineScore} />
-        <Gauge label="Weekly Δ" value={data.weeklyChangePercent} />
+        <Gauge label="kAI Skin Score" value={kaiSkinScore} />
+        <GaugeDelta label="Weekly Δ" delta={data.weeklyDeltaScore} />
+        <Gauge label="Lifestyle alignment" value={data.lifestyleAlignmentScore} />
+      </View>
+
+      <View style={[styles.card, styles.focusBanner]}>
+        <Text style={styles.focusKicker}>TODAY&apos;S FOCUS</Text>
+        <Text style={styles.focusMessage}>{data.todayFocus.message}</Text>
+      </View>
+
+      <View style={styles.streakRow}>
+        <Text style={styles.streakText}>
+          Streak: <Text style={styles.streakNum}>{data.streakCurrent}</Text> day
+          {data.streakCurrent === 1 ? "" : "s"} · Best {data.streakLongest}d
+        </Text>
       </View>
 
       <DayQuestBannerMobile routineProgress={routineProgress} />
@@ -335,6 +411,48 @@ export default function DashboardScreen() {
           <Field label="Stress (1–10)" value={stress} onChangeText={setStress} />
           <Field label="Water" value={water} onChangeText={setWater} />
         </View>
+        <Text style={styles.label}>Mood</Text>
+        <Text style={styles.label}>Diet</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodRow}>
+          {DIETS.map((d) => (
+            <Pressable
+              key={d}
+              onPress={() => setDietType(d)}
+              style={[styles.moodChip, dietType === d && styles.moodChipOn]}
+            >
+              <Text style={dietType === d ? styles.moodChipTextOn : styles.moodChipText}>
+                {d.charAt(0).toUpperCase() + d.slice(1)}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        <Text style={styles.label}>Sun exposure</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodRow}>
+          {SUNS.map((s) => (
+            <Pressable
+              key={s}
+              onPress={() => setSunExposure(s)}
+              style={[styles.moodChip, sunExposure === s && styles.moodChipOn]}
+            >
+              <Text style={sunExposure === s ? styles.moodChipTextOn : styles.moodChipText}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        {data.cycleTrackingEnabled ? (
+          <>
+            <Text style={styles.label}>Cycle day (optional)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="number-pad"
+              placeholder="1–35"
+              value={cycleDay}
+              onChangeText={setCycleDay}
+              placeholderTextColor="#94a3b8"
+            />
+          </>
+        ) : null}
         <Text style={styles.label}>Mood</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodRow}>
           {MOODS.map((m) => (
@@ -422,12 +540,67 @@ export default function DashboardScreen() {
       </View>
 
       <View style={[styles.card, { marginTop: 16, marginBottom: 32 }]}>
-        <Text style={styles.h2}>Doctor&apos;s feedback</Text>
+        <View style={styles.rowBetween}>
+          <Text style={styles.h2}>Doctor&apos;s feedback</Text>
+          {data.doctorVoiceNoteIsNew ? (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>New</Text>
+            </View>
+          ) : null}
+        </View>
+        {data.doctorVoiceNote ? (
+          <DoctorVoiceNotePlayer
+            uri={data.doctorVoiceNote.audioDataUri}
+            onPlayStart={async () => {
+              try {
+                await apiJson(`/api/patient/doctor-feedback/viewed`, token!, {
+                  method: "POST",
+                });
+                await loadHome();
+              } catch {
+                /* ignore */
+              }
+            }}
+          />
+        ) : null}
         {data.doctorFeedback?.trim() ? (
           <Text style={styles.feedback}>{data.doctorFeedback}</Text>
-        ) : (
+        ) : !data.doctorVoiceNote ? (
           <View style={styles.feedbackEmpty} />
-        )}
+        ) : null}
+        <Text style={[styles.label, { marginTop: 12 }]}>Reply to your doctor</Text>
+        <TextInput
+          style={styles.textArea}
+          multiline
+          placeholder="Message (posts to doctor chat)"
+          value={doctorReply}
+          onChangeText={setDoctorReply}
+          placeholderTextColor="#94a3b8"
+        />
+        <Pressable
+          style={[styles.btn, { marginTop: 8, opacity: replyBusy ? 0.6 : 1 }]}
+          disabled={replyBusy || !doctorReply.trim()}
+          onPress={async () => {
+            if (!token || !doctorReply.trim()) return;
+            setReplyBusy(true);
+            try {
+              await apiJson(`/api/chat/plain/message`, token, {
+                method: "POST",
+                body: JSON.stringify({
+                  assistantId: "doctor",
+                  text: doctorReply.trim(),
+                }),
+              });
+              setDoctorReply("");
+            } catch {
+              setJournalHint("Could not send reply.");
+            } finally {
+              setReplyBusy(false);
+            }
+          }}
+        >
+          <Text style={styles.btnText}>{replyBusy ? "Sending…" : "Send reply"}</Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -519,6 +692,54 @@ function Gauge({ label, value }: { label: string; value: number }) {
   );
 }
 
+function GaugeDelta({ label, delta }: { label: string; delta: number }) {
+  const d = Math.round(delta);
+  const sign = d > 0 ? "+" : "";
+  return (
+    <View style={styles.gauge}>
+      <Text style={styles.gaugeVal}>
+        {sign}
+        {d}
+      </Text>
+      <Text style={styles.gaugeLbl}>{label}</Text>
+    </View>
+  );
+}
+
+function DoctorVoiceNotePlayer({
+  uri,
+  onPlayStart,
+}: {
+  uri: string;
+  onPlayStart: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Pressable
+      style={styles.voiceBtn}
+      disabled={busy}
+      onPress={async () => {
+        setBusy(true);
+        try {
+          await onPlayStart();
+          await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+          const { sound } = await Audio.Sound.createAsync({ uri });
+          await sound.playAsync();
+          sound.setOnPlaybackStatusUpdate((st) => {
+            if (st.isLoaded && st.didJustFinish) void sound.unloadAsync();
+          });
+        } catch {
+          /* ignore */
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <Text style={styles.voiceBtnText}>{busy ? "…" : "Play voice note"}</Text>
+    </Pressable>
+  );
+}
+
 function Field({
   label,
   value,
@@ -564,7 +785,44 @@ const styles = StyleSheet.create({
   gauges: { flexDirection: "row", justifyContent: "space-around", marginTop: 16 },
   gauge: { alignItems: "center" },
   gaugeVal: { fontSize: 22, fontWeight: "700", color: "#18181b" },
-  gaugeLbl: { fontSize: 11, color: "#52525b", marginTop: 4, textAlign: "center", maxWidth: 88 },
+  gaugeLbl: { fontSize: 11, color: "#52525b", marginTop: 4, textAlign: "center", maxWidth: 100 },
+  focusBanner: {
+    marginTop: 14,
+    backgroundColor: "#ecfeff",
+    borderWidth: 1,
+    borderColor: "rgba(13,148,136,0.25)",
+  },
+  focusKicker: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: "#0f766e",
+    marginBottom: 6,
+  },
+  focusMessage: { fontSize: 15, lineHeight: 22, color: "#134e4a", fontWeight: "600" },
+  streakRow: { marginTop: 10, alignItems: "center" },
+  streakText: { fontSize: 13, color: "#52525b", fontWeight: "600" },
+  streakNum: { color: TEAL, fontWeight: "800" },
+  newBadge: {
+    backgroundColor: "#fef3c7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#fcd34d",
+  },
+  newBadgeText: { fontSize: 10, fontWeight: "800", color: "#92400e" },
+  voiceBtn: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    backgroundColor: "#e0f2fe",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#7dd3fc",
+  },
+  voiceBtnText: { fontSize: 14, fontWeight: "700", color: "#0369a1" },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   routineRow: { flexDirection: "row", marginTop: 12, gap: 16 },
   routineCol: { flex: 1 },

@@ -1,12 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { format, isValid, parseISO } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -126,6 +130,10 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sosOpen, setSosOpen] = useState(false);
+  const [sosText, setSosText] = useState("");
+  const [sosImageUri, setSosImageUri] = useState<string | null>(null);
+  const [sosBusy, setSosBusy] = useState(false);
 
   const peer = useMemo(() => CONTACTS.find((c) => c.id === active)!, [active]);
 
@@ -422,6 +430,106 @@ export default function ChatScreen() {
             </Text>
           </View>
         </View>
+
+        {active === "doctor" ? (
+          <Pressable
+            style={styles.sosBtn}
+            onPress={() => {
+              setSosText("");
+              setSosImageUri(null);
+              setSosOpen(true);
+            }}
+          >
+            <Ionicons name="warning" size={18} color="#fff" />
+            <Text style={styles.sosBtnText}>SOS</Text>
+          </Pressable>
+        ) : null}
+
+        <Modal visible={sosOpen} animationType="slide" transparent>
+          <View style={styles.sosBackdrop}>
+            <View style={styles.sosSheet}>
+              <Text style={styles.sosTitle}>SOS — contact doctors</Text>
+              <Text style={styles.sosSub}>
+                Describe any reaction or urgent concern. We&apos;ll attach your last visits and latest
+                scan summary for the clinical team.
+              </Text>
+              <TextInput
+                style={styles.sosInput}
+                placeholder="What happened?"
+                placeholderTextColor="#94a3b8"
+                multiline
+                value={sosText}
+                onChangeText={setSosText}
+              />
+              {sosImageUri ? (
+                <Image source={{ uri: sosImageUri }} style={styles.sosThumb} />
+              ) : null}
+              <View style={styles.sosActions}>
+                <Pressable
+                  style={styles.sosSecondary}
+                  onPress={async () => {
+                    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (!perm.granted) return;
+                    const r = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      quality: 0.6,
+                    });
+                    if (!r.canceled && r.assets[0]?.uri) setSosImageUri(r.assets[0].uri);
+                  }}
+                >
+                  <Text style={styles.sosSecondaryText}>Add photo</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.sosSecondary}
+                  onPress={() => {
+                    setSosOpen(false);
+                    setSosBusy(false);
+                  }}
+                >
+                  <Text style={styles.sosSecondaryText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.sosPrimary, sosBusy && { opacity: 0.6 }]}
+                  disabled={sosBusy || !sosText.trim()}
+                  onPress={async () => {
+                    if (!token || !sosText.trim()) return;
+                    setSosBusy(true);
+                    try {
+                      let attachmentUrl: string | undefined;
+                      if (sosImageUri) {
+                        const b64 = await FileSystem.readAsStringAsync(sosImageUri, {
+                          encoding: "base64",
+                        });
+                        attachmentUrl = `data:image/jpeg;base64,${b64}`.slice(0, 450_000);
+                      }
+                      await apiJson("/api/chat/plain/message", token, {
+                        method: "POST",
+                        body: JSON.stringify({
+                          assistantId: "doctor",
+                          text: sosText.trim(),
+                          isUrgent: true,
+                          attachmentUrl,
+                        }),
+                      });
+                      const refreshed = await fetchPlainMessages("doctor");
+                      setMessages(refreshed.messages);
+                      await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
+                      setSosOpen(false);
+                      setSosText("");
+                      setSosImageUri(null);
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "SOS send failed.");
+                    } finally {
+                      setSosBusy(false);
+                    }
+                  }}
+                >
+                  <Text style={styles.sosPrimaryText}>{sosBusy ? "Sending…" : "Send SOS"}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {error ? (
           <View style={styles.errorBanner}>
@@ -727,5 +835,59 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  sosBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#dc2626",
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  sosBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  sosBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  sosSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 28,
+  },
+  sosTitle: { fontSize: 18, fontWeight: "800", color: ZINC_900 },
+  sosSub: { fontSize: 13, color: "#64748b", marginTop: 8, lineHeight: 18 },
+  sosInput: {
+    marginTop: 12,
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    textAlignVertical: "top",
+  },
+  sosThumb: { width: "100%", height: 140, borderRadius: 12, marginTop: 10 },
+  sosActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  sosSecondary: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+  },
+  sosSecondaryText: { fontWeight: "700", color: "#475569" },
+  sosPrimary: {
+    flex: 1,
+    minWidth: 120,
+    backgroundColor: "#dc2626",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  sosPrimaryText: { color: "#fff", fontWeight: "800" },
   sendFabDisabled: { opacity: 0.45, shadowOpacity: 0 },
 });

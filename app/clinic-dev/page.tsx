@@ -100,6 +100,18 @@ export default function ClinicDevPage() {
   const [rubyReply, setRubyReply] = useState("");
   const [rubySending, setRubySending] = useState(false);
 
+  const [kaiScanId, setKaiScanId] = useState("");
+  const [kaiRows, setKaiRows] = useState<
+    Array<{
+      id: string;
+      paramKey: string;
+      value: number | null;
+      source: string;
+    }>
+  >([]);
+  const [kaiLoading, setKaiLoading] = useState(false);
+  const [kaiEdits, setKaiEdits] = useState<Record<string, string>>({});
+
   async function loadDoctors() {
     setError(null);
     setLoading(true);
@@ -892,6 +904,131 @@ export default function ClinicDevPage() {
             </section>
           </div>
         ) : null}
+
+        <section className="mt-10 rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Fill pending kAI parameters</h2>
+          <p className="mt-1 text-xs text-slate-600">
+            Load a patient scan by numeric id. Pending / doctor rows are editable; AI rows are
+            read-only.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col text-xs font-medium text-slate-600">
+              Scan id
+              <input
+                value={kaiScanId}
+                onChange={(e) => setKaiScanId(e.target.value)}
+                className="mt-1 w-32 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white"
+              disabled={kaiLoading}
+              onClick={async () => {
+                const id = Number.parseInt(kaiScanId, 10);
+                if (!Number.isFinite(id) || id < 1) return;
+                setKaiLoading(true);
+                setError(null);
+                try {
+                  const res = await fetch("/api/clinic-dev/parameters", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ action: "list", scanId: id }),
+                  });
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok || !data.ok || !Array.isArray(data.rows)) {
+                    throw new Error(data.error || "Load failed");
+                  }
+                  setKaiRows(data.rows);
+                  const ed: Record<string, string> = {};
+                  for (const r of data.rows as typeof kaiRows) {
+                    if (r.value != null) ed[r.paramKey] = String(r.value);
+                  }
+                  setKaiEdits(ed);
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "kAI load failed");
+                } finally {
+                  setKaiLoading(false);
+                }
+              }}
+            >
+              {kaiLoading ? "Loading…" : "Load"}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white"
+              disabled={kaiLoading || kaiRows.length === 0}
+              onClick={async () => {
+                const id = Number.parseInt(kaiScanId, 10);
+                if (!Number.isFinite(id) || id < 1) return;
+                setKaiLoading(true);
+                setError(null);
+                try {
+                  const rows = kaiRows
+                    .filter((r) => r.source !== "ai")
+                    .map((r) => ({
+                      paramKey: r.paramKey,
+                      value: Number.parseInt(kaiEdits[r.paramKey] ?? "", 10),
+                    }))
+                    .filter((r) => Number.isFinite(r.value));
+                  const res = await fetch("/api/clinic-dev/parameters", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ action: "save", scanId: id, rows }),
+                  });
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok || !data.ok || !Array.isArray(data.rows)) {
+                    throw new Error(data.error || "Save failed");
+                  }
+                  setKaiRows(data.rows);
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "kAI save failed");
+                } finally {
+                  setKaiLoading(false);
+                }
+              }}
+            >
+              Save pending / doctor
+            </button>
+          </div>
+          {kaiRows.length > 0 ? (
+            <ul className="mt-4 max-h-80 space-y-2 overflow-y-auto text-sm">
+              {kaiRows.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2"
+                >
+                  <span className="w-36 font-mono text-xs text-slate-700">{r.paramKey}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                      r.source === "ai"
+                        ? "bg-slate-100 text-slate-600"
+                        : r.source === "pending"
+                          ? "bg-amber-100 text-amber-900"
+                          : "bg-teal-100 text-teal-900"
+                    }`}
+                  >
+                    {r.source}
+                  </span>
+                  {r.source === "ai" ? (
+                    <span className="text-slate-800">{r.value ?? "—"}</span>
+                  ) : (
+                    <input
+                      className="w-20 rounded border border-slate-200 px-2 py-1 text-sm"
+                      value={kaiEdits[r.paramKey] ?? ""}
+                      onChange={(e) =>
+                        setKaiEdits((prev) => ({
+                          ...prev,
+                          [r.paramKey]: e.target.value,
+                        }))
+                      }
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
       </div>
     </div>
   );

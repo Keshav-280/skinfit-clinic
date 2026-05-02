@@ -18,6 +18,7 @@ import { ApiError, apiJson } from "@/lib/api";
 import { buildScanReportPdfPayload } from "@/lib/buildScanReportPdfPayload";
 import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
 import { shareScanReportPdf } from "@/lib/scanReportPdf";
+import type { PatientTrackerReport } from "../../../../src/lib/patientTrackerReport.types";
 
 type ScanDetail = {
   scanId: number;
@@ -61,6 +62,7 @@ export default function ScanDetailScreen() {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [row, setRow] = useState<ScanDetail | null>(null);
+  const [tracker, setTracker] = useState<PatientTrackerReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
@@ -72,6 +74,16 @@ export default function ScanDetailScreen() {
       { method: "GET" }
     );
     setRow(json);
+    try {
+      const tr = await apiJson<PatientTrackerReport>(
+        `/api/patient/tracker?scanId=${encodeURIComponent(id)}`,
+        token,
+        { method: "GET" }
+      );
+      setTracker(tr);
+    } catch {
+      setTracker(null);
+    }
   }, [token, id]);
 
   useEffect(() => {
@@ -174,6 +186,7 @@ export default function ScanDetailScreen() {
         scanDate={new Date(row.scanDateIso)}
         pdfLoading={pdfLoading}
         onDownloadPdf={() => void onDownloadPdf()}
+        tracker={tracker}
       />
     </View>
   );

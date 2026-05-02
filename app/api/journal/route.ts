@@ -8,6 +8,7 @@ import {
   normalizeRoutineSteps,
   PM_ROUTINE_LEN,
 } from "@/src/lib/routine";
+import { refreshUserStreakAfterRoutineDay } from "@/src/lib/userStreak";
 import {
   localCalendarYmd,
   parseYmdToDateOnly,
@@ -83,6 +84,10 @@ function serializeLog(row: LogRow) {
     pmRoutine: row.pmRoutine,
     routineAmSteps: row.routineAmSteps ?? null,
     routinePmSteps: row.routinePmSteps ?? null,
+    dietType: row.dietType ?? null,
+    sunExposure: row.sunExposure ?? null,
+    cycleDay: row.cycleDay ?? null,
+    comments: row.comments ?? null,
   };
 }
 
@@ -103,6 +108,10 @@ export async function POST(req: Request) {
     pmRoutine?: boolean;
     routineAmSteps?: boolean[];
     routinePmSteps?: boolean[];
+    dietType?: string | null;
+    sunExposure?: string | null;
+    cycleDay?: number | null;
+    comments?: string | null;
   };
   try {
     body = await req.json();
@@ -148,6 +157,17 @@ export async function POST(req: Request) {
   const amRoutine = routineAmSteps.some(Boolean);
   const pmRoutine = routinePmSteps.some(Boolean);
 
+  const dietType = normalizeDietType(body.dietType, existing?.dietType ?? null);
+  const sunExposure = normalizeSunExposure(
+    body.sunExposure,
+    existing?.sunExposure ?? null
+  );
+  const cycleDay = normalizeCycleDay(body.cycleDay, existing?.cycleDay ?? null);
+  const comments =
+    typeof body.comments === "string"
+      ? body.comments.trim().slice(0, 2000) || null
+      : existing?.comments ?? null;
+
   // One row per user per calendar day: insert or overwrite (latest save wins).
   const [saved] = await db
     .insert(dailyLogs)
@@ -163,6 +183,10 @@ export async function POST(req: Request) {
       pmRoutine,
       routineAmSteps,
       routinePmSteps,
+      dietType,
+      sunExposure,
+      cycleDay,
+      comments,
     })
     .onConflictDoUpdate({
       target: [dailyLogs.userId, dailyLogs.date],
@@ -176,9 +200,25 @@ export async function POST(req: Request) {
         pmRoutine,
         routineAmSteps,
         routinePmSteps,
+        dietType,
+        sunExposure,
+        cycleDay,
+        comments,
       },
     })
     .returning();
+
+  if (saved) {
+    await refreshUserStreakAfterRoutineDay(
+      db,
+      userId,
+      d,
+      routineAmSteps,
+      routinePmSteps,
+      AM_ROUTINE_LEN,
+      PM_ROUTINE_LEN
+    );
+  }
 
   return NextResponse.json({
     ok: true,
@@ -248,6 +288,17 @@ export async function PATCH(req: Request) {
       })
       .where(eq(dailyLogs.id, existing.id))
       .returning();
+    if (updated) {
+      await refreshUserStreakAfterRoutineDay(
+        db,
+        userId,
+        d,
+        amSteps,
+        pmSteps,
+        AM_ROUTINE_LEN,
+        PM_ROUTINE_LEN
+      );
+    }
     return NextResponse.json({
       ok: true,
       entry: updated ? serializeLog(updated) : null,
@@ -271,10 +322,55 @@ export async function PATCH(req: Request) {
     })
     .returning();
 
+  if (inserted) {
+    await refreshUserStreakAfterRoutineDay(
+      db,
+      userId,
+      d,
+      amSteps,
+      pmSteps,
+      AM_ROUTINE_LEN,
+      PM_ROUTINE_LEN
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     entry: inserted ? serializeLog(inserted) : null,
   });
+}
+
+function normalizeDietType(
+  v: unknown,
+  fallback: string | null
+): string | null {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v !== "string") return fallback;
+  const x = v.trim().toLowerCase();
+  if (x === "heavy" || x === "balanced" || x === "light") return x;
+  return fallback;
+}
+
+function normalizeSunExposure(
+  v: unknown,
+  fallback: string | null
+): string | null {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v !== "string") return fallback;
+  const x = v.trim().toLowerCase();
+  if (x === "low" || x === "moderate" || x === "high") return x;
+  return fallback;
+}
+
+function normalizeCycleDay(
+  v: unknown,
+  fallback: number | null
+): number | null {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+  const n = Math.round(v);
+  if (n < 1 || n > 35) return fallback;
+  return n;
 }
 
 function clampInt(

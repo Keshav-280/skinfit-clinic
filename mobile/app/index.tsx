@@ -1,12 +1,27 @@
-import { Redirect } from "expo-router";
+import { Redirect, type Href } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Index() {
-  const { ready, token } = useAuth();
+  const { ready, token, user, refreshUserFromProfile } = useAuth();
+  const [syncing, setSyncing] = useState(false);
 
-  if (!ready) {
+  useEffect(() => {
+    if (!ready || !token) return;
+    let alive = true;
+    setSyncing(true);
+    void (async () => {
+      await refreshUserFromProfile(token);
+      if (alive) setSyncing(false);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [ready, token, refreshUserFromProfile]);
+
+  if (!ready || (token && syncing)) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
@@ -15,6 +30,9 @@ export default function Index() {
   }
 
   if (token) {
+    if (user?.onboardingComplete === false) {
+      return <Redirect href={"/onboarding" as Href} />;
+    }
     return <Redirect href="/(drawer)" />;
   }
 

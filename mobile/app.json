@@ -48,6 +48,13 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SkinnFit to capture your 5-angle kAI face scan.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",

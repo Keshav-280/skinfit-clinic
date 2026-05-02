@@ -63,3 +63,31 @@ export async function notifyPatientNewClinicChat(
     data: { type: "clinic_chat" },
   });
 }
+
+/** Notify every doctor account with a registered Expo push token. */
+export async function notifyDoctorUsers(opts: {
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}): Promise<number> {
+  const doctors = await db
+    .select({ token: users.expoPushToken })
+    .from(users)
+    .where(eq(users.role, "doctor"));
+  let n = 0;
+  for (const d of doctors) {
+    const t = d.token?.trim();
+    if (!t) continue;
+    if (
+      await sendExpoPushNotification({
+        expoPushToken: t,
+        title: opts.title,
+        body: opts.body,
+        data: opts.data ?? {},
+      })
+    ) {
+      n += 1;
+    }
+  }
+  return n;
+}

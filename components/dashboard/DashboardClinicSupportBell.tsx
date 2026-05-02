@@ -83,7 +83,7 @@ export function DashboardClinicSupportBell() {
 
   return (
     <Link
-      href="/dashboard/chat"
+      href="/dashboard/notifications"
       className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
       title={label}
       aria-label={label}

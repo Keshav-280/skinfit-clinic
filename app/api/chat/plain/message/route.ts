@@ -3,6 +3,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { notifyDoctorUsers } from "@/src/lib/expoPush";
+import { buildSosContextPrefix } from "@/src/lib/sosChatContext";
 
 function clampText(s: unknown, maxLen: number): string | null {
   if (typeof s !== "string") return null;
@@ -27,18 +29,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
   }
 
-  const { assistantId, text } = body as {
+  const b = body as {
     assistantId?: string;
     text?: unknown;
+    isUrgent?: unknown;
+    attachmentUrl?: unknown;
   };
+
+  const { assistantId } = b;
 
   if (assistantId !== "doctor" && assistantId !== "support" && assistantId !== "ai") {
     return NextResponse.json({ error: "INVALID_ASSISTANT_ID" }, { status: 400 });
   }
 
-  const messageText = clampText(text, 2000);
-  if (!messageText) {
+  const isUrgent = Boolean(b.isUrgent);
+  const attachmentUrl =
+    typeof b.attachmentUrl === "string"
+      ? b.attachmentUrl.trim().slice(0, 500_000)
+      : null;
+
+  let patientText = clampText(b.text, 4000);
+  if (!patientText && attachmentUrl) {
+    patientText = "📎 Attachment (see message)";
+  }
+  if (!patientText) {
     return NextResponse.json({ error: "TEXT_REQUIRED" }, { status: 400 });
+  }
+
+  let messageText = patientText;
+  if (isUrgent && assistantId === "doctor") {
+    const prefix = await buildSosContextPrefix(userId);
+    messageText = `${prefix}\n\n${patientText}`.slice(0, 12_000);
   }
 
   // Create or fetch the thread for this patient + assistant.
@@ -69,8 +90,17 @@ export async function POST(req: Request) {
     threadId,
     sender: "patient",
     text: messageText,
+    isUrgent,
+    attachmentUrl: attachmentUrl || null,
   });
+
+  if (isUrgent && assistantId === "doctor") {
+    void notifyDoctorUsers({
+      title: "SOS — patient message",
+      body: patientText.slice(0, 140),
+      data: { type: "sos_chat", patientId: userId },
+    });
+  }
 
   return NextResponse.json({ success: true, threadId });
 }
-

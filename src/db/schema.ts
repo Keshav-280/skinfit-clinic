@@ -41,6 +41,25 @@ export const appointmentRequestStatusEnum = pgEnum(
   ["pending", "approved", "cancelled"]
 );
 
+export const parameterSourceEnum = pgEnum("parameter_source", [
+  "ai",
+  "doctor",
+  "pending",
+]);
+
+export const visitResponseRatingEnum = pgEnum("visit_response_rating", [
+  "excellent",
+  "good",
+  "moderate",
+  "poor",
+]);
+
+export const resourceKindEnum = pgEnum("resource_kind", [
+  "article",
+  "video",
+  "insight",
+]);
+
 // Users
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -90,6 +109,30 @@ export const users = pgTable("users", {
   /** Last calendar day we sent the PM routine reminder. */
   routinePmReminderLastSentYmd: varchar("routine_pm_reminder_last_sent_ymd", {
     length: 10,
+  }),
+  /** kAI onboarding: false until questionnaire + baseline scan complete. Existing users default true. */
+  onboardingComplete: boolean("onboarding_complete").notNull().default(true),
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
+  primaryConcern: varchar("primary_concern", { length: 64 }),
+  concernSeverity: varchar("concern_severity", { length: 32 }),
+  concernDuration: varchar("concern_duration", { length: 32 }),
+  triggers: jsonb("triggers").$type<string[]>(),
+  priorTreatment: varchar("prior_treatment", { length: 8 }),
+  treatmentHistoryText: text("treatment_history_text"),
+  treatmentHistoryDuration: varchar("treatment_history_duration", { length: 32 }),
+  skinSensitivity: varchar("skin_sensitivity", { length: 32 }),
+  baselineSleep: varchar("baseline_sleep", { length: 32 }),
+  baselineHydration: varchar("baseline_hydration", { length: 32 }),
+  baselineDietType: varchar("baseline_diet_type", { length: 32 }),
+  baselineSunExposure: varchar("baseline_sun_exposure", { length: 32 }),
+  fitzpatrick: varchar("fitzpatrick", { length: 8 }),
+  streakCurrent: integer("streak_current").notNull().default(0),
+  streakLongest: integer("streak_longest").notNull().default(0),
+  streakLastDate: date("streak_last_date", { mode: "date" }),
+  cycleTrackingEnabled: boolean("cycle_tracking_enabled").notNull().default(false),
+  /** When patient last viewed doctor feedback (for “new” badge). */
+  doctorFeedbackViewedAt: timestamp("doctor_feedback_viewed_at", {
+    withTimezone: true,
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -165,6 +208,10 @@ export const dailyLogs = pgTable(
     /** Water intake in glasses. */
     waterGlasses: integer("water_glasses").notNull().default(0),
     journalEntry: text("journal_entry"),
+    dietType: varchar("diet_type", { length: 32 }),
+    sunExposure: varchar("sun_exposure", { length: 32 }),
+    cycleDay: integer("cycle_day"),
+    comments: text("comments"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
@@ -282,6 +329,14 @@ export const visitNotes = pgTable("visit_notes", {
   visitDate: date("visit_date", { mode: "date" }).notNull(),
   doctorName: varchar("doctor_name", { length: 255 }).notNull(),
   notes: text("notes").notNull(),
+  purpose: text("purpose"),
+  treatments: text("treatments"),
+  preAdvice: text("pre_advice"),
+  postAdvice: text("post_advice"),
+  prescription: text("prescription"),
+  responseRating: visitResponseRatingEnum("response_rating"),
+  beforeImageIds: jsonb("before_image_ids").$type<string[]>(),
+  afterImageIds: jsonb("after_image_ids").$type<string[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -421,7 +476,134 @@ export const chatMessages = pgTable("chat_messages", {
     .references(() => chatThreads.id, { onDelete: "cascade" }),
   sender: chatSenderEnum("sender").notNull(),
   text: text("text").notNull(),
+  isUrgent: boolean("is_urgent").notNull().default(false),
+  attachmentUrl: text("attachment_url"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+});
+
+/** Questionnaire step answers (audit trail). */
+export const questionnaireAnswers = pgTable("questionnaire_answers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  questionId: varchar("question_id", { length: 64 }).notNull(),
+  answer: jsonb("answer").notNull(),
+  questionnaireVersion: integer("questionnaire_version").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** One Skin DNA summary per patient (updated in place). */
+export const skinDnaCards = pgTable(
+  "skin_dna_cards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    skinType: varchar("skin_type", { length: 64 }),
+    primaryConcern: text("primary_concern"),
+    sensitivityIndex: integer("sensitivity_index"),
+    uvSensitivity: varchar("uv_sensitivity", { length: 32 }),
+    hormonalCorrelation: varchar("hormonal_correlation", { length: 32 }),
+    revision: integer("revision").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userUidx: uniqueIndex("skin_dna_cards_user_id_uidx").on(table.userId),
+  })
+);
+
+/** Per-scan kAI parameter row (12 rows per scan when complete). */
+export const parameterScores = pgTable(
+  "parameter_scores",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    scanId: integer("scan_id")
+      .notNull()
+      .references(() => scans.id, { onDelete: "cascade" }),
+    paramKey: varchar("param_key", { length: 64 }).notNull(),
+    value: integer("value"),
+    source: parameterSourceEnum("source").notNull().default("pending"),
+    severityFlag: boolean("severity_flag").notNull().default(false),
+    deltaVsPrev: integer("delta_vs_prev"),
+    extras: jsonb("extras").$type<Record<string, unknown>>(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    scanParamUidx: uniqueIndex("parameter_scores_scan_param_uidx").on(
+      table.scanId,
+      table.paramKey
+    ),
+  })
+);
+
+export const weeklyReports = pgTable("weekly_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  weekStart: date("week_start", { mode: "date" }).notNull(),
+  kaiScore: integer("kai_score"),
+  weeklyDelta: integer("weekly_delta"),
+  consistencyScore: integer("consistency_score"),
+  causesJson: jsonb("causes_json").$type<unknown>(),
+  focusActionsJson: jsonb("focus_actions_json").$type<unknown>(),
+  resourcesJson: jsonb("resources_json").$type<unknown>(),
+  narrativeText: text("narrative_text"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const dailyFocus = pgTable(
+  "daily_focus",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    focusDate: date("focus_date", { mode: "date" }).notNull(),
+    message: text("message").notNull(),
+    sourceParam: varchar("source_param", { length: 64 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userDateUidx: uniqueIndex("daily_focus_user_date_uidx").on(
+      table.userId,
+      table.focusDate
+    ),
+  })
+);
+
+export const doctorFeedbackVoiceNotes = pgTable("doctor_feedback_voice_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
+  scanId: integer("scan_id").references(() => scans.id, { onDelete: "set null" }),
+  audioDataUri: text("audio_data_uri").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const monthlyReports = pgTable("monthly_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  monthStart: date("month_start", { mode: "date" }).notNull(),
+  payloadJson: jsonb("payload_json").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const kaiResources = pgTable("kai_resources", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  kind: resourceKindEnum("kind").notNull(),
+  paramKeys: jsonb("param_keys").$type<string[]>(),
+  tags: jsonb("tags").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -13,6 +13,7 @@ const links = [
   { href: "/dashboard/schedules", label: "Schedules" },
   { href: "/dashboard/wellness", label: "Overall Wellness" },
   { href: "/dashboard/chat", label: "Chat With Us" },
+  { href: "/dashboard/profile", label: "Profile" },
 ] as const;
 
 function isActive(href: string, pathname: string | null): boolean {

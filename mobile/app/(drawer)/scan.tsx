@@ -13,12 +13,10 @@ import {
   View,
 } from "react-native";
 
+import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
-import {
-  FACE_SCAN_CAPTURE_STEPS,
-  FACE_SCAN_INSTRUCTIONS,
-} from "@/lib/faceScanCaptures";
+import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 
 const TEAL = "#6B8E8E";
 const N = FACE_SCAN_CAPTURE_STEPS.length;
@@ -30,44 +28,24 @@ export default function ScanScreen() {
   const [scanName, setScanName] = useState("");
   const [busy, setBusy] = useState(false);
   const [resultId, setResultId] = useState<number | null>(null);
+  const [useCamera, setUseCamera] = useState(true);
 
-  const pickerOptions: ImagePicker.ImagePickerOptions = {
-    mediaTypes: ["images"],
-    quality: 0.85,
-  };
-
-  const nextIndex = uris.length;
+  const stepIndex = uris.length;
   const isComplete = uris.length >= N;
 
-  async function takePhoto() {
-    if (isComplete) return;
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Camera", "Allow camera access to capture your face scan photo.");
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({
-      ...pickerOptions,
-      cameraType: ImagePicker.CameraType.front,
-    });
-    if (!res.canceled && res.assets[0]?.uri) {
-      setUris([res.assets[0].uri]);
-      setResultId(null);
-    }
-  }
-
-  async function pickFromLibrary() {
+  async function pickFromLibraryForStep() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("Photos", "Allow photo library access to choose an image.");
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
-      ...pickerOptions,
+      mediaTypes: ["images"],
+      quality: 0.88,
       allowsMultipleSelection: false,
     });
     if (res.canceled || !res.assets?.[0]?.uri) return;
-    setUris([res.assets[0].uri]);
+    setUris((u) => [...u, res.assets[0].uri]);
     setResultId(null);
   }
 
@@ -76,24 +54,31 @@ export default function ScanScreen() {
     setResultId(null);
   }
 
+  function removeLast() {
+    setUris((u) => u.slice(0, -1));
+    setResultId(null);
+  }
+
   async function runScan() {
     if (!token || uris.length !== N) {
-      Alert.alert("AI face scan", "Add one front-face photo first.");
+      Alert.alert("AI face scan", `Capture all ${N} angles first.`);
       return;
     }
     setBusy(true);
     try {
       const form = new FormData();
       form.append("scanName", scanName.trim() || "Untitled Scan");
-      const uri = uris[0];
-      const ext = uri.split(".").pop()?.toLowerCase();
-      const mime =
-        ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
-      form.append("image", {
-        uri,
-        name: `face-${FACE_SCAN_CAPTURE_STEPS[0].id}.${ext === "png" ? "png" : "jpg"}`,
-        type: mime,
-      } as unknown as Blob);
+      for (let i = 0; i < N; i++) {
+        const uri = uris[i];
+        const ext = uri.split(".").pop()?.toLowerCase();
+        const mime =
+          ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+        form.append("images", {
+          uri,
+          name: `face-${FACE_SCAN_CAPTURE_STEPS[i].id}.${ext === "png" ? "png" : "jpg"}`,
+          type: mime,
+        } as unknown as Blob);
+      }
 
       const res = await apiFetch("/api/scan", token, { method: "POST", body: form });
       const data = (await res.json()) as {
@@ -105,7 +90,7 @@ export default function ScanScreen() {
         throw new Error(data.error || "Scan failed.");
       }
       setResultId(data.data.id);
-      Alert.alert("Done", "Your face scan is saved.", [
+      Alert.alert("Done", "Your kAI scan is saved.", [
         { text: "View report", onPress: () => router.push(`/(drawer)/history/${data.data!.id}`) },
         { text: "OK", style: "cancel" },
       ]);
@@ -116,21 +101,74 @@ export default function ScanScreen() {
     }
   }
 
+  if (!isComplete && useCamera) {
+    return (
+      <FiveAngleCameraStep
+        stepIndex={stepIndex}
+        onCaptured={(uri) => {
+          setUris((u) => [...u, uri]);
+          setResultId(null);
+        }}
+        onPickFromLibrary={() => void pickFromLibraryForStep()}
+        busy={busy}
+      />
+    );
+  }
+
+  if (!isComplete && !useCamera) {
+    return (
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>AI face scan</Text>
+        <Text style={styles.sub}>
+          Add {N} photos in order: {FACE_SCAN_CAPTURE_STEPS.map((s) => s.id).join(" → ")}.
+        </Text>
+        <Text style={styles.progress}>
+          Step {stepIndex + 1} of {N}: {FACE_SCAN_CAPTURE_STEPS[stepIndex]?.title ?? ""}
+        </Text>
+        <Pressable style={styles.btn} onPress={() => void pickFromLibraryForStep()}>
+          <Text style={styles.btnText}>Choose photo for this step</Text>
+        </Pressable>
+        <Pressable style={styles.linkBtn} onPress={() => setUseCamera(true)}>
+          <Text style={styles.linkText}>Use camera with guide instead</Text>
+        </Pressable>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>AI face scan</Text>
+      <Text style={styles.title}>Review & analyze</Text>
       <Text style={styles.sub}>
-        One clear front-face photo. Your report includes scores, clinical 1–5 metrics, and
-        markers for findings — same as the website.
+        {N}-angle kAI capture complete. Check each thumbnail, then run analysis.
       </Text>
 
-      <View style={styles.stepsBox}>
-        {FACE_SCAN_INSTRUCTIONS.map((line, i) => (
-          <Text key={line} style={styles.stepLine}>
-            {i + 1}. {line}
-          </Text>
+      <Pressable
+        style={styles.linkBtn}
+        onPress={() => {
+          clearPhotos();
+          setUseCamera(true);
+        }}
+      >
+        <Text style={styles.linkMuted}>Retake with camera</Text>
+      </Pressable>
+
+      <View style={styles.thumbGrid}>
+        {uris.map((u, i) => (
+          <View key={`${u}-${i}`} style={styles.thumbCell}>
+            <Image source={{ uri: u }} style={styles.thumb} resizeMode="cover" />
+            <Text style={styles.thumbCap} numberOfLines={2}>
+              {FACE_SCAN_CAPTURE_STEPS[i]?.title}
+            </Text>
+          </View>
         ))}
       </View>
+
+      <Pressable style={styles.linkBtn} onPress={removeLast}>
+        <Text style={styles.linkMuted}>Re-shoot last angle only</Text>
+      </Pressable>
+      <Pressable style={styles.linkBtn} onPress={clearPhotos}>
+        <Text style={styles.linkMuted}>Start over</Text>
+      </Pressable>
 
       <Text style={styles.label}>Scan name (optional)</Text>
       <TextInput
@@ -141,47 +179,10 @@ export default function ScanScreen() {
         placeholderTextColor="#94a3b8"
       />
 
-      <Text style={styles.progress}>
-        {isComplete
-          ? "Photo ready"
-          : `Step: ${FACE_SCAN_CAPTURE_STEPS[nextIndex]?.title ?? "Front face"}`}
-      </Text>
-
-      <View style={styles.photoActions}>
-        <Pressable
-          style={[styles.btnHalf, styles.btnCamera, busy && styles.disabled]}
-          onPress={takePhoto}
-          disabled={busy || isComplete}
-        >
-          <Text style={styles.btnText}>{isComplete ? "Photo added" : "Take photo"}</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.btnHalf, styles.btnGallery, busy && styles.disabled]}
-          onPress={pickFromLibrary}
-          disabled={busy}
-        >
-          <Text style={styles.btnTextDark}>Choose photo</Text>
-        </Pressable>
-      </View>
-
-      {uris.length > 0 ? (
-        <View style={styles.previewRow}>
-          {uris.map((u, i) => (
-            <Image key={`${u}-${i}`} source={{ uri: u }} style={styles.thumbLarge} resizeMode="cover" />
-          ))}
-        </View>
-      ) : null}
-
-      {uris.length > 0 ? (
-        <Pressable style={styles.linkBtn} onPress={clearPhotos}>
-          <Text style={styles.linkMuted}>Retake</Text>
-        </Pressable>
-      ) : null}
-
       <Pressable
-        style={[styles.btn, styles.btnPrimary, (!isComplete || busy) && styles.disabled]}
-        onPress={runScan}
-        disabled={!isComplete || busy}
+        style={[styles.btnPrimary, busy && styles.disabled]}
+        onPress={() => void runScan()}
+        disabled={busy}
       >
         {busy ? (
           <ActivityIndicator color="#fff" />
@@ -195,6 +196,10 @@ export default function ScanScreen() {
           <Text style={styles.linkText}>Open last report</Text>
         </Pressable>
       ) : null}
+
+      <Pressable style={styles.linkBtn} onPress={() => setUseCamera(false)}>
+        <Text style={styles.linkMuted}>Library-only mode (no live camera)</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -204,15 +209,13 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: "700", color: "#18181b", textAlign: "center" },
   sub: { fontSize: 14, color: "#52525b", textAlign: "center", marginTop: 8, lineHeight: 20 },
-  stepsBox: {
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: "#f4f4f5",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
+  progress: {
+    marginTop: 14,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#27272a",
+    textAlign: "center",
   },
-  stepLine: { fontSize: 13, color: "#3f3f46", marginBottom: 6, lineHeight: 18 },
   label: { fontSize: 13, color: "#52525b", marginTop: 20, marginBottom: 6 },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -222,51 +225,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#fff",
   },
-  progress: {
-    marginTop: 14,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#27272a",
-    textAlign: "center",
-  },
-  photoActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 16,
-  },
-  btnHalf: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnCamera: { backgroundColor: TEAL },
-  btnGallery: { backgroundColor: "#e4e4e7" },
   btn: {
     marginTop: 16,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: "#e4e4e7",
+    backgroundColor: TEAL,
     alignItems: "center",
   },
-  btnPrimary: { backgroundColor: TEAL },
+  btnPrimary: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: TEAL,
+    alignItems: "center",
+  },
   disabled: { opacity: 0.5 },
   btnText: { fontSize: 16, fontWeight: "600", color: "#fff" },
-  btnTextDark: { fontSize: 16, fontWeight: "600", color: "#27272a" },
-  previewRow: {
+  thumbGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
     marginTop: 16,
     justifyContent: "center",
   },
-  thumbLarge: {
-    width: 200,
-    height: 267,
+  thumbCell: { width: "30%", minWidth: 100 },
+  thumb: {
+    width: "100%",
+    aspectRatio: 3 / 4,
     borderRadius: 12,
     backgroundColor: "#e4e4e7",
   },
+  thumbCap: { fontSize: 10, color: "#52525b", marginTop: 4, textAlign: "center" },
   linkBtn: { marginTop: 12, alignItems: "center" },
   linkText: { color: "#0d9488", fontWeight: "600", fontSize: 15 },
   linkMuted: { color: "#71717a", fontWeight: "500", fontSize: 14 },

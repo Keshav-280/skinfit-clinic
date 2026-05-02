@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,11 @@ import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { apiUrl } from "@/lib/apiBase";
+
+const WEB_PORTAL_URL =
+  process.env.EXPO_PUBLIC_WEB_PORTAL_URL?.replace(/\/$/, "") ??
+  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
+  "";
 
 const REMINDER_HOURS_MAX = 168;
 const REMINDER_DEFAULT = 24;
@@ -35,6 +41,30 @@ type ProfileUser = {
   routineRemindersEnabled: boolean;
   routineAmReminderHm: string;
   routinePmReminderHm: string;
+  cycleTrackingEnabled?: boolean;
+};
+
+type SkinProfilePayload = {
+  skinDna: {
+    skinType: string | null;
+    primaryConcern: string | null;
+    sensitivityIndex: number | null;
+    uvSensitivity: string | null;
+    hormonalCorrelation: string | null;
+  };
+  lastWeekObservations: string | null;
+  priorityKnowDo: { know: string[]; do: string[] };
+  sparklines: Record<string, { values: (number | null)[]; sources: string[] }>;
+  paramLabels: Record<string, string>;
+  visits: Array<{
+    id: string;
+    visitDate: string;
+    doctorName: string;
+    purpose: string | null;
+    treatments: string | null;
+    notes: string;
+    responseRating: string | null;
+  }>;
 };
 
 export default function ProfileScreen() {
@@ -57,15 +87,23 @@ export default function ProfileScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [skinExtra, setSkinExtra] = useState<SkinProfilePayload | null>(null);
+  const [cycleTrackingEnabled, setCycleTrackingEnabled] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const { user } = await apiJson<{ user: ProfileUser }>("/api/user/profile", token, {
-        method: "GET",
-      });
+      const [profileRes, skin] = await Promise.all([
+        apiJson<{ user: ProfileUser }>("/api/user/profile", token, {
+          method: "GET",
+        }),
+        apiJson<SkinProfilePayload>("/api/patient/skin-profile", token, {
+          method: "GET",
+        }).catch(() => null),
+      ]);
+      const { user } = profileRes;
       setName(user.name);
       setEmail(user.email);
       setPhoneCountryCode(user.phoneCountryCode ?? "+91");
@@ -78,6 +116,8 @@ export default function ProfileScreen() {
       setRoutineRemindersEnabled(user.routineRemindersEnabled ?? true);
       setRoutineAmHm(user.routineAmReminderHm ?? "08:30");
       setRoutinePmHm(user.routinePmReminderHm ?? "22:00");
+      setCycleTrackingEnabled(user.cycleTrackingEnabled ?? false);
+      setSkinExtra(skin);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not load profile.");
     } finally {
@@ -138,6 +178,7 @@ export default function ProfileScreen() {
         routineRemindersEnabled,
         routineAmReminderHm: routineAmHm.trim(),
         routinePmReminderHm: routinePmHm.trim(),
+        cycleTrackingEnabled,
       };
       if (newPassword || currentPassword) {
         body.currentPassword = currentPassword;
@@ -198,6 +239,65 @@ export default function ProfileScreen() {
       <Text style={styles.sub}>Same fields as the web portal.</Text>
       {error ? <Text style={styles.err}>{error}</Text> : null}
 
+      {skinExtra ? (
+        <View style={styles.dnaCard}>
+          <Text style={styles.dnaTitle}>Skin DNA snapshot</Text>
+          <Text style={styles.dnaLine}>
+            Type: {skinExtra.skinDna.skinType ?? "—"} · Concern:{" "}
+            {skinExtra.skinDna.primaryConcern ?? "—"}
+          </Text>
+          {skinExtra.lastWeekObservations ? (
+            <Text style={styles.dnaObs}>{skinExtra.lastWeekObservations}</Text>
+          ) : null}
+          <Text style={styles.dnaSub}>3 things to do</Text>
+          {skinExtra.priorityKnowDo.do.map((t, i) => (
+            <Text key={i} style={styles.dnaBullet}>
+              {i + 1}. {t}
+            </Text>
+          ))}
+          <Text style={[styles.section, { marginTop: 14 }]}>Last scans (up to 4)</Text>
+          {Object.keys(skinExtra.sparklines).map((key) => {
+            const sp = skinExtra.sparklines[key];
+            const label = skinExtra.paramLabels[key] ?? key;
+            const pendingOnly =
+              sp?.sources?.every((s) => s === "pending") ?? false;
+            return (
+              <Text key={key} style={styles.sparkLine}>
+                {label}:{" "}
+                {pendingOnly
+                  ? "In-clinic measurement only"
+                  : (sp?.values ?? [])
+                      .map((v) => (v == null ? "—" : String(v)))
+                      .join(" · ")}
+              </Text>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {skinExtra && skinExtra.visits.length > 0 ? (
+        <View style={{ marginBottom: 16 }}>
+          <Text style={styles.section}>Recent visits</Text>
+          {skinExtra.visits.slice(0, 5).map((v) => (
+            <View key={v.id} style={styles.visitCard}>
+              <Text style={styles.visitDate}>
+                {v.visitDate} · {v.doctorName}
+              </Text>
+              {v.purpose ? <Text style={styles.visitBody}>Purpose: {v.purpose}</Text> : null}
+              {v.treatments ? (
+                <Text style={styles.visitBody}>Treatments: {v.treatments}</Text>
+              ) : null}
+              <Text style={styles.visitBody} numberOfLines={4}>
+                {v.notes}
+              </Text>
+              {v.responseRating ? (
+                <Text style={styles.visitRating}>Response: {v.responseRating}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <L label="Name" value={name} onChangeText={setName} />
       <L label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" />
       <L label="Country code" value={phoneCountryCode} onChangeText={setPhoneCountryCode} />
@@ -205,6 +305,15 @@ export default function ProfileScreen() {
       <L label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" />
       <L label="Skin type" value={skinType} onChangeText={setSkinType} />
       <L label="Primary goal" value={primaryGoal} onChangeText={setPrimaryGoal} />
+      <View style={styles.switchRow}>
+        <Text style={styles.lab}>Track menstrual cycle day in journal</Text>
+        <Switch
+          value={cycleTrackingEnabled}
+          onValueChange={setCycleTrackingEnabled}
+          trackColor={{ false: "#d4d4d8", true: "#99f6e4" }}
+          thumbColor={cycleTrackingEnabled ? "#0d9488" : "#f4f4f5"}
+        />
+      </View>
       <L
         label={`Visit reminder (hours before, 0=off, max ${REMINDER_HOURS_MAX})`}
         value={reminderHours}
@@ -261,6 +370,15 @@ export default function ProfileScreen() {
       <Pressable style={[styles.saveBtn, saving && styles.saveBtnDis]} onPress={onSave} disabled={saving}>
         <Text style={styles.saveBtnText}>{saving ? "Saving…" : "Save profile"}</Text>
       </Pressable>
+
+      {WEB_PORTAL_URL ? (
+        <Pressable
+          style={styles.webPortalBtn}
+          onPress={() => void Linking.openURL(WEB_PORTAL_URL)}
+        >
+          <Text style={styles.webPortalBtnText}>Open web portal (same account)</Text>
+        </Pressable>
+      ) : null}
 
       <Pressable
         style={styles.outBtn}
@@ -340,6 +458,16 @@ const styles = StyleSheet.create({
   },
   saveBtnDis: { opacity: 0.6 },
   saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  webPortalBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#f0fdfa",
+    borderWidth: 1,
+    borderColor: "rgba(13,148,136,0.35)",
+    alignItems: "center",
+  },
+  webPortalBtnText: { color: "#0f766e", fontWeight: "700", fontSize: 15 },
   outBtn: {
     marginTop: 16,
     paddingVertical: 14,
@@ -367,4 +495,34 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   tzBtnText: { fontSize: 14, fontWeight: "600", color: "#0f766e" },
+  dnaCard: {
+    backgroundColor: "#ecfeff",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(13,148,136,0.25)",
+  },
+  dnaTitle: { fontSize: 16, fontWeight: "800", color: "#134e4a" },
+  dnaLine: { marginTop: 8, fontSize: 14, color: "#0f766e", lineHeight: 20 },
+  dnaObs: { marginTop: 10, fontSize: 13, color: "#334155", lineHeight: 20 },
+  dnaSub: { marginTop: 12, fontSize: 13, fontWeight: "700", color: "#18181b" },
+  dnaBullet: { marginTop: 4, fontSize: 13, color: "#475569" },
+  visitCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+  },
+  visitDate: { fontSize: 13, fontWeight: "800", color: "#18181b" },
+  visitBody: { marginTop: 6, fontSize: 13, color: "#52525b", lineHeight: 18 },
+  visitRating: { marginTop: 8, fontSize: 12, fontWeight: "700", color: "#0d9488" },
+  sparkLine: {
+    fontSize: 12,
+    color: "#475569",
+    marginTop: 4,
+    fontVariant: ["tabular-nums"],
+  },
 });

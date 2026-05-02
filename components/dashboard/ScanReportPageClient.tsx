@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { SkinScanReportBody } from "./SkinScanReportBody";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
+import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 
 export interface ScanReportPageClientProps {
   scanId: number;
@@ -23,6 +24,7 @@ export interface ScanReportPageClientProps {
   scanDateIso: string;
   autoDownload?: boolean;
   autoCloseAfterDownload?: boolean;
+  serverTracker?: PatientTrackerReport | null;
 }
 
 export function ScanReportPageClient({
@@ -39,6 +41,7 @@ export function ScanReportPageClient({
   scanDateIso,
   autoDownload = false,
   autoCloseAfterDownload = false,
+  serverTracker,
 }: ScanReportPageClientProps) {
   const router = useRouter();
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -136,6 +139,7 @@ export function ScanReportPageClient({
         <SkinScanReportBody
           scanId={scanId}
           defaultShareEmail={userEmail}
+          serverTracker={serverTracker}
           userName={userName}
           imageUrl={imageUrl}
           faceCaptureGallery={faceCaptureGallery}

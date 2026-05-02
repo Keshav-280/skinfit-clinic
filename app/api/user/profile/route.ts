@@ -74,6 +74,7 @@ export async function PATCH(req: Request) {
   let nextRoutineRemindersEnabled = user.routineRemindersEnabled ?? true;
   let nextRoutineAmHm = user.routineAmReminderHm ?? "08:30";
   let nextRoutinePmHm = user.routinePmReminderHm ?? "22:00";
+  let nextCycleTrackingEnabled = user.cycleTrackingEnabled ?? false;
   let resetAmLastSent = false;
   let resetPmLastSent = false;
 
@@ -244,6 +245,16 @@ export async function PATCH(req: Request) {
     }
   }
 
+  if ("cycleTrackingEnabled" in body) {
+    if (typeof body.cycleTrackingEnabled !== "boolean") {
+      return NextResponse.json(
+        { message: "Invalid cycle tracking setting." },
+        { status: 400 }
+      );
+    }
+    nextCycleTrackingEnabled = body.cycleTrackingEnabled;
+  }
+
   if ("routinePmReminderHm" in body) {
     if (
       typeof body.routinePmReminderHm !== "string" ||
@@ -313,6 +324,7 @@ export async function PATCH(req: Request) {
       routineRemindersEnabled: nextRoutineRemindersEnabled,
       routineAmReminderHm: nextRoutineAmHm,
       routinePmReminderHm: nextRoutinePmHm,
+      cycleTrackingEnabled: nextCycleTrackingEnabled,
       routineAmReminderLastSentYmd: resetAmLastSent
         ? null
         : user.routineAmReminderLastSentYmd,
@@ -359,6 +371,7 @@ export async function PATCH(req: Request) {
       routineRemindersEnabled: nextRoutineRemindersEnabled,
       routineAmReminderHm: nextRoutineAmHm,
       routinePmReminderHm: nextRoutinePmHm,
+      cycleTrackingEnabled: nextCycleTrackingEnabled,
     },
     ...(nativeClient ? { token } : {}),
   });

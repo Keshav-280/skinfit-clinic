@@ -40,6 +40,9 @@ export function ProfileForm({ initial }: Props) {
   const [routinePmReminderHm, setRoutinePmReminderHm] = useState(
     initial.routinePmReminderHm ?? "22:00"
   );
+  const [cycleTrackingEnabled, setCycleTrackingEnabled] = useState(
+    initial.cycleTrackingEnabled ?? false
+  );
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -112,6 +115,7 @@ export function ProfileForm({ initial }: Props) {
       body.routineRemindersEnabled = routineRemindersEnabled;
       body.routineAmReminderHm = routineAmReminderHm;
       body.routinePmReminderHm = routinePmReminderHm;
+      body.cycleTrackingEnabled = cycleTrackingEnabled;
 
       if (newPassword || currentPassword) {
         body.currentPassword = currentPassword;
@@ -163,6 +167,9 @@ export function ProfileForm({ initial }: Props) {
       }
       if (typeof data.user?.routinePmReminderHm === "string") {
         setRoutinePmReminderHm(data.user.routinePmReminderHm);
+      }
+      if (typeof data.user?.cycleTrackingEnabled === "boolean") {
+        setCycleTrackingEnabled(data.user.cycleTrackingEnabled);
       }
       router.refresh();
       setTimeout(() => setSaved(false), 3000);
@@ -324,6 +331,18 @@ export function ProfileForm({ initial }: Props) {
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
             />
           </div>
+          <label className="flex cursor-pointer items-center gap-3 pt-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-zinc-300 text-[#6B8E8E] focus:ring-[#6B8E8E]"
+              checked={cycleTrackingEnabled}
+              onChange={(e) => setCycleTrackingEnabled(e.target.checked)}
+              disabled={loading}
+            />
+            <span className="text-sm font-medium text-zinc-800">
+              Track menstrual cycle day in journal
+            </span>
+          </label>
         </div>
       </section>
 

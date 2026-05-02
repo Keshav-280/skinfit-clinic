@@ -8,6 +8,15 @@ import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
 type Mode = "signin" | "register";
 
+function postAuthDestination(
+  next: string | null,
+  onboardingComplete: boolean | undefined
+): string {
+  if (next && next.startsWith("/")) return next;
+  if (onboardingComplete === false) return "/onboarding";
+  return "/dashboard";
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,6 +70,7 @@ export function LoginForm() {
       const data = (await res.json().catch(() => ({}))) as {
         message?: unknown;
         error?: unknown;
+        user?: { onboardingComplete?: boolean };
       };
       if (!res.ok) {
         const fromApi =
@@ -77,8 +87,9 @@ export function LoginForm() {
         );
         return;
       }
-      const next = searchParams.get("next");
-      router.push(next && next.startsWith("/") ? next : "/dashboard");
+      router.push(
+        postAuthDestination(searchParams.get("next"), data.user?.onboardingComplete)
+      );
       router.refresh();
     } catch {
       setError("Network error. Check your connection and try again.");
@@ -107,7 +118,10 @@ export function LoginForm() {
           password,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        user?: { onboardingComplete?: boolean };
+      };
       if (!res.ok) {
         setError(
           typeof data.message === "string"
@@ -116,8 +130,9 @@ export function LoginForm() {
         );
         return;
       }
-      const next = searchParams.get("next");
-      router.push(next && next.startsWith("/") ? next : "/dashboard");
+      router.push(
+        postAuthDestination(searchParams.get("next"), data.user?.onboardingComplete)
+      );
       router.refresh();
     } catch {
       setError("Network error. Check your connection and try again.");

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
+import { ProfileSkinDnaSection } from "@/components/dashboard/ProfileSkinDnaSection";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
 
 export default async function ProfilePage() {
@@ -13,9 +14,11 @@ export default async function ProfilePage() {
           Your profile
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Update how you appear across the private portal.
+          Same account as the mobile app — Skin DNA, visits, and settings stay in
+          sync.
         </p>
       </div>
+      <ProfileSkinDnaSection />
       <ProfileForm initial={user} />
     </div>
   );
