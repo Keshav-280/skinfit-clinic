@@ -5,13 +5,14 @@
  * 1. Extensions → Apps Script → paste this file (or merge doPost + helpers).
  * 2. Project Settings → Script properties:
  *    - SKINFIT_SECRET = same value as CLINIC_SHEET_WEBHOOK_SECRET (required)
+ *    - SKINFIT_SHEET_NAME = tab name with CRM headers (optional; defaults to SHEET_NAME in Code.gs)
  *    - SKINFIT_SPREADSHEET_ID = spreadsheet id (required if this script is NOT “bound” to the sheet)
  *      From URL: https://docs.google.com/spreadsheets/d/THIS_PART/edit
  *    - SKINFIT_DRIVE_FOLDER_ID = Google Drive folder ID from the folder URL (recommended)
  * 2b. Project Settings → check “Show appsscript.json manifest in editor” and merge oauthScopes
- *     from `scripts/appsscript.json` (Sheets + Drive + script.scriptapp for triggers). Save,
- *     then run testAuthorizeDrive() once and accept ALL permissions. Re-authorize after any
- *     scope change before running createCrmSheetEditTrigger().
+ *     from `scripts/appsscript.json` (Sheets + Drive + script.scriptapp + script.external_request
+ *     for UrlFetch to Skinfit). Save, then run testAuthorizeDrive() once and accept ALL permissions.
+ *     Re-authorize after any scope change before createCrmSheetEditTrigger() / crmPushActiveRow().
  *     (Names ending in _ are hidden from the Run menu in Apps Script.)
  * 3. Deploy → New deployment → Web app:
  *    - Execute as: Me
@@ -68,7 +69,13 @@
  * once (installable onEdit). Edits to CRM columns Y–AC and AF trigger a push. Optional: time trigger on crmTickPushPending().
  */
 
-var SHEET_NAME = 'skinnfit-test-appointments'; // change to your tab name, or use first sheet
+var SHEET_NAME = 'skinnfit-test-appointments'; // default tab; override with Script property SKINFIT_SHEET_NAME
+
+function getCrmSheetName_() {
+  var p = PropertiesService.getScriptProperties().getProperty('SKINFIT_SHEET_NAME');
+  if (p && String(p).trim()) return String(p).trim();
+  return SHEET_NAME;
+}
 
 function doPost(e) {
   try {
@@ -153,7 +160,7 @@ function doPostHandler_(e) {
   }
 
   var ss = getTargetSpreadsheet_();
-  var sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
   ensureHeaderRowForSheet_(sheet);
 
   if (data.kind === 'skinfit_row_sync') {
@@ -279,7 +286,7 @@ function jsonOut(obj, statusCode) {
  */
 function ensureHeaderRow() {
   var ss = getTargetSpreadsheet_();
-  var sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
   ensureHeaderRowForSheet_(sheet);
 }
 
@@ -289,7 +296,7 @@ function ensureHeaderRow() {
  */
 function testEnsureHeaderRow() {
   ensureHeaderRow();
-  Logger.log('Header row ensured for sheet: ' + SHEET_NAME);
+  Logger.log('Header row ensured for sheet: ' + getCrmSheetName_());
 }
 
 /**
@@ -512,15 +519,20 @@ function setCellByHeader_(sheet, rowNum, headerMap, name, fallback1Based, value)
 
 /**
  * Installable onEdit — create trigger once via createCrmSheetEditTrigger().
+ * Fires when the edit overlaps CRM columns Y–AF (25–32), including row-wide pastes from col A.
  */
 function onEditInstallable_(e) {
   if (!e || !e.range) return;
   var sh = e.range.getSheet();
-  var target = sh.getParent().getSheetByName(SHEET_NAME) || sh.getParent().getSheets()[0];
-  if (sh.getSheetId() !== target.getSheetId()) return;
+  ensureHeaderRowForSheet_(sh);
+  var map = buildHeaderIndexMap_(sh);
+  if (!map['crmvisitaction']) return;
 
-  var col = e.range.getColumn();
-  if (col < 25 || col > 32) return;
+  var startCol = e.range.getColumn();
+  var endCol = e.range.getLastColumn();
+  var lo = 25;
+  var hi = 32;
+  if (endCol < lo || startCol > hi) return;
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) return;
@@ -558,10 +570,24 @@ function createCrmSheetEditTrigger() {
   Logger.log('Trigger created: onEdit → onEditInstallable_');
 }
 
+/**
+ * Debug / fallback: select any cell on a data row (2+), then Run → crmPushActiveRow.
+ * Writes crmSyncStatus / crmSyncDetail even when onEdit did not fire (e.g. bulk paste quirks).
+ */
+function crmPushActiveRow() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Open the spreadsheet.');
+  var sh = ss.getActiveSheet();
+  var r = ss.getActiveRange().getRow();
+  if (r < 2) throw new Error('Select row 2 or below.');
+  maybePushRowToSkinfit_(sh, r);
+  Logger.log('crmPushActiveRow finished for row ' + r);
+}
+
 /** Optional: time-driven (every 5–10 min) to pick up rows if onEdit missed. */
 function crmTickPushPending() {
   var ss = getTargetSpreadsheet_();
-  var sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
   ensureHeaderRowForSheet_(sheet);
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return;

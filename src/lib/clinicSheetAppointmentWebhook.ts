@@ -40,13 +40,24 @@ export type ClinicSheetAppointmentUpdate = {
 function parseOptionalSlotEndHm(
   startUtc: Date,
   raw: string | null | undefined
-): { ok: true; hm: string | null } | { ok: false } {
+): { ok: true; hm: string | null } | { ok: false; reason: string } {
   const trimmed = raw?.trim();
   if (!trimmed) return { ok: true, hm: null };
   const n = normalizeSlotHm(trimmed);
-  if (!n) return { ok: false };
+  if (!n) {
+    return {
+      ok: false,
+      reason:
+        "slot_end_bad_format_use_HH_mm_24h_e_g_1130_not_11_30am_or_text_from_wrong_column",
+    };
+  }
   const { hm: startHm } = utcInstantToClinicWallYmdHm(startUtc);
-  if (!isValidSlotEndAfterStart(startHm, n)) return { ok: false };
+  if (!isValidSlotEndAfterStart(startHm, n)) {
+    return {
+      ok: false,
+      reason: `slot_end_must_be_after_start_${startHm}_got_${n}`,
+    };
+  }
   return { ok: true, hm: n };
 }
 
@@ -137,7 +148,9 @@ export async function applyClinicSheetAppointmentUpdates(
         }
         const parsedEnd = parseOptionalSlotEndHm(dt, u.confirmedSlotEndTimeHm);
         if (!parsedEnd.ok) {
-          errors.push("invalid_slot_end");
+          errors.push(
+            "reason" in parsedEnd ? parsedEnd.reason : "invalid_slot_end"
+          );
           continue;
         }
         const slotEndHm = parsedEnd.hm;
