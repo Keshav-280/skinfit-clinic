@@ -62,10 +62,11 @@ function initialScheduleTabFromSearch(
 export default async function SchedulesPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
+  const sp = (await searchParams) ?? undefined;
 
   const [digestRow] = await db
     .select({ digest: users.scheduleCrmDigestAt })
@@ -266,7 +267,7 @@ export default async function SchedulesPage({
   const initialTreatmentEvents = [...fromSchedule].sort(cmpCalendarEventRows);
   const initialAppointmentEvents = [...fromBookings].sort(cmpCalendarEventRows);
 
-  const initialScheduleTab = initialScheduleTabFromSearch(searchParams);
+  const initialScheduleTab = initialScheduleTabFromSearch(sp);
 
   return (
     <div className="space-y-6">

@@ -1,39 +1,21 @@
-/**
- * Google Apps Script `/exec` often returns **302** to `script.googleusercontent.com`.
- * Default `fetch` follow can turn POST into GET and the script never runs — mirror silently fails.
- * We re-POST to each `Location` until a non-3xx response.
- */
-async function postGoogleAppsScriptJson(
-  startUrl: string,
-  secret: string,
-  jsonBody: string
-): Promise<Response> {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-    "x-skinfit-sheet-secret": secret,
-  };
-  let url = startUrl;
-  for (let hop = 0; hop < 8; hop++) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: jsonBody,
-      redirect: "manual",
-    });
-    if (res.status >= 300 && res.status < 400) {
-      const loc = res.headers.get("location");
-      if (!loc) return res;
-      url = new URL(loc, url).href;
-      continue;
-    }
-    return res;
+import { postGoogleAppsScriptWebAppJson } from "@/src/lib/googleAppsScriptWebAppFetch";
+
+type AppsScriptResponseBody = {
+  ok?: unknown;
+  error?: unknown;
+  message?: unknown;
+};
+
+function parseAppsScriptBody(txt: string): AppsScriptResponseBody | null {
+  const t = txt.trim();
+  if (!t.startsWith("{")) return null;
+  try {
+    const v = JSON.parse(t) as unknown;
+    if (v && typeof v === "object") return v as AppsScriptResponseBody;
+    return null;
+  } catch {
+    return null;
   }
-  return await fetch(url, {
-    method: "POST",
-    headers,
-    body: jsonBody,
-    redirect: "manual",
-  });
 }
 
 export type ClinicSheetMirrorResult = {
@@ -104,14 +86,18 @@ export async function notifyClinicSheetRowMirrored(opts: {
       patientClinicNote: opts.patientClinicNote ?? null,
       patientClinicNoteAt: opts.patientClinicNoteAt ?? null,
     });
-    const res = await postGoogleAppsScriptJson(
+    const res = await postGoogleAppsScriptWebAppJson(
       outbound.toString(),
       secret,
       jsonBody
     );
     const txt = await res.text().catch(() => "");
     if (!res.ok) {
-      console.warn("[clinicSheetRowSync] mirror HTTP", res.status, txt.slice(0, 500));
+      console.warn(
+        "[clinicSheetRowSync] mirror HTTP",
+        res.status,
+        txt.slice(0, 500)
+      );
       return {
         ok: false,
         skipped: false,
@@ -119,7 +105,51 @@ export async function notifyClinicSheetRowMirrored(opts: {
         detail: txt.slice(0, 500),
       };
     }
-    return { ok: true, skipped: false, httpStatus: res.status, detail: txt.slice(0, 200) };
+    /**
+     * Apps Script wraps `doPost` in try/catch and answers **HTTP 200** even when the script throws
+     * (`{"ok": false, "error": "script_exception", ...}`). Without parsing the body we’d wrongly
+     * report `sheetMirrorOk: true` and the patient note silently never lands in the sheet.
+     */
+    const parsed = parseAppsScriptBody(txt);
+    if (parsed && parsed.ok === false) {
+      const errMsg =
+        (typeof parsed.message === "string" && parsed.message) ||
+        (typeof parsed.error === "string" && parsed.error) ||
+        "apps_script_returned_ok_false";
+      console.warn(
+        "[clinicSheetRowSync] mirror body ok:false",
+        errMsg,
+        txt.slice(0, 300)
+      );
+      return {
+        ok: false,
+        skipped: false,
+        httpStatus: res.status,
+        detail: errMsg,
+      };
+    }
+    if (!parsed) {
+      // 200 + HTML usually means we hit Google's UCS error page (e.g. wrong /exec id).
+      const looksLikeHtml = /<html|<!doctype/i.test(txt);
+      if (looksLikeHtml) {
+        console.warn(
+          "[clinicSheetRowSync] mirror returned HTML instead of JSON — wrong web-app URL or stale deployment",
+          txt.slice(0, 300)
+        );
+        return {
+          ok: false,
+          skipped: false,
+          httpStatus: res.status,
+          detail: "non_json_html_response",
+        };
+      }
+    }
+    return {
+      ok: true,
+      skipped: false,
+      httpStatus: res.status,
+      detail: txt.slice(0, 200),
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.warn("[clinicSheetRowSync] mirror failed", e);

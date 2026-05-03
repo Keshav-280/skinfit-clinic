@@ -510,8 +510,9 @@ function handleSkinfitRowSync_(data, sheet) {
   var nowIso = new Date().toISOString();
 
   sheet.getRange(rowNum, colStatus).setValue(st);
+  // getRange(row, col, numRows, numCols) — write 1 row x 4 mirror columns.
   sheet
-    .getRange(rowNum, cMirrorSt, rowNum, cMirrorAt)
+    .getRange(rowNum, cMirrorSt, 1, 4)
     .setValues([[st, iso, notes, nowIso]]);
 
   var cMirrorEnd = map['skinfitmirrorslotendhm'] || 33;

@@ -6,6 +6,7 @@ import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorsNewScheduleRequest } from "@/src/lib/clinicSheetAppointmentWebhook";
 import { getDefaultClinicDoctorId } from "@/src/lib/defaultClinicDoctor";
 import { dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/date-only";
+import { postGoogleAppsScriptWebAppJson } from "@/src/lib/googleAppsScriptWebAppFetch";
 import { publicAppOriginFromRequest } from "@/src/lib/publicAppOrigin";
 
 function formatPatientPhoneForCrm(
@@ -263,14 +264,11 @@ export async function POST(req: Request) {
         sheetRelayOmittedImages = true;
       }
 
-      let relayRes = await fetch(outbound.toString(), {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-skinfit-sheet-secret": outboundSecret,
-        },
-        body: relayBodyStr,
-      });
+      let relayRes = await postGoogleAppsScriptWebAppJson(
+        outbound.toString(),
+        outboundSecret,
+        relayBodyStr
+      );
       let relayBodyText = await relayRes.text().catch(() => "");
       let relayJson = parseSheetRelayJson(relayBodyText);
 
@@ -282,14 +280,11 @@ export async function POST(req: Request) {
         sheetRelayOmittedImages = true;
         relayBodyPayload = { ...relayPayload, attachments: [] };
         relayBodyStr = JSON.stringify(relayBodyPayload);
-        relayRes = await fetch(outbound.toString(), {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-skinfit-sheet-secret": outboundSecret,
-          },
-          body: relayBodyStr,
-        });
+        relayRes = await postGoogleAppsScriptWebAppJson(
+          outbound.toString(),
+          outboundSecret,
+          relayBodyStr
+        );
         relayBodyText = await relayRes.text().catch(() => "");
         relayJson = parseSheetRelayJson(relayBodyText);
       }
