@@ -85,7 +85,7 @@ export default async function SchedulesPage({
     );
   }
 
-  const [eventRows, bookedBase, pendingRows] = await Promise.all([
+  const [eventRows, bookedBase, pendingRows, closedRows] = await Promise.all([
     db.query.scheduleEvents.findMany({
       where: eq(scheduleEvents.userId, userId),
       orderBy: [
@@ -115,7 +115,7 @@ export default async function SchedulesPage({
       .where(
         and(
           eq(appointments.userId, userId),
-          inArray(appointments.status, ["scheduled", "completed"])
+          inArray(appointments.status, ["scheduled", "completed", "cancelled"])
         )
       ),
     db.query.patientScheduleRequests.findMany({
@@ -124,6 +124,14 @@ export default async function SchedulesPage({
         eq(patientScheduleRequests.status, "pending")
       ),
       orderBy: [desc(patientScheduleRequests.createdAt)],
+      limit: 24,
+    }),
+    db.query.patientScheduleRequests.findMany({
+      where: and(
+        eq(patientScheduleRequests.patientId, userId),
+        inArray(patientScheduleRequests.status, ["cancelled", "declined"])
+      ),
+      orderBy: [desc(patientScheduleRequests.updatedAt)],
       limit: 24,
     }),
   ]);
@@ -161,6 +169,7 @@ export default async function SchedulesPage({
   const fromBookings = bookedRows.map((r) => {
     const { ymd, hm } = utcInstantToClinicWallYmdHm(r.dateTime);
     const isDone = r.status === "completed";
+    const isCancelled = r.status === "cancelled";
     const baseTitle = appointmentCalendarTitle(
       appointmentTypeLabel(r.type),
       r.doctorName ?? ""
@@ -172,14 +181,24 @@ export default async function SchedulesPage({
       eventTimeHm: hm,
       eventSlotEndTimeHm: r.slotEndTimeHm ?? null,
       title: tip
-        ? `${baseTitle} · ${tip.slice(0, 120)}${tip.length > 120 ? "…" : ""}`
-        : baseTitle,
+        ? `${isCancelled ? "Cancelled — " : ""}${baseTitle} · ${tip.slice(0, 120)}${tip.length > 120 ? "…" : ""}`
+        : `${isCancelled ? "Cancelled — " : ""}${baseTitle}`,
       completed: isDone,
+      cancelled: isCancelled,
       crmPatientMessage: tip,
     };
   });
 
   const pendingScheduleRequests = pendingRows.map((r) => ({
+    id: r.id,
+    preferredDateYmd: ymdFromDateOnly(r.preferredDate),
+    issue: r.issue,
+    daysAffected: r.daysAffected,
+    timePreferences: r.timePreferences,
+    attachmentsCount: Array.isArray(r.attachments) ? r.attachments.length : 0,
+    status: r.status as string,
+  }));
+  const closedScheduleRequests = closedRows.map((r) => ({
     id: r.id,
     preferredDateYmd: ymdFromDateOnly(r.preferredDate),
     issue: r.issue,
@@ -201,6 +220,7 @@ export default async function SchedulesPage({
         initialTreatmentEvents={initialTreatmentEvents}
         initialAppointmentEvents={initialAppointmentEvents}
         pendingScheduleRequests={pendingScheduleRequests}
+        closedScheduleRequests={closedScheduleRequests}
         initialScheduleTab={initialScheduleTab}
       />
     </div>

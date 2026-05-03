@@ -39,6 +39,7 @@ export type ScheduleEventRow = {
   eventSlotEndTimeHm?: string | null;
   title: string;
   completed: boolean;
+  cancelled?: boolean;
   /** Pending visit requests only — used for “View photos”. */
   attachmentsCount?: number;
   /** Confirmed bookings: CRM / prep note from sheet webhook (`patientMessage`). */
@@ -278,11 +279,13 @@ export default function SchedulesPageClient({
   initialTreatmentEvents,
   initialAppointmentEvents,
   pendingScheduleRequests,
+  closedScheduleRequests,
   initialScheduleTab = "appointments",
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
   initialAppointmentEvents: ScheduleEventRow[];
   pendingScheduleRequests: PendingScheduleRequestRow[];
+  closedScheduleRequests: PendingScheduleRequestRow[];
   initialScheduleTab?: ScheduleTab;
 }) {
   const router = useRouter();
@@ -350,10 +353,26 @@ export default function SchedulesPageClient({
   }, []);
 
   const appointmentCalendarEvents = useMemo(() => {
-    return [...initialAppointmentEvents, ...pendingToSyntheticEvents(pendingScheduleRequests)].sort(
-      compareScheduleEvents
-    );
-  }, [initialAppointmentEvents, pendingScheduleRequests]);
+    const closed = closedScheduleRequests.map((r) => {
+      const declined = String(r.status || "").toLowerCase() === "declined";
+      const label = declined ? "Declined request" : "Cancelled";
+      return {
+        id: `reqclosed:${r.id}`,
+        eventDateYmd: r.preferredDateYmd,
+        eventTimeHm: null,
+        title: `${label} — ${(r.issue?.trim() || "Skin concern")}: ${r.timePreferences.slice(0, 72)}${
+          r.timePreferences.length > 72 ? "…" : ""
+        }`,
+        completed: false,
+        cancelled: true,
+      } satisfies ScheduleEventRow;
+    });
+    return [
+      ...initialAppointmentEvents,
+      ...pendingToSyntheticEvents(pendingScheduleRequests),
+      ...closed,
+    ].sort(compareScheduleEvents);
+  }, [initialAppointmentEvents, pendingScheduleRequests, closedScheduleRequests]);
 
   const activeCalendarEvents =
     scheduleTab === "treatment" ? initialTreatmentEvents : appointmentCalendarEvents;
@@ -727,12 +746,15 @@ export default function SchedulesPageClient({
                       event.eventSlotEndTimeHm
                     );
                     const done = event.completed;
+                    const cancelled = event.cancelled === true;
                     const pending = event.id.startsWith("req:");
                     return (
                       <div
                         key={event.id}
                         className={`relative z-0 mt-1 rounded-lg border px-2 py-1.5 ${
-                          pending
+                          cancelled
+                            ? "border-rose-300/90 bg-rose-50/95"
+                            : pending
                             ? "border-amber-200/90 bg-amber-50/90"
                             : done
                               ? "border-sky-200/90 bg-sky-50/90"
@@ -743,7 +765,9 @@ export default function SchedulesPageClient({
                         {timeLabel ? (
                           <p
                             className={`text-[10px] font-bold tabular-nums ${
-                              pending
+                              cancelled
+                                ? "text-rose-900"
+                                : pending
                                 ? "text-amber-900"
                                 : done
                                   ? "text-sky-900"
@@ -755,7 +779,9 @@ export default function SchedulesPageClient({
                         ) : null}
                         <p
                           className={`line-clamp-3 break-words text-[10px] font-medium leading-snug ${
-                            pending
+                            cancelled
+                              ? "text-rose-950"
+                              : pending
                               ? "text-amber-950"
                               : done
                                 ? "text-sky-900"
@@ -775,6 +801,11 @@ export default function SchedulesPageClient({
                         {pending ? (
                           <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-900/90">
                             Pending
+                          </p>
+                        ) : null}
+                        {cancelled ? (
+                          <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-900/90">
+                            Cancelled
                           </p>
                         ) : null}
                         {pending && (event.attachmentsCount ?? 0) > 0 ? (
@@ -842,6 +873,7 @@ export default function SchedulesPageClient({
             <div className="space-y-2">
               {listEvents.map((event) => {
                 const pending = event.id.startsWith("req:");
+                const cancelled = event.cancelled === true;
                 return (
                   <div
                     key={event.id}
@@ -849,7 +881,9 @@ export default function SchedulesPageClient({
                   >
                     <span
                       className={`shrink-0 text-xs font-semibold leading-snug sm:max-w-[13rem] sm:basis-[13rem] ${
-                        pending
+                        cancelled
+                          ? "text-rose-800"
+                          : pending
                           ? "text-amber-800"
                           : event.completed
                             ? "text-sky-800"
@@ -886,6 +920,11 @@ export default function SchedulesPageClient({
                           Pending
                         </span>
                       ) : null}
+                      {cancelled ? (
+                        <span className="shrink-0 rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-950">
+                          Cancelled
+                        </span>
+                      ) : null}
                       {event.completed ? (
                         <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-900">
                           Completed
@@ -909,6 +948,7 @@ export default function SchedulesPageClient({
                         </button>
                       ) : null}
                       {!pending &&
+                      !cancelled &&
                       !event.completed &&
                       event.id.startsWith("appt:") ? (
                         <button

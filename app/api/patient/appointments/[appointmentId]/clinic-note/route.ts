@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { appointments, patientScheduleRequests } from "@/src/db/schema";
@@ -86,10 +86,31 @@ export async function POST(
     .where(eq(patientScheduleRequests.appointmentId, appt.id))
     .limit(1);
 
-  const linkSafe =
+  let linkSafe =
     link && link.patientId === userId
       ? link
       : null;
+  if (!linkSafe) {
+    const [fallback] = await db
+      .select({
+        id: patientScheduleRequests.id,
+        patientId: patientScheduleRequests.patientId,
+        externalRef: patientScheduleRequests.externalRef,
+        crmPatientMessage: patientScheduleRequests.crmPatientMessage,
+      })
+      .from(patientScheduleRequests)
+      .where(
+        and(
+          eq(patientScheduleRequests.patientId, userId),
+          eq(patientScheduleRequests.status, "confirmed")
+        )
+      )
+      .orderBy(desc(patientScheduleRequests.updatedAt))
+      .limit(1);
+    if (fallback) {
+      linkSafe = fallback;
+    }
+  }
   if (!linkSafe) {
     console.warn(
       "[clinic-note] sheet mirror skipped: no patient_schedule_requests row for appointment",

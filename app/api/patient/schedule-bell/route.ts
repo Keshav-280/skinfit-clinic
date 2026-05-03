@@ -1,10 +1,10 @@
-import { and, count, eq, gt, isNotNull } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { patientScheduleRequests, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 
-/** Unread confirmed visits since last digest (opening Schedules clears digest on leave). */
+/** Unread schedule updates (confirm/cancel/decline) since last digest. */
 export async function GET(req: Request) {
   const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
@@ -25,9 +25,13 @@ export async function GET(req: Request) {
     .where(
       and(
         eq(patientScheduleRequests.patientId, userId),
-        eq(patientScheduleRequests.status, "confirmed"),
-        isNotNull(patientScheduleRequests.confirmedAt),
-        gt(patientScheduleRequests.confirmedAt, digest)
+        inArray(patientScheduleRequests.status, [
+          "confirmed",
+          "cancelled",
+          "declined",
+        ]),
+        isNotNull(patientScheduleRequests.updatedAt),
+        gt(patientScheduleRequests.updatedAt, digest)
       )
     );
 

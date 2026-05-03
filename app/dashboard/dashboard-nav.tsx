@@ -84,11 +84,19 @@ export function DashboardNav() {
     };
     void tick();
     const onBellRefresh = () => void tick();
+    const onFocus = () => void tick();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
     window.addEventListener(SCHEDULE_BELL_REFRESH_EVENT, onBellRefresh);
-    const id = window.setInterval(() => void tick(), 60_000);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    const id = window.setInterval(() => void tick(), 15_000);
     return () => {
       cancelled = true;
       window.removeEventListener(SCHEDULE_BELL_REFRESH_EVENT, onBellRefresh);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
       window.clearInterval(id);
     };
   }, [pathname]);
