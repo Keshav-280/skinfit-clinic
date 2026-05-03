@@ -549,6 +549,10 @@ export const chatThreads = pgTable(
     patientClearedChatAt: timestamp("patient_cleared_chat_at", {
       withTimezone: true,
     }),
+    /** Doctor portal: last time staff opened this thread from inbox / patient page; hides bell until a newer patient message. */
+    doctorPortalLastReadAt: timestamp("doctor_portal_last_read_at", {
+      withTimezone: true,
+    }),
   }
 );
 

@@ -22,6 +22,10 @@ export type ClinicSheetAppointmentUpdate = {
   action: "confirm" | "cancel" | "decline";
   /** Row id from Google Sheet / CRM */
   externalRef?: string | null;
+  /**
+   * `patient_schedule_requests.id` from sheet column `requestId` (preferred when row order changed).
+   */
+  scheduleRequestId?: string | null;
   patientEmail?: string | null;
   patientId?: string | null;
   /** ISO 8601 datetime when clinic confirms */
@@ -88,8 +92,19 @@ async function resolvePatientId(
 
 async function findRequestForUpdate(
   patientId: string,
-  externalRef: string | null | undefined
+  externalRef: string | null | undefined,
+  scheduleRequestId: string | null | undefined
 ) {
+  const sid = scheduleRequestId?.trim();
+  if (sid) {
+    const byId = await db.query.patientScheduleRequests.findFirst({
+      where: and(
+        eq(patientScheduleRequests.id, sid),
+        eq(patientScheduleRequests.patientId, patientId)
+      ),
+    });
+    if (byId) return byId;
+  }
   if (externalRef?.trim()) {
     const row = await db.query.patientScheduleRequests.findFirst({
       where: and(
@@ -127,7 +142,11 @@ export async function applyClinicSheetAppointmentUpdates(
         continue;
       }
 
-      const reqRow = await findRequestForUpdate(patientId, u.externalRef);
+      const reqRow = await findRequestForUpdate(
+        patientId,
+        u.externalRef,
+        u.scheduleRequestId
+      );
       if (!reqRow) {
         errors.push(`no_matching_request:${patientId}`);
         continue;

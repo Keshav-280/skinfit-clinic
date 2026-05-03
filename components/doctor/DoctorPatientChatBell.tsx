@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT } from "@/src/lib/doctorPatientChatInbox";
 
 type ChatItem = {
   patientId: string;
@@ -14,6 +16,7 @@ type ChatItem = {
 };
 
 export function DoctorPatientChatBell() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<ChatItem[]>([]);
@@ -41,7 +44,12 @@ export function DoctorPatientChatBell() {
   useEffect(() => {
     void load();
     const id = window.setInterval(() => void load(), 45_000);
-    return () => window.clearInterval(id);
+    const onRefresh = () => void load();
+    window.addEventListener(DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT, onRefresh);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener(DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT, onRefresh);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -88,8 +96,9 @@ export function DoctorPatientChatBell() {
             </p>
             <p className="mt-0.5 text-xs text-slate-600">
               Latest message in each thread is from the patient (not SOS — those stay under{" "}
-              <strong className="font-semibold text-slate-800">Alerts</strong>). Replying here clears
-              the row. Push is also sent to doctor accounts when a patient posts.
+              <strong className="font-semibold text-slate-800">Alerts</strong>). Opening a thread or
+              replying clears the badge until the patient sends something newer. Push is also sent to
+              doctor accounts when a patient posts.
             </p>
           </div>
           {loading && items.length === 0 && count === 0 ? (
@@ -108,7 +117,27 @@ export function DoctorPatientChatBell() {
                   <Link
                     href={`/doctor/patients/${it.patientId}#doctor-patient-chat`}
                     className="block min-w-0 rounded-md px-1 py-0.5 hover:bg-teal-50"
-                    onClick={() => setOpen(false)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setOpen(false);
+                      void (async () => {
+                        try {
+                          await fetch("/api/doctor/patient-chat-inbox/seen", {
+                            method: "POST",
+                            credentials: "include",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ patientId: it.patientId }),
+                          });
+                        } finally {
+                          window.dispatchEvent(
+                            new Event(DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT)
+                          );
+                          router.push(
+                            `/doctor/patients/${it.patientId}#doctor-patient-chat`
+                          );
+                        }
+                      })();
+                    }}
                     role="menuitem"
                   >
                     <div className="flex items-center gap-1.5">

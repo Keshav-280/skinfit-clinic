@@ -10,7 +10,8 @@ import {
  *
  * Set header: `x-skinfit-sheet-secret: <CLINIC_SHEET_WEBHOOK_SECRET>`
  *
- * Body: `{ "updates": [ { "action": "confirm", "patientId": "uuid", "externalRef": "sheet-row-12",
+ * Body: `{ "updates": [ { "action": "confirm", "patientId": "uuid", "scheduleRequestId": "<uuid column B>",
+ *   "externalRef": "sheet-row-12",
  *   "confirmedDateTimeIso": "2026-05-10T14:30:00+05:30", "confirmedSlotEndTimeHm": "11:00",
  *   "appointmentType": "consultation", "patientMessage": "Apply cream X before you come." } ] }`
  * Re-confirm same `externalRef` after booking → reschedules the visit (patient notified).
@@ -59,8 +60,15 @@ export async function POST(req: Request) {
       typeof o.confirmedSlotEndTimeHm === "string"
         ? o.confirmedSlotEndTimeHm.trim()
         : "";
+    const schedIdRaw =
+      typeof o.scheduleRequestId === "string" ? o.scheduleRequestId.trim() : "";
+    const uuidOk =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        schedIdRaw
+      );
     updates.push({
       action,
+      scheduleRequestId: uuidOk ? schedIdRaw : null,
       externalRef:
         typeof o.externalRef === "string" ? o.externalRef : null,
       patientEmail:

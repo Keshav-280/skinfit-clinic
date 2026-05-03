@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import { MAX_VISIT_NOTE_ATTACHMENT_URI_LEN } from "@/src/lib/visitNoteAttachments";
+import {
+  DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT,
+} from "@/src/lib/doctorPatientChatInbox";
 
 const MAX_RECORD_SECONDS = 120;
 const MAX_AUDIO_URI_LEN = 1_800_000;
@@ -376,6 +379,30 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   useEffect(() => {
     void loadDoctorChat();
   }, [loadDoctorChat]);
+
+  useEffect(() => {
+    const markSeenIfChatHash = () => {
+      if (typeof window === "undefined") return;
+      if (!window.location.hash.includes("doctor-patient-chat")) return;
+      void (async () => {
+        try {
+          await fetch("/api/doctor/patient-chat-inbox/seen", {
+            method: "POST",
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ patientId }),
+          });
+        } finally {
+          window.dispatchEvent(
+            new Event(DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT)
+          );
+        }
+      })();
+    };
+    markSeenIfChatHash();
+    window.addEventListener("hashchange", markSeenIfChatHash);
+    return () => window.removeEventListener("hashchange", markSeenIfChatHash);
+  }, [patientId]);
 
   useEffect(() => {
     setDoctorChatStaffClearAt(readStaffDoctorChatClearAt(patientId));

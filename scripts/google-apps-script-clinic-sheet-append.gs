@@ -642,6 +642,14 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
   }
 
   var externalRef = 'sheet-row-' + rowNum;
+  var requestIdRaw = getCellByHeader_(sheet, rowNum, map, 'requestId', 2);
+  var scheduleRequestId = null;
+  if (requestIdRaw) {
+    var rid = String(requestIdRaw).trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rid)) {
+      scheduleRequestId = rid;
+    }
+  }
   var iso = getCellByHeader_(sheet, rowNum, map, 'crmConfirmedDateTimeIso', 26);
   var msg = getCellByHeader_(sheet, rowNum, map, 'crmPatientMessage', 27);
   var cancelReason = getCellByHeader_(sheet, rowNum, map, 'crmCancelledReason', 28);
@@ -685,6 +693,7 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
     action: action,
     patientId: patientId,
     externalRef: externalRef,
+    scheduleRequestId: scheduleRequestId,
     confirmedDateTimeIso: action === 'confirm' ? iso : null,
     confirmedSlotEndTimeHm: action === 'confirm' && slotEndHm ? slotEndHm : null,
     appointmentType: apptTypeRaw || null,
@@ -759,7 +768,8 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
  *   "updates": [{
  *     "action": "confirm",
  *     "patientId": "<column C uuid>",
- *     "externalRef": "<sheet-row-N from Skinfit response, or omit to match latest pending>",
+ *     "scheduleRequestId": "<column B requestId uuid — preferred if rows move>",
+ *     "externalRef": "<sheet-row-N; used if scheduleRequestId missing>",
  *     "confirmedDateTimeIso": "2026-05-20T14:00:00+05:30",
  *     "appointmentType": "consultation",
  *     "patientMessage": "Apply the cream we discussed before you come."

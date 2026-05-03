@@ -2,6 +2,10 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads, users } from "@/src/db/schema";
 
+/** DoctorPatientChatBell listens to bump counts after mark-seen. */
+export const DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT =
+  "skinfit-doctor-patient-chat-inbox-refresh";
+
 export type DoctorPatientChatAlertRow = {
   patientId: string;
   messageId: string;
@@ -12,6 +16,7 @@ export type DoctorPatientChatAlertRow = {
 
 /**
  * Patients whose most recent doctor-thread message is from the patient (awaiting staff reply).
+ * Threads with `doctorPortalLastReadAt` at or after that message time are excluded (opened from inbox / #chat).
  * Excludes urgent SOS rows — those appear in the SOS alerts flow.
  */
 export async function loadUnrepliedDoctorChatAlerts(
@@ -27,6 +32,7 @@ export async function loadUnrepliedDoctorChatAlerts(
       createdAt: chatMessages.createdAt,
       sender: chatMessages.sender,
       isUrgent: chatMessages.isUrgent,
+      threadLastReadAt: chatThreads.doctorPortalLastReadAt,
     })
     .from(chatMessages)
     .innerJoin(chatThreads, eq(chatMessages.threadId, chatThreads.id))
@@ -46,6 +52,12 @@ export async function loadUnrepliedDoctorChatAlerts(
   for (const r of latestByThread.values()) {
     if (r.sender !== "patient") continue;
     if (r.isUrgent) continue;
+    if (
+      r.threadLastReadAt &&
+      r.createdAt.getTime() <= r.threadLastReadAt.getTime()
+    ) {
+      continue;
+    }
     out.push({
       patientId: r.patientId,
       messageId: r.messageId,
