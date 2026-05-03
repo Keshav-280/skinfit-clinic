@@ -14,9 +14,7 @@ import {
 } from "lucide-react";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import { MAX_VISIT_NOTE_ATTACHMENT_URI_LEN } from "@/src/lib/visitNoteAttachments";
-import {
-  DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT,
-} from "@/src/lib/doctorPatientChatInbox";
+import { DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT } from "@/src/lib/doctorPatientChatInboxEvents";
 
 const MAX_RECORD_SECONDS = 120;
 const MAX_AUDIO_URI_LEN = 1_800_000;

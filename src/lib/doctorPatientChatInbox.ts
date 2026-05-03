@@ -2,10 +2,6 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads, users } from "@/src/db/schema";
 
-/** DoctorPatientChatBell listens to bump counts after mark-seen. */
-export const DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT =
-  "skinfit-doctor-patient-chat-inbox-refresh";
-
 export type DoctorPatientChatAlertRow = {
   patientId: string;
   messageId: string;
