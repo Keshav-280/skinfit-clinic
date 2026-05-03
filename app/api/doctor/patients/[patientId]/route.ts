@@ -68,6 +68,8 @@ export async function GET(
       streakLastDate: true,
       cycleTrackingEnabled: true,
       appointmentReminderHoursBefore: true,
+      doctorFeedbackNote: true,
+      doctorFeedbackUpdatedAt: true,
       createdAt: true,
       routinePlanAmItems: true,
       routinePlanPmItems: true,
@@ -255,6 +257,9 @@ export async function GET(
         : null,
       onboardingCompletedAt: patient.onboardingCompletedAt
         ? patient.onboardingCompletedAt.toISOString()
+        : null,
+      doctorFeedbackUpdatedAt: patient.doctorFeedbackUpdatedAt
+        ? patient.doctorFeedbackUpdatedAt.toISOString()
         : null,
       createdAt: patient.createdAt.toISOString(),
     },

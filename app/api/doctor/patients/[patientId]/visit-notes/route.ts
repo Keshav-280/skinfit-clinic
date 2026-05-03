@@ -14,6 +14,7 @@ import {
   parseVisitNoteAttachmentsInput,
   type VisitNoteAttachment,
 } from "@/src/lib/visitNoteAttachments";
+import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 
 export async function POST(
   req: Request,
@@ -111,6 +112,18 @@ export async function POST(
   if (!row) {
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
+
+  const notePreview = row.notes.trim().replace(/\s+/g, " ").slice(0, 220);
+  const noteMsg =
+    notePreview.length > 0
+      ? `Your doctor added a visit note for ${visitYmd}.\n\n${notePreview}${row.notes.length > notePreview.length ? "…" : ""}`
+      : `Your doctor added a visit note for ${visitYmd}. Open Dashboard > Doctor's feedback to review it.`;
+  void sendClinicSupportMessage({
+    patientId,
+    text: noteMsg,
+  }).catch((err) =>
+    console.warn("[doctorVisitNotes] failed to send chat notification", err)
+  );
 
   return NextResponse.json({
     ok: true,

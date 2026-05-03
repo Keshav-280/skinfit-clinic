@@ -154,6 +154,11 @@ export const users = pgTable("users", {
   doctorFeedbackViewedAt: timestamp("doctor_feedback_viewed_at", {
     withTimezone: true,
   }),
+  /** General written feedback shown on patient home dashboard (separate from per-visit notes). */
+  doctorFeedbackNote: text("doctor_feedback_note"),
+  doctorFeedbackUpdatedAt: timestamp("doctor_feedback_updated_at", {
+    withTimezone: true,
+  }),
   /** When patient last acknowledged scan/report voice notes (inbox + history). */
   doctorFeedbackScanVoiceViewedAt: timestamp(
     "doctor_feedback_scan_voice_viewed_at",

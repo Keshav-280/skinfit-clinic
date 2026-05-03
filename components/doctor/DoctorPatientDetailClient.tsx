@@ -73,6 +73,8 @@ type DetailJson = {
     streakLastDate: string | null;
     cycleTrackingEnabled: boolean;
     appointmentReminderHoursBefore: number;
+    doctorFeedbackNote: string | null;
+    doctorFeedbackUpdatedAt: string | null;
     createdAt: string;
     routinePlanAmItems: string[] | null;
     routinePlanPmItems: string[] | null;
@@ -263,6 +265,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const [visitNoteFiles, setVisitNoteFiles] = useState<File[]>([]);
   const [visitNoteBusy, setVisitNoteBusy] = useState(false);
   const [visitNoteFlash, setVisitNoteFlash] = useState<string | null>(null);
+  const [generalFeedbackText, setGeneralFeedbackText] = useState("");
+  const [generalFeedbackBusy, setGeneralFeedbackBusy] = useState(false);
+  const [generalFeedbackFlash, setGeneralFeedbackFlash] = useState<string | null>(null);
+  const [generalFeedbackDirty, setGeneralFeedbackDirty] = useState(false);
   const [clinicianBusy, setClinicianBusy] = useState(false);
   const [selectedScanId, setSelectedScanId] = useState<string>("");
   const [isRecording, setIsRecording] = useState(false);
@@ -428,6 +434,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
   useEffect(() => {
     setRoutinePlanTextDirty(false);
+    setGeneralFeedbackDirty(false);
   }, [patientId]);
 
   useEffect(() => {
@@ -441,10 +448,13 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       setRoutinePlanAmText((p.routinePlanAmItems ?? []).join("\n"));
       setRoutinePlanPmText((p.routinePlanPmItems ?? []).join("\n"));
     }
+    if (!generalFeedbackDirty) {
+      setGeneralFeedbackText(p.doctorFeedbackNote ?? "");
+    }
     if (data.calendarTodayYmd) {
       setVisitNoteDateYmd(data.calendarTodayYmd);
     }
-  }, [data, routinePlanTextDirty]);
+  }, [data, routinePlanTextDirty, generalFeedbackDirty]);
 
   const uploadVoiceDataUri = useCallback(
     async (audioDataUri: string) => {
@@ -1641,6 +1651,95 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             })}
           </div>
         )}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          General feedback note (patient dashboard)
+        </h2>
+        <p className="mb-4 text-sm leading-relaxed text-slate-600">
+          This is the standalone note shown in the patient portal under{" "}
+          <span className="font-semibold text-slate-800">Doctor&apos;s feedback</span>. It is
+          separate from per-visit notes.
+        </p>
+        <div className="mb-2 space-y-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-4">
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Feedback text</span>
+            <textarea
+              value={generalFeedbackText}
+              onChange={(e) => {
+                setGeneralFeedbackText(e.target.value);
+                setGeneralFeedbackDirty(true);
+              }}
+              rows={5}
+              className="min-h-[120px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              placeholder="High-level guidance, progress summary, cautions, next steps…"
+            />
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={generalFeedbackBusy}
+              onClick={async () => {
+                setGeneralFeedbackFlash(null);
+                setGeneralFeedbackBusy(true);
+                try {
+                  const res = await fetch(
+                    `/api/doctor/patients/${patientId}/general-feedback`,
+                    {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        text: generalFeedbackText,
+                      }),
+                    }
+                  );
+                  const j = (await res.json()) as { ok?: boolean; error?: string };
+                  if (!res.ok || !j.ok) {
+                    setGeneralFeedbackFlash(j.error ?? "Could not save general feedback.");
+                    return;
+                  }
+                  setGeneralFeedbackDirty(false);
+                  setGeneralFeedbackFlash(
+                    generalFeedbackText.trim()
+                      ? "General feedback saved and patient notified in chat."
+                      : "General feedback cleared."
+                  );
+                  void load();
+                } catch {
+                  setGeneralFeedbackFlash("Network error.");
+                } finally {
+                  setGeneralFeedbackBusy(false);
+                }
+              }}
+              className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 disabled:opacity-50"
+            >
+              {generalFeedbackBusy ? "Saving…" : "Save general feedback"}
+            </button>
+            <button
+              type="button"
+              disabled={generalFeedbackBusy || !generalFeedbackText.trim()}
+              onClick={() => {
+                setGeneralFeedbackText("");
+                setGeneralFeedbackDirty(true);
+              }}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              Clear text
+            </button>
+          </div>
+          {generalFeedbackFlash ? (
+            <p className="text-sm font-medium text-teal-900" role="status">
+              {generalFeedbackFlash}
+            </p>
+          ) : null}
+          {data?.patient?.doctorFeedbackUpdatedAt ? (
+            <p className="text-xs text-slate-500">
+              Last updated: {new Date(data.patient.doctorFeedbackUpdatedAt).toLocaleString()}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

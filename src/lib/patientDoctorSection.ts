@@ -29,6 +29,7 @@ export async function getPatientDoctorSection(
         where: eq(users.id, userId),
         columns: {
           onboardingComplete: true,
+          doctorFeedbackNote: true,
         },
       }),
       db
@@ -84,7 +85,8 @@ export async function getPatientDoctorSection(
   const doctorVoiceNoteIsNew = doctorVoiceNotes.some((v) => !v.listened);
 
   return {
-    doctorFeedback: visitRow[0]?.notes?.trim() ?? "",
+    doctorFeedback:
+      userRow?.doctorFeedbackNote?.trim() || visitRow[0]?.notes?.trim() || "",
     doctorVoiceNotes,
     doctorArchivedVoiceNotes,
     doctorVoiceNoteIsNew,

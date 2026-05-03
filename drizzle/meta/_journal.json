@@ -162,6 +162,13 @@
       "when": 1777000000000,
       "tag": "0024_chat_threads_doctor_portal_last_read_at",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1777100000000,
+      "tag": "0025_users_doctor_feedback_note",
+      "breakpoints": true
     }
   ]
 }
