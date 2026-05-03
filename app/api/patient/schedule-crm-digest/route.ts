@@ -4,7 +4,7 @@ import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 
-/** Call when patient opens Schedules — clears CRM-note bell until new confirmations. */
+/** Call when the patient has finished reviewing Schedules (e.g. after navigating away). Clears the schedule bell until new confirmations. */
 export async function POST(req: Request) {
   const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {

@@ -4,7 +4,7 @@ import { db } from "@/src/db";
 import { patientScheduleRequests, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 
-/** Unread “new CRM note on a confirmed visit” count for nav badge. */
+/** Unread confirmed visits since last digest (opening Schedules clears digest on leave). */
 export async function GET(req: Request) {
   const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
@@ -27,7 +27,6 @@ export async function GET(req: Request) {
         eq(patientScheduleRequests.patientId, userId),
         eq(patientScheduleRequests.status, "confirmed"),
         isNotNull(patientScheduleRequests.confirmedAt),
-        isNotNull(patientScheduleRequests.crmPatientMessage),
         gt(patientScheduleRequests.confirmedAt, digest)
       )
     );

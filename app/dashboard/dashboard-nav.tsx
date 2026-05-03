@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Bell, Loader2, Menu, X } from "lucide-react";
 import clsx from "clsx";
+import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
 
 const links = [
   { href: "/dashboard", label: "Dashboard" },
@@ -82,10 +83,24 @@ export function DashboardNav() {
       }
     };
     void tick();
+    const onBellRefresh = () => void tick();
+    window.addEventListener(SCHEDULE_BELL_REFRESH_EVENT, onBellRefresh);
     const id = window.setInterval(() => void tick(), 60_000);
     return () => {
       cancelled = true;
+      window.removeEventListener(SCHEDULE_BELL_REFRESH_EVENT, onBellRefresh);
       window.clearInterval(id);
+    };
+  }, [pathname]);
+
+  /** Mark schedule updates read after leaving Schedules (not on entry — avoids hiding the bell before the patient sees it). */
+  useEffect(() => {
+    if (!pathname?.startsWith("/dashboard/schedules")) return;
+    return () => {
+      void fetch("/api/patient/schedule-crm-digest", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {});
     };
   }, [pathname]);
 

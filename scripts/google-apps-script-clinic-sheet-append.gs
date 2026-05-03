@@ -90,6 +90,20 @@ function doPost(e) {
 }
 
 /**
+ * Browsers open the web app URL with GET — without doGet, Google shows "doGet not found".
+ * Skinfit + sheet CRM still require POST with JSON (doPost). This is only a sanity hint.
+ */
+function doGet() {
+  return ContentService.createTextOutput(
+    JSON.stringify({
+      ok: true,
+      message:
+        'Skinfit clinic sheet endpoint is live. Use HTTP POST (doPost) with JSON — e.g. kind patient_schedule_request or skinfit_row_sync. Opening this link in a browser does not run a webhook.'
+    })
+  ).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
  * Web apps are often standalone: getActiveSpreadsheet() is null. Use bound sheet
  * OR Script Property SKINFIT_SPREADSHEET_ID (raw id or full Sheets URL).
  */
@@ -455,17 +469,35 @@ function statusForSkinfitMirror_(skinfitStatus) {
 }
 
 function handleSkinfitRowSync_(data, sheet) {
-  var ref = data.externalRef;
-  var rowNum = parseSheetRowFromExternalRef_(ref);
+  ensureHeaderRowForSheet_(sheet);
+  var map = buildHeaderIndexMap_(sheet);
+
+  var rowNum = null;
+  var sid =
+    data.scheduleRequestId != null ? String(data.scheduleRequestId).trim() : '';
+  if (
+    sid &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid)
+  ) {
+    var colReq = map['requestid'] || 2;
+    var lastScan = sheet.getLastRow();
+    for (var rr = 2; rr <= lastScan; rr++) {
+      var cellId = String(sheet.getRange(rr, colReq).getValue() || '').trim();
+      if (cellId.toLowerCase() === sid.toLowerCase()) {
+        rowNum = rr;
+        break;
+      }
+    }
+  }
   if (!rowNum) {
-    return jsonOut({ ok: false, error: 'bad_external_ref' }, 400);
+    rowNum = parseSheetRowFromExternalRef_(data.externalRef);
+  }
+  if (!rowNum) {
+    return jsonOut({ ok: false, error: 'bad_external_ref_or_request_id' }, 400);
   }
   if (rowNum > sheet.getLastRow()) {
     return jsonOut({ ok: false, error: 'row_out_of_range' }, 400);
   }
-
-  ensureHeaderRowForSheet_(sheet);
-  var map = buildHeaderIndexMap_(sheet);
   var colStatus = map['status'] || 14;
   var cMirrorSt = map['skinfitmirrorstatus'] || 21;
   var cMirrorIso = map['skinfitmirrorconfirmediso'] || 22;

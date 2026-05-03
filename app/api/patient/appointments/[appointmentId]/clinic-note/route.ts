@@ -77,23 +77,32 @@ export async function POST(
 
   const [link] = await db
     .select({
+      id: patientScheduleRequests.id,
+      patientId: patientScheduleRequests.patientId,
       externalRef: patientScheduleRequests.externalRef,
       crmPatientMessage: patientScheduleRequests.crmPatientMessage,
     })
     .from(patientScheduleRequests)
-    .where(
-      and(
-        eq(patientScheduleRequests.appointmentId, appt.id),
-        eq(patientScheduleRequests.patientId, userId)
-      )
-    )
+    .where(eq(patientScheduleRequests.appointmentId, appt.id))
     .limit(1);
 
+  const linkSafe =
+    link && link.patientId === userId
+      ? link
+      : null;
+  if (!linkSafe) {
+    console.warn(
+      "[clinic-note] sheet mirror skipped: no patient_schedule_requests row for appointment",
+      appt.id
+    );
+  }
+
   void notifyClinicSheetRowMirrored({
-    externalRef: link?.externalRef ?? null,
+    externalRef: linkSafe?.externalRef ?? null,
+    scheduleRequestId: linkSafe?.id ?? null,
     skinfitStatus: "confirmed",
     confirmedIso: appt.dateTime.toISOString(),
-    notes: link?.crmPatientMessage?.trim() || null,
+    notes: linkSafe?.crmPatientMessage?.trim() || null,
     confirmedSlotEndTimeHm: appt.slotEndTimeHm ?? null,
     patientClinicNote: msg,
     patientClinicNoteAt: now.toISOString(),

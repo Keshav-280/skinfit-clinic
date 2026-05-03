@@ -235,6 +235,7 @@ export async function applyClinicSheetAppointmentUpdates(
           });
           void notifyClinicSheetRowMirrored({
             externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
+            scheduleRequestId: reqRow.id,
             skinfitStatus: "confirmed",
             confirmedIso: dt.toISOString(),
             notes: msg,
@@ -284,6 +285,7 @@ export async function applyClinicSheetAppointmentUpdates(
         });
         void notifyClinicSheetRowMirrored({
           externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
+          scheduleRequestId: reqRow.id,
           skinfitStatus: "confirmed",
           confirmedIso: dt.toISOString(),
           notes: msg,
@@ -334,6 +336,7 @@ export async function applyClinicSheetAppointmentUpdates(
         });
         void notifyClinicSheetRowMirrored({
           externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
+          scheduleRequestId: reqRow.id,
           skinfitStatus: u.action === "decline" ? "declined" : "cancelled",
           confirmedIso: null,
           notes: combinedReason,

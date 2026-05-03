@@ -29,6 +29,7 @@ import {
 import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
+import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
 
 export type ScheduleEventRow = {
   id: string;
@@ -359,13 +360,6 @@ export default function SchedulesPageClient({
 
   useEffect(() => {
     setCurrentDate(new Date());
-  }, []);
-
-  useEffect(() => {
-    void fetch("/api/patient/schedule-crm-digest", {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -742,7 +736,7 @@ export default function SchedulesPageClient({
                             ? "border-amber-200/90 bg-amber-50/90"
                             : done
                               ? "border-sky-200/90 bg-sky-50/90"
-                              : "border-teal-200/80 bg-[#E0F0ED]/90"
+                              : "border-emerald-400/70 bg-emerald-100/95"
                         }`}
                         title={event.title}
                       >
@@ -753,7 +747,7 @@ export default function SchedulesPageClient({
                                 ? "text-amber-900"
                                 : done
                                   ? "text-sky-900"
-                                  : "text-teal-800"
+                                  : "text-emerald-950"
                             }`}
                           >
                             {timeLabel}
@@ -765,7 +759,7 @@ export default function SchedulesPageClient({
                               ? "text-amber-950"
                               : done
                                 ? "text-sky-900"
-                                : "text-teal-800"
+                                : "text-emerald-950"
                           }`}
                         >
                           {event.title}
@@ -787,6 +781,11 @@ export default function SchedulesPageClient({
                           <p className="mt-0.5 text-[9px] font-semibold leading-tight text-amber-950/95">
                             {event.attachmentsCount} photo
                             {event.attachmentsCount !== 1 ? "s" : ""} · list below
+                          </p>
+                        ) : null}
+                        {!pending && !done ? (
+                          <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-900/90">
+                            Confirmed
                           </p>
                         ) : null}
                         {done ? (
@@ -854,7 +853,7 @@ export default function SchedulesPageClient({
                           ? "text-amber-800"
                           : event.completed
                             ? "text-sky-800"
-                            : "text-teal-700"
+                            : "text-emerald-800"
                       }`}
                     >
                       {formatScheduleWhen(
@@ -890,6 +889,11 @@ export default function SchedulesPageClient({
                       {event.completed ? (
                         <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-900">
                           Completed
+                        </span>
+                      ) : null}
+                      {!pending && !event.completed ? (
+                        <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-950">
+                          Confirmed
                         </span>
                       ) : null}
                       {pending && (event.attachmentsCount ?? 0) > 0 ? (
@@ -1014,6 +1018,9 @@ export default function SchedulesPageClient({
                     }
                     setClinicMsgOpen(false);
                     setClinicMsgApptId(null);
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(new Event(SCHEDULE_BELL_REFRESH_EVENT));
+                    }
                     router.refresh();
                   } catch {
                     setClinicMsgErr("Could not send. Try again.");
