@@ -213,13 +213,13 @@ export function ProfileSkinDnaSection() {
         <div className="space-y-6 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
             <Pill>
-              Type:{" "}
+              Skin type:{" "}
               <span className="font-bold text-zinc-900">
                 {data.skinDna.skinType ?? "—"}
               </span>
             </Pill>
             <Pill>
-              Concern:{" "}
+              Primary concern:{" "}
               <span className="font-bold text-zinc-900">
                 {data.skinDna.primaryConcern ?? "—"}
               </span>
@@ -228,7 +228,23 @@ export function ProfileSkinDnaSection() {
               <Pill>
                 Sensitivity index:{" "}
                 <span className="font-bold text-zinc-900">
-                  {data.skinDna.sensitivityIndex}
+                  {data.skinDna.sensitivityIndex}/10
+                </span>
+              </Pill>
+            ) : null}
+            {data.skinDna.uvSensitivity ? (
+              <Pill>
+                UV sensitivity:{" "}
+                <span className="font-bold text-zinc-900">
+                  {data.skinDna.uvSensitivity}
+                </span>
+              </Pill>
+            ) : null}
+            {data.skinDna.hormonalCorrelation ? (
+              <Pill>
+                Hormonal correlation:{" "}
+                <span className="font-bold text-zinc-900">
+                  {data.skinDna.hormonalCorrelation}
                 </span>
               </Pill>
             ) : null}

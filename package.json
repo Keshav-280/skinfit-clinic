@@ -11,10 +11,14 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "db:seed:rag-demo": "tsx src/db/seed-rag-kai-demo.ts",
+    "rag:index:textbook": "tsx src/scripts/build-rag-textbook-index.ts",
+    "rag:pinecone:upsert": "tsx src/scripts/rag-pinecone-upsert.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "0.10.4",
+    "@pinecone-database/pinecone": "^6.1.4",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -30,6 +34,7 @@
     "next": "16.1.6",
     "nodemailer": "^8.0.4",
     "openai": "^6.25.0",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.13.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",

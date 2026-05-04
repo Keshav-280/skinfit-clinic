@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Textbook PDFs — large / licensing; not needed in git if RAG chunks live in Pinecone
+books/**/*.pdf
+
 # debug
 npm-debug.log*
 yarn-debug.log*
