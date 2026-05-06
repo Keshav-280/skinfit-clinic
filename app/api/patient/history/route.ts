@@ -101,7 +101,7 @@ export async function GET(request: Request) {
     return {
       id: s.id,
       scanName: s.scanName,
-      imageUrl: patientScanImagePath(s.id, { preview: true }),
+      imageUrl: patientScanImagePath(s.id, { preview: true, thumbnail: true }),
       overallScore: s.overallScore,
       acne: s.acne,
       pigmentation: s.pigmentation,

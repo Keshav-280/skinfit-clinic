@@ -408,6 +408,10 @@ export function HistoryView({
                       </span>
                     ))}
                   </div>
+                  <p className="mt-2 text-[11px] leading-snug text-zinc-500">
+                    Six summary scores on this card (not separate photos). Open
+                    the report for every metric and capture angle.
+                  </p>
                   <Link
                     href={`/dashboard/history/scans/${scan.id}`}
                     className="mt-3 flex w-full items-center justify-center rounded-xl bg-teal-600 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-teal-500"

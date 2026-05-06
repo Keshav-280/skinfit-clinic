@@ -36,6 +36,13 @@ type AuthContextValue = {
   user: AuthUser | null;
   ready: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (input: {
+    name: string;
+    email: string;
+    phone: string;
+    phoneCountryCode?: string;
+    password: string;
+  }) => Promise<void>;
   signOut: () => Promise<void>;
   /** After profile save (email change issues a new JWT on native). */
   applySessionFromProfile: (data: {
@@ -143,6 +150,124 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const signUp = useCallback(
+    async (input: {
+      name: string;
+      email: string;
+      phone: string;
+      phoneCountryCode?: string;
+      password: string;
+    }) => {
+      let res: Response;
+      try {
+        res = await fetch(apiUrl("/api/auth/register"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Skinfit-Client": "native",
+          },
+          body: JSON.stringify({
+            name: input.name.trim(),
+            email: input.email.trim(),
+            password: input.password,
+            phone: input.phone.trim(),
+            phoneCountryCode: (input.phoneCountryCode || "+91").trim(),
+          }),
+        });
+      } catch {
+        throw new Error(
+          "Cannot reach the server. Check your internet and EXPO_PUBLIC_API_URL."
+        );
+      }
+
+      const text = await res.text().catch(() => "");
+      let data: {
+        ok?: boolean;
+        token?: string;
+        user?: AuthUser & { onboardingComplete?: boolean };
+        message?: string;
+        error?: string;
+      } = {};
+      try {
+        data = text ? (JSON.parse(text) as typeof data) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          data.message || data.error || `Sign up failed (HTTP ${res.status}).`
+        );
+      }
+      if (!data.user) {
+        throw new Error("Server did not return user details.");
+      }
+
+      let sessionToken = data.token;
+      // Some deployments may return cookie-only register responses for native.
+      // Fall back to login to obtain a bearer token for mobile session storage.
+      if (!sessionToken) {
+        try {
+          const signInRes = await fetch(apiUrl("/api/auth/login"), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Skinfit-Client": "native",
+            },
+            body: JSON.stringify({
+              email: input.email.trim(),
+              password: input.password,
+            }),
+          });
+          const signInText = await signInRes.text().catch(() => "");
+          let signInData: { token?: string; message?: string; error?: string } = {};
+          try {
+            signInData = signInText ? (JSON.parse(signInText) as typeof signInData) : {};
+          } catch {
+            signInData = {};
+          }
+          if (!signInRes.ok || !signInData.token) {
+            throw new Error(
+              signInData.message ||
+                signInData.error ||
+                `Sign in failed (HTTP ${signInRes.status}).`
+            );
+          }
+          sessionToken = signInData.token;
+        } catch (e) {
+          throw new Error(
+            e instanceof Error
+              ? e.message
+              : "Account created, but auto-login failed. Please sign in."
+          );
+        }
+      }
+
+      if (!sessionToken) {
+        throw new Error("Account created, but session token is unavailable.");
+      }
+
+      const nextUser: AuthUser = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        onboardingComplete: false,
+      };
+      await sessionSet(TOKEN_KEY, sessionToken);
+      await sessionSet(USER_KEY, JSON.stringify(nextUser));
+      setUser(nextUser);
+      setToken(sessionToken);
+
+      if (Platform.OS !== "web") {
+        void registerForPushAndSyncToken(sessionToken, {
+          verboseAlerts: false,
+          requestPermission: true,
+        });
+      }
+    },
+    []
+  );
+
   const signOut = useCallback(async () => {
     const prevToken = token;
     if (prevToken && Platform.OS !== "web") {
@@ -232,6 +357,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       ready,
       signIn,
+      signUp,
       signOut,
       applySessionFromProfile,
       markOnboardingComplete,
@@ -242,6 +368,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       ready,
       signIn,
+      signUp,
       signOut,
       applySessionFromProfile,
       markOnboardingComplete,

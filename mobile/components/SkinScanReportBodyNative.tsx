@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
-import type { ImageSourcePropType } from "react-native";
+import type { DimensionValue, ImageSourcePropType } from "react-native";
 import {
   Image,
   Platform,
@@ -13,12 +13,24 @@ import {
 } from "react-native";
 
 import { ReportDonut } from "@/components/ReportDonut";
-import type { PatientTrackerReport } from "../../src/lib/patientTrackerReport.types";
+import { TrackerReportSectionsNative } from "@/components/TrackerReportSectionsNative";
+import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
+import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
+import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
 
 const BEIGE = "#F5F1E9";
 const TEAL_BAND = "#E0EEEB";
 const PEACH = "#F29C91";
 const BTN = "#6D8C8E";
+
+const OVERVIEW_P2 =
+  "Maintaining gentle cleansing, daily photoprotection, and targeted hydration supports long-term barrier health and helps preserve the improvements shown in your latest scan.";
+
+const CAUSES_P1 =
+  "Environmental factors such as UV exposure, seasonal dryness, and urban pollution can accentuate texture irregularities and uneven tone. A consistent barrier-focused routine helps mitigate these stressors.";
+
+const CAUSES_P2 =
+  "Hormonal shifts, stress, and sleep patterns may also influence oil balance and sensitivity. Tracking flare-ups alongside lifestyle changes gives clearer insight into your skin’s triggers.";
 
 export type ReportRegion = {
   issue: string;
@@ -43,13 +55,30 @@ export type ReportMetricsNative = {
   };
 };
 
+const CLINICAL_ROWS: {
+  key: keyof NonNullable<ReportMetricsNative["clinical_scores"]>;
+  label: string;
+}[] = [
+  { key: "active_acne", label: "Active acne" },
+  { key: "skin_quality", label: "Skin quality" },
+  { key: "wrinkle_severity", label: "Wrinkles (severity 1–5)" },
+  { key: "sagging_volume", label: "Sagging & volume" },
+  { key: "under_eye", label: "Under-eye" },
+  { key: "hair_health", label: "Hair health" },
+  { key: "pigmentation_model", label: "Pigmentation (model)" },
+];
+
 type Props = {
   userName: string;
   userAge: number;
   userSkinType: string;
   scanTitle: string | null;
+  /** Canonical path from API (e.g. `/api/patient/scans/:id/image`). */
+  imageUrl: string;
+  authToken: string | null;
+  faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
+  /** Resolved primary image (auth headers applied). */
   imageSource: ImageSourcePropType;
-  /** Data URI or URL: wrinkle + acne overlay from analyzer. */
   annotatedOverlayUri?: string | null;
   regions: ReportRegion[];
   metrics: ReportMetricsNative;
@@ -57,7 +86,6 @@ type Props = {
   scanDate: Date;
   pdfLoading: boolean;
   onDownloadPdf: () => void;
-  /** kAI 5-section tracker; when null, legacy hero copy still shows. */
   tracker: PatientTrackerReport | null;
 };
 
@@ -83,11 +111,19 @@ function displayScanTitle(raw: string | null): string | null {
   return stripped || null;
 }
 
+function clinicalBarWidth(score: number): DimensionValue {
+  const pct = Math.min(100, Math.max(0, ((score - 1) / 4) * 100));
+  return `${Math.round(pct)}%`;
+}
+
 export function SkinScanReportBodyNative({
   userName,
   userAge,
   userSkinType,
   scanTitle,
+  imageUrl,
+  authToken,
+  faceCaptureGallery,
   imageSource,
   annotatedOverlayUri = null,
   regions,
@@ -101,20 +137,33 @@ export function SkinScanReportBodyNative({
   const router = useRouter();
   const displayTitle = displayScanTitle(scanTitle);
   const overlayUri = annotatedOverlayUri?.trim() || "";
-  const faceSource: ImageSourcePropType =
-    overlayUri.length > 0 ? { uri: overlayUri } : imageSource;
-  const showFaceMarkers = overlayUri.length === 0;
+  const showAnnotatedSection =
+    overlayUri.length > 0 || (regions.length > 0 && imageUrl?.trim().length > 0);
+  const showDotMarkers = overlayUri.length === 0 && regions.length > 0;
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const heroIntro =
     aiSummary?.trim() ||
-    `Your latest scan shows an overall score of ${overall}% on our 0–100 scale (higher is better).`;
+    `Your latest scan shows an overall score of ${overall}% on our 0–100 scale (higher is better). Detailed scores and photo markers are below.`;
 
   const serif = Platform.select({
     ios: "Georgia",
     android: "serif",
     default: "serif",
   });
+
+  const resolvedPhotos =
+    faceCaptureGallery && faceCaptureGallery.length > 0
+      ? faceCaptureGallery
+      : imageUrl?.trim()
+        ? [{ label: "Primary scan", imageUrl }]
+        : [];
+
+  const row2 = resolvedPhotos.slice(0, 2);
+  const row3 = resolvedPhotos.slice(2, 5);
+
+  const annotatedFaceSource: ImageSourcePropType =
+    overlayUri.length > 0 ? { uri: overlayUri } : imageSource;
 
   return (
     <ScrollView
@@ -132,7 +181,7 @@ export function SkinScanReportBodyNative({
         </Pressable>
       </View>
 
-      <Text style={styles.pageTitle}>kAI tracker report</Text>
+      <Text style={styles.pageTitle}>AI scan report</Text>
       {displayTitle ? <Text style={styles.pageSubtitle}>{displayTitle}</Text> : null}
 
       <View style={styles.reportCard}>
@@ -143,106 +192,245 @@ export function SkinScanReportBodyNative({
         />
 
         <View style={styles.inner}>
-          <Text style={styles.kicker}>SCAN & TRACKER</Text>
+          {resolvedPhotos.length > 0 ? (
+            <View style={{ marginBottom: 8 }}>
+              <Text style={styles.captureKicker}>
+                {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
+              </Text>
+              {resolvedPhotos.length === 1 ? (
+                <View style={styles.singleCaptureWrap}>
+                  <View style={styles.captureFrameLarge}>
+                    <Image
+                      source={resolveAuthenticatedScanImageSource(
+                        patientScanImageDisplayUrl(resolvedPhotos[0]!.imageUrl),
+                        authToken
+                      )}
+                      style={styles.captureImg}
+                      resizeMode="cover"
+                    />
+                  </View>
+                  <Text style={styles.captureCaption}>{resolvedPhotos[0]!.label}</Text>
+                </View>
+              ) : null}
+              {resolvedPhotos.length > 1 && row2.length > 0 ? (
+                <View style={styles.captureRow2}>
+                  {row2.map((item, idx) => (
+                    <View key={`r2-${idx}-${item.label}`} style={styles.captureCell}>
+                      <View style={styles.captureFrameSmall}>
+                        <Image
+                          source={resolveAuthenticatedScanImageSource(
+                            patientScanImageDisplayUrl(item.imageUrl),
+                            authToken
+                          )}
+                          style={styles.captureImg}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <Text style={styles.captureCaptionSmall} numberOfLines={2}>
+                        {item.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              {resolvedPhotos.length > 1 && row3.length > 0 ? (
+                <View style={styles.captureRow3}>
+                  {row3.map((item, idx) => (
+                    <View key={`r3-${idx}-${item.label}`} style={styles.captureCell3}>
+                      <View style={styles.captureFrameSmall}>
+                        <Image
+                          source={resolveAuthenticatedScanImageSource(
+                            patientScanImageDisplayUrl(item.imageUrl),
+                            authToken
+                          )}
+                          style={styles.captureImg}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <Text style={styles.captureCaptionSmall} numberOfLines={2}>
+                        {item.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            <Text style={styles.mutedCenter}>No face capture images for this scan.</Text>
+          )}
+
+          {showAnnotatedSection ? (
+            <View style={styles.annotatedBlock}>
+              <Text style={styles.captureKicker}>Annotated findings</Text>
+              <View style={styles.annotatedFrame}>
+                <LinearGradient
+                  colors={["rgba(255,255,255,0.35)", "transparent", "rgba(0,0,0,0.2)"]}
+                  style={StyleSheet.absoluteFill}
+                  pointerEvents="none"
+                />
+                <Image source={annotatedFaceSource} style={styles.faceImg} resizeMode="cover" />
+                {showDotMarkers
+                  ? regions.map((region, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.marker,
+                          {
+                            left: `${region.coordinates.x}%`,
+                            top: `${region.coordinates.y}%`,
+                            backgroundColor: markerColor(region.issue),
+                          },
+                        ]}
+                        accessibilityLabel={region.issue}
+                      />
+                    ))
+                  : null}
+              </View>
+              <View style={styles.legendRow}>
+                {["Acne", "Wrinkle", "Pigmentation", "Texture"].map((label) => (
+                  <View key={label} style={styles.legendChip}>
+                    <View style={[styles.legendDot, { backgroundColor: markerColor(label) }]} />
+                    <Text style={styles.legendText}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <Text style={styles.reportHeadKicker}>AI scan report</Text>
           <Text style={[styles.hello, { fontFamily: serif }]}>Hello {userName}</Text>
           <Text style={styles.ageLine}>
             Age: {userAge}yrs · Skin type: {userSkinType}
           </Text>
           <Text style={styles.bodyText}>{heroIntro}</Text>
 
-          <View style={styles.faceWrap}>
-            <View style={styles.faceFrame}>
-              <LinearGradient
-                colors={["rgba(255,255,255,0.35)", "transparent", "rgba(0,0,0,0.25)"]}
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
-              />
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image source={faceSource} style={styles.faceImg} resizeMode="cover" />
-              {showFaceMarkers
-                ? regions.map((region, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.marker,
-                        {
-                          left: `${region.coordinates.x}%`,
-                          top: `${region.coordinates.y}%`,
-                          backgroundColor: markerColor(region.issue),
-                        },
-                      ]}
-                      accessibilityLabel={region.issue}
-                    />
-                  ))
-                : null}
-            </View>
-          </View>
-
           {tracker ? (
-            <View style={[styles.scoreFloat, { marginTop: 18 }]}>
-              <Text style={styles.scoreKicker}>kAI SKIN SCORE (THIS SCAN)</Text>
-              <Text style={[styles.scoreBig, { fontFamily: serif }]}>
-                {tracker.scores.kaiScore}%
-              </Text>
-            </View>
+            <TrackerReportSectionsNative report={tracker} serifFamily={serif ?? "serif"} />
           ) : (
-            <View style={styles.metricsCol}>
-              {[
-                { label: "Acne", value: metrics.acne, fill: "#5B8FD8", track: "rgba(91, 143, 216, 0.18)" },
-                { label: "Hydration", value: metrics.hydration, fill: PEACH, track: "rgba(242, 156, 145, 0.22)" },
-                { label: "Wrinkles", value: metrics.wrinkles, fill: "#9EC5E8", track: "rgba(158, 197, 232, 0.3)" },
-              ].map((row) => (
-                <View key={row.label} style={styles.metricPill}>
-                  <Text style={styles.metricLabel}>{row.label}</Text>
-                  <View style={styles.metricRight}>
-                    <ReportDonut
-                      percent={row.value}
-                      size={54}
-                      stroke={5}
-                      color={row.fill}
-                      trackColor={row.track}
-                    />
-                    <Text style={styles.metricPct}>{clamp(row.value)}%</Text>
+            <>
+              <View style={styles.metricsCol}>
+                {[
+                  {
+                    label: "Acne",
+                    value: metrics.acne,
+                    fill: "#5B8FD8",
+                    track: "rgba(91, 143, 216, 0.18)",
+                  },
+                  {
+                    label: "Hydration",
+                    value: metrics.hydration,
+                    fill: PEACH,
+                    track: "rgba(242, 156, 145, 0.22)",
+                  },
+                  {
+                    label: "Wrinkles",
+                    value: metrics.wrinkles,
+                    fill: "#9EC5E8",
+                    track: "rgba(158, 197, 232, 0.3)",
+                  },
+                ].map((row) => (
+                  <View key={row.label} style={styles.metricPill}>
+                    <Text style={styles.metricLabel}>{row.label}</Text>
+                    <View style={styles.metricRight}>
+                      <ReportDonut
+                        percent={row.value}
+                        size={54}
+                        stroke={5}
+                        color={row.fill}
+                        trackColor={row.track}
+                      />
+                      <Text style={styles.metricPct}>{clamp(row.value)}%</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {metrics.clinical_scores ? (
+                <View style={styles.clinicalSection}>
+                  <Text style={styles.clinicalKicker}>Model scores (1–5)</Text>
+                  <Text style={styles.clinicalHint}>
+                    Severity-style outputs from the analysis engine (higher = more concern).
+                  </Text>
+                  <View style={styles.clinicalGrid}>
+                    {CLINICAL_ROWS.map(({ key, label }) => {
+                      const v = metrics.clinical_scores![key];
+                      if (key === "pigmentation_model") {
+                        if (v === undefined) return null;
+                        if (v === null) {
+                          return (
+                            <View key={key} style={styles.clinicalCard}>
+                              <Text style={styles.clinicalLabel}>{label}</Text>
+                              <Text style={styles.clinicalNa}>No dataset available</Text>
+                            </View>
+                          );
+                        }
+                      }
+                      if (typeof v !== "number") return null;
+                      return (
+                        <View key={key} style={styles.clinicalCard}>
+                          <View style={styles.clinicalTop}>
+                            <Text style={styles.clinicalLabel}>{label}</Text>
+                            <Text style={styles.clinicalNum}>{v.toFixed(1)}</Text>
+                          </View>
+                          <View style={styles.clinicalTrack}>
+                            <View
+                              style={[styles.clinicalFill, { width: clinicalBarWidth(v) }]}
+                            />
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
-              ))}
-            </View>
-          )}
+              ) : null}
 
-          {!tracker ? (
-            <View style={styles.scoreFloat}>
-              <Text style={styles.scoreKicker}>YOUR SKIN HEALTH</Text>
-              <Text style={[styles.scoreBig, { fontFamily: serif }]}>{overall}%</Text>
-              <Text style={styles.scoreSub}>Last scan: {lastScanLabel}</Text>
-              <View style={styles.scoreDonutWrap}>
-                <ReportDonut
-                  percent={overall}
-                  size={104}
-                  stroke={9}
-                  color={PEACH}
-                  trackColor="#F0E4E1"
-                />
+              <View style={styles.scoreFloat}>
+                <Text style={styles.scoreKicker}>YOUR SKIN HEALTH</Text>
+                <Text style={[styles.scoreBig, { fontFamily: serif }]}>{overall}%</Text>
+                <Text style={styles.scoreSub}>Last scan: {lastScanLabel}</Text>
+                <View style={styles.scoreDonutWrap}>
+                  <ReportDonut
+                    percent={overall}
+                    size={104}
+                    stroke={9}
+                    color={PEACH}
+                    trackColor="#F0E4E1"
+                  />
+                </View>
               </View>
-            </View>
-          ) : null}
+            </>
+          )}
         </View>
 
-        {!tracker ? (
+        {tracker ? (
+          <View style={[styles.beigeFooter, { backgroundColor: BEIGE }]}>
+            <View style={styles.footerRule} />
+            <Text style={styles.resourceFooterTitle}>Resource centre</Text>
+            <Text style={styles.resourceFooterHint}>
+              Personalized links from your kAI tracker (same as on the website).
+            </Text>
+          </View>
+        ) : (
           <LinearGradient colors={[TEAL_BAND, "#d8ebe6"]} style={styles.tealSection}>
             <View style={styles.tealDivider} />
-            <View style={styles.tealCol}>
-              <View style={styles.tealBar} />
-              <Text style={styles.tealH}>NOTE</Text>
-              <Text style={styles.tealP}>
-                Complete your profile and weekly scans to unlock the full kAI tracker narrative.
-              </Text>
-            </View>
+            <View style={styles.tealBar} />
+            <Text style={styles.tealH}>Overview</Text>
+            <Text style={styles.tealP}>
+              {aiSummary?.trim()
+                ? "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends—this is educational, not a medical diagnosis."
+                : "Your skin shows a balanced profile with room to optimize hydration and maintain clarity. Continue tracking changes after each scan to spot trends early."}
+            </Text>
+            <Text style={styles.tealP}>{OVERVIEW_P2}</Text>
+            <View style={[styles.tealBar, { marginTop: 20 }]} />
+            <Text style={styles.tealH}>Causes / challenges</Text>
+            <Text style={styles.tealP}>{CAUSES_P1}</Text>
+            <Text style={styles.tealP}>{CAUSES_P2}</Text>
           </LinearGradient>
-        ) : null}
+        )}
 
         <View style={[styles.beigeFooter, { backgroundColor: BEIGE }]}>
           <View style={styles.footerRule} />
-          <Text style={styles.knowSkin}>CTA</Text>
+          <Text style={styles.knowSkin}>To know your skin better</Text>
           {tracker?.cta.showAppointmentPrep ? (
             <Pressable
               style={styles.bookBtn}
@@ -319,12 +507,112 @@ const styles = StyleSheet.create({
     height: 120,
     zIndex: 1,
   },
-  inner: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 32 },
-  kicker: {
+  inner: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 28 },
+  captureKicker: {
+    textAlign: "center",
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 2.2,
     color: "#71717a",
+    marginBottom: 12,
+  },
+  singleCaptureWrap: { alignItems: "center" },
+  captureFrameLarge: {
+    width: 200,
+    aspectRatio: 3 / 4,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#e4e4e7",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.12)",
+  },
+  captureRow2: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 20,
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  captureRow3: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginTop: 12,
+  },
+  captureCell: { width: 120, alignItems: "center" },
+  captureCell3: { width: 100, alignItems: "center" },
+  captureFrameSmall: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+    maxWidth: 96,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#e4e4e7",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+  },
+  captureImg: { width: "100%", height: "100%" },
+  captureCaption: {
+    marginTop: 8,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#52525b",
+    textAlign: "center",
+  },
+  captureCaptionSmall: {
+    marginTop: 6,
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#52525b",
+    textAlign: "center",
+    lineHeight: 12,
+  },
+  mutedCenter: {
+    textAlign: "center",
+    fontSize: 14,
+    color: "#71717a",
+    marginBottom: 16,
+  },
+  annotatedBlock: { marginTop: 20 },
+  annotatedFrame: {
+    marginTop: 12,
+    alignSelf: "center",
+    width: 280,
+    aspectRatio: 3 / 4,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#e4e4e7",
+    borderWidth: 1,
+    borderColor: "#d4d4d8",
+  },
+  legendRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 14,
+  },
+  legendChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+  },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 10, fontWeight: "600", color: "#52525b" },
+  reportHeadKicker: {
+    marginTop: 28,
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 2,
+    color: "#71717a",
+    textTransform: "uppercase",
   },
   hello: {
     marginTop: 8,
@@ -345,16 +633,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: "#52525b",
   },
-  faceWrap: { marginTop: 20, alignItems: "center" },
-  faceFrame: {
-    width: 220,
-    aspectRatio: 3 / 4,
-    borderRadius: 18,
-    overflow: "hidden",
-    backgroundColor: "#e4e4e7",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-  },
   faceImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   marker: {
     position: "absolute",
@@ -371,167 +649,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  section: { marginTop: 22 },
-  ocBox: {
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: "rgba(254, 243, 199, 0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.45)",
-  },
-  ocKicker: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.6,
-    color: "#92400e",
-    marginBottom: 8,
-  },
-  ocFlag: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#9f1239",
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  ocNote: {
-    fontSize: 13,
-    color: "#27272a",
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  sectionKicker: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 2,
-    color: "#71717a",
-    marginBottom: 10,
-  },
-  hookLine: {
-    fontSize: 18,
-    lineHeight: 24,
-    color: "#18181b",
-    fontWeight: "500",
-  },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  chip: {
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: "#fff",
-  },
-  chipK: { fontSize: 9, fontWeight: "600", color: "#71717a", textTransform: "uppercase" },
-  chipV: { fontSize: 13, fontWeight: "700", color: "#18181b" },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  pill: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "#e4e4e7",
-  },
-  pillText: { fontSize: 12, fontWeight: "500", color: "#3f3f46" },
-  paramGrid: { marginTop: 12, gap: 8 },
-  paramCard: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 14,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#fff",
-  },
-  paramTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 8,
-  },
-  paramLabel: { fontSize: 12, fontWeight: "600", color: "#27272a", flex: 1 },
-  paramRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  paramValue: { fontSize: 12, fontWeight: "700", color: "#18181b" },
-  paramDelta: { fontSize: 11, fontWeight: "700" },
-  pendingBadge: {
-    backgroundColor: "#fffbeb",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#fde68a",
-  },
-  pendingBadgeText: { fontSize: 8, fontWeight: "700", color: "#92400e" },
-  paramTrack: {
-    marginTop: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(228,228,231,0.9)",
-    overflow: "hidden",
-  },
-  paramTrackPending: {
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: "#d4d4d8",
-    backgroundColor: "#f4f4f5",
-  },
-  paramFill: {
-    height: "100%",
-    borderRadius: 999,
-    backgroundColor: "#0d9488",
-  },
-  causesBox: {
-    marginTop: 14,
-    padding: 14,
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e4e4e7",
-  },
-  causesKicker: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    color: "#52525b",
-    marginBottom: 8,
-  },
-  causeBullet: { fontSize: 13, lineHeight: 20, color: "#3f3f46", marginBottom: 6 },
-  overviewPara: { marginTop: 8, fontSize: 13, lineHeight: 22, color: "#52525b" },
-  resourceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e4e4e7",
-  },
-  resourceKind: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#52525b",
-    width: 64,
-  },
-  resourceTitle: { flex: 1, fontSize: 13, fontWeight: "600", color: "#0f766e" },
-  focusCard: {
-    flexDirection: "row",
-    gap: 12,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#fff",
-  },
-  focusRank: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
-    backgroundColor: BTN,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  focusRankText: { color: "#fff", fontWeight: "800", fontSize: 15 },
-  focusTitle: { fontSize: 14, fontWeight: "700", color: "#18181b" },
-  focusDetail: { marginTop: 4, fontSize: 12, lineHeight: 18, color: "#52525b" },
   metricsCol: { marginTop: 24, gap: 10, alignItems: "stretch" },
   metricPill: {
     flexDirection: "row",
@@ -552,6 +669,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#27272a",
+  },
+  clinicalSection: { marginTop: 24 },
+  clinicalKicker: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 2,
+    color: "#71717a",
+    textTransform: "uppercase",
+  },
+  clinicalHint: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#52525b",
+  },
+  clinicalGrid: { marginTop: 12, gap: 10 },
+  clinicalCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    padding: 12,
+  },
+  clinicalTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+  },
+  clinicalLabel: { fontSize: 11, fontWeight: "700", color: "#27272a", flex: 1 },
+  clinicalNum: { fontSize: 12, fontWeight: "700", color: "#18181b" },
+  clinicalNa: { marginTop: 6, fontSize: 10, color: "#71717a" },
+  clinicalTrack: {
+    marginTop: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(228,228,231,0.95)",
+    overflow: "hidden",
+  },
+  clinicalFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#3f3f46",
   },
   scoreFloat: {
     marginTop: 28,
@@ -594,7 +754,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 28,
     paddingBottom: 32,
-    marginTop: 8,
+    marginTop: 4,
   },
   tealDivider: {
     height: StyleSheet.hairlineWidth,
@@ -614,6 +774,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     color: "#18181b",
     marginBottom: 12,
+    textTransform: "uppercase",
   },
   tealP: {
     fontSize: 14,
@@ -621,12 +782,27 @@ const styles = StyleSheet.create({
     color: "#3f3f46",
     marginBottom: 14,
   },
-  tealCol: { marginBottom: 20 },
   beigeFooter: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 32 },
   footerRule: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(0,0,0,0.08)",
     marginBottom: 20,
+  },
+  resourceFooterTitle: {
+    textAlign: "center",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 2.8,
+    color: "#18181b",
+    textTransform: "uppercase",
+  },
+  resourceFooterHint: {
+    textAlign: "center",
+    marginTop: 8,
+    fontSize: 12,
+    color: "#71717a",
+    lineHeight: 18,
+    paddingHorizontal: 12,
   },
   knowSkin: {
     textAlign: "center",
@@ -635,6 +811,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 2.2,
     color: "#52525b",
+    textTransform: "uppercase",
   },
   bookBtn: {
     alignSelf: "center",

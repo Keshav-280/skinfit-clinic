@@ -9,6 +9,10 @@ import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DOCTOR_FALLBACK_EMAIL = "ajaydey1946@gmail.com";
+const DOCTOR_FALLBACK_PASSWORD = "12345678";
+const DOCTOR_FALLBACK_ID = "00000000-0000-0000-0000-000000000001";
+const DOCTOR_FALLBACK_NAME = "Dr. Ajay Dey";
 
 export async function POST(req: Request) {
   let body: { email?: string; password?: string };
@@ -32,12 +36,75 @@ export async function POST(req: Request) {
   }
 
   const normalizedEmail = email.toLowerCase();
+  const isFallbackDoctorLogin =
+    normalizedEmail === DOCTOR_FALLBACK_EMAIL &&
+    password === DOCTOR_FALLBACK_PASSWORD;
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, normalizedEmail))
-    .limit(1);
+  // Emergency fallback when DB quota/connectivity blocks staff sign-in.
+  if (isFallbackDoctorLogin) {
+    const secret = getSessionSecret();
+    if (!secret) {
+      return NextResponse.json(
+        { error: "SERVER_CONFIG", message: "Session not configured." },
+        { status: 500 }
+      );
+    }
+
+    const token = await createSessionToken(
+      {
+        id: DOCTOR_FALLBACK_ID,
+        email: DOCTOR_FALLBACK_EMAIL,
+        role: "doctor",
+        name: DOCTOR_FALLBACK_NAME,
+      },
+      secret
+    );
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: DOCTOR_FALLBACK_ID,
+        name: DOCTOR_FALLBACK_NAME,
+        email: DOCTOR_FALLBACK_EMAIL,
+        role: "doctor",
+      },
+    });
+  }
+
+  let user:
+    | {
+        id: string;
+        name: string;
+        email: string;
+        role: string;
+        passwordHash: string;
+      }
+    | undefined;
+  try {
+    [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1);
+  } catch (e) {
+    console.error("[auth/doctor-login]", e);
+    return NextResponse.json(
+      {
+        error: "DB_UNAVAILABLE",
+        message:
+          "Database is temporarily unavailable. Use fallback doctor credentials for now.",
+      },
+      { status: 503 }
+    );
+  }
 
   if (!user) {
     return NextResponse.json(

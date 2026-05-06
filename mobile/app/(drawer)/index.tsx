@@ -672,17 +672,61 @@ export default function DashboardScreen() {
         </View>
       </View>
 
+      <View style={[styles.card, { marginTop: 16 }]}>
+        <Text style={styles.h2}>Doctor&apos;s feedback</Text>
+        <Text style={styles.sectionCaption}>Written update from your clinician.</Text>
+        {data.doctorFeedback?.trim() ? (
+          <Text style={styles.feedback}>{data.doctorFeedback}</Text>
+        ) : (
+          <View style={styles.feedbackEmpty} />
+        )}
+        <Text style={[styles.label, { marginTop: 12 }]}>Reply to your doctor</Text>
+        <TextInput
+          style={styles.textArea}
+          multiline
+          placeholder="Message (posts to doctor chat)"
+          value={doctorReply}
+          onChangeText={setDoctorReply}
+          placeholderTextColor="#94a3b8"
+        />
+        <Pressable
+          style={[styles.btn, { marginTop: 8, opacity: replyBusy ? 0.6 : 1 }]}
+          disabled={replyBusy || !doctorReply.trim()}
+          onPress={async () => {
+            if (!token || !doctorReply.trim()) return;
+            setReplyBusy(true);
+            try {
+              await apiJson(`/api/chat/plain/message`, token, {
+                method: "POST",
+                body: JSON.stringify({
+                  assistantId: "doctor",
+                  text: doctorReply.trim(),
+                }),
+              });
+              setDoctorReply("");
+            } catch {
+              setJournalHint("Could not send reply.");
+            } finally {
+              setReplyBusy(false);
+            }
+          }}
+        >
+          <Text style={styles.btnText}>{replyBusy ? "Sending…" : "Send reply"}</Text>
+        </Pressable>
+      </View>
+
       <View style={[styles.card, { marginTop: 16, marginBottom: 32 }]}>
         <View style={styles.rowBetween}>
-          <Text style={styles.h2}>Doctor&apos;s feedback</Text>
+          <Text style={styles.h2}>Voice notes</Text>
           {data.doctorVoiceNoteIsNew ? (
             <View style={styles.newBadge}>
               <Text style={styles.newBadgeText}>New</Text>
             </View>
           ) : null}
         </View>
+        <Text style={styles.sectionCaption}>Short audio messages from your doctor.</Text>
         {(data.doctorVoiceNotes?.length ?? 0) > 0 ? (
-          <View style={{ gap: 14 }}>
+          <View style={{ gap: 14, marginTop: 10 }}>
             {data.doctorVoiceNotes!.map((vn) => (
               <View
                 key={vn.id}
@@ -727,11 +771,15 @@ export default function DashboardScreen() {
             ))}
           </View>
         ) : data.onboardingComplete === false ? (
-          <Text style={styles.voicePlaceholder}>
+          <Text style={[styles.voicePlaceholder, { marginTop: 10 }]}>
             Your doctor will send a voice note after reviewing your baseline. The bell will
             update when it arrives.
           </Text>
-        ) : null}
+        ) : (
+          <Text style={[styles.muted, { marginTop: 10 }]}>
+            No voice notes yet. When your doctor records one, it will appear here.
+          </Text>
+        )}
         {(data.doctorArchivedVoiceNotes?.length ?? 0) > 0 ? (
           <View style={{ marginTop: 12 }}>
             <Pressable onPress={() => setShowArchivedVoices((v) => !v)}>
@@ -762,44 +810,6 @@ export default function DashboardScreen() {
               : null}
           </View>
         ) : null}
-        {data.doctorFeedback?.trim() ? (
-          <Text style={styles.feedback}>{data.doctorFeedback}</Text>
-        ) : (data.doctorVoiceNotes?.length ?? 0) === 0 ? (
-          <View style={styles.feedbackEmpty} />
-        ) : null}
-        <Text style={[styles.label, { marginTop: 12 }]}>Reply to your doctor</Text>
-        <TextInput
-          style={styles.textArea}
-          multiline
-          placeholder="Message (posts to doctor chat)"
-          value={doctorReply}
-          onChangeText={setDoctorReply}
-          placeholderTextColor="#94a3b8"
-        />
-        <Pressable
-          style={[styles.btn, { marginTop: 8, opacity: replyBusy ? 0.6 : 1 }]}
-          disabled={replyBusy || !doctorReply.trim()}
-          onPress={async () => {
-            if (!token || !doctorReply.trim()) return;
-            setReplyBusy(true);
-            try {
-              await apiJson(`/api/chat/plain/message`, token, {
-                method: "POST",
-                body: JSON.stringify({
-                  assistantId: "doctor",
-                  text: doctorReply.trim(),
-                }),
-              });
-              setDoctorReply("");
-            } catch {
-              setJournalHint("Could not send reply.");
-            } finally {
-              setReplyBusy(false);
-            }
-          }}
-        >
-          <Text style={styles.btnText}>{replyBusy ? "Sending…" : "Send reply"}</Text>
-        </Pressable>
       </View>
     </ScrollView>
   );
@@ -972,6 +982,13 @@ const styles = StyleSheet.create({
   err: { color: "#b91c1c", padding: 16 },
   h1: { fontSize: 24, fontWeight: "700", textAlign: "center", color: "#18181b" },
   h2: { fontSize: 18, fontWeight: "700", color: "#18181b" },
+  sectionCaption: {
+    fontSize: 13,
+    color: "#71717a",
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  editLink: { fontSize: 14, fontWeight: "600", color: TEAL },
   sub: { fontSize: 11, fontWeight: "600", color: "#71717a", marginBottom: 8, textTransform: "uppercase" },
   muted: { fontSize: 13, color: "#71717a", marginBottom: 8 },
   warn: { color: "#b45309", marginBottom: 8 },

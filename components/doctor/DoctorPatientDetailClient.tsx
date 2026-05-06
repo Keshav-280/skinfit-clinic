@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
+import { prepareVisitNoteAttachmentFile } from "@/src/lib/visitNotePrepareAttachment";
 import { MAX_VISIT_NOTE_ATTACHMENT_URI_LEN } from "@/src/lib/visitNoteAttachments";
 import { DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT } from "@/src/lib/doctorPatientChatInboxEvents";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
@@ -2077,7 +2078,9 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         <p className="mb-4 text-sm leading-relaxed text-slate-600">
           Add a text note and optional PDFs or images. Patients see these on{" "}
           <span className="font-semibold text-slate-800">Treatment history</span>. Up to 5 files per
-          note; keep each file modest in size (roughly under 1&nbsp;MB) so upload succeeds.
+          note. Large images and PDFs are{" "}
+          <span className="font-semibold text-slate-800">compressed automatically</span> before
+          upload (PDFs become a single JPEG; very long PDFs use the first 12 pages).
         </p>
         <div className="mb-6 space-y-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-4">
           <label className="flex flex-col gap-2">
@@ -2131,31 +2134,26 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               setVisitNoteFlash(null);
               setVisitNoteBusy(true);
               try {
-                const rawMax = Math.floor(MAX_VISIT_NOTE_ATTACHMENT_URI_LEN * 0.72);
                 const files = visitNoteFiles.slice(0, 5);
-                for (const f of files) {
-                  if (f.size > rawMax) {
-                    setVisitNoteFlash(
-                      `File too large: ${f.name}. Use a smaller file (under ~${Math.round(rawMax / 1024)} KB).`
-                    );
-                    return;
-                  }
-                }
                 const attachments: Array<{
                   fileName: string;
                   mimeType: string;
                   dataUri: string;
                 }> = [];
                 for (const f of files) {
-                  const dataUri = await blobToDataUri(f);
-                  if (dataUri.length > MAX_VISIT_NOTE_ATTACHMENT_URI_LEN) {
-                    setVisitNoteFlash(`Encoded file too large: ${f.name}.`);
+                  const prepared = await prepareVisitNoteAttachmentFile(f);
+                  if (!prepared.ok) {
+                    setVisitNoteFlash(prepared.error);
+                    return;
+                  }
+                  if (prepared.dataUri.length > MAX_VISIT_NOTE_ATTACHMENT_URI_LEN) {
+                    setVisitNoteFlash(`Still too large after compression: ${prepared.fileName}.`);
                     return;
                   }
                   attachments.push({
-                    fileName: f.name.slice(0, 200),
-                    mimeType: f.type || "application/octet-stream",
-                    dataUri,
+                    fileName: prepared.fileName,
+                    mimeType: prepared.mimeType,
+                    dataUri: prepared.dataUri,
                   });
                 }
                 const res = await fetch(`/api/doctor/patients/${patientId}/visit-notes`, {

@@ -5,8 +5,23 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
-  type OnboardingQuestionnaireDraftV1,
+  ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
+  type OnboardingQuestionnaireDraftV2,
 } from "@/src/lib/onboardingQuestionnaireDraft";
+
+const GENDER_OPTIONS: { value: string; label: string }[] = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+  { value: "other", label: "Other" },
+  { value: "prefer_not_say", label: "Prefer not to say" },
+];
+
+function parseOnboardingAge(raw: string): number | null {
+  const n = parseInt(raw.trim(), 10);
+  if (!Number.isFinite(n)) return null;
+  if (n < 1 || n > 120) return null;
+  return n;
+}
 
 type Concern = "acne" | "pigmentation" | "ageing" | "hair" | "general";
 
@@ -42,7 +57,7 @@ const SKIN_TYPES = [
   "Sensitive",
 ] as const;
 
-/** Visible step index / total (skips Q5b when prior treatment = no). */
+/** Visible step index / total (skips treatment-detail step when prior treatment = no). */
 function questionnaireProgress(
   step: number,
   priorTx: "yes" | "no" | null
@@ -51,7 +66,7 @@ function questionnaireProgress(
     return { displayStep: step + 1, totalSteps: 11 };
   }
   if (priorTx === "no") {
-    const order = [0, 1, 2, 3, 4, 6, 7, 8, 9];
+    const order = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10];
     const ix = order.indexOf(step);
     return {
       displayStep: ix >= 0 ? ix + 1 : step + 1,
@@ -144,6 +159,8 @@ export function OnboardingQuestionnaireForm() {
     "minimal" | "low" | "moderate" | "high" | null
   >(null);
   const [skinType, setSkinType] = useState<(typeof SKIN_TYPES)[number] | null>(null);
+  const [ageInput, setAgeInput] = useState("");
+  const [gender, setGender] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
@@ -153,13 +170,22 @@ export function OnboardingQuestionnaireForm() {
         setDraftReady(true);
         return;
       }
-      const d = JSON.parse(raw) as OnboardingQuestionnaireDraftV1;
-      if (d.v !== 1) {
+      const d = JSON.parse(raw) as OnboardingQuestionnaireDraftV2;
+      if (d.v !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) {
         setDraftReady(true);
         return;
       }
-      if (typeof d.step === "number" && d.step >= 0 && d.step <= 9) {
+      if (typeof d.step === "number" && d.step >= 0 && d.step <= 10) {
         setStep(d.step);
+      }
+      if (typeof d.ageInput === "string") setAgeInput(d.ageInput);
+      if (
+        d.gender === "female" ||
+        d.gender === "male" ||
+        d.gender === "other" ||
+        d.gender === "prefer_not_say"
+      ) {
+        setGender(d.gender);
       }
       if (d.concern && VALID_CONCERN.has(d.concern)) {
         setConcern(d.concern as Concern);
@@ -226,9 +252,11 @@ export function OnboardingQuestionnaireForm() {
     if (!draftReady) return;
     const t = window.setTimeout(() => {
       try {
-        const draft: OnboardingQuestionnaireDraftV1 = {
-          v: 1,
+        const draft: OnboardingQuestionnaireDraftV2 = {
+          v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
           step,
+          ageInput,
+          gender,
           concern,
           severity,
           duration,
@@ -268,6 +296,8 @@ export function OnboardingQuestionnaireForm() {
     diet,
     sun,
     skinType,
+    ageInput,
+    gender,
   ]);
 
   const toggleTrigger = (id: string) => {
@@ -279,31 +309,35 @@ export function OnboardingQuestionnaireForm() {
   const canNext = useMemo(() => {
     switch (step) {
       case 0:
-        return concern != null;
+        return parseOnboardingAge(ageInput) != null && gender != null;
       case 1:
-        return severity != null;
+        return concern != null;
       case 2:
-        return duration != null;
+        return severity != null;
       case 3:
-        return triggers.length > 0;
+        return duration != null;
       case 4:
-        return priorTx != null;
+        return triggers.length > 0;
       case 5:
+        return priorTx != null;
+      case 6:
         if (priorTx !== "yes") return true;
         return txText.trim().length >= 10 && txDur.trim().length > 0;
-      case 6:
-        return sensitivity != null;
       case 7:
-        return sleep != null;
+        return sensitivity != null;
       case 8:
-        return water != null && diet != null && sun != null;
+        return sleep != null;
       case 9:
+        return water != null && diet != null && sun != null;
+      case 10:
         return skinType != null;
       default:
         return false;
     }
   }, [
     step,
+    ageInput,
+    gender,
     concern,
     severity,
     duration,
@@ -322,7 +356,10 @@ export function OnboardingQuestionnaireForm() {
   const { displayStep, totalSteps } = questionnaireProgress(step, priorTx);
 
   async function submit() {
+    const age = parseOnboardingAge(ageInput);
     if (
+      age == null ||
+      !gender ||
       !concern ||
       !severity ||
       !duration ||
@@ -342,6 +379,8 @@ export function OnboardingQuestionnaireForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          age,
+          gender,
           primaryConcern: concern,
           concernSeverity: severity,
           concernDuration: duration,
@@ -385,12 +424,12 @@ export function OnboardingQuestionnaireForm() {
   }
 
   function next() {
-    if (step === 9) {
+    if (step === 10) {
       void submit();
       return;
     }
-    if (step === 4 && priorTx === "no") {
-      setStep(6);
+    if (step === 5 && priorTx === "no") {
+      setStep(7);
       return;
     }
     setStep((s) => s + 1);
@@ -401,8 +440,8 @@ export function OnboardingQuestionnaireForm() {
       router.back();
       return;
     }
-    if (step === 6 && priorTx === "no") {
-      setStep(4);
+    if (step === 7 && priorTx === "no") {
+      setStep(5);
       return;
     }
     setStep((s) => s - 1);
@@ -431,6 +470,35 @@ export function OnboardingQuestionnaireForm() {
 
       {step === 0 ? (
         <>
+          <h2 className="text-lg font-bold text-zinc-900">About you</h2>
+          <p className="text-sm text-zinc-500">Age (years)</p>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="bday-year"
+            className="mb-4 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-[15px] text-zinc-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+            placeholder="e.g. 32"
+            value={ageInput}
+            onChange={(e) => setAgeInput(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+          />
+          <p className="text-sm font-semibold text-zinc-600">Gender</p>
+          <div className="mt-2 space-y-2">
+            {GENDER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={chip(gender === opt.value)}
+                onClick={() => setGender(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {step === 1 ? (
+        <>
           <h2 className="text-lg font-bold text-zinc-900">
             What brings you to SkinFit today?
           </h2>
@@ -449,7 +517,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 1 ? (
+      {step === 2 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             {concern
@@ -477,7 +545,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 2 ? (
+      {step === 3 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             {copyForConcern(concern, "durTitle")}
@@ -508,7 +576,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 3 ? (
+      {step === 4 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             {copyForConcern(concern, "trigTitle")}
@@ -534,7 +602,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 4 ? (
+      {step === 5 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             Have you tried treating this before?
@@ -559,7 +627,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 5 && priorTx === "yes" ? (
+      {step === 6 && priorTx === "yes" ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             What have you tried so far? For how long?
@@ -599,7 +667,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 6 ? (
+      {step === 7 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             How would you describe your skin&apos;s sensitivity?
@@ -631,7 +699,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 7 ? (
+      {step === 8 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             How&apos;s your sleep most nights?
@@ -664,7 +732,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 8 ? (
+      {step === 9 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             Lifestyle snapshot
@@ -734,7 +802,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {step === 9 ? (
+      {step === 10 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             How would you describe your skin type?
@@ -769,7 +837,7 @@ export function OnboardingQuestionnaireForm() {
           disabled={!canNext || busy}
           className="flex-1 rounded-2xl bg-teal-600 py-3.5 text-center text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {busy ? "Saving…" : step === 9 ? "Save & continue" : "Continue"}
+          {busy ? "Saving…" : step === 10 ? "Save & continue" : "Continue"}
         </button>
       </div>
     </div>

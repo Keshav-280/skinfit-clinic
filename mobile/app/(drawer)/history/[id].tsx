@@ -1,6 +1,6 @@
 import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,8 +18,8 @@ import { ApiError, apiJson } from "@/lib/api";
 import { buildScanReportPdfPayload } from "@/lib/buildScanReportPdfPayload";
 import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
 import { shareScanReportPdf } from "@/lib/scanReportPdf";
-import type { PatientTrackerReport } from "../../../../src/lib/patientTrackerReport.types";
-import { patientScanImageDisplayUrl } from "../../../../src/lib/patientScanImagePath";
+import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
+import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 
 type ScanDetail = {
   scanId: number;
@@ -64,44 +64,71 @@ export default function ScanDetailScreen() {
   const { token } = useAuth();
   const [row, setRow] = useState<ScanDetail | null>(null);
   const [tracker, setTracker] = useState<PatientTrackerReport | null>(null);
+  /** When false, `tracker === null` may still mean "loading" — don't show the legacy donut fallback yet. */
+  const [trackerSettled, setTrackerSettled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!token || !id) return;
-    const json = await apiJson<ScanDetail>(
-      `/api/patient/scans/${encodeURIComponent(id)}`,
-      token,
-      { method: "GET" }
-    );
-    setRow(json);
-    try {
-      const tr = await apiJson<PatientTrackerReport>(
-        `/api/patient/tracker?scanId=${encodeURIComponent(id)}`,
-        token,
-        { method: "GET" }
-      );
-      setTracker(tr);
-    } catch {
-      setTracker(null);
-    }
-  }, [token, id]);
-
   useEffect(() => {
+    if (!token || !id) {
+      setRow(null);
+      setTracker(null);
+      setTrackerSettled(false);
+      return;
+    }
+
     let alive = true;
-    (async () => {
+    setRow(null);
+    setTracker(null);
+    setTrackerSettled(false);
+    setError(null);
+
+    void (async () => {
       try {
-        await load();
+        const json = await apiJson<ScanDetail>(
+          `/api/patient/scans/${encodeURIComponent(id)}`,
+          token,
+          { method: "GET" }
+        );
+        if (!alive) return;
+        setRow(json);
+        try {
+          const tr = await apiJson<PatientTrackerReport>(
+            `/api/patient/tracker?scanId=${encodeURIComponent(id)}`,
+            token,
+            { method: "GET" }
+          );
+          if (!alive) return;
+          setTracker(tr);
+        } catch {
+          if (alive) setTracker(null);
+        }
       } catch (e) {
         if (alive) {
           setError(e instanceof ApiError ? e.message : "Could not load scan.");
+          setRow(null);
+          setTracker(null);
         }
+      } finally {
+        if (alive) setTrackerSettled(true);
       }
     })();
+
     return () => {
       alive = false;
     };
-  }, [load]);
+  }, [token, id]);
+
+  const routeScanId = useMemo(() => {
+    const n = Number.parseInt(String(id ?? ""), 10);
+    return Number.isFinite(n) ? n : null;
+  }, [id]);
+
+  /** Avoid one frame (or slow fetch) showing the previous scan when `id` changes. */
+  const reportMatchesRoute =
+    row !== null && routeScanId !== null && row.scanId === routeScanId;
+
+  const reportReady = reportMatchesRoute && trackerSettled;
 
   const onDownloadPdf = useCallback(async () => {
     if (!row) return;
@@ -145,7 +172,17 @@ export default function ScanDetailScreen() {
     );
   }
 
-  if (!row) {
+  if (!reportReady) {
+    if (routeScanId === null) {
+      return (
+        <View style={styles.center}>
+          <Text style={styles.err}>Invalid scan link.</Text>
+          <Pressable style={styles.backBtn} onPress={() => router.replace(TREATMENT_HISTORY_HREF)}>
+            <Text style={styles.backBtnText}>Back to treatment history</Text>
+          </Pressable>
+        </View>
+      );
+    }
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
@@ -176,10 +213,14 @@ export default function ScanDetailScreen() {
         </Pressable>
       </View>
       <SkinScanReportBodyNative
+        key={String(id)}
         userName={row.userName}
         userAge={row.userAge}
         userSkinType={row.userSkinType}
         scanTitle={row.scanTitle}
+        imageUrl={row.imageUrl}
+        authToken={token}
+        faceCaptureGallery={row.faceCaptureGallery}
         imageSource={resolveAuthenticatedScanImageSource(
           patientScanImageDisplayUrl(row.imageUrl),
           token

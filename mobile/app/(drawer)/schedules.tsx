@@ -28,25 +28,62 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { getApiBase } from "@/lib/apiBase";
 import {
-  apiRangeFromView,
   buildCalendarCells,
   CAL_DAYS,
-  doctorSlotStatusLabel,
-  doctorSlotToneRn,
+  compareScheduleEvents,
   eventsInMonth,
   eventsInWeek,
-  formatDoctorSlotHmRangeLabel,
+  formatEventTimeChip,
   formatScheduleWhen,
-  formatTimeHmShort,
   getCellEvents,
   localYmd,
   parseLocalYmd,
-  type DoctorCalendarSlot,
   type ScheduleEventRow,
   WEEK_OPTS,
 } from "@/lib/schedulesCalendar";
 
-type DoctorRow = { id: string; name: string; email: string };
+type PendingScheduleRequestRow = {
+  id: string;
+  preferredDateYmd: string;
+  issue?: string;
+  daysAffected?: number | null;
+  timePreferences: string;
+  attachmentsCount?: number;
+  status: string;
+  cancelledReason?: string | null;
+};
+
+function pendingToSyntheticEvents(pending: PendingScheduleRequestRow[]): ScheduleEventRow[] {
+  return pending.map((r) => ({
+    id: `req:${r.id}`,
+    eventDateYmd: r.preferredDateYmd,
+    eventTimeHm: null,
+    title: `Visit request (pending) — ${(r.issue?.trim() || "Skin concern")}: ${r.timePreferences.slice(0, 72)}${
+      r.timePreferences.length > 72 ? "…" : ""
+    }`,
+    completed: false,
+    attachmentsCount: r.attachmentsCount ?? 0,
+  }));
+}
+
+function closedToSynthetic(closed: PendingScheduleRequestRow[]): ScheduleEventRow[] {
+  return closed.map((r) => {
+    const declined = String(r.status || "").toLowerCase() === "declined";
+    const label = declined ? "Declined request" : "Cancelled";
+    const reason = r.cancelledReason?.trim() || null;
+    return {
+      id: `reqclosed:${r.id}`,
+      eventDateYmd: r.preferredDateYmd,
+      eventTimeHm: null,
+      title: `${label} — ${(r.issue?.trim() || "Skin concern")}: ${r.timePreferences.slice(0, 72)}${
+        r.timePreferences.length > 72 ? "…" : ""
+      }`,
+      completed: false,
+      cancelled: true,
+      cancellationReason: reason,
+    };
+  });
+}
 
 function chunkWeeks<T>(cells: T[]): T[][] {
   const rows: T[][] = [];
@@ -56,36 +93,46 @@ function chunkWeeks<T>(cells: T[]): T[][] {
   return rows;
 }
 
-const TEAL = "#0d9488";
-
 export default function SchedulesScreen() {
   const { token } = useAuth();
-  const [tab, setTab] = useState<"mine" | "doctor">("mine");
+  const [scheduleTab, setScheduleTab] = useState<"treatment" | "appointments">("appointments");
   const [view, setView] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
-  const [scheduleEvents, setScheduleEvents] = useState<ScheduleEventRow[]>([]);
-  const [doctors, setDoctors] = useState<DoctorRow[]>([]);
-  const [doctorId, setDoctorId] = useState<string | null>(null);
-  const [doctorSlots, setDoctorSlots] = useState<DoctorCalendarSlot[]>([]);
+  const [treatmentEvents, setTreatmentEvents] = useState<ScheduleEventRow[]>([]);
+  const [appointmentEvents, setAppointmentEvents] = useState<ScheduleEventRow[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<PendingScheduleRequestRow[]>([]);
+  const [closedRequests, setClosedRequests] = useState<PendingScheduleRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [calendarRefreshing, setCalendarRefreshing] = useState(false);
-  const [doctorLoading, setDoctorLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [doctorError, setDoctorError] = useState<string | null>(null);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [requestSlot, setRequestSlot] = useState<DoctorCalendarSlot | null>(null);
-  const [requestIssue, setRequestIssue] = useState("Skin concern");
-  const [requestWhy, setRequestWhy] = useState("");
-  const [requestBusy, setRequestBusy] = useState(false);
+  const [visitRequestOpen, setVisitRequestOpen] = useState(false);
+  const [visitRequestYmd, setVisitRequestYmd] = useState<string | null>(null);
+  const [visitIssue, setVisitIssue] = useState("Skin concern");
+  const [visitDaysAffected, setVisitDaysAffected] = useState("");
+  const [visitTimes, setVisitTimes] = useState("");
+  const [visitBusy, setVisitBusy] = useState(false);
 
-  const range = useMemo(() => apiRangeFromView(currentDate, view), [currentDate, view]);
   const calendarCells = useMemo(
     () => buildCalendarCells(currentDate, view),
     [currentDate, view]
   );
+
+  const appointmentCalendarEvents = useMemo(() => {
+    return [
+      ...appointmentEvents,
+      ...pendingToSyntheticEvents(pendingRequests),
+      ...closedToSynthetic(closedRequests),
+    ].sort(compareScheduleEvents);
+  }, [appointmentEvents, pendingRequests, closedRequests]);
+
+  const activeCalendarEvents: ScheduleEventRow[] = useMemo(() => {
+    if (scheduleTab === "treatment") return treatmentEvents;
+    if (scheduleTab === "appointments") return appointmentCalendarEvents;
+    return [];
+  }, [scheduleTab, treatmentEvents, appointmentCalendarEvents]);
 
   const headerLabel =
     view === "month"
@@ -95,45 +142,22 @@ export default function SchedulesScreen() {
   const loadBootstrap = useCallback(async () => {
     if (!token) return;
     const json = await apiJson<{
-      initialScheduleEvents: ScheduleEventRow[];
+      initialScheduleEvents?: ScheduleEventRow[];
+      initialTreatmentEvents?: ScheduleEventRow[];
+      initialAppointmentEvents?: ScheduleEventRow[];
+      pendingScheduleRequests?: PendingScheduleRequestRow[];
+      closedScheduleRequests?: PendingScheduleRequestRow[];
     }>("/api/patient/schedules", token, { method: "GET" });
-    setScheduleEvents(json.initialScheduleEvents);
+    setTreatmentEvents(json.initialTreatmentEvents ?? []);
+    setAppointmentEvents(json.initialAppointmentEvents ?? []);
+    setPendingRequests(json.pendingScheduleRequests ?? []);
+    setClosedRequests(json.closedScheduleRequests ?? []);
   }, [token]);
-
-  const loadDoctors = useCallback(async () => {
-    if (!token) return;
-    const json = await apiJson<{ doctors: DoctorRow[] }>("/api/clinic/doctors", token, {
-      method: "GET",
-    });
-    setDoctors(json.doctors ?? []);
-    setDoctorId((prev) => prev ?? json.doctors[0]?.id ?? null);
-  }, [token]);
-
-  const loadDoctorCalendar = useCallback(async () => {
-    if (!token || !doctorId) return;
-    setDoctorLoading(true);
-    setDoctorError(null);
-    try {
-      const q = `/api/calendar/patient/doctor/${encodeURIComponent(doctorId)}?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
-      const json = await apiJson<{ slots: DoctorCalendarSlot[]; error?: string }>(
-        q,
-        token,
-        { method: "GET" }
-      );
-      setDoctorSlots(json.slots ?? []);
-    } catch (e) {
-      setDoctorError(e instanceof ApiError ? e.message : "Could not load doctor calendar.");
-      setDoctorSlots([]);
-    } finally {
-      setDoctorLoading(false);
-    }
-  }, [token, doctorId, range.from, range.to]);
 
   const loadAll = useCallback(async () => {
     setError(null);
     await loadBootstrap();
-    await loadDoctors();
-  }, [loadBootstrap, loadDoctors]);
+  }, [loadBootstrap]);
 
   useEffect(() => {
     let alive = true;
@@ -154,79 +178,13 @@ export default function SchedulesScreen() {
     };
   }, [loadAll]);
 
-  useEffect(() => {
-    if (tab === "doctor" && doctorId) {
-      void loadDoctorCalendar();
-    }
-  }, [tab, doctorId, loadDoctorCalendar]);
-
-  const doctorList = useMemo(
-    () =>
-      [...doctorSlots].sort((a, b) =>
-        `${a.slotDate}T${a.slotTimeHm}`.localeCompare(`${b.slotDate}T${b.slotTimeHm}`)
-      ),
-    [doctorSlots]
-  );
-
-  const myDoctorBookingsList = useMemo(
-    () => doctorList.filter((s) => s.bookedByMe),
-    [doctorList]
-  );
-
-  const listEventsMine = useMemo(
+  const listEventsCal = useMemo(
     () =>
       view === "month"
-        ? eventsInMonth(scheduleEvents, currentDate)
-        : eventsInWeek(scheduleEvents, currentDate),
-    [view, scheduleEvents, currentDate]
+        ? eventsInMonth(activeCalendarEvents, currentDate)
+        : eventsInWeek(activeCalendarEvents, currentDate),
+    [view, activeCalendarEvents, currentDate]
   );
-
-  async function submitRequest() {
-    if (!token || !doctorId || !requestSlot) return;
-    const issueTrim = requestIssue.trim();
-    if (!issueTrim) {
-      Alert.alert("Request", "Enter a short issue.");
-      return;
-    }
-    setRequestBusy(true);
-    try {
-      const res = await fetch(`${getApiBase()}/api/appointments/requests`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          doctorId,
-          doctorSlotId: requestSlot.id,
-          issue: issueTrim,
-          why: requestWhy.trim() || undefined,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; request?: { id: string } };
-      if (!res.ok) {
-        if (res.status === 409 && data.error === "SLOT_REQUEST_PENDING") {
-          throw new Error(
-            "Another patient already requested this slot. It will open again if the clinic declines."
-          );
-        }
-        if (res.status === 409 && data.error === "SLOT_ALREADY_BOOKED") {
-          throw new Error("This time is already booked.");
-        }
-        throw new Error(data.error || "Request failed.");
-      }
-      setModalOpen(false);
-      setRequestSlot(null);
-      setRequestIssue("Skin concern");
-      setRequestWhy("");
-      await loadDoctorCalendar();
-      await loadBootstrap();
-    } catch (e) {
-      Alert.alert("Request", e instanceof Error ? e.message : "Failed.");
-    } finally {
-      setRequestBusy(false);
-    }
-  }
 
   const handlePrev = () =>
     view === "month"
@@ -242,13 +200,60 @@ export default function SchedulesScreen() {
     setCalendarRefreshing(true);
     try {
       await loadBootstrap();
-      if (tab === "doctor" && doctorId) await loadDoctorCalendar();
     } finally {
       setCalendarRefreshing(false);
     }
   }
 
-  const cellMinH = view === "week" ? 128 : tab === "doctor" ? 88 : 72;
+  async function submitVisitRequest() {
+    if (!token || !visitRequestYmd) return;
+    const issue = visitIssue.trim();
+    if (issue.length < 2) {
+      Alert.alert("Request", "Please describe your issue.");
+      return;
+    }
+    const t = visitTimes.trim();
+    if (t.length < 2) {
+      Alert.alert("Request", "Add your preferred times or availability.");
+      return;
+    }
+    const daysAffectedNum = visitDaysAffected.trim()
+      ? Math.max(0, Math.min(3650, Number.parseInt(visitDaysAffected.trim(), 10) || 0))
+      : null;
+    setVisitBusy(true);
+    try {
+      const res = await fetch(`${getApiBase()}/api/patient/schedule-requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          preferredDateYmd: visitRequestYmd,
+          issue,
+          daysAffected: daysAffectedNum,
+          timePreferences: t,
+          attachments: [],
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Request failed.");
+      }
+      setVisitRequestOpen(false);
+      setVisitRequestYmd(null);
+      setVisitIssue("Skin concern");
+      setVisitDaysAffected("");
+      setVisitTimes("");
+      await loadBootstrap();
+    } catch (e) {
+      Alert.alert("Request", e instanceof Error ? e.message : "Failed.");
+    } finally {
+      setVisitBusy(false);
+    }
+  }
+
+  const cellMinH = view === "week" ? 128 : 72;
 
   function renderCalendarGrid() {
     const weeks = chunkWeeks(calendarCells);
@@ -256,44 +261,45 @@ export default function SchedulesScreen() {
 
     function renderCell(day: Date | null, idx: number, colIndex: number) {
       const cellYmd = day ? localYmd(day) : null;
-      const cellEvents = tab === "mine" ? getCellEvents(day, scheduleEvents) : [];
-      const cellSlots =
-        tab === "doctor" && day ? doctorList.filter((s) => s.slotDate === cellYmd) : [];
-      const hasContent = tab === "mine" ? cellEvents.length > 0 : cellSlots.length > 0;
+      const cellEvents = day ? getCellEvents(day, activeCalendarEvents) : [];
+      const hasContent = cellEvents.length > 0;
       const isToday = day ? isSameDay(day, now) : false;
 
-      return (
-        <View
-          key={day ? String(day.getTime()) : `e-${idx}`}
-          style={[
-            styles.gridCell,
-            colIndex === 6 && styles.gridCellLastCol,
-            { minHeight: cellMinH, backgroundColor: day ? "#fff" : "#f8fafc" },
-          ]}
-        >
-          {day !== null ? (
-            <>
-              <View style={[styles.dayNumWrap, isToday && styles.dayNumWrapToday]}>
-                <Text
-                  style={[
-                    styles.cellDayNum,
-                    hasContent && styles.cellDayNumHi,
-                    isToday && styles.cellDayNumToday,
-                  ]}
-                >
-                  {getDate(day)}
-                </Text>
-              </View>
-              {tab === "mine" ? (
-                <>
-                  {cellEvents.map((event) => {
-                    const timeLabel = formatTimeHmShort(event.eventTimeHm);
-                    const done = event.completed;
+      const dayBody =
+        day !== null ? (
+          <>
+            <View style={[styles.dayNumWrap, isToday && styles.dayNumWrapToday]}>
+              <Text
+                style={[
+                  styles.cellDayNum,
+                  hasContent && styles.cellDayNumHi,
+                  isToday && styles.cellDayNumToday,
+                ]}
+              >
+                {getDate(day)}
+              </Text>
+            </View>
+            {cellEvents.map((event) => {
+                  const timeLabel = formatEventTimeChip(
+                    event.eventTimeHm,
+                    event.eventSlotEndTimeHm
+                  );
+                  const pending = event.id.startsWith("req:");
+                  const cancelled = event.cancelled === true;
+                  const done = event.completed;
+
+                  if (scheduleTab === "treatment") {
                     return (
                       <View
                         key={event.id}
                         style={[styles.eventChip, done ? styles.eventChipDone : styles.eventChipOpen]}
                       >
+                        {event.eventKind === "pre_treatment" ||
+                        event.eventKind === "post_treatment" ? (
+                          <Text style={styles.eventKindBadge}>
+                            {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+                          </Text>
+                        ) : null}
                         {timeLabel ? (
                           <Text
                             style={[
@@ -317,66 +323,101 @@ export default function SchedulesScreen() {
                         {done ? <Text style={styles.eventDoneTag}>Done</Text> : null}
                       </View>
                     );
-                  })}
-                </>
-              ) : (
-                <>
-                  {cellSlots.slice(0, view === "month" ? 2 : 4).map((slot) => {
-                    const tone = doctorSlotToneRn(slot);
-                    const timeDisplay = formatDoctorSlotHmRangeLabel(
-                      slot.slotTimeHm,
-                      slot.slotEndTimeHm
-                    );
-                    const statusLabel = doctorSlotStatusLabel(slot);
-                    return (
-                      <View key={slot.id} style={[styles.slotChip, tone.chip]}>
-                        <Text
-                          style={[styles.slotChipTime, { color: tone.labelColor }]}
-                          numberOfLines={1}
-                        >
-                          {timeDisplay}
+                  }
+
+                  const chipStyle = cancelled
+                    ? styles.eventChipCancelled
+                    : pending
+                      ? styles.eventChipPending
+                      : done
+                        ? styles.eventChipDone
+                        : styles.eventChipConfirmed;
+                  const timeStyle = cancelled
+                    ? styles.eventChipTimeCancelled
+                    : pending
+                      ? styles.eventChipTimePending
+                      : done
+                        ? styles.eventChipTimeDone
+                        : styles.eventChipTimeConfirmed;
+                  const titleStyle = cancelled
+                    ? styles.eventChipTitleCancelled
+                    : pending
+                      ? styles.eventChipTitlePending
+                      : done
+                        ? styles.eventChipTitleDone
+                        : styles.eventChipTitleConfirmed;
+
+                  return (
+                    <View key={event.id} style={[styles.eventChip, chipStyle]}>
+                      {timeLabel ? (
+                        <Text style={[styles.eventChipTime, timeStyle]} numberOfLines={1}>
+                          {timeLabel}
                         </Text>
-                        <Text
-                          numberOfLines={view === "month" ? 1 : 2}
-                          style={[styles.slotChipTitle, { color: tone.labelColor }]}
-                        >
-                          {slot.title}
+                      ) : null}
+                      <Text
+                        numberOfLines={view === "month" ? 2 : 4}
+                        style={[styles.eventChipTitle, titleStyle]}
+                      >
+                        {event.title}
+                      </Text>
+                      {!pending && event.crmPatientMessage?.trim() ? (
+                        <Text style={styles.eventClinicNote} numberOfLines={2}>
+                          Clinic note: {event.crmPatientMessage.trim()}
                         </Text>
-                        {slot.cancelledReason ? (
-                          <Text style={styles.slotCancelled} numberOfLines={1}>
-                            Cancelled
-                          </Text>
-                        ) : null}
-                        {slot.status === "available" ? (
-                          <Pressable
-                            style={styles.slotReqBtn}
-                            onPress={() => {
-                              setRequestSlot(slot);
-                              setModalOpen(true);
-                            }}
-                          >
-                            <Text style={styles.slotReqBtnText}>Request</Text>
-                          </Pressable>
-                        ) : (
-                          <Text
-                            style={[styles.slotStatus, { color: tone.labelColor }]}
-                            numberOfLines={1}
-                          >
-                            {statusLabel}
-                          </Text>
-                        )}
-                      </View>
-                    );
-                  })}
-                  {cellSlots.length > (view === "month" ? 2 : 4) ? (
-                    <Text style={styles.moreSlots} numberOfLines={1}>
-                      +{cellSlots.length - (view === "month" ? 2 : 4)}
-                    </Text>
-                  ) : null}
-                </>
-              )}
-            </>
-          ) : null}
+                      ) : null}
+                      {cancelled && event.cancellationReason?.trim() ? (
+                        <Text style={styles.eventCancelReason} numberOfLines={2}>
+                          Reason: {event.cancellationReason.trim()}
+                        </Text>
+                      ) : null}
+                      {pending ? (
+                        <Text style={styles.eventStatusTagPending}>Pending</Text>
+                      ) : null}
+                      {cancelled ? (
+                        <Text style={styles.eventStatusTagCancelled}>Cancelled</Text>
+                      ) : null}
+                      {!pending && !done && !cancelled ? (
+                        <Text style={styles.eventStatusTagConfirmed}>Confirmed</Text>
+                      ) : null}
+                      {done ? <Text style={styles.eventDoneTag}>Completed</Text> : null}
+                      {pending && (event.attachmentsCount ?? 0) > 0 ? (
+                        <Text style={styles.eventPhotoHint}>
+                          {event.attachmentsCount} photo
+                          {event.attachmentsCount !== 1 ? "s" : ""}
+                        </Text>
+                      ) : null}
+                    </View>
+                  );
+            })}
+          </>
+        ) : null;
+
+      const appointmentsDayTap =
+        scheduleTab === "appointments" && cellYmd !== null && day !== null;
+      return (
+        <View
+          key={day ? String(day.getTime()) : `e-${idx}`}
+          style={[
+            styles.gridCell,
+            colIndex === 6 && styles.gridCellLastCol,
+            { minHeight: cellMinH, backgroundColor: day ? "#fff" : "#f8fafc" },
+          ]}
+        >
+          {appointmentsDayTap ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Request visit for ${cellYmd}`}
+              onPress={() => {
+                setVisitRequestYmd(cellYmd);
+                setVisitRequestOpen(true);
+              }}
+              style={styles.gridCellPressable}
+            >
+              {dayBody}
+            </Pressable>
+          ) : (
+            dayBody
+          )}
         </View>
       );
     }
@@ -386,39 +427,15 @@ export default function SchedulesScreen() {
         <View style={styles.calCardHead}>
           <View style={styles.calCardHeadText}>
             <Text style={styles.calCardTitle}>
-              {tab === "mine" ? "My calendar" : "Doctor calendar"}
+              {scheduleTab === "treatment" ? "Treatment & care" : "Appointments"}
             </Text>
-            <Text style={styles.calHeaderSub} numberOfLines={2}>
-              {headerLabel}
+            <Text style={styles.calHeaderSub} numberOfLines={scheduleTab === "appointments" ? 3 : 2}>
+              {scheduleTab === "appointments"
+                ? `${headerLabel}\nTap a day to request a visit for that date.`
+                : headerLabel}
             </Text>
           </View>
         </View>
-        {tab === "doctor" && doctorError ? <Text style={styles.errSmall}>{doctorError}</Text> : null}
-
-        {tab === "doctor" ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.docChipScroll}
-            contentContainerStyle={styles.docChipScrollContent}
-          >
-            {doctors.map((d) => (
-              <Pressable
-                key={d.id}
-                style={[styles.docChip, doctorId === d.id && styles.docChipOn]}
-                onPress={() => setDoctorId(d.id)}
-              >
-                <Text
-                  style={doctorId === d.id ? styles.docChipTextOn : styles.docChipText}
-                  numberOfLines={1}
-                >
-                  {d.name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        ) : null}
-
         <View style={styles.toolbarCol}>
           <View style={styles.toolbarTop}>
             <View style={styles.segGroup}>
@@ -484,113 +501,112 @@ export default function SchedulesScreen() {
             ))}
           </View>
 
-          {tab === "doctor" && doctorLoading ? (
-            <ActivityIndicator style={{ marginVertical: 20 }} color={TEAL} />
-          ) : (
-            weeks.map((row, ri) => (
-              <View key={`w-${ri}`} style={styles.gridRow}>
-                {row.map((day, ci) => renderCell(day, ri * 7 + ci, ci))}
-              </View>
-            ))
-          )}
+          {weeks.map((row, ri) => (
+            <View key={`w-${ri}`} style={styles.gridRow}>
+              {row.map((day, ci) => renderCell(day, ri * 7 + ci, ci))}
+            </View>
+          ))}
         </View>
 
         <View style={styles.listSection}>
           <Text style={styles.listSectionLabel}>
-            {tab === "mine"
+            {scheduleTab === "treatment"
               ? view === "month"
-                ? "This month"
-                : "This week"
+                ? "Care reminders — this month"
+                : "Care reminders — this week"
               : view === "month"
-                ? "Your appointments with this doctor"
-                : "Your appointments this week"}
+                ? "Visits & requests — this month"
+                : "Visits & requests — this week"}
           </Text>
-          {tab === "mine" ? (
-            listEventsMine.length === 0 ? (
-              <Text style={styles.mutedCenter}>
-                No events in this {view === "month" ? "month" : "week"}.
-              </Text>
-            ) : (
-              listEventsMine.map((event) => (
-                <View key={event.id} style={styles.listRow}>
-                  <Text
-                    style={[
-                      styles.listWhen,
-                      event.completed ? styles.listWhenDone : styles.listWhenOpen,
-                    ]}
-                  >
-                    {formatScheduleWhen(event.eventDateYmd, event.eventTimeHm)}
-                  </Text>
-                  <View style={styles.listRowBody}>
-                    <Text
-                      style={[
-                        styles.listTitle,
-                        event.completed && styles.listTitleDone,
-                      ]}
-                    >
-                      {event.title}
-                    </Text>
-                    {event.completed ? (
-                      <Text style={styles.completedPill}>Completed</Text>
-                    ) : null}
-                  </View>
-                </View>
-              ))
-            )
-          ) : doctorLoading ? (
-            <Text style={styles.mutedCenter}>Loading doctor slots…</Text>
-          ) : doctorList.length === 0 ? (
+          {listEventsCal.length === 0 ? (
             <Text style={styles.mutedCenter}>
-              No doctor slots in this range. The clinic adds available times here.
-            </Text>
-          ) : myDoctorBookingsList.length === 0 ? (
-            <Text style={styles.mutedCenter}>
-              {"You don't have any requests or confirmed appointments with this doctor in "}
-              {view === "month" ? "this month" : "this week"}
-              {". Open a time on the calendar above to request one."}
+              {scheduleTab === "treatment"
+                ? `No care reminders in this ${view === "month" ? "month" : "week"}.`
+                : `No visits or requests in this ${view === "month" ? "month" : "week"}.`}
             </Text>
           ) : (
-            myDoctorBookingsList.map((slot) => {
-              const tone = doctorSlotToneRn(slot);
-              const statusLabel =
-                slot.status === "requested"
-                  ? "Requested"
-                  : slot.status === "held"
-                    ? "Pending review"
-                    : slot.status === "booked"
-                      ? "Booked"
-                      : slot.status === "completed"
-                        ? "Done"
-                        : slot.status === "cancelled"
-                          ? "Cancelled"
-                          : "Closed";
-              return (
-                <View key={slot.id} style={styles.docListRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.docListTime}>
-                      {formatDoctorSlotHmRangeLabel(slot.slotTimeHm, slot.slotEndTimeHm)}
-                    </Text>
-                    <Text style={styles.docListTitle}>{slot.title}</Text>
-                    <Text style={styles.docListDate}>
-                      {format(parseLocalYmd(slot.slotDate), "EEE, MMM d, yyyy")}
-                    </Text>
-                    {slot.cancelledReason ? (
-                      <Text style={styles.docListCancelled}>Cancelled: {slot.cancelledReason}</Text>
+            listEventsCal.map((event) => {
+                const pending = event.id.startsWith("req:");
+                const cancelled = event.cancelled === true;
+                const done = event.completed;
+                const whenStyle =
+                  cancelled
+                    ? styles.listWhenCancelled
+                    : pending
+                      ? styles.listWhenPending
+                      : done
+                        ? styles.listWhenDone
+                        : styles.listWhenOpen;
+                return (
+                  <View key={event.id} style={styles.listRow}>
+                    <View style={styles.listRowTop}>
+                      <Text style={[styles.listWhen, whenStyle]}>
+                        {formatScheduleWhen(
+                          event.eventDateYmd,
+                          event.eventTimeHm,
+                          event.eventSlotEndTimeHm
+                        )}
+                      </Text>
+                      {scheduleTab === "treatment" &&
+                      (event.eventKind === "pre_treatment" ||
+                        event.eventKind === "post_treatment") ? (
+                        <Text style={styles.listKindPill}>
+                          {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <View style={styles.listRowBody}>
+                      <Text
+                        style={[
+                          styles.listTitle,
+                          done && styles.listTitleDone,
+                          cancelled && styles.listTitleCancelled,
+                        ]}
+                      >
+                        {event.title}
+                      </Text>
+                      {scheduleTab === "appointments" && pending ? (
+                        <Text style={styles.pendingPill}>Pending</Text>
+                      ) : null}
+                      {scheduleTab === "appointments" && cancelled ? (
+                        <Text style={styles.cancelledPill}>Cancelled</Text>
+                      ) : null}
+                      {scheduleTab === "appointments" &&
+                      !pending &&
+                      !cancelled &&
+                      !done ? (
+                        <Text style={styles.confirmedPill}>Confirmed</Text>
+                      ) : null}
+                      {done ? <Text style={styles.completedPill}>Completed</Text> : null}
+                    </View>
+                    {scheduleTab === "appointments" && !pending && event.crmPatientMessage?.trim() ? (
+                      <Text style={styles.listMeta}>
+                        Clinic note: {event.crmPatientMessage.trim()}
+                      </Text>
+                    ) : null}
+                    {scheduleTab === "appointments" &&
+                    cancelled &&
+                    event.cancellationReason?.trim() ? (
+                      <Text style={styles.listMetaDanger}>
+                        Reason: {event.cancellationReason.trim()}
+                      </Text>
+                    ) : null}
+                    {scheduleTab === "appointments" && pending && (event.attachmentsCount ?? 0) > 0 ? (
+                      <Text style={styles.listMeta}>
+                        {event.attachmentsCount} photo
+                        {event.attachmentsCount !== 1 ? "s" : ""} attached
+                      </Text>
                     ) : null}
                   </View>
-                  <Text style={[styles.statusPill, { borderColor: tone.chip.borderColor as string }]}>
-                    {statusLabel}
-                  </Text>
-                </View>
-              );
-            })
+                );
+              })
           )}
         </View>
       </View>
     );
   }
 
-  if (loading && scheduleEvents.length === 0) {
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
@@ -609,7 +625,6 @@ export default function SchedulesScreen() {
             setRefreshing(true);
             try {
               await loadAll();
-              if (tab === "doctor") await loadDoctorCalendar();
             } finally {
               setRefreshing(false);
             }
@@ -623,47 +638,82 @@ export default function SchedulesScreen() {
 
       <View style={styles.tabs}>
         <Pressable
-          style={[styles.tab, tab === "mine" && styles.tabOn]}
-          onPress={() => setTab("mine")}
+          style={[styles.tab, scheduleTab === "treatment" && styles.tabOn]}
+          onPress={() => setScheduleTab("treatment")}
         >
-          <Text style={tab === "mine" ? styles.tabTextOn : styles.tabText}>My calendar</Text>
+          <Text
+            style={scheduleTab === "treatment" ? styles.tabTextOn : styles.tabText}
+            numberOfLines={2}
+          >
+            Treatment & care
+          </Text>
         </Pressable>
         <Pressable
-          style={[styles.tab, tab === "doctor" && styles.tabOn]}
-          onPress={() => setTab("doctor")}
+          style={[styles.tab, scheduleTab === "appointments" && styles.tabOn]}
+          onPress={() => setScheduleTab("appointments")}
         >
-          <Text style={tab === "doctor" ? styles.tabTextOn : styles.tabText}>Doctor</Text>
+          <Text
+            style={scheduleTab === "appointments" ? styles.tabTextOn : styles.tabText}
+            numberOfLines={2}
+          >
+            Appointments
+          </Text>
         </Pressable>
       </View>
 
-      {tab === "mine" ? (
-        <>{renderCalendarGrid()}</>
-      ) : (
-        <>{renderCalendarGrid()}</>
-      )}
+      {renderCalendarGrid()}
 
-      <Modal visible={modalOpen} transparent animationType="slide">
+      <Modal
+        visible={visitRequestOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setVisitRequestOpen(false);
+          setVisitRequestYmd(null);
+        }}
+      >
         <View style={styles.modalBg}>
           <View style={styles.modalCard}>
-            <Text style={styles.h1}>Request appointment</Text>
+            <Text style={styles.h1}>Request a visit</Text>
             <Text style={styles.muted}>
-              {requestSlot ? `${requestSlot.slotDate} ${requestSlot.slotTimeHm}` : ""}
+              {visitRequestYmd
+                ? format(parseLocalYmd(visitRequestYmd), "EEEE, MMM d, yyyy")
+                : ""}
             </Text>
-            <Text style={styles.label}>Issue</Text>
-            <TextInput style={styles.input} value={requestIssue} onChangeText={setRequestIssue} />
-            <Text style={styles.label}>Why (optional)</Text>
+            <Text style={styles.label}>What should we know? (issue)</Text>
+            <TextInput style={styles.input} value={visitIssue} onChangeText={setVisitIssue} />
+            <Text style={styles.label}>Days affected (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={visitDaysAffected}
+              onChangeText={setVisitDaysAffected}
+              keyboardType="number-pad"
+              placeholder="e.g. 7"
+            />
+            <Text style={styles.label}>Preferred times / availability</Text>
             <TextInput
               style={[styles.input, { minHeight: 72 }]}
               multiline
-              value={requestWhy}
-              onChangeText={setRequestWhy}
+              value={visitTimes}
+              onChangeText={setVisitTimes}
+              placeholder="e.g. weekday mornings"
             />
             <View style={styles.modalActions}>
-              <Pressable style={styles.btnGhost} onPress={() => setModalOpen(false)}>
+              <Pressable
+                style={styles.btnGhost}
+                onPress={() => {
+                  setVisitRequestOpen(false);
+                  setVisitRequestYmd(null);
+                }}
+              >
                 <Text>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.btnPrimary} onPress={submitRequest} disabled={requestBusy}>
-                <Text style={styles.btnPrimaryText}>{requestBusy ? "…" : "Send"}</Text>
+              <Pressable
+                style={styles.btnPrimary}
+                onPress={() => void submitVisitRequest()}
+                disabled={visitBusy}
+              >
+                <Text style={styles.btnPrimaryText}>{visitBusy ? "…" : "Send request"}</Text>
               </Pressable>
             </View>
           </View>
@@ -680,12 +730,20 @@ const styles = StyleSheet.create({
   h1: { fontSize: 22, fontWeight: "700", textAlign: "center", color: "#18181b" },
   sub: { textAlign: "center", color: "#52525b", marginTop: 6, marginBottom: 12 },
   err: { color: "#b91c1c", marginBottom: 8, textAlign: "center" },
-  errSmall: { color: "#b91c1c", fontSize: 12, marginBottom: 8 },
   tabs: { flexDirection: "row", gap: 8, marginVertical: 12 },
-  tab: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: "#e4e4e7", alignItems: "center" },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: "#e4e4e7",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 0,
+  },
   tabOn: { backgroundColor: "#ccfbf1" },
-  tabText: { fontWeight: "600", color: "#52525b" },
-  tabTextOn: { fontWeight: "700", color: "#0f766e" },
+  tabText: { fontWeight: "600", color: "#52525b", fontSize: 14, textAlign: "center" },
+  tabTextOn: { fontWeight: "700", color: "#0f766e", fontSize: 14, textAlign: "center" },
   muted: { color: "#71717a", fontSize: 14, marginBottom: 8 },
   mutedCenter: { color: "#71717a", fontSize: 14, textAlign: "center", paddingVertical: 8 },
   calCard: {
@@ -706,18 +764,6 @@ const styles = StyleSheet.create({
   calCardHeadText: { flex: 1, minWidth: 0 },
   calCardTitle: { fontSize: 19, fontWeight: "800", color: "#18181b", letterSpacing: -0.3 },
   calHeaderSub: { fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 18 },
-  docChipScroll: { marginTop: 10, marginBottom: 2 },
-  docChipScrollContent: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 4 },
-  docChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: "#f1f5f9",
-    maxWidth: "100%",
-  },
-  docChipOn: { backgroundColor: TEAL },
-  docChipText: { fontWeight: "600", color: "#334155", fontSize: 14 },
-  docChipTextOn: { fontWeight: "700", color: "#fff", fontSize: 14 },
   toolbarCol: { width: "100%", marginTop: 12, marginBottom: 8 },
   toolbarTop: {
     flexDirection: "row",
@@ -816,6 +862,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#e2e8f0",
   },
+  gridCellPressable: { alignSelf: "stretch" },
   gridCellLastCol: { borderRightWidth: 0 },
   dayNumWrap: { alignSelf: "flex-start", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2, marginBottom: 2 },
   dayNumWrapToday: { backgroundColor: "rgba(13, 148, 136, 0.14)" },
@@ -825,21 +872,65 @@ const styles = StyleSheet.create({
   eventChip: { marginTop: 4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 },
   eventChipOpen: { backgroundColor: "rgba(224, 240, 237, 0.95)", borderWidth: 1, borderColor: "rgba(13, 148, 136, 0.35)" },
   eventChipDone: { backgroundColor: "rgba(224, 242, 254, 0.95)", borderWidth: 1, borderColor: "rgba(14, 165, 233, 0.35)" },
+  eventChipPending: {
+    backgroundColor: "rgba(254, 243, 199, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(217, 119, 6, 0.4)",
+  },
+  eventChipConfirmed: {
+    backgroundColor: "rgba(224, 240, 237, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(13, 148, 136, 0.35)",
+  },
+  eventChipCancelled: {
+    backgroundColor: "rgba(244, 244, 245, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(113, 113, 122, 0.45)",
+  },
   eventChipTime: { fontSize: 10, fontWeight: "700" },
   eventChipTimeOpen: { color: "#115e59" },
   eventChipTimeDone: { color: "#0c4a6e" },
+  eventChipTimePending: { color: "#b45309" },
+  eventChipTimeConfirmed: { color: "#115e59" },
+  eventChipTimeCancelled: { color: "#52525b" },
   eventChipTitle: { fontSize: 10, fontWeight: "600" },
   eventChipTitleOpen: { color: "#115e59" },
   eventChipTitleDone: { color: "#0c4a6e" },
+  eventChipTitlePending: { color: "#92400e" },
+  eventChipTitleConfirmed: { color: "#115e59" },
+  eventChipTitleCancelled: { color: "#52525b" },
+  eventKindBadge: {
+    fontSize: 8,
+    fontWeight: "800",
+    color: "#0f766e",
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
+  eventClinicNote: { fontSize: 9, color: "#475569", marginTop: 2 },
+  eventCancelReason: { fontSize: 9, color: "#b91c1c", marginTop: 2 },
+  eventStatusTagPending: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: "#b45309",
+    marginTop: 2,
+    textTransform: "uppercase",
+  },
+  eventStatusTagConfirmed: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: "#0f766e",
+    marginTop: 2,
+    textTransform: "uppercase",
+  },
+  eventStatusTagCancelled: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: "#52525b",
+    marginTop: 2,
+    textTransform: "uppercase",
+  },
+  eventPhotoHint: { fontSize: 9, color: "#64748b", marginTop: 2 },
   eventDoneTag: { fontSize: 8, fontWeight: "700", color: "#0369a1", marginTop: 2, textTransform: "uppercase" },
-  slotChip: { marginTop: 4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 },
-  slotChipTime: { fontSize: 10, fontWeight: "700" },
-  slotChipTitle: { fontSize: 10, fontWeight: "600" },
-  slotCancelled: { fontSize: 10, color: "#52525b" },
-  slotReqBtn: { marginTop: 4, backgroundColor: "#0d9488", borderRadius: 6, paddingVertical: 4, alignItems: "center" },
-  slotReqBtnText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  slotStatus: { fontSize: 10, fontWeight: "700", marginTop: 2 },
-  moreSlots: { fontSize: 10, color: "#71717a", marginTop: 2 },
   listSection: {
     marginTop: 16,
     paddingTop: 16,
@@ -864,9 +955,65 @@ const styles = StyleSheet.create({
   listWhen: { fontSize: 12, fontWeight: "700", marginBottom: 4 },
   listWhenOpen: { color: "#0f766e" },
   listWhenDone: { color: "#0369a1" },
+  listWhenPending: { color: "#b45309" },
+  listWhenCancelled: { color: "#52525b" },
+  listRowTop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 4,
+  },
   listRowBody: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   listTitle: { flex: 1, fontSize: 15, fontWeight: "600", color: "#18181b", minWidth: "60%" },
   listTitleDone: { color: "#52525b" },
+  listTitleCancelled: { color: "#71717a" },
+  listKindPill: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#0f766e",
+    backgroundColor: "#ccfbf1",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  listMeta: { fontSize: 13, color: "#64748b", marginTop: 8, lineHeight: 18 },
+  listMetaDanger: { fontSize: 13, color: "#b91c1c", marginTop: 8, lineHeight: 18 },
+  pendingPill: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#92400e",
+    backgroundColor: "#fef3c7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
+    textTransform: "uppercase",
+  },
+  confirmedPill: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#0f766e",
+    backgroundColor: "#ccfbf1",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
+    textTransform: "uppercase",
+  },
+  cancelledPill: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#52525b",
+    backgroundColor: "#e4e4e7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
+    textTransform: "uppercase",
+  },
   completedPill: {
     fontSize: 10,
     fontWeight: "700",
@@ -877,30 +1024,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: "hidden",
     textTransform: "uppercase",
-  },
-  docListRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
-    padding: 14,
-    marginBottom: 8,
-  },
-  docListTime: { fontSize: 15, fontWeight: "700", color: "#115e59" },
-  docListTitle: { fontSize: 15, fontWeight: "600", color: "#18181b", marginTop: 4 },
-  docListDate: { fontSize: 12, color: "#71717a", marginTop: 4 },
-  docListCancelled: { fontSize: 12, color: "#b91c1c", marginTop: 4 },
-  statusPill: {
-    fontSize: 12,
-    fontWeight: "600",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    backgroundColor: "#fafafa",
   },
   modalBg: {
     flex: 1,

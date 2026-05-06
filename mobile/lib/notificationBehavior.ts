@@ -1,3 +1,4 @@
+import type { Href } from "expo-router";
 import { Platform } from "react-native";
 
 let configured = false;
@@ -34,7 +35,7 @@ export function configureNotificationBehavior() {
       }
       if (t === "doctor_voice_note") {
         const onReport = data?.attachedToReport === true;
-        router.push(onReport ? "/(drawer)/history" : "/(drawer)/");
+        router.push((onReport ? "/(drawer)/history" : "/(drawer)") as Href);
       }
     });
   })();

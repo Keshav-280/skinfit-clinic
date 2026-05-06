@@ -15,9 +15,16 @@ export type ScheduleEventRow = {
   id: string;
   eventDateYmd: string;
   eventTimeHm: string | null;
+  /** Same-day end `HH:mm` (clinic wall); omitted → display uses start + 30 min. */
+  eventSlotEndTimeHm?: string | null;
   title: string;
   completed: boolean;
   eventKind?: string;
+  cancelled?: boolean;
+  /** Pending visit requests — for photo count hint. */
+  attachmentsCount?: number;
+  crmPatientMessage?: string | null;
+  cancellationReason?: string | null;
 };
 
 export type DoctorCalendarSlot = {
@@ -123,15 +130,33 @@ export function formatDoctorSlotHmRangeLabel(
   return startShort ?? slotTimeHm;
 }
 
-export function formatScheduleWhen(ymd: string, timeHm: string | null): string {
+/** Calendar chip: start–end in 12h when end differs from start. */
+export function formatEventTimeChip(
+  timeHm: string | null,
+  endHm: string | null | undefined
+): string | null {
+  if (!timeHm || !/^\d{2}:\d{2}$/.test(timeHm)) return null;
+  const endEff = effectiveSlotEndHm(timeHm, endHm ?? null);
+  const startShort = formatTimeHmShort(timeHm);
+  const endShort = formatTimeHmShort(endEff);
+  if (endEff !== timeHm && startShort && endShort) {
+    return `${startShort}–${endShort}`;
+  }
+  return startShort;
+}
+
+export function formatScheduleWhen(
+  ymd: string,
+  timeHm: string | null,
+  endHm?: string | null
+): string {
   const d = parseLocalYmd(ymd);
   const dateStr = format(d, "MMM d, yyyy");
-  if (!timeHm || !/^\d{2}:\d{2}$/.test(timeHm)) {
+  const chip = formatEventTimeChip(timeHm, endHm);
+  if (!chip) {
     return `${dateStr} · All day`;
   }
-  const [hh, mm] = timeHm.split(":").map(Number);
-  const withClock = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0);
-  return `${dateStr} · ${format(withClock, "h:mm a")}`;
+  return `${dateStr} · ${chip}`;
 }
 
 export function compareScheduleEvents(a: ScheduleEventRow, b: ScheduleEventRow): number {

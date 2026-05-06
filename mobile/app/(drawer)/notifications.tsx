@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -153,7 +153,7 @@ export default function NotificationsScreen() {
                 void (async () => {
                   await markVoiceViewed("dashboard");
                   void load();
-                  router.push("/(drawer)/");
+                  router.push("/(drawer)" as Href);
                 })();
               }}
             >
@@ -163,7 +163,7 @@ export default function NotificationsScreen() {
               <View style={styles.cardBody}>
                 <Text style={styles.cardTitle}>Doctor voice (home)</Text>
                 <Text style={styles.cardSub}>
-                  New audio under Doctor&apos;s feedback on your dashboard.
+                  New audio in the Voice notes section on your dashboard.
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />

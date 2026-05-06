@@ -15,8 +15,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import {
   ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
-  type OnboardingQuestionnaireDraftV1,
+  ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
+  type OnboardingQuestionnaireDraftV2,
 } from "@/lib/onboardingQuestionnaireDraft";
+
+const GENDER_OPTIONS: { value: string; label: string }[] = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+  { value: "other", label: "Other" },
+  { value: "prefer_not_say", label: "Prefer not to say" },
+];
+
+function parseOnboardingAge(raw: string): number | null {
+  const n = parseInt(raw.trim(), 10);
+  if (!Number.isFinite(n)) return null;
+  if (n < 1 || n > 120) return null;
+  return n;
+}
 
 type Concern = "acne" | "pigmentation" | "ageing" | "hair" | "general";
 
@@ -56,7 +71,7 @@ function questionnaireProgress(
     return { displayStep: step + 1, totalSteps: 11 };
   }
   if (priorTx === "no") {
-    const order = [0, 1, 2, 3, 4, 6, 7, 8, 9];
+    const order = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10];
     const ix = order.indexOf(step);
     return {
       displayStep: ix >= 0 ? ix + 1 : step + 1,
@@ -136,6 +151,8 @@ export default function QuestionnaireScreen() {
   const [diet, setDiet] = useState<"vegetarian" | "vegan" | "nonveg" | "mixed" | null>(null);
   const [sun, setSun] = useState<"minimal" | "low" | "moderate" | "high" | null>(null);
   const [skinType, setSkinType] = useState<(typeof SKIN_TYPES)[number] | null>(null);
+  const [ageInput, setAgeInput] = useState("");
+  const [gender, setGender] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
@@ -145,10 +162,19 @@ export default function QuestionnaireScreen() {
         const raw = await AsyncStorage.getItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
         if (cancelled) return;
         if (!raw) return;
-        const d = JSON.parse(raw) as OnboardingQuestionnaireDraftV1;
-        if (d.v !== 1) return;
-        if (typeof d.step === "number" && d.step >= 0 && d.step <= 9) {
+        const d = JSON.parse(raw) as OnboardingQuestionnaireDraftV2;
+        if (d.v !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) return;
+        if (typeof d.step === "number" && d.step >= 0 && d.step <= 10) {
           setStep(d.step);
+        }
+        if (typeof d.ageInput === "string") setAgeInput(d.ageInput);
+        if (
+          d.gender === "female" ||
+          d.gender === "male" ||
+          d.gender === "other" ||
+          d.gender === "prefer_not_say"
+        ) {
+          setGender(d.gender);
         }
         if (d.concern && VALID_CONCERN.has(d.concern)) {
           setConcern(d.concern as Concern);
@@ -218,9 +244,11 @@ export default function QuestionnaireScreen() {
   useEffect(() => {
     if (!draftReady) return;
     const t = setTimeout(() => {
-      const draft: OnboardingQuestionnaireDraftV1 = {
-        v: 1,
+      const draft: OnboardingQuestionnaireDraftV2 = {
+        v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
         step,
+        ageInput,
+        gender,
         concern,
         severity,
         duration,
@@ -254,6 +282,8 @@ export default function QuestionnaireScreen() {
     diet,
     sun,
     skinType,
+    ageInput,
+    gender,
   ]);
 
   const toggleTrigger = (id: string) => {
@@ -263,31 +293,35 @@ export default function QuestionnaireScreen() {
   const canNext = useMemo(() => {
     switch (step) {
       case 0:
-        return concern != null;
+        return parseOnboardingAge(ageInput) != null && gender != null;
       case 1:
-        return severity != null;
+        return concern != null;
       case 2:
-        return duration != null;
+        return severity != null;
       case 3:
-        return triggers.length > 0;
+        return duration != null;
       case 4:
-        return priorTx != null;
+        return triggers.length > 0;
       case 5:
+        return priorTx != null;
+      case 6:
         if (priorTx !== "yes") return true;
         return txText.trim().length >= 10 && txDur.trim().length > 0;
-      case 6:
-        return sensitivity != null;
       case 7:
-        return sleep != null;
+        return sensitivity != null;
       case 8:
-        return water != null && diet != null && sun != null;
+        return sleep != null;
       case 9:
+        return water != null && diet != null && sun != null;
+      case 10:
         return skinType != null;
       default:
         return false;
     }
   }, [
     step,
+    ageInput,
+    gender,
     concern,
     severity,
     duration,
@@ -306,13 +340,31 @@ export default function QuestionnaireScreen() {
   const { displayStep, totalSteps } = questionnaireProgress(step, priorTx);
 
   async function submit() {
-    if (!token || !concern || !severity || !duration || !sensitivity || !sleep || !water || !diet || !sun || !skinType || !priorTx) return;
+    const age = parseOnboardingAge(ageInput);
+    if (
+      !token ||
+      age == null ||
+      !gender ||
+      !concern ||
+      !severity ||
+      !duration ||
+      !sensitivity ||
+      !sleep ||
+      !water ||
+      !diet ||
+      !sun ||
+      !skinType ||
+      !priorTx
+    )
+      return;
     setBusy(true);
     setErr(null);
     try {
       await apiJson("/api/onboarding/questionnaire", token, {
         method: "POST",
         body: JSON.stringify({
+          age,
+          gender,
           primaryConcern: concern,
           concernSeverity: severity,
           concernDuration: duration,
@@ -338,12 +390,12 @@ export default function QuestionnaireScreen() {
   }
 
   function next() {
-    if (step === 9) {
+    if (step === 10) {
       void submit();
       return;
     }
-    if (step === 4 && priorTx === "no") {
-      setStep(6);
+    if (step === 5 && priorTx === "no") {
+      setStep(7);
       return;
     }
     setStep((s) => s + 1);
@@ -354,8 +406,8 @@ export default function QuestionnaireScreen() {
       router.back();
       return;
     }
-    if (step === 6 && priorTx === "no") {
-      setStep(4);
+    if (step === 7 && priorTx === "no") {
+      setStep(5);
       return;
     }
     setStep((s) => s - 1);
@@ -370,6 +422,33 @@ export default function QuestionnaireScreen() {
 
       {step === 0 ? (
         <>
+          <Text style={styles.q}>About you</Text>
+          <Text style={styles.sub}>Age (years)</Text>
+          <TextInput
+            style={styles.ageInput}
+            placeholder="e.g. 32"
+            placeholderTextColor="#94a3b8"
+            keyboardType="number-pad"
+            value={ageInput}
+            onChangeText={(t) => setAgeInput(t.replace(/[^\d]/g, "").slice(0, 3))}
+          />
+          <Text style={styles.sub2}>Gender</Text>
+          {GENDER_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.value}
+              style={[styles.chip, gender === opt.value && styles.chipOn]}
+              onPress={() => setGender(opt.value)}
+            >
+              <Text style={[styles.chipText, gender === opt.value && styles.chipTextOn]}>
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+        </>
+      ) : null}
+
+      {step === 1 ? (
+        <>
           <Text style={styles.q}>What brings you to SkinFit today?</Text>
           {CONCERNS.map((c) => (
             <Pressable
@@ -383,7 +462,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 1 ? (
+      {step === 2 ? (
         <>
           <Text style={styles.q}>
             {concern
@@ -408,7 +487,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 2 ? (
+      {step === 3 ? (
         <>
           <Text style={styles.q}>{copyForConcern(concern, "durTitle")}</Text>
           {(
@@ -434,7 +513,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 3 ? (
+      {step === 4 ? (
         <>
           <Text style={styles.q}>{copyForConcern(concern, "trigTitle")}</Text>
           <Text style={styles.sub}>Select all that apply.</Text>
@@ -457,7 +536,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 4 ? (
+      {step === 5 ? (
         <>
           <Text style={styles.q}>Have you tried treating this before?</Text>
           {(
@@ -477,7 +556,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 5 && priorTx === "yes" ? (
+      {step === 6 && priorTx === "yes" ? (
         <>
           <Text style={styles.q}>What have you tried so far? For how long?</Text>
           <TextInput
@@ -512,7 +591,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 6 ? (
+      {step === 7 ? (
         <>
           <Text style={styles.q}>How would you describe your skin&apos;s sensitivity?</Text>
           {(
@@ -539,7 +618,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 7 ? (
+      {step === 8 ? (
         <>
           <Text style={styles.q}>How&apos;s your sleep most nights?</Text>
           {(
@@ -567,7 +646,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 8 ? (
+      {step === 9 ? (
         <>
           <Text style={styles.q}>Lifestyle snapshot</Text>
           <Text style={styles.sub}>Daily water intake</Text>
@@ -624,7 +703,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 9 ? (
+      {step === 10 ? (
         <>
           <Text style={styles.q}>How would you describe your skin type?</Text>
           {SKIN_TYPES.map((v) => (
@@ -652,7 +731,7 @@ export default function QuestionnaireScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.btnText}>
-              {step === 9 ? "Save & continue" : "Continue"}
+              {step === 10 ? "Save & continue" : "Continue"}
             </Text>
           )}
         </Pressable>
@@ -691,6 +770,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#92400e",
     marginTop: 8,
+  },
+  ageInput: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#e4e4e7",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    backgroundColor: "#fff",
+    marginBottom: 12,
+    color: "#18181b",
   },
   input: {
     minHeight: 100,

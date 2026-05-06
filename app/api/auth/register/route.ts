@@ -159,6 +159,7 @@ export async function POST(req: Request) {
     maxAge: 60 * 60 * 24 * 7,
   });
 
+  const nativeClient = req.headers.get("x-skinfit-client") === "native";
   return NextResponse.json({
     ok: true,
     user: {
@@ -169,5 +170,6 @@ export async function POST(req: Request) {
       phone: phoneCheck.nationalDigits,
       onboardingComplete: false,
     },
+    ...(nativeClient ? { token } : {}),
   });
 }

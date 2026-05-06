@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { decodeDataUrlImage } from "@/src/lib/dataUrlImage";
-import { bufferToPreviewJpegBuffer } from "@/src/lib/scanImagePreview";
+import {
+  fetchPublicImageToBuffer,
+  isUrlSafeForServerSideImageFetch,
+} from "@/src/lib/fetchPublicImageForPreview";
+import {
+  bufferToPreviewJpegBuffer,
+  listThumbnailJpegOpts,
+  type PreviewJpegOpts,
+} from "@/src/lib/scanImagePreview";
 
 export type FaceCaptureStored = {
   label: string;
@@ -13,8 +21,12 @@ export async function scanImageNextResponse(input: {
   faceCaptureImages: FaceCaptureStored[] | null | undefined;
   index: number;
   preview: boolean;
+  /** List/card cover: smaller JPEG than default preview (requires `preview`). */
+  thumbnail?: boolean;
 }): Promise<NextResponse> {
-  const { imageUrl, faceCaptureImages: multi, index, preview } = input;
+  const { imageUrl, faceCaptureImages: multi, index, preview, thumbnail } = input;
+  const jpegOpts: PreviewJpegOpts | undefined =
+    preview && thumbnail ? listThumbnailJpegOpts() : undefined;
 
   const maxIdx = multi && multi.length > 0 ? multi.length - 1 : 0;
   if (!Number.isFinite(index) || index < 0 || index > maxIdx) {
@@ -52,6 +64,14 @@ export async function scanImageNextResponse(input: {
       if (!decoded || decoded.buffer.length === 0) {
         return NextResponse.json({ error: "INVALID_IMAGE" }, { status: 500 });
       }
+      if (jpegOpts) {
+        try {
+          const out = await bufferToPreviewJpegBuffer(decoded.buffer, jpegOpts);
+          return sendBytes("image/jpeg", out);
+        } catch {
+          /* fall through to stored bytes */
+        }
+      }
       return sendBytes(decoded.mime, decoded.buffer);
     }
 
@@ -61,7 +81,7 @@ export async function scanImageNextResponse(input: {
         return NextResponse.json({ error: "INVALID_IMAGE" }, { status: 500 });
       }
       try {
-        const out = await bufferToPreviewJpegBuffer(decoded.buffer);
+        const out = await bufferToPreviewJpegBuffer(decoded.buffer, jpegOpts);
         return sendBytes("image/jpeg", out);
       } catch {
         return sendBytes(decoded.mime, decoded.buffer);
@@ -69,6 +89,17 @@ export async function scanImageNextResponse(input: {
     }
 
     if (fullUrl.startsWith("http://") || fullUrl.startsWith("https://")) {
+      if (isUrlSafeForServerSideImageFetch(fullUrl)) {
+        const remote = await fetchPublicImageToBuffer(fullUrl);
+        if (remote && remote.length > 0) {
+          try {
+            const out = await bufferToPreviewJpegBuffer(remote, jpegOpts);
+            return sendBytes("image/jpeg", out);
+          } catch {
+            /* fall through to redirect */
+          }
+        }
+      }
       return NextResponse.redirect(fullUrl);
     }
 

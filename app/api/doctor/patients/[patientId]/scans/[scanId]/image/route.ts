@@ -31,6 +31,10 @@ export async function GET(
   const preview =
     urlObj.searchParams.get("preview") === "1" ||
     urlObj.searchParams.get("preview") === "true";
+  const thumbnail =
+    preview &&
+    (urlObj.searchParams.get("thumb") === "1" ||
+      urlObj.searchParams.get("thumb") === "true");
 
   const row = await db.query.scans.findFirst({
     where: and(eq(scans.id, scanId), eq(scans.userId, patientId)),
@@ -46,5 +50,6 @@ export async function GET(
     faceCaptureImages: row.faceCaptureImages ?? undefined,
     index,
     preview,
+    thumbnail,
   });
 }

@@ -21,6 +21,7 @@ import {
   RAG_KAI_PARAM_LABELS,
 } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
+import { productionTextbookRetrieve } from "@/src/lib/ragRetrieve";
 import type {
   PatientTrackerParamRow,
   PatientTrackerReport,
@@ -401,41 +402,124 @@ export async function buildPatientTrackerReport(input: {
         ? `Insight: same-week rescans are best for short-cycle checks. Use them to confirm whether ${weakLabel} is stabilizing.`
         : `Insight: cross-week comparisons use weekly averages (not single scans). Last-scan delta is shown separately for immediate context around ${weakLabel}.`;
 
-  const focusActions = [
-    {
-      rank: 1,
-      title:
-        scanContext.kind === "onboarding_first_scan"
-          ? "Establish baseline routine"
-          : `Prioritize ${weakLabel}`,
-      detail:
-        scanContext.kind === "onboarding_first_scan"
-          ? "Complete AM + PM routine for at least 5 of the next 7 days."
-          : "Keep products stable for one full week and execute AM + PM without skips.",
-    },
-    {
-      rank: 2,
-      title:
-        scanContext.kind === "same_week_followup"
-          ? "Use same-week scans for quality control"
-          : "Stabilize sleep and hydration",
-      detail:
-        scanContext.kind === "same_week_followup"
-          ? "Use similar lighting and timing to reduce noise between same-week captures."
-          : "Target 7h+ sleep and steady water intake to support barrier recovery.",
-    },
-    {
-      rank: 3,
-      title:
-        scanContext.kind === "new_week_followup"
-          ? "Maintain weekly cadence"
-          : "Repeat scan next week",
-      detail:
-        scanContext.kind === "new_week_followup"
-          ? "One scan per week in similar conditions gives the cleanest trend signal."
-          : "Weekly spacing is ideal for meaningful movement across the 8 parameters.",
-    },
-  ];
+  /**
+   * Optional textbook line for same-week focus (Pinecone + BM25 when configured).
+   * Full RAG+LLM tracker lives in `ragKaiTestService`; live `/api/patient/tracker` uses this lighter path.
+   */
+  let sameWeekTextbookHint: string | null = null;
+  if (isSameWeekFollowup) {
+    try {
+      const ev = await productionTextbookRetrieve({
+        query: `${weakLabel} dermatology clinical photography lighting serial skin imaging follow-up`,
+        boostTerms: [weakLabel, "photodocumentation"],
+        topK: 2,
+      });
+      const raw = ev[0]?.chunk?.text?.trim();
+      if (raw) {
+        sameWeekTextbookHint = raw.slice(0, 190).replace(/\s+/g, " ");
+      }
+    } catch {
+      /* retrieval optional */
+    }
+  }
+
+  const weakFocus = weakLabel;
+  const trendSoft = primaryDelta > -4 && primaryDelta < 4;
+  const trendUp = primaryDelta >= 4;
+  const trendDown = primaryDelta <= -4;
+
+  const focusActions: PatientTrackerReport["focusActions"] =
+    scanContext.kind === "onboarding_first_scan"
+      ? [
+          {
+            rank: 1,
+            title: "Lock a repeatable AM + PM stack for 7 days",
+            detail:
+              "Choose steps you will not swap mid-week. kAI learns from stability first; novelty second. Five complete days beats seven chaotic ones.",
+          },
+          {
+            rank: 2,
+            title: "Standardize how you capture the photo",
+            detail:
+              "Same room, similar light, same distance. Baseline noise stays low so the next scan reflects skin change — not angle or exposure.",
+          },
+          {
+            rank: 3,
+            title: "Book the follow-up in a new calendar week",
+            detail:
+              "Give barrier and actives time to register. Week-to-week spacing is what makes the eight-parameter trend interpretable, not day-to-day noise.",
+          },
+        ]
+      : scanContext.kind === "same_week_followup"
+        ? [
+            {
+              rank: 1,
+              title: `Hold ${weakFocus} on a fixed protocol — zero new variables`,
+              detail:
+                "No new actives, peels, or devices between these captures. If something changes, kAI cannot tell whether the skin or the routine moved.",
+            },
+            {
+              rank: 2,
+              title: `Same-week capture #${scanCountThisWeek} — mirror your first setup`,
+              detail: (() => {
+                const base =
+                  scanCountThisWeek >= 3
+                    ? `${scanCountThisWeek} scans already this week — match time of day, light, distance, and pose to your first capture this week so only ${weakFocus} variance shows, not the camera story.`
+                    : `Second scan this calendar week — duplicate timing, lighting, and framing from your earlier upload. kAI treats this as a repeatability check on ${weakFocus}, not a fresh trend.`;
+                if (!sameWeekTextbookHint) return base;
+                return `${base} Reference (indexed textbook): ${sameWeekTextbookHint}…`;
+              })(),
+            },
+            {
+              rank: 3,
+              title: "Finish the week with logs — verdict is week-over-week",
+              detail: (() => {
+                const pct = Math.round(routineCompletion7d * 100);
+                const habit =
+                  pct < 43
+                    ? `Routine logging is at ${pct}% AM+PM completion — that is low enough to muddy ${weakFocus} until you hit 5+ full days.`
+                    : pct >= 71
+                      ? `${pct}% AM+PM completion gives kAI cleaner habit context when next week’s scan lands.`
+                      : `${pct}% AM+PM completion — push toward 5–7 full days so next week’s comparison is not fighting log gaps.`;
+                const tail =
+                  highSun >= 3
+                    ? ` You logged ${highSun} higher-sun days — keep SPF strict so pigment and ${weakFocus} swings are not sun-skewed.`
+                    : "";
+                return `${habit}${tail} Signal is calendar-week averages across all eight parameters, not hours between uploads.`;
+              })(),
+            },
+          ]
+        : [
+            {
+              rank: 1,
+              title: trendDown
+                ? `Stabilize ${weakFocus} before you optimize anything else`
+                : trendUp
+                  ? `Protect the gains — keep ${weakFocus} on the same winning stack`
+                  : `Make ${weakFocus} the single priority lever this week`,
+              detail: trendDown
+                ? "Pause introductions. Barrier predictable, actives on schedule, inflammation controlled. A down week is usually noise + friction — tighten the system before chasing points."
+                : trendUp
+                  ? "Do not rotate products or add hero ingredients. Momentum shows the stack is working; your job is repetition, not reinvention."
+                  : "One lead concern, one disciplined plan. Freeze everything non-essential so week-over-week change on this metric stays interpretable.",
+            },
+            {
+              rank: 2,
+              title: trendDown
+                ? "Rebuild recovery inputs: sleep, water, photoprotection"
+                : "Run sleep, hydration, and SPF like clinical adjuvants",
+              detail: trendDown
+                ? "Aim for 7h+ sleep, steady fluids, and strict daytime protection. Recovery weeks reward boring consistency over aggressive treatment."
+                : "They do not replace your actives, but they decide whether barrier tolerates them. Treat them as non-negotiable support, not nice-to-haves.",
+            },
+            {
+              rank: 3,
+              title: "Next scan: same conditions, one week out",
+              detail: trendSoft
+                ? "One scan per week at similar time and light separates real trajectory from daily variance across the eight parameters."
+                : "Maintain weekly cadence under stable capture conditions. That is the window where kAI’s week-average signal is strongest.",
+            },
+          ];
 
   const weakKey = weakRows[0]?.key ?? null;
   const resourcesRows = await db.select().from(kaiResources).limit(6);

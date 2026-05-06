@@ -171,8 +171,15 @@ export default function HistoryListScreen() {
 
   if (loading && !data) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loadingScreen}>
+        <View style={styles.loadingCard}>
+          <View style={styles.loadingPulse} />
+          <ActivityIndicator size="large" color="#0d9488" />
+          <Text style={styles.loadingTitle}>Loading treatment history</Text>
+          <Text style={styles.loadingHint}>
+            Fetching your scans, visits, and notes.
+          </Text>
+        </View>
       </View>
     );
   }
@@ -291,6 +298,10 @@ export default function HistoryListScreen() {
                     </View>
                   ))}
                 </View>
+                <Text style={styles.chipsHint}>
+                  These are six summary scores on the card (not separate photos).
+                  Open the report for every metric and capture angle.
+                </Text>
                 <View style={styles.scanActions}>
                   <Pressable
                     style={styles.btnOutline}
@@ -464,6 +475,52 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: "#fdf9f0" },
   content: { padding: 16, paddingBottom: 48 },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fdf9f0" },
+  loadingScreen: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fdf9f0",
+    paddingHorizontal: 24,
+  },
+  loadingCard: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 24,
+    backgroundColor: "#fff",
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(24, 24, 27, 0.06)",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 6,
+  },
+  loadingPulse: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: "rgba(13, 148, 136, 0.12)",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(13, 148, 136, 0.2)",
+  },
+  loadingTitle: {
+    marginTop: 16,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#18181b",
+    textAlign: "center",
+  },
+  loadingHint: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#52525b",
+    textAlign: "center",
+  },
   err: { color: "#b91c1c", padding: 16 },
   profileCard: { padding: 20, marginBottom: 8 },
   profileRow: { flexDirection: "row", gap: 16, alignItems: "flex-start" },
@@ -519,6 +576,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   chipText: { fontSize: 10, fontWeight: "700", color: "#134e4a" },
+  chipsHint: {
+    marginTop: 8,
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#71717a",
+  },
   scanActions: { flexDirection: "row", gap: 10, marginTop: 14 },
   btnOutline: {
     flex: 1,

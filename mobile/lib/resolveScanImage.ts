@@ -47,6 +47,7 @@ function stripPreviewFromPatientScanImageUrl(url: string): string {
     const u = new URL(t, "http://local.invalid");
     if (!/\/api\/patient\/scans\/\d+\/image$/.test(u.pathname)) return t;
     u.searchParams.delete("preview");
+    u.searchParams.delete("thumb");
     const q = u.searchParams.toString();
     return q ? `${u.pathname}?${q}` : u.pathname;
   } catch {

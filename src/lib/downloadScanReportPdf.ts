@@ -26,6 +26,7 @@ function fullResolutionPatientScanImageSrc(raw: string): string {
     const u = new URL(raw, window.location.origin);
     if (!/\/api\/patient\/scans\/\d+\/image$/.test(u.pathname)) return raw;
     u.searchParams.delete("preview");
+    u.searchParams.delete("thumb");
     const q = u.searchParams.toString();
     return q ? `${u.pathname}?${q}` : u.pathname;
   } catch {

@@ -3,10 +3,7 @@ export type PatientScanImageOpts = {
   index?: number;
   /** Smaller JPEG for lists and on-screen report (adds `preview=1`). */
   preview?: boolean;
-  /**
-   * Extra-small cover for treatment-history cards (`thumb=1`, implies a smaller JPEG than `preview` alone).
-   * Only applied when `preview` is true.
-   */
+  /** Extra-small cover for history list cards (`thumb=1`); use with `preview`. */
   thumbnail?: boolean;
 };
 
@@ -31,7 +28,7 @@ export function patientScanImagePath(
 }
 
 /**
- * Prefer for `<img src>`: adds `preview=1` so the API serves a downscaled JPEG when possible.
+ * Prefer for on-screen image source: adds `preview=1` so the API serves a downscaled JPEG.
  * Omit for PDF/embed flows that need full resolution.
  */
 export function patientScanImageDisplayUrl(imageApiPathOrUrl: string): string {

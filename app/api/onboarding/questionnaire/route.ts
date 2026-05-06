@@ -5,6 +5,7 @@ import { questionnaireAnswers, skinDnaCards, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyStaffQuestionnaireRedFlags } from "@/src/lib/questionnaireDoctorAlerts";
 
+const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
 const CONCERNS = new Set(["acne", "pigmentation", "ageing", "hair", "general"]);
 const SEVERITY = new Set(["mild", "moderate", "severe"]);
 const DURATION = new Set(["recent", "ongoing", "chronic"]);
@@ -43,6 +44,33 @@ export async function POST(req: Request) {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+  }
+
+  let age: number;
+  if (typeof body.age === "number" && Number.isFinite(body.age)) {
+    age = Math.round(body.age);
+  } else if (typeof body.age === "string" && body.age.trim()) {
+    age = Math.round(parseFloat(body.age.trim()));
+  } else {
+    return NextResponse.json(
+      { error: "AGE_REQUIRED", message: "Please enter your age." },
+      { status: 400 }
+    );
+  }
+  if (!Number.isFinite(age) || age < 1 || age > 120) {
+    return NextResponse.json(
+      { error: "INVALID_AGE", message: "Age must be between 1 and 120." },
+      { status: 400 }
+    );
+  }
+
+  const genderRaw =
+    typeof body.gender === "string" ? body.gender.trim().toLowerCase() : "";
+  if (!ALLOWED_GENDERS.has(genderRaw)) {
+    return NextResponse.json(
+      { error: "INVALID_GENDER", message: "Please select your gender." },
+      { status: 400 }
+    );
   }
 
   const primaryConcern =
@@ -148,6 +176,8 @@ export async function POST(req: Request) {
   await db
     .update(users)
     .set({
+      age,
+      gender: genderRaw,
       primaryConcern,
       concernSeverity,
       concernDuration,
@@ -166,6 +196,7 @@ export async function POST(req: Request) {
     .where(eq(users.id, userId));
 
   const audit: Record<string, unknown> = {
+    PROFILE_01: { age, gender: genderRaw },
     CONCERN_01: primaryConcern,
     SEV_01: concernSeverity,
     DUR_01: concernDuration,

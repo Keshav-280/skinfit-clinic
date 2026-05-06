@@ -1,4 +1,4 @@
-import { Redirect, router } from "expo-router";
+import { Link, Redirect, router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -38,7 +38,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email, password);
-      router.replace("/(drawer)");
+      router.replace("/");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
       Alert.alert("Sign in", msg);
@@ -86,6 +86,14 @@ export default function LoginScreen() {
               <Text style={styles.buttonLabel}>Sign in</Text>
             )}
           </Pressable>
+          <View style={styles.signupRow}>
+            <Text style={styles.signupHint}>New here?</Text>
+            <Link href="/signup" asChild>
+              <Pressable hitSlop={8}>
+                <Text style={[styles.signupLink, { color: accent }]}>Create account</Text>
+              </Pressable>
+            </Link>
+          </View>
         </View>
       </KeyboardAvoidingView>
   );
@@ -132,5 +140,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  signupRow: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  signupHint: {
+    fontSize: 14,
+    opacity: 0.75,
+  },
+  signupLink: {
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
