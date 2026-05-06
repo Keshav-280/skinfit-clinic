@@ -17,6 +17,7 @@ export type ScheduleEventRow = {
   eventTimeHm: string | null;
   title: string;
   completed: boolean;
+  eventKind?: string;
 };
 
 export type DoctorCalendarSlot = {

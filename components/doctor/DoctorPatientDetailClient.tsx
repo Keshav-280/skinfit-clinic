@@ -190,6 +190,14 @@ type DetailJson = {
     doctorName: string;
     doctorEmail: string;
   }>;
+  scheduleEvents?: Array<{
+    id: string;
+    eventDateYmd: string;
+    eventTimeHm: string | null;
+    title: string;
+    eventKind: string;
+    completed: boolean;
+  }>;
 };
 
 type DoctorThreadMessage = {
@@ -204,6 +212,12 @@ function formatMmSs(totalSec: number) {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function scheduleEventKindLabel(kind: string): string {
+  if (kind === "pre_treatment") return "Pre-treatment";
+  if (kind === "post_treatment") return "Post-treatment";
+  return "General";
 }
 
 function RoutineStepsLine({
@@ -266,6 +280,22 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const [visitNoteFiles, setVisitNoteFiles] = useState<File[]>([]);
   const [visitNoteBusy, setVisitNoteBusy] = useState(false);
   const [visitNoteFlash, setVisitNoteFlash] = useState<string | null>(null);
+  const [doctorApptDateYmd, setDoctorApptDateYmd] = useState("");
+  const [doctorApptTimeHm, setDoctorApptTimeHm] = useState("10:00");
+  const [doctorApptType, setDoctorApptType] = useState<
+    "consultation" | "follow-up" | "scan-review"
+  >("consultation");
+  const [doctorApptEndHm, setDoctorApptEndHm] = useState("");
+  const [doctorApptBusy, setDoctorApptBusy] = useState(false);
+  const [doctorApptFlash, setDoctorApptFlash] = useState<string | null>(null);
+  const [careEventDateYmd, setCareEventDateYmd] = useState("");
+  const [careEventTimeHm, setCareEventTimeHm] = useState("");
+  const [careEventTitle, setCareEventTitle] = useState("");
+  const [careEventKind, setCareEventKind] = useState<
+    "pre_treatment" | "post_treatment"
+  >("pre_treatment");
+  const [careEventBusy, setCareEventBusy] = useState(false);
+  const [careEventFlash, setCareEventFlash] = useState<string | null>(null);
   const [generalFeedbackText, setGeneralFeedbackText] = useState("");
   const [generalFeedbackBusy, setGeneralFeedbackBusy] = useState(false);
   const [generalFeedbackFlash, setGeneralFeedbackFlash] = useState<string | null>(null);
@@ -486,6 +516,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     }
     if (data.calendarTodayYmd) {
       setVisitNoteDateYmd(data.calendarTodayYmd);
+      setDoctorApptDateYmd(data.calendarTodayYmd);
+      setCareEventDateYmd(data.calendarTodayYmd);
     }
   }, [data, routinePlanTextDirty, generalFeedbackDirty]);
 
@@ -799,7 +831,219 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Appointments</h2>
+        <h2 className="mb-1 text-lg font-semibold text-slate-900">
+          Appointments &amp; patient calendar
+        </h2>
+        <p className="mb-4 text-sm leading-relaxed text-slate-600">
+          Book a visit for this patient and add pre- or post-treatment items to their in-app
+          schedule.
+        </p>
+
+        <div className="mb-6 grid gap-4 lg:grid-cols-2">
+          <div className="space-y-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-4">
+            <h3 className="text-sm font-semibold text-slate-900">Book a visit</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-slate-700">Date</span>
+                <input
+                  type="date"
+                  value={doctorApptDateYmd}
+                  onChange={(e) => setDoctorApptDateYmd(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-slate-700">Start time</span>
+                <input
+                  type="time"
+                  value={doctorApptTimeHm}
+                  onChange={(e) => setDoctorApptTimeHm(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 tabular-nums"
+                />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-slate-700">Visit type</span>
+              <select
+                value={doctorApptType}
+                onChange={(e) =>
+                  setDoctorApptType(
+                    e.target.value as "consultation" | "follow-up" | "scan-review"
+                  )
+                }
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              >
+                <option value="consultation">Consultation</option>
+                <option value="follow-up">Follow-up</option>
+                <option value="scan-review">Scan review</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-slate-700">
+                End time (optional, clinic clock)
+              </span>
+              <input
+                type="time"
+                value={doctorApptEndHm}
+                onChange={(e) => setDoctorApptEndHm(e.target.value)}
+                className="w-full max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 tabular-nums"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={doctorApptBusy || !doctorApptDateYmd.trim()}
+              onClick={async () => {
+                setDoctorApptFlash(null);
+                setDoctorApptBusy(true);
+                try {
+                  const payload: Record<string, unknown> = {
+                    dateYmd: doctorApptDateYmd.trim(),
+                    timeHm: doctorApptTimeHm,
+                    type: doctorApptType,
+                  };
+                  if (doctorApptEndHm.trim()) {
+                    payload.slotEndTimeHm = doctorApptEndHm.trim();
+                  }
+                  const res = await fetch(
+                    `/api/doctor/patients/${patientId}/appointments`,
+                    {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                    }
+                  );
+                  const j = (await res.json()) as { ok?: boolean; error?: string };
+                  if (!res.ok || !j.ok) {
+                    const msg =
+                      j.error === "DUPLICATE_SLOT"
+                        ? "That slot is already booked for this patient."
+                        : (j.error ?? "Could not book visit.");
+                    setDoctorApptFlash(msg);
+                    return;
+                  }
+                  setDoctorApptFlash("Visit scheduled.");
+                  void load();
+                } catch {
+                  setDoctorApptFlash("Network error.");
+                } finally {
+                  setDoctorApptBusy(false);
+                }
+              }}
+              className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 disabled:opacity-50"
+            >
+              {doctorApptBusy ? "Booking…" : "Schedule visit"}
+            </button>
+            {doctorApptFlash ? (
+              <p className="text-sm font-medium text-teal-900" role="status">
+                {doctorApptFlash}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-4">
+            <h3 className="text-sm font-semibold text-slate-900">
+              Pre / post treatment reminder
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600">
+              Shown on the patient&apos;s schedule tab (not a clinic slot booking).
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-slate-700">Date</span>
+                <input
+                  type="date"
+                  value={careEventDateYmd}
+                  onChange={(e) => setCareEventDateYmd(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-slate-700">Time (optional)</span>
+                <input
+                  type="time"
+                  value={careEventTimeHm}
+                  onChange={(e) => setCareEventTimeHm(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 tabular-nums"
+                />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-slate-700">Kind</span>
+              <select
+                value={careEventKind}
+                onChange={(e) =>
+                  setCareEventKind(e.target.value as "pre_treatment" | "post_treatment")
+                }
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+              >
+                <option value="pre_treatment">Pre-treatment</option>
+                <option value="post_treatment">Post-treatment</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-slate-700">Title</span>
+              <input
+                type="text"
+                value={careEventTitle}
+                onChange={(e) => setCareEventTitle(e.target.value)}
+                placeholder="e.g. Stop retinol 3 days before peel"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={
+                careEventBusy || !careEventDateYmd.trim() || !careEventTitle.trim()
+              }
+              onClick={async () => {
+                setCareEventFlash(null);
+                setCareEventBusy(true);
+                try {
+                  const body: Record<string, unknown> = {
+                    eventDateYmd: careEventDateYmd.trim(),
+                    title: careEventTitle.trim(),
+                    eventKind: careEventKind,
+                  };
+                  if (careEventTimeHm.trim()) {
+                    body.eventTimeHm = careEventTimeHm.trim();
+                  }
+                  const res = await fetch(
+                    `/api/doctor/patients/${patientId}/schedule-events`,
+                    {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(body),
+                    }
+                  );
+                  const j = (await res.json()) as { ok?: boolean; error?: string };
+                  if (!res.ok || !j.ok) {
+                    setCareEventFlash(j.error ?? "Could not add reminder.");
+                    return;
+                  }
+                  setCareEventFlash("Reminder added to patient calendar.");
+                  setCareEventTitle("");
+                  void load();
+                } catch {
+                  setCareEventFlash("Network error.");
+                } finally {
+                  setCareEventBusy(false);
+                }
+              }}
+              className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 disabled:opacity-50"
+            >
+              {careEventBusy ? "Saving…" : "Add reminder"}
+            </button>
+            {careEventFlash ? (
+              <p className="text-sm font-medium text-teal-900" role="status">
+                {careEventFlash}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <h3 className="mb-2 text-sm font-semibold text-slate-800">Scheduled visits</h3>
         {(data.appointments ?? []).length === 0 ? (
           <p className="text-sm text-slate-500">No appointments on file.</p>
         ) : (
@@ -814,6 +1058,59 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 </span>
               </li>
             ))}
+          </ul>
+        )}
+
+        <h3 className="mb-2 mt-6 text-sm font-semibold text-slate-800">
+          Patient calendar (care reminders)
+        </h3>
+        {(data.scheduleEvents ?? []).length === 0 ? (
+          <p className="text-sm text-slate-500">No calendar reminders on file.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {(data.scheduleEvents ?? []).map((s) => {
+              const kind = s.eventKind ?? "general";
+              const badge =
+                kind === "pre_treatment"
+                  ? "bg-violet-100 text-violet-900"
+                  : kind === "post_treatment"
+                    ? "bg-amber-100 text-amber-900"
+                    : "bg-slate-100 text-slate-700";
+              return (
+                <li
+                  key={s.id}
+                  className={`flex flex-wrap items-start justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 ${
+                    s.completed ? "opacity-70" : ""
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badge}`}
+                      >
+                        {scheduleEventKindLabel(kind)}
+                      </span>
+                      {s.completed ? (
+                        <span className="text-[10px] font-semibold uppercase text-slate-500">
+                          Done
+                        </span>
+                      ) : null}
+                    </div>
+                    <p
+                      className={`mt-1 font-medium text-slate-900 ${
+                        s.completed ? "line-through" : ""
+                      }`}
+                    >
+                      {s.title}
+                    </p>
+                  </div>
+                  <span className="shrink-0 tabular-nums text-slate-600">
+                    {s.eventDateYmd}
+                    {s.eventTimeHm ? ` · ${s.eventTimeHm}` : ""}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

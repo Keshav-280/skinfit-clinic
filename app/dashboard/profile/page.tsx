@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
+import { ProfileSkinIdentitySection } from "@/components/dashboard/ProfileSkinIdentitySection";
 import { ProfileSkinDnaSection } from "@/components/dashboard/ProfileSkinDnaSection";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
 
@@ -20,6 +21,7 @@ export default async function ProfilePage() {
         </p>
       </header>
       <ProfileSkinDnaSection />
+      <ProfileSkinIdentitySection />
       <ProfileRagKaiInsightsSection />
       <ProfileForm initial={user} />
     </div>

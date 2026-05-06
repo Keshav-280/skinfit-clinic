@@ -34,6 +34,7 @@ type ProfileUser = {
   phoneCountryCode: string;
   phone: string | null;
   age: number | null;
+  gender: string | null;
   skinType: string | null;
   primaryGoal: string | null;
   appointmentReminderHoursBefore: number;
@@ -67,6 +68,47 @@ type SkinProfilePayload = {
   }>;
 };
 
+type SkinIdentityPayload = {
+  user: { name: string; email: string };
+  timeline: {
+    initial: {
+      asOfDate: string;
+      skinType: string | null;
+      primaryConcern: string | null;
+      sensitivityIndex: number | null;
+      uvSensitivity: string | null;
+      hormonalCorrelation: string | null;
+      signals: Record<string, string>;
+      dataDepth: { scansConsidered: number; logsConsidered: number };
+    };
+    current: {
+      asOfDate: string;
+      skinType: string | null;
+      primaryConcern: string | null;
+      sensitivityIndex: number | null;
+      uvSensitivity: string | null;
+      hormonalCorrelation: string | null;
+      signals: Record<string, string>;
+      dataDepth: { scansConsidered: number; logsConsidered: number };
+    };
+    changed: Array<{ field: string; from: string | number | null; to: string | number | null }>;
+  };
+};
+
+type MonthlyInsightPayload = {
+  locked: boolean;
+  nextInsightAt: string;
+  latestMonthStart: string | null;
+  monthly: {
+    summaryTitle: string;
+    summaryBody: string;
+    highlights: string[];
+    risks: string[];
+    nextMonthFocus: string[];
+    kaiMonthAvgFromParams: number | null;
+  } | null;
+};
+
 export default function ProfileScreen() {
   const { token, applySessionFromProfile, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -76,6 +118,7 @@ export default function ProfileScreen() {
   const [phoneCountryCode, setPhoneCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
   const [skinType, setSkinType] = useState("");
   const [primaryGoal, setPrimaryGoal] = useState("");
   const [reminderHours, setReminderHours] = useState(String(REMINDER_DEFAULT));
@@ -88,6 +131,8 @@ export default function ProfileScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [skinExtra, setSkinExtra] = useState<SkinProfilePayload | null>(null);
+  const [skinIdentity, setSkinIdentity] = useState<SkinIdentityPayload | null>(null);
+  const [monthlyInsight, setMonthlyInsight] = useState<MonthlyInsightPayload | null>(null);
   const [cycleTrackingEnabled, setCycleTrackingEnabled] = useState(false);
 
   const load = useCallback(async () => {
@@ -95,11 +140,17 @@ export default function ProfileScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [profileRes, skin] = await Promise.all([
+      const [profileRes, skin, identity, monthly] = await Promise.all([
         apiJson<{ user: ProfileUser }>("/api/user/profile", token, {
           method: "GET",
         }),
         apiJson<SkinProfilePayload>("/api/patient/skin-profile", token, {
+          method: "GET",
+        }).catch(() => null),
+        apiJson<SkinIdentityPayload>("/api/patient/skin-identity", token, {
+          method: "GET",
+        }).catch(() => null),
+        apiJson<MonthlyInsightPayload>("/api/patient/monthly-insight", token, {
           method: "GET",
         }).catch(() => null),
       ]);
@@ -109,6 +160,7 @@ export default function ProfileScreen() {
       setPhoneCountryCode(user.phoneCountryCode ?? "+91");
       setPhone(user.phone ?? "");
       setAge(user.age != null ? String(user.age) : "");
+      setGender(user.gender ?? "");
       setSkinType(user.skinType ?? "");
       setPrimaryGoal(user.primaryGoal ?? "");
       setReminderHours(String(user.appointmentReminderHoursBefore ?? REMINDER_DEFAULT));
@@ -116,8 +168,12 @@ export default function ProfileScreen() {
       setRoutineRemindersEnabled(user.routineRemindersEnabled ?? true);
       setRoutineAmHm(user.routineAmReminderHm ?? "08:30");
       setRoutinePmHm(user.routinePmReminderHm ?? "22:00");
-      setCycleTrackingEnabled(user.cycleTrackingEnabled ?? false);
+      setCycleTrackingEnabled(
+        user.gender === "female" ? (user.cycleTrackingEnabled ?? false) : false
+      );
       setSkinExtra(skin);
+      setSkinIdentity(identity);
+      setMonthlyInsight(monthly);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not load profile.");
     } finally {
@@ -170,6 +226,7 @@ export default function ProfileScreen() {
         email: email.trim(),
         phoneCountryCode: phoneCountryCode.trim() || "+91",
         phone: phone.trim(),
+        gender: gender || null,
         skinType: skinType.trim() || null,
         primaryGoal: primaryGoal.trim() || null,
         age: ageVal,
@@ -178,7 +235,7 @@ export default function ProfileScreen() {
         routineRemindersEnabled,
         routineAmReminderHm: routineAmHm.trim(),
         routinePmReminderHm: routinePmHm.trim(),
-        cycleTrackingEnabled,
+        cycleTrackingEnabled: gender === "female" ? cycleTrackingEnabled : false,
       };
       if (newPassword || currentPassword) {
         body.currentPassword = currentPassword;
@@ -259,19 +316,64 @@ export default function ProfileScreen() {
           {Object.keys(skinExtra.sparklines).map((key) => {
             const sp = skinExtra.sparklines[key];
             const label = skinExtra.paramLabels[key] ?? key;
-            const pendingOnly =
-              sp?.sources?.every((s) => s === "pending") ?? false;
+            const allDummy = sp?.sources?.every((s) => s === "dummy") ?? false;
             return (
               <Text key={key} style={styles.sparkLine}>
                 {label}:{" "}
-                {pendingOnly
-                  ? "In-clinic measurement only"
-                  : (sp?.values ?? [])
-                      .map((v) => (v == null ? "—" : String(v)))
-                      .join(" · ")}
+                {(sp?.values ?? []).map((v) => (v == null ? "—" : String(v))).join(" · ")}
+                {allDummy ? " (dummy)" : ""}
               </Text>
             );
           })}
+        </View>
+      ) : null}
+
+      {skinIdentity ? (
+        <View style={styles.identityCard}>
+          <Text style={styles.identityTitle}>Skin identity card (time-aware)</Text>
+          <Text style={styles.identitySub}>
+            Initial {skinIdentity.timeline.initial.asOfDate} → now{" "}
+            {skinIdentity.timeline.current.asOfDate} ·{" "}
+            {skinIdentity.timeline.current.dataDepth.scansConsidered} scans ·{" "}
+            {skinIdentity.timeline.current.dataDepth.logsConsidered} logs
+          </Text>
+          <Text style={styles.identityLine}>
+            Skin type: {skinIdentity.timeline.initial.skinType ?? "—"} →{" "}
+            {skinIdentity.timeline.current.skinType ?? "—"}
+          </Text>
+          <Text style={styles.identityLine}>
+            Primary concern: {skinIdentity.timeline.initial.primaryConcern ?? "—"} →{" "}
+            {skinIdentity.timeline.current.primaryConcern ?? "—"}
+          </Text>
+          <Text style={styles.identityLine}>
+            Sensitivity index: {skinIdentity.timeline.initial.sensitivityIndex ?? "—"} →{" "}
+            {skinIdentity.timeline.current.sensitivityIndex ?? "—"}
+          </Text>
+          <Text style={styles.identityLine}>
+            UV sensitivity: {skinIdentity.timeline.initial.uvSensitivity ?? "—"} →{" "}
+            {skinIdentity.timeline.current.uvSensitivity ?? "—"}
+          </Text>
+        </View>
+      ) : null}
+
+      {monthlyInsight ? (
+        <View style={styles.monthlyCard}>
+          <Text style={styles.monthlyTitle}>Monthly insight</Text>
+          {monthlyInsight.locked || !monthlyInsight.monthly ? (
+            <Text style={styles.monthlyLocked}>
+              Locked. Next insight on {new Date(monthlyInsight.nextInsightAt).toLocaleString()}.
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.monthlyKai}>
+                Month kAI: {monthlyInsight.monthly.kaiMonthAvgFromParams ?? "—"}
+              </Text>
+              <Text style={styles.monthlySummary}>
+                {monthlyInsight.monthly.summaryTitle}
+              </Text>
+              <Text style={styles.monthlyBody}>{monthlyInsight.monthly.summaryBody}</Text>
+            </>
+          )}
         </View>
       ) : null}
 
@@ -303,17 +405,49 @@ export default function ProfileScreen() {
       <L label="Country code" value={phoneCountryCode} onChangeText={setPhoneCountryCode} />
       <L label="Phone (national digits)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
       <L label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" />
+      <Text style={styles.lab}>Gender</Text>
+      <View style={styles.genderRow}>
+        {[
+          { value: "female", label: "Female" },
+          { value: "male", label: "Male" },
+          { value: "other", label: "Other" },
+          { value: "prefer_not_say", label: "Prefer not to say" },
+        ].map((opt) => (
+          <Pressable
+            key={opt.value}
+            style={[
+              styles.genderChip,
+              gender === opt.value ? styles.genderChipActive : null,
+            ]}
+            onPress={() => {
+              setGender(opt.value);
+              if (opt.value !== "female") setCycleTrackingEnabled(false);
+            }}
+          >
+            <Text
+              style={[
+                styles.genderChipText,
+                gender === opt.value ? styles.genderChipTextActive : null,
+              ]}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
       <L label="Skin type" value={skinType} onChangeText={setSkinType} />
       <L label="Primary goal" value={primaryGoal} onChangeText={setPrimaryGoal} />
-      <View style={styles.switchRow}>
-        <Text style={styles.lab}>Track menstrual cycle day in journal</Text>
-        <Switch
-          value={cycleTrackingEnabled}
-          onValueChange={setCycleTrackingEnabled}
-          trackColor={{ false: "#d4d4d8", true: "#99f6e4" }}
-          thumbColor={cycleTrackingEnabled ? "#0d9488" : "#f4f4f5"}
-        />
-      </View>
+      {gender === "female" ? (
+        <View style={styles.switchRow}>
+          <Text style={styles.lab}>Track menstrual cycle day in journal</Text>
+          <Switch
+            value={cycleTrackingEnabled}
+            onValueChange={setCycleTrackingEnabled}
+            trackColor={{ false: "#d4d4d8", true: "#99f6e4" }}
+            thumbColor={cycleTrackingEnabled ? "#0d9488" : "#f4f4f5"}
+          />
+        </View>
+      ) : null}
       <L
         label={`Visit reminder (hours before, 0=off, max ${REMINDER_HOURS_MAX})`}
         value={reminderHours}
@@ -484,6 +618,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 12,
   },
+  genderRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  genderChip: {
+    borderWidth: 1,
+    borderColor: "#d4d4d8",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: "#fff",
+  },
+  genderChipActive: {
+    borderColor: "#0d9488",
+    backgroundColor: "#f0fdfa",
+  },
+  genderChipText: { color: "#3f3f46", fontSize: 12, fontWeight: "600" },
+  genderChipTextActive: { color: "#0f766e" },
   tzBtn: {
     marginBottom: 12,
     paddingVertical: 10,
@@ -525,4 +679,28 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontVariant: ["tabular-nums"],
   },
+  identityCard: {
+    backgroundColor: "#f5f3ff",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.25)",
+  },
+  identityTitle: { fontSize: 16, fontWeight: "800", color: "#312e81" },
+  identitySub: { marginTop: 8, fontSize: 12, color: "#4c1d95", lineHeight: 18 },
+  identityLine: { marginTop: 6, fontSize: 13, color: "#3730a3" },
+  monthlyCard: {
+    backgroundColor: "#eef2ff",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.25)",
+  },
+  monthlyTitle: { fontSize: 16, fontWeight: "800", color: "#312e81" },
+  monthlyLocked: { marginTop: 8, fontSize: 13, color: "#4338ca" },
+  monthlyKai: { marginTop: 8, fontSize: 14, fontWeight: "700", color: "#312e81" },
+  monthlySummary: { marginTop: 8, fontSize: 13, fontWeight: "700", color: "#4338ca" },
+  monthlyBody: { marginTop: 4, fontSize: 13, color: "#312e81", lineHeight: 18 },
 });

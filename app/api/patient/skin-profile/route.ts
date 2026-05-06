@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
-  parameterScores,
   scans,
   skinDnaCards,
   users,
@@ -10,7 +9,8 @@ import {
   weeklyReports,
 } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
-import { KAI_PARAM_KEYS, KAI_PARAMETERS } from "@/src/lib/kaiParameters";
+import { RAG_KAI_PARAM_KEYS, RAG_KAI_PARAM_LABELS } from "@/src/lib/ragEightParams";
+import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 
 function cleanActionText(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().replace(/\.$/, "");
@@ -102,6 +102,12 @@ function deriveAiActionsFromWeeklyReports(
   return out.slice(0, 2);
 }
 
+function dummyScoreFor(scanId: number, key: string) {
+  let seed = scanId * 131;
+  for (let i = 0; i < key.length; i += 1) seed = (seed * 33 + key.charCodeAt(i)) % 9973;
+  return 45 + (seed % 41); // 45..85
+}
+
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
   if (!userId) {
@@ -136,39 +142,42 @@ export async function GET(request: Request) {
   ]);
 
   const recentScans = await db
-    .select({ id: scans.id, createdAt: scans.createdAt, overallScore: scans.overallScore })
+    .select({
+      id: scans.id,
+      createdAt: scans.createdAt,
+      overallScore: scans.overallScore,
+      scores: scans.scores,
+      acne: scans.acne,
+      pigmentation: scans.pigmentation,
+      wrinkles: scans.wrinkles,
+    })
     .from(scans)
     .where(eq(scans.userId, userId))
     .orderBy(desc(scans.createdAt))
     .limit(4);
 
-  const scanIds = recentScans.map((s) => s.id);
-  const scoreRows =
-    scanIds.length > 0
-      ? await db
-          .select()
-          .from(parameterScores)
-          .where(inArray(parameterScores.scanId, scanIds))
-      : [];
-
   const sparklines: Record<
     string,
     { values: (number | null)[]; sources: string[] }
   > = {};
-  for (const key of KAI_PARAM_KEYS) {
-    const values = recentScans.map((scan) => {
-      const r = scoreRows.find(
-        (x) => x.scanId === scan.id && x.paramKey === key
-      );
-      if (!r || r.source === "pending") return null;
-      return r.value;
+  const byScan = recentScans.map((scan) => ({
+    id: scan.id,
+    values: mergeRagParamValuesFromScan({
+      dbByKey: {},
+      scoresJson: scan.scores,
+      pigmentationColumn: scan.pigmentation,
+      acneColumn: scan.acne,
+      wrinklesColumn: scan.wrinkles,
+    }),
+  }));
+  for (const key of RAG_KAI_PARAM_KEYS) {
+    const values = byScan.map((scan) => {
+      const v = scan.values[key];
+      return typeof v === "number" ? v : dummyScoreFor(scan.id, key);
     });
-    const sources = recentScans.map((scan) => {
-      const r = scoreRows.find(
-        (x) => x.scanId === scan.id && x.paramKey === key
-      );
-      return r?.source ?? "pending";
-    });
+    const sources = byScan.map((scan) =>
+      typeof scan.values[key] === "number" ? "ai" : "dummy"
+    );
     sparklines[key] = { values, sources };
   }
 
@@ -185,10 +194,36 @@ export async function GET(request: Request) {
       consistencyScore: w.consistencyScore,
     }))
   );
-  knowDo.do = [
-    ...aiGenerated,
-    "Keep logging your weekly 5-angle scan.",
-  ].slice(0, 3);
+  const latest = byScan[0]?.values ?? null;
+  const prev = byScan[1]?.values ?? null;
+  const weakNow = latest
+    ? RAG_KAI_PARAM_KEYS
+        .map((k) => ({ key: k, value: latest[k] ?? null }))
+        .filter((p) => typeof p.value === "number")
+        .sort((a, b) => (a.value ?? 0) - (b.value ?? 0))[0]
+    : null;
+  const weakDelta =
+    weakNow && prev && typeof weakNow.value === "number" && typeof prev[weakNow.key] === "number"
+      ? Math.round(weakNow.value - (prev[weakNow.key] as number))
+      : null;
+
+  const reflectiveActions: string[] = [];
+  if (weakNow) {
+    reflectiveActions.push(
+      `${RAG_KAI_PARAM_LABELS[weakNow.key]} is currently your weakest area (${Math.round(
+        weakNow.value as number
+      )}). Keep one targeted change stable for 7 days before adding anything new.`
+    );
+    if (weakDelta != null) {
+      reflectiveActions.push(
+        weakDelta >= 0
+          ? `${RAG_KAI_PARAM_LABELS[weakNow.key]} is improving (+${weakDelta}) — keep routine and scan conditions identical for confirmation.`
+          : `${RAG_KAI_PARAM_LABELS[weakNow.key]} dipped (${weakDelta}) — prioritize sleep/hydration and avoid new actives this week.`
+      );
+    }
+  }
+  reflectiveActions.push("Keep logging your weekly 5-angle scan under similar lighting for clean trend comparison.");
+  knowDo.do = [...reflectiveActions, ...aiGenerated].slice(0, 3);
   knowDo.know = [
     dna?.primaryConcern ?? user?.primaryConcern ?? "Primary concern on file",
     user?.skinSensitivity
@@ -211,7 +246,7 @@ export async function GET(request: Request) {
     priorityKnowDo: knowDo,
     sparklines,
     paramLabels: Object.fromEntries(
-      KAI_PARAM_KEYS.map((k) => [k, KAI_PARAMETERS[k].shortLabel])
+      RAG_KAI_PARAM_KEYS.map((k) => [k, RAG_KAI_PARAM_LABELS[k]])
     ),
     visits: visits.map((v) => ({
       id: v.id,

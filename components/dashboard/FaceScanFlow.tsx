@@ -11,6 +11,7 @@ import {
   ImagePlus,
   SwitchCamera,
 } from "lucide-react";
+import { FaceCaptureOvalOverlayWeb } from "@/components/dashboard/FaceCaptureOvalOverlayWeb";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
 import {
   FACE_SCAN_CAPTURE_STEPS,
@@ -376,7 +377,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               autoPlay
               aria-label="Live camera preview (mirrored for front camera)"
             />
-            <div className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-lg bg-zinc-950/55 px-3 py-2 text-center text-xs text-white backdrop-blur-sm">
+            <FaceCaptureOvalOverlayWeb />
+            <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-20 rounded-lg bg-zinc-950/55 px-3 py-2 text-center text-xs text-white backdrop-blur-sm">
               {captureCount}/{N_CAPTURES} captured
             </div>
           </div>

@@ -225,16 +225,11 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       `<li><span class="vid-lbl">${esc(v.label)}: </span><span class="vid-href">${esc(v.href)}</span></li>`
   ).join("");
 
-  const annotatedCopy = overlayUrl
-    ? "Warm tint highlights wrinkle-prone regions; red circles mark acne detections (same view as the analysis tool)."
-    : "Markers show where the model flagged concerns (acne, wrinkles, etc.).";
-
   let annotatedBlock = "";
   if (showAnnotatedSection && annotSrc.length > 0) {
     annotatedBlock = `
     <div class="annot-wrap avoid-break">
       <p class="cap-kicker">Annotated findings</p>
-      <p class="annot-hint">${esc(annotatedCopy)}</p>
       <div class="annot-frame">
         <img src=${annotSrcJson} alt="Annotated scan" />
         ${markersHtml}

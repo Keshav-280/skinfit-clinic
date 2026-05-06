@@ -23,6 +23,7 @@ export function ProfileForm({ initial }: Props) {
   const [age, setAge] = useState(
     initial.age != null ? String(initial.age) : ""
   );
+  const [gender, setGender] = useState(initial.gender ?? "");
   const [skinType, setSkinType] = useState(initial.skinType ?? "");
   const [primaryGoal, setPrimaryGoal] = useState(initial.primaryGoal ?? "");
   const [reminderHoursBefore, setReminderHoursBefore] = useState(
@@ -81,6 +82,7 @@ export function ProfileForm({ initial }: Props) {
         email: email.trim(),
         phoneCountryCode: phoneCountryCode.trim() || "+91",
         phone: phone.trim(),
+        gender: gender || null,
         skinType: skinType.trim() || null,
         primaryGoal: primaryGoal.trim() || null,
       };
@@ -115,7 +117,8 @@ export function ProfileForm({ initial }: Props) {
       body.routineRemindersEnabled = routineRemindersEnabled;
       body.routineAmReminderHm = routineAmReminderHm;
       body.routinePmReminderHm = routinePmReminderHm;
-      body.cycleTrackingEnabled = cycleTrackingEnabled;
+      body.cycleTrackingEnabled =
+        gender === "female" ? cycleTrackingEnabled : false;
 
       if (newPassword || currentPassword) {
         body.currentPassword = currentPassword;
@@ -149,6 +152,8 @@ export function ProfileForm({ initial }: Props) {
       if (data.user?.age === null) setAge("");
       else if (typeof data.user?.age === "number")
         setAge(String(data.user.age));
+      if (data.user?.gender === null) setGender("");
+      else if (typeof data.user?.gender === "string") setGender(data.user.gender);
       if (data.user?.skinType === null) setSkinType("");
       else if (typeof data.user?.skinType === "string")
         setSkinType(data.user.skinType);
@@ -331,18 +336,45 @@ export function ProfileForm({ initial }: Props) {
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
             />
           </div>
-          <label className="flex cursor-pointer items-center gap-3 pt-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-zinc-300 text-[#6B8E8E] focus:ring-[#6B8E8E]"
-              checked={cycleTrackingEnabled}
-              onChange={(e) => setCycleTrackingEnabled(e.target.checked)}
+          <div>
+            <label
+              htmlFor="pf-gender"
+              className="mb-1.5 block text-sm font-medium text-zinc-700"
+            >
+              Gender
+            </label>
+            <select
+              id="pf-gender"
+              value={gender}
+              onChange={(e) => {
+                const g = e.target.value;
+                setGender(g);
+                if (g !== "female") setCycleTrackingEnabled(false);
+              }}
               disabled={loading}
-            />
-            <span className="text-sm font-medium text-zinc-800">
-              Track menstrual cycle day in journal
-            </span>
-          </label>
+              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+            >
+              <option value="">Select</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_say">Prefer not to say</option>
+            </select>
+          </div>
+          {gender === "female" ? (
+            <label className="flex cursor-pointer items-center gap-3 pt-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-zinc-300 text-[#6B8E8E] focus:ring-[#6B8E8E]"
+                checked={cycleTrackingEnabled}
+                onChange={(e) => setCycleTrackingEnabled(e.target.checked)}
+                disabled={loading}
+              />
+              <span className="text-sm font-medium text-zinc-800">
+                Track menstrual cycle day in journal
+              </span>
+            </label>
+          ) : null}
         </div>
       </section>
 

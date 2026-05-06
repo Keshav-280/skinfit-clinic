@@ -1,79 +1,19 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 
 const PEACH = "#F29C91";
-const TEAL_BAND = "#E0EEEB";
-const BTN = "#6D8C8E";
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-function clampPct(n: number) {
-  return Math.min(100, Math.max(0, Math.round(n)));
+function signed(n: number) {
+  return `${n > 0 ? "+" : ""}${n}`;
 }
 
-function ParamBar({
-  label,
-  value,
-  source,
-  delta,
-}: {
-  label: string;
-  value: number | null;
-  source: string;
-  delta: number | null;
-}) {
-  const pending = source === "pending" || value == null;
-  const pct = pending ? 0 : clampPct(value);
-  const deltaStr =
-    delta == null
-      ? "—"
-      : delta > 0
-        ? `+${Math.round(delta)}`
-        : `${Math.round(delta)}`;
-  const deltaClass =
-    delta == null
-      ? "text-zinc-400"
-      : delta > 0
-        ? "text-emerald-700"
-        : delta < 0
-          ? "text-rose-700"
-          : "text-zinc-600";
-
-  return (
-    <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2.5 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold text-zinc-800">{label}</span>
-        <div className="flex items-center gap-2">
-          {pending ? (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200/80">
-              Pending — in-clinic
-            </span>
-          ) : (
-            <span className="text-[11px] font-semibold tabular-nums text-zinc-900">
-              {clampPct(value)}%
-            </span>
-          )}
-          <span className={`text-[10px] font-semibold tabular-nums ${deltaClass}`}>
-            Δ {deltaStr}
-          </span>
-        </div>
-      </div>
-      <div
-        className={`mt-2 h-2 w-full overflow-hidden rounded-full ${
-          pending ? "border border-dashed border-zinc-300 bg-zinc-100" : "bg-zinc-200/90"
-        }`}
-      >
-        {!pending ? (
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-[width] duration-700"
-            style={{ width: `${pct}%` }}
-          />
-        ) : null}
-      </div>
-    </div>
-  );
+function deltaClass(n: number) {
+  if (n > 0) return "text-emerald-700";
+  if (n < 0) return "text-rose-700";
+  return "text-zinc-600";
 }
 
 export function TrackerReportSections({
@@ -83,216 +23,167 @@ export function TrackerReportSections({
   report: PatientTrackerReport;
   serifClassName: string;
 }) {
-  const overviewParagraph =
-    report.causes[0]?.text ??
-    "This tracker connects your latest scan to recent habits. Scores are directional guides, not a diagnosis.";
-
-  const oc = report.onboardingClinical;
-  const hasOc =
-    oc &&
-    (oc.flags.length > 0 || oc.notes.length > 0);
+  const { lastScanDelta, weekAverageDelta, deltaMode } = report.scores;
 
   return (
-    <>
-      {hasOc && oc ? (
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04, duration: 0.4, ease: easeOut }}
-          className="mt-8 w-full max-w-xl break-inside-avoid rounded-2xl border border-amber-200/90 bg-amber-50/80 px-4 py-4 shadow-sm"
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-900/80">
-            kAI onboarding — clinical flags &amp; notes
-          </p>
-          {oc.flags.length > 0 ? (
-            <ul className="mt-3 list-inside list-disc space-y-1.5 text-[13px] font-medium leading-snug text-rose-900">
-              {oc.flags.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-          ) : null}
-          {oc.notes.length > 0 ? (
-            <ul className="mt-3 list-inside list-disc space-y-1.5 text-[13px] leading-snug text-zinc-800">
-              {oc.notes.map((n) => (
-                <li key={n}>{n}</li>
-              ))}
-            </ul>
-          ) : null}
-        </motion.section>
-      ) : null}
-
-      {/* Tracker hook */}
-      <motion.section
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08, duration: 0.4, ease: easeOut }}
-        className="mt-8 w-full max-w-xl break-inside-avoid"
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          Tracker hook
-        </p>
-        <p className={`mt-3 text-[17px] leading-snug text-zinc-800 ${serifClassName}`}>
-          {report.hookSentence}
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          {[
-            { k: "kAI Skin Score", v: `${report.scores.kaiScore}%` },
-            { k: "Weekly Δ", v: `${report.scores.weeklyDelta > 0 ? "+" : ""}${report.scores.weeklyDelta}` },
-            { k: "Consistency", v: `${report.scores.consistencyScore}%` },
-          ].map((chip) => (
-            <span
-              key={chip.k}
-              className="inline-flex items-center gap-2 rounded-full border border-white bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-zinc-800 shadow-sm"
-            >
-              <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                {chip.k}
-              </span>
-              <span className="tabular-nums text-zinc-900">{chip.v}</span>
-            </span>
-          ))}
-        </div>
-      </motion.section>
-
-      {/* § Feel understood */}
-      <motion.section
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.4, ease: easeOut }}
-        className="mx-auto mt-10 w-full min-w-0 max-w-full break-inside-avoid"
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          Feel understood
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {report.skinPills.map((p) => (
-            <span
-              key={p}
-              className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-200/80"
-            >
-              {p}
-            </span>
-          ))}
-        </div>
-        <div className="mt-6 grid gap-2 sm:grid-cols-2">
-          {report.paramRows.map((row) => (
-            <ParamBar
-              key={row.key}
-              label={row.label}
-              value={row.value}
-              source={row.source}
-              delta={row.delta}
-            />
-          ))}
-        </div>
-        <div className="mt-8 rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600">
-            Causes & context
-          </p>
-          <ul className="mt-3 list-disc space-y-2 pl-4 text-[13px] leading-relaxed text-zinc-700">
-            {report.causes.map((c, i) => (
-              <li key={i}>{c.text}</li>
-            ))}
-          </ul>
-          <p className="mt-4 text-[13px] leading-relaxed text-zinc-600">{overviewParagraph}</p>
-        </div>
-      </motion.section>
-
-      {/* Resource centre */}
-      <motion.section
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.12, duration: 0.4, ease: easeOut }}
-        className="mt-10 break-inside-avoid rounded-2xl border border-zinc-200/80 bg-white/85 px-4 py-4 sm:px-5"
-      >
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-800">
-          Resource centre
-        </p>
-        <ul className="mt-3 space-y-2.5 text-[12px] leading-snug text-zinc-700">
-          {report.resources.map((r) => (
-            <li key={r.url}>
-              <span className="mr-2 rounded bg-zinc-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-zinc-600">
-                {r.kind}
-              </span>
-              <Link
-                href={r.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-teal-800 underline decoration-teal-200 underline-offset-2 hover:text-teal-950"
-              >
-                {r.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </motion.section>
-
-      {/* This week’s focus */}
-      <motion.section
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.14, duration: 0.4, ease: easeOut }}
-        className="mt-10 break-inside-avoid"
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          This week&apos;s focus
-        </p>
-        <ol className="mt-4 space-y-3">
-          {report.focusActions.map((a) => (
-            <li
-              key={a.rank}
-              className="flex gap-3 rounded-2xl border border-white bg-white/90 px-4 py-3 shadow-sm"
-            >
-              <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white"
-                style={{ backgroundColor: BTN }}
-              >
-                {a.rank}
-              </span>
-              <div>
-                <p className="text-[13px] font-semibold text-zinc-900">{a.title}</p>
-                <p className="mt-1 text-[12px] leading-relaxed text-zinc-600">{a.detail}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </motion.section>
-
-      {/* Score card — align with legacy PDF */}
-      <div className="relative z-10 mx-auto mt-8 flex w-full min-w-0 max-w-lg justify-center sm:mt-10">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.16, duration: 0.45, ease: easeOut }}
-          className="w-full min-w-0 max-w-full rounded-[20px] border border-white bg-white px-4 py-6 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.12),0_8px_16px_-4px_rgba(0,0,0,0.06)] backdrop-blur-sm sm:px-9 sm:py-7"
-        >
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: easeOut }}
+      className="mx-auto mt-3 w-full max-w-3xl space-y-4 break-inside-avoid px-1"
+    >
+      <section className="mx-auto w-full break-inside-avoid">
+        <div className="rounded-2xl border border-white bg-white px-5 py-4 shadow-[0_20px_40px_-16px_rgba(0,0,0,0.2)]">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
             kAI Skin Score (this scan)
           </p>
           <p
-            className={`mt-1 text-[2.25rem] font-medium leading-none tracking-[-0.03em] sm:text-[2.75rem] ${serifClassName}`}
+            className={`mt-1 text-[2.2rem] font-medium leading-none tracking-[-0.03em] ${serifClassName}`}
             style={{ color: PEACH }}
           >
             {report.scores.kaiScore}%
           </p>
-        </motion.div>
-      </div>
 
-      {/* Teal band — shortened */}
-      <div
-        className="relative mt-12 break-inside-avoid border-t border-white px-6 py-8 sm:mt-14 sm:px-10 sm:py-10 md:px-14"
-        style={{
-          background: `linear-gradient(180deg, ${TEAL_BAND} 0%, #d8ebe6 100%)`,
-        }}
-      >
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent"
-          aria-hidden
-        />
-        <p className="text-[13px] leading-relaxed text-zinc-700">
-          Pending parameters are measured in-clinic — kAI never invents those scores. AI-backed rows
-          update weekly when you repeat the 5-angle capture.
+          <div className="mt-3 space-y-1.5 text-xs">
+            {typeof lastScanDelta === "number" ? (
+              <p
+                className={
+                  deltaMode === "last_scan"
+                    ? "font-semibold text-zinc-900"
+                    : "text-zinc-600"
+                }
+              >
+                <span className={deltaClass(lastScanDelta)}>{signed(lastScanDelta)}</span>{" "}
+                vs previous scan
+              </p>
+            ) : (
+              <p className="text-zinc-500">No previous scan yet — baseline only.</p>
+            )}
+            {typeof weekAverageDelta === "number" ? (
+              <p
+                className={
+                  deltaMode === "week_average"
+                    ? "font-semibold text-zinc-900"
+                    : "text-zinc-600"
+                }
+              >
+                <span className={deltaClass(weekAverageDelta)}>{signed(weekAverageDelta)}</span>{" "}
+                kAI vs previous week average
+                {report.scores.previousWeekAverageKai != null &&
+                report.scores.currentWeekAverageKai != null ? (
+                  <span className="font-normal text-zinc-500">
+                    {" "}
+                    (wk {report.scores.currentWeekAverageKai} vs{" "}
+                    {report.scores.previousWeekAverageKai})
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+          {typeof lastScanDelta === "number" || typeof weekAverageDelta === "number" ? (
+            <p className="mt-2 text-[10px] leading-snug text-zinc-500">
+              Bold line matches the primary trend mode for this scan (
+              {deltaMode === "week_average"
+                ? "week average when you have cross-week history"
+                : "last scan when same-week or baseline"}
+              ).
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200/80 bg-white/90 px-5 py-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          Scan context
         </p>
-      </div>
-    </>
+        <p className="mt-2 text-sm font-semibold text-zinc-900">
+          {report.scanContext.title}
+        </p>
+        <p className="mt-1 text-sm text-zinc-600">{report.scanContext.subtitle}</p>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-700">{report.insightText}</p>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+          {report.predictionText}
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200/80 bg-white/90 px-4 py-4 sm:px-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          Parameter analysis
+        </p>
+        <p className="mt-1 text-xs text-zinc-500">
+          Eight parameters: this scan vs your last scan and vs the prior week&apos;s average (from
+          scans with model scores).
+        </p>
+
+        <div className="mt-4 -mx-1 overflow-x-auto rounded-xl border border-zinc-100">
+          <table className="w-full min-w-[600px] border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-zinc-200 bg-zinc-50/80 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                <th className="py-2.5 pl-3 pr-2">Parameter</th>
+                <th className="px-2 py-2.5 text-right tabular-nums">This scan</th>
+                <th className="px-2 py-2.5 text-right tabular-nums">Prev. scan</th>
+                <th className="px-2 py-2.5 text-right tabular-nums">Δ last</th>
+                <th className="px-2 py-2.5 text-right tabular-nums">Prev. wk avg</th>
+                <th className="py-2.5 pl-2 pr-3 text-right tabular-nums">Δ vs wk avg</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.paramRows.slice(0, 8).map((row) => (
+                <tr key={row.key} className="border-b border-zinc-100 last:border-0">
+                  <td className="py-2.5 pl-3 pr-2 font-medium text-zinc-800">{row.label}</td>
+                  <td className="px-2 py-2.5 text-right font-semibold tabular-nums text-zinc-900">
+                    {row.value ?? "—"}
+                    {row.source === "dummy" ? (
+                      <span className="ml-1 text-[10px] font-normal text-amber-700/90">est.</span>
+                    ) : null}
+                  </td>
+                  <td className="px-2 py-2.5 text-right tabular-nums text-zinc-700">
+                    {row.prevScanValue ?? "—"}
+                  </td>
+                  <td
+                    className={`px-2 py-2.5 text-right tabular-nums ${
+                      typeof row.delta === "number" ? deltaClass(row.delta) : "text-zinc-400"
+                    }`}
+                  >
+                    {typeof row.delta === "number" ? signed(row.delta) : "—"}
+                  </td>
+                  <td className="px-2 py-2.5 text-right tabular-nums text-zinc-700">
+                    {row.prevWeekAverage ?? "—"}
+                  </td>
+                  <td
+                    className={`py-2.5 pl-2 pr-3 text-right tabular-nums ${
+                      typeof row.weekAvgDelta === "number"
+                        ? deltaClass(row.weekAvgDelta)
+                        : "text-zinc-400"
+                    }`}
+                  >
+                    {typeof row.weekAvgDelta === "number" ? signed(row.weekAvgDelta) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200/80 bg-white/90 px-5 py-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          3 things to focus on
+        </p>
+        <ol className="mt-3 space-y-2">
+          {report.focusActions.slice(0, 3).map((a) => (
+            <li
+              key={a.rank}
+              className="rounded-lg border border-zinc-200/80 bg-white px-3 py-2"
+            >
+              <p className="text-xs font-semibold text-zinc-900">
+                {a.rank}. {a.title}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-600">{a.detail}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </motion.div>
   );
 }

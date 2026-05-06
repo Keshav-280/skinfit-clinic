@@ -1,64 +1,59 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { BookOpen, Download, Loader2, Sparkles } from "lucide-react";
-import type { RagKaiTestPackage } from "@/src/lib/ragKaiTestService";
+import { useEffect, useState } from "react";
+import { BookOpen, Download, Loader2, Lock } from "lucide-react";
 import { downloadMonthlyKaiReportPdf } from "@/src/lib/ragMonthlyReportPdf";
 
-type ApiOk = { ok: true; output: RagKaiTestPackage };
-type ApiErr = { error: string; message?: string };
+type MonthlyInsightPayload = {
+  locked: boolean;
+  nextInsightAt: string;
+  latestMonthStart: string | null;
+  monthly: {
+    summaryTitle: string;
+    summaryBody: string;
+    highlights: string[];
+    risks: string[];
+    nextMonthFocus: string[];
+    kaiMonthAvgFromParams: number | null;
+    detail?: Parameters<typeof downloadMonthlyKaiReportPdf>[0];
+  } | null;
+};
 
 export function ProfileRagKaiInsightsSection() {
-  const [data, setData] = useState<RagKaiTestPackage | null>(null);
+  const [data, setData] = useState<MonthlyInsightPayload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setErr(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/patient/rag-kai-insights", {
-        credentials: "include",
-      });
-      const json = (await res.json()) as ApiOk | ApiErr;
-      if (!res.ok) {
-        if (res.status === 400 && "message" in json && json.message) {
-          setData(null);
-          setErr(json.message);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setErr(null);
+      setLoading(true);
+      try {
+        const res = await fetch("/api/patient/monthly-insight", {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          if (!cancelled) {
+            setData(null);
+            setErr("Could not load monthly insight.");
+          }
           return;
         }
-        setData(null);
-        setErr("Could not load kAI insights.");
-        return;
+        const json = (await res.json()) as MonthlyInsightPayload;
+        if (!cancelled) setData(json);
+      } catch {
+        if (!cancelled) {
+          setData(null);
+          setErr("Could not load monthly insight.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      if (!("output" in json) || !json.output) {
-        setData(null);
-        setErr("Invalid response.");
-        return;
-      }
-      setData(json.output);
-    } catch {
-      setData(null);
-      setErr("Could not load kAI insights.");
-    } finally {
-      setLoading(false);
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const onRefresh = async () => {
-    setGenerating(true);
-    setErr(null);
-    try {
-      await load();
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   const onPdf = () => {
     if (!data?.monthly?.detail) return;
@@ -73,7 +68,7 @@ export function ProfileRagKaiInsightsSection() {
         aria-busy="true"
       >
         <Loader2 className="h-6 w-6 shrink-0 animate-spin text-indigo-600" />
-        <p className="text-sm text-zinc-700">Loading textbook-backed kAI insights…</p>
+        <p className="text-sm text-zinc-700">Loading monthly insight…</p>
       </section>
     );
   }
@@ -85,8 +80,8 @@ export function ProfileRagKaiInsightsSection() {
         style={{ border: "1px solid #e4e4e7" }}
       >
         <div className="flex flex-wrap items-center gap-3">
-          <Sparkles className="h-5 w-5 text-indigo-500" aria-hidden />
-          <h2 className="text-base font-bold text-zinc-900">kAI deep insights</h2>
+          <BookOpen className="h-5 w-5 text-indigo-500" aria-hidden />
+          <h2 className="text-base font-bold text-zinc-900">Monthly insight</h2>
         </div>
         <p className="mt-2 text-sm text-zinc-600">{err}</p>
       </section>
@@ -94,10 +89,9 @@ export function ProfileRagKaiInsightsSection() {
   }
 
   if (!data) return null;
-
   const monthly = data.monthly;
-  const monthKai = monthly.kaiMonthAvgFromParams;
-  const identity = data.skinIdentityTimeline;
+  const nextInsightLabel = new Date(data.nextInsightAt).toLocaleString();
+  const monthKai = monthly?.kaiMonthAvgFromParams ?? null;
 
   return (
     <section
@@ -112,31 +106,18 @@ export function ProfileRagKaiInsightsSection() {
             </span>
             <div>
               <h2 className="text-lg font-bold tracking-tight text-zinc-900">
-                kAI deep insights
+                Monthly insight
               </h2>
               <p className="mt-1 max-w-xl text-sm text-zinc-600">
-                Evidence-leaning readouts from your scans, journal, and dermatology
-                references — same engine as your clinical test console.
+                Cron-based monthly summary. Unlocks after the scheduled monthly run.
               </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => void onRefresh()}
-              disabled={generating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50 disabled:opacity-60"
-            >
-              {generating ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <Sparkles className="h-4 w-4" aria-hidden />
-              )}
-              Regenerate
-            </button>
-            <button
-              type="button"
               onClick={onPdf}
+              disabled={!monthly?.detail}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_2px_8px_-2px_rgba(67,56,202,0.45)] transition hover:bg-indigo-700"
             >
               <Download className="h-4 w-4" aria-hidden />
@@ -149,78 +130,82 @@ export function ProfileRagKaiInsightsSection() {
       <div className="space-y-5 p-5 sm:p-6">
         <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
           <span>
-            Updated {new Date(data.generatedAt).toLocaleString()} · {data.totalScans} scans ·{" "}
-            {data.llm.enabled ? "LLM synthesis on" : "Template mode (no LLM)"}
+            Next cron window: {nextInsightLabel}
           </span>
         </div>
 
-        {identity.changed.length > 0 ? (
+        {data.locked || !monthly ? (
           <div
-            className="rounded-xl bg-white/90 px-4 py-3 text-sm text-zinc-800"
+            className="rounded-xl bg-white/90 px-4 py-4 text-sm text-zinc-800"
             style={{ border: "1px solid #e0e7ff" }}
           >
-            <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-800">
-              Skin identity updates
+            <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-indigo-800">
+              <Lock className="h-4 w-4" aria-hidden />
+              Locked until next monthly run
             </p>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-zinc-700">
-              {identity.changed.slice(0, 5).map((c, i) => (
-                <li key={i}>
-                  <span className="font-medium">{c.field}</span>:{" "}
-                  <span className="text-zinc-600">
-                    {String(c.from ?? "—")} → {String(c.to ?? "—")}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div
-            className="rounded-xl bg-indigo-600/95 px-4 py-4 text-white shadow-inner lg:col-span-1"
-            style={{ border: "1px solid #4338ca" }}
-          >
-            <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-100">
-              Month kAI (μ parameters)
-            </p>
-            <p className="mt-2 text-4xl font-bold tabular-nums">
-              {monthKai != null ? monthKai : "—"}
-            </p>
-            <p className="mt-2 text-xs leading-snug text-indigo-100/90">
-              Average of your eight kAI parameters across scans this month, then the same
-              weighted score as a single scan — not an average of per-scan kAIs.
+            <p className="mt-2 text-sm text-zinc-700">
+              Next insight on <span className="font-semibold">{nextInsightLabel}</span> (cron).
             </p>
           </div>
-          <div
-            className="rounded-xl bg-white/95 px-4 py-4 lg:col-span-2"
-            style={{ border: "1px solid #e8e2d8" }}
-          >
-            <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              {monthly.summaryTitle}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-800">
-              {monthly.summaryBody}
-            </p>
-            {monthly.highlights.length > 0 ? (
-              <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-zinc-700">
-                {monthly.highlights.slice(0, 4).map((h, i) => (
-                  <li key={i}>{h}</li>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div
+              className="rounded-xl bg-indigo-600/95 px-4 py-4 text-white shadow-inner lg:col-span-1"
+              style={{ border: "1px solid #4338ca" }}
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-100">
+                Month kAI
+              </p>
+              <p className="mt-2 text-4xl font-bold tabular-nums">
+                {monthKai != null ? monthKai : "—"}
+              </p>
+              <p className="mt-2 text-xs leading-snug text-indigo-100/90">
+                Weighted month score from mean of 8 parameters.
+              </p>
+            </div>
+            <div
+              className="rounded-xl bg-white/95 px-4 py-4 lg:col-span-2"
+              style={{ border: "1px solid #e8e2d8" }}
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                {monthly.summaryTitle}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-800">
+                {monthly.summaryBody}
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-white/95 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+                Highlights
+              </p>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-zinc-700">
+                {(monthly.highlights ?? []).slice(0, 4).map((x, i) => (
+                  <li key={i}>{x}</li>
                 ))}
               </ul>
-            ) : null}
+            </div>
+            <div className="rounded-xl border border-rose-100 bg-white/95 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-rose-700">
+                Risks
+              </p>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-zinc-700">
+                {(monthly.risks ?? []).slice(0, 4).map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-violet-100 bg-white/95 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700">
+                Next focus
+              </p>
+              <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-zinc-700">
+                {(monthly.nextMonthFocus ?? []).slice(0, 4).map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ol>
+            </div>
           </div>
-        </div>
-
-        {data.days.length > 0 ? (
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Latest daily focus
-            </p>
-            <p className="mt-2 text-sm text-zinc-800">
-              {data.days[data.days.length - 1]?.focusMessage}
-            </p>
-          </div>
-        ) : null}
+        )}
       </div>
     </section>
   );

@@ -38,6 +38,8 @@ export type ScheduleEventRow = {
   /** Same-day end `HH:mm` (clinic wall); null → display uses start + 30 min. */
   eventSlotEndTimeHm?: string | null;
   title: string;
+  /** From `schedule_events.event_kind` when present (e.g. clinician pre/post cues). */
+  eventKind?: string;
   completed: boolean;
   cancelled?: boolean;
   /** Pending visit requests only — used for “View photos”. */
@@ -65,6 +67,13 @@ type RequestAttachment = {
   fileName: string;
   mimeType: string;
   dataUri: string;
+};
+
+type SchedulesSnapshotResponse = {
+  initialTreatmentEvents?: ScheduleEventRow[];
+  initialAppointmentEvents?: ScheduleEventRow[];
+  pendingScheduleRequests?: PendingScheduleRequestRow[];
+  closedScheduleRequests?: PendingScheduleRequestRow[];
 };
 
 const MAX_REQUEST_IMAGE_URI_LEN = 3_200_000;
@@ -298,6 +307,12 @@ export default function SchedulesPageClient({
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [scheduleTab, setScheduleTab] = useState<ScheduleTab>(initialScheduleTab);
   const [scheduleRefreshing, setScheduleRefreshing] = useState(false);
+  const [treatmentEvents, setTreatmentEvents] = useState(initialTreatmentEvents);
+  const [appointmentEvents, setAppointmentEvents] = useState(
+    initialAppointmentEvents
+  );
+  const [pendingRequests, setPendingRequests] = useState(pendingScheduleRequests);
+  const [closedRequests, setClosedRequests] = useState(closedScheduleRequests);
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestYmd, setRequestYmd] = useState<string | null>(null);
@@ -358,7 +373,7 @@ export default function SchedulesPageClient({
   }, []);
 
   const appointmentCalendarEvents = useMemo(() => {
-    const closed = closedScheduleRequests.map((r) => {
+    const closed = closedRequests.map((r) => {
       const declined = String(r.status || "").toLowerCase() === "declined";
       const label = declined ? "Declined request" : "Cancelled";
       const reason = r.cancelledReason?.trim() || null;
@@ -375,14 +390,14 @@ export default function SchedulesPageClient({
       } satisfies ScheduleEventRow;
     });
     return [
-      ...initialAppointmentEvents,
-      ...pendingToSyntheticEvents(pendingScheduleRequests),
+      ...appointmentEvents,
+      ...pendingToSyntheticEvents(pendingRequests),
       ...closed,
     ].sort(compareScheduleEvents);
-  }, [initialAppointmentEvents, pendingScheduleRequests, closedScheduleRequests]);
+  }, [appointmentEvents, pendingRequests, closedRequests]);
 
   const activeCalendarEvents =
-    scheduleTab === "treatment" ? initialTreatmentEvents : appointmentCalendarEvents;
+    scheduleTab === "treatment" ? treatmentEvents : appointmentCalendarEvents;
 
   useEffect(() => {
     setCurrentDate(new Date());
@@ -452,11 +467,59 @@ export default function SchedulesPageClient({
   const refreshSchedulesPage = useCallback(async () => {
     setScheduleRefreshing(true);
     try {
-      router.refresh();
+      const res = await fetch("/api/patient/schedules", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as SchedulesSnapshotResponse;
+      if (Array.isArray(data.initialTreatmentEvents)) {
+        setTreatmentEvents(data.initialTreatmentEvents);
+      }
+      if (Array.isArray(data.initialAppointmentEvents)) {
+        setAppointmentEvents(data.initialAppointmentEvents);
+      }
+      if (Array.isArray(data.pendingScheduleRequests)) {
+        setPendingRequests(data.pendingScheduleRequests);
+      }
+      if (Array.isArray(data.closedScheduleRequests)) {
+        setClosedRequests(data.closedScheduleRequests);
+      }
     } finally {
       setScheduleRefreshing(false);
     }
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      if (requestModalOpen || requestSubmitting) return;
+      if (clinicMsgOpen || clinicMsgBusy) return;
+      if (attachmentViewerRequestId || attachmentViewerLoading) return;
+      if (scheduleRefreshing) return;
+      void refreshSchedulesPage();
+    };
+    const id = window.setInterval(tick, 10_000);
+    const onFocusOrVisible = () => tick();
+    window.addEventListener("focus", onFocusOrVisible);
+    document.addEventListener("visibilitychange", onFocusOrVisible);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocusOrVisible);
+      document.removeEventListener("visibilitychange", onFocusOrVisible);
+    };
+  }, [
+    requestModalOpen,
+    requestSubmitting,
+    clinicMsgOpen,
+    clinicMsgBusy,
+    attachmentViewerRequestId,
+    attachmentViewerLoading,
+    scheduleRefreshing,
+    refreshSchedulesPage,
+  ]);
 
   async function submitVisitRequest() {
     if (!requestYmd) return;
@@ -579,18 +642,6 @@ export default function SchedulesPageClient({
           >
             Dismiss
           </button>
-        </div>
-      ) : null}
-
-      {initialScheduleUnreadCount > 0 ? (
-        <div className="mx-auto max-w-lg rounded-xl border border-teal-200 bg-teal-50/90 px-4 py-3 text-sm text-teal-950 shadow-sm">
-          <p className="font-semibold">You have schedule updates to review</p>
-          <p className="mt-1 text-teal-900/90">
-            {initialScheduleUnreadCount} update
-            {initialScheduleUnreadCount === 1 ? "" : "s"} since you last cleared this list
-            (confirmations, cancellations, or clinic messages). Scroll the calendar below — leaving
-            this page marks them as seen.
-          </p>
         </div>
       ) : null}
 
@@ -923,14 +974,29 @@ export default function SchedulesPageClient({
                     </span>
                     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <p
-                          className={`min-w-0 text-sm font-medium ${
-                            event.completed ? "text-zinc-600" : "text-zinc-900"
-                          }`}
-                          title={event.title}
-                        >
-                          {event.title}
-                        </p>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          {scheduleTab === "treatment" &&
+                          (event.eventKind === "pre_treatment" ||
+                            event.eventKind === "post_treatment") ? (
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                                event.eventKind === "pre_treatment"
+                                  ? "bg-violet-100 text-violet-950"
+                                  : "bg-amber-100 text-amber-950"
+                              }`}
+                            >
+                              {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+                            </span>
+                          ) : null}
+                          <p
+                            className={`min-w-0 text-sm font-medium ${
+                              event.completed ? "text-zinc-600" : "text-zinc-900"
+                            }`}
+                            title={event.title}
+                          >
+                            {event.title}
+                          </p>
+                        </div>
                         {!pending && event.crmPatientMessage?.trim() ? (
                           <p className="text-xs leading-snug text-zinc-600">
                             <span className="font-semibold text-zinc-700">

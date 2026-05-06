@@ -54,6 +54,7 @@ export type SessionUserProfile = {
   /** National digits only (no country code). */
   phone: string | null;
   age: number | null;
+  gender: string | null;
   skinType: string | null;
   primaryGoal: string | null;
   /** kAI onboarding finished (questionnaire + baseline scan). */
@@ -82,6 +83,7 @@ async function sessionUserProfileById(
       phoneCountryCode: users.phoneCountryCode,
       phone: users.phone,
       age: users.age,
+      gender: users.gender,
       skinType: users.skinType,
       primaryGoal: users.primaryGoal,
       onboardingComplete: users.onboardingComplete,

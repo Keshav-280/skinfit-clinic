@@ -72,7 +72,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const [eventRows, bookedRows, pendingRows] = await Promise.all([
+  const [eventRows, bookedBase, pendingRows, closedRows] = await Promise.all([
     db.query.scheduleEvents.findMany({
       where: eq(scheduleEvents.userId, userId),
       orderBy: [
@@ -85,6 +85,7 @@ export async function GET(request: Request) {
         eventDate: true,
         eventTimeHm: true,
         title: true,
+        eventKind: true,
         completed: true,
       },
     }),
@@ -102,7 +103,7 @@ export async function GET(request: Request) {
       .where(
         and(
           eq(appointments.userId, userId),
-          inArray(appointments.status, ["scheduled", "completed"])
+          inArray(appointments.status, ["scheduled", "completed", "cancelled"])
         )
       ),
     db.query.patientScheduleRequests.findMany({
@@ -113,7 +114,66 @@ export async function GET(request: Request) {
       orderBy: [desc(patientScheduleRequests.createdAt)],
       limit: 24,
     }),
+    db.query.patientScheduleRequests.findMany({
+      where: and(
+        eq(patientScheduleRequests.patientId, userId),
+        inArray(patientScheduleRequests.status, ["cancelled", "declined"])
+      ),
+      orderBy: [desc(patientScheduleRequests.updatedAt)],
+      limit: 24,
+      columns: {
+        id: true,
+        preferredDate: true,
+        issue: true,
+        daysAffected: true,
+        timePreferences: true,
+        attachments: true,
+        status: true,
+        cancelledReason: true,
+      },
+    }),
   ]);
+
+  const apptIds = bookedBase.map((r) => r.id);
+  const crmByAppt = new Map<string, string | null>();
+  const cancelReasonByAppt = new Map<string, string | null>();
+  if (apptIds.length > 0) {
+    const linkRows = await db
+      .select({
+        appointmentId: patientScheduleRequests.appointmentId,
+        msg: patientScheduleRequests.crmPatientMessage,
+        cancelledReason: patientScheduleRequests.cancelledReason,
+        status: patientScheduleRequests.status,
+      })
+      .from(patientScheduleRequests)
+      .where(
+        and(
+          eq(patientScheduleRequests.patientId, userId),
+          inArray(patientScheduleRequests.appointmentId, apptIds)
+        )
+      )
+      .orderBy(desc(patientScheduleRequests.updatedAt));
+    for (const row of linkRows) {
+      if (!row.appointmentId) continue;
+      if (!crmByAppt.has(row.appointmentId) && row.msg?.trim()) {
+        crmByAppt.set(row.appointmentId, row.msg.trim());
+      }
+      const cr = row.cancelledReason?.trim();
+      if (
+        cr &&
+        (row.status === "cancelled" || row.status === "declined") &&
+        !cancelReasonByAppt.has(row.appointmentId)
+      ) {
+        cancelReasonByAppt.set(row.appointmentId, cr);
+      }
+    }
+  }
+
+  const bookedRows = bookedBase.map((r) => ({
+    ...r,
+    crmPatientMessage: crmByAppt.get(r.id) ?? null,
+    cancellationReason: cancelReasonByAppt.get(r.id) ?? null,
+  }));
 
   const fromSchedule = eventRows.map((r) => ({
     id: r.id,
@@ -121,21 +181,31 @@ export async function GET(request: Request) {
     eventTimeHm: r.eventTimeHm ?? null,
     title: r.title,
     completed: r.completed,
+    eventKind: r.eventKind,
   }));
 
   const fromBookings = bookedRows.map((r) => {
     const { ymd, hm } = utcInstantToClinicWallYmdHm(r.dateTime);
     const isDone = r.status === "completed";
+    const isCancelled = r.status === "cancelled";
+    const baseTitle = appointmentCalendarTitle(
+      appointmentTypeLabel(r.type),
+      r.doctorName ?? ""
+    );
+    const tip = r.crmPatientMessage?.trim() ?? null;
+    const cancelNote = r.cancellationReason?.trim() ?? null;
     return {
       id: `appt:${r.id}`,
       eventDateYmd: ymd,
       eventTimeHm: hm,
       eventSlotEndTimeHm: r.slotEndTimeHm ?? null,
-      title: appointmentCalendarTitle(
-        appointmentTypeLabel(r.type),
-        r.doctorName ?? ""
-      ),
+      title: tip
+        ? `${isCancelled ? "Cancelled — " : ""}${baseTitle} · ${tip.slice(0, 120)}${tip.length > 120 ? "…" : ""}`
+        : `${isCancelled ? "Cancelled — " : ""}${baseTitle}`,
       completed: isDone,
+      cancelled: isCancelled,
+      crmPatientMessage: tip,
+      cancellationReason: cancelNote,
     };
   });
 
@@ -167,6 +237,16 @@ export async function GET(request: Request) {
       timePreferences: r.timePreferences,
       attachmentsCount: Array.isArray(r.attachments) ? r.attachments.length : 0,
       status: r.status,
+    })),
+    closedScheduleRequests: closedRows.map((r) => ({
+      id: r.id,
+      preferredDateYmd: ymdFromDateOnly(r.preferredDate),
+      issue: r.issue,
+      daysAffected: r.daysAffected,
+      timePreferences: r.timePreferences,
+      attachmentsCount: Array.isArray(r.attachments) ? r.attachments.length : 0,
+      status: r.status as string,
+      cancelledReason: r.cancelledReason ?? null,
     })),
   });
 }

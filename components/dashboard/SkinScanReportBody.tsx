@@ -648,11 +648,6 @@ export function SkinScanReportBody({
             <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               Annotated findings
             </p>
-            <p className="mt-2 text-center text-[11px] leading-snug text-zinc-600">
-              {overlayUrl
-                ? "Warm tint highlights wrinkle-prone regions; red circles mark acne detections (same view as the analysis tool)."
-                : "Markers show where the model flagged concerns (acne, wrinkles, etc.)."}
-            </p>
             <div className="relative mx-auto mt-4 aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-2xl bg-zinc-200 ring-1 ring-zinc-300/80">
               {overlayUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */

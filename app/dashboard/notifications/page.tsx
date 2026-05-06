@@ -251,7 +251,7 @@ export default function DashboardNotificationsPage() {
             <div className="space-y-2.5">
               {supportCount > 0 ? (
                 <AlertRow
-                  href="/dashboard/chat"
+                  href="/dashboard/chat?assistant=support"
                   icon={<Headphones className="h-5 w-5" aria-hidden />}
                   title={countLabel(
                     supportCount,
@@ -266,7 +266,7 @@ export default function DashboardNotificationsPage() {
 
               {doctorCount > 0 ? (
                 <AlertRow
-                  href="/dashboard/chat"
+                  href="/dashboard/chat?assistant=doctor"
                   icon={<Stethoscope className="h-5 w-5" aria-hidden />}
                   title={countLabel(
                     doctorCount,
@@ -281,7 +281,7 @@ export default function DashboardNotificationsPage() {
 
               {supportCount === 0 && doctorCount === 0 ? (
                 <ShortcutRow
-                  href="/dashboard/chat"
+                  href="/dashboard/chat?assistant=support"
                   icon={<Headphones className="h-5 w-5" aria-hidden />}
                   title="Chat with clinic"
                   subtitle="No unread support or doctor messages."

@@ -122,6 +122,7 @@ export default async function SchedulesPage({
         eventDate: true,
         eventTimeHm: true,
         title: true,
+        eventKind: true,
         completed: true,
       },
     }),
@@ -217,6 +218,7 @@ export default async function SchedulesPage({
     eventTimeHm: r.eventTimeHm ?? null,
     title: r.title,
     completed: r.completed,
+    eventKind: r.eventKind,
   }));
 
   const fromBookings = bookedRows.map((r) => {

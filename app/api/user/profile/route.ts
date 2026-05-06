@@ -26,6 +26,7 @@ import {
 } from "@/src/lib/timeZoneWallClock";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
 
 export async function GET(req: Request) {
   const user = await getSessionUserProfileFromRequest(req);
@@ -66,6 +67,7 @@ export async function PATCH(req: Request) {
   let nextPhoneCountry = user.phoneCountryCode ?? "+91";
   let nextPhone: string | null = user.phone;
   let nextAge: number | null = user.age;
+  let nextGender: string | null = user.gender ?? null;
   let nextSkin: string | null = user.skinType;
   let nextGoal: string | null = user.primaryGoal;
   let nextReminderHours =
@@ -151,6 +153,20 @@ export async function PATCH(req: Request) {
         { message: "Age must be a number between 1 and 120, or empty." },
         { status: 400 }
       );
+    }
+  }
+
+  if ("gender" in body) {
+    if (body.gender === null || body.gender === "") {
+      nextGender = null;
+    } else if (typeof body.gender === "string") {
+      const g = body.gender.trim().toLowerCase();
+      if (!ALLOWED_GENDERS.has(g)) {
+        return NextResponse.json({ message: "Invalid gender." }, { status: 400 });
+      }
+      nextGender = g;
+    } else {
+      return NextResponse.json({ message: "Invalid gender." }, { status: 400 });
     }
   }
 
@@ -254,6 +270,10 @@ export async function PATCH(req: Request) {
     }
     nextCycleTrackingEnabled = body.cycleTrackingEnabled;
   }
+  // Cycle tracking is shown only for female profile.
+  if (nextGender !== "female") {
+    nextCycleTrackingEnabled = false;
+  }
 
   if ("routinePmReminderHm" in body) {
     if (
@@ -317,6 +337,7 @@ export async function PATCH(req: Request) {
       phoneCountryCode: nextPhoneCountry,
       phone: nextPhone,
       age: nextAge,
+      gender: nextGender,
       skinType: nextSkin,
       primaryGoal: nextGoal,
       appointmentReminderHoursBefore: nextReminderHours,
@@ -364,6 +385,7 @@ export async function PATCH(req: Request) {
       phoneCountryCode: nextPhoneCountry,
       phone: nextPhone,
       age: nextAge,
+      gender: nextGender,
       skinType: nextSkin,
       primaryGoal: nextGoal,
       appointmentReminderHoursBefore: nextReminderHours,

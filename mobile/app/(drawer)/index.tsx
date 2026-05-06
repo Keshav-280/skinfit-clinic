@@ -88,6 +88,13 @@ const MOODS = ["Neutral", "Great", "Okay", "Low", "Stressed"] as const;
 const DIETS = ["heavy", "balanced", "light"] as const;
 const SUNS = ["low", "moderate", "high"] as const;
 
+type SkinParamWithContext = {
+  label: string;
+  value: number;
+  deltaFromPrev: number | null;
+  prevWeekAvg: number | null;
+};
+
 export default function DashboardScreen() {
   const { token } = useAuth();
   const [data, setData] = useState<HomeData | null>(null);
@@ -255,16 +262,56 @@ export default function DashboardScreen() {
     void loadJournalForDate(journalDate);
   }, [journalDate, loadJournalForDate]);
 
-  const skinScanHistory = data?.skinScanHistory ?? [];
+  const skinScanHistory = useMemo(
+    () => data?.skinScanHistory ?? [],
+    [data?.skinScanHistory]
+  );
   const selectedScan =
     skinScanHistory.length > 0
       ? skinScanHistory[Math.min(selectedScanIdx, skinScanHistory.length - 1)]
       : null;
   const latestScan = skinScanHistory[0] ?? null;
-  const params = useMemo(
-    () => analysisResultsToParams(selectedScan?.analysisResults ?? null),
-    [selectedScan?.analysisResults]
-  );
+  const params = useMemo<SkinParamWithContext[]>(() => {
+    const current = analysisResultsToParams(selectedScan?.analysisResults ?? null);
+    const prevScan =
+      selectedScanIdx < skinScanHistory.length - 1
+        ? skinScanHistory[selectedScanIdx + 1]
+        : null;
+    const prevMap = new Map(
+      analysisResultsToParams(prevScan?.analysisResults ?? null).map((p) => [p.label, p.value])
+    );
+    const selectedTs = selectedScan ? new Date(selectedScan.createdAt).getTime() : null;
+    const weekStartTs =
+      selectedTs == null ? null : selectedTs - 7 * 24 * 60 * 60 * 1000;
+    const weekScans =
+      selectedTs == null || weekStartTs == null
+        ? []
+        : skinScanHistory.filter((s) => {
+            const t = new Date(s.createdAt).getTime();
+            return t < selectedTs && t >= weekStartTs;
+          });
+    const weekBuckets = new Map<string, number[]>();
+    for (const s of weekScans) {
+      const rows = analysisResultsToParams(s.analysisResults ?? null);
+      for (const r of rows) {
+        const arr = weekBuckets.get(r.label) ?? [];
+        arr.push(r.value);
+        weekBuckets.set(r.label, arr);
+      }
+    }
+    return current.map((p) => {
+      const prev = prevMap.get(p.label);
+      const vals = weekBuckets.get(p.label) ?? [];
+      return {
+        ...p,
+        deltaFromPrev: typeof prev === "number" ? Math.round(p.value - prev) : null,
+        prevWeekAvg:
+          vals.length > 0
+            ? Math.round(vals.reduce((s, x) => s + x, 0) / vals.length)
+            : null,
+      };
+    });
+  }, [selectedScan, selectedScanIdx, skinScanHistory]);
 
   const kaiSkinScore = data
     ? Math.min(100, Math.max(0, Math.round(data.kaiSkinScore)))
@@ -594,11 +641,32 @@ export default function DashboardScreen() {
             <View key={p.label} style={[styles.paramCell, { backgroundColor: MINT }]}>
               <View style={styles.rowBetween}>
                 <Text style={styles.paramLabel}>{p.label}</Text>
-                <Text style={styles.paramNum}>{Math.round(p.value)}/100</Text>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.paramNum}>{Math.round(p.value)}/100</Text>
+                  <Text
+                    style={[
+                      styles.paramDelta,
+                      p.deltaFromPrev == null
+                        ? styles.deltaNeutral
+                        : p.deltaFromPrev > 0
+                          ? styles.deltaUp
+                          : p.deltaFromPrev < 0
+                            ? styles.deltaDown
+                            : styles.deltaNeutral,
+                    ]}
+                  >
+                    {p.deltaFromPrev == null
+                      ? "Δ —"
+                      : `Δ ${p.deltaFromPrev > 0 ? "+" : ""}${p.deltaFromPrev}`}
+                  </Text>
+                </View>
               </View>
               <View style={styles.barBg}>
                 <View style={[styles.barFg, { width: `${p.value}%` }]} />
               </View>
+              <Text style={styles.paramWeekAvg}>
+                Prev week avg: {p.prevWeekAvg == null ? "—" : `${p.prevWeekAvg}/100`}
+              </Text>
             </View>
           ))}
         </View>
@@ -1026,8 +1094,13 @@ const styles = StyleSheet.create({
   paramCell: { width: "47%", borderRadius: 16, padding: 12 },
   paramLabel: { fontSize: 14, fontWeight: "600", color: "#27272a" },
   paramNum: { fontSize: 12, color: "#52525b" },
+  paramDelta: { fontSize: 11, fontWeight: "700", marginTop: 2 },
+  deltaUp: { color: "#047857" },
+  deltaDown: { color: "#b91c1c" },
+  deltaNeutral: { color: "#71717a" },
   barBg: { height: 8, borderRadius: 4, backgroundColor: "rgba(107,142,142,0.25)", marginTop: 8, overflow: "hidden" },
   barFg: { height: 8, borderRadius: 4, backgroundColor: TEAL },
+  paramWeekAvg: { marginTop: 6, fontSize: 11, color: "#71717a", fontVariant: ["tabular-nums"] },
   feedback: { marginTop: 8, fontSize: 15, color: "#3f3f46", lineHeight: 22 },
   feedbackEmpty: { minHeight: 100, borderWidth: 1, borderStyle: "dashed", borderColor: "#e4e4e7", borderRadius: 14, marginTop: 8 },
   voicePlaceholder: {

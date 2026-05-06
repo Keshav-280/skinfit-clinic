@@ -82,6 +82,7 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("patient"),
   /** Optional profile fields (editable on /dashboard/profile). */
   age: integer("age"),
+  gender: varchar("gender", { length: 24 }),
   skinType: varchar("skin_type", { length: 100 }),
   primaryGoal: varchar("primary_goal", { length: 255 }),
   /**
@@ -463,6 +464,8 @@ export const scheduleEvents = pgTable("schedule_events", {
   /** Local time of day `HH:mm` (24h), e.g. `14:30`. Null = all-day. */
   eventTimeHm: varchar("event_time", { length: 5 }),
   title: text("title").notNull(),
+  /** `general` | `pre_treatment` | `post_treatment` — clinician-added care schedules. */
+  eventKind: varchar("event_kind", { length: 32 }).notNull().default("general"),
   completed: boolean("completed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -12,15 +12,23 @@ export type SkinAnalysisResults = {
     string,
     { value?: number | null; source?: string; severity_flag?: boolean }
   >;
+  activeAcne?: number;
+  saggingVolume?: number;
+  hairHealth?: number;
+  skinQuality?: number;
+  acneScar?: number;
+  underEye?: number;
 };
 
 export const DEFAULT_SKIN_PARAMS = [
-  { label: "Acne", value: 90 },
-  { label: "Pores", value: 65 },
-  { label: "Dark Spots", value: 72 },
-  { label: "Wrinkles", value: 84 },
-  { label: "Pigmentation", value: 65 },
-  { label: "Uniformity & Elasticity", value: 78 },
+  { label: "Active Acne", value: 72 },
+  { label: "Sagging & Volume", value: 70 },
+  { label: "Hair Health", value: 74 },
+  { label: "Wrinkles", value: 68 },
+  { label: "Skin Quality", value: 76 },
+  { label: "Acne Scar", value: 66 },
+  { label: "Under Eye", value: 69 },
+  { label: "Pigmentation", value: 71 },
 ] as const;
 
 function clamp100(n: number) {
@@ -47,7 +55,11 @@ function avgDefined(...vals: (number | undefined)[]): number | undefined {
   return Math.round(xs.reduce((s, x) => s + x, 0) / xs.length);
 }
 
-/** Build the six dashboard rows from `skin_scans.analysis_results`. */
+function firstDefined(...vals: (number | undefined)[]): number | undefined {
+  return vals.find((v) => typeof v === "number");
+}
+
+/** Build the 8-parameter dashboard rows from `skin_scans.analysis_results`. */
 export function analysisResultsToParams(
   analysis: unknown
 ): { label: string; value: number }[] {
@@ -61,65 +73,66 @@ export function analysisResultsToParams(
   const acne = readNum(a, "acne");
   const wrinkles = readNum(a, "wrinkles");
   const texture = readNum(a, "texture");
-  const poreSize = readNum(a, "poreSize");
   const pigmentation = readNum(a, "pigmentation");
   const hydration = readNum(a, "hydration");
+  const activeAcneTop = readNum(a, "activeAcne");
+  const saggingTop = readNum(a, "saggingVolume");
+  const hairHealthTop = readNum(a, "hairHealth");
+  const skinQualityTop = readNum(a, "skinQuality");
+  const acneScarTop = readNum(a, "acneScar");
+  const underEyeTop = readNum(a, "underEye");
 
+  // Legacy / analyze_v2 keys (both snake_case and older aliases)
   const acneK = kaiParamValue(kaiParams, "acne_pimples");
-  const poresK = kaiParamValue(kaiParams, "pores");
+  const activeAcneK = kaiParamValue(kaiParams, "active_acne");
+  const saggingK = kaiParamValue(kaiParams, "sagging_volume");
+  const hairHealthK = kaiParamValue(kaiParams, "hair_health");
   const wrinklesK = kaiParamValue(kaiParams, "wrinkles");
+  const skinQualityK = kaiParamValue(kaiParams, "skin_quality");
+  const acneScarK = firstDefined(
+    kaiParamValue(kaiParams, "acne_scar"),
+    kaiParamValue(kaiParams, "acne_scars")
+  );
+  const underEyeK = firstDefined(
+    kaiParamValue(kaiParams, "under_eye"),
+    kaiParamValue(kaiParams, "underEye")
+  );
   const pigmentationK = kaiParamValue(kaiParams, "pigmentation");
-  const toneEven = kaiParamValue(kaiParams, "tone_evenness");
-  const uvDamage = kaiParamValue(kaiParams, "uv_damage");
-  const uniformityK = kaiParamValue(kaiParams, "uniformity");
-  const elasticityK = kaiParamValue(kaiParams, "elasticity");
-
-  const poresScoreLegacy =
-    texture != null
-      ? clamp100(texture)
-      : poreSize != null
-        ? clamp100(poreSize)
-        : DEFAULT_SKIN_PARAMS[1].value;
-
-  const fallback = (i: number) => DEFAULT_SKIN_PARAMS[i].value;
-
-  const darkSpots =
-    avgDefined(toneEven, uvDamage) ??
-    pigmentation ??
-    pigmentationK ??
-    fallback(2);
-
-  const uniformityElasticity =
-    avgDefined(uniformityK, elasticityK) ??
-    (texture != null && hydration != null
-      ? clamp100(Math.round((texture + hydration) / 2))
-      : undefined) ??
-    fallback(5);
+  const fallback = (i: number) => DEFAULT_SKIN_PARAMS[i]?.value ?? 70;
+  const skinQualityLegacy = avgDefined(texture, hydration);
 
   return [
     {
-      label: "Acne",
-      value: clamp100(acneK ?? acne ?? fallback(0)),
+      label: "Active Acne",
+      value: clamp100(firstDefined(activeAcneK, acneK, activeAcneTop, acne) ?? fallback(0)),
     },
     {
-      label: "Pores",
-      value: clamp100(poresK ?? poresScoreLegacy),
+      label: "Sagging & Volume",
+      value: clamp100(firstDefined(saggingK, saggingTop) ?? fallback(1)),
     },
     {
-      label: "Dark Spots",
-      value: clamp100(darkSpots),
+      label: "Hair Health",
+      value: clamp100(firstDefined(hairHealthK, hairHealthTop) ?? fallback(2)),
     },
     {
       label: "Wrinkles",
-      value: clamp100(wrinklesK ?? wrinkles ?? fallback(3)),
+      value: clamp100(firstDefined(wrinklesK, wrinkles) ?? fallback(3)),
+    },
+    {
+      label: "Skin Quality",
+      value: clamp100(firstDefined(skinQualityK, skinQualityTop, skinQualityLegacy) ?? fallback(4)),
+    },
+    {
+      label: "Acne Scar",
+      value: clamp100(firstDefined(acneScarK, acneScarTop) ?? fallback(5)),
+    },
+    {
+      label: "Under Eye",
+      value: clamp100(firstDefined(underEyeK, underEyeTop) ?? fallback(6)),
     },
     {
       label: "Pigmentation",
-      value: clamp100(pigmentationK ?? pigmentation ?? fallback(4)),
-    },
-    {
-      label: "Uniformity & Elasticity",
-      value: clamp100(uniformityElasticity),
+      value: clamp100(firstDefined(pigmentationK, pigmentation) ?? fallback(7)),
     },
   ];
 }

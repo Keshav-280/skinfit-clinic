@@ -46,6 +46,8 @@ function buildAutoDoctorFollowUpMessage(checkupNotes: string): string {
 interface SkinParam {
   label: string;
   value: number;
+  deltaFromPrev?: number | null;
+  prevWeekAvg?: number | null;
 }
 
 export type TodayJournalLog = {
@@ -294,8 +296,24 @@ function DonutGauge({
   );
 }
 
-function ParamCell({ label, value }: SkinParam) {
+function ParamCell({ label, value, deltaFromPrev, prevWeekAvg }: SkinParam) {
   const v = Math.min(100, Math.max(0, Math.round(value)));
+  const delta =
+    typeof deltaFromPrev === "number" && Number.isFinite(deltaFromPrev)
+      ? Math.round(deltaFromPrev)
+      : null;
+  const deltaTone =
+    delta == null
+      ? "text-zinc-500"
+      : delta > 0
+        ? "text-emerald-700"
+        : delta < 0
+          ? "text-rose-700"
+          : "text-zinc-500";
+  const weekAvg =
+    typeof prevWeekAvg === "number" && Number.isFinite(prevWeekAvg)
+      ? Math.round(prevWeekAvg)
+      : null;
   return (
     <div
       className="rounded-[18px] px-4 py-3 shadow-inner"
@@ -303,9 +321,12 @@ function ParamCell({ label, value }: SkinParam) {
     >
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <span className="text-sm font-semibold text-zinc-800">{label}</span>
-        <span className="text-xs font-medium tabular-nums text-zinc-600">
-          {v}/100
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium tabular-nums text-zinc-600">{v}/100</span>
+          <span className={`text-xs font-semibold tabular-nums ${deltaTone}`}>
+            {delta == null ? "Δ —" : `Δ ${delta > 0 ? "+" : ""}${delta}`}
+          </span>
+        </div>
       </div>
       <div
         className="h-2.5 overflow-hidden rounded-full"
@@ -316,6 +337,12 @@ function ParamCell({ label, value }: SkinParam) {
           style={{ width: `${v}%`, backgroundColor: TEAL }}
         />
       </div>
+      <p className="mt-1.5 text-[11px] text-zinc-500">
+        Prev week avg:{" "}
+        <span className="font-semibold tabular-nums text-zinc-700">
+          {weekAvg == null ? "—" : `${weekAvg}/100`}
+        </span>
+      </p>
     </div>
   );
 }
@@ -440,10 +467,51 @@ export function DashboardView({
 
   const latestScan = skinScanHistory[0] ?? null;
 
-  const params = useMemo(
-    () => analysisResultsToParams(selectedScan?.analysisResults ?? null),
-    [selectedScan]
-  );
+  const params = useMemo(() => {
+    const current = analysisResultsToParams(selectedScan?.analysisResults ?? null);
+    const prevScan =
+      selectedScanIdx < skinScanHistory.length - 1
+        ? skinScanHistory[selectedScanIdx + 1]
+        : null;
+    const prevMap = new Map(
+      analysisResultsToParams(prevScan?.analysisResults ?? null).map((p) => [p.label, p.value])
+    );
+
+    const selectedTs = selectedScan ? new Date(selectedScan.createdAt).getTime() : null;
+    const weekStartTs =
+      selectedTs == null ? null : selectedTs - 7 * 24 * 60 * 60 * 1000;
+    const weekScans =
+      selectedTs == null || weekStartTs == null
+        ? []
+        : skinScanHistory.filter((s) => {
+            const t = new Date(s.createdAt).getTime();
+            return t < selectedTs && t >= weekStartTs;
+          });
+
+    const weekBuckets = new Map<string, number[]>();
+    for (const s of weekScans) {
+      const rows = analysisResultsToParams(s.analysisResults ?? null);
+      for (const r of rows) {
+        const arr = weekBuckets.get(r.label) ?? [];
+        arr.push(r.value);
+        weekBuckets.set(r.label, arr);
+      }
+    }
+
+    return current.map((p) => {
+      const prev = prevMap.get(p.label);
+      const weekVals = weekBuckets.get(p.label) ?? [];
+      const prevWeekAvg =
+        weekVals.length > 0
+          ? weekVals.reduce((sum, x) => sum + x, 0) / weekVals.length
+          : null;
+      return {
+        ...p,
+        deltaFromPrev: typeof prev === "number" ? p.value - prev : null,
+        prevWeekAvg,
+      };
+    });
+  }, [selectedScan, selectedScanIdx, skinScanHistory]);
 
   const skinPercent = latestScan
     ? Math.min(100, Math.max(0, Math.round(latestScan.skinScore)))
@@ -787,9 +855,9 @@ export function DashboardView({
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-zinc-900">Skin Parameter Analysis</h2>
             <p className="max-w-2xl text-xs leading-relaxed text-zinc-500">
-              The AI tracker will analyse skin across Acne, Pores, Dark Spots, Wrinkles,
-              Pigmentation, Uniformity &amp; Elasticity and provide individual scores for each
-              parameter (higher is better).
+              The AI tracker analyzes 8 kAI parameters (Active Acne, Sagging &amp; Volume, Hair
+              Health, Wrinkles, Skin Quality, Acne Scar, Under Eye, Pigmentation). Higher is
+              better.
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">

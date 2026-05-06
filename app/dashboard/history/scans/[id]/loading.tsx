@@ -13,11 +13,10 @@ export default function ScanReportLoading() {
           Preparing your scan details and images.
         </p>
 
-        <div className="mt-6 space-y-2">
+        <div className="mt-6">
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200/60">
             <div className="h-full w-2/5 animate-pulse rounded-full bg-teal-500/70" />
           </div>
-          <div className="mx-auto h-2 w-4/5 rounded-full bg-zinc-200/55" />
         </div>
       </div>
     </div>

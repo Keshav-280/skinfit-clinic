@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
   appointments,
@@ -9,6 +9,7 @@ import {
   parameterScores,
   questionnaireAnswers,
   scans,
+  scheduleEvents,
   skinDnaCards,
   skinScans,
   users,
@@ -170,6 +171,55 @@ export async function GET(
       .orderBy(desc(appointments.dateTime))
       .limit(35),
   ]);
+
+  let scheduleRows: Array<{
+    id: string;
+    eventDate: Date;
+    eventTimeHm: string | null;
+    title: string;
+    eventKind: string;
+    completed: boolean;
+  }> = [];
+
+  try {
+    const rows = await db.query.scheduleEvents.findMany({
+      where: eq(scheduleEvents.userId, patientId),
+      orderBy: [
+        asc(scheduleEvents.eventDate),
+        asc(scheduleEvents.eventTimeHm),
+        asc(scheduleEvents.title),
+      ],
+      limit: 80,
+      columns: {
+        id: true,
+        eventDate: true,
+        eventTimeHm: true,
+        title: true,
+        eventKind: true,
+        completed: true,
+      },
+    });
+    scheduleRows = rows.map((r) => ({ ...r, eventKind: r.eventKind ?? "general" }));
+  } catch {
+    // Backward compatibility: older DBs may not have `event_kind` yet.
+    const legacyRows = await db.query.scheduleEvents.findMany({
+      where: eq(scheduleEvents.userId, patientId),
+      orderBy: [
+        asc(scheduleEvents.eventDate),
+        asc(scheduleEvents.eventTimeHm),
+        asc(scheduleEvents.title),
+      ],
+      limit: 80,
+      columns: {
+        id: true,
+        eventDate: true,
+        eventTimeHm: true,
+        title: true,
+        completed: true,
+      },
+    });
+    scheduleRows = legacyRows.map((r) => ({ ...r, eventKind: "general" }));
+  }
 
   const scanIds = scanRowsRaw.map((s) => s.id);
   const paramRows =
@@ -348,6 +398,14 @@ export async function GET(
       type: a.type,
       doctorName: a.doctorName,
       doctorEmail: a.doctorEmail,
+    })),
+    scheduleEvents: scheduleRows.map((s) => ({
+      id: s.id,
+      eventDateYmd: ymdFromDateOnly(s.eventDate),
+      eventTimeHm: s.eventTimeHm ?? null,
+      title: s.title,
+      eventKind: s.eventKind,
+      completed: s.completed,
     })),
   });
 }

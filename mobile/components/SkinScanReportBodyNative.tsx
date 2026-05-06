@@ -4,7 +4,6 @@ import { useRouter, type Href } from "expo-router";
 import type { ImageSourcePropType } from "react-native";
 import {
   Image,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -84,52 +83,6 @@ function displayScanTitle(raw: string | null): string | null {
   return stripped || null;
 }
 
-function ParamRowNative({
-  label,
-  value,
-  source,
-  delta,
-}: {
-  label: string;
-  value: number | null;
-  source: string;
-  delta: number | null;
-}) {
-  const pending = source === "pending" || value == null;
-  const pct = pending ? 0 : clamp(value);
-  const deltaStr =
-    delta == null
-      ? "—"
-      : delta > 0
-        ? `+${Math.round(delta)}`
-        : `${Math.round(delta)}`;
-  const deltaColor =
-    delta == null ? "#a1a1aa" : delta > 0 ? "#047857" : delta < 0 ? "#b91c1c" : "#52525b";
-
-  return (
-    <View style={styles.paramCard}>
-      <View style={styles.paramTop}>
-        <Text style={styles.paramLabel}>{label}</Text>
-        <View style={styles.paramRight}>
-          {pending ? (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>Pending — in-clinic</Text>
-            </View>
-          ) : (
-            <Text style={styles.paramValue}>{clamp(value)}%</Text>
-          )}
-          <Text style={[styles.paramDelta, { color: deltaColor }]}>Δ {deltaStr}</Text>
-        </View>
-      </View>
-      <View style={[styles.paramTrack, pending && styles.paramTrackPending]}>
-        {!pending ? (
-          <View style={[styles.paramFill, { width: `${pct}%` }]} />
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
 export function SkinScanReportBodyNative({
   userName,
   userAge,
@@ -162,9 +115,6 @@ export function SkinScanReportBodyNative({
     android: "serif",
     default: "serif",
   });
-
-  const overviewFallback =
-    "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends—this is educational, not a medical diagnosis.";
 
   return (
     <ScrollView
@@ -207,6 +157,7 @@ export function SkinScanReportBodyNative({
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
               />
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image source={faceSource} style={styles.faceImg} resizeMode="cover" />
               {showFaceMarkers
                 ? regions.map((region, i) => (
@@ -228,130 +179,12 @@ export function SkinScanReportBodyNative({
           </View>
 
           {tracker ? (
-            <>
-              {tracker.onboardingClinical &&
-              (tracker.onboardingClinical.flags.length > 0 ||
-                tracker.onboardingClinical.notes.length > 0) ? (
-                <View style={styles.ocBox}>
-                  <Text style={styles.ocKicker}>ONBOARDING — CLINICAL FLAGS / NOTES</Text>
-                  {tracker.onboardingClinical.flags.map((f) => (
-                    <Text key={f} style={styles.ocFlag}>
-                      • {f}
-                    </Text>
-                  ))}
-                  {tracker.onboardingClinical.notes.map((n) => (
-                    <Text key={n} style={styles.ocNote}>
-                      • {n}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-
-              {/* 1 Hook */}
-              <View style={styles.section}>
-                <Text style={styles.sectionKicker}>HOOK</Text>
-                <Text style={[styles.hookLine, { fontFamily: serif }]}>{tracker.hookSentence}</Text>
-                <View style={styles.chipRow}>
-                  <View style={styles.chip}>
-                    <Text style={styles.chipK}>kAI Skin Score</Text>
-                    <Text style={styles.chipV}>{tracker.scores.kaiScore}%</Text>
-                  </View>
-                  <View style={styles.chip}>
-                    <Text style={styles.chipK}>Weekly Δ</Text>
-                    <Text style={styles.chipV}>
-                      {tracker.scores.weeklyDelta > 0 ? "+" : ""}
-                      {tracker.scores.weeklyDelta}
-                    </Text>
-                  </View>
-                  <View style={styles.chip}>
-                    <Text style={styles.chipK}>Consistency</Text>
-                    <Text style={styles.chipV}>{tracker.scores.consistencyScore}%</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* 2 Feel understood */}
-              <View style={styles.section}>
-                <Text style={styles.sectionKicker}>FEEL UNDERSTOOD</Text>
-                <View style={styles.pillRow}>
-                  {tracker.skinPills.map((p) => (
-                    <View key={p} style={styles.pill}>
-                      <Text style={styles.pillText}>{p}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={styles.paramGrid}>
-                  {tracker.paramRows.map((row) => (
-                    <ParamRowNative
-                      key={row.key}
-                      label={row.label}
-                      value={row.value}
-                      source={row.source}
-                      delta={row.delta}
-                    />
-                  ))}
-                </View>
-                <View style={styles.causesBox}>
-                  <Text style={styles.causesKicker}>Causes & context</Text>
-                  {tracker.causes.map((c, i) => (
-                    <Text key={i} style={styles.causeBullet}>
-                      • {c.text}
-                    </Text>
-                  ))}
-                  <Text style={styles.overviewPara}>
-                    {tracker.causes[0]?.text ?? overviewFallback}
-                  </Text>
-                </View>
-              </View>
-
-              {/* 3 Resource centre */}
-              <View style={styles.section}>
-                <Text style={styles.sectionKicker}>RESOURCE CENTRE</Text>
-                {tracker.resources.map((r) => (
-                  <Pressable
-                    key={r.url}
-                    style={styles.resourceRow}
-                    onPress={() => void Linking.openURL(r.url)}
-                  >
-                    <Text style={styles.resourceKind}>{r.kind.toUpperCase()}</Text>
-                    <Text style={styles.resourceTitle}>{r.title}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              {/* 4 This week’s focus */}
-              <View style={styles.section}>
-                <Text style={styles.sectionKicker}>THIS WEEK&apos;S FOCUS</Text>
-                {tracker.focusActions.map((a) => (
-                  <View key={a.rank} style={styles.focusCard}>
-                    <View style={styles.focusRank}>
-                      <Text style={styles.focusRankText}>{a.rank}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.focusTitle}>{a.title}</Text>
-                      <Text style={styles.focusDetail}>{a.detail}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.scoreFloat}>
-                <Text style={styles.scoreKicker}>kAI SKIN SCORE (THIS SCAN)</Text>
-                <Text style={[styles.scoreBig, { fontFamily: serif }]}>
-                  {tracker.scores.kaiScore}%
-                </Text>
-                <Text style={styles.scoreSub}>Last scan: {lastScanLabel}</Text>
-                <View style={styles.scoreDonutWrap}>
-                  <ReportDonut
-                    percent={tracker.scores.kaiScore}
-                    size={104}
-                    stroke={9}
-                    color={PEACH}
-                    trackColor="#F0E4E1"
-                  />
-                </View>
-              </View>
-            </>
+            <View style={[styles.scoreFloat, { marginTop: 18 }]}>
+              <Text style={styles.scoreKicker}>kAI SKIN SCORE (THIS SCAN)</Text>
+              <Text style={[styles.scoreBig, { fontFamily: serif }]}>
+                {tracker.scores.kaiScore}%
+              </Text>
+            </View>
           ) : (
             <View style={styles.metricsCol}>
               {[
@@ -394,18 +227,18 @@ export function SkinScanReportBodyNative({
           ) : null}
         </View>
 
-        <LinearGradient colors={[TEAL_BAND, "#d8ebe6"]} style={styles.tealSection}>
-          <View style={styles.tealDivider} />
-          <View style={styles.tealCol}>
-            <View style={styles.tealBar} />
-            <Text style={styles.tealH}>NOTE</Text>
-            <Text style={styles.tealP}>
-              {tracker
-                ? "Pending parameters are filled in-clinic. kAI never invents those scores. Repeat the 5-angle capture weekly for meaningful trends."
-                : "Complete your profile and weekly scans to unlock the full kAI tracker narrative."}
-            </Text>
-          </View>
-        </LinearGradient>
+        {!tracker ? (
+          <LinearGradient colors={[TEAL_BAND, "#d8ebe6"]} style={styles.tealSection}>
+            <View style={styles.tealDivider} />
+            <View style={styles.tealCol}>
+              <View style={styles.tealBar} />
+              <Text style={styles.tealH}>NOTE</Text>
+              <Text style={styles.tealP}>
+                Complete your profile and weekly scans to unlock the full kAI tracker narrative.
+              </Text>
+            </View>
+          </LinearGradient>
+        ) : null}
 
         <View style={[styles.beigeFooter, { backgroundColor: BEIGE }]}>
           <View style={styles.footerRule} />

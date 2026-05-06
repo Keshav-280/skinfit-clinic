@@ -20,7 +20,17 @@ export type PatientTrackerParamRow = {
   label: string;
   value: number | null;
   source: string;
+  /** Δ vs immediate prior scan (only when both scans have model values for this key). */
   delta: number | null;
+  /** Value on the immediate prior scan when model-backed; otherwise null. */
+  prevScanValue: number | null;
+  /**
+   * Average of model-backed samples for this parameter from scans in the calendar week
+   * before this scan's week (among scans at or before this one).
+   */
+  prevWeekAverage: number | null;
+  /** Rounded (display value − prevWeekAverage) when a previous-week average exists. */
+  weekAvgDelta: number | null;
   weeklyDeltaMeaningful: boolean;
 };
 
@@ -30,10 +40,25 @@ export type KaiOnboardingClinical = {
 };
 
 export type PatientTrackerReport = {
+  scanContext: {
+    kind: "onboarding_first_scan" | "same_week_followup" | "new_week_followup";
+    title: string;
+    subtitle: string;
+  };
   hookSentence: string;
+  insightText: string;
+  predictionText: string;
   scores: {
     kaiScore: number;
+    /** Main comparison delta shown in UI; mode depends on `deltaMode`. */
     weeklyDelta: number;
+    deltaMode: "last_scan" | "week_average";
+    /** Always computed when a prior scan exists. */
+    lastScanDelta: number | null;
+    /** Computed for cross-week comparisons (week-average vs prior-week-average). */
+    weekAverageDelta: number | null;
+    currentWeekAverageKai: number | null;
+    previousWeekAverageKai: number | null;
     consistencyScore: number;
   };
   skinPills: string[];

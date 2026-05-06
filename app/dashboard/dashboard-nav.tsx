@@ -14,19 +14,20 @@ const links = [
   { href: "/dashboard/scan", label: "AI Scan" },
   { href: "/dashboard/schedules", label: "Schedules" },
   { href: "/dashboard/wellness", label: "Overall Wellness" },
-  { href: "/dashboard/chat", label: "Chat With Us" },
+  { href: "/dashboard/chat?assistant=support", label: "Chat With Us" },
   { href: "/dashboard/profile", label: "Profile" },
 ] as const;
 
 function isActive(href: string, pathname: string | null): boolean {
   if (!pathname) return false;
-  if (href === "/dashboard") {
+  const path = href.split("?")[0] ?? href;
+  if (path === "/dashboard") {
     const isRoot =
       pathname === "/dashboard" || pathname === "/dashboard/";
     if (!isRoot) return false;
     return true;
   }
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === path || pathname.startsWith(`${path}/`);
 }
 
 const linkBase =

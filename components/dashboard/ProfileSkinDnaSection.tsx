@@ -81,6 +81,26 @@ function Pill({ children }: { children: ReactNode }) {
   );
 }
 
+function DnaStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className="rounded-xl bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      style={{ border: "1px solid #e8e2d8" }}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold leading-snug text-zinc-900">{value}</p>
+    </div>
+  );
+}
+
 function MetricTile({
   label,
   pendingOnly,
@@ -211,43 +231,25 @@ export function ProfileSkinDnaSection() {
         </div>
 
         <div className="space-y-6 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <Pill>
-              Skin type:{" "}
-              <span className="font-bold text-zinc-900">
-                {data.skinDna.skinType ?? "—"}
-              </span>
-            </Pill>
-            <Pill>
-              Primary concern:{" "}
-              <span className="font-bold text-zinc-900">
-                {data.skinDna.primaryConcern ?? "—"}
-              </span>
-            </Pill>
-            {data.skinDna.sensitivityIndex != null ? (
-              <Pill>
-                Sensitivity index:{" "}
-                <span className="font-bold text-zinc-900">
-                  {data.skinDna.sensitivityIndex}/10
-                </span>
-              </Pill>
-            ) : null}
-            {data.skinDna.uvSensitivity ? (
-              <Pill>
-                UV sensitivity:{" "}
-                <span className="font-bold text-zinc-900">
-                  {data.skinDna.uvSensitivity}
-                </span>
-              </Pill>
-            ) : null}
-            {data.skinDna.hormonalCorrelation ? (
-              <Pill>
-                Hormonal correlation:{" "}
-                <span className="font-bold text-zinc-900">
-                  {data.skinDna.hormonalCorrelation}
-                </span>
-              </Pill>
-            ) : null}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            <DnaStat label="Skin type" value={data.skinDna.skinType ?? "—"} />
+            <DnaStat
+              label="Primary concern"
+              value={data.skinDna.primaryConcern ?? "—"}
+            />
+            <DnaStat
+              label="Sensitivity index"
+              value={
+                data.skinDna.sensitivityIndex != null
+                  ? `${data.skinDna.sensitivityIndex}/10`
+                  : "—"
+              }
+            />
+            <DnaStat label="UV sensitivity" value={data.skinDna.uvSensitivity ?? "—"} />
+            <DnaStat
+              label="Hormonal correlation"
+              value={data.skinDna.hormonalCorrelation ?? "—"}
+            />
           </div>
 
           {data.lastWeekObservations ? (

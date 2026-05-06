@@ -22,6 +22,7 @@ export async function GET(req: Request) {
       eventDate: true,
       eventTimeHm: true,
       title: true,
+      eventKind: true,
       completed: true,
     },
   });
