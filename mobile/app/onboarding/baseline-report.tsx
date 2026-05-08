@@ -68,7 +68,7 @@ export default function BaselineReportScreen() {
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
-    backgroundColor: "#fdf9f0",
+    backgroundColor: "#f8f5ef",
     padding: 24,
     justifyContent: "center",
   },
@@ -85,8 +85,13 @@ const styles = StyleSheet.create({
     marginTop: 28,
     backgroundColor: TEAL,
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 3,
   },
   dis: { opacity: 0.5 },
   btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },

@@ -9,7 +9,8 @@ export default function HistoryStackLayout() {
       screenOptions={{
         headerTintColor: "#0d9488",
         headerStyle: { backgroundColor: "#ffffff" },
-        contentStyle: { backgroundColor: "#fdf9f0" },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: "#f8f5ef" },
         headerLeft: () => <DrawerToggleButton tintColor={MENU_TINT} />,
       }}
     >

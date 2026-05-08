@@ -1025,9 +1025,9 @@ function L({
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#fdf9f0" },
+  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
   content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fdf9f0" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8f5ef" },
   title: { fontSize: 24, fontWeight: "700", textAlign: "center", color: "#18181b" },
   subWeb: {
     textAlign: "center",

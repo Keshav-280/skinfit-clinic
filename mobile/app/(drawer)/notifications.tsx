@@ -249,7 +249,7 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#fdf9f0" },
+  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: "800", color: "#18181b" },
   sub: { fontSize: 14, color: "#64748b", marginTop: 6, lineHeight: 20 },

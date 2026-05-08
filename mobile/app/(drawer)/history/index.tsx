@@ -472,14 +472,14 @@ function HistoryAudioPlayButton({ uri }: { uri: string }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#fdf9f0" },
+  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
   content: { padding: 16, paddingBottom: 48 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fdf9f0" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8f5ef" },
   loadingScreen: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fdf9f0",
+    backgroundColor: "#f8f5ef",
     paddingHorizontal: 24,
   },
   loadingCard: {
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 14,
     borderRadius: 18,
-    backgroundColor: "rgba(253, 249, 240, 0.9)",
+    backgroundColor: "rgba(248, 245, 239, 0.9)",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#f4f4f5",
   },

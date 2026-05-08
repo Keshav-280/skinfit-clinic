@@ -741,8 +741,8 @@ export default function QuestionnaireScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 40 },
-  progress: { fontSize: 12, fontWeight: "700", color: TEAL, marginBottom: 12 },
+  content: { padding: 20, paddingBottom: 40, backgroundColor: "#f8f5ef", flexGrow: 1 },
+  progress: { fontSize: 12, fontWeight: "700", color: TEAL, marginBottom: 12, textAlign: "center" },
   err: { color: "#b91c1c", marginBottom: 8 },
   q: { fontSize: 18, fontWeight: "700", color: "#18181b", marginBottom: 12 },
   sub: { fontSize: 13, color: "#71717a", marginBottom: 8 },
@@ -755,6 +755,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#e4e4e7",
     marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   chipOn: { backgroundColor: "#ccfbf1", borderColor: TEAL },
   chipText: { fontSize: 15, color: "#27272a", fontWeight: "600" },
@@ -799,6 +804,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 2,
   },
   btnGhost: {
     flex: 1,

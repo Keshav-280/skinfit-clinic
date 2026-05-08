@@ -10,7 +10,8 @@ export default function OnboardingLayout() {
           headerStyle: { backgroundColor: "#ffffff" },
           headerTintColor: "#0f172a",
           headerTitleStyle: { fontWeight: "700" },
-          contentStyle: { backgroundColor: "#fdf9f0" },
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: "#f8f5ef" },
         }}
       />
     </OnboardingResumeGate>

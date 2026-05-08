@@ -239,12 +239,12 @@ export default function ScanDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: "#fdf9f0" },
+  wrap: { flex: 1, backgroundColor: "#f8f5ef" },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fdf9f0",
+    backgroundColor: "#f8f5ef",
     padding: 24,
     gap: 12,
   },

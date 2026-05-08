@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Stethoscope, Users } from "lucide-react";
+import { Stethoscope, UserRound, Users } from "lucide-react";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
 import { DoctorAppointmentsBell } from "@/components/doctor/DoctorAppointmentsBell";
 import { DoctorPatientChatBell } from "@/components/doctor/DoctorPatientChatBell";
@@ -33,6 +33,13 @@ export default async function DoctorPortalLayout({
             >
               <Users className="h-4 w-4" />
               Patients
+            </Link>
+            <Link
+              href="/doctor/profile"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100"
+            >
+              <UserRound className="h-4 w-4" />
+              Profile
             </Link>
             <DoctorAppointmentsBell />
             <DoctorPatientChatBell />

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format, isValid, parseISO } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as FileSystem from "expo-file-system";
@@ -18,17 +19,22 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChatMessageMarkdown } from "@/components/ChatMessageMarkdown";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import {
+  getClinicSupportInboxLastSeenIso,
+  getDoctorInboxLastSeenIso,
   markClinicSupportInboxSeenFromServer,
   markDoctorInboxSeenFromServer,
 } from "@/lib/inboxReadCursors";
 
 type AssistantId = "ai" | "doctor" | "support";
+type HomeThreadId = AssistantId | "appointments";
+type ThreadScope = "all" | "appointments";
 
 /** API + DB use patient | doctor | support (AI assistant rows use sender "support"). */
 type ChatSender = "patient" | "doctor" | "support";
@@ -40,10 +46,25 @@ type ChatMsg = {
   createdAt?: string;
 };
 
+type HomeConversation = {
+  id: HomeThreadId;
+  title: string;
+  subtitle: string;
+  unread: number;
+  dateLabel?: string;
+};
+
+type DoctorProfile = {
+  name: string;
+  subtitle: string;
+  replyHint: string;
+  avatarUrl?: string;
+};
+
 const TEAL = "#0d9488";
-const TEAL_DARK = "#0f766e";
-const CREAM = "#fdf9f0";
+const CREAM = "#dfe7dc";
 const ZINC_900 = "#18181b";
+const NAVY = "#23286f";
 
 const CONTACTS: {
   id: AssistantId;
@@ -65,7 +86,7 @@ const CONTACTS: {
   },
   {
     id: "doctor",
-    name: "Dr. Ruby Sachdev",
+    name: "Doctor",
     short: "Doctor",
     subtitle: "Clinical questions for your dermatologist",
     icon: "medkit",
@@ -84,6 +105,17 @@ const CONTACTS: {
 ];
 
 const AI_GREETING = "Hi! I'm SkinnFit AI Assistant. How can I help you today?";
+const HOME_CACHE_KEY = "skinfit-chat-home-v1";
+const THREAD_CACHE_KEY_PREFIX = "skinfit-chat-thread-v1:";
+const APPOINTMENT_KEYWORDS = [
+  "appointment",
+  "scheduled",
+  "rescheduled",
+  "confirmed",
+  "clinic visit",
+  "check-up",
+  "consultation",
+];
 
 function formatMsgTime(iso?: string): string | null {
   if (!iso) return null;
@@ -115,17 +147,67 @@ function normalizeApiMessages(rows: unknown): ChatMsg[] {
   return out;
 }
 
-function incomingFromLabel(sender: ChatSender, tab: AssistantId): string {
-  if (sender === "doctor") return "Doctor";
-  if (tab === "ai" && sender === "support") return "AI";
-  return "Support";
+function dateLabelFromIso(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  try {
+    const d = parseISO(iso);
+    if (!isValid(d)) return undefined;
+    return format(d, "d MMM");
+  } catch {
+    return undefined;
+  }
+}
+
+function isAppointmentMessage(text: string): boolean {
+  const t = text.toLowerCase();
+  return APPOINTMENT_KEYWORDS.some((word) => t.includes(word));
+}
+
+function threadCacheKey(assistantId: AssistantId): string {
+  return `${THREAD_CACHE_KEY_PREFIX}${assistantId}`;
 }
 
 export default function ChatScreen() {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ChatMsg>>(null);
+  const [homeMode, setHomeMode] = useState(true);
+  const [homeLoading, setHomeLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>({
+    name: "",
+    subtitle: "",
+    replyHint: "",
+    avatarUrl: undefined,
+  });
+  const [homeRows, setHomeRows] = useState<HomeConversation[]>([
+    {
+      id: "doctor",
+      title: CONTACTS[1]?.name || "Doctor",
+      subtitle: "Your dermatologist replies here.",
+      unread: 0,
+    },
+    {
+      id: "ai",
+      title: "Skin AI Assistant",
+      subtitle: "Instant answers about skincare and scans.",
+      unread: 0,
+    },
+    {
+      id: "appointments",
+      title: "Appointments",
+      subtitle: "Schedule updates and reminders.",
+      unread: 0,
+    },
+    {
+      id: "support",
+      title: "Clinic Team",
+      subtitle: "Billing, logistics and support.",
+      unread: 0,
+    },
+  ]);
   const [active, setActive] = useState<AssistantId>("ai");
+  const [threadScope, setThreadScope] = useState<ThreadScope>("all");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -224,6 +306,191 @@ export default function ChatScreen() {
     [token]
   );
 
+  const persistThreadCache = useCallback(async (assistantId: AssistantId, rows: ChatMsg[]) => {
+    try {
+      await AsyncStorage.setItem(threadCacheKey(assistantId), JSON.stringify(rows.slice(-120)));
+    } catch {
+      /* ignore cache write failures */
+    }
+  }, []);
+
+  const readThreadCache = useCallback(async (assistantId: AssistantId): Promise<ChatMsg[]> => {
+    try {
+      const raw = await AsyncStorage.getItem(threadCacheKey(assistantId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as unknown;
+      return normalizeApiMessages(parsed);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const loadHomeData = useCallback(async () => {
+    if (!token) return;
+    setHomeLoading(true);
+    try {
+      const [doctorSince, supportSince] = await Promise.all([
+        getDoctorInboxLastSeenIso(),
+        getClinicSupportInboxLastSeenIso(),
+      ]);
+      const unreadQuery = new URLSearchParams({ doctorSince, supportSince });
+      const [aiRes, doctorRes, supportRes, unreadRes, calendarRes, doctorProfileRes] =
+        await Promise.allSettled([
+        fetchPlainMessages("ai"),
+        fetchPlainMessages("doctor"),
+        fetchPlainMessages("support"),
+        apiJson<{
+          doctorCount?: number;
+          supportCount?: number;
+          total?: number;
+        }>(`/api/chat/inbox/unread?${unreadQuery.toString()}`, token, {
+          method: "GET",
+        }),
+        apiJson<{
+          events?: Array<{
+            start?: string;
+            doctor?: {
+              id?: string | null;
+              name?: string | null;
+              email?: string | null;
+              imageUrl?: string | null;
+              specialty?: string | null;
+            };
+          }>;
+        }>("/api/calendar/patient", token, { method: "GET" }),
+        apiJson<{
+          profile?: {
+            name?: string | null;
+            specialty?: string | null;
+            imageUrl?: string | null;
+          } | null;
+        }>("/api/chat/doctor-profile", token, { method: "GET" }),
+      ]);
+      const aiPlain = aiRes.status === "fulfilled" ? aiRes.value : { messages: [] as ChatMsg[] };
+      const doctorPlain = doctorRes.status === "fulfilled" ? doctorRes.value : { messages: [] as ChatMsg[] };
+      const supportPlain = supportRes.status === "fulfilled" ? supportRes.value : { messages: [] as ChatMsg[] };
+      const unreadData =
+        unreadRes.status === "fulfilled"
+          ? unreadRes.value
+          : ({ doctorCount: 0, supportCount: 0 } as const);
+      const calendarData = calendarRes.status === "fulfilled" ? calendarRes.value : { events: [] as Array<{ start?: string; doctor?: { name?: string | null } }> };
+      const doctorProfileData =
+        doctorProfileRes.status === "fulfilled" ? doctorProfileRes.value : { profile: null };
+
+      const doctorUnread = Math.max(0, unreadData.doctorCount || 0);
+      const supportUnread = Math.max(0, unreadData.supportCount || 0);
+      const aiUnread = 0;
+
+      const firstEventWithDoctor = calendarData.events?.find((e) => e.doctor?.name?.trim());
+      const resolvedDoctorName =
+        doctorProfileData.profile?.name?.trim() ||
+        firstEventWithDoctor?.doctor?.name?.trim() ||
+        CONTACTS[1]?.name ||
+        "Doctor";
+      const nextAppointment = calendarData.events?.find((e) => !!e.start);
+      const nextAppointmentLabel = nextAppointment?.start
+        ? `Next appointment on ${dateLabelFromIso(nextAppointment.start) || "upcoming date"}`
+        : "No upcoming appointment reminders";
+
+      const nextDoctorProfile = {
+        name: resolvedDoctorName,
+        subtitle:
+          doctorProfileData.profile?.specialty?.trim() ||
+          firstEventWithDoctor?.doctor?.specialty?.trim() ||
+          "",
+        replyHint: "Typically replies in a few hours",
+        avatarUrl:
+          doctorProfileData.profile?.imageUrl?.trim() ||
+          firstEventWithDoctor?.doctor?.imageUrl?.trim() ||
+          undefined,
+      };
+      setDoctorProfile(nextDoctorProfile);
+
+      const aiLast = aiPlain.messages.at(-1);
+      const doctorLast = doctorPlain.messages.at(-1);
+      const supportLast = supportPlain.messages.at(-1);
+      const appointmentsLast = [...supportPlain.messages]
+        .reverse()
+        .find((m) => m.sender !== "patient" && isAppointmentMessage(m.text));
+
+      const nextHomeRows: HomeConversation[] = [
+        {
+          id: "doctor",
+          title: resolvedDoctorName,
+          subtitle: doctorLast?.text || "No messages yet",
+          unread: doctorUnread,
+          dateLabel: dateLabelFromIso(doctorLast?.createdAt),
+        },
+        {
+          id: "ai",
+          title: "Skin AI Assistant",
+          subtitle: aiLast?.text || "No messages yet",
+          unread: aiUnread,
+          dateLabel: dateLabelFromIso(aiLast?.createdAt),
+        },
+        {
+          id: "appointments",
+          title: "Appointments",
+          subtitle: appointmentsLast?.text || nextAppointmentLabel,
+          unread: 0,
+          dateLabel: dateLabelFromIso(appointmentsLast?.createdAt) || dateLabelFromIso(nextAppointment?.start),
+        },
+        {
+          id: "support",
+          title: "Clinic Team",
+          subtitle: supportLast?.text || "No messages yet",
+          unread: supportUnread,
+          dateLabel: dateLabelFromIso(supportLast?.createdAt),
+        },
+      ];
+      setHomeRows(nextHomeRows);
+      void AsyncStorage.setItem(
+        HOME_CACHE_KEY,
+        JSON.stringify({
+          doctorProfile: nextDoctorProfile,
+          homeRows: nextHomeRows,
+        })
+      ).catch(() => {
+        /* ignore cache write failures */
+      });
+    } catch {
+      // Keep previously rendered rows/profile if refresh fails, avoid blank previews.
+    } finally {
+      setHomeLoading(false);
+    }
+  }, [token, fetchPlainMessages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(HOME_CACHE_KEY);
+        if (!raw || cancelled) return;
+        const parsed = JSON.parse(raw) as {
+          doctorProfile?: { name?: string; subtitle?: string; replyHint?: string; avatarUrl?: string };
+          homeRows?: HomeConversation[];
+        };
+        if (parsed.doctorProfile) {
+          setDoctorProfile({
+            name: parsed.doctorProfile.name || "",
+            subtitle: parsed.doctorProfile.subtitle || "",
+            replyHint: parsed.doctorProfile.replyHint || "",
+            avatarUrl: parsed.doctorProfile.avatarUrl || undefined,
+          });
+        }
+        if (Array.isArray(parsed.homeRows) && parsed.homeRows.length > 0) {
+          setHomeRows(parsed.homeRows);
+        }
+        setHomeLoading(false);
+      } catch {
+        /* ignore cache parse failures */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     void (async () => {
       if (!token) return;
@@ -236,12 +503,33 @@ export default function ChatScreen() {
   }, [token]);
 
   useEffect(() => {
+    if (homeMode) {
+      void loadHomeData();
+    }
+  }, [homeMode, loadHomeData]);
+
+  useEffect(() => {
+    if (!homeMode) return;
+    const id = setInterval(() => {
+      void loadHomeData();
+    }, 20_000);
+    return () => clearInterval(id);
+  }, [homeMode, loadHomeData]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!token) return;
-      setLoading(true);
       setError(null);
-      setMessages([]);
+      const cached = await readThreadCache(active);
+      if (cancelled) return;
+      if (cached.length > 0) {
+        setMessages(cached);
+        setLoading(false);
+      } else {
+        setMessages([]);
+        setLoading(true);
+      }
       try {
         if (active === "ai") {
           let plain = await fetchPlainMessages("ai");
@@ -253,10 +541,12 @@ export default function ChatScreen() {
           }
           if (cancelled) return;
           setMessages(plain.messages);
+          void persistThreadCache("ai", plain.messages);
         } else {
           const plain = await fetchPlainMessages(active);
           if (cancelled) return;
           setMessages(plain.messages);
+          void persistThreadCache(active, plain.messages);
           if (active === "support") {
             await markClinicSupportInboxSeenFromServer(plain.clinicReadThroughIso);
           } else if (active === "doctor") {
@@ -274,7 +564,15 @@ export default function ChatScreen() {
     return () => {
       cancelled = true;
     };
-  }, [active, token, fetchPlainMessages, createPlainThread, seedAssistantGreeting]);
+  }, [
+    active,
+    token,
+    fetchPlainMessages,
+    createPlainThread,
+    seedAssistantGreeting,
+    readThreadCache,
+    persistThreadCache,
+  ]);
 
   async function send() {
     const text = input.trim();
@@ -312,6 +610,7 @@ export default function ChatScreen() {
         await seedAssistantGreeting("ai", store.threadId, reply);
         const refreshed = await fetchPlainMessages("ai");
         setMessages(refreshed.messages);
+        void persistThreadCache("ai", refreshed.messages);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Send failed.");
       } finally {
@@ -328,6 +627,7 @@ export default function ChatScreen() {
       });
       const refreshed = await fetchPlainMessages(active);
       setMessages(refreshed.messages);
+      void persistThreadCache(active, refreshed.messages);
       setInput("");
       if (active === "support") {
         await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
@@ -361,6 +661,7 @@ export default function ChatScreen() {
               });
               const refreshed = await fetchPlainMessages(active);
               setMessages(refreshed.messages);
+              void persistThreadCache(active, refreshed.messages);
               if (active === "support") {
                 await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
               } else if (active === "doctor") {
@@ -378,56 +679,193 @@ export default function ChatScreen() {
   }
 
   const canSend = input.trim().length > 0 && !loading;
+  const threadMessages =
+    threadScope === "appointments"
+      ? messages.filter((m) => m.sender === "patient" || isAppointmentMessage(m.text))
+      : messages;
+  const activeThreadTitle =
+    threadScope === "appointments"
+      ? "Appointments"
+      : active === "doctor"
+        ? doctorProfile.name || CONTACTS[1]?.name || "Doctor"
+        : peer.name;
+  const activeThreadSubtitle =
+    threadScope === "appointments" ? "Appointment updates and confirmations" : "Online";
+  const headerAvatarIconName: keyof typeof Ionicons.glyphMap =
+    threadScope === "appointments"
+      ? "calendar"
+      : active === "ai"
+        ? "sparkles"
+        : active === "support"
+          ? "people"
+          : "person";
+  const headerAvatarBg =
+    threadScope === "appointments"
+      ? "#e7f4ec"
+      : active === "support"
+        ? "#e6effa"
+        : active === "ai"
+          ? "#e7f4ec"
+          : "#e2e8f0";
+
+  const laterIncomingIndexById = new Map<string, boolean>();
+  for (let i = 0; i < threadMessages.length; i += 1) {
+    const msg = threadMessages[i];
+    if (msg.sender !== "patient") continue;
+    let seen = false;
+    for (let j = i + 1; j < threadMessages.length; j += 1) {
+      if (threadMessages[j]?.sender !== "patient") {
+        seen = true;
+        break;
+      }
+    }
+    laterIncomingIndexById.set(msg.id, seen);
+  }
+  const filteredRows = homeRows.filter((row) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return row.title.toLowerCase().includes(q) || row.subtitle.toLowerCase().includes(q);
+  });
+
+  function openHomeThread(id: HomeThreadId) {
+    if (id === "appointments") {
+      setActive("support");
+      setThreadScope("appointments");
+      setHomeMode(false);
+      return;
+    }
+    setThreadScope("all");
+    setActive(id);
+    setHomeMode(false);
+  }
+
+  if (homeMode) {
+    return (
+      <SafeAreaView style={[styles.flex, styles.safeHome]} edges={["top"]}>
+        <View style={[styles.homeWrap, { paddingTop: 8, paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={styles.homeHeader}>
+          <Text style={styles.homeTitle}>Chat</Text>
+          <NotificationBell />
+        </View>
+
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={18} color="#9aa4b2" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search messages"
+            placeholderTextColor="#9aa4b2"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+
+        <Pressable style={styles.primaryCard} onPress={() => openHomeThread("doctor")}>
+          <View style={styles.primaryAvatar}>
+            {doctorProfile.avatarUrl ? (
+              <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.primaryAvatarImage} />
+            ) : (
+              <Ionicons name="person" size={24} color="#475569" />
+            )}
+          </View>
+          <View style={styles.primaryInfo}>
+            <Text style={styles.primaryName} numberOfLines={1}>
+              {doctorProfile.name || CONTACTS[1]?.name || "Doctor"}
+            </Text>
+            <Text style={styles.primarySpec} numberOfLines={1}>
+              {doctorProfile.subtitle || "Care Team"}
+            </Text>
+            <View style={styles.primaryPill}>
+              <Text style={styles.primaryPillText}>Your Primary Doctor</Text>
+            </View>
+            <Text style={styles.primaryHint}>
+              {doctorProfile.replyHint || "Typically replies in a few hours"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color={ZINC_900} />
+        </Pressable>
+
+        <Text style={styles.recentTitle}>Recent Conversations</Text>
+
+        <View style={styles.listCard}>
+          {filteredRows.map((row, idx) => (
+            <Pressable
+              key={row.id}
+              style={[styles.homeRow, idx < filteredRows.length - 1 && styles.homeRowBorder]}
+              onPress={() => openHomeThread(row.id)}
+            >
+              <View style={[styles.rowAvatar, row.id === "doctor" && styles.rowAvatarDoctor]}>
+                {row.id === "doctor" && doctorProfile.avatarUrl ? (
+                  <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.rowAvatarImage} />
+                ) : (
+                  <Ionicons
+                    name={
+                      row.id === "doctor"
+                        ? "person"
+                        : row.id === "ai"
+                          ? "sparkles"
+                          : row.id === "appointments"
+                            ? "calendar"
+                            : "people"
+                    }
+                    size={16}
+                    color={row.id === "doctor" ? "#1f2a5a" : "#6b7280"}
+                  />
+                )}
+              </View>
+              <View style={styles.rowMain}>
+                <View style={styles.rowHead}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {row.title}
+                  </Text>
+                  {row.dateLabel ? <Text style={styles.rowDate}>{row.dateLabel}</Text> : null}
+                </View>
+                <Text style={styles.rowSub} numberOfLines={2}>
+                  {row.subtitle}
+                </Text>
+              </View>
+              {row.unread > 0 ? (
+                <View style={styles.unreadDot}>
+                  <Text style={styles.unreadDotText}>{row.unread > 9 ? "9+" : row.unread}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          ))}
+        </View>
+
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 72 : 0}
-    >
-      <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        <View style={styles.hero}>
-          <Text style={styles.screenTitle}>Messages</Text>
-          <Text style={styles.screenSub}>Choose who you&apos;re talking to</Text>
-        </View>
-
-        <View style={styles.tabsRow}>
-          {CONTACTS.map((c) => {
-            const on = active === c.id;
-            return (
-              <Pressable
-                key={c.id}
-                style={[
-                  styles.tabChip,
-                  on && { backgroundColor: c.accentSoft, borderColor: c.accent },
-                ]}
-                onPress={() => setActive(c.id)}
-              >
-                <View style={[styles.tabIconWrap, { backgroundColor: on ? c.accent : "#e4e4e7" }]}>
-                  <Ionicons name={c.icon} size={15} color={on ? "#fff" : "#52525b"} />
-                </View>
-                <Text
-                  style={[styles.tabChipLabel, on && { color: c.accent, fontWeight: "700" }]}
-                  numberOfLines={1}
-                >
-                  {c.short}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={[styles.peerCard, { borderLeftColor: peer.accent }]}>
-          <View style={[styles.peerAvatar, { backgroundColor: peer.accentSoft }]}>
-            <Ionicons name={peer.icon} size={20} color={peer.accent} />
+    <SafeAreaView style={[styles.flex, styles.safeThread]} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 72 : 0}
+      >
+        <View style={[styles.wrap, { paddingTop: 4, paddingBottom: Math.max(insets.bottom, 86) }]}>
+        <View style={styles.threadHeader}>
+          <Pressable style={styles.backIconBtn} onPress={() => setHomeMode(true)} hitSlop={8}>
+            <Ionicons name="chevron-back" size={24} color={ZINC_900} />
+          </Pressable>
+          <View style={styles.threadIdentity}>
+            <View style={[styles.threadAvatar, { backgroundColor: headerAvatarBg }]}>
+              {active === "doctor" && doctorProfile.avatarUrl ? (
+                <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.threadAvatarImage} />
+              ) : (
+                <Ionicons name={headerAvatarIconName} size={18} color="#475569" />
+              )}
+            </View>
+            <View style={styles.threadMeta}>
+              <Text style={styles.threadName} numberOfLines={1}>
+                {activeThreadTitle}
+              </Text>
+              <Text style={styles.threadStatus}>{activeThreadSubtitle}</Text>
+            </View>
           </View>
-          <View style={styles.peerText}>
-            <Text style={styles.peerName} numberOfLines={1}>
-              {peer.name}
-            </Text>
-            <Text style={styles.peerSubtitle} numberOfLines={1}>
-              {peer.subtitle}
-            </Text>
+          <View style={styles.threadBellWrap}>
+            <NotificationBell />
           </View>
         </View>
 
@@ -513,6 +951,7 @@ export default function ChatScreen() {
                       });
                       const refreshed = await fetchPlainMessages("doctor");
                       setMessages(refreshed.messages);
+                      void persistThreadCache("doctor", refreshed.messages);
                       await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
                       setSosOpen(false);
                       setSosText("");
@@ -551,7 +990,7 @@ export default function ChatScreen() {
             <FlatList
               ref={listRef}
               style={styles.list}
-              data={messages}
+              data={threadMessages}
               keyExtractor={(m) => m.id}
               keyboardDismissMode="interactive"
               keyboardShouldPersistTaps="handled"
@@ -567,18 +1006,45 @@ export default function ChatScreen() {
               }
               contentContainerStyle={[
                 styles.listContent,
-                messages.length === 0 && styles.listContentEmpty,
+                threadMessages.length === 0 && styles.listContentEmpty,
               ]}
               renderItem={({ item }) => {
                 const isPatient = item.sender === "patient";
                 const t = formatMsgTime(item.createdAt);
+                const seen = !!laterIncomingIndexById.get(item.id);
+                const incomingAvatarBg =
+                  threadScope === "appointments"
+                    ? "#e7f4ec"
+                    : item.sender === "doctor"
+                      ? "#e2e8f0"
+                      : active === "support"
+                        ? "#e6effa"
+                        : "#e7f4ec";
                 return (
                   <View style={[styles.msgRow, isPatient ? styles.msgRowPatient : styles.msgRowOther]}>
                     {!isPatient ? (
-                      <Text style={styles.msgFrom}>{incomingFromLabel(item.sender, active)}</Text>
-                    ) : (
-                      <Text style={styles.msgFromPatient}>You</Text>
-                    )}
+                      <View style={[styles.msgAvatar, { backgroundColor: incomingAvatarBg }]}>
+                        {item.sender === "doctor" && doctorProfile.avatarUrl ? (
+                          <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.msgAvatarImage} />
+                        ) : (
+                          <Ionicons
+                            name={
+                              threadScope === "appointments"
+                                ? "calendar"
+                                : item.sender === "doctor"
+                                  ? "person"
+                                  : active === "ai"
+                                    ? "sparkles"
+                                    : active === "support"
+                                      ? "people"
+                                      : "chatbubble-ellipses"
+                            }
+                            size={14}
+                            color="#475569"
+                          />
+                        )}
+                      </View>
+                    ) : null}
                     <View
                       style={[
                         styles.bubble,
@@ -589,9 +1055,19 @@ export default function ChatScreen() {
                         text={item.text}
                         variant={isPatient ? "patient" : "incoming"}
                       />
-                      {t ? (
-                        <Text style={[styles.ts, isPatient ? styles.tsPatient : styles.tsOther]}>{t}</Text>
-                      ) : null}
+                      <View style={styles.metaRow}>
+                        {t ? (
+                          <Text style={[styles.ts, isPatient ? styles.tsPatient : styles.tsOther]}>{t}</Text>
+                        ) : null}
+                        {isPatient ? (
+                          <Ionicons
+                            name={seen ? "checkmark-done" : "checkmark"}
+                            size={16}
+                            color={NAVY}
+                            style={styles.tickIcon}
+                          />
+                        ) : null}
+                      </View>
                     </View>
                   </View>
                 );
@@ -600,7 +1076,7 @@ export default function ChatScreen() {
           )}
         </View>
 
-        {(active === "support" || active === "doctor") && messages.length > 0 ? (
+        {(active === "support" || active === "doctor") && threadMessages.length > 0 ? (
           <Pressable style={styles.clearBtn} onPress={clearView} hitSlop={8}>
             <Ionicons name="eye-off-outline" size={16} color="#64748b" />
             <Text style={styles.clearBtnText}>Clear my view</Text>
@@ -631,90 +1107,186 @@ export default function ChatScreen() {
             )}
           </Pressable>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  wrap: {
+  safeHome: { backgroundColor: CREAM },
+  safeThread: { backgroundColor: "#f8fafc" },
+  homeWrap: {
     flex: 1,
     backgroundColor: CREAM,
     paddingHorizontal: 16,
+    paddingTop: 10,
   },
-  hero: { paddingTop: 2, paddingBottom: 8, flexShrink: 0 },
-  screenTitle: {
-    fontSize: 22,
-    fontWeight: "800",
+  homeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  homeTitle: {
+    fontSize: 34,
+    fontWeight: "700",
     color: ZINC_900,
-    letterSpacing: -0.4,
+    letterSpacing: -0.8,
   },
-  screenSub: { fontSize: 13, color: "#64748b", marginTop: 2 },
-  tabsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 10,
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  tabChip: {
-    flex: 1,
-    minWidth: 0,
-    maxHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  tabIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabChipLabel: { fontSize: 12, fontWeight: "600", color: "#52525b", flexShrink: 1 },
-  peerCard: {
-    flexShrink: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#fff",
+  searchWrap: {
+    height: 52,
     borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#f1f5f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 1,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e7ebef",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    gap: 10,
   },
-  peerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  searchInput: { flex: 1, fontSize: 16, color: ZINC_900, paddingVertical: 0 },
+  primaryCard: {
+    marginTop: 14,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e7ebef",
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  primaryAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 12,
+    backgroundColor: "#cfd4dc",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  primaryAvatarImage: { width: "100%", height: "100%" },
+  primaryInfo: { flex: 1, minWidth: 0 },
+  primaryName: { fontSize: 20, fontWeight: "700", color: ZINC_900 },
+  primarySpec: { marginTop: 2, fontSize: 13, color: "#4b5563", fontWeight: "500" },
+  primaryPill: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    backgroundColor: "#d8f0e1",
+    borderRadius: 11,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  primaryPillText: { fontSize: 12, color: "#2e7d4e", fontWeight: "600" },
+  primaryHint: { marginTop: 8, fontSize: 12, color: "#4b5563", lineHeight: 16 },
+  recentTitle: {
+    marginTop: 18,
+    marginBottom: 10,
+    fontSize: 19,
+    fontWeight: "700",
+    color: ZINC_900,
+  },
+  listCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e7ebef",
+    overflow: "hidden",
+  },
+  homeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  homeRowBorder: { borderBottomWidth: 1, borderBottomColor: "#eef2f6" },
+  rowAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#e7f4ec",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  rowAvatarImage: { width: "100%", height: "100%" },
+  rowAvatarDoctor: { backgroundColor: "#eceef8" },
+  rowMain: { flex: 1, minWidth: 0 },
+  rowHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  rowTitle: { flex: 1, minWidth: 0, fontSize: 15, fontWeight: "700", color: ZINC_900 },
+  rowDate: { fontSize: 12, color: "#6b7280", fontWeight: "500" },
+  rowSub: { marginTop: 2, fontSize: 13, color: "#6b7280", lineHeight: 18 },
+  unreadDot: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  unreadDotText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  wrap: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+    paddingHorizontal: 14,
+  },
+  threadHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    marginBottom: 12,
+    gap: 10,
+  },
+  backIconBtn: {
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
-  peerText: { flex: 1, minWidth: 0 },
-  peerName: { fontSize: 15, fontWeight: "700", color: ZINC_900 },
-  peerSubtitle: { fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 16 },
+  threadBellWrap: {
+    minWidth: 36,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginRight: 2,
+  },
+  threadIdentity: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 10,
+  },
+  threadAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#e2e8f0",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  threadAvatarImage: { width: "100%", height: "100%" },
+  threadMeta: { flex: 1, minWidth: 0 },
+  threadName: { fontSize: 24, fontWeight: "700", color: ZINC_900 },
+  threadStatus: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  msgAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#e2e8f0",
+    marginRight: 8,
+    marginTop: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  msgAvatarImage: { width: "100%", height: "100%" },
   errorBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -728,7 +1300,18 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
   },
   errorBannerText: { flex: 1, color: "#991b1b", fontSize: 13, lineHeight: 18 },
-  listWrap: { flex: 1, minHeight: 160, zIndex: 0 },
+  listWrap: {
+    flex: 1,
+    minHeight: 160,
+    zIndex: 0,
+    backgroundColor: "#fff",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#eef2f7",
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   list: { flex: 1 },
   loaderBlock: {
     flex: 1,
@@ -753,40 +1336,40 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: "700", color: ZINC_900 },
   emptySub: { fontSize: 14, color: "#64748b", textAlign: "center", marginTop: 6, lineHeight: 20 },
   msgRow: { marginBottom: 14, maxWidth: "100%" },
-  msgRowPatient: { alignSelf: "flex-end", alignItems: "flex-end" },
-  msgRowOther: { alignSelf: "flex-start", alignItems: "flex-start" },
-  msgFrom: { fontSize: 11, fontWeight: "700", color: "#64748b", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.6 },
-  msgFromPatient: { fontSize: 11, fontWeight: "700", color: TEAL_DARK, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.6 },
+  msgRowPatient: { alignSelf: "flex-end", alignItems: "flex-end", flexDirection: "row" },
+  msgRowOther: { alignSelf: "flex-start", alignItems: "flex-start", flexDirection: "row" },
   bubble: {
-    maxWidth: "92%",
+    maxWidth: "88%",
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   bubblePatient: {
-    backgroundColor: TEAL,
-    borderRadius: 18,
-    borderBottomRightRadius: 4,
-    shadowColor: TEAL,
+    backgroundColor: "#d9dce8",
+    borderRadius: 20,
+    borderBottomRightRadius: 8,
+    shadowColor: "#9ca3af",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.16,
     shadowRadius: 4,
     elevation: 2,
   },
   bubbleOther: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    borderBottomLeftRadius: 4,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e2e8f0",
+    borderRadius: 20,
+    borderBottomLeftRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 1,
   },
-  ts: { fontSize: 11, marginTop: 6 },
-  tsPatient: { color: "rgba(255,255,255,0.85)", alignSelf: "flex-end" },
+  metaRow: { marginTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6 },
+  ts: { fontSize: 11 },
+  tsPatient: { color: "#6b7280", alignSelf: "flex-end", fontWeight: "600" },
   tsOther: { color: "#94a3b8" },
+  tickIcon: { marginTop: 1 },
   clearBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -803,9 +1386,9 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 8,
     paddingBottom: 2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#e2e8f0",
-    backgroundColor: CREAM,
+    marginTop: 8,
+    borderTopWidth: 0,
+    backgroundColor: "transparent",
     flexShrink: 0,
   },
   input: {
@@ -815,18 +1398,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#e2e8f0",
-    borderRadius: 20,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 19,
     color: ZINC_900,
   },
   sendFab: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: TEAL,
+    borderRadius: 14,
+    backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: TEAL,

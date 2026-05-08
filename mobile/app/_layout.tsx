@@ -55,12 +55,12 @@ const skinfitNavigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#0d9488',
-    background: '#fdf9f0',
-    card: '#ffffff',
-    text: '#18181b',
-    border: '#e2e8f0',
-    notification: '#0d9488',
+    primary: "#0d9488",
+    background: "#f8f5ef",
+    card: "#ffffff",
+    text: "#18181b",
+    border: "#e2e8f0",
+    notification: "#0d9488",
   },
 };
 
@@ -74,12 +74,20 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#fdf9f0' }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#f8f5ef" }}>
       <StatusBar style="dark" />
       <AuthProvider>
         <PushTokenSync />
         <ThemeProvider value={theme}>
-          <Stack>
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: "#ffffff" },
+              headerTitleStyle: { fontWeight: "700", color: "#0f172a" },
+              headerShadowVisible: false,
+              headerTintColor: "#0f172a",
+              contentStyle: { backgroundColor: "#f8f5ef" },
+            }}
+          >
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ title: 'Sign in' }} />
             <Stack.Screen name="signup" options={{ title: 'Create account' }} />

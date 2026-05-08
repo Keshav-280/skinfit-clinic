@@ -132,15 +132,20 @@ export default function OnboardingCaptureScreen() {
 }
 
 const styles = StyleSheet.create({
-  pad: { padding: 24, paddingBottom: 48 },
+  pad: { padding: 24, paddingBottom: 48, backgroundColor: "#f8f5ef", flexGrow: 1 },
   title: { fontSize: 22, fontWeight: "800", color: "#18181b", textAlign: "center" },
   sub: { marginTop: 10, fontSize: 14, color: "#52525b", textAlign: "center", lineHeight: 20 },
   btn: {
     marginTop: 24,
     backgroundColor: TEAL,
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 3,
   },
   dis: { opacity: 0.5 },
   btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },

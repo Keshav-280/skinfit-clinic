@@ -29,7 +29,7 @@ export default function OnboardingWelcome() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 24, paddingBottom: 48 },
+  content: { padding: 24, paddingBottom: 48, backgroundColor: "#f8f5ef" },
   kicker: {
     fontSize: 11,
     fontWeight: "800",
@@ -55,7 +55,14 @@ const styles = StyleSheet.create({
     marginTop: 24,
     minHeight: 180,
     borderRadius: 16,
-    backgroundColor: "#e4e4e7",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    elevation: 2,
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
@@ -65,8 +72,13 @@ const styles = StyleSheet.create({
     marginTop: 28,
     backgroundColor: TEAL,
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: TEAL,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 3,
   },
   btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

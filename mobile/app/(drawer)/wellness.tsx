@@ -16,7 +16,7 @@ export default function WellnessScreen() {
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
-    backgroundColor: "#fdf9f0",
+    backgroundColor: "#f8f5ef",
     justifyContent: "center",
     padding: 24,
   },

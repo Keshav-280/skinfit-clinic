@@ -147,7 +147,7 @@ function PlainRow({
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 24, paddingBottom: 48 },
+  scroll: { padding: 24, paddingBottom: 48, backgroundColor: "#f8f5ef" },
   heroGlow: {
     position: "absolute",
     top: 0,

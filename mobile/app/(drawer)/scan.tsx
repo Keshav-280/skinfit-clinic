@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 
-const TEAL = "#6B8E8E";
+const TEAL = "#0d9488";
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 
 export default function ScanScreen() {
@@ -205,7 +205,7 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#fdf9f0" },
+  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: "700", color: "#18181b", textAlign: "center" },
   sub: { fontSize: 14, color: "#52525b", textAlign: "center", marginTop: 8, lineHeight: 20 },
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   disabled: { opacity: 0.5 },
-  btnText: { fontSize: 16, fontWeight: "600", color: "#fff" },
+  btnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
   thumbGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -257,6 +257,6 @@ const styles = StyleSheet.create({
   },
   thumbCap: { fontSize: 10, color: "#52525b", marginTop: 4, textAlign: "center" },
   linkBtn: { marginTop: 12, alignItems: "center" },
-  linkText: { color: "#0d9488", fontWeight: "600", fontSize: 15 },
+  linkText: { color: "#0d9488", fontWeight: "700", fontSize: 15 },
   linkMuted: { color: "#71717a", fontWeight: "500", fontSize: 14 },
 });

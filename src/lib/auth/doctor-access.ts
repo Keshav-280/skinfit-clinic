@@ -10,6 +10,22 @@ import { verifySessionToken } from "@/src/lib/auth/session";
 const DOCTOR_FALLBACK_EMAIL = "ajaydey1946@gmail.com";
 const DOCTOR_FALLBACK_ID = "00000000-0000-0000-0000-000000000001";
 
+async function fallbackDoctorIdFromToken(): Promise<string | null> {
+  const secret = getSessionSecret();
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  if (!secret || !token) return null;
+  try {
+    const session = await verifySessionToken(token, secret);
+    const roleOk = session.role === "doctor" || session.role === "admin";
+    const emailOk = session.email === DOCTOR_FALLBACK_EMAIL;
+    const idOk = session.sub === DOCTOR_FALLBACK_ID;
+    if (roleOk && emailOk && idOk) return session.sub;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 /** Staff who may use `/doctor` portal: any doctor or admin. */
 export async function getDoctorPortalUserId(): Promise<string | null> {
   const id = await getSessionUserId();
@@ -23,21 +39,12 @@ export async function getDoctorPortalUserId(): Promise<string | null> {
     });
   } catch {
     // DB can be unavailable (e.g. Neon quota). Fall back to verified JWT claims.
-    const secret = getSessionSecret();
-    const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
-    if (!secret || !token) return null;
-    try {
-      const session = await verifySessionToken(token, secret);
-      const roleOk = session.role === "doctor" || session.role === "admin";
-      const emailOk = session.email === DOCTOR_FALLBACK_EMAIL;
-      const idOk = session.sub === DOCTOR_FALLBACK_ID;
-      if (roleOk && emailOk && idOk) return session.sub;
-    } catch {
-      return null;
-    }
-    return null;
+    return fallbackDoctorIdFromToken();
   }
-  if (!row) return null;
+  if (!row) {
+    // Fallback doctor session intentionally may not exist in DB.
+    return fallbackDoctorIdFromToken();
+  }
   if (row.role === "doctor" || row.role === "admin") return id;
   return null;
 }

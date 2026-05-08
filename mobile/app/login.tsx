@@ -48,12 +48,13 @@ export default function LoginScreen() {
   }
 
   return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
-      >
-        <View style={styles.inner}>
-          <Text style={styles.brand}>SkinnFit Clinic</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={styles.flex}
+    >
+      <View style={styles.inner}>
+        <View style={styles.card}>
+          <Text style={styles.brand}>SkinFit Clinic</Text>
           <Text style={styles.subtitle}>Patient app</Text>
 
           <TextInput
@@ -75,11 +76,7 @@ export default function LoginScreen() {
             onChangeText={setPassword}
           />
 
-          <Pressable
-            style={[styles.button, { backgroundColor: accent }]}
-            onPress={onSubmit}
-            disabled={loading}
-          >
+          <Pressable style={[styles.button, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
@@ -95,12 +92,13 @@ export default function LoginScreen() {
             </Link>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  flex: { flex: 1, backgroundColor: "#f8f5ef" },
   inner: {
     flex: 1,
     padding: 24,
@@ -109,29 +107,43 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
+  },
   brand: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 4,
     textAlign: "center",
+    color: "#18181b",
   },
   subtitle: {
     fontSize: 15,
-    opacity: 0.7,
+    color: "#64748b",
     marginBottom: 32,
     textAlign: "center",
   },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#ccc",
-    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
     fontSize: 16,
     marginBottom: 12,
+    backgroundColor: "#fff",
   },
   button: {
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 8,

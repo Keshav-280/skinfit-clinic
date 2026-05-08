@@ -44,6 +44,7 @@ export async function GET(req: Request) {
       type: appointments.type,
       doctorName: users.name,
       doctorEmail: users.email,
+      doctorSpecialty: users.primaryGoal,
       cancelReason: appointmentRequests.cancelledReason,
     })
     .from(appointments)
@@ -74,6 +75,7 @@ export async function GET(req: Request) {
       id: r.doctorId,
       name: r.doctorName,
       email: r.doctorEmail,
+      specialty: r.doctorSpecialty,
     },
     start: r.dateTime.toISOString(),
     status: r.status,

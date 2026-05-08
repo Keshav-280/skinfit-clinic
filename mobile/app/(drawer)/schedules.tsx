@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
+  addDays,
   addMonths,
   addWeeks,
   endOfWeek,
@@ -93,6 +94,15 @@ function chunkWeeks<T>(cells: T[]): T[][] {
   return rows;
 }
 
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendLabel}>{label}</Text>
+    </View>
+  );
+}
+
 export default function SchedulesScreen() {
   const { token } = useAuth();
   const [scheduleTab, setScheduleTab] = useState<"treatment" | "appointments">("appointments");
@@ -113,6 +123,9 @@ export default function SchedulesScreen() {
   const [visitIssue, setVisitIssue] = useState("Skin concern");
   const [visitDaysAffected, setVisitDaysAffected] = useState("");
   const [visitTimes, setVisitTimes] = useState("");
+  const [visitNotes, setVisitNotes] = useState("");
+  const [visitWindow, setVisitWindow] = useState<"morning" | "afternoon" | "evening">("morning");
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [visitBusy, setVisitBusy] = useState(false);
 
   const calendarCells = useMemo(
@@ -185,6 +198,13 @@ export default function SchedulesScreen() {
         : eventsInWeek(activeCalendarEvents, currentDate),
     [view, activeCalendarEvents, currentDate]
   );
+  const featuredUpcoming = useMemo(
+    () =>
+      appointmentCalendarEvents.find(
+        (e) => !e.completed && !e.cancelled && !String(e.id).startsWith("req:")
+      ) ?? null,
+    [appointmentCalendarEvents]
+  );
 
   const handlePrev = () =>
     view === "month"
@@ -207,12 +227,14 @@ export default function SchedulesScreen() {
 
   async function submitVisitRequest() {
     if (!token || !visitRequestYmd) return;
-    const issue = visitIssue.trim();
+    const issue = (visitIssue.trim() || "Appointment request").trim();
     if (issue.length < 2) {
       Alert.alert("Request", "Please describe your issue.");
       return;
     }
-    const t = visitTimes.trim();
+    const notes = visitNotes.trim();
+    const tRaw = (visitTimes.trim() || selectedSlots.join(", ")).trim();
+    const t = notes ? `${tRaw}${tRaw ? " | " : ""}Notes: ${notes}` : tRaw;
     if (t.length < 2) {
       Alert.alert("Request", "Add your preferred times or availability.");
       return;
@@ -245,6 +267,9 @@ export default function SchedulesScreen() {
       setVisitIssue("Skin concern");
       setVisitDaysAffected("");
       setVisitTimes("");
+      setVisitNotes("");
+      setVisitWindow("morning");
+      setSelectedSlots([]);
       await loadBootstrap();
     } catch (e) {
       Alert.alert("Request", e instanceof Error ? e.message : "Failed.");
@@ -252,6 +277,25 @@ export default function SchedulesScreen() {
       setVisitBusy(false);
     }
   }
+
+  const slotOptions: Record<"morning" | "afternoon" | "evening", string[]> = {
+    morning: ["9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"],
+    afternoon: ["12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM"],
+    evening: ["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM"],
+  };
+
+  function toggleSlot(slot: string) {
+    setSelectedSlots((prev) => {
+      const next = prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot];
+      setVisitTimes(next.join(", "));
+      return next;
+    });
+  }
+
+  const requestDateStrip = useMemo(() => {
+    const start = startOfWeek(new Date(), WEEK_OPTS);
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, []);
 
   const cellMinH = view === "week" ? 128 : 72;
 
@@ -279,7 +323,26 @@ export default function SchedulesScreen() {
                 {getDate(day)}
               </Text>
             </View>
-            {cellEvents.map((event) => {
+            {scheduleTab === "appointments" ? (
+              <View style={styles.appointmentDotsRow}>
+                {cellEvents
+                  .slice(0, 2)
+                  .map((event) => {
+                    const isPending = event.id.startsWith("req:");
+                    const isDone = event.completed;
+                    const isGuideline =
+                      event.eventKind === "pre_treatment" ||
+                      event.eventKind === "post_treatment" ||
+                      /guideline/i.test(event.title);
+                    let color = "#1e3a8a";
+                    if (isDone) color = "#16a34a";
+                    else if (isPending) color = "#d97706";
+                    else if (isGuideline) color = "#1d4ed8";
+                    return <View key={event.id} style={[styles.eventDot, { backgroundColor: color }]} />;
+                  })}
+              </View>
+            ) : (
+              cellEvents.map((event) => {
                   const timeLabel = formatEventTimeChip(
                     event.eventTimeHm,
                     event.eventSlotEndTimeHm
@@ -388,7 +451,8 @@ export default function SchedulesScreen() {
                       ) : null}
                     </View>
                   );
-            })}
+              })
+            )}
           </>
         ) : null;
 
@@ -507,6 +571,14 @@ export default function SchedulesScreen() {
             </View>
           ))}
         </View>
+        {scheduleTab === "appointments" ? (
+          <View style={styles.legendRow}>
+            <LegendDot color="#1e3a8a" label="Upcoming" />
+            <LegendDot color="#16a34a" label="Completed" />
+            <LegendDot color="#d97706" label="Requested" />
+            <LegendDot color="#1d4ed8" label="Guidelines" />
+          </View>
+        ) : null}
 
         <View style={styles.listSection}>
           <Text style={styles.listSectionLabel}>
@@ -632,8 +704,11 @@ export default function SchedulesScreen() {
         />
       }
     >
-      <Text style={styles.h1}>Schedules & tasks</Text>
-      <Text style={styles.sub}>Stay on top of your skincare journey.</Text>
+      <View style={styles.heroCard}>
+        <Text style={styles.heroKicker}>SKINFIT PLANNER</Text>
+        <Text style={styles.h1}>Schedules & tasks</Text>
+        <Text style={styles.sub}>Stay on top of your skincare journey.</Text>
+      </View>
       {error ? <Text style={styles.err}>{error}</Text> : null}
 
       <View style={styles.tabs}>
@@ -660,8 +735,74 @@ export default function SchedulesScreen() {
           </Text>
         </Pressable>
       </View>
+      {scheduleTab === "appointments" ? (
+        <View style={styles.crmCard}>
+          <View style={styles.crmIcon}>
+            <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.crmTitle}>Linked with CRM</Text>
+            <Text style={styles.crmBody}>
+              Your appointments and guidelines, synced in real-time.
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {renderCalendarGrid()}
+      {scheduleTab === "appointments" ? (
+        <>
+          <View style={styles.featureCard}>
+            <View style={styles.featureTopRow}>
+              <Text style={styles.upcomingPill}>Upcoming</Text>
+              <Ionicons name="chevron-forward" size={24} color="#0ea5e9" />
+            </View>
+            <Text style={styles.featureTitle}>{featuredUpcoming?.title ?? "Skin Consultation"}</Text>
+            <Text style={styles.featureDoctor}>Dr. Rhea Sharma</Text>
+            <Text style={styles.featureDoctorSub}>MD Dermatology</Text>
+            <View style={styles.featureTimeRow}>
+              <View style={styles.datePill}>
+                <Text style={styles.datePillDay}>
+                  {featuredUpcoming
+                    ? format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")
+                    : "Fri"}
+                </Text>
+                <Text style={styles.datePillDate}>
+                  {featuredUpcoming ? format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd") : "17"}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.featureTime}>
+                  {featuredUpcoming
+                    ? formatScheduleWhen(
+                        featuredUpcoming.eventDateYmd,
+                        featuredUpcoming.eventTimeHm,
+                        featuredUpcoming.eventSlotEndTimeHm
+                      )
+                    : "11:00 AM - 11:30 AM"}
+                </Text>
+                <Text style={styles.featureLoc}>HSR Clinic, Bengaluru</Text>
+              </View>
+            </View>
+          </View>
+          <Pressable
+            style={styles.requestCard}
+            onPress={() => {
+              const ymd = localYmd(new Date());
+              setVisitRequestYmd(ymd);
+              setVisitNotes("");
+              setVisitRequestOpen(true);
+            }}
+          >
+            <Ionicons name="calendar-outline" size={28} color="#fff" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.requestCardTitle}>Request an Appointment</Text>
+              <Text style={styles.requestCardSub}>Pick a date & share your preferred time slots.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={26} color="#fff" />
+          </Pressable>
+        </>
+      ) : null}
 
       <Modal
         visible={visitRequestOpen}
@@ -670,33 +811,88 @@ export default function SchedulesScreen() {
         onRequestClose={() => {
           setVisitRequestOpen(false);
           setVisitRequestYmd(null);
+          setVisitNotes("");
+          setVisitWindow("morning");
+          setSelectedSlots([]);
         }}
       >
         <View style={styles.modalBg}>
           <View style={styles.modalCard}>
-            <Text style={styles.h1}>Request a visit</Text>
+            <Text style={styles.requestTitle}>Request Appointment</Text>
             <Text style={styles.muted}>
               {visitRequestYmd
                 ? format(parseLocalYmd(visitRequestYmd), "EEEE, MMM d, yyyy")
                 : ""}
             </Text>
-            <Text style={styles.label}>What should we know? (issue)</Text>
-            <TextInput style={styles.input} value={visitIssue} onChangeText={setVisitIssue} />
-            <Text style={styles.label}>Days affected (optional)</Text>
+            <View style={styles.reqDateStrip}>
+              {requestDateStrip.map((d) => {
+                const ymd = localYmd(d);
+                const selected = visitRequestYmd === ymd;
+                const hasEvent = getCellEvents(d, appointmentCalendarEvents).length > 0;
+                return (
+                  <Pressable
+                    key={ymd}
+                    onPress={() => setVisitRequestYmd(ymd)}
+                    style={[styles.reqDateChip, selected && styles.reqDateChipOn]}
+                  >
+                    <Text style={selected ? styles.reqDateDowOn : styles.reqDateDow}>
+                      {format(d, "EEE")}
+                    </Text>
+                    <Text style={selected ? styles.reqDateNumOn : styles.reqDateNum}>
+                      {format(d, "dd")}
+                    </Text>
+                    {hasEvent ? (
+                      <View style={[styles.reqDateDot, selected && styles.reqDateDotOn]} />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.labelBig}>Choose new time</Text>
+            <View style={styles.windowTabs}>
+              {(["morning", "afternoon", "evening"] as const).map((w) => (
+                <Pressable
+                  key={w}
+                  onPress={() => setVisitWindow(w)}
+                  style={[styles.windowTab, visitWindow === w && styles.windowTabOn]}
+                >
+                  <Text style={visitWindow === w ? styles.windowTabOnText : styles.windowTabText}>
+                    {w.charAt(0).toUpperCase() + w.slice(1)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.slotGrid}>
+              {slotOptions[visitWindow].map((slot) => {
+                const on = selectedSlots.includes(slot);
+                return (
+                  <Pressable
+                    key={slot}
+                    onPress={() => toggleSlot(slot)}
+                    style={[styles.slotChip, on && styles.slotChipOn]}
+                  >
+                    <Text style={on ? styles.slotChipOnText : styles.slotChipText}>{slot}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={styles.noteBox}>
+              <Ionicons name="information-circle" size={20} color="#1e3a8a" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.noteTitle}>Please note</Text>
+                <Text style={styles.noteBody}>
+                  Requests are subject to clinic confirmation.
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.label}>Add notes (optional)</Text>
             <TextInput
-              style={styles.input}
-              value={visitDaysAffected}
-              onChangeText={setVisitDaysAffected}
-              keyboardType="number-pad"
-              placeholder="e.g. 7"
-            />
-            <Text style={styles.label}>Preferred times / availability</Text>
-            <TextInput
-              style={[styles.input, { minHeight: 72 }]}
+              style={[styles.input, { minHeight: 76 }]}
               multiline
-              value={visitTimes}
-              onChangeText={setVisitTimes}
-              placeholder="e.g. weekday mornings"
+              value={visitNotes}
+              onChangeText={setVisitNotes}
+              placeholder="Any symptoms, constraints, or preference for your doctor"
+              placeholderTextColor="#9ca3af"
             />
             <View style={styles.modalActions}>
               <Pressable
@@ -704,12 +900,15 @@ export default function SchedulesScreen() {
                 onPress={() => {
                   setVisitRequestOpen(false);
                   setVisitRequestYmd(null);
+                  setVisitNotes("");
+                  setVisitWindow("morning");
+                  setSelectedSlots([]);
                 }}
               >
-                <Text>Cancel</Text>
+                <Text style={styles.btnGhostTextStrong}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={styles.btnPrimary}
+                style={[styles.btnPrimary, visitBusy && { opacity: 0.6 }]}
                 onPress={() => void submitVisitRequest()}
                 disabled={visitBusy}
               >
@@ -724,30 +923,86 @@ export default function SchedulesScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#fdf9f0" },
+  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
   content: { padding: 16, paddingBottom: 48 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fdf9f0" },
-  h1: { fontSize: 22, fontWeight: "700", textAlign: "center", color: "#18181b" },
-  sub: { textAlign: "center", color: "#52525b", marginTop: 6, marginBottom: 12 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8f5ef" },
+  heroCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  heroKicker: {
+    fontSize: 10,
+    letterSpacing: 1.3,
+    textAlign: "center",
+    color: "#0f766e",
+    fontWeight: "800",
+  },
+  h1: { fontSize: 25, fontWeight: "800", textAlign: "center", color: "#18181b", marginTop: 6 },
+  sub: { textAlign: "center", color: "#52525b", marginTop: 6, marginBottom: 2, fontSize: 14 },
   err: { color: "#b91c1c", marginBottom: 8, textAlign: "center" },
-  tabs: { flexDirection: "row", gap: 8, marginVertical: 12 },
+  tabs: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+    marginBottom: 14,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 4,
     borderRadius: 12,
-    backgroundColor: "#e4e4e7",
+    backgroundColor: "#f4f4f5",
     alignItems: "center",
     justifyContent: "center",
     minWidth: 0,
   },
-  tabOn: { backgroundColor: "#ccfbf1" },
+  tabOn: {
+    backgroundColor: "#ccfbf1",
+    borderWidth: 1,
+    borderColor: "rgba(13, 148, 136, 0.35)",
+  },
   tabText: { fontWeight: "600", color: "#52525b", fontSize: 14, textAlign: "center" },
-  tabTextOn: { fontWeight: "700", color: "#0f766e", fontSize: 14, textAlign: "center" },
+  tabTextOn: { fontWeight: "800", color: "#0f766e", fontSize: 14, textAlign: "center" },
+  crmCard: {
+    marginBottom: 12,
+    borderRadius: 20,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    padding: 16,
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  crmIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#dcfce7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  crmTitle: { fontSize: 18, fontWeight: "700", color: "#2a2a2a" },
+  crmBody: { marginTop: 6, fontSize: 14, color: "#71717a", lineHeight: 20 },
   muted: { color: "#71717a", fontSize: 14, marginBottom: 8 },
   mutedCenter: { color: "#71717a", fontSize: 14, textAlign: "center", paddingVertical: 8 },
   calCard: {
-    marginTop: 20,
+    marginTop: 8,
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#e2e8f0",
@@ -759,6 +1014,18 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
     overflow: "hidden",
+  },
+  appointmentDotsRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 3,
+    minHeight: 8,
+    marginBottom: 2,
+  },
+  eventDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
   },
   calCardHead: { marginBottom: 4 },
   calCardHeadText: { flex: 1, minWidth: 0 },
@@ -931,6 +1198,75 @@ const styles = StyleSheet.create({
   },
   eventPhotoHint: { fontSize: 9, color: "#64748b", marginTop: 2 },
   eventDoneTag: { fontSize: 8, fontWeight: "700", color: "#0369a1", marginTop: 2, textTransform: "uppercase" },
+  legendRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e4e4e7",
+    marginTop: 12,
+    paddingTop: 10,
+  },
+  legendDot: { width: 10, height: 10, borderRadius: 999, marginTop: 4 },
+  legendLabel: { fontSize: 12, color: "#3f3f46", fontWeight: "600" },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  featureCard: {
+    marginTop: 14,
+    borderRadius: 20,
+    backgroundColor: "#f8faf8",
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  featureTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  upcomingPill: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#16a34a",
+    borderWidth: 1,
+    borderColor: "#16a34a",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  featureTitle: { marginTop: 14, fontSize: 17, fontWeight: "700", color: "#2c2c2c" },
+  featureDoctor: { marginTop: 8, fontSize: 14, fontWeight: "700", color: "#2f2f2f" },
+  featureDoctorSub: { marginTop: 2, fontSize: 12, color: "#71717a" },
+  featureTimeRow: { marginTop: 14, flexDirection: "row", gap: 14, alignItems: "center" },
+  datePill: {
+    width: 78,
+    height: 88,
+    borderRadius: 18,
+    backgroundColor: "#262b74",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  datePillDay: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  datePillDate: { color: "#fff", fontSize: 26, fontWeight: "700", marginTop: 2 },
+  featureTime: { fontSize: 16, fontWeight: "700", color: "#2f2f2f" },
+  featureLoc: { marginTop: 4, fontSize: 13, color: "#71717a" },
+  requestCard: {
+    marginTop: 14,
+    borderRadius: 20,
+    padding: 18,
+    backgroundColor: "#272d77",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 12,
+    shadowColor: "#272d77",
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+  requestCardTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  requestCardSub: { color: "rgba(255,255,255,0.9)", fontSize: 13, marginTop: 4, lineHeight: 20 },
   listSection: {
     marginTop: 16,
     paddingTop: 16,
@@ -1037,6 +1373,74 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 36,
   },
+  requestTitle: { fontSize: 22, fontWeight: "800", color: "#18181b", textAlign: "center" },
+  reqDateStrip: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f9fafb",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    padding: 8,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  reqDateChip: {
+    width: "13.2%",
+    minWidth: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    paddingVertical: 7,
+  },
+  reqDateChipOn: { backgroundColor: "#262b74" },
+  reqDateDow: { fontSize: 10, color: "#6b7280", fontWeight: "700" },
+  reqDateDowOn: { fontSize: 10, color: "#c7d2fe", fontWeight: "700" },
+  reqDateNum: { fontSize: 16, color: "#111827", fontWeight: "700", marginTop: 2 },
+  reqDateNumOn: { fontSize: 16, color: "#fff", fontWeight: "800", marginTop: 2 },
+  reqDateDot: { width: 5, height: 5, borderRadius: 999, backgroundColor: "#1d4ed8", marginTop: 4 },
+  reqDateDotOn: { backgroundColor: "#22c55e" },
+  labelBig: { fontSize: 17, fontWeight: "700", color: "#18181b", marginTop: 8, marginBottom: 10 },
+  windowTabs: {
+    flexDirection: "row",
+    backgroundColor: "#f4f4f5",
+    borderRadius: 14,
+    padding: 4,
+    gap: 4,
+  },
+  windowTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 10,
+  },
+  windowTabOn: { backgroundColor: "#e4e4e7" },
+  windowTabText: { color: "#52525b", fontWeight: "600", fontSize: 16 },
+  windowTabOnText: { color: "#1e3a8a", fontWeight: "700", fontSize: 16 },
+  slotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 },
+  slotChip: {
+    width: "31%",
+    minWidth: 95,
+    backgroundColor: "#f4f4f5",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  slotChipOn: { backgroundColor: "#16a34a" },
+  slotChipText: { color: "#3f3f46", fontWeight: "600", fontSize: 14 },
+  slotChipOnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  noteBox: {
+    marginTop: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    backgroundColor: "#fafafa",
+    padding: 14,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+  noteTitle: { fontSize: 16, fontWeight: "700", color: "#1e3a8a" },
+  noteBody: { marginTop: 4, fontSize: 14, color: "#52525b", lineHeight: 20 },
   label: { fontSize: 13, color: "#52525b", marginTop: 10, marginBottom: 4 },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -1047,6 +1451,7 @@ const styles = StyleSheet.create({
   },
   modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 20 },
   btnGhost: { padding: 12 },
+  btnGhostTextStrong: { fontSize: 15, fontWeight: "700", color: "#52525b" },
   btnPrimary: { backgroundColor: "#0d9488", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   btnPrimaryText: { color: "#fff", fontWeight: "700" },
 });
