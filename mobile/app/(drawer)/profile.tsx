@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import {
   fetchAndCachePhoto,
+  getCachedPhoto,
   pickAndUploadPhoto,
   captureAndUploadPhoto,
 } from "@/lib/profilePhoto";
@@ -149,7 +150,7 @@ export default function ProfileScreen() {
   const [homeData, setHomeData] = useState<HomePayload | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const STALE_MS = 2 * 60 * 1000; // 2 minutes
+  const STALE_MS = 10 * 60 * 1000; // 10 minutes
   const CK_PROFILE = "profile";
   const CK_SKIN = "skin-profile";
   const CK_MONTHLY = "monthly-insight";
@@ -192,17 +193,19 @@ export default function ProfileScreen() {
       (async () => {
         // 1. Restore cached data instantly (only on first mount or if state is empty)
         if (!hydrated.current) {
-          const [cp, cs, cm, ch] = await Promise.all([
+          const [cp, cs, cm, ch, cachedPhoto] = await Promise.all([
             getCached<ProfileUser>(CK_PROFILE),
             getCached<SkinProfilePayload>(CK_SKIN),
             getCached<MonthlyInsightPayload>(CK_MONTHLY),
             getCached<HomePayload>(CK_HOME),
+            getCachedPhoto(),
           ]);
           if (cancelled) return;
           if (cp) { applyProfile(cp); setLoading(false); }
           if (cs) setSkinExtra(cs);
           if (cm) setMonthlyInsight(cm);
           if (ch) setHomeData(ch);
+          if (cachedPhoto) setPhotoUri(cachedPhoto);
           hydrated.current = true;
         }
 

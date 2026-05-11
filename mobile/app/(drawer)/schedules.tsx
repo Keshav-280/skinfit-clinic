@@ -136,10 +136,18 @@ export default function SchedulesScreen() {
   );
 
   const appointmentCalendarEvents = useMemo(() => {
+    const cancelledApptDates = new Set(
+      appointmentEvents
+        .filter((e) => e.cancelled)
+        .map((e) => e.eventDateYmd)
+    );
+    const filteredClosed = closedRequests.filter(
+      (r) => !cancelledApptDates.has(r.preferredDateYmd)
+    );
     return [
       ...appointmentEvents,
       ...pendingToSyntheticEvents(pendingRequests),
-      ...closedToSynthetic(closedRequests),
+      ...closedToSynthetic(filteredClosed),
     ].sort(compareScheduleEvents);
   }, [appointmentEvents, pendingRequests, closedRequests]);
 
@@ -345,13 +353,15 @@ export default function SchedulesScreen() {
                   .slice(0, 2)
                   .map((event) => {
                     const isPending = event.id.startsWith("req:");
+                    const isCancelled = event.cancelled === true;
                     const isDone = event.completed;
                     const isGuideline =
                       event.eventKind === "pre_treatment" ||
                       event.eventKind === "post_treatment" ||
                       /guideline/i.test(event.title);
                     let color = "#2B3A67";
-                    if (isDone) color = "#16a34a";
+                    if (isCancelled) color = "#dc2626";
+                    else if (isDone) color = "#16a34a";
                     else if (isPending) color = "#d97706";
                     else if (isGuideline) color = "#7c3aed";
                     return <View key={event.id} style={[styles.eventDot, { backgroundColor: color }]} />;
@@ -368,23 +378,42 @@ export default function SchedulesScreen() {
                   const done = event.completed;
 
                   if (scheduleTab === "treatment") {
+                    const isPre = event.eventKind === "pre_treatment";
+                    const isPost = event.eventKind === "post_treatment";
+                    const kindChipStyle = done
+                      ? styles.eventChipDone
+                      : isPre
+                        ? styles.eventChipPre
+                        : isPost
+                          ? styles.eventChipPost
+                          : styles.eventChipOpen;
+                    const kindTimeStyle = done
+                      ? styles.eventChipTimeDone
+                      : isPre
+                        ? styles.eventChipTimePre
+                        : isPost
+                          ? styles.eventChipTimePost
+                          : styles.eventChipTimeOpen;
+                    const kindTitleStyle = done
+                      ? styles.eventChipTitleDone
+                      : isPre
+                        ? styles.eventChipTitlePre
+                        : isPost
+                          ? styles.eventChipTitlePost
+                          : styles.eventChipTitleOpen;
                     return (
                       <View
                         key={event.id}
-                        style={[styles.eventChip, done ? styles.eventChipDone : styles.eventChipOpen]}
+                        style={[styles.eventChip, kindChipStyle]}
                       >
-                        {event.eventKind === "pre_treatment" ||
-                        event.eventKind === "post_treatment" ? (
-                          <Text style={styles.eventKindBadge}>
-                            {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+                        {(isPre || isPost) ? (
+                          <Text style={[styles.eventKindBadge, isPre ? styles.eventKindBadgePre : styles.eventKindBadgePost]}>
+                            {isPre ? "Pre" : "Post"}
                           </Text>
                         ) : null}
                         {timeLabel ? (
                           <Text
-                            style={[
-                              styles.eventChipTime,
-                              done ? styles.eventChipTimeDone : styles.eventChipTimeOpen,
-                            ]}
+                            style={[styles.eventChipTime, kindTimeStyle]}
                             numberOfLines={1}
                           >
                             {timeLabel}
@@ -392,10 +421,7 @@ export default function SchedulesScreen() {
                         ) : null}
                         <Text
                           numberOfLines={view === "month" ? 2 : 4}
-                          style={[
-                            styles.eventChipTitle,
-                            done ? styles.eventChipTitleDone : styles.eventChipTitleOpen,
-                          ]}
+                          style={[styles.eventChipTitle, kindTitleStyle]}
                         >
                           {event.title}
                         </Text>
@@ -593,6 +619,7 @@ export default function SchedulesScreen() {
             <LegendDot color="#2B3A67" label="Upcoming" />
             <LegendDot color="#16a34a" label="Completed" />
             <LegendDot color="#d97706" label="Requested" />
+            <LegendDot color="#dc2626" label="Cancelled" />
             <LegendDot color="#7c3aed" label="Guidelines" />
           </View>
         ) : null}
@@ -1212,6 +1239,8 @@ const styles = StyleSheet.create({
   cellDayNumToday: { fontWeight: "800", color: "#2B3A67" },
   eventChip: { marginTop: 4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 },
   eventChipOpen: { backgroundColor: "rgba(232, 238, 246, 0.95)", borderWidth: 1, borderColor: "rgba(43, 58, 103, 0.3)" },
+  eventChipPre: { backgroundColor: "rgba(219, 234, 254, 0.95)", borderWidth: 1, borderColor: "rgba(30, 64, 175, 0.45)" },
+  eventChipPost: { backgroundColor: "rgba(237, 233, 254, 0.95)", borderWidth: 1, borderColor: "rgba(109, 40, 217, 0.45)" },
   eventChipDone: { backgroundColor: "rgba(224, 242, 254, 0.95)", borderWidth: 1, borderColor: "rgba(14, 165, 233, 0.35)" },
   eventChipPending: {
     backgroundColor: "rgba(254, 243, 199, 0.95)",
@@ -1230,12 +1259,16 @@ const styles = StyleSheet.create({
   },
   eventChipTime: { fontSize: 10, fontWeight: "700" },
   eventChipTimeOpen: { color: "#2B3A67" },
+  eventChipTimePre: { color: "#1e3a8a" },
+  eventChipTimePost: { color: "#5b21b6" },
   eventChipTimeDone: { color: "#0c4a6e" },
   eventChipTimePending: { color: "#b45309" },
   eventChipTimeConfirmed: { color: "#2B3A67" },
   eventChipTimeCancelled: { color: "#52525b" },
   eventChipTitle: { fontSize: 10, fontWeight: "600" },
   eventChipTitleOpen: { color: "#2B3A67" },
+  eventChipTitlePre: { color: "#1e3a8a" },
+  eventChipTitlePost: { color: "#5b21b6" },
   eventChipTitleDone: { color: "#0c4a6e" },
   eventChipTitlePending: { color: "#92400e" },
   eventChipTitleConfirmed: { color: "#2B3A67" },
@@ -1246,6 +1279,12 @@ const styles = StyleSheet.create({
     color: "#2B3A67",
     marginBottom: 2,
     textTransform: "uppercase",
+  },
+  eventKindBadgePre: {
+    color: "#1e3a8a",
+  },
+  eventKindBadgePost: {
+    color: "#5b21b6",
   },
   eventClinicNote: { fontSize: 9, color: "#475569", marginTop: 2 },
   eventCancelReason: { fontSize: 9, color: "#b91c1c", marginTop: 2 },

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -12,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
@@ -79,7 +81,7 @@ export default function NotificationsScreen() {
       if (t) {
         Alert.alert(
           "Notifications on",
-          "You’ll get alerts for clinic chat and new doctor voice notes (including audio on your scan reports)."
+          "You'll get alerts for clinic chat and new doctor voice notes (including audio on your scan reports)."
         );
       }
     } finally {
@@ -112,132 +114,189 @@ export default function NotificationsScreen() {
     }
   }
 
+  const totalUnread = supportCount + doctorCount + voiceNoteGeneralCount + voiceNoteReportCount;
+  const insets = useSafeAreaInsets();
+
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Notifications</Text>
-      <Text style={styles.sub}>Clinic messages and optional push alerts.</Text>
+    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={{ flex: 1 }}>
+    <ScrollView style={s.scroll} contentContainerStyle={[s.content, { paddingTop: insets.top + 16 }]}>
+      <View style={s.header}>
+        <View style={s.bellWrap}>
+          <Ionicons name="notifications" size={30} color="#2B3A67" />
+          {totalUnread > 0 && (
+            <View style={s.badge}>
+              <Text style={s.badgeText}>{totalUnread > 9 ? "9+" : totalUnread}</Text>
+            </View>
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.title}>Notifications</Text>
+          <Text style={s.subtitle}>
+            {totalUnread > 0
+              ? `${totalUnread} unread notification${totalUnread > 1 ? "s" : ""}`
+              : "You're all caught up!"}
+          </Text>
+        </View>
+      </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} color="#0d9488" />
+        <ActivityIndicator style={{ marginTop: 32 }} size="large" color="#2B3A67" />
       ) : (
         <>
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push("/(drawer)/chat")}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: "rgba(13, 148, 136, 0.12)" }]}>
+          {totalUnread > 0 && (
+            <>
+              <Text style={s.sectionLabel}>New activity</Text>
+
+              {(supportCount > 0 || doctorCount > 0) && (
+                <Pressable style={s.card} onPress={() => router.push("/(drawer)/chat")}>
+                  <View style={[s.iconCircle, { backgroundColor: "#ccfbf1" }]}>
+                    <Ionicons name="chatbubbles" size={22} color="#0d9488" />
+                  </View>
+                  <View style={s.cardBody}>
+                    <View style={s.cardTitleRow}>
+                      <Text style={s.cardTitle}>Chat with clinic</Text>
+                      <View style={s.countBadge}>
+                        <Text style={s.countBadgeText}>{supportCount + doctorCount}</Text>
+                      </View>
+                    </View>
+                    <Text style={s.cardSub}>
+                      {supportCount + doctorCount} unread from the care team
+                    </Text>
+                    <Text style={s.cardMeta}>
+                      {supportCount > 0 ? `Support: ${supportCount}` : ""}
+                      {supportCount > 0 && doctorCount > 0 ? "  ·  " : ""}
+                      {doctorCount > 0 ? `Doctor: ${doctorCount}` : ""}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                </Pressable>
+              )}
+
+              {voiceNoteGeneralCount > 0 && (
+                <Pressable
+                  style={s.card}
+                  onPress={() => {
+                    void (async () => {
+                      await markVoiceViewed("dashboard");
+                      void load();
+                      router.push("/(drawer)" as Href);
+                    })();
+                  }}
+                >
+                  <View style={[s.iconCircle, { backgroundColor: "#dbeafe" }]}>
+                    <Ionicons name="mic" size={22} color="#1d4ed8" />
+                  </View>
+                  <View style={s.cardBody}>
+                    <View style={s.cardTitleRow}>
+                      <Text style={s.cardTitle}>Doctor voice note</Text>
+                      <View style={[s.countBadge, { backgroundColor: "#dbeafe" }]}>
+                        <Text style={[s.countBadgeText, { color: "#1d4ed8" }]}>New</Text>
+                      </View>
+                    </View>
+                    <Text style={s.cardSub}>
+                      New audio in the Voice notes section on your dashboard.
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                </Pressable>
+              )}
+
+              {voiceNoteReportCount > 0 && (
+                <Pressable
+                  style={s.card}
+                  onPress={() => {
+                    void (async () => {
+                      await markVoiceViewed("report");
+                      void load();
+                      router.push("/(drawer)/history");
+                    })();
+                  }}
+                >
+                  <View style={[s.iconCircle, { backgroundColor: "#ede9fe" }]}>
+                    <Ionicons name="document-text" size={22} color="#6d28d9" />
+                  </View>
+                  <View style={s.cardBody}>
+                    <View style={s.cardTitleRow}>
+                      <Text style={s.cardTitle}>Audio on scan report</Text>
+                      <View style={[s.countBadge, { backgroundColor: "#ede9fe" }]}>
+                        <Text style={[s.countBadgeText, { color: "#6d28d9" }]}>New</Text>
+                      </View>
+                    </View>
+                    <Text style={s.cardSub}>
+                      Open Treatment history → Audio notes to listen.
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                </Pressable>
+              )}
+            </>
+          )}
+
+          <Text style={s.sectionLabel}>Quick access</Text>
+
+          <Pressable style={s.card} onPress={() => router.push("/(drawer)/chat")}>
+            <View style={[s.iconCircle, { backgroundColor: "#ccfbf1" }]}>
               <Ionicons name="chatbubbles-outline" size={22} color="#0d9488" />
             </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardTitle}>Chat with clinic</Text>
-              <Text style={styles.cardSub}>
+            <View style={s.cardBody}>
+              <Text style={s.cardTitle}>Chat with clinic</Text>
+              <Text style={s.cardSub}>
                 {supportCount + doctorCount === 0
                   ? "No unread messages from Support or your doctor."
                   : `${supportCount + doctorCount} unread from the care team.`}
               </Text>
-              {(supportCount > 0 || doctorCount > 0) && (
-                <Text style={styles.cardMeta}>
-                  {supportCount > 0 ? `Support: ${supportCount}` : ""}
-                  {supportCount > 0 && doctorCount > 0 ? " · " : ""}
-                  {doctorCount > 0 ? `Doctor chat: ${doctorCount}` : ""}
-                </Text>
-              )}
             </View>
             <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
           </Pressable>
 
-          {voiceNoteGeneralCount > 0 ? (
-            <Pressable
-              style={styles.card}
-              onPress={() => {
-                void (async () => {
-                  await markVoiceViewed("dashboard");
-                  void load();
-                  router.push("/(drawer)" as Href);
-                })();
-              }}
-            >
-              <View style={[styles.iconCircle, { backgroundColor: "rgba(14, 165, 233, 0.15)" }]}>
-                <Ionicons name="mic-outline" size={22} color="#0369a1" />
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>Doctor voice (home)</Text>
-                <Text style={styles.cardSub}>
-                  New audio in the Voice notes section on your dashboard.
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
-            </Pressable>
-          ) : null}
-
-          {voiceNoteReportCount > 0 ? (
-            <Pressable
-              style={styles.card}
-              onPress={() => {
-                void (async () => {
-                  await markVoiceViewed("report");
-                  void load();
-                  router.push("/(drawer)/history");
-                })();
-              }}
-            >
-              <View style={[styles.iconCircle, { backgroundColor: "rgba(139, 92, 246, 0.15)" }]}>
-                <Ionicons name="document-text-outline" size={22} color="#6d28d9" />
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>Audio on scan report</Text>
-                <Text style={styles.cardSub}>
-                  Open Treatment history → Audio notes to listen.
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
-            </Pressable>
-          ) : null}
-
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push("/(drawer)/schedules")}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: "rgba(37, 99, 235, 0.1)" }]}>
-              <Ionicons name="calendar-outline" size={22} color="#2563eb" />
+          <Pressable style={s.card} onPress={() => router.push("/(drawer)/schedules")}>
+            <View style={[s.iconCircle, { backgroundColor: "#e8eef6" }]}>
+              <Ionicons name="calendar" size={22} color="#2B3A67" />
             </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardTitle}>Schedules & calendar</Text>
-              <Text style={styles.cardSub}>
-                Your appointments and calendar.
-              </Text>
+            <View style={s.cardBody}>
+              <Text style={s.cardTitle}>Schedules & calendar</Text>
+              <Text style={s.cardSub}>Your appointments and calendar.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
           </Pressable>
 
           {Platform.OS !== "web" ? (
-            <View style={styles.pushSection}>
-              <Text style={styles.pushTitle}>Outside the app</Text>
-              <Text style={styles.pushSub}>
-                Allow push notifications for chat messages and doctor voice notes (including report
-                audio), even if SkinnFit isn’t open.
-              </Text>
-              <View style={styles.pushRow}>
+            <View style={s.pushSection}>
+              <View style={s.pushHeaderRow}>
+                <View style={s.pushIconWrap}>
+                  <Ionicons name="phone-portrait-outline" size={18} color="#2B3A67" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.pushTitle}>Push notifications</Text>
+                  <Text style={s.pushSub}>
+                    Get notified even when the app is closed.
+                  </Text>
+                </View>
+              </View>
+              <View style={s.pushRow}>
                 <Pressable
-                  style={[styles.pushBtn, styles.pushBtnPrimary]}
+                  style={[s.pushBtn, s.pushBtnPrimary]}
                   onPress={() => void onEnablePush()}
                   disabled={pushBusy}
                 >
                   {pushBusy ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.pushBtnPrimaryText}>Enable push alerts</Text>
+                    <>
+                      <Ionicons name="notifications-outline" size={16} color="#fff" />
+                      <Text style={s.pushBtnPrimaryText}>Enable push alerts</Text>
+                    </>
                   )}
                 </Pressable>
                 <Pressable
-                  style={[styles.pushBtn, styles.pushBtnGhost]}
+                  style={[s.pushBtn, s.pushBtnGhost]}
                   onPress={() => void onDisablePush()}
                   disabled={pushBusy}
                 >
-                  <Text style={styles.pushBtnGhostText}>Turn off</Text>
+                  <Text style={s.pushBtnGhostText}>Turn off</Text>
                 </Pressable>
               </View>
-              <Text style={styles.pushHint}>
+              <Text style={s.pushHint}>
                 Release builds need an EAS project ID in app config for Expo to issue a device token.
               </Text>
             </View>
@@ -245,63 +304,129 @@ export default function NotificationsScreen() {
         </>
       )}
     </ScrollView>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
-  content: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: "800", color: "#18181b" },
-  sub: { fontSize: 14, color: "#64748b", marginTop: 6, lineHeight: 20 },
+const s = StyleSheet.create({
+  scroll: { flex: 1 },
+  content: { padding: 20, paddingBottom: 48 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 4,
+  },
+  bellWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: "#e8eef6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#ef4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: "#E8EFE6",
+  },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  title: { fontSize: 22, fontWeight: "800", color: "#18181b" },
+  subtitle: { fontSize: 13, color: "#64748b", marginTop: 2 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2B3A67",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginTop: 24,
+    marginBottom: 4,
+  },
   card: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
-    marginTop: 14,
+    marginTop: 10,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#e2e8f0",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   cardBody: { flex: 1, minWidth: 0 },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "#18181b" },
-  cardSub: { fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 18 },
-  cardMeta: { fontSize: 12, color: "#0d9488", fontWeight: "600", marginTop: 6 },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardTitle: { fontSize: 15, fontWeight: "700", color: "#18181b" },
+  cardSub: { fontSize: 13, color: "#64748b", marginTop: 3, lineHeight: 18 },
+  cardMeta: { fontSize: 12, color: "#0d9488", fontWeight: "600", marginTop: 4 },
+  countBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#ccfbf1",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  countBadgeText: { fontSize: 11, fontWeight: "800", color: "#0d9488" },
   pushSection: {
     marginTop: 28,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#f8fafc",
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: "#fff",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  pushTitle: { fontSize: 16, fontWeight: "700", color: "#18181b" },
-  pushSub: { fontSize: 13, color: "#64748b", marginTop: 8, lineHeight: 19 },
-  pushRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 },
+  pushHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  pushIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#e8eef6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pushTitle: { fontSize: 15, fontWeight: "700", color: "#18181b" },
+  pushSub: { fontSize: 13, color: "#64748b", marginTop: 6, lineHeight: 19 },
+  pushRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
   pushBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 12,
     minWidth: 140,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  pushBtnPrimary: { backgroundColor: "#0d9488" },
-  pushBtnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  pushBtnGhost: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0" },
-  pushBtnGhostText: { color: "#475569", fontWeight: "600", fontSize: 15 },
-  pushHint: { fontSize: 11, color: "#94a3b8", marginTop: 12, lineHeight: 16 },
+  pushBtnPrimary: { backgroundColor: "#2B3A67" },
+  pushBtnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  pushBtnGhost: { backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0" },
+  pushBtnGhostText: { color: "#475569", fontWeight: "600", fontSize: 14 },
+  pushHint: { fontSize: 11, color: "#94a3b8", marginTop: 14, lineHeight: 16 },
 });

@@ -75,8 +75,7 @@ function AppointmentCard({
       const body: Record<string, string> = {};
       if (noteText.trim()) body.patientNotes = noteText.trim();
       if (slotText.trim()) {
-        const combined = item.timePreferences + ", " + slotText.trim();
-        body.timePreferences = combined;
+        body.timePreferences = slotText.trim();
       }
       const res = await fetch(
         `${getApiBase()}/api/patient/schedule-requests/${item.id}`,

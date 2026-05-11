@@ -354,7 +354,29 @@ export async function applyClinicSheetAppointmentUpdates(
         const msgPart = u.patientMessage?.trim() || "";
         const combinedReason = [reasonPart, msgPart].filter(Boolean).join("\n\n") || null;
 
+        let apptWhenLabel = "";
+        let apptDoctorName = "";
         if (reqRow.appointmentId) {
+          const apptRow = await db
+            .select({
+              dateTime: appointments.dateTime,
+              slotEndTimeHm: appointments.slotEndTimeHm,
+              type: appointments.type,
+              doctorName: users.name,
+            })
+            .from(appointments)
+            .innerJoin(users, eq(appointments.doctorId, users.id))
+            .where(eq(appointments.id, reqRow.appointmentId))
+            .limit(1)
+            .then((rows) => rows[0] ?? null);
+
+          if (apptRow) {
+            const { ymd, hm } = utcInstantToClinicWallYmdHm(apptRow.dateTime);
+            const timeRange = formatSlotTimeRange(hm, apptRow.slotEndTimeHm);
+            apptWhenLabel = `${ymd} at ${timeRange}`;
+            apptDoctorName = apptRow.doctorName ?? "";
+          }
+
           await db
             .update(appointments)
             .set({ status: "cancelled" })
@@ -370,23 +392,29 @@ export async function applyClinicSheetAppointmentUpdates(
           })
           .where(eq(patientScheduleRequests.id, reqRow.id));
 
+        const apptDetail = apptWhenLabel
+          ? ` (${apptWhenLabel}${apptDoctorName ? ` with Dr. ${apptDoctorName}` : ""})`
+          : "";
+
         const defaultDecline =
-          "Your visit request could not be booked at this time.";
+          `Your visit request${apptDetail} could not be booked at this time.`;
         const defaultCancel =
-          "Your appointment was cancelled. Contact the clinic if you have questions.";
-        const notifyBody =
-          combinedReason ||
-          (u.action === "decline" ? defaultDecline : defaultCancel);
+          `Your appointment${apptDetail} was cancelled. Contact the clinic if you have questions.`;
+        const notifyBody = combinedReason
+          ? `${u.action === "decline" ? "Declined" : "Cancelled"}${apptDetail}: ${combinedReason}`
+          : (u.action === "decline" ? defaultDecline : defaultCancel);
 
         void notifyPatientScheduleAppointment(
           patientId,
-          u.action === "decline" ? "Visit request update" : "Visit cancelled",
+          u.action === "decline"
+            ? `Visit request declined${apptDetail}`
+            : `Visit cancelled${apptDetail}`,
           notifyBody
         );
         const cancelHeadline =
           u.action === "decline"
-            ? "Your visit request was declined by the clinic."
-            : "Your appointment was cancelled by the clinic.";
+            ? `Your visit request${apptDetail} was declined by the clinic.`
+            : `Your appointment${apptDetail} was cancelled by the clinic.`;
         const chatText = combinedReason
           ? `${cancelHeadline}\n\nReason: ${combinedReason}`
           : cancelHeadline;
@@ -398,7 +426,7 @@ export async function applyClinicSheetAppointmentUpdates(
         );
         void notifyDoctorUsers({
           title: u.action === "decline" ? "Visit request declined in CRM" : "Appointment cancelled in CRM",
-          body: `${patientId}${u.cancelledReason?.trim() ? ` · ${u.cancelledReason.trim().slice(0, 80)}` : ""}`,
+          body: `${patientId}${apptWhenLabel ? ` · ${apptWhenLabel}` : ""}${u.cancelledReason?.trim() ? ` · ${u.cancelledReason.trim().slice(0, 80)}` : ""}`,
           data: { type: "appointment_cancelled_from_sheet", patientId },
         });
         void notifyClinicSheetRowMirrored({

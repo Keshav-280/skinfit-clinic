@@ -144,6 +144,7 @@ export async function GET(request: Request) {
         attachments: true,
         status: true,
         cancelledReason: true,
+        appointmentId: true,
       },
     }),
   ]);
@@ -255,15 +256,17 @@ export async function GET(request: Request) {
       attachmentsCount: Array.isArray(r.attachments) ? r.attachments.length : 0,
       status: r.status,
     })),
-    closedScheduleRequests: closedRows.map((r) => ({
-      id: r.id,
-      preferredDateYmd: ymdFromDateOnly(r.preferredDate),
-      issue: r.issue,
-      daysAffected: r.daysAffected,
-      timePreferences: r.timePreferences,
-      attachmentsCount: Array.isArray(r.attachments) ? r.attachments.length : 0,
-      status: r.status as string,
-      cancelledReason: r.cancelledReason ?? null,
-    })),
+    closedScheduleRequests: closedRows
+      .filter((r) => !r.appointmentId || !apptIds.includes(r.appointmentId))
+      .map((r) => ({
+        id: r.id,
+        preferredDateYmd: ymdFromDateOnly(r.preferredDate),
+        issue: r.issue,
+        daysAffected: r.daysAffected,
+        timePreferences: r.timePreferences,
+        attachmentsCount: Array.isArray(r.attachments) ? r.attachments.length : 0,
+        status: r.status as string,
+        cancelledReason: r.cancelledReason ?? null,
+      })),
   });
 }

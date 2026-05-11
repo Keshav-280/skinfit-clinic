@@ -278,6 +278,7 @@ export default function DrawerLayout() {
           name="notifications"
           options={{
             title: "Notifications",
+            headerShown: false,
             drawerItemStyle: { display: "none" },
             drawerLabel: () => null,
           }}
