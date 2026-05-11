@@ -117,6 +117,12 @@ type DetailJson = {
     visitDate: string;
     doctorName: string;
     notes: string;
+    purpose?: string;
+    treatments?: string;
+    preAdvice?: string;
+    postAdvice?: string;
+    prescription?: string;
+    responseRating?: string;
     attachments?: Array<{
       fileName: string;
       mimeType: string;
