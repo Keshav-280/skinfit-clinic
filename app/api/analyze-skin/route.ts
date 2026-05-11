@@ -28,8 +28,9 @@ export async function POST(req: Request) {
     const user = explicitUserId
       ? await db.query.users.findFirst({
           where: eq(users.id, explicitUserId),
+          columns: { id: true },
         })
-      : await db.query.users.findFirst();
+      : await db.query.users.findFirst({ columns: { id: true } });
 
     if (!user) {
       return NextResponse.json(

@@ -11,6 +11,7 @@ import {
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { RAG_KAI_PARAM_KEYS, RAG_KAI_PARAM_LABELS } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
+import { generatePersonalisedAction, isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 
 function cleanActionText(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().replace(/\.$/, "");
@@ -222,8 +223,27 @@ export async function GET(request: Request) {
       );
     }
   }
-  reflectiveActions.push("Keep logging your weekly 5-angle scan under similar lighting for clean trend comparison.");
-  knowDo.do = [...reflectiveActions, ...aiGenerated].slice(0, 3);
+  const combined = [...reflectiveActions, ...aiGenerated];
+
+  if (combined.length < 3 && isLlmEnabled()) {
+    try {
+      const llmAction = await generatePersonalisedAction({
+        scanCount: recentScans.length,
+        primaryConcern: dna?.primaryConcern ?? user?.primaryConcern ?? null,
+        weakestArea: weakNow ? RAG_KAI_PARAM_LABELS[weakNow.key] : null,
+        weakestScore: weakNow ? Math.round(weakNow.value as number) : null,
+        weeklyDelta: weakDelta,
+        existingActions: combined,
+      });
+      if (llmAction) combined.push(llmAction);
+    } catch {}
+  }
+
+  if (combined.length < 3) {
+    combined.push("Scan weekly under similar lighting so the AI can track changes accurately.");
+  }
+
+  knowDo.do = combined.slice(0, 3);
   knowDo.know = [
     dna?.primaryConcern ?? user?.primaryConcern ?? "Primary concern on file",
     user?.skinSensitivity
@@ -259,6 +279,7 @@ export async function GET(request: Request) {
       notes: v.notes,
       prescription: v.prescription,
       responseRating: v.responseRating,
+      attachments: v.attachments ?? [],
       beforeImageIds: v.beforeImageIds ?? [],
       afterImageIds: v.afterImageIds ?? [],
     })),

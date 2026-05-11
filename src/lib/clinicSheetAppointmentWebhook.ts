@@ -96,6 +96,24 @@ async function findRequestForUpdate(
   externalRef: string | null | undefined,
   scheduleRequestId: string | null | undefined
 ) {
+  const safeColumns = {
+    id: true,
+    patientId: true,
+    doctorId: true,
+    preferredDate: true,
+    issue: true,
+    daysAffected: true,
+    timePreferences: true,
+    attachments: true,
+    status: true,
+    externalRef: true,
+    cancelledReason: true,
+    crmPatientMessage: true,
+    appointmentId: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
+
   const sid = scheduleRequestId?.trim();
   if (sid) {
     const byId = await db.query.patientScheduleRequests.findFirst({
@@ -103,6 +121,7 @@ async function findRequestForUpdate(
         eq(patientScheduleRequests.id, sid),
         eq(patientScheduleRequests.patientId, patientId)
       ),
+      columns: safeColumns,
     });
     if (byId) return byId;
   }
@@ -112,11 +131,29 @@ async function findRequestForUpdate(
         eq(patientScheduleRequests.patientId, patientId),
         eq(patientScheduleRequests.externalRef, externalRef.trim())
       ),
+      columns: safeColumns,
     });
     if (row) return row;
   }
+  const selectCols = {
+    id: patientScheduleRequests.id,
+    patientId: patientScheduleRequests.patientId,
+    doctorId: patientScheduleRequests.doctorId,
+    preferredDate: patientScheduleRequests.preferredDate,
+    issue: patientScheduleRequests.issue,
+    daysAffected: patientScheduleRequests.daysAffected,
+    timePreferences: patientScheduleRequests.timePreferences,
+    attachments: patientScheduleRequests.attachments,
+    status: patientScheduleRequests.status,
+    externalRef: patientScheduleRequests.externalRef,
+    cancelledReason: patientScheduleRequests.cancelledReason,
+    crmPatientMessage: patientScheduleRequests.crmPatientMessage,
+    appointmentId: patientScheduleRequests.appointmentId,
+    createdAt: patientScheduleRequests.createdAt,
+    updatedAt: patientScheduleRequests.updatedAt,
+  };
   const [row] = await db
-    .select()
+    .select(selectCols)
     .from(patientScheduleRequests)
     .where(
       and(

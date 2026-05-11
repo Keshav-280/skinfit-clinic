@@ -71,6 +71,20 @@ export async function GET(req: Request) {
     where: eq(patientScheduleRequests.patientId, userId),
     orderBy: [desc(patientScheduleRequests.createdAt)],
     limit: 40,
+    columns: {
+      id: true,
+      preferredDate: true,
+      issue: true,
+      daysAffected: true,
+      timePreferences: true,
+      attachments: true,
+      status: true,
+      externalRef: true,
+      cancelledReason: true,
+      crmPatientMessage: true,
+      appointmentId: true,
+      createdAt: true,
+    },
   });
 
   return NextResponse.json({
@@ -85,6 +99,7 @@ export async function GET(req: Request) {
       externalRef: r.externalRef,
       cancelledReason: r.cancelledReason,
       crmPatientMessage: r.crmPatientMessage ?? null,
+      patientNotes: null,
       appointmentId: r.appointmentId,
       createdAt: r.createdAt.toISOString(),
     })),

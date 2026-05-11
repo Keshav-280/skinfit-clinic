@@ -50,13 +50,23 @@ export default function DoctorProfilePage() {
 
   async function onPickFile(file: File | undefined) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setImageUrl(reader.result);
-      }
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const SIZE = 300;
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d")!;
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2;
+      const sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, SIZE, SIZE);
+      const dataUri = canvas.toDataURL("image/jpeg", 0.75);
+      setImageUrl(dataUri);
     };
-    reader.readAsDataURL(file);
+    img.src = objectUrl;
   }
 
   async function onSave(e: React.FormEvent) {
@@ -111,12 +121,29 @@ export default function DoctorProfilePage() {
         ) : null}
 
         <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-start">
-          <div className="h-[120px] w-[120px] overflow-hidden rounded-2xl bg-slate-100">
+          <label
+            className="relative block h-[120px] w-[120px] cursor-pointer overflow-hidden rounded-2xl bg-slate-100 transition hover:ring-2 hover:ring-teal-400"
+            title="Click to change photo"
+          >
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imageUrl} alt="Doctor avatar" className="h-full w-full object-cover" />
-            ) : null}
-          </div>
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-3xl text-slate-300">
+                📷
+              </span>
+            )}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-xs font-medium text-white opacity-0 transition hover:opacity-100">
+              Change
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void onPickFile(e.target.files?.[0])}
+              disabled={loading || saving}
+            />
+          </label>
           <div className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Display name</label>
@@ -138,17 +165,7 @@ export default function DoctorProfilePage() {
                 disabled={loading || saving}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Picture</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => void onPickFile(e.target.files?.[0])}
-                disabled={loading || saving}
-                className="block w-full text-sm text-slate-600"
-              />
-              <p className="mt-1 text-xs text-slate-500">Upload a square image for best fit in chat.</p>
-            </div>
+            <p className="text-xs text-slate-500">Click the photo to change it. Square images work best.</p>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
               <input

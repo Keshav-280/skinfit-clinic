@@ -379,6 +379,7 @@ export async function POST(request: NextRequest) {
 
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
+      columns: { id: true, name: true },
     });
     if (!user) {
       return NextResponse.json(

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -25,6 +26,7 @@ import {
   View,
 } from "react-native";
 
+import { router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { getApiBase } from "@/lib/apiBase";
@@ -292,10 +294,24 @@ export default function SchedulesScreen() {
     });
   }
 
-  const requestDateStrip = useMemo(() => {
-    const start = startOfWeek(new Date(), WEEK_OPTS);
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, []);
+  const [reqCalMonth, setReqCalMonth] = useState(() => new Date());
+
+  const reqCalCells = useMemo(() => {
+    const year = reqCalMonth.getFullYear();
+    const month = reqCalMonth.getMonth();
+    const first = new Date(year, month, 1);
+    const weekStart = startOfWeek(first, WEEK_OPTS);
+    const cells: (Date | null)[] = [];
+    let cursor = weekStart;
+    for (let i = 0; i < 42; i++) {
+      cells.push(cursor.getMonth() === month ? cursor : null);
+      cursor = addDays(cursor, 1);
+    }
+    while (cells.length > 35 && cells.slice(-7).every((c) => c === null)) {
+      cells.splice(-7, 7);
+    }
+    return cells;
+  }, [reqCalMonth]);
 
   const cellMinH = view === "week" ? 128 : 72;
 
@@ -334,10 +350,10 @@ export default function SchedulesScreen() {
                       event.eventKind === "pre_treatment" ||
                       event.eventKind === "post_treatment" ||
                       /guideline/i.test(event.title);
-                    let color = "#1e3a8a";
+                    let color = "#2B3A67";
                     if (isDone) color = "#16a34a";
                     else if (isPending) color = "#d97706";
-                    else if (isGuideline) color = "#1d4ed8";
+                    else if (isGuideline) color = "#7c3aed";
                     return <View key={event.id} style={[styles.eventDot, { backgroundColor: color }]} />;
                   })}
               </View>
@@ -473,6 +489,7 @@ export default function SchedulesScreen() {
               accessibilityLabel={`Request visit for ${cellYmd}`}
               onPress={() => {
                 setVisitRequestYmd(cellYmd);
+                if (day) setReqCalMonth(day);
                 setVisitRequestOpen(true);
               }}
               style={styles.gridCellPressable}
@@ -510,7 +527,7 @@ export default function SchedulesScreen() {
                 <Ionicons
                   name="calendar-outline"
                   size={16}
-                  color={view === "month" ? "#115e59" : "#64748b"}
+                  color={view === "month" ? "#2B3A67" : "#64748b"}
                   style={{ marginRight: 6 }}
                 />
                 <Text style={view === "month" ? styles.segBtnTextOn : styles.segBtnText}>Month</Text>
@@ -522,7 +539,7 @@ export default function SchedulesScreen() {
                 <Ionicons
                   name="today-outline"
                   size={16}
-                  color={view === "week" ? "#115e59" : "#64748b"}
+                  color={view === "week" ? "#2B3A67" : "#64748b"}
                   style={{ marginRight: 6 }}
                 />
                 <Text style={view === "week" ? styles.segBtnTextOn : styles.segBtnText}>Week</Text>
@@ -537,7 +554,7 @@ export default function SchedulesScreen() {
                 <Ionicons
                   name="refresh"
                   size={20}
-                  color="#115e59"
+                  color="#2B3A67"
                   style={calendarRefreshing ? { opacity: 0.5 } : undefined}
                 />
               </Pressable>
@@ -573,10 +590,10 @@ export default function SchedulesScreen() {
         </View>
         {scheduleTab === "appointments" ? (
           <View style={styles.legendRow}>
-            <LegendDot color="#1e3a8a" label="Upcoming" />
+            <LegendDot color="#2B3A67" label="Upcoming" />
             <LegendDot color="#16a34a" label="Completed" />
             <LegendDot color="#d97706" label="Requested" />
-            <LegendDot color="#1d4ed8" label="Guidelines" />
+            <LegendDot color="#7c3aed" label="Guidelines" />
           </View>
         ) : null}
 
@@ -704,11 +721,6 @@ export default function SchedulesScreen() {
         />
       }
     >
-      <View style={styles.heroCard}>
-        <Text style={styles.heroKicker}>SKINFIT PLANNER</Text>
-        <Text style={styles.h1}>Schedules & tasks</Text>
-        <Text style={styles.sub}>Stay on top of your skincare journey.</Text>
-      </View>
       {error ? <Text style={styles.err}>{error}</Text> : null}
 
       <View style={styles.tabs}>
@@ -738,7 +750,7 @@ export default function SchedulesScreen() {
       {scheduleTab === "appointments" ? (
         <View style={styles.crmCard}>
           <View style={styles.crmIcon}>
-            <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
+            <Ionicons name="shield-checkmark" size={18} color="#2B3A67" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.crmTitle}>Linked with CRM</Text>
@@ -752,45 +764,77 @@ export default function SchedulesScreen() {
       {renderCalendarGrid()}
       {scheduleTab === "appointments" ? (
         <>
-          <View style={styles.featureCard}>
-            <View style={styles.featureTopRow}>
-              <Text style={styles.upcomingPill}>Upcoming</Text>
-              <Ionicons name="chevron-forward" size={24} color="#0ea5e9" />
-            </View>
-            <Text style={styles.featureTitle}>{featuredUpcoming?.title ?? "Skin Consultation"}</Text>
-            <Text style={styles.featureDoctor}>Dr. Rhea Sharma</Text>
-            <Text style={styles.featureDoctorSub}>MD Dermatology</Text>
-            <View style={styles.featureTimeRow}>
-              <View style={styles.datePill}>
-                <Text style={styles.datePillDay}>
-                  {featuredUpcoming
-                    ? format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")
-                    : "Fri"}
-                </Text>
-                <Text style={styles.datePillDate}>
-                  {featuredUpcoming ? format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd") : "17"}
-                </Text>
+          {featuredUpcoming ? (
+            <Pressable
+              style={styles.featureCard}
+              onPress={() => router.push("/(drawer)/upcoming-appointments" as any)}
+            >
+              <View style={styles.featureTopRow}>
+                <Text style={styles.upcomingPill}>Upcoming</Text>
+                <Ionicons name="chevron-forward" size={20} color="#2B3A67" />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.featureTime}>
-                  {featuredUpcoming
-                    ? formatScheduleWhen(
-                        featuredUpcoming.eventDateYmd,
-                        featuredUpcoming.eventTimeHm,
-                        featuredUpcoming.eventSlotEndTimeHm
-                      )
-                    : "11:00 AM - 11:30 AM"}
-                </Text>
-                <Text style={styles.featureLoc}>HSR Clinic, Bengaluru</Text>
+
+              <View style={styles.featureDoctorRow}>
+                {featuredUpcoming.doctorPhotoUrl ? (
+                  <Image
+                    source={{ uri: featuredUpcoming.doctorPhotoUrl }}
+                    style={styles.doctorAvatar}
+                  />
+                ) : (
+                  <View style={styles.doctorAvatarPlaceholder}>
+                    <Ionicons name="person" size={20} color="#fff" />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.featureDoctorName}>
+                    Dr. {featuredUpcoming.doctorName ?? "Doctor"}
+                  </Text>
+                  <Text style={styles.featureType}>
+                    {featuredUpcoming.appointmentType ?? "Consultation"}
+                  </Text>
+                </View>
               </View>
-            </View>
-          </View>
+
+              {featuredUpcoming.crmPatientMessage ? (
+                <View style={styles.featureNoteBox}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={14} color="#2B3A67" />
+                  <Text style={styles.featureNoteText} numberOfLines={2}>
+                    {featuredUpcoming.crmPatientMessage}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.featureTimeRow}>
+                <View style={styles.datePill}>
+                  <Text style={styles.datePillDay}>
+                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")}
+                  </Text>
+                  <Text style={styles.datePillDate}>
+                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd")}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.featureTime}>
+                    {formatScheduleWhen(
+                      featuredUpcoming.eventDateYmd,
+                      featuredUpcoming.eventTimeHm,
+                      featuredUpcoming.eventSlotEndTimeHm
+                    )}
+                  </Text>
+                  <Text style={styles.featureMonthYear}>
+                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "MMMM yyyy")}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          ) : null}
           <Pressable
             style={styles.requestCard}
             onPress={() => {
               const ymd = localYmd(new Date());
               setVisitRequestYmd(ymd);
               setVisitNotes("");
+              setReqCalMonth(new Date());
               setVisitRequestOpen(true);
             }}
           >
@@ -817,36 +861,66 @@ export default function SchedulesScreen() {
         }}
       >
         <View style={styles.modalBg}>
-          <View style={styles.modalCard}>
+          <ScrollView style={styles.modalCard} contentContainerStyle={styles.modalCardContent} bounces={false}>
             <Text style={styles.requestTitle}>Request Appointment</Text>
             <Text style={styles.muted}>
               {visitRequestYmd
                 ? format(parseLocalYmd(visitRequestYmd), "EEEE, MMM d, yyyy")
                 : ""}
             </Text>
-            <View style={styles.reqDateStrip}>
-              {requestDateStrip.map((d) => {
-                const ymd = localYmd(d);
-                const selected = visitRequestYmd === ymd;
-                const hasEvent = getCellEvents(d, appointmentCalendarEvents).length > 0;
-                return (
-                  <Pressable
-                    key={ymd}
-                    onPress={() => setVisitRequestYmd(ymd)}
-                    style={[styles.reqDateChip, selected && styles.reqDateChipOn]}
-                  >
-                    <Text style={selected ? styles.reqDateDowOn : styles.reqDateDow}>
-                      {format(d, "EEE")}
-                    </Text>
-                    <Text style={selected ? styles.reqDateNumOn : styles.reqDateNum}>
-                      {format(d, "dd")}
-                    </Text>
-                    {hasEvent ? (
-                      <View style={[styles.reqDateDot, selected && styles.reqDateDotOn]} />
-                    ) : null}
-                  </Pressable>
-                );
-              })}
+            <View style={styles.reqCalWrap}>
+              <View style={styles.reqCalHeader}>
+                <Pressable onPress={() => setReqCalMonth((d) => subMonths(d, 1))} hitSlop={10}>
+                  <Ionicons name="chevron-back" size={20} color="#3f3f46" />
+                </Pressable>
+                <Text style={styles.reqCalMonthLabel}>{format(reqCalMonth, "MMMM yyyy")}</Text>
+                <Pressable onPress={() => setReqCalMonth((d) => addMonths(d, 1))} hitSlop={10}>
+                  <Ionicons name="chevron-forward" size={20} color="#3f3f46" />
+                </Pressable>
+              </View>
+              <View style={styles.reqCalDaysRow}>
+                {CAL_DAYS.map((d) => (
+                  <Text key={d} style={styles.reqCalDayHead}>{d}</Text>
+                ))}
+              </View>
+              {chunkWeeks(reqCalCells).map((row, ri) => (
+                <View key={ri} style={styles.reqCalRow}>
+                  {row.map((day, ci) => {
+                    if (!day) return <View key={`e-${ci}`} style={styles.reqCalCell} />;
+                    const ymd = localYmd(day);
+                    const selected = visitRequestYmd === ymd;
+                    const isToday = isSameDay(day, new Date());
+                    const isPast = day < new Date(new Date().setHours(0, 0, 0, 0));
+                    const hasEvent = getCellEvents(day, appointmentCalendarEvents).length > 0;
+                    return (
+                      <Pressable
+                        key={ymd}
+                        style={[
+                          styles.reqCalCell,
+                          selected && styles.reqCalCellSelected,
+                          isToday && !selected && styles.reqCalCellToday,
+                        ]}
+                        onPress={() => !isPast && setVisitRequestYmd(ymd)}
+                        disabled={isPast}
+                      >
+                        <Text
+                          style={[
+                            styles.reqCalCellText,
+                            selected && styles.reqCalCellTextSelected,
+                            isPast && styles.reqCalCellTextPast,
+                            isToday && !selected && styles.reqCalCellTextToday,
+                          ]}
+                        >
+                          {getDate(day)}
+                        </Text>
+                        {hasEvent ? (
+                          <View style={[styles.reqCalDot, selected && styles.reqCalDotSelected]} />
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
             </View>
             <Text style={styles.labelBig}>Choose new time</Text>
             <View style={styles.windowTabs}>
@@ -915,7 +989,7 @@ export default function SchedulesScreen() {
                 <Text style={styles.btnPrimaryText}>{visitBusy ? "…" : "Send request"}</Text>
               </Pressable>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </ScrollView>
@@ -923,9 +997,9 @@ export default function SchedulesScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
+  scroll: { flex: 1, backgroundColor: "#E8EFE6" },
   content: { padding: 16, paddingBottom: 48 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8f5ef" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6" },
   heroCard: {
     backgroundColor: "#ffffff",
     borderRadius: 20,
@@ -944,7 +1018,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.3,
     textAlign: "center",
-    color: "#0f766e",
+    color: "#2B3A67",
     fontWeight: "800",
   },
   h1: { fontSize: 25, fontWeight: "800", textAlign: "center", color: "#18181b", marginTop: 6 },
@@ -972,12 +1046,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   tabOn: {
-    backgroundColor: "#ccfbf1",
+    backgroundColor: "#e8eef6",
     borderWidth: 1,
-    borderColor: "rgba(13, 148, 136, 0.35)",
+    borderColor: "rgba(43, 58, 103, 0.35)",
   },
   tabText: { fontWeight: "600", color: "#52525b", fontSize: 14, textAlign: "center" },
-  tabTextOn: { fontWeight: "800", color: "#0f766e", fontSize: 14, textAlign: "center" },
+  tabTextOn: { fontWeight: "800", color: "#2B3A67", fontSize: 14, textAlign: "center" },
   crmCard: {
     marginBottom: 12,
     borderRadius: 20,
@@ -993,7 +1067,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#dcfce7",
+    backgroundColor: "#e8eef6",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1066,7 +1140,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   segBtnText: { fontSize: 13, fontWeight: "600", color: "#64748b" },
-  segBtnTextOn: { fontSize: 13, fontWeight: "700", color: "#115e59" },
+  segBtnTextOn: { fontSize: 13, fontWeight: "700", color: "#2B3A67" },
   iconBtn: {
     width: 42,
     height: 42,
@@ -1132,12 +1206,12 @@ const styles = StyleSheet.create({
   gridCellPressable: { alignSelf: "stretch" },
   gridCellLastCol: { borderRightWidth: 0 },
   dayNumWrap: { alignSelf: "flex-start", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 2, marginBottom: 2 },
-  dayNumWrapToday: { backgroundColor: "rgba(13, 148, 136, 0.14)" },
+  dayNumWrapToday: { backgroundColor: "rgba(43, 58, 103, 0.12)" },
   cellDayNum: { fontSize: 11, fontWeight: "600", color: "#64748b" },
-  cellDayNumHi: { color: "#0f766e" },
-  cellDayNumToday: { fontWeight: "800", color: "#0f766e" },
+  cellDayNumHi: { color: "#2B3A67" },
+  cellDayNumToday: { fontWeight: "800", color: "#2B3A67" },
   eventChip: { marginTop: 4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 },
-  eventChipOpen: { backgroundColor: "rgba(224, 240, 237, 0.95)", borderWidth: 1, borderColor: "rgba(13, 148, 136, 0.35)" },
+  eventChipOpen: { backgroundColor: "rgba(232, 238, 246, 0.95)", borderWidth: 1, borderColor: "rgba(43, 58, 103, 0.3)" },
   eventChipDone: { backgroundColor: "rgba(224, 242, 254, 0.95)", borderWidth: 1, borderColor: "rgba(14, 165, 233, 0.35)" },
   eventChipPending: {
     backgroundColor: "rgba(254, 243, 199, 0.95)",
@@ -1145,9 +1219,9 @@ const styles = StyleSheet.create({
     borderColor: "rgba(217, 119, 6, 0.4)",
   },
   eventChipConfirmed: {
-    backgroundColor: "rgba(224, 240, 237, 0.95)",
+    backgroundColor: "rgba(232, 238, 246, 0.95)",
     borderWidth: 1,
-    borderColor: "rgba(13, 148, 136, 0.35)",
+    borderColor: "rgba(43, 58, 103, 0.3)",
   },
   eventChipCancelled: {
     backgroundColor: "rgba(244, 244, 245, 0.95)",
@@ -1155,21 +1229,21 @@ const styles = StyleSheet.create({
     borderColor: "rgba(113, 113, 122, 0.45)",
   },
   eventChipTime: { fontSize: 10, fontWeight: "700" },
-  eventChipTimeOpen: { color: "#115e59" },
+  eventChipTimeOpen: { color: "#2B3A67" },
   eventChipTimeDone: { color: "#0c4a6e" },
   eventChipTimePending: { color: "#b45309" },
-  eventChipTimeConfirmed: { color: "#115e59" },
+  eventChipTimeConfirmed: { color: "#2B3A67" },
   eventChipTimeCancelled: { color: "#52525b" },
   eventChipTitle: { fontSize: 10, fontWeight: "600" },
-  eventChipTitleOpen: { color: "#115e59" },
+  eventChipTitleOpen: { color: "#2B3A67" },
   eventChipTitleDone: { color: "#0c4a6e" },
   eventChipTitlePending: { color: "#92400e" },
-  eventChipTitleConfirmed: { color: "#115e59" },
+  eventChipTitleConfirmed: { color: "#2B3A67" },
   eventChipTitleCancelled: { color: "#52525b" },
   eventKindBadge: {
     fontSize: 8,
     fontWeight: "800",
-    color: "#0f766e",
+    color: "#2B3A67",
     marginBottom: 2,
     textTransform: "uppercase",
   },
@@ -1185,7 +1259,7 @@ const styles = StyleSheet.create({
   eventStatusTagConfirmed: {
     fontSize: 8,
     fontWeight: "700",
-    color: "#0f766e",
+    color: "#2B3A67",
     marginTop: 2,
     textTransform: "uppercase",
   },
@@ -1227,17 +1301,47 @@ const styles = StyleSheet.create({
   upcomingPill: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#16a34a",
+    color: "#2B3A67",
     borderWidth: 1,
-    borderColor: "#16a34a",
+    borderColor: "#2B3A67",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
-  featureTitle: { marginTop: 14, fontSize: 17, fontWeight: "700", color: "#2c2c2c" },
-  featureDoctor: { marginTop: 8, fontSize: 14, fontWeight: "700", color: "#2f2f2f" },
-  featureDoctorSub: { marginTop: 2, fontSize: 12, color: "#71717a" },
+  featureDoctorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  doctorAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  doctorAvatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#2B3A67",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  featureDoctorName: { fontSize: 16, fontWeight: "700", color: "#18181b" },
+  featureType: { fontSize: 13, color: "#71717a", marginTop: 1 },
+  featureNoteBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: "#f0f4ff",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+  },
+  featureNoteText: { flex: 1, fontSize: 13, color: "#2B3A67", lineHeight: 18 },
   featureTimeRow: { marginTop: 14, flexDirection: "row", gap: 14, alignItems: "center" },
+  featureMonthYear: { fontSize: 13, color: "#71717a", marginTop: 2 },
   datePill: {
     width: 78,
     height: 88,
@@ -1289,7 +1393,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   listWhen: { fontSize: 12, fontWeight: "700", marginBottom: 4 },
-  listWhenOpen: { color: "#0f766e" },
+  listWhenOpen: { color: "#2B3A67" },
   listWhenDone: { color: "#0369a1" },
   listWhenPending: { color: "#b45309" },
   listWhenCancelled: { color: "#52525b" },
@@ -1308,8 +1412,8 @@ const styles = StyleSheet.create({
   listKindPill: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#0f766e",
-    backgroundColor: "#ccfbf1",
+    color: "#2B3A67",
+    backgroundColor: "#e8eef6",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -1331,8 +1435,8 @@ const styles = StyleSheet.create({
   confirmedPill: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#0f766e",
-    backgroundColor: "#ccfbf1",
+    color: "#2B3A67",
+    backgroundColor: "#e8eef6",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -1370,13 +1474,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    maxHeight: "92%",
+  },
+  modalCardContent: {
     padding: 20,
     paddingBottom: 36,
   },
   requestTitle: { fontSize: 22, fontWeight: "800", color: "#18181b", textAlign: "center" },
-  reqDateStrip: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  reqCalWrap: {
     backgroundColor: "#f9fafb",
     borderRadius: 14,
     borderWidth: 1,
@@ -1385,20 +1490,72 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 10,
   },
-  reqDateChip: {
-    width: "13.2%",
-    minWidth: 36,
-    borderRadius: 10,
+  reqCalHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 7,
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+    marginBottom: 8,
   },
-  reqDateChipOn: { backgroundColor: "#262b74" },
-  reqDateDow: { fontSize: 10, color: "#6b7280", fontWeight: "700" },
-  reqDateDowOn: { fontSize: 10, color: "#c7d2fe", fontWeight: "700" },
-  reqDateNum: { fontSize: 16, color: "#111827", fontWeight: "700", marginTop: 2 },
-  reqDateNumOn: { fontSize: 16, color: "#fff", fontWeight: "800", marginTop: 2 },
-  reqDateDot: { width: 5, height: 5, borderRadius: 999, backgroundColor: "#1d4ed8", marginTop: 4 },
-  reqDateDotOn: { backgroundColor: "#22c55e" },
+  reqCalMonthLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#18181b",
+  },
+  reqCalDaysRow: {
+    flexDirection: "row",
+    marginBottom: 4,
+  },
+  reqCalDayHead: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#6b7280",
+    textTransform: "uppercase",
+  },
+  reqCalRow: {
+    flexDirection: "row",
+  },
+  reqCalCell: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  reqCalCellSelected: {
+    backgroundColor: "#262b74",
+  },
+  reqCalCellToday: {
+    backgroundColor: "rgba(13,148,136,0.12)",
+  },
+  reqCalCellText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  reqCalCellTextSelected: {
+    color: "#fff",
+    fontWeight: "800",
+  },
+  reqCalCellTextPast: {
+    color: "#d1d5db",
+  },
+  reqCalCellTextToday: {
+    color: "#2B3A67",
+    fontWeight: "800",
+  },
+  reqCalDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#1d4ed8",
+    marginTop: 3,
+  },
+  reqCalDotSelected: {
+    backgroundColor: "#22c55e",
+  },
   labelBig: { fontSize: 17, fontWeight: "700", color: "#18181b", marginTop: 8, marginBottom: 10 },
   windowTabs: {
     flexDirection: "row",
@@ -1425,7 +1582,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
   },
-  slotChipOn: { backgroundColor: "#16a34a" },
+  slotChipOn: { backgroundColor: "#262b74" },
   slotChipText: { color: "#3f3f46", fontWeight: "600", fontSize: 14 },
   slotChipOnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   noteBox: {
@@ -1452,6 +1609,6 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 12, marginTop: 20 },
   btnGhost: { padding: 12 },
   btnGhostTextStrong: { fontSize: 15, fontWeight: "700", color: "#52525b" },
-  btnPrimary: { backgroundColor: "#0d9488", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  btnPrimary: { backgroundColor: "#262b74", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   btnPrimaryText: { color: "#fff", fontWeight: "700" },
 });

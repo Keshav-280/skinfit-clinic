@@ -281,6 +281,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const [visitNoteFiles, setVisitNoteFiles] = useState<File[]>([]);
   const [visitNoteBusy, setVisitNoteBusy] = useState(false);
   const [visitNoteFlash, setVisitNoteFlash] = useState<string | null>(null);
+  const [visitNotePurpose, setVisitNotePurpose] = useState("");
+  const [visitNoteTreatments, setVisitNoteTreatments] = useState("");
+  const [visitNotePreAdvice, setVisitNotePreAdvice] = useState("");
+  const [visitNotePostAdvice, setVisitNotePostAdvice] = useState("");
+  const [visitNotePrescription, setVisitNotePrescription] = useState("");
+  const [visitNoteResponseRating, setVisitNoteResponseRating] = useState("");
   const [doctorApptDateYmd, setDoctorApptDateYmd] = useState("");
   const [doctorApptTimeHm, setDoctorApptTimeHm] = useState("10:00");
   const [doctorApptType, setDoctorApptType] = useState<
@@ -2103,6 +2109,70 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             />
           </label>
           <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Purpose of visit</span>
+            <input
+              type="text"
+              value={visitNotePurpose}
+              onChange={(e) => setVisitNotePurpose(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              placeholder="e.g. Follow-up, Initial consultation…"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Treatments completed</span>
+            <textarea
+              value={visitNoteTreatments}
+              onChange={(e) => setVisitNoteTreatments(e.target.value)}
+              rows={3}
+              className="min-h-[72px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              placeholder="Comma-separated or one per line"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Pre-treatment advice</span>
+            <textarea
+              value={visitNotePreAdvice}
+              onChange={(e) => setVisitNotePreAdvice(e.target.value)}
+              rows={3}
+              className="min-h-[72px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              placeholder="One item per line"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Post-treatment advice</span>
+            <textarea
+              value={visitNotePostAdvice}
+              onChange={(e) => setVisitNotePostAdvice(e.target.value)}
+              rows={3}
+              className="min-h-[72px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              placeholder="One item per line"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Prescription</span>
+            <textarea
+              value={visitNotePrescription}
+              onChange={(e) => setVisitNotePrescription(e.target.value)}
+              rows={3}
+              className="min-h-[72px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              placeholder="One item per line"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Response to treatment</span>
+            <select
+              value={visitNoteResponseRating}
+              onChange={(e) => setVisitNoteResponseRating(e.target.value)}
+              className="w-full max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+            >
+              <option value="">— Not rated —</option>
+              <option value="excellent">Excellent</option>
+              <option value="good">Good</option>
+              <option value="moderate">Moderate</option>
+              <option value="poor">Poor</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-slate-800">
               Attach documents (PDF, images, plain text)
             </span>
@@ -2163,6 +2233,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   body: JSON.stringify({
                     notes: visitNoteText,
                     visitDateYmd: visitNoteDateYmd.trim() || undefined,
+                    purpose: visitNotePurpose.trim() || undefined,
+                    treatments: visitNoteTreatments.trim() || undefined,
+                    preAdvice: visitNotePreAdvice.trim() || undefined,
+                    postAdvice: visitNotePostAdvice.trim() || undefined,
+                    prescription: visitNotePrescription.trim() || undefined,
+                    responseRating: visitNoteResponseRating || undefined,
                     attachments: attachments.length ? attachments : undefined,
                   }),
                 });
@@ -2174,6 +2250,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 setVisitNoteFlash("Visit note saved.");
                 setVisitNoteText("");
                 setVisitNoteFiles([]);
+                setVisitNotePurpose("");
+                setVisitNoteTreatments("");
+                setVisitNotePreAdvice("");
+                setVisitNotePostAdvice("");
+                setVisitNotePrescription("");
+                setVisitNoteResponseRating("");
                 void load();
               } catch {
                 setVisitNoteFlash("Network error.");
@@ -2204,6 +2286,37 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   {v.visitDate} · {v.doctorName}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap text-slate-700">{v.notes}</p>
+                {v.purpose ? (
+                  <p className="mt-1 text-slate-600">
+                    <span className="font-medium text-slate-800">Purpose:</span> {v.purpose}
+                  </p>
+                ) : null}
+                {v.treatments ? (
+                  <p className="mt-1 whitespace-pre-wrap text-slate-600">
+                    <span className="font-medium text-slate-800">Treatments:</span> {v.treatments}
+                  </p>
+                ) : null}
+                {v.preAdvice ? (
+                  <p className="mt-1 whitespace-pre-wrap text-slate-600">
+                    <span className="font-medium text-slate-800">Pre-treatment advice:</span> {v.preAdvice}
+                  </p>
+                ) : null}
+                {v.postAdvice ? (
+                  <p className="mt-1 whitespace-pre-wrap text-slate-600">
+                    <span className="font-medium text-slate-800">Post-treatment advice:</span> {v.postAdvice}
+                  </p>
+                ) : null}
+                {v.prescription ? (
+                  <p className="mt-1 whitespace-pre-wrap text-slate-600">
+                    <span className="font-medium text-slate-800">Prescription:</span> {v.prescription}
+                  </p>
+                ) : null}
+                {v.responseRating ? (
+                  <p className="mt-1 text-slate-600">
+                    <span className="font-medium text-slate-800">Response:</span>{" "}
+                    <span className="capitalize">{v.responseRating}</span>
+                  </p>
+                ) : null}
                 {v.attachments && v.attachments.length > 0 ? (
                   <ul className="mt-2 space-y-1 border-t border-slate-200/80 pt-2">
                     {v.attachments.map((att, idx) => (

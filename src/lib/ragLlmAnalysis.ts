@@ -345,3 +345,30 @@ Return ONLY JSON:
 export function isLlmEnabled() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
+
+export async function generatePersonalisedAction(input: {
+  scanCount: number;
+  primaryConcern: string | null;
+  weakestArea: string | null;
+  weakestScore: number | null;
+  weeklyDelta: number | null;
+  existingActions: string[];
+}): Promise<string | null> {
+  const system = `You are a dermatology AI assistant for a skin-health app called SkinFit.
+Generate ONE short, specific, actionable priority tip (max 30 words) for the patient.
+It must NOT repeat any of the existing actions provided.
+Be warm but direct. No fluff.
+Return JSON: { "action": "..." }`;
+
+  const user = `Patient context:
+- Total scans completed: ${input.scanCount}
+- Primary concern: ${input.primaryConcern ?? "not set"}
+- Current weakest parameter: ${input.weakestArea ?? "unknown"} (score: ${input.weakestScore ?? "N/A"}/100)
+- Weekly change in weakest area: ${input.weeklyDelta != null ? (input.weeklyDelta >= 0 ? `+${input.weeklyDelta}` : String(input.weeklyDelta)) : "N/A"}
+
+Existing actions (do NOT repeat these):
+${input.existingActions.map((a, i) => `${i + 1}. ${a}`).join("\n")}`;
+
+  const result = await callJson<{ action: string }>(system, user);
+  return result?.action?.trim() || null;
+}

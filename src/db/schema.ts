@@ -169,6 +169,7 @@ export const users = pgTable("users", {
    * When patient last opened Schedules (clears “new CRM note” bell for confirmed visits).
    */
   scheduleCrmDigestAt: timestamp("schedule_crm_digest_at", { withTimezone: true }),
+  profilePhotoUrl: text("profile_photo_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -314,6 +315,7 @@ export const patientScheduleRequests = pgTable(
     /** Pre-visit / CRM instructions sent when confirming via sheet webhook (`patientMessage`). */
     crmPatientMessage: text("crm_patient_message"),
     cancelledReason: text("cancelled_reason"),
+    patientNotes: text("patient_notes"),
     appointmentId: uuid("appointment_id").references(() => appointments.id, {
       onDelete: "set null",
     }),

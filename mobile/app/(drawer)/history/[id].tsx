@@ -1,4 +1,4 @@
-import { DrawerActions, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -196,11 +196,11 @@ export default function ScanDetailScreen() {
       <View style={[styles.topBar, { paddingTop: Math.max(8, insets.top) }]}>
         <Pressable
           style={styles.menuBtn}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+          onPress={() => router.push(TREATMENT_HISTORY_HREF)}
           hitSlop={12}
-          accessibilityLabel="Open menu"
+          accessibilityLabel="Go back"
         >
-          <Ionicons name="menu" size={26} color="#18181b" />
+          <Ionicons name="chevron-back" size={24} color="#18181b" />
         </Pressable>
         <Pressable
           style={styles.backRow}

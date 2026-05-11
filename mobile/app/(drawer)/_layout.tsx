@@ -1,9 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, type Href, usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { ActivityIndicator, Keyboard, Pressable, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,12 +47,58 @@ function routeIsActive(pathname: string, item: (typeof DOCK_ITEMS)[number]) {
   return item.match.some((entry) => pathname === entry || pathname.startsWith(`${entry}/`));
 }
 
-function GlobalGlassDock({ pathname, onHide }: { pathname: string; onHide: () => void }) {
+function AnimatedDock({
+  pathname,
+  visible,
+  onHide,
+  onInteraction,
+}: {
+  pathname: string;
+  visible: boolean;
+  onHide: () => void;
+  onInteraction: () => void;
+}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const anim = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const [rendered, setRendered] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true);
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(anim, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setRendered(false);
+      });
+    }
+  }, [visible]);
+
+  if (!rendered) return null;
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [80, 0],
+  });
 
   return (
-    <View style={[styles.dockWrap, { bottom: Math.max(insets.bottom, 10) }]} pointerEvents="box-none">
+    <Animated.View
+      style={[
+        styles.dockWrap,
+        { bottom: Math.max(insets.bottom, 10), opacity: anim, transform: [{ translateY }] },
+      ]}
+      pointerEvents={visible ? "box-none" : "none"}
+    >
       <View style={styles.dockBar}>
         <Pressable style={styles.dockHideBtn} onPress={onHide} hitSlop={10}>
           <Ionicons name="chevron-down" size={14} color="#6b7280" />
@@ -55,7 +109,10 @@ function GlobalGlassDock({ pathname, onHide }: { pathname: string; onHide: () =>
             <Pressable
               key={item.key}
               style={styles.dockButton}
-              onPress={() => router.push(item.href)}
+              onPress={() => {
+                onInteraction();
+                router.push(item.href);
+              }}
               hitSlop={8}
             >
               <Ionicons name={item.icon} size={24} color={active ? "#23286f" : "#ffffff"} />
@@ -63,7 +120,7 @@ function GlobalGlassDock({ pathname, onHide }: { pathname: string; onHide: () =>
           );
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -85,6 +142,23 @@ export default function DrawerLayout() {
   const [dockCollapsed, setDockCollapsed] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const dockVisible = showGlobalDock && !dockCollapsed && !keyboardVisible;
+  const autoHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startAutoHide = useCallback(() => {
+    if (autoHideTimer.current) clearTimeout(autoHideTimer.current);
+    autoHideTimer.current = setTimeout(() => setDockCollapsed(true), 4000);
+  }, []);
+
+  const resetAutoHide = useCallback(() => {
+    startAutoHide();
+  }, [startAutoHide]);
+
+  useEffect(() => {
+    if (dockVisible) startAutoHide();
+    return () => {
+      if (autoHideTimer.current) clearTimeout(autoHideTimer.current);
+    };
+  }, [dockVisible, startAutoHide]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
@@ -123,11 +197,9 @@ export default function DrawerLayout() {
           headerShadowVisible: false,
           headerLeft: () => null,
           swipeEnabled: false,
+          drawerType: "front",
           drawerStyle: {
-            backgroundColor: "#ffffff",
-            width: 286,
-            borderTopRightRadius: 20,
-            borderBottomRightRadius: 20,
+            width: 0,
           },
           drawerItemStyle: {
             borderRadius: 12,
@@ -164,11 +236,11 @@ export default function DrawerLayout() {
         />
         <Drawer.Screen
           name="scan"
-          options={{ title: "AI Scan", drawerLabel: "AI Scan" }}
+          options={{ title: "AI Scan", drawerLabel: "AI Scan", headerShown: false }}
         />
         <Drawer.Screen
           name="schedules"
-          options={{ title: "Schedules", drawerLabel: "Schedules" }}
+          options={{ title: "Schedules", drawerLabel: "Schedules", headerStyle: { backgroundColor: "#E8EFE6" } }}
         />
         <Drawer.Screen
           name="wellness"
@@ -187,7 +259,20 @@ export default function DrawerLayout() {
         />
         <Drawer.Screen
           name="profile"
-          options={{ title: "Profile", drawerLabel: "Profile" }}
+          options={{
+            title: "Profile",
+            drawerLabel: "Profile",
+            headerStyle: { backgroundColor: "#E8EFE6" },
+          }}
+        />
+        <Drawer.Screen
+          name="edit-profile"
+          options={{
+            title: "Edit Profile",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
         />
         <Drawer.Screen
           name="notifications"
@@ -197,12 +282,29 @@ export default function DrawerLayout() {
             drawerLabel: () => null,
           }}
         />
+        <Drawer.Screen
+          name="upcoming-appointments"
+          options={{
+            title: "Appointments",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
+        />
       </Drawer>
-      {dockVisible ? (
-        <GlobalGlassDock pathname={pathname} onHide={() => setDockCollapsed(true)} />
-      ) : showGlobalDock && !keyboardVisible ? (
-        <DockRestoreButton onShow={() => setDockCollapsed(false)} />
-      ) : null}
+      {showGlobalDock && !keyboardVisible && (
+        <>
+          <AnimatedDock
+            pathname={pathname}
+            visible={dockVisible}
+            onHide={() => setDockCollapsed(true)}
+            onInteraction={resetAutoHide}
+          />
+          {!dockVisible && (
+            <DockRestoreButton onShow={() => setDockCollapsed(false)} />
+          )}
+        </>
+      )}
     </View>
   );
 }

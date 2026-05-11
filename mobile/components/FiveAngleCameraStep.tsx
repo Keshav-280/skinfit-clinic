@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -7,14 +8,18 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FaceCaptureOvalOverlay } from "@/components/FaceCaptureOvalOverlay";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+
+const NAVY = "#2B3A67";
 
 type Props = {
   stepIndex: number;
   onCaptured: (uri: string) => void;
   onPickFromLibrary: () => void;
+  onBack: () => void;
   busy?: boolean;
 };
 
@@ -22,6 +27,7 @@ export function FiveAngleCameraStep({
   stepIndex,
   onCaptured,
   onPickFromLibrary,
+  onBack,
   busy,
 }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -29,9 +35,12 @@ export function FiveAngleCameraStep({
   const [cameraReady, setCameraReady] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [shooting, setShooting] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   if (!step) return null;
+
+  const totalSteps = FACE_SCAN_CAPTURE_STEPS.length;
 
   const takeShot = useCallback(async () => {
     if (!cameraRef.current || !cameraReady || shooting) return;
@@ -61,7 +70,7 @@ export function FiveAngleCameraStep({
   if (!permission) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={NAVY} />
       </View>
     );
   }
@@ -69,14 +78,19 @@ export function FiveAngleCameraStep({
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.title}>Camera access</Text>
-        <Text style={styles.sub}>We need the camera for your 5-angle kAI scan.</Text>
-        <Pressable style={styles.btnPrimary} onPress={() => void requestPermission()}>
-          <Text style={styles.btnText}>Allow camera</Text>
+        <Ionicons name="camera-outline" size={48} color={NAVY} style={{ marginBottom: 16 }} />
+        <Text style={styles.permTitle}>Camera Access Required</Text>
+        <Text style={styles.permSub}>
+          We need your camera to capture the 5-angle kAI skin scan.
+        </Text>
+        <Pressable style={styles.btnNavy} onPress={() => void requestPermission()}>
+          <Text style={styles.btnNavyText}>Allow Camera</Text>
         </Pressable>
       </View>
     );
   }
+
+  const isDisabled = busy || shooting || !cameraReady || countdown !== null;
 
   return (
     <View style={styles.wrap}>
@@ -87,115 +101,207 @@ export function FiveAngleCameraStep({
         onCameraReady={() => setCameraReady(true)}
       />
       <FaceCaptureOvalOverlay />
-      <View style={styles.topBar}>
-        <Text style={styles.stepKicker}>
-          Step {stepIndex + 1} of {FACE_SCAN_CAPTURE_STEPS.length}
-        </Text>
-        <Text style={styles.stepTitle}>{step.title}</Text>
-        <Text style={styles.stepInstr}>{step.instruction}</Text>
-        <Text style={styles.lighting}>
-          Use soft, even light — avoid harsh backlight. Korean-standard: natural daylight when possible.
-        </Text>
+
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <Pressable onPress={onBack} style={styles.headerBtn} hitSlop={14}>
+          <View style={styles.headerIconCircle}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </View>
+        </Pressable>
+        <Text style={styles.headerTitle}>Take a Selfie</Text>
+        <View style={styles.headerBtn}>
+          <View style={styles.headerIconCircle}>
+            <Ionicons name="help-circle-outline" size={22} color="#fff" />
+          </View>
+        </View>
       </View>
 
-      {countdown !== null && countdown > 0 ? (
-        <View style={styles.countWrap} pointerEvents="none">
-          <Text style={styles.countNum}>{countdown}</Text>
-          <Text style={styles.countLbl}>Hold still…</Text>
+      {/* Instruction pill */}
+      <View style={[styles.pillWrap, { top: insets.top + 60 }]}>
+        <View style={styles.pill}>
+          <Text style={styles.pillText}>{step.shortLabel}</Text>
         </View>
-      ) : null}
+      </View>
 
-      <View style={styles.bottomBar}>
+      {/* Countdown overlay */}
+      {countdown !== null && countdown > 0 && (
+        <View style={styles.countdownOverlay} pointerEvents="none">
+          <View style={styles.countdownCircle}>
+            <Text style={styles.countdownNum}>{countdown}</Text>
+          </View>
+          <Text style={styles.countdownLabel}>Hold steady…</Text>
+        </View>
+      )}
+
+      {/* Bottom bar */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 20 }]}>
         <Pressable
-          style={[styles.btnSecondary, (busy || shooting || !cameraReady) && styles.disabled]}
-          onPress={onPickFromLibrary}
-          disabled={busy || shooting || !cameraReady}
-        >
-          <Text style={styles.btnTextDark}>Pick from library</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.btnPrimary, (busy || shooting || !cameraReady || countdown !== null) && styles.disabled]}
+          style={[styles.btnNavy, isDisabled && styles.disabled]}
           onPress={() => setCountdown(3)}
-          disabled={busy || shooting || !cameraReady || countdown !== null}
+          disabled={isDisabled}
         >
           {shooting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.btnText}>3s countdown & capture</Text>
+            <View style={styles.btnRow}>
+              <Ionicons name="camera-outline" size={20} color="#fff" />
+              <Text style={styles.btnNavyText}>
+                Capture Image ({stepIndex + 1}/{totalSteps})
+              </Text>
+            </View>
           )}
+        </Pressable>
+        <Pressable
+          style={[styles.libraryBtn, (busy || shooting) && styles.disabled]}
+          onPress={onPickFromLibrary}
+          disabled={busy || shooting}
+        >
+          <Ionicons name="images-outline" size={18} color={NAVY} />
+          <Text style={styles.libraryBtnText}>Pick from library</Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
-const TEAL = "#6B8E8E";
-
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: "#000" },
   center: {
     flex: 1,
-    backgroundColor: "#fdf9f0",
+    backgroundColor: "#E8EFE6",
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: 32,
   },
-  title: { fontSize: 20, fontWeight: "700", color: "#18181b" },
-  sub: { marginTop: 8, textAlign: "center", color: "#52525b" },
-  topBar: {
+  permTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A2E", marginBottom: 8 },
+  permSub: {
+    fontSize: 15,
+    color: "#52525b",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  header: {
     position: "absolute",
-    top: 52,
-    left: 16,
-    right: 16,
-    gap: 6,
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    zIndex: 10,
   },
-  stepKicker: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.5,
+  headerBtn: { width: 40, alignItems: "center" },
+  headerIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  stepTitle: { color: "#fff", fontSize: 20, fontWeight: "700" },
-  stepInstr: { color: "rgba(255,255,255,0.9)", fontSize: 14, lineHeight: 20 },
-  lighting: {
-    marginTop: 4,
-    color: "rgba(254,240,138,0.95)",
-    fontSize: 12,
-    lineHeight: 17,
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#fff",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  countWrap: {
+  pillWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  pill: {
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  pillText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  countdownOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.25)",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    zIndex: 20,
   },
-  countNum: {
-    fontSize: 120,
+  countdownCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  countdownNum: {
+    fontSize: 56,
     fontWeight: "900",
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
-  countLbl: { fontSize: 16, fontWeight: "600", color: "rgba(255,255,255,0.9)" },
+  countdownLabel: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   bottomBar: {
     position: "absolute",
-    bottom: 36,
-    left: 16,
-    right: 16,
-    gap: 12,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    gap: 14,
+    zIndex: 10,
   },
-  btnPrimary: {
-    backgroundColor: TEAL,
+  btnNavy: {
+    backgroundColor: NAVY,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
   },
-  btnSecondary: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
+  btnNavyText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  btnTextDark: { color: "#27272a", fontSize: 15, fontWeight: "700" },
+  btnRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  libraryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+  },
+  libraryBtnText: {
+    color: NAVY,
+    fontSize: 14,
+    fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
   disabled: { opacity: 0.45 },
 });

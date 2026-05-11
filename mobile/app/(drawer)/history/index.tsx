@@ -52,6 +52,9 @@ type VisitRow = {
   doctorName: string;
   notes: string;
   attachments?: VisitAttachment[] | null;
+  purpose?: string | null;
+  treatments?: string | null;
+  responseRating?: string | null;
 };
 
 type ReportVoiceRow = {
@@ -216,113 +219,72 @@ export default function HistoryListScreen() {
         />
       }
     >
-      {patient ? (
-        <View style={[styles.profileCard, CARD]}>
-          <View style={styles.profileRow}>
-            <View style={styles.avatarRing}>
-              <Ionicons name="person" size={40} color="#6B8E8E" />
-            </View>
-            <View style={styles.profileText}>
-              <Text style={styles.pName}>{patient.name}</Text>
-              <Text style={styles.pMeta} numberOfLines={1}>
-                {patient.email}
-              </Text>
-              <Text style={styles.pMeta}>
-                Phone:{" "}
-                <Text style={styles.pStrong}>{patient.phone ?? "Not set"}</Text>
-              </Text>
-              <Text style={styles.pMeta}>
-                Age:{" "}
-                <Text style={styles.pStrong}>
-                  {patient.age != null ? String(patient.age) : "Not set"}
-                </Text>
-              </Text>
-              <Text style={styles.pMeta}>
-                Skin type:{" "}
-                <Text style={styles.pTeal}>{patient.skinType ?? "Not set"}</Text>
-              </Text>
-              <Text style={styles.pMeta}>
-                Primary goal:{" "}
-                <Text style={styles.pTeal}>{patient.primaryGoal ?? "Not set"}</Text>
-              </Text>
-              <Pressable onPress={() => router.push("/(drawer)/profile")}>
-                <Text style={styles.editLink}>Edit profile</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      ) : null}
-
       <Text style={styles.sectionTitle}>Progress tracker</Text>
       {scans.length === 0 ? (
         <Text style={styles.empty}>
           No scans yet. Complete your first AI scan to track progress.
         </Text>
       ) : (
-        <View style={styles.scanGrid}>
-          {scans.map((scan) => (
-            <View key={scan.id} style={[styles.scanCard, CARD]}>
-              <View style={styles.scanImageWrap}>
-                <Image
-                  source={resolveAuthenticatedScanImageSource(scan.imageUrl, token)}
-                  style={styles.scanImage}
-                  resizeMode="cover"
-                />
-                <View style={styles.scoreBadge}>
-                  <Text style={styles.scoreBadgeText}>{scan.overallScore}</Text>
+          <View style={styles.scanGrid}>
+            {scans.map((scan) => (
+              <View key={scan.id} style={[styles.scanCard, CARD]}>
+                <View style={styles.scanImageWrap}>
+                  <Image
+                    source={resolveAuthenticatedScanImageSource(scan.imageUrl, token)}
+                    style={styles.scanImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.scoreBadge}>
+                    <Text style={styles.scoreBadgeText}>{scan.overallScore}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.scanBody}>
-                <Text style={styles.scanName} numberOfLines={2}>
-                  {scan.scanName?.trim() || "Untitled scan"}
-                </Text>
-                <Text style={styles.scanDate}>
-                  {format(new Date(scan.createdAt), "MMM d, yyyy")}
-                </Text>
-                <Text style={styles.scanOverall}>Overall {scan.overallScore}/100</Text>
-                <View style={styles.chips}>
-                  {(
-                    [
-                      ["Acne", scan.acne],
-                      ["Wrinkle", scan.wrinkles],
-                      ["Pores", scan.texture],
-                      ["Pigment.", scan.pigmentation],
-                      ["Hydration", scan.hydration],
-                      ["Eczema", scan.eczema],
-                    ] as const
-                  ).map(([label, val]) => (
-                    <View key={label} style={styles.chip}>
-                      <Text style={styles.chipText}>
-                        {label} {val}
+                <View style={styles.scanBody}>
+                  <Text style={styles.scanName} numberOfLines={2}>
+                    {scan.scanName?.trim() || "Untitled scan"}
+                  </Text>
+                  <Text style={styles.scanDate}>
+                    {format(new Date(scan.createdAt), "MMM d, yyyy")}
+                  </Text>
+                  <Text style={styles.scanOverall}>Overall {scan.overallScore}/100</Text>
+                  <View style={styles.chips}>
+                    {(
+                      [
+                        ["Acne", scan.acne],
+                        ["Wrinkle", scan.wrinkles],
+                        ["Pores", scan.texture],
+                        ["Pigment.", scan.pigmentation],
+                        ["Hydration", scan.hydration],
+                        ["Eczema", scan.eczema],
+                      ] as const
+                    ).map(([label, val]) => (
+                      <View key={label} style={styles.chip}>
+                        <Text style={styles.chipText}>
+                          {label} {val}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.scanActions}>
+                    <Pressable
+                      style={styles.btnOutline}
+                      onPress={() => downloadPdf(scan.id)}
+                      disabled={pdfScanId === scan.id}
+                    >
+                      <Text style={styles.btnOutlineText}>
+                        {pdfScanId === scan.id ? "PDF…" : "Download PDF"}
                       </Text>
-                    </View>
-                  ))}
-                </View>
-                <Text style={styles.chipsHint}>
-                  These are six summary scores on the card (not separate photos).
-                  Open the report for every metric and capture angle.
-                </Text>
-                <View style={styles.scanActions}>
-                  <Pressable
-                    style={styles.btnOutline}
-                    onPress={() => downloadPdf(scan.id)}
-                    disabled={pdfScanId === scan.id}
-                  >
-                    <Text style={styles.btnOutlineText}>
-                      {pdfScanId === scan.id ? "PDF…" : "Download PDF"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.btnPrimary}
-                    onPress={() => router.push(`/(drawer)/history/${scan.id}`)}
-                  >
-                    <Text style={styles.btnPrimaryText}>View details</Text>
-                  </Pressable>
+                    </Pressable>
+                    <Pressable
+                      style={styles.btnPrimary}
+                      onPress={() => router.push(`/(drawer)/history/${scan.id}`)}
+                    >
+                      <Text style={styles.btnPrimaryText}>View details</Text>
+                    </Pressable>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
       )}
 
       <View style={[styles.visitSection, CARD, { marginTop: 28 }]}>
@@ -330,114 +292,74 @@ export default function HistoryListScreen() {
         {reportVoices.length === 0 ? (
           <Text style={styles.empty}>No audio notes for your reports yet.</Text>
         ) : (
-          reportVoices.map((vn) => (
-            <View key={vn.id} style={styles.visitCard}>
-              <View style={styles.visitHeader}>
-                <Text style={styles.visitDate} numberOfLines={2}>
-                  {vn.scanLabel}
-                </Text>
-                <Text style={styles.visitDoc}>
-                  {format(new Date(vn.createdAt), "MMM d, yyyy")}
-                </Text>
-              </View>
-              <HistoryAudioPlayButton uri={vn.audioDataUri} />
-              <Pressable
-                style={styles.voiceListenRow}
-                disabled={voiceBusyId === vn.id}
-                onPress={() =>
-                  void patchReportVoice(vn.id, { listened: !vn.listened })
-                }
-              >
-                <View
+          <>
+            {reportVoices.map((vn) => (
+              <View key={vn.id} style={styles.visitCard}>
+                <View style={styles.visitHeader}>
+                  <Text style={styles.visitDate} numberOfLines={2}>
+                    {vn.scanLabel}
+                  </Text>
+                  <Text style={styles.visitDoc}>
+                    {format(new Date(vn.createdAt), "MMM d, yyyy")}
+                  </Text>
+                </View>
+                <HistoryAudioPlayButton uri={vn.audioDataUri} />
+                <Pressable
+                  style={styles.voiceListenRow}
+                  disabled={voiceBusyId === vn.id}
+                  onPress={() =>
+                    void patchReportVoice(vn.id, { listened: !vn.listened })
+                  }
+                >
+                  <View
+                    style={[
+                      styles.voiceCheck,
+                      vn.listened ? { backgroundColor: "#0d9488", borderColor: "#0d9488" } : null,
+                    ]}
+                  />
+                  <Text style={styles.voiceListenLabel}>I listened</Text>
+                </Pressable>
+                <Pressable
                   style={[
-                    styles.voiceCheck,
-                    vn.listened ? { backgroundColor: "#0d9488", borderColor: "#0d9488" } : null,
+                    styles.voiceArchiveBtn,
+                    { opacity: vn.listened && voiceBusyId !== vn.id ? 1 : 0.45 },
                   ]}
-                />
-                <Text style={styles.voiceListenLabel}>I listened</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.voiceArchiveBtn,
-                  { opacity: vn.listened && voiceBusyId !== vn.id ? 1 : 0.45 },
-                ]}
-                disabled={!vn.listened || voiceBusyId === vn.id}
-                onPress={() => void patchReportVoice(vn.id, { archived: true })}
-              >
-                <Text style={styles.voiceArchiveBtnText}>Archive</Text>
-              </Pressable>
-              <Pressable onPress={() => router.push(`/(drawer)/history/${vn.scanId}`)}>
-                <Text style={[styles.editLink, { marginTop: 8 }]}>Open report</Text>
-              </Pressable>
-            </View>
-          ))
-        )}
-        {reportVoicesArchived.length > 0 ? (
-          <View style={{ marginTop: 16 }}>
-            <Pressable onPress={() => setShowArchivedReportAudio((v) => !v)}>
-              <Text style={styles.editLink}>
-                {showArchivedReportAudio ? "Hide" : "Show"} archived report audio (
-                {reportVoicesArchived.length})
-              </Text>
-            </Pressable>
-            {showArchivedReportAudio
-              ? reportVoicesArchived.map((vn) => (
-                  <View key={vn.id} style={[styles.visitCard, { marginTop: 10 }]}>
-                    <View style={styles.visitHeader}>
-                      <Text style={styles.visitDate} numberOfLines={2}>
-                        {vn.scanLabel}
-                      </Text>
-                      <Text style={styles.visitDoc}>
-                        {format(new Date(vn.createdAt), "MMM d, yyyy")}
-                      </Text>
-                    </View>
-                    <HistoryAudioPlayButton uri={vn.audioDataUri} />
-                  </View>
-                ))
-              : null}
-          </View>
-        ) : null}
-
-        <Text style={[styles.subsectionTitle, { marginTop: 24 }]}>Clinic notes</Text>
-        {visits.length === 0 ? (
-          <Text style={styles.empty}>No clinic notes yet.</Text>
-        ) : (
-          visits.map((visit) => (
-            <View key={visit.id} style={styles.visitCard}>
-              <View style={styles.visitHeader}>
-                <Text style={styles.visitDate}>
-                  {format(parseISO(`${visit.visitDateYmd}T12:00:00`), "MMM d, yyyy")}
-                </Text>
-                <Text style={styles.visitDoc}>{visit.doctorName}</Text>
+                  disabled={!vn.listened || voiceBusyId === vn.id}
+                  onPress={() => void patchReportVoice(vn.id, { archived: true })}
+                >
+                  <Text style={styles.voiceArchiveBtnText}>Archive</Text>
+                </Pressable>
+                <Pressable onPress={() => router.push(`/(drawer)/history/${vn.scanId}`)}>
+                  <Text style={[styles.editLink, { marginTop: 8 }]}>Open report</Text>
+                </Pressable>
               </View>
-              <View style={styles.visitNotesBox}>
-                <Text style={styles.visitNotesLabel}>Notes</Text>
-                <Text style={styles.visitNotesBody}>{visit.notes}</Text>
-                {visit.attachments && visit.attachments.length > 0 ? (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={styles.visitNotesLabel}>Documents</Text>
-                    {visit.attachments.map((att, i) => (
-                      <Pressable
-                        key={`${visit.id}-att-${i}`}
-                        onPress={() => {
-                          void Linking.openURL(att.dataUri).catch(() => {
-                            Alert.alert(
-                              "Could not open file",
-                              "Try opening Treatment history on the web app to download this file."
-                            );
-                          });
-                        }}
-                        style={{ marginTop: 6 }}
-                      >
-                        <Text style={styles.attachLink}>{att.fileName}</Text>
-                        <Text style={styles.attachMeta}>{att.mimeType}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                ) : null}
+            ))}
+            {reportVoicesArchived.length > 0 ? (
+              <View style={{ marginTop: 16 }}>
+                <Pressable onPress={() => setShowArchivedReportAudio((v) => !v)}>
+                  <Text style={styles.editLink}>
+                    {showArchivedReportAudio ? "Hide" : "Show"} archived report audio (
+                    {reportVoicesArchived.length})
+                  </Text>
+                </Pressable>
+                {showArchivedReportAudio
+                  ? reportVoicesArchived.map((vn) => (
+                      <View key={vn.id} style={[styles.visitCard, { marginTop: 10 }]}>
+                        <View style={styles.visitHeader}>
+                          <Text style={styles.visitDate} numberOfLines={2}>
+                            {vn.scanLabel}
+                          </Text>
+                          <Text style={styles.visitDoc}>
+                            {format(new Date(vn.createdAt), "MMM d, yyyy")}
+                          </Text>
+                        </View>
+                        <HistoryAudioPlayButton uri={vn.audioDataUri} />
+                      </View>
+                    ))
+                  : null}
               </View>
-            </View>
-          ))
+            ) : null}
+          </>
         )}
       </View>
     </ScrollView>
@@ -680,4 +602,47 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
   attachMeta: { fontSize: 12, color: "#71717a", marginTop: 2 },
+  visitCardNew: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  visitCardFirst: {
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  visitCardRest: {
+    backgroundColor: "#e8ede6",
+  },
+  vcRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  vcTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  vcDate: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
+  latestPill: {
+    backgroundColor: "#e2e8f0",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  latestText: { fontSize: 11, fontWeight: "700", color: "#475569" },
+  vcTreatment: { fontSize: 14, color: "#52525b", marginTop: 2 },
+  vcDoctor: { fontSize: 13, color: "#71717a", marginTop: 1 },
+  vcRatingPill: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  vcRatingText: { fontSize: 12, fontWeight: "700" },
 });

@@ -25,6 +25,9 @@ export type ScheduleEventRow = {
   attachmentsCount?: number;
   crmPatientMessage?: string | null;
   cancellationReason?: string | null;
+  doctorName?: string | null;
+  doctorPhotoUrl?: string | null;
+  appointmentType?: string | null;
 };
 
 export type DoctorCalendarSlot = {

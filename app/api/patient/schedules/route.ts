@@ -113,6 +113,20 @@ export async function GET(request: Request) {
       ),
       orderBy: [desc(patientScheduleRequests.createdAt)],
       limit: 24,
+      columns: {
+        id: true,
+        preferredDate: true,
+        issue: true,
+        daysAffected: true,
+        timePreferences: true,
+        attachments: true,
+        status: true,
+        crmPatientMessage: true,
+        cancelledReason: true,
+        appointmentId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     }),
     db.query.patientScheduleRequests.findMany({
       where: and(
@@ -206,6 +220,9 @@ export async function GET(request: Request) {
       cancelled: isCancelled,
       crmPatientMessage: tip,
       cancellationReason: cancelNote,
+      doctorName: r.doctorName ?? null,
+      doctorPhotoUrl: null,
+      appointmentType: appointmentTypeLabel(r.type),
     };
   });
 

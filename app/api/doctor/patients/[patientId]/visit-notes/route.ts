@@ -59,10 +59,26 @@ export async function POST(
     notes?: unknown;
     visitDateYmd?: unknown;
     attachments?: unknown;
+    purpose?: unknown;
+    treatments?: unknown;
+    preAdvice?: unknown;
+    postAdvice?: unknown;
+    prescription?: unknown;
+    responseRating?: unknown;
   };
 
   const notesRaw = typeof b.notes === "string" ? b.notes : "";
   const notesTrimmed = clampVisitNoteNotes(notesRaw);
+
+  const purpose = typeof b.purpose === "string" ? b.purpose.trim().slice(0, 1000) || null : null;
+  const treatments = typeof b.treatments === "string" ? b.treatments.trim().slice(0, 2000) || null : null;
+  const preAdvice = typeof b.preAdvice === "string" ? b.preAdvice.trim().slice(0, 2000) || null : null;
+  const postAdvice = typeof b.postAdvice === "string" ? b.postAdvice.trim().slice(0, 2000) || null : null;
+  const prescription = typeof b.prescription === "string" ? b.prescription.trim().slice(0, 2000) || null : null;
+  const validRatings = ["excellent", "good", "moderate", "poor"] as const;
+  const responseRating = typeof b.responseRating === "string" && validRatings.includes(b.responseRating as any)
+    ? (b.responseRating as (typeof validRatings)[number])
+    : null;
 
   const parsedAtt = parseVisitNoteAttachmentsInput(b.attachments);
   if ("error" in parsedAtt) {
@@ -99,6 +115,12 @@ export async function POST(
       doctorName,
       notes: finalNotes,
       attachments: attachments ?? null,
+      purpose,
+      treatments,
+      preAdvice,
+      postAdvice,
+      prescription,
+      responseRating,
     })
     .returning({
       id: visitNotes.id,
@@ -106,6 +128,12 @@ export async function POST(
       doctorName: visitNotes.doctorName,
       notes: visitNotes.notes,
       attachments: visitNotes.attachments,
+      purpose: visitNotes.purpose,
+      treatments: visitNotes.treatments,
+      preAdvice: visitNotes.preAdvice,
+      postAdvice: visitNotes.postAdvice,
+      prescription: visitNotes.prescription,
+      responseRating: visitNotes.responseRating,
       createdAt: visitNotes.createdAt,
     });
 
@@ -136,6 +164,12 @@ export async function POST(
       doctorName: row.doctorName,
       notes: row.notes,
       attachments: row.attachments ?? null,
+      purpose: row.purpose,
+      treatments: row.treatments,
+      preAdvice: row.preAdvice,
+      postAdvice: row.postAdvice,
+      prescription: row.prescription,
+      responseRating: row.responseRating,
       createdAt: row.createdAt.toISOString(),
     },
   });

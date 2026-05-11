@@ -69,6 +69,12 @@ export async function GET(request: Request) {
         doctorName: true,
         notes: true,
         attachments: true,
+        purpose: true,
+        treatments: true,
+        preAdvice: true,
+        postAdvice: true,
+        prescription: true,
+        responseRating: true,
       },
       orderBy: [desc(visitNotes.visitDate)],
     }),
@@ -120,6 +126,12 @@ export async function GET(request: Request) {
     doctorName: v.doctorName,
     notes: v.notes,
     attachments: v.attachments ?? null,
+    purpose: v.purpose ?? null,
+    treatments: v.treatments ?? null,
+    preAdvice: v.preAdvice ?? null,
+    postAdvice: v.postAdvice ?? null,
+    prescription: v.prescription ?? null,
+    responseRating: v.responseRating ?? null,
   }));
 
   const mapReport = (r: (typeof reportVoiceRows)[number]) => ({
