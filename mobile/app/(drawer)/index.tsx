@@ -798,9 +798,9 @@ export default function DashboardScreen() {
         <View style={styles.paramGrid}>
           {params.map((p) => (
             <View key={p.label} style={[styles.paramCell, { backgroundColor: MINT }]}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.paramLabel}>{p.label}</Text>
-                <View style={{ alignItems: "flex-end" }}>
+              <View style={styles.paramHeader}>
+                <Text style={styles.paramLabel} numberOfLines={2}>{p.label}</Text>
+                <View style={styles.paramValCol}>
                   <Text style={styles.paramNum}>{Math.round(p.value)}/100</Text>
                   <Text
                     style={[
@@ -2059,8 +2059,10 @@ const styles = StyleSheet.create({
   chipText: { color: "#52525b", fontSize: 13 },
   chipTextOn: { color: NAVY, fontWeight: "600", fontSize: 13 },
   paramGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
-  paramCell: { width: "47%", borderRadius: 16, padding: 12 },
-  paramLabel: { fontSize: 14, fontWeight: "600", color: "#27272a" },
+  paramCell: { width: "47%", borderRadius: 16, padding: 12, overflow: "hidden" },
+  paramHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 4 },
+  paramLabel: { fontSize: 13, fontWeight: "600", color: "#27272a", flex: 1, flexShrink: 1 },
+  paramValCol: { alignItems: "flex-end", flexShrink: 0 },
   paramNum: { fontSize: 12, color: "#52525b" },
   paramDelta: { fontSize: 11, fontWeight: "700", marginTop: 2 },
   deltaUp: { color: "#047857" },
