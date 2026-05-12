@@ -268,9 +268,9 @@ Generate ONE personalized daily focus tip for today. Be specific, warm, actionab
 First sentence: observation based on data. Second sentence: concrete advice.
 Return ONLY JSON: {"message": "...", "sourceParam": "..." or null}
 
-PATIENT: ${userRow.name ?? "Patient"}
-Skin type: ${userRow.skinType ?? "unknown"}
-Primary concern: ${userRow.primaryConcern ?? "unknown"}
+PATIENT: ${userRow?.name ?? "Patient"}
+Skin type: ${userRow?.skinType ?? "unknown"}
+Primary concern: ${userRow?.primaryConcern ?? "unknown"}
 kAI Score: ${kaiSkinScore}
 Weakest parameter: ${weakestParam}
 Last 7 days: ${routineDays}/${logCount} full routine days, avg sleep ${avgSleep}h, avg water ${avgWater} glasses, avg stress ${avgStress}/10
@@ -291,12 +291,13 @@ Today: ${todayYmdFromProfile}`;
       const parsed = JSON.parse(txt) as { message?: string; sourceParam?: string | null };
       if (!parsed.message) return null;
 
-      await db.insert(dailyFocus).values({
-        userId,
+      const insertVal: typeof dailyFocus.$inferInsert = {
+        userId: userId!,
         focusDate: todayDateOnly,
         message: parsed.message,
-        sourceParam: parsed.sourceParam ?? null,
-      }).onConflictDoNothing();
+        sourceParam: parsed.sourceParam ?? undefined,
+      };
+      await db.insert(dailyFocus).values(insertVal).onConflictDoNothing();
 
       return { message: parsed.message, sourceParam: parsed.sourceParam ?? null };
     } catch {
