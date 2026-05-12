@@ -10,6 +10,7 @@ import {
   boolean,
   date,
   pgEnum,
+  real,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -170,6 +171,8 @@ export const users = pgTable("users", {
    */
   scheduleCrmDigestAt: timestamp("schedule_crm_digest_at", { withTimezone: true }),
   profilePhotoUrl: text("profile_photo_url"),
+  /** Set by doctor portal when marking a patient as "Visited". */
+  clinicVisitedAt: timestamp("clinic_visited_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -237,8 +240,8 @@ export const dailyLogs = pgTable(
     routineAmSteps: jsonb("routine_am_steps").$type<boolean[]>(),
     /** Per-step completion for PM_ROUTINE_ITEMS (same order). */
     routinePmSteps: jsonb("routine_pm_steps").$type<boolean[]>(),
-    /** Hours of sleep (whole hours). */
-    sleepHours: integer("sleep_hours").notNull().default(0),
+    /** Hours of sleep (supports half-hours e.g. 6.5). */
+    sleepHours: real("sleep_hours").notNull().default(0),
     /** Self-reported stress 1–10. */
     stressLevel: integer("stress_level").notNull().default(5),
     /** Water intake in glasses. */

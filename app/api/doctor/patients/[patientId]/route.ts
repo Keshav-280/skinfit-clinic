@@ -75,6 +75,7 @@ export async function GET(
       routinePlanAmItems: true,
       routinePlanPmItems: true,
       routinePlanClinicianLocked: true,
+      clinicVisitedAt: true,
     },
   });
 
@@ -408,4 +409,35 @@ export async function GET(
       completed: s.completed,
     })),
   });
+}
+
+export async function PATCH(
+  req: Request,
+  ctx: { params: Promise<{ patientId: string }> }
+) {
+  const staffId = await getDoctorPortalUserId();
+  if (!staffId) {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  const { patientId } = await ctx.params;
+  if (!patientId) {
+    return NextResponse.json({ error: "INVALID" }, { status: 400 });
+  }
+
+  let body: { clinicVisited?: boolean };
+  try {
+    body = (await req.json()) as { clinicVisited?: boolean };
+  } catch {
+    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+  }
+
+  if (typeof body.clinicVisited === "boolean") {
+    await db
+      .update(users)
+      .set({ clinicVisitedAt: body.clinicVisited ? new Date() : null })
+      .where(and(eq(users.id, patientId), eq(users.role, "patient")));
+  }
+
+  return NextResponse.json({ ok: true });
 }

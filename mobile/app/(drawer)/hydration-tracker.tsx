@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { format, addDays, subDays, addMonths, subMonths, isSameDay } from "date-fns";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,7 +26,21 @@ const GLASS_BORDER = "rgba(255,255,255,0.7)";
 const GOAL_LITERS = 3.0;
 const ML_PER_GLASS = 250;
 
-function HydrationGauge({ liters, goal = GOAL_LITERS, size = 220 }: { liters: number; goal?: number; size?: number }) {
+function HydrationGauge({
+  liters,
+  goal = GOAL_LITERS,
+  size = 220,
+  onChangeLiters,
+  onDragStart,
+  onDragEnd,
+}: {
+  liters: number;
+  goal?: number;
+  size?: number;
+  onChangeLiters?: (nextLiters: number) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+}) {
   const cx = size / 2;
   const cy = size / 2 + 10;
   const r = size / 2 - 20;
@@ -55,9 +70,53 @@ function HydrationGauge({ liters, goal = GOAL_LITERS, size = 220 }: { liters: nu
   const dot = polarToXY(valueAngle, r);
 
   const pct = Math.round((liters / goal) * 100);
+  const onChangeRef = useRef(onChangeLiters);
+  onChangeRef.current = onChangeLiters;
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
+
+  const updateFromTouch = useCallback(
+    (x: number, y: number) => {
+      if (!onChangeRef.current) return;
+      const dx = x - cx;
+      const dy = y - cy;
+      let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      if (angle < 0) angle += 360;
+      const clampedAngle = Math.max(startAngle, Math.min(endAngle, angle));
+      const ratioFromTouch = (clampedAngle - startAngle) / totalAngle;
+      onChangeRef.current(Number((ratioFromTouch * goal).toFixed(1)));
+    },
+    [cx, cy, goal, startAngle, endAngle, totalAngle]
+  );
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: (e) => {
+          onDragStartRef.current?.();
+          updateFromTouch(e.nativeEvent.locationX, e.nativeEvent.locationY);
+        },
+        onPanResponderMove: (e) => {
+          updateFromTouch(e.nativeEvent.locationX, e.nativeEvent.locationY);
+        },
+        onPanResponderRelease: () => onDragEndRef.current?.(),
+        onPanResponderTerminate: () => onDragEndRef.current?.(),
+      }),
+    [updateFromTouch]
+  );
 
   return (
-    <View style={{ alignItems: "center", justifyContent: "center", height: size }}>
+    <View
+      style={{ alignItems: "center", justifyContent: "center", height: size }}
+      {...(onChangeLiters ? panResponder.panHandlers : {})}
+    >
       <Svg width={size} height={size}>
         <Path d={arcPath} stroke="#E5E7EB" strokeWidth={10} fill="none" strokeLinecap="round" />
         <Path d={fillPath} stroke={BLUE} strokeWidth={10} fill="none" strokeLinecap="round" />
@@ -83,9 +142,9 @@ function HydrationGauge({ liters, goal = GOAL_LITERS, size = 220 }: { liters: nu
         })}
       </Svg>
       <View style={{ position: "absolute", alignItems: "center" }}>
-        <Text style={{ fontSize: 38, fontWeight: "800", color: "#18181b" }}>{liters.toFixed(1)}</Text>
+        <Text style={{ fontSize: 38, fontWeight: "800", color: "#18181b" }}>{liters.toFixed(2)}</Text>
         <Text style={{ fontSize: 15, color: BLUE, fontWeight: "700", marginTop: -2 }}>Liters</Text>
-        <Text style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>of {goal.toFixed(1)} L goal</Text>
+        <Text style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>of {goal.toFixed(2)} L goal</Text>
         <View style={[s.pctBadge]}>
           <Ionicons name="water" size={13} color={BLUE} />
           <Text style={s.pctBadgeText}>{pct}% of your goal</Text>
@@ -121,6 +180,7 @@ export default function HydrationTrackerScreen() {
   const [insightData, setInsightData] = useState<HydrationInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const minDate = useMemo(() => subMonths(new Date(), 1), []);
   const maxDate = useMemo(() => addMonths(new Date(), 1), []);
@@ -194,7 +254,7 @@ export default function HydrationTrackerScreen() {
 
       <Text style={s.subtitle}>Log your water intake to keep your skin happy</Text>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} scrollEnabled={scrollEnabled}>
         <View style={s.dateRow}>
           <Pressable style={[s.dateArrow, !canGoBack && { opacity: 0.3 }]} hitSlop={10} onPress={goBack} disabled={!canGoBack}>
             <Ionicons name="chevron-back" size={18} color={NAVY} />
@@ -210,7 +270,12 @@ export default function HydrationTrackerScreen() {
 
         <View style={s.card}>
           <Text style={s.question}>How much water did you drink today?</Text>
-          <HydrationGauge liters={liters} />
+          <HydrationGauge
+            liters={liters}
+            onChangeLiters={(nextLiters) => setTotalMl(Math.max(0, Math.round(nextLiters * 1000)))}
+            onDragStart={() => setScrollEnabled(false)}
+            onDragEnd={() => setScrollEnabled(true)}
+          />
 
           <View style={s.addRow}>
             {ADD_OPTIONS.map((opt) => (

@@ -440,7 +440,7 @@ export default function DashboardScreen() {
         method: "POST",
         body: JSON.stringify({
           date: journalDate,
-          sleepHours: Number.parseInt(sleep, 10) || 0,
+          sleepHours: Number.parseFloat(sleep) || 0,
           stressLevel: Number.parseInt(stress, 10) || 0,
           waterGlasses: Number.parseInt(water, 10) || 0,
           journalEntry: journalText.trim() || null,
@@ -486,14 +486,16 @@ export default function DashboardScreen() {
 
   const amDone = useMemo(() => routine.am.filter(Boolean).length, [routine.am]);
   const pmDone = useMemo(() => routine.pm.filter(Boolean).length, [routine.pm]);
+  const totalRoutineSteps = (data?.amItems.length ?? 0) + (data?.pmItems.length ?? 0);
+  const completedRoutineSteps = amDone + pmDone;
 
   const streakMessage = useMemo(() => {
-    if (data?.streakCurrent == null) return "Keep it up!";
-    if (data.streakCurrent >= 7) return "Keep it up!";
-    if (data.streakCurrent >= 3) return "Keep going!";
-    if (data.streakCurrent >= 1) return "Good start!";
-    return "Falling short";
-  }, [data?.streakCurrent]);
+    if (totalRoutineSteps <= 0) return "Keep it up!";
+    if (completedRoutineSteps >= totalRoutineSteps) return "All completed";
+    if (completedRoutineSteps <= 0) return "Falling short";
+    if (completedRoutineSteps <= Math.max(1, Math.floor(totalRoutineSteps * 0.4))) return "Good start!";
+    return "Keep going!";
+  }, [totalRoutineSteps, completedRoutineSteps]);
 
   const streakDays = useMemo(() => {
     const completedSet = new Set(data?.weekCompletedDates ?? []);
@@ -654,7 +656,9 @@ export default function DashboardScreen() {
         <Text
           style={[
             styles.streakMessage,
-            data.streakCurrent >= 3 ? { color: GREEN_ACCENT } : { color: "#DC2626" },
+            completedRoutineSteps >= totalRoutineSteps && totalRoutineSteps > 0
+              ? { color: GREEN_ACCENT }
+              : { color: "#DC2626" },
           ]}
         >
           {streakMessage}
@@ -741,7 +745,7 @@ export default function DashboardScreen() {
         <View style={styles.journalCardInner}>
           <View style={{ flex: 1 }}>
             <Text style={styles.journalCardLabel}>Hydration</Text>
-            <Text style={styles.journalCardValue}>{Number(water) * 250} ml</Text>
+            <Text style={styles.journalCardValue}>{((Number(water) * 250) / 1000).toFixed(2)} L</Text>
           </View>
           <View style={[styles.journalCardIcon, { backgroundColor: "#3B82F6" }]}>
             <Ionicons name="water" size={20} color="#fff" />

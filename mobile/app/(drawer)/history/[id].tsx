@@ -200,7 +200,7 @@ export default function ScanDetailScreen() {
           hitSlop={12}
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={24} color="#18181b" />
+          <Ionicons name="chevron-back" size={24} color="#2C3E6B" />
         </Pressable>
         <Pressable
           style={styles.backRow}
@@ -238,29 +238,36 @@ export default function ScanDetailScreen() {
   );
 }
 
+const BG = "#E8EFE6";
+const NAVY = "#2C3E6B";
+
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: "#f8f5ef" },
+  wrap: { flex: 1, backgroundColor: BG },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f8f5ef",
+    backgroundColor: BG,
     padding: 24,
     gap: 12,
   },
-  loadingText: { fontSize: 15, fontWeight: "600", color: "#52525b" },
+  loadingText: { fontSize: 15, fontWeight: "600", color: "#6B7280" },
   err: { color: "#b91c1c", textAlign: "center", marginBottom: 16 },
   backBtn: { paddingVertical: 12, paddingHorizontal: 20 },
-  backBtnText: { color: "#0d9488", fontWeight: "700" },
+  backBtnText: { color: NAVY, fontWeight: "700" },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingBottom: 4,
     gap: 4,
+    backgroundColor: BG,
   },
   menuBtn: {
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.06)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -272,6 +279,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     gap: 4,
   },
-  backChev: { fontSize: 28, color: "#27272a", marginTop: -2 },
-  backLabel: { fontSize: 15, fontWeight: "600", color: "#27272a" },
+  backChev: { fontSize: 28, color: NAVY, marginTop: -2 },
+  backLabel: { fontSize: 15, fontWeight: "700", color: NAVY },
 });

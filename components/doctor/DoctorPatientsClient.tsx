@@ -18,6 +18,7 @@ type PatientRow = {
   email: string;
   primaryConcern: string | null;
   onboardingComplete: boolean;
+  clinicVisited?: boolean;
   createdAt: string;
   sosRowTint?: "urgent" | "seen" | null;
   lastSosAt?: string | null;
@@ -186,6 +187,11 @@ export function DoctorPatientsClient({
                     {p.primaryConcern && (
                       <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
                         {p.primaryConcern}
+                      </span>
+                    )}
+                    {p.clinicVisited && (
+                      <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700">
+                        Visited
                       </span>
                     )}
                     <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${

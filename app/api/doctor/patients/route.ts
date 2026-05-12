@@ -62,6 +62,7 @@ export async function GET(req: Request) {
       email: users.email,
       primaryConcern: users.primaryConcern,
       onboardingComplete: users.onboardingComplete,
+      clinicVisitedAt: users.clinicVisitedAt,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -85,6 +86,7 @@ export async function GET(req: Request) {
         email: r.email,
         primaryConcern: r.primaryConcern,
         onboardingComplete: r.onboardingComplete,
+        clinicVisited: r.clinicVisitedAt != null,
         createdAt: r.createdAt.toISOString(),
         sosRowTint,
         lastSosAt: latest?.createdAt.toISOString() ?? null,

@@ -167,7 +167,7 @@ export async function POST(req: Request) {
   const { amLen, pmLen } = await routineLensForUser(userId);
 
   const sleepHours = body.sleepHours != null
-    ? clampInt(body.sleepHours, 0, 24, existing?.sleepHours ?? 0)
+    ? clampFloat(body.sleepHours, 0, 24, existing?.sleepHours ?? 0)
     : (existing?.sleepHours ?? 0);
   const stressLevel = body.stressLevel != null
     ? clampInt(body.stressLevel, 0, 10, existing?.stressLevel ?? 5)
@@ -423,6 +423,17 @@ function clampInt(
   fallback: number
 ): number {
   const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v) : NaN;
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function clampFloat(
+  v: unknown,
+  min: number,
+  max: number,
+  fallback: number
+): number {
+  const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v * 10) / 10 : NaN;
   if (Number.isNaN(n)) return fallback;
   return Math.min(max, Math.max(min, n));
 }

@@ -82,6 +82,7 @@ type DetailJson = {
     routinePlanPmItems: string[] | null;
     /** When false, checklist steps are refreshed from the app template on each reminder cron. */
     routinePlanClinicianLocked: boolean;
+    clinicVisitedAt: string | null;
   };
   scans?: Array<{
     id: number;
@@ -869,7 +870,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               </p>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {p.clinicVisitedAt && (
+              <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">
+                Visited
+              </span>
+            )}
             <span className={`rounded-lg px-2 py-1 text-xs font-semibold ${
               p.onboardingComplete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
             }`}>
@@ -880,6 +886,28 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 {p.primaryConcern}
               </span>
             )}
+            <button
+              type="button"
+              onClick={async () => {
+                const next = !p.clinicVisitedAt;
+                try {
+                  await fetch(`/api/doctor/patients/${patientId}`, {
+                    method: "PATCH",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ clinicVisited: next }),
+                  });
+                  await load();
+                } catch { /* ignore */ }
+              }}
+              className={`rounded-lg border px-2 py-1 text-xs font-semibold transition ${
+                p.clinicVisitedAt
+                  ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {p.clinicVisitedAt ? "Unmark Visited" : "Mark as Visited"}
+            </button>
           </div>
         </div>
 

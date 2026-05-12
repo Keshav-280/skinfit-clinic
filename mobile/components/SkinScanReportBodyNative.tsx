@@ -18,10 +18,15 @@ import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
 
-const BEIGE = "#F5F1E9";
-const TEAL_BAND = "#E0EEEB";
-const PEACH = "#F29C91";
-const BTN = "#6D8C8E";
+const BG = "#E8EFE6";
+const NAVY = "#2C3E6B";
+const GREEN_ACCENT = "#16a34a";
+const GLASS = "rgba(255,255,255,0.55)";
+const GLASS_BORDER = "rgba(255,255,255,0.7)";
+const BEIGE = BG;
+const TEAL_BAND = "#D4E8D0";
+const PEACH = GREEN_ACCENT;
+const BTN = NAVY;
 
 const OVERVIEW_P2 =
   "Maintaining gentle cleansing, daily photoprotection, and targeted hydration supports long-term barrier health and helps preserve the improvements shown in your latest scan.";
@@ -313,20 +318,20 @@ export function SkinScanReportBodyNative({
                   {
                     label: "Acne",
                     value: metrics.acne,
-                    fill: "#5B8FD8",
-                    track: "rgba(91, 143, 216, 0.18)",
+                    fill: NAVY,
+                    track: "rgba(44,62,107,0.15)",
                   },
                   {
                     label: "Hydration",
                     value: metrics.hydration,
-                    fill: PEACH,
-                    track: "rgba(242, 156, 145, 0.22)",
+                    fill: GREEN_ACCENT,
+                    track: "rgba(22,163,74,0.15)",
                   },
                   {
                     label: "Wrinkles",
                     value: metrics.wrinkles,
-                    fill: "#9EC5E8",
-                    track: "rgba(158, 197, 232, 0.3)",
+                    fill: "#6366F1",
+                    track: "rgba(99,102,241,0.15)",
                   },
                 ].map((row) => (
                   <View key={row.label} style={styles.metricPill}>
@@ -393,8 +398,8 @@ export function SkinScanReportBodyNative({
                     percent={overall}
                     size={104}
                     stroke={9}
-                    color={PEACH}
-                    trackColor="#F0E4E1"
+                    color={GREEN_ACCENT}
+                    trackColor="rgba(22,163,74,0.15)"
                   />
                 </View>
               </View>
@@ -403,7 +408,7 @@ export function SkinScanReportBodyNative({
         </View>
 
         {tracker ? (
-          <View style={[styles.beigeFooter, { backgroundColor: BEIGE }]}>
+          <View style={styles.beigeFooter}>
             <View style={styles.footerRule} />
             <Text style={styles.resourceFooterTitle}>Resource centre</Text>
             <Text style={styles.resourceFooterHint}>
@@ -411,7 +416,7 @@ export function SkinScanReportBodyNative({
             </Text>
           </View>
         ) : (
-          <LinearGradient colors={[TEAL_BAND, "#d8ebe6"]} style={styles.tealSection}>
+          <LinearGradient colors={[TEAL_BAND, "#C8E0C4"]} style={styles.tealSection}>
             <View style={styles.tealDivider} />
             <View style={styles.tealBar} />
             <Text style={styles.tealH}>Overview</Text>
@@ -428,7 +433,7 @@ export function SkinScanReportBodyNative({
           </LinearGradient>
         )}
 
-        <View style={[styles.beigeFooter, { backgroundColor: BEIGE }]}>
+        <View style={styles.beigeFooter}>
           <View style={styles.footerRule} />
           <Text style={styles.knowSkin}>To know your skin better</Text>
           {tracker?.cta.showAppointmentPrep ? (
@@ -453,35 +458,30 @@ export function SkinScanReportBodyNative({
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#fdf9f0" },
+  scroll: { flex: 1, backgroundColor: BG },
   scrollContent: { paddingBottom: 40 },
   toolbar: { alignItems: "flex-end", paddingHorizontal: 12, paddingTop: 4 },
   pdfBtn: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: "#fff",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderRadius: 14,
+    backgroundColor: GLASS,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
   },
   pdfBtnDis: { opacity: 0.55 },
-  pdfBtnText: { fontSize: 12, fontWeight: "700", color: "#27272a" },
+  pdfBtnText: { fontSize: 12, fontWeight: "700", color: NAVY },
   pageTitle: {
     textAlign: "center",
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#18181b",
     marginTop: 4,
   },
   pageSubtitle: {
     textAlign: "center",
     fontSize: 14,
-    color: "#52525b",
+    color: "#6B7280",
     marginTop: 6,
     paddingHorizontal: 24,
   },
@@ -490,14 +490,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 22,
     overflow: "hidden",
-    backgroundColor: BEIGE,
+    backgroundColor: GLASS,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.65)",
-    shadowColor: "#000",
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 6,
+    borderColor: GLASS_BORDER,
   },
   topFade: {
     position: "absolute",
@@ -513,7 +508,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2.2,
-    color: "#71717a",
+    color: NAVY,
     marginBottom: 12,
   },
   singleCaptureWrap: { alignItems: "center" },
@@ -557,21 +552,21 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 11,
     fontWeight: "600",
-    color: "#52525b",
+    color: "#374151",
     textAlign: "center",
   },
   captureCaptionSmall: {
     marginTop: 6,
     fontSize: 9,
     fontWeight: "600",
-    color: "#52525b",
+    color: "#374151",
     textAlign: "center",
     lineHeight: 12,
   },
   mutedCenter: {
     textAlign: "center",
     fontSize: 14,
-    color: "#71717a",
+    color: "#6B7280",
     marginBottom: 16,
   },
   annotatedBlock: { marginTop: 20 },
@@ -582,9 +577,9 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#e4e4e7",
+    backgroundColor: "#D4E8D0",
     borderWidth: 1,
-    borderColor: "#d4d4d8",
+    borderColor: GLASS_BORDER,
   },
   legendRow: {
     flexDirection: "row",
@@ -597,21 +592,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: GLASS,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#e4e4e7",
+    borderColor: GLASS_BORDER,
   },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 10, fontWeight: "600", color: "#52525b" },
+  legendText: { fontSize: 10, fontWeight: "600", color: "#374151" },
   reportHeadKicker: {
     marginTop: 28,
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 2,
-    color: "#71717a",
+    color: NAVY,
     textTransform: "uppercase",
   },
   hello: {
@@ -624,14 +619,14 @@ const styles = StyleSheet.create({
   ageLine: {
     marginTop: 14,
     fontSize: 13,
-    fontWeight: "500",
-    color: "#52525b",
+    fontWeight: "600",
+    color: "#6B7280",
   },
   bodyText: {
     marginTop: 16,
     fontSize: 14,
     lineHeight: 24,
-    color: "#52525b",
+    color: "#374151",
   },
   faceImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   marker: {
@@ -654,42 +649,42 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: GLASS,
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: "#fff",
+    borderColor: GLASS_BORDER,
   },
-  metricLabel: { fontSize: 13, fontWeight: "600", color: "#3f3f46" },
+  metricLabel: { fontSize: 13, fontWeight: "700", color: "#1E293B" },
   metricRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   metricPct: {
     width: 40,
     textAlign: "right",
     fontSize: 13,
-    fontWeight: "600",
-    color: "#27272a",
+    fontWeight: "700",
+    color: NAVY,
   },
   clinicalSection: { marginTop: 24 },
   clinicalKicker: {
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2,
-    color: "#71717a",
+    color: NAVY,
     textTransform: "uppercase",
   },
   clinicalHint: {
     marginTop: 6,
     fontSize: 12,
     lineHeight: 18,
-    color: "#52525b",
+    color: "#6B7280",
   },
   clinicalGrid: { marginTop: 12, gap: 10 },
   clinicalCard: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.8)",
-    backgroundColor: "rgba(255,255,255,0.9)",
+    borderColor: GLASS_BORDER,
+    backgroundColor: GLASS,
     padding: 12,
   },
   clinicalTop: {
@@ -698,42 +693,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  clinicalLabel: { fontSize: 11, fontWeight: "700", color: "#27272a", flex: 1 },
-  clinicalNum: { fontSize: 12, fontWeight: "700", color: "#18181b" },
-  clinicalNa: { marginTop: 6, fontSize: 10, color: "#71717a" },
+  clinicalLabel: { fontSize: 11, fontWeight: "700", color: "#1E293B", flex: 1 },
+  clinicalNum: { fontSize: 12, fontWeight: "700", color: NAVY },
+  clinicalNa: { marginTop: 6, fontSize: 10, color: "#6B7280" },
   clinicalTrack: {
     marginTop: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(228,228,231,0.95)",
+    backgroundColor: "rgba(44,62,107,0.12)",
     overflow: "hidden",
   },
   clinicalFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "#3f3f46",
+    backgroundColor: NAVY,
   },
   scoreFloat: {
     marginTop: 28,
     marginHorizontal: -8,
     paddingHorizontal: 20,
     paddingVertical: 22,
-    backgroundColor: "#fff",
+    backgroundColor: GLASS,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#fff",
+    borderColor: GLASS_BORDER,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 4,
   },
   scoreKicker: {
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 2,
-    color: "#71717a",
+    color: NAVY,
   },
   scoreBig: {
     marginTop: 6,
@@ -742,13 +732,13 @@ const styles = StyleSheet.create({
     color: PEACH,
     lineHeight: 58,
   },
-  scoreSub: { marginTop: 8, fontSize: 12, fontWeight: "500", color: "#71717a" },
+  scoreSub: { marginTop: 8, fontSize: 12, fontWeight: "500", color: "#6B7280" },
   scoreDonutWrap: {
     marginTop: 12,
     padding: 4,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
+    borderColor: "rgba(44,62,107,0.15)",
   },
   tealSection: {
     paddingHorizontal: 20,
@@ -758,34 +748,39 @@ const styles = StyleSheet.create({
   },
   tealDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "#fff",
+    backgroundColor: GLASS_BORDER,
     marginBottom: 20,
   },
   tealBar: {
     width: 32,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#27272a",
+    backgroundColor: NAVY,
     marginBottom: 12,
   },
   tealH: {
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2,
-    color: "#18181b",
+    color: NAVY,
     marginBottom: 12,
     textTransform: "uppercase",
   },
   tealP: {
     fontSize: 14,
     lineHeight: 24,
-    color: "#3f3f46",
+    color: "#374151",
     marginBottom: 14,
   },
-  beigeFooter: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 32 },
+  beigeFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
+    backgroundColor: "transparent",
+  },
   footerRule: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(0,0,0,0.08)",
+    backgroundColor: "rgba(44,62,107,0.12)",
     marginBottom: 20,
   },
   resourceFooterTitle: {
@@ -793,14 +788,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2.8,
-    color: "#18181b",
+    color: NAVY,
     textTransform: "uppercase",
   },
   resourceFooterHint: {
     textAlign: "center",
     marginTop: 8,
     fontSize: 12,
-    color: "#71717a",
+    color: "#6B7280",
     lineHeight: 18,
     paddingHorizontal: 12,
   },
@@ -810,25 +805,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2.2,
-    color: "#52525b",
+    color: NAVY,
     textTransform: "uppercase",
   },
   bookBtn: {
     alignSelf: "center",
-    backgroundColor: BTN,
+    backgroundColor: NAVY,
     paddingHorizontal: 48,
     paddingVertical: 14,
     borderRadius: 14,
-    shadowColor: BTN,
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
   },
   bookBtnText: {
     color: "#fff",
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 0.5,
   },
 });
