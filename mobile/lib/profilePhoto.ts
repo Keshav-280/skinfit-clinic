@@ -4,7 +4,17 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { apiFetch } from "@/lib/api";
 
 const CACHE_DIR = `${FileSystem.documentDirectory}profile-photos/`;
-const CACHE_FILE = `${CACHE_DIR}avatar.jpg`;
+let _photoUserId: string | null = null;
+
+export function setPhotoUserId(userId: string | null) {
+  _photoUserId = userId;
+}
+
+function cacheFile(): string {
+  return _photoUserId
+    ? `${CACHE_DIR}${_photoUserId}.jpg`
+    : `${CACHE_DIR}avatar.jpg`;
+}
 
 async function ensureCacheDir() {
   const info = await FileSystem.getInfoAsync(CACHE_DIR);
@@ -15,26 +25,35 @@ async function ensureCacheDir() {
 
 export async function getCachedPhoto(): Promise<string | null> {
   try {
-    const info = await FileSystem.getInfoAsync(CACHE_FILE);
-    if (info.exists) return CACHE_FILE;
+    const path = cacheFile();
+    const info = await FileSystem.getInfoAsync(path);
+    if (info.exists) return path;
   } catch {}
   return null;
 }
 
 export async function cachePhotoFromUri(dataUri: string): Promise<string> {
   await ensureCacheDir();
+  const path = cacheFile();
   const base64 = dataUri.split(",")[1];
   if (base64) {
-    await FileSystem.writeAsStringAsync(CACHE_FILE, base64, {
+    await FileSystem.writeAsStringAsync(path, base64, {
       encoding: "base64",
     });
   }
-  return CACHE_FILE;
+  return path;
 }
 
 export async function clearCachedPhoto() {
   try {
-    await FileSystem.deleteAsync(CACHE_FILE, { idempotent: true });
+    await FileSystem.deleteAsync(cacheFile(), { idempotent: true });
+  } catch {}
+}
+
+/** Wipes all cached profile photos (every user). Call on sign-out. */
+export async function clearAllCachedPhotos() {
+  try {
+    await FileSystem.deleteAsync(CACHE_DIR, { idempotent: true });
   } catch {}
 }
 
@@ -71,7 +90,7 @@ async function compressAndUpload(
   }
 
   await cachePhotoFromUri(dataUri);
-  return { uri: CACHE_FILE };
+  return { uri: cacheFile() };
 }
 
 export async function pickAndUploadPhoto(

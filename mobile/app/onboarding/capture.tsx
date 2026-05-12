@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
@@ -16,7 +17,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 
-const TEAL = "#0d9488";
+const NAVY = "#2C3E6B";
+const NAVY_DARK = "#1E3264";
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 
 export default function OnboardingCaptureScreen() {
@@ -96,58 +98,109 @@ export default function OnboardingCaptureScreen() {
 
   if (!isComplete && !useCamera) {
     return (
-      <ScrollView contentContainerStyle={styles.pad}>
-        <Text style={styles.title}>Add {N} photos</Text>
-        <Pressable style={styles.btn} onPress={() => void pickFromLibrary()}>
-          <Text style={styles.btnText}>Pick photo ({uris.length}/{N})</Text>
-        </Pressable>
-        <Pressable onPress={() => setUseCamera(true)}>
-          <Text style={styles.link}>Use guided camera</Text>
-        </Pressable>
-      </ScrollView>
+      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.pad}>
+          <Text style={styles.title}>Add {N} photos</Text>
+          <Pressable
+            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+            onPress={() => void pickFromLibrary()}
+          >
+            <Text style={styles.btnText}>Pick photo ({uris.length}/{N})</Text>
+          </Pressable>
+          <Pressable onPress={() => setUseCamera(true)}>
+            <Text style={styles.link}>Use guided camera</Text>
+          </Pressable>
+        </ScrollView>
+      </LinearGradient>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.pad}>
-      <Text style={styles.title}>Baseline ready</Text>
-      <Text style={styles.sub}>We&apos;ll generate your first kAI report. This may take up to a minute.</Text>
-      <Pressable
-        style={[styles.btn, busy && styles.dis]}
-        onPress={() => void runBaselineScan()}
-        disabled={busy}
-      >
-        {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Generate my kAI report</Text>}
-      </Pressable>
-      <Pressable
-        onPress={() => {
-          setUris([]);
-          setUseCamera(true);
-        }}
-      >
-        <Text style={styles.link}>Retake photos</Text>
-      </Pressable>
-    </ScrollView>
+    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+      <ScrollView contentContainerStyle={styles.pad}>
+        <View style={styles.iconWrap}>
+          <View style={styles.iconCircle}>
+            <Text style={styles.iconCheck}>{"✓"}</Text>
+          </View>
+        </View>
+        <Text style={styles.title}>Baseline ready</Text>
+        <Text style={styles.sub}>We&apos;ll generate your first kAI report. This may take up to a minute.</Text>
+        <Pressable
+          style={({ pressed }) => [styles.btn, busy && styles.dis, pressed && !busy && styles.btnPressed]}
+          onPress={() => void runBaselineScan()}
+          disabled={busy}
+        >
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Generate my kAI report</Text>}
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            setUris([]);
+            setUseCamera(true);
+          }}
+        >
+          <Text style={styles.link}>Retake photos</Text>
+        </Pressable>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  pad: { padding: 24, paddingBottom: 48, backgroundColor: "#f8f5ef", flexGrow: 1 },
-  title: { fontSize: 22, fontWeight: "800", color: "#18181b", textAlign: "center" },
-  sub: { marginTop: 10, fontSize: 14, color: "#52525b", textAlign: "center", lineHeight: 20 },
+  flex: { flex: 1 },
+  pad: {
+    padding: 24,
+    paddingBottom: 48,
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  iconWrap: { alignItems: "center", marginBottom: 20 },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCheck: { fontSize: 28, color: NAVY, fontWeight: "800" },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1A1A2E",
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  sub: {
+    marginTop: 12,
+    fontSize: 15,
+    color: "#52525b",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 8,
+  },
   btn: {
-    marginTop: 24,
-    backgroundColor: TEAL,
-    paddingVertical: 16,
+    marginTop: 28,
+    backgroundColor: NAVY,
+    paddingVertical: 17,
     borderRadius: 16,
     alignItems: "center",
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  dis: { opacity: 0.5 },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  link: { marginTop: 16, textAlign: "center", color: TEAL, fontWeight: "600" },
+  btnPressed: {
+    backgroundColor: NAVY_DARK,
+    transform: [{ scale: 0.98 }],
+  },
+  dis: { opacity: 0.45 },
+  btnText: { color: "#fff", fontWeight: "700", fontSize: 16, letterSpacing: 0.3 },
+  link: {
+    marginTop: 18,
+    textAlign: "center",
+    color: NAVY,
+    fontWeight: "600",
+    fontSize: 15,
+  },
 });

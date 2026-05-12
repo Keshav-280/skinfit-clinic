@@ -189,11 +189,11 @@ export default function DrawerLayout() {
     <View style={styles.root}>
       <Drawer
         screenOptions={({ route }) => ({
-          drawerActiveTintColor: "#0d9488",
+          drawerActiveTintColor: "#2C3E6B",
           drawerInactiveTintColor: "#64748b",
-          headerTintColor: "#0f172a",
-          headerStyle: { backgroundColor: "#ffffff" },
-          headerTitleStyle: { fontWeight: "700" },
+          headerTintColor: "#2C3E6B",
+          headerStyle: { backgroundColor: "#E8EFE6" },
+          headerTitleStyle: { fontWeight: "700", color: "#2C3E6B" },
           headerShadowVisible: false,
           headerLeft: () => null,
           swipeEnabled: false,
@@ -212,7 +212,7 @@ export default function DrawerLayout() {
             fontWeight: "600",
           },
           sceneContainerStyle: {
-            backgroundColor: "#dfe7dc",
+            backgroundColor: "#E8EFE6",
             paddingBottom: dockVisible ? 100 : 0,
           },
           drawerIcon: ({ color, size }) => iconForRoute(route.name, color, size),
@@ -224,7 +224,7 @@ export default function DrawerLayout() {
       >
         <Drawer.Screen
           name="index"
-          options={{ title: "Dashboard", drawerLabel: "Dashboard" }}
+          options={{ title: "Dashboard", drawerLabel: "Dashboard", headerShown: false }}
         />
         <Drawer.Screen
           name="history"
@@ -287,6 +287,60 @@ export default function DrawerLayout() {
           name="upcoming-appointments"
           options={{
             title: "Appointments",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
+        />
+        <Drawer.Screen
+          name="sleep-tracker"
+          options={{
+            title: "Sleep",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
+        />
+        <Drawer.Screen
+          name="hydration-tracker"
+          options={{
+            title: "Hydration",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
+        />
+        <Drawer.Screen
+          name="stress-tracker"
+          options={{
+            title: "Stress",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
+        />
+        <Drawer.Screen
+          name="all-skin-params"
+          options={{
+            title: "All Skin Parameters",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
+        />
+        <Drawer.Screen
+          name="morning-routine"
+          options={{
+            title: "Morning Routine",
+            headerShown: false,
+            drawerItemStyle: { display: "none" },
+            drawerLabel: () => null,
+          }}
+        />
+        <Drawer.Screen
+          name="night-routine"
+          options={{
+            title: "Night Routine",
             headerShown: false,
             drawerItemStyle: { display: "none" },
             drawerLabel: () => null,

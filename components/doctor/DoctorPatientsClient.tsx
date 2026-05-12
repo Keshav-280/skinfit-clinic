@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
+  ChevronRight,
   RefreshCw,
   Search,
+  User,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
@@ -17,13 +19,12 @@ type PatientRow = {
   primaryConcern: string | null;
   onboardingComplete: boolean;
   createdAt: string;
-  /** Recent SOS in 14d: needs review vs marked reviewed in Alerts. */
   sosRowTint?: "urgent" | "seen" | null;
   lastSosAt?: string | null;
 };
 
 const CONCERNS = [
-  { value: "", label: "Any concern" },
+  { value: "", label: "All concerns" },
   { value: "acne", label: "Acne" },
   { value: "pigmentation", label: "Pigmentation" },
   { value: "ageing", label: "Ageing" },
@@ -86,144 +87,121 @@ export function DoctorPatientsClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-end">
-        <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">Search</span>
-          <span className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Name or email"
-              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-slate-900 outline-none focus:border-teal-500"
-            />
-          </span>
-        </label>
-        <label className="flex min-w-[160px] flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700">Concern</span>
-          <select
-            value={concern}
-            onChange={(e) => setConcern(e.target.value)}
-            className="rounded-lg border border-slate-200 py-2 px-3 text-slate-900 outline-none focus:border-teal-500"
-          >
-            {CONCERNS.map((c) => (
-              <option key={c.value || "any"} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-800">
+      {/* ── Filters ── */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name or email…"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-1 focus:ring-[#2C3E6B]/20"
+          />
+        </div>
+        <select
+          value={concern}
+          onChange={(e) => setConcern(e.target.value)}
+          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:ring-1 focus:ring-[#2C3E6B]/20"
+        >
+          {CONCERNS.map((c) => (
+            <option key={c.value || "any"} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
           <input
             type="checkbox"
             checked={sosOnly}
             onChange={(e) => setSosOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300"
+            className="h-3.5 w-3.5 rounded border-slate-300 accent-red-600"
           />
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          SOS only (14d)
+          <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+          SOS only
         </label>
         <button
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50"
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden />
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </button>
       </div>
 
-      {err ? (
-        <p className="text-sm text-red-600" role="alert">
-          {err}
-        </p>
-      ) : null}
+      {err && <p className="text-sm font-medium text-red-600">{err}</p>}
 
+      {/* ── Patient cards ── */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading…</p>
+        <div className="flex items-center justify-center py-16">
+          <RefreshCw className="h-5 w-5 animate-spin text-slate-400" />
+          <span className="ml-2 text-sm text-slate-500">Loading patients…</span>
+        </div>
       ) : rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
-          No patients match these filters.
-        </p>
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center">
+          <User className="mx-auto h-8 w-8 text-slate-300" />
+          <p className="mt-2 text-sm text-slate-500">No patients match these filters.</p>
+        </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Patient</th>
-                <th className="px-4 py-3">Concern</th>
-                <th className="px-4 py-3">Onboarding</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((p) => {
-                const sosTint = p.sosRowTint;
-                const rowClass =
-                  sosTint === "urgent"
-                    ? "border-l-4 border-l-red-600 bg-red-50 hover:bg-red-100/85"
-                    : sosTint === "seen"
-                      ? "border-l-4 border-l-red-300 bg-red-50/35 hover:bg-red-50/65"
-                      : "hover:bg-slate-50/80";
-                return (
-                <tr key={p.id} className={rowClass}>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900">{p.name}</div>
-                    <div className="text-xs text-slate-500">{p.email}</div>
-                    {sosTint === "urgent" ? (
-                      <div
-                        className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                        title={
-                          p.lastSosAt
-                            ? `SOS needs review · ${formatDistanceToNow(new Date(p.lastSosAt), { addSuffix: true })}`
-                            : "SOS in the last 14 days"
-                        }
-                      >
-                        <AlertTriangle className="h-3 w-3" aria-hidden />
-                        SOS
-                      </div>
-                    ) : sosTint === "seen" ? (
-                      <div
-                        className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-100/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-900"
-                        title={
-                          p.lastSosAt
-                            ? `Marked reviewed in Alerts · last SOS ${formatDistanceToNow(new Date(p.lastSosAt), { addSuffix: true })}`
-                            : "Recent SOS — reviewed"
-                        }
-                      >
-                        <AlertTriangle className="h-3 w-3 text-red-700" aria-hidden />
-                        SOS
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {p.primaryConcern ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.onboardingComplete ? (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                        Done
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        In progress
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((p) => {
+            const isUrgent = p.sosRowTint === "urgent";
+            const isSeen = p.sosRowTint === "seen";
+            return (
+              <Link
+                key={p.id}
+                href={`/doctor/patients/${p.id}`}
+                className={`group relative flex items-center gap-3 rounded-2xl border bg-white p-4 shadow-sm transition hover:shadow-md ${
+                  isUrgent
+                    ? "border-red-300 ring-1 ring-red-100"
+                    : isSeen
+                      ? "border-red-200/60"
+                      : "border-slate-200/80 hover:border-slate-300"
+                }`}
+              >
+                {/* Avatar */}
+                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                  isUrgent ? "bg-red-500" : "bg-[#2C3E6B]"
+                }`}>
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-slate-900">{p.name}</p>
+                    {isUrgent && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
+                        <AlertTriangle className="h-2.5 w-2.5" /> SOS
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/doctor/patients/${p.id}`}
-                      className="font-medium text-teal-700 hover:text-teal-600"
-                    >
-                      Open
-                    </Link>
-                  </td>
-                </tr>
-              );
-              })}
-            </tbody>
-          </table>
+                    {isSeen && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700">
+                        SOS
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-slate-500">{p.email}</p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    {p.primaryConcern && (
+                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                        {p.primaryConcern}
+                      </span>
+                    )}
+                    <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${
+                      p.onboardingComplete
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}>
+                      {p.onboardingComplete ? "Onboarded" : "In progress"}
+                    </span>
+                  </div>
+                </div>
+
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300 transition group-hover:text-[#2C3E6B]" />
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

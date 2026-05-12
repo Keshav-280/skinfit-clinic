@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { Link, Redirect, router } from "expo-router";
 import { useState } from "react";
 import {
@@ -13,10 +14,11 @@ import {
 
 import { Text } from "@/components/Themed";
 import { useAuth } from "@/contexts/AuthContext";
-import Colors from "@/constants/Colors";
+
+const NAVY = "#2C3E6B";
+const NAVY_DARK = "#1E3264";
 
 export default function LoginScreen() {
-  const accent = Colors.light.tint;
   const { signIn, token, ready } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,9 +26,9 @@ export default function LoginScreen() {
 
   if (!ready) {
     return (
-      <View style={styles.flex}>
-        <ActivityIndicator size="large" style={{ marginTop: 48 }} />
-      </View>
+      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+        <ActivityIndicator size="large" color={NAVY} style={{ marginTop: 48 }} />
+      </LinearGradient>
     );
   }
 
@@ -48,57 +50,69 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.flex}
-    >
-      <View style={styles.inner}>
-        <View style={styles.card}>
-          <Text style={styles.brand}>SkinFit Clinic</Text>
-          <Text style={styles.subtitle}>Patient app</Text>
+    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flex}
+      >
+        <View style={styles.inner}>
+          <View style={styles.card}>
+            <Text style={styles.brand}>SkinFit Clinic</Text>
+            <Text style={styles.subtitle}>Patient app</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#888"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#888"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
 
-          <Pressable style={[styles.button, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonLabel}>Sign in</Text>
-            )}
-          </Pressable>
-          <View style={styles.signupRow}>
-            <Text style={styles.signupHint}>New here?</Text>
-            <Link href="/signup" asChild>
-              <Pressable hitSlop={8}>
-                <Text style={[styles.signupLink, { color: accent }]}>Create account</Text>
-              </Pressable>
-            </Link>
+            <Pressable
+              style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+              onPress={onSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonLabel}>Sign in</Text>
+              )}
+            </Pressable>
+            <View style={styles.signupRow}>
+              <Text style={styles.signupHint}>New here?</Text>
+              <Link href="/signup" asChild>
+                <Pressable hitSlop={8}>
+                  <Text style={styles.signupLink}>Create account</Text>
+                </Pressable>
+              </Link>
+            </View>
           </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: "#f8f5ef" },
+  flex: { flex: 1 },
   inner: {
     flex: 1,
     padding: 24,
@@ -108,53 +122,74 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 22,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 28,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
   },
   brand: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "800",
     marginBottom: 4,
     textAlign: "center",
-    color: "#18181b",
+    color: "#1A1A2E",
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 15,
-    color: "#64748b",
-    marginBottom: 32,
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 28,
     textAlign: "center",
+    fontWeight: "500",
+  },
+  inputWrap: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 6,
+    marginLeft: 2,
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
-    marginBottom: 12,
-    backgroundColor: "#fff",
+    backgroundColor: "#F3F4F6",
+    color: "#1A1A2E",
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
   },
   button: {
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: "center",
     marginTop: 8,
+    backgroundColor: NAVY,
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  buttonPressed: {
+    backgroundColor: NAVY_DARK,
+    transform: [{ scale: 0.98 }],
   },
   buttonLabel: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   signupRow: {
-    marginTop: 14,
+    marginTop: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -162,10 +197,11 @@ const styles = StyleSheet.create({
   },
   signupHint: {
     fontSize: 14,
-    opacity: 0.75,
+    color: "#6B7280",
   },
   signupLink: {
     fontSize: 14,
     fontWeight: "700",
+    color: NAVY,
   },
 });

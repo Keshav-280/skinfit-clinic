@@ -166,15 +166,22 @@ export async function POST(req: Request) {
 
   const { amLen, pmLen } = await routineLensForUser(userId);
 
-  const sleepHours = clampInt(body.sleepHours, 0, 24, 0);
-  const stressLevel = clampInt(body.stressLevel, 0, 10, 5);
-  const waterGlasses = clampInt(body.waterGlasses, 0, 40, 0);
+  const sleepHours = body.sleepHours != null
+    ? clampInt(body.sleepHours, 0, 24, existing?.sleepHours ?? 0)
+    : (existing?.sleepHours ?? 0);
+  const stressLevel = body.stressLevel != null
+    ? clampInt(body.stressLevel, 0, 10, existing?.stressLevel ?? 5)
+    : (existing?.stressLevel ?? 5);
+  const waterGlasses = body.waterGlasses != null
+    ? clampInt(body.waterGlasses, 0, 40, existing?.waterGlasses ?? 0)
+    : (existing?.waterGlasses ?? 0);
   const journalEntry =
-    typeof body.journalEntry === "string" ? body.journalEntry : null;
+    typeof body.journalEntry === "string" ? body.journalEntry
+    : (existing?.journalEntry ?? null);
   const mood =
     typeof body.mood === "string" && body.mood.trim()
       ? body.mood.trim().slice(0, 100)
-      : "Neutral";
+      : (existing?.mood ?? "Neutral");
 
   const routineAmSteps = normalizeRoutineSteps(
     body.routineAmSteps,
@@ -276,9 +283,11 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
-  if (!Array.isArray(body.routineAmSteps) || !Array.isArray(body.routinePmSteps)) {
+  const hasAm = Array.isArray(body.routineAmSteps);
+  const hasPm = Array.isArray(body.routinePmSteps);
+  if (!hasAm && !hasPm) {
     return NextResponse.json(
-      { error: "INVALID_BODY", message: "routineAmSteps and routinePmSteps arrays required." },
+      { error: "INVALID_BODY", message: "At least one of routineAmSteps or routinePmSteps required." },
       { status: 400 }
     );
   }
@@ -294,22 +303,22 @@ export async function PATCH(req: Request) {
 
   const { amLen, pmLen } = await routineLensForUser(userId);
 
-  const amSteps = normalizeRoutineSteps(
-    body.routineAmSteps,
-    amLen,
-    undefined
-  );
-  const pmSteps = normalizeRoutineSteps(
-    body.routinePmSteps,
-    pmLen,
-    undefined
-  );
-
   const [existing] = await db
     .select()
     .from(dailyLogs)
     .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.date, d)))
     .limit(1);
+
+  const amSteps = normalizeRoutineSteps(
+    hasAm ? body.routineAmSteps : (existing?.routineAmSteps ?? undefined),
+    amLen,
+    existing?.routineAmSteps ?? undefined
+  );
+  const pmSteps = normalizeRoutineSteps(
+    hasPm ? body.routinePmSteps : (existing?.routinePmSteps ?? undefined),
+    pmLen,
+    existing?.routinePmSteps ?? undefined
+  );
 
   if (existing) {
     const [updated] = await db

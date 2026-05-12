@@ -56,6 +56,7 @@ export async function GET(request: Request) {
         wrinkles: true,
         hydration: true,
         texture: true,
+        scores: true,
         createdAt: true,
         aiSummary: true,
       },
@@ -100,21 +101,20 @@ export async function GET(request: Request) {
   ]);
 
   const scanRecords = scansList.map((s) => {
-    const eczema = Math.min(
-      100,
-      Math.max(0, Math.round((s.hydration + s.acne + s.texture) / 3))
-    );
-    return {
-      id: s.id,
-      scanName: s.scanName,
-      imageUrl: patientScanImagePath(s.id, { preview: true, thumbnail: true }),
-      overallScore: s.overallScore,
+    const analysisResults: Record<string, unknown> = {
       acne: s.acne,
       pigmentation: s.pigmentation,
       wrinkles: s.wrinkles,
       hydration: s.hydration,
       texture: s.texture,
-      eczema,
+      ...(s.scores?.modelFeatureScores ?? {}),
+    };
+    return {
+      id: s.id,
+      scanName: s.scanName,
+      imageUrl: patientScanImagePath(s.id, { preview: true, thumbnail: true }),
+      overallScore: s.overallScore,
+      analysisResults,
       createdAt: s.createdAt.toISOString(),
       aiSummary: s.aiSummary ?? null,
     };

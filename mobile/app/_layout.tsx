@@ -50,16 +50,17 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-/** Navigation theme aligned with web patient portal (light only). */
+const NAVY = "#2C3E6B";
+
 const skinfitNavigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: "#0d9488",
-    background: "#f8f5ef",
-    card: "#ffffff",
-    text: "#18181b",
-    border: "#e2e8f0",
+    primary: NAVY,
+    background: "#E8EFE6",
+    card: "#E8EFE6",
+    text: NAVY,
+    border: "transparent",
     notification: "#0d9488",
   },
 };
@@ -74,18 +75,18 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#f8f5ef" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#E8EFE6" }}>
       <StatusBar style="dark" />
       <AuthProvider>
         <PushTokenSync />
         <ThemeProvider value={theme}>
           <Stack
             screenOptions={{
-              headerStyle: { backgroundColor: "#ffffff" },
-              headerTitleStyle: { fontWeight: "700", color: "#0f172a" },
+              headerStyle: { backgroundColor: "#E8EFE6" },
+              headerTitleStyle: { fontWeight: "700", color: NAVY },
               headerShadowVisible: false,
-              headerTintColor: "#0f172a",
-              contentStyle: { backgroundColor: "#f8f5ef" },
+              headerTintColor: NAVY,
+              contentStyle: { backgroundColor: "#E8EFE6" },
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />

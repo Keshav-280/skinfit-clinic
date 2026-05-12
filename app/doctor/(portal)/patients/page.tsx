@@ -1,25 +1,19 @@
 import { DoctorPatientsClient } from "@/components/doctor/DoctorPatientsClient";
 
-export default async function DoctorPatientsPage({
+export default function PatientsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ sos?: string }>;
+  searchParams: { sos?: string };
 }) {
-  const sp = (await searchParams) ?? {};
-  const initialSosOnly = sp.sos === "1" || sp.sos === "true";
-
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Patients</h1>
-        <p className="text-sm text-slate-600">
-          Filter by search, concern, or recent SOS alerts. Use{" "}
-          <strong className="font-semibold text-slate-800">Messages</strong> for patient chat
-          awaiting reply and <strong className="font-semibold text-slate-800">Alerts</strong> for
-          SOS. Push goes to doctor accounts for both patient messages and SOS.
+    <div>
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-slate-900">Patients</h1>
+        <p className="mt-0.5 text-sm text-slate-500">
+          Manage and view patient profiles, scans, and treatment plans
         </p>
       </div>
-      <DoctorPatientsClient initialSosOnly={initialSosOnly} />
+      <DoctorPatientsClient initialSosOnly={searchParams.sos === "1"} />
     </div>
   );
 }

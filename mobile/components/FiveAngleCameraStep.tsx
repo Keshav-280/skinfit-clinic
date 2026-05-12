@@ -3,6 +3,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FaceCaptureOvalOverlay } from "@/components/FaceCaptureOvalOverlay";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 
-const NAVY = "#2B3A67";
+const NAVY = "#2C3E6B";
 
 type Props = {
   stepIndex: number;
@@ -51,6 +52,14 @@ export function FiveAngleCameraStep({
         skipProcessing: false,
       });
       if (pic?.uri) onCaptured(pic.uri);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Image could not be captured.";
+      Alert.alert(
+        "Capture failed",
+        msg.includes("simulator")
+          ? "Camera capture is not supported on the simulator. Use \"Pick from library\" instead."
+          : `${msg} Try again or pick from library.`
+      );
     } finally {
       setShooting(false);
       setCountdown(null);
@@ -157,7 +166,7 @@ export function FiveAngleCameraStep({
           onPress={onPickFromLibrary}
           disabled={busy || shooting}
         >
-          <Ionicons name="images-outline" size={18} color={NAVY} />
+          <Ionicons name="images-outline" size={18} color="#fff" />
           <Text style={styles.libraryBtnText}>Pick from library</Text>
         </Pressable>
       </View>
@@ -169,7 +178,7 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: "#000" },
   center: {
     flex: 1,
-    backgroundColor: "#E8EFE6",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     padding: 32,
@@ -177,7 +186,7 @@ const styles = StyleSheet.create({
   permTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A2E", marginBottom: 8 },
   permSub: {
     fontSize: 15,
-    color: "#52525b",
+    color: "#6B7280",
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
@@ -277,6 +286,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   btnNavyText: {
     color: "#fff",
@@ -296,7 +310,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   libraryBtnText: {
-    color: NAVY,
+    color: "#fff",
     fontSize: 14,
     fontWeight: "600",
     textShadowColor: "rgba(0,0,0,0.3)",

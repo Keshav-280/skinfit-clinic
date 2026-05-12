@@ -30,7 +30,7 @@ export function defaultRoutinePlanSnapshot(): { am: string[]; pm: string[] } {
 }
 
 const MAX_ROUTINE_STEPS = 15;
-const MAX_STEP_LABEL_LEN = 80;
+const MAX_STEP_LABEL_LEN = 200;
 
 /** Normalize JSON/array from DB or API into trimmed step labels. */
 export function coerceRoutinePlanList(raw: unknown): string[] {

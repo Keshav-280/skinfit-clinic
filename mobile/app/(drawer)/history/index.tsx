@@ -1,8 +1,9 @@
 import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system/legacy";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { format, parseISO } from "date-fns";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,8 +17,11 @@ import {
   View,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import { analysisResultsToParams } from "@/lib/skinAnalysis";
 import {
   buildScanReportPdfPayload,
   type PatientScanDetailForPdf,
@@ -30,12 +34,7 @@ type ScanRow = {
   scanName: string | null;
   imageUrl: string;
   overallScore: number;
-  acne: number;
-  pigmentation: number;
-  wrinkles: number;
-  hydration: number;
-  texture: number;
-  eczema: number;
+  analysisResults: unknown;
   createdAt: string;
   aiSummary: string | null;
 };
@@ -81,21 +80,22 @@ type HistoryPayload = {
   reportVoiceNotesArchived?: ReportVoiceRow[];
 };
 
+const NAVY = "#2C3E6B";
+const GREEN_ACCENT = "#16a34a";
+const GLASS = "rgba(255,255,255,0.55)";
+const GLASS_BORDER = "rgba(255,255,255,0.7)";
+
 const CARD = {
-  backgroundColor: "#fff",
+  backgroundColor: GLASS,
   borderRadius: 22,
-  borderWidth: StyleSheet.hairlineWidth,
-  borderColor: "#f4f4f5",
-  shadowColor: "#000",
-  shadowOpacity: 0.06,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 2,
+  borderWidth: 1,
+  borderColor: GLASS_BORDER,
 };
 
 export default function HistoryListScreen() {
   const { token } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<HistoryPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -177,7 +177,7 @@ export default function HistoryListScreen() {
       <View style={styles.loadingScreen}>
         <View style={styles.loadingCard}>
           <View style={styles.loadingPulse} />
-          <ActivityIndicator size="large" color="#0d9488" />
+          <ActivityIndicator size="large" color={NAVY} />
           <Text style={styles.loadingTitle}>Loading treatment history</Text>
           <Text style={styles.loadingHint}>
             Fetching your scans, visits, and notes.
@@ -202,6 +202,14 @@ export default function HistoryListScreen() {
   const reportVoicesArchived = data?.reportVoiceNotesArchived ?? [];
 
   return (
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <Pressable onPress={() => router.push("/(drawer)/scan" as any)} style={styles.backBtn} hitSlop={12}>
+          <Ionicons name="chevron-back" size={22} color={NAVY} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Treatment History</Text>
+        <View style={{ width: 36 }} />
+      </View>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
@@ -247,19 +255,10 @@ export default function HistoryListScreen() {
                   </Text>
                   <Text style={styles.scanOverall}>Overall {scan.overallScore}/100</Text>
                   <View style={styles.chips}>
-                    {(
-                      [
-                        ["Acne", scan.acne],
-                        ["Wrinkle", scan.wrinkles],
-                        ["Pores", scan.texture],
-                        ["Pigment.", scan.pigmentation],
-                        ["Hydration", scan.hydration],
-                        ["Eczema", scan.eczema],
-                      ] as const
-                    ).map(([label, val]) => (
-                      <View key={label} style={styles.chip}>
+                    {analysisResultsToParams(scan.analysisResults).map((p) => (
+                      <View key={p.label} style={styles.chip}>
                         <Text style={styles.chipText}>
-                          {label} {val}
+                          {p.label} {p.value}
                         </Text>
                       </View>
                     ))}
@@ -314,7 +313,7 @@ export default function HistoryListScreen() {
                   <View
                     style={[
                       styles.voiceCheck,
-                      vn.listened ? { backgroundColor: "#0d9488", borderColor: "#0d9488" } : null,
+                      vn.listened ? { backgroundColor: GREEN_ACCENT, borderColor: GREEN_ACCENT } : null,
                     ]}
                   />
                   <Text style={styles.voiceListenLabel}>I listened</Text>
@@ -363,71 +362,152 @@ export default function HistoryListScreen() {
         )}
       </View>
     </ScrollView>
+    </View>
   );
 }
 
 function HistoryAudioPlayButton({ uri }: { uri: string }) {
-  const [busy, setBusy] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [durationSec, setDurationSec] = useState(0);
+  const [positionSec, setPositionSec] = useState(0);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const fileRef = useRef<string | null>(null);
+
+  const resolveUri = useCallback(async (): Promise<string> => {
+    if (!uri.startsWith("data:")) return uri;
+    if (fileRef.current) return fileRef.current;
+    const commaIndex = uri.indexOf(",");
+    if (commaIndex < 0) throw new Error("Invalid audio data URI");
+    const meta = uri.slice(5, commaIndex).toLowerCase();
+    const mime = meta.split(";")[0] ?? "audio/m4a";
+    const base64 = uri.slice(commaIndex + 1);
+    const rawExt = mime.split("/")[1] ?? "m4a";
+    const ext = rawExt === "x-wav" ? "wav" : rawExt;
+    const path = `${FileSystem.cacheDirectory}hist_voice_${Date.now()}.${ext}`;
+    await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
+    fileRef.current = path;
+    return path;
+  }, [uri]);
+
+  const cleanup = useCallback(async () => {
+    try { await soundRef.current?.unloadAsync(); } catch { /* */ }
+    soundRef.current = null;
+    setPlaying(false);
+  }, []);
+
+  const toggle = useCallback(async () => {
+    try {
+      if (playing && soundRef.current) {
+        await soundRef.current.pauseAsync();
+        setPlaying(false);
+        return;
+      }
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      if (!soundRef.current) {
+        const playUri = await resolveUri();
+        const { sound } = await Audio.Sound.createAsync({ uri: playUri });
+        soundRef.current = sound;
+        sound.setOnPlaybackStatusUpdate((st) => {
+          if (!st.isLoaded) return;
+          setPositionSec(Math.floor((st.positionMillis ?? 0) / 1000));
+          setDurationSec(Math.floor((st.durationMillis ?? 0) / 1000));
+          if (st.didJustFinish) {
+            setPlaying(false);
+            setPositionSec(0);
+            void sound.setPositionAsync(0);
+          }
+        });
+      }
+      await soundRef.current.playAsync();
+      setPlaying(true);
+    } catch (e) {
+      console.warn("[HistoryAudioPlayer] error:", e);
+      await cleanup();
+    }
+  }, [playing, resolveUri, cleanup]);
+
+  useEffect(() => () => { void cleanup(); }, [cleanup]);
+
+  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  const progress = durationSec > 0 ? positionSec / durationSec : 0;
+
   return (
-    <Pressable
-      style={styles.voiceBtn}
-      disabled={busy}
-      onPress={async () => {
-        setBusy(true);
-        try {
-          await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-          const { sound } = await Audio.Sound.createAsync({ uri });
-          await sound.playAsync();
-          sound.setOnPlaybackStatusUpdate((st) => {
-            if (st.isLoaded && st.didJustFinish) void sound.unloadAsync();
-          });
-        } catch {
-          /* ignore */
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <Text style={styles.voiceBtnText}>{busy ? "…" : "Play voice note"}</Text>
-    </Pressable>
+    <View style={styles.playerRow}>
+      <Pressable onPress={toggle} style={styles.playBtn} hitSlop={8}>
+        <Ionicons name={playing ? "pause" : "play"} size={18} color="#fff" />
+      </Pressable>
+      <View style={styles.waveContainer}>
+        {Array.from({ length: 20 }).map((_, i) => {
+          const h = 5 + Math.sin(i * 0.7 + 2) * 7 + Math.cos(i * 1.3) * 3;
+          const filled = i / 20 <= progress;
+          return (
+            <View
+              key={i}
+              style={{
+                width: 3,
+                height: h,
+                borderRadius: 1.5,
+                backgroundColor: filled ? NAVY : "#CBD5E1",
+                marginHorizontal: 1,
+              }}
+            />
+          );
+        })}
+      </View>
+      <Text style={styles.playerTime}>{fmt(playing ? positionSec : durationSec)}</Text>
+    </View>
   );
 }
 
+const BG = "#E8EFE6";
+
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: BG,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
+  scroll: { flex: 1, backgroundColor: BG },
   content: { padding: 16, paddingBottom: 48 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8f5ef" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: BG },
   loadingScreen: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f8f5ef",
+    backgroundColor: BG,
     paddingHorizontal: 24,
   },
   loadingCard: {
     width: "100%",
     maxWidth: 400,
-    borderRadius: 24,
-    backgroundColor: "#fff",
+    borderRadius: 22,
+    backgroundColor: GLASS,
     paddingVertical: 28,
     paddingHorizontal: 24,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(24, 24, 27, 0.06)",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 6,
+    borderColor: GLASS_BORDER,
   },
   loadingPulse: {
     width: 44,
     height: 44,
     borderRadius: 16,
-    backgroundColor: "rgba(13, 148, 136, 0.12)",
+    backgroundColor: `${NAVY}15`,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "rgba(13, 148, 136, 0.2)",
+    borderColor: `${NAVY}25`,
   },
   loadingTitle: {
     marginTop: 16,
@@ -440,7 +520,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     lineHeight: 20,
-    color: "#52525b",
+    color: "#6B7280",
     textAlign: "center",
   },
   err: { color: "#b91c1c", padding: 16 },
@@ -451,19 +531,19 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 2,
-    borderColor: "#e4e4e7",
-    backgroundColor: "rgba(224, 240, 237, 0.6)",
+    borderColor: GLASS_BORDER,
+    backgroundColor: GLASS,
     alignItems: "center",
     justifyContent: "center",
   },
   profileText: { flex: 1, minWidth: 0 },
   pName: { fontSize: 20, fontWeight: "700", color: "#18181b" },
-  pMeta: { fontSize: 14, color: "#52525b", marginTop: 4 },
+  pMeta: { fontSize: 14, color: "#6B7280", marginTop: 4 },
   pStrong: { fontWeight: "600", color: "#18181b" },
-  pTeal: { fontWeight: "600", color: "#0f766e" },
-  editLink: { marginTop: 10, fontSize: 14, fontWeight: "600", color: "#0d9488" },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: "#18181b", marginBottom: 12 },
-  empty: { textAlign: "center", color: "#52525b", paddingVertical: 20, fontSize: 14 },
+  pTeal: { fontWeight: "600", color: NAVY },
+  editLink: { marginTop: 10, fontSize: 14, fontWeight: "600", color: NAVY },
+  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#18181b", marginBottom: 12 },
+  empty: { textAlign: "center", color: "#6B7280", paddingVertical: 20, fontSize: 14 },
   scanGrid: { gap: 16 },
   scanCard: { overflow: "hidden" },
   scanImageWrap: {
@@ -478,31 +558,31 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 8,
     top: 8,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: "rgba(255,255,255,0.92)",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
   },
-  scoreBadgeText: { fontSize: 20, fontWeight: "700", color: "#0f766e" },
+  scoreBadgeText: { fontSize: 20, fontWeight: "700", color: GREEN_ACCENT },
   scanBody: { padding: 14 },
-  scanName: { fontSize: 16, fontWeight: "600", color: "#18181b" },
-  scanDate: { fontSize: 12, color: "#71717a", marginTop: 4 },
-  scanOverall: { fontSize: 18, fontWeight: "700", color: "#0f766e", marginTop: 6 },
+  scanName: { fontSize: 16, fontWeight: "700", color: "#18181b" },
+  scanDate: { fontSize: 12, color: "#6B7280", marginTop: 4 },
+  scanOverall: { fontSize: 18, fontWeight: "800", color: GREEN_ACCENT, marginTop: 6 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   chip: {
-    backgroundColor: "rgba(224, 240, 237, 0.9)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: `${NAVY}12`,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
-  chipText: { fontSize: 10, fontWeight: "700", color: "#134e4a" },
+  chipText: { fontSize: 11, fontWeight: "700", color: NAVY },
   chipsHint: {
     marginTop: 8,
     fontSize: 11,
     lineHeight: 16,
-    color: "#71717a",
+    color: "#6B7280",
   },
   scanActions: { flexDirection: "row", gap: 10, marginTop: 14 },
   btnOutline: {
@@ -511,31 +591,63 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 12,
     borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
-    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: `${NAVY}30`,
+    backgroundColor: "rgba(255,255,255,0.7)",
   },
-  btnOutlineText: { fontSize: 13, fontWeight: "700", color: "#3f3f46" },
+  btnOutlineText: { fontSize: 13, fontWeight: "700", color: NAVY },
   btnPrimary: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: "#0d9488",
+    backgroundColor: NAVY,
   },
   btnPrimaryText: { fontSize: 13, fontWeight: "700", color: "#fff" },
-  subsectionTitle: { fontSize: 16, fontWeight: "700", color: "#18181b", marginBottom: 12 },
+  subsectionTitle: { fontSize: 16, fontWeight: "800", color: "#18181b", marginBottom: 12 },
+  playerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  playBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  waveContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: 24,
+  },
+  playerTime: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+    minWidth: 34,
+    textAlign: "right",
+  },
   voiceBtn: {
     alignSelf: "flex-start",
-    backgroundColor: "#e0f2fe",
+    backgroundColor: `${NAVY}12`,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#7dd3fc",
+    borderColor: `${NAVY}25`,
   },
-  voiceBtnText: { fontSize: 14, fontWeight: "700", color: "#0369a1" },
+  voiceBtnText: { fontSize: 14, fontWeight: "700", color: NAVY },
   voiceListenRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -547,28 +659,28 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#0d9488",
+    borderColor: GREEN_ACCENT,
   },
-  voiceListenLabel: { fontSize: 14, color: "#27272a", flex: 1 },
+  voiceListenLabel: { fontSize: 14, color: "#374151", flex: 1 },
   voiceArchiveBtn: {
     alignSelf: "flex-start",
     marginTop: 8,
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#d4d4d8",
-    backgroundColor: "#fff",
+    borderColor: `${NAVY}25`,
+    backgroundColor: "rgba(255,255,255,0.7)",
   },
-  voiceArchiveBtnText: { fontSize: 13, fontWeight: "700", color: "#3f3f46" },
+  voiceArchiveBtnText: { fontSize: 13, fontWeight: "700", color: NAVY },
   visitSection: { padding: 16 },
   visitCard: {
     marginBottom: 16,
     padding: 14,
     borderRadius: 18,
-    backgroundColor: "rgba(248, 245, 239, 0.9)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#f4f4f5",
+    backgroundColor: GLASS,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
   },
   visitHeader: {
     flexDirection: "row",
@@ -577,46 +689,43 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 10,
   },
-  visitDate: { fontSize: 14, fontWeight: "600", color: "#0f766e" },
-  visitDoc: { fontSize: 14, color: "#52525b" },
+  visitDate: { fontSize: 14, fontWeight: "700", color: NAVY },
+  visitDoc: { fontSize: 14, color: "#6B7280" },
   visitNotesBox: {
     borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
-    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    backgroundColor: "rgba(255,255,255,0.7)",
     padding: 14,
   },
   visitNotesLabel: {
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: 1,
-    color: "#71717a",
+    color: "#6B7280",
     marginBottom: 8,
     textTransform: "uppercase",
   },
-  visitNotesBody: { fontSize: 14, lineHeight: 22, color: "#3f3f46" },
+  visitNotesBody: { fontSize: 14, lineHeight: 22, color: "#374151" },
   attachLink: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0f766e",
+    color: NAVY,
     textDecorationLine: "underline",
   },
-  attachMeta: { fontSize: 12, color: "#71717a", marginTop: 2 },
+  attachMeta: { fontSize: 12, color: "#6B7280", marginTop: 2 },
   visitCardNew: {
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 12,
   },
   visitCardFirst: {
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    backgroundColor: GLASS,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
   },
   visitCardRest: {
-    backgroundColor: "#e8ede6",
+    backgroundColor: "rgba(232,239,230,0.6)",
   },
   vcRow: {
     flexDirection: "row",
@@ -627,16 +736,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  vcDate: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
+  vcDate: { fontSize: 16, fontWeight: "700", color: "#18181b" },
   latestPill: {
-    backgroundColor: "#e2e8f0",
+    backgroundColor: `${GREEN_ACCENT}18`,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 999,
   },
-  latestText: { fontSize: 11, fontWeight: "700", color: "#475569" },
-  vcTreatment: { fontSize: 14, color: "#52525b", marginTop: 2 },
-  vcDoctor: { fontSize: 13, color: "#71717a", marginTop: 1 },
+  latestText: { fontSize: 11, fontWeight: "700", color: GREEN_ACCENT },
+  vcTreatment: { fontSize: 14, color: "#6B7280", marginTop: 2 },
+  vcDoctor: { fontSize: 13, color: "#9CA3AF", marginTop: 1 },
   vcRatingPill: {
     alignSelf: "flex-start",
     marginTop: 8,

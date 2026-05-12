@@ -426,6 +426,14 @@ export default function ScanScreen() {
             <Ionicons name="images-outline" size={18} color={NAVY} />
             <Text style={styles.libraryLinkText}>Pick from library</Text>
           </Pressable>
+
+          <Pressable
+            style={styles.viewScansLink}
+            onPress={() => router.push("/(drawer)/history")}
+          >
+            <Ionicons name="time-outline" size={18} color={NAVY} />
+            <Text style={styles.viewScansLinkText}>View Past Scans</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </LinearGradient>
@@ -517,6 +525,19 @@ const styles = StyleSheet.create({
     color: NAVY,
     fontSize: 15,
     fontWeight: "600",
+  },
+  viewScansLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  viewScansLinkText: {
+    color: NAVY,
+    fontSize: 15,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
 
   /* ── Shared button styles ── */

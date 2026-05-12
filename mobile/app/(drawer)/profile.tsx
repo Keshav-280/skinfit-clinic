@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -156,6 +156,23 @@ export default function ProfileScreen() {
   const CK_MONTHLY = "monthly-insight";
   const CK_HOME = "home";
   const hydrated = useRef(false);
+  const prevToken = useRef(token);
+
+  useEffect(() => {
+    if (prevToken.current !== token) {
+      prevToken.current = token;
+      hydrated.current = false;
+      setName("");
+      setEmail("");
+      setAge("");
+      setGender("");
+      setPhotoUri(null);
+      setSkinExtra(null);
+      setMonthlyInsight(null);
+      setHomeData(null);
+      setLoading(true);
+    }
+  }, [token]);
 
   const applyProfile = useCallback((user: ProfileUser) => {
     setName(user.name);

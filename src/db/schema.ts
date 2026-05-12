@@ -705,7 +705,9 @@ export const doctorFeedbackVoiceNotes = pgTable("doctor_feedback_voice_notes", {
     .references(() => users.id, { onDelete: "cascade" }),
   doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
   scanId: integer("scan_id").references(() => scans.id, { onDelete: "set null" }),
-  audioDataUri: text("audio_data_uri").notNull(),
+  audioDataUri: text("audio_data_uri"),
+  /** Written feedback text that accompanies (or replaces) the voice note. */
+  feedbackText: text("feedback_text"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   /** Patient marked as listened (separate from inbox; drives badge + archive). */
   patientListenedAt: timestamp("patient_listened_at", { withTimezone: true }),

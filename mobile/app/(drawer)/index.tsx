@@ -1,8 +1,10 @@
 import { Audio } from "expo-av";
-import { format, addDays, subDays, parseISO } from "date-fns";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import * as FileSystem from "expo-file-system/legacy";
+import { format, addDays, subDays, startOfWeek, parseISO, isSameDay, addMonths, subMonths } from "date-fns";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,16 +13,25 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
+import Svg, { Circle, Polygon, Line, G, Text as SvgText } from "react-native-svg";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
-import { normalizeRoutineSteps, routineStepsProgress } from "@/lib/routine";
-import { useEndOfDayCountdown } from "@/lib/useEndOfDayCountdown";
+import { normalizeRoutineSteps } from "@/lib/routine";
 
-const TEAL = "#6B8E8E";
-const MINT = "#E0F0ED";
-const CARD = "#ffffff";
+const NAVY = "#2C3E6B";
+const MINT = "#E2E8F0";
+const GLASS = "rgba(255,255,255,0.55)";
+const GLASS_BORDER = "rgba(255,255,255,0.7)";
+const GREEN_ACCENT = "#16a34a";
 
 type SkinScanItem = {
   id: string;
@@ -59,6 +70,7 @@ type HomeData = {
   homeDateYmd?: string;
   streakCurrent: number;
   streakLongest: number;
+  weekCompletedDates?: string[];
   cycleTrackingEnabled: boolean;
   doctorVoiceNotes?: Array<{
     id: string;
@@ -82,6 +94,27 @@ type HomeData = {
   onboardingComplete?: boolean;
   /** False after onboarding until clinician saves AM/PM step list. */
   routinePlanReady?: boolean;
+  routineAmReminderHm?: string;
+  routinePmReminderHm?: string;
+  todayFocus?: { message: string; sourceParam: string | null } | null;
+  feedbackEntries?: Array<{
+    id: string;
+    feedbackText: string | null;
+    audioDataUri: string | null;
+    createdAt: string;
+    listened: boolean;
+    doctorName: string | null;
+    doctorPhotoUrl: string | null;
+  }>;
+  archivedFeedbackEntries?: Array<{
+    id: string;
+    feedbackText: string | null;
+    audioDataUri: string | null;
+    createdAt: string;
+    listened: boolean;
+    doctorName: string | null;
+    doctorPhotoUrl: string | null;
+  }>;
 };
 
 const MOODS = ["Neutral", "Great", "Okay", "Low", "Stressed"] as const;
@@ -97,6 +130,7 @@ type SkinParamWithContext = {
 
 export default function DashboardScreen() {
   const { token } = useAuth();
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -104,16 +138,29 @@ export default function DashboardScreen() {
 
   const [selectedScanIdx, setSelectedScanIdx] = useState(0);
   const [routine, setRoutine] = useState({ am: [] as boolean[], pm: [] as boolean[] });
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
-  const routineHasSteps = (d: HomeData | null) =>
-    Boolean(
-      d?.onboardingComplete &&
-        d.routinePlanReady &&
-        (d.amItems?.length ?? 0) > 0 &&
-        (d.pmItems?.length ?? 0) > 0
-    );
+  const minWeekOffset = useMemo(() => {
+    const today = new Date();
+    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const bound = subMonths(thisWeekStart, 1);
+    let offset = 0;
+    let ws = thisWeekStart;
+    while (ws > bound) { ws = subDays(ws, 7); offset--; }
+    return offset;
+  }, []);
+  const maxWeekOffset = useMemo(() => {
+    const today = new Date();
+    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const bound = addMonths(thisWeekStart, 1);
+    let offset = 0;
+    let ws = thisWeekStart;
+    while (ws < bound) { ws = addDays(ws, 7); offset++; }
+    return offset;
+  }, []);
+
   const [journalDate, setJournalDate] = useState(todayStr);
   const [sleep, setSleep] = useState("0");
   const [stress, setStress] = useState("5");
@@ -128,9 +175,6 @@ export default function DashboardScreen() {
   const [dietType, setDietType] = useState<string>("balanced");
   const [sunExposure, setSunExposure] = useState<string>("low");
   const [cycleDay, setCycleDay] = useState("");
-  const [doctorReply, setDoctorReply] = useState("");
-  const [replyBusy, setReplyBusy] = useState(false);
-  const [showArchivedVoices, setShowArchivedVoices] = useState(false);
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
 
   const loadHome = useCallback(async () => {
@@ -168,6 +212,22 @@ export default function DashboardScreen() {
       undefined
     );
     setRoutine({ am, pm });
+
+    const log = json.todayLog;
+    if (log) {
+      setSleep(String(log.sleepHours ?? 0));
+      setStress(String(log.stressLevel ?? 5));
+      setWater(String(log.waterGlasses ?? 0));
+      setJournalText(String(log.journalEntry ?? ""));
+      setMood(String(log.mood ?? "Neutral"));
+      setAmRoutine(Boolean(log.amRoutine));
+      setPmRoutine(Boolean(log.pmRoutine));
+      setDietType(typeof log.dietType === "string" ? log.dietType : "balanced");
+      setSunExposure(typeof log.sunExposure === "string" ? log.sunExposure : "low");
+      setCycleDay(
+        typeof log.cycleDay === "number" && log.cycleDay > 0 ? String(log.cycleDay) : ""
+      );
+    }
   }, [token]);
 
   const patchVoiceNote = useCallback(
@@ -207,6 +267,17 @@ export default function DashboardScreen() {
       alive = false;
     };
   }, [loadHome]);
+
+  const hasLoadedOnce = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedOnce.current) {
+        hasLoadedOnce.current = true;
+        return;
+      }
+      if (token) void loadHome();
+    }, [token, loadHome])
+  );
 
   const loadJournalForDate = useCallback(
     async (ymd: string) => {
@@ -355,11 +426,6 @@ export default function DashboardScreen() {
     });
   }
 
-  const routineProgress = useMemo(
-    () => routineStepsProgress(routine.am, routine.pm),
-    [routine.am, routine.pm]
-  );
-
   async function saveJournal() {
     if (!token) return;
     setJournalSaving(true);
@@ -393,6 +459,54 @@ export default function DashboardScreen() {
     }
   }
 
+  const router = useRouter();
+
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good Morning";
+    if (h < 17) return "Good Afternoon";
+    return "Good Evening";
+  }, []);
+  const greetingEmoji = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return "👋";
+    if (h < 17) return "☀️";
+    return "🌙";
+  }, []);
+
+  const weekDays = useMemo(() => {
+    const today = new Date();
+    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const start = addDays(thisWeekStart, weekOffset * 7);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(start, i);
+      return { date: d, label: format(d, "EEE"), day: format(d, "dd"), month: format(d, "MMM"), isToday: isSameDay(d, today) };
+    });
+  }, [weekOffset]);
+
+  const amDone = useMemo(() => routine.am.filter(Boolean).length, [routine.am]);
+  const pmDone = useMemo(() => routine.pm.filter(Boolean).length, [routine.pm]);
+
+  const streakMessage = useMemo(() => {
+    if (data?.streakCurrent == null) return "Keep it up!";
+    if (data.streakCurrent >= 7) return "Keep it up!";
+    if (data.streakCurrent >= 3) return "Keep going!";
+    if (data.streakCurrent >= 1) return "Good start!";
+    return "Falling short";
+  }, [data?.streakCurrent]);
+
+  const streakDays = useMemo(() => {
+    const completedSet = new Set(data?.weekCompletedDates ?? []);
+    const today = new Date();
+    const start = startOfWeek(today, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(start, i);
+      const dayLabel = format(d, "EEE");
+      const ymd = format(d, "yyyy-MM-dd");
+      return { label: dayLabel, done: completedSet.has(ymd) };
+    });
+  }, [data?.weekCompletedDates]);
+
   if (loading || !data) {
     return (
       <View style={styles.center}>
@@ -404,7 +518,7 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -419,198 +533,239 @@ export default function DashboardScreen() {
         />
       }
     >
-      <Text style={styles.h1}>Dashboard</Text>
-
-      <View style={styles.gauges}>
-        <Gauge label="kAI Skin Score" value={kaiSkinScore} />
-        <GaugeDelta label="Weekly Δ" delta={data.weeklyDeltaScore} />
-        <Gauge label="Lifestyle alignment" value={data.lifestyleAlignmentScore} />
+      {/* ── Greeting ── */}
+      <View style={styles.greetingRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.greetingText}>
+            {greeting} {greetingEmoji}
+          </Text>
+          <Text style={styles.greetingSub}>Let's achieve your best skin day!</Text>
+        </View>
+        <NotificationBell />
       </View>
 
-      {data.homeDateYmd ? (
-        <View style={[styles.card, { marginTop: 14, paddingVertical: 10 }]}>
-          <Text style={[styles.muted, { marginBottom: 0 }]}>Day: {data.homeDateYmd}</Text>
-        </View>
-      ) : null}
+      {/* ── Date strip ── */}
+      <View style={styles.dateNavRow}>
+        <Pressable
+          onPress={() => setWeekOffset((o) => Math.max(minWeekOffset, o - 1))}
+          disabled={weekOffset <= minWeekOffset}
+          style={[styles.dateNavArrow, weekOffset <= minWeekOffset && { opacity: 0.3 }]}
+          hitSlop={10}
+        >
+          <Ionicons name="chevron-back" size={18} color={NAVY} />
+        </Pressable>
+        <Pressable onPress={() => setWeekOffset(0)} hitSlop={8}>
+          <Text style={styles.dateNavMonth}>
+            {format(weekDays[0].date, "MMM yyyy")}
+            {weekOffset !== 0 ? "  ·  tap to go to today" : ""}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setWeekOffset((o) => Math.min(maxWeekOffset, o + 1))}
+          disabled={weekOffset >= maxWeekOffset}
+          style={[styles.dateNavArrow, weekOffset >= maxWeekOffset && { opacity: 0.3 }]}
+          hitSlop={10}
+        >
+          <Ionicons name="chevron-forward" size={18} color={NAVY} />
+        </Pressable>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.dateStrip}
+        contentContainerStyle={styles.dateStripContent}
+      >
+        {weekDays.map((d) => (
+          <View
+            key={`${d.month}-${d.day}`}
+            style={[styles.dateChip, d.isToday && styles.dateChipToday]}
+          >
+            <Text style={[styles.dateChipLabel, d.isToday && styles.dateChipLabelToday]}>
+              {d.label}
+            </Text>
+            <Text style={[styles.dateChipDay, d.isToday && styles.dateChipDayToday]}>
+              {d.day}
+            </Text>
+          </View>
+        ))}
+      </ScrollView>
 
-      <View style={styles.streakRow}>
-        <Text style={styles.streakText}>
-          Streak: <Text style={styles.streakNum}>{data.streakCurrent}</Text> day
-          {data.streakCurrent === 1 ? "" : "s"} · Best {data.streakLongest}d
+      {/* ── Routine cards ── */}
+      <View style={styles.routineCards}>
+        <Pressable
+          style={styles.routineCard}
+          onPress={() => router.push("/(drawer)/morning-routine" as Href)}
+        >
+          <View style={styles.routineCardTop}>
+            <View style={styles.routineIconCircle}>
+              <Ionicons name="sunny" size={22} color="#F59E0B" />
+            </View>
+            <View style={styles.routineArrow}>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
+            </View>
+          </View>
+          <Text style={styles.routineCardTitle}>Morning{"\n"}Routine</Text>
+          <View style={styles.routineStepPill}>
+            <Text style={styles.routineStepText}>
+              Step {amDone}/{data.amItems.length || 0}
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          style={styles.routineCard}
+          onPress={() => router.push("/(drawer)/night-routine" as Href)}
+        >
+          <View style={styles.routineCardTop}>
+            <View style={[styles.routineIconCircle, { backgroundColor: NAVY }]}>
+              <Ionicons name="cloudy-night" size={22} color="#fff" />
+            </View>
+            <View style={styles.routineArrow}>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
+            </View>
+          </View>
+          <Text style={styles.routineCardTitle}>Night{"\n"}Routine</Text>
+          <View style={styles.routineStepPill}>
+            <Text style={styles.routineStepText}>
+              Step {pmDone}/{data.pmItems.length || 0}
+            </Text>
+          </View>
+        </Pressable>
+      </View>
+
+      {/* ── Streak ── */}
+      <View style={styles.streakCard}>
+        <Text style={styles.streakTitle}>🔥 {data.streakCurrent}-Day Streak</Text>
+        <View style={styles.streakDotsRow}>
+          {streakDays.map((d, i) => (
+            <View key={`s-${i}`} style={styles.streakDayCol}>
+              <View
+                style={[
+                  styles.streakDot,
+                  d.done && styles.streakDotDone,
+                ]}
+              >
+                {d.done ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+              </View>
+              <Text style={styles.streakDayLabel}>{d.label}</Text>
+            </View>
+          ))}
+        </View>
+        <Text
+          style={[
+            styles.streakMessage,
+            data.streakCurrent >= 3 ? { color: GREEN_ACCENT } : { color: "#DC2626" },
+          ]}
+        >
+          {streakMessage}
         </Text>
       </View>
 
-      <DayQuestBannerMobile
-        routineProgress={routineProgress}
-        questSubtext={
-          data.onboardingComplete && !routineHasSteps(data)
-            ? "Your customised daily plan will be given by the clinic soon."
-            : null
+      {/* ── Next Reminder ── */}
+      <NextReminderCard
+        amHm={data.routineAmReminderHm ?? "08:30"}
+        pmHm={data.routinePmReminderHm ?? "22:00"}
+        amDone={amDone}
+        amTotal={data.amItems.length}
+        pmDone={pmDone}
+        pmTotal={data.pmItems.length}
+        onPress={(target) =>
+          router.push(
+            target === "am"
+              ? ("/(drawer)/morning-routine" as Href)
+              : ("/(drawer)/night-routine" as Href)
+          )
         }
       />
 
-      <View style={[styles.card, { marginTop: 16 }]}>
-        <View style={styles.rowBetween}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.h2}>AM / PM routine</Text>
-            <CountdownPillMobile />
-          </View>
-          <Text style={styles.muted}>{format(new Date(), "dd/MM/yy")}</Text>
+      {/* ── Today's Focus ── */}
+      {data.todayFocus?.message ? (
+        <View style={styles.focusCard}>
+          <Text style={styles.focusKicker}>TODAY&apos;S FOCUS</Text>
+          <Text style={styles.focusMessage}>{data.todayFocus.message}</Text>
         </View>
-        {data.onboardingComplete === false ? (
-          <Text style={styles.routinePending}>
-            Finish onboarding first. Your clinician will then set your AM/PM steps.
+      ) : null}
+
+      {/* ── Score cards ── */}
+      <Text style={styles.sectionTitle}>YOUR DAILY CHECKLIST</Text>
+      <View style={styles.scoreRow}>
+        <View style={styles.scoreCard}>
+          <Text style={styles.scoreLabel}>kAI Skin Score</Text>
+          <Text style={styles.scoreValue}>{kaiSkinScore}</Text>
+          <Text style={styles.scoreUpdated}>
+            Updated {latestScan ? format(new Date(latestScan.createdAt), "MMM d, h:mm a") : "—"}
           </Text>
-        ) : !routineHasSteps(data) ? (
-          <Text style={styles.routinePending}>
-            Your customised daily plan will be given by the clinic soon.
+        </View>
+        <View style={styles.scoreCard}>
+          <Text style={styles.scoreLabel}>Weekly{"\n"}Progress</Text>
+          <Text style={[styles.scoreValue, { color: data.weeklyDeltaScore >= 0 ? GREEN_ACCENT : "#DC2626" }]}>
+            {data.weeklyDeltaScore >= 0 ? "+" : ""}{Math.round(data.weeklyDeltaScore)}
           </Text>
-        ) : (
-          <View style={styles.routineRow}>
-            <View style={styles.routineCol}>
-              <Text style={styles.sub}>AM</Text>
-              {data.amItems.map((item, i) => (
-                <Pressable
-                  key={`am-${i}-${item}`}
-                  style={styles.stepRow}
-                  onPress={() => toggleAm(i)}
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      routine.am[i] ? { backgroundColor: TEAL, borderColor: TEAL } : null,
-                    ]}
-                  />
-                  <Text style={styles.stepLabel}>{item}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.routineCol}>
-              <Text style={styles.sub}>PM</Text>
-              {data.pmItems.map((item, i) => (
-                <Pressable
-                  key={`pm-${i}-${item}`}
-                  style={styles.stepRow}
-                  onPress={() => togglePm(i)}
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      routine.pm[i] ? { backgroundColor: TEAL, borderColor: TEAL } : null,
-                    ]}
-                  />
-                  <Text style={styles.stepLabel}>{item}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
+          <Text style={styles.scoreUpdated}>
+            {format(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7), "MMM d")} – {format(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "MMM d")} vs{"\n"}{format(startOfWeek(new Date(), { weekStartsOn: 1 }), "MMM d")} – {format(new Date(), "MMM d")}
+          </Text>
+        </View>
       </View>
 
-      <View style={{ marginTop: 20, marginBottom: 8, gap: 8 }}>
-        <Text style={styles.h2}>Daily journal</Text>
-        <CountdownPillMobile />
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.muted}>
-          {journalDate === todayStr ? "Today" : format(parseISO(`${journalDate}T12:00:00`), "MMM d, yyyy")}
-          {journalLoading ? " · Loading…" : ""}
-        </Text>
-        {journalDate === todayStr ? <JournalTodayStripMobile /> : null}
-        {journalHint ? <Text style={styles.warn}>{journalHint}</Text> : null}
-        <View style={styles.journalGrid}>
-          <Field label="Sleep (h)" value={sleep} onChangeText={setSleep} />
-          <Field label="Stress (1–10)" value={stress} onChangeText={setStress} />
-          <Field label="Water" value={water} onChangeText={setWater} />
+      {/* ── Consistency Score ── */}
+      <ConsistencyScoreCard value={data.lifestyleAlignmentScore} />
+
+      {/* ── Skin Health + Parameter Metrics ── */}
+      <SkinHealthMetricsCard analysis={latestScan?.analysisResults ?? null} />
+      <SkinParamMetricsCard
+        analysis={latestScan?.analysisResults ?? null}
+        onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
+      />
+
+      {/* ── Daily Journal Cards ── */}
+      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>DAILY JOURNAL</Text>
+
+      <Pressable style={styles.journalCard} onPress={() => router.push("/(drawer)/sleep-tracker" as Href)}>
+        <View style={styles.journalCardInner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.journalCardLabel}>Sleep Duration</Text>
+            <Text style={styles.journalCardValue}>
+              {String(Math.floor(Number(sleep))).padStart(2, "0")}h {String(Math.round((Number(sleep) % 1) * 60)).padStart(2, "0")}m
+            </Text>
+          </View>
+          <View style={[styles.journalCardIcon, { backgroundColor: "#16a34a" }]}>
+            <Ionicons name="bed" size={20} color="#fff" />
+          </View>
         </View>
-        <Text style={styles.label}>Mood</Text>
-        <Text style={styles.label}>Diet</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodRow}>
-          {DIETS.map((d) => (
-            <Pressable
-              key={d}
-              onPress={() => setDietType(d)}
-              style={[styles.moodChip, dietType === d && styles.moodChipOn]}
-            >
-              <Text style={dietType === d ? styles.moodChipTextOn : styles.moodChipText}>
-                {d.charAt(0).toUpperCase() + d.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        <Text style={styles.label}>Sun exposure</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodRow}>
-          {SUNS.map((s) => (
-            <Pressable
-              key={s}
-              onPress={() => setSunExposure(s)}
-              style={[styles.moodChip, sunExposure === s && styles.moodChipOn]}
-            >
-              <Text style={sunExposure === s ? styles.moodChipTextOn : styles.moodChipText}>
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {data.cycleTrackingEnabled ? (
-          <>
-            <Text style={styles.label}>Cycle day (optional)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="number-pad"
-              placeholder="1–35"
-              value={cycleDay}
-              onChangeText={setCycleDay}
-              placeholderTextColor="#94a3b8"
-            />
-          </>
-        ) : null}
-        <Text style={styles.label}>Mood</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodRow}>
-          {MOODS.map((m) => (
-            <Pressable
-              key={m}
-              onPress={() => setMood(m)}
-              style={[styles.moodChip, mood === m && styles.moodChipOn]}
-            >
-              <Text style={mood === m ? styles.moodChipTextOn : styles.moodChipText}>{m}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        <TextInput
-          style={styles.textArea}
-          multiline
-          placeholder="How is your skin feeling today?"
-          value={journalText}
-          onChangeText={setJournalText}
-          placeholderTextColor="#94a3b8"
-        />
-        <View style={styles.journalActions}>
-          <Pressable style={styles.btn} onPress={saveJournal} disabled={journalSaving}>
-            <Text style={styles.btnText}>{journalSaving ? "Saving…" : "Save entry"}</Text>
-          </Pressable>
-          <Pressable
-            style={styles.btn}
-            onPress={() =>
-              setJournalDate(format(subDays(parseISO(`${journalDate}T12:00:00`), 1), "yyyy-MM-dd"))
-            }
-          >
-            <Text style={styles.btnText}>Previous day</Text>
-          </Pressable>
-          {journalDate < todayStr ? (
-            <Pressable
-              style={styles.btn}
-              onPress={() => {
-                const d = addDays(parseISO(`${journalDate}T12:00:00`), 1);
-                const cap = parseISO(`${todayStr}T12:00:00`);
-                setJournalDate(format(d > cap ? cap : d, "yyyy-MM-dd"));
-              }}
-            >
-              <Text style={styles.btnText}>Next day</Text>
-            </Pressable>
-          ) : null}
+        <Pressable style={styles.journalEnterBtn} onPress={() => router.push("/(drawer)/sleep-tracker" as Href)}>
+          <Text style={styles.journalEnterText}>Enter Data</Text>
+        </Pressable>
+      </Pressable>
+
+      <Pressable style={styles.journalCard} onPress={() => router.push("/(drawer)/hydration-tracker" as Href)}>
+        <View style={styles.journalCardInner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.journalCardLabel}>Hydration</Text>
+            <Text style={styles.journalCardValue}>{Number(water) * 250} ml</Text>
+          </View>
+          <View style={[styles.journalCardIcon, { backgroundColor: "#3B82F6" }]}>
+            <Ionicons name="water" size={20} color="#fff" />
+          </View>
         </View>
-      </View>
+        <Pressable style={styles.journalEnterBtn} onPress={() => router.push("/(drawer)/hydration-tracker" as Href)}>
+          <Text style={styles.journalEnterText}>Enter Data</Text>
+        </Pressable>
+      </Pressable>
+
+      <Pressable style={styles.journalCard} onPress={() => router.push("/(drawer)/stress-tracker" as Href)}>
+        <View style={styles.journalCardInner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.journalCardLabel}>Stress Level (0-10)</Text>
+            <Text style={styles.journalCardValue}>{stress}</Text>
+          </View>
+          <View style={[styles.journalCardIcon, { backgroundColor: Number(stress) > 6 ? "#DC2626" : "#F59E0B" }]}>
+            <Ionicons name={Number(stress) > 6 ? "sad" : "happy"} size={20} color="#fff" />
+          </View>
+        </View>
+        <Pressable style={styles.journalEnterBtn} onPress={() => router.push("/(drawer)/stress-tracker" as Href)}>
+          <Text style={styles.journalEnterText}>Enter Data</Text>
+        </Pressable>
+      </Pressable>
 
       <View style={[styles.card, { marginTop: 16 }]}>
         <View style={styles.rowBetween}>
@@ -672,284 +827,407 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      <View style={[styles.card, { marginTop: 16 }]}>
-        <Text style={styles.h2}>Doctor&apos;s feedback</Text>
-        <Text style={styles.sectionCaption}>Written update from your clinician.</Text>
-        {data.doctorFeedback?.trim() ? (
-          <Text style={styles.feedback}>{data.doctorFeedback}</Text>
-        ) : (
-          <View style={styles.feedbackEmpty} />
-        )}
-        <Text style={[styles.label, { marginTop: 12 }]}>Reply to your doctor</Text>
-        <TextInput
-          style={styles.textArea}
-          multiline
-          placeholder="Message (posts to doctor chat)"
-          value={doctorReply}
-          onChangeText={setDoctorReply}
-          placeholderTextColor="#94a3b8"
-        />
-        <Pressable
-          style={[styles.btn, { marginTop: 8, opacity: replyBusy ? 0.6 : 1 }]}
-          disabled={replyBusy || !doctorReply.trim()}
-          onPress={async () => {
-            if (!token || !doctorReply.trim()) return;
-            setReplyBusy(true);
-            try {
-              await apiJson(`/api/chat/plain/message`, token, {
-                method: "POST",
-                body: JSON.stringify({
-                  assistantId: "doctor",
-                  text: doctorReply.trim(),
-                }),
-              });
-              setDoctorReply("");
-            } catch {
-              setJournalHint("Could not send reply.");
-            } finally {
-              setReplyBusy(false);
-            }
-          }}
-        >
-          <Text style={styles.btnText}>{replyBusy ? "Sending…" : "Send reply"}</Text>
-        </Pressable>
-      </View>
-
-      <View style={[styles.card, { marginTop: 16, marginBottom: 32 }]}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.h2}>Voice notes</Text>
-          {data.doctorVoiceNoteIsNew ? (
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>New</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text style={styles.sectionCaption}>Short audio messages from your doctor.</Text>
-        {(data.doctorVoiceNotes?.length ?? 0) > 0 ? (
-          <View style={{ gap: 14, marginTop: 10 }}>
-            {data.doctorVoiceNotes!.map((vn) => (
-              <View
-                key={vn.id}
-                style={{
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: "#bae6fd",
-                  backgroundColor: "rgba(224, 242, 254, 0.5)",
-                  padding: 12,
-                }}
-              >
-                <Text style={{ fontSize: 12, color: "#0369a1", marginBottom: 8 }}>
-                  {format(parseISO(vn.createdAt), "dd/MM/yy · h:mm a")}
-                </Text>
-                <DoctorVoiceNotePlayer uri={vn.audioDataUri} />
-                <Pressable
-                  style={styles.stepRow}
-                  disabled={voiceBusyId === vn.id}
-                  onPress={() =>
-                    void patchVoiceNote(vn.id, { listened: !vn.listened })
-                  }
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      vn.listened ? { backgroundColor: TEAL, borderColor: TEAL } : null,
-                    ]}
-                  />
-                  <Text style={styles.stepLabel}>I listened</Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.btnGhost,
-                    { marginTop: 8, opacity: vn.listened && voiceBusyId !== vn.id ? 1 : 0.45 },
-                  ]}
-                  disabled={!vn.listened || voiceBusyId === vn.id}
-                  onPress={() => void patchVoiceNote(vn.id, { archived: true })}
-                >
-                  <Text style={styles.btnGhostText}>Archive</Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        ) : data.onboardingComplete === false ? (
-          <Text style={[styles.voicePlaceholder, { marginTop: 10 }]}>
-            Your doctor will send a voice note after reviewing your baseline. The bell will
-            update when it arrives.
-          </Text>
-        ) : (
-          <Text style={[styles.muted, { marginTop: 10 }]}>
-            No voice notes yet. When your doctor records one, it will appear here.
-          </Text>
-        )}
-        {(data.doctorArchivedVoiceNotes?.length ?? 0) > 0 ? (
-          <View style={{ marginTop: 12 }}>
-            <Pressable onPress={() => setShowArchivedVoices((v) => !v)}>
-              <Text style={styles.editLink}>
-                {showArchivedVoices ? "Hide" : "Show"} archived voice notes (
-                {data.doctorArchivedVoiceNotes!.length})
-              </Text>
-            </Pressable>
-            {showArchivedVoices
-              ? data.doctorArchivedVoiceNotes!.map((vn) => (
-                  <View
-                    key={vn.id}
-                    style={{
-                      marginTop: 10,
-                      padding: 10,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: "#e4e4e7",
-                      backgroundColor: "#fafafa",
-                    }}
-                  >
-                    <Text style={styles.muted}>
-                      {format(parseISO(vn.createdAt), "dd/MM/yy")}
-                    </Text>
-                    <DoctorVoiceNotePlayer uri={vn.audioDataUri} />
-                  </View>
-                ))
-              : null}
-          </View>
-        ) : null}
-      </View>
+      <DoctorFeedbackSection
+        feedbackEntries={data.feedbackEntries ?? []}
+        archivedEntries={data.archivedFeedbackEntries ?? []}
+        legacyFeedback={data.doctorFeedback}
+        legacyVoiceNotes={data.doctorVoiceNotes ?? []}
+        legacyArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+        voiceNoteIsNew={data.doctorVoiceNoteIsNew ?? false}
+        onboardingComplete={data.onboardingComplete}
+        token={token}
+        onPatchVoiceNote={patchVoiceNote}
+        voiceBusyId={voiceBusyId}
+        onRefresh={loadHome}
+      />
     </ScrollView>
   );
 }
 
-function DayQuestBannerMobile({
-  routineProgress,
-  questSubtext,
-}: {
-  routineProgress: number;
-  questSubtext?: string | null;
-}) {
-  const cd = useEndOfDayCountdown();
-  const p = Math.min(1, Math.max(0, routineProgress));
-  const percent = Math.round(p * 100);
-  return (
-    <View
-      style={[
-        styles.card,
-        styles.questCard,
-        cd.isLastHour && styles.questCardUrgent,
-      ]}
-      accessibilityRole="progressbar"
-      accessibilityValue={{ min: 0, max: 100, now: percent }}
-      accessibilityLabel={`AM and PM routine: ${percent} percent of steps completed today`}
-    >
-      <Text style={styles.questKicker}>{"Today's quest"}</Text>
-      <Text style={styles.questTitle}>
-        {questSubtext?.trim()
-          ? questSubtext.trim()
-          : "Lock in routine & journal before the day resets"}
-      </Text>
-      <Text style={styles.questSub}>
-        Counts until <Text style={styles.questBold}>11:59:59 PM</Text> local time
-      </Text>
-      <View style={styles.questBarBg}>
-        <View style={[styles.questBarFg, { width: `${p * 100}%` }]} />
-      </View>
-      <Text
-        style={styles.questTimer}
-        accessibilityRole="text"
-        accessibilityLabel={`Time remaining until end of day: ${cd.formatted}`}
-      >
-        {cd.formatted}
-      </Text>
-      <Text style={styles.questHint}>Time left today</Text>
-      {cd.isLastHour ? (
-        <Text style={styles.questFinal}>Final hour — finish strong</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function CountdownPillMobile() {
-  const cd = useEndOfDayCountdown();
-  return (
-    <View
-      style={[styles.countPill, cd.isLastHour && styles.countPillUrgent]}
-      accessibilityRole="text"
-      accessibilityLabel={`Time left today until 11:59 PM: ${cd.formatted}`}
-    >
-      <Text style={styles.countPillText}>
-        <Text style={styles.countPillMono}>{cd.formatted}</Text>
-      </Text>
-    </View>
-  );
-}
-
-function JournalTodayStripMobile() {
-  const cd = useEndOfDayCountdown();
-  return (
-    <View
-      style={[styles.journalStrip, cd.isLastHour && styles.journalStripUrgent]}
-      accessibilityRole="text"
-    >
-      <Text style={styles.journalStripLeft}>
-        Closes at <Text style={styles.questBold}>11:59:59 PM</Text>
-      </Text>
-      <Text style={[styles.journalStripRight, cd.isLastHour && { color: "#b45309" }]}>
-        {cd.formatted} left
-      </Text>
-    </View>
-  );
-}
-
-function Gauge({ label, value }: { label: string; value: number }) {
+function ConsistencyScoreCard({ value }: { value: number }) {
   const v = Math.min(100, Math.max(0, Math.round(value)));
-  return (
-    <View style={styles.gauge}>
-      <Text style={styles.gaugeVal}>{v}%</Text>
-      <Text style={styles.gaugeLbl}>{label}</Text>
-    </View>
-  );
-}
+  const size = 100;
+  const strokeWidth = 8;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - v / 100);
+  const label = v >= 75 ? "Aligned" : v >= 50 ? "On Track" : v >= 25 ? "Needs Work" : "Low";
 
-function GaugeDelta({ label, delta }: { label: string; delta: number }) {
-  const d = Math.round(delta);
-  const sign = d > 0 ? "+" : "";
+  const now = new Date();
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const dateRange = `${format(weekStart, "MMM d")} – ${format(now, "MMM d, yyyy")}`;
+
   return (
-    <View style={styles.gauge}>
-      <Text style={styles.gaugeVal}>
-        {sign}
-        {d}
+    <View style={styles.consistencyCard}>
+      <Text style={styles.consistencyTitle}>WEEKLY CONSISTENCY SCORE</Text>
+      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center", alignSelf: "center", marginVertical: 12 }}>
+        <Svg width={size} height={size}>
+          <Circle
+            cx={size / 2} cy={size / 2} r={radius}
+            stroke="#E5E7EB" strokeWidth={strokeWidth} fill="none"
+          />
+          <Circle
+            cx={size / 2} cy={size / 2} r={radius}
+            stroke="#2563EB" strokeWidth={strokeWidth} fill="none"
+            strokeDasharray={`${circumference}`}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            rotation="-90" origin={`${size / 2}, ${size / 2}`}
+          />
+        </Svg>
+        <Text style={styles.consistencyValue}>{v}</Text>
+      </View>
+      <Text style={[styles.consistencyLabel, v >= 50 ? { color: GREEN_ACCENT } : { color: "#DC2626" }]}>
+        {label}
       </Text>
-      <Text style={styles.gaugeLbl}>{label}</Text>
+      <Text style={styles.consistencyUpdated}>{dateRange}</Text>
     </View>
   );
 }
 
-function DoctorVoiceNotePlayer({
-  uri,
-  onPlayStart,
-}: {
-  uri: string;
-  onPlayStart?: () => Promise<void>;
-}) {
-  const [busy, setBusy] = useState(false);
+function extractSkinHealthMetrics(analysis: unknown): { label: string; value: number }[] {
+  const a = analysis && typeof analysis === "object" ? (analysis as Record<string, unknown>) : {};
+  const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
+  function val(key: string, fallback: number): number {
+    const v = kp?.[key]?.value;
+    return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : fallback;
+  }
+  return [
+    { label: "Hydration", value: val("hydration", 72) },
+    { label: "Oil Level", value: val("sebum", 65) },
+    { label: "Elasticity", value: val("elasticity", 70) },
+    { label: "Sensitivity", value: 100 - val("redness", 40) },
+    { label: "Evenness", value: val("tone_evenness", 60) },
+  ];
+}
+
+function extractSkinParamMetrics(analysis: unknown): { label: string; value: number; color: string; status: string }[] {
+  const a = analysis && typeof analysis === "object" ? (analysis as Record<string, unknown>) : {};
+  const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
+  function val(key: string, fallback: number): number {
+    const v = kp?.[key]?.value;
+    return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : fallback;
+  }
+  function classify(v: number): { color: string; status: string } {
+    if (v >= 75) return { color: GREEN_ACCENT, status: "Mild" };
+    if (v >= 50) return { color: "#F59E0B", status: "Moderate" };
+    return { color: "#DC2626", status: "Needs Care" };
+  }
+  const acne = val("acne_pimples", 72);
+  const pores = val("pores", 68);
+  const wrinkles = val("wrinkles", 75);
+  const redness = val("redness", 60);
+  return [
+    { label: "Acne", value: acne, ...classify(acne) },
+    { label: "Pores", value: pores, ...classify(pores) },
+    { label: "Wrinkles", value: wrinkles, ...classify(wrinkles) },
+    { label: "Redness", value: redness, ...classify(redness) },
+  ];
+}
+
+const RADAR_SIZE = 220;
+const RADAR_CENTER = RADAR_SIZE / 2;
+const RADAR_RADIUS = 80;
+const RADAR_LEVELS = 4;
+
+function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }) {
+  const n = metrics.length;
+  const angleSlice = (2 * Math.PI) / n;
+
+  function pointOnAxis(i: number, ratio: number) {
+    const angle = angleSlice * i - Math.PI / 2;
+    return {
+      x: RADAR_CENTER + RADAR_RADIUS * ratio * Math.cos(angle),
+      y: RADAR_CENTER + RADAR_RADIUS * ratio * Math.sin(angle),
+    };
+  }
+
+  const gridLevels = Array.from({ length: RADAR_LEVELS }, (_, l) => {
+    const ratio = (l + 1) / RADAR_LEVELS;
+    return metrics.map((_, i) => pointOnAxis(i, ratio)).map((p) => `${p.x},${p.y}`).join(" ");
+  });
+
+  const dataPoints = metrics
+    .map((m, i) => pointOnAxis(i, m.value / 100))
+    .map((p) => `${p.x},${p.y}`)
+    .join(" ");
+
+  const labelOffset = 24;
+
   return (
-    <Pressable
-      style={styles.voiceBtn}
-      disabled={busy}
-      onPress={async () => {
-        setBusy(true);
-        try {
-          await onPlayStart?.();
-          await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-          const { sound } = await Audio.Sound.createAsync({ uri });
-          await sound.playAsync();
-          sound.setOnPlaybackStatusUpdate((st) => {
-            if (st.isLoaded && st.didJustFinish) void sound.unloadAsync();
-          });
-        } catch {
-          /* ignore */
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <Text style={styles.voiceBtnText}>{busy ? "…" : "Play voice note"}</Text>
-    </Pressable>
+    <View style={{ alignItems: "center", marginVertical: 8 }}>
+      <Svg width={RADAR_SIZE} height={RADAR_SIZE}>
+        {gridLevels.map((pts, l) => (
+          <Polygon key={l} points={pts} fill="none" stroke="#D1D5DB" strokeWidth={1} />
+        ))}
+        {metrics.map((_, i) => {
+          const p = pointOnAxis(i, 1);
+          return <Line key={i} x1={RADAR_CENTER} y1={RADAR_CENTER} x2={p.x} y2={p.y} stroke="#E5E7EB" strokeWidth={1} />;
+        })}
+        <Polygon points={dataPoints} fill="rgba(22,163,74,0.25)" stroke={GREEN_ACCENT} strokeWidth={2} />
+      </Svg>
+      {metrics.map((m, i) => {
+        const angle = angleSlice * i - Math.PI / 2;
+        const lx = RADAR_CENTER + (RADAR_RADIUS + labelOffset) * Math.cos(angle);
+        const ly = RADAR_CENTER + (RADAR_RADIUS + labelOffset) * Math.sin(angle);
+        return (
+          <View
+            key={m.label}
+            style={{
+              position: "absolute",
+              left: lx - 40,
+              top: ly - 14,
+              width: 80,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontSize: 12, color: "#6B7280", fontWeight: "500" }}>{m.label}</Text>
+            <Text style={{ fontSize: 14, color: "#18181b", fontWeight: "800" }}>{m.value}%</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SkinHealthMetricsCard({ analysis }: { analysis: unknown }) {
+  const metrics = useMemo(() => extractSkinHealthMetrics(analysis), [analysis]);
+  return (
+    <View style={styles.skinHealthCard}>
+      <Text style={styles.skinHealthTitle}>SKIN HEALTH METRICS</Text>
+      <RadarChart metrics={metrics} />
+    </View>
+  );
+}
+
+function ParamRing({ value, color, size = 72 }: { value: number; color: string; size?: number }) {
+  const sw = 6;
+  const r = (size - sw) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - value / 100);
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Svg width={size} height={size}>
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke="#E5E7EB" strokeWidth={sw} fill="none" />
+        <Circle
+          cx={size / 2} cy={size / 2} r={r}
+          stroke={color} strokeWidth={sw} fill="none"
+          strokeDasharray={`${circ}`} strokeDashoffset={offset}
+          strokeLinecap="round" rotation="-90" origin={`${size / 2}, ${size / 2}`}
+        />
+      </Svg>
+      <Text style={{ position: "absolute", fontSize: 18, fontWeight: "800", color: "#18181b" }}>{value}</Text>
+    </View>
+  );
+}
+
+function SkinParamMetricsCard({ analysis, onViewAll }: { analysis: unknown; onViewAll: () => void }) {
+  const topMetrics = useMemo(() => extractSkinParamMetrics(analysis), [analysis]);
+
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={styles.skinHealthTitle}>SKIN PARAMETER METRICS</Text>
+      <View style={styles.paramMetricsGrid}>
+        {topMetrics.map((m) => (
+          <View key={m.label} style={styles.paramMetricCell}>
+            <Text style={styles.paramMetricLabel}>{m.label}</Text>
+            <ParamRing value={m.value} color={m.color} />
+            <Text style={[styles.paramMetricStatus, { color: m.color }]}>{m.status}</Text>
+          </View>
+        ))}
+      </View>
+      <Pressable style={styles.viewAllParamsBtn} onPress={onViewAll}>
+        <Text style={styles.viewAllParamsText}>View all Parameters</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function NextReminderCard({
+  amHm,
+  pmHm,
+  amDone,
+  amTotal,
+  pmDone,
+  pmTotal,
+  onPress,
+}: {
+  amHm: string;
+  pmHm: string;
+  amDone: number;
+  amTotal: number;
+  pmDone: number;
+  pmTotal: number;
+  onPress: (target: "am" | "pm") => void;
+}) {
+  const allCompleted = amTotal > 0 && pmTotal > 0 && amDone >= amTotal && pmDone >= pmTotal;
+
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (allCompleted) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [allCompleted]);
+
+  const { target, hours, minutes, seconds } = useMemo(() => {
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [amH, amM] = amHm.split(":").map(Number);
+    const [pmH, pmM] = pmHm.split(":").map(Number);
+    const amTotalMin = (amH || 0) * 60 + (amM || 0);
+    const pmTotalMin = (pmH || 0) * 60 + (pmM || 0);
+
+    let targetTime: number;
+    let tgt: "am" | "pm";
+
+    if (nowMinutes < amTotalMin) {
+      targetTime = amTotalMin;
+      tgt = "am";
+    } else if (nowMinutes < pmTotalMin) {
+      targetTime = pmTotalMin;
+      tgt = "pm";
+    } else {
+      targetTime = amTotalMin + 24 * 60;
+      tgt = "am";
+    }
+
+    const diffMin = targetTime - nowMinutes;
+    const diffSec = Math.max(0, diffMin * 60 - now.getSeconds());
+    const h = Math.floor(diffSec / 3600);
+    const m = Math.floor((diffSec % 3600) / 60);
+    const s = diffSec % 60;
+
+    return { target: tgt, hours: h, minutes: m, seconds: s };
+  }, [tick, amHm, pmHm]);
+
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+
+  if (allCompleted) {
+    return (
+      <View style={[styles.reminderCard, { borderColor: GREEN_ACCENT }]}>
+        <View style={styles.reminderLeft}>
+          <Ionicons name="checkmark-circle" size={28} color={GREEN_ACCENT} />
+          <View>
+            <Text style={[styles.reminderLabel, { color: GREEN_ACCENT }]}>All Done for Today!</Text>
+            <Text style={[styles.reminderTime, { fontSize: 16 }]}>AM & PM routines completed</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.reminderCard}>
+      <View style={styles.reminderLeft}>
+        <Ionicons name="time-outline" size={28} color={GREEN_ACCENT} />
+        <View>
+          <Text style={styles.reminderLabel}>Next Reminder in</Text>
+          <Text style={styles.reminderTime}>
+            {pad(hours)}: {pad(minutes)}: {pad(seconds)}
+          </Text>
+        </View>
+      </View>
+      <Pressable
+        style={styles.viewTasksBtn}
+        onPress={() => onPress(target)}
+      >
+        <Text style={styles.viewTasksText}>View All Tasks</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function DoctorVoiceNotePlayer({ uri }: { uri: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [durationSec, setDurationSec] = useState(0);
+  const [positionSec, setPositionSec] = useState(0);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const fileRef = useRef<string | null>(null);
+
+  const resolveUri = useCallback(async (): Promise<string> => {
+    if (!uri.startsWith("data:")) return uri;
+    if (fileRef.current) return fileRef.current;
+    const commaIndex = uri.indexOf(",");
+    if (commaIndex < 0) throw new Error("Invalid audio data URI");
+    const meta = uri.slice(5, commaIndex).toLowerCase();
+    const mime = meta.split(";")[0] ?? "audio/m4a";
+    const base64 = uri.slice(commaIndex + 1);
+    const rawExt = mime.split("/")[1] ?? "m4a";
+    const ext = rawExt === "x-wav" ? "wav" : rawExt;
+    const path = `${FileSystem.cacheDirectory}voice_${Date.now()}.${ext}`;
+    await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
+    fileRef.current = path;
+    return path;
+  }, [uri]);
+
+  const cleanup = useCallback(async () => {
+    try { await soundRef.current?.unloadAsync(); } catch { /* */ }
+    soundRef.current = null;
+    setPlaying(false);
+  }, []);
+
+  const toggle = useCallback(async () => {
+    try {
+      if (playing && soundRef.current) {
+        await soundRef.current.pauseAsync();
+        setPlaying(false);
+        return;
+      }
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      if (!soundRef.current) {
+        const playUri = await resolveUri();
+        const { sound } = await Audio.Sound.createAsync({ uri: playUri });
+        soundRef.current = sound;
+        sound.setOnPlaybackStatusUpdate((st) => {
+          if (!st.isLoaded) return;
+          setPositionSec(Math.floor((st.positionMillis ?? 0) / 1000));
+          setDurationSec(Math.floor((st.durationMillis ?? 0) / 1000));
+          if (st.didJustFinish) {
+            setPlaying(false);
+            setPositionSec(0);
+            void sound.setPositionAsync(0);
+          }
+        });
+      }
+      await soundRef.current.playAsync();
+      setPlaying(true);
+    } catch (e) {
+      console.warn("[VoicePlayer] playback error:", e);
+      await cleanup();
+    }
+  }, [playing, resolveUri, cleanup]);
+
+  useEffect(() => () => { void cleanup(); }, [cleanup]);
+
+  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  const progress = durationSec > 0 ? positionSec / durationSec : 0;
+
+  return (
+    <View style={fbStyles.playerRow}>
+      <Pressable onPress={toggle} style={fbStyles.playBtn} hitSlop={8}>
+        <Ionicons name={playing ? "pause" : "play"} size={20} color="#fff" />
+      </Pressable>
+      <View style={fbStyles.waveContainer}>
+        {Array.from({ length: 24 }).map((_, i) => {
+          const h = 6 + Math.sin(i * 0.7 + 2) * 8 + Math.cos(i * 1.3) * 4;
+          const filled = i / 24 <= progress;
+          return (
+            <View
+              key={i}
+              style={{
+                width: 3,
+                height: h,
+                borderRadius: 1.5,
+                backgroundColor: filled ? NAVY : "#CBD5E1",
+                marginHorizontal: 1,
+              }}
+            />
+          );
+        })}
+      </View>
+      <Text style={fbStyles.playerTime}>{fmt(playing ? positionSec : durationSec)}</Text>
+    </View>
   );
 }
 
@@ -975,11 +1253,690 @@ function Field({
   );
 }
 
+type FeedbackEntry = NonNullable<HomeData["feedbackEntries"]>[number];
+
+function DoctorFeedbackSection({
+  feedbackEntries,
+  archivedEntries,
+  legacyFeedback,
+  legacyVoiceNotes,
+  legacyArchivedVoiceNotes,
+  voiceNoteIsNew,
+  onboardingComplete,
+  token,
+  onPatchVoiceNote,
+  voiceBusyId,
+  onRefresh,
+}: {
+  feedbackEntries: FeedbackEntry[];
+  archivedEntries: FeedbackEntry[];
+  legacyFeedback?: string;
+  legacyVoiceNotes: Array<{ id: string; audioDataUri: string; createdAt: string; listened: boolean }>;
+  legacyArchivedVoiceNotes: Array<{ id: string; audioDataUri: string; createdAt: string; listened: boolean }>;
+  voiceNoteIsNew: boolean;
+  onboardingComplete?: boolean;
+  token: string | null;
+  onPatchVoiceNote: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<void>;
+  voiceBusyId: string | null;
+  onRefresh: () => Promise<void>;
+}) {
+  const [showArchived, setShowArchived] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+
+  const entries: FeedbackEntry[] = useMemo(() => {
+    if (feedbackEntries.length > 0) return feedbackEntries;
+    const combined: FeedbackEntry[] = [];
+    if (legacyFeedback?.trim()) {
+      combined.push({
+        id: "__legacy-text__",
+        feedbackText: legacyFeedback.trim(),
+        audioDataUri: legacyVoiceNotes[0]?.audioDataUri ?? null,
+        createdAt: legacyVoiceNotes[0]?.createdAt ?? new Date().toISOString(),
+        listened: legacyVoiceNotes[0]?.listened ?? true,
+        doctorName: null,
+        doctorPhotoUrl: null,
+      });
+      const remainingNotes = legacyVoiceNotes.slice(1);
+      for (const vn of remainingNotes) {
+        combined.push({
+          id: vn.id,
+          feedbackText: null,
+          audioDataUri: vn.audioDataUri,
+          createdAt: vn.createdAt,
+          listened: vn.listened,
+          doctorName: null,
+          doctorPhotoUrl: null,
+        });
+      }
+    } else {
+      for (const vn of legacyVoiceNotes) {
+        combined.push({
+          id: vn.id,
+          feedbackText: null,
+          audioDataUri: vn.audioDataUri,
+          createdAt: vn.createdAt,
+          listened: vn.listened,
+          doctorName: null,
+          doctorPhotoUrl: null,
+        });
+      }
+    }
+    return combined;
+  }, [feedbackEntries, legacyFeedback, legacyVoiceNotes]);
+
+  const archived: FeedbackEntry[] = useMemo(() => {
+    if (archivedEntries.length > 0) return archivedEntries;
+    return legacyArchivedVoiceNotes.map((vn) => ({
+      id: vn.id,
+      feedbackText: null,
+      audioDataUri: vn.audioDataUri,
+      createdAt: vn.createdAt,
+      listened: vn.listened,
+      doctorName: null,
+      doctorPhotoUrl: null,
+    }));
+  }, [archivedEntries, legacyArchivedVoiceNotes]);
+
+  const sendReply = useCallback(async () => {
+    if (!token || !replyText.trim()) return;
+    setReplyBusy(true);
+    try {
+      await apiJson(`/api/chat/plain/message`, token, {
+        method: "POST",
+        body: JSON.stringify({ assistantId: "doctor", text: replyText.trim() }),
+      });
+      setReplyText("");
+    } catch {
+      /* ignore */
+    } finally {
+      setReplyBusy(false);
+    }
+  }, [token, replyText]);
+
+  const hasEntries = entries.length > 0;
+
+  return (
+    <View style={[fbStyles.container, { marginBottom: 32 }]}>
+      <View style={fbStyles.headerRow}>
+        <Text style={fbStyles.headerTitle}>DOCTOR FEEDBACK</Text>
+        {voiceNoteIsNew ? (
+          <View style={fbStyles.newBadge}>
+            <Text style={fbStyles.newBadgeText}>New</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {hasEntries ? (
+        <>
+          {entries.map((entry) => (
+            <FeedbackEntryCard
+              key={entry.id}
+              entry={entry}
+              onPatch={onPatchVoiceNote}
+              busyId={voiceBusyId}
+            />
+          ))}
+        </>
+      ) : onboardingComplete === false ? (
+        <Text style={fbStyles.placeholder}>
+          Your doctor will send feedback after reviewing your baseline.
+        </Text>
+      ) : (
+        <Text style={fbStyles.placeholder}>
+          No feedback yet. When your doctor sends notes, they will appear here.
+        </Text>
+      )}
+
+      {archived.length > 0 ? (
+        <View style={{ marginTop: 14 }}>
+          <Pressable onPress={() => setShowArchived((v) => !v)} style={fbStyles.archiveToggle}>
+            <Ionicons name={showArchived ? "chevron-up" : "chevron-down"} size={16} color={NAVY} />
+            <Text style={fbStyles.archiveToggleText}>
+              {showArchived ? "Hide" : "Show"} past notes ({archived.length})
+            </Text>
+          </Pressable>
+          {showArchived
+            ? archived.map((entry) => (
+                <FeedbackEntryCard key={entry.id} entry={entry} onPatch={onPatchVoiceNote} busyId={voiceBusyId} archived />
+              ))
+            : null}
+        </View>
+      ) : null}
+
+      <View style={fbStyles.replyRow}>
+        <TextInput
+          style={fbStyles.replyInput}
+          placeholder="Write a reply..."
+          value={replyText}
+          onChangeText={setReplyText}
+          placeholderTextColor="#94a3b8"
+        />
+        <Pressable
+          style={[fbStyles.sendBtn, { opacity: replyBusy || !replyText.trim() ? 0.4 : 1 }]}
+          disabled={replyBusy || !replyText.trim()}
+          onPress={sendReply}
+        >
+          <Ionicons name="send" size={18} color="#fff" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function FeedbackEntryCard({
+  entry,
+  onPatch,
+  busyId,
+  archived,
+}: {
+  entry: FeedbackEntry;
+  onPatch: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<void>;
+  busyId: string | null;
+  archived?: boolean;
+}) {
+  return (
+    <View style={[fbStyles.entryCard, archived && fbStyles.entryCardArchived]}>
+      <View style={fbStyles.doctorRow}>
+        {entry.doctorPhotoUrl ? (
+          <Image
+            source={{ uri: entry.doctorPhotoUrl }}
+            style={fbStyles.doctorPhoto}
+          />
+        ) : (
+          <View style={fbStyles.doctorAvatar}>
+            <Ionicons name="person" size={22} color="#fff" />
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={fbStyles.doctorName}>{entry.doctorName ?? "Your Doctor"}</Text>
+          <Text style={fbStyles.doctorSpec}>Dermatologist</Text>
+          <Text style={fbStyles.entryDate}>
+            {format(parseISO(entry.createdAt), "dd MMM yyyy, hh:mm a")}
+          </Text>
+        </View>
+      </View>
+
+      {entry.feedbackText ? (
+        <Text style={fbStyles.feedbackText}>{entry.feedbackText}</Text>
+      ) : null}
+
+      {entry.audioDataUri ? (
+        <View style={fbStyles.audioRow}>
+          <DoctorVoiceNotePlayer uri={entry.audioDataUri} />
+        </View>
+      ) : null}
+
+      {!archived && entry.id !== "__legacy-text__" ? (
+        <View style={fbStyles.actionRow}>
+          <Pressable
+            style={fbStyles.actionBtn}
+            disabled={busyId === entry.id}
+            onPress={() => void onPatch(entry.id, { listened: !entry.listened })}
+          >
+            <Ionicons
+              name={entry.listened ? "checkmark-circle" : "checkmark-circle-outline"}
+              size={18}
+              color={entry.listened ? "#16a34a" : "#94a3b8"}
+            />
+            <Text style={[fbStyles.actionText, entry.listened && { color: "#16a34a" }]}>
+              {entry.listened ? "Listened" : "Mark listened"}
+            </Text>
+          </Pressable>
+          {entry.listened ? (
+            <Pressable
+              style={fbStyles.actionBtn}
+              disabled={busyId === entry.id}
+              onPress={() => void onPatch(entry.id, { archived: true })}
+            >
+              <Ionicons name="archive-outline" size={16} color="#64748b" />
+              <Text style={fbStyles.actionText}>Archive</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const fbStyles = StyleSheet.create({
+  container: {
+    marginTop: 16,
+    backgroundColor: GLASS,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: NAVY,
+    letterSpacing: 1,
+  },
+  newBadge: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  newBadgeText: { fontSize: 11, fontWeight: "800", color: "#92400e" },
+  placeholder: {
+    fontSize: 14,
+    color: "#94a3b8",
+    textAlign: "center",
+    paddingVertical: 24,
+    lineHeight: 20,
+  },
+  entryCard: {
+    backgroundColor: "rgba(255,255,255,0.5)",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  entryCardArchived: {
+    opacity: 0.6,
+    marginTop: 8,
+  },
+  doctorRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 12,
+  },
+  doctorPhoto: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#E2E8F0",
+  },
+  doctorAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  doctorName: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
+  doctorSpec: { fontSize: 13, color: "#6B7280", marginTop: 1 },
+  entryDate: { fontSize: 12, color: "#94A3B8", marginTop: 2 },
+  feedbackText: {
+    fontSize: 15,
+    color: "#334155",
+    lineHeight: 23,
+    marginBottom: 12,
+  },
+  audioRow: {
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  playerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 28,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  playBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  waveContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: 28,
+  },
+  waveTrack: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: "transparent",
+    borderRadius: 1.5,
+  },
+  waveFill: {
+    height: 3,
+    backgroundColor: "transparent",
+    borderRadius: 1.5,
+  },
+  playerTime: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+    minWidth: 36,
+    textAlign: "right",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+  },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  actionText: { fontSize: 13, color: "#64748b", fontWeight: "600" },
+  archiveToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+  },
+  archiveToggleText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: NAVY,
+  },
+  replyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    backgroundColor: "#F8FAFC",
+  },
+  replyInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#334155",
+    paddingVertical: 10,
+  },
+  sendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
+
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#f8f5ef" },
+  scroll: { flex: 1, backgroundColor: "#E8EFE6" },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8f5ef" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6" },
   err: { color: "#b91c1c", padding: 16 },
+
+  greetingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  greetingText: { fontSize: 28, fontWeight: "800", color: "#18181b" },
+  greetingSub: { fontSize: 15, color: "#6B7280", marginTop: 4 },
+
+  dateNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  dateNavArrow: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER,
+    alignItems: "center", justifyContent: "center",
+  },
+  dateNavMonth: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
+  dateStrip: { marginTop: 8, marginBottom: 16 },
+  dateStripContent: { gap: 8 },
+  dateChip: {
+    width: 56,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: GLASS,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  dateChipToday: { backgroundColor: NAVY, borderColor: NAVY },
+  dateChipLabel: { fontSize: 12, fontWeight: "600", color: "#6B7280" },
+  dateChipLabelToday: { color: "#fff" },
+  dateChipDay: { fontSize: 18, fontWeight: "800", color: "#1A1A2E", marginTop: 2 },
+  dateChipDayToday: { color: "#fff" },
+
+  routineCards: { flexDirection: "row", gap: 12, marginBottom: 16 },
+  routineCard: {
+    flex: 1,
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  routineCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 },
+  routineIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routineArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#334155",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routineCardTitle: { fontSize: 20, fontWeight: "800", color: "#18181b", marginBottom: 10 },
+  routineStepPill: {
+    alignSelf: "flex-start",
+    backgroundColor: NAVY,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  routineStepText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+
+  streakCard: {
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  streakTitle: { fontSize: 18, fontWeight: "800", color: "#18181b", marginBottom: 14 },
+  streakDotsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  streakDayCol: { alignItems: "center", gap: 6 },
+  streakDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    backgroundColor: "rgba(255,255,255,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  streakDotDone: { backgroundColor: GREEN_ACCENT, borderColor: GREEN_ACCENT },
+  streakDayLabel: { fontSize: 11, fontWeight: "600", color: "#6B7280" },
+  streakMessage: { fontSize: 15, fontWeight: "700", marginTop: 10 },
+
+  focusCard: {
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  focusKicker: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    color: GREEN_ACCENT,
+    marginBottom: 8,
+  },
+  focusMessage: { fontSize: 15, fontWeight: "600", color: "#374151", lineHeight: 22 },
+
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    color: "#18181b",
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  scoreRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
+  scoreCard: {
+    flex: 1,
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  scoreLabel: { fontSize: 14, fontWeight: "700", color: "#374151", textAlign: "center" },
+  scoreValue: { fontSize: 36, fontWeight: "800", color: GREEN_ACCENT, marginTop: 4 },
+  scoreUpdated: { fontSize: 12, color: "#9CA3AF", marginTop: 4, textAlign: "center" },
+
+  consistencyCard: {
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  consistencyTitle: { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, color: "#18181b" },
+  consistencyValue: {
+    position: "absolute" as const,
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#18181b",
+  },
+  consistencyLabel: { fontSize: 16, fontWeight: "700", marginTop: 2 },
+  consistencyUpdated: { fontSize: 12, color: "#9CA3AF", marginTop: 4 },
+
+  skinHealthCard: {
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  skinHealthTitle: { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, color: "#18181b", marginBottom: 4 },
+
+  paramMetricsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 12,
+  },
+  paramMetricCell: {
+    width: "47%",
+    backgroundColor: GLASS,
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    gap: 6,
+  },
+  paramMetricLabel: { fontSize: 15, fontWeight: "700", color: "#18181b" },
+  paramMetricStatus: { fontSize: 13, fontWeight: "700" },
+
+  viewAllParamsBtn: {
+    backgroundColor: GREEN_ACCENT,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  viewAllParamsText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+
+
+  journalCard: {
+    backgroundColor: GLASS,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  journalCardInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  journalCardLabel: { fontSize: 14, color: "#6B7280", fontWeight: "500" },
+  journalCardValue: { fontSize: 28, fontWeight: "800", color: "#18181b", marginTop: 2 },
+  journalCardIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: "center", justifyContent: "center",
+  },
+  journalEnterBtn: {
+    backgroundColor: NAVY,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  journalEnterText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+
+  reminderCard: {
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  reminderLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  reminderLabel: { fontSize: 13, color: "#6B7280", fontWeight: "600" },
+  reminderTime: { fontSize: 22, fontWeight: "800", color: "#18181b", fontVariant: ["tabular-nums"] as any },
+  viewTasksBtn: {
+    borderWidth: 1.5,
+    borderColor: NAVY,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  viewTasksText: { fontSize: 13, fontWeight: "700", color: NAVY },
+
   h1: { fontSize: 24, fontWeight: "700", textAlign: "center", color: "#18181b" },
   h2: { fontSize: 18, fontWeight: "700", color: "#18181b" },
   sectionCaption: {
@@ -988,27 +1945,17 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 18,
   },
-  editLink: { fontSize: 14, fontWeight: "600", color: TEAL },
+  editLink: { fontSize: 14, fontWeight: "600", color: NAVY },
   sub: { fontSize: 11, fontWeight: "600", color: "#71717a", marginBottom: 8, textTransform: "uppercase" },
   muted: { fontSize: 13, color: "#71717a", marginBottom: 8 },
   warn: { color: "#b45309", marginBottom: 8 },
   card: {
-    backgroundColor: CARD,
+    backgroundColor: GLASS,
     borderRadius: 18,
     padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
   },
-  gauges: { flexDirection: "row", justifyContent: "space-around", marginTop: 16 },
-  gauge: { alignItems: "center" },
-  gaugeVal: { fontSize: 22, fontWeight: "700", color: "#18181b" },
-  gaugeLbl: { fontSize: 11, color: "#52525b", marginTop: 4, textAlign: "center", maxWidth: 100 },
-  streakRow: { marginTop: 10, alignItems: "center" },
-  streakText: { fontSize: 13, color: "#52525b", fontWeight: "600" },
-  streakNum: { color: TEAL, fontWeight: "800" },
   newBadge: {
     backgroundColor: "#fef3c7",
     paddingHorizontal: 10,
@@ -1050,7 +1997,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: TEAL,
+    borderColor: NAVY,
   },
   stepLabel: { fontSize: 14, color: "#27272a", flex: 1 },
   journalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
@@ -1071,7 +2018,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4f4f5",
     marginRight: 8,
   },
-  moodChipOn: { backgroundColor: TEAL },
+  moodChipOn: { backgroundColor: NAVY },
   moodChipText: { color: "#3f3f46", fontWeight: "600" },
   moodChipTextOn: { color: "#fff", fontWeight: "600" },
   textArea: {
@@ -1085,7 +2032,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
   },
   journalActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  btn: { backgroundColor: TEAL, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 },
+  btn: { backgroundColor: NAVY, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 },
   btnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
   btnGhost: {
     alignSelf: "flex-start",
@@ -1104,9 +2051,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4f4f5",
     marginRight: 8,
   },
-  chipOn: { backgroundColor: "#ccfbf1" },
+  chipOn: { backgroundColor: MINT },
   chipText: { color: "#52525b", fontSize: 13 },
-  chipTextOn: { color: "#0f766e", fontWeight: "600", fontSize: 13 },
+  chipTextOn: { color: NAVY, fontWeight: "600", fontSize: 13 },
   paramGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
   paramCell: { width: "47%", borderRadius: 16, padding: 12 },
   paramLabel: { fontSize: 14, fontWeight: "600", color: "#27272a" },
@@ -1116,7 +2063,7 @@ const styles = StyleSheet.create({
   deltaDown: { color: "#b91c1c" },
   deltaNeutral: { color: "#71717a" },
   barBg: { height: 8, borderRadius: 4, backgroundColor: "rgba(107,142,142,0.25)", marginTop: 8, overflow: "hidden" },
-  barFg: { height: 8, borderRadius: 4, backgroundColor: TEAL },
+  barFg: { height: 8, borderRadius: 4, backgroundColor: NAVY },
   paramWeekAvg: { marginTop: 6, fontSize: 11, color: "#71717a", fontVariant: ["tabular-nums"] },
   feedback: { marginTop: 8, fontSize: 15, color: "#3f3f46", lineHeight: 22 },
   feedbackEmpty: { minHeight: 100, borderWidth: 1, borderStyle: "dashed", borderColor: "#e4e4e7", borderRadius: 14, marginTop: 8 },
@@ -1130,81 +2077,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#78350f",
     lineHeight: 20,
-  },
-  questCard: {
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.45)",
-    backgroundColor: "#fffbeb",
-  },
-  questCardUrgent: { borderColor: "rgba(245, 158, 11, 0.7)" },
-  questKicker: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
-    color: "#92400e",
-    marginBottom: 6,
-  },
-  questTitle: { fontSize: 16, fontWeight: "700", color: "#18181b", marginBottom: 4 },
-  questSub: { fontSize: 12, color: "#52525b", marginBottom: 10 },
-  questBold: { fontWeight: "800", color: "#27272a" },
-  questBarBg: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "rgba(107,142,142,0.2)",
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  questBarFg: { height: 8, borderRadius: 4, backgroundColor: TEAL },
-  questTimer: {
-    fontSize: 28,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
-    color: "#18181b",
-    textAlign: "center",
-  },
-  questHint: { fontSize: 11, fontWeight: "600", color: "#71717a", textAlign: "center", marginTop: 2 },
-  questFinal: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#b45309",
-    textAlign: "center",
-  },
-  countPill: {
-    alignSelf: "flex-start",
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(224, 240, 237, 0.95)",
-    borderWidth: 1,
-    borderColor: "rgba(107,142,142,0.35)",
-  },
-  countPillUrgent: { backgroundColor: "#fff7ed", borderColor: "rgba(245, 158, 11, 0.5)" },
-  countPillText: { fontSize: 12, fontWeight: "600", color: "#134e4a" },
-  countPillMono: { fontVariant: ["tabular-nums"], fontWeight: "800" },
-  journalStrip: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginTop: 10,
-    marginBottom: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(224, 240, 237, 0.45)",
-    borderWidth: 1,
-    borderColor: "rgba(107,142,142,0.25)",
-  },
-  journalStripUrgent: { backgroundColor: "#fffbeb", borderColor: "rgba(245, 158, 11, 0.35)" },
-  journalStripLeft: { fontSize: 13, fontWeight: "600", color: "#134e4a", flex: 1, minWidth: 140 },
-  journalStripRight: {
-    fontSize: 15,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
-    color: TEAL,
   },
 });

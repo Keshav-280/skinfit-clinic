@@ -124,7 +124,7 @@ export default async function HistoryPage() {
     id: r.id,
     scanId: r.scanId!,
     scanLabel: r.scanName?.trim() || "Report",
-    audioDataUri: r.audioDataUri,
+    audioDataUri: r.audioDataUri ?? "",
     createdAt: r.createdAt,
     listened: r.patientListenedAt != null,
   });

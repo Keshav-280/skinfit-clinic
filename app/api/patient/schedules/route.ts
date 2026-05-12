@@ -96,6 +96,7 @@ export async function GET(request: Request) {
         slotEndTimeHm: appointments.slotEndTimeHm,
         type: appointments.type,
         doctorName: users.name,
+        doctorPhoto: users.profilePhotoUrl,
         status: appointments.status,
       })
       .from(appointments)
@@ -222,7 +223,7 @@ export async function GET(request: Request) {
       crmPatientMessage: tip,
       cancellationReason: cancelNote,
       doctorName: r.doctorName ?? null,
-      doctorPhotoUrl: null,
+      doctorPhotoUrl: r.doctorPhoto ?? null,
       appointmentType: appointmentTypeLabel(r.type),
     };
   });

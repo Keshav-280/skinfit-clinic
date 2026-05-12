@@ -1,84 +1,113 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-const TEAL = "#0d9488";
+const NAVY = "#2C3E6B";
+const NAVY_DARK = "#1E3264";
 
 export default function OnboardingWelcome() {
   const router = useRouter();
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.kicker}>SkinFit Wellness</Text>
-      <Text style={styles.title}>Welcome to your skin journey</Text>
-      <Text style={styles.body}>
-        Your doctor has prepared a short welcome — next you will meet kAI, our analysis assistant, and
-        complete a guided skin assessment (about 10 minutes).
-      </Text>
-      <View style={styles.videoPlaceholder}>
-        <Text style={styles.videoNote}>
-          Doctor welcome video — add your MP4 to assets and replace this placeholder.
+    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.kicker}>SKINFIT WELLNESS</Text>
+        <Text style={styles.title}>Welcome to your{"\n"}skin journey</Text>
+        <Text style={styles.body}>
+          Your doctor has prepared a short welcome — next you will meet kAI, our analysis assistant, and
+          complete a guided skin assessment (about 10 minutes).
         </Text>
-      </View>
-      <Pressable
-        style={styles.btn}
-        onPress={() => router.push("/onboarding/kai-intro" as Href)}
-      >
-        <Text style={styles.btnText}>Begin my skin assessment</Text>
-      </Pressable>
-    </ScrollView>
+        <View style={styles.videoPlaceholder}>
+          <View style={styles.playCircle}>
+            <Text style={styles.playIcon}>{"▶"}</Text>
+          </View>
+          <Text style={styles.videoNote}>
+            Doctor welcome video — add your MP4 to assets and replace this placeholder.
+          </Text>
+        </View>
+        <Pressable
+          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+          onPress={() => router.push("/onboarding/kai-intro" as Href)}
+        >
+          <Text style={styles.btnText}>Begin my skin assessment</Text>
+        </Pressable>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 24, paddingBottom: 48, backgroundColor: "#f8f5ef" },
+  flex: { flex: 1 },
+  content: { padding: 24, paddingBottom: 48 },
   kicker: {
+    marginTop: 20,
     fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 2,
-    color: TEAL,
+    letterSpacing: 2.5,
+    color: NAVY,
     textAlign: "center",
   },
   title: {
     marginTop: 12,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "800",
-    color: "#18181b",
+    color: "#1A1A2E",
     textAlign: "center",
+    letterSpacing: -0.5,
+    lineHeight: 36,
   },
   body: {
-    marginTop: 14,
+    marginTop: 16,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 23,
     color: "#52525b",
     textAlign: "center",
+    paddingHorizontal: 8,
   },
   videoPlaceholder: {
-    marginTop: 24,
-    minHeight: 180,
-    borderRadius: 16,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 2,
+    marginTop: 28,
+    minHeight: 200,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    padding: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 2,
   },
-  videoNote: { fontSize: 13, color: "#71717a", textAlign: "center" },
+  playCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  playIcon: { color: "#fff", fontSize: 20, marginLeft: 3 },
+  videoNote: { fontSize: 13, color: "#9CA3AF", textAlign: "center", lineHeight: 19 },
   btn: {
     marginTop: 28,
-    backgroundColor: TEAL,
-    paddingVertical: 16,
+    backgroundColor: NAVY,
+    paddingVertical: 17,
     borderRadius: 16,
     alignItems: "center",
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 3,
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  btnPressed: {
+    backgroundColor: NAVY_DARK,
+    transform: [{ scale: 0.98 }],
+  },
+  btnText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
 });

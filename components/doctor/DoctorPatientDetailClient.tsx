@@ -261,6 +261,47 @@ function blobToDataUri(blob: Blob): Promise<string> {
   });
 }
 
+async function transcodeToWav(blob: Blob): Promise<Blob> {
+  const ctx = new AudioContext();
+  const arrayBuf = await blob.arrayBuffer();
+  const audio = await ctx.decodeAudioData(arrayBuf);
+  const numCh = audio.numberOfChannels;
+  const rate = audio.sampleRate;
+  const length = audio.length;
+  const buffer = new ArrayBuffer(44 + length * numCh * 2);
+  const view = new DataView(buffer);
+
+  function writeStr(off: number, s: string) {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  }
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + length * numCh * 2, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numCh, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * numCh * 2, true);
+  view.setUint16(32, numCh * 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, length * numCh * 2, true);
+
+  let offset = 44;
+  const channels: Float32Array[] = [];
+  for (let ch = 0; ch < numCh; ch++) channels.push(audio.getChannelData(ch));
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numCh; ch++) {
+      const s = Math.max(-1, Math.min(1, channels[ch][i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += 2;
+    }
+  }
+  await ctx.close();
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
 function dataUriKind(uri: string | null | undefined): "image" | "audio" | "other" | null {
   if (!uri) return null;
   if (uri.startsWith("data:image/")) return "image";
@@ -268,7 +309,18 @@ function dataUriKind(uri: string | null | undefined): "image" | "audio" | "other
   return "other";
 }
 
+type TabKey = "overview" | "chat" | "routine" | "reports" | "notes";
+
+const TABS: Array<{ key: TabKey; label: string; icon: string }> = [
+  { key: "overview", label: "Overview", icon: "📋" },
+  { key: "chat", label: "Chat", icon: "💬" },
+  { key: "routine", label: "Routine", icon: "🔄" },
+  { key: "reports", label: "Reports", icon: "📊" },
+  { key: "notes", label: "Notes", icon: "📝" },
+];
+
 export function DoctorPatientDetailClient({ patientId }: { patientId: string }) {
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [data, setData] = useState<DetailJson | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -280,6 +332,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const [routineEnabled, setRoutineEnabled] = useState(true);
   const [routinePlanAmText, setRoutinePlanAmText] = useState("");
   const [routinePlanPmText, setRoutinePlanPmText] = useState("");
+  const [routinePlanAmRows, setRoutinePlanAmRows] = useState<Array<{ name: string; product: string; dosage: string }>>([]);
+  const [routinePlanPmRows, setRoutinePlanPmRows] = useState<Array<{ name: string; product: string; dosage: string }>>([]);
   /** Prevents refetch-driven useEffect from wiping AM/PM textareas mid-edit (e.g. after voice upload). */
   const [routinePlanTextDirty, setRoutinePlanTextDirty] = useState(false);
   const [visitNoteText, setVisitNoteText] = useState("");
@@ -310,7 +364,6 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const [careEventBusy, setCareEventBusy] = useState(false);
   const [careEventFlash, setCareEventFlash] = useState<string | null>(null);
   const [generalFeedbackText, setGeneralFeedbackText] = useState("");
-  const [generalFeedbackBusy, setGeneralFeedbackBusy] = useState(false);
   const [generalFeedbackFlash, setGeneralFeedbackFlash] = useState<string | null>(null);
   const [generalFeedbackDirty, setGeneralFeedbackDirty] = useState(false);
   const [clinicianBusy, setClinicianBusy] = useState(false);
@@ -366,13 +419,21 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     setVoicePreview(null);
   }, []);
 
-  const commitVoicePreview = useCallback((blob: Blob) => {
-    const url = URL.createObjectURL(blob);
+  const commitVoicePreview = useCallback(async (blob: Blob) => {
+    let finalBlob = blob;
+    if (blob.type.includes("webm")) {
+      try {
+        finalBlob = await transcodeToWav(blob);
+      } catch {
+        /* keep original if transcoding fails */
+      }
+    }
+    const url = URL.createObjectURL(finalBlob);
     if (voicePreviewUrlRef.current) {
       URL.revokeObjectURL(voicePreviewUrlRef.current);
     }
     voicePreviewUrlRef.current = url;
-    setVoicePreview({ blob, url });
+    setVoicePreview({ blob: finalBlob, url });
   }, []);
 
   const load = useCallback(async () => {
@@ -523,6 +584,18 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     if (!routinePlanTextDirty) {
       setRoutinePlanAmText((p.routinePlanAmItems ?? []).join("\n"));
       setRoutinePlanPmText((p.routinePlanPmItems ?? []).join("\n"));
+      setRoutinePlanAmRows(
+        (p.routinePlanAmItems ?? []).map((s: string) => {
+          const parts = s.split("|").map((x: string) => x.trim());
+          return { name: parts[0] || "", product: parts[1] || "", dosage: parts[2] || "" };
+        })
+      );
+      setRoutinePlanPmRows(
+        (p.routinePlanPmItems ?? []).map((s: string) => {
+          const parts = s.split("|").map((x: string) => x.trim());
+          return { name: parts[0] || "", product: parts[1] || "", dosage: parts[2] || "" };
+        })
+      );
     }
     if (!generalFeedbackDirty) {
       setGeneralFeedbackText(p.doctorFeedbackNote ?? "");
@@ -534,27 +607,46 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     }
   }, [data, routinePlanTextDirty, generalFeedbackDirty]);
 
-  const uploadVoiceDataUri = useCallback(
-    async (audioDataUri: string) => {
+  const uploadFeedbackEntry = useCallback(
+    async (opts: { audioDataUri?: string; feedbackText?: string }): Promise<boolean> => {
       const res = await fetch("/api/doctor/voice-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           patientId,
-          audioDataUri,
+          audioDataUri: opts.audioDataUri || undefined,
+          feedbackText: opts.feedbackText || undefined,
           scanId: selectedScanId ? parseInt(selectedScanId, 10) : undefined,
         }),
       });
-      const j = (await res.json()) as { message?: string; error?: string };
+      let j: { message?: string; error?: string };
+      try {
+        j = (await res.json()) as { message?: string; error?: string };
+      } catch {
+        if (res.status === 413) {
+          setVoiceMsg("Recording is too large. Try a shorter voice note.");
+        } else {
+          setVoiceMsg(`Upload failed (HTTP ${res.status}). Please try again.`);
+        }
+        return false;
+      }
       if (!res.ok) {
         setVoiceMsg(j.message ?? j.error ?? "Upload failed.");
-        return;
+        return false;
       }
-      setVoiceMsg("Voice note sent. Patient will get a notification.");
+      setVoiceMsg("Feedback sent. Patient will get a notification.");
       void load();
+      return true;
     },
     [patientId, selectedScanId, load]
+  );
+
+  const uploadVoiceDataUri = useCallback(
+    async (audioDataUri: string) => {
+      await uploadFeedbackEntry({ audioDataUri, feedbackText: generalFeedbackText.trim() || undefined });
+    },
+    [uploadFeedbackEntry, generalFeedbackText]
   );
 
   const sendVoiceBlob = useCallback(
@@ -564,19 +656,45 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       try {
         const audioDataUri = await blobToDataUri(blob);
         if (audioDataUri.length > MAX_AUDIO_URI_LEN) {
-          setVoiceMsg("Recording is too large. Try a shorter note.");
+          setVoiceMsg("Recording is too large (max ~2 min). Try a shorter note.");
           return;
         }
-        await uploadVoiceDataUri(audioDataUri);
-        clearVoicePreview();
-      } catch {
-        setVoiceMsg("Could not process audio.");
+        const ok = await uploadFeedbackEntry({ audioDataUri, feedbackText: generalFeedbackText.trim() || undefined });
+        if (ok) {
+          clearVoicePreview();
+          setGeneralFeedbackText("");
+          setGeneralFeedbackDirty(false);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "";
+        if (msg.includes("read") || msg.includes("FileReader")) {
+          setVoiceMsg("Could not read audio file. Try a different format (MP3/M4A/WAV).");
+        } else {
+          setVoiceMsg("Could not send audio. Check your connection and try again.");
+        }
       } finally {
         setBusy(false);
       }
     },
-    [uploadVoiceDataUri, clearVoicePreview]
+    [uploadFeedbackEntry, clearVoicePreview, generalFeedbackText]
   );
+
+  const sendTextOnlyFeedback = useCallback(async () => {
+    if (!generalFeedbackText.trim()) return;
+    setBusy(true);
+    setVoiceMsg(null);
+    try {
+      const ok = await uploadFeedbackEntry({ feedbackText: generalFeedbackText.trim() });
+      if (ok) {
+        setGeneralFeedbackText("");
+        setGeneralFeedbackDirty(false);
+      }
+    } catch {
+      setVoiceMsg("Could not send feedback. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, [uploadFeedbackEntry, generalFeedbackText]);
 
   const sendDoctorChatMessage = useCallback(async () => {
     const text = doctorChatText.trim();
@@ -635,12 +753,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       chunksRef.current = [];
 
       const preferred =
-        MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : MediaRecorder.isTypeSupported("audio/webm")
-            ? "audio/webm"
-            : MediaRecorder.isTypeSupported("audio/mp4")
-              ? "audio/mp4"
+        MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+            ? "audio/webm;codecs=opus"
+            : MediaRecorder.isTypeSupported("audio/webm")
+              ? "audio/webm"
               : "";
 
       const recorder = preferred
@@ -726,124 +844,88 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const paramMap = data.parameterScoresByScanId ?? {};
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* ── Back link ── */}
       <Link
         href="/doctor/patients"
-        className="inline-flex items-center gap-1 text-sm font-medium text-teal-700"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2C3E6B] hover:underline"
       >
         <ArrowLeft className="h-4 w-4" />
-        Patients
+        All Patients
       </Link>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-xl font-bold text-slate-900">{p.name}</h1>
-        <p className="text-sm text-slate-600">{p.email}</p>
-        {(p.phone || p.phoneCountryCode) && (
-          <p className="text-sm text-slate-600">
-            {p.phoneCountryCode} {p.phone ?? ""}
-          </p>
-        )}
-        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <dt className="text-slate-500">Age</dt>
-            <dd className="font-medium text-slate-900">{p.age ?? "—"}</dd>
+      {/* ── Patient Profile Card ── */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-lg font-bold text-white">
+            {p.name.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <dt className="text-slate-500">Skin type / goal</dt>
-            <dd className="font-medium text-slate-900">
-              {[p.skinType, p.primaryGoal].filter(Boolean).join(" · ") || "—"}
-            </dd>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold text-slate-900">{p.name}</h1>
+            <p className="text-sm text-slate-500">{p.email}</p>
+            {(p.phone || p.phoneCountryCode) && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {p.phoneCountryCode} {p.phone ?? ""}
+              </p>
+            )}
           </div>
-          <div>
-            <dt className="text-slate-500">Timezone</dt>
-            <dd className="font-medium text-slate-900">{p.timezone}</dd>
+          <div className="flex flex-wrap gap-1.5">
+            <span className={`rounded-lg px-2 py-1 text-xs font-semibold ${
+              p.onboardingComplete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+            }`}>
+              {p.onboardingComplete ? "Onboarded" : "In progress"}
+            </span>
+            {p.primaryConcern && (
+              <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                {p.primaryConcern}
+              </span>
+            )}
           </div>
-          <div>
-            <dt className="text-slate-500">Primary concern</dt>
-            <dd className="font-medium text-slate-900">{p.primaryConcern ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Severity / duration</dt>
-            <dd className="font-medium text-slate-900">
-              {[p.concernSeverity, p.concernDuration].filter(Boolean).join(" · ") || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Sensitivity / Fitzpatrick</dt>
-            <dd className="font-medium text-slate-900">
-              {[p.skinSensitivity, p.fitzpatrick].filter(Boolean).join(" · ") || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Triggers</dt>
-            <dd className="font-medium text-slate-900">
-              {p.triggers?.length ? p.triggers.join(", ") : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Prior treatment</dt>
-            <dd className="font-medium text-slate-900">{p.priorTreatment ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Treatment history</dt>
-            <dd className="font-medium text-slate-900">
-              {p.treatmentHistoryText?.trim()
-                ? `${p.treatmentHistoryText}${p.treatmentHistoryDuration ? ` (${p.treatmentHistoryDuration})` : ""}`
-                : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Baseline (sleep / hydration / diet / sun)</dt>
-            <dd className="font-medium text-slate-900">
-              {[p.baselineSleep, p.baselineHydration, p.baselineDietType, p.baselineSunExposure]
-                .filter(Boolean)
-                .join(" · ") || "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Streak (current · longest)</dt>
-            <dd className="font-medium text-slate-900">
-              {p.streakCurrent} · {p.streakLongest}
-              {p.streakLastDate ? ` · last ${p.streakLastDate}` : ""}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Cycle tracking</dt>
-            <dd className="font-medium text-slate-900">
-              {p.cycleTrackingEnabled ? "On" : "Off"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Routine reminders</dt>
-            <dd className="font-medium text-slate-900">
-              {p.routineRemindersEnabled
-                ? `AM ${p.routineAmReminderHm} · PM ${p.routinePmReminderHm}`
-                : "Off"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Visit reminder (h before)</dt>
-            <dd className="font-medium text-slate-900">{p.appointmentReminderHoursBefore}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Onboarding</dt>
-            <dd className="font-medium text-slate-900">
-              {p.onboardingComplete ? "Complete" : "In progress"}
-              {p.onboardingCompletedAt
-                ? ` · ${new Date(p.onboardingCompletedAt).toLocaleString()}`
-                : ""}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Member since</dt>
-            <dd className="font-medium text-slate-900">
-              {new Date(p.createdAt).toLocaleString()}
-            </dd>
-          </div>
-        </dl>
+        </div>
+
+        <div className="mt-4 grid gap-x-6 gap-y-2 border-t border-slate-100 pt-4 text-xs sm:grid-cols-3 lg:grid-cols-4">
+          {[
+            ["Age", p.age ?? "—"],
+            ["Skin type", [p.skinType, p.primaryGoal].filter(Boolean).join(" · ") || "—"],
+            ["Concern", `${p.primaryConcern ?? "—"} ${p.concernSeverity ? `(${p.concernSeverity})` : ""}`],
+            ["Sensitivity", [p.skinSensitivity, `Fitz ${p.fitzpatrick ?? "—"}`].filter(Boolean).join(" · ")],
+            ["Triggers", p.triggers?.length ? p.triggers.join(", ") : "—"],
+            ["Streak", `${p.streakCurrent} current · ${p.streakLongest} longest`],
+            ["Routine", p.routineRemindersEnabled ? `AM ${p.routineAmReminderHm} · PM ${p.routinePmReminderHm}` : "Off"],
+            ["Member since", new Date(p.createdAt).toLocaleDateString()],
+          ].map(([label, value]) => (
+            <div key={label as string} className="flex flex-col">
+              <span className="text-slate-400">{label}</span>
+              <span className="font-medium text-slate-800">{value}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* ── Tab Navigation ── */}
+      <div className="sticky top-[57px] z-10 -mx-4 overflow-x-auto bg-[#F4F6F3] px-4 sm:-mx-6 sm:px-6">
+        <div className="flex gap-1 border-b border-slate-200/60 pb-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+                activeTab === tab.key
+                  ? "border-[#2C3E6B] text-[#2C3E6B]"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ══════════════════════ TAB: OVERVIEW ══════════════════════ */}
+      {activeTab === "overview" && <>
+
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-1 text-lg font-semibold text-slate-900">
           Appointments &amp; patient calendar
         </h2>
@@ -1128,9 +1210,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
+      {/* ══════════════════════ TAB: CHAT ══════════════════════ */}
+      </>}
+      {activeTab === "chat" && <>
       <div
         id="doctor-patient-chat"
-        className="scroll-mt-28 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+        className="scroll-mt-28 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
       >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -1316,7 +1401,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* ══════════════════════ TAB: OVERVIEW (cont.) ══════════════════════ */}
+      </>}
+      {activeTab === "overview" && <>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">
           Daily wellness &amp; journal
         </h2>
@@ -1360,7 +1448,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className="rounded-xl border border-teal-100 bg-teal-50/40 p-5 font-sans shadow-sm antialiased">
+      {/* ══════════════════════ TAB: ROUTINE ══════════════════════ */}
+      </>}
+      {activeTab === "routine" && <>
+      <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-5 font-sans shadow-sm antialiased">
         <h2 className="mb-2 text-xl font-bold tracking-tight text-slate-900">
           Clinician: patient AM/PM routine
         </h2>
@@ -1398,33 +1489,75 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             </p>
           ) : (
             <>
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-slate-800">AM steps (one per line)</span>
-                  <textarea
-                    value={routinePlanAmText}
-                    onChange={(e) => {
-                      setRoutinePlanTextDirty(true);
-                      setRoutinePlanAmText(e.target.value);
-                    }}
-                    rows={6}
-                    className="min-h-[120px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-mono text-[14px] leading-snug text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                    placeholder={"Gentle Cleanser\nToner\nSerum\n…"}
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-slate-800">PM steps (one per line)</span>
-                  <textarea
-                    value={routinePlanPmText}
-                    onChange={(e) => {
-                      setRoutinePlanTextDirty(true);
-                      setRoutinePlanPmText(e.target.value);
-                    }}
-                    rows={6}
-                    className="min-h-[120px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-mono text-[14px] leading-snug text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                    placeholder={"Oil Cleanser\nToner\nRetinol\n…"}
-                  />
-                </label>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* AM steps */}
+                <div className="flex flex-col gap-3">
+                  <span className="text-sm font-semibold text-slate-800">AM steps</span>
+                  {routinePlanAmRows.map((row, i) => (
+                    <div key={`am-row-${i}`} className="flex flex-col gap-1.5 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">{i + 1}</span>
+                        <input
+                          value={row.name}
+                          onChange={(e) => {
+                            setRoutinePlanTextDirty(true);
+                            setRoutinePlanAmRows((prev) => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r));
+                          }}
+                          className="flex-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
+                          placeholder="Step name (e.g. Cleanser)"
+                        />
+                        <button type="button" onClick={() => { setRoutinePlanTextDirty(true); setRoutinePlanAmRows((prev) => prev.filter((_, j) => j !== i)); }} className="text-xs text-red-500 hover:text-red-700">✕</button>
+                      </div>
+                      <input
+                        value={row.product}
+                        onChange={(e) => { setRoutinePlanTextDirty(true); setRoutinePlanAmRows((prev) => prev.map((r, j) => j === i ? { ...r, product: e.target.value } : r)); }}
+                        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
+                        placeholder="Product (e.g. Gentle Gel Cleanser)"
+                      />
+                      <input
+                        value={row.dosage}
+                        onChange={(e) => { setRoutinePlanTextDirty(true); setRoutinePlanAmRows((prev) => prev.map((r, j) => j === i ? { ...r, dosage: e.target.value } : r)); }}
+                        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
+                        placeholder="Dosage (e.g. 30-60 sec)"
+                      />
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => { setRoutinePlanTextDirty(true); setRoutinePlanAmRows((prev) => [...prev, { name: "", product: "", dosage: "" }]); }} className="self-start rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">+ Add AM step</button>
+                </div>
+                {/* PM steps */}
+                <div className="flex flex-col gap-3">
+                  <span className="text-sm font-semibold text-slate-800">PM steps</span>
+                  {routinePlanPmRows.map((row, i) => (
+                    <div key={`pm-row-${i}`} className="flex flex-col gap-1.5 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">{i + 1}</span>
+                        <input
+                          value={row.name}
+                          onChange={(e) => {
+                            setRoutinePlanTextDirty(true);
+                            setRoutinePlanPmRows((prev) => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r));
+                          }}
+                          className="flex-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
+                          placeholder="Step name (e.g. Cleanser)"
+                        />
+                        <button type="button" onClick={() => { setRoutinePlanTextDirty(true); setRoutinePlanPmRows((prev) => prev.filter((_, j) => j !== i)); }} className="text-xs text-red-500 hover:text-red-700">✕</button>
+                      </div>
+                      <input
+                        value={row.product}
+                        onChange={(e) => { setRoutinePlanTextDirty(true); setRoutinePlanPmRows((prev) => prev.map((r, j) => j === i ? { ...r, product: e.target.value } : r)); }}
+                        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
+                        placeholder="Product (e.g. Retinol Serum)"
+                      />
+                      <input
+                        value={row.dosage}
+                        onChange={(e) => { setRoutinePlanTextDirty(true); setRoutinePlanPmRows((prev) => prev.map((r, j) => j === i ? { ...r, dosage: e.target.value } : r)); }}
+                        className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 shadow-sm placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
+                        placeholder="Dosage (e.g. 2-3 drops)"
+                      />
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => { setRoutinePlanTextDirty(true); setRoutinePlanPmRows((prev) => [...prev, { name: "", product: "", dosage: "" }]); }} className="self-start rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">+ Add PM step</button>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -1434,14 +1567,22 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setClinicianMsg(null);
                     setClinicianBusy(true);
                     try {
-                      const amItems = routinePlanAmText
-                        .split("\n")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
-                      const pmItems = routinePlanPmText
-                        .split("\n")
-                        .map((s) => s.trim())
-                        .filter(Boolean);
+                      const amItems = routinePlanAmRows
+                        .filter((r) => r.name.trim())
+                        .map((r) => {
+                          const parts = [r.name.trim()];
+                          if (r.product.trim() || r.dosage.trim()) parts.push(r.product.trim());
+                          if (r.dosage.trim()) parts.push(r.dosage.trim());
+                          return parts.join(" | ");
+                        });
+                      const pmItems = routinePlanPmRows
+                        .filter((r) => r.name.trim())
+                        .map((r) => {
+                          const parts = [r.name.trim()];
+                          if (r.product.trim() || r.dosage.trim()) parts.push(r.product.trim());
+                          if (r.dosage.trim()) parts.push(r.dosage.trim());
+                          return parts.join(" | ");
+                        });
                       const res = await fetch(
                         `/api/doctor/patients/${patientId}/routine-plan`,
                         {
@@ -1695,16 +1836,17 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-900">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-slate-900">
           <Mic className="h-5 w-5 text-teal-600" />
-          Voice note to patient
+          Doctor Feedback
         </h2>
-        <p className="mb-3 text-sm text-slate-600">
-          Record in the browser or upload a file — you&apos;ll always hear a preview before it&apos;s
-          sent. The patient sees it on their dashboard and gets a bell / push alert. Max about{" "}
+        <p className="mb-4 text-sm leading-relaxed text-slate-600">
+          Write feedback and optionally attach a voice note. The patient sees everything together
+          on their dashboard and gets a notification. Max about{" "}
           {MAX_RECORD_SECONDS / 60} minutes per recording.
         </p>
+
         {data.recentVoiceNotes && data.recentVoiceNotes.length > 0 ? (
           <ul className="mb-3 list-inside list-disc text-xs text-slate-500">
             {data.recentVoiceNotes.map((v) => (
@@ -1717,7 +1859,22 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             ))}
           </ul>
         ) : null}
-        <div className="flex flex-col gap-4">
+
+        <div className="space-y-4">
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-800">Feedback text</span>
+            <textarea
+              value={generalFeedbackText}
+              onChange={(e) => {
+                setGeneralFeedbackText(e.target.value);
+                setGeneralFeedbackDirty(true);
+              }}
+              rows={4}
+              className="min-h-[100px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+              placeholder="High-level guidance, progress summary, cautions, next steps…"
+            />
+          </label>
+
           <label className="flex max-w-md flex-col gap-1 text-sm">
             <span className="text-slate-700">Link to scan (optional)</span>
             <select
@@ -1738,7 +1895,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
           <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Record here
+              Voice note (optional)
             </p>
             <div className="flex flex-col gap-3">
               {voicePreview ? (
@@ -1760,7 +1917,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       onClick={() => void sendVoiceBlob(voicePreview.blob)}
                       className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 disabled:opacity-50"
                     >
-                      Send to patient
+                      Send feedback{generalFeedbackText.trim() ? " + voice note" : " (voice only)"}
                     </button>
                     <button
                       type="button"
@@ -1768,7 +1925,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       onClick={clearVoicePreview}
                       className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
                     >
-                      Discard
+                      Discard recording
                     </button>
                   </div>
                 </>
@@ -1819,15 +1976,48 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               className="text-sm"
             />
           </label>
+
+          {!voicePreview && !isRecording ? (
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                disabled={busy || !generalFeedbackText.trim()}
+                onClick={() => void sendTextOnlyFeedback()}
+                className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 disabled:opacity-50"
+              >
+                {busy ? "Sending…" : "Send text-only feedback"}
+              </button>
+              <button
+                type="button"
+                disabled={busy || !generalFeedbackText.trim()}
+                onClick={() => {
+                  setGeneralFeedbackText("");
+                  setGeneralFeedbackDirty(true);
+                }}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+              >
+                Clear
+              </button>
+            </div>
+          ) : null}
         </div>
+
         {voiceMsg ? (
-          <p className="mt-2 text-sm text-teal-800" role="status">
+          <p className={`mt-3 text-sm font-medium ${voiceMsg.includes("sent") || voiceMsg.includes("Sent") ? "text-teal-700" : "text-red-600"}`} role="status">
             {voiceMsg}
+          </p>
+        ) : null}
+        {generalFeedbackFlash ? (
+          <p className="mt-2 text-sm font-medium text-teal-900" role="status">
+            {generalFeedbackFlash}
           </p>
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* ══════════════════════ TAB: REPORTS ══════════════════════ */}
+      </>}
+      {activeTab === "reports" && <>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">kAI skin reports</h2>
         {(data.scans ?? []).length === 0 ? (
           <p className="text-sm text-slate-500">No scans yet.</p>
@@ -1996,96 +2186,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">
-          General feedback note (patient dashboard)
-        </h2>
-        <p className="mb-4 text-sm leading-relaxed text-slate-600">
-          This is the standalone note shown in the patient portal under{" "}
-          <span className="font-semibold text-slate-800">Doctor&apos;s feedback</span>. It is
-          separate from per-visit notes.
-        </p>
-        <div className="mb-2 space-y-3 rounded-xl border border-slate-200/90 bg-slate-50/80 p-4">
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-slate-800">Feedback text</span>
-            <textarea
-              value={generalFeedbackText}
-              onChange={(e) => {
-                setGeneralFeedbackText(e.target.value);
-                setGeneralFeedbackDirty(true);
-              }}
-              rows={5}
-              className="min-h-[120px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
-              placeholder="High-level guidance, progress summary, cautions, next steps…"
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={generalFeedbackBusy}
-              onClick={async () => {
-                setGeneralFeedbackFlash(null);
-                setGeneralFeedbackBusy(true);
-                try {
-                  const res = await fetch(
-                    `/api/doctor/patients/${patientId}/general-feedback`,
-                    {
-                      method: "POST",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        text: generalFeedbackText,
-                      }),
-                    }
-                  );
-                  const j = (await res.json()) as { ok?: boolean; error?: string };
-                  if (!res.ok || !j.ok) {
-                    setGeneralFeedbackFlash(j.error ?? "Could not save general feedback.");
-                    return;
-                  }
-                  setGeneralFeedbackDirty(false);
-                  setGeneralFeedbackFlash(
-                    generalFeedbackText.trim()
-                      ? "General feedback saved and patient notified in chat."
-                      : "General feedback cleared."
-                  );
-                  void load();
-                } catch {
-                  setGeneralFeedbackFlash("Network error.");
-                } finally {
-                  setGeneralFeedbackBusy(false);
-                }
-              }}
-              className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 disabled:opacity-50"
-            >
-              {generalFeedbackBusy ? "Saving…" : "Save general feedback"}
-            </button>
-            <button
-              type="button"
-              disabled={generalFeedbackBusy || !generalFeedbackText.trim()}
-              onClick={() => {
-                setGeneralFeedbackText("");
-                setGeneralFeedbackDirty(true);
-              }}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-            >
-              Clear text
-            </button>
-          </div>
-          {generalFeedbackFlash ? (
-            <p className="text-sm font-medium text-teal-900" role="status">
-              {generalFeedbackFlash}
-            </p>
-          ) : null}
-          {data?.patient?.doctorFeedbackUpdatedAt ? (
-            <p className="text-xs text-slate-500">
-              Last updated: {new Date(data.patient.doctorFeedbackUpdatedAt).toLocaleString()}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* ══════════════════════ TAB: NOTES ══════════════════════ */}
+      </>}
+      {activeTab === "notes" && <>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Clinic visit notes</h2>
         <p className="mb-4 text-sm leading-relaxed text-slate-600">
           Add a text note and optional PDFs or images. Patients see these on{" "}
@@ -2345,7 +2449,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* ── Overview: Questionnaire + Skin DNA ── */}
+      </>}
+      {activeTab === "overview" && <>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Onboarding questionnaire</h2>
         {(data.questionnaireAnswers ?? []).length === 0 ? (
           <p className="text-sm text-slate-500">No questionnaire answers stored.</p>
@@ -2371,7 +2478,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Skin DNA card</h2>
         {!data.skinDnaCard ? (
           <p className="text-sm text-slate-500">No Skin DNA summary yet.</p>
@@ -2408,7 +2515,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* ── Reports: Legacy scans, Weekly, Monthly ── */}
+      </>}
+      {activeTab === "reports" && <>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Legacy face scans</h2>
         {(data.legacySkinScans ?? []).length === 0 ? (
           <p className="text-sm text-slate-500">None.</p>
@@ -2431,7 +2541,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Weekly kAI digests</h2>
         {(data.weeklyReports ?? []).length === 0 ? (
           <p className="text-sm text-slate-500">None yet.</p>
@@ -2471,7 +2581,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Monthly reports</h2>
         {(data.monthlyReports ?? []).length === 0 ? (
           <p className="text-sm text-slate-500">None yet.</p>
@@ -2493,6 +2603,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           </ul>
         )}
       </div>
+      </>}
     </div>
   );
 }

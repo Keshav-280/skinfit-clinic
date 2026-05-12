@@ -10,6 +10,8 @@ import {
 import { Platform } from "react-native";
 
 import { apiUrl } from "@/lib/api";
+import { clearAllAppCaches, setCacheUserId } from "@/lib/apiCache";
+import { clearAllCachedPhotos, setPhotoUserId } from "@/lib/profilePhoto";
 import {
   registerForPushAndSyncToken,
   unregisterPushToken,
@@ -74,7 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(t);
         if (u) {
           try {
-            setUser(JSON.parse(u) as AuthUser);
+            const parsed = JSON.parse(u) as AuthUser;
+            setCacheUserId(parsed.id);
+            setPhotoUserId(parsed.id);
+            setUser(parsed);
           } catch {
             setUser(null);
           }
@@ -139,6 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     await sessionSet(TOKEN_KEY, data.token);
     await sessionSet(USER_KEY, JSON.stringify(nextUser));
+    setCacheUserId(nextUser.id);
+    setPhotoUserId(nextUser.id);
     setUser(nextUser);
     setToken(data.token);
 
@@ -255,6 +262,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       await sessionSet(TOKEN_KEY, sessionToken);
       await sessionSet(USER_KEY, JSON.stringify(nextUser));
+      setCacheUserId(nextUser.id);
+      setPhotoUserId(nextUser.id);
       setUser(nextUser);
       setToken(sessionToken);
 
@@ -279,6 +288,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await sessionDelete(TOKEN_KEY);
     await sessionDelete(USER_KEY);
+    await clearAllCachedPhotos();
+    await clearAllAppCaches();
+    setCacheUserId(null);
+    setPhotoUserId(null);
     setToken(null);
     setUser(null);
   }, [token]);

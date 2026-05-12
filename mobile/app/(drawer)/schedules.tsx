@@ -347,22 +347,23 @@ export default function SchedulesScreen() {
                 {getDate(day)}
               </Text>
             </View>
-            {scheduleTab === "appointments" ? (
+            {(scheduleTab === "appointments" || (scheduleTab === "treatment" && view === "month")) ? (
               <View style={styles.appointmentDotsRow}>
                 {cellEvents
-                  .slice(0, 2)
+                  .slice(0, 3)
                   .map((event) => {
                     const isPending = event.id.startsWith("req:");
                     const isCancelled = event.cancelled === true;
                     const isDone = event.completed;
-                    const isGuideline =
-                      event.eventKind === "pre_treatment" ||
-                      event.eventKind === "post_treatment" ||
-                      /guideline/i.test(event.title);
+                    const isPre = event.eventKind === "pre_treatment";
+                    const isPost = event.eventKind === "post_treatment";
+                    const isGuideline = isPre || isPost || /guideline/i.test(event.title);
                     let color = "#2B3A67";
                     if (isCancelled) color = "#dc2626";
                     else if (isDone) color = "#16a34a";
                     else if (isPending) color = "#d97706";
+                    else if (isPre) color = "#1e3a8a";
+                    else if (isPost) color = "#7c3aed";
                     else if (isGuideline) color = "#7c3aed";
                     return <View key={event.id} style={[styles.eventDot, { backgroundColor: color }]} />;
                   })}
@@ -614,14 +615,35 @@ export default function SchedulesScreen() {
             </View>
           ))}
         </View>
-        {scheduleTab === "appointments" ? (
-          <View style={styles.legendRow}>
-            <LegendDot color="#2B3A67" label="Upcoming" />
-            <LegendDot color="#16a34a" label="Completed" />
-            <LegendDot color="#d97706" label="Requested" />
-            <LegendDot color="#dc2626" label="Cancelled" />
-            <LegendDot color="#7c3aed" label="Guidelines" />
-          </View>
+        <View style={styles.legendRow}>
+          {scheduleTab === "appointments" ? (
+            <>
+              <LegendDot color="#2B3A67" label="Upcoming" />
+              <LegendDot color="#16a34a" label="Completed" />
+              <LegendDot color="#d97706" label="Requested" />
+              <LegendDot color="#dc2626" label="Cancelled" />
+              <LegendDot color="#7c3aed" label="Guidelines" />
+            </>
+          ) : (
+            <>
+              <LegendDot color="#1e3a8a" label="Pre-treatment" />
+              <LegendDot color="#7c3aed" label="Post-treatment" />
+              <LegendDot color="#16a34a" label="Completed" />
+              <LegendDot color="#2B3A67" label="General" />
+            </>
+          )}
+        </View>
+        {scheduleTab === "treatment" ? (
+          <Pressable
+            style={styles.guidelineHint}
+            onPress={() => setScheduleTab("appointments")}
+          >
+            <Ionicons name="information-circle-outline" size={16} color="#2B3A67" />
+            <Text style={styles.guidelineHintText}>
+              Guidelines from your doctor appear here. Switch to{" "}
+              <Text style={{ fontWeight: "800" }}>Appointments</Text> to see visit bookings.
+            </Text>
+          </Pressable>
         ) : null}
 
         <View style={styles.listSection}>
@@ -1323,6 +1345,14 @@ const styles = StyleSheet.create({
   legendDot: { width: 10, height: 10, borderRadius: 999, marginTop: 4 },
   legendLabel: { fontSize: 12, color: "#3f3f46", fontWeight: "600" },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  guidelineHint: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 2,
+  },
+  guidelineHintText: { flex: 1, fontSize: 12, color: "#64748b", lineHeight: 17 },
   featureCard: {
     marginTop: 14,
     borderRadius: 20,

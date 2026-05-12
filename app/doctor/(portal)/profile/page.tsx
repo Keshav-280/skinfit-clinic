@@ -100,29 +100,29 @@ export default function DoctorProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <h1 className="text-2xl font-semibold text-slate-900">Doctor Profile</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        This info is used in mobile chat (doctor name, specialty, picture).
+      <h1 className="text-xl font-bold text-slate-900">Doctor Profile</h1>
+      <p className="mt-0.5 text-sm text-slate-500">
+        Manage your display name, specialty, and avatar for patient-facing chat.
       </p>
 
       <form
         onSubmit={onSave}
-        className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm"
       >
-        {error ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
             {error}
           </div>
-        ) : null}
-        {message ? (
-          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        )}
+        {message && (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
             {message}
           </div>
-        ) : null}
+        )}
 
-        <div className="grid gap-4 sm:grid-cols-[120px_1fr] sm:items-start">
+        <div className="grid gap-5 sm:grid-cols-[120px_1fr] sm:items-start">
           <label
-            className="relative block h-[120px] w-[120px] cursor-pointer overflow-hidden rounded-2xl bg-slate-100 transition hover:ring-2 hover:ring-teal-400"
+            className="relative block h-[120px] w-[120px] cursor-pointer overflow-hidden rounded-2xl bg-slate-100 shadow-sm transition hover:ring-2 hover:ring-[#2C3E6B]/40"
             title="Click to change photo"
           >
             {imageUrl ? (
@@ -146,9 +146,9 @@ export default function DoctorProfilePage() {
           </label>
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Display name</label>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Display name</label>
               <input
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Dr. Rhea Sharma"
@@ -156,20 +156,20 @@ export default function DoctorProfilePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Specialty</label>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Specialty</label>
               <input
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
                 value={specialty}
                 onChange={(e) => setSpecialty(e.target.value)}
                 placeholder="Dermatology"
                 disabled={loading || saving}
               />
             </div>
-            <p className="text-xs text-slate-500">Click the photo to change it. Square images work best.</p>
+            <p className="text-xs text-slate-400">Click the photo to change it. Square images work best.</p>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Email</label>
               <input
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-500"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400"
                 value={profile?.email || ""}
                 readOnly
               />
@@ -177,11 +177,11 @@ export default function DoctorProfilePage() {
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end">
+        <div className="mt-6 flex justify-end">
           <button
             type="submit"
             disabled={loading || saving}
-            className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 disabled:opacity-50"
+            className="rounded-xl bg-[#2C3E6B] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save profile"}
           </button>

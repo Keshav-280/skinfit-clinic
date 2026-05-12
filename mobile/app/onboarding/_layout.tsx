@@ -7,11 +7,11 @@ export default function OnboardingLayout() {
     <OnboardingResumeGate>
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: "#ffffff" },
-          headerTintColor: "#0f172a",
-          headerTitleStyle: { fontWeight: "700" },
+          headerStyle: { backgroundColor: "#E8EFE6" },
+          headerTintColor: "#2C3E6B",
+          headerTitleStyle: { fontWeight: "700", color: "#2C3E6B" },
           headerShadowVisible: false,
-          contentStyle: { backgroundColor: "#f8f5ef" },
+          contentStyle: { backgroundColor: "#E8EFE6" },
         }}
       />
     </OnboardingResumeGate>

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -43,7 +44,9 @@ const VALID_CONCERN = new Set<string>([
   "general",
 ]);
 
-const TEAL = "#0d9488";
+const NAVY = "#2C3E6B";
+const NAVY_DARK = "#1E3264";
+const NAVY_LIGHT = "#E2E8F0";
 
 const CONCERNS: { id: Concern; label: string }[] = [
   { id: "acne", label: "Acne & breakouts" },
@@ -414,6 +417,7 @@ export default function QuestionnaireScreen() {
   }
 
   return (
+    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
     <ScrollView contentContainerStyle={styles.content}>
       <Text style={styles.progress}>
         Step {displayStep} / {totalSteps}
@@ -737,33 +741,42 @@ export default function QuestionnaireScreen() {
         </Pressable>
       </View>
     </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 40, backgroundColor: "#f8f5ef", flexGrow: 1 },
-  progress: { fontSize: 12, fontWeight: "700", color: TEAL, marginBottom: 12, textAlign: "center" },
-  err: { color: "#b91c1c", marginBottom: 8 },
-  q: { fontSize: 18, fontWeight: "700", color: "#18181b", marginBottom: 12 },
-  sub: { fontSize: 13, color: "#71717a", marginBottom: 8 },
-  sub2: { fontSize: 13, fontWeight: "600", color: "#52525b", marginTop: 12, marginBottom: 8 },
+  flex: { flex: 1 },
+  content: { padding: 24, paddingBottom: 48, flexGrow: 1 },
+  progress: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: NAVY,
+    marginBottom: 16,
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+  err: { color: "#DC2626", marginBottom: 8, fontSize: 13, fontWeight: "600" },
+  q: { fontSize: 20, fontWeight: "800", color: "#1A1A2E", marginBottom: 14, letterSpacing: -0.3 },
+  sub: { fontSize: 13, color: "#71717a", marginBottom: 10 },
+  sub2: { fontSize: 13, fontWeight: "600", color: "#52525b", marginTop: 14, marginBottom: 8 },
   chip: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: "#fff",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "transparent",
     marginBottom: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 1,
   },
-  chipOn: { backgroundColor: "#ccfbf1", borderColor: TEAL },
-  chipText: { fontSize: 15, color: "#27272a", fontWeight: "600" },
-  chipTextOn: { color: "#0f766e" },
+  chipOn: { backgroundColor: NAVY_LIGHT, borderColor: NAVY },
+  chipText: { fontSize: 15, color: "#374151", fontWeight: "600" },
+  chipTextOn: { color: NAVY_DARK },
   hint: {
     fontSize: 13,
     color: "#52525b",
@@ -773,52 +786,54 @@ const styles = StyleSheet.create({
   hintWarn: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#92400e",
+    color: "#92400E",
     marginTop: 8,
   },
   ageInput: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
     padding: 14,
     fontSize: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     marginBottom: 12,
-    color: "#18181b",
+    color: "#1A1A2E",
   },
   input: {
     minHeight: 100,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e4e4e7",
-    borderRadius: 12,
-    padding: 12,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    padding: 14,
     textAlignVertical: "top",
     fontSize: 15,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     marginBottom: 12,
+    color: "#1A1A2E",
   },
-  row: { flexDirection: "row", gap: 12, marginTop: 24 },
+  row: { flexDirection: "row", gap: 12, marginTop: 28 },
   btn: {
     flex: 1,
-    backgroundColor: TEAL,
-    paddingVertical: 14,
+    backgroundColor: NAVY,
+    paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
-    shadowColor: TEAL,
+    shadowColor: NAVY,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 4,
   },
   btnGhost: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: TEAL,
+    borderColor: NAVY,
+    backgroundColor: "#FFFFFF",
   },
-  btnGhostText: { color: TEAL, fontWeight: "700" },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  disabled: { opacity: 0.45 },
+  btnGhostText: { color: NAVY, fontWeight: "700" },
+  btnText: { color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.3 },
+  disabled: { opacity: 0.4 },
 });

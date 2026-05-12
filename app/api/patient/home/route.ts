@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { subDays } from "date-fns";
 import { db } from "@/src/db";
-import { dailyLogs, scans, skinScans, users } from "@/src/db/schema";
+import { dailyFocus, dailyLogs, scans, skinScans, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { dateOnlyFromYmd, parseYmdToDateOnly } from "@/src/lib/date-only";
 import { getPatientDoctorSection } from "@/src/lib/patientDoctorSection";
 import { patientRoutineListsForApi } from "@/src/lib/routine";
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
+import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
+import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -25,6 +27,9 @@ export async function GET(request: Request) {
   const userRow = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: {
+      name: true,
+      skinType: true,
+      primaryConcern: true,
       streakCurrent: true,
       streakLongest: true,
       cycleTrackingEnabled: true,
@@ -33,6 +38,8 @@ export async function GET(request: Request) {
       routinePlanAmItems: true,
       routinePlanPmItems: true,
       routinePlanClinicianLocked: true,
+      routineAmReminderHm: true,
+      routinePmReminderHm: true,
     },
   });
   if (!userRow) {
@@ -56,6 +63,7 @@ export async function GET(request: Request) {
     lastScans,
     recentLogs,
     doctorSection,
+    todayFocusRow,
   ] = await Promise.all([
     db.query.skinScans.findMany({
       where: eq(skinScans.userId, userId),
@@ -89,6 +97,13 @@ export async function GET(request: Request) {
         and(eq(dailyLogs.userId, userId), gte(dailyLogs.date, weekCut))
       ),
     getPatientDoctorSection(userId),
+    db.query.dailyFocus.findFirst({
+      where: and(
+        eq(dailyFocus.userId, userId),
+        eq(dailyFocus.focusDate, todayDateOnly)
+      ),
+      columns: { message: true, sourceParam: true },
+    }),
   ]);
 
   const skinScanHistory = skinScanRows.map((r) => ({
@@ -129,6 +144,7 @@ export async function GET(request: Request) {
   let sleepSum = 0;
   let waterSum = 0;
   let highSun = 0;
+  const completedDatesSet = new Set<string>();
   for (const l of recentLogs) {
     const amS = l.routineAmSteps ?? [];
     const pmS = l.routinePmSteps ?? [];
@@ -136,13 +152,21 @@ export async function GET(request: Request) {
       amS.length > 0 && amS.length === amS.filter(Boolean).length;
     const pm =
       pmS.length > 0 && pmS.length === pmS.filter(Boolean).length;
-    if (am && pm) amPmDays += 1;
+    if (am && pm) {
+      amPmDays += 1;
+      if (l.date instanceof Date) {
+        completedDatesSet.add(l.date.toISOString().slice(0, 10));
+      } else {
+        completedDatesSet.add(String(l.date).slice(0, 10));
+      }
+    }
     sleepSum += l.sleepHours ?? 0;
     waterSum += l.waterGlasses ?? 0;
     if (l.sunExposure === "high" || l.sunExposure === "moderate") {
       highSun += 1;
     }
   }
+  const weekCompletedDates = Array.from(completedDatesSet).sort();
   const n = Math.max(1, recentLogs.length);
   const routineCompletion7d = amPmDays / 7;
   const avgSleep = sleepSum / n;
@@ -161,6 +185,8 @@ export async function GET(request: Request) {
     doctorVoiceNotes,
     doctorArchivedVoiceNotes,
     doctorVoiceNoteIsNew,
+    feedbackEntries,
+    archivedFeedbackEntries,
   } = doctorSection;
 
   const { amItems, pmItems, routinePlanReady } = patientRoutineListsForApi({
@@ -192,7 +218,89 @@ export async function GET(request: Request) {
     homeDateYmd: todayYmdFromProfile,
     streakCurrent: userRow.streakCurrent ?? 0,
     streakLongest: userRow.streakLongest ?? 0,
+    weekCompletedDates,
     cycleTrackingEnabled: userRow.cycleTrackingEnabled ?? false,
     onboardingComplete,
+    routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
+    routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",
+    todayFocus: await resolveTodayFocus(),
+    feedbackEntries,
+    archivedFeedbackEntries,
   });
+
+  async function resolveTodayFocus(): Promise<{ message: string; sourceParam: string | null } | null> {
+    if (todayFocusRow) {
+      return { message: todayFocusRow.message, sourceParam: todayFocusRow.sourceParam ?? null };
+    }
+    if (!isLlmEnabled()) return null;
+    try {
+      const OpenAI = (await import("openai")).default;
+      const key = process.env.OPENAI_API_KEY?.trim();
+      if (!key) return null;
+      const client = new OpenAI({ apiKey: key });
+      const mdl = process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-4o-mini";
+
+      const logCount = recentLogs.length;
+      const avgSleep = logCount > 0
+        ? (recentLogs.reduce((s, l) => s + (l.sleepHours ?? 0), 0) / logCount).toFixed(1)
+        : "—";
+      const avgWater = logCount > 0
+        ? (recentLogs.reduce((s, l) => s + (l.waterGlasses ?? 0), 0) / logCount).toFixed(1)
+        : "—";
+      const avgStress = logCount > 0
+        ? (recentLogs.reduce((s, l) => s + (l.stressLevel ?? 5), 0) / logCount).toFixed(1)
+        : "—";
+      const routineDays = recentLogs.filter((l) => {
+        const am = l.routineAmSteps ?? [];
+        const pm = l.routinePmSteps ?? [];
+        return am.length > 0 && am.every(Boolean) && pm.length > 0 && pm.every(Boolean);
+      }).length;
+
+      let weakestParam = "unknown";
+      if (skinScanRows.length > 0) {
+        const params = analysisResultsToParams(skinScanRows[0].analysisResults);
+        const sorted = [...params].sort((a, b) => a.value - b.value);
+        if (sorted.length > 0) weakestParam = sorted[0].label;
+      }
+
+      const prompt = `You are kAI, a dermatology AI counselor for a skin-health app.
+Generate ONE personalized daily focus tip for today. Be specific, warm, actionable.
+First sentence: observation based on data. Second sentence: concrete advice.
+Return ONLY JSON: {"message": "...", "sourceParam": "..." or null}
+
+PATIENT: ${userRow.name ?? "Patient"}
+Skin type: ${userRow.skinType ?? "unknown"}
+Primary concern: ${userRow.primaryConcern ?? "unknown"}
+kAI Score: ${kaiSkinScore}
+Weakest parameter: ${weakestParam}
+Last 7 days: ${routineDays}/${logCount} full routine days, avg sleep ${avgSleep}h, avg water ${avgWater} glasses, avg stress ${avgStress}/10
+Today: ${todayYmdFromProfile}`;
+
+      const completion = await client.chat.completions.create({
+        model: mdl,
+        temperature: 0.7,
+        max_tokens: 200,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "Return ONLY valid JSON. No preamble." },
+          { role: "user", content: prompt },
+        ],
+      });
+      const txt = completion.choices[0]?.message?.content;
+      if (!txt) return null;
+      const parsed = JSON.parse(txt) as { message?: string; sourceParam?: string | null };
+      if (!parsed.message) return null;
+
+      await db.insert(dailyFocus).values({
+        userId,
+        focusDate: todayDateOnly,
+        message: parsed.message,
+        sourceParam: parsed.sourceParam ?? null,
+      }).onConflictDoNothing();
+
+      return { message: parsed.message, sourceParam: parsed.sourceParam ?? null };
+    } catch {
+      return null;
+    }
+  }
 }

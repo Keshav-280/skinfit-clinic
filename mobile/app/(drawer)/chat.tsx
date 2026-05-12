@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Audio } from "expo-av";
 import { format, isValid, parseISO } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import {
   ActivityIndicator,
@@ -216,6 +217,10 @@ export default function ChatScreen() {
   const [sosText, setSosText] = useState("");
   const [sosImageUri, setSosImageUri] = useState<string | null>(null);
   const [sosBusy, setSosBusy] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const peer = useMemo(() => CONTACTS.find((c) => c.id === active)!, [active]);
 
@@ -573,6 +578,87 @@ export default function ChatScreen() {
     readThreadCache,
     persistThreadCache,
   ]);
+
+  async function startRecording() {
+    try {
+      const perm = await Audio.requestPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Microphone access", "Please allow microphone access to record voice notes.");
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(rec);
+      setIsRecording(true);
+      setRecordSec(0);
+      recordTimer.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
+    } catch {
+      Alert.alert("Error", "Could not start recording.");
+    }
+  }
+
+  async function stopAndSendRecording() {
+    if (!recording || !token) return;
+    if (recordTimer.current) clearInterval(recordTimer.current);
+    setIsRecording(false);
+    setLoading(true);
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      setRecordSec(0);
+      if (!uri) throw new Error("No recording URI");
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const audioDataUri = `data:audio/m4a;base64,${base64}`;
+
+      await apiJson("/api/chat/plain/message", token, {
+        method: "POST",
+        body: JSON.stringify({
+          assistantId: active,
+          text: input.trim() || undefined,
+          attachmentUrl: audioDataUri,
+        }),
+      });
+      setInput("");
+      const refreshed = await fetchPlainMessages(active);
+      setMessages(refreshed.messages);
+      void persistThreadCache(active, refreshed.messages);
+      if (active === "support") {
+        await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
+      } else if (active === "doctor") {
+        await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send voice note.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function cancelRecording() {
+    if (!recording) return;
+    if (recordTimer.current) clearInterval(recordTimer.current);
+    try {
+      await recording.stopAndUnloadAsync();
+    } catch { /* ignore */ }
+    setRecording(null);
+    setIsRecording(false);
+    setRecordSec(0);
+  }
+
+  function formatRecordTime(sec: number) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
 
   async function send() {
     const text = input.trim();
@@ -1084,28 +1170,55 @@ export default function ChatScreen() {
         ) : null}
 
         <View style={styles.composer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Write a message…"
-            placeholderTextColor="#94a3b8"
-            value={input}
-            onChangeText={setInput}
-            multiline
-            maxLength={4000}
-            editable={!loading}
-          />
-          <Pressable
-            style={[styles.sendFab, (!canSend || loading) && styles.sendFabDisabled]}
-            onPress={send}
-            disabled={!canSend || loading}
-            accessibilityLabel="Send message"
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Ionicons name="send" size={17} color="#fff" style={{ marginLeft: 1 }} />
-            )}
-          </Pressable>
+          {isRecording ? (
+            <View style={styles.recordingRow}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingTimer}>{formatRecordTime(recordSec)}</Text>
+              <Text style={styles.recordingLabel}>Recording…</Text>
+              <View style={{ flex: 1 }} />
+              <Pressable onPress={cancelRecording} style={styles.recordCancelBtn} hitSlop={8}>
+                <Ionicons name="close" size={20} color="#ef4444" />
+              </Pressable>
+              <Pressable onPress={stopAndSendRecording} style={styles.recordSendBtn} hitSlop={8}>
+                <Ionicons name="send" size={17} color="#fff" />
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Write a message…"
+                placeholderTextColor="#94a3b8"
+                value={input}
+                onChangeText={setInput}
+                multiline
+                maxLength={4000}
+                editable={!loading}
+              />
+              {active !== "ai" ? (
+                <Pressable
+                  style={styles.micFab}
+                  onPress={startRecording}
+                  disabled={loading}
+                  accessibilityLabel="Record voice note"
+                >
+                  <Ionicons name="mic" size={20} color={NAVY} />
+                </Pressable>
+              ) : null}
+              <Pressable
+                style={[styles.sendFab, (!canSend || loading) && styles.sendFabDisabled]}
+                onPress={send}
+                disabled={!canSend || loading}
+                accessibilityLabel="Send message"
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Ionicons name="send" size={17} color="#fff" style={{ marginLeft: 1 }} />
+                )}
+              </Pressable>
+            </>
+          )}
         </View>
         </View>
       </KeyboardAvoidingView>
@@ -1473,4 +1586,55 @@ const styles = StyleSheet.create({
   },
   sosPrimaryText: { color: "#fff", fontWeight: "800" },
   sendFabDisabled: { opacity: 0.45, shadowOpacity: 0 },
+  micFab: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recordingRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#ef4444",
+  },
+  recordingTimer: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#b91c1c",
+    fontVariant: ["tabular-nums"] as any,
+  },
+  recordingLabel: {
+    fontSize: 13,
+    color: "#991b1b",
+    fontWeight: "600",
+  },
+  recordCancelBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recordSendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
