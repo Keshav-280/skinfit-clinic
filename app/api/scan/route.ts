@@ -97,6 +97,8 @@ function enrichInferencePayload(
     clinical_scores: clinicalScoresFromModel(mfs),
     detected_regions: inf.detected_regions,
     overlayDataUri: inf.overlayDataUri,
+    wrinkleMaskDataUri: inf.wrinkleMaskDataUri,
+    acneMaskDataUri: inf.acneMaskDataUri,
     modelEight: modelEightClarityScores(mfs),
   };
 }
@@ -281,6 +283,8 @@ export async function POST(request: NextRequest) {
     let modelFeatureScores: Record<string, number | null>;
     let detected_regions: ReturnType<typeof generateDetectedRegions>;
     let overlayDataUri: string | undefined;
+    let wrinkleMaskDataUri: string | undefined;
+    let acneMaskDataUri: string | undefined;
 
     if (inferenceBase) {
       try {
@@ -302,6 +306,8 @@ export async function POST(request: NextRequest) {
         };
         detected_regions = merged.detected_regions;
         overlayDataUri = merged.overlayDataUri;
+        wrinkleMaskDataUri = merged.wrinkleMaskDataUri;
+        acneMaskDataUri = merged.acneMaskDataUri;
       } catch (err) {
         console.error("Face analysis v2 error:", err);
         if (!allowDummyInferenceFallback) {
@@ -451,6 +457,8 @@ export async function POST(request: NextRequest) {
         overallKaiScore,
         kaiParams: v2params,
         ...(overlayDataUri ? { overlayDataUri } : {}),
+        ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
+        ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
       },
     };
 
@@ -513,6 +521,8 @@ export async function POST(request: NextRequest) {
         scanDate:
           inserted?.createdAt?.toISOString?.() ?? new Date().toISOString(),
         ...(overlayDataUri ? { annotatedImageUrl: overlayDataUri } : {}),
+        ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
+        ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
       },
     });
   } catch (error) {

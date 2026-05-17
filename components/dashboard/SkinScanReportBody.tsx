@@ -18,6 +18,7 @@ import {
 import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { TrackerReportSections } from "./TrackerReportSections";
+import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -223,8 +224,10 @@ export interface SkinScanReportBodyProps {
   regions: ReportRegion[];
   metrics: ReportMetrics;
   aiSummary?: string;
-  /** Model overlay (wrinkle tint + acne circles); preferred over dot markers when set. */
+  /** Combined wrinkle + acne overlay from the model. */
   annotatedImageUrl?: string;
+  wrinkleMaskUrl?: string;
+  acneMaskUrl?: string;
   scanDate: Date;
   autoDownload?: boolean;
   autoCloseAfterDownload?: boolean;
@@ -252,6 +255,8 @@ export function SkinScanReportBody({
   metrics,
   aiSummary,
   annotatedImageUrl,
+  wrinkleMaskUrl,
+  acneMaskUrl,
   scanDate,
   autoDownload = false,
   autoCloseAfterDownload = false,
@@ -310,9 +315,18 @@ export function SkinScanReportBody({
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const overlayUrl = annotatedImageUrl?.trim() || "";
+  const wrinkleUrl = wrinkleMaskUrl?.trim() || "";
+  const acneUrl = acneMaskUrl?.trim() || "";
   const showAnnotatedSection =
-    overlayUrl.length > 0 || (regions.length > 0 && imageUrl?.trim());
-  const showDotMarkers = overlayUrl.length === 0 && regions.length > 0;
+    overlayUrl.length > 0 ||
+    wrinkleUrl.length > 0 ||
+    acneUrl.length > 0 ||
+    (regions.length > 0 && imageUrl?.trim());
+  const showDotMarkers =
+    overlayUrl.length === 0 &&
+    wrinkleUrl.length === 0 &&
+    acneUrl.length === 0 &&
+    regions.length > 0;
   const heroIntro =
     aiSummary?.trim() ||
     `Your latest scan shows an overall score of ${overall}% on our 0–100 scale (higher is better). Detailed scores and photo markers are below.`;
@@ -643,58 +657,13 @@ export function SkinScanReportBody({
         ) : null}
 
         {showAnnotatedSection ? (
-          <div className="mx-auto mt-10 max-w-sm break-inside-avoid">
-            <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-              Annotated findings
-            </p>
-            <div className="relative mx-auto mt-4 aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-2xl bg-zinc-200 ring-1 ring-zinc-300/80">
-              {overlayUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={overlayUrl}
-                  alt="Scan with wrinkle and acne overlay"
-                  className="h-full w-full object-cover object-center"
-                  crossOrigin={galleryImgCrossOrigin(overlayUrl)}
-                />
-              ) : (
-                <ReportFaceImage
-                  key={imageUrl}
-                  src={imageUrl}
-                  alt="Scan with detection markers"
-                  className="h-full w-full object-cover object-center"
-                  crossOrigin={galleryImgCrossOrigin(imageUrl)}
-                />
-              )}
-              {showDotMarkers
-                ? regions.map((r, i) => (
-                    <div
-                      key={`${r.issue}-${i}-${r.coordinates.x}-${r.coordinates.y}`}
-                      className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md"
-                      style={{
-                        left: `${r.coordinates.x}%`,
-                        top: `${r.coordinates.y}%`,
-                        backgroundColor: regionMarkerColor(r.issue),
-                      }}
-                      title={r.issue}
-                    />
-                  ))
-                : null}
-            </div>
-            <ul className="mt-4 flex flex-wrap justify-center gap-2 text-[10px] text-zinc-600">
-              {["Acne", "Wrinkle", "Pigmentation", "Texture"].map((label) => (
-                <li
-                  key={label}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2 py-1 ring-1 ring-zinc-200/80"
-                >
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: regionMarkerColor(label) }}
-                  />
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ScanMaskAnnotations
+            imageUrl={imageUrl}
+            overlayUrl={overlayUrl}
+            wrinkleMaskUrl={wrinkleUrl}
+            acneMaskUrl={acneUrl}
+            regions={regions}
+          />
         ) : null}
       </div>
       </div>

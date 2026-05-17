@@ -21,6 +21,8 @@ export interface ScanReportPageClientProps {
   aiSummary: string | null;
   /** Wrinkle tint + acne circles from analyzer (data URI). */
   annotatedImageUrl?: string | null;
+  wrinkleMaskUrl?: string | null;
+  acneMaskUrl?: string | null;
   scanDateIso: string;
   autoDownload?: boolean;
   autoCloseAfterDownload?: boolean;
@@ -38,6 +40,8 @@ export function ScanReportPageClient({
   metrics,
   aiSummary,
   annotatedImageUrl = null,
+  wrinkleMaskUrl = null,
+  acneMaskUrl = null,
   scanDateIso,
   autoDownload = false,
   autoCloseAfterDownload = false,
@@ -147,6 +151,8 @@ export function ScanReportPageClient({
           metrics={metrics}
           aiSummary={aiSummary ?? undefined}
           annotatedImageUrl={annotatedImageUrl ?? undefined}
+          wrinkleMaskUrl={wrinkleMaskUrl ?? undefined}
+          acneMaskUrl={acneMaskUrl ?? undefined}
           scanDate={scanDate}
           autoDownload={autoDownload}
           autoCloseAfterDownload={autoCloseAfterDownload}

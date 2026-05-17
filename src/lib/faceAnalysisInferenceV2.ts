@@ -26,6 +26,8 @@ export type FaceAnalysisInferenceV2Result = {
     coordinates: { x: number; y: number };
   }>;
   overlayDataUri?: string;
+  wrinkleMaskDataUri?: string;
+  acneMaskDataUri?: string;
 };
 
 type RunOptions = {
@@ -125,6 +127,8 @@ export async function runFaceAnalysisServiceV2(
     modelFeatureScores: Record<string, number | null>;
     detected_regions: FaceAnalysisInferenceV2Result["detected_regions"];
     overlayDataUri?: string;
+    wrinkleMaskDataUri?: string;
+    acneMaskDataUri?: string;
   };
 
   if (
@@ -135,11 +139,12 @@ export async function runFaceAnalysisServiceV2(
     throw new Error("Face analysis v2: malformed response");
   }
 
-  const overlayDataUri =
-    typeof body.overlayDataUri === "string" &&
-    body.overlayDataUri.startsWith("data:image/")
-      ? body.overlayDataUri
-      : undefined;
+  const dataUri = (v: unknown) =>
+    typeof v === "string" && v.startsWith("data:image/") ? v : undefined;
+
+  const overlayDataUri = dataUri(body.overlayDataUri);
+  const wrinkleMaskDataUri = dataUri(body.wrinkleMaskDataUri);
+  const acneMaskDataUri = dataUri(body.acneMaskDataUri);
 
   return {
     overallKaiScore: body.overallKaiScore,
@@ -150,5 +155,7 @@ export async function runFaceAnalysisServiceV2(
       ? body.detected_regions
       : [],
     ...(overlayDataUri ? { overlayDataUri } : {}),
+    ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
+    ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
   };
 }

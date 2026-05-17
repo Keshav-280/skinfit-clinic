@@ -205,6 +205,8 @@ export const scans = pgTable("scans", {
     modelFeatureScores?: Record<string, number | null>;
     /** Wrinkle + acne overlay JPEG (data URI) from Python analyzer */
     overlayDataUri?: string;
+    wrinkleMaskDataUri?: string;
+    acneMaskDataUri?: string;
   }>(),
   /** Bounding-box annotations from Roboflow (optional) */
   annotations: jsonb("annotations").$type<unknown[]>(),

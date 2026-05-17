@@ -6,7 +6,9 @@ import { getSessionUserId } from "../../../../../src/lib/auth/get-session";
 import { parseScanRegions } from "../../../../../src/lib/parseScanAnnotations";
 import {
   parseClinicalScores,
+  parseScanAcneMaskDataUri,
   parseScanOverlayDataUri,
+  parseScanWrinkleMaskDataUri,
 } from "../../../../../src/lib/parseClinicalScores";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../../../src/lib/faceScanCaptures";
@@ -73,6 +75,8 @@ export default async function ScanReportPage({
   const regions = parseScanRegions(row.annotations);
   const clinical_scores = parseClinicalScores(row.scores);
   const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
+  const wrinkleMaskUrl = parseScanWrinkleMaskDataUri(row.scores);
+  const acneMaskUrl = parseScanAcneMaskDataUri(row.scores);
 
   const faceCaptureGallery =
     row.faceCaptureImages && row.faceCaptureImages.length >= 1
@@ -102,6 +106,8 @@ export default async function ScanReportPage({
       }}
       aiSummary={row.aiSummary}
       annotatedImageUrl={annotatedImageUrl ?? null}
+      wrinkleMaskUrl={wrinkleMaskUrl ?? null}
+      acneMaskUrl={acneMaskUrl ?? null}
       scanDateIso={row.createdAt.toISOString()}
       autoDownload={autoDownload}
       autoCloseAfterDownload={autoCloseAfterDownload}

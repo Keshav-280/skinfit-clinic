@@ -29,11 +29,23 @@ export function parseClinicalScores(raw: unknown): ClinicalScores | undefined {
   return hasAny ? out : undefined;
 }
 
-/** Reads `scans.scores.overlayDataUri` (model overlay image). */
-export function parseScanOverlayDataUri(scores: unknown): string | undefined {
+function parseDataUriField(scores: unknown, key: string): string | undefined {
   if (!scores || typeof scores !== "object") return undefined;
-  const v = (scores as Record<string, unknown>).overlayDataUri;
+  const v = (scores as Record<string, unknown>)[key];
   if (typeof v !== "string" || !v.startsWith("data:image/")) return undefined;
   if (v.length > 14_000_000) return undefined;
   return v;
+}
+
+/** Reads `scans.scores.overlayDataUri` (combined model overlay). */
+export function parseScanOverlayDataUri(scores: unknown): string | undefined {
+  return parseDataUriField(scores, "overlayDataUri");
+}
+
+export function parseScanWrinkleMaskDataUri(scores: unknown): string | undefined {
+  return parseDataUriField(scores, "wrinkleMaskDataUri");
+}
+
+export function parseScanAcneMaskDataUri(scores: unknown): string | undefined {
+  return parseDataUriField(scores, "acneMaskDataUri");
 }
