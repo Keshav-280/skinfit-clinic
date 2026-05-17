@@ -21,11 +21,41 @@ const PARAM_KEYS: { key: string; label: string }[] = [
   { key: "hair_health", label: "Hair Health" },
 ];
 
+const MODEL_KEY_MAP: Record<string, string> = {
+  under_eye: "under_eye",
+  hair_health: "hair_health",
+  skin_quality: "skin_quality",
+  active_acne: "active_acne",
+};
+
+function severityToClarity(s: number) {
+  const x = Math.max(1, Math.min(5, s));
+  return Math.round(100 - ((x - 1) / 4) * 100);
+}
+
 function extractParamValue(analysisResults: unknown, key: string): number {
   const a = analysisResults && typeof analysisResults === "object" ? (analysisResults as Record<string, unknown>) : {};
   const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
-  const v = kp?.[key]?.value;
-  return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : 0;
+  const fromKai = kp?.[key]?.value;
+  if (typeof fromKai === "number" && Number.isFinite(fromKai)) {
+    return Math.min(100, Math.max(0, Math.round(fromKai)));
+  }
+  const mfs = a.modelFeatureScores as Record<string, unknown> | undefined;
+  const modelKey = MODEL_KEY_MAP[key];
+  if (mfs && modelKey && typeof mfs[modelKey] === "number") {
+    return severityToClarity(mfs[modelKey] as number);
+  }
+  const camelMap: Record<string, string> = {
+    under_eye: "underEye",
+    hair_health: "hairHealth",
+    skin_quality: "skinQuality",
+    active_acne: "activeAcne",
+  };
+  const camel = camelMap[key];
+  if (camel && typeof a[camel] === "number") {
+    return Math.min(100, Math.max(0, Math.round(a[camel] as number)));
+  }
+  return 0;
 }
 
 function extractAllParams(scanHistory: { analysisResults: unknown; createdAt: string }[]): SkinParam[] {

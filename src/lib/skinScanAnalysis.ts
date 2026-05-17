@@ -69,18 +69,28 @@ export function analysisResultsToParams(
       : {};
 
   const kaiParams = a.kaiParams;
+  const mfs =
+    a.modelFeatureScores && typeof a.modelFeatureScores === "object"
+      ? (a.modelFeatureScores as Record<string, unknown>)
+      : null;
+  const sevClarity = (key: string) => {
+    const v = mfs?.[key];
+    if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
+    const s = Math.max(1, Math.min(5, v));
+    return Math.round(100 - ((s - 1) / 4) * 100);
+  };
 
   const acne = readNum(a, "acne");
   const wrinkles = readNum(a, "wrinkles");
   const texture = readNum(a, "texture");
   const pigmentation = readNum(a, "pigmentation");
   const hydration = readNum(a, "hydration");
-  const activeAcneTop = readNum(a, "activeAcne");
-  const saggingTop = readNum(a, "saggingVolume");
-  const hairHealthTop = readNum(a, "hairHealth");
-  const skinQualityTop = readNum(a, "skinQuality");
-  const acneScarTop = readNum(a, "acneScar");
-  const underEyeTop = readNum(a, "underEye");
+  const activeAcneTop = readNum(a, "activeAcne") ?? sevClarity("active_acne");
+  const saggingTop = readNum(a, "saggingVolume") ?? sevClarity("sagging_volume");
+  const hairHealthTop = readNum(a, "hairHealth") ?? sevClarity("hair_health");
+  const skinQualityTop = readNum(a, "skinQuality") ?? sevClarity("skin_quality");
+  const acneScarTop = readNum(a, "acneScar") ?? sevClarity("acne_scars");
+  const underEyeTop = readNum(a, "underEye") ?? sevClarity("under_eye");
 
   // Legacy / analyze_v2 keys (both snake_case and older aliases)
   const acneK = kaiParamValue(kaiParams, "acne_pimples");
@@ -97,7 +107,12 @@ export function analysisResultsToParams(
     kaiParamValue(kaiParams, "under_eye"),
     kaiParamValue(kaiParams, "underEye")
   );
-  const pigmentationK = kaiParamValue(kaiParams, "pigmentation");
+  const pigmentationK =
+    kaiParamValue(kaiParams, "pigmentation") ??
+    readNum(a, "pigmentation") ??
+    (mfs?.pigmentation_model === null
+      ? undefined
+      : sevClarity("pigmentation_model"));
   const fallback = (i: number) => DEFAULT_SKIN_PARAMS[i]?.value ?? 70;
   const skinQualityLegacy = avgDefined(texture, hydration);
 

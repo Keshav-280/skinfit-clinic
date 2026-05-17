@@ -13,6 +13,15 @@ import {
 } from "../../../src/lib/insertParameterScores";
 import { readWebFormData } from "../../../src/lib/webRequestFormData";
 import { buildPreviewJpegDataUri } from "../../../src/lib/scanImagePreview";
+import {
+  buildLegacyMetricsFromModel,
+  clinicalScoresFromModel,
+  enrichKaiParamsFromModel,
+  modelEightClarityScores,
+  parseModelFeatureScores,
+  type ModelFeatureScores,
+} from "../../../src/lib/modelClinicalMetrics";
+import type { KaiParamInferenceRow } from "../../../src/lib/faceAnalysisInferenceV2";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -51,25 +60,44 @@ function generateClinicalFeatureScores() {
   };
 }
 
-function clinicalScoresFromModelFeatureScores(
-  mfs: Record<string, number | null>
+function mergeModelFeatureScores(
+  raw: Record<string, number | null>
+): ModelFeatureScores {
+  return parseModelFeatureScores(raw);
+}
+
+function enrichInferencePayload(
+  inf: Awaited<ReturnType<typeof runFaceAnalysisServiceV2>>
 ) {
-  const num = (k: string, fallback = 2.5) =>
-    typeof mfs[k] === "number" && Number.isFinite(mfs[k] as number)
-      ? (mfs[k] as number)
-      : fallback;
+  const mfs = mergeModelFeatureScores(inf.modelFeatureScores);
+  const wr = inf.params.wrinkles?.extras as
+    | { dynamic_wrinkle_proxy?: number; static_wrinkle_proxy?: number }
+    | undefined;
+  const wrExtras =
+    wr &&
+    typeof wr === "object" &&
+    (typeof wr.dynamic_wrinkle_proxy === "number" ||
+      typeof wr.static_wrinkle_proxy === "number")
+      ? {
+          dynamic_wrinkle_proxy: wr.dynamic_wrinkle_proxy,
+          static_wrinkle_proxy: wr.static_wrinkle_proxy,
+        }
+      : undefined;
+  const params = enrichKaiParamsFromModel(
+    inf.params as Record<string, KaiParamInferenceRow>,
+    mfs,
+    wrExtras
+  );
+  const legacy = buildLegacyMetricsFromModel(mfs, inf.overallKaiScore);
   return {
-    active_acne: num("active_acne"),
-    skin_quality: num("skin_quality"),
-    wrinkle_severity: num("wrinkle_severity"),
-    sagging_volume: num("sagging_volume"),
-    under_eye: num("under_eye"),
-    hair_health: num("hair_health"),
-    pigmentation_model:
-      typeof mfs.pigmentation_model === "number" &&
-      Number.isFinite(mfs.pigmentation_model)
-        ? mfs.pigmentation_model
-        : null,
+    overallKaiScore: inf.overallKaiScore,
+    params,
+    legacyMetrics: legacy,
+    modelFeatureScores: mfs,
+    clinical_scores: clinicalScoresFromModel(mfs),
+    detected_regions: inf.detected_regions,
+    overlayDataUri: inf.overlayDataUri,
+    modelEight: modelEightClarityScores(mfs),
   };
 }
 
@@ -248,7 +276,7 @@ export async function POST(request: NextRequest) {
       hydration: number;
       texture: number;
       overall_score: number;
-      clinical_scores: ReturnType<typeof clinicalScoresFromModelFeatureScores>;
+      clinical_scores: ReturnType<typeof clinicalScoresFromModel>;
     };
     let modelFeatureScores: Record<string, number | null>;
     let detected_regions: ReturnType<typeof generateDetectedRegions>;
@@ -261,21 +289,19 @@ export async function POST(request: NextRequest) {
           apiKey: inferenceSecret,
           timeoutMs: inferenceTimeoutMs,
         });
-        overallKaiScore = inf.overallKaiScore;
-        v2params = inf.params as Record<string, unknown>;
-        const lm = inf.legacyMetrics;
-        modelFeatureScores = inf.modelFeatureScores;
+        const merged = enrichInferencePayload(inf);
+        overallKaiScore = merged.overallKaiScore;
+        v2params = merged.params as Record<string, unknown>;
+        modelFeatureScores = merged.modelFeatureScores as Record<
+          string,
+          number | null
+        >;
         metrics = {
-          acne: lm.acne,
-          pigmentation: lm.pigmentation,
-          wrinkles: lm.wrinkles,
-          hydration: lm.hydration,
-          texture: lm.texture,
-          overall_score: lm.overall_score,
-          clinical_scores: clinicalScoresFromModelFeatureScores(modelFeatureScores),
+          ...merged.legacyMetrics,
+          clinical_scores: merged.clinical_scores,
         };
-        detected_regions = inf.detected_regions;
-        overlayDataUri = inf.overlayDataUri;
+        detected_regions = merged.detected_regions;
+        overlayDataUri = merged.overlayDataUri;
       } catch (err) {
         console.error("Face analysis v2 error:", err);
         if (!allowDummyInferenceFallback) {
@@ -296,11 +322,12 @@ export async function POST(request: NextRequest) {
         overallKaiScore = dummy.overallKaiScore;
         v2params = dummy.params;
         modelFeatureScores = dummy.modelFeatureScores;
+        const dmfs = parseModelFeatureScores(
+          dummy.modelFeatureScores as Record<string, number | null>
+        );
         metrics = {
-          ...dummy.legacyMetrics,
-          clinical_scores: clinicalScoresFromModelFeatureScores(
-            dummy.modelFeatureScores
-          ),
+          ...buildLegacyMetricsFromModel(dmfs, dummy.overallKaiScore),
+          clinical_scores: clinicalScoresFromModel(dmfs),
         };
         detected_regions = dummy.detected_regions;
       }
@@ -310,11 +337,12 @@ export async function POST(request: NextRequest) {
       overallKaiScore = dummy.overallKaiScore;
       v2params = dummy.params;
       modelFeatureScores = dummy.modelFeatureScores;
+      const dmfs = parseModelFeatureScores(
+        dummy.modelFeatureScores as Record<string, number | null>
+      );
       metrics = {
-        ...dummy.legacyMetrics,
-        clinical_scores: clinicalScoresFromModelFeatureScores(
-          dummy.modelFeatureScores
-        ),
+        ...buildLegacyMetricsFromModel(dmfs, dummy.overallKaiScore),
+        clinical_scores: clinicalScoresFromModel(dmfs),
       };
       detected_regions = dummy.detected_regions;
     }
@@ -388,6 +416,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const mfsParsed = parseModelFeatureScores(
+      modelFeatureScores as Record<string, number | null>
+    );
+    const modelEight = modelEightClarityScores(mfsParsed);
+
     const analysisResults = {
       acne: metrics.acne,
       wrinkles: metrics.wrinkles,
@@ -397,6 +430,8 @@ export async function POST(request: NextRequest) {
       eczema: eczemaScore,
       kaiOverallScore: overallKaiScore,
       kaiParams: v2params,
+      modelFeatureScores: mfsParsed,
+      ...modelEight,
     };
 
     const scanRowBase = {

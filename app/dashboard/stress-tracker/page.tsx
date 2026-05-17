@@ -25,7 +25,7 @@ export default function StressTrackerPage() {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didInit = useRef(false);
 
   useEffect(() => {

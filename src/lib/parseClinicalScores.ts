@@ -14,6 +14,7 @@ export function parseClinicalScores(raw: unknown): ClinicalScores | undefined {
   const pig = o.pigmentation_model;
   const out: ClinicalScores = {
     active_acne: num(o.active_acne),
+    acne_scars: num(o.acne_scars),
     skin_quality: num(o.skin_quality),
     wrinkle_severity: num(o.wrinkle_severity),
     sagging_volume: num(o.sagging_volume),

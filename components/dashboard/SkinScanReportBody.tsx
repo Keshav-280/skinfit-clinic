@@ -42,13 +42,19 @@ const CLINICAL_ROWS: {
   label: string;
 }[] = [
   { key: "active_acne", label: "Active acne" },
+  { key: "acne_scars", label: "Acne scars" },
   { key: "skin_quality", label: "Skin quality" },
-  { key: "wrinkle_severity", label: "Wrinkles (severity 1–5)" },
+  { key: "wrinkle_severity", label: "Wrinkles" },
   { key: "sagging_volume", label: "Sagging & volume" },
   { key: "under_eye", label: "Under-eye" },
   { key: "hair_health", label: "Hair health" },
-  { key: "pigmentation_model", label: "Pigmentation (model)" },
+  { key: "pigmentation_model", label: "Pigmentation" },
 ];
+
+function severityToClarityPercent(s: number) {
+  const x = Math.max(1, Math.min(5, s));
+  return clamp(100 - ((x - 1) / 4) * 100);
+}
 
 function regionMarkerColor(issue: string): string {
   const x = issue.toLowerCase();
@@ -745,6 +751,9 @@ export function SkinScanReportBody({
               transition={{ delay: 0.1, duration: 0.4, ease: easeOut }}
               className="mx-auto mt-8 w-full min-w-0 max-w-full"
             >
+              <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                AI model summary (0–100 · higher is better)
+              </p>
               <div className="grid w-full min-w-0 grid-cols-3 gap-1.5 sm:max-w-xl sm:gap-2.5 md:mx-auto md:max-w-[560px] md:gap-3">
                 {[
                   {
@@ -754,16 +763,34 @@ export function SkinScanReportBody({
                     track: "rgba(91, 143, 216, 0.18)",
                   },
                   {
+                    label: "Wrinkles",
+                    value: metrics.wrinkles,
+                    fill: "#9EC5E8",
+                    track: "rgba(158, 197, 232, 0.3)",
+                  },
+                  {
+                    label: "Pigmentation",
+                    value: metrics.pigmentation ?? 72,
+                    fill: "#d97706",
+                    track: "rgba(217, 119, 6, 0.2)",
+                  },
+                  {
                     label: "Hydration",
                     value: metrics.hydration,
                     fill: PEACH,
                     track: "rgba(242, 156, 145, 0.22)",
                   },
                   {
-                    label: "Wrinkles",
-                    value: metrics.wrinkles,
-                    fill: "#9EC5E8",
-                    track: "rgba(158, 197, 232, 0.3)",
+                    label: "Texture",
+                    value: metrics.texture ?? metrics.hydration,
+                    fill: "#0d9488",
+                    track: "rgba(13, 148, 136, 0.2)",
+                  },
+                  {
+                    label: "Overall",
+                    value: metrics.overall_score,
+                    fill: PEACH,
+                    track: "rgba(242, 156, 145, 0.22)",
                   },
                 ].map((row) => (
                   <div
@@ -802,30 +829,27 @@ export function SkinScanReportBody({
                 className="mx-auto mt-8 w-full max-w-xl break-inside-avoid"
               >
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Model scores (1–5)
+                  FaceAnalyzer v13 — eight clinical axes (1–5)
                 </p>
                 <p className="mt-1 text-[12px] leading-snug text-zinc-600">
-                  Severity-style outputs from the analysis engine (higher = more concern). Shown
-                  alongside the summary scores above.
+                  Direct model severity outputs (higher = more concern). Summary donuts above are
+                  derived from these scores.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {CLINICAL_ROWS.map(({ key, label }) => {
                     const v = metrics.clinical_scores![key];
-                    if (key === "pigmentation_model") {
-                      if (v === undefined) return null;
-                      if (v === null) {
-                        return (
-                          <div
-                            key={key}
-                            className="rounded-xl border border-white/80 bg-white/60 px-3 py-2.5 shadow-sm"
-                          >
-                            <span className="text-[11px] font-semibold text-zinc-700">
-                              {label}
-                            </span>
-                            <p className="mt-1 text-[10px] text-zinc-500">No dataset available</p>
-                          </div>
-                        );
-                      }
+                    if (key === "pigmentation_model" && v === null) {
+                      return (
+                        <div
+                          key={key}
+                          className="rounded-xl border border-white/80 bg-white/60 px-3 py-2.5 shadow-sm"
+                        >
+                          <span className="text-[11px] font-semibold text-zinc-700">
+                            {label}
+                          </span>
+                          <p className="mt-1 text-[10px] text-zinc-500">Model unavailable</p>
+                        </div>
+                      );
                     }
                     if (typeof v !== "number") return null;
                     return (
