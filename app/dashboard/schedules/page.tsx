@@ -133,6 +133,7 @@ export default async function SchedulesPage({
         slotEndTimeHm: appointments.slotEndTimeHm,
         type: appointments.type,
         doctorName: users.name,
+        doctorPhotoUrl: users.profilePhotoUrl,
         status: appointments.status,
       })
       .from(appointments)
@@ -257,6 +258,9 @@ export default async function SchedulesPage({
       cancelled: isCancelled,
       crmPatientMessage: tip,
       cancellationReason: cancelNote,
+      doctorName: r.doctorName ?? "",
+      doctorPhotoUrl: r.doctorPhotoUrl ?? null,
+      appointmentType: appointmentTypeLabel(r.type),
     };
   });
 
@@ -286,7 +290,7 @@ export default async function SchedulesPage({
   const initialScheduleTab = initialScheduleTabFromSearch(sp);
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-full bg-[#E8EFE6] px-4 py-5 pb-12 md:px-6">
       <SchedulesPageClient
         key={initialScheduleTab}
         initialTreatmentEvents={initialTreatmentEvents}

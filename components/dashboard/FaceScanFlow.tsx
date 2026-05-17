@@ -340,10 +340,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-center text-2xl font-bold tracking-tight text-zinc-900">
+        <h1 className="text-center text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
           {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
         </h1>
-        <p className="mt-1 text-center text-sm text-zinc-600">
+        <p className="mt-1 text-center text-sm text-[#6B7280]">
           {isOnboardingScan
             ? "Five angles in order — last step of setup. Later check-ins use Scan."
             : "Five angles in order — scores, clinical metrics, and annotated findings."}
@@ -355,14 +355,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4 rounded-[22px] border border-zinc-200 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.06)] md:p-6"
+          className="space-y-4 rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-center backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
               Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}
             </p>
-            <p className="mt-1 text-base font-semibold text-zinc-900">{currentCameraStep.title}</p>
-            <p className="mt-0.5 text-sm text-zinc-600">{currentCameraStep.instruction}</p>
+            <p className="mt-1 text-base font-bold text-[#2C3E6B]">{currentCameraStep.title}</p>
+            <p className="mt-0.5 text-sm text-[#6B7280]">{currentCameraStep.instruction}</p>
           </div>
           <div className="relative mx-auto aspect-[3/4] max-h-[min(70vh,520px)] w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900">
             <video
@@ -387,7 +387,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               type="button"
               onClick={captureFromCamera}
               disabled={captureCount >= N_CAPTURES}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[200px] sm:flex-1"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[200px] sm:flex-1"
             >
               <Camera className="h-5 w-5" />
               Capture
@@ -395,16 +395,16 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <button
               type="button"
               onClick={flipCamera}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-3.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 sm:w-auto sm:min-w-[140px]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:w-auto sm:min-w-[140px]"
               aria-label="Switch between front and back camera"
             >
-              <SwitchCamera className="h-5 w-5 text-[#6B8E8E]" />
+              <SwitchCamera className="h-5 w-5 text-[#2C3E6B]" />
               Flip camera
             </button>
             <button
               type="button"
               onClick={cancelCamera}
-              className="flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-white py-3.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 sm:w-auto sm:min-w-[120px]"
+              className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:w-auto sm:min-w-[120px]"
             >
               Cancel
             </button>
@@ -426,10 +426,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
-            className={`rounded-[22px] border-2 border-dashed p-10 text-center shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-colors md:p-12 ${
+            className={`rounded-[22px] border-2 border-dashed p-10 text-center backdrop-blur-sm transition-colors md:p-12 ${
               isDragging
-                ? "border-teal-500 bg-[#E0F0ED]/80"
-                : "border-zinc-200 bg-white"
+                ? "border-[#2C3E6B]/60 bg-[#E8EFE6]/80"
+                : "border-white/70 bg-white/35"
             }`}
           >
             <input
@@ -440,41 +440,41 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               className="sr-only"
               onChange={handleInputChange}
             />
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E0F0ED]">
-              <ImagePlus className="h-8 w-8 text-[#6B8E8E]" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8EFE6]/80">
+              <ImagePlus className="h-8 w-8 text-[#2C3E6B]" />
             </div>
-            <p className="mb-1 font-semibold text-zinc-900">
+            <p className="mb-1 font-bold text-[#2C3E6B]">
               Drop or choose {N_CAPTURES} photos
             </p>
-            <p className="mb-6 text-sm text-zinc-600">
+            <p className="mb-6 text-sm text-[#6B7280]">
               Same order as the camera steps: front, left, right, eyes closed, smile — or use the camera.
             </p>
             <label
               htmlFor="scan-file-input"
-              className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50"
+              className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/60 bg-white/60 px-6 py-3 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
             >
               Choose photos
             </label>
           </div>
 
           <div className="flex items-center gap-3 px-1">
-            <div className="h-px flex-1 bg-zinc-200" />
-            <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+            <div className="h-px flex-1 bg-white/60" />
+            <span className="text-xs font-medium uppercase tracking-wide text-[#2C3E6B]/40">
               or
             </span>
-            <div className="h-px flex-1 bg-zinc-200" />
+            <div className="h-px flex-1 bg-white/60" />
           </div>
 
           <button
             type="button"
             onClick={openCameraForMultiCapture}
-            className="flex w-full items-center justify-center gap-2 rounded-[22px] border-2 border-[#6B8E8E]/35 bg-[#E0F0ED]/60 py-4 text-sm font-semibold text-zinc-900 transition-colors hover:bg-[#E0F0ED]"
+            className="flex w-full items-center justify-center gap-2 rounded-[22px] border-2 border-[#2C3E6B]/20 bg-[#E8EFE6]/60 py-4 text-sm font-semibold text-[#2C3E6B] transition-colors hover:bg-[#E8EFE6]"
           >
-            <Camera className="h-5 w-5 text-[#6B8E8E]" />
+            <Camera className="h-5 w-5 text-[#2C3E6B]" />
             Use device camera
           </button>
 
-          <p className="rounded-2xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 text-center text-sm text-zinc-700">
+          <p className="rounded-2xl border border-white/60 bg-white/40 px-4 py-3 text-center text-sm text-[#6B7280] backdrop-blur-sm">
             {FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA.join(" ")}
           </p>
 
@@ -505,8 +505,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           transition={{ duration: 0.5 }}
           className="space-y-6"
         >
-          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[22px] border border-zinc-100 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.06)] sm:p-6">
-            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm sm:p-6">
+            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
               Preview
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
@@ -536,7 +536,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 });
                 setStep("upload");
               }}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
             >
               <RotateCcw className="h-4 w-4" />
               Retake
@@ -544,7 +544,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <button
               type="button"
               onClick={() => setStep("naming")}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-teal-600 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-500"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080]"
             >
               <Check className="h-4 w-4" />
               Looks good
@@ -561,8 +561,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           transition={{ duration: 0.5 }}
           className="space-y-6"
         >
-          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[22px] border border-zinc-100 bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.06)] sm:p-6">
-            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm sm:p-6">
+            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
               Photo in this scan
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
@@ -588,8 +588,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               {scanError}
             </p>
           ) : null}
-          <div className="rounded-[22px] border border-zinc-100 bg-white p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-            <label htmlFor="scan-name" className="mb-3 block text-sm font-medium text-zinc-700">
+          <div className="rounded-[22px] border border-white/70 bg-white/35 p-6 backdrop-blur-sm">
+            <label htmlFor="scan-name" className="mb-3 block text-sm font-medium text-[#2C3E6B]">
               Name this scan
             </label>
             <input
@@ -598,14 +598,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               placeholder="e.g., Morning routine"
               value={scanName}
               onChange={(e) => setScanName(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 backdrop-blur-sm focus:border-[#2C3E6B]/40 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/10"
             />
           </div>
           <button
             type="button"
             onClick={runScan}
             disabled={!scanName.trim()}
-            className="w-full rounded-xl bg-teal-600 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Start analysis
           </button>
@@ -620,7 +620,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           transition={{ duration: 0.5 }}
           className="space-y-6"
         >
-          <div className="relative overflow-hidden rounded-[22px] border border-zinc-100 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
+          <div className="relative overflow-hidden rounded-[22px] border border-white/70 bg-white/35 backdrop-blur-sm">
             <div className="relative aspect-[3/4] max-h-[400px] w-full">
               <img
                 src={primaryPreview}
@@ -631,14 +631,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border-2 border-teal-500/40 border-t-teal-600"
+                  className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#2C3E6B]/30 border-t-[#2C3E6B]"
                 >
-                  <Sparkles className="h-6 w-6 text-teal-600" />
+                  <Sparkles className="h-6 w-6 text-[#2C3E6B]" />
                 </motion.div>
-                <p className="text-lg font-semibold text-zinc-900">Scanning…</p>
-                <p className="mt-1 text-sm text-zinc-600">AI is analyzing your photo…</p>
+                <p className="text-lg font-bold text-[#2C3E6B]">Scanning…</p>
+                <p className="mt-1 text-sm text-[#6B7280]">AI is analyzing your photo…</p>
                 <motion.div
-                  className="absolute left-0 right-0 z-10 h-1 bg-teal-500 shadow-[0_0_16px_rgba(20,184,166,0.5)]"
+                  className="absolute left-0 right-0 z-10 h-1 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
                   initial={{ top: "0%" }}
                   animate={{ top: ["0%", "100%", "0%"] }}
                   transition={{
@@ -686,9 +686,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-[22px] border border-zinc-200 bg-white p-8 text-center shadow-sm"
+              className="rounded-[22px] border border-white/70 bg-white/35 p-8 text-center backdrop-blur-sm"
             >
-              <p className="text-sm font-medium text-zinc-700">
+              <p className="text-sm font-medium text-[#6B7280]">
                 Report saved to your history. Start another scan whenever you
                 like.
               </p>
@@ -696,15 +696,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <button
                   type="button"
                   onClick={() => setReportOpen(true)}
-                  className="w-full rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 sm:w-auto"
+                  className="w-full rounded-xl border border-white/60 bg-white/50 px-6 py-3 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition hover:bg-white/80 sm:w-auto"
                 >
                   View report again
                 </button>
                 <button
                   type="button"
                   onClick={resetScan}
-                  className="w-full rounded-xl px-6 py-3 text-sm font-semibold text-white transition hover:opacity-95 sm:w-auto"
-                  style={{ backgroundColor: "#6D8C8E" }}
+                  className="w-full rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#3d5080] sm:w-auto"
                 >
                   Scan again
                 </button>

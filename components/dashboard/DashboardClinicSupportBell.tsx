@@ -17,7 +17,7 @@ export function DashboardClinicSupportBell() {
   return (
     <Link
       href="/dashboard/notifications"
-      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/50 text-[#2C3E6B]/70 backdrop-blur-sm transition-colors hover:bg-white/80 hover:text-[#2C3E6B]"
       title={label}
       aria-label={label}
     >

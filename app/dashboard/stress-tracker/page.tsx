@@ -1,0 +1,185 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { ArrowLeft, Minus, Plus, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+
+const moods = ["Calm", "Neutral", "Anxious", "Stressed", "Overwhelmed"] as const;
+
+function stressColor(level: number) {
+  if (level <= 3) return { bg: "bg-green-100", text: "text-green-700", label: "Low", ring: "ring-green-400" };
+  if (level <= 6) return { bg: "bg-amber-100", text: "text-amber-700", label: "Moderate", ring: "ring-amber-400" };
+  return { bg: "bg-red-100", text: "text-red-700", label: "High", ring: "ring-red-400" };
+}
+
+function stressAccent(level: number) {
+  if (level <= 3) return "#16a34a";
+  if (level <= 6) return "#d97706";
+  return "#dc2626";
+}
+
+export default function StressTrackerPage() {
+  const [level, setLevel] = useState(5);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const didInit = useRef(false);
+
+  useEffect(() => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    fetch(`/api/journal?date=${today}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.entry) {
+          setLevel(data.entry.stressLevel ?? 5);
+          setSelectedMood(data.entry.mood ?? null);
+        }
+        didInit.current = true;
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  function scheduleAutoSave(body: Record<string, unknown>) {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveStatus("saving");
+    saveTimer.current = setTimeout(async () => {
+      await fetch("/api/journal", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: format(new Date(), "yyyy-MM-dd"), ...body }),
+      });
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    }, 800);
+  }
+
+  function handleSetLevel(newLevel: number) {
+    setLevel(newLevel);
+    if (didInit.current) scheduleAutoSave({ stressLevel: newLevel, mood: selectedMood });
+  }
+
+  function handleSetMood(mood: string) {
+    setSelectedMood(mood);
+    if (didInit.current) scheduleAutoSave({ stressLevel: level, mood });
+  }
+
+  function handleNotesChange(value: string) {
+    setNotes(value);
+    if (didInit.current) scheduleAutoSave({ stressLevel: level, mood: selectedMood, journalEntry: value });
+  }
+
+  const decrement = () => handleSetLevel(Math.max(0, level - 1));
+  const increment = () => handleSetLevel(Math.min(10, level + 1));
+
+  const { bg, text, label } = stressColor(level);
+  const accent = stressAccent(level);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen px-4 pb-10 pt-6">
+      {/* Header */}
+      <div className="mb-6 flex items-center gap-3">
+        <Link
+          href="/dashboard"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/60 bg-white/35 backdrop-blur-sm"
+        >
+          <ArrowLeft className="h-5 w-5 text-[#2C3E6B]" />
+        </Link>
+        <h1 className="text-xl font-bold text-[#2C3E6B]">Stress Level</h1>
+        <div className="ml-auto flex items-center gap-2">
+          {saveStatus === "saving" && <span className="text-xs text-slate-400">Saving...</span>}
+          {saveStatus === "saved" && <span className="text-xs text-emerald-500">Saved ✓</span>}
+        </div>
+      </div>
+
+      {/* Main stress display card */}
+      <div className="rounded-2xl border border-white/60 bg-white/35 p-6 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-4">
+          {/* Large number */}
+          <div
+            className="flex h-28 w-28 items-center justify-center rounded-full transition-colors duration-300"
+            style={{ backgroundColor: `${accent}18`, border: `3px solid ${accent}` }}
+          >
+            <span className="text-5xl font-extrabold" style={{ color: accent }}>
+              {level}
+            </span>
+          </div>
+
+          {/* Status badge */}
+          <span className={`rounded-full px-4 py-1 text-sm font-semibold ${bg} ${text}`}>
+            {label}
+          </span>
+
+          {/* Stepper */}
+          <div className="mt-2 flex items-center gap-6">
+            <button
+              onClick={decrement}
+              disabled={level === 0}
+              className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2C3E6B] text-white shadow-md transition-opacity disabled:opacity-30"
+            >
+              <Minus className="h-5 w-5" />
+            </button>
+            <div className="w-12 text-center text-2xl font-bold text-[#2C3E6B]">{level}/10</div>
+            <button
+              onClick={increment}
+              disabled={level === 10}
+              className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2C3E6B] text-white shadow-md transition-opacity disabled:opacity-30"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mood selector */}
+      <div className="mt-6 rounded-2xl border border-white/60 bg-white/35 p-5 backdrop-blur-sm">
+        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">How are you feeling?</h2>
+        <div className="flex flex-wrap gap-2">
+          {moods.map((mood) => (
+            <button
+              key={mood}
+              onClick={() => handleSetMood(mood)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                selectedMood === mood
+                  ? "bg-[#2C3E6B] text-white shadow-md"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {mood}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div className="mt-6 rounded-2xl border border-white/60 bg-white/35 p-5 backdrop-blur-sm">
+        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Notes</h2>
+        <textarea
+          value={notes}
+          onChange={(e) => handleNotesChange(e.target.value)}
+          placeholder="Add any additional context about how you're feeling..."
+          rows={4}
+          className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]"
+        />
+      </div>
+
+      {/* Tips card */}
+      <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p className="text-sm font-medium text-green-800">
+          💡 Try 5 minutes of deep breathing to lower stress levels
+        </p>
+      </div>
+    </div>
+  );
+}

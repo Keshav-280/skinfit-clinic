@@ -10,20 +10,28 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-1 pb-10 sm:px-0">
-      <header className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
-          Your profile
+    <div className="mx-auto max-w-3xl space-y-6 px-1 pb-10 sm:px-0">
+      <header className="rounded-[22px] border border-white/70 bg-white/35 p-6 text-center backdrop-blur-sm">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B] sm:text-3xl">
+          Your Profile
         </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-600">
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[#6B7280]">
           Same account as the mobile app — Skin DNA, visits, and settings stay in
           sync.
         </p>
       </header>
-      <ProfileSkinDnaSection />
-      <ProfileSkinIdentitySection />
-      <ProfileRagKaiInsightsSection />
-      <ProfileForm initial={user} />
+      <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
+        <ProfileSkinDnaSection />
+      </div>
+      <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
+        <ProfileSkinIdentitySection />
+      </div>
+      <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
+        <ProfileRagKaiInsightsSection />
+      </div>
+      <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
+        <ProfileForm initial={user} />
+      </div>
     </div>
   );
 }

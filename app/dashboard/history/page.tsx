@@ -138,16 +138,20 @@ export default async function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-center text-2xl font-bold tracking-tight text-zinc-900">
-        Treatment History
-      </h1>
-      <HistoryView
-        scans={scanRecords}
-        visitNotes={visitRecords}
-        reportVoiceNotes={reportVoiceNotes}
-        reportVoiceNotesArchived={reportVoiceNotesArchived}
-        patient={patient}
-      />
+      <div className="rounded-[22px] border border-white/70 bg-white/35 px-6 py-5 backdrop-blur-sm">
+        <h1 className="text-center text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
+          Treatment History
+        </h1>
+      </div>
+      <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
+        <HistoryView
+          scans={scanRecords}
+          visitNotes={visitRecords}
+          reportVoiceNotes={reportVoiceNotes}
+          reportVoiceNotesArchived={reportVoiceNotesArchived}
+          patient={patient}
+        />
+      </div>
     </div>
   );
 }

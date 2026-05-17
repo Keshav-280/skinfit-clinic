@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { LayoutDashboard, History, CalendarClock, HeartPulse } from "lucide-react";
+import { LayoutDashboard, CalendarClock, HeartPulse } from "lucide-react";
 
 const items = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/history", label: "History", icon: History },
   { href: "/dashboard/schedules", label: "Schedules", icon: CalendarClock },
   { href: "/dashboard/wellness", label: "Wellness", icon: HeartPulse },
 ];

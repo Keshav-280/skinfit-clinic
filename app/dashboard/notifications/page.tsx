@@ -41,33 +41,33 @@ function AlertRow({
 }) {
   const tones: Record<
     AlertTone,
-    { ring: string; bg: string; iconBg: string; iconFg: string; chevron: string }
+    { border: string; bg: string; iconBg: string; iconFg: string; chevron: string }
   > = {
     rose: {
-      ring: "ring-rose-200/90",
-      bg: "bg-gradient-to-br from-rose-50/95 to-white",
-      iconBg: "bg-rose-100",
+      border: "border-rose-200/60",
+      bg: "bg-white/35",
+      iconBg: "bg-rose-100/80",
       iconFg: "text-rose-700",
       chevron: "text-rose-500",
     },
     teal: {
-      ring: "ring-teal-200/90",
-      bg: "bg-gradient-to-br from-teal-50/95 to-white",
-      iconBg: "bg-teal-100",
+      border: "border-teal-200/60",
+      bg: "bg-white/35",
+      iconBg: "bg-teal-100/80",
       iconFg: "text-teal-800",
       chevron: "text-teal-600",
     },
     sky: {
-      ring: "ring-sky-200/90",
-      bg: "bg-gradient-to-br from-sky-50/95 to-white",
-      iconBg: "bg-sky-100",
+      border: "border-sky-200/60",
+      bg: "bg-white/35",
+      iconBg: "bg-sky-100/80",
       iconFg: "text-sky-800",
       chevron: "text-sky-600",
     },
     violet: {
-      ring: "ring-violet-200/90",
-      bg: "bg-gradient-to-br from-violet-50/95 to-white",
-      iconBg: "bg-violet-100",
+      border: "border-violet-200/60",
+      bg: "bg-white/35",
+      iconBg: "bg-violet-100/80",
       iconFg: "text-violet-800",
       chevron: "text-violet-600",
     },
@@ -78,21 +78,21 @@ function AlertRow({
     <Link
       href={href}
       onClick={onClick}
-      className={`group flex items-center gap-3 rounded-2xl border border-white/80 p-4 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.08)] ring-1 ${t.ring} ${t.bg} transition hover:shadow-md hover:ring-2`}
+      className={`group flex items-center gap-3.5 rounded-[18px] border ${t.border} ${t.bg} p-4 backdrop-blur-sm transition hover:bg-white/80 hover:shadow-md`}
     >
       <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${t.iconBg} ${t.iconFg} shadow-sm`}
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${t.iconBg} ${t.iconFg} backdrop-blur-sm`}
       >
         {icon}
       </div>
       <div className="min-w-0 flex-1 text-left">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="font-bold tracking-tight text-zinc-900">{title}</p>
-          <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold tabular-nums text-zinc-800 shadow-sm ring-1 ring-zinc-200/80">
+          <p className="font-bold tracking-tight text-[#2C3E6B]">{title}</p>
+          <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-[#2C3E6B] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
             {count}
           </span>
         </div>
-        <p className="mt-1 text-sm leading-snug text-zinc-600">{subtitle}</p>
+        <p className="mt-1 text-sm leading-snug text-[#6B7280]">{subtitle}</p>
       </div>
       <ChevronRight
         className={`h-5 w-5 shrink-0 transition group-hover:translate-x-0.5 ${t.chevron}`}
@@ -115,16 +115,16 @@ function ShortcutRow({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50/60"
+      className="flex items-center gap-3.5 rounded-[18px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm transition hover:bg-white/80"
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8EFE6]/60 text-[#2C3E6B]">
         {icon}
       </div>
       <div className="min-w-0 flex-1 text-left">
-        <p className="font-semibold text-zinc-900">{title}</p>
-        <p className="mt-0.5 text-sm text-zinc-500">{subtitle}</p>
+        <p className="font-semibold text-[#2C3E6B]">{title}</p>
+        <p className="mt-0.5 text-sm text-[#6B7280]">{subtitle}</p>
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-zinc-400" />
+      <ChevronRight className="h-5 w-5 shrink-0 text-[#2C3E6B]/40" />
     </Link>
   );
 }
@@ -217,32 +217,32 @@ export default function DashboardNotificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-8">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+    <div className="mx-auto max-w-lg space-y-6">
+      <div className="rounded-[22px] border border-white/70 bg-white/35 px-6 py-5 text-center backdrop-blur-sm">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
           Notifications
         </h1>
-        <p className="mt-2 text-sm text-zinc-600">
+        <p className="mt-2 text-sm text-[#6B7280]">
           Tap an item to open it. Voice rows can clear the bell when opened.
         </p>
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-zinc-500">Loading…</p>
+        <p className="text-center text-sm text-[#6B7280]">Loading…</p>
       ) : (
         <>
           <section className="space-y-3">
             <div className="flex items-center justify-between px-0.5">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[#2C3E6B]/60">
                 {alertCount > 0 ? "Needs attention" : "Inbox"}
               </h2>
               {alertCount === 0 ? (
-                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
+                <span className="flex items-center gap-1 rounded-full bg-[#E8EFE6]/80 px-2.5 py-1 text-xs font-semibold text-[#2C3E6B] backdrop-blur-sm">
                   <Sparkles className="h-3.5 w-3.5" aria-hidden />
                   All caught up
                 </span>
               ) : (
-                <span className="text-xs font-semibold tabular-nums text-zinc-500">
+                <span className="text-xs font-semibold tabular-nums text-[#2C3E6B]/60">
                   {alertCount} active
                 </span>
               )}
@@ -323,7 +323,7 @@ export default function DashboardNotificationsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="px-0.5 text-xs font-bold uppercase tracking-wider text-zinc-500">
+            <h2 className="px-0.5 text-xs font-bold uppercase tracking-wider text-[#2C3E6B]/60">
               More
             </h2>
             <ShortcutRow
@@ -334,8 +334,8 @@ export default function DashboardNotificationsPage() {
             />
           </section>
 
-          <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-600">
-            <p className="font-semibold text-zinc-800">Mobile app</p>
+          <div className="rounded-[18px] border border-dashed border-white/70 bg-white/40 p-4 text-sm text-[#6B7280] backdrop-blur-sm">
+            <p className="font-semibold text-[#2C3E6B]">Mobile app</p>
             <p className="mt-2 leading-relaxed">
               Turn on push for alerts when SkinnFit isn&apos;t open. On the web,
               the bell only shows how many items need attention — details are
