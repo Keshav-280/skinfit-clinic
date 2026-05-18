@@ -21,6 +21,7 @@ import Svg, { Circle, Polygon, Line, G, Text as SvgText } from "react-native-svg
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 
+import { TodayFocusCard } from "@/components/dashboard/TodayFocusCard";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
@@ -696,10 +697,7 @@ export default function DashboardScreen() {
 
       {/* ── Today's Focus ── */}
       {data.todayFocus?.message ? (
-        <View style={styles.focusCard}>
-          <Text style={styles.focusKicker}>TODAY&apos;S FOCUS</Text>
-          <Text style={styles.focusMessage}>{data.todayFocus.message}</Text>
-        </View>
+        <TodayFocusCard message={data.todayFocus.message} />
       ) : null}
 
       {/* ── Score cards ── */}
@@ -1818,23 +1816,6 @@ const styles = StyleSheet.create({
   streakDotDone: { backgroundColor: GREEN_ACCENT, borderColor: GREEN_ACCENT },
   streakDayLabel: { fontSize: 11, fontWeight: "600", color: "#6B7280" },
   streakMessage: { fontSize: 15, fontWeight: "700", marginTop: 10 },
-
-  focusCard: {
-    backgroundColor: GLASS,
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-  },
-  focusKicker: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-    color: GREEN_ACCENT,
-    marginBottom: 8,
-  },
-  focusMessage: { fontSize: 15, fontWeight: "600", color: "#374151", lineHeight: 22 },
 
   sectionTitle: {
     fontSize: 14,

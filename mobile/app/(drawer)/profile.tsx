@@ -36,7 +36,6 @@ import {
 import ProfileHeaderCard from "@/components/profile/ProfileHeaderCard";
 import LastTreatmentCard from "@/components/profile/LastTreatmentCard";
 import RecentVisitsSection from "@/components/profile/RecentVisitsSection";
-import SkinDnaCard from "@/components/profile/SkinDnaCard";
 import WeeklyReportCard from "@/components/profile/WeeklyReportCard";
 import MonthlyReportCard from "@/components/profile/MonthlyReportCard";
 
@@ -330,14 +329,6 @@ export default function ProfileScreen() {
 
   const priorityActions = skinExtra?.priorityKnowDo?.do?.slice(0, 3) ?? [];
 
-  const hasSkinDna = skinExtra?.skinDna && (
-    skinExtra.skinDna.skinType ||
-    skinExtra.skinDna.primaryConcern ||
-    skinExtra.skinDna.sensitivityIndex != null ||
-    skinExtra.skinDna.uvSensitivity ||
-    skinExtra.skinDna.hormonalCorrelation
-  );
-
   const hasWeeklyContent = hasRealScoreData || observations.length > 0 || priorityActions.length > 0;
 
   if (loading) {
@@ -376,24 +367,15 @@ export default function ProfileScreen() {
           onPhotoPress={handlePhotoPress}
         />
 
-        {/* 2. Skin DNA + scan reports link (matches web profile) */}
-        {hasSkinDna ? (
-          <SkinDnaCard
-            skinDna={skinExtra!.skinDna}
-            isNew
-            onViewScanReports={() => router.push("/(drawer)/history" as any)}
-          />
-        ) : (
-          <Pressable
-            style={styles.historyLinkCard}
-            onPress={() => router.push("/(drawer)/history" as any)}
-          >
-            <Text style={styles.historyLinkTitle}>Treatment history</Text>
-            <Text style={styles.historyLinkSub}>
-              View scan reports, clinic visits, and audio notes
-            </Text>
-          </Pressable>
-        )}
+        <Pressable
+          style={styles.historyLinkCard}
+          onPress={() => router.push("/(drawer)/history" as any)}
+        >
+          <Text style={styles.historyLinkTitle}>Treatment history</Text>
+          <Text style={styles.historyLinkSub}>
+            View scan reports, clinic visits, and audio notes
+          </Text>
+        </Pressable>
 
         {/* 3. Last treatment + recent visits */}
         {skinExtra && skinExtra.visits.length > 0 ? (
@@ -425,12 +407,12 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* First-time user nudge when nothing to show */}
-        {!hasRealScoreData && !hasSkinDna && !(skinExtra && skinExtra.visits.length > 0) && !monthlyInsight ? (
+        {!hasRealScoreData && !(skinExtra && skinExtra.visits.length > 0) && !monthlyInsight ? (
           <View style={styles.emptyCard}>
             <Ionicons name="leaf-outline" size={36} color={NAVY} style={{ marginBottom: 10 }} />
             <Text style={styles.emptyTitle}>Welcome to SkinFit</Text>
             <Text style={styles.emptyBody}>
-              Take your first AI skin scan to unlock your Skin DNA Card, weekly reports, and personalised insights.
+              Take your first AI skin scan to unlock weekly reports and personalised insights.
             </Text>
           </View>
         ) : null}

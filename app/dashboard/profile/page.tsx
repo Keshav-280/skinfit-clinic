@@ -3,6 +3,7 @@ import { ProfileForm } from "@/components/dashboard/ProfileForm";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
 import { ProfileSkinIdentitySection } from "@/components/dashboard/ProfileSkinIdentitySection";
 import { ProfileSkinDnaSection } from "@/components/dashboard/ProfileSkinDnaSection";
+import { ProfileLastTreatmentSection } from "@/components/dashboard/ProfileLastTreatmentSection";
 import { ProfileRecentVisitsSection } from "@/components/dashboard/ProfileRecentVisitsSection";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
 
@@ -24,6 +25,7 @@ export default async function ProfilePage() {
       <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
         <ProfileSkinDnaSection />
       </div>
+      <ProfileLastTreatmentSection />
       <ProfileRecentVisitsSection />
       <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
         <ProfileSkinIdentitySection />

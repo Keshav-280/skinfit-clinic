@@ -112,7 +112,6 @@ export function ProfileRecentVisitsSection() {
   }, []);
 
   const list = visits ?? [];
-  const latest = list[0];
 
   return (
     <section
@@ -168,30 +167,7 @@ export function ProfileRecentVisitsSection() {
         </div>
       ) : (
         <>
-          {latest ? (
-            <div
-              className="mt-6 flex flex-col gap-3 rounded-xl bg-[#e8ede6]/90 p-4 sm:flex-row sm:items-center sm:justify-between"
-              style={{ border: "1px solid #d4ddd2" }}
-            >
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                  Last treatment
-                </p>
-                <p className="mt-1 text-base font-bold text-zinc-900">
-                  {formatVisitDate(latest.visitDate)}
-                </p>
-                <p className="text-sm text-zinc-600">with {latest.doctorName}</p>
-              </div>
-              <Link
-                href={`/dashboard/history/visits/${latest.id}`}
-                className="inline-flex items-center justify-center rounded-full bg-[#2C3E6B] px-5 py-2 text-sm font-semibold text-white"
-              >
-                View
-              </Link>
-            </div>
-          ) : null}
-
-          <div className="mt-4 space-y-3">
+          <div className="mt-6 space-y-3">
             {list.slice(0, 5).map((v) => (
               <VisitCard key={v.id} v={v} />
             ))}

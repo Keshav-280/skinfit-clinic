@@ -22,27 +22,11 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
+import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-/** Split API focus into headline + body when possible. */
-function splitTodayFocusMessage(message: string): { headline: string; detail: string } {
-  const trimmed = message.trim();
-  const lines = trimmed
-    .split(/\n+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (lines.length >= 2) {
-    return { headline: lines[0], detail: lines.slice(1).join(" ") };
-  }
-  const sentenceBreak = trimmed.match(/^(.+?[.!?])(\s+)(.+)$/);
-  if (sentenceBreak && sentenceBreak[1] && sentenceBreak[3]) {
-    return { headline: sentenceBreak[1].trim(), detail: sentenceBreak[3].trim() };
-  }
-  return { headline: trimmed, detail: "" };
-}
 
 type SkinScanItem = {
   id: string;

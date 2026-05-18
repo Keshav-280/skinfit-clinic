@@ -14,6 +14,7 @@ import {
 
 import { ReportDonut } from "@/components/ReportDonut";
 import { ScanMaskAnnotationsNative } from "@/components/ScanMaskAnnotationsNative";
+import { DOT_MARKER_LEGEND } from "@/lib/scanMaskLabels";
 import { TrackerReportSectionsNative } from "@/components/TrackerReportSectionsNative";
 import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
@@ -156,10 +157,14 @@ export function SkinScanReportBodyNative({
   const overlayUri = annotatedOverlayUri?.trim() || "";
   const wrinkleMask = wrinkleMaskUri?.trim() || "";
   const acneMask = acneMaskUri?.trim() || "";
-  const showMaskPanels = wrinkleMask.length > 0 || acneMask.length > 0;
-  const showAnnotatedSection =
-    overlayUri.length > 0 || (regions.length > 0 && imageUrl?.trim().length > 0);
-  const showDotMarkers = overlayUri.length === 0 && regions.length > 0;
+  const showMaskSection =
+    wrinkleMask.length > 0 || acneMask.length > 0 || overlayUri.length > 0;
+  const showDotMarkersOnly =
+    overlayUri.length === 0 &&
+    wrinkleMask.length === 0 &&
+    acneMask.length === 0 &&
+    regions.length > 0 &&
+    (imageUrl?.trim().length ?? 0) > 0;
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const heroIntro =
@@ -279,20 +284,18 @@ export function SkinScanReportBodyNative({
             <Text style={styles.mutedCenter}>No face capture images for this scan.</Text>
           )}
 
-          {showMaskPanels ? (
+          {showMaskSection ? (
             <ScanMaskAnnotationsNative
               wrinkleMaskUri={wrinkleMask || undefined}
               acneMaskUri={acneMask || undefined}
+              overlayUri={overlayUri || undefined}
               spatialOutputs={spatialOutputs}
             />
           ) : null}
 
-          {showAnnotatedSection ? (
+          {showDotMarkersOnly ? (
             <View style={styles.annotatedBlock}>
-              <Text style={styles.captureKicker}>
-                {overlayUri ? "Combined overlay" : "Annotated findings"}
-              </Text>
-              {overlayUri || showDotMarkers ? (
+              <Text style={styles.captureKicker}>{DOT_MARKER_LEGEND.title}</Text>
               <View style={styles.annotatedFrame}>
                 <LinearGradient
                   colors={["rgba(255,255,255,0.35)", "transparent", "rgba(0,0,0,0.2)"]}
@@ -300,29 +303,26 @@ export function SkinScanReportBodyNative({
                   pointerEvents="none"
                 />
                 <Image source={annotatedFaceSource} style={styles.faceImg} resizeMode="cover" />
-                {showDotMarkers
-                  ? regions.map((region, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.marker,
-                          {
-                            left: `${region.coordinates.x}%`,
-                            top: `${region.coordinates.y}%`,
-                            backgroundColor: markerColor(region.issue),
-                          },
-                        ]}
-                        accessibilityLabel={region.issue}
-                      />
-                    ))
-                  : null}
+                {regions.map((region, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.marker,
+                      {
+                        left: `${region.coordinates.x}%`,
+                        top: `${region.coordinates.y}%`,
+                        backgroundColor: markerColor(region.issue),
+                      },
+                    ]}
+                    accessibilityLabel={region.issue}
+                  />
+                ))}
               </View>
-              ) : null}
               <View style={styles.legendRow}>
-                {["Acne", "Wrinkle", "Pigmentation", "Texture"].map((label) => (
-                  <View key={label} style={styles.legendChip}>
-                    <View style={[styles.legendDot, { backgroundColor: markerColor(label) }]} />
-                    <Text style={styles.legendText}>{label}</Text>
+                {DOT_MARKER_LEGEND.items.map((item) => (
+                  <View key={item.label} style={styles.legendChip}>
+                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                    <Text style={styles.legendText}>{item.label}</Text>
                   </View>
                 ))}
               </View>

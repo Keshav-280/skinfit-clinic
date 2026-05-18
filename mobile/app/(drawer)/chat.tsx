@@ -378,7 +378,19 @@ export default function ChatScreen() {
         unreadRes.status === "fulfilled"
           ? unreadRes.value
           : ({ doctorCount: 0, supportCount: 0 } as const);
-      const calendarData = calendarRes.status === "fulfilled" ? calendarRes.value : { events: [] as Array<{ start?: string; doctor?: { name?: string | null } }> };
+      const calendarData =
+        calendarRes.status === "fulfilled"
+          ? calendarRes.value
+          : {
+              events: [] as Array<{
+                start?: string;
+                doctor?: {
+                  name?: string | null;
+                  specialty?: string | null;
+                  imageUrl?: string | null;
+                };
+              }>,
+            };
       const doctorProfileData =
         doctorProfileRes.status === "fulfilled" ? doctorProfileRes.value : { profile: null };
 

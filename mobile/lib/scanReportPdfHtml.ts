@@ -1,6 +1,13 @@
 import { formatDistanceToNow } from "date-fns";
 
 import type { ScanSpatialOutputs } from "./spatialOutputs";
+import {
+  ACNE_MASK_COPY,
+  COMBINED_OVERLAY_COPY,
+  DOT_MARKER_LEGEND,
+  SCAN_MASK_SECTION,
+  WRINKLE_MASK_COPY,
+} from "./scanMaskLabels";
 
 const PEACH = "#F29C91";
 const TEAL_BAND = "#E0EEEB";
@@ -190,10 +197,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
   }
 
-  const legendItems = ["Acne", "Wrinkle", "Pigmentation", "Texture"];
   let legendHtml = "";
-  for (const label of legendItems) {
-    legendHtml += `<li><span class="leg-dot" style="background:${regionMarkerColor(label)}"></span>${esc(label)}</li>`;
+  for (const item of DOT_MARKER_LEGEND.items) {
+    legendHtml += `<li><span class="leg-dot" style="background:${item.color}"></span>${esc(item.label)}</li>`;
   }
 
   const metricDonuts = [
@@ -238,21 +244,22 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   const wrMask = p.wrinkleMaskDataUri?.trim() || "";
   const acMask = p.acneMaskDataUri?.trim() || "";
   if (wrMask || acMask) {
-    masksHtml = `<div class="masks-wrap avoid-break"><p class="cap-kicker">Model masks</p><div class="masks-row">`;
+    masksHtml = `<div class="masks-wrap avoid-break"><p class="cap-kicker">${esc(SCAN_MASK_SECTION.title)}</p><p class="masks-intro">${esc(SCAN_MASK_SECTION.intro)}</p><div class="masks-row">`;
     if (wrMask) {
       const wMeta = p.spatialOutputs?.wrinkles;
-      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(wrMask)} alt="Wrinkle mask" /></div><figcaption><strong>224×224 pixel map</strong> (segmentation head)`;
+      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(wrMask)} alt="${esc(WRINKLE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(WRINKLE_MASK_COPY.title)}</strong> — ${esc(WRINKLE_MASK_COPY.subtitle)}<br/><span class="mask-desc">${esc(WRINKLE_MASK_COPY.body)}</span>`;
       if (wMeta) {
-        masksHtml += `<br/><span class="mask-meta">Cls ${wMeta.cls_severity_1_5.toFixed(1)} · Seg ${wMeta.seg_severity_1_5.toFixed(1)} · Combined ${wMeta.combined_severity_1_5.toFixed(1)}</span>`;
+        masksHtml += `<br/><span class="mask-meta">${WRINKLE_MASK_COPY.metaCls} ${wMeta.cls_severity_1_5.toFixed(1)} · ${WRINKLE_MASK_COPY.metaSeg} ${wMeta.seg_severity_1_5.toFixed(1)} · ${WRINKLE_MASK_COPY.metaCombined} ${wMeta.combined_severity_1_5.toFixed(1)}</span>`;
       }
       masksHtml += `</figcaption></figure>`;
     }
     if (acMask) {
       const aMeta = p.spatialOutputs?.acne;
-      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(acMask)} alt="Acne grid" /></div><figcaption><strong>16×16 patch grid</strong> (detection head)`;
+      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(acMask)} alt="${esc(ACNE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(ACNE_MASK_COPY.title)}</strong> — ${esc(ACNE_MASK_COPY.subtitle)}<br/><span class="mask-desc">${esc(ACNE_MASK_COPY.body)}</span>`;
       if (aMeta) {
-        masksHtml += `<br/><span class="mask-meta">Global ${aMeta.global_severity_1_5.toFixed(1)} · Patch mean ${aMeta.patch_mean.toFixed(3)}</span>`;
+        masksHtml += `<br/><span class="mask-meta">${ACNE_MASK_COPY.metaGlobal} ${aMeta.global_severity_1_5.toFixed(1)} · ${ACNE_MASK_COPY.metaGridMean} ${aMeta.patch_mean.toFixed(3)}</span>`;
       }
+      masksHtml += `<br/><span class="mask-note">${esc(ACNE_MASK_COPY.pigmentationNote)}</span>`;
       masksHtml += `</figcaption></figure>`;
     }
     masksHtml += `</div></div>`;
@@ -260,14 +267,19 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
 
   let annotatedBlock = "";
   if (showAnnotatedSection && annotSrc.length > 0) {
+    const overlayLegend = overlayUrl
+      ? `<p class="overlay-body">${esc(COMBINED_OVERLAY_COPY.body)}</p><ul class="overlay-bullets">${COMBINED_OVERLAY_COPY.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul><p class="overlay-note">${esc(COMBINED_OVERLAY_COPY.pigmentationNote)}</p>`
+      : "";
+    const dotLegend = showDotMarkers ? `<ul class="legend">${legendHtml}</ul>` : "";
     annotatedBlock = `
     <div class="annot-wrap avoid-break">
-      <p class="cap-kicker">${overlayUrl ? "Combined overlay" : "Annotated findings"}</p>
+      <p class="cap-kicker">${overlayUrl ? esc(COMBINED_OVERLAY_COPY.title) : esc(DOT_MARKER_LEGEND.title)}</p>
+      ${overlayLegend}
       <div class="annot-frame">
         <img src=${annotSrcJson} alt="Annotated scan" />
         ${markersHtml}
       </div>
-      <ul class="legend">${legendHtml}</ul>
+      ${dotLegend}
     </div>`;
   }
 
@@ -338,6 +350,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .cap-row3 .cap-fig { display: table-cell; width: 33.33%; text-align: center; vertical-align: top; padding: 0 4px; }
     .cap-fig figcaption { margin-top: 6px; font-size: 9px; font-weight: 500; line-height: 1.25; color: #52525b; }
 
+    .masks-intro { font-size: 10px; color: #52525b; text-align: center; margin: 6px 0 10px; line-height: 1.4; }
     .masks-wrap { margin-top: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
     .masks-row { display: table; width: 100%; table-layout: fixed; margin-top: 12px; }
     .mask-fig { display: table-cell; width: 50%; text-align: center; vertical-align: top; padding: 0 6px; }
@@ -352,6 +365,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .mask-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .mask-fig figcaption { margin-top: 8px; font-size: 10px; line-height: 1.35; color: #52525b; }
+    .mask-desc, .mask-note, .overlay-body, .overlay-note { font-size: 9px; color: #52525b; }
+    .mask-note, .overlay-note { display: block; margin-top: 6px; padding: 6px; background: #f4f4f5; border-radius: 6px; }
+    .overlay-bullets { font-size: 9px; color: #52525b; text-align: center; list-style: none; padding: 0; margin: 4px 0; }
+    .overlay-bullets li { margin: 2px 0; }
     .mask-meta { font-size: 9px; color: #71717a; }
 
     .annot-wrap { margin-top: 36px; max-width: 320px; margin-left: auto; margin-right: auto; }

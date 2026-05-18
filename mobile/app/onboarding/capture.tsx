@@ -91,6 +91,13 @@ export default function OnboardingCaptureScreen() {
         stepIndex={stepIndex}
         onCaptured={(uri) => setUris((u) => [...u, uri])}
         onPickFromLibrary={() => void pickFromLibrary()}
+        onBack={() => {
+          if (uris.length > 0) {
+            setUris((u) => u.slice(0, -1));
+          } else {
+            router.back();
+          }
+        }}
         busy={busy}
       />
     );
