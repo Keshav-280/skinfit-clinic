@@ -207,6 +207,10 @@ export const scans = pgTable("scans", {
     overlayDataUri?: string;
     wrinkleMaskDataUri?: string;
     acneMaskDataUri?: string;
+    spatialOutputs?: {
+      wrinkles: Record<string, unknown>;
+      acne: Record<string, unknown>;
+    };
   }>(),
   /** Bounding-box annotations from Roboflow (optional) */
   annotations: jsonb("annotations").$type<unknown[]>(),

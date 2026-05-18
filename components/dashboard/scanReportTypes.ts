@@ -10,6 +10,10 @@ export interface ClinicalScores {
   skin_quality?: number;
   /** Model wrinkle severity 1–5 (distinct from 0–100 “clarity” donut). */
   wrinkle_severity?: number;
+  /** ISGD/CelebA classification head (1–5). */
+  wrinkle_cls_severity?: number;
+  /** Segmentation-head severity from mask coverage (1–5). */
+  wrinkle_seg_severity?: number;
   sagging_volume?: number;
   under_eye?: number;
   hair_health?: number;

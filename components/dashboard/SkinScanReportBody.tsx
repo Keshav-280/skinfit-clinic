@@ -19,6 +19,7 @@ import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { TrackerReportSections } from "./TrackerReportSections";
 import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
+import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -228,6 +229,7 @@ export interface SkinScanReportBodyProps {
   annotatedImageUrl?: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
+  spatialOutputs?: ScanSpatialOutputs;
   scanDate: Date;
   autoDownload?: boolean;
   autoCloseAfterDownload?: boolean;
@@ -257,6 +259,7 @@ export function SkinScanReportBody({
   annotatedImageUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
+  spatialOutputs,
   scanDate,
   autoDownload = false,
   autoCloseAfterDownload = false,
@@ -662,6 +665,7 @@ export function SkinScanReportBody({
             overlayUrl={overlayUrl}
             wrinkleMaskUrl={wrinkleUrl}
             acneMaskUrl={acneUrl}
+            spatialOutputs={spatialOutputs}
             regions={regions}
           />
         ) : null}

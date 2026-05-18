@@ -24,7 +24,19 @@ import { useFocusEffect } from "@react-navigation/native";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
-import { analysisResultsToParams } from "@/lib/skinAnalysis";
+import {
+  extractSkinHealthMetrics,
+  extractSkinParamMetrics,
+  kaiParamClarity,
+  SKIN_HEALTH_PARAM_KEYS,
+} from "@/lib/skinAnalysis";
+
+function kaiParamsFromAnalysis(analysis: unknown): { label: string; value: number }[] {
+  return SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => ({
+    label,
+    value: kaiParamClarity(analysis, key, 0),
+  }));
+}
 import { normalizeRoutineSteps } from "@/lib/routine";
 
 const NAVY = "#2C3E6B";
@@ -343,13 +355,13 @@ export default function DashboardScreen() {
       : null;
   const latestScan = skinScanHistory[0] ?? null;
   const params = useMemo<SkinParamWithContext[]>(() => {
-    const current = analysisResultsToParams(selectedScan?.analysisResults ?? null);
+    const current = kaiParamsFromAnalysis(selectedScan?.analysisResults ?? null);
     const prevScan =
       selectedScanIdx < skinScanHistory.length - 1
         ? skinScanHistory[selectedScanIdx + 1]
         : null;
     const prevMap = new Map(
-      analysisResultsToParams(prevScan?.analysisResults ?? null).map((p) => [p.label, p.value])
+      kaiParamsFromAnalysis(prevScan?.analysisResults ?? null).map((p) => [p.label, p.value])
     );
     const selectedTs = selectedScan ? new Date(selectedScan.createdAt).getTime() : null;
     const weekStartTs =
@@ -363,7 +375,7 @@ export default function DashboardScreen() {
           });
     const weekBuckets = new Map<string, number[]>();
     for (const s of weekScans) {
-      const rows = analysisResultsToParams(s.analysisResults ?? null);
+      const rows = kaiParamsFromAnalysis(s.analysisResults ?? null);
       for (const r of rows) {
         const arr = weekBuckets.get(r.label) ?? [];
         arr.push(r.value);
@@ -715,11 +727,15 @@ export default function DashboardScreen() {
       <ConsistencyScoreCard value={data.lifestyleAlignmentScore} />
 
       {/* ── Skin Health + Parameter Metrics ── */}
-      <SkinHealthMetricsCard analysis={latestScan?.analysisResults ?? null} />
-      <SkinParamMetricsCard
-        analysis={latestScan?.analysisResults ?? null}
-        onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
-      />
+      {latestScan ? (
+        <>
+          <SkinHealthMetricsCard analysis={latestScan.analysisResults} />
+          <SkinParamMetricsCard
+            analysis={latestScan.analysisResults}
+            onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
+          />
+        </>
+      ) : null}
 
       {/* ── Daily Journal Cards ── */}
       <Text style={[styles.sectionTitle, { marginTop: 20 }]}>DAILY JOURNAL</Text>
@@ -889,50 +905,12 @@ function ConsistencyScoreCard({ value }: { value: number }) {
   );
 }
 
-function extractSkinHealthMetrics(analysis: unknown): { label: string; value: number }[] {
-  const a = analysis && typeof analysis === "object" ? (analysis as Record<string, unknown>) : {};
-  const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
-  function val(key: string, fallback: number): number {
-    const v = kp?.[key]?.value;
-    return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : fallback;
-  }
-  return [
-    { label: "Hydration", value: val("hydration", 72) },
-    { label: "Oil Level", value: val("sebum", 65) },
-    { label: "Elasticity", value: val("elasticity", 70) },
-    { label: "Sensitivity", value: 100 - val("redness", 40) },
-    { label: "Evenness", value: val("tone_evenness", 60) },
-  ];
-}
-
-function extractSkinParamMetrics(analysis: unknown): { label: string; value: number; color: string; status: string }[] {
-  const a = analysis && typeof analysis === "object" ? (analysis as Record<string, unknown>) : {};
-  const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
-  function val(key: string, fallback: number): number {
-    const v = kp?.[key]?.value;
-    return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : fallback;
-  }
-  function classify(v: number): { color: string; status: string } {
-    if (v >= 75) return { color: GREEN_ACCENT, status: "Mild" };
-    if (v >= 50) return { color: "#F59E0B", status: "Moderate" };
-    return { color: "#DC2626", status: "Needs Care" };
-  }
-  const acne = val("acne_pimples", 72);
-  const pores = val("pores", 68);
-  const wrinkles = val("wrinkles", 75);
-  const redness = val("redness", 60);
-  return [
-    { label: "Acne", value: acne, ...classify(acne) },
-    { label: "Pores", value: pores, ...classify(pores) },
-    { label: "Wrinkles", value: wrinkles, ...classify(wrinkles) },
-    { label: "Redness", value: redness, ...classify(redness) },
-  ];
-}
-
-const RADAR_SIZE = 220;
+const RADAR_SIZE = 260;
 const RADAR_CENTER = RADAR_SIZE / 2;
-const RADAR_RADIUS = 80;
+const RADAR_RADIUS = 90;
 const RADAR_LEVELS = 4;
+const RADAR_LABEL_OFFSET = 30;
+const RADAR_OUTER = RADAR_SIZE + RADAR_LABEL_OFFSET * 2;
 
 function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }) {
   const n = metrics.length;
@@ -956,37 +934,81 @@ function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }
     .map((p) => `${p.x},${p.y}`)
     .join(" ");
 
-  const labelOffset = 24;
-
   return (
-    <View style={{ alignItems: "center", marginVertical: 8 }}>
-      <Svg width={RADAR_SIZE} height={RADAR_SIZE}>
-        {gridLevels.map((pts, l) => (
-          <Polygon key={l} points={pts} fill="none" stroke="#D1D5DB" strokeWidth={1} />
-        ))}
-        {metrics.map((_, i) => {
-          const p = pointOnAxis(i, 1);
-          return <Line key={i} x1={RADAR_CENTER} y1={RADAR_CENTER} x2={p.x} y2={p.y} stroke="#E5E7EB" strokeWidth={1} />;
-        })}
-        <Polygon points={dataPoints} fill="rgba(22,163,74,0.25)" stroke={GREEN_ACCENT} strokeWidth={2} />
-      </Svg>
+    <View
+      style={{
+        width: RADAR_OUTER,
+        height: RADAR_OUTER,
+        alignSelf: "center",
+        marginVertical: 8,
+      }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          left: RADAR_LABEL_OFFSET,
+          top: RADAR_LABEL_OFFSET,
+          width: RADAR_SIZE,
+          height: RADAR_SIZE,
+        }}
+      >
+        <Svg width={RADAR_SIZE} height={RADAR_SIZE}>
+          {gridLevels.map((pts, l) => (
+            <Polygon key={l} points={pts} fill="none" stroke="#D1D5DB" strokeWidth={1} />
+          ))}
+          {metrics.map((_, i) => {
+            const p = pointOnAxis(i, 1);
+            return (
+              <Line
+                key={i}
+                x1={RADAR_CENTER}
+                y1={RADAR_CENTER}
+                x2={p.x}
+                y2={p.y}
+                stroke="#E5E7EB"
+                strokeWidth={1}
+              />
+            );
+          })}
+          <Polygon
+            points={dataPoints}
+            fill="rgba(22,163,74,0.2)"
+            stroke={GREEN_ACCENT}
+            strokeWidth={2}
+          />
+          {metrics.map((m, i) => {
+            const p = pointOnAxis(i, m.value / 100);
+            return <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={4} fill={GREEN_ACCENT} />;
+          })}
+        </Svg>
+      </View>
       {metrics.map((m, i) => {
         const angle = angleSlice * i - Math.PI / 2;
-        const lx = RADAR_CENTER + (RADAR_RADIUS + labelOffset) * Math.cos(angle);
-        const ly = RADAR_CENTER + (RADAR_RADIUS + labelOffset) * Math.sin(angle);
+        const lx =
+          RADAR_LABEL_OFFSET +
+          RADAR_CENTER +
+          (RADAR_RADIUS + RADAR_LABEL_OFFSET) * Math.cos(angle);
+        const ly =
+          RADAR_LABEL_OFFSET +
+          RADAR_CENTER +
+          (RADAR_RADIUS + RADAR_LABEL_OFFSET) * Math.sin(angle);
         return (
           <View
             key={m.label}
             style={{
               position: "absolute",
-              left: lx - 40,
-              top: ly - 14,
-              width: 80,
+              left: lx - 44,
+              top: ly - 16,
+              width: 88,
               alignItems: "center",
             }}
           >
-            <Text style={{ fontSize: 12, color: "#6B7280", fontWeight: "500" }}>{m.label}</Text>
-            <Text style={{ fontSize: 14, color: "#18181b", fontWeight: "800" }}>{m.value}%</Text>
+            <Text style={{ fontSize: 12, color: "#64748b", fontWeight: "500" }}>
+              {m.label}
+            </Text>
+            <Text style={{ fontSize: 14, color: "#18181b", fontWeight: "800" }}>
+              {m.value}%
+            </Text>
           </View>
         );
       })}
@@ -1037,6 +1059,11 @@ function SkinParamMetricsCard({ analysis, onViewAll }: { analysis: unknown; onVi
             <Text style={styles.paramMetricLabel}>{m.label}</Text>
             <ParamRing value={m.value} color={m.color} />
             <Text style={[styles.paramMetricStatus, { color: m.color }]}>{m.status}</Text>
+            {m.detail ? (
+              <Text style={styles.paramMetricDetail} numberOfLines={2}>
+                {m.detail}
+              </Text>
+            ) : null}
           </View>
         ))}
       </View>
@@ -1879,6 +1906,14 @@ const styles = StyleSheet.create({
   },
   paramMetricLabel: { fontSize: 15, fontWeight: "700", color: "#18181b" },
   paramMetricStatus: { fontSize: 13, fontWeight: "700" },
+  paramMetricDetail: {
+    marginTop: 4,
+    fontSize: 9,
+    lineHeight: 12,
+    color: "#6B7280",
+    textAlign: "center",
+    paddingHorizontal: 4,
+  },
 
   viewAllParamsBtn: {
     backgroundColor: GREEN_ACCENT,

@@ -321,46 +321,6 @@ export function ProfileSkinDnaSection() {
         </div>
       </section>
 
-      {data.visits.length > 0 ? (
-        <section
-          className="rounded-[22px] bg-gradient-to-b from-white to-[#FAF8F4]/90 p-5 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)] sm:p-6"
-          style={{ border: "1px solid #eee7dc" }}
-        >
-          <h2 className="text-lg font-bold text-zinc-900">Recent visits</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Notes from your clinic appointments.
-          </p>
-          <div className="mt-4 space-y-3">
-            {data.visits.slice(0, 5).map((v) => (
-              <div
-                key={v.id}
-                className="rounded-xl bg-white/95 p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-                style={{ border: "1px solid #e8e2d8" }}
-              >
-                <p className="font-semibold text-zinc-900">
-                  {v.visitDate} · {v.doctorName}
-                </p>
-                {v.purpose ? (
-                  <p className="mt-2 text-sm text-zinc-700">Purpose: {v.purpose}</p>
-                ) : null}
-                {v.treatments ? (
-                  <p className="mt-1 text-sm text-zinc-700">
-                    Treatments: {v.treatments}
-                  </p>
-                ) : null}
-                <p className="mt-2 line-clamp-4 text-sm text-zinc-600">
-                  {v.notes}
-                </p>
-                {v.responseRating ? (
-                  <p className="mt-2 text-xs font-semibold text-teal-700">
-                    Response: {v.responseRating}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
     </div>
   );
 }

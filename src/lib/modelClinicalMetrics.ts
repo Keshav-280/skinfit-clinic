@@ -139,12 +139,24 @@ export function enrichKaiParamsFromModel(
       : undefined;
 
   if (acne != null) {
-    set("acne_pimples", aiRow(acne));
-    set("active_acne", aiRow(acne));
+    const acneExtras =
+      params.acne_pimples?.extras ?? params.active_acne?.extras;
+    set("acne_pimples", aiRow(acne, acneExtras));
+    set("active_acne", aiRow(acne, acneExtras));
   }
   if (scars != null) set("acne_scars", aiRow(scars));
   if (wrinkles != null) {
-    set("wrinkles", aiRow(wrinkles, wrExtras));
+    const mergedWrExtras = {
+      ...(params.wrinkles?.extras ?? {}),
+      ...(wrExtras ?? {}),
+    };
+    set(
+      "wrinkles",
+      aiRow(
+        wrinkles,
+        Object.keys(mergedWrExtras).length > 0 ? mergedWrExtras : undefined
+      )
+    );
   }
   if (sagging != null) {
     set("elasticity", aiRow(sagging));

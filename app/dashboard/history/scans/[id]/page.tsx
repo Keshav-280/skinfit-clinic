@@ -10,6 +10,7 @@ import {
   parseScanOverlayDataUri,
   parseScanWrinkleMaskDataUri,
 } from "../../../../../src/lib/parseClinicalScores";
+import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../../../src/lib/faceScanCaptures";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
@@ -77,6 +78,7 @@ export default async function ScanReportPage({
   const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
   const wrinkleMaskUrl = parseScanWrinkleMaskDataUri(row.scores);
   const acneMaskUrl = parseScanAcneMaskDataUri(row.scores);
+  const spatialOutputs = parseScanSpatialOutputs(row.scores);
 
   const faceCaptureGallery =
     row.faceCaptureImages && row.faceCaptureImages.length >= 1
@@ -108,6 +110,7 @@ export default async function ScanReportPage({
       annotatedImageUrl={annotatedImageUrl ?? null}
       wrinkleMaskUrl={wrinkleMaskUrl ?? null}
       acneMaskUrl={acneMaskUrl ?? null}
+      spatialOutputs={spatialOutputs ?? null}
       scanDateIso={row.createdAt.toISOString()}
       autoDownload={autoDownload}
       autoCloseAfterDownload={autoCloseAfterDownload}

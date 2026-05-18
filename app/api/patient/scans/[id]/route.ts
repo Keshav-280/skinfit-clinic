@@ -6,8 +6,11 @@ import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
 import {
   parseClinicalScores,
+  parseScanAcneMaskDataUri,
   parseScanOverlayDataUri,
+  parseScanWrinkleMaskDataUri,
 } from "@/src/lib/parseClinicalScores";
+import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 
@@ -58,6 +61,19 @@ export async function GET(
   const regions = parseScanRegions(row.annotations);
   const clinical_scores = parseClinicalScores(row.scores);
   const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
+  const wrinkleMaskDataUri = parseScanWrinkleMaskDataUri(row.scores);
+  const acneMaskDataUri = parseScanAcneMaskDataUri(row.scores);
+  const spatialOutputs = parseScanSpatialOutputs(row.scores);
+  const kaiParams =
+    row.scores &&
+    typeof row.scores === "object" &&
+    (row.scores as Record<string, unknown>).kaiParams &&
+    typeof (row.scores as Record<string, unknown>).kaiParams === "object"
+      ? ((row.scores as Record<string, unknown>).kaiParams as Record<
+          string,
+          unknown
+        >)
+      : undefined;
 
   const faceCaptureGallery =
     row.faceCaptureImages && row.faceCaptureImages.length >= 1
@@ -89,5 +105,9 @@ export async function GET(
     aiSummary: row.aiSummary,
     scanDateIso: row.createdAt.toISOString(),
     ...(annotatedImageUrl ? { annotatedImageUrl } : {}),
+    ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
+    ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
+    ...(spatialOutputs ? { spatialOutputs } : {}),
+    ...(kaiParams ? { kaiParams } : {}),
   });
 }

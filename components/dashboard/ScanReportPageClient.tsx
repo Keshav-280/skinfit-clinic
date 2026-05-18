@@ -7,6 +7,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { SkinScanReportBody } from "./SkinScanReportBody";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
+import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 
 export interface ScanReportPageClientProps {
   scanId: number;
@@ -23,6 +24,7 @@ export interface ScanReportPageClientProps {
   annotatedImageUrl?: string | null;
   wrinkleMaskUrl?: string | null;
   acneMaskUrl?: string | null;
+  spatialOutputs?: ScanSpatialOutputs | null;
   scanDateIso: string;
   autoDownload?: boolean;
   autoCloseAfterDownload?: boolean;
@@ -42,6 +44,7 @@ export function ScanReportPageClient({
   annotatedImageUrl = null,
   wrinkleMaskUrl = null,
   acneMaskUrl = null,
+  spatialOutputs = null,
   scanDateIso,
   autoDownload = false,
   autoCloseAfterDownload = false,
@@ -153,6 +156,7 @@ export function ScanReportPageClient({
           annotatedImageUrl={annotatedImageUrl ?? undefined}
           wrinkleMaskUrl={wrinkleMaskUrl ?? undefined}
           acneMaskUrl={acneMaskUrl ?? undefined}
+          spatialOutputs={spatialOutputs ?? undefined}
           scanDate={scanDate}
           autoDownload={autoDownload}
           autoCloseAfterDownload={autoCloseAfterDownload}

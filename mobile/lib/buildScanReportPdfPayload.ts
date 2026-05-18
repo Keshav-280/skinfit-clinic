@@ -1,4 +1,5 @@
 import { embedScanImageForPdf } from "./resolveScanImage";
+import type { ScanSpatialOutputs } from "./spatialOutputs";
 import type { ScanReportPdfPayload } from "./scanReportPdfHtml";
 
 /** GET /api/patient/scans/:id — fields needed for PDF. */
@@ -14,6 +15,9 @@ export type PatientScanDetailForPdf = {
   aiSummary: string | null;
   scanDateIso: string;
   annotatedImageUrl?: string;
+  wrinkleMaskDataUri?: string;
+  acneMaskDataUri?: string;
+  spatialOutputs?: ScanSpatialOutputs;
 };
 
 export async function buildScanReportPdfPayload(
@@ -41,6 +45,18 @@ export async function buildScanReportPdfPayload(
     annotatedDataUri = await embedScanImageForPdf(raw, token);
   }
 
+  let wrinkleMaskDataUri: string | undefined;
+  const wrRaw = detail.wrinkleMaskDataUri?.trim();
+  if (wrRaw) {
+    wrinkleMaskDataUri = await embedScanImageForPdf(wrRaw, token);
+  }
+
+  let acneMaskDataUri: string | undefined;
+  const acRaw = detail.acneMaskDataUri?.trim();
+  if (acRaw) {
+    acneMaskDataUri = await embedScanImageForPdf(acRaw, token);
+  }
+
   return {
     userName: detail.userName,
     userAge: detail.userAge,
@@ -51,6 +67,9 @@ export async function buildScanReportPdfPayload(
     scanDateIso: detail.scanDateIso,
     photos,
     annotatedDataUri,
+    wrinkleMaskDataUri,
+    acneMaskDataUri,
+    spatialOutputs: detail.spatialOutputs,
     regions: detail.regions ?? [],
   };
 }

@@ -204,7 +204,14 @@ export default function HistoryListScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.push("/(drawer)/scan" as any)} style={styles.backBtn} hitSlop={12}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.push("/(drawer)" as any);
+          }}
+          style={styles.backBtn}
+          hitSlop={12}
+        >
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={styles.headerTitle}>Treatment History</Text>
@@ -360,6 +367,72 @@ export default function HistoryListScreen() {
             ) : null}
           </>
         )}
+      </View>
+
+      <View style={[styles.visitSection, CARD, { marginTop: 28 }]}>
+        <Text style={styles.subsectionTitle}>Clinic notes</Text>
+        {visits.length === 0 ? (
+          <Text style={styles.empty}>No clinic notes yet.</Text>
+        ) : (
+          visits.map((visit) => (
+            <View key={visit.id} style={styles.visitCard}>
+              <View style={styles.visitHeader}>
+                <Text style={styles.visitDate}>
+                  {format(parseISO(`${visit.visitDateYmd}T12:00:00`), "MMM d, yyyy")}
+                </Text>
+                <Text style={styles.visitDoc}>{visit.doctorName}</Text>
+              </View>
+              {visit.purpose ? (
+                <Text style={styles.visitNotesBody}>Purpose: {visit.purpose}</Text>
+              ) : null}
+              {visit.treatments ? (
+                <Text style={[styles.visitNotesBody, { marginTop: 6 }]}>
+                  Treatments: {visit.treatments}
+                </Text>
+              ) : null}
+              <View style={[styles.visitNotesBox, { marginTop: 10 }]}>
+                <Text style={styles.visitNotesLabel}>Notes</Text>
+                <Text style={styles.visitNotesBody}>{visit.notes}</Text>
+                {visit.attachments && visit.attachments.length > 0 ? (
+                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: GLASS_BORDER }}>
+                    <Text style={styles.visitNotesLabel}>Documents</Text>
+                    {visit.attachments.map((att, idx) => (
+                      <Pressable
+                        key={`${visit.id}-att-${idx}`}
+                        onPress={() => {
+                          if (att.dataUri.startsWith("http")) {
+                            void Linking.openURL(att.dataUri);
+                          }
+                        }}
+                        style={{ marginTop: 6 }}
+                      >
+                        <Text style={styles.attachLink}>{att.fileName}</Text>
+                        <Text style={styles.attachMeta}>{att.mimeType}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+              {visit.responseRating ? (
+                <Text style={[styles.editLink, { marginTop: 10, color: "#0f766e" }]}>
+                  Response: {visit.responseRating}
+                </Text>
+              ) : null}
+              <Pressable
+                style={{ marginTop: 12 }}
+                onPress={() => router.push(`/(drawer)/history/visit/${visit.id}` as any)}
+              >
+                <Text style={styles.editLink}>View full visit details</Text>
+              </Pressable>
+            </View>
+          ))
+        )}
+        <Pressable
+          style={{ marginTop: visits.length > 0 ? 8 : 0 }}
+          onPress={() => router.push("/(drawer)/history/visits" as any)}
+        >
+          <Text style={styles.editLink}>All visits & notes</Text>
+        </Pressable>
       </View>
     </ScrollView>
     </View>

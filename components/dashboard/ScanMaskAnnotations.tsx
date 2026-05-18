@@ -1,6 +1,11 @@
 "use client";
 
+import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import type { ReportRegion } from "./scanReportTypes";
+
+function fmt15(v: number) {
+  return v.toFixed(1);
+}
 
 function regionMarkerColor(issue: string): string {
   const x = issue.toLowerCase();
@@ -14,12 +19,14 @@ export function ScanMaskAnnotations({
   overlayUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
+  spatialOutputs,
   regions,
 }: {
   imageUrl: string;
   overlayUrl?: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
+  spatialOutputs?: ScanSpatialOutputs;
   regions: ReportRegion[];
 }) {
   const overlay = overlayUrl?.trim() || "";
@@ -51,8 +58,15 @@ export function ScanMaskAnnotations({
                   className="h-full w-full object-cover object-center"
                 />
               </div>
-              <figcaption className="text-center text-[11px] font-medium text-violet-800">
-                Wrinkle mask
+              <figcaption className="space-y-1 text-center text-[11px] font-medium text-violet-800">
+                <p>224×224 pixel map (segmentation head)</p>
+                {spatialOutputs?.wrinkles ? (
+                  <p className="text-[10px] font-normal leading-snug text-violet-700/90">
+                    Cls {fmt15(spatialOutputs.wrinkles.cls_severity_1_5)} · Seg{" "}
+                    {fmt15(spatialOutputs.wrinkles.seg_severity_1_5)} · Combined{" "}
+                    {fmt15(spatialOutputs.wrinkles.combined_severity_1_5)}
+                  </p>
+                ) : null}
               </figcaption>
             </figure>
           ) : null}
@@ -66,8 +80,14 @@ export function ScanMaskAnnotations({
                   className="h-full w-full object-cover object-center"
                 />
               </div>
-              <figcaption className="text-center text-[11px] font-medium text-orange-800">
-                Acne mask
+              <figcaption className="space-y-1 text-center text-[11px] font-medium text-orange-800">
+                <p>16×16 patch grid (detection head)</p>
+                {spatialOutputs?.acne ? (
+                  <p className="text-[10px] font-normal leading-snug text-orange-700/90">
+                    Global severity {fmt15(spatialOutputs.acne.global_severity_1_5)}{" "}
+                    · Grid mean {spatialOutputs.acne.patch_mean.toFixed(3)}
+                  </p>
+                ) : null}
               </figcaption>
             </figure>
           ) : null}

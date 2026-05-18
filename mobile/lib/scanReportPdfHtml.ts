@@ -1,5 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 
+import type { ScanSpatialOutputs } from "./spatialOutputs";
+
 const PEACH = "#F29C91";
 const TEAL_BAND = "#E0EEEB";
 const BEIGE = "#F5F1E9";
@@ -80,6 +82,8 @@ export type ScanReportPdfPayload = {
       active_acne?: number;
       skin_quality?: number;
       wrinkle_severity?: number;
+      wrinkle_cls_severity?: number;
+      wrinkle_seg_severity?: number;
       sagging_volume?: number;
       under_eye?: number;
       hair_health?: number;
@@ -90,6 +94,9 @@ export type ScanReportPdfPayload = {
   scanDateIso: string;
   /** Data URI for overlay image when available. */
   annotatedDataUri?: string;
+  wrinkleMaskDataUri?: string;
+  acneMaskDataUri?: string;
+  spatialOutputs?: ScanSpatialOutputs;
   regions: Array<{ issue: string; coordinates: { x: number; y: number } }>;
 };
 
@@ -98,7 +105,9 @@ type ClinicalKey = keyof NonNullable<ScanReportPdfPayload["metrics"]["clinical_s
 const CLINICAL_ROWS: { key: ClinicalKey; label: string }[] = [
   { key: "active_acne", label: "Active acne" },
   { key: "skin_quality", label: "Skin quality" },
-  { key: "wrinkle_severity", label: "Wrinkles (severity 1–5)" },
+  { key: "wrinkle_severity", label: "Wrinkles (combined 1–5)" },
+  { key: "wrinkle_cls_severity", label: "Wrinkles — cls head" },
+  { key: "wrinkle_seg_severity", label: "Wrinkles — seg head" },
   { key: "sagging_volume", label: "Sagging & volume" },
   { key: "under_eye", label: "Under-eye" },
   { key: "hair_health", label: "Hair health" },
@@ -225,11 +234,35 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       `<li><span class="vid-lbl">${esc(v.label)}: </span><span class="vid-href">${esc(v.href)}</span></li>`
   ).join("");
 
+  let masksHtml = "";
+  const wrMask = p.wrinkleMaskDataUri?.trim() || "";
+  const acMask = p.acneMaskDataUri?.trim() || "";
+  if (wrMask || acMask) {
+    masksHtml = `<div class="masks-wrap avoid-break"><p class="cap-kicker">Model masks</p><div class="masks-row">`;
+    if (wrMask) {
+      const wMeta = p.spatialOutputs?.wrinkles;
+      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(wrMask)} alt="Wrinkle mask" /></div><figcaption><strong>224×224 pixel map</strong> (segmentation head)`;
+      if (wMeta) {
+        masksHtml += `<br/><span class="mask-meta">Cls ${wMeta.cls_severity_1_5.toFixed(1)} · Seg ${wMeta.seg_severity_1_5.toFixed(1)} · Combined ${wMeta.combined_severity_1_5.toFixed(1)}</span>`;
+      }
+      masksHtml += `</figcaption></figure>`;
+    }
+    if (acMask) {
+      const aMeta = p.spatialOutputs?.acne;
+      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(acMask)} alt="Acne grid" /></div><figcaption><strong>16×16 patch grid</strong> (detection head)`;
+      if (aMeta) {
+        masksHtml += `<br/><span class="mask-meta">Global ${aMeta.global_severity_1_5.toFixed(1)} · Patch mean ${aMeta.patch_mean.toFixed(3)}</span>`;
+      }
+      masksHtml += `</figcaption></figure>`;
+    }
+    masksHtml += `</div></div>`;
+  }
+
   let annotatedBlock = "";
   if (showAnnotatedSection && annotSrc.length > 0) {
     annotatedBlock = `
     <div class="annot-wrap avoid-break">
-      <p class="cap-kicker">Annotated findings</p>
+      <p class="cap-kicker">${overlayUrl ? "Combined overlay" : "Annotated findings"}</p>
       <div class="annot-frame">
         <img src=${annotSrcJson} alt="Annotated scan" />
         ${markersHtml}
@@ -304,6 +337,22 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .cap-row3 .cap-fig { display: table-cell; width: 33.33%; text-align: center; vertical-align: top; padding: 0 4px; }
     .cap-fig figcaption { margin-top: 6px; font-size: 9px; font-weight: 500; line-height: 1.25; color: #52525b; }
+
+    .masks-wrap { margin-top: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
+    .masks-row { display: table; width: 100%; table-layout: fixed; margin-top: 12px; }
+    .mask-fig { display: table-cell; width: 50%; text-align: center; vertical-align: top; padding: 0 6px; }
+    .mask-frame {
+      margin: 0 auto;
+      max-width: 140px;
+      aspect-ratio: 3/4;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid rgba(124,58,237,0.35);
+      background: #e4e4e7;
+    }
+    .mask-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .mask-fig figcaption { margin-top: 8px; font-size: 10px; line-height: 1.35; color: #52525b; }
+    .mask-meta { font-size: 9px; color: #71717a; }
 
     .annot-wrap { margin-top: 36px; max-width: 320px; margin-left: auto; margin-right: auto; }
     .annot-hint { text-align: center; font-size: 11px; line-height: 1.4; color: #52525b; margin: 8px 0 0; }
@@ -540,6 +589,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     <div class="sec1 avoid-break">
       ${photos.length === 1 ? `<p class="cap-kicker">Your scan photo</p>` : ""}
       ${galleryHtml}
+      ${masksHtml}
       ${annotatedBlock}
     </div>
 

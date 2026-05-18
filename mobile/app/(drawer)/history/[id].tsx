@@ -20,6 +20,7 @@ import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
 import { shareScanReportPdf } from "@/lib/scanReportPdf";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
+import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 
 type ScanDetail = {
   scanId: number;
@@ -42,6 +43,8 @@ type ScanDetail = {
       active_acne?: number;
       skin_quality?: number;
       wrinkle_severity?: number;
+      wrinkle_cls_severity?: number;
+      wrinkle_seg_severity?: number;
       sagging_volume?: number;
       under_eye?: number;
       hair_health?: number;
@@ -51,6 +54,9 @@ type ScanDetail = {
   aiSummary: string | null;
   scanDateIso: string;
   annotatedImageUrl?: string;
+  wrinkleMaskDataUri?: string;
+  acneMaskDataUri?: string;
+  spatialOutputs?: ScanSpatialOutputs;
 };
 
 /** Always open the list — `router.back()` is wrong when this screen was opened from Scan (or elsewhere). */
@@ -147,6 +153,9 @@ export default function ScanDetailScreen() {
           aiSummary: row.aiSummary,
           scanDateIso: row.scanDateIso,
           annotatedImageUrl: row.annotatedImageUrl,
+          wrinkleMaskDataUri: row.wrinkleMaskDataUri,
+          acneMaskDataUri: row.acneMaskDataUri,
+          spatialOutputs: row.spatialOutputs,
         },
         token
       );
@@ -226,6 +235,9 @@ export default function ScanDetailScreen() {
           token
         )}
         annotatedOverlayUri={row.annotatedImageUrl}
+        wrinkleMaskUri={row.wrinkleMaskDataUri}
+        acneMaskUri={row.acneMaskDataUri}
+        spatialOutputs={row.spatialOutputs}
         regions={row.regions}
         metrics={row.metrics}
         aiSummary={row.aiSummary}

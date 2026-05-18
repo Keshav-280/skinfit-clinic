@@ -1,5 +1,11 @@
 /** Mirrors web `src/lib/skinScanAnalysis.ts` for dashboard params. */
 
+import {
+  formatAcneHeadDetail,
+  formatWrinkleHeadDetail,
+  parseSpatialOutputsFromAnalysis,
+} from "./spatialOutputs";
+
 const DEFAULT_SKIN_PARAMS = [
   { label: "Active Acne", value: 72 },
   { label: "Sagging & Volume", value: 70 },
@@ -38,9 +44,83 @@ function firstDefined(...vals: (number | undefined)[]): number | undefined {
   return vals.find((v) => typeof v === "number");
 }
 
-export function analysisResultsToParams(
+export type SkinParamRow = {
+  label: string;
+  value: number;
+  /** Model head breakdown (wrinkle seg / acne grid) when available. */
+  detail?: string;
+};
+
+/** Same 8 kAI keys as web dashboard radar + skin-params page. */
+export const SKIN_HEALTH_PARAM_KEYS = [
+  { key: "acne_pimples", label: "Acne" },
+  { key: "pores", label: "Pores" },
+  { key: "wrinkles", label: "Wrinkles" },
+  { key: "redness", label: "Redness" },
+  { key: "pigmentation", label: "Pigmentation" },
+  { key: "under_eye", label: "Under Eye" },
+  { key: "skin_quality", label: "Skin Quality" },
+  { key: "hair_health", label: "Hair Health" },
+] as const;
+
+function analysisRecord(analysis: unknown): Record<string, unknown> {
+  return analysis && typeof analysis === "object"
+    ? (analysis as Record<string, unknown>)
+    : {};
+}
+
+/** 0–100 clarity from `kaiParams` (matches web `extractSkinHealthMetrics`). */
+export function kaiParamClarity(
+  analysis: unknown,
+  key: string,
+  fallback = 0
+): number {
+  const v = kaiParamValue(analysisRecord(analysis).kaiParams, key);
+  return v != null ? clamp100(v) : fallback;
+}
+
+/** Octagonal radar data — same labels/keys as website. */
+export function extractSkinHealthMetrics(
   analysis: unknown
 ): { label: string; value: number }[] {
+  return SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => ({
+    label,
+    value: kaiParamClarity(analysis, key, 0),
+  }));
+}
+
+export type SkinParamMetricRow = SkinParamRow & {
+  color: string;
+  status: string;
+};
+
+function classifyParam(v: number): { color: string; status: string } {
+  if (v >= 75) return { color: "#16a34a", status: "Mild" };
+  if (v >= 50) return { color: "#F59E0B", status: "Moderate" };
+  return { color: "#DC2626", status: "Needs Care" };
+}
+
+/** Ring grid on home — 8 parameters matching web `extractSkinParams`. */
+export function extractSkinParamMetrics(analysis: unknown): SkinParamMetricRow[] {
+  const a = analysisRecord(analysis);
+  const spatial = parseSpatialOutputsFromAnalysis(a);
+  const wrinkleDetail = formatWrinkleHeadDetail(spatial);
+  const acneDetail = formatAcneHeadDetail(spatial);
+
+  return SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => {
+    const value = kaiParamClarity(analysis, key, 0);
+    const base = { label, value, ...classifyParam(value) };
+    if (key === "acne_pimples" && acneDetail) {
+      return { ...base, detail: acneDetail };
+    }
+    if (key === "wrinkles" && wrinkleDetail) {
+      return { ...base, detail: wrinkleDetail };
+    }
+    return base;
+  });
+}
+
+export function analysisResultsToParams(analysis: unknown): SkinParamRow[] {
   const a =
     analysis && typeof analysis === "object"
       ? (analysis as Record<string, unknown>)
@@ -78,11 +158,15 @@ export function analysisResultsToParams(
 
   const fallback = (i: number) => DEFAULT_SKIN_PARAMS[i].value;
   const skinQualityLegacy = avgDefined(texture, hydration);
+  const spatial = parseSpatialOutputsFromAnalysis(a);
+  const wrinkleDetail = formatWrinkleHeadDetail(spatial);
+  const acneDetail = formatAcneHeadDetail(spatial);
 
   return [
     {
       label: "Active Acne",
       value: clamp100(firstDefined(activeAcneK, acneK, activeAcneTop, acne) ?? fallback(0)),
+      ...(acneDetail ? { detail: acneDetail } : {}),
     },
     {
       label: "Sagging & Volume",
@@ -95,6 +179,7 @@ export function analysisResultsToParams(
     {
       label: "Wrinkles",
       value: clamp100(firstDefined(wrinklesK, wrinkles) ?? fallback(3)),
+      ...(wrinkleDetail ? { detail: wrinkleDetail } : {}),
     },
     {
       label: "Skin Quality",

@@ -2,6 +2,9 @@
  * kAI five-angle inference — POST /analyze_v2 on the face analysis service.
  */
 
+import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import { parseSpatialOutputsFromApi } from "@/src/lib/spatialOutputs";
+
 export type KaiParamInferenceRow = {
   value: number | null;
   source: "ai" | "pending";
@@ -28,6 +31,7 @@ export type FaceAnalysisInferenceV2Result = {
   overlayDataUri?: string;
   wrinkleMaskDataUri?: string;
   acneMaskDataUri?: string;
+  spatialOutputs?: ScanSpatialOutputs;
 };
 
 type RunOptions = {
@@ -145,6 +149,7 @@ export async function runFaceAnalysisServiceV2(
   const overlayDataUri = dataUri(body.overlayDataUri);
   const wrinkleMaskDataUri = dataUri(body.wrinkleMaskDataUri);
   const acneMaskDataUri = dataUri(body.acneMaskDataUri);
+  const spatialOutputs = parseSpatialOutputsFromApi(json);
 
   return {
     overallKaiScore: body.overallKaiScore,
@@ -157,5 +162,6 @@ export async function runFaceAnalysisServiceV2(
     ...(overlayDataUri ? { overlayDataUri } : {}),
     ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
     ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
+    ...(spatialOutputs ? { spatialOutputs } : {}),
   };
 }

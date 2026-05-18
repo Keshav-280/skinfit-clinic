@@ -16,7 +16,7 @@ import { format, subDays } from "date-fns";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
-import { analysisResultsToParams } from "@/lib/skinAnalysis";
+import { SKIN_HEALTH_PARAM_KEYS, kaiParamClarity } from "@/lib/skinAnalysis";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -24,14 +24,14 @@ const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
 
 const PARAM_COLORS: Record<string, string> = {
-  "Active Acne": "#BBF7D0",
-  "Sagging & Volume": "#FCA5A5",
-  "Hair Health": "#DDD6FE",
-  "Wrinkles": "#BBF7D0",
-  "Skin Quality": "#BAE6FD",
-  "Acne Scar": "#FBCFE8",
+  Acne: "#BBF7D0",
+  Pores: "#BAE6FD",
+  Wrinkles: "#DDD6FE",
+  Redness: "#FECACA",
+  Pigmentation: "#C4B5FD",
   "Under Eye": "#FDE68A",
-  "Pigmentation": "#C4B5FD",
+  "Skin Quality": "#A7F3D0",
+  "Hair Health": "#E9D5FF",
 };
 
 type ScanItem = {
@@ -79,6 +79,7 @@ type ParamTrend = {
   change: number;
   color: string;
   sparkline: number[];
+  detail?: string;
 };
 
 export default function AllSkinParamsScreen() {
@@ -103,21 +104,31 @@ export default function AllSkinParamsScreen() {
     if (scans.length === 0) return [];
 
     const latest = scans[0];
-    const currentParams = analysisResultsToParams(latest.analysisResults);
+    const currentParams = SKIN_HEALTH_PARAM_KEYS.map(
+      ({ key, label }) => ({
+        label,
+        value: kaiParamClarity(latest.analysisResults, key, 0),
+      })
+    );
 
     const prev = scans.length > 1 ? scans[scans.length - 1] : null;
-    const prevParams = prev ? analysisResultsToParams(prev.analysisResults) : null;
-    const prevMap = new Map(prevParams?.map((p) => [p.label, p.value]) ?? []);
+    const prevMap = new Map(
+      prev
+        ? SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => [
+            label,
+            kaiParamClarity(prev.analysisResults, key, 0),
+          ])
+        : []
+    );
 
     const scansByLabel = new Map<string, number[]>();
-    for (const p of currentParams) {
-      scansByLabel.set(p.label, []);
+    for (const { label } of SKIN_HEALTH_PARAM_KEYS) {
+      scansByLabel.set(label, []);
     }
     const reversedScans = [...scans].reverse();
     for (const s of reversedScans) {
-      const sp = analysisResultsToParams(s.analysisResults);
-      for (const p of sp) {
-        scansByLabel.get(p.label)?.push(p.value);
+      for (const { key, label } of SKIN_HEALTH_PARAM_KEYS) {
+        scansByLabel.get(label)?.push(kaiParamClarity(s.analysisResults, key, 0));
       }
     }
 
@@ -183,6 +194,11 @@ export default function AllSkinParamsScreen() {
                   <View style={[s.paramIcon, { backgroundColor: p.color }]} />
                   <View>
                     <Text style={s.paramLabel}>{p.label}</Text>
+                    {p.detail ? (
+                      <Text style={s.paramDetail} numberOfLines={2}>
+                        {p.detail}
+                      </Text>
+                    ) : null}
                     <View style={s.paramScoreRow}>
                       <Text style={s.paramValue}>{p.value}</Text>
                       {p.change !== 0 && (
@@ -272,6 +288,13 @@ const s = StyleSheet.create({
     width: 44, height: 44, borderRadius: 14,
   },
   paramLabel: { fontSize: 16, fontWeight: "700", color: "#18181b" },
+  paramDetail: {
+    marginTop: 4,
+    fontSize: 10,
+    lineHeight: 14,
+    color: "#6B7280",
+    maxWidth: 200,
+  },
   paramScoreRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
   paramValue: { fontSize: 28, fontWeight: "800", color: "#18181b" },
   paramChange: { flexDirection: "row", alignItems: "center", gap: 2 },

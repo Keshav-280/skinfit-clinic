@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Pressable, View, Text, StyleSheet } from "react-native";
 import { card, NAVY, GREEN, TEXT_PRIMARY, TEXT_MUTED, BORDER_LIGHT } from "@/components/profile/theme";
 
 type SkinDna = {
@@ -12,6 +13,7 @@ type SkinDna = {
 type Props = {
   skinDna: SkinDna;
   isNew?: boolean;
+  onViewScanReports?: () => void;
 };
 
 const POSITIVE_VALUES = new Set(["detected", "high", "yes"]);
@@ -23,7 +25,7 @@ function valueColor(value: string | null): string {
 
 type Row = { label: string; value: string | null };
 
-export default function SkinDnaCard({ skinDna, isNew }: Props) {
+export default function SkinDnaCard({ skinDna, isNew, onViewScanReports }: Props) {
   const rows: Row[] = [
     { label: "Skin Type", value: skinDna.skinType },
     { label: "Primary Concern", value: skinDna.primaryConcern },
@@ -37,15 +39,25 @@ export default function SkinDnaCard({ skinDna, isNew }: Props) {
 
   return (
     <View style={card.base}>
-      <View style={s.header}>
-        <Text style={s.title}>Skin DNA Card</Text>
-        {isNew && (
-          <View style={s.pill}>
-            <Text style={s.pillText}>New</Text>
-          </View>
-        )}
+      <View style={s.headerBlock}>
+        <View style={s.header}>
+          <Text style={s.title}>Skin DNA snapshot</Text>
+          {isNew ? (
+            <View style={s.pill}>
+              <Text style={s.pillText}>New</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={s.subtitle}>
+          A quick read on your skin profile and recent scan parameters.
+        </Text>
+        {onViewScanReports ? (
+          <Pressable style={s.scanReportsBtn} onPress={onViewScanReports}>
+            <Text style={s.scanReportsText}>View scan reports</Text>
+            <Ionicons name="chevron-forward" size={16} color="#fff" />
+          </Pressable>
+        ) : null}
       </View>
-      <Text style={s.subtitle}>Your unique skin identity</Text>
 
       {rows.map((row, i) => (
         <View
@@ -63,11 +75,28 @@ export default function SkinDnaCard({ skinDna, isNew }: Props) {
 }
 
 const s = StyleSheet.create({
+  headerBlock: { marginBottom: 14 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginBottom: 2,
+  },
+  scanReportsBtn: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#0d9488",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  scanReportsText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   title: {
     fontSize: 18,

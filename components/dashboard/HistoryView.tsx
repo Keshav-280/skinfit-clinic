@@ -14,6 +14,11 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { dateOnlyFromYmd } from "@/src/lib/date-only";
+import {
+  type PatientVisitDetail,
+  type VisitNoteAttachment,
+  visitResponseRatingStyle,
+} from "@/src/lib/patientVisit";
 import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
 
@@ -36,20 +41,8 @@ export interface ScanRecord {
   aiSummary: string | null;
 }
 
-export type VisitNoteAttachment = {
-  fileName: string;
-  mimeType: string;
-  dataUri: string;
-};
-
-export interface VisitNoteRecord {
-  id: string;
-  /** `YYYY-MM-DD` from `visit_notes.visit_date`. */
-  visitDateYmd: string;
-  doctorName: string;
-  notes: string;
-  attachments?: VisitNoteAttachment[] | null;
-}
+export type { VisitNoteAttachment };
+export type VisitNoteRecord = PatientVisitDetail;
 
 /** Voice note attached to a specific scan (report) — shown on treatment history, not the dashboard card. */
 export interface ReportVoiceNoteRecord {
@@ -501,55 +494,81 @@ export function HistoryView({
             <h3 className="mb-4 text-lg font-bold text-zinc-900">Clinic notes</h3>
             <div className="space-y-4">
               {visitNotes.length > 0 ? (
-                visitNotes.map((visit) => (
-                  <div
-                    key={visit.id}
-                    className="rounded-[18px] border border-zinc-100 bg-[#FDF9F0]/80 p-4"
-                  >
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-teal-700">
-                        {format(
-                          dateOnlyFromYmd(visit.visitDateYmd),
-                          "MMM d, yyyy"
-                        )}
-                      </span>
-                      <span className="text-sm text-zinc-600">
-                        {visit.doctorName}
-                      </span>
-                    </div>
-                    <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        Notes
-                      </p>
-                      <p className="text-sm leading-relaxed text-zinc-700">
-                        {visit.notes}
-                      </p>
-                      {visit.attachments && visit.attachments.length > 0 ? (
-                        <div className="mt-3 border-t border-zinc-100 pt-3">
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                            Documents
+                visitNotes.map((visit) => {
+                  const ratingStyle = visitResponseRatingStyle(
+                    visit.responseRating
+                  );
+                  const hasExtra =
+                    visit.preAdvice ||
+                    visit.postAdvice ||
+                    visit.prescription ||
+                    (visit.attachments && visit.attachments.length > 0);
+
+                  return (
+                    <div
+                      key={visit.id}
+                      className="rounded-[18px] border border-zinc-100 bg-[#FDF9F0]/80 p-4"
+                    >
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-900">
+                            {format(
+                              dateOnlyFromYmd(visit.visitDateYmd),
+                              "MMM d, yyyy"
+                            )}{" "}
+                            · {visit.doctorName}
                           </p>
-                          <ul className="space-y-1.5">
-                            {visit.attachments.map((att, idx) => (
-                              <li key={`${visit.id}-att-${idx}`}>
-                                <a
-                                  href={att.dataUri}
-                                  download={att.fileName}
-                                  className="text-sm font-medium text-teal-700 underline decoration-teal-600/40 underline-offset-2 hover:text-teal-800"
-                                >
-                                  {att.fileName}
-                                </a>
-                                <span className="ml-2 text-xs text-zinc-500">
-                                  ({att.mimeType})
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
+                          {visit.purpose ? (
+                            <p className="mt-1 text-sm text-zinc-700">
+                              Purpose: {visit.purpose}
+                            </p>
+                          ) : null}
+                          {visit.treatments ? (
+                            <p className="mt-0.5 text-sm text-zinc-700">
+                              Treatments: {visit.treatments}
+                            </p>
+                          ) : null}
                         </div>
+                        <Link
+                          href={`/dashboard/history/visits/${visit.id}`}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3d5080]"
+                        >
+                          View details
+                          <ChevronRight className="h-4 w-4" aria-hidden />
+                        </Link>
+                      </div>
+                      {visit.notes?.trim() ? (
+                        <p className="line-clamp-3 text-sm leading-relaxed text-zinc-600">
+                          {visit.notes}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-zinc-500">No written notes.</p>
+                      )}
+                      {visit.responseRating ? (
+                        <p
+                          className="mt-2 text-xs font-semibold capitalize"
+                          style={
+                            ratingStyle
+                              ? { color: ratingStyle.text }
+                              : { color: "#0f766e" }
+                          }
+                        >
+                          Response: {visit.responseRating}
+                        </p>
+                      ) : null}
+                      {hasExtra ? (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          Includes pre/post treatment advice
+                          {visit.prescription ? ", prescription" : ""}
+                          {visit.attachments?.length
+                            ? `, ${visit.attachments.length} attachment(s)`
+                            : ""}
+                          . Open for full visit notes.
+                        </p>
                       ) : null}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="py-4 text-center text-sm text-zinc-600">
                   No clinic notes yet.

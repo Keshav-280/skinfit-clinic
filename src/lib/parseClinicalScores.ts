@@ -17,6 +17,8 @@ export function parseClinicalScores(raw: unknown): ClinicalScores | undefined {
     acne_scars: num(o.acne_scars),
     skin_quality: num(o.skin_quality),
     wrinkle_severity: num(o.wrinkle_severity),
+    wrinkle_cls_severity: num(o.wrinkle_cls_severity),
+    wrinkle_seg_severity: num(o.wrinkle_seg_severity),
     sagging_volume: num(o.sagging_volume),
     under_eye: num(o.under_eye),
     hair_health: num(o.hair_health),

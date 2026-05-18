@@ -13,7 +13,9 @@ import {
 } from "react-native";
 
 import { ReportDonut } from "@/components/ReportDonut";
+import { ScanMaskAnnotationsNative } from "@/components/ScanMaskAnnotationsNative";
 import { TrackerReportSectionsNative } from "@/components/TrackerReportSectionsNative";
+import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
@@ -53,6 +55,8 @@ export type ReportMetricsNative = {
     active_acne?: number;
     skin_quality?: number;
     wrinkle_severity?: number;
+    wrinkle_cls_severity?: number;
+    wrinkle_seg_severity?: number;
     sagging_volume?: number;
     under_eye?: number;
     hair_health?: number;
@@ -66,7 +70,9 @@ const CLINICAL_ROWS: {
 }[] = [
   { key: "active_acne", label: "Active acne" },
   { key: "skin_quality", label: "Skin quality" },
-  { key: "wrinkle_severity", label: "Wrinkles (severity 1–5)" },
+  { key: "wrinkle_severity", label: "Wrinkles (combined 1–5)" },
+  { key: "wrinkle_cls_severity", label: "Wrinkles — cls head" },
+  { key: "wrinkle_seg_severity", label: "Wrinkles — seg head" },
   { key: "sagging_volume", label: "Sagging & volume" },
   { key: "under_eye", label: "Under-eye" },
   { key: "hair_health", label: "Hair health" },
@@ -85,6 +91,9 @@ type Props = {
   /** Resolved primary image (auth headers applied). */
   imageSource: ImageSourcePropType;
   annotatedOverlayUri?: string | null;
+  wrinkleMaskUri?: string | null;
+  acneMaskUri?: string | null;
+  spatialOutputs?: ScanSpatialOutputs;
   regions: ReportRegion[];
   metrics: ReportMetricsNative;
   aiSummary: string | null;
@@ -131,6 +140,9 @@ export function SkinScanReportBodyNative({
   faceCaptureGallery,
   imageSource,
   annotatedOverlayUri = null,
+  wrinkleMaskUri = null,
+  acneMaskUri = null,
+  spatialOutputs,
   regions,
   metrics,
   aiSummary,
@@ -142,6 +154,9 @@ export function SkinScanReportBodyNative({
   const router = useRouter();
   const displayTitle = displayScanTitle(scanTitle);
   const overlayUri = annotatedOverlayUri?.trim() || "";
+  const wrinkleMask = wrinkleMaskUri?.trim() || "";
+  const acneMask = acneMaskUri?.trim() || "";
+  const showMaskPanels = wrinkleMask.length > 0 || acneMask.length > 0;
   const showAnnotatedSection =
     overlayUri.length > 0 || (regions.length > 0 && imageUrl?.trim().length > 0);
   const showDotMarkers = overlayUri.length === 0 && regions.length > 0;
@@ -264,9 +279,20 @@ export function SkinScanReportBodyNative({
             <Text style={styles.mutedCenter}>No face capture images for this scan.</Text>
           )}
 
+          {showMaskPanels ? (
+            <ScanMaskAnnotationsNative
+              wrinkleMaskUri={wrinkleMask || undefined}
+              acneMaskUri={acneMask || undefined}
+              spatialOutputs={spatialOutputs}
+            />
+          ) : null}
+
           {showAnnotatedSection ? (
             <View style={styles.annotatedBlock}>
-              <Text style={styles.captureKicker}>Annotated findings</Text>
+              <Text style={styles.captureKicker}>
+                {overlayUri ? "Combined overlay" : "Annotated findings"}
+              </Text>
+              {overlayUri || showDotMarkers ? (
               <View style={styles.annotatedFrame}>
                 <LinearGradient
                   colors={["rgba(255,255,255,0.35)", "transparent", "rgba(0,0,0,0.2)"]}
@@ -291,6 +317,7 @@ export function SkinScanReportBodyNative({
                     ))
                   : null}
               </View>
+              ) : null}
               <View style={styles.legendRow}>
                 {["Acne", "Wrinkle", "Pigmentation", "Texture"].map((label) => (
                   <View key={label} style={styles.legendChip}>

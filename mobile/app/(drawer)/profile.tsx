@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -34,6 +35,7 @@ import {
 } from "@/components/profile/theme";
 import ProfileHeaderCard from "@/components/profile/ProfileHeaderCard";
 import LastTreatmentCard from "@/components/profile/LastTreatmentCard";
+import RecentVisitsSection from "@/components/profile/RecentVisitsSection";
 import SkinDnaCard from "@/components/profile/SkinDnaCard";
 import WeeklyReportCard from "@/components/profile/WeeklyReportCard";
 import MonthlyReportCard from "@/components/profile/MonthlyReportCard";
@@ -374,17 +376,40 @@ export default function ProfileScreen() {
           onPhotoPress={handlePhotoPress}
         />
 
-        {/* 2. Last Treatment */}
-        {skinExtra && skinExtra.visits.length > 0 ? (
-          <LastTreatmentCard
-            visits={skinExtra.visits}
-            onViewAll={() => router.push("/(drawer)/history/visits" as any)}
-          />
-        ) : null}
-
-        {/* 3. Skin DNA */}
+        {/* 2. Skin DNA + scan reports link (matches web profile) */}
         {hasSkinDna ? (
-          <SkinDnaCard skinDna={skinExtra!.skinDna} isNew />
+          <SkinDnaCard
+            skinDna={skinExtra!.skinDna}
+            isNew
+            onViewScanReports={() => router.push("/(drawer)/history" as any)}
+          />
+        ) : (
+          <Pressable
+            style={styles.historyLinkCard}
+            onPress={() => router.push("/(drawer)/history" as any)}
+          >
+            <Text style={styles.historyLinkTitle}>Treatment history</Text>
+            <Text style={styles.historyLinkSub}>
+              View scan reports, clinic visits, and audio notes
+            </Text>
+          </Pressable>
+        )}
+
+        {/* 3. Last treatment + recent visits */}
+        {skinExtra && skinExtra.visits.length > 0 ? (
+          <>
+            <LastTreatmentCard
+              visits={skinExtra.visits}
+              onViewAll={() => router.push("/(drawer)/history/visits" as any)}
+            />
+            <RecentVisitsSection
+              visits={skinExtra.visits}
+              onViewAll={() => router.push("/(drawer)/history/visits" as any)}
+              onOpenVisit={(id) =>
+                router.push(`/(drawer)/history/visit/${id}` as any)
+              }
+            />
+          </>
         ) : null}
 
         {/* 4. Weekly Report — only when real scan data exists */}
@@ -446,6 +471,23 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   errorText: { color: "#991b1b", fontSize: 14, flex: 1 },
+
+  historyLinkCard: {
+    ...card.base,
+    marginBottom: 14,
+    paddingVertical: 18,
+  },
+  historyLinkTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: NAVY,
+  },
+  historyLinkSub: {
+    marginTop: 6,
+    fontSize: 13,
+    color: TEXT_MUTED,
+    lineHeight: 18,
+  },
 
   emptyCard: {
     backgroundColor: "#fff",
