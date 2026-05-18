@@ -289,7 +289,6 @@ export function SkinScanReportBodyNative({
               wrinkleMaskUri={wrinkleMask || undefined}
               acneMaskUri={acneMask || undefined}
               overlayUri={overlayUri || undefined}
-              spatialOutputs={spatialOutputs}
             />
           ) : null}
 

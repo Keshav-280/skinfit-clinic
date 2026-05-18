@@ -12,7 +12,10 @@ import {
   insertParameterScoresForScan,
 } from "../../../src/lib/insertParameterScores";
 import { readWebFormData } from "../../../src/lib/webRequestFormData";
-import { buildPreviewJpegDataUri } from "../../../src/lib/scanImagePreview";
+import {
+  buildPreviewJpegDataUri,
+  bufferToOrientedJpegBuffer,
+} from "../../../src/lib/scanImagePreview";
 import {
   buildLegacyMetricsFromModel,
   clinicalScoresFromModel,
@@ -239,7 +242,8 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < multiRaw.length; i++) {
       const file = multiRaw[i];
       const label = FACE_SCAN_CAPTURE_STEPS[i].id;
-      const buf = Buffer.from(await file.arrayBuffer());
+      const rawBuf = Buffer.from(await file.arrayBuffer());
+      const buf = await bufferToOrientedJpegBuffer(rawBuf);
       let previewDataUri: string | undefined;
       try {
         previewDataUri = await buildPreviewJpegDataUri(buf);
@@ -248,12 +252,12 @@ export async function POST(request: NextRequest) {
       }
       entries.push({
         label,
-        dataUri: bufferToDataUri(buf, file.type || "image/jpeg"),
+        dataUri: bufferToDataUri(buf, "image/jpeg"),
         ...(previewDataUri ? { previewDataUri } : {}),
       });
       const k = keys[i];
-      filesForV2[k] = new File([buf], file.name || `${k}.jpg`, {
-        type: file.type || "image/jpeg",
+      filesForV2[k] = new File([new Uint8Array(buf)], file.name || `${k}.jpg`, {
+        type: "image/jpeg",
       });
     }
 

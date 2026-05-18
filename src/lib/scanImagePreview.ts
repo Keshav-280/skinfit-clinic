@@ -12,6 +12,14 @@ export type PreviewJpegOpts = {
 };
 
 /** Downscale for report/list thumbnails; keeps aspect ratio. */
+/** Apply EXIF orientation and return upright JPEG bytes (for inference + storage). */
+export async function bufferToOrientedJpegBuffer(
+  input: Buffer,
+  quality = 92
+): Promise<Buffer> {
+  return sharp(input).rotate().jpeg({ quality, mozjpeg: true }).toBuffer();
+}
+
 export async function bufferToPreviewJpegBuffer(
   input: Buffer,
   opts?: PreviewJpegOpts

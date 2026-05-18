@@ -25,6 +25,7 @@ import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
 
 const NAVY = "#2B3A67";
 const GREEN = "#1B8A4A";
@@ -129,14 +130,11 @@ export default function ScanScreen() {
       const form = new FormData();
       form.append("scanName", "Untitled Scan");
       for (let i = 0; i < N; i++) {
-        const uri = uris[i];
-        const ext = uri.split(".").pop()?.toLowerCase();
-        const mime =
-          ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+        const uri = await normalizeScanImageUri(uris[i]);
         form.append("images", {
           uri,
-          name: `face-${FACE_SCAN_CAPTURE_STEPS[i].id}.${ext === "png" ? "png" : "jpg"}`,
-          type: mime,
+          name: `face-${FACE_SCAN_CAPTURE_STEPS[i].id}.jpg`,
+          type: "image/jpeg",
         } as unknown as Blob);
       }
 

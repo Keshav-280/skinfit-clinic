@@ -1,6 +1,6 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
+import { OrientedReportImage } from "@/components/OrientedReportImage";
 import {
   ACNE_MASK_COPY,
   COMBINED_OVERLAY_COPY,
@@ -8,34 +8,19 @@ import {
   WRINKLE_MASK_COPY,
 } from "@/lib/scanMaskLabels";
 
-function fmt15(v: number) {
-  return v.toFixed(1);
-}
-
-function CaptionBlock({
+function MaskCaption({
   title,
-  subtitle,
-  body,
-  note,
-  meta,
+  hint,
   titleColor,
-  subColor,
 }: {
   title: string;
-  subtitle: string;
-  body: string;
-  note?: string;
-  meta?: string;
+  hint: string;
   titleColor: string;
-  subColor: string;
 }) {
   return (
     <View style={styles.captionBlock}>
       <Text style={[styles.captionTitle, { color: titleColor }]}>{title}</Text>
-      <Text style={[styles.captionSub, { color: subColor }]}>{subtitle}</Text>
-      <Text style={styles.captionBody}>{body}</Text>
-      {meta ? <Text style={styles.meta}>{meta}</Text> : null}
-      {note ? <Text style={styles.note}>{note}</Text> : null}
+      <Text style={styles.captionHint}>{hint}</Text>
     </View>
   );
 }
@@ -44,29 +29,19 @@ export function ScanMaskAnnotationsNative({
   wrinkleMaskUri,
   acneMaskUri,
   overlayUri,
-  spatialOutputs,
 }: {
   wrinkleMaskUri?: string;
   acneMaskUri?: string;
   overlayUri?: string;
-  spatialOutputs?: ScanSpatialOutputs;
 }) {
   const wrinkle = wrinkleMaskUri?.trim() || "";
   const acne = acneMaskUri?.trim() || "";
   const overlay = overlayUri?.trim() || "";
   if (!wrinkle && !acne && !overlay) return null;
 
-  const wrMeta = spatialOutputs?.wrinkles
-    ? `${WRINKLE_MASK_COPY.metaCls} ${fmt15(spatialOutputs.wrinkles.cls_severity_1_5)} · ${WRINKLE_MASK_COPY.metaSeg} ${fmt15(spatialOutputs.wrinkles.seg_severity_1_5)} · ${WRINKLE_MASK_COPY.metaCombined} ${fmt15(spatialOutputs.wrinkles.combined_severity_1_5)}\n${WRINKLE_MASK_COPY.metaHint}`
-    : undefined;
-
-  const acMeta = spatialOutputs?.acne
-    ? `${ACNE_MASK_COPY.metaGlobal} ${fmt15(spatialOutputs.acne.global_severity_1_5)} · ${ACNE_MASK_COPY.metaGridMean} ${spatialOutputs.acne.patch_mean.toFixed(3)}`
-    : undefined;
-
   return (
     <View style={styles.wrap}>
-      <Text style={styles.kicker}>{SCAN_MASK_SECTION.title}</Text>
+      <Text style={styles.sectionTitle}>{SCAN_MASK_SECTION.title}</Text>
       <Text style={styles.intro}>{SCAN_MASK_SECTION.intro}</Text>
 
       {(wrinkle || acne) && (
@@ -74,31 +49,24 @@ export function ScanMaskAnnotationsNative({
           {wrinkle ? (
             <View style={styles.cell}>
               <View style={[styles.frame, styles.wrinkleRing]}>
-                <Image source={{ uri: wrinkle }} style={styles.img} resizeMode="cover" />
+                <OrientedReportImage uri={wrinkle} style={styles.img} />
               </View>
-              <CaptionBlock
+              <MaskCaption
                 title={WRINKLE_MASK_COPY.title}
-                subtitle={WRINKLE_MASK_COPY.subtitle}
-                body={WRINKLE_MASK_COPY.body}
-                meta={wrMeta}
+                hint={WRINKLE_MASK_COPY.hint}
                 titleColor="#4c1d95"
-                subColor="#6d28d9"
               />
             </View>
           ) : null}
           {acne ? (
             <View style={styles.cell}>
               <View style={[styles.frame, styles.acneRing]}>
-                <Image source={{ uri: acne }} style={styles.img} resizeMode="cover" />
+                <OrientedReportImage uri={acne} style={styles.img} />
               </View>
-              <CaptionBlock
+              <MaskCaption
                 title={ACNE_MASK_COPY.title}
-                subtitle={ACNE_MASK_COPY.subtitle}
-                body={ACNE_MASK_COPY.body}
-                note={ACNE_MASK_COPY.pigmentationNote}
-                meta={acMeta}
+                hint={ACNE_MASK_COPY.hint}
                 titleColor="#9a3412"
-                subColor="#c2410c"
               />
             </View>
           ) : null}
@@ -108,16 +76,10 @@ export function ScanMaskAnnotationsNative({
       {overlay ? (
         <View style={styles.overlayBlock}>
           <Text style={styles.overlayTitle}>{COMBINED_OVERLAY_COPY.title}</Text>
-          <Text style={styles.overlayBody}>{COMBINED_OVERLAY_COPY.body}</Text>
-          {COMBINED_OVERLAY_COPY.bullets.map((line) => (
-            <Text key={line} style={styles.bullet}>
-              • {line}
-            </Text>
-          ))}
+          <Text style={styles.overlayHint}>{COMBINED_OVERLAY_COPY.hint}</Text>
           <View style={[styles.frame, styles.overlayRing, styles.overlayFrame]}>
-            <Image source={{ uri: overlay }} style={styles.img} resizeMode="cover" />
+            <OrientedReportImage uri={overlay} style={styles.img} />
           </View>
-          <Text style={styles.overlayNote}>{COMBINED_OVERLAY_COPY.pigmentationNote}</Text>
         </View>
       ) : null}
     </View>
@@ -126,12 +88,11 @@ export function ScanMaskAnnotationsNative({
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 20, paddingHorizontal: 4 },
-  kicker: {
+  sectionTitle: {
     textAlign: "center",
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 2.2,
-    color: "#2C3E6B",
+    color: "#18181b",
   },
   intro: {
     marginTop: 8,
@@ -169,37 +130,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
-  captionSub: {
-    marginTop: 2,
-    fontSize: 10,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  captionBody: {
+  captionHint: {
     marginTop: 4,
     fontSize: 10,
     lineHeight: 14,
     color: "#52525b",
     textAlign: "center",
-  },
-  meta: {
-    marginTop: 6,
-    fontSize: 9,
-    lineHeight: 13,
-    color: "#3f3f46",
-    textAlign: "center",
-  },
-  note: {
-    marginTop: 6,
-    fontSize: 9,
-    lineHeight: 13,
-    color: "#52525b",
-    textAlign: "center",
-    backgroundColor: "#f4f4f5",
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    borderRadius: 8,
-    overflow: "hidden",
   },
   overlayBlock: {
     marginTop: 20,
@@ -213,27 +149,12 @@ const styles = StyleSheet.create({
     color: "#18181b",
     textAlign: "center",
   },
-  overlayBody: {
+  overlayHint: {
     marginTop: 4,
     fontSize: 10,
     lineHeight: 14,
     color: "#52525b",
     textAlign: "center",
     paddingHorizontal: 4,
-  },
-  bullet: {
-    fontSize: 10,
-    lineHeight: 14,
-    color: "#52525b",
-    textAlign: "center",
-    marginTop: 2,
-  },
-  overlayNote: {
-    marginTop: 8,
-    fontSize: 9,
-    lineHeight: 13,
-    color: "#71717a",
-    textAlign: "center",
-    paddingHorizontal: 8,
   },
 });

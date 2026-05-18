@@ -126,10 +126,14 @@ export function FiveAngleCameraStep({
         </View>
       </View>
 
-      {/* Instruction pill */}
-      <View style={[styles.pillWrap, { top: insets.top + 60 }]}>
-        <View style={styles.pill}>
-          <Text style={styles.pillText}>{step.shortLabel}</Text>
+      {/* Instructions — same copy as web FaceScanFlow */}
+      <View style={[styles.instructionWrap, { top: insets.top + 56 }]}>
+        <View style={styles.instructionCard}>
+          <Text style={styles.stepKicker}>
+            Step {stepIndex + 1} of {totalSteps}
+          </Text>
+          <Text style={styles.stepTitle}>{step.title}</Text>
+          <Text style={styles.stepInstruction}>{step.instruction}</Text>
         </View>
       </View>
 
@@ -219,23 +223,42 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  pillWrap: {
+  instructionWrap: {
     position: "absolute",
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
     alignItems: "center",
     zIndex: 10,
   },
-  pill: {
+  instructionCard: {
+    width: "100%",
+    maxWidth: 400,
     backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  pillText: {
+  stepKicker: {
+    textAlign: "center",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: "rgba(255,255,255,0.75)",
+  },
+  stepTitle: {
+    marginTop: 4,
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "700",
     color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
+  },
+  stepInstruction: {
+    marginTop: 4,
+    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 18,
+    color: "rgba(255,255,255,0.92)",
   },
   countdownOverlay: {
     ...StyleSheet.absoluteFillObject,

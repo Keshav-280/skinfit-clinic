@@ -246,21 +246,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   if (wrMask || acMask) {
     masksHtml = `<div class="masks-wrap avoid-break"><p class="cap-kicker">${esc(SCAN_MASK_SECTION.title)}</p><p class="masks-intro">${esc(SCAN_MASK_SECTION.intro)}</p><div class="masks-row">`;
     if (wrMask) {
-      const wMeta = p.spatialOutputs?.wrinkles;
-      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(wrMask)} alt="${esc(WRINKLE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(WRINKLE_MASK_COPY.title)}</strong> — ${esc(WRINKLE_MASK_COPY.subtitle)}<br/><span class="mask-desc">${esc(WRINKLE_MASK_COPY.body)}</span>`;
-      if (wMeta) {
-        masksHtml += `<br/><span class="mask-meta">${WRINKLE_MASK_COPY.metaCls} ${wMeta.cls_severity_1_5.toFixed(1)} · ${WRINKLE_MASK_COPY.metaSeg} ${wMeta.seg_severity_1_5.toFixed(1)} · ${WRINKLE_MASK_COPY.metaCombined} ${wMeta.combined_severity_1_5.toFixed(1)}</span>`;
-      }
-      masksHtml += `</figcaption></figure>`;
+      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(wrMask)} alt="${esc(WRINKLE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(WRINKLE_MASK_COPY.title)}</strong><br/><span class="mask-desc">${esc(WRINKLE_MASK_COPY.hint)}</span></figcaption></figure>`;
     }
     if (acMask) {
-      const aMeta = p.spatialOutputs?.acne;
-      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(acMask)} alt="${esc(ACNE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(ACNE_MASK_COPY.title)}</strong> — ${esc(ACNE_MASK_COPY.subtitle)}<br/><span class="mask-desc">${esc(ACNE_MASK_COPY.body)}</span>`;
-      if (aMeta) {
-        masksHtml += `<br/><span class="mask-meta">${ACNE_MASK_COPY.metaGlobal} ${aMeta.global_severity_1_5.toFixed(1)} · ${ACNE_MASK_COPY.metaGridMean} ${aMeta.patch_mean.toFixed(3)}</span>`;
-      }
-      masksHtml += `<br/><span class="mask-note">${esc(ACNE_MASK_COPY.pigmentationNote)}</span>`;
-      masksHtml += `</figcaption></figure>`;
+      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(acMask)} alt="${esc(ACNE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(ACNE_MASK_COPY.title)}</strong><br/><span class="mask-desc">${esc(ACNE_MASK_COPY.hint)}</span></figcaption></figure>`;
     }
     masksHtml += `</div></div>`;
   }
@@ -268,7 +257,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   let annotatedBlock = "";
   if (showAnnotatedSection && annotSrc.length > 0) {
     const overlayLegend = overlayUrl
-      ? `<p class="overlay-body">${esc(COMBINED_OVERLAY_COPY.body)}</p><ul class="overlay-bullets">${COMBINED_OVERLAY_COPY.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul><p class="overlay-note">${esc(COMBINED_OVERLAY_COPY.pigmentationNote)}</p>`
+      ? `<p class="overlay-body">${esc(COMBINED_OVERLAY_COPY.hint)}</p>`
       : "";
     const dotLegend = showDotMarkers ? `<ul class="legend">${legendHtml}</ul>` : "";
     annotatedBlock = `
