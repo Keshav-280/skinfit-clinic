@@ -8,6 +8,14 @@ import { normalizeSlotHm } from "@/src/lib/slotTimeHm";
 
 const APPT_TYPES = ["consultation", "follow-up", "scan-review"] as const;
 
+function isMissingSlotEndColumn(error: unknown): boolean {
+  const err = error as { code?: string; message?: string };
+  return (
+    err.code === "42703" ||
+    (typeof err.message === "string" && err.message.includes("slot_end_time"))
+  );
+}
+
 export async function POST(
   req: Request,
   ctx: { params: Promise<{ patientId: string }> }
@@ -89,22 +97,40 @@ export async function POST(
     return NextResponse.json({ error: "DUPLICATE_SLOT" }, { status: 409 });
   }
 
-  const [row] = await db
-    .insert(appointments)
-    .values({
-      userId: patientId,
-      doctorId: staffId,
-      dateTime,
-      type: type as (typeof APPT_TYPES)[number],
-      status: "scheduled",
-      slotEndTimeHm: endHm,
-    })
-    .returning({ id: appointments.id, dateTime: appointments.dateTime });
+  const baseValues = {
+    userId: patientId,
+    doctorId: staffId,
+    dateTime,
+    type: type as (typeof APPT_TYPES)[number],
+    status: "scheduled" as const,
+  };
 
-  return NextResponse.json({
-    ok: true,
-    appointment: row
-      ? { id: row.id, dateTime: row.dateTime.toISOString() }
-      : null,
-  });
+  try {
+    let row: { id: string; dateTime: Date } | undefined;
+    try {
+      [row] = await db
+        .insert(appointments)
+        .values({ ...baseValues, slotEndTimeHm: endHm })
+        .returning({ id: appointments.id, dateTime: appointments.dateTime });
+    } catch (e) {
+      if (!endHm || !isMissingSlotEndColumn(e)) throw e;
+      console.warn(
+        "[doctor/patients/appointments POST] slot_end_time missing — booking without end time; run drizzle/0023_appointments_slot_end_patient_clinic_note.sql"
+      );
+      [row] = await db
+        .insert(appointments)
+        .values(baseValues)
+        .returning({ id: appointments.id, dateTime: appointments.dateTime });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      appointment: row
+        ? { id: row.id, dateTime: row.dateTime.toISOString() }
+        : null,
+    });
+  } catch (e) {
+    console.error("[doctor/patients/appointments POST]", e);
+    return NextResponse.json({ ok: false, error: "BOOK_FAILED" }, { status: 500 });
+  }
 }

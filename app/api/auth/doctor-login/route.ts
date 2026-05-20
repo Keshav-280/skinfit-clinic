@@ -8,11 +8,15 @@ import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
 
+import {
+  DOCTOR_FALLBACK_EMAIL,
+  DOCTOR_FALLBACK_ID,
+  DOCTOR_FALLBACK_NAME,
+  DOCTOR_FALLBACK_PASSWORD,
+  ensureFallbackDoctorInDb,
+} from "@/src/lib/auth/ensureFallbackDoctor";
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const DOCTOR_FALLBACK_EMAIL = "ajaydey1946@gmail.com";
-const DOCTOR_FALLBACK_PASSWORD = "12345678";
-const DOCTOR_FALLBACK_ID = "00000000-0000-0000-0000-000000000001";
-const DOCTOR_FALLBACK_NAME = "Dr. Ajay Dey";
 
 export async function POST(req: Request) {
   let body: { email?: string; password?: string };
@@ -40,7 +44,7 @@ export async function POST(req: Request) {
     normalizedEmail === DOCTOR_FALLBACK_EMAIL &&
     password === DOCTOR_FALLBACK_PASSWORD;
 
-  // Emergency fallback when DB quota/connectivity blocks staff sign-in.
+  // Emergency fallback doctor — still persist a `users` row when DB is reachable.
   if (isFallbackDoctorLogin) {
     const secret = getSessionSecret();
     if (!secret) {
@@ -50,9 +54,16 @@ export async function POST(req: Request) {
       );
     }
 
+    let staffId = DOCTOR_FALLBACK_ID;
+    try {
+      staffId = await ensureFallbackDoctorInDb();
+    } catch (e) {
+      console.warn("[auth/doctor-login] fallback doctor not persisted:", e);
+    }
+
     const token = await createSessionToken(
       {
-        id: DOCTOR_FALLBACK_ID,
+        id: staffId,
         email: DOCTOR_FALLBACK_EMAIL,
         role: "doctor",
         name: DOCTOR_FALLBACK_NAME,
@@ -71,7 +82,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: DOCTOR_FALLBACK_ID,
+        id: staffId,
         name: DOCTOR_FALLBACK_NAME,
         email: DOCTOR_FALLBACK_EMAIL,
         role: "doctor",

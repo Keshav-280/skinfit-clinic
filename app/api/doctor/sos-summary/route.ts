@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { subDays } from "date-fns";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
-
-export const dynamic = "force-dynamic";
 import {
+  DOCTOR_SOS_WINDOW_DAYS,
   filterUnackedSosRows,
   loadAckedSosMessageIdsForStaff,
   loadLatestUrgentSosPerPatientSince,
 } from "@/src/lib/doctorSosInbox";
 
-const SOS_WINDOW_DAYS = 14;
+export const dynamic = "force-dynamic";
 
 function snippetFromMessage(text: string, maxLen = 100): string {
   const t = text.replace(/\s+/g, " ").trim();
@@ -23,7 +22,7 @@ export async function GET() {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const since = subDays(new Date(), SOS_WINDOW_DAYS);
+  const since = subDays(new Date(), DOCTOR_SOS_WINDOW_DAYS);
   const [latest, ackedIds] = await Promise.all([
     loadLatestUrgentSosPerPatientSince(since),
     loadAckedSosMessageIdsForStaff(staffId),

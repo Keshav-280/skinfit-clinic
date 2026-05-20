@@ -2,6 +2,11 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { and, count, eq, isNull } from "drizzle-orm";
 import { DEMO_LOGIN_EMAIL } from "../lib/auth/demo-login";
+import {
+  DOCTOR_FALLBACK_EMAIL,
+  DOCTOR_FALLBACK_ID,
+  DOCTOR_FALLBACK_NAME,
+} from "../lib/auth/fallbackDoctorIdentity";
 import { CLINIC_DOCTOR_EMAIL } from "../lib/clinicDoctor";
 import {
   dateOnlyFromYmd,
@@ -96,6 +101,24 @@ async function seed() {
         set: {
           passwordHash: doctorHash,
           name: "Dr. Dalves",
+          role: "doctor",
+        },
+      });
+
+    await db
+      .insert(users)
+      .values({
+        id: DOCTOR_FALLBACK_ID,
+        name: DOCTOR_FALLBACK_NAME,
+        email: DOCTOR_FALLBACK_EMAIL,
+        passwordHash: doctorHash,
+        role: "doctor",
+      })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: {
+          passwordHash: doctorHash,
+          name: DOCTOR_FALLBACK_NAME,
           role: "doctor",
         },
       });

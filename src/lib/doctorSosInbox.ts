@@ -7,6 +7,8 @@ import {
   users,
 } from "@/src/db/schema";
 
+export const DOCTOR_SOS_WINDOW_DAYS = 14;
+
 export type DoctorSosLatestRow = {
   patientId: string;
   messageId: string;
@@ -72,4 +74,63 @@ export function filterUnackedSosRows(
   ackedMessageIds: Set<string>
 ): DoctorSosLatestRow[] {
   return latest.filter((r) => !ackedMessageIds.has(r.messageId));
+}
+
+/** Resolve which urgent message to mark reviewed for a patient in the SOS window. */
+export async function resolveSosAckMessageId(
+  since: Date,
+  opts: { chatMessageId?: string; patientId?: string }
+): Promise<{ chatMessageId: string; patientId: string } | null> {
+  const latest = await loadLatestUrgentSosPerPatientSince(since);
+
+  if (opts.patientId) {
+    const row = latest.find((r) => r.patientId === opts.patientId);
+    return row
+      ? { chatMessageId: row.messageId, patientId: row.patientId }
+      : null;
+  }
+
+  if (!opts.chatMessageId) return null;
+
+  const [row] = await db
+    .select({
+      messageId: chatMessages.id,
+      patientId: chatThreads.userId,
+    })
+    .from(chatMessages)
+    .innerJoin(chatThreads, eq(chatMessages.threadId, chatThreads.id))
+    .where(
+      and(
+        eq(chatMessages.id, opts.chatMessageId),
+        eq(chatThreads.assistantId, "doctor"),
+        eq(chatMessages.sender, "patient"),
+        eq(chatMessages.isUrgent, true),
+        gte(chatMessages.createdAt, since)
+      )
+    )
+    .limit(1);
+
+  if (!row) return null;
+
+  const latestForPatient = latest.find((r) => r.patientId === row.patientId);
+  return {
+    chatMessageId: latestForPatient?.messageId ?? row.messageId,
+    patientId: row.patientId,
+  };
+}
+
+export function postgresErrorCode(e: unknown): string | undefined {
+  if (!e || typeof e !== "object") return undefined;
+  const o = e as { code?: string; cause?: { code?: string } };
+  return o.code ?? o.cause?.code;
+}
+
+export function isMissingDoctorSosAckTable(error: unknown): boolean {
+  const code = postgresErrorCode(error);
+  if (code === "42P01") return true;
+  const msg =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: string }).message)
+      : "";
+  return /doctor_sos_acknowledgements/i.test(msg);
 }

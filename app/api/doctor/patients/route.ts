@@ -5,6 +5,8 @@ import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import {
+  DOCTOR_SOS_WINDOW_DAYS,
+  filterUnackedSosRows,
   loadAckedSosMessageIdsForStaff,
   loadLatestUrgentSosPerPatientSince,
 } from "@/src/lib/doctorSosInbox";
@@ -20,12 +22,17 @@ export async function GET(req: Request) {
   const q = url.searchParams.get("q")?.trim() ?? "";
   const concern = url.searchParams.get("concern")?.trim() ?? "";
   const sosOnly = url.searchParams.get("sos") === "1";
-  const since = subDays(new Date(), 14);
+  const since = subDays(new Date(), DOCTOR_SOS_WINDOW_DAYS);
+
+  const [latestForFlag, ackedIds] = await Promise.all([
+    loadLatestUrgentSosPerPatientSince(since),
+    loadAckedSosMessageIdsForStaff(staffId),
+  ]);
+  const unackedSos = filterUnackedSosRows(latestForFlag, ackedIds);
 
   let restrictIds: string[] | null = null;
   if (sosOnly) {
-    const latest = await loadLatestUrgentSosPerPatientSince(since);
-    restrictIds = latest.map((r) => r.patientId);
+    restrictIds = unackedSos.map((r) => r.patientId);
     if (restrictIds.length === 0) {
       return NextResponse.json({ success: true, patients: [] });
     }
@@ -43,10 +50,6 @@ export async function GET(req: Request) {
     conditions.push(or(ilike(users.name, pattern), ilike(users.email, pattern))!);
   }
 
-  const [latestForFlag, ackedIds] = await Promise.all([
-    loadLatestUrgentSosPerPatientSince(since),
-    loadAckedSosMessageIdsForStaff(staffId),
-  ]);
   const latestSosByPatient = new Map(
     latestForFlag.map((x) => [
       x.patientId,

@@ -52,6 +52,65 @@ type MonthPayload = {
 };
 
 type ViewMode = "week" | "month";
+type DayTiming = "past" | "today" | "future";
+
+function dayTiming(ymd: string, todayYmd: string): DayTiming {
+  if (ymd === todayYmd) return "today";
+  return ymd < todayYmd ? "past" : "future";
+}
+
+function visitDotClass(timing: DayTiming): string {
+  switch (timing) {
+    case "past":
+      return "bg-slate-400";
+    case "future":
+      return "bg-emerald-600";
+    default:
+      return "bg-[#2C3E6B]";
+  }
+}
+
+function monthCellClass(
+  timing: DayTiming,
+  opts: { selected: boolean; hasVisits: boolean }
+): string {
+  if (opts.selected) {
+    return "border-[#2C3E6B] bg-[#2C3E6B]/10 font-semibold text-[#2C3E6B]";
+  }
+  if (timing === "today") {
+    return "border-[#2C3E6B]/30 bg-[#2C3E6B]/5 text-[#2C3E6B]";
+  }
+  if (timing === "past") {
+    return opts.hasVisits
+      ? "border-slate-300 bg-slate-100/90 text-slate-600 hover:border-slate-400"
+      : "border-slate-200 bg-slate-50/80 text-slate-500 hover:border-slate-300";
+  }
+  return opts.hasVisits
+    ? "border-emerald-300/80 bg-emerald-50/70 text-emerald-950 hover:border-emerald-400"
+    : "border-slate-200 bg-white text-slate-800 hover:border-emerald-300/60";
+}
+
+function weekDayShellClass(timing: DayTiming): string {
+  if (timing === "today") {
+    return "border-[#2C3E6B]/25 bg-[#2C3E6B]/5";
+  }
+  if (timing === "past") {
+    return "border-slate-300 bg-slate-100/80";
+  }
+  return "border-emerald-200/90 bg-emerald-50/50";
+}
+
+function weekDayLabelClass(timing: DayTiming): string {
+  if (timing === "today") return "text-[#2C3E6B]";
+  if (timing === "past") return "text-slate-500";
+  return "text-emerald-800";
+}
+
+function timingBadge(timing: DayTiming): string | null {
+  if (timing === "today") return "Today";
+  if (timing === "past") return "Past";
+  return "Upcoming";
+}
 
 function typeLabel(type: string) {
   if (type === "follow-up") return "Follow-up";
@@ -59,20 +118,39 @@ function typeLabel(type: string) {
   return "Consultation";
 }
 
-function VisitList({ items }: { items: ApptItem[] }) {
+function VisitList({
+  items,
+  timing = "today",
+}: {
+  items: ApptItem[];
+  timing?: DayTiming;
+}) {
   if (items.length === 0) {
     return <p className="mt-1 text-xs text-slate-400">No visits</p>;
   }
+  const timeClass =
+    timing === "past"
+      ? "text-slate-600"
+      : timing === "future"
+        ? "text-emerald-800"
+        : "text-[#2C3E6B]";
+  const hoverClass =
+    timing === "future"
+      ? "hover:bg-emerald-100/80"
+      : timing === "past"
+        ? "hover:bg-slate-200/60"
+        : "hover:bg-[#2C3E6B]/8";
+
   return (
     <ul className="mt-1.5 space-y-1">
       {items.map((item) => (
         <li key={item.appointmentId}>
           <Link
             href={`/doctor/patients/${item.patientId}`}
-            className="block rounded-lg px-2 py-1.5 transition hover:bg-[#2C3E6B]/8"
+            className={`block rounded-lg px-2 py-1.5 transition ${hoverClass}`}
           >
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-xs font-bold tabular-nums text-[#2C3E6B]">
+              <span className={`text-xs font-bold tabular-nums ${timeClass}`}>
                 {item.timeLabel}
               </span>
               <span className="text-[10px] capitalize text-slate-500">
@@ -84,6 +162,28 @@ function VisitList({ items }: { items: ApptItem[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function CalendarTimingLegend() {
+  return (
+    <div
+      className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-600"
+      aria-label="Calendar color legend"
+    >
+      <span className="inline-flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-400" aria-hidden />
+        Past
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#2C3E6B]" aria-hidden />
+        Today
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden />
+        Upcoming
+      </span>
+    </div>
   );
 }
 
@@ -277,29 +377,37 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
         <DoctorInlineLoader label="Loading calendar…" compact />
       ) : view === "week" ? (
         <div className="max-h-[min(70vh,560px)] space-y-2 overflow-y-auto pr-0.5">
-          {(weekData?.days ?? []).map((day) => (
-            <div
-              key={day.ymd}
-              className={`rounded-xl border px-3 py-2 ${
-                day.isToday
-                  ? "border-[#2C3E6B]/25 bg-[#2C3E6B]/5"
-                  : "border-slate-200 bg-slate-50"
-              }`}
-            >
-              <p
-                className={`text-[11px] font-bold uppercase tracking-wide ${
-                  day.isToday ? "text-[#2C3E6B]" : "text-slate-500"
-                }`}
+          <CalendarTimingLegend />
+          {(weekData?.days ?? []).map((day) => {
+            const timing = dayTiming(day.ymd, weekData?.todayYmd ?? selectedYmd);
+            const badge = timingBadge(timing);
+            return (
+              <div
+                key={day.ymd}
+                className={`rounded-xl border px-3 py-2 ${weekDayShellClass(timing)}`}
               >
-                {day.label}
-                {day.isToday ? " · Today" : ""}
-              </p>
-              <VisitList items={day.items} />
-            </div>
-          ))}
+                <p
+                  className={`text-[11px] font-bold uppercase tracking-wide ${weekDayLabelClass(timing)}`}
+                >
+                  {day.label}
+                  {badge ? (
+                    <span
+                      className={`ml-1 font-semibold normal-case ${
+                        timing === "future" ? "text-emerald-700" : ""
+                      }`}
+                    >
+                      · {badge}
+                    </span>
+                  ) : null}
+                </p>
+                <VisitList items={day.items} timing={timing} />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="max-h-[min(70vh,560px)] overflow-y-auto pr-0.5">
+          <CalendarTimingLegend />
           <div className="mb-1 grid grid-cols-7 gap-0.5">
             {weekdayLabels.map((w) => (
               <div
@@ -314,6 +422,8 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
             {(monthData?.days ?? []).map((day) => {
               const hasVisits = day.items.length > 0;
               const selected = day.ymd === selectedYmd;
+              const todayYmd = monthData?.todayYmd ?? selectedYmd;
+              const timing = day.inMonth ? dayTiming(day.ymd, todayYmd) : "today";
               return (
                 <button
                   key={day.ymd}
@@ -323,15 +433,11 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
                   className={`relative flex min-h-[2.25rem] flex-col items-center justify-center rounded-md border text-xs transition ${
                     !day.inMonth
                       ? "cursor-default border-transparent text-slate-300"
-                      : selected
-                        ? "border-[#2C3E6B] bg-[#2C3E6B]/10 font-semibold text-[#2C3E6B]"
-                        : day.isToday
-                          ? "border-[#2C3E6B]/30 bg-[#2C3E6B]/5 text-[#2C3E6B]"
-                          : "border-slate-200 bg-white text-slate-800 hover:border-[#2C3E6B]/25"
+                      : monthCellClass(timing, { selected, hasVisits })
                   }`}
                   aria-label={
                     day.inMonth
-                      ? `${day.dayNum}${hasVisits ? `, ${day.items.length} visits` : ""}`
+                      ? `${day.dayNum}, ${timingBadge(timing) ?? timing}${hasVisits ? `, ${day.items.length} visits` : ""}`
                       : undefined
                   }
                   aria-pressed={day.inMonth ? selected : undefined}
@@ -339,7 +445,7 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
                   <span className="tabular-nums">{day.inMonth ? day.dayNum : ""}</span>
                   {day.inMonth && hasVisits ? (
                     <span
-                      className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[#2C3E6B]"
+                      className={`absolute bottom-0.5 h-1 w-1 rounded-full ${visitDotClass(timing)}`}
                       aria-hidden
                     />
                   ) : null}
@@ -349,12 +455,32 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
           </div>
 
           {selectedMonthDay?.inMonth ? (
-            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-[#2C3E6B]">
+            <div
+              className={`mt-3 rounded-xl border px-3 py-2 ${
+                dayTiming(selectedYmd, monthData?.todayYmd ?? selectedYmd) === "future"
+                  ? "border-emerald-200/90 bg-emerald-50/60"
+                  : dayTiming(selectedYmd, monthData?.todayYmd ?? selectedYmd) === "past"
+                    ? "border-slate-300 bg-slate-100/80"
+                    : "border-[#2C3E6B]/20 bg-[#2C3E6B]/5"
+              }`}
+            >
+              <p
+                className={`text-[11px] font-bold uppercase tracking-wide ${weekDayLabelClass(
+                  dayTiming(selectedYmd, monthData?.todayYmd ?? selectedYmd)
+                )}`}
+              >
                 {format(new Date(`${selectedYmd}T12:00:00`), "EEE d MMM")}
-                {selectedMonthDay.isToday ? " · Today" : ""}
+                {(() => {
+                  const badge = timingBadge(
+                    dayTiming(selectedYmd, monthData?.todayYmd ?? selectedYmd)
+                  );
+                  return badge ? ` · ${badge}` : "";
+                })()}
               </p>
-              <VisitList items={selectedMonthDay.items} />
+              <VisitList
+                items={selectedMonthDay.items}
+                timing={dayTiming(selectedYmd, monthData?.todayYmd ?? selectedYmd)}
+              />
             </div>
           ) : null}
         </div>

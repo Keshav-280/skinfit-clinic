@@ -93,14 +93,30 @@ export async function setupDoctorPatientE2ee(opts: {
         headers,
         body: JSON.stringify({ publicKeyJwk }),
       });
-      if (!res.ok) throw new Error("KEY_REGISTER_FAILED");
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        const code = body.error ?? "KEY_REGISTER_FAILED";
+        throw new Error(code);
+      }
     });
-  } catch {
+  } catch (e) {
+    const code = e instanceof Error ? e.message : "KEY_REGISTER_FAILED";
+    const status =
+      code === "E2EE_TABLE_MISSING"
+        ? "Secure chat DB tables missing on server (run migration 0031). Chat works without encryption."
+        : code === "USER_NOT_IN_DB"
+          ? "Doctor account not in database — use a seeded doctor login. Chat works without encryption."
+          : code === "UNAUTHORIZED"
+            ? "Sign in again to enable secure chat."
+            : "Could not register encryption keys. Chat still works without encryption.";
     return {
       threadId: "",
       threadAesKey: await generateThreadAesKey(),
       ready: false,
-      status: "Could not register encryption keys.",
+      status,
     };
   }
 

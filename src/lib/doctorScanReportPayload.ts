@@ -15,6 +15,38 @@ import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 
+type FaceCaptureEntry = {
+  label: string;
+  dataUri: string;
+  previewDataUri?: string;
+};
+
+type DoctorScanRowForReport = {
+  id: number;
+  scanName: string | null;
+  overallScore: number;
+  acne: number;
+  wrinkles: number;
+  hydration: number;
+  aiSummary: string | null;
+  annotations: unknown[] | null;
+  createdAt: Date;
+  scores: Record<string, unknown> | null;
+  pigmentation: number;
+  texture: number;
+  trackerSnapshot?: PatientTrackerReport | null;
+  faceCaptureImages?: FaceCaptureEntry[] | null;
+};
+
+function hasMissingColumn(error: unknown, column: string): boolean {
+  const err = error as { code?: string; message?: string };
+  if (err?.code === "42703") return true;
+  return (
+    typeof err?.message === "string" &&
+    err.message.toLowerCase().includes(column.toLowerCase())
+  );
+}
+
 export type DoctorScanReportPayload = {
   scanId: number;
   userName: string;
@@ -32,7 +64,8 @@ export type DoctorScanReportPayload = {
   acneMaskUrl: string | null;
   spatialOutputs: ScanSpatialOutputs | null;
   scanDateIso: string;
-  serverTracker: PatientTrackerReport | null;
+  /** Saved at scan time in `scans.tracker_snapshot` — same content as patient AI report. */
+  trackerReport: PatientTrackerReport | null;
 };
 
 function doctorScanImagePath(
@@ -59,33 +92,15 @@ export async function buildDoctorScanReportPayload(
       where: and(eq(users.id, patientId), eq(users.role, "patient")),
       columns: { name: true, email: true, age: true, skinType: true },
     }),
-    db.query.scans.findFirst({
-      where: and(eq(scans.id, scanId), eq(scans.userId, patientId)),
-      columns: {
-        id: true,
-        scanName: true,
-        overallScore: true,
-        acne: true,
-        wrinkles: true,
-        hydration: true,
-        aiSummary: true,
-        annotations: true,
-        createdAt: true,
-        faceCaptureImages: true,
-        scores: true,
-        pigmentation: true,
-        texture: true,
-        trackerSnapshot: true,
-      },
-    }),
+    loadScanRowForDoctor(patientId, scanId),
   ]);
 
   if (!user || !row) return null;
 
-  const serverTracker = await loadScanTrackerReport(
+  const trackerReport = await loadScanTrackerReport(
     patientId,
     row.id,
-    row.trackerSnapshot
+    row.trackerSnapshot ?? null
   );
 
   const regions = parseScanRegions(row.annotations);
@@ -128,6 +143,58 @@ export async function buildDoctorScanReportPayload(
     acneMaskUrl: acneMaskUrl ?? null,
     spatialOutputs: spatialOutputs ?? null,
     scanDateIso: row.createdAt.toISOString(),
-    serverTracker,
+    trackerReport,
   };
+}
+
+async function loadScanRowForDoctor(
+  patientId: string,
+  scanId: number
+): Promise<DoctorScanRowForReport | undefined> {
+  try {
+    const row = await db.query.scans.findFirst({
+      where: and(eq(scans.id, scanId), eq(scans.userId, patientId)),
+      columns: {
+        id: true,
+        scanName: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        hydration: true,
+        aiSummary: true,
+        annotations: true,
+        createdAt: true,
+        faceCaptureImages: true,
+        scores: true,
+        pigmentation: true,
+        texture: true,
+        trackerSnapshot: true,
+      },
+    });
+    return row as DoctorScanRowForReport | undefined;
+  } catch (e) {
+    const missingTracker = hasMissingColumn(e, "tracker_snapshot");
+    const missingFace = hasMissingColumn(e, "face_capture_images");
+    if (!missingTracker && !missingFace) throw e;
+    const row = await db.query.scans.findFirst({
+      where: and(eq(scans.id, scanId), eq(scans.userId, patientId)),
+      columns: {
+        id: true,
+        scanName: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        hydration: true,
+        aiSummary: true,
+        annotations: true,
+        createdAt: true,
+        scores: true,
+        pigmentation: true,
+        texture: true,
+        ...(missingFace ? {} : { faceCaptureImages: true }),
+        ...(missingTracker ? {} : { trackerSnapshot: true }),
+      },
+    });
+    return row as DoctorScanRowForReport | undefined;
+  }
 }

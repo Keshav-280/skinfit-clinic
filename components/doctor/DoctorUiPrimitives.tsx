@@ -142,7 +142,7 @@ export function DoctorMetaCell({
       <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
         {label}
       </dt>
-      <dd className="mt-0.5 truncate text-sm font-medium leading-snug text-slate-900">
+      <dd className="mt-0.5 break-words text-sm font-medium leading-snug text-slate-900">
         {value}
       </dd>
     </div>

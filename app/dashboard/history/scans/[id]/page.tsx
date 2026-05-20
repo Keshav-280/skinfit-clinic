@@ -15,6 +15,64 @@ import { ScanReportPageClient } from "../../../../../components/dashboard/ScanRe
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../../../src/lib/faceScanCaptures";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
 import { loadScanTrackerReport } from "../../../../../src/lib/scanTrackerSnapshot";
+import type { PatientTrackerReport } from "../../../../../src/lib/patientTrackerReport.types";
+
+function hasMissingColumn(error: unknown, column: string): boolean {
+  const err = error as { code?: string; message?: string };
+  if (err?.code === "42703") return true;
+  return (
+    typeof err?.message === "string" &&
+    err.message.toLowerCase().includes(column.toLowerCase())
+  );
+}
+
+async function loadScanRow(userId: string, id: number) {
+  try {
+    return await db.query.scans.findFirst({
+      where: and(eq(scans.id, id), eq(scans.userId, userId)),
+      columns: {
+        id: true,
+        scanName: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        hydration: true,
+        aiSummary: true,
+        annotations: true,
+        createdAt: true,
+        faceCaptureImages: true,
+        scores: true,
+        pigmentation: true,
+        texture: true,
+        trackerSnapshot: true,
+      },
+    });
+  } catch (e) {
+    const missingTracker = hasMissingColumn(e, "tracker_snapshot");
+    const missingFaceCapture = hasMissingColumn(e, "face_capture_images");
+    if (!missingTracker && !missingFaceCapture) throw e;
+
+    return await db.query.scans.findFirst({
+      where: and(eq(scans.id, id), eq(scans.userId, userId)),
+      columns: {
+        id: true,
+        scanName: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        hydration: true,
+        aiSummary: true,
+        annotations: true,
+        createdAt: true,
+        ...(missingFaceCapture ? {} : { faceCaptureImages: true }),
+        scores: true,
+        pigmentation: true,
+        texture: true,
+        ...(missingTracker ? {} : { trackerSnapshot: true }),
+      },
+    });
+  }
+}
 
 export default async function ScanReportPage({
   params,
@@ -44,35 +102,17 @@ export default async function ScanReportPage({
     db.query.users.findFirst({
       where: eq(users.id, userId),
     }),
-    db.query.scans.findFirst({
-      where: and(eq(scans.id, id), eq(scans.userId, userId)),
-      columns: {
-        id: true,
-        scanName: true,
-        overallScore: true,
-        acne: true,
-        wrinkles: true,
-        hydration: true,
-        aiSummary: true,
-        annotations: true,
-        createdAt: true,
-        faceCaptureImages: true,
-        scores: true,
-        pigmentation: true,
-        texture: true,
-        trackerSnapshot: true,
-      },
-    }),
+    loadScanRow(userId, id),
   ]);
 
   if (!user) notFound();
   if (!row) notFound();
 
-  const serverTracker = await loadScanTrackerReport(
-    userId,
-    row.id,
-    row.trackerSnapshot
-  );
+  const trackerSnapshot =
+    ("trackerSnapshot" in row ? row.trackerSnapshot ?? null : null) as
+      | PatientTrackerReport
+      | null;
+  const serverTracker = await loadScanTrackerReport(userId, row.id, trackerSnapshot);
 
   const regions = parseScanRegions(row.annotations);
   const clinical_scores = parseClinicalScores(row.scores);
@@ -81,9 +121,13 @@ export default async function ScanReportPage({
   const acneMaskUrl = parseScanAcneMaskDataUri(row.scores);
   const spatialOutputs = parseScanSpatialOutputs(row.scores);
 
+  const faceCaptureImages =
+    ("faceCaptureImages" in row ? row.faceCaptureImages : null) as
+      | Array<{ label?: string }>
+      | null;
   const faceCaptureGallery =
-    row.faceCaptureImages && row.faceCaptureImages.length >= 1
-      ? row.faceCaptureImages.map((entry, i) => ({
+    faceCaptureImages && faceCaptureImages.length >= 1
+      ? faceCaptureImages.map((entry, i) => ({
           label: FACE_SCAN_CAPTURE_STEPS[i]?.title ?? entry.label,
           imageUrl: patientScanImagePath(row.id, { index: i }),
         }))

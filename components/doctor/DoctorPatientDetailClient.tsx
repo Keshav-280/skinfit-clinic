@@ -78,6 +78,7 @@ import {
 import { prepareVisitNoteAttachmentFile } from "@/src/lib/visitNotePrepareAttachment";
 import { MAX_VISIT_NOTE_ATTACHMENT_URI_LEN } from "@/src/lib/visitNoteAttachments";
 import { DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT } from "@/src/lib/doctorPatientChatInboxEvents";
+import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 
 const MAX_RECORD_SECONDS = 120;
@@ -96,6 +97,49 @@ function readStaffDoctorChatClearAt(patientId: string): string | null {
 function withQueryParam(url: string, key: string, value: string | number): string {
   const sep = url.includes("?") ? "&" : "?";
   return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`;
+}
+
+function formatVisitDateLabel(visitDateYmd: string): string {
+  const d = new Date(`${visitDateYmd}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return visitDateYmd;
+  return d.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function sortVisitsNewestFirst<
+  T extends { visitDate: string; createdAt: string },
+>(visits: T[]): T[] {
+  return [...visits].sort((a, b) => {
+    const byDate = b.visitDate.localeCompare(a.visitDate);
+    if (byDate !== 0) return byDate;
+    return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+  });
+}
+
+const DOCTOR_APPT_ERROR: Record<string, string> = {
+  UNAUTHORIZED: "Please sign in to the doctor portal again.",
+  INVALID_DATE: "Pick a valid date (YYYY-MM-DD).",
+  INVALID_TIME: "Pick a valid start time.",
+  INVALID_TIME_FORMAT: "Start time must be 24-hour format (e.g. 10:00).",
+  INVALID_END_TIME: "End time must be after start (24-hour format, e.g. 12:30).",
+  INVALID_TYPE: "Pick a visit type.",
+  INVALID_DATETIME: "Could not interpret that date and time.",
+  NOT_FOUND: "Patient not found.",
+  DUPLICATE_SLOT: "That slot is already booked for this patient.",
+  BOOK_FAILED: "Server could not save the visit (database or config).",
+};
+
+async function readFetchJson(res: Response): Promise<Record<string, unknown> | null> {
+  const text = await res.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 /** Doctor scan image URL with optional angle index and cache key. */
@@ -290,7 +334,22 @@ type DoctorThreadMessage = {
   createdAt: string;
   /** Local UI only — outbound doctor message delivery */
   deliveryStatus?: DoctorChatDeliveryStatus;
+  /** Plaintext shown while server row is still encrypted / decrypt pending */
+  pendingPlainText?: string;
 };
+
+function doctorChatDisplayText(m: DoctorThreadMessage): string {
+  const pending = m.pendingPlainText?.trim();
+  if (
+    pending &&
+    (isE2eePayload(m.text) ||
+      m.text === "🔒 Unable to decrypt" ||
+      m.text.startsWith("e2ee:"))
+  ) {
+    return pending;
+  }
+  return m.text;
+}
 
 function doctorMessageDeliveryStatus(m: DoctorThreadMessage): DoctorChatDeliveryStatus | null {
   if (m.sender !== "doctor") return null;
@@ -301,13 +360,21 @@ function doctorMessageDeliveryStatus(m: DoctorThreadMessage): DoctorChatDelivery
 
 function doctorMessagesLikelyMatch(a: DoctorThreadMessage, b: DoctorThreadMessage): boolean {
   if (a.sender !== "doctor" || b.sender !== "doctor") return false;
-  if (a.text.trim() !== b.text.trim()) return false;
   const aAtt = a.attachmentUrl ?? "";
   const bAtt = b.attachmentUrl ?? "";
   if (aAtt !== bAtt && !(aAtt && bAtt && aAtt.slice(0, 96) === bAtt.slice(0, 96))) {
     return false;
   }
-  return Math.abs(Date.parse(a.createdAt) - Date.parse(b.createdAt)) < 120_000;
+  const timeClose =
+    Math.abs(Date.parse(a.createdAt) - Date.parse(b.createdAt)) < 120_000;
+  if (!timeClose) return false;
+
+  const aPlain = (a.pendingPlainText ?? a.text).trim();
+  const bPlain = (b.pendingPlainText ?? b.text).trim();
+  if (aPlain && bPlain && aPlain === bPlain) return true;
+  if (aPlain && isE2eePayload(b.text)) return true;
+  if (bPlain && isE2eePayload(a.text)) return true;
+  return a.text.trim() === b.text.trim();
 }
 
 function mergeDoctorChatMessages(
@@ -990,6 +1057,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const chatTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatVoicePreviewUrlRef = useRef<string | null>(null);
   const doctorChatLoadedRef = useRef(false);
+  const chatPollSuppressUntilRef = useRef(0);
+  const wasE2eeReadyRef = useRef(false);
 
   const stopMicStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -1105,7 +1174,24 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   useEffect(() => {
     if (!chatPanelOpen) return;
     void loadDoctorChat({ silent: doctorChatLoadedRef.current });
-  }, [chatPanelOpen, loadDoctorChat, decryptDoctorChat]);
+  }, [chatPanelOpen, loadDoctorChat]);
+
+  useEffect(() => {
+    if (!chatPanelOpen) return;
+    const justBecameReady = e2eeReady && !wasE2eeReadyRef.current;
+    wasE2eeReadyRef.current = e2eeReady;
+    if (!justBecameReady) return;
+    void (async () => {
+      setDoctorChatMessages((prev) => {
+        void decryptDoctorChat(prev).then((decrypted) => {
+          setDoctorChatMessages((latest) =>
+            mergeDoctorChatMessages(decrypted, latest)
+          );
+        });
+        return prev;
+      });
+    })();
+  }, [e2eeReady, chatPanelOpen, decryptDoctorChat]);
 
   useEffect(() => {
     const tab = TABS.find((t) => t.key === activeTab);
@@ -1129,6 +1215,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     let cancelled = false;
     const pull = async () => {
       if (cancelled) return;
+      if (Date.now() < chatPollSuppressUntilRef.current) return;
       if (typeof document !== "undefined" && document.visibilityState === "hidden") {
         return;
       }
@@ -1411,6 +1498,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         id: tempId,
         sender: "doctor",
         text: previewText,
+        pendingPlainText: text.trim() || undefined,
         attachmentUrl,
         createdAt: new Date().toISOString(),
         deliveryStatus: "sending",
@@ -1427,17 +1515,30 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       const decrypted = await decryptDoctorChat([serverMsg]);
       const msg = decrypted[0] ?? serverMsg;
       setDoctorChatMessages((prev) => {
+        const optimistic = prev.find((m) => m.id === tempId);
+        const pendingPlainText = optimistic?.pendingPlainText;
+        const displayText =
+          pendingPlainText &&
+          (isE2eePayload(msg.text) || msg.text === "🔒 Unable to decrypt")
+            ? pendingPlainText
+            : msg.text;
+        const merged: DoctorThreadMessage = {
+          ...msg,
+          text: displayText,
+          pendingPlainText: pendingPlainText ?? undefined,
+          deliveryStatus: "sent",
+        };
         const withoutTemp = prev.filter((m) => m.id !== tempId);
-        if (withoutTemp.some((m) => m.id === msg.id)) {
+        if (withoutTemp.some((m) => m.id === merged.id)) {
           return withoutTemp.map((m) =>
-            m.id === msg.id ? { ...m, deliveryStatus: "sent" as const } : m
+            m.id === merged.id ? merged : m
           );
         }
-        return [
-          ...withoutTemp,
-          { ...msg, deliveryStatus: "sent" as const },
-        ].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+        return [...withoutTemp, merged].sort(
+          (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
+        );
       });
+      chatPollSuppressUntilRef.current = Date.now() + 4000;
       requestAnimationFrame(() => scrollDoctorChatToBottom());
     },
     [scrollDoctorChatToBottom, decryptDoctorChat]
@@ -2138,7 +2239,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     payload.slotEndTimeHm = doctorApptEndHm.trim();
                   }
                   const res = await fetch(
-                    `/api/doctor/patients/${patientId}/appointments`,
+                    `/api/doctor/patients/${encodeURIComponent(patientId)}/appointments`,
                     {
                       method: "POST",
                       credentials: "include",
@@ -2146,19 +2247,32 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       body: JSON.stringify(payload),
                     }
                   );
-                  const j = (await res.json()) as { ok?: boolean; error?: string };
+                  const j = await readFetchJson(res);
+                  if (j === null) {
+                    setDoctorApptFlash(
+                      `Server error (${res.status}). Check the terminal or Vercel logs.`
+                    );
+                    return;
+                  }
+                  const errCode =
+                    typeof j.error === "string" ? j.error : undefined;
                   if (!res.ok || !j.ok) {
-                    const msg =
-                      j.error === "DUPLICATE_SLOT"
-                        ? "That slot is already booked for this patient."
-                        : (j.error ?? "Could not book visit.");
-                    setDoctorApptFlash(msg);
+                    setDoctorApptFlash(
+                      (errCode && DOCTOR_APPT_ERROR[errCode]) ??
+                        (typeof j.error === "string"
+                          ? j.error
+                          : "Could not book visit.")
+                    );
                     return;
                   }
                   setDoctorApptFlash("Visit scheduled.");
                   void reloadAll();
-                } catch {
-                  setDoctorApptFlash("Network error.");
+                } catch (e) {
+                  const hint =
+                    e instanceof TypeError && /fetch/i.test(String(e))
+                      ? "Could not reach the server (offline or wrong URL)."
+                      : "Request failed unexpectedly.";
+                  setDoctorApptFlash(hint);
                 } finally {
                   setDoctorApptBusy(false);
                 }
@@ -3689,7 +3803,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           </div>
         </div>
         {(() => {
-          const visits = data.visits ?? [];
+          const visits = sortVisitsNewestFirst(data.visits ?? []);
           if (visits.length === 0) {
             return <p className="mt-3 text-xs text-slate-500">No visits on file yet.</p>;
           }
@@ -3723,24 +3837,26 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       key={v.id}
                       className="flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm"
                     >
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <span
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[#2C3E6B]"
-                            title={v.visitDate}
-                          >
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-1.5">
+                        <div className="flex min-w-0 items-start gap-1.5">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#2C3E6B]/10 text-[#2C3E6B]">
                             <CalendarDays className="h-3.5 w-3.5" aria-hidden />
                           </span>
-                          <span
-                            className="truncate text-[10px] text-slate-500"
-                            title={v.doctorName}
-                          >
-                            <Stethoscope
-                              className="mr-0.5 inline h-3 w-3 align-[-2px] text-slate-400"
-                              aria-hidden
-                            />
-                            {v.doctorName}
-                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-[#2C3E6B]">
+                              {formatVisitDateLabel(v.visitDate)}
+                            </p>
+                            <p
+                              className="truncate text-[10px] text-slate-500"
+                              title={v.doctorName}
+                            >
+                              <Stethoscope
+                                className="mr-0.5 inline h-3 w-3 align-[-2px] text-slate-400"
+                                aria-hidden
+                              />
+                              {v.doctorName}
+                            </p>
+                          </div>
                         </div>
                         {v.responseRating ? (
                           <span
@@ -3931,8 +4047,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         src={m.attachmentUrl ?? undefined}
                       />
                     ) : null}
-                    {m.text.trim() ? (
-                      <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
+                    {doctorChatDisplayText(m).trim() ? (
+                      <p className="whitespace-pre-wrap leading-relaxed">
+                        {doctorChatDisplayText(m)}
+                      </p>
                     ) : null}
                     <p
                       className={`mt-1.5 flex items-center gap-1 text-[10px] tabular-nums ${

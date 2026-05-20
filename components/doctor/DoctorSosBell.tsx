@@ -35,7 +35,26 @@ export function DoctorSosBell() {
   const [items, setItems] = useState<SosItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [ackingId, setAckingId] = useState<string | null>(null);
+  const [ackError, setAckError] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  const ackErrorMessage = (code: string | undefined): string => {
+    switch (code) {
+      case "UNAUTHORIZED":
+        return "Sign in again to mark alerts done.";
+      case "STAFF_USER_NOT_IN_DB":
+        return "Your doctor account is not in the database — use a seeded doctor login.";
+      case "ACK_TABLE_MISSING":
+        return "Alerts database table missing — run migration 0015 on the server.";
+      case "ALERT_NOT_FOUND":
+      case "MESSAGE_NOT_FOUND_OR_NOT_SOS":
+        return "This alert is no longer active.";
+      case "ACK_FAILED":
+        return "Could not save — check server logs.";
+      default:
+        return "Could not mark done. Try again.";
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,22 +78,41 @@ export function DoctorSosBell() {
   }, []);
 
   const acknowledge = useCallback(
-    async (messageId: string) => {
-      setAckingId(messageId);
+    async (item: SosItem) => {
+      setAckError(null);
+      setAckingId(item.messageId);
       try {
         const res = await fetch("/api/doctor/sos-summary/ack", {
           method: "POST",
           credentials: "include",
           cache: "no-store",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ chatMessageId: messageId }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatMessageId: item.messageId,
+            patientId: item.patientId,
+          }),
         });
-        const data = (await res.json().catch(() => ({}))) as { success?: boolean };
+        const data = (await res.json().catch(() => ({}))) as {
+          success?: boolean;
+          error?: string;
+          message?: string;
+        };
         if (res.ok && data.success) {
-          setItems((prev) => prev.filter((it) => it.messageId !== messageId));
+          setItems((prev) =>
+            prev.filter((it) => it.patientId !== item.patientId)
+          );
           setCount((c) => Math.max(0, c - 1));
           void load();
+          return;
         }
+        setAckError(
+          data.message ??
+            ackErrorMessage(
+              typeof data.error === "string" ? data.error : undefined
+            )
+        );
+      } catch {
+        setAckError("Network error — could not reach the server.");
       } finally {
         setAckingId(null);
       }
@@ -111,7 +149,10 @@ export function DoctorSosBell() {
     <div className="relative" ref={wrapRef}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setAckError(null);
+          setOpen((o) => !o);
+        }}
         className={`relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
           open || count > 0
             ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
@@ -152,6 +193,12 @@ export function DoctorSosBell() {
       
           </div>
 
+          {ackError ? (
+            <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-900" role="alert">
+              {ackError}
+            </p>
+          ) : null}
+
           {loading && items.length === 0 && count === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-500">Loading…</p>
           ) : count === 0 ? (
@@ -175,9 +222,11 @@ export function DoctorSosBell() {
                         className="flex shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-0.5 transition hover:bg-[#2C3E6B]/5 disabled:opacity-50"
                         aria-label={`Mark alert from ${it.patientName} as reviewed`}
                         title="Mark reviewed"
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
-                          void acknowledge(it.messageId);
+                          void acknowledge(it);
                         }}
                       >
                         <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2C3E6B]/25 bg-white text-[#2C3E6B]">
