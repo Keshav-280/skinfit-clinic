@@ -4,8 +4,17 @@ import { subDays } from "date-fns";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads, doctorSosAcknowledgements } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { loadLatestUrgentSosPerPatientSince } from "@/src/lib/doctorSosInbox";
+
+export const dynamic = "force-dynamic";
 
 const SOS_WINDOW_DAYS = 14;
+
+function postgresErrorCode(e: unknown): string | undefined {
+  if (!e || typeof e !== "object") return undefined;
+  const o = e as { code?: string; cause?: { code?: string } };
+  return o.code ?? o.cause?.code;
+}
 
 export async function POST(req: Request) {
   const staffId = await getDoctorPortalUserId();
@@ -33,7 +42,10 @@ export async function POST(req: Request) {
   const since = subDays(new Date(), SOS_WINDOW_DAYS);
 
   const [row] = await db
-    .select({ id: chatMessages.id })
+    .select({
+      messageId: chatMessages.id,
+      patientId: chatThreads.userId,
+    })
     .from(chatMessages)
     .innerJoin(chatThreads, eq(chatMessages.threadId, chatThreads.id))
     .where(
@@ -51,18 +63,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "MESSAGE_NOT_FOUND_OR_NOT_SOS" }, { status: 404 });
   }
 
+  const latestForPatient = (await loadLatestUrgentSosPerPatientSince(since)).find(
+    (r) => r.patientId === row.patientId
+  );
+  const chatMessageIdToAck = latestForPatient?.messageId ?? row.messageId;
+
   try {
     await db.insert(doctorSosAcknowledgements).values({
       staffUserId: staffId,
-      chatMessageId: messageId,
+      chatMessageId: chatMessageIdToAck,
     });
   } catch (e) {
-    const code = (e as { code?: string })?.code;
-    if (code === "23505") {
-      return NextResponse.json({ success: true, alreadyAcknowledged: true });
+    if (postgresErrorCode(e) === "23505") {
+      return NextResponse.json(
+        { success: true, alreadyAcknowledged: true },
+        { headers: { "Cache-Control": "no-store" } }
+      );
     }
     throw e;
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json(
+    { success: true },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

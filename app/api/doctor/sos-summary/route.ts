@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { subDays } from "date-fns";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+
+export const dynamic = "force-dynamic";
 import {
   filterUnackedSosRows,
   loadAckedSosMessageIdsForStaff,
@@ -38,9 +40,12 @@ export async function GET() {
     createdAt: r.createdAt.toISOString(),
   }));
 
-  return NextResponse.json({
-    success: true,
-    patientCount: unacked.length,
-    items,
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      patientCount: unacked.length,
+      items,
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

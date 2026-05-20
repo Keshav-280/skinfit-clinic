@@ -40,7 +40,10 @@ export function DoctorSosBell() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/doctor/sos-summary", { credentials: "include" });
+      const res = await fetch("/api/doctor/sos-summary", {
+        credentials: "include",
+        cache: "no-store",
+      });
       const data = (await res.json()) as {
         success?: boolean;
         patientCount?: number;
@@ -62,12 +65,15 @@ export function DoctorSosBell() {
         const res = await fetch("/api/doctor/sos-summary/ack", {
           method: "POST",
           credentials: "include",
+          cache: "no-store",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ chatMessageId: messageId }),
         });
         const data = (await res.json().catch(() => ({}))) as { success?: boolean };
         if (res.ok && data.success) {
-          await load();
+          setItems((prev) => prev.filter((it) => it.messageId !== messageId));
+          setCount((c) => Math.max(0, c - 1));
+          void load();
         }
       } finally {
         setAckingId(null);
@@ -163,25 +169,28 @@ export function DoctorSosBell() {
                     className="rounded-xl border border-slate-200 bg-slate-50 p-2.5"
                   >
                     <div className="flex gap-2.5">
-                      <div className="flex shrink-0 flex-col items-center gap-1">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2C3E6B]/25 bg-white text-[#2C3E6B] transition hover:border-[#2C3E6B] hover:bg-[#2C3E6B]/5 disabled:opacity-50"
-                          aria-label={`Mark alert from ${it.patientName} as reviewed`}
-                          title="Mark reviewed"
-                          onClick={() => void acknowledge(it.messageId)}
-                        >
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="flex shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-0.5 transition hover:bg-[#2C3E6B]/5 disabled:opacity-50"
+                        aria-label={`Mark alert from ${it.patientName} as reviewed`}
+                        title="Mark reviewed"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void acknowledge(it.messageId);
+                        }}
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2C3E6B]/25 bg-white text-[#2C3E6B]">
                           {busy ? (
                             <span className="text-xs">…</span>
                           ) : (
                             <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
                           )}
-                        </button>
+                        </span>
                         <span className="text-center text-[9px] font-medium text-slate-500">
                           Done
                         </span>
-                      </div>
+                      </button>
 
                       <Link
                         href={`/doctor/patients/${it.patientId}`}

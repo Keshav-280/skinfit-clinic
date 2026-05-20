@@ -61,10 +61,10 @@ export async function loadAckedSosMessageIdsForStaff(
   staffUserId: string
 ): Promise<Set<string>> {
   const rows = await db
-    .select({ id: doctorSosAcknowledgements.chatMessageId })
+    .select({ chatMessageId: doctorSosAcknowledgements.chatMessageId })
     .from(doctorSosAcknowledgements)
     .where(eq(doctorSosAcknowledgements.staffUserId, staffUserId));
-  return new Set(rows.map((r) => r.id));
+  return new Set(rows.map((r) => r.chatMessageId));
 }
 
 export function filterUnackedSosRows(
