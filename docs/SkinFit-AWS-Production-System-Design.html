@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>SkinFit Clinic — AWS Production System Design</title>
+<style>
+@page { margin: 18mm 16mm; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; line-height: 1.5; color: #1a1a1a; font-size: 11pt; }
+h1 { font-size: 22pt; color: #2C3E6B; margin-top: 0; page-break-after: avoid; }
+h2 { font-size: 15pt; margin-top: 22pt; color: #2C3E6B; page-break-after: avoid; }
+h3 { font-size: 12pt; margin-top: 16pt; page-break-after: avoid; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; page-break-inside: avoid; }
+th, td { border: 1px solid #bbb; padding: 6px 8px; text-align: left; vertical-align: top; }
+th { background: #eef2f8; }
+code { background: #f4f4f5; padding: 1px 4px; border-radius: 3px; font-size: 9pt; }
+pre { background: #f8f8f8; padding: 10px; overflow-x: auto; font-size: 8.5pt; border: 1px solid #e4e4e7; border-radius: 6px; white-space: pre-wrap; word-break: break-word; page-break-inside: avoid; }
+pre code { background: none; padding: 0; }
+hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+ul, ol { padding-left: 20px; }
+li { margin: 4px 0; }
+.note { background: #fffbeb; border: 1px solid #fcd34d; padding: 10px 12px; border-radius: 6px; margin: 12px 0; font-size: 10pt; }
+.footer { font-size: 9pt; color: #666; margin-top: 24pt; border-top: 1px solid #ddd; padding-top: 8pt; }
+</style></head><body>
+<p class="note"><strong>Note:</strong> Mermaid diagrams appear as code blocks in PDF/DOCX. View the Markdown file in GitHub or Cursor for interactive diagrams.</p>
+<h1 id="skinfit-clinic-production-system-design-aws">SkinFit Clinic — Production System Design (AWS)</h1>
+<p><strong>Date:</strong> May 2026<br />
+<strong>Classification:</strong> Internal — SkinFit Clinic<br />
+<strong>Scope:</strong> Large-scale production architecture and AWS migration plan (<code>skinfit-clinic</code> + <code>face_analysis_tool</code>)</p>
+<hr />
+<p>Below is a <strong>production system design</strong> for SkinFit Clinic based on your actual codebase, written for a <strong>large-scale AWS migration</strong>. Treat this as an architecture baseline; several numbers depend on answers in <strong>Section 12</strong>.</p>
+<hr />
+<h2 id="1-executive-summary">1. Executive summary</h2>
+<p>You currently run a <strong>monolithic Next.js backend</strong> (web + API routes), an <strong>Expo mobile app</strong>, <strong>PostgreSQL</strong> (Neon + Drizzle), <strong>GPU/CPU inference on Hugging Face Spaces</strong> (FastAPI + PyTorch), and <strong>OpenAI + Pinecone</strong> for kAI chat/RAG. Scan images and masks are largely stored as <strong>base64 data URIs inside Postgres</strong> — fine for early product, <strong>not</strong> for large-scale production.</p>
+<p>For AWS at scale, the core shift is:</p>
+<table>
+<thead>
+<tr>
+<th>Today</th>
+<th>Production target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sync scan in one HTTP request</td>
+<td><strong>Async pipeline</strong>: upload → queue → infer → persist</td>
+</tr>
+<tr>
+<td>Images in DB as data URIs</td>
+<td><strong>S3</strong> + CloudFront signed URLs</td>
+</tr>
+<tr>
+<td>HF Space (shared, CPU)</td>
+<td><strong>Dedicated GPU inference</strong> (ECS on GPU or SageMaker)</td>
+</tr>
+<tr>
+<td>Next.js does everything</td>
+<td><strong>Split</strong>: API service + workers + inference service</td>
+</tr>
+<tr>
+<td>Cron via HTTP routes</td>
+<td><strong>EventBridge + Lambda/ECS workers</strong></td>
+</tr>
+<tr>
+<td>Single-region assumptions</td>
+<td><strong>Multi-AZ</strong>, optional multi-region later</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-current-system-as-is">2. Current system (as-is)</h2>
+<h3 id="21-logical-components">2.1 Logical components</h3>
+<pre><code class="language-mermaid">flowchart TB
+  subgraph clients
+    Web[Next.js Web App]
+    Mobile[Expo Mobile App]
+    Doctor[Doctor Portal]
+  end
+
+  subgraph skinfit_api [skinfit-clinic Next.js]
+    API[API Routes /api/*]
+    Auth[JWT Cookie + Bearer]
+    Scan[/api/scan]
+    Chat[/api/ai/chat]
+    Cron[/api/cron/*]
+  end
+
+  subgraph data
+    PG[(PostgreSQL / Neon)]
+  end
+
+  subgraph ml
+    HF[HF Space FastAPI&lt;br/&gt;POST /analyze_v2]
+  end
+
+  subgraph ai_services
+    OAI[OpenAI]
+    PC[Pinecone RAG]
+  end
+
+  subgraph external
+    SMTP[SMTP Email]
+    Sheets[Google Sheets Webhooks]
+    Expo[Expo Push]
+  end
+
+  Web --&gt; API
+  Mobile --&gt; API
+  Doctor --&gt; API
+  API --&gt; Auth
+  Scan --&gt; HF
+  Scan --&gt; OAI
+  Scan --&gt; PG
+  Chat --&gt; OAI
+  Chat --&gt; PC
+  Chat --&gt; PG
+  Cron --&gt; PG
+  Cron --&gt; OAI
+  API --&gt; SMTP
+  API --&gt; Sheets
+  API --&gt; Expo
+</code></pre>
+<h3 id="22-core-user-journeys">2.2 Core user journeys</h3>
+<h4 id="a-five-angle-skin-scan-critical-path">A. Five-angle skin scan (critical path)</h4>
+<ol>
+<li><strong>Mobile/Web</strong> captures 5 poses: <code>centre</code>, <code>left</code>, <code>right</code>, <code>eyes_closed</code>, <code>smiling</code> (see <code>faceScanCaptures.ts</code>).</li>
+<li>Client POSTs multipart to <strong><code>/api/scan</code></strong>.</li>
+<li>Server normalizes EXIF (<code>scanImagePreview.ts</code> / mobile <code>normalizeScanImage.ts</code>).</li>
+<li>Server calls <strong><code>FACE_ANALYSIS_SERVICE_URL/analyze_v2</code></strong> with 5 files (<code>faceAnalysisInferenceV2.ts</code>), timeout up to <strong>120s</strong>.</li>
+<li>Python service (<code>api_server.py</code>):</li>
+<li>Loads <strong>FaceAnalyzer v13</strong> (DINOv2 ViT-L/14 frozen + cls / wrinkle seg / acne heads).</li>
+<li>Uses <strong>centre</strong> for masks/scores; <strong>smiling</strong> for dynamic wrinkle proxy.</li>
+<li>Returns scores, spatial outputs, overlay/mask JPEGs as <strong>data URIs</strong>.</li>
+<li>Server optionally calls <strong>OpenAI</strong> for one-line <code>aiSummary</code>.</li>
+<li>Server writes <strong><code>scans</code></strong> row + <strong><code>parameter_scores</code></strong> + JSON blobs (masks in <code>scores</code> JSONB).</li>
+</ol>
+<p><strong>Bottleneck today:</strong> one long synchronous request; DB stores megabytes of base64 per scan.</p>
+<h4 id="b-authentication">B. Authentication</h4>
+<ul>
+<li>Custom sessions: <strong>HTTP-only cookie (web)</strong> + <strong><code>Authorization: Bearer</code> JWT (mobile)</strong> (<code>get-session.ts</code>).</li>
+<li>Passwords: bcrypt in <code>users</code> table.</li>
+</ul>
+<h4 id="c-kai-intelligence-layer">C. kAI intelligence layer</h4>
+<ul>
+<li><strong>Patient chat</strong>: <code>/api/ai/chat</code> → OpenAI (+ Pinecone retrieval when configured).</li>
+<li><strong>Scheduled jobs</strong> (HTTP cron with <code>CRON_SECRET</code>):</li>
+<li>Daily focus, weekly, monthly kAI reports (<code>cronKaiJobs.ts</code>).</li>
+<li>Appointment reminders.</li>
+</ul>
+<h4 id="d-clinic-operations">D. Clinic operations</h4>
+<ul>
+<li>Appointments, visit notes, doctor feedback (text + <strong>audio data URIs</strong> in DB).</li>
+<li>Optional <strong>Google Sheets webhooks</strong> for CRM sync.</li>
+<li>Doctor portal for patient management.</li>
+</ul>
+<h3 id="23-data-model-highlights-postgres">2.3 Data model highlights (Postgres)</h3>
+<p>Important tables from <code>schema.ts</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Scale risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>users</code></td>
+<td>Patients, doctors, profile, push tokens</td>
+<td>Low</td>
+</tr>
+<tr>
+<td><code>scans</code></td>
+<td>Scan results; <strong><code>image_url</code>, <code>face_capture_images</code>, masks in <code>scores</code></strong></td>
+<td><strong>High</strong> (large TEXT/JSONB)</td>
+</tr>
+<tr>
+<td><code>parameter_scores</code></td>
+<td>8 kAI parameters per scan</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td><code>daily_logs</code></td>
+<td>Routine, sleep, stress, hydration</td>
+<td>Medium (row growth)</td>
+</tr>
+<tr>
+<td><code>chat_messages</code></td>
+<td>Clinic support / AI threads</td>
+<td>Medium–High</td>
+</tr>
+<tr>
+<td><code>appointments</code>, visit-related</td>
+<td>Scheduling &amp; clinical notes</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td><code>skin_scans</code></td>
+<td>Legacy parallel scan store</td>
+<td>Migration debt</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24-ml-service-face_analysis_tool">2.4 ML service (<code>face_analysis_tool</code>)</h3>
+<ul>
+<li><strong>Runtime:</strong> FastAPI + Uvicorn, Docker (currently <strong>CPU torch</strong> in Dockerfile).</li>
+<li><strong>Model:</strong> ~224×224 input; wrinkle mask 224×224; acne 16×16 grid.</li>
+<li><strong>Checkpoint:</strong> <code>face_analyzer_v13.pt</code> (heads only; backbone from <code>torch.hub</code>).</li>
+<li><strong>Auth:</strong> optional <code>X-API-Key</code> / <code>FACE_ANALYSIS_API_KEY</code>.</li>
+<li><strong>Deployed today:</strong> Hugging Face Space (port 7860).</li>
+</ul>
+<h3 id="25-external-dependencies-env-driven">2.5 External dependencies (env-driven)</h3>
+<table>
+<thead>
+<tr>
+<th>Variable family</th>
+<th>Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td>Neon Postgres</td>
+</tr>
+<tr>
+<td><code>FACE_ANALYSIS_SERVICE_URL</code>, <code>FACE_ANALYSIS_SERVICE_SECRET</code></td>
+<td>Inference</td>
+</tr>
+<tr>
+<td><code>OPENAI_API_KEY</code>, embedding models</td>
+<td>Summaries, chat, RAG LLM</td>
+</tr>
+<tr>
+<td><code>PINECONE_*</code></td>
+<td>Vector search</td>
+</tr>
+<tr>
+<td><code>CRON_SECRET</code></td>
+<td>Scheduled jobs</td>
+</tr>
+<tr>
+<td><code>SMTP_*</code></td>
+<td>Email</td>
+</tr>
+<tr>
+<td><code>CLINIC_SHEET_*_WEBHOOK</code></td>
+<td>Sheets integration</td>
+</tr>
+<tr>
+<td><code>EXPO_PUBLIC_API_URL</code></td>
+<td>Mobile → backend</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-production-requirements-what-large-scale-means">3. Production requirements (what “large scale” means)</h2>
+<p>Define SLOs explicitly. Example targets to discuss with your team:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Starter prod</th>
+<th>Large scale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Concurrent scans</td>
+<td>10</td>
+<td>500+</td>
+</tr>
+<tr>
+<td>Scans / day</td>
+<td>1k</td>
+<td>100k+</td>
+</tr>
+<tr>
+<td>Scan p95 latency (user perceived)</td>
+<td>&lt; 15s async accepted</td>
+<td>&lt; 8s with GPU fleet</td>
+</tr>
+<tr>
+<td>API availability</td>
+<td>99.5%</td>
+<td>99.9%+</td>
+</tr>
+<tr>
+<td>RPO / RTO (DB)</td>
+<td>24h / 4h</td>
+<td>15 min / 1h</td>
+</tr>
+<tr>
+<td>Data residency</td>
+<td>India</td>
+<td>India + export rules</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Non-functional requirements you must document:</strong></p>
+<ul>
+<li><strong>Privacy:</strong> facial images = sensitive personal data (India DPDP Act; if US patients, HIPAA-like controls).</li>
+<li><strong>Retention:</strong> how long raw photos vs derived scores are kept.</li>
+<li><strong>Consent:</strong> onboarding + scan disclaimers (not diagnosis).</li>
+<li><strong>Audit:</strong> who accessed which patient record (doctor actions).</li>
+<li><strong>Multi-tenancy:</strong> one clinic vs many clinics on one platform.</li>
+</ul>
+<hr />
+<h2 id="4-target-aws-architecture-recommended">4. Target AWS architecture (recommended)</h2>
+<h3 id="41-high-level-split-responsibilities">4.1 High-level (split responsibilities)</h3>
+<pre><code class="language-mermaid">flowchart TB
+  subgraph edge
+    CF[CloudFront]
+    WAF[AWS WAF]
+  end
+
+  subgraph compute_app
+    ALB[Application Load Balancer]
+    ECS_API[ECS Fargate: API Service&lt;br/&gt;Next.js or Nest/Fastify]
+    ECS_WEB[ECS Fargate: Web SSR&lt;br/&gt;optional separate]
+  end
+
+  subgraph async
+    SQS[SQS Scan Queue]
+    ECS_WORKER[ECS Fargate: Scan Worker]
+    EB[EventBridge Schedules]
+    LAMBDA_CRON[Lambda / ECS Cron Workers]
+  end
+
+  subgraph ml_aws
+    ALB_ML[Internal ALB]
+    ECS_GPU[ECS EC2 GPU ASG&lt;br/&gt;Face Analysis FastAPI]
+  end
+
+  subgraph data_aws
+    RDS[(Aurora PostgreSQL)]
+    S3[(S3 Private Buckets)]
+    SM[Secrets Manager]
+    REDIS[ElastiCache Redis&lt;br/&gt;optional]
+  end
+
+  subgraph ai_aws
+    OAI[OpenAI via VPC egress]
+    PC[Pinecone or&lt;br/&gt;OpenSearch Serverless]
+  end
+
+  subgraph obs
+    CW[CloudWatch]
+    XR[X-Ray]
+    SENTRY[Sentry optional]
+  end
+
+  Mobile[Expo App] --&gt; CF
+  Browser[Web] --&gt; CF
+  CF --&gt; WAF --&gt; ALB
+  ALB --&gt; ECS_API
+  ALB --&gt; ECS_WEB
+
+  ECS_API --&gt; RDS
+  ECS_API --&gt; S3
+  ECS_API --&gt; SQS
+  ECS_API --&gt; SM
+
+  SQS --&gt; ECS_WORKER
+  ECS_WORKER --&gt; ECS_GPU
+  ECS_WORKER --&gt; RDS
+  ECS_WORKER --&gt; S3
+  ECS_WORKER --&gt; OAI
+
+  EB --&gt; LAMBDA_CRON
+  LAMBDA_CRON --&gt; RDS
+  LAMBDA_CRON --&gt; OAI
+
+  ECS_GPU --&gt; SM
+  ECS_API --&gt; REDIS
+</code></pre>
+<h3 id="42-why-async-scan-pipeline-mandatory-at-scale">4.2 Why async scan pipeline (mandatory at scale)</h3>
+<p><strong>Today:</strong> Client waits for inference + DB write + optional OpenAI.</p>
+<p><strong>Target:</strong></p>
+<ol>
+<li><code>POST /api/scans</code> → validate auth → virus scan (optional) → <strong>presigned S3 upload</strong> (5 objects) → create <code>scan_jobs</code> row <code>status=queued</code> → return <code>jobId</code> immediately.</li>
+<li><strong>SQS message</strong> <code>{ jobId, userId, s3Keys[] }</code>.</li>
+<li><strong>Worker</strong> pulls message → calls internal inference → writes scores → updates <code>status=complete</code> → push notification / websocket.</li>
+<li>Client polls <code>GET /api/scans/{jobId}</code> or receives <strong>WebSocket/SSE</strong> update.</li>
+</ol>
+<p>Benefits: no API Gateway/ALB timeout issues, horizontal scaling, retry on HF-style failures, backpressure when GPU queue is full.</p>
+<h3 id="43-aws-service-mapping-detailed">4.3 AWS service mapping (detailed)</h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>AWS service</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web hosting</td>
+<td><strong>CloudFront</strong> + <strong>S3</strong> (static) or <strong>ECS/Amplify</strong> for Next SSR</td>
+<td>Next.js 16: consider splitting static vs SSR</td>
+</tr>
+<tr>
+<td>Mobile API</td>
+<td>Same ALB → API service</td>
+<td>Keep Bearer JWT</td>
+</tr>
+<tr>
+<td>REST API edge</td>
+<td><strong>API Gateway HTTP</strong> (optional in front of ALB)</td>
+<td>Rate limits, API keys for partners</td>
+</tr>
+<tr>
+<td>Application compute</td>
+<td><strong>ECS Fargate</strong> (stateless API + workers)</td>
+<td>Start here; EKS only if you need K8s ecosystem</td>
+</tr>
+<tr>
+<td>GPU inference</td>
+<td><strong>ECS on EC2 GPU</strong> (g5/g6 instances) ASG</td>
+<td>Match current FastAPI container; add GPU torch image</td>
+</tr>
+<tr>
+<td>Alternative ML</td>
+<td><strong>SageMaker real-time endpoint</strong></td>
+<td>Higher ops cost, good if MLOps team owns models</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><strong>Aurora PostgreSQL</strong> (Multi-AZ)</td>
+<td>Migrate from Neon; use RDS Proxy</td>
+</tr>
+<tr>
+<td>Object storage</td>
+<td><strong>S3</strong> + SSE-KMS</td>
+<td><code>raw-scans/</code>, <code>derivatives/masks/</code>, <code>audio/</code></td>
+</tr>
+<tr>
+<td>CDN for images</td>
+<td><strong>CloudFront</strong> + <strong>signed URLs</strong></td>
+<td>Never public patient photos</td>
+</tr>
+<tr>
+<td>Secrets</td>
+<td><strong>Secrets Manager</strong></td>
+<td>DB creds, OpenAI, inference API key</td>
+</tr>
+<tr>
+<td>IAM</td>
+<td><strong>IAM roles</strong> per task</td>
+<td>No keys in containers</td>
+</tr>
+<tr>
+<td>Queue</td>
+<td><strong>SQS</strong> standard + <strong>DLQ</strong></td>
+<td>Scan jobs, email, webhooks</td>
+</tr>
+<tr>
+<td>Schedules</td>
+<td><strong>EventBridge</strong> → Lambda or ECS</td>
+<td>Replace <code>/api/cron/*</code></td>
+</tr>
+<tr>
+<td>Cache</td>
+<td><strong>ElastiCache Redis</strong></td>
+<td>Sessions, rate limits, hot dashboard</td>
+</tr>
+<tr>
+<td>Email</td>
+<td><strong>Amazon SES</strong></td>
+<td>Replace raw SMTP or keep SMTP relay</td>
+</tr>
+<tr>
+<td>Push</td>
+<td>Keep <strong>Expo push</strong></td>
+<td>Or add SNS mobile push later</td>
+</tr>
+<tr>
+<td>WAF</td>
+<td><strong>AWS WAF</strong> on CloudFront/ALB</td>
+<td>OWASP, bot control, geo block</td>
+</tr>
+<tr>
+<td>Logging</td>
+<td><strong>CloudWatch Logs</strong></td>
+<td>Structured JSON</td>
+</tr>
+<tr>
+<td>Metrics/alarms</td>
+<td><strong>CloudWatch</strong> + <strong>SNS/PagerDuty</strong></td>
+<td>GPU queue depth, scan failure rate</td>
+</tr>
+<tr>
+<td>Tracing</td>
+<td><strong>X-Ray</strong> or <strong>ADOT</strong></td>
+<td>End-to-end scan latency</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td><strong>GitHub Actions</strong> → <strong>ECR</strong> → <strong>ECS deploy</strong></td>
+<td>Separate pipelines for app vs model</td>
+</tr>
+<tr>
+<td>IaC</td>
+<td><strong>Terraform</strong> or <strong>CDK</strong></td>
+<td>Required for company governance</td>
+</tr>
+<tr>
+<td>Compliance</td>
+<td><strong>AWS Config</strong>, <strong>CloudTrail</strong>, <strong>KMS</strong></td>
+<td>Audit who did what</td>
+</tr>
+<tr>
+<td>Backup</td>
+<td><strong>Aurora backups</strong> + <strong>S3 versioning/lifecycle</strong></td>
+<td>Cross-region replication if needed</td>
+</tr>
+<tr>
+<td>VPC</td>
+<td>Private subnets for RDS, GPU, workers; public ALB only</td>
+<td>NAT Gateway for egress to OpenAI</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44-inference-service-on-aws-deep-dive">4.4 Inference service on AWS (deep dive)</h3>
+<p><strong>Container:</strong> Same <code>api_server.py</code>, but Dockerfile must use <strong>CUDA torch</strong> and health checks.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Design choice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cold start</td>
+<td>Keep <strong>min capacity ≥ 1 GPU</strong> in prod; scale on SQS depth</td>
+</tr>
+<tr>
+<td>Model load</td>
+<td>Load once per container; <strong>read-only EFS</strong> or bake checkpoint in image</td>
+</tr>
+<tr>
+<td>Versioning</td>
+<td><code>FACE_ANALYSIS_CHECKPOINT</code> + blue/green ECS services (<code>v13</code>, <code>v14</code>)</td>
+</tr>
+<tr>
+<td>Autoscaling</td>
+<td>Custom metric: <code>ApproximateNumberOfMessagesVisible</code> on SQS</td>
+</tr>
+<tr>
+<td>Timeout</td>
+<td>Inference internal timeout 60–90s; worker visibility timeout &gt; that</td>
+</tr>
+<tr>
+<td>Security</td>
+<td><strong>Private ALB</strong>, no public internet; API service only</td>
+</tr>
+<tr>
+<td>Batch</td>
+<td>Optional <strong>SageMaker Batch</strong> for offline reprocessing</td>
+</tr>
+</tbody>
+</table>
+<p><strong>GPU sizing (starting point):</strong></p>
+<ul>
+<li>DINOv2 ViT-L/14 + 3 heads, 5 images per request: plan <strong>1 request ≈ 2–8s on T4/A10</strong> depending on batching.</li>
+<li>Rule of thumb: <strong>1× g5.xlarge</strong> ≈ tens of concurrent scans/min with queue; load-test your checkpoint.</li>
+</ul>
+<h3 id="45-application-layer-refactor-minimal-but-necessary">4.5 Application layer refactor (minimal but necessary)</h3>
+<p>Keep Next.js initially <strong>or</strong> extract API to Node (Hono/Fastify) — for enterprise, teams often:</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Approach</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Next.js on ECS behind ALB (fastest migration)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Extract <code>/api/scan</code>, <code>/api/ai/*</code>, cron to <strong>standalone Node API</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Mobile-only BFF if needed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Must-change code paths:</strong></p>
+<ul>
+<li>Stop storing <code>dataUri</code> in Postgres → store <strong>S3 keys</strong> + MIME + checksum.</li>
+<li><code>imageUrl</code> becomes <code>https://cdn.../signed?...</code> or app proxy <code>GET /api/media/{id}</code>.</li>
+<li><code>faceCaptureImages[]</code> → array of <code>{ label, s3Key, width, height }</code>.</li>
+<li>Migration script: backfill S3 from existing data URIs (batched).</li>
+</ul>
+<h3 id="46-database-design-production">4.6 Database design (production)</h3>
+<p><strong>Aurora PostgreSQL</strong> (provisioned or serverless v2):</p>
+<ul>
+<li>Enable <strong>Multi-AZ</strong>, automated backups, <strong>Performance Insights</strong>.</li>
+<li><strong>RDS Proxy</strong> for connection pooling (many ECS tasks).</li>
+<li>Partition or archive:</li>
+<li><code>chat_messages</code> by month</li>
+<li>Old <code>scans</code> to <strong>S3 Glacier</strong> + metadata-only rows</li>
+</ul>
+<p><strong>New tables suggested:</strong></p>
+<pre><code class="language-sql">scan_jobs (
+  id uuid PK,
+  user_id uuid FK,
+  status enum queued|processing|complete|failed,
+  s3_prefix text,
+  error text,
+  inference_version text,
+  created_at, completed_at
+)
+
+media_objects (
+  id uuid PK,
+  owner_user_id uuid,
+  bucket text,
+  key text,
+  content_type text,
+  bytes bigint,
+  purpose enum scan_raw|scan_mask|profile|visit_attachment,
+  created_at
+)
+</code></pre>
+<p>Keep <code>parameter_scores</code> as today — relational analytics-friendly.</p>
+<h3 id="47-ai-rag-layer">4.7 AI / RAG layer</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Today</th>
+<th>AWS-friendly pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chat</td>
+<td>OpenAI direct</td>
+<td>Same; optionally <strong>Bedrock</strong> (Claude) for data residency negotiations</td>
+</tr>
+<tr>
+<td>Embeddings</td>
+<td>OpenAI</td>
+<td>Bedrock Titan or keep OpenAI</td>
+</tr>
+<tr>
+<td>Vector DB</td>
+<td>Pinecone</td>
+<td><strong>OpenSearch Serverless</strong> (vectors) or keep Pinecone</td>
+</tr>
+<tr>
+<td>RAG indexing</td>
+<td>Local scripts</td>
+<td><strong>Lambda</strong> on S3 PDF upload → chunk → embed → index</td>
+</tr>
+<tr>
+<td>kAI cron</td>
+<td>HTTP cron</td>
+<td><strong>EventBridge</strong> rules per timezone bucket</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cost control:</strong> cache embeddings; cap tokens per user/day; separate queue for LLM-heavy monthly reports.</p>
+<h3 id="48-security-architecture">4.8 Security architecture</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Control</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Network</td>
+<td>VPC, private RDS, SG least privilege</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>Short-lived JWT + refresh; consider <strong>Cognito</strong> if you want MFA/OAuth at scale</td>
+</tr>
+<tr>
+<td>Encryption</td>
+<td>S3 SSE-KMS, RDS encryption, TLS 1.2+</td>
+</tr>
+<tr>
+<td>PII</td>
+<td>Field-level encryption for phone/email optional</td>
+</tr>
+<tr>
+<td>Access</td>
+<td>Doctor RBAC: <code>role</code> enum already exists — enforce in every API</td>
+</tr>
+<tr>
+<td>Audit</td>
+<td><code>audit_log</code> table + CloudTrail for infra</td>
+</tr>
+<tr>
+<td>App</td>
+<td>OWASP: file upload limits, presigned URL expiry (5 min), content-type validation</td>
+</tr>
+<tr>
+<td>ML</td>
+<td>No training on prod photos without consent; separate <strong>research account</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>India DPDP:</strong> data principal rights (access/delete), DPO, breach notification — architecture must support <strong>delete user → cascade S3 + DB</strong>.</p>
+<h3 id="49-observability-operations">4.9 Observability &amp; operations</h3>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>What to track</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Business</td>
+<td>Scans/day, completion rate, onboarding funnel</td>
+</tr>
+<tr>
+<td>Scan pipeline</td>
+<td>Queue age, failure %, GPU utilization</td>
+</tr>
+<tr>
+<td>API</td>
+<td>p50/p95 latency, 5xx rate</td>
+</tr>
+<tr>
+<td>DB</td>
+<td>Connections, slow queries, storage growth</td>
+</tr>
+<tr>
+<td>ML</td>
+<td>Model version, inference time per angle</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>Token usage per feature</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Runbooks:</strong> inference OOM, SQS poison messages, DB failover, rollback model version.</p>
+<h3 id="410-environments">4.10 Environments</h3>
+<table>
+<thead>
+<tr>
+<th>Env</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dev</code></td>
+<td>Shared, fake inference optional</td>
+</tr>
+<tr>
+<td><code>staging</code></td>
+<td>Full parity, anonymized data</td>
+</tr>
+<tr>
+<td><code>prod</code></td>
+<td>Multi-AZ, real GPU</td>
+</tr>
+<tr>
+<td><code>prod-dr</code></td>
+<td>Optional second region</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Accounts:</strong> AWS Organizations — separate accounts for prod vs non-prod (blast radius).</p>
+<hr />
+<h2 id="5-end-to-end-process-flows-target-state">5. End-to-end process flows (target state)</h2>
+<h3 id="51-scan-flow-async">5.1 Scan flow (async)</h3>
+<pre><code class="language-mermaid">sequenceDiagram
+  participant App as Mobile/Web
+  participant API as API Service
+  participant S3 as S3
+  participant Q as SQS
+  participant W as Scan Worker
+  participant ML as GPU Inference
+  participant DB as Aurora
+
+  App-&gt;&gt;API: POST /scans/init
+  API-&gt;&gt;DB: insert scan_job queued
+  API--&gt;&gt;App: jobId + presigned URLs
+  App-&gt;&gt;S3: PUT 5 images
+  App-&gt;&gt;API: POST /scans/{jobId}/complete
+  API-&gt;&gt;Q: enqueue
+  Q-&gt;&gt;W: message
+  W-&gt;&gt;S3: GET images
+  W-&gt;&gt;ML: POST /analyze_v2
+  ML--&gt;&gt;W: scores + masks
+  W-&gt;&gt;S3: PUT mask JPEGs
+  W-&gt;&gt;DB: scans + parameter_scores
+  W-&gt;&gt;API: optional OpenAI summary
+  App-&gt;&gt;API: GET /scans/{jobId}
+  API--&gt;&gt;App: complete + report URLs
+</code></pre>
+<h3 id="52-doctor-updates-patient">5.2 Doctor updates patient</h3>
+<p>Unchanged logically; ensure <strong>visit attachments</strong> go to S3, not <code>text</code> data URIs (you already hit size limits in places).</p>
+<h3 id="53-kai-daily-focus-cron">5.3 kAI daily focus cron</h3>
+<pre><code class="language-mermaid">flowchart LR
+  EB[EventBridge 06:00 IST] --&gt; L[Lambda/ECS Worker]
+  L --&gt; DB[(Aurora)]
+  L --&gt; OAI[OpenAI]
+  L --&gt; DB
+  L --&gt; Push[Expo Push API]
+</code></pre>
+<p>Shard patients by timezone (<code>users.timezone</code> already exists).</p>
+<hr />
+<h2 id="6-migration-roadmap-phased">6. Migration roadmap (phased)</h2>
+<h3 id="phase-0-discovery-24-weeks">Phase 0 — Discovery (2–4 weeks)</h3>
+<ul>
+<li>Capacity planning workshops (Section 12).</li>
+<li>Threat model + data classification.</li>
+<li>Choose: ECS vs EKS, Cognito vs custom auth.</li>
+<li>Load test current HF endpoint with realistic 5-image payloads.</li>
+</ul>
+<h3 id="phase-1-aws-foundation-46-weeks">Phase 1 — AWS foundation (4–6 weeks)</h3>
+<ul>
+<li>AWS Organization, VPC, Aurora, S3 buckets, KMS, Secrets Manager.</li>
+<li>CI/CD to ECR + ECS (staging).</li>
+<li>Migrate Neon → Aurora (DMS or pg_dump), minimal code change.</li>
+<li>Deploy Next.js to ECS + CloudFront.</li>
+</ul>
+<h3 id="phase-2-media-off-db-48-weeks-critical">Phase 2 — Media off DB (4–8 weeks) <strong>critical</strong></h3>
+<ul>
+<li>Presigned upload for new scans.</li>
+<li>Dual-write: S3 + legacy URI during transition.</li>
+<li>Backfill job for historical scans.</li>
+<li>CloudFront signed URLs in app.</li>
+</ul>
+<h3 id="phase-3-inference-on-aws-gpu-46-weeks">Phase 3 — Inference on AWS GPU (4–6 weeks)</h3>
+<ul>
+<li>GPU Docker image, internal ALB.</li>
+<li>Point <code>FACE_ANALYSIS_SERVICE_URL</code> to AWS.</li>
+<li>Decommission or keep HF as <strong>DR fallback</strong> only.</li>
+</ul>
+<h3 id="phase-4-async-scan-pipeline-46-weeks">Phase 4 — Async scan pipeline (4–6 weeks)</h3>
+<ul>
+<li>SQS + workers; mobile/web UX for “processing”.</li>
+<li>DLQ alerting, retries, idempotency keys.</li>
+</ul>
+<h3 id="phase-5-hardening-scale-ongoing">Phase 5 — Hardening &amp; scale (ongoing)</h3>
+<ul>
+<li>WAF, rate limits, Redis cache.</li>
+<li>OpenSearch vs Pinecone decision.</li>
+<li>Multi-clinic tenancy if needed.</li>
+<li>SOC2-style controls if enterprise clinics.</li>
+</ul>
+<p><strong>Total realistic timeline:</strong> <strong>6–9 months</strong> for a disciplined team; <strong>3–4 months</strong> for MVP production on AWS with sync scans + S3 + GPU (skip full async first if load is moderate).</p>
+<hr />
+<h2 id="7-team-skills-needed">7. Team &amp; skills needed</h2>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tech lead / architect</strong></td>
+<td>AWS design, ADRs, security</td>
+</tr>
+<tr>
+<td><strong>Backend engineers (2+)</strong></td>
+<td>API split, S3 migration, workers</td>
+</tr>
+<tr>
+<td><strong>ML engineer</strong></td>
+<td>GPU container, model versioning, quality regression</td>
+</tr>
+<tr>
+<td><strong>DevOps / platform</strong></td>
+<td>Terraform, ECS, monitoring, cost</td>
+</tr>
+<tr>
+<td><strong>Mobile engineer</strong></td>
+<td>Async scan UX, upload reliability</td>
+</tr>
+<tr>
+<td><strong>Frontend engineer</strong></td>
+<td>Report UI, doctor portal</td>
+</tr>
+<tr>
+<td><strong>QA</strong></td>
+<td>Scan regression suite (golden images)</td>
+</tr>
+<tr>
+<td><strong>Compliance / legal</strong></td>
+<td>DPDP, consent, clinical disclaimers</td>
+</tr>
+<tr>
+<td><strong>On-call rotation</strong></td>
+<td>After Phase 3</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-cost-drivers-qualitative">8. Cost drivers (qualitative)</h2>
+<p>Largest AWS bills at scale:</p>
+<ol>
+<li><strong>GPU EC2</strong> (24/7 min instances vs scale-to-zero).</li>
+<li><strong>NAT Gateway</strong> egress (OpenAI calls — consider VPC endpoints only for AWS services).</li>
+<li><strong>Aurora storage</strong> if you keep blobs in DB (fix S3 first).</li>
+<li><strong>CloudFront</strong> egress for image-heavy apps.</li>
+<li><strong>OpenAI tokens</strong> (often &gt; infra if chat/RAG is heavy).</li>
+</ol>
+<p><strong>Cost optimizations:</strong></p>
+<ul>
+<li>S3 Intelligent-Tiering for old scans.</li>
+<li>Lifecycle: delete raw after N days, keep scores forever.</li>
+<li>Batch LLM jobs off-peak.</li>
+<li>Reserved instances for baseline GPU.</li>
+</ul>
+<hr />
+<h2 id="9-risks-technical-debt-to-address">9. Risks &amp; technical debt to address</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data URIs in Postgres</td>
+<td>DB bloat, slow backups, expensive</td>
+<td>Phase 2 S3 migration</td>
+</tr>
+<tr>
+<td>Sync 120s scan</td>
+<td>Timeouts, bad UX under load</td>
+<td>Async queue</td>
+</tr>
+<tr>
+<td>CPU inference on HF</td>
+<td>High latency at peak</td>
+<td>GPU ASG</td>
+</tr>
+<tr>
+<td>Single monolith</td>
+<td>Deploy blast radius</td>
+<td>Split workers + API</td>
+</tr>
+<tr>
+<td>Dummy inference fallback</td>
+<td>Regulatory/trust issue</td>
+<td>Disable in prod (<code>FACE_ANALYSIS_ALLOW_DUMMY=false</code>)</td>
+</tr>
+<tr>
+<td>Model downloads via torch.hub</td>
+<td>Fragile deploys</td>
+<td>Bake backbone or cache in AMI/EFS</td>
+</tr>
+<tr>
+<td>No formal audit trail</td>
+<td>Compliance gap</td>
+<td><code>audit_log</code> + CloudTrail</td>
+</tr>
+<tr>
+<td>Roboflow legacy path</td>
+<td>Confusion</td>
+<td>Deprecate if unused</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-what-you-need-to-buybuild-checklist">10. What you need to buy/build (checklist)</h2>
+<h3 id="infrastructure">Infrastructure</h3>
+<ul>
+<li>[ ] AWS accounts + IAM Identity Center</li>
+<li>[ ] VPC (3 AZ), NAT, subnets</li>
+<li>[ ] Aurora PostgreSQL + RDS Proxy</li>
+<li>[ ] S3 buckets + KMS keys + lifecycle policies</li>
+<li>[ ] ECR repositories (api, web, inference, worker)</li>
+<li>[ ] ECS clusters (Fargate + GPU EC2)</li>
+<li>[ ] ALB + CloudFront + WAF</li>
+<li>[ ] SQS + DLQ</li>
+<li>[ ] EventBridge schedules</li>
+<li>[ ] Secrets Manager</li>
+<li>[ ] CloudWatch dashboards/alarms</li>
+<li>[ ] Terraform/CDK repo</li>
+</ul>
+<h3 id="application">Application</h3>
+<ul>
+<li>[ ] Presigned upload API</li>
+<li>[ ] <code>scan_jobs</code> state machine</li>
+<li>[ ] Media URL signing service</li>
+<li>[ ] Worker service</li>
+<li>[ ] Mobile “scan processing” screen</li>
+<li>[ ] DB migration scripts</li>
+<li>[ ] Inference GPU Dockerfile</li>
+<li>[ ] Golden-image regression tests for v13</li>
+<li>[ ] Remove/disable dummy inference in prod</li>
+</ul>
+<h3 id="governance">Governance</h3>
+<ul>
+<li>[ ] Privacy policy + consent flows</li>
+<li>[ ] Data retention policy</li>
+<li>[ ] Incident response plan</li>
+<li>[ ] On-call + runbooks</li>
+</ul>
+<hr />
+<h2 id="11-questions-i-need-from-you-please-answer">11. Questions I need from you (please answer)</h2>
+<p>These determine sizing and architecture forks:</p>
+<h3 id="business-scale">Business &amp; scale</h3>
+<ol>
+<li><strong>Expected users:</strong> MAU, DAU, and <strong>scans per day</strong> at 12 months?</li>
+<li><strong>Peak concurrency:</strong> max simultaneous scans (e.g. marketing campaign)?</li>
+<li><strong>Clinic model:</strong> single clinic or <strong>multi-tenant SaaS</strong> (many clinics)?</li>
+<li><strong>Geography:</strong> India only or international? (data residency)</li>
+<li><strong>SLA:</strong> Is <strong>&lt;10s</strong> result required, or is “ready in 30–60s with notification” OK?</li>
+</ol>
+<h3 id="compliance-legal">Compliance &amp; legal</h3>
+<ol>
+<li><strong>Regulatory scope:</strong> India DPDP only, or HIPAA / EU GDPR too?</li>
+<li><strong>Can you store photos in AWS Mumbai (<code>ap-south-1</code>)?</strong> Any requirement to avoid US regions for PII?</li>
+<li><strong>Retention:</strong> How long keep <strong>raw</strong> photos vs <strong>scores only</strong>?</li>
+<li><strong>Human review:</strong> Do clinicians need to download/export full images?</li>
+</ol>
+<h3 id="product-technical">Product &amp; technical</h3>
+<ol>
+<li><strong>Auth roadmap:</strong> Stay custom JWT, or <strong>Cognito</strong> / enterprise SSO for clinic staff?</li>
+<li><strong>OpenAI:</strong> Must stay OpenAI, or open to <strong>AWS Bedrock</strong>?</li>
+<li><strong>Pinecone:</strong> Keep or move vectors to <strong>OpenSearch</strong>?</li>
+<li><strong>Real-time features:</strong> Live scan guidance on device (future) — edge ML needed?</li>
+<li><strong>Offline/mobile:</strong> Must scans work with poor network (resumable uploads)?</li>
+<li><strong>Budget range</strong> for monthly infra (order of magnitude: $2k / $20k / $100k)?</li>
+</ol>
+<h3 id="organization">Organization</h3>
+<ol>
+<li><strong>Team size</strong> today for backend/DevOps/ML?</li>
+<li><strong>Timeline</strong> for go-live on AWS?</li>
+<li><strong>Downtime tolerance</strong> for DB migration?</li>
+</ol>
+<hr />
+<h2 id="12-recommended-decision-if-you-want-a-default-path">12. Recommended decision (if you want a default path)</h2>
+<p>For a <strong>dermatology clinic product scaling in India</strong> with your current stack:</p>
+<ol>
+<li><strong>Region:</strong> <code>ap-south-1</code> (Mumbai).</li>
+<li><strong>App:</strong> Next.js API on <strong>ECS Fargate</strong> behind ALB + CloudFront (fastest migration).</li>
+<li><strong>ML:</strong> Same FastAPI on <strong>ECS GPU (g5)</strong> with internal ALB; retire public HF in prod.</li>
+<li><strong>Data:</strong> <strong>Aurora PostgreSQL</strong> + <strong>S3</strong> for all images/audio; signed CloudFront URLs.</li>
+<li><strong>Scans:</strong> Introduce <strong>SQS async pipeline</strong> before you hit ~500+ scans/day.</li>
+<li><strong>Cron:</strong> <strong>EventBridge</strong> workers, not HTTP <code>/api/cron</code>.</li>
+<li><strong>Auth:</strong> Keep JWT short-term; plan <strong>Cognito</strong> when you add clinic SSO/MFA.</li>
+<li><strong>Observability:</strong> CloudWatch + Sentry from day one in prod.</li>
+</ol>
+<hr />
+<h2 id="13-immediate-next-steps-practical">13. Immediate next steps (practical)</h2>
+<ol>
+<li><strong>Answer Section 11</strong> (even rough numbers).</li>
+<li>Run a <strong>load test</strong> on current <code>/analyze_v2</code> (5× JPEG) and record p50/p95 on CPU vs one GPU instance.</li>
+<li><strong>Measure DB size</strong> per scan row (average <code>scans</code> + JSONB) — this justifies S3 migration priority.</li>
+<li>Create an <strong>ADR doc</strong> (Architecture Decision Record) for: async vs sync, Cognito vs custom, Bedrock vs OpenAI.</li>
+<li>Stand up <strong>staging AWS</strong> with Aurora + S3 + one GPU instance before touching prod Neon.</li>
+</ol>
+<hr />
+<p>I can turn this into a <strong>formal ADR pack</strong> (diagrams + Terraform module list + sprint breakdown) once you answer the questions in <strong>Section 11</strong> — especially <strong>scans/day</strong>, <strong>region</strong>, <strong>compliance</strong>, and <strong>async SLA</strong>.</p>
+<p>If you want, reply with:
+- MAU / scans per day (estimate),
+- India-only or global,
+- budget tier,
+- target go-live date,</p>
+<p>and I’ll produce <strong>Phase 1 Terraform module outline</strong> and a <strong>week-by-week implementation plan</strong> tailored to your numbers.</p>
+<p>[REDACTED]</p>
+<p class="footer">Internal — SkinFit Clinic · May 2026 · Architecture planning document</p>
+</body></html>
