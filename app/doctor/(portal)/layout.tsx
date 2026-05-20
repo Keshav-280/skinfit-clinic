@@ -1,12 +1,28 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Stethoscope, UserRound, Users } from "lucide-react";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
 import { DoctorAppointmentsBell } from "@/components/doctor/DoctorAppointmentsBell";
 import { DoctorPatientChatBell } from "@/components/doctor/DoctorPatientChatBell";
 import { DoctorSosBell } from "@/components/doctor/DoctorSosBell";
+import { DoctorPortalSidebar } from "@/components/doctor/DoctorPortalSidebar";
+import {
+  doctorGlassHeaderClass,
+  doctorPortalShellClass,
+} from "@/src/lib/doctorPortalTheme";
 import { GlobalRefreshButton } from "@/components/ui/GlobalRefreshButton";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Doctor Portal | SkinFit Clinic",
+    template: "%s | SkinFit Clinic",
+  },
+  description:
+    "SkinFit Clinic staff portal for dermatologists — manage patients, treatment plans, scans, and secure messaging.",
+  robots: { index: false, follow: false },
+};
 
 export default async function DoctorPortalLayout({
   children,
@@ -19,65 +35,50 @@ export default async function DoctorPortalLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F4F6F3]">
-      {/* ── Sidebar ── */}
-      <aside className="sticky top-0 hidden h-screen w-[220px] flex-col border-r border-slate-200/80 bg-white md:flex">
-        <div className="flex items-center gap-2.5 px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2C3E6B]">
-            <Stethoscope className="h-4 w-4 text-white" />
-          </div>
-          <span className="text-[15px] font-bold text-slate-900">SkinFit Clinic</span>
-        </div>
+    <div
+      data-doctor-portal
+      className={`flex ${doctorPortalShellClass}`}
+    >
+      <DoctorPortalSidebar />
 
-        <nav className="mt-2 flex flex-1 flex-col gap-1 px-3">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <header
+          className={`sticky top-0 z-20 flex items-center justify-between px-4 py-3 sm:px-6 ${doctorGlassHeaderClass}`}
+        >
           <Link
             href="/doctor/patients"
-            className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="flex items-center gap-2 md:hidden"
+            aria-label="SkinFit Clinic staff home"
           >
-            <Users className="h-[18px] w-[18px] text-slate-400 group-hover:text-[#2C3E6B]" />
-            Patients
-          </Link>
-          <Link
-            href="/doctor/profile"
-            className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            <UserRound className="h-[18px] w-[18px] text-slate-400 group-hover:text-[#2C3E6B]" />
-            Profile
-          </Link>
-        </nav>
-
-        <div className="border-t border-slate-100 px-3 py-3">
-          <DoctorLogoutButton />
-        </div>
-      </aside>
-
-      {/* ── Main area ── */}
-      <div className="flex flex-1 flex-col">
-        {/* Top bar */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200/60 bg-white/80 px-5 py-3 backdrop-blur-md">
-          {/* Mobile logo */}
-          <Link href="/doctor/patients" className="flex items-center gap-2 md:hidden">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2C3E6B]">
-              <Stethoscope className="h-3.5 w-3.5 text-white" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2C3E6B]">
+              <Stethoscope className="h-4 w-4 text-white" aria-hidden />
             </div>
             <span className="text-sm font-bold text-slate-900">SkinFit</span>
           </Link>
 
-          {/* Mobile nav links */}
-          <div className="flex items-center gap-2 md:hidden">
-            <Link href="/doctor/patients" className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
+          <nav
+            className="flex items-center gap-1 md:hidden"
+            aria-label="Mobile navigation"
+          >
+            <Link
+              href="/doctor/patients"
+              className="rounded-lg p-2.5 text-slate-600 hover:bg-slate-100"
+              aria-label="Patients"
+            >
               <Users className="h-4 w-4" />
             </Link>
-            <Link href="/doctor/profile" className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
+            <Link
+              href="/doctor/profile"
+              className="rounded-lg p-2.5 text-slate-600 hover:bg-slate-100"
+              aria-label="Profile"
+            >
               <UserRound className="h-4 w-4" />
             </Link>
-          </div>
+          </nav>
 
-          {/* Spacer for desktop */}
-          <div className="hidden md:block" />
+          <div className="hidden flex-1 md:block" />
 
-          {/* Bells + actions */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <DoctorAppointmentsBell />
             <DoctorPatientChatBell />
             <DoctorSosBell />
@@ -88,7 +89,9 @@ export default async function DoctorPortalLayout({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5">
+          {children}
+        </main>
       </div>
     </div>
   );

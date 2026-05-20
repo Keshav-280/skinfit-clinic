@@ -1,4 +1,5 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { inboxPreviewForText } from "@/src/lib/chatE2ee/format";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads, users } from "@/src/db/schema";
 
@@ -58,11 +59,32 @@ export async function loadUnrepliedDoctorChatAlerts(
       patientId: r.patientId,
       messageId: r.messageId,
       patientName: r.patientName?.trim() || "Patient",
-      text: r.text,
+      text: inboxPreviewForText(r.text),
       createdAt: r.createdAt,
     });
   }
 
   out.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   return out.slice(0, limit);
+}
+
+/** Mark every thread currently shown in the patient-messages inbox as read. */
+export async function markAllUnrepliedDoctorChatInboxSeen(): Promise<number> {
+  const rows = await loadUnrepliedDoctorChatAlerts(500);
+  const patientIds = [...new Set(rows.map((r) => r.patientId))];
+  if (patientIds.length === 0) return 0;
+
+  const now = new Date();
+  const updated = await db
+    .update(chatThreads)
+    .set({ doctorPortalLastReadAt: now })
+    .where(
+      and(
+        eq(chatThreads.assistantId, "doctor"),
+        inArray(chatThreads.userId, patientIds)
+      )
+    )
+    .returning({ id: chatThreads.id });
+
+  return updated.length;
 }

@@ -13,8 +13,10 @@ import {
   real,
   index,
   uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["patient", "doctor", "admin"]);
@@ -214,6 +216,11 @@ export const scans = pgTable("scans", {
   }>(),
   /** Bounding-box annotations from Roboflow (optional) */
   annotations: jsonb("annotations").$type<unknown[]>(),
+  /**
+   * Frozen kAI tracker report (focus actions, week deltas, resources) built once when
+   * the scan is saved — avoids rebuilding on every report view.
+   */
+  trackerSnapshot: jsonb("tracker_snapshot").$type<PatientTrackerReport | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -588,6 +595,34 @@ export const chatMessages = pgTable("chat_messages", {
     .notNull()
     .defaultNow(),
 });
+
+/** Per-user RSA public key for doctor↔patient chat E2EE. Private key stays on device. */
+export const chatUserE2eeKeys = pgTable("chat_user_e2ee_keys", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  publicKeyJwk: text("public_key_jwk").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** AES thread key wrapped for each participant (RSA-OAEP). */
+export const chatThreadE2eeEnvelopes = pgTable(
+  "chat_thread_e2ee_envelopes",
+  {
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => chatThreads.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    wrappedKeyB64: text("wrapped_key_b64").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.threadId, table.userId] }),
+  })
+);
 
 /** Staff marked “seen” for a specific urgent SOS chat row (per-doctor, per-message). */
 export const doctorSosAcknowledgements = pgTable(

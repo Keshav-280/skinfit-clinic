@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorUsers } from "@/src/lib/expoPush";
+import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 import { buildSosContextPrefix } from "@/src/lib/sosChatContext";
 
 function clampText(s: unknown, maxLen: number): string | null {
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
   }
   const attachmentUrl = attachmentParsed;
 
-  let patientText = clampText(b.text, 4000);
+  let patientText = clampText(b.text, 12000);
   if (!patientText && attachmentUrl) {
     patientText = attachmentUrl.startsWith("data:audio/")
       ? "🎤 Voice note"
@@ -80,7 +81,8 @@ export async function POST(req: Request) {
   }
 
   let messageText = patientText;
-  if (isUrgent && assistantId === "doctor") {
+  // SOS context stays plaintext so staff alerting keeps working.
+  if (isUrgent && assistantId === "doctor" && !isE2eePayload(patientText)) {
     const prefix = await buildSosContextPrefix(userId);
     messageText = `${prefix}\n\n${patientText}`.slice(0, 12_000);
   }
@@ -118,9 +120,12 @@ export async function POST(req: Request) {
   });
 
   if (assistantId === "doctor") {
+    const pushBody = isE2eePayload(patientText)
+      ? "New secure patient message"
+      : patientText.slice(0, 140);
     void notifyDoctorUsers({
       title: isUrgent ? "SOS — patient message" : "New patient message",
-      body: patientText.slice(0, 140),
+      body: pushBody,
       data: isUrgent
         ? { type: "sos_chat", patientId: userId }
         : { type: "doctor_chat", patientId: userId },

@@ -25,6 +25,8 @@ import { AM_ROUTINE_ITEMS, PM_ROUTINE_ITEMS } from "../lib/routine";
 
 const DEMO_PATIENT_EMAIL = DEMO_LOGIN_EMAIL;
 const DEMO_PATIENT_PASSWORD = "SkinFitDemo2024!";
+/** Second clinic doctor — same demo password as primary doctor seed. */
+const ADDITIONAL_DOCTOR_EMAIL = "iamdalves@gmail.com";
 async function seed() {
   console.log("🌱 Seeding database...");
 
@@ -81,6 +83,23 @@ async function seed() {
         },
       });
 
+    await db
+      .insert(users)
+      .values({
+        name: "Dr. Dalves",
+        email: ADDITIONAL_DOCTOR_EMAIL,
+        passwordHash: doctorHash,
+        role: "doctor",
+      })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: {
+          passwordHash: doctorHash,
+          name: "Dr. Dalves",
+          role: "doctor",
+        },
+      });
+
     const [patient] = await db
       .select()
       .from(users)
@@ -111,6 +130,7 @@ async function seed() {
 
     console.log("✓ Demo patient:", patient.email);
     console.log("✓ Demo doctor:", doctor.email);
+    console.log("✓ Additional doctor:", ADDITIONAL_DOCTOR_EMAIL);
 
     // 2. Sample skin_scans (up to 3 rows, staggered dates; higher metric = healthier)
     const [{ n: skinScanCount }] = await db

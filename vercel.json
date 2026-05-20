@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/appointment-reminders",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/kai-weekly",
+      "schedule": "0 1 * * 0"
+    },
+    {
+      "path": "/api/cron/kai-monthly",
+      "schedule": "0 2 1 * *"
     }
   ]
 }

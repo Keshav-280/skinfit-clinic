@@ -1,19 +1,26 @@
+import type { Metadata } from "next";
 import { DoctorPatientsClient } from "@/components/doctor/DoctorPatientsClient";
+import { DoctorPortalCalendar } from "@/components/doctor/DoctorPortalCalendar";
 
-export default function PatientsPage({
+export const metadata: Metadata = {
+  title: "Patients",
+  description:
+    "Browse patients and your clinic calendar — visits, alerts, and profiles in one view.",
+};
+
+export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: { sos?: string };
+  searchParams: Promise<{ sos?: string }>;
 }) {
+  const { sos } = await searchParams;
+
   return (
-    <div>
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-slate-900">Patients</h1>
-        <p className="mt-0.5 text-sm text-slate-500">
-          Manage and view patient profiles, scans, and treatment plans
-        </p>
+    <article>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] xl:grid-cols-[minmax(0,1.1fr)_360px]">
+        <DoctorPatientsClient initialSosOnly={sos === "1"} />
+        <DoctorPortalCalendar className="lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100vh-5.5rem)] lg:self-start" />
       </div>
-      <DoctorPatientsClient initialSosOnly={searchParams.sos === "1"} />
-    </div>
+    </article>
   );
 }

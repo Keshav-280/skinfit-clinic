@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads, users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
 
 const MAX_TEXT_LEN = 4000;
@@ -146,15 +147,41 @@ export async function POST(
   const messageText =
     text || (attachmentUrl?.startsWith("data:audio/") ? "🎤 Voice note" : "🖼️ Image");
 
-  await db.insert(chatMessages).values({
+  const [created] = await db
+    .insert(chatMessages)
+    .values({
+      threadId: thread.id,
+      sender: "doctor",
+      text: messageText,
+      attachmentUrl: attachmentUrl ?? null,
+    })
+    .returning({
+      id: chatMessages.id,
+      sender: chatMessages.sender,
+      text: chatMessages.text,
+      attachmentUrl: chatMessages.attachmentUrl,
+      createdAt: chatMessages.createdAt,
+    });
+
+  if (!created) {
+    return NextResponse.json({ error: "MESSAGE_CREATE_FAILED" }, { status: 500 });
+  }
+
+  void notifyPatientNewClinicChat(
+    patientId,
+    isE2eePayload(messageText) ? "New secure message from your clinic" : messageText
+  );
+
+  return NextResponse.json({
+    ok: true,
     threadId: thread.id,
-    sender: "doctor",
-    text: messageText,
-    attachmentUrl: attachmentUrl ?? null,
+    message: {
+      id: created.id,
+      sender: created.sender,
+      text: created.text,
+      attachmentUrl: created.attachmentUrl ?? null,
+      createdAt: created.createdAt.toISOString(),
+    },
   });
-
-  void notifyPatientNewClinicChat(patientId, messageText);
-
-  return NextResponse.json({ ok: true, threadId: thread.id });
 }
 

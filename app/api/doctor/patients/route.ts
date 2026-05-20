@@ -10,6 +10,7 @@ import {
 } from "@/src/lib/doctorSosInbox";
 
 export async function GET(req: Request) {
+  try {
   const staffId = await getDoctorPortalUserId();
   if (!staffId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
@@ -39,9 +40,7 @@ export async function GET(req: Request) {
   }
   if (q.length > 0) {
     const pattern = `%${q}%`;
-    conditions.push(
-      or(ilike(users.name, pattern), ilike(users.email, pattern))!
-    );
+    conditions.push(or(ilike(users.name, pattern), ilike(users.email, pattern))!);
   }
 
   const [latestForFlag, ackedIds] = await Promise.all([
@@ -93,4 +92,11 @@ export async function GET(req: Request) {
       };
     }),
   });
+  } catch (e) {
+    console.error("[doctor/patients]", e);
+    return NextResponse.json(
+      { success: false, error: "Could not load patients." },
+      { status: 500 }
+    );
+  }
 }

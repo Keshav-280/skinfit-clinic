@@ -20,6 +20,12 @@ import {
   markDoctorInboxSeenFromServer,
 } from "@/src/lib/clinicSupportInboxClient";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
+import {
+  decryptMessages,
+  encryptOutgoingText,
+  setupDoctorPatientE2ee,
+  type DoctorThreadE2eeSession,
+} from "@/src/lib/chatE2ee/client";
 
 const contacts = [
   {
@@ -97,7 +103,28 @@ export default function ChatPage() {
   const activeAssistantRef = useRef<AssistantId>("ai");
   activeAssistantRef.current = activeAssistant;
 
+  const doctorE2eeRef = useRef<DoctorThreadE2eeSession | null>(null);
+  const [doctorE2eeReady, setDoctorE2eeReady] = useState(false);
+
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeAssistant !== "doctor") {
+      doctorE2eeRef.current = null;
+      setDoctorE2eeReady(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const s = await setupDoctorPatientE2ee({ credentials: "include" });
+      if (cancelled) return;
+      doctorE2eeRef.current = s;
+      setDoctorE2eeReady(Boolean(s?.ready));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAssistant]);
 
   const scrollMessagesToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -152,14 +179,18 @@ export default function ChatPage() {
       }
 
       const rows = data.messages ?? [];
+      let messages: ChatMsg[] = rows.map((m) => ({
+        id: m.id,
+        sender: m.sender,
+        text: m.text,
+        attachmentUrl: m.attachmentUrl ?? null,
+        createdAt: m.createdAt,
+      }));
+      if (assistantId === "doctor" && doctorE2eeRef.current?.ready) {
+        messages = await decryptMessages<ChatMsg>(messages, doctorE2eeRef.current);
+      }
       return {
-        messages: rows.map((m) => ({
-          id: m.id,
-          sender: m.sender,
-          text: m.text,
-          attachmentUrl: m.attachmentUrl ?? null,
-          createdAt: m.createdAt,
-        })),
+        messages,
         clinicReadThroughIso: data.clinicReadThroughIso,
       };
     },
@@ -703,13 +734,17 @@ export default function ChatPage() {
     // Plain stored chat for Dr Ruby / Clinic Support (no AI replies).
     setIsLoading(true);
     try {
+      let outboundText = text;
+      if (activeAssistant === "doctor" && text && doctorE2eeRef.current?.ready) {
+        outboundText = await encryptOutgoingText(text, doctorE2eeRef.current);
+      }
       const res = await fetch("/api/chat/plain/message", {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           assistantId: activeAssistant,
-          text,
+          text: outboundText,
           attachmentUrl: attachment?.dataUri ?? null,
         }),
       });

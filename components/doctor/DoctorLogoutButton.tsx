@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { LogOut } from "lucide-react";
 
-export function DoctorLogoutButton() {
+export function DoctorLogoutButton({ collapsed = false }: { collapsed?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -23,9 +24,18 @@ export function DoctorLogoutButton() {
       type="button"
       onClick={() => void logout()}
       disabled={busy}
-      className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
+      title={collapsed ? "Log out" : undefined}
+      aria-label={collapsed ? "Log out" : undefined}
+      className={`flex items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50 ${
+        collapsed ? "w-full justify-center p-2.5" : "gap-2 px-3 py-2 text-sm font-medium"
+      }`}
     >
-      {busy ? "…" : "Log out"}
+      <LogOut className="h-[18px] w-[18px] shrink-0" aria-hidden />
+      {collapsed ? (
+        <span className="sr-only">{busy ? "Logging out" : "Log out"}</span>
+      ) : (
+        <span>{busy ? "…" : "Log out"}</span>
+      )}
     </button>
   );
 }

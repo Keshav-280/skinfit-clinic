@@ -93,10 +93,7 @@ export function DoctorAppointmentsBell() {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Next 14 days
             </p>
-            <p className="mt-0.5 text-xs text-slate-600">
-              Confirmed visits from the schedule. Patient requests are handled via your Google
-              Sheet → webhook sync.
-            </p>
+           
           </div>
           {loading && items.length === 0 ? (
             <p className="px-3 py-4 text-sm text-slate-500">Loading…</p>

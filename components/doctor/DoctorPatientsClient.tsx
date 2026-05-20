@@ -1,16 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ChevronRight,
+  Mail,
   RefreshCw,
   Search,
   User,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
+import {
+  DoctorCard,
+  DoctorEmptyState,
+  DoctorInlineLoader,
+  doctorCardMutedClass,
+} from "@/components/doctor/DoctorUiPrimitives";
 
 type PatientRow = {
   id: string;
@@ -31,7 +37,64 @@ const CONCERNS = [
   { value: "ageing", label: "Ageing" },
   { value: "hair", label: "Hair" },
   { value: "general", label: "General" },
-];
+] as const;
+
+function PatientCardLink({ p }: { p: PatientRow }) {
+  const isUrgent = p.sosRowTint === "urgent";
+
+  return (
+    <Link
+      href={`/doctor/patients/${p.id}`}
+      className={`group relative block h-full min-h-[8.25rem] rounded-2xl border bg-gradient-to-b from-white to-slate-50/70 p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:-translate-y-px hover:border-[#2C3E6B]/25 hover:shadow-[0_10px_24px_rgba(44,62,107,0.08)] ${
+        isUrgent
+          ? "border-rose-200/90 ring-1 ring-rose-100/80"
+          : "border-slate-200/90"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2.5">
+        <p className="min-w-0 pr-1 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-slate-900 group-hover:text-[#2C3E6B]">
+          <span className="line-clamp-2">{p.name}</span>
+        </p>
+        <ChevronRight
+          className="mt-0.5 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#2C3E6B]"
+          aria-hidden
+        />
+      </div>
+      {p.email ? (
+        <p
+          className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-[#2C3E6B]"
+          title={p.email}
+        >
+          <Mail className="h-3 w-3 shrink-0 text-[#2C3E6B]/70" aria-hidden />
+          <span className="truncate font-medium">{p.email}</span>
+        </p>
+      ) : null}
+      {p.primaryConcern ? (
+        <p className="mt-1.5 truncate text-[11px] font-medium capitalize text-slate-500">
+          {p.primaryConcern}
+        </p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {isUrgent ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-rose-700">
+            <AlertTriangle className="h-2.5 w-2.5" aria-hidden />
+            Alert
+          </span>
+        ) : null}
+        {p.clinicVisited ? (
+          <span className="rounded-full border border-[#2C3E6B]/20 bg-[#2C3E6B]/10 px-2 py-1 text-[10px] font-semibold text-[#2C3E6B]">
+            Visited
+          </span>
+        ) : null}
+        {!p.onboardingComplete ? (
+          <span className="rounded-full border border-slate-200 bg-white/70 px-2 py-1 text-[10px] font-medium text-slate-600">
+            Onboarding
+          </span>
+        ) : null}
+      </div>
+    </Link>
+  );
+}
 
 export function DoctorPatientsClient({
   initialSosOnly = false,
@@ -56,19 +119,24 @@ export function DoctorPatientsClient({
       const res = await fetch(`/api/doctor/patients?${params}`, {
         credentials: "include",
       });
-      const data = (await res.json()) as {
+      const data = (await res.json().catch(() => ({}))) as {
         success?: boolean;
         patients?: PatientRow[];
         error?: string;
       };
       if (!res.ok || !data.success) {
-        setErr(data.error ?? "Could not load patients.");
+        setErr(
+          data.error ??
+            (res.status === 401
+              ? "Session expired — sign in again."
+              : "Could not load patients.")
+        );
         setRows([]);
         return;
       }
       setRows(data.patients ?? []);
     } catch {
-      setErr("Network error.");
+      setErr("Could not reach the server. Check your connection and try again.");
       setRows([]);
     } finally {
       setLoading(false);
@@ -86,23 +154,58 @@ export function DoctorPatientsClient({
     return () => window.removeEventListener(GLOBAL_LIVE_REFRESH_EVENT, onRefresh);
   }, [load]);
 
+  const stats = useMemo(() => {
+    const sos = rows.filter((r) => r.sosRowTint === "urgent").length;
+    return { total: rows.length, sos };
+  }, [rows]);
+
   return (
-    <div className="space-y-4">
-      {/* ── Filters ── */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <DoctorCard className="flex min-h-0 flex-col p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Patients</h2>
+          <p className="text-xs text-slate-600">
+            {stats.total} shown
+            {stats.sos > 0 ? (
+              <span className="font-semibold text-rose-700">
+                {" "}
+                · {stats.sos} alert{stats.sos === 1 ? "" : "s"}
+              </span>
+            ) : null}
+          </p>
+        </div>
+      </div>
+
+      <form
+        className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void load();
+        }}
+        role="search"
+        aria-label="Filter patients"
+      >
+        <div className="relative min-w-0 flex-1">
+          <label htmlFor="patient-search" className="sr-only">
+            Search patients
+          </label>
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+            aria-hidden
+          />
           <input
+            id="patient-search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name or email…"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-1 focus:ring-[#2C3E6B]/20"
+            placeholder="Name or email…"
+            className={`w-full ${doctorCardMutedClass} py-2 pl-8 pr-3 text-sm text-slate-900 outline-none focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/15`}
           />
         </div>
         <select
           value={concern}
           onChange={(e) => setConcern(e.target.value)}
-          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:ring-1 focus:ring-[#2C3E6B]/20"
+          className={`${doctorCardMutedClass} px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/15`}
+          aria-label="Filter by concern"
         >
           {CONCERNS.map((c) => (
             <option key={c.value || "any"} value={c.value}>
@@ -110,106 +213,53 @@ export function DoctorPatientsClient({
             </option>
           ))}
         </select>
-        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-700">
           <input
             type="checkbox"
             checked={sosOnly}
             onChange={(e) => setSosOnly(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-slate-300 accent-red-600"
+            className="accent-[#2C3E6B]"
           />
-          <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-          SOS only
+          Alerts
         </label>
         <button
-          type="button"
-          onClick={() => void load()}
+          type="submit"
           disabled={loading}
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50"
+          className="inline-flex items-center justify-center rounded-lg bg-[#2C3E6B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#243356] disabled:opacity-50"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
         </button>
+      </form>
+
+      {err ? (
+        <p className="mb-2 text-sm text-red-600" role="alert">
+          {err}
+        </p>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
+        {loading && rows.length === 0 ? (
+          <DoctorInlineLoader label="Loading patients…" compact />
+        ) : rows.length === 0 ? (
+          <DoctorEmptyState
+            icon={<User className="h-6 w-6" />}
+            title="No patients found"
+            description="Try adjusting search or filters."
+          />
+        ) : (
+          <ul
+            className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3"
+            role="list"
+            aria-label="Patients"
+          >
+            {rows.map((p) => (
+              <li key={p.id} className="min-w-0">
+                <PatientCardLink p={p} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-
-      {err && <p className="text-sm font-medium text-red-600">{err}</p>}
-
-      {/* ── Patient cards ── */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <RefreshCw className="h-5 w-5 animate-spin text-slate-400" />
-          <span className="ml-2 text-sm text-slate-500">Loading patients…</span>
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center">
-          <User className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-2 text-sm text-slate-500">No patients match these filters.</p>
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((p) => {
-            const isUrgent = p.sosRowTint === "urgent";
-            const isSeen = p.sosRowTint === "seen";
-            return (
-              <Link
-                key={p.id}
-                href={`/doctor/patients/${p.id}`}
-                className={`group relative flex items-center gap-3 rounded-2xl border bg-white p-4 shadow-sm transition hover:shadow-md ${
-                  isUrgent
-                    ? "border-red-300 ring-1 ring-red-100"
-                    : isSeen
-                      ? "border-red-200/60"
-                      : "border-slate-200/80 hover:border-slate-300"
-                }`}
-              >
-                {/* Avatar */}
-                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
-                  isUrgent ? "bg-red-500" : "bg-[#2C3E6B]"
-                }`}>
-                  {p.name.charAt(0).toUpperCase()}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-slate-900">{p.name}</p>
-                    {isUrgent && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                        <AlertTriangle className="h-2.5 w-2.5" /> SOS
-                      </span>
-                    )}
-                    {isSeen && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700">
-                        SOS
-                      </span>
-                    )}
-                  </div>
-                  <p className="truncate text-xs text-slate-500">{p.email}</p>
-                  <div className="mt-1.5 flex items-center gap-2">
-                    {p.primaryConcern && (
-                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
-                        {p.primaryConcern}
-                      </span>
-                    )}
-                    {p.clinicVisited && (
-                      <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700">
-                        Visited
-                      </span>
-                    )}
-                    <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${
-                      p.onboardingComplete
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}>
-                      {p.onboardingComplete ? "Onboarded" : "In progress"}
-                    </span>
-                  </div>
-                </div>
-
-                <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-300 transition group-hover:text-[#2C3E6B]" />
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    </DoctorCard>
   );
 }

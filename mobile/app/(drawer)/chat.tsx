@@ -27,6 +27,12 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import {
+  decryptMessages,
+  encryptOutgoingText,
+  setupMobileDoctorChatE2ee,
+  type DoctorThreadE2eeSession,
+} from "@/lib/chatE2ee";
+import {
   getClinicSupportInboxLastSeenIso,
   getDoctorInboxLastSeenIso,
   markClinicSupportInboxSeenFromServer,
@@ -221,8 +227,28 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);
   const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const doctorE2eeRef = useRef<DoctorThreadE2eeSession | null>(null);
+  const [doctorE2eeStatus, setDoctorE2eeStatus] = useState<string | null>(null);
 
   const peer = useMemo(() => CONTACTS.find((c) => c.id === active)!, [active]);
+
+  useEffect(() => {
+    if (active !== "doctor" || !token) {
+      doctorE2eeRef.current = null;
+      setDoctorE2eeStatus(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const s = await setupMobileDoctorChatE2ee(token);
+      if (cancelled) return;
+      doctorE2eeRef.current = s;
+      setDoctorE2eeStatus(s?.ready ? null : s?.status ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, token]);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -247,8 +273,12 @@ export default function ChatScreen() {
         { method: "GET" }
       );
       if (!data.success) throw new Error("Failed to load messages.");
+      let messages = normalizeApiMessages(data.messages);
+      if (assistantId === "doctor" && doctorE2eeRef.current?.ready) {
+        messages = await decryptMessages(messages, doctorE2eeRef.current);
+      }
       return {
-        messages: normalizeApiMessages(data.messages),
+        messages,
         clinicReadThroughIso: data.clinicReadThroughIso,
       };
     },
@@ -631,11 +661,15 @@ export default function ChatScreen() {
       });
       const audioDataUri = `data:audio/m4a;base64,${base64}`;
 
+      let caption = input.trim();
+      if (active === "doctor" && caption && doctorE2eeRef.current?.ready) {
+        caption = await encryptOutgoingText(caption, doctorE2eeRef.current);
+      }
       await apiJson("/api/chat/plain/message", token, {
         method: "POST",
         body: JSON.stringify({
           assistantId: active,
-          text: input.trim() || undefined,
+          text: caption || undefined,
           attachmentUrl: audioDataUri,
         }),
       });
@@ -719,9 +753,13 @@ export default function ChatScreen() {
 
     setLoading(true);
     try {
+      let outbound = text;
+      if (active === "doctor" && doctorE2eeRef.current?.ready) {
+        outbound = await encryptOutgoingText(text, doctorE2eeRef.current);
+      }
       await apiJson("/api/chat/plain/message", token, {
         method: "POST",
-        body: JSON.stringify({ assistantId: active, text }),
+        body: JSON.stringify({ assistantId: active, text: outbound }),
       });
       const refreshed = await fetchPlainMessages(active);
       setMessages(refreshed.messages);
@@ -959,7 +997,14 @@ export default function ChatScreen() {
               <Text style={styles.threadName} numberOfLines={1}>
                 {activeThreadTitle}
               </Text>
-              <Text style={styles.threadStatus}>{activeThreadSubtitle}</Text>
+              <Text style={styles.threadStatus}>
+                {active === "doctor" && doctorE2eeStatus
+                  ? doctorE2eeStatus
+                  : activeThreadSubtitle}
+              </Text>
+              {active === "doctor" && doctorE2eeRef.current?.ready ? (
+                <Text style={styles.e2eeBadge}>End-to-end encrypted</Text>
+              ) : null}
             </View>
           </View>
           <View style={styles.threadBellWrap}>
@@ -1400,6 +1445,7 @@ const styles = StyleSheet.create({
   threadMeta: { flex: 1, minWidth: 0 },
   threadName: { fontSize: 24, fontWeight: "700", color: ZINC_900 },
   threadStatus: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  e2eeBadge: { fontSize: 11, color: "#047857", marginTop: 2, fontWeight: "600" },
   msgAvatar: {
     width: 34,
     height: 34,

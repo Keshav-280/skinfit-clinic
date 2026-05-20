@@ -14,7 +14,7 @@ import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../../../src/lib/faceScanCaptures";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
-import { buildPatientTrackerReport } from "../../../../../src/lib/patientTrackerReport";
+import { loadScanTrackerReport } from "../../../../../src/lib/scanTrackerSnapshot";
 
 export default async function ScanReportPage({
   params,
@@ -60,6 +60,7 @@ export default async function ScanReportPage({
         scores: true,
         pigmentation: true,
         texture: true,
+        trackerSnapshot: true,
       },
     }),
   ]);
@@ -67,11 +68,11 @@ export default async function ScanReportPage({
   if (!user) notFound();
   if (!row) notFound();
 
-  const trackerBuilt = await buildPatientTrackerReport({
+  const serverTracker = await loadScanTrackerReport(
     userId,
-    scanId: row.id,
-  });
-  const serverTracker = trackerBuilt.ok ? trackerBuilt.report : null;
+    row.id,
+    row.trackerSnapshot
+  );
 
   const regions = parseScanRegions(row.annotations);
   const clinical_scores = parseClinicalScores(row.scores);

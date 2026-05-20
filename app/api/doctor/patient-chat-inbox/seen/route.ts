@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { chatThreads } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { markAllUnrepliedDoctorChatInboxSeen } from "@/src/lib/doctorPatientChatInbox";
 
 export async function POST(req: Request) {
   const staffId = await getDoctorPortalUserId();
@@ -16,6 +17,17 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
+
+  const markAll =
+    body &&
+    typeof body === "object" &&
+    (body as { all?: unknown }).all === true;
+
+  if (markAll) {
+    const marked = await markAllUnrepliedDoctorChatInboxSeen();
+    return NextResponse.json({ ok: true, marked });
+  }
+
   const patientId =
     body &&
     typeof body === "object" &&

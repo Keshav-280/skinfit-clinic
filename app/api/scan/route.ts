@@ -11,6 +11,7 @@ import {
   inferenceParamsToRows,
   insertParameterScoresForScan,
 } from "../../../src/lib/insertParameterScores";
+import { persistScanTrackerSnapshot } from "../../../src/lib/scanTrackerSnapshot";
 import { readWebFormData } from "../../../src/lib/webRequestFormData";
 import {
   buildPreviewJpegDataUri,
@@ -509,6 +510,14 @@ export async function POST(request: NextRequest) {
         >
       );
       await insertParameterScoresForScan(db, inserted.id, paramRows);
+    }
+
+    if (inserted?.id != null) {
+      try {
+        await persistScanTrackerSnapshot(user.id, inserted.id);
+      } catch (snapshotErr) {
+        console.error("[scan] tracker snapshot persist failed", snapshotErr);
+      }
     }
 
     await db.insert(skinScans).values({

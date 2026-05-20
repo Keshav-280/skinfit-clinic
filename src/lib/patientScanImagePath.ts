@@ -36,7 +36,11 @@ export function patientScanImagePath(
  */
 export function patientScanImageDisplayUrl(imageApiPathOrUrl: string): string {
   const t = imageApiPathOrUrl.trim();
-  if (!t.includes("/api/patient/scans/") || !/\/image(\?|$)/.test(t)) {
+  const isPatientScanImage =
+    t.includes("/api/patient/scans/") && /\/image(\?|$)/.test(t);
+  const isDoctorScanImage =
+    t.includes("/api/doctor/patients/") && /\/scans\/\d+\/image(\?|$)/.test(t);
+  if (!isPatientScanImage && !isDoctorScanImage) {
     return t;
   }
   if (/[?&]preview=1(?:&|$)/.test(t) || /[?&]preview=true(?:&|$)/i.test(t)) {
