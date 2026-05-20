@@ -22,8 +22,8 @@ import {
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 import {
   decryptMessages,
+  ensureDoctorPatientE2eeReady,
   encryptOutgoingText,
-  setupDoctorPatientE2ee,
   type DoctorThreadE2eeSession,
 } from "@/src/lib/chatE2ee/client";
 
@@ -105,6 +105,7 @@ export default function ChatPage() {
 
   const doctorE2eeRef = useRef<DoctorThreadE2eeSession | null>(null);
   const [doctorE2eeReady, setDoctorE2eeReady] = useState(false);
+  const [doctorE2eeStatus, setDoctorE2eeStatus] = useState<string | null>(null);
 
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
@@ -112,14 +113,16 @@ export default function ChatPage() {
     if (activeAssistant !== "doctor") {
       doctorE2eeRef.current = null;
       setDoctorE2eeReady(false);
+      setDoctorE2eeStatus(null);
       return;
     }
     let cancelled = false;
     void (async () => {
-      const s = await setupDoctorPatientE2ee({ credentials: "include" });
+      const s = await ensureDoctorPatientE2eeReady({ credentials: "include" });
       if (cancelled) return;
       doctorE2eeRef.current = s;
       setDoctorE2eeReady(Boolean(s?.ready));
+      setDoctorE2eeStatus(s?.status ?? null);
     })();
     return () => {
       cancelled = true;
@@ -735,8 +738,21 @@ export default function ChatPage() {
     setIsLoading(true);
     try {
       let outboundText = text;
-      if (activeAssistant === "doctor" && text && doctorE2eeRef.current?.ready) {
-        outboundText = await encryptOutgoingText(text, doctorE2eeRef.current);
+      if (activeAssistant === "doctor" && text) {
+        let session = doctorE2eeRef.current;
+        if (!session?.ready) {
+          session = await ensureDoctorPatientE2eeReady({ credentials: "include" });
+          doctorE2eeRef.current = session;
+          setDoctorE2eeReady(Boolean(session?.ready));
+          setDoctorE2eeStatus(session?.status ?? null);
+        }
+        if (!session?.ready) {
+          throw new Error(
+            session?.status ??
+              "Secure chat is not ready. Keep this tab open a few seconds, then try again."
+          );
+        }
+        outboundText = await encryptOutgoingText(text, session);
       }
       const res = await fetch("/api/chat/plain/message", {
         method: "POST",
@@ -1015,6 +1031,16 @@ export default function ChatPage() {
         </div>
 
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
+          {activeAssistant === "doctor" && !doctorE2eeReady && doctorE2eeStatus ? (
+            <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              {doctorE2eeStatus}
+            </p>
+          ) : null}
+          {activeAssistant === "doctor" && doctorE2eeReady ? (
+            <p className="mb-2 text-xs font-medium text-emerald-700">
+              End-to-end encrypted · messages are stored as ciphertext
+            </p>
+          ) : null}
           <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/30 px-4 py-2 backdrop-blur-sm">
             <input
               ref={attachmentInputRef}
@@ -1086,6 +1112,7 @@ export default function ChatPage() {
               title="Send"
               disabled={
                 isLoading ||
+                (activeAssistant === "doctor" && !doctorE2eeReady && Boolean(inputValue.trim())) ||
                 (activeAssistant === "ai"
                   ? !inputValue.trim()
                   : !inputValue.trim() && !attachment)

@@ -79,3 +79,20 @@ export async function findDoctorThreadId(patientId: string): Promise<string | nu
     .limit(1);
   return row?.id ?? null;
 }
+
+export async function threadHasE2eeEnvelopes(threadId: string): Promise<boolean> {
+  const row = await db.query.chatThreadE2eeEnvelopes.findFirst({
+    where: eq(chatThreadE2eeEnvelopes.threadId, threadId),
+    columns: { threadId: true },
+  });
+  return Boolean(row);
+}
+
+/** Doctor user ids that already have wrapped keys on this thread. */
+export async function listThreadEnvelopeUserIds(threadId: string): Promise<string[]> {
+  const rows = await db
+    .select({ userId: chatThreadE2eeEnvelopes.userId })
+    .from(chatThreadE2eeEnvelopes)
+    .where(eq(chatThreadE2eeEnvelopes.threadId, threadId));
+  return rows.map((r) => r.userId);
+}

@@ -134,6 +134,7 @@ export async function setupDoctorPatientE2ee(opts: {
     peerUserId?: string;
     peerPublicKeyJwk?: JsonWebKey | null;
     wrappedThreadKeyB64?: string | null;
+    hasThreadKeys?: boolean;
     ready?: boolean;
     peerHasPublicKey?: boolean;
   };
@@ -161,6 +162,16 @@ export async function setupDoctorPatientE2ee(opts: {
       threadAesKey: await generateThreadAesKey(),
       ready: false,
       status: "Waiting for the other party to open chat once (to register keys).",
+    };
+  }
+
+  if (setup.hasThreadKeys) {
+    return {
+      threadId: setup.threadId,
+      threadAesKey: await generateThreadAesKey(),
+      ready: false,
+      status:
+        "Secure chat keys exist for this thread but not for this account. Open chat as the assigned doctor, or contact support to reset keys.",
     };
   }
 
@@ -209,9 +220,32 @@ export async function encryptOutgoingText(
   plaintext: string,
   session: DoctorThreadE2eeSession | null
 ): Promise<string> {
-  if (!session?.ready) return plaintext;
+  if (!session?.ready) {
+    throw new Error("E2EE_NOT_READY");
+  }
   const { iv, ciphertext } = await encryptChatBody(plaintext, session.threadAesKey);
   return packE2eePayload(iv, ciphertext);
+}
+
+/** Re-run setup until ready or attempts exhausted (call before sending doctor chat). */
+export async function ensureDoctorPatientE2eeReady(opts: {
+  patientId?: string;
+  credentials?: RequestCredentials;
+  storage?: E2eeKeyStorage;
+  authHeaders?: Record<string, string>;
+  fetchFn?: (path: string, init: E2eeFetchInit) => Promise<Response>;
+  maxAttempts?: number;
+}): Promise<DoctorThreadE2eeSession | null> {
+  const max = opts.maxAttempts ?? 3;
+  let last: DoctorThreadE2eeSession | null = null;
+  for (let i = 0; i < max; i++) {
+    last = await setupDoctorPatientE2ee(opts);
+    if (last?.ready) return last;
+    if (i < max - 1) {
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  return last;
 }
 
 export async function decryptMessages<T extends ChatMessageRow>(

@@ -1042,6 +1042,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     e2eeStatus,
     decryptMessages: decryptDoctorChat,
     encryptOutgoingText: encryptDoctorChat,
+    ensureReadyForSend,
   } = useDoctorChatE2ee(patientId, chatPanelOpen);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -1562,8 +1563,19 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     setDoctorChatBusy(true);
     setDoctorChatHint(null);
     try {
-      const text =
-        plainText && e2eeReady ? await encryptDoctorChat(plainText) : plainText;
+      let text = plainText;
+      if (plainText) {
+        const session = await ensureReadyForSend();
+        if (!session?.ready) {
+          setDoctorChatHint(
+            session?.status ??
+              "Secure chat is not ready. Wait a moment and try again, or refresh the page."
+          );
+          failDoctorChatMessage(tempId);
+          return;
+        }
+        text = await encryptDoctorChat(plainText);
+      }
       const res = await fetch(`/api/doctor/patients/${patientId}/chat`, {
         method: "POST",
         credentials: "include",
@@ -1594,7 +1606,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     doctorChatText,
     doctorChatAttachment,
     patientId,
-    e2eeReady,
+    ensureReadyForSend,
     encryptDoctorChat,
     appendOptimisticDoctorChat,
     confirmDoctorChatMessage,
@@ -1624,10 +1636,19 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         clearChatVoicePreview();
         setDoctorChatText("");
         tempId = appendOptimisticDoctorChat(plainCaption, dataUri);
-        const caption =
-          plainCaption && e2eeReady
-            ? await encryptDoctorChat(plainCaption)
-            : plainCaption;
+        let caption = plainCaption;
+        if (plainCaption) {
+          const session = await ensureReadyForSend();
+          if (!session?.ready) {
+            setDoctorChatHint(
+              session?.status ??
+                "Secure chat is not ready. Wait a moment and try again."
+            );
+            if (tempId) failDoctorChatMessage(tempId);
+            return;
+          }
+          caption = await encryptDoctorChat(plainCaption);
+        }
         const res = await fetch(`/api/doctor/patients/${patientId}/chat`, {
           method: "POST",
           credentials: "include",
@@ -1658,7 +1679,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     [
       patientId,
       doctorChatText,
-      e2eeReady,
+      ensureReadyForSend,
       encryptDoctorChat,
       confirmDoctorChatMessage,
       failDoctorChatMessage,
@@ -4192,7 +4213,13 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 disabled={
                   doctorChatBusy ||
                   chatIsRecording ||
+                  !e2eeReady ||
                   (!doctorChatText.trim() && !doctorChatAttachment)
+                }
+                title={
+                  e2eeReady
+                    ? "Send encrypted message"
+                    : "Waiting for secure chat setup…"
                 }
                 onClick={() => void sendDoctorChatMessage()}
                 className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B] p-2.5 text-white hover:bg-[#243356] disabled:opacity-50"

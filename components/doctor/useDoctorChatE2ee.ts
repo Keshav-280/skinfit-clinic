@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   decryptMessages,
+  ensureDoctorPatientE2eeReady,
   encryptOutgoingText,
   setupDoctorPatientE2ee,
   type ChatMessageRow,
@@ -71,9 +72,9 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
   );
 
   const retrySetup = useCallback(async () => {
-    if (!patientId) return;
+    if (!patientId) return null;
     bootedPatientRef.current = null;
-    const s = await setupDoctorPatientE2ee({
+    const s = await ensureDoctorPatientE2eeReady({
       patientId,
       credentials: "include",
     });
@@ -81,7 +82,13 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
     sessionRef.current = s;
     setSession(s);
     setStatus(s?.status ?? null);
+    return s;
   }, [patientId]);
+
+  const ensureReadyForSend = useCallback(async () => {
+    if (sessionRef.current?.ready) return sessionRef.current;
+    return retrySetup();
+  }, [retrySetup]);
 
   return {
     session,
@@ -90,5 +97,6 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
     decryptMessages: decryptMessagesStable,
     encryptOutgoingText: encrypt,
     retryE2eeSetup: retrySetup,
+    ensureReadyForSend,
   };
 }

@@ -14,7 +14,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:rag-demo": "tsx src/db/seed-rag-kai-demo.ts",
     "rag:index:textbook": "tsx src/scripts/build-rag-textbook-index.ts",
-    "rag:pinecone:upsert": "tsx src/scripts/rag-pinecone-upsert.ts"
+    "rag:pinecone:upsert": "tsx src/scripts/rag-pinecone-upsert.ts",
+    "chat:e2ee:reset": "tsx src/scripts/reset-doctor-chat-e2ee.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "0.10.4",

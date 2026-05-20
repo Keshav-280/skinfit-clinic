@@ -5,6 +5,10 @@ import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorUsers } from "@/src/lib/expoPush";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
+import {
+  doctorThreadRequiresE2ee,
+  isPlaintextDoctorMessageAllowed,
+} from "@/src/lib/chatE2ee/e2eePolicy";
 import { buildSosContextPrefix } from "@/src/lib/sosChatContext";
 
 function clampText(s: unknown, maxLen: number): string | null {
@@ -109,6 +113,22 @@ export async function POST(req: Request) {
 
   if (!threadId) {
     return NextResponse.json({ error: "THREAD_CREATE_FAILED" }, { status: 500 });
+  }
+
+  if (
+    assistantId === "doctor" &&
+    patientText &&
+    (await doctorThreadRequiresE2ee(threadId)) &&
+    !isPlaintextDoctorMessageAllowed(patientText)
+  ) {
+    return NextResponse.json(
+      {
+        error: "E2EE_REQUIRED",
+        message:
+          "This chat thread uses end-to-end encryption. Open doctor chat and wait for the lock icon before sending.",
+      },
+      { status: 400 }
+    );
   }
 
   await db.insert(chatMessages).values({
