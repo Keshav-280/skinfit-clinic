@@ -53,6 +53,16 @@ function cacheKey(patientId: string, scanId: number) {
   return `${patientId}:${scanId}`;
 }
 
+function reportLoadErrorMessage(code: string | undefined, status: number): string {
+  if (code === "LOAD_FAILED") {
+    return "Could not load scan report. Try again in a moment.";
+  }
+  if (code === "NOT_FOUND") return "Scan not found.";
+  if (code === "UNAUTHORIZED") return "Session expired — sign in again.";
+  if (status >= 500) return "Server error loading scan report.";
+  return "Could not load scan report.";
+}
+
 export function DoctorScanReportPanel({
   patientId,
   scanId,
@@ -97,7 +107,7 @@ export function DoctorScanReportPanel({
         };
         if (cancelled) return;
         if (!res.ok || !j.ok || !j.report) {
-          setErr(j.error ?? "Could not load scan report.");
+          setErr(reportLoadErrorMessage(j.error, res.status));
           return;
         }
         reportCache.set(key, j.report);

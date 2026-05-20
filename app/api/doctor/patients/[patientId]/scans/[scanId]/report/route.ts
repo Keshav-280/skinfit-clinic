@@ -26,7 +26,11 @@ export async function GET(
     }
     return NextResponse.json({ ok: true, report: payload });
   } catch (e) {
-    console.error("[doctor/patients/scans/report GET]", e);
-    return NextResponse.json({ error: "LOAD_FAILED" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[doctor/patients/scans/report GET]", patientId, scanId, e);
+    return NextResponse.json(
+      { ok: false, error: "LOAD_FAILED", message: msg.slice(0, 200) },
+      { status: 500 }
+    );
   }
 }

@@ -20,8 +20,13 @@ export async function loadScanTrackerReport(
   stored: PatientTrackerReport | null | undefined
 ): Promise<PatientTrackerReport | null> {
   if (stored) return stored;
-  const built = await buildPatientTrackerReport({ userId, scanId });
-  return built.ok ? built.report : null;
+  try {
+    const built = await buildPatientTrackerReport({ userId, scanId });
+    return built.ok ? built.report : null;
+  } catch (e) {
+    console.error("[loadScanTrackerReport] build failed", { userId, scanId, e });
+    return null;
+  }
 }
 
 /** Build and persist kAI tracker report once after scan insert. */

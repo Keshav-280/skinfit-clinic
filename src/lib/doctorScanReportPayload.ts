@@ -4,13 +4,7 @@ import { scans, users } from "@/src/db/schema";
 import type { ReportMetrics, ReportRegion } from "@/components/dashboard/scanReportTypes";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
-import {
-  parseClinicalScores,
-  parseScanAcneMaskDataUri,
-  parseScanOverlayDataUri,
-  parseScanWrinkleMaskDataUri,
-} from "@/src/lib/parseClinicalScores";
-import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import { parseClinicalScores } from "@/src/lib/parseClinicalScores";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
@@ -97,18 +91,24 @@ export async function buildDoctorScanReportPayload(
 
   if (!user || !row) return null;
 
-  const trackerReport = await loadScanTrackerReport(
-    patientId,
-    row.id,
-    row.trackerSnapshot ?? null
-  );
+  let trackerReport: PatientTrackerReport | null = null;
+  try {
+    trackerReport = await loadScanTrackerReport(
+      patientId,
+      row.id,
+      row.trackerSnapshot ?? null
+    );
+  } catch (e) {
+    console.error("[buildDoctorScanReportPayload] tracker load failed", {
+      patientId,
+      scanId,
+      e,
+    });
+  }
 
   const regions = parseScanRegions(row.annotations);
   const clinical_scores = parseClinicalScores(row.scores);
-  const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
-  const wrinkleMaskUrl = parseScanWrinkleMaskDataUri(row.scores);
-  const acneMaskUrl = parseScanAcneMaskDataUri(row.scores);
-  const spatialOutputs = parseScanSpatialOutputs(row.scores);
+  // Do not embed mask data URIs in JSON — they can be multi‑MB and break the report API.
 
   const faceCaptureGallery =
     row.faceCaptureImages && row.faceCaptureImages.length >= 1
@@ -138,10 +138,10 @@ export async function buildDoctorScanReportPayload(
       ...(clinical_scores ? { clinical_scores } : {}),
     },
     aiSummary: row.aiSummary,
-    annotatedImageUrl: annotatedImageUrl ?? null,
-    wrinkleMaskUrl: wrinkleMaskUrl ?? null,
-    acneMaskUrl: acneMaskUrl ?? null,
-    spatialOutputs: spatialOutputs ?? null,
+    annotatedImageUrl: null,
+    wrinkleMaskUrl: null,
+    acneMaskUrl: null,
+    spatialOutputs: null,
     scanDateIso: row.createdAt.toISOString(),
     trackerReport,
   };

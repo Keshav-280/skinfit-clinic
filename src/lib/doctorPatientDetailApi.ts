@@ -187,22 +187,39 @@ export async function loadDoctorPatientDetailSections(
   if (want("scans")) {
     const scanRowsRaw = await loadDoctorPatientScans(patientId);
     const scanIds = scanRowsRaw.map((s) => s.id);
-    const paramRows =
-      scanIds.length > 0
-        ? await db.query.parameterScores.findMany({
-            where: inArray(parameterScores.scanId, scanIds),
-            columns: {
-              scanId: true,
-              paramKey: true,
-              value: true,
-              source: true,
-              severityFlag: true,
-              deltaVsPrev: true,
-              extras: true,
-              recordedAt: true,
-            },
-          })
-        : [];
+    type ParamScoreRow = {
+      scanId: number;
+      paramKey: string;
+      value: number | null;
+      source: string;
+      severityFlag: boolean;
+      deltaVsPrev: number | null;
+      extras: unknown;
+      recordedAt: Date;
+    };
+    let paramRows: ParamScoreRow[] = [];
+    if (scanIds.length > 0) {
+      try {
+        paramRows = await db.query.parameterScores.findMany({
+          where: inArray(parameterScores.scanId, scanIds),
+          columns: {
+            scanId: true,
+            paramKey: true,
+            value: true,
+            source: true,
+            severityFlag: true,
+            deltaVsPrev: true,
+            extras: true,
+            recordedAt: true,
+          },
+        });
+      } catch (e) {
+        console.warn(
+          "[doctorPatientDetail] parameter_scores unavailable — scans list still returned",
+          e
+        );
+      }
+    }
 
     const parameterScoresByScanId: Record<
       string,
