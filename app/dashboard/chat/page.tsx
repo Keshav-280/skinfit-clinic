@@ -24,8 +24,10 @@ import {
   decryptMessages,
   ensureDoctorPatientE2eeReady,
   encryptOutgoingText,
+  resetDoctorPatientE2eeEnvelopes,
   type DoctorThreadE2eeSession,
 } from "@/src/lib/chatE2ee/client";
+import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 
 const contacts = [
   {
@@ -106,8 +108,21 @@ export default function ChatPage() {
   const doctorE2eeRef = useRef<DoctorThreadE2eeSession | null>(null);
   const [doctorE2eeReady, setDoctorE2eeReady] = useState(false);
   const [doctorE2eeStatus, setDoctorE2eeStatus] = useState<string | null>(null);
+  const wasDoctorE2eeReadyRef = useRef(false);
 
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+
+  function messageDisplayText(msg: ChatMsg): string {
+    if (
+      activeAssistant === "doctor" &&
+      msg.sender !== "patient" &&
+      isE2eePayload(msg.text) &&
+      !doctorE2eeReady
+    ) {
+      return "Secure message from your clinic (connecting encryption…)";
+    }
+    return msg.text;
+  }
 
   useEffect(() => {
     if (activeAssistant !== "doctor") {
@@ -189,8 +204,17 @@ export default function ChatPage() {
         attachmentUrl: m.attachmentUrl ?? null,
         createdAt: m.createdAt,
       }));
-      if (assistantId === "doctor" && doctorE2eeRef.current?.ready) {
-        messages = await decryptMessages<ChatMsg>(messages, doctorE2eeRef.current);
+      if (assistantId === "doctor") {
+        let session = doctorE2eeRef.current;
+        if (!session?.ready) {
+          session = await ensureDoctorPatientE2eeReady({ credentials: "include" });
+          doctorE2eeRef.current = session;
+          setDoctorE2eeReady(Boolean(session?.ready));
+          setDoctorE2eeStatus(session?.status ?? null);
+        }
+        if (session?.ready) {
+          messages = await decryptMessages<ChatMsg>(messages, session);
+        }
       }
       return {
         messages,
@@ -199,6 +223,33 @@ export default function ChatPage() {
     },
     []
   );
+
+  /** Re-decrypt doctor thread once E2EE finishes loading (messages often fetch first). */
+  useEffect(() => {
+    if (activeAssistant !== "doctor") {
+      wasDoctorE2eeReadyRef.current = false;
+      return;
+    }
+    const justReady = doctorE2eeReady && !wasDoctorE2eeReadyRef.current;
+    wasDoctorE2eeReadyRef.current = doctorE2eeReady;
+    if (!justReady) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { messages: decrypted, clinicReadThroughIso } =
+          await fetchPlainMessages("doctor");
+        if (cancelled) return;
+        setMessages(decrypted);
+        markDoctorInboxSeenFromServer(clinicReadThroughIso);
+      } catch {
+        /* keep prior messages */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [doctorE2eeReady, activeAssistant, fetchPlainMessages]);
 
   const createPlainThread = useCallback(
     async (assistantId: AssistantId): Promise<string> => {
@@ -988,8 +1039,11 @@ export default function ChatPage() {
                           }}
                         >
                           {typingMessageId === msg.id && msg.sender !== "patient"
-                            ? msg.text.slice(0, typingIndex || msg.text.length)
-                            : msg.text}
+                            ? messageDisplayText(msg).slice(
+                                0,
+                                typingIndex || messageDisplayText(msg).length
+                              )
+                            : messageDisplayText(msg)}
                         </ReactMarkdown>
                       </div>
                     </div>
@@ -1032,9 +1086,30 @@ export default function ChatPage() {
 
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
           {activeAssistant === "doctor" && !doctorE2eeReady && doctorE2eeStatus ? (
-            <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              {doctorE2eeStatus}
-            </p>
+            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <span className="min-w-0 flex-1">{doctorE2eeStatus}</span>
+              <button
+                type="button"
+                className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100"
+                onClick={() => {
+                  void (async () => {
+                    await resetDoctorPatientE2eeEnvelopes({ credentials: "include" });
+                    const s = await ensureDoctorPatientE2eeReady({
+                      credentials: "include",
+                    });
+                    doctorE2eeRef.current = s;
+                    setDoctorE2eeReady(Boolean(s?.ready));
+                    setDoctorE2eeStatus(s?.status ?? null);
+                    const { messages: next, clinicReadThroughIso } =
+                      await fetchPlainMessages("doctor");
+                    setMessages(next);
+                    markDoctorInboxSeenFromServer(clinicReadThroughIso);
+                  })();
+                }}
+              >
+                Reset secure chat
+              </button>
+            </div>
           ) : null}
           {activeAssistant === "doctor" && doctorE2eeReady ? (
             <p className="mb-2 text-xs font-medium text-emerald-700">
