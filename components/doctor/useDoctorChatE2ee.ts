@@ -5,10 +5,12 @@ import {
   decryptMessages,
   ensureDoctorPatientE2eeReady,
   encryptOutgoingText,
+  resetDoctorPatientE2eeEnvelopes,
   setupDoctorPatientE2ee,
   type ChatMessageRow,
   type DoctorThreadE2eeSession,
 } from "@/src/lib/chatE2ee/client";
+import { generateThreadAesKey } from "@/src/lib/chatE2ee/crypto";
 
 export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
   const [session, setSession] = useState<DoctorThreadE2eeSession | null>(null);
@@ -34,10 +36,21 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
     let cancelled = false;
 
     const boot = async (attempt: number) => {
-      const s = await setupDoctorPatientE2ee({
-        patientId,
-        credentials: "include",
-      });
+      let s: DoctorThreadE2eeSession | null = null;
+      try {
+        s = await setupDoctorPatientE2ee({
+          patientId,
+          credentials: "include",
+        });
+      } catch (e) {
+        console.error("[useDoctorChatE2ee] setup failed", e);
+        s = {
+          threadId: "",
+          threadAesKey: await generateThreadAesKey(),
+          ready: false,
+          status: "Secure chat setup failed. Try Reset secure chat.",
+        };
+      }
       if (cancelled) return;
       if (!s?.ready && attempt < 2) {
         await new Promise((r) => setTimeout(r, 1200));
@@ -85,6 +98,16 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
     return s;
   }, [patientId]);
 
+  const resetSecureChat = useCallback(async () => {
+    if (!patientId) return null;
+    bootedPatientRef.current = null;
+    await resetDoctorPatientE2eeEnvelopes({
+      patientId,
+      credentials: "include",
+    });
+    return retrySetup();
+  }, [patientId, retrySetup]);
+
   const ensureReadyForSend = useCallback(async () => {
     if (sessionRef.current?.ready) return sessionRef.current;
     return retrySetup();
@@ -97,6 +120,7 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
     decryptMessages: decryptMessagesStable,
     encryptOutgoingText: encrypt,
     retryE2eeSetup: retrySetup,
+    resetSecureChat,
     ensureReadyForSend,
   };
 }

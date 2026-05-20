@@ -96,3 +96,12 @@ export async function listThreadEnvelopeUserIds(threadId: string): Promise<strin
     .where(eq(chatThreadE2eeEnvelopes.threadId, threadId));
   return rows.map((r) => r.userId);
 }
+
+/** Removes wrapped thread keys so both parties can re-bootstrap E2EE. */
+export async function clearThreadE2eeEnvelopes(threadId: string): Promise<number> {
+  const deleted = await db
+    .delete(chatThreadE2eeEnvelopes)
+    .where(eq(chatThreadE2eeEnvelopes.threadId, threadId))
+    .returning({ userId: chatThreadE2eeEnvelopes.userId });
+  return deleted.length;
+}

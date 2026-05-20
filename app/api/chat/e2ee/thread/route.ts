@@ -8,6 +8,7 @@ import { DOCTOR_FALLBACK_ID } from "@/src/lib/auth/fallbackDoctorIdentity";
 import { ensureFallbackDoctorInDb } from "@/src/lib/auth/ensureFallbackDoctor";
 import { CLINIC_DOCTOR_EMAIL } from "@/src/lib/clinicDoctor";
 import {
+  clearThreadE2eeEnvelopes,
   findDoctorThreadId,
   getUserPublicKeyJwk,
   getWrappedThreadKey,
@@ -201,4 +202,30 @@ export async function POST(req: Request) {
 
   await saveThreadEnvelopes(threadId, envelopes);
   return NextResponse.json({ ok: true });
+}
+
+/** DELETE — clear stale thread envelopes (device key mismatch recovery). */
+export async function DELETE(req: Request) {
+  const url = new URL(req.url);
+  const patientIdParam = url.searchParams.get("patientId")?.trim() ?? "";
+
+  const doctorId = await getDoctorPortalUserId();
+  const sessionUserId = await getSessionUserIdFromRequest(req);
+
+  let patientId: string;
+  if (doctorId && patientIdParam) {
+    patientId = patientIdParam;
+  } else if (sessionUserId && !patientIdParam) {
+    patientId = sessionUserId;
+  } else {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  const threadId = await findDoctorThreadId(patientId);
+  if (!threadId) {
+    return NextResponse.json({ ok: true, deleted: 0, threadId: null });
+  }
+
+  const deleted = await clearThreadE2eeEnvelopes(threadId);
+  return NextResponse.json({ ok: true, deleted, threadId });
 }

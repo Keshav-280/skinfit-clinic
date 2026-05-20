@@ -59,6 +59,33 @@ async function ensureLocalE2eeKeys(
 
 type E2eeFetchInit = RequestInit & { credentials?: RequestCredentials };
 
+function isCryptoKeyMismatchError(e: unknown): boolean {
+  if (e instanceof DOMException) {
+    return e.name === "OperationError" || e.name === "InvalidAccessError";
+  }
+  return e instanceof Error && /operationerror|decrypt/i.test(e.message);
+}
+
+async function resetDoctorThreadEnvelopes(
+  http: (path: string, init: E2eeFetchInit) => Promise<Response>,
+  opts: {
+    patientId?: string;
+    credentials?: RequestCredentials;
+    authHeaders?: Record<string, string>;
+  }
+): Promise<boolean> {
+  const qs = opts.patientId
+    ? `?patientId=${encodeURIComponent(opts.patientId)}`
+    : "";
+  const res = await http(`/api/chat/e2ee/thread${qs}`, {
+    method: "DELETE",
+    credentials: opts.credentials ?? "include",
+    headers: opts.authHeaders,
+  });
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean };
+  return res.ok && Boolean(body.ok);
+}
+
 export async function setupDoctorPatientE2ee(opts: {
   patientId?: string;
   credentials?: RequestCredentials;
@@ -66,6 +93,8 @@ export async function setupDoctorPatientE2ee(opts: {
   authHeaders?: Record<string, string>;
   /** Resolve API path (e.g. mobile passes `apiUrl`). Defaults to same-origin `/api/...`. */
   fetchFn?: (path: string, init: E2eeFetchInit) => Promise<Response>;
+  /** Internal: avoid infinite reset loops. */
+  _envelopeResetAttempted?: boolean;
 }): Promise<DoctorThreadE2eeSession | null> {
   if (typeof globalThis.crypto?.subtle === "undefined") {
     return {
@@ -149,11 +178,35 @@ export async function setupDoctorPatientE2ee(opts: {
   }
 
   if (setup.ready && setup.wrappedThreadKeyB64) {
-    const threadAesKey = await unwrapThreadKeyForUser(
-      setup.wrappedThreadKeyB64,
-      privateKey
-    );
-    return { threadId: setup.threadId, threadAesKey, ready: true, status: null };
+    try {
+      const threadAesKey = await unwrapThreadKeyForUser(
+        setup.wrappedThreadKeyB64,
+        privateKey
+      );
+      return { threadId: setup.threadId, threadAesKey, ready: true, status: null };
+    } catch (e) {
+      if (isCryptoKeyMismatchError(e) && !opts._envelopeResetAttempted) {
+        const cleared = await resetDoctorThreadEnvelopes(http, {
+          patientId: opts.patientId,
+          credentials,
+          authHeaders: opts.authHeaders,
+        });
+        if (cleared) {
+          return setupDoctorPatientE2ee({
+            ...opts,
+            _envelopeResetAttempted: true,
+          });
+        }
+      }
+      console.warn("[setupDoctorPatientE2ee] unwrap thread key failed", e);
+      return {
+        threadId: setup.threadId,
+        threadAesKey: await generateThreadAesKey(),
+        ready: false,
+        status:
+          "Secure chat keys on the server no longer match this browser. Use “Reset secure chat” below, then ask the patient to reopen doctor chat.",
+      };
+    }
   }
 
   if (!setup.peerHasPublicKey || !setup.peerPublicKeyJwk || !setup.peerUserId) {
@@ -228,6 +281,17 @@ export async function encryptOutgoingText(
 }
 
 /** Re-run setup until ready or attempts exhausted (call before sending doctor chat). */
+/** Clears server thread envelopes for this doctor↔patient thread. */
+export async function resetDoctorPatientE2eeEnvelopes(opts: {
+  patientId?: string;
+  credentials?: RequestCredentials;
+  authHeaders?: Record<string, string>;
+  fetchFn?: (path: string, init: E2eeFetchInit) => Promise<Response>;
+}): Promise<boolean> {
+  const http = opts.fetchFn ?? ((path, init) => fetch(path, init));
+  return resetDoctorThreadEnvelopes(http, opts);
+}
+
 export async function ensureDoctorPatientE2eeReady(opts: {
   patientId?: string;
   credentials?: RequestCredentials;

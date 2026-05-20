@@ -1043,6 +1043,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     decryptMessages: decryptDoctorChat,
     encryptOutgoingText: encryptDoctorChat,
     ensureReadyForSend,
+    resetSecureChat,
   } = useDoctorChatE2ee(patientId, chatPanelOpen);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -3980,6 +3981,16 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {!e2eeReady ? (
+                <button
+                  type="button"
+                  onClick={() => void resetSecureChat()}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                  title="Clear stale encryption keys and set up again"
+                >
+                  Reset secure chat
+                </button>
+              ) : null}
               {doctorChatStaffClearAt ? (
                 <button
                   type="button"
