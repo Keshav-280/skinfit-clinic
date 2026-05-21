@@ -2,6 +2,8 @@
  * Renders a DOM node to a multi-page A4 PDF (client-only).
  */
 
+import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
+
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -202,7 +204,7 @@ async function renderReportToJsPdf(element: HTMLElement) {
       allowTaint: true,
       foreignObjectRendering: false,
       logging: false,
-      backgroundColor: "#F5F1E9",
+      backgroundColor: T.pageBg,
     } as const;
 
     const flow: PdfVerticalFlow = {

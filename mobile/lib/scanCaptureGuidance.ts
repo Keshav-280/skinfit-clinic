@@ -50,10 +50,15 @@ const OVAL_REGION = {
 };
 
 const FACE_TARGET = { cx: OVAL_FRAME.cx, cy: OVAL_FRAME.cy };
-const FACE_FILL_MIN = 0.3;
-const FACE_FILL_MAX = 0.66;
-const FACE_CENTER_TOLERANCE_X = 0.16;
-const FACE_CENTER_TOLERANCE_Y = 0.18;
+
+const TOO_SMALL_ENTER = 0.22;
+const TOO_SMALL_EXIT = 0.3;
+const TOO_LARGE_ENTER = 0.84;
+const TOO_LARGE_EXIT = 0.74;
+const CENTER_ENTER_X = 0.22;
+const CENTER_EXIT_X = 0.17;
+const CENTER_ENTER_Y = 0.24;
+const CENTER_EXIT_Y = 0.19;
 
 export const MOBILE_CAMERA_ZOOM = {
   min: 0,
@@ -63,7 +68,28 @@ export const MOBILE_CAMERA_ZOOM = {
 } as const;
 
 export function effectiveFaceFill(box: NormalizedFaceBox): number {
-  return Math.max(box.height, box.width * 0.88);
+  return box.height * 0.72 + box.width * 0.58;
+}
+
+export type StableFramingState = {
+  quality: FaceFramingQuality;
+  faceFill: number | null;
+};
+
+export function smoothFaceBox(
+  prev: NormalizedFaceBox | null,
+  next: NormalizedFaceBox | null,
+  alpha = 0.32
+): NormalizedFaceBox | null {
+  if (!next) return prev;
+  if (!prev) return next;
+  const mix = (a: number, b: number) => a * (1 - alpha) + b * alpha;
+  return {
+    x: mix(prev.x, next.x),
+    y: mix(prev.y, next.y),
+    width: mix(prev.width, next.width),
+    height: mix(prev.height, next.height),
+  };
 }
 
 function clamp(n: number, lo: number, hi: number) {
@@ -225,8 +251,8 @@ export function estimateFaceBoxFromSkin(
 
   if (ovalCount < 16 || skinCount / ovalCount < 0.05) return null;
 
-  const padX = Math.round((maxX - minX) * 0.08);
-  const padY = Math.round((maxY - minY) * 0.12);
+  const padX = Math.round((maxX - minX) * 0.04);
+  const padY = Math.round((maxY - minY) * 0.05);
   minX = Math.max(0, minX - padX);
   minY = Math.max(0, minY - padY);
   maxX = Math.min(width - 1, maxX + padX);
@@ -240,15 +266,72 @@ export function estimateFaceBoxFromSkin(
   };
 }
 
+function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): string {
+  switch (quality) {
+    case "no_face":
+      return "Center your face in the oval";
+    case "off_center": {
+      const offX = Math.abs(cx - FACE_TARGET.cx);
+      const offY = Math.abs(cy - FACE_TARGET.cy);
+      const hint =
+        offX > offY
+          ? cx < FACE_TARGET.cx
+            ? "Move slightly right"
+            : "Move slightly left"
+          : cy < FACE_TARGET.cy
+            ? "Move slightly down"
+            : "Move slightly up";
+      return `${hint} to center in the oval`;
+    }
+    case "too_small":
+      return "Move a little closer";
+    case "too_large":
+      return "You're close — tiny adjust if needed";
+    default:
+      return "Face position looks good";
+  }
+}
+
+function classifyFraming(
+  faceFill: number,
+  offX: number,
+  offY: number,
+  prev: FaceFramingQuality | null
+): FaceFramingQuality {
+  const p = prev ?? "no_face";
+
+  if (p === "too_large") {
+    if (faceFill >= TOO_LARGE_EXIT) return "too_large";
+  } else if (faceFill > TOO_LARGE_ENTER) {
+    return "too_large";
+  }
+
+  if (p === "too_small") {
+    if (faceFill <= TOO_SMALL_EXIT) return "too_small";
+  } else if (faceFill < TOO_SMALL_ENTER) {
+    return "too_small";
+  }
+
+  if (p === "off_center") {
+    if (offX > CENTER_EXIT_X || offY > CENTER_EXIT_Y) return "off_center";
+  } else if (offX > CENTER_ENTER_X || offY > CENTER_ENTER_Y) {
+    return "off_center";
+  }
+
+  return "good";
+}
+
 export function analyzeFaceFraming(
   box: NormalizedFaceBox | null,
-  _frameAspect = 3 / 4
+  prev?: StableFramingState | null
 ): { quality: FaceFramingQuality; message: string; faceFill: number | null } {
-  if (!box || box.width < 0.04 || box.height < 0.04) {
+  if (!box || box.width < 0.03 || box.height < 0.03) {
+    const q: FaceFramingQuality =
+      prev?.quality === "good" ? "good" : "no_face";
     return {
-      quality: "no_face",
-      message: "Center your face in the oval",
-      faceFill: null,
+      quality: q,
+      message: framingMessage(q, FACE_TARGET.cx, FACE_TARGET.cy),
+      faceFill: prev?.faceFill ?? null,
     };
   }
 
@@ -257,40 +340,11 @@ export function analyzeFaceFraming(
   const offX = Math.abs(cx - FACE_TARGET.cx);
   const offY = Math.abs(cy - FACE_TARGET.cy);
   const faceFill = effectiveFaceFill(box);
-
-  if (offX > FACE_CENTER_TOLERANCE_X || offY > FACE_CENTER_TOLERANCE_Y) {
-    const hint =
-      offX > offY
-        ? cx < FACE_TARGET.cx
-          ? "Move slightly right"
-          : "Move slightly left"
-        : cy < FACE_TARGET.cy
-          ? "Move slightly down"
-          : "Move slightly up";
-    return {
-      quality: "off_center",
-      message: `${hint} to center in the oval`,
-      faceFill,
-    };
-  }
-  if (faceFill < FACE_FILL_MIN) {
-    return {
-      quality: "too_small",
-      message: "Move closer — fill the oval with your face",
-      faceFill,
-    };
-  }
-  if (faceFill > FACE_FILL_MAX) {
-    return {
-      quality: "too_large",
-      message: "Move back — keep hairline and chin inside the oval",
-      faceFill,
-    };
-  }
+  const quality = classifyFraming(faceFill, offX, offY, prev?.quality ?? null);
 
   return {
-    quality: "good",
-    message: "Face position looks good",
+    quality,
+    message: framingMessage(quality, cx, cy),
     faceFill,
   };
 }

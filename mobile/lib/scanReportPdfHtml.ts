@@ -1,16 +1,8 @@
 import { formatDistanceToNow } from "date-fns";
 
 import type { ScanSpatialOutputs } from "./spatialOutputs";
-import {
-  ACNE_MASK_COPY,
-  DOT_MARKER_LEGEND,
-  SCAN_MASK_SECTION,
-  WRINKLE_MASK_COPY,
-} from "./scanMaskLabels";
-
-const PEACH = "#F29C91";
-const TEAL_BAND = "#E0EEEB";
-const BEIGE = "#F5F1E9";
+import { DOT_MARKER_LEGEND } from "./scanMaskLabels";
+import { SCAN_REPORT_THEME as T } from "./scanReportTheme";
 
 const CAUSES_P1 =
   "Environmental factors such as UV exposure, seasonal dryness, and urban pollution can accentuate texture irregularities and uneven tone. A consistent barrier-focused routine helps mitigate these stressors.";
@@ -45,7 +37,7 @@ function regionMarkerColor(issue: string): string {
   if (x.includes("acne")) return "#dc2626";
   if (x.includes("wrinkle")) return "#7c3aed";
   if (x.includes("pigment")) return "#d97706";
-  if (x.includes("texture")) return "#0d9488";
+  if (x.includes("texture")) return T.navyMid;
   return "#6b7280";
 }
 
@@ -200,9 +192,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   }
 
   const metricDonuts = [
-    { label: "Acne", value: p.metrics.acne, fill: "#5B8FD8", track: "rgba(91, 143, 216, 0.18)" },
-    { label: "Hydration", value: p.metrics.hydration, fill: PEACH, track: "rgba(242, 156, 145, 0.22)" },
-    { label: "Wrinkles", value: p.metrics.wrinkles, fill: "#9EC5E8", track: "rgba(158, 197, 232, 0.3)" },
+    { label: "Acne", value: p.metrics.acne, fill: T.peach, track: T.peachTrack },
+    { label: "Hydration", value: p.metrics.hydration, fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
+    { label: "Wrinkles", value: p.metrics.wrinkles, fill: "#7c3aed", track: "rgba(124, 58, 237, 0.2)" },
   ];
   let threeDonutsHtml = "";
   for (const m of metricDonuts) {
@@ -241,12 +233,12 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   const wrMask = p.wrinkleMaskDataUri?.trim() || "";
   const acMask = p.acneMaskDataUri?.trim() || "";
   if (wrMask || acMask) {
-    masksHtml = `<div class="masks-wrap avoid-break"><p class="cap-kicker">${esc(SCAN_MASK_SECTION.title)}</p><p class="masks-intro">${esc(SCAN_MASK_SECTION.intro)}</p><div class="masks-row">`;
+    masksHtml = `<div class="masks-wrap avoid-break"><div class="masks-row">`;
     if (wrMask) {
-      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(wrMask)} alt="${esc(WRINKLE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(WRINKLE_MASK_COPY.title)}</strong><br/><span class="mask-desc">${esc(WRINKLE_MASK_COPY.hint)}</span></figcaption></figure>`;
+      masksHtml += `<figure class="mask-fig"><img class="mask-img" src=${JSON.stringify(wrMask)} alt="Wrinkle mask" /></figure>`;
     }
     if (acMask) {
-      masksHtml += `<figure class="mask-fig"><div class="mask-frame"><img src=${JSON.stringify(acMask)} alt="${esc(ACNE_MASK_COPY.title)}" /></div><figcaption><strong>${esc(ACNE_MASK_COPY.title)}</strong><br/><span class="mask-desc">${esc(ACNE_MASK_COPY.hint)}</span></figcaption></figure>`;
+      masksHtml += `<figure class="mask-fig"><img class="mask-img" src=${JSON.stringify(acMask)} alt="Acne objectness" /></figure>`;
     }
     masksHtml += `</div></div>`;
   }
@@ -277,12 +269,12 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       margin: 0;
       padding: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      background: ${BEIGE};
-      color: #18181b;
+      background: ${T.pageBg};
+      color: ${T.ink};
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .sheet { max-width: 720px; margin: 0 auto; background: ${BEIGE}; }
+    .sheet { max-width: 720px; margin: 0 auto; background: ${T.pageBg}; }
     .avoid-break { page-break-inside: avoid; break-inside: avoid; }
     .page-break-before { page-break-before: always; break-before: page; }
     .muted { text-align: center; color: #71717a; font-size: 14px; margin: 24px 0; }
@@ -332,21 +324,19 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .cap-row3 .cap-fig { display: table-cell; width: 33.33%; text-align: center; vertical-align: top; padding: 0 4px; }
     .cap-fig figcaption { margin-top: 6px; font-size: 9px; font-weight: 500; line-height: 1.25; color: #52525b; }
 
-    .masks-intro { font-size: 10px; color: #52525b; text-align: center; margin: 6px 0 10px; line-height: 1.4; }
     .masks-wrap { margin-top: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
-    .masks-row { display: table; width: 100%; table-layout: fixed; margin-top: 12px; }
+    .masks-row { display: table; width: 100%; table-layout: fixed; }
     .mask-fig { display: table-cell; width: 50%; text-align: center; vertical-align: top; padding: 0 6px; }
-    .mask-frame {
+    .mask-img {
+      width: 100%;
+      max-width: 220px;
+      height: auto;
+      object-fit: contain;
+      display: block;
       margin: 0 auto;
-      max-width: 140px;
-      aspect-ratio: 3/4;
-      overflow: hidden;
-      border-radius: 12px;
-      border: 1px solid rgba(124,58,237,0.35);
-      background: #e4e4e7;
+      border-radius: 8px;
+      background: #fff;
     }
-    .mask-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .mask-fig figcaption { margin-top: 8px; font-size: 10px; line-height: 1.35; color: #52525b; }
     .mask-desc, .mask-note, .overlay-body, .overlay-note { font-size: 9px; color: #52525b; }
     .mask-note, .overlay-note { display: block; margin-top: 6px; padding: 6px; background: #f4f4f5; border-radius: 6px; }
     .overlay-bullets { font-size: 9px; color: #52525b; text-align: center; list-style: none; padding: 0; margin: 4px 0; }
@@ -507,7 +497,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       font-size: 2.75rem;
       font-weight: 500;
       line-height: 1;
-      color: ${PEACH};
+      color: ${T.peach};
       margin-top: 6px;
     }
     .skin-sub { margin-top: 8px; font-size: 12px; font-weight: 500; color: #71717a; }
@@ -523,8 +513,8 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .teal {
       margin-top: 40px;
       padding: 40px 20px 44px;
-      border-top: 1px solid #fff;
-      background: linear-gradient(180deg, ${TEAL_BAND} 0%, #d8ebe6 100%);
+      border-top: 1px solid rgba(44,62,107,0.12);
+      background: linear-gradient(180deg, ${T.navy} 0%, ${T.navyMid} 100%);
     }
     .teal-rule {
       height: 1px;
@@ -544,19 +534,19 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       .teal-two > div:first-child { margin-bottom: 28px; }
       .clinical-card { width: 100%; margin: 0 0 12px; }
     }
-    .teal-bar { width: 32px; height: 3px; border-radius: 2px; background: #27272a; margin-bottom: 12px; }
+    .teal-bar { width: 32px; height: 3px; border-radius: 2px; background: ${T.peach}; margin-bottom: 12px; }
     .teal-h {
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: #27272a;
+      color: #ffffff;
       margin: 0 0 14px;
     }
     .teal-p {
       font-size: 14px;
       line-height: 1.75;
-      color: #3f3f46;
+      color: rgba(255,255,255,0.9);
       margin: 0 0 14px;
     }
 
@@ -612,7 +602,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
               <div class="skin-sub">Last scan: ${esc(lastScanLabel)}</div>
             </div>
             <div class="skin-col-donut">
-              <div class="donut-ring">${donutSvg(overall, 104, 9, PEACH, "#F0E4E1")}</div>
+              <div class="donut-ring">${donutSvg(overall, 104, 9, T.peach, T.peachLight)}</div>
             </div>
           </div>
         </div>

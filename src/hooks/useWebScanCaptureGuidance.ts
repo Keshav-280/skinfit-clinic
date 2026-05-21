@@ -8,10 +8,13 @@ import {
   detectFaceBoxNormalized,
   estimateFaceBoxFromSkin,
   sampleVideoFrame,
+  smoothFaceBox,
   type CaptureGuidanceSnapshot,
+  type NormalizedFaceBox,
+  type StableFramingState,
 } from "@/src/lib/scanCaptureGuidance";
 
-const TICK_MS = 280;
+const TICK_MS = 450;
 const WASM_ROOT =
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm";
 const LANDMARKER_MODEL =
@@ -44,6 +47,9 @@ export function useWebScanCaptureGuidance(
   const busyRef = useRef(false);
   const landmarkerRef = useRef<FaceLandmarkerLike | null>(null);
   const loadingLandmarkerRef = useRef(false);
+  const smoothedBoxRef = useRef<NormalizedFaceBox | null>(null);
+  const framingStateRef = useRef<StableFramingState | null>(null);
+  const expressionOkRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -114,7 +120,15 @@ export function useWebScanCaptureGuidance(
         );
       }
 
-      const framing = analyzeFaceFraming(faceBox);
+      smoothedBoxRef.current = smoothFaceBox(smoothedBoxRef.current, faceBox);
+      const framing = analyzeFaceFraming(
+        smoothedBoxRef.current,
+        framingStateRef.current
+      );
+      framingStateRef.current = {
+        quality: framing.quality,
+        faceFill: framing.faceFill,
+      };
       const next = buildCaptureGuidance(lighting, framing, currentZoom);
       const lm = landmarkerRef.current;
       if (lm && (stepId === "eyes_closed" || stepId === "smiling")) {
@@ -126,7 +140,9 @@ export function useWebScanCaptureGuidance(
             Number(shapes.find((c: BlendshapeCategory) => c.categoryName === name)?.score ?? 0);
           if (stepId === "eyes_closed") {
             const blink = (get("eyeBlinkLeft") + get("eyeBlinkRight")) / 2;
-            const ok = blink >= 0.45;
+            const wasOk = expressionOkRef.current === true;
+            const ok = wasOk ? blink >= 0.32 : blink >= 0.42;
+            expressionOkRef.current = ok;
             next.expressionOk = ok;
             next.expressionMessage = ok
               ? "Eyes closed check looks good"
@@ -138,7 +154,9 @@ export function useWebScanCaptureGuidance(
               get("mouthSmileRight"),
               get("smile")
             );
-            const ok = smile >= 0.35;
+            const wasOk = expressionOkRef.current === true;
+            const ok = wasOk ? smile >= 0.28 : smile >= 0.34;
+            expressionOkRef.current = ok;
             next.expressionOk = ok;
             next.expressionMessage = ok
               ? "Smile check looks good"
@@ -161,6 +179,9 @@ export function useWebScanCaptureGuidance(
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
       setGuidance(null);
+      smoothedBoxRef.current = null;
+      framingStateRef.current = null;
+      expressionOkRef.current = null;
       return;
     }
     void tick();

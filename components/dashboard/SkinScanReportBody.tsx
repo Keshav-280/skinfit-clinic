@@ -21,6 +21,7 @@ import { TrackerReportSections } from "./TrackerReportSections";
 import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -28,11 +29,6 @@ const serif = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
 });
-
-const BEIGE = "#F5F1E9";
-const TEAL_BAND = "#E0EEEB";
-const PEACH = "#F29C91";
-const BTN = "#6D8C8E";
 
 /** Thumbnail frame for capture gallery */
 const FACE_CAPTURE_FRAME =
@@ -59,9 +55,9 @@ const EIGHT_CLINICAL_DONUT_STYLE: Partial<
 > = {
   active_acne: { fill: "#dc2626", track: "rgba(220,38,38,0.2)" },
   acne_scars: { fill: "#ea580c", track: "rgba(234,88,12,0.2)" },
-  skin_quality: { fill: PEACH, track: "rgba(242, 156, 145, 0.22)" },
+  skin_quality: { fill: T.peach, track: T.peachTrack },
   wrinkle_severity: { fill: "#7c3aed", track: "rgba(124, 58, 237, 0.2)" },
-  sagging_volume: { fill: "#0d9488", track: "rgba(13, 148, 136, 0.2)" },
+  sagging_volume: { fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
   under_eye: { fill: "#5B8FD8", track: "rgba(91, 143, 216, 0.18)" },
   hair_health: { fill: "#78716c", track: "rgba(120, 113, 108, 0.2)" },
   pigmentation_model: { fill: "#d97706", track: "rgba(217, 119, 6, 0.2)" },
@@ -77,7 +73,7 @@ function regionMarkerColor(issue: string): string {
   if (x.includes("acne")) return "#dc2626";
   if (x.includes("wrinkle")) return "#7c3aed";
   if (x.includes("pigment")) return "#d97706";
-  if (x.includes("texture")) return "#0d9488";
+  if (x.includes("texture")) return T.navyMid;
   return "#6b7280";
 }
 
@@ -86,8 +82,8 @@ function clinicalBar(score: number) {
   return (
     <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-200/90">
       <div
-        className="h-full rounded-full bg-zinc-700 transition-[width] duration-700"
-        style={{ width: `${pct}%` }}
+        className="h-full rounded-full transition-[width] duration-700"
+        style={{ backgroundColor: T.navy, width: `${pct}%` }}
       />
     </div>
   );
@@ -371,8 +367,8 @@ export function SkinScanReportBody({
       if (key === "pigmentation_model" && v === null) continue;
       if (typeof v !== "number") continue;
       const style = EIGHT_CLINICAL_DONUT_STYLE[key] ?? {
-        fill: PEACH,
-        track: "rgba(242, 156, 145, 0.22)",
+        fill: T.peach,
+        track: T.peachTrack,
       };
       rows.push({
         key,
@@ -528,7 +524,7 @@ export function SkinScanReportBody({
               setShareDone(false);
             }}
             className={`flex h-10 items-center gap-1.5 rounded-full border border-white bg-white px-3 text-xs font-semibold shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:bg-white disabled:opacity-60 ${
-              shareOpen ? "text-teal-800 ring-2 ring-teal-200/80" : "text-zinc-600 hover:text-zinc-900"
+              shareOpen ? "text-[#2C3E6B] ring-2 ring-[#2C3E6B]/20" : "text-zinc-600 hover:text-zinc-900"
             }`}
             title="Share report"
             aria-expanded={shareOpen}
@@ -571,7 +567,7 @@ export function SkinScanReportBody({
                 value={shareEmail}
                 onChange={(e) => setShareEmail(e.target.value)}
                 placeholder="name@gmail.com"
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/20"
                 autoComplete="email"
               />
             </label>
@@ -580,7 +576,7 @@ export function SkinScanReportBody({
               onClick={() => void handleShareByEmail()}
               disabled={shareBusy || pdfLoading}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-              style={{ backgroundColor: BTN }}
+              style={{ backgroundColor: T.navy }}
             >
               <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
               {shareBusy ? "Sending…" : "Send by email"}
@@ -589,7 +585,7 @@ export function SkinScanReportBody({
               <p className="mt-2 text-[11px] text-rose-600">{shareError}</p>
             ) : null}
             {shareDone ? (
-              <p className="mt-2 text-[11px] font-medium text-teal-800">
+              <p className="mt-2 text-[11px] font-medium text-[#2C3E6B]">
                 Sent. Check the inbox (and spam).
               </p>
             ) : null}
@@ -606,9 +602,9 @@ export function SkinScanReportBody({
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: easeOut }}
-      className="relative w-full overflow-hidden rounded-[22px] border border-white"
+      className="relative w-full overflow-hidden rounded-[22px] border border-[rgba(44,62,107,0.14)]"
       style={{
-        backgroundColor: BEIGE,
+        backgroundColor: T.pageBg,
         boxShadow: `
             0 0 0 1px rgba(255,255,255,0.65) inset,
             0 32px 64px -12px rgba(0,0,0,0.14),
@@ -625,7 +621,7 @@ export function SkinScanReportBody({
       />
 
       <div className="relative px-5 pb-10 pt-9 sm:px-9 sm:pb-12">
-        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2C3E6B]/70">
           {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
         </p>
         {resolvedPhotos.length === 1 ? (
@@ -813,14 +809,14 @@ export function SkinScanReportBody({
                   {
                     label: "Acne",
                     value: metrics.acne,
-                    fill: "#5B8FD8",
-                    track: "rgba(91, 143, 216, 0.18)",
+                    fill: T.peach,
+                    track: T.peachTrack,
                   },
                   {
                     label: "Wrinkles",
                     value: metrics.wrinkles,
-                    fill: "#9EC5E8",
-                    track: "rgba(158, 197, 232, 0.3)",
+                    fill: "#7c3aed",
+                    track: "rgba(124, 58, 237, 0.2)",
                   },
                   {
                     label: "Pigmentation",
@@ -831,27 +827,27 @@ export function SkinScanReportBody({
                   {
                     label: "Hydration",
                     value: metrics.hydration,
-                    fill: PEACH,
-                    track: "rgba(242, 156, 145, 0.22)",
+                    fill: T.navyMid,
+                    track: "rgba(61, 80, 128, 0.2)",
                   },
                   {
                     label: "Texture",
                     value: metrics.texture ?? metrics.hydration,
-                    fill: "#0d9488",
-                    track: "rgba(13, 148, 136, 0.2)",
+                    fill: T.navyMid,
+                    track: "rgba(61, 80, 128, 0.2)",
                   },
                   {
                     label: "Overall",
                     value: metrics.overall_score,
-                    fill: PEACH,
-                    track: "rgba(242, 156, 145, 0.22)",
+                    fill: T.peach,
+                    track: T.peachTrack,
                   },
                 ].map((row) => (
                   <div
                     key={row.label}
-                    className="flex min-w-0 max-w-full flex-col items-center gap-1 rounded-xl border border-white bg-white px-1 py-2 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset] backdrop-blur-[2px] sm:flex-row sm:items-center sm:justify-between sm:gap-1 sm:rounded-2xl sm:px-2 sm:py-2.5 md:gap-2 md:px-2.5"
+                    className="flex min-w-0 max-w-full flex-col items-center gap-1 rounded-xl border border-[rgba(44,62,107,0.1)] bg-white px-1 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-1 sm:rounded-2xl sm:px-2 sm:py-2.5 md:gap-2 md:px-2.5"
                   >
-                    <span className="line-clamp-2 w-full min-w-0 text-center text-[9px] font-semibold leading-tight tracking-tight text-zinc-700 sm:line-clamp-1 sm:w-auto sm:truncate sm:text-left sm:text-[11px] md:text-[12px]">
+                    <span className="line-clamp-2 w-full min-w-0 text-center text-[9px] font-semibold leading-tight tracking-tight text-[#2C3E6B] sm:line-clamp-1 sm:w-auto sm:truncate sm:text-left sm:text-[11px] md:text-[12px]">
                       {row.label}
                     </span>
                     <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
@@ -933,16 +929,16 @@ export function SkinScanReportBody({
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.18, duration: 0.45, ease: easeOut }}
-                className="w-full min-w-0 max-w-full rounded-[20px] border border-white bg-white px-4 py-6 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.12),0_8px_16px_-4px_rgba(0,0,0,0.06)] backdrop-blur-sm sm:px-9 sm:py-7"
+                className="w-full min-w-0 max-w-full rounded-[20px] border border-[rgba(44,62,107,0.12)] bg-white px-4 py-6 shadow-[0_24px_48px_-12px_rgba(44,62,107,0.15)] sm:px-9 sm:py-7"
               >
                 <div className="flex min-w-0 max-w-full flex-col items-stretch gap-5 sm:flex-row sm:items-center sm:gap-6 md:gap-8">
                   <div className="min-w-0 flex-1 overflow-hidden">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2C3E6B]/70">
                       Your Skin Health
                     </p>
                     <p
                       className={`${serif.className} mt-1 max-w-full text-[2.25rem] font-medium leading-none tracking-[-0.03em] sm:text-[2.75rem] md:text-[3.25rem]`}
-                      style={{ color: PEACH }}
+                      style={{ color: T.peach }}
                     >
                       {overall}%
                     </p>
@@ -962,8 +958,8 @@ export function SkinScanReportBody({
                             percent={overall}
                             size={104}
                             stroke={9}
-                            color={PEACH}
-                            track="#F0E4E1"
+                            color={T.peach}
+                            track={T.peachLight}
                             gradientId="donut-peach-main"
                           />
                         </div>
@@ -975,39 +971,39 @@ export function SkinScanReportBody({
             </div>
 
             <div
-              className="relative mt-12 break-inside-avoid border-t border-white px-6 py-10 sm:mt-14 sm:px-10 sm:py-12 md:px-14"
+              className="relative mt-12 break-inside-avoid border-t border-[rgba(44,62,107,0.12)] px-6 py-10 sm:mt-14 sm:px-10 sm:py-12 md:px-14"
               style={{
-                background: `linear-gradient(180deg, ${TEAL_BAND} 0%, #d8ebe6 100%)`,
+                background: `linear-gradient(180deg, ${T.navy} 0%, ${T.navyMid} 100%)`,
               }}
             >
               <div
-                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent"
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
                 aria-hidden
               />
               <div className="mx-auto grid max-w-3xl grid-cols-1 gap-10 md:grid-cols-2 md:gap-12">
-                <div className="relative md:pr-10 md:after:absolute md:after:right-0 md:after:top-0 md:after:h-full md:after:w-px md:after:bg-gradient-to-b md:after:from-zinc-400 md:after:via-zinc-400 md:after:to-zinc-400">
-                  <div className="mb-4 h-px w-8 rounded-full bg-zinc-800" aria-hidden />
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-800">
+                <div className="relative md:pr-10 md:after:absolute md:after:right-0 md:after:top-0 md:after:h-full md:after:w-px md:after:bg-white/25">
+                  <div className="mb-4 h-px w-8 rounded-full bg-[#F29C91]" aria-hidden />
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white">
                     Overview
                   </h3>
-                  <p className="mt-5 text-[14px] leading-[1.75] text-zinc-700">
+                  <p className="mt-5 text-[14px] leading-[1.75] text-white/90">
                     {aiSummary?.trim()
                       ? "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends—this is educational, not a medical diagnosis."
                       : "Your skin shows a balanced profile with room to optimize hydration and maintain clarity. Continue tracking changes after each scan to spot trends early."}
                   </p>
-                  <p className="mt-5 text-[14px] leading-[1.75] text-zinc-700">
+                  <p className="mt-5 text-[14px] leading-[1.75] text-white/90">
                     {OVERVIEW_P2}
                   </p>
                 </div>
                 <div>
-                  <div className="mb-4 h-px w-8 rounded-full bg-zinc-800" aria-hidden />
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-800">
+                  <div className="mb-4 h-px w-8 rounded-full bg-[#F29C91]" aria-hidden />
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-white">
                     Causes/Challenges
                   </h3>
-                  <p className="mt-5 text-[14px] leading-[1.75] text-zinc-700">
+                  <p className="mt-5 text-[14px] leading-[1.75] text-white/90">
                     {CAUSES_P1}
                   </p>
-                  <p className="mt-5 text-[14px] leading-[1.75] text-zinc-700">
+                  <p className="mt-5 text-[14px] leading-[1.75] text-white/90">
                     {CAUSES_P2}
                   </p>
                 </div>
@@ -1021,13 +1017,13 @@ export function SkinScanReportBody({
 
       <div
         className="relative px-5 pb-10 pt-4 sm:px-9"
-        style={{ backgroundColor: BEIGE }}
+        style={{ backgroundColor: T.pageBg }}
       >
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black to-transparent"
           aria-hidden
         />
-        <h3 className="text-center text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-800">
+        <h3 className="text-center text-[10px] font-bold uppercase tracking-[0.28em] text-[#2C3E6B]">
           {showTracker ? "Resource centre" : "Recommended videos"}
         </h3>
         {showTracker && tracker ? (
@@ -1040,7 +1036,7 @@ export function SkinScanReportBody({
                 rel="noopener noreferrer"
                 className="group rounded-2xl border border-zinc-200/80 bg-white/90 p-4 text-left shadow-[0_8px_22px_-16px_rgba(0,0,0,0.35)] transition duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_16px_30px_-18px_rgba(0,0,0,0.35)]"
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2C3E6B]">
                   {r.kind === "insight" ? "kAI insight" : r.kind}
                 </p>
                 <p className="mt-2 text-[14px] font-semibold leading-snug text-zinc-900 group-hover:text-zinc-950">
@@ -1090,7 +1086,7 @@ export function SkinScanReportBody({
 
       <div
         className="relative px-5 pb-12 pt-2 sm:px-9"
-        style={{ backgroundColor: BEIGE }}
+        style={{ backgroundColor: T.pageBg }}
       >
         <div className="flex flex-col items-center gap-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-600">
@@ -1098,8 +1094,8 @@ export function SkinScanReportBody({
           </p>
           <Link
             href="/dashboard/schedules?calendar=appointments#schedules-calendar-root"
-            className="rounded-[14px] px-12 py-3.5 text-[13px] font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(109,140,142,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(109,140,142,0.4)] active:translate-y-0 active:scale-[0.98]"
-            style={{ backgroundColor: BTN }}
+            className="rounded-[14px] px-12 py-3.5 text-[13px] font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(44,62,107,0.35)] transition hover:-translate-y-0.5 hover:bg-[#3d5080] hover:shadow-[0_8px_24px_rgba(44,62,107,0.4)] active:translate-y-0 active:scale-[0.98]"
+            style={{ backgroundColor: T.navy }}
           >
             {showTracker && tracker?.cta.showAppointmentPrep
               ? "Appointment prep"

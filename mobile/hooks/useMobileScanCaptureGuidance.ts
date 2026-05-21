@@ -1,10 +1,13 @@
 import { CameraView } from "expo-camera";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
-import { analyzePreviewImageUri } from "@/lib/analyzePreviewJpeg";
+import {
+  analyzePreviewImageUri,
+  type PreviewGuidanceState,
+} from "@/lib/analyzePreviewJpeg";
 import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
-const TICK_MS = 1100;
+const TICK_MS = 1300;
 
 type CameraRef = RefObject<CameraView | null>;
 
@@ -19,6 +22,10 @@ export function useMobileScanCaptureGuidance(
   const [analyzing, setAnalyzing] = useState(false);
   const busyRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previewStateRef = useRef<PreviewGuidanceState>({
+    smoothedBox: null,
+    framing: null,
+  });
 
   const tick = useCallback(async () => {
     const cam = cameraRef.current;
@@ -34,7 +41,12 @@ export function useMobileScanCaptureGuidance(
       });
       if (!pic?.uri) return;
 
-      const next = await analyzePreviewImageUri(pic.uri, currentZoom);
+      const { guidance: next, state } = await analyzePreviewImageUri(
+        pic.uri,
+        currentZoom,
+        previewStateRef.current
+      );
+      previewStateRef.current = state;
       if (next) setGuidance(next);
     } catch {
       /* preview sample failed — keep last guidance */
@@ -48,7 +60,10 @@ export function useMobileScanCaptureGuidance(
     if (!enabled || !cameraReady || paused) {
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
-      if (!enabled) setGuidance(null);
+      if (!enabled) {
+        setGuidance(null);
+        previewStateRef.current = { smoothedBox: null, framing: null };
+      }
       return;
     }
 

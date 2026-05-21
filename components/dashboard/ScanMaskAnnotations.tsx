@@ -1,12 +1,7 @@
 "use client";
 
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
-import {
-  ACNE_MASK_COPY,
-  DOT_MARKER_LEGEND,
-  SCAN_MASK_SECTION,
-  WRINKLE_MASK_COPY,
-} from "@/src/lib/scanMaskLabels";
+import { DOT_MARKER_LEGEND } from "@/src/lib/scanMaskLabels";
 import type { ReportRegion } from "./scanReportTypes";
 
 function regionMarkerColor(issue: string): string {
@@ -16,47 +11,18 @@ function regionMarkerColor(issue: string): string {
   return "#6b7280";
 }
 
-function MaskCaption({
-  title,
-  hint,
-  tone,
-  pose,
-}: {
-  title: string;
-  hint: string;
-  tone: "violet" | "orange";
-  pose?: string;
-}) {
-  const titleCls =
-    tone === "violet" ? "text-violet-900" : "text-orange-900";
-  return (
-    <figcaption className="space-y-1 text-center">
-      <p className={`text-sm font-bold ${titleCls}`}>{title}</p>
-      {pose ? (
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          From: {pose}
-        </p>
-      ) : null}
-      <p className="text-xs leading-snug text-zinc-600">{hint}</p>
-    </figcaption>
-  );
-}
-
+/** Mask PNGs from inference already include matplotlib titles above each panel. */
 export function ScanMaskAnnotations({
   imageUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
-  wrinklePoseLabel,
-  acnePoseLabel,
   spatialOutputs: _spatialOutputs,
   regions,
 }: {
   imageUrl: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
-  /** e.g. "Front face — smiling" — wrinkle mask is from this capture. */
   wrinklePoseLabel?: string;
-  /** e.g. "Front face — neutral" — acne mask is from this capture. */
   acnePoseLabel?: string;
   spatialOutputs?: ScanSpatialOutputs;
   regions: ReportRegion[];
@@ -69,53 +35,30 @@ export function ScanMaskAnnotations({
   if (!wrinkle && !acne && !showDotMarkers) return null;
 
   return (
-    <div className="mx-auto mt-10 max-w-2xl break-inside-avoid">
-      <p className="text-center text-sm font-bold text-zinc-800">
-        {SCAN_MASK_SECTION.title}
-      </p>
-      <p className="mx-auto mt-2 max-w-md text-center text-xs leading-relaxed text-zinc-600">
-        {SCAN_MASK_SECTION.intro}
-      </p>
-
+    <div className="mx-auto mt-8 max-w-2xl break-inside-avoid">
       {(wrinkle || acne) && (
         <div
-          className={`mx-auto mt-5 grid gap-5 ${
-            wrinkle && acne ? "sm:grid-cols-2" : "max-w-[300px]"
+          className={`mx-auto grid gap-4 ${
+            wrinkle && acne ? "grid-cols-1 sm:grid-cols-2" : "max-w-[280px]"
           }`}
         >
           {wrinkle ? (
-            <figure className="flex flex-col gap-2">
-              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-200 ring-2 ring-violet-300/80">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={wrinkle}
-                  alt={WRINKLE_MASK_COPY.title}
-                  className="h-full w-full object-cover object-center"
-                />
-              </div>
-              <MaskCaption
-                tone="violet"
-                title={WRINKLE_MASK_COPY.title}
-                hint={WRINKLE_MASK_COPY.hint}
-                pose={wrinklePoseLabel}
+            <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={wrinkle}
+                alt="Wrinkle mask overlay"
+                className="h-auto w-full object-contain"
               />
             </figure>
           ) : null}
           {acne ? (
-            <figure className="flex flex-col gap-2">
-              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-200 ring-2 ring-orange-300/80">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={acne}
-                  alt={ACNE_MASK_COPY.title}
-                  className="h-full w-full object-cover object-center"
-                />
-              </div>
-              <MaskCaption
-                tone="orange"
-                title={ACNE_MASK_COPY.title}
-                hint={ACNE_MASK_COPY.hint}
-                pose={acnePoseLabel}
+            <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={acne}
+                alt="Acne objectness overlay"
+                className="h-auto w-full object-contain"
               />
             </figure>
           ) : null}
@@ -123,10 +66,7 @@ export function ScanMaskAnnotations({
       )}
 
       {showDotMarkers ? (
-        <div className="mx-auto mt-6 max-w-[300px]">
-          <p className="mb-2 text-center text-xs font-semibold text-zinc-700">
-            {DOT_MARKER_LEGEND.title}
-          </p>
+        <div className="mx-auto mt-6 max-w-[280px]">
           <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-200 ring-1 ring-zinc-300/80">
             <img
               src={imageUrl}

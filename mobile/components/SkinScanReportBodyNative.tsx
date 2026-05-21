@@ -20,16 +20,10 @@ import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
+import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
 
-const BG = "#E8EFE6";
-const NAVY = "#2C3E6B";
-const GREEN_ACCENT = "#16a34a";
-const GLASS = "rgba(255,255,255,0.55)";
-const GLASS_BORDER = "rgba(255,255,255,0.7)";
-const BEIGE = BG;
-const TEAL_BAND = "#D4E8D0";
-const PEACH = GREEN_ACCENT;
-const BTN = NAVY;
+const GLASS = "rgba(255,255,255,0.92)";
+const GLASS_BORDER = T.cardBorder;
 
 const OVERVIEW_P2 =
   "Maintaining gentle cleansing, daily photoprotection, and targeted hydration supports long-term barrier health and helps preserve the improvements shown in your latest scan.";
@@ -113,7 +107,7 @@ function markerColor(issue: string): string {
   if (x.includes("acne")) return "#dc2626";
   if (x.includes("wrinkle")) return "#7c3aed";
   if (x.includes("pigment")) return "#d97706";
-  if (x.includes("texture")) return "#0d9488";
+  if (x.includes("texture")) return T.navyMid;
   return "#6b7280";
 }
 
@@ -337,14 +331,14 @@ export function SkinScanReportBodyNative({
                   {
                     label: "Acne",
                     value: metrics.acne,
-                    fill: NAVY,
-                    track: "rgba(44,62,107,0.15)",
+                    fill: T.peach,
+                    track: T.peachTrack,
                   },
                   {
                     label: "Hydration",
                     value: metrics.hydration,
-                    fill: GREEN_ACCENT,
-                    track: "rgba(22,163,74,0.15)",
+                    fill: T.navyMid,
+                    track: "rgba(61, 80, 128, 0.2)",
                   },
                   {
                     label: "Wrinkles",
@@ -417,8 +411,8 @@ export function SkinScanReportBodyNative({
                     percent={overall}
                     size={104}
                     stroke={9}
-                    color={GREEN_ACCENT}
-                    trackColor="rgba(22,163,74,0.15)"
+                    color={T.peach}
+                    trackColor={T.peachLight}
                   />
                 </View>
               </View>
@@ -435,7 +429,7 @@ export function SkinScanReportBodyNative({
             </Text>
           </View>
         ) : (
-          <LinearGradient colors={[TEAL_BAND, "#C8E0C4"]} style={styles.tealSection}>
+          <LinearGradient colors={[T.navy, T.navyMid]} style={styles.tealSection}>
             <View style={styles.tealDivider} />
             <View style={styles.tealBar} />
             <Text style={styles.tealH}>Overview</Text>
@@ -477,7 +471,7 @@ export function SkinScanReportBodyNative({
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: BG },
+  scroll: { flex: 1, backgroundColor: T.pageBg },
   scrollContent: { paddingBottom: 40 },
   toolbar: { alignItems: "flex-end", paddingHorizontal: 12, paddingTop: 4 },
   pdfBtn: {
@@ -489,7 +483,7 @@ const styles = StyleSheet.create({
     borderColor: GLASS_BORDER,
   },
   pdfBtnDis: { opacity: 0.55 },
-  pdfBtnText: { fontSize: 12, fontWeight: "700", color: NAVY },
+  pdfBtnText: { fontSize: 12, fontWeight: "700", color: T.navy },
   pageTitle: {
     textAlign: "center",
     fontSize: 20,
@@ -527,7 +521,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2.2,
-    color: NAVY,
+    color: T.navy,
     marginBottom: 12,
   },
   singleCaptureWrap: { alignItems: "center" },
@@ -596,7 +590,7 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#D4E8D0",
+    backgroundColor: T.sageBand,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
   },
@@ -625,7 +619,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 2,
-    color: NAVY,
+    color: T.navy,
     textTransform: "uppercase",
   },
   hello: {
@@ -682,14 +676,14 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontSize: 13,
     fontWeight: "700",
-    color: NAVY,
+    color: T.navy,
   },
   clinicalSection: { marginTop: 24 },
   clinicalKicker: {
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2,
-    color: NAVY,
+    color: T.navy,
     textTransform: "uppercase",
   },
   clinicalHint: {
@@ -713,7 +707,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   clinicalLabel: { fontSize: 11, fontWeight: "700", color: "#1E293B", flex: 1 },
-  clinicalNum: { fontSize: 12, fontWeight: "700", color: NAVY },
+  clinicalNum: { fontSize: 12, fontWeight: "700", color: T.navy },
   clinicalNa: { marginTop: 6, fontSize: 10, color: "#6B7280" },
   clinicalTrack: {
     marginTop: 8,
@@ -725,7 +719,7 @@ const styles = StyleSheet.create({
   clinicalFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: NAVY,
+    backgroundColor: T.navy,
   },
   scoreFloat: {
     marginTop: 28,
@@ -742,13 +736,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2,
-    color: NAVY,
+    color: T.navy,
   },
   scoreBig: {
     marginTop: 6,
     fontSize: 56,
     fontWeight: "500",
-    color: PEACH,
+    color: T.peach,
     lineHeight: 58,
   },
   scoreSub: { marginTop: 8, fontSize: 12, fontWeight: "500", color: "#6B7280" },
@@ -774,21 +768,21 @@ const styles = StyleSheet.create({
     width: 32,
     height: 3,
     borderRadius: 2,
-    backgroundColor: NAVY,
+    backgroundColor: T.peach,
     marginBottom: 12,
   },
   tealH: {
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2,
-    color: NAVY,
+    color: "#ffffff",
     marginBottom: 12,
     textTransform: "uppercase",
   },
   tealP: {
     fontSize: 14,
     lineHeight: 24,
-    color: "#374151",
+    color: "rgba(255,255,255,0.9)",
     marginBottom: 14,
   },
   beigeFooter: {
@@ -807,7 +801,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2.8,
-    color: NAVY,
+    color: T.navy,
     textTransform: "uppercase",
   },
   resourceFooterHint: {
@@ -824,12 +818,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 2.2,
-    color: NAVY,
+    color: T.navy,
     textTransform: "uppercase",
   },
   bookBtn: {
     alignSelf: "center",
-    backgroundColor: NAVY,
+    backgroundColor: T.navy,
     paddingHorizontal: 48,
     paddingVertical: 14,
     borderRadius: 14,
