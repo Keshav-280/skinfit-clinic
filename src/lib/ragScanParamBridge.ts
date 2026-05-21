@@ -75,6 +75,10 @@ export function mergeRagParamValuesFromScan(input: {
     const v = input.dbByKey.acne_scars;
     if (typeof v === "number" && Number.isFinite(v)) {
       out.acne_scar = clampPct(v);
+    } else {
+      // Fallback: derive from modelFeatureScores.acne_scars (severity 1–5 → clarity 0–100)
+      const s = num(mfs?.["acne_scars"]);
+      if (s != null) out.acne_scar = severityToClarity(s);
     }
   }
 
