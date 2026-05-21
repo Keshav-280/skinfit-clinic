@@ -17,17 +17,6 @@ function valueForBar(n: number | null) {
   return Math.min(100, Math.max(0, Math.round(n)));
 }
 
-function weekSentence(report: PatientTrackerReport) {
-  const primary =
-    report.scores.deltaMode === "week_average"
-      ? report.scores.weekAverageDelta
-      : report.scores.lastScanDelta;
-  if (typeof primary !== "number") return "Baseline week captured. Build consistency now.";
-  if (primary >= 4) return "Your skin improved this week.";
-  if (primary <= -4) return "Tough week - here's why.";
-  return "Steady week - now let's unlock better gains.";
-}
-
 function kindBadge(kind: "article" | "video" | "insight") {
   if (kind === "article") return "Article";
   if (kind === "video") return "Video";
@@ -41,25 +30,12 @@ type Props = {
 
 export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
-  const plainOverview =
-    report.scanContext.kind === "onboarding_first_scan"
-      ? "This is your baseline. Next scans become more accurate as routine data builds."
-      : report.hookSentence;
-
-  const comparisonLine =
-    typeof report.scores.weekAverageDelta === "number" &&
-    report.scores.currentWeekAverageKai != null &&
-    report.scores.previousWeekAverageKai != null
-      ? `Weekly comparison: this week avg ${report.scores.currentWeekAverageKai} vs previous week avg ${report.scores.previousWeekAverageKai} (${signed(report.scores.weekAverageDelta)}).`
-      : typeof report.scores.lastScanDelta === "number"
-        ? `Weekly comparison unavailable yet. Last scan comparison: ${signed(report.scores.lastScanDelta)} vs previous scan.`
-        : "Weekly comparison unavailable yet. Take another scan in a different week to unlock it.";
 
   return (
     <View style={styles.wrap}>
       <View style={styles.card}>
         <Text style={styles.sectionKicker}>Section 1 — Hook</Text>
-        <Text style={[styles.hookTitle, { fontFamily: serifFamily }]}>{weekSentence(report)}</Text>
+        <Text style={[styles.hookTitle, { fontFamily: serifFamily }]}>{report.hookSentence}</Text>
         <View style={styles.statGrid}>
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>kAI score</Text>
@@ -84,7 +60,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
             <Text style={styles.statValue}>{report.scores.consistencyScore}%</Text>
           </View>
         </View>
-        <Text style={styles.comparisonHint}>{comparisonLine}</Text>
+        <Text style={styles.comparisonHint}>{report.insightText}</Text>
       </View>
 
       <View style={styles.card}>
@@ -149,7 +125,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
           </View>
         </View>
 
-        <Text style={styles.overviewPara}>{plainOverview}</Text>
+        <Text style={styles.overviewPara}>{report.predictionText}</Text>
       </View>
 
       <View style={styles.card}>

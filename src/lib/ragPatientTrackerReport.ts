@@ -1,0 +1,487 @@
+/**
+ * Production per-scan tracker narrative: Pinecone + BM25 retrieval + LLM.
+ * Replaces template hook / insight / resources / causes / focus copy in patientTrackerReport.
+ */
+
+import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
+import { db } from "@/src/db";
+import {
+  chatMessages,
+  chatThreads,
+  dailyLogs,
+  scans,
+  skinDnaCards,
+  users,
+  visitNotes,
+} from "@/src/db/schema";
+import {
+  computeRagKaiScore,
+  RAG_KAI_PARAM_KEYS,
+  RAG_KAI_PARAM_LABELS,
+  type RagKaiParamKey,
+} from "@/src/lib/ragEightParams";
+import {
+  correlateBehaviorToDelta,
+  summarizeBehavior,
+} from "@/src/lib/ragCorrelationStats";
+import { analyzeTrackerReport, isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
+import { productionTextbookRetrieve } from "@/src/lib/ragRetrieve";
+import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
+import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
+import type {
+  PatientTrackerCause,
+  PatientTrackerFocusAction,
+  PatientTrackerResource,
+} from "@/src/lib/patientTrackerReport.types";
+
+type ScanRow = {
+  id: number;
+  createdAt: Date;
+  overallScore: number;
+  scores: unknown;
+  pigmentation: number;
+  acne: number;
+  wrinkles: number;
+};
+
+function ymd(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function clampPct(n: number) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function hookFallback(delta: number) {
+  if (delta >= 4) return "Your skin improved this week — your consistency is paying off.";
+  if (delta <= -4) return "Tough week — here is what likely drove the dip and what to fix first.";
+  return "Steady week — your trend is stable; focus on your highest-impact habit this week.";
+}
+
+function buildRetrievalQuery(params: {
+  primaryConcern: string | null;
+  weakestLabel: string | null;
+  topDeltaLabels: string[];
+  behavior: ReturnType<typeof summarizeBehavior>;
+}) {
+  const bits: string[] = [];
+  if (params.primaryConcern) bits.push(params.primaryConcern);
+  if (params.weakestLabel) bits.push(params.weakestLabel);
+  bits.push(...params.topDeltaLabels);
+  if (params.behavior.highSunDays >= 2) bits.push("photoprotection sunscreen UV");
+  if (params.behavior.highStressDays >= 2) bits.push("stress cortisol acne flare");
+  if (params.behavior.avgSleepHours < 6) bits.push("sleep barrier repair");
+  bits.push("Indian skin", "dermatology", "clinical management");
+  return bits.join(" ");
+}
+
+function causeImpact(text: string): PatientTrackerCause["impact"] {
+  const t = text.trim();
+  if (/^win:/i.test(t)) return "medium";
+  if (/^drag:/i.test(t)) return "high";
+  if (/^watch:/i.test(t)) return "medium";
+  return "medium";
+}
+
+function mapCauses(lines: string[]): PatientTrackerCause[] {
+  return lines.slice(0, 4).map((text) => ({
+    text: text.trim(),
+    impact: causeImpact(text),
+  }));
+}
+
+function resourcesFromRag(
+  article: { title: string; source: string; why: string },
+  video: { title: string; url: string; why: string },
+  insight: { title: string; body: string }
+): PatientTrackerResource[] {
+  const articleUrl =
+    article.source.startsWith("http")
+      ? article.source
+      : "https://www.aad.org/public/everyday-care/skin-care-basics";
+  return [
+    {
+      title: article.title,
+      url: articleUrl,
+      kind: "article",
+    },
+    {
+      title: video.title,
+      url: video.url || "https://www.youtube.com/watch?v=0KSOMA3QBU0",
+      kind: "video",
+    },
+    {
+      title: insight.title,
+      url: "https://skinfit.example/kai/insight",
+      kind: "insight",
+    },
+  ];
+}
+
+async function loadVisitNotesUpTo(userId: string, before: Date) {
+  const notes = await db.query.visitNotes.findMany({
+    where: eq(visitNotes.userId, userId),
+    orderBy: [desc(visitNotes.visitDate)],
+    limit: 20,
+  });
+  return notes
+    .filter((n) => n.visitDate.getTime() <= before.getTime())
+    .slice(0, 4);
+}
+
+async function loadRecentChatUpTo(userId: string, before: Date) {
+  const thread = await db.query.chatThreads.findFirst({
+    where: and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, "ai")),
+  });
+  if (!thread) return [] as Array<typeof chatMessages.$inferSelect>;
+  const msgs = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.threadId, thread.id))
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(40);
+  return msgs.filter((m) => m.createdAt.getTime() <= before.getTime()).slice(0, 10);
+}
+
+function summarizeVisitNotes(notes: Array<typeof visitNotes.$inferSelect>) {
+  if (notes.length === 0) return null;
+  return notes
+    .map(
+      (v) =>
+        `• ${ymd(v.visitDate)} Dr.${v.doctorName} — ${v.purpose ?? "visit"}; ${
+          v.treatments ?? ""
+        }; response=${v.responseRating ?? "n/a"}; notes=${v.notes.slice(0, 200)}`
+    )
+    .join("\n");
+}
+
+function summarizeChat(msgs: Array<typeof chatMessages.$inferSelect>) {
+  if (msgs.length === 0) return null;
+  return msgs
+    .slice(0, 8)
+    .map((m) => `• [${m.sender}] ${m.text.slice(0, 180)}`)
+    .join("\n");
+}
+
+export type RagPatientTrackerNarrative = {
+  hookSentence: string;
+  insightText: string;
+  predictionText: string;
+  causes: PatientTrackerCause[];
+  focusActions: PatientTrackerFocusAction[];
+  resources: PatientTrackerResource[];
+  empathyParagraph: string;
+  evidenceIds: string[];
+  llmUsed: boolean;
+};
+
+export async function buildRagPatientTrackerNarrative(input: {
+  userId: string;
+  scanRow: ScanRow;
+  prevScan: ScanRow | null;
+  scanIndex: number;
+  scanContextKind: "onboarding_first_scan" | "same_week_followup" | "new_week_followup";
+}): Promise<RagPatientTrackerNarrative> {
+  const { userId, scanRow, prevScan, scanIndex, scanContextKind } = input;
+
+  const [user, dna] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        id: true,
+        name: true,
+        skinType: true,
+        primaryConcern: true,
+        baselineSunExposure: true,
+      },
+    }),
+    db.query.skinDnaCards.findFirst({
+      where: eq(skinDnaCards.userId, userId),
+    }),
+  ]);
+
+  const scanHistory = await db
+    .select({
+      id: scans.id,
+      createdAt: scans.createdAt,
+      overallScore: scans.overallScore,
+      scores: scans.scores,
+      pigmentation: scans.pigmentation,
+      acne: scans.acne,
+      wrinkles: scans.wrinkles,
+    })
+    .from(scans)
+    .where(eq(scans.userId, userId))
+    .orderBy(asc(scans.createdAt));
+
+  const scansWithParams = scanHistory.map((s) => ({
+    id: s.id,
+    createdAt: s.createdAt,
+    overallScore: s.overallScore,
+    paramValues: mergeRagParamValuesFromScan({
+      dbByKey: {},
+      scoresJson: s.scores,
+      pigmentationColumn: s.pigmentation,
+      acneColumn: s.acne,
+      wrinklesColumn: s.wrinkles,
+    }),
+  }));
+
+  const currentVals = mergeRagParamValuesFromScan({
+    dbByKey: {},
+    scoresJson: scanRow.scores,
+    pigmentationColumn: scanRow.pigmentation,
+    acneColumn: scanRow.acne,
+    wrinklesColumn: scanRow.wrinkles,
+  });
+  const prevVals = prevScan
+    ? mergeRagParamValuesFromScan({
+        dbByKey: {},
+        scoresJson: prevScan.scores,
+        pigmentationColumn: prevScan.pigmentation,
+        acneColumn: prevScan.acne,
+        wrinklesColumn: prevScan.wrinkles,
+      })
+    : {};
+
+  const params = RAG_KAI_PARAM_KEYS.map((key) => {
+    const v0 = currentVals[key];
+    const v1 = prevVals[key];
+    return {
+      key,
+      value: typeof v0 === "number" ? v0 : null,
+      delta:
+        typeof v0 === "number" && typeof v1 === "number"
+          ? Math.round(v0 - v1)
+          : null,
+    };
+  });
+
+  const kaiNow = computeRagKaiScore(currentVals) ?? scanRow.overallScore;
+  const kaiPrev = prevScan
+    ? computeRagKaiScore(prevVals) ?? prevScan.overallScore
+    : kaiNow;
+  const weeklyDelta = Math.round(kaiNow - kaiPrev);
+
+  const cutoff7 = new Date(scanRow.createdAt);
+  cutoff7.setDate(cutoff7.getDate() - 7);
+  const [logsInWindow, logsUpToScan] = await Promise.all([
+    db
+      .select()
+      .from(dailyLogs)
+      .where(
+        and(
+          eq(dailyLogs.userId, userId),
+          gte(dailyLogs.date, cutoff7),
+          lte(dailyLogs.date, scanRow.createdAt)
+        )
+      ),
+    db
+      .select()
+      .from(dailyLogs)
+      .where(
+        and(eq(dailyLogs.userId, userId), lte(dailyLogs.date, scanRow.createdAt))
+      ),
+  ]);
+
+  const behavior = summarizeBehavior(logsInWindow, 7);
+  const consistency = clampPct(behavior.routineConsistencyPct);
+
+  const weak = [...params]
+    .filter((p) => typeof p.value === "number")
+    .sort((a, b) => (a.value ?? 0) - (b.value ?? 0))[0];
+  const topDeltas = [...params]
+    .filter((p) => p.delta != null)
+    .sort((a, b) => Math.abs(b.delta ?? 0) - Math.abs(a.delta ?? 0))
+    .slice(0, 3);
+
+  const correlations = params.map((p) =>
+    correlateBehaviorToDelta(p.key as RagKaiParamKey, p.delta, behavior)
+  );
+
+  const identityBaseline = {
+    skinType: dna?.skinType ?? user?.skinType ?? null,
+    primaryConcern: dna?.primaryConcern ?? user?.primaryConcern ?? null,
+    sensitivityIndex: dna?.sensitivityIndex ?? null,
+    uvSensitivity: dna?.uvSensitivity ?? user?.baselineSunExposure ?? null,
+    hormonalCorrelation: dna?.hormonalCorrelation ?? null,
+  };
+
+  const identityAtScan = deriveSkinIdentityAt({
+    asOfDate: scanRow.createdAt,
+    baseline: identityBaseline,
+    scans: scansWithParams,
+    logs: logsUpToScan,
+  });
+
+  const retrievalQuery = buildRetrievalQuery({
+    primaryConcern: identityAtScan.primaryConcern,
+    weakestLabel: weak ? RAG_KAI_PARAM_LABELS[weak.key] : null,
+    topDeltaLabels: topDeltas.map((p) => RAG_KAI_PARAM_LABELS[p.key]),
+    behavior,
+  });
+
+  const evidence = await productionTextbookRetrieve({
+    query: retrievalQuery,
+    boostTerms: [
+      identityAtScan.primaryConcern ?? "",
+      weak ? RAG_KAI_PARAM_LABELS[weak.key] : "",
+    ],
+    topK: 5,
+  });
+
+  const [visits, chatMsgs] = await Promise.all([
+    loadVisitNotesUpTo(userId, scanRow.createdAt),
+    loadRecentChatUpTo(userId, scanRow.createdAt),
+  ]);
+
+  const scanContextNote =
+    scanContextKind === "onboarding_first_scan"
+      ? "This is the patient's FIRST baseline scan — explain starting map, not week-over-week drama."
+      : scanContextKind === "same_week_followup"
+        ? "Same calendar week repeat scan — emphasize capture consistency and short-cycle validation, not full week trend."
+        : "New calendar week follow-up — interpret as week-over-week progression.";
+
+  let llmOut = null;
+  const llmOn = isLlmEnabled();
+  if (llmOn) {
+    llmOut = await analyzeTrackerReport({
+      patient: {
+        name: user?.name ?? "Patient",
+        skinType: identityAtScan.skinType,
+        primaryConcern: identityAtScan.primaryConcern,
+        sensitivityIndex: identityAtScan.sensitivityIndex,
+        uvSensitivity: identityAtScan.uvSensitivity,
+        hormonalCorrelation: identityAtScan.hormonalCorrelation,
+      },
+      scanDate: ymd(scanRow.createdAt),
+      scanIndex,
+      kaiScore: kaiNow,
+      weeklyDelta,
+      consistencyPct: consistency,
+      params: params.map((p) => ({
+        key: p.key as RagKaiParamKey,
+        value: p.value,
+        delta: p.delta,
+      })),
+      behavior,
+      correlations,
+      evidence,
+      visitNotesSummary: summarizeVisitNotes(visits),
+      recentChatSummary: summarizeChat(chatMsgs),
+    });
+  }
+
+  const winsAgg = Array.from(new Set(correlations.flatMap((c) => c.wins))).slice(0, 3);
+  const dragsAgg = Array.from(new Set(correlations.flatMap((c) => c.drags))).slice(0, 3);
+  const fallbackCauseLines: string[] = [];
+  if (winsAgg[0]) fallbackCauseLines.push(`Win: ${winsAgg[0]}`);
+  if (dragsAgg[0]) fallbackCauseLines.push(`Drag: ${dragsAgg[0]}`);
+  if (winsAgg[1]) fallbackCauseLines.push(`Win: ${winsAgg[1]}`);
+  if (dragsAgg[1]) fallbackCauseLines.push(`Drag: ${dragsAgg[1]}`);
+  if (fallbackCauseLines.length < 2) {
+    fallbackCauseLines.push(
+      `Watch: ${behavior.fullRoutineDays}/${behavior.windowDays} full-routine days — aim for 5+ next week`
+    );
+    fallbackCauseLines.push(
+      `Watch: avg sleep ${behavior.avgSleepHours}h and water ${behavior.avgWaterGlasses} glasses shape recovery`
+    );
+  }
+
+  const article =
+    llmOut?.article ??
+    (evidence[0]
+      ? {
+          title: `Clinical note: ${evidence[0].chunk.tags[0] ?? "Dermatology guidance"}`,
+          source: `${evidence[0].chunk.source}${
+            evidence[0].chunk.pageHint ? ` p.${evidence[0].chunk.pageHint}` : ""
+          }`,
+          why: evidence[0].chunk.text.slice(0, 140).trim(),
+        }
+      : {
+          title: "Barrier-first skincare basics",
+          source: "kAI indexed textbook",
+          why: "Supports stability while your trend forms.",
+        });
+
+  const video = llmOut?.video ?? {
+    title: "Weekly skin check-in routine (5-angle method)",
+    url: "https://www.youtube.com/watch?v=0KSOMA3QBU0",
+    why: "Stable capture keeps trend lines trustworthy.",
+  };
+
+  const insight =
+    llmOut?.insight ??
+    (evidence[1]
+      ? {
+          title: "kAI insight from textbook evidence",
+          body: evidence[1].chunk.text.slice(0, 200).trim(),
+        }
+      : {
+          title: "kAI insight",
+          body: "Consistency in AM/PM execution is the fastest lever for clearer weekly trends.",
+        });
+
+  const actions =
+    llmOut?.actions && llmOut.actions.length === 3
+      ? llmOut.actions
+      : [
+          {
+            rank: 1 as const,
+            title: `Prioritise ${
+              weak ? RAG_KAI_PARAM_LABELS[weak.key as RagKaiParamKey] : "your weakest parameter"
+            }`,
+            detail:
+              "Complete AM + PM routine for at least 5/7 days before your next upload.",
+          },
+          {
+            rank: 2 as const,
+            title: "Stabilise sleep and hydration",
+            detail:
+              "Target 7h+ sleep and steady water intake to support barrier recovery.",
+          },
+          {
+            rank: 3 as const,
+            title: "Keep scan conditions consistent",
+            detail:
+              "Same lighting, same time band, full 5-angle capture — makes trends trustworthy.",
+          },
+        ];
+
+  const hookSentence =
+    scanContextKind === "onboarding_first_scan"
+      ? "Baseline captured — kAI mapped your starting point across eight parameters using your profile and indexed clinical guidance."
+      : (llmOut?.hookLine ?? hookFallback(weeklyDelta));
+
+  const empathyParagraph =
+    llmOut?.empathyParagraph ??
+    "Your trend is still forming. Keep uploads weekly and AM/PM logs complete so kAI can tie behaviour to outcomes with evidence-backed confidence.";
+
+  const causes = mapCauses(
+    llmOut?.causes && llmOut.causes.length > 0 ? llmOut.causes : fallbackCauseLines
+  );
+
+  const focusActions: PatientTrackerFocusAction[] = actions.map((a) => ({
+    rank: a.rank,
+    title: a.title,
+    detail: a.detail,
+  }));
+
+  const resources = resourcesFromRag(article, video, insight);
+
+  const insightText = `${insight.title}. ${insight.body}`;
+  const predictionText = `${empathyParagraph} ${scanContextNote}`.trim();
+
+  return {
+    hookSentence,
+    insightText,
+    predictionText,
+    causes,
+    focusActions,
+    resources,
+    empathyParagraph,
+    evidenceIds: evidence.map((e, i) => `E${i + 1}`),
+    llmUsed: Boolean(llmOut),
+  };
+}

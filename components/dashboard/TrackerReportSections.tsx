@@ -20,17 +20,6 @@ function valueForBar(n: number | null) {
   return Math.min(100, Math.max(0, Math.round(n)));
 }
 
-function weekSentence(report: PatientTrackerReport) {
-  const primary =
-    report.scores.deltaMode === "week_average"
-      ? report.scores.weekAverageDelta
-      : report.scores.lastScanDelta;
-  if (typeof primary !== "number") return "Baseline week captured. Build consistency now.";
-  if (primary >= 4) return "Your skin improved this week.";
-  if (primary <= -4) return "Tough week - here's why.";
-  return "Steady week - now let's unlock better gains.";
-}
-
 function kindBadge(kind: "article" | "video" | "insight") {
   if (kind === "article") return "Article";
   if (kind === "video") return "Video";
@@ -45,10 +34,6 @@ export function TrackerReportSections({
   serifClassName: string;
 }) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
-  const plainOverview =
-    report.scanContext.kind === "onboarding_first_scan"
-      ? "This is your baseline. Next scans become more accurate as routine data builds."
-      : report.hookSentence;
 
   return (
     <motion.div
@@ -62,7 +47,7 @@ export function TrackerReportSections({
           Section 1 - Hook
         </p>
         <p className={`mt-2 text-[1.95rem] font-medium leading-tight text-zinc-900 ${serifClassName}`}>
-          {weekSentence(report)}
+          {report.hookSentence}
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2.5">
           <div className="rounded-2xl border border-[#EDE7DC] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
@@ -90,15 +75,7 @@ export function TrackerReportSections({
             </p>
           </div>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-zinc-600">
-          {typeof report.scores.weekAverageDelta === "number" &&
-          report.scores.currentWeekAverageKai != null &&
-          report.scores.previousWeekAverageKai != null
-            ? `Weekly comparison: this week avg ${report.scores.currentWeekAverageKai} vs previous week avg ${report.scores.previousWeekAverageKai} (${signed(report.scores.weekAverageDelta)}).`
-            : typeof report.scores.lastScanDelta === "number"
-              ? `Weekly comparison unavailable yet. Last scan comparison: ${signed(report.scores.lastScanDelta)} vs previous scan.`
-              : "Weekly comparison unavailable yet. Take another scan in a different week to unlock it."}
-        </p>
+        <p className="mt-3 text-xs leading-relaxed text-zinc-600">{report.insightText}</p>
       </section>
 
       <section className="rounded-3xl border border-[#E8E2D8] bg-gradient-to-b from-white via-[#FFFDF9] to-[#FBF7F0] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(90,72,45,0.2)]">
@@ -167,7 +144,7 @@ export function TrackerReportSections({
           </ul>
         </div>
 
-        <p className="mt-3 text-sm leading-relaxed text-zinc-600">{plainOverview}</p>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-600">{report.predictionText}</p>
       </section>
 
       <section className="rounded-3xl border border-[#E8E2D8] bg-gradient-to-b from-white via-[#FFFDF9] to-[#FBF7F0] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(90,72,45,0.2)]">
