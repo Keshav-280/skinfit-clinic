@@ -270,7 +270,7 @@ export function SkinScanReportBody({
   regions,
   metrics,
   aiSummary,
-  annotatedImageUrl,
+  annotatedImageUrl: _annotatedImageUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
   spatialOutputs,
@@ -331,19 +331,12 @@ export function SkinScanReportBody({
 
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
-  const overlayUrl = annotatedImageUrl?.trim() || "";
   const wrinkleUrl = wrinkleMaskUrl?.trim() || "";
   const acneUrl = acneMaskUrl?.trim() || "";
   const showAnnotatedSection =
-    overlayUrl.length > 0 ||
     wrinkleUrl.length > 0 ||
     acneUrl.length > 0 ||
     (regions.length > 0 && imageUrl?.trim());
-  const showDotMarkers =
-    overlayUrl.length === 0 &&
-    wrinkleUrl.length === 0 &&
-    acneUrl.length === 0 &&
-    regions.length > 0;
   const heroIntro =
     aiSummary?.trim() ||
     `Your latest scan shows an overall score of ${overall}% on our 0–100 scale (higher is better). Detailed scores and photo markers are below.`;
@@ -708,7 +701,6 @@ export function SkinScanReportBody({
         {showAnnotatedSection ? (
           <ScanMaskAnnotations
             imageUrl={imageUrl}
-            overlayUrl={overlayUrl}
             wrinkleMaskUrl={wrinkleUrl}
             acneMaskUrl={acneUrl}
             wrinklePoseLabel={

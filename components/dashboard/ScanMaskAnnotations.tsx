@@ -44,7 +44,6 @@ function MaskCaption({
 
 export function ScanMaskAnnotations({
   imageUrl,
-  overlayUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
   wrinklePoseLabel,
@@ -53,7 +52,6 @@ export function ScanMaskAnnotations({
   regions,
 }: {
   imageUrl: string;
-  overlayUrl?: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
   /** e.g. "Front face — smiling" — wrinkle mask is from this capture. */
@@ -63,11 +61,10 @@ export function ScanMaskAnnotations({
   spatialOutputs?: ScanSpatialOutputs;
   regions: ReportRegion[];
 }) {
-  const overlay = overlayUrl?.trim() || "";
   const wrinkle = wrinkleMaskUrl?.trim() || "";
   const acne = acneMaskUrl?.trim() || "";
   const showDotMarkers =
-    !overlay && !wrinkle && !acne && regions.length > 0 && imageUrl?.trim();
+    !wrinkle && !acne && regions.length > 0 && imageUrl?.trim();
 
   if (!wrinkle && !acne && !showDotMarkers) return null;
 

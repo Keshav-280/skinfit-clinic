@@ -1,31 +1,39 @@
-/** Doctor portal theme (server-safe — no "use client"). Matches patient SkinnFit dashboard. */
+/** Doctor portal theme (server-safe — no "use client"). */
 
 export const DOCTOR_NAVY = "#2C3E6B";
-export const DOCTOR_SAGE_FROM = "#D6E4D0";
-export const DOCTOR_SAGE_MID = "#E0EADA";
-export const DOCTOR_SAGE_TO = "#EAF0E6";
+
+/** Portal shell background — soft ivory. */
+export const DOCTOR_IVORY = "#F6F4EB";
+export const DOCTOR_IVORY_FROM = "#F4F2E8";
+export const DOCTOR_IVORY_MID = "#F6F4EB";
+export const DOCTOR_IVORY_TO = "#FAF8F4";
+
+/** @deprecated use DOCTOR_IVORY_* — kept for imports that still reference sage names. */
+export const DOCTOR_SAGE_FROM = DOCTOR_IVORY_FROM;
+export const DOCTOR_SAGE_MID = DOCTOR_IVORY_MID;
+export const DOCTOR_SAGE_TO = DOCTOR_IVORY_TO;
 
 export const DOCTOR_SAGE_GRADIENT =
-  `linear-gradient(180deg, ${DOCTOR_SAGE_FROM} 0%, ${DOCTOR_SAGE_MID} 50%, ${DOCTOR_SAGE_TO} 100%)`;
+  `linear-gradient(180deg, ${DOCTOR_IVORY_FROM} 0%, ${DOCTOR_IVORY_MID} 50%, ${DOCTOR_IVORY_TO} 100%)`;
 
-/** @deprecated use DOCTOR_SAGE_MID */
-export const DOCTOR_BG = DOCTOR_SAGE_MID;
+/** @deprecated use DOCTOR_IVORY_MID */
+export const DOCTOR_BG = DOCTOR_IVORY_MID;
 
 export const doctorPortalShellClass =
-  "min-h-screen bg-[#E0EADA] bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6]";
+  "min-h-screen bg-[#F6F4EB] bg-gradient-to-b from-[#F4F2E8] via-[#F6F4EB] to-[#FAF8F4]";
 
 /** Top portal bar — mostly opaque so header controls stay readable. */
 export const doctorGlassHeaderClass =
-  "border-b border-slate-200/70 bg-[#F6F9F2]/90 shadow-[0_4px_20px_rgba(15,23,42,0.05)] backdrop-blur-md";
+  "border-b border-slate-200/70 bg-[#F6F4EB]/90 shadow-[0_4px_20px_rgba(15,23,42,0.05)] backdrop-blur-md";
 
 /** Sticky in-page tab strip — no extra card behind tab buttons. */
 export const doctorStickyTabsClass =
   "sticky z-10 border-b border-[#2C3E6B]/10 pb-3 pt-1";
 
 export const doctorGlassSidebarClass =
-  "border-r border-slate-200/60 bg-[#F6F9F2]/88 backdrop-blur-md";
+  "border-r border-slate-200/60 bg-[#F6F4EB]/88 backdrop-blur-md";
 
-/** Main content cards — solid enough to read over sage gradient. */
+/** Main content cards — solid enough to read over ivory shell. */
 export const doctorCardClass =
   "rounded-2xl border border-slate-200/80 bg-white shadow-sm";
 

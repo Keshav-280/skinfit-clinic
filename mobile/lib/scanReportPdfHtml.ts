@@ -3,7 +3,6 @@ import { formatDistanceToNow } from "date-fns";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
 import {
   ACNE_MASK_COPY,
-  COMBINED_OVERLAY_COPY,
   DOT_MARKER_LEGEND,
   SCAN_MASK_SECTION,
   WRINKLE_MASK_COPY,
@@ -99,7 +98,7 @@ export type ScanReportPdfPayload = {
   };
   aiSummary: string | null;
   scanDateIso: string;
-  /** Data URI for overlay image when available. */
+  /** Legacy field; dual-pose mask-only report does not render combined overlay. */
   annotatedDataUri?: string;
   wrinkleMaskDataUri?: string;
   acneMaskDataUri?: string;
@@ -148,12 +147,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       ? "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends—this is educational, not a medical diagnosis."
       : "Your skin shows a balanced profile with room to optimize hydration and maintain clarity. Continue tracking changes after each scan to spot trends early.";
 
-  const overlayUrl = p.annotatedDataUri?.trim() || "";
   const basePhotoUri = photos[0]?.dataUri ?? "";
-  const showAnnotatedSection =
-    overlayUrl.length > 0 || (p.regions.length > 0 && basePhotoUri.length > 0);
-  const showDotMarkers = overlayUrl.length === 0 && p.regions.length > 0;
-  const annotSrc = overlayUrl || basePhotoUri;
+  const showAnnotatedSection = p.regions.length > 0 && basePhotoUri.length > 0;
+  const showDotMarkers = showAnnotatedSection;
+  const annotSrc = basePhotoUri;
   const annotSrcJson = JSON.stringify(annotSrc);
 
   const row2 = photos.slice(0, 2);
@@ -256,14 +253,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
 
   let annotatedBlock = "";
   if (showAnnotatedSection && annotSrc.length > 0) {
-    const overlayLegend = overlayUrl
-      ? `<p class="overlay-body">${esc(COMBINED_OVERLAY_COPY.hint)}</p>`
-      : "";
     const dotLegend = showDotMarkers ? `<ul class="legend">${legendHtml}</ul>` : "";
     annotatedBlock = `
     <div class="annot-wrap avoid-break">
-      <p class="cap-kicker">${overlayUrl ? esc(COMBINED_OVERLAY_COPY.title) : esc(DOT_MARKER_LEGEND.title)}</p>
-      ${overlayLegend}
+      <p class="cap-kicker">${esc(DOT_MARKER_LEGEND.title)}</p>
       <div class="annot-frame">
         <img src=${annotSrcJson} alt="Annotated scan" />
         ${markersHtml}

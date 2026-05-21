@@ -331,6 +331,12 @@ function mergeDetectedRegionsForDualPose(
   return merged.length > 0 ? merged : [...centre, ...smiling];
 }
 
+function cleanMaskDataUri(uri: string | undefined): string | undefined {
+  if (typeof uri !== "string") return undefined;
+  const s = uri.trim();
+  return s.startsWith("data:image/") ? s : undefined;
+}
+
 /**
  * Centre pose: 7 parameters (all except wrinkles) + acne mask.
  * Smiling pose: wrinkle severity + wrinkle mask only.
@@ -397,6 +403,12 @@ export function buildScanPayloadFromCentreAndSmiling(
   legacyMetrics.overall_score = overallKaiScore;
 
   const clinical_scores = clinicalScoresFromModel(mergedMfs);
+  // Dual-pose notebook contract:
+  // - acne mask MUST come from centre pose
+  // - wrinkle mask MUST come from smiling pose
+  // We intentionally do not fallback to the opposite pose.
+  const acneMaskDataUri = cleanMaskDataUri(centre.acneMaskDataUri);
+  const wrinkleMaskDataUri = cleanMaskDataUri(smiling.wrinkleMaskDataUri);
 
   /** Stored on scan row: clinical merge + smiling wrinkle diagnostics from API. */
   const modelFeatureScoresForStorage: Record<string, number | null> = {
@@ -422,8 +434,8 @@ export function buildScanPayloadFromCentreAndSmiling(
       centre.detected_regions,
       smiling.detected_regions
     ),
-    acneMaskDataUri: centre.acneMaskDataUri,
-    wrinkleMaskDataUri: smiling.wrinkleMaskDataUri,
+    acneMaskDataUri,
+    wrinkleMaskDataUri,
     modelEight: modelEightClarityScores(mergedMfs),
   };
 }

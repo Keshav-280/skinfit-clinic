@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from "react-native";
 import { OrientedReportImage } from "@/components/OrientedReportImage";
 import {
   ACNE_MASK_COPY,
-  COMBINED_OVERLAY_COPY,
   SCAN_MASK_SECTION,
   WRINKLE_MASK_COPY,
 } from "@/lib/scanMaskLabels";
@@ -28,16 +27,13 @@ function MaskCaption({
 export function ScanMaskAnnotationsNative({
   wrinkleMaskUri,
   acneMaskUri,
-  overlayUri,
 }: {
   wrinkleMaskUri?: string;
   acneMaskUri?: string;
-  overlayUri?: string;
 }) {
   const wrinkle = wrinkleMaskUri?.trim() || "";
   const acne = acneMaskUri?.trim() || "";
-  const overlay = overlayUri?.trim() || "";
-  if (!wrinkle && !acne && !overlay) return null;
+  if (!wrinkle && !acne) return null;
 
   return (
     <View style={styles.wrap}>
@@ -72,16 +68,6 @@ export function ScanMaskAnnotationsNative({
           ) : null}
         </View>
       )}
-
-      {overlay ? (
-        <View style={styles.overlayBlock}>
-          <Text style={styles.overlayTitle}>{COMBINED_OVERLAY_COPY.title}</Text>
-          <Text style={styles.overlayHint}>{COMBINED_OVERLAY_COPY.hint}</Text>
-          <View style={[styles.frame, styles.overlayRing, styles.overlayFrame]}>
-            <OrientedReportImage uri={overlay} style={styles.img} />
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -121,8 +107,6 @@ const styles = StyleSheet.create({
   },
   wrinkleRing: { borderColor: "rgba(124,58,237,0.5)" },
   acneRing: { borderColor: "rgba(234,88,12,0.5)" },
-  overlayRing: { borderColor: "rgba(113,113,122,0.45)", borderWidth: 1 },
-  overlayFrame: { marginTop: 10, maxWidth: 280, alignSelf: "center", width: "100%" },
   img: { width: "100%", height: "100%" },
   captionBlock: { marginTop: 8, width: "100%" },
   captionTitle: {
@@ -136,25 +120,5 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     color: "#52525b",
     textAlign: "center",
-  },
-  overlayBlock: {
-    marginTop: 20,
-    paddingTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#d4d4d8",
-  },
-  overlayTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#18181b",
-    textAlign: "center",
-  },
-  overlayHint: {
-    marginTop: 4,
-    fontSize: 10,
-    lineHeight: 14,
-    color: "#52525b",
-    textAlign: "center",
-    paddingHorizontal: 4,
   },
 });

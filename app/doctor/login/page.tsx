@@ -47,7 +47,7 @@ export default function DoctorLoginPage() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F4F6F3] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#F6F4EB] px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2C3E6B] shadow-lg shadow-[#2C3E6B]/20">

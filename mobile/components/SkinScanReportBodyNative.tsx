@@ -140,7 +140,7 @@ export function SkinScanReportBodyNative({
   authToken,
   faceCaptureGallery,
   imageSource,
-  annotatedOverlayUri = null,
+  annotatedOverlayUri: _annotatedOverlayUri = null,
   wrinkleMaskUri = null,
   acneMaskUri = null,
   spatialOutputs,
@@ -154,13 +154,10 @@ export function SkinScanReportBodyNative({
 }: Props) {
   const router = useRouter();
   const displayTitle = displayScanTitle(scanTitle);
-  const overlayUri = annotatedOverlayUri?.trim() || "";
   const wrinkleMask = wrinkleMaskUri?.trim() || "";
   const acneMask = acneMaskUri?.trim() || "";
-  const showMaskSection =
-    wrinkleMask.length > 0 || acneMask.length > 0 || overlayUri.length > 0;
+  const showMaskSection = wrinkleMask.length > 0 || acneMask.length > 0;
   const showDotMarkersOnly =
-    overlayUri.length === 0 &&
     wrinkleMask.length === 0 &&
     acneMask.length === 0 &&
     regions.length > 0 &&
@@ -186,9 +183,6 @@ export function SkinScanReportBodyNative({
 
   const row2 = resolvedPhotos.slice(0, 2);
   const row3 = resolvedPhotos.slice(2, 5);
-
-  const annotatedFaceSource: ImageSourcePropType =
-    overlayUri.length > 0 ? { uri: overlayUri } : imageSource;
 
   return (
     <ScrollView
@@ -288,7 +282,6 @@ export function SkinScanReportBodyNative({
             <ScanMaskAnnotationsNative
               wrinkleMaskUri={wrinkleMask || undefined}
               acneMaskUri={acneMask || undefined}
-              overlayUri={overlayUri || undefined}
             />
           ) : null}
 
@@ -301,7 +294,7 @@ export function SkinScanReportBodyNative({
                   style={StyleSheet.absoluteFill}
                   pointerEvents="none"
                 />
-                <Image source={annotatedFaceSource} style={styles.faceImg} resizeMode="cover" />
+                <Image source={imageSource} style={styles.faceImg} resizeMode="cover" />
                 {regions.map((region, i) => (
                   <View
                     key={i}
