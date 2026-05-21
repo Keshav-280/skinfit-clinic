@@ -9,7 +9,6 @@ type ApiResult = {
   scoresText: string;
   figureDataUri: string;
   smilingFigureDataUri?: string;
-  mergedFigureDataUri?: string;
   wrinkleMaskShape: number[];
   acneObjectnessShape: number[];
 };
@@ -69,8 +68,7 @@ export default function ScanTestingPage() {
           <h1 className="text-3xl font-bold">test_local.ipynb — Exact Replica</h1>
           <p className="text-sm text-gray-600">
             Centre: full test_local pipeline (3-panel figure, acne + scalars). Optional smiling:
-            wrinkle score and mask from smile (like <code>analyze_v2</code>), plus a merged
-            side-by-side overlay (centre+acne | smiling+wrinkle).
+            wrinkle score and mask from smile (like <code>analyze_v2</code>).
           </p>
         </header>
 
@@ -106,19 +104,6 @@ export default function ScanTestingPage() {
 
         {result && (
           <div className="space-y-8">
-            {result.mergedFigureDataUri && (
-              <section className="space-y-3">
-                <h2 className="text-xl font-semibold">Merged overlay (dual pose)</h2>
-                <div className="rounded-md border border-gray-200 bg-white p-2">
-                  <img
-                    src={result.mergedFigureDataUri}
-                    alt="Merged centre acne and smiling wrinkle overlays"
-                    className="w-full"
-                  />
-                </div>
-              </section>
-            )}
-
             <section className="space-y-3">
               <h2 className="text-xl font-semibold">
                 {result.dualPose ? "Centre — matplotlib figure" : "Cell 6 — matplotlib figure"}
