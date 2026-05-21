@@ -5,6 +5,10 @@ import { db } from "../../../src/db";
 import { scans, skinScans, users } from "../../../src/db/schema";
 import { getSessionUserIdFromRequest } from "../../../src/lib/auth/get-session";
 import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
+import {
+  runFaceAnalysisCentreSmiling,
+  runFaceAnalysisService,
+} from "../../../src/lib/faceAnalysisInference";
 import { runFaceAnalysisServiceV2 } from "../../../src/lib/faceAnalysisInferenceV2";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../src/lib/faceScanCaptures";
 import {
@@ -19,13 +23,13 @@ import {
 } from "../../../src/lib/scanImagePreview";
 import {
   buildLegacyMetricsFromModel,
+  buildScanPayloadFromAnalyzeV1,
+  buildScanPayloadFromAnalyzeV2,
+  buildScanPayloadFromCentreAndSmiling,
   clinicalScoresFromModel,
-  enrichKaiParamsFromModel,
   modelEightClarityScores,
   parseModelFeatureScores,
-  type ModelFeatureScores,
 } from "../../../src/lib/modelClinicalMetrics";
-import type { KaiParamInferenceRow } from "../../../src/lib/faceAnalysisInferenceV2";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -61,50 +65,6 @@ function generateClinicalFeatureScores() {
     under_eye: randomSeverity15(),
     hair_health: randomSeverity15(),
     pigmentation_model: null as number | null,
-  };
-}
-
-function mergeModelFeatureScores(
-  raw: Record<string, number | null>
-): ModelFeatureScores {
-  return parseModelFeatureScores(raw);
-}
-
-function enrichInferencePayload(
-  inf: Awaited<ReturnType<typeof runFaceAnalysisServiceV2>>
-) {
-  const mfs = mergeModelFeatureScores(inf.modelFeatureScores);
-  const wr = inf.params.wrinkles?.extras as
-    | { dynamic_wrinkle_proxy?: number; static_wrinkle_proxy?: number }
-    | undefined;
-  const wrExtras =
-    wr &&
-    typeof wr === "object" &&
-    (typeof wr.dynamic_wrinkle_proxy === "number" ||
-      typeof wr.static_wrinkle_proxy === "number")
-      ? {
-          dynamic_wrinkle_proxy: wr.dynamic_wrinkle_proxy,
-          static_wrinkle_proxy: wr.static_wrinkle_proxy,
-        }
-      : undefined;
-  const params = enrichKaiParamsFromModel(
-    inf.params as Record<string, KaiParamInferenceRow>,
-    mfs,
-    wrExtras
-  );
-  const legacy = buildLegacyMetricsFromModel(mfs, inf.overallKaiScore);
-  return {
-    overallKaiScore: inf.overallKaiScore,
-    params,
-    legacyMetrics: legacy,
-    modelFeatureScores: mfs,
-    clinical_scores: clinicalScoresFromModel(mfs),
-    detected_regions: inf.detected_regions,
-    overlayDataUri: inf.overlayDataUri,
-    wrinkleMaskDataUri: inf.wrinkleMaskDataUri,
-    acneMaskDataUri: inf.acneMaskDataUri,
-    spatialOutputs: inf.spatialOutputs,
-    modelEight: modelEightClarityScores(mfs),
   };
 }
 
@@ -295,14 +255,65 @@ export async function POST(request: NextRequest) {
       ReturnType<typeof runFaceAnalysisServiceV2>
     >["spatialOutputs"];
 
+    const useV2 =
+      process.env.FACE_ANALYSIS_USE_V2 === "1" ||
+      process.env.FACE_ANALYSIS_USE_V2 === "true";
+    const inferenceOpts = {
+      baseUrl: inferenceBase!,
+      apiKey: inferenceSecret,
+      timeoutMs: inferenceTimeoutMs,
+    };
+
+    /**
+     * Dual-pose default: centre photo drives the 7 non-wrinkle parameters and the
+     * acne mask; smiling photo drives the wrinkle severity and wrinkle mask.
+     * `FACE_ANALYSIS_SINGLE_IMAGE=1` falls back to notebook-style single-image.
+     */
+    const singleImageMode =
+      process.env.FACE_ANALYSIS_SINGLE_IMAGE === "1" ||
+      process.env.FACE_ANALYSIS_SINGLE_IMAGE === "true";
+
     if (inferenceBase) {
       try {
-        const inf = await runFaceAnalysisServiceV2(filesForV2, {
-          baseUrl: inferenceBase,
-          apiKey: inferenceSecret,
-          timeoutMs: inferenceTimeoutMs,
-        });
-        const merged = enrichInferencePayload(inf);
+        let merged;
+        if (useV2) {
+          merged = buildScanPayloadFromAnalyzeV2(
+            await runFaceAnalysisServiceV2(filesForV2, inferenceOpts)
+          );
+        } else if (singleImageMode) {
+          merged = buildScanPayloadFromAnalyzeV1(
+            await runFaceAnalysisService(filesForV2.centre, inferenceOpts)
+          );
+        } else {
+          // Default production path (matches dual_pose_scan.ipynb): 2× POST /analyze.
+          const dual = await runFaceAnalysisCentreSmiling(
+            filesForV2.centre,
+            filesForV2.smiling,
+            inferenceOpts
+          );
+          merged = buildScanPayloadFromCentreAndSmiling(
+            dual.centre,
+            dual.smiling
+          );
+          if (process.env.NODE_ENV === "development") {
+            console.info("[scan] dual-pose inference", {
+              centreAcneMask: Boolean(dual.centre.acneMaskDataUri),
+              smilingWrinkleMask: Boolean(dual.smiling.wrinkleMaskDataUri),
+              mergedWrinkleSeverity: merged.modelFeatureScores.wrinkle_severity,
+              mergedAcneSeverity: merged.modelFeatureScores.active_acne,
+            });
+            if (!merged.acneMaskDataUri) {
+              console.warn(
+                "[scan] missing acneMaskDataUri from centre /analyze — check HF overlay build"
+              );
+            }
+            if (!merged.wrinkleMaskDataUri) {
+              console.warn(
+                "[scan] missing wrinkleMaskDataUri from smiling /analyze — check HF overlay build"
+              );
+            }
+          }
+        }
         overallKaiScore = merged.overallKaiScore;
         v2params = merged.params as Record<string, unknown>;
         modelFeatureScores = merged.modelFeatureScores as Record<
@@ -319,7 +330,10 @@ export async function POST(request: NextRequest) {
         acneMaskDataUri = merged.acneMaskDataUri;
         spatialOutputs = merged.spatialOutputs;
       } catch (err) {
-        console.error("Face analysis v2 error:", err);
+        console.error(
+          useV2 ? "Face analysis v2 error:" : "Face analysis error:",
+          err
+        );
         if (!allowDummyInferenceFallback) {
           const msg =
             err instanceof Error ? err.message : "Face analysis failed";
@@ -474,7 +488,10 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    let inserted: (typeof scans.$inferSelect) | undefined;
+    /** Only `id` — avoids RETURNING on `tracker_snapshot` before migration 0030. */
+    const scanInsertReturning = { id: scans.id };
+
+    let inserted: { id: number } | undefined;
     try {
       [inserted] = await db
         .insert(scans)
@@ -482,7 +499,7 @@ export async function POST(request: NextRequest) {
           ...scanRowBase,
           faceCaptureImages,
         })
-        .returning();
+        .returning(scanInsertReturning);
     } catch (insertErr) {
       if (faceCaptureImages && isMissingFaceCaptureColumn(insertErr)) {
         [inserted] = await db
@@ -491,7 +508,7 @@ export async function POST(request: NextRequest) {
             ...scanRowBase,
             faceCaptureImages: null,
           })
-          .returning();
+          .returning(scanInsertReturning);
       } else {
         throw insertErr;
       }
@@ -538,8 +555,7 @@ export async function POST(request: NextRequest) {
         ai_summary: aiSummary,
         id: inserted?.id,
         userName: user.name,
-        scanDate:
-          inserted?.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        scanDate: new Date().toISOString(),
         ...(overlayDataUri ? { annotatedImageUrl: overlayDataUri } : {}),
         ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
         ...(acneMaskDataUri ? { acneMaskDataUri } : {}),

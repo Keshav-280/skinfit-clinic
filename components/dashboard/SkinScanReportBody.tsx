@@ -19,6 +19,7 @@ import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { TrackerReportSections } from "./TrackerReportSections";
 import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
+import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
@@ -52,6 +53,19 @@ const CLINICAL_ROWS: {
   { key: "hair_health", label: "Hair health" },
   { key: "pigmentation_model", label: "Pigmentation" },
 ];
+
+const EIGHT_CLINICAL_DONUT_STYLE: Partial<
+  Record<keyof ClinicalScores, { fill: string; track: string }>
+> = {
+  active_acne: { fill: "#dc2626", track: "rgba(220,38,38,0.2)" },
+  acne_scars: { fill: "#ea580c", track: "rgba(234,88,12,0.2)" },
+  skin_quality: { fill: PEACH, track: "rgba(242, 156, 145, 0.22)" },
+  wrinkle_severity: { fill: "#7c3aed", track: "rgba(124, 58, 237, 0.2)" },
+  sagging_volume: { fill: "#0d9488", track: "rgba(13, 148, 136, 0.2)" },
+  under_eye: { fill: "#5B8FD8", track: "rgba(91, 143, 216, 0.18)" },
+  hair_health: { fill: "#78716c", track: "rgba(120, 113, 108, 0.2)" },
+  pigmentation_model: { fill: "#d97706", track: "rgba(217, 119, 6, 0.2)" },
+};
 
 function severityToClarityPercent(s: number) {
   const x = Math.max(1, Math.min(5, s));
@@ -346,6 +360,38 @@ export function SkinScanReportBody({
 
   const row2Photos = resolvedPhotos.slice(0, 2);
   const row3Photos = resolvedPhotos.slice(2, 5);
+
+  /** Primary report scores — same eight axes as `test_local.ipynb` / `predict_all`. */
+  const eightClinicalDonuts = useMemo(() => {
+    const cs = metrics.clinical_scores;
+    if (!cs) return null;
+    const rows: {
+      key: keyof ClinicalScores;
+      label: string;
+      clarity: number;
+      severity: number;
+      fill: string;
+      track: string;
+    }[] = [];
+    for (const { key, label } of CLINICAL_ROWS) {
+      const v = cs[key];
+      if (key === "pigmentation_model" && v === null) continue;
+      if (typeof v !== "number") continue;
+      const style = EIGHT_CLINICAL_DONUT_STYLE[key] ?? {
+        fill: PEACH,
+        track: "rgba(242, 156, 145, 0.22)",
+      };
+      rows.push({
+        key,
+        label,
+        clarity: severityToClarityPercent(v),
+        severity: v,
+        fill: style.fill,
+        track: style.track,
+      });
+    }
+    return rows.length >= 4 ? rows : null;
+  }, [metrics.clinical_scores]);
 
   const handleDownloadPdf = useCallback(async () => {
     const el = reportRef.current;
@@ -665,6 +711,16 @@ export function SkinScanReportBody({
             overlayUrl={overlayUrl}
             wrinkleMaskUrl={wrinkleUrl}
             acneMaskUrl={acneUrl}
+            wrinklePoseLabel={
+              faceCaptureGallery?.[4]?.label ??
+              FACE_SCAN_CAPTURE_STEPS[4]?.title ??
+              "Front face — smiling"
+            }
+            acnePoseLabel={
+              faceCaptureGallery?.[0]?.label ??
+              FACE_SCAN_CAPTURE_STEPS[0]?.title ??
+              "Front face — neutral"
+            }
             spatialOutputs={spatialOutputs}
             regions={regions}
           />
@@ -725,8 +781,41 @@ export function SkinScanReportBody({
               className="mx-auto mt-8 w-full min-w-0 max-w-full"
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                AI model summary (0–100 · higher is better)
+                {eightClinicalDonuts
+                  ? "FaceAnalyzer v13 — eight parameters (0–100 · higher is better)"
+                  : "AI model summary (0–100 · higher is better)"}
               </p>
+              {eightClinicalDonuts ? (
+                <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:gap-2.5 md:mx-auto md:max-w-[640px] md:grid-cols-4 md:gap-3">
+                  {eightClinicalDonuts.map((row) => (
+                    <div
+                      key={row.key}
+                      className="flex min-w-0 flex-col items-center gap-1 rounded-xl border border-white bg-white px-2 py-2.5 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset] sm:rounded-2xl sm:px-2.5"
+                    >
+                      <span className="line-clamp-2 w-full text-center text-[9px] font-semibold leading-tight text-zinc-700 sm:text-[10px]">
+                        {row.label}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+                          <Donut
+                            percent={row.clarity}
+                            size={36}
+                            stroke={4}
+                            color={row.fill}
+                            track={row.track}
+                          />
+                        </div>
+                        <span className="text-[10px] font-semibold tabular-nums text-zinc-800 sm:text-[11px]">
+                          {clamp(row.clarity)}%
+                        </span>
+                      </div>
+                      <span className="text-[9px] tabular-nums text-zinc-500">
+                        Severity {row.severity.toFixed(1)}/5
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
               <div className="grid w-full min-w-0 grid-cols-3 gap-1.5 sm:max-w-xl sm:gap-2.5 md:mx-auto md:max-w-[560px] md:gap-3">
                 {[
                   {
@@ -792,9 +881,16 @@ export function SkinScanReportBody({
                   </div>
                 ))}
               </div>
+              )}
+              {eightClinicalDonuts &&
+              metrics.clinical_scores?.pigmentation_model === null ? (
+                <p className="mt-3 text-center text-[11px] text-zinc-500">
+                  Pigmentation head not loaded in this model checkpoint.
+                </p>
+              ) : null}
             </motion.div>
 
-            {metrics.clinical_scores ? (
+            {metrics.clinical_scores && !eightClinicalDonuts ? (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -803,10 +899,6 @@ export function SkinScanReportBody({
               >
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                   FaceAnalyzer v13 — eight clinical axes (1–5)
-                </p>
-                <p className="mt-1 text-[12px] leading-snug text-zinc-600">
-                  Direct model severity outputs (higher = more concern). Summary donuts above are
-                  derived from these scores.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {CLINICAL_ROWS.map(({ key, label }) => {

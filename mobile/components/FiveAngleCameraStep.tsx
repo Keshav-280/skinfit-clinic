@@ -16,6 +16,12 @@ import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 
 const NAVY = "#2C3E6B";
 
+/** Expo CameraView zoom is 0–1; higher brings the face closer for the model. */
+const CAMERA_ZOOM_MIN = 0;
+const CAMERA_ZOOM_MAX = 0.55;
+const CAMERA_ZOOM_STEP = 0.05;
+const CAMERA_ZOOM_DEFAULT = 0.14;
+
 type Props = {
   stepIndex: number;
   onCaptured: (uri: string) => void;
@@ -36,6 +42,7 @@ export function FiveAngleCameraStep({
   const [cameraReady, setCameraReady] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [shooting, setShooting] = useState(false);
+  const [cameraZoom, setCameraZoom] = useState(CAMERA_ZOOM_DEFAULT);
   const insets = useSafeAreaInsets();
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
@@ -107,6 +114,7 @@ export function FiveAngleCameraStep({
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
         facing="front"
+        zoom={cameraZoom}
         onCameraReady={() => setCameraReady(true)}
       />
       <FaceCaptureOvalOverlay />
@@ -149,6 +157,51 @@ export function FiveAngleCameraStep({
 
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 20 }]}>
+        <View style={styles.zoomRow}>
+          <Text style={styles.zoomLabel}>Zoom in if you are far from the camera</Text>
+          <View style={styles.zoomControls}>
+            <Pressable
+              style={[
+                styles.zoomBtn,
+                cameraZoom <= CAMERA_ZOOM_MIN && styles.disabled,
+              ]}
+              onPress={() =>
+                setCameraZoom((z) =>
+                  Math.max(CAMERA_ZOOM_MIN, Math.round((z - CAMERA_ZOOM_STEP) * 100) / 100)
+                )
+              }
+              disabled={cameraZoom <= CAMERA_ZOOM_MIN || isDisabled}
+              accessibilityLabel="Zoom out"
+            >
+              <Ionicons name="remove-outline" size={22} color="#fff" />
+            </Pressable>
+            <View style={styles.zoomTrack}>
+              <View
+                style={[
+                  styles.zoomFill,
+                  {
+                    width: `${((cameraZoom - CAMERA_ZOOM_MIN) / (CAMERA_ZOOM_MAX - CAMERA_ZOOM_MIN)) * 100}%`,
+                  },
+                ]}
+              />
+            </View>
+            <Pressable
+              style={[
+                styles.zoomBtn,
+                cameraZoom >= CAMERA_ZOOM_MAX && styles.disabled,
+              ]}
+              onPress={() =>
+                setCameraZoom((z) =>
+                  Math.min(CAMERA_ZOOM_MAX, Math.round((z + CAMERA_ZOOM_STEP) * 100) / 100)
+                )
+              }
+              disabled={cameraZoom >= CAMERA_ZOOM_MAX || isDisabled}
+              accessibilityLabel="Zoom in"
+            >
+              <Ionicons name="add-outline" size={22} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
         <Pressable
           style={[styles.btnNavy, isDisabled && styles.disabled]}
           onPress={() => setCountdown(3)}
@@ -303,6 +356,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 14,
     zIndex: 10,
+  },
+  zoomRow: {
+    gap: 8,
+  },
+  zoomLabel: {
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
+  },
+  zoomControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  zoomBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zoomTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    overflow: "hidden",
+  },
+  zoomFill: {
+    height: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 3,
   },
   btnNavy: {
     backgroundColor: NAVY,

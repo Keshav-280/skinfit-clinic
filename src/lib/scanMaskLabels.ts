@@ -2,22 +2,18 @@
 
 export const SCAN_MASK_SECTION = {
   title: "AI highlights on your scan",
-  intro: "These maps show where the model noticed wrinkles and acne activity on your photo.",
+  intro:
+    "Wrinkle map is from your smiling capture; acne map is from your front neutral capture. Both are rendered at the model's native 224×224 resolution.",
 } as const;
 
 export const WRINKLE_MASK_COPY = {
-  title: "Wrinkles",
-  hint: "Purple tint marks areas linked to fine lines.",
+  title: "Wrinkle mask",
+  hint: "Red heat = wrinkle probability (smiling pose, 1=worst → 5=worst).",
 } as const;
 
 export const ACNE_MASK_COPY = {
-  title: "Acne activity",
-  hint: "Yellow heat shows likely acne spots — not pigmentation (see your scores above).",
-} as const;
-
-export const COMBINED_OVERLAY_COPY = {
-  title: "Combined view",
-  hint: "Purple = wrinkles · Yellow = acne · Boxes = strongest spots",
+  title: "Acne objectness",
+  hint: "Red heat = acne objectness (front neutral pose, upsampled to 224).",
 } as const;
 
 export const DOT_MARKER_LEGEND = {

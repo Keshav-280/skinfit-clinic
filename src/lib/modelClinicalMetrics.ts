@@ -4,13 +4,23 @@
  */
 
 import type { ClinicalScores } from "@/components/dashboard/scanReportTypes";
-import type { KaiParamInferenceRow } from "@/src/lib/faceAnalysisInferenceV2";
+import type { FaceAnalysisInferenceResult } from "@/src/lib/faceAnalysisInference";
+import { pickWrinkleDiagnostics } from "@/src/lib/faceAnalysisInference";
+import type {
+  FaceAnalysisInferenceV2Result,
+  KaiParamInferenceRow,
+} from "@/src/lib/faceAnalysisInferenceV2";
+import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 
 export type ModelFeatureScores = {
   active_acne?: number | null;
   acne_scars?: number | null;
   skin_quality?: number | null;
   wrinkle_severity?: number | null;
+  /** From smiling /analyze API (mask-aligned). */
+  wrinkle_cls_severity?: number | null;
+  wrinkle_seg_severity?: number | null;
+  wrinkle_mask_severity?: number | null;
   sagging_volume?: number | null;
   under_eye?: number | null;
   hair_health?: number | null;
@@ -193,6 +203,274 @@ export function enrichKaiParamsFromModel(
   }
 
   return out;
+}
+
+function isPlaceholderSeverity(s: number | null | undefined): boolean {
+  return typeof s === "number" && Math.abs(s - 2.5) < 0.01;
+}
+
+/** kAI param rows from raw 1–5 severities (same mapping as Python `/analyze`). */
+export function buildKaiParamsFromModelSeverities(
+  mfs: ModelFeatureScores
+): Record<string, KaiParamInferenceRow> {
+  const acne100 =
+    typeof mfs.active_acne === "number" ? severityToClarity(mfs.active_acne) : 70;
+  const wrinkles100 =
+    typeof mfs.wrinkle_severity === "number"
+      ? severityToClarity(mfs.wrinkle_severity)
+      : 70;
+  const skinQ100 =
+    typeof mfs.skin_quality === "number" ? severityToClarity(mfs.skin_quality) : 70;
+  const sagging100 =
+    typeof mfs.sagging_volume === "number" ? severityToClarity(mfs.sagging_volume) : 70;
+  const underEye100 =
+    typeof mfs.under_eye === "number" ? severityToClarity(mfs.under_eye) : 70;
+  const hair100 =
+    typeof mfs.hair_health === "number" ? severityToClarity(mfs.hair_health) : 70;
+
+  const pigStub = isPlaceholderSeverity(mfs.pigmentation_model);
+  const scarsStub = isPlaceholderSeverity(mfs.acne_scars);
+  const pig100 =
+    !pigStub && typeof mfs.pigmentation_model === "number"
+      ? severityToClarity(mfs.pigmentation_model)
+      : null;
+  const scars100 =
+    !scarsStub && typeof mfs.acne_scars === "number"
+      ? severityToClarity(mfs.acne_scars)
+      : null;
+
+  const acneExtras = {
+    head: "patch_detection_16x16 + global_severity",
+    global_severity_1_5: mfs.active_acne,
+  };
+  const wrExtras = {
+    head: "segmentation_pixel_map",
+    mask_resolution: "224x224",
+    wrinkle_combined_severity_1_5: mfs.wrinkle_severity,
+  };
+
+  const params: Record<string, KaiParamInferenceRow> = {};
+  const setAi = (key: string, value: number, extras?: Record<string, unknown>) => {
+    params[key] = aiRow(value, extras);
+  };
+  const setPending = (key: string) => {
+    params[key] = { value: null, source: "pending", severity_flag: false };
+  };
+
+  setAi("acne_pimples", acne100, acneExtras);
+  setAi("active_acne", acne100, acneExtras);
+  setAi("wrinkles", wrinkles100, wrExtras);
+  setAi("elasticity", sagging100);
+  setAi("sagging_volume", sagging100);
+  setAi("skin_quality", skinQ100);
+  setAi("hydration", skinQ100);
+  setAi("sebum", skinQ100);
+  setAi("redness", underEye100);
+  setAi("under_eye", underEye100);
+  setAi("hair_health", hair100);
+
+  if (scarsStub || scars100 == null) setPending("acne_scars");
+  else setAi("acne_scars", scars100);
+
+  if (pigStub || pig100 == null) {
+    setPending("pigmentation");
+    setPending("uv_damage");
+  } else {
+    setAi("pigmentation", pig100);
+    setAi("uv_damage", pig100);
+  }
+
+  const clarityVals = [
+    acne100,
+    wrinkles100,
+    sagging100,
+    skinQ100,
+    underEye100,
+    hair100,
+    ...(pig100 != null ? [pig100] : []),
+    ...(scars100 != null ? [scars100] : []),
+  ];
+  setAi(
+    "uniformity",
+    Math.round(clarityVals.reduce((s, x) => s + x, 0) / clarityVals.length)
+  );
+  setAi("pores", Math.round((skinQ100 + acne100) / 2));
+  setPending("tone_evenness");
+
+  return params;
+}
+
+export type ScanInferencePayload = {
+  overallKaiScore: number;
+  params: Record<string, KaiParamInferenceRow>;
+  legacyMetrics: {
+    acne: number;
+    wrinkles: number;
+    pigmentation: number;
+    hydration: number;
+    texture: number;
+    overall_score: number;
+  };
+  modelFeatureScores: ModelFeatureScores;
+  clinical_scores: ClinicalScores;
+  detected_regions: FaceAnalysisInferenceV2Result["detected_regions"];
+  overlayDataUri?: string;
+  wrinkleMaskDataUri?: string;
+  acneMaskDataUri?: string;
+  spatialOutputs?: ScanSpatialOutputs;
+  modelEight: ReturnType<typeof modelEightClarityScores>;
+};
+
+function mergeDetectedRegionsForDualPose(
+  centre: FaceAnalysisInferenceResult["detected_regions"],
+  smiling: FaceAnalysisInferenceResult["detected_regions"]
+): FaceAnalysisInferenceResult["detected_regions"] {
+  const acne = centre.filter((r) => /acne/i.test(r.issue));
+  const wrinkle = smiling.filter((r) => /wrinkle/i.test(r.issue));
+  const merged = [...acne, ...wrinkle];
+  return merged.length > 0 ? merged : [...centre, ...smiling];
+}
+
+/**
+ * Centre pose: 7 parameters (all except wrinkles) + acne mask.
+ * Smiling pose: wrinkle severity + wrinkle mask only.
+ */
+export function buildScanPayloadFromCentreAndSmiling(
+  centre: FaceAnalysisInferenceResult,
+  smiling: FaceAnalysisInferenceResult
+): ScanInferencePayload {
+  const centreMfs = parseModelFeatureScores(centre.modelFeatureScores);
+  const smileMfs = parseModelFeatureScores(smiling.modelFeatureScores);
+
+  const mergedMfs: ModelFeatureScores = {
+    active_acne: centreMfs.active_acne,
+    acne_scars: centreMfs.acne_scars ?? smileMfs.acne_scars,
+    skin_quality: centreMfs.skin_quality,
+    wrinkle_severity: smileMfs.wrinkle_severity,
+    sagging_volume: centreMfs.sagging_volume,
+    under_eye: centreMfs.under_eye,
+    hair_health: centreMfs.hair_health,
+    pigmentation_model: centreMfs.pigmentation_model,
+  };
+
+  const params = buildKaiParamsFromModelSeverities(mergedMfs);
+  const wrDiag = pickWrinkleDiagnostics(smiling.modelFeatureScores);
+  if (params.wrinkles?.source === "ai") {
+    params.wrinkles = {
+      ...params.wrinkles,
+      extras: {
+        ...(params.wrinkles.extras ?? {}),
+        inference_pose: "smiling",
+        head: "segmentation_pixel_map",
+        mask_resolution: "224x224",
+        ...(wrDiag.wrinkle_mask_severity != null
+          ? { wrinkle_mask_derived_severity_1_5: wrDiag.wrinkle_mask_severity }
+          : {}),
+        ...(wrDiag.wrinkle_cls_severity != null
+          ? { wrinkle_cls_severity_1_5: wrDiag.wrinkle_cls_severity }
+          : {}),
+        ...(wrDiag.wrinkle_seg_severity != null
+          ? { wrinkle_seg_severity_1_5: wrDiag.wrinkle_seg_severity }
+          : {}),
+      },
+    };
+  }
+  if (params.active_acne?.source === "ai") {
+    params.active_acne = {
+      ...params.active_acne,
+      extras: {
+        ...(params.active_acne.extras ?? {}),
+        inference_pose: "centre",
+      },
+    };
+  }
+
+  const legacyMetrics = buildLegacyMetricsFromModel(mergedMfs, 0);
+  const overallKaiScore = Math.round(
+    (legacyMetrics.acne +
+      legacyMetrics.wrinkles +
+      legacyMetrics.pigmentation +
+      legacyMetrics.hydration +
+      legacyMetrics.texture) /
+      5
+  );
+  legacyMetrics.overall_score = overallKaiScore;
+
+  const clinical_scores = clinicalScoresFromModel(mergedMfs);
+
+  /** Stored on scan row: clinical merge + smiling wrinkle diagnostics from API. */
+  const modelFeatureScoresForStorage: Record<string, number | null> = {
+    ...mergedMfs,
+    ...(wrDiag.wrinkle_cls_severity !== undefined
+      ? { wrinkle_cls_severity: wrDiag.wrinkle_cls_severity }
+      : {}),
+    ...(wrDiag.wrinkle_seg_severity !== undefined
+      ? { wrinkle_seg_severity: wrDiag.wrinkle_seg_severity }
+      : {}),
+    ...(wrDiag.wrinkle_mask_severity !== undefined
+      ? { wrinkle_mask_severity: wrDiag.wrinkle_mask_severity }
+      : {}),
+  };
+
+  return {
+    overallKaiScore,
+    params,
+    legacyMetrics,
+    modelFeatureScores: modelFeatureScoresForStorage,
+    clinical_scores,
+    detected_regions: mergeDetectedRegionsForDualPose(
+      centre.detected_regions,
+      smiling.detected_regions
+    ),
+    acneMaskDataUri: centre.acneMaskDataUri,
+    wrinkleMaskDataUri: smiling.wrinkleMaskDataUri,
+    modelEight: modelEightClarityScores(mergedMfs),
+  };
+}
+
+/** Single-image `/analyze` (notebook-style, all params from one photo). */
+export function buildScanPayloadFromAnalyzeV1(
+  inf: FaceAnalysisInferenceResult
+): ScanInferencePayload {
+  const mfs = parseModelFeatureScores(inf.modelFeatureScores);
+  const clinical_scores = clinicalScoresFromModel(mfs);
+  const params = buildKaiParamsFromModelSeverities(mfs);
+  const overallKaiScore = inf.metrics.overall_score;
+
+  return {
+    overallKaiScore,
+    params,
+    legacyMetrics: inf.metrics,
+    modelFeatureScores: mfs,
+    clinical_scores,
+    detected_regions: inf.detected_regions,
+    overlayDataUri: inf.overlayDataUri,
+    wrinkleMaskDataUri: inf.wrinkleMaskDataUri,
+    acneMaskDataUri: inf.acneMaskDataUri,
+    modelEight: modelEightClarityScores(mfs),
+  };
+}
+
+/** Pass through `/analyze_v2` params unchanged (already 0–100 from Python). */
+export function buildScanPayloadFromAnalyzeV2(
+  inf: FaceAnalysisInferenceV2Result
+): ScanInferencePayload {
+  const mfs = parseModelFeatureScores(inf.modelFeatureScores);
+  const clinical_scores = clinicalScoresFromModel(mfs);
+
+  return {
+    overallKaiScore: inf.overallKaiScore,
+    params: inf.params,
+    legacyMetrics: inf.legacyMetrics,
+    modelFeatureScores: mfs,
+    clinical_scores,
+    detected_regions: inf.detected_regions,
+    overlayDataUri: inf.overlayDataUri,
+    wrinkleMaskDataUri: inf.wrinkleMaskDataUri,
+    acneMaskDataUri: inf.acneMaskDataUri,
+    spatialOutputs: inf.spatialOutputs,
+    modelEight: modelEightClarityScores(mfs),
+  };
 }
 
 export function buildLegacyMetricsFromModel(

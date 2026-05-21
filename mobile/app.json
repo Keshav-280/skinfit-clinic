@@ -17,7 +17,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.skinfit.clinic",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -38,6 +40,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "react-native-quick-crypto",
       "expo-router",
       "expo-secure-store",
       [
@@ -62,7 +65,8 @@
           "sounds": [],
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,3 +1,4 @@
+import "./polyfillCrypto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   asyncStorageE2eeAdapter,
@@ -6,7 +7,7 @@ import {
   setupDoctorPatientE2ee,
   type ChatMessageRow,
   type DoctorThreadE2eeSession,
-} from "../../src/lib/chatE2ee/client";
+} from "./chatE2ee/client";
 import { apiUrl } from "./apiBase";
 
 const storage = asyncStorageE2eeAdapter(

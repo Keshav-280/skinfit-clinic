@@ -3,12 +3,10 @@
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import {
   ACNE_MASK_COPY,
-  COMBINED_OVERLAY_COPY,
   DOT_MARKER_LEGEND,
   SCAN_MASK_SECTION,
   WRINKLE_MASK_COPY,
 } from "@/src/lib/scanMaskLabels";
-import { OrientedReportImage } from "./OrientedReportImage";
 import type { ReportRegion } from "./scanReportTypes";
 
 function regionMarkerColor(issue: string): string {
@@ -22,16 +20,23 @@ function MaskCaption({
   title,
   hint,
   tone,
+  pose,
 }: {
   title: string;
   hint: string;
   tone: "violet" | "orange";
+  pose?: string;
 }) {
   const titleCls =
     tone === "violet" ? "text-violet-900" : "text-orange-900";
   return (
     <figcaption className="space-y-1 text-center">
       <p className={`text-sm font-bold ${titleCls}`}>{title}</p>
+      {pose ? (
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          From: {pose}
+        </p>
+      ) : null}
       <p className="text-xs leading-snug text-zinc-600">{hint}</p>
     </figcaption>
   );
@@ -42,6 +47,8 @@ export function ScanMaskAnnotations({
   overlayUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
+  wrinklePoseLabel,
+  acnePoseLabel,
   spatialOutputs: _spatialOutputs,
   regions,
 }: {
@@ -49,6 +56,10 @@ export function ScanMaskAnnotations({
   overlayUrl?: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
+  /** e.g. "Front face — smiling" — wrinkle mask is from this capture. */
+  wrinklePoseLabel?: string;
+  /** e.g. "Front face — neutral" — acne mask is from this capture. */
+  acnePoseLabel?: string;
   spatialOutputs?: ScanSpatialOutputs;
   regions: ReportRegion[];
 }) {
@@ -58,7 +69,7 @@ export function ScanMaskAnnotations({
   const showDotMarkers =
     !overlay && !wrinkle && !acne && regions.length > 0 && imageUrl?.trim();
 
-  if (!overlay && !wrinkle && !acne && !showDotMarkers) return null;
+  if (!wrinkle && !acne && !showDotMarkers) return null;
 
   return (
     <div className="mx-auto mt-10 max-w-2xl break-inside-avoid">
@@ -78,7 +89,8 @@ export function ScanMaskAnnotations({
           {wrinkle ? (
             <figure className="flex flex-col gap-2">
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-200 ring-2 ring-violet-300/80">
-                <OrientedReportImage
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={wrinkle}
                   alt={WRINKLE_MASK_COPY.title}
                   className="h-full w-full object-cover object-center"
@@ -88,13 +100,15 @@ export function ScanMaskAnnotations({
                 tone="violet"
                 title={WRINKLE_MASK_COPY.title}
                 hint={WRINKLE_MASK_COPY.hint}
+                pose={wrinklePoseLabel}
               />
             </figure>
           ) : null}
           {acne ? (
             <figure className="flex flex-col gap-2">
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-200 ring-2 ring-orange-300/80">
-                <OrientedReportImage
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={acne}
                   alt={ACNE_MASK_COPY.title}
                   className="h-full w-full object-cover object-center"
@@ -104,29 +118,12 @@ export function ScanMaskAnnotations({
                 tone="orange"
                 title={ACNE_MASK_COPY.title}
                 hint={ACNE_MASK_COPY.hint}
+                pose={acnePoseLabel}
               />
             </figure>
           ) : null}
         </div>
       )}
-
-      {overlay ? (
-        <figure className="mx-auto mt-8 max-w-[340px]">
-          <p className="text-center text-sm font-bold text-zinc-800">
-            {COMBINED_OVERLAY_COPY.title}
-          </p>
-          <p className="mx-auto mt-1 max-w-xs text-center text-xs leading-relaxed text-zinc-600">
-            {COMBINED_OVERLAY_COPY.hint}
-          </p>
-          <div className="relative mt-3 aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-200 ring-1 ring-zinc-300/80">
-            <OrientedReportImage
-              src={overlay}
-              alt={COMBINED_OVERLAY_COPY.title}
-              className="h-full w-full object-cover object-center"
-            />
-          </div>
-        </figure>
-      ) : null}
 
       {showDotMarkers ? (
         <div className="mx-auto mt-6 max-w-[300px]">

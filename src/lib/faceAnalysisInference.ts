@@ -1,3 +1,10 @@
+/** Optional wrinkle breakdown from HF `/analyze` (mask-aligned scoring). */
+export type WrinkleInferenceDiagnostics = {
+  wrinkle_cls_severity?: number | null;
+  wrinkle_seg_severity?: number | null;
+  wrinkle_mask_severity?: number | null;
+};
+
 export type FaceAnalysisInferenceResult = {
   metrics: {
     acne: number;
@@ -14,7 +21,65 @@ export type FaceAnalysisInferenceResult = {
   }>;
   /** JPEG data URI: wrinkle tint + acne circles (matches Gradio). */
   overlayDataUri?: string;
+  wrinkleMaskDataUri?: string;
+  acneMaskDataUri?: string;
 };
+
+const WRINKLE_DIAGNOSTIC_KEYS = [
+  "wrinkle_cls_severity",
+  "wrinkle_seg_severity",
+  "wrinkle_mask_severity",
+] as const;
+
+function numOrNull(v: unknown): number | null | undefined {
+  if (v === null) return null;
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+
+/** Pass through API modelFeatureScores including wrinkle diagnostic fields. */
+export function normalizeModelFeatureScores(
+  raw: Record<string, unknown> | undefined
+): Record<string, number | null> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, number | null> = {};
+  const clinicalKeys = [
+    "active_acne",
+    "acne_scars",
+    "skin_quality",
+    "wrinkle_severity",
+    "sagging_volume",
+    "under_eye",
+    "hair_health",
+    "pigmentation_model",
+  ] as const;
+  for (const k of clinicalKeys) {
+    if (k in raw) {
+      const v = numOrNull(raw[k]);
+      if (v !== undefined) out[k] = v;
+    }
+  }
+  for (const k of WRINKLE_DIAGNOSTIC_KEYS) {
+    if (k in raw) {
+      const v = numOrNull(raw[k]);
+      if (v !== undefined) out[k] = v;
+    }
+  }
+  return out;
+}
+
+export function pickWrinkleDiagnostics(
+  raw: Record<string, number | null> | undefined
+): WrinkleInferenceDiagnostics {
+  if (!raw) return {};
+  const out: WrinkleInferenceDiagnostics = {};
+  for (const k of WRINKLE_DIAGNOSTIC_KEYS) {
+    if (k in raw) {
+      const v = raw[k];
+      if (v === null || typeof v === "number") out[k] = v;
+    }
+  }
+  return out;
+}
 
 type RunOptions = {
   baseUrl: string;
@@ -96,9 +161,11 @@ export async function runFaceAnalysisService(
 
   const body = json as {
     metrics: FaceAnalysisInferenceResult["metrics"];
-    modelFeatureScores: Record<string, number | null>;
+    modelFeatureScores: Record<string, unknown>;
     detected_regions: FaceAnalysisInferenceResult["detected_regions"];
     overlayDataUri?: string;
+    wrinkleMaskDataUri?: string;
+    acneMaskDataUri?: string;
   };
 
   if (
@@ -109,16 +176,38 @@ export async function runFaceAnalysisService(
     throw new Error("Face analysis: malformed response");
   }
 
-  const overlayDataUri =
-    typeof body.overlayDataUri === "string" &&
-    body.overlayDataUri.startsWith("data:image/")
-      ? body.overlayDataUri
-      : undefined;
+  const dataUri = (v: unknown) =>
+    typeof v === "string" && v.startsWith("data:image/") ? v : undefined;
+
+  const modelFeatureScores = normalizeModelFeatureScores(body.modelFeatureScores);
 
   return {
     metrics: body.metrics,
-    modelFeatureScores: body.modelFeatureScores,
+    modelFeatureScores,
     detected_regions: body.detected_regions,
-    ...(overlayDataUri ? { overlayDataUri } : {}),
+    ...(dataUri(body.overlayDataUri) ? { overlayDataUri: dataUri(body.overlayDataUri) } : {}),
+    ...(dataUri(body.wrinkleMaskDataUri)
+      ? { wrinkleMaskDataUri: dataUri(body.wrinkleMaskDataUri) }
+      : {}),
+    ...(dataUri(body.acneMaskDataUri) ? { acneMaskDataUri: dataUri(body.acneMaskDataUri) } : {}),
   };
+}
+
+/**
+ * Two `/analyze` calls: centre → 7 non-wrinkle params + acne mask;
+ * smiling → wrinkle severity + wrinkle mask. Left/right/eyes_closed are not sent.
+ */
+export async function runFaceAnalysisCentreSmiling(
+  centre: File,
+  smiling: File,
+  options: RunOptions
+): Promise<{
+  centre: FaceAnalysisInferenceResult;
+  smiling: FaceAnalysisInferenceResult;
+}> {
+  const [centreRes, smilingRes] = await Promise.all([
+    runFaceAnalysisService(centre, options),
+    runFaceAnalysisService(smiling, options),
+  ]);
+  return { centre: centreRes, smiling: smilingRes };
 }

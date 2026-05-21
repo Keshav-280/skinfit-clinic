@@ -10,6 +10,8 @@ import {
   Check,
   ImagePlus,
   SwitchCamera,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { FaceCaptureOvalOverlayWeb } from "@/components/dashboard/FaceCaptureOvalOverlayWeb";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
@@ -62,6 +64,12 @@ type CaptureItem = {
 
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 
+/** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
+const CAPTURE_ZOOM_MIN = 1;
+const CAPTURE_ZOOM_MAX = 2.5;
+const CAPTURE_ZOOM_STEP = 0.1;
+const CAPTURE_ZOOM_DEFAULT = 1.35;
+
 export type FaceScanFlowVariant = "dashboard" | "onboarding";
 
 export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
@@ -80,6 +88,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [captureZoom, setCaptureZoom] = useState(CAPTURE_ZOOM_DEFAULT);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -145,12 +154,20 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   const openCameraForMultiCapture = useCallback(() => {
     setUploadError(null);
+    setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
     setCaptures((prev) => {
       revokeAllCaptures(prev);
       return [];
     });
     void startCamera("user");
   }, [revokeAllCaptures, startCamera]);
+
+  const adjustCaptureZoom = useCallback((delta: number) => {
+    setCaptureZoom((z) => {
+      const next = Math.round((z + delta) * 10) / 10;
+      return Math.min(CAPTURE_ZOOM_MAX, Math.max(CAPTURE_ZOOM_MIN, next));
+    });
+  }, []);
 
   const flipCamera = useCallback(() => {
     void startCamera(facingMode === "user" ? "environment" : "user");
@@ -186,7 +203,18 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       ctx.translate(tw, 0);
       ctx.scale(-1, 1);
     }
-    ctx.drawImage(video, 0, 0, w, h, 0, 0, tw, th);
+    const zoom = captureZoom;
+    let sx = 0;
+    let sy = 0;
+    let sw = w;
+    let sh = h;
+    if (zoom > 1) {
+      sw = w / zoom;
+      sh = h / zoom;
+      sx = (w - sw) / 2;
+      sy = (h - sh) / 2;
+    }
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
     ctx.restore();
     canvas.toBlob(
       (blob) => {
@@ -216,9 +244,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       "image/jpeg",
       0.82
     );
-  }, [facingMode, stopCamera]);
+  }, [captureZoom, facingMode, stopCamera]);
 
   const cancelCamera = useCallback(() => {
+    setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
     setCaptures((prev) => {
       revokeAllCaptures(prev);
       return [];
@@ -367,11 +396,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           <div className="relative mx-auto aspect-[3/4] max-h-[min(70vh,520px)] w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900">
             <video
               ref={videoRef}
-              className={
-                facingMode === "user"
-                  ? "h-full w-full scale-x-[-1] object-cover"
-                  : "h-full w-full object-cover"
-              }
+              className="h-full w-full object-cover"
+              style={{
+                transformOrigin: "center center",
+                transform:
+                  facingMode === "user"
+                    ? `scaleX(-1) scale(${captureZoom})`
+                    : `scale(${captureZoom})`,
+              }}
               playsInline
               muted
               autoPlay
@@ -379,7 +411,46 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             />
             <FaceCaptureOvalOverlayWeb />
             <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-20 rounded-lg bg-zinc-950/55 px-3 py-2 text-center text-xs text-white backdrop-blur-sm">
-              {captureCount}/{N_CAPTURES} captured
+              {captureCount}/{N_CAPTURES} captured · zoom {captureZoom.toFixed(1)}×
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/60 bg-white/50 px-4 py-3 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[#2C3E6B]">Zoom</p>
+              <p className="text-xs tabular-nums text-[#6B7280]">
+                {captureZoom.toFixed(1)}× — fill the oval if you are far from the camera
+              </p>
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => adjustCaptureZoom(-CAPTURE_ZOOM_STEP)}
+                disabled={captureZoom <= CAPTURE_ZOOM_MIN}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/80 text-[#2C3E6B] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="h-5 w-5" />
+              </button>
+              <input
+                type="range"
+                min={CAPTURE_ZOOM_MIN}
+                max={CAPTURE_ZOOM_MAX}
+                step={CAPTURE_ZOOM_STEP}
+                value={captureZoom}
+                onChange={(e) => setCaptureZoom(parseFloat(e.target.value))}
+                className="min-w-0 flex-1 accent-[#2C3E6B]"
+                aria-label="Capture zoom level"
+                aria-valuetext={`${captureZoom.toFixed(1)} times`}
+              />
+              <button
+                type="button"
+                onClick={() => adjustCaptureZoom(CAPTURE_ZOOM_STEP)}
+                disabled={captureZoom >= CAPTURE_ZOOM_MAX}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/80 text-[#2C3E6B] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="h-5 w-5" />
+              </button>
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">

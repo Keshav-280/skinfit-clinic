@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
-/** Correct legacy mask JPEGs saved without EXIF orientation (wider than tall). */
+/**
+ * @deprecated Model mask JPEGs are upright; use a plain `<img>` instead.
+ * Kept for backwards compatibility — no auto-rotation.
+ */
 export function OrientedReportImage({
   src,
   alt,
@@ -12,23 +13,8 @@ export function OrientedReportImage({
   alt: string;
   className?: string;
 }) {
-  const [rotate90, setRotate90] = useState(false);
-
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={alt}
-      className={className}
-      style={
-        rotate90
-          ? { transform: "rotate(90deg) scale(1.42)", transformOrigin: "center" }
-          : undefined
-      }
-      onLoad={(e) => {
-        const img = e.currentTarget;
-        setRotate90(img.naturalWidth > img.naturalHeight * 1.08);
-      }}
-    />
+    <img src={src} alt={alt} className={className} />
   );
 }
