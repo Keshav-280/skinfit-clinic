@@ -229,7 +229,7 @@ export function buildKaiParamsFromModelSeverities(
     typeof mfs.hair_health === "number" ? severityToClarity(mfs.hair_health) : 70;
 
   const pigStub = isPlaceholderSeverity(mfs.pigmentation_model);
-  const scarsStub = isPlaceholderSeverity(mfs.acne_scars);
+  const scarsStub = false; // User requested to always show acne scars
   const pig100 =
     !pigStub && typeof mfs.pigmentation_model === "number"
       ? severityToClarity(mfs.pigmentation_model)
