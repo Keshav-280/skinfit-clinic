@@ -12,15 +12,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FaceCaptureOvalOverlay } from "@/components/FaceCaptureOvalOverlay";
+import { ScanCaptureGuidanceBanner } from "@/components/ScanCaptureGuidanceBanner";
+import { useMobileScanCaptureGuidance } from "@/hooks/useMobileScanCaptureGuidance";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import { MOBILE_CAMERA_ZOOM, smoothTowardZoom } from "@/lib/scanCaptureGuidance";
 
 const NAVY = "#2C3E6B";
 
-/** Expo CameraView zoom is 0–1; higher brings the face closer for the model. */
-const CAMERA_ZOOM_MIN = 0;
-const CAMERA_ZOOM_MAX = 0.55;
+const CAMERA_ZOOM_MIN = MOBILE_CAMERA_ZOOM.min;
+const CAMERA_ZOOM_MAX = MOBILE_CAMERA_ZOOM.max;
 const CAMERA_ZOOM_STEP = 0.05;
-const CAMERA_ZOOM_DEFAULT = 0.14;
+const CAMERA_ZOOM_DEFAULT = MOBILE_CAMERA_ZOOM.default;
 
 type Props = {
   stepIndex: number;
@@ -42,8 +44,25 @@ export function FiveAngleCameraStep({
   const [cameraReady, setCameraReady] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [shooting, setShooting] = useState(false);
-  const [cameraZoom, setCameraZoom] = useState(CAMERA_ZOOM_DEFAULT);
+  const [cameraZoom, setCameraZoom] = useState<number>(CAMERA_ZOOM_DEFAULT);
+  const [autoZoomEnabled, setAutoZoomEnabled] = useState(true);
+  const userAdjustedZoomAt = useRef(0);
   const insets = useSafeAreaInsets();
+
+  const guidancePaused = busy || shooting || countdown !== null;
+  const { guidance, analyzing } = useMobileScanCaptureGuidance(
+    cameraRef,
+    true,
+    cameraReady,
+    cameraZoom,
+    guidancePaused
+  );
+
+  useEffect(() => {
+    if (!autoZoomEnabled || !guidance?.suggestedZoom || guidancePaused) return;
+    if (Date.now() - userAdjustedZoomAt.current < 2500) return;
+    setCameraZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!));
+  }, [autoZoomEnabled, guidance?.suggestedZoom, guidancePaused]);
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   if (!step) return null;
@@ -134,14 +153,12 @@ export function FiveAngleCameraStep({
         </View>
       </View>
 
-      {/* Instructions — same copy as web FaceScanFlow */}
-      <View style={[styles.instructionWrap, { top: insets.top + 56 }]}>
+      <View style={[styles.instructionWrap, { top: insets.top + 52 }]}>
         <View style={styles.instructionCard}>
           <Text style={styles.stepKicker}>
-            Step {stepIndex + 1} of {totalSteps}
+            Step {stepIndex + 1}/{totalSteps}
           </Text>
           <Text style={styles.stepTitle}>{step.title}</Text>
-          <Text style={styles.stepInstruction}>{step.instruction}</Text>
         </View>
       </View>
 
@@ -155,21 +172,45 @@ export function FiveAngleCameraStep({
         </View>
       )}
 
-      {/* Bottom bar */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 20 }]}>
-        <View style={styles.zoomRow}>
-          <Text style={styles.zoomLabel}>Zoom in if you are far from the camera</Text>
-          <View style={styles.zoomControls}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={styles.bottomColumns}>
+          <View style={styles.bottomCol}>
+            <Text style={styles.colHint} numberOfLines={3}>
+              {step.instruction}
+            </Text>
+            <ScanCaptureGuidanceBanner
+              guidance={guidance}
+              analyzing={analyzing}
+              autoZoomEnabled={autoZoomEnabled}
+            />
+          </View>
+          <View style={styles.bottomCol}>
+            <View style={styles.zoomHeader}>
+              <Text style={styles.zoomLabel}>
+                {autoZoomEnabled ? "Auto zoom" : "Manual"}
+              </Text>
+              <Pressable
+                onPress={() => setAutoZoomEnabled((v) => !v)}
+                disabled={isDisabled}
+                hitSlop={8}
+              >
+                <Text style={styles.autoZoomToggle}>
+                  {autoZoomEnabled ? "Off" : "On"}
+                </Text>
+              </Pressable>
+            </View>
+            <View style={styles.zoomControls}>
             <Pressable
               style={[
                 styles.zoomBtn,
                 cameraZoom <= CAMERA_ZOOM_MIN && styles.disabled,
               ]}
-              onPress={() =>
+              onPress={() => {
+                userAdjustedZoomAt.current = Date.now();
                 setCameraZoom((z) =>
                   Math.max(CAMERA_ZOOM_MIN, Math.round((z - CAMERA_ZOOM_STEP) * 100) / 100)
-                )
-              }
+                );
+              }}
               disabled={cameraZoom <= CAMERA_ZOOM_MIN || isDisabled}
               accessibilityLabel="Zoom out"
             >
@@ -190,16 +231,18 @@ export function FiveAngleCameraStep({
                 styles.zoomBtn,
                 cameraZoom >= CAMERA_ZOOM_MAX && styles.disabled,
               ]}
-              onPress={() =>
+              onPress={() => {
+                userAdjustedZoomAt.current = Date.now();
                 setCameraZoom((z) =>
                   Math.min(CAMERA_ZOOM_MAX, Math.round((z + CAMERA_ZOOM_STEP) * 100) / 100)
-                )
-              }
+                );
+              }}
               disabled={cameraZoom >= CAMERA_ZOOM_MAX || isDisabled}
               accessibilityLabel="Zoom in"
             >
               <Ionicons name="add-outline" size={22} color="#fff" />
             </Pressable>
+          </View>
           </View>
         </View>
         <Pressable
@@ -213,7 +256,8 @@ export function FiveAngleCameraStep({
             <View style={styles.btnRow}>
               <Ionicons name="camera-outline" size={20} color="#fff" />
               <Text style={styles.btnNavyText}>
-                Capture Image ({stepIndex + 1}/{totalSteps})
+                {guidance?.readyToCapture ? "Capture" : "Capture anyway"} (
+                {stepIndex + 1}/{totalSteps})
               </Text>
             </View>
           )}
@@ -282,6 +326,21 @@ const styles = StyleSheet.create({
     right: 12,
     alignItems: "center",
     zIndex: 10,
+  },
+  bottomColumns: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+  bottomCol: {
+    flex: 1,
+    gap: 8,
+    minWidth: 0,
+  },
+  colHint: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: "rgba(255,255,255,0.88)",
   },
   instructionCard: {
     width: "100%",
@@ -360,11 +419,21 @@ const styles = StyleSheet.create({
   zoomRow: {
     gap: 8,
   },
+  zoomHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   zoomLabel: {
-    textAlign: "center",
     fontSize: 12,
     fontWeight: "600",
     color: "rgba(255,255,255,0.9)",
+  },
+  autoZoomToggle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.85)",
+    textDecorationLine: "underline",
   },
   zoomControls: {
     flexDirection: "row",

@@ -4,27 +4,30 @@ export const FACE_SCAN_CAPTURE_STEPS = [
     id: "centre",
     title: "Front face — neutral",
     instruction:
-      "Look straight at the camera. Neutral expression, eyes open. Natural light, face fills the oval.",
+      "Look straight at the camera. Neutral expression, eyes open. Remove spectacles. Natural light; face fills the oval.",
   },
   {
     id: "left",
     title: "Turn head left",
-    instruction: "Turn your head ~30° to your left. Keep shoulders still; only rotate your face.",
+    instruction:
+      "Turn your head ~30° to your left. Keep shoulders still; only rotate your face. No spectacles.",
   },
   {
     id: "right",
     title: "Turn head right",
-    instruction: "Turn your head ~30° to your right. Same framing as the previous shot.",
+    instruction: "Turn your head ~30° to your right. Same framing as the previous shot. No spectacles.",
   },
   {
     id: "eyes_closed",
     title: "Front face — eyes closed",
-    instruction: "Face forward again with your eyes gently closed. Relax your forehead.",
+    instruction:
+      "Face forward again with eyes gently closed. Remove spectacles. AI checks eye closure.",
   },
   {
     id: "smiling",
     title: "Front face — smiling",
-    instruction: "Natural smile — teeth optional. This helps assess dynamic lines vs static wrinkles.",
+    instruction:
+      "Natural smile — teeth optional. Remove spectacles. AI checks smile expression.",
   },
 ] as const;
 
@@ -34,4 +37,5 @@ export type FaceScanCaptureId = (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
 export const FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA = [
   "Natural light; avoid harsh backlight.",
   "Camera at eye level, face centered.",
+  "Remove spectacles before capture.",
 ] as const;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { OVAL_FRAME } from "@/src/lib/scanCaptureGuidance";
 
 /**
  * Same framing idea as mobile `FaceCaptureOvalOverlay`: dimmed scrim with an
@@ -12,11 +13,10 @@ export function FaceCaptureOvalOverlayWeb() {
 
   const vbW = 3;
   const vbH = 4;
-  const cx = vbW / 2;
-  // Bigger and slightly lower oval so a full face fits comfortably.
-  const cy = vbH * 0.38;
-  const rx = vbW * 0.4;
-  const ry = vbH * 0.2;
+  const cx = vbW * OVAL_FRAME.cx;
+  const cy = vbH * OVAL_FRAME.cy;
+  const rx = vbW * OVAL_FRAME.rx;
+  const ry = vbH * OVAL_FRAME.ry;
 
   return (
     <svg

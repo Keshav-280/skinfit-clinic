@@ -1,49 +1,14 @@
 /**
- * Smoke test: dual POST /analyze + merge (same as scan route + dual_pose_scan.ipynb).
+ * Smoke test: POST /analyze_dual_scan + merge (production scan route default).
  * Run: npx tsx src/scripts/verify-dual-pose-pipeline.ts [centre.jpg] [smiling.jpg]
  */
 import "dotenv/config";
 import { readFileSync } from "fs";
-import { buildScanPayloadFromCentreAndSmiling } from "@/src/lib/modelClinicalMetrics";
-import {
-  normalizeModelFeatureScores,
-  type FaceAnalysisInferenceResult,
-} from "@/src/lib/faceAnalysisInference";
+import { buildScanPayloadFromAnalyzeV1 } from "@/src/lib/modelClinicalMetrics";
+import { runFaceAnalysisDualScan } from "@/src/lib/faceAnalysisInference";
 
 const base = process.env.FACE_ANALYSIS_SERVICE_URL?.trim();
 const secret = process.env.FACE_ANALYSIS_SERVICE_SECRET?.trim();
-
-async function analyzeFile(path: string): Promise<FaceAnalysisInferenceResult> {
-  if (!base) throw new Error("FACE_ANALYSIS_SERVICE_URL not set");
-  const buf = readFileSync(path);
-  const fd = new FormData();
-  fd.append("image", new Blob([buf]), path.split("/").pop() || "scan.jpg");
-  const headers: HeadersInit = {};
-  if (secret) headers["X-API-Key"] = secret;
-  const url = `${base.replace(/\/$/, "")}/analyze`;
-  const res = await fetch(url, { method: "POST", body: fd, headers });
-  const json = (await res.json()) as {
-    ok?: boolean;
-    detail?: string;
-    metrics?: FaceAnalysisInferenceResult["metrics"];
-    modelFeatureScores?: Record<string, unknown>;
-    detected_regions?: FaceAnalysisInferenceResult["detected_regions"];
-    acneMaskDataUri?: string;
-    wrinkleMaskDataUri?: string;
-  };
-  if (!res.ok || !json.ok) {
-    throw new Error(json.detail || `HTTP ${res.status}`);
-  }
-  return {
-    metrics: json.metrics!,
-    modelFeatureScores: normalizeModelFeatureScores(json.modelFeatureScores),
-    detected_regions: json.detected_regions ?? [],
-    ...(json.acneMaskDataUri ? { acneMaskDataUri: json.acneMaskDataUri } : {}),
-    ...(json.wrinkleMaskDataUri
-      ? { wrinkleMaskDataUri: json.wrinkleMaskDataUri }
-      : {}),
-  };
-}
 
 async function main() {
   const centrePath =
@@ -62,12 +27,25 @@ async function main() {
   console.log("Centre:", centrePath);
   console.log("Smiling:", smilePath);
 
-  const [centre, smiling] = await Promise.all([
-    analyzeFile(centrePath),
-    analyzeFile(smilePath),
-  ]);
+  const centreBuf = readFileSync(centrePath);
+  const smileBuf = readFileSync(smilePath);
+  const centreFile = new File(
+    [centreBuf],
+    centrePath.split("/").pop() || "centre.jpg",
+    { type: "image/jpeg" }
+  );
+  const smilingFile = new File(
+    [smileBuf],
+    smilePath.split("/").pop() || "smiling.jpg",
+    { type: "image/jpeg" }
+  );
 
-  const merged = buildScanPayloadFromCentreAndSmiling(centre, smiling);
+  const dualScan = await runFaceAnalysisDualScan(centreFile, smilingFile, {
+    baseUrl: base!,
+    apiKey: secret,
+    timeoutMs: 120_000,
+  });
+  const merged = buildScanPayloadFromAnalyzeV1(dualScan);
 
   console.log("\n--- Merge (production) ---");
   console.log("active_acne (centre):", merged.modelFeatureScores.active_acne);

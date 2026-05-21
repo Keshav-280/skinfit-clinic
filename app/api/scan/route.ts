@@ -6,6 +6,7 @@ import { scans, skinScans, users } from "../../../src/db/schema";
 import { getSessionUserIdFromRequest } from "../../../src/lib/auth/get-session";
 import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
 import {
+  runFaceAnalysisDualScan,
   runFaceAnalysisCentreSmiling,
   runFaceAnalysisService,
 } from "../../../src/lib/faceAnalysisInference";
@@ -265,13 +266,17 @@ export async function POST(request: NextRequest) {
     };
 
     /**
-     * Dual-pose default: centre photo drives the 7 non-wrinkle parameters and the
-     * acne mask; smiling photo drives the wrinkle severity and wrinkle mask.
-     * `FACE_ANALYSIS_SINGLE_IMAGE=1` falls back to notebook-style single-image.
+     * Dual-pose default: centre → acne mask + scalars; smiling → wrinkle mask + score.
+     * Uses `/analyze_dual_scan` (test_local.ipynb pipeline + matplotlib masks).
+     * `FACE_ANALYSIS_LEGACY_ANALYZE=1` → old 2× `/analyze` with center-crop overlays.
+     * `FACE_ANALYSIS_SINGLE_IMAGE=1` → single centre image only.
      */
     const singleImageMode =
       process.env.FACE_ANALYSIS_SINGLE_IMAGE === "1" ||
       process.env.FACE_ANALYSIS_SINGLE_IMAGE === "true";
+    const legacyAnalyze =
+      process.env.FACE_ANALYSIS_LEGACY_ANALYZE === "1" ||
+      process.env.FACE_ANALYSIS_LEGACY_ANALYZE === "true";
 
     if (inferenceBase) {
       try {
@@ -284,8 +289,7 @@ export async function POST(request: NextRequest) {
           merged = buildScanPayloadFromAnalyzeV1(
             await runFaceAnalysisService(filesForV2.centre, inferenceOpts)
           );
-        } else {
-          // Default production path (matches dual_pose_scan.ipynb): 2× POST /analyze.
+        } else if (legacyAnalyze) {
           const dual = await runFaceAnalysisCentreSmiling(
             filesForV2.centre,
             filesForV2.smiling,
@@ -295,23 +299,20 @@ export async function POST(request: NextRequest) {
             dual.centre,
             dual.smiling
           );
+        } else {
+          const dualScan = await runFaceAnalysisDualScan(
+            filesForV2.centre,
+            filesForV2.smiling,
+            inferenceOpts
+          );
+          merged = buildScanPayloadFromAnalyzeV1(dualScan);
           if (process.env.NODE_ENV === "development") {
-            console.info("[scan] dual-pose inference", {
-              centreAcneMask: Boolean(dual.centre.acneMaskDataUri),
-              smilingWrinkleMask: Boolean(dual.smiling.wrinkleMaskDataUri),
-              mergedWrinkleSeverity: merged.modelFeatureScores.wrinkle_severity,
-              mergedAcneSeverity: merged.modelFeatureScores.active_acne,
+            console.info("[scan] dual-scan (test_local pipeline)", {
+              acneMask: Boolean(dualScan.acneMaskDataUri),
+              wrinkleMask: Boolean(dualScan.wrinkleMaskDataUri),
+              wrinkles100: dualScan.metrics.wrinkles,
+              acne100: dualScan.metrics.acne,
             });
-            if (!merged.acneMaskDataUri) {
-              console.warn(
-                "[scan] missing acneMaskDataUri from centre /analyze — check HF overlay build"
-              );
-            }
-            if (!merged.wrinkleMaskDataUri) {
-              console.warn(
-                "[scan] missing wrinkleMaskDataUri from smiling /analyze — check HF overlay build"
-              );
-            }
           }
         }
         overallKaiScore = merged.overallKaiScore;

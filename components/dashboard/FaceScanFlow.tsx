@@ -10,11 +10,16 @@ import {
   Check,
   ImagePlus,
   SwitchCamera,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { FaceCaptureOvalOverlayWeb } from "@/components/dashboard/FaceCaptureOvalOverlayWeb";
+import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
+import { ScanCaptureZoomPanel } from "@/components/dashboard/ScanCaptureZoomPanel";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
+import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
+import {
+  CAPTURE_ZOOM_AUTO,
+  smoothTowardZoom,
+} from "@/src/lib/scanCaptureGuidance";
 import {
   FACE_SCAN_CAPTURE_STEPS,
   FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
@@ -68,7 +73,7 @@ const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 const CAPTURE_ZOOM_MIN = 1;
 const CAPTURE_ZOOM_MAX = 2.5;
 const CAPTURE_ZOOM_STEP = 0.1;
-const CAPTURE_ZOOM_DEFAULT = 1.35;
+const CAPTURE_ZOOM_DEFAULT = CAPTURE_ZOOM_AUTO.default;
 
 export type FaceScanFlowVariant = "dashboard" | "onboarding";
 
@@ -88,9 +93,19 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
-  const [captureZoom, setCaptureZoom] = useState(CAPTURE_ZOOM_DEFAULT);
+  const [captureZoom, setCaptureZoom] = useState<number>(CAPTURE_ZOOM_DEFAULT);
+  const [autoZoomEnabled, setAutoZoomEnabled] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const userAdjustedZoomAt = useRef(0);
+  const currentCameraStep = FACE_SCAN_CAPTURE_STEPS[Math.min(captures.length, N_CAPTURES - 1)];
+
+  const { guidance, faceDetectionAvailable } = useWebScanCaptureGuidance(
+    videoRef,
+    cameraOpen,
+    captureZoom,
+    currentCameraStep.id
+  );
 
   const primaryPreview = captures[0]?.preview ?? null;
 
@@ -163,11 +178,26 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   }, [revokeAllCaptures, startCamera]);
 
   const adjustCaptureZoom = useCallback((delta: number) => {
+    userAdjustedZoomAt.current = Date.now();
     setCaptureZoom((z) => {
       const next = Math.round((z + delta) * 10) / 10;
       return Math.min(CAPTURE_ZOOM_MAX, Math.max(CAPTURE_ZOOM_MIN, next));
     });
   }, []);
+
+  const setCaptureZoomManual = useCallback((value: number) => {
+    userAdjustedZoomAt.current = Date.now();
+    setCaptureZoom(value);
+  }, []);
+
+  useEffect(() => {
+    if (!cameraOpen || !autoZoomEnabled || guidance?.suggestedZoom == null) return;
+    if (Date.now() - userAdjustedZoomAt.current < 2000) return;
+    const timer = setTimeout(() => {
+      setCaptureZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!, 0.55));
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [cameraOpen, autoZoomEnabled, guidance?.suggestedZoom]);
 
   const flipCamera = useCallback(() => {
     void startCamera(facingMode === "user" ? "environment" : "user");
@@ -357,9 +387,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       setScanError("Network error. Check your connection and try again.");
       setStep("naming");
     }
-  }, [captures, scanName, router, variant]);
+  }, [captures, scanName, router, isOnboardingScan]);
 
-  const currentCameraStep = FACE_SCAN_CAPTURE_STEPS[Math.min(captures.length, N_CAPTURES - 1)];
   const captureCount = captures.length;
 
   return (
@@ -386,73 +415,65 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4 rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-center backdrop-blur-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
-              Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}
-            </p>
-            <p className="mt-1 text-base font-bold text-[#2C3E6B]">{currentCameraStep.title}</p>
-            <p className="mt-0.5 text-sm text-[#6B7280]">{currentCameraStep.instruction}</p>
-          </div>
-          <div className="relative mx-auto aspect-[3/4] max-h-[min(70vh,520px)] w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900">
-            <video
-              ref={videoRef}
-              className="h-full w-full object-cover"
-              style={{
-                transformOrigin: "center center",
-                transform:
-                  facingMode === "user"
-                    ? `scaleX(-1) scale(${captureZoom})`
-                    : `scale(${captureZoom})`,
-              }}
-              playsInline
-              muted
-              autoPlay
-              aria-label="Live camera preview (mirrored for front camera)"
-            />
-            <FaceCaptureOvalOverlayWeb />
-            <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-20 rounded-lg bg-zinc-950/55 px-3 py-2 text-center text-xs text-white backdrop-blur-sm">
-              {captureCount}/{N_CAPTURES} captured · zoom {captureZoom.toFixed(1)}×
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-stretch">
+            <aside className="flex flex-col gap-2 md:min-h-0">
+              <div className="rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-center backdrop-blur-sm">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
+                  Step {Math.min(captureCount + 1, N_CAPTURES)}/{N_CAPTURES}
+                </p>
+                <p className="mt-0.5 text-lg font-bold text-[#2C3E6B]">
+                  {currentCameraStep.title}
+                </p>
+                <p className="mt-1 text-base leading-snug text-[#374151]">
+                  {currentCameraStep.instruction}
+                </p>
+              </div>
+              <ScanCaptureGuidanceBanner
+                guidance={guidance}
+                faceDetectionAvailable={faceDetectionAvailable}
+                autoZoomEnabled={autoZoomEnabled}
+                compact
+              />
+            </aside>
+
+            <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl bg-zinc-900 md:max-h-[min(62vh,500px)] md:max-w-none">
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                style={{
+                  transformOrigin: "center center",
+                  transform:
+                    facingMode === "user"
+                      ? `scaleX(-1) scale(${captureZoom})`
+                      : `scale(${captureZoom})`,
+                }}
+                playsInline
+                muted
+                autoPlay
+                aria-label="Live camera preview (mirrored for front camera)"
+              />
+              <FaceCaptureOvalOverlayWeb />
+              <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-20 rounded-md bg-zinc-950/55 px-2 py-1 text-center text-[10px] text-white">
+                {captureCount}/{N_CAPTURES}
+                {guidance?.readyToCapture ? " · ready" : ""}
+              </div>
             </div>
-          </div>
-          <div className="rounded-xl border border-white/60 bg-white/50 px-4 py-3 backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-[#2C3E6B]">Zoom</p>
-              <p className="text-xs tabular-nums text-[#6B7280]">
-                {captureZoom.toFixed(1)}× — fill the oval if you are far from the camera
-              </p>
-            </div>
-            <div className="mt-2 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => adjustCaptureZoom(-CAPTURE_ZOOM_STEP)}
-                disabled={captureZoom <= CAPTURE_ZOOM_MIN}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/80 text-[#2C3E6B] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Zoom out"
-              >
-                <ZoomOut className="h-5 w-5" />
-              </button>
-              <input
-                type="range"
+
+            <aside className="flex flex-col gap-2 md:min-h-0">
+              <ScanCaptureZoomPanel
+                captureZoom={captureZoom}
                 min={CAPTURE_ZOOM_MIN}
                 max={CAPTURE_ZOOM_MAX}
                 step={CAPTURE_ZOOM_STEP}
-                value={captureZoom}
-                onChange={(e) => setCaptureZoom(parseFloat(e.target.value))}
-                className="min-w-0 flex-1 accent-[#2C3E6B]"
-                aria-label="Capture zoom level"
-                aria-valuetext={`${captureZoom.toFixed(1)} times`}
+                autoZoomEnabled={autoZoomEnabled}
+                onAutoZoomChange={setAutoZoomEnabled}
+                onZoomChange={setCaptureZoomManual}
+                onZoomDelta={adjustCaptureZoom}
+                faceDetectionAvailable={faceDetectionAvailable}
               />
-              <button
-                type="button"
-                onClick={() => adjustCaptureZoom(CAPTURE_ZOOM_STEP)}
-                disabled={captureZoom >= CAPTURE_ZOOM_MAX}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/70 bg-white/80 text-[#2C3E6B] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Zoom in"
-              >
-                <ZoomIn className="h-5 w-5" />
-              </button>
-            </div>
+            </aside>
           </div>
+
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <button
               type="button"
