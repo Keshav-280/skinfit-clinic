@@ -1,11 +1,16 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Sun, User } from "lucide-react";
-import type { CaptureGuidanceSnapshot } from "@/src/lib/scanCaptureGuidance";
+import { ScanCaptureModelStatus } from "@/components/dashboard/ScanCaptureModelStatus";
+import type {
+  CaptureAssistModels,
+  CaptureGuidanceSnapshot,
+} from "@/src/lib/scanCaptureGuidance";
 
 type Props = {
   guidance: CaptureGuidanceSnapshot | null;
-  faceDetectionAvailable: boolean;
+  models: CaptureAssistModels;
+  needsExpressionModel?: boolean;
   autoZoomEnabled?: boolean;
   compact?: boolean;
 };
@@ -20,7 +25,8 @@ function statusIcon(ok: boolean) {
 
 export function ScanCaptureGuidanceBanner({
   guidance,
-  faceDetectionAvailable,
+  models,
+  needsExpressionModel,
   autoZoomEnabled,
   compact,
 }: Props) {
@@ -28,9 +34,16 @@ export function ScanCaptureGuidanceBanner({
 
   if (!guidance) {
     return (
-      <p className={`text-center text-[#6B7280] ${textSize}`}>
-        Checking lighting & face{faceDetectionAvailable ? " (AI)" : " (fallback)"}…
-      </p>
+      <div className="space-y-2">
+        <p className={`text-center text-[#6B7280] ${textSize}`}>
+          Checking lighting & face…
+        </p>
+        <ScanCaptureModelStatus
+          models={models}
+          compact={compact}
+          needsExpressionModel={needsExpressionModel}
+        />
+      </div>
     );
   }
 
@@ -78,6 +91,11 @@ export function ScanCaptureGuidanceBanner({
           Ready to capture
         </p>
       )}
+      <ScanCaptureModelStatus
+        models={models}
+        compact={compact}
+        needsExpressionModel={needsExpressionModel}
+      />
     </div>
   );
 }

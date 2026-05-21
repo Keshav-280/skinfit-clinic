@@ -43,7 +43,9 @@ export function ScanCaptureZoomPanel({
         <span className="font-semibold tabular-nums text-[#2C3E6B]">
           {captureZoom.toFixed(1)}×
         </span>
-        {faceDetectionAvailable ? " · auto from face" : " · auto from face (skin detect)"}
+        {faceDetectionAvailable
+          ? " · auto from face AI"
+          : " · auto from face (skin detect)"}
       </p>
       <div className="mt-1 flex items-center gap-2">
         <button

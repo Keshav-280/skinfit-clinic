@@ -17,6 +17,49 @@ export type FaceFramingQuality =
   | "off_center"
   | "no_face";
 
+/** Browser capture assistants (web only). */
+export type CaptureAssistModels = {
+  /** Experimental Shape Detection API — not in Chrome stable / Safari. */
+  faceDetector: "ready" | "unsupported";
+  /** MediaPipe Face Landmarker (framing + blink / smile). */
+  mediapipe: "idle" | "loading" | "ready" | "failed";
+  /** Set when mediapipe === "failed" (truncated for UI). */
+  mediapipeError?: string;
+};
+
+/** Same-origin WASM (see `npm run mediapipe:sync-wasm`), then CDN fallback. */
+export function mediapipeWasmRoot(): string {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/mediapipe-wasm`;
+  }
+  return "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm";
+}
+
+export function faceBoxFromLandmarkPoints(
+  points: Array<{ x: number; y: number }>
+): NormalizedFaceBox | null {
+  if (!points.length) return null;
+  let minX = 1;
+  let minY = 1;
+  let maxX = 0;
+  let maxY = 0;
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  const pad = 0.05;
+  const x = Math.max(0, minX - pad);
+  const y = Math.max(0, minY - pad);
+  return {
+    x,
+    y,
+    width: Math.min(1 - x, maxX - minX + pad * 2),
+    height: Math.min(1 - y, maxY - minY + pad * 2),
+  };
+}
+
 export type CaptureGuidanceSnapshot = {
   lighting: LightingQuality;
   lightingScore: number;

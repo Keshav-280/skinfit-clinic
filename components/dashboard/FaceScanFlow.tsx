@@ -100,12 +100,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const userAdjustedZoomAt = useRef(0);
   const currentCameraStep = FACE_SCAN_CAPTURE_STEPS[Math.min(captures.length, N_CAPTURES - 1)];
 
-  const { guidance, faceDetectionAvailable } = useWebScanCaptureGuidance(
-    videoRef,
-    cameraOpen,
-    captureZoom,
-    currentCameraStep.id
-  );
+  const { guidance, models, faceDetectionAvailable, needsExpressionModel } =
+    useWebScanCaptureGuidance(
+      videoRef,
+      cameraOpen,
+      captureZoom,
+      currentCameraStep.id
+    );
 
   const primaryPreview = captures[0]?.preview ?? null;
 
@@ -430,7 +431,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               </div>
               <ScanCaptureGuidanceBanner
                 guidance={guidance}
-                faceDetectionAvailable={faceDetectionAvailable}
+                models={models}
+                needsExpressionModel={needsExpressionModel}
                 autoZoomEnabled={autoZoomEnabled}
                 compact
               />

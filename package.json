@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run mediapipe:sync-wasm && next build",
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
@@ -16,7 +16,8 @@
     "rag:index:textbook": "tsx src/scripts/build-rag-textbook-index.ts",
     "rag:pinecone:upsert": "tsx src/scripts/rag-pinecone-upsert.ts",
     "chat:e2ee:reset": "tsx src/scripts/reset-doctor-chat-e2ee.ts",
-    "verify:dual-pose": "tsx src/scripts/verify-dual-pose-pipeline.ts"
+    "verify:dual-pose": "tsx src/scripts/verify-dual-pose-pipeline.ts",
+    "mediapipe:sync-wasm": "mkdir -p public/mediapipe-wasm && cp -R node_modules/@mediapipe/tasks-vision/wasm/. public/mediapipe-wasm/"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.35",
