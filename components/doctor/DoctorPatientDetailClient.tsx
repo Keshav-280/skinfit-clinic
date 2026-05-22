@@ -17,7 +17,6 @@ import {
   Droplets,
   Eraser,
   FileText,
-  Flame,
   Globe2,
   HeartPulse,
   History,
@@ -57,12 +56,28 @@ import {
   DoctorMetaCell,
   DoctorInlineLoader,
   DoctorSegmentedTabs,
-  doctorCardClass,
+  doctorPatientHeaderClass,
+  doctorPatientPageCardClass,
+  doctorSchedulePageCardClass,
   doctorCardMutedClass,
-  doctorInsetStripClass,
+  doctorPatientPagePanelClass,
+  doctorPatientPageAccentInsetClass,
+  doctorPatientPageAccentRowClass,
+  doctorRoutineAmPmColumnClass,
+  doctorPatientPageGhostBtnClass,
+  doctorNavyIconChipClass,
+  doctorVisitNoteFieldIconShellClass,
+  doctorSchedulePanelClass,
+  doctorPatientPageRowClass,
+  doctorPatientPageFormInputClass,
+  doctorVisitRowClass,
+  doctorEmptyStateClass,
+  doctorFormInputSmClass,
   doctorStickyTabsClass,
   doctorBtnPrimaryClass,
+  doctorBtnPrimarySmClass,
   doctorFormInputClass,
+  doctorScheduleFormInputClass,
   DOCTOR_ICON_SM,
 } from "@/components/doctor/DoctorUiPrimitives";
 import { DoctorScanReportPanel } from "@/components/doctor/DoctorScanReportPanel";
@@ -434,34 +449,26 @@ function scheduleEventKindLabel(kind: string): string {
 function appointmentStatusTone(status: string): string {
   const s = status.toLowerCase();
   if (s === "cancelled" || s === "canceled") {
-    return "bg-slate-100 text-slate-600 ring-slate-200";
+    return "bg-rose-50 text-rose-800 ring-rose-200/70";
   }
-  if (s === "confirmed" || s === "scheduled" || s === "completed") {
-    return "bg-emerald-50 text-emerald-800 ring-emerald-200/80";
+  if (s === "completed") {
+    return "bg-emerald-50 text-emerald-800 ring-emerald-200/70";
   }
-  return "bg-[#2C3E6B]/10 text-[#2C3E6B] ring-[#2C3E6B]/20";
+  if (s === "confirmed" || s === "scheduled") {
+    return "bg-[#2C3E6B]/12 text-[#2C3E6B] ring-[#2C3E6B]/25";
+  }
+  return "bg-[#DBDAD2] text-[#2C3E6B] ring-[#2C3E6B]/15";
 }
 
 type CareScheduleEvent = NonNullable<DetailJson["scheduleEvents"]>[number];
 
 function CareReminderRow({ event }: { event: CareScheduleEvent }) {
   const kind = event.eventKind ?? "general";
-  const isPre = kind === "pre_treatment";
-  const isPost = kind === "post_treatment";
-  const accent = isPre
-    ? "border-[#2C3E6B]/15 bg-[#2C3E6B]/5"
-    : isPost
-      ? "border-white/55 bg-white/60"
-      : "border-white/50 bg-white/60";
-  const badge = isPre
-    ? "bg-[#2C3E6B] text-white"
-    : isPost
-      ? "bg-[#2C3E6B]/75 text-white"
-      : "bg-slate-500 text-white";
+  const badge = "bg-[#2C3E6B] text-white";
 
   return (
     <li
-      className={`rounded-lg border px-3 py-2.5 ${accent} ${
+      className={`${doctorVisitRowClass} ${
         event.completed ? "opacity-65" : ""
       }`}
     >
@@ -561,6 +568,53 @@ function summarizeMonthlyPayload(payload: Record<string, unknown> | null): {
   const actions = pickTextList(monthly, ["actions", "recommendations", "focusActions", "nextSteps"]);
   const wins = pickTextList(monthly, ["wins", "strengths", "improvements"]);
   return { scans, loggedDays, summary, risks, actions, wins };
+}
+
+/** Split list entries that were stored as one newline- or sentence-blob string. */
+function flattenReportPoints(items: string[]): string[] {
+  const out: string[] = [];
+  for (const item of items) {
+    const parts = item
+      .split(/\n+|(?:^|\s)[•\-–]\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    out.push(...(parts.length ? parts : [item.trim()].filter(Boolean)));
+  }
+  return out;
+}
+
+function MonthlyReportPointList({
+  title,
+  items,
+  listKey,
+}: {
+  title: string;
+  items: string[];
+  listKey: string;
+}) {
+  const points = flattenReportPoints(items);
+  if (points.length === 0) return null;
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-semibold text-[#2C3E6B]">{title}</p>
+      <ol className="space-y-2">
+        {points.map((text, idx) => (
+          <li key={`${listKey}-${idx}`} className="flex gap-2">
+            <span
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#2C3E6B] text-[10px] font-bold tabular-nums text-white"
+              aria-hidden
+            >
+              {idx + 1}
+            </span>
+            <span className="min-w-0 flex-1 text-xs leading-relaxed text-[#2C3E6B]/85">
+              {text}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
 }
 
 type DailyLogRow = NonNullable<DetailJson["dailyLogs"]>[number];
@@ -671,12 +725,12 @@ function QuestionnaireAnswerCard({ row }: { row: QuestionnaireAnswerRow }) {
 
   return (
     <li
-      className={`rounded-xl border px-4 py-3 ${
+      className={`px-4 py-3 ${
         isAlert
-          ? "border-rose-200/80 bg-rose-50/70"
+          ? "rounded-xl border border-rose-200/80 bg-rose-50/90 shadow-[0_1px_4px_rgba(72,64,48,0.06)]"
           : isNote
-            ? "border-[#2C3E6B]/15 bg-[#2C3E6B]/5"
-            : "border-white/50 bg-white/65"
+            ? `${doctorPatientPagePanelClass} ring-1 ring-[#2C3E6B]/15`
+            : doctorPatientPagePanelClass
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -737,7 +791,7 @@ function WellnessLogCard({
   const routinePartial = log.amRoutine || log.pmRoutine;
 
   return (
-    <li className="overflow-hidden rounded-xl border border-white/50 bg-white/60 shadow-sm">
+    <li className={`overflow-hidden ${doctorPatientPagePanelClass}`}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/50 bg-[#2C3E6B]/5 px-4 py-2.5">
         <p className="text-sm font-bold text-[#2C3E6B]">{formatWellnessDateYmd(log.dateYmd)}</p>
         <span
@@ -951,12 +1005,18 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     data: progressiveData,
     err: loadErr,
     loading: sectionLoading,
+    loaded: sectionsLoaded,
     reloadAll,
     patchPatient,
     loadSection,
     ensureSection,
     profileReady,
   } = useDoctorPatientDetail(patientId);
+
+  const loadScans = useCallback(() => {
+    void loadSection("scans", { force: true });
+  }, [loadSection]);
+
   const [reportDeletingKey, setReportDeletingKey] = useState<string | null>(null);
   const data = progressiveData as DetailJson | null;
   const err = loadErr;
@@ -1030,6 +1090,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     string | null
   >(null);
   const [openScanReportId, setOpenScanReportId] = useState<number | null>(null);
+  const [scansSectionExpanded, setScansSectionExpanded] = useState(true);
   const [chatIsRecording, setChatIsRecording] = useState(false);
   const [chatRecordElapsed, setChatRecordElapsed] = useState(0);
   const [chatVoicePreview, setChatVoicePreview] = useState<{
@@ -1199,7 +1260,6 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     const tab = TABS.find((t) => t.key === activeTab);
     if (tab?.lazySection) ensureSection(tab.lazySection);
     if (activeTab === "overview" || activeTab === "routine") {
-      ensureSection("scans");
       ensureSection("activity");
     }
     if (activeTab === "overview") {
@@ -1207,7 +1267,6 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       if (overviewSubTab === "wellness" || overviewSubTab === "clinical") {
         ensureSection("activity");
       }
-      if (overviewSubTab === "scans") ensureSection("scans");
     }
     if (activeTab === "notes") ensureSection("activity");
   }, [activeTab, overviewSubTab, ensureSection]);
@@ -1959,6 +2018,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const clinicVisited = clinicVisitedOptimistic ?? Boolean(p.clinicVisitedAt);
 
   const sectionBusy = (s: DoctorPatientDetailSection) => sectionLoading[s];
+  const scansLoaded = sectionsLoaded.scans;
 
   const scheduleEvents = data.scheduleEvents ?? [];
   const preCareEvents = scheduleEvents.filter(
@@ -1975,10 +2035,29 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const renderReportDeleteButton = (
     kind: "weekly" | "monthly" | "legacy-scan" | "scan",
     id: string,
-    label: string
+    label: string,
+    compact = false
   ) => {
     const key = `${kind}:${id}`;
     const busy = reportDeletingKey === key;
+    if (compact) {
+      return (
+        <button
+          type="button"
+          disabled={Boolean(reportDeletingKey)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void deletePatientReport(kind, id, label);
+          }}
+          title={busy ? "Deleting…" : "Delete"}
+          aria-label={busy ? "Deleting…" : `Delete ${label}`}
+          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-red-200/80 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+        >
+          <Trash2 className="h-3 w-3" aria-hidden />
+        </button>
+      );
+    }
     return (
       <button
         type="button"
@@ -1995,6 +2074,32 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       </button>
     );
   };
+
+  const profileLine = [p.skinType, p.primaryGoal].filter(Boolean).join(" · ") || "—";
+  const routineSummary = p.routineRemindersEnabled
+    ? `AM ${p.routineAmReminderHm} · PM ${p.routinePmReminderHm}`
+    : "Off";
+  const memberSince = new Date(p.createdAt).toLocaleDateString();
+  const ageLabel =
+    p.age != null ? `age: ${p.age} ${p.age === 1 ? "year" : "years"}` : null;
+  const streakRatio =
+    p.streakLongest > 0
+      ? Math.min(100, Math.round((p.streakCurrent / p.streakLongest) * 100))
+      : p.streakCurrent > 0
+        ? 100
+        : 0;
+  const severityScoreMap: Record<string, number> = {
+    none: 0,
+    very_low: 15,
+    low: 25,
+    mild: 35,
+    moderate: 55,
+    medium: 55,
+    high: 78,
+    severe: 92,
+  };
+  const severityKey = (p.concernSeverity ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+  const concernSeverityPct = severityScoreMap[severityKey] ?? 40;
 
   return (
     <article className="space-y-5">
@@ -2032,39 +2137,54 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </p>
       ) : null}
 
-      <header className={`overflow-hidden ${doctorCardClass}`}>
-        <div className="flex flex-wrap items-center gap-3 border-l-4 border-[#2C3E6B] px-4 py-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-lg font-bold text-white shadow-sm">
+      <header className={`overflow-hidden ${doctorPatientHeaderClass}`}>
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-[#2C3E6B] shadow-sm">
             {p.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">{p.name}</h1>
+              <h1 className="text-xl font-bold tracking-tight text-white">{p.name}</h1>
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                   p.onboardingComplete
-                    ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
-                    : "bg-amber-50 text-amber-800"
+                    ? "bg-white/15 text-white"
+                    : "bg-amber-400/90 text-amber-950"
                 }`}
               >
                 {p.onboardingComplete ? "Onboarded" : "In progress"}
               </span>
               {clinicVisited ? (
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-semibold text-white">
                   Visited
                 </span>
               ) : null}
             </div>
             {(p.phone || p.phoneCountryCode || p.email) ? (
-              <p className="mt-0.5 truncate text-sm text-slate-600">
+              <p className="mt-0.5 truncate text-sm text-white/75">
                 {[p.phoneCountryCode, p.phone].filter(Boolean).join(" ")}
                 {p.phone && p.email ? " · " : null}
                 {p.email}
               </p>
             ) : null}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">
+                Skin & concern
+              </span>
+              <p className="min-w-0 text-sm font-medium leading-snug text-white/90">{profileLine}</p>
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 border-l border-white/40 pl-3">
-            <DoctorIconAction icon={MessageSquare} label="Chat" onClick={openChatPanel} />
+          <div className="flex shrink-0 flex-col items-end gap-2 border-l border-white/20 pl-3 sm:flex-row sm:items-center">
+            {ageLabel ? (
+              <p className="text-sm font-medium text-white/80">{ageLabel}</p>
+            ) : null}
+            <div className="flex items-center gap-2">
+            <DoctorIconAction
+              icon={MessageSquare}
+              label="Chat"
+              onClick={openChatPanel}
+              className="border border-white/25 bg-white/10 text-white hover:bg-white/20"
+            />
             <button
               type="button"
               disabled={clinicVisitedBusy}
@@ -2101,52 +2221,106 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               className={`min-w-[5.5rem] rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                 clinicVisited
                   ? "border border-emerald-400 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500"
-                  : "border border-slate-300/90 bg-white/80 text-slate-800 hover:bg-white"
+                  : "border border-white/30 bg-white/10 text-white hover:bg-white/20"
               }`}
             >
               {clinicVisitedBusy ? "Saving…" : clinicVisited ? "Visited ✓" : "Mark visited"}
             </button>
+            </div>
           </div>
         </div>
 
-        <dl className={`grid grid-cols-2 gap-x-4 gap-y-2.5 ${doctorInsetStripClass} px-4 py-2.5 sm:grid-cols-3 lg:grid-cols-5`}>
-          <DoctorMetaCell label="Age" value={p.age ?? "—"} />
-          <DoctorMetaCell
-            label="Skin"
-            value={[p.skinType, p.primaryGoal].filter(Boolean).join(" · ") || "—"}
-          />
-          <DoctorMetaCell
-            label="Concern"
-            value={`${p.primaryConcern ?? "—"}${p.concernSeverity ? ` (${p.concernSeverity})` : ""}`}
-          />
-          <DoctorMetaCell
-            label="Sensitivity"
-            value={[p.skinSensitivity, p.fitzpatrick ? `Fitz ${p.fitzpatrick}` : null]
-              .filter(Boolean)
-              .join(" · ") || "—"}
-          />
-          <DoctorMetaCell
-            label="Routine"
-            value={
-              p.routineRemindersEnabled
-                ? `AM ${p.routineAmReminderHm} · PM ${p.routinePmReminderHm}`
-                : "Off"
-            }
-          />
-          <DoctorMetaCell
-            label="Triggers"
-            value={p.triggers?.length ? p.triggers.join(", ") : "—"}
-            className="sm:col-span-2 lg:col-span-2"
-          />
-          <DoctorMetaCell
-            label="Streak"
-            value={`${p.streakCurrent} current · ${p.streakLongest} best`}
-          />
-          <DoctorMetaCell
-            label="Member since"
-            value={new Date(p.createdAt).toLocaleDateString()}
-          />
-        </dl>
+        <section className="border-t border-white/15 px-4 py-3">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-8">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
+                Current streak
+              </p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-[#F2E9D8]">
+                {p.streakCurrent}
+                <span className="ml-0.5 text-sm font-semibold text-[#F2E9D8]/85">days</span>
+              </p>
+              <div
+                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/15"
+                role="img"
+                aria-label={`${streakRatio}% of personal best streak`}
+              >
+                <div
+                  className="h-full rounded-full bg-[#F6F4EB]/90 transition-[width]"
+                  style={{ width: `${streakRatio}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-white/50">
+                Best {p.streakLongest} days
+                {p.streakLongest > 0 ? ` · ${streakRatio}% of best` : null}
+              </p>
+            </div>
+
+            <div className="flex min-w-0 items-start gap-2.5">
+              <div
+                className="relative h-11 w-11 shrink-0"
+                role="img"
+                aria-label={`Concern severity ${concernSeverityPct}%`}
+              >
+                <svg viewBox="0 0 36 36" className="h-11 w-11 -rotate-90" aria-hidden>
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="14"
+                    fill="none"
+                    className="stroke-white/20"
+                    strokeWidth="3"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="14"
+                    fill="none"
+                    className="stroke-[#F2E9D8]"
+                    strokeWidth="3"
+                    pathLength="100"
+                    strokeDasharray={`${concernSeverityPct} ${100 - concernSeverityPct}`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold tabular-nums text-white">
+                  {concernSeverityPct}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
+                  Concern severity
+                </p>
+                <p className="mt-0.5 text-sm font-semibold capitalize text-white">
+                  {p.concernSeverity ?? "Not set"}
+                </p>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                  <div
+                    className="h-full rounded-full bg-[#F2E9D8]/90 transition-[width]"
+                    style={{ width: `${concernSeverityPct}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-0 lg:border-l lg:border-white/10 lg:pl-6">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">Routine</p>
+              <p className="mt-0.5 text-sm font-semibold text-white">
+                {p.routineRemindersEnabled ? "Active" : "Off"}
+              </p>
+              {p.routineRemindersEnabled ? (
+                <p className="mt-0.5 text-[11px] text-white/65">{routineSummary}</p>
+              ) : null}
+            </div>
+
+            <div className="min-w-0 lg:border-l lg:border-white/10 lg:pl-6">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
+                Member since
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-white">{memberSince}</p>
+            </div>
+          </div>
+        </section>
       </header>
 
       <div
@@ -2180,7 +2354,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       {activeTab === "overview" && (
       <div className="space-y-5">
       {overviewSubTab === "schedule" && (
-      <div className={`${doctorCardClass} p-5`}>
+      <div className={`${doctorPatientPageCardClass} p-5`}>
         <div className="mb-4 flex items-center gap-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
             <CalendarDays className="h-4 w-4" aria-hidden />
@@ -2189,7 +2363,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </div>
 
         <div className="mb-6 grid gap-4 lg:grid-cols-2 lg:items-start">
-        <div className={`space-y-3 ${doctorCardMutedClass} p-4`}>
+        <div className={`space-y-3 ${doctorSchedulePanelClass} p-4`}>
           <h3 className="text-sm font-semibold text-[#2C3E6B]">Book visit</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
@@ -2200,7 +2374,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 type="date"
                 value={doctorApptDateYmd}
                 onChange={(e) => setDoctorApptDateYmd(e.target.value)}
-                className={doctorFormInputClass}
+                className={doctorScheduleFormInputClass}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -2211,7 +2385,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 type="time"
                 value={doctorApptTimeHm}
                 onChange={(e) => setDoctorApptTimeHm(e.target.value)}
-                className={`${doctorFormInputClass} tabular-nums`}
+                className={`${doctorScheduleFormInputClass} tabular-nums`}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -2225,7 +2399,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     e.target.value as "consultation" | "follow-up" | "scan-review"
                   )
                 }
-                className={doctorFormInputClass}
+                className={doctorScheduleFormInputClass}
               >
                 <option value="consultation">Consultation</option>
                 <option value="follow-up">Follow-up</option>
@@ -2240,7 +2414,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 type="time"
                 value={doctorApptEndHm}
                 onChange={(e) => setDoctorApptEndHm(e.target.value)}
-                className={`${doctorFormInputClass} tabular-nums`}
+                className={`${doctorScheduleFormInputClass} tabular-nums`}
               />
             </label>
           </div>
@@ -2311,10 +2485,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           </div>
         </div>
 
-          <div className={`space-y-4 ${doctorCardMutedClass} p-4`}>
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold text-[#2C3E6B]">Pre / post reminders</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-[#2C3E6B]/15 bg-[#2C3E6B]/5 p-3">
+          <div className={`${doctorSchedulePanelClass} p-3`}>
             <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">
               Pre
             </p>
@@ -2327,7 +2501,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   type="date"
                   value={carePreDateYmd}
                   onChange={(e) => setCarePreDateYmd(e.target.value)}
-                  className={doctorFormInputClass}
+                  className={doctorScheduleFormInputClass}
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -2338,7 +2512,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   type="time"
                   value={carePreTimeHm}
                   onChange={(e) => setCarePreTimeHm(e.target.value)}
-                  className={`${doctorFormInputClass} tabular-nums`}
+                  className={`${doctorScheduleFormInputClass} tabular-nums`}
                 />
               </label>
             </div>
@@ -2351,7 +2525,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 value={carePreTitle}
                 onChange={(e) => setCarePreTitle(e.target.value)}
                 placeholder="Before procedure"
-                className={doctorFormInputClass}
+                className={doctorScheduleFormInputClass}
               />
             </label>
             <button
@@ -2381,8 +2555,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             ) : null}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+          <div className={`${doctorSchedulePanelClass} p-3`}>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">
               Post
             </p>
             <div className="grid gap-2">
@@ -2394,7 +2568,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   type="date"
                   value={carePostDateYmd}
                   onChange={(e) => setCarePostDateYmd(e.target.value)}
-                  className={doctorFormInputClass}
+                  className={doctorScheduleFormInputClass}
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -2405,7 +2579,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   type="time"
                   value={carePostTimeHm}
                   onChange={(e) => setCarePostTimeHm(e.target.value)}
-                  className={`${doctorFormInputClass} tabular-nums`}
+                  className={`${doctorScheduleFormInputClass} tabular-nums`}
                 />
               </label>
             </div>
@@ -2418,7 +2592,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 value={carePostTitle}
                 onChange={(e) => setCarePostTitle(e.target.value)}
                 placeholder="After procedure"
-                className={doctorFormInputClass}
+                className={doctorScheduleFormInputClass}
               />
             </label>
             <button
@@ -2451,7 +2625,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           </div>
         </div>
 
-        <div className={`mb-6 ${doctorCardMutedClass} p-4`}>
+        <div className="mb-6">
           <h3 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Visits</h3>
           {(data.appointments ?? []).length === 0 ? (
             <p className="text-sm text-slate-500">No appointments on file.</p>
@@ -2460,7 +2634,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               {(data.appointments ?? []).map((a) => (
                 <li
                   key={a.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/50 bg-white/70 px-3 py-2.5 text-sm"
+                  className={`flex flex-wrap items-center justify-between gap-2 text-sm ${doctorVisitRowClass}`}
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <Calendar className="h-4 w-4 shrink-0 text-[#2C3E6B]" aria-hidden />
@@ -2503,7 +2677,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               )}
             </div>
             <div>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">
                 Post
               </p>
               {postCareEvents.length === 0 ? (
@@ -2534,7 +2708,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       )}
 
       {overviewSubTab === "wellness" && (
-      <div className={`${doctorCardClass} p-5`}>
+      <div className={`${doctorPatientPageCardClass} p-5`}>
         <div className="mb-4 flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
             <HeartPulse className="h-5 w-5" aria-hidden />
@@ -2551,7 +2725,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         {sectionBusy("activity") && data.dailyLogs === undefined ? (
           <DoctorInlineLoader label="Loading wellness logs…" compact />
         ) : (data.dailyLogs ?? []).length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-200/80 bg-white/40 px-4 py-10 text-center text-sm text-slate-500">
+          <p className={`${doctorEmptyStateClass} px-4 py-10`}>
             No daily logs yet.
           </p>
         ) : (
@@ -2570,11 +2744,64 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       )}
 
       {overviewSubTab === "scans" && (
-      <div className="space-y-4">
-        {sectionBusy("scans") && data.scans === undefined ? (
-          <DoctorInlineLoader label="Loading scans…" compact />
+      <div className={`${doctorPatientPageCardClass} space-y-4 p-5`}>
+        <div className="flex items-center justify-between gap-2 border-b border-[#2C3E6B]/10 pb-3">
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            onClick={() => setScansSectionExpanded((v) => !v)}
+            aria-expanded={scansSectionExpanded}
+          >
+            <span className={`h-7 w-7 rounded-lg ${doctorNavyIconChipClass}`}>
+              <ScanFace className="h-3.5 w-3.5" aria-hidden />
+            </span>
+            <span className="text-sm font-semibold text-[#2C3E6B]">Scans</span>
+            {scansLoaded && (data.scans ?? []).length > 0 ? (
+              <span className="rounded-full bg-[#2C3E6B] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                {(data.scans ?? []).length}
+              </span>
+            ) : null}
+            <ChevronDown
+              className={`ml-auto h-4 w-4 shrink-0 text-[#2C3E6B]/60 transition ${scansSectionExpanded ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          {!scansLoaded ? (
+            <button
+              type="button"
+              disabled={sectionBusy("scans")}
+              onClick={loadScans}
+              className={`${doctorBtnPrimarySmClass} shrink-0 inline-flex items-center gap-1`}
+            >
+              <ScanFace className="h-3 w-3" aria-hidden />
+              Load scans
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold text-[#2C3E6B]/70 hover:text-[#2C3E6B]"
+            onClick={() => {
+              setScansSectionExpanded((v) => {
+                if (v) setOpenScanReportId(null);
+                return !v;
+              });
+            }}
+          >
+            {scansSectionExpanded ? "Hide" : "Show"}
+          </button>
+        </div>
+        {!scansSectionExpanded ? (
+          scansLoaded && (data.scans ?? []).length > 0 ? (
+            <p className="text-xs text-[#2C3E6B]/50">
+              {(data.scans ?? []).length} scan{(data.scans ?? []).length === 1 ? "" : "s"} hidden.
+            </p>
+          ) : null
+        ) : !scansLoaded ? (
+          sectionBusy("scans") ? (
+            <DoctorInlineLoader label="Loading scans…" compact />
+          ) : null
         ) : (data.scans ?? []).length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
+          <div className={`${doctorEmptyStateClass} rounded-2xl px-6 py-12`}>
             <p className="text-sm text-slate-500">No face scans yet.</p>
           </div>
         ) : (
@@ -2582,26 +2809,26 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             <p className="text-sm text-slate-600">
               Latest scans — open <button type="button" onClick={() => setActiveTab("reports")} className="font-semibold text-[#2C3E6B] underline">Reports</button> for full detail and kAI parameters.
             </p>
-            <ul className="grid gap-3 sm:grid-cols-2">
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {(data.scans ?? []).slice(0, 6).map((s) => (
                 <li
                   key={s.id}
-                  className={`flex gap-3 ${doctorCardClass} p-4`}
+                  className={`flex gap-2 ${doctorPatientPagePanelClass} p-2`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={doctorScanAngleSrc(s.imageDoctorUrl, 0)}
                     alt=""
-                    className="h-20 w-16 shrink-0 rounded-lg object-cover"
+                    className="h-14 w-12 shrink-0 rounded-md object-cover"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900">
+                    <p className="truncate text-xs font-semibold text-slate-900">
                       {s.scanName ?? `Scan #${s.id}`}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-[10px] text-slate-500">
                       {new Date(s.createdAt).toLocaleString()}
                     </p>
-                    <p className="mt-1 text-sm font-medium text-[#2C3E6B]">
+                    <p className="mt-0.5 text-[10px] font-medium text-[#2C3E6B]">
                       Overall {s.overallScore}
                       <span className="text-slate-400"> · </span>
                       Acne {s.acne} · Pigment {s.pigmentation}
@@ -2616,8 +2843,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       )}
 
       {overviewSubTab === "clinical" && (
-      <div className="space-y-5">
-      <div className={`${doctorCardClass} p-5`}>
+      <div className={`${doctorPatientPageCardClass} space-y-5 p-5`}>
+      <div className="space-y-4">
         <div className="mb-4 flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
             <ClipboardList className="h-5 w-5" aria-hidden />
@@ -2632,7 +2859,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         {sectionBusy("activity") && data.questionnaireAnswers === undefined ? (
           <DoctorInlineLoader label="Loading questionnaire…" compact />
         ) : (data.questionnaireAnswers ?? []).length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-200/80 bg-white/40 px-4 py-10 text-center text-sm text-slate-500">
+          <p className={`${doctorEmptyStateClass} px-4 py-10`}>
             No questionnaire answers stored.
           </p>
         ) : (
@@ -2644,7 +2871,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </div>
 
-      <div className={`${doctorCardClass} p-5`}>
+      <div className="space-y-4">
         <div className="mb-4 flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
             <Sparkles className="h-5 w-5" aria-hidden />
@@ -2657,11 +2884,11 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           </div>
         </div>
         {!data.skinDnaCard ? (
-          <p className="rounded-xl border border-dashed border-slate-200/80 bg-white/40 px-4 py-8 text-center text-sm text-slate-500">
+          <p className={`${doctorEmptyStateClass} px-4 py-8`}>
             No Skin DNA summary yet.
           </p>
         ) : (
-          <dl className="grid gap-2 sm:grid-cols-2">
+          <dl className={`grid gap-2 sm:grid-cols-2 ${doctorPatientPagePanelClass} p-4`}>
             <DoctorMetaCell
               label="Skin type"
               value={data.skinDnaCard.skinType ?? "—"}
@@ -2700,19 +2927,14 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
       {/* ══════════════════════ TAB: ROUTINE ══════════════════════ */}
       {activeTab === "routine" && (
-      <div className="grid gap-3 lg:grid-cols-2">
-      <section className={`lg:col-span-2 ${doctorCardMutedClass} p-3 shadow-sm`}>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div className={`${doctorPatientPageCardClass} space-y-3 p-4`}>
+      <section className={`${doctorPatientPagePanelClass} p-4`}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
               <ListChecks className="h-3.5 w-3.5" aria-hidden />
             </span>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">AM/PM checklist</h2>
-              <p className="text-[11px] text-slate-500">
-                Today {data.calendarTodayYmd ?? "—"} · {p.timezone}
-              </p>
-            </div>
+            <h2 className="text-sm font-semibold text-[#2C3E6B]">AM/PM checklist</h2>
           </div>
           {p.onboardingComplete ? (
             <span
@@ -2722,21 +2944,21 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   : "bg-amber-50 text-amber-900"
               }`}
             >
-              {p.routinePlanClinicianLocked ? "Saved on dashboard" : "Awaiting save"}
+              {p.routinePlanClinicianLocked ? "Saved" : "Draft"}
             </span>
           ) : null}
         </div>
 
         {!p.onboardingComplete ? (
-          <p className="rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-1.5 text-xs text-amber-950">
-            Complete onboarding before assigning a routine plan.
+          <p className="rounded-lg border border-amber-200 bg-amber-50/90 px-2.5 py-1.5 text-xs text-amber-950">
+            Finish onboarding first.
           </p>
         ) : (
           <>
-            <div className="grid gap-2 md:grid-cols-2">
+            <div className="flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] md:items-stretch md:gap-0">
               {/* AM steps */}
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center justify-between gap-1 border-b border-slate-100 pb-1">
+              <div className={`${doctorRoutineAmPmColumnClass} md:pr-4`}>
+                <div className="mb-2 flex items-center justify-between gap-1">
                   <span className="flex items-center gap-1 text-xs font-semibold text-[#2C3E6B]">
                     <Sunrise className="h-3.5 w-3.5" aria-hidden />
                     AM
@@ -2747,23 +2969,16 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       setRoutinePlanTextDirty(true);
                       setRoutinePlanAmRows((prev) => [...prev, { name: "", product: "", dosage: "" }]);
                     }}
-                    className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-slate-300 px-1.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                    className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-[#2C3E6B]/25 px-1.5 text-[10px] font-semibold text-[#2C3E6B]/70 hover:bg-[#F6F4EB]"
                   >
                     <Plus className="h-3 w-3" aria-hidden />
                     Add step
                   </button>
                 </div>
-                <div className="mb-0.5 grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] gap-0.5 px-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
-                  <span>#</span>
-                  <span>Step</span>
-                  <span>Product</span>
-                  <span>Dose</span>
-                  <span />
-                </div>
                 {routinePlanAmRows.map((row, i) => (
                   <div
                     key={`am-row-${i}`}
-                    className="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-0.5 rounded-md border border-slate-100 bg-slate-50/60 px-0.5 py-0.5"
+                    className="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-1 py-1"
                   >
                     <span className="text-center text-[10px] font-bold text-[#2C3E6B]">{i + 1}</span>
                     <input
@@ -2774,8 +2989,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           prev.map((r, j) => (j === i ? { ...r, name: e.target.value } : r))
                         );
                       }}
-                      className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
-                      placeholder="Cleanser"
+                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
+                      placeholder="Step"
                     />
                     <input
                       value={row.product}
@@ -2785,7 +3000,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           prev.map((r, j) => (j === i ? { ...r, product: e.target.value } : r))
                         );
                       }}
-                      className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
+                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
                       placeholder="Product"
                     />
                     <input
@@ -2796,7 +3011,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           prev.map((r, j) => (j === i ? { ...r, dosage: e.target.value } : r))
                         );
                       }}
-                      className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
+                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
                       placeholder="Dose"
                     />
                     <button
@@ -2814,10 +3029,15 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   </div>
                 ))}
               </div>
+              <div
+                className="h-px w-full shrink-0 bg-[#2C3E6B]/50 md:h-auto md:w-px md:self-stretch"
+                role="separator"
+                aria-hidden
+              />
               {/* PM steps */}
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center justify-between gap-1 border-b border-slate-100 pb-1">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+              <div className={`${doctorRoutineAmPmColumnClass} md:pl-4`}>
+                <div className="mb-2 flex items-center justify-between gap-1">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-[#2C3E6B]">
                     <Sunset className="h-3.5 w-3.5" aria-hidden />
                     PM
                   </span>
@@ -2827,25 +3047,18 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       setRoutinePlanTextDirty(true);
                       setRoutinePlanPmRows((prev) => [...prev, { name: "", product: "", dosage: "" }]);
                     }}
-                    className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-slate-300 px-1.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                    className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-[#2C3E6B]/25 px-1.5 text-[10px] font-semibold text-[#2C3E6B]/70 hover:bg-[#F6F4EB]"
                   >
                     <Plus className="h-3 w-3" aria-hidden />
                     Add step
                   </button>
                 </div>
-                <div className="mb-0.5 grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] gap-0.5 px-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
-                  <span>#</span>
-                  <span>Step</span>
-                  <span>Product</span>
-                  <span>Dose</span>
-                  <span />
-                </div>
                 {routinePlanPmRows.map((row, i) => (
                   <div
                     key={`pm-row-${i}`}
-                    className="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-0.5 rounded-md border border-slate-100 bg-slate-50/60 px-0.5 py-0.5"
+                    className="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-1 py-1"
                   >
-                    <span className="text-center text-[10px] font-bold text-slate-600">{i + 1}</span>
+                    <span className="text-center text-[10px] font-bold text-[#2C3E6B]">{i + 1}</span>
                     <input
                       value={row.name}
                       onChange={(e) => {
@@ -2854,8 +3067,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           prev.map((r, j) => (j === i ? { ...r, name: e.target.value } : r))
                         );
                       }}
-                      className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
-                      placeholder="Cleanser"
+                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
+                      placeholder="Step"
                     />
                     <input
                       value={row.product}
@@ -2865,7 +3078,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           prev.map((r, j) => (j === i ? { ...r, product: e.target.value } : r))
                         );
                       }}
-                      className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
+                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
                       placeholder="Product"
                     />
                     <input
@@ -2876,7 +3089,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           prev.map((r, j) => (j === i ? { ...r, dosage: e.target.value } : r))
                         );
                       }}
-                      className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
+                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
                       placeholder="Dose"
                     />
                     <button
@@ -2895,7 +3108,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 ))}
               </div>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2 overflow-visible">
               <button
                 type="button"
                 disabled={clinicianBusy}
@@ -2944,10 +3157,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     }
                   })();
                 }}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2C3E6B] px-2.5 text-xs font-semibold text-white hover:bg-[#243356] disabled:opacity-50"
+                className={doctorBtnPrimarySmClass}
               >
-                <Save className="h-3.5 w-3.5" aria-hidden />
-                {clinicianBusy ? "Saving…" : "Save checklist"}
+                <Save className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>{clinicianBusy ? "Saving…" : "Save"}</span>
               </button>
               {p.routinePlanClinicianLocked ||
               (p.routinePlanAmItems?.length ?? 0) > 0 ||
@@ -2994,7 +3207,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-200 px-2.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  Remove checklist
+                  Remove
                 </button>
               ) : null}
             </div>
@@ -3002,64 +3215,62 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </section>
 
-      <section className={`${doctorCardMutedClass} p-3 shadow-sm`}>
-        <div className="mb-2 flex items-center gap-2">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+      <section className={`${doctorPatientPagePanelClass} min-w-0 p-4`}>
+        <div className="mb-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
             <Bell className="h-3.5 w-3.5" aria-hidden />
           </span>
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">Reminders</h2>
-            <p className="text-[11px] text-slate-500">Patient local time · Clinic Support chat</p>
-          </div>
+          <h2 className="text-sm font-semibold text-[#2C3E6B]">Reminders</h2>
         </div>
-        <label className="mb-2 flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-700">
+        <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs font-medium text-[#2C3E6B]/90">
           <input
             type="checkbox"
             checked={routineEnabled}
             onChange={(e) => setRoutineEnabled(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-slate-300 text-[#2C3E6B] focus:ring-[#2C3E6B]/25"
+            className="h-3.5 w-3.5 rounded border-[#2C3E6B]/30 text-[#2C3E6B] focus:ring-[#2C3E6B]/25"
           />
-          <span>Send automatic AM/PM routine nudges in chat</span>
+          <span>Chat nudges</span>
         </label>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-3">
           <label className="block min-w-0">
-            <span className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
-              <Sunrise className="h-3 w-3 text-[#2C3E6B]" aria-hidden />
-              AM time (HH:mm)
+            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#2C3E6B]">
+              <Sunrise className="h-3 w-3" aria-hidden />
+              AM
             </span>
             <input
               value={routineAmHm}
               onChange={(e) => setRoutineAmHm(e.target.value)}
               placeholder="08:30"
-              className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 font-mono text-xs tabular-nums text-slate-900 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
+              className={`${doctorPatientPageFormInputClass} py-1.5 font-mono text-xs tabular-nums`}
             />
           </label>
           <label className="block min-w-0">
-            <span className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
-              <Sunset className="h-3 w-3 text-slate-600" aria-hidden />
-              PM time (HH:mm)
+            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#2C3E6B]">
+              <Sunset className="h-3 w-3" aria-hidden />
+              PM
             </span>
             <input
               value={routinePmHm}
               onChange={(e) => setRoutinePmHm(e.target.value)}
               placeholder="22:00"
-              className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 font-mono text-xs tabular-nums text-slate-900 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
+              className={`${doctorPatientPageFormInputClass} py-1.5 font-mono text-xs tabular-nums`}
             />
           </label>
           <label className="block min-w-0">
-            <span className="mb-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
-              <Globe2 className="h-3 w-3 text-[#2C3E6B]" aria-hidden />
-              Timezone (IANA)
+            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#2C3E6B]">
+              <Globe2 className="h-3 w-3" aria-hidden />
+              TZ
             </span>
             <input
               value={routineTz}
               onChange={(e) => setRoutineTz(e.target.value)}
               placeholder="Asia/Kolkata"
-              className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
+              className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
             />
           </label>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
           <button
             type="button"
             disabled={clinicianBusy}
@@ -3096,10 +3307,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 }
               })();
             }}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2C3E6B] px-2.5 text-xs font-semibold text-white hover:bg-[#243356] disabled:opacity-50"
+            className={`${doctorBtnPrimaryClass} inline-flex h-8 shrink-0 items-center gap-1.5 px-2.5 py-0 text-xs`}
           >
             <Save className="h-3.5 w-3.5" aria-hidden />
-            {clinicianBusy ? "Saving…" : "Save schedule"}
+            {clinicianBusy ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
@@ -3135,10 +3346,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 }
               })();
             }}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className={`${doctorPatientPageGhostBtnClass} inline-flex h-8 shrink-0 items-center gap-1.5`}
           >
-            <Sunrise className="h-3.5 w-3.5 text-[#2C3E6B]" aria-hidden />
-            Send AM now
+            <Sunrise className="h-3.5 w-3.5" aria-hidden />
+            AM now
           </button>
           <button
             type="button"
@@ -3174,84 +3385,95 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 }
               })();
             }}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className={`${doctorPatientPageGhostBtnClass} inline-flex h-8 shrink-0 items-center gap-1.5`}
           >
             <Sunset className="h-3.5 w-3.5" aria-hidden />
-            Send PM now
+            PM now
           </button>
         </div>
       </section>
 
-      <section className={`${doctorCardMutedClass} p-3 shadow-sm`}>
-        <div className="mb-2 flex items-center justify-between gap-2">
+      <section className={`${doctorPatientPagePanelClass} min-w-0 p-4`}>
+        <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
               <Mic className="h-3.5 w-3.5" aria-hidden />
             </span>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Feedback</h2>
-              <p className="text-[11px] text-slate-500">Text and/or voice · patient notified</p>
-            </div>
+            <h2 className="text-sm font-semibold text-[#2C3E6B]">Feedback</h2>
           </div>
           {data.recentVoiceNotes && data.recentVoiceNotes.length > 0 ? (
-            <span className="text-[10px] font-medium text-slate-500">
-              {data.recentVoiceNotes.length} recent voice note{data.recentVoiceNotes.length === 1 ? "" : "s"}
+            <span className="text-[10px] font-medium text-[#2C3E6B]/50">
+              {data.recentVoiceNotes.length} voice
             </span>
           ) : null}
         </div>
 
         <div className="space-y-2">
-          <label className="block">
-            <span className="mb-1 text-[11px] font-medium text-slate-600">Feedback text</span>
-            <textarea
-              value={generalFeedbackText}
-              onChange={(e) => {
-                setGeneralFeedbackText(e.target.value);
-                setGeneralFeedbackDirty(true);
-              }}
-              rows={3}
-              className="w-full resize-y rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]/15"
-              placeholder="Guidance, progress, next steps…"
-            />
-          </label>
+          <textarea
+            value={generalFeedbackText}
+            onChange={(e) => {
+              setGeneralFeedbackText(e.target.value);
+              setGeneralFeedbackDirty(true);
+            }}
+            rows={3}
+            aria-label="Feedback"
+            className={`${doctorPatientPageFormInputClass} resize-y py-2 text-sm`}
+            placeholder="Guidance, progress, next steps…"
+          />
 
-          <label className="block">
-            <span className="mb-1 text-[11px] font-medium text-slate-600">Link to scan (optional)</span>
+          {!scansLoaded ? (
+            <p className="text-xs text-[#2C3E6B]/55">
+              {sectionBusy("scans") ? (
+                "Loading scans…"
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={loadScans}
+                    className="font-medium text-[#2C3E6B] underline decoration-[#2C3E6B]/30 underline-offset-2 hover:decoration-[#2C3E6B]"
+                  >
+                    Load scans
+                  </button>{" "}
+                  to link one (optional).
+                </>
+              )}
+            </p>
+          ) : (
             <select
               value={selectedScanId}
               onChange={(e) => setSelectedScanId(e.target.value)}
               disabled={busy || isRecording}
-              className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 focus:border-[#2C3E6B] focus:outline-none"
+              aria-label="Link scan"
+              className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
             >
-              <option value="">None</option>
+              <option value="">Scan (optional)</option>
               {(data.scans ?? []).map((s) => (
                 <option key={s.id} value={String(s.id)}>
                   {s.scanName ?? `Scan #${s.id}`} · {s.overallScore}
                 </option>
               ))}
             </select>
-          </label>
+          )}
 
-          <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-2">
-            <p className="mb-1.5 text-[11px] font-medium text-slate-600">Voice note (optional)</p>
+          <div className="min-w-0">
             {voicePreview ? (
               <div className="space-y-1.5">
                 <audio controls src={voicePreview.url} className="h-8 w-full" />
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-0 flex-wrap gap-2">
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void sendVoiceBlob(voicePreview.blob)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2C3E6B] px-2.5 text-xs font-semibold text-white hover:bg-[#243356] disabled:opacity-50"
+                    className={`${doctorBtnPrimaryClass} inline-flex h-8 shrink-0 items-center gap-1.5 px-2.5 py-0 text-xs`}
                   >
                     <Send className="h-3.5 w-3.5" aria-hidden />
-                    {generalFeedbackText.trim() ? "Send text + voice" : "Send voice only"}
+                    {generalFeedbackText.trim() ? "Send both" : "Send voice"}
                   </button>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={clearVoicePreview}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    className={`${doctorPatientPageGhostBtnClass} inline-flex h-8 shrink-0 items-center gap-1.5`}
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
                     Discard
@@ -3259,19 +3481,22 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 </div>
               </div>
             ) : !isRecording ? (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  title={`Up to ${MAX_RECORD_SECONDS / 60} min`}
                   onClick={() => void startMicRecording()}
                   disabled={busy}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg bg-rose-600 px-2.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-50"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-rose-500 px-2.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50"
                 >
                   <Circle className="h-3 w-3 fill-current" aria-hidden />
-                  Record voice
+                  Record
                 </button>
-                <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                <label
+                  className={`${doctorPatientPageGhostBtnClass} inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 py-0`}
+                >
                   <Paperclip className="h-3 w-3" aria-hidden />
-                  Upload audio
+                  Upload
                   <input
                     type="file"
                     accept="audio/*"
@@ -3290,10 +3515,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       type="button"
                       disabled={busy || !generalFeedbackText.trim()}
                       onClick={() => void sendTextOnlyFeedback()}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2C3E6B] px-2.5 text-xs font-semibold text-white hover:bg-[#243356] disabled:opacity-50"
+                      className={`${doctorBtnPrimaryClass} inline-flex h-8 shrink-0 items-center gap-1.5 px-2.5 py-0 text-xs`}
                     >
                       <Send className="h-3.5 w-3.5" aria-hidden />
-                      {busy ? "Sending…" : "Send text"}
+                      {busy ? "Sending…" : "Send"}
                     </button>
                     <button
                       type="button"
@@ -3302,17 +3527,17 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         setGeneralFeedbackText("");
                         setGeneralFeedbackDirty(true);
                       }}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      className={`${doctorPatientPageGhostBtnClass} inline-flex h-8 shrink-0 items-center gap-1.5`}
                     >
                       <Eraser className="h-3.5 w-3.5" aria-hidden />
-                      Clear text
+                      Clear
                     </button>
                   </>
                 ) : null}
               </div>
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="tabular-nums text-sm font-bold text-rose-700">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="tabular-nums text-sm font-bold text-rose-600">
                   {formatMmSs(recordElapsed)}
                 </span>
                 <button
@@ -3320,16 +3545,13 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   title="Stop recording"
                   aria-label="Stop recording"
                   onClick={stopMicRecording}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                  className={`${doctorPatientPageGhostBtnClass} inline-flex h-8 shrink-0 items-center gap-1.5`}
                 >
                   <Square className="h-3 w-3 fill-current" aria-hidden />
                   Stop
                 </button>
               </div>
             )}
-            <p className="mt-1 text-[10px] text-slate-400">
-              Max {MAX_RECORD_SECONDS / 60} min · patient notified on send
-            </p>
           </div>
         </div>
 
@@ -3352,8 +3574,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         ) : null}
       </section>
 
+      </div>
+
       {clinicianMsg ? (
-        <p className="lg:col-span-2 text-xs font-medium text-[#2C3E6B]" role="status">
+        <p className="text-xs font-medium text-[#2C3E6B]" role="status">
           {clinicianMsg}
         </p>
       ) : null}
@@ -3362,115 +3586,220 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
       {/* ══════════════════════ TAB: REPORTS ══════════════════════ */}
       {activeTab === "reports" && (
-      <div className="space-y-5">
-      <div className={`${doctorCardClass} p-5`}>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">kAI skin reports</h2>
-        {sectionBusy("scans") && data.scans === undefined ? (
-          <DoctorInlineLoader label="Loading scans…" compact />
+      <div className="space-y-4">
+      <section className={`${doctorPatientPageCardClass} p-4`}>
+        <div className="mb-3 flex items-center justify-between gap-2 border-b border-[#2C3E6B]/10 pb-3">
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            onClick={() => {
+              setScansSectionExpanded((v) => {
+                if (v) setOpenScanReportId(null);
+                return !v;
+              });
+            }}
+            aria-expanded={scansSectionExpanded}
+          >
+            <span className={`h-7 w-7 rounded-lg ${doctorNavyIconChipClass}`}>
+              <ScanFace className="h-3.5 w-3.5" aria-hidden />
+            </span>
+            <span className="text-sm font-semibold text-[#2C3E6B]">Scans</span>
+            {scansLoaded && (data.scans ?? []).length > 0 ? (
+              <span className="rounded-full bg-[#2C3E6B] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                {(data.scans ?? []).length}
+              </span>
+            ) : null}
+            <ChevronDown
+              className={`ml-auto h-4 w-4 shrink-0 text-[#2C3E6B]/60 transition ${scansSectionExpanded ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          {!scansLoaded ? (
+            <button
+              type="button"
+              disabled={sectionBusy("scans")}
+              onClick={loadScans}
+              className={`${doctorBtnPrimarySmClass} shrink-0 inline-flex items-center gap-1`}
+            >
+              <ScanFace className="h-3 w-3" aria-hidden />
+              Load scans
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold text-[#2C3E6B]/70 hover:text-[#2C3E6B]"
+            onClick={() => {
+              setScansSectionExpanded((v) => {
+                if (v) setOpenScanReportId(null);
+                return !v;
+              });
+            }}
+          >
+            {scansSectionExpanded ? "Hide" : "Show"}
+          </button>
+        </div>
+        {!scansSectionExpanded ? (
+          scansLoaded && (data.scans ?? []).length > 0 ? (
+            <p className="text-xs text-[#2C3E6B]/50">
+              {(data.scans ?? []).length} scan{(data.scans ?? []).length === 1 ? "" : "s"} hidden.
+            </p>
+          ) : null
+        ) : !scansLoaded ? (
+          sectionBusy("scans") ? (
+            <DoctorInlineLoader label="Loading scans…" compact />
+          ) : null
         ) : (data.scans ?? []).length === 0 ? (
-          <p className="text-sm text-slate-500">No scans yet.</p>
+          <p className={`${doctorEmptyStateClass} px-4 py-6`}>No scans yet.</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {(data.scans ?? []).map((s) => {
               const isOpen = openScanReportId === s.id;
+              const scanLabel = s.scanName ?? `Scan #${s.id}`;
+              const scanDate = new Date(s.createdAt);
               return (
                 <article
                   key={s.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50"
+                  className={`${doctorPatientPagePanelClass} overflow-hidden ${isOpen ? "col-span-3 sm:col-span-4 lg:col-span-5 xl:col-span-6" : ""}`}
                 >
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-3">
-                    <button
-                      type="button"
-                      className="w-full text-left"
-                      onClick={() => {
-                        setOpenScanReportId((prev) => (prev === s.id ? null : s.id))
-                      }}
-                      title="Open scan report"
-                    >
-                    <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3">
-                      <div className="relative h-[4.5rem] w-[4.5rem] overflow-hidden rounded-md bg-slate-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={withQueryParam(doctorScanAngleSrc(s.imageDoctorUrl, 0, s.createdAt), "thumb", 1)}
-                          alt=""
-                          className="h-full w-full max-h-full max-w-full object-cover"
-                        />
-                        {s.faceCaptureCount > 1 ? (
-                          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                            {s.faceCaptureCount}x
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-slate-900">
-                            {s.scanName ?? `Scan #${s.id}`}
-                          </p>
-                          <span className="shrink-0 text-xs font-semibold text-[#2C3E6B]">
-                            {s.overallScore}/100
-                          </span>
+                  {isOpen ? (
+                    <>
+                      <div className="flex items-center gap-2 p-2">
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                          onClick={() => setOpenScanReportId(null)}
+                          aria-expanded
+                        >
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#F6F4EB] ring-1 ring-[#2C3E6B]/8">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={withQueryParam(
+                                doctorScanAngleSrc(s.imageDoctorUrl, 0, s.createdAt),
+                                "thumb",
+                                1
+                              )}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#2C3E6B]">
+                              {scanLabel}
+                            </p>
+                            <p className="text-xs tabular-nums text-[#2C3E6B]/55">
+                              {s.overallScore} · {scanDate.toLocaleString()}
+                            </p>
+                          </div>
+                        </button>
+                        <div className="flex shrink-0 items-center gap-1">
+                          {renderReportDeleteButton(
+                            "scan",
+                            String(s.id),
+                            `scan “${scanLabel}”`,
+                            true
+                          )}
+                          <button
+                            type="button"
+                            className="inline-flex h-6 w-6 rotate-180 items-center justify-center rounded-lg text-[#2C3E6B]/60 hover:bg-[#F6F4EB] hover:text-[#2C3E6B]"
+                            onClick={() => setOpenScanReportId(null)}
+                            aria-label="Collapse report"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                          </button>
                         </div>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          {new Date(s.createdAt).toLocaleString()}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {isOpen
-                            ? "Report open below"
-                            : "Tap to open saved AI scan report"}
-                        </p>
                       </div>
-                    </div>
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      {renderReportDeleteButton(
-                        "scan",
-                        String(s.id),
-                        `scan “${s.scanName ?? s.id}”`
-                      )}
+                      <div className="border-t border-[#2C3E6B]/8 px-3 pb-3 pt-1">
+                        <DoctorScanReportPanel patientId={patientId} scanId={s.id} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col p-1.5">
                       <button
                         type="button"
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition ${isOpen ? "rotate-180" : ""}`}
-                        onClick={() => {
-                          setOpenScanReportId((prev) => (prev === s.id ? null : s.id))
-                        }}
-                        title="Toggle scan details"
-                        aria-label="Toggle scan details"
+                        className="w-full text-left"
+                        onClick={() => setOpenScanReportId(s.id)}
+                        aria-expanded={false}
                       >
-                        <ChevronDown className="h-4 w-4" aria-hidden />
+                        <div className="relative h-20 w-full overflow-hidden rounded-md bg-[#F6F4EB] ring-1 ring-[#2C3E6B]/8">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={withQueryParam(
+                              doctorScanAngleSrc(s.imageDoctorUrl, 0, s.createdAt),
+                              "thumb",
+                              1
+                            )}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                          {s.faceCaptureCount > 1 ? (
+                            <span className="absolute bottom-0.5 right-0.5 rounded bg-[#2C3E6B]/80 px-0.5 text-[8px] font-medium text-white">
+                              {s.faceCaptureCount}×
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 flex items-baseline justify-between gap-1">
+                          <p className="min-w-0 truncate text-[10px] font-semibold text-[#2C3E6B]">
+                            {scanLabel}
+                          </p>
+                          <span className="shrink-0 text-xs font-bold tabular-nums text-[#2C3E6B]">
+                            {s.overallScore}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#2C3E6B]/45">
+                          {scanDate.toLocaleDateString(undefined, {
+                            day: "numeric",
+                            month: "short",
+                            year: "2-digit",
+                          })}
+                        </p>
                       </button>
+                      <div className="mt-1 flex items-center justify-end gap-0.5">
+                        {renderReportDeleteButton(
+                          "scan",
+                          String(s.id),
+                          `scan “${scanLabel}”`,
+                          true
+                        )}
+                        <button
+                          type="button"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-[#2C3E6B]/60 hover:bg-[#F6F4EB] hover:text-[#2C3E6B]"
+                          onClick={() => setOpenScanReportId(s.id)}
+                          aria-label={`Open ${scanLabel}`}
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  {isOpen ? (
-                    <DoctorScanReportPanel patientId={patientId} scanId={s.id} />
-                  ) : null}
+                  )}
                 </article>
               );
             })}
           </div>
         )}
-      </div>
+      </section>
 
-   
-
-      <div className={`${doctorCardClass} p-5`}>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Weekly kAI digests</h2>
+      <section className={`${doctorPatientPageCardClass} p-4`}>
+        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Weekly</h2>
         {sectionBusy("reports") && data.weeklyReports === undefined ? (
           <DoctorInlineLoader label="Loading…" compact />
         ) : (data.weeklyReports ?? []).length === 0 ? (
-          <p className="text-sm text-slate-500">None yet.</p>
+          <p className={`${doctorEmptyStateClass} px-4 py-6`}>None yet.</p>
         ) : (
-          <ul className="space-y-4 text-sm">
+          <ul className="space-y-2 text-sm">
             {(data.weeklyReports ?? []).map((w) => (
-              <li
-                key={w.id}
-                className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2"
-              >
+              <li key={w.id} className={`${doctorPatientPagePanelClass} px-3 py-3`}>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold text-slate-900">
-                    Week of {w.weekStartYmd}
-                    {w.kaiScore != null ? ` · score ${w.kaiScore}` : ""}
-                    {w.weeklyDelta != null ? ` · Δ ${w.weeklyDelta}` : ""}
-                  </div>
+                  <p className="font-semibold text-[#2C3E6B]">
+                    {w.weekStartYmd}
+                    {w.kaiScore != null ? (
+                      <span className="ml-2 font-bold tabular-nums">{w.kaiScore}</span>
+                    ) : null}
+                    {w.weeklyDelta != null ? (
+                      <span className="ml-1 text-xs font-medium text-[#2C3E6B]/55">
+                        Δ{w.weeklyDelta}
+                      </span>
+                    ) : null}
+                  </p>
                   {renderReportDeleteButton(
                     "weekly",
                     w.id,
@@ -3478,11 +3807,15 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   )}
                 </div>
                 {w.narrativeText?.trim() ? (
-                  <p className="mt-2 whitespace-pre-wrap text-slate-800">{w.narrativeText}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#2C3E6B]/85">
+                    {w.narrativeText.trim()}
+                  </p>
                 ) : null}
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-xs text-teal-700">Structured payload</summary>
-                  <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all text-[11px] text-slate-600">
+                  <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
+                    JSON
+                  </summary>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[#F6F4EB]/80 p-2 text-[10px] text-[#2C3E6B]/70">
                     {JSON.stringify(
                       {
                         consistencyScore: w.consistencyScore,
@@ -3499,30 +3832,25 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <div className={`${doctorCardClass} p-5`}>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Monthly reports</h2>
+      <section className={`${doctorPatientPageCardClass} p-4`}>
+        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Monthly</h2>
         {sectionBusy("reports") && data.monthlyReports === undefined ? (
           <DoctorInlineLoader label="Loading…" compact />
         ) : (data.monthlyReports ?? []).length === 0 ? (
-          <p className="text-sm text-slate-500">None yet.</p>
+          <p className={`${doctorEmptyStateClass} px-4 py-6`}>None yet.</p>
         ) : (
-          <ul className="space-y-3 text-sm">
+          <ul className="space-y-2 text-sm">
             {(data.monthlyReports ?? []).map((m) => {
               const summary = summarizeMonthlyPayload(m.payloadJson);
               return (
-                <li
-                  key={m.id}
-                  className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5"
-                >
+                <li key={m.id} className={`${doctorPatientPagePanelClass} px-3 py-3`}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-semibold text-slate-900">
-                        Month {m.monthStartYmd}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Generated {new Date(m.createdAt).toLocaleString()}
+                      <p className="font-semibold text-[#2C3E6B]">{m.monthStartYmd}</p>
+                      <p className="text-[11px] text-[#2C3E6B]/50">
+                        {new Date(m.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     {renderReportDeleteButton(
@@ -3532,83 +3860,60 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     )}
                   </div>
 
-                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                    <div className="rounded-md bg-white px-2 py-1.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Scans analyzed
-                      </p>
-                      <p className="text-sm font-semibold text-[#2C3E6B]">
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
+                      <p className="text-[10px] font-medium text-[#2C3E6B]/50">Scans</p>
+                      <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
                         {summary.scans ?? "—"}
                       </p>
                     </div>
-                    <div className="rounded-md bg-white px-2 py-1.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Logged days
-                      </p>
-                      <p className="text-sm font-semibold text-[#2C3E6B]">
+                    <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
+                      <p className="text-[10px] font-medium text-[#2C3E6B]/50">Days</p>
+                      <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
                         {summary.loggedDays ?? "—"}
                       </p>
                     </div>
-                    <div className="rounded-md bg-white px-2 py-1.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                        Monthly status
-                      </p>
-                      <p className="text-sm font-semibold text-slate-800">
-                        {summary.summary ? "Summary available" : "Structured data only"}
+                    <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
+                      <p className="text-[10px] font-medium text-[#2C3E6B]/50">Summary</p>
+                      <p className="text-sm font-bold text-[#2C3E6B]">
+                        {summary.summary ? "Yes" : "—"}
                       </p>
                     </div>
                   </div>
 
                   {summary.summary ? (
-                    <p className="mt-2 text-sm leading-relaxed text-slate-800">
+                    <p className="mt-2 text-sm leading-relaxed text-[#2C3E6B]/85">
                       {summary.summary}
                     </p>
                   ) : null}
 
-                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                    <div className="rounded-md border border-slate-200 bg-white p-2">
-                      <p className="text-[11px] font-semibold text-slate-700">Risks</p>
-                      {summary.risks.length ? (
-                        <ul className="mt-1 space-y-1 text-xs text-slate-700">
-                          {summary.risks.map((r, idx) => (
-                            <li key={`${m.id}-risk-${idx}`}>• {r}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-1 text-xs text-slate-400">No risks listed</p>
-                      )}
+                  {(summary.risks.length > 0 ||
+                    summary.actions.length > 0 ||
+                    summary.wins.length > 0) ? (
+                    <div className="mt-3 space-y-2">
+                      <MonthlyReportPointList
+                        title="Risks"
+                        items={summary.risks}
+                        listKey={`${m.id}-risk`}
+                      />
+                      <MonthlyReportPointList
+                        title="Actions"
+                        items={summary.actions}
+                        listKey={`${m.id}-action`}
+                      />
+                      <MonthlyReportPointList
+                        title="Wins"
+                        items={summary.wins}
+                        listKey={`${m.id}-win`}
+                      />
                     </div>
-                    <div className="rounded-md border border-slate-200 bg-white p-2">
-                      <p className="text-[11px] font-semibold text-slate-700">Recommended actions</p>
-                      {summary.actions.length ? (
-                        <ul className="mt-1 space-y-1 text-xs text-slate-700">
-                          {summary.actions.map((a, idx) => (
-                            <li key={`${m.id}-action-${idx}`}>• {a}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-1 text-xs text-slate-400">No actions listed</p>
-                      )}
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-white p-2">
-                      <p className="text-[11px] font-semibold text-slate-700">Improvements</p>
-                      {summary.wins.length ? (
-                        <ul className="mt-1 space-y-1 text-xs text-slate-700">
-                          {summary.wins.map((w, idx) => (
-                            <li key={`${m.id}-win-${idx}`}>• {w}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-1 text-xs text-slate-400">No improvements listed</p>
-                      )}
-                    </div>
-                  </div>
+                  ) : null}
 
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-[11px] font-medium text-slate-500">
-                      Technical payload (JSON)
+                    <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
+                      JSON
                     </summary>
-                    <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all text-[10px] text-slate-600">
+                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[#F6F4EB]/80 p-2 text-[10px] text-[#2C3E6B]/70">
                       {JSON.stringify(m.payloadJson, null, 2)}
                     </pre>
                   </details>
@@ -3617,34 +3922,47 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             })}
           </ul>
         )}
-      </div>
+      </section>
       </div>
       )}
 
       {/* ══════════════════════ TAB: NOTES ══════════════════════ */}
       {activeTab === "notes" && (
-      <div className={`${doctorCardClass} p-4`}>
-        <h2 className="mb-3 flex items-center gap-2 text-[#2C3E6B]" title="Clinic visit notes">
-          <StickyNote className="h-4 w-4 shrink-0" aria-hidden />
+      <div className={`${doctorPatientPageCardClass} p-4`}>
+        <h2
+          className="mb-4 flex items-center gap-2 border-b border-[#2C3E6B]/15 pb-3 text-[#2C3E6B]"
+          title="Clinic visit notes"
+        >
+          <span className={`h-8 w-8 rounded-lg ${doctorNavyIconChipClass}`}>
+            <StickyNote className="h-4 w-4 shrink-0" aria-hidden />
+          </span>
           <span className="text-sm font-semibold">Clinic visit notes</span>
         </h2>
-        <div className={`mb-4 ${doctorCardMutedClass} p-3`}>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <DoctorIconField icon={CalendarDays} label="Visit date">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Visit date</p>
+        <div className="mb-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DoctorIconField
+              icon={CalendarDays}
+              label="Visit date"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Visit date</p>
               <input
                 type="date"
                 value={visitNoteDateYmd}
                 onChange={(e) => setVisitNoteDateYmd(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} py-1.5`}
               />
             </DoctorIconField>
-            <DoctorIconField icon={Star} label="Response to treatment">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Response rating</p>
+            <DoctorIconField
+              icon={Star}
+              label="Response to treatment"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Response rating</p>
               <select
                 value={visitNoteResponseRating}
                 onChange={(e) => setVisitNoteResponseRating(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} py-1.5`}
               >
                 <option value="">—</option>
                 <option value="excellent">Excellent</option>
@@ -3653,96 +3971,142 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 <option value="poor">Poor</option>
               </select>
             </DoctorIconField>
-            <DoctorIconField icon={Target} label="Purpose of visit" className="sm:col-span-2">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Purpose of visit</p>
+            <DoctorIconField
+              icon={Target}
+              label="Purpose of visit"
+              className="sm:col-span-2"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Purpose of visit</p>
               <input
                 type="text"
                 value={visitNotePurpose}
                 onChange={(e) => setVisitNotePurpose(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} py-1.5`}
                 placeholder="Follow-up…"
               />
             </DoctorIconField>
-            <DoctorIconField icon={FileText} label="Note text" className="sm:col-span-2">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Findings / note text</p>
+            <DoctorIconField
+              icon={FileText}
+              label="Note text"
+              className="sm:col-span-2"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Findings / note text</p>
               <textarea
                 value={visitNoteText}
                 onChange={(e) => setVisitNoteText(e.target.value)}
                 rows={2}
-                className="min-h-[3.25rem] w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
                 placeholder="Findings…"
               />
             </DoctorIconField>
-            <DoctorIconField icon={ListChecks} label="Treatments completed">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Treatments completed</p>
+            <DoctorIconField
+              icon={ListChecks}
+              label="Treatments completed"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Treatments completed</p>
               <textarea
                 value={visitNoteTreatments}
                 onChange={(e) => setVisitNoteTreatments(e.target.value)}
                 rows={2}
-                className="min-h-[3.25rem] w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
                 placeholder="Peel, laser, extraction, etc."
               />
             </DoctorIconField>
-            <DoctorIconField icon={Sun} label="Pre-treatment advice">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Pre-treatment advice</p>
+            <DoctorIconField
+              icon={Sun}
+              label="Pre-treatment advice"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Pre-treatment advice</p>
               <textarea
                 value={visitNotePreAdvice}
                 onChange={(e) => setVisitNotePreAdvice(e.target.value)}
                 rows={2}
-                className="min-h-[3.25rem] w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
                 placeholder="Preparation instructions"
               />
             </DoctorIconField>
-            <DoctorIconField icon={Moon} label="Post-treatment advice">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Post-treatment advice</p>
+            <DoctorIconField
+              icon={Moon}
+              label="Post-treatment advice"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Post-treatment advice</p>
               <textarea
                 value={visitNotePostAdvice}
                 onChange={(e) => setVisitNotePostAdvice(e.target.value)}
                 rows={2}
-                className="min-h-[3.25rem] w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
                 placeholder="Aftercare instructions"
               />
             </DoctorIconField>
-            <DoctorIconField icon={Pill} label="Prescription">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Prescription / routine changes</p>
+            <DoctorIconField
+              icon={Pill}
+              label="Prescription"
+              iconShellClassName={doctorVisitNoteFieldIconShellClass}
+            >
+              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Prescription / routine changes</p>
               <textarea
                 value={visitNotePrescription}
                 onChange={(e) => setVisitNotePrescription(e.target.value)}
                 rows={2}
-                className="min-h-[3.25rem] w-full resize-y rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
                 placeholder="Medicines, actives, frequency"
               />
             </DoctorIconField>
-            <DoctorIconField icon={Paperclip} label="Attachments (max 5)" className="sm:col-span-2">
-              <p className="mb-1 text-[11px] font-medium text-slate-600">Attachments (max 5)</p>
-              <input
-                type="file"
-                multiple
-                accept=".pdf,application/pdf,image/*,text/plain"
-                className="w-full text-xs text-slate-800 file:mr-2 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-2 file:py-1"
-                onChange={(e) => {
-                  const list = Array.from(e.target.files ?? []).slice(0, 5);
-                  setVisitNoteFiles(list);
-                  e.target.value = "";
-                }}
-              />
-              {visitNoteFiles.length > 0 ? (
-                <ul className="mt-1 flex flex-wrap gap-1">
-                  {visitNoteFiles.map((f) => (
-                    <li
-                      key={`${f.name}-${f.size}`}
-                      className="inline-flex items-center gap-1 rounded-md bg-white px-1.5 py-0.5 text-[10px] text-slate-600"
-                      title={f.name}
-                    >
-                      <Paperclip className="h-3 w-3" aria-hidden />
-                      {Math.round(f.size / 1024)}k
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </DoctorIconField>
+            <div className="sm:col-span-2">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span
+                  className={`h-7 w-7 rounded-md ${doctorNavyIconChipClass}`}
+                  title="Attachments (max 5)"
+                >
+                  <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                </span>
+                <p className="text-[11px] font-semibold text-[#2C3E6B]">Attachments (max 5)</p>
+              </div>
+              <div
+                className="flex flex-col gap-2"
+                title="PDF, images, or plain text — up to 5 files"
+              >
+                <label className="inline-flex w-fit cursor-pointer items-center rounded-md border border-[#2C3E6B]/18 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[#2C3E6B] hover:bg-white/85">
+                  Choose Files
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,application/pdf,image/*,text/plain"
+                    aria-label="Attachments (max 5)"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const list = Array.from(e.target.files ?? []).slice(0, 5);
+                      setVisitNoteFiles(list);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {visitNoteFiles.length > 0 ? (
+                  <ul className="flex flex-wrap gap-1.5">
+                    {visitNoteFiles.map((f) => (
+                      <li
+                        key={`${f.name}-${f.size}`}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-[#2C3E6B]/12 bg-[#F6F4EB]/60 px-2 py-1 text-[10px] font-medium text-[#2C3E6B]"
+                        title={f.name}
+                      >
+                        <Paperclip className="h-3 w-3 shrink-0 text-[#2C3E6B]/55" aria-hidden />
+                        <span className="truncate">{f.name}</span>
+                        <span className="shrink-0 tabular-nums text-[#2C3E6B]/50">
+                          {Math.round(f.size / 1024)} KB
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
           </div>
-          <div className="mt-2.5 flex items-center gap-2 border-t border-slate-200/80 pt-2.5">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
             disabled={visitNoteBusy}
@@ -3811,7 +4175,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 setVisitNoteBusy(false);
               }
             }}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2C3E6B] px-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#243356] disabled:opacity-50"
+            className={`${doctorBtnPrimaryClass} inline-flex h-8 items-center gap-1.5 px-2.5 text-xs`}
           >
             <Save className="h-4 w-4" aria-hidden />
             <span>{visitNoteBusy ? "Saving…" : "Save note"}</span>
@@ -3827,16 +4191,23 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         {(() => {
           const visits = sortVisitsNewestFirst(data.visits ?? []);
           if (visits.length === 0) {
-            return <p className="mt-3 text-xs text-slate-500">No visits on file yet.</p>;
+            return (
+              <p className={`${doctorEmptyStateClass} mt-3 px-4 py-6`}>No visits on file yet.</p>
+            );
           }
           return (
-            <div className="mt-3 border-t border-slate-100 pt-3">
+            <div className="mt-4 border-t border-[#2C3E6B]/12 pt-4">
               <h3
-                className="mb-2 flex items-center gap-1.5 text-[#2C3E6B]"
+                className="mb-3 flex items-center gap-2 text-[#2C3E6B]"
                 title={`Past visit notes (${visits.length})`}
               >
-                <History className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="text-xs font-bold tabular-nums">{visits.length}</span>
+                <span className={`h-7 w-7 rounded-lg ${doctorNavyIconChipClass}`}>
+                  <History className="h-4 w-4 shrink-0" aria-hidden />
+                </span>
+                <span className="text-xs font-semibold">History</span>
+                <span className="rounded-full bg-[#2C3E6B] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                  {visits.length}
+                </span>
               </h3>
               <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {visits.map((v) => {
@@ -3857,11 +4228,11 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   return (
                     <li
                       key={v.id}
-                      className="flex min-w-0 flex-col rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm"
+                      className={`${doctorPatientPagePanelClass} flex min-w-0 flex-col p-2.5`}
                     >
-                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-1.5">
+                      <div className="flex items-start justify-between gap-2 border-b border-[#2C3E6B]/10 pb-1.5">
                         <div className="flex min-w-0 items-start gap-1.5">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#2C3E6B]/10 text-[#2C3E6B]">
+                          <span className={`h-6 w-6 ${doctorNavyIconChipClass}`}>
                             <CalendarDays className="h-3.5 w-3.5" aria-hidden />
                           </span>
                           <div className="min-w-0">
@@ -3869,11 +4240,11 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                               {formatVisitDateLabel(v.visitDate)}
                             </p>
                             <p
-                              className="truncate text-[10px] text-slate-500"
+                              className="truncate text-[10px] text-[#2C3E6B]/55"
                               title={v.doctorName}
                             >
                               <Stethoscope
-                                className="mr-0.5 inline h-3 w-3 align-[-2px] text-slate-400"
+                                className="mr-0.5 inline h-3 w-3 align-[-2px] text-[#2C3E6B]/40"
                                 aria-hidden
                               />
                               {v.doctorName}
@@ -3882,7 +4253,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         </div>
                         {v.responseRating ? (
                           <span
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 capitalize text-[#2C3E6B]"
+                            className={`h-6 w-6 capitalize ${doctorNavyIconChipClass}`}
                             title={`Response: ${v.responseRating}`}
                           >
                             <Star className="h-3.5 w-3.5" aria-hidden />
@@ -3893,7 +4264,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
                       {v.notes.trim() ? (
                         <p
-                          className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-xs leading-snug text-slate-700"
+                          className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-xs leading-snug text-[#2C3E6B]/80"
                           title={v.notes}
                         >
                           {v.notes}
@@ -3907,7 +4278,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                             return (
                               <li
                                 key={row.label}
-                                className="flex items-start gap-1.5 text-[10px] leading-snug text-slate-600"
+                                className="flex items-start gap-1.5 text-[10px] leading-snug text-[#2C3E6B]/70"
                                 title={`${row.label}: ${row.value}`}
                               >
                                 <MetaIcon
@@ -3922,7 +4293,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       ) : null}
 
                       {v.attachments && v.attachments.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap gap-1 border-t border-slate-100 pt-2">
+                        <div className="mt-2 flex flex-wrap gap-1 border-t border-[#2C3E6B]/10 pt-2">
                           {v.attachments.map((att, idx) => (
                             <a
                               key={`${v.id}-a-${idx}`}
@@ -3931,7 +4302,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                               rel="noopener noreferrer"
                               download={att.fileName}
                               title={att.fileName}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-[#2C3E6B] hover:bg-slate-200"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[#2C3E6B]/10 text-[#2C3E6B] hover:bg-[#2C3E6B]/20"
                             >
                               <FileText className="h-3.5 w-3.5" aria-hidden />
                               <span className="sr-only">View document attached</span>

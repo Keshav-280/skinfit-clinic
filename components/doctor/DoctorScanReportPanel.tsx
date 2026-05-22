@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { DoctorScanReportPayload } from "@/src/lib/doctorScanReportPayload";
-import { doctorInsetStripClass, DoctorInlineLoader } from "@/components/doctor/DoctorUiPrimitives";
+import {
+  DoctorInlineLoader,
+  doctorPatientPageRowClass,
+} from "@/components/doctor/DoctorUiPrimitives";
 
 const reportCache = new Map<string, DoctorScanReportPayload>();
 
@@ -61,6 +64,21 @@ function reportLoadErrorMessage(code: string | undefined, status: number): strin
   if (code === "UNAUTHORIZED") return "Session expired — sign in again.";
   if (status >= 500) return "Server error loading scan report.";
   return "Could not load scan report.";
+}
+
+function ReportSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <h4 className="mb-1.5 text-xs font-semibold text-[#2C3E6B]">{title}</h4>
+      {children}
+    </section>
+  );
 }
 
 export function DoctorScanReportPanel({
@@ -131,21 +149,15 @@ export function DoctorScanReportPanel({
 
   if (loading) {
     return (
-      <div className={`${doctorInsetStripClass} px-4 py-4`} role="status" aria-live="polite">
-        <DoctorInlineLoader label="Loading saved scan report…" compact />
-        <p className="mt-2 text-xs text-slate-500">
-          Loading saved scan from clinic records…
-        </p>
+      <div className="py-2" role="status" aria-live="polite">
+        <DoctorInlineLoader label="Loading report…" compact />
       </div>
     );
   }
 
   if (err || !report) {
     return (
-      <p
-        className={`${doctorInsetStripClass} px-4 py-4 text-sm text-red-600`}
-        role="status"
-      >
+      <p className="py-2 text-sm text-red-600" role="status">
         {err ?? "Report unavailable."}
       </p>
     );
@@ -185,134 +197,112 @@ export function DoctorScanReportPanel({
         return [
           `Overall ${overall}/100. ${summaryTone(overall)}`,
           strongest
-            ? `Best performing area: ${strongest.label} (${strongest.value}/100).`
-            : "Best performing area: not enough data.",
+            ? `Best: ${strongest.label} (${strongest.value}).`
+            : "Best area: not enough data.",
           weakest
-            ? `Primary focus area: ${weakest.label} (${weakest.value}/100).`
-            : "Primary focus area: not enough data.",
+            ? `Focus: ${weakest.label} (${weakest.value}).`
+            : "Focus area: not enough data.",
         ];
       })();
 
+  const metaBits = [
+    report.skinType?.trim(),
+    report.userName?.trim(),
+  ].filter(Boolean);
+
   return (
-    <div className={`${doctorInsetStripClass} space-y-3 px-4 py-4`}>
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          AI scan report
+    <div className="space-y-4">
+      {metaBits.length > 0 || !tracker ? (
+        <p className="text-[11px] text-[#2C3E6B]/55">
+          {metaBits.join(" · ")}
+          {!tracker ? " · scores only (no saved tracker)" : null}
         </p>
-        <h3 className="mt-1 text-base font-semibold text-slate-900">
-          {report.scanTitle?.trim() || `Scan #${report.scanId}`}
-        </h3>
-        <p className="mt-1 text-xs text-slate-600">
-          {new Date(report.scanDateIso).toLocaleString()} · {report.userName}
-          {report.skinType ? ` · ${report.skinType}` : ""}
-        </p>
-        {tracker ? (
-          <p className="mt-1 text-[11px] text-emerald-700">
-            Loaded from saved scan report (no live RAG re-run).
+      ) : null}
+
+      {report.aiSummary?.trim() ? (
+        <ReportSection title="Summary">
+          <p className="text-sm leading-relaxed text-[#2C3E6B]/85">
+            {report.aiSummary.trim()}
           </p>
-        ) : (
-          <p className="mt-1 text-[11px] text-amber-700">
-            Saved tracker report not found — showing scores only. Re-scan after DB migration
-            to freeze hook lines and resources.
-          </p>
-        )}
-      </div>
+        </ReportSection>
+      ) : null}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
-        <p className="text-xs font-semibold text-[#2C3E6B]">Summary</p>
-        <p className="mt-1 text-sm leading-relaxed text-slate-700">
-          {report.aiSummary?.trim() ||
-            "No AI summary text available for this scan."}
-        </p>
-      </div>
+      {hookLines.length > 0 ? (
+        <ReportSection title="Insights">
+          <ul className="space-y-2 text-sm leading-relaxed text-[#2C3E6B]/85">
+            {hookLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </ReportSection>
+      ) : null}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
-        <p className="text-xs font-semibold text-[#2C3E6B]">Hook lines</p>
-        <ul className="mt-1 space-y-1.5 text-sm text-slate-700">
-          {hookLines.map((line) => (
-            <li key={line} className="rounded bg-slate-50 px-2 py-1.5 leading-relaxed">
-              {line}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
-        <p className="text-xs font-semibold text-[#2C3E6B]">
-          8 parameters (0-100 clarity)
-        </p>
-        <p className="mt-1 text-[11px] text-slate-500">
-          {tracker
-            ? "Same 8 parameters as patient AI scan report (saved at scan time)."
-            : "Derived from clinical model outputs on this scan."}
-        </p>
-        <dl className="mt-2 grid gap-1.5 sm:grid-cols-2">
+      <ReportSection title="Parameters">
+        <dl className="grid gap-1.5 sm:grid-cols-2">
           {eightParams.map((p) => (
             <div
               key={p.label}
-              className="flex items-center justify-between gap-2 rounded border border-slate-100 bg-slate-50 px-2 py-1.5"
+              className={`${doctorPatientPageRowClass} flex items-center justify-between gap-2 py-2`}
             >
-              <dt className="text-xs text-slate-600">{p.label}</dt>
-              <dd className="text-sm font-semibold text-slate-900">{scoreText(p.value)}</dd>
+              <dt className="text-xs text-[#2C3E6B]/70">{p.label}</dt>
+              <dd className="text-sm font-bold tabular-nums text-[#2C3E6B]">
+                {scoreText(p.value)}
+              </dd>
             </div>
           ))}
         </dl>
-      </div>
+      </ReportSection>
 
       {tracker && tracker.causes.length > 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-[#2C3E6B]">Likely causes</p>
-          <ul className="mt-1 space-y-1 text-sm text-slate-700">
+        <ReportSection title="Likely causes">
+          <ul className="space-y-1.5 text-sm text-[#2C3E6B]/85">
             {tracker.causes.map((c) => (
-              <li key={c.text} className="rounded bg-slate-50 px-2 py-1.5">
+              <li key={c.text} className="leading-relaxed">
                 {c.text}
-                <span className="ml-1 text-[11px] text-slate-500">({c.impact})</span>
+                <span className="text-[11px] text-[#2C3E6B]/45"> · {c.impact}</span>
               </li>
             ))}
           </ul>
-        </div>
+        </ReportSection>
       ) : null}
 
       {tracker && tracker.focusActions.length > 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-[#2C3E6B]">Focus actions</p>
-          <ol className="mt-1 space-y-2 text-sm text-slate-700">
+        <ReportSection title="Focus">
+          <ol className="space-y-2 text-sm text-[#2C3E6B]/85">
             {tracker.focusActions.map((a) => (
-              <li key={a.rank} className="rounded bg-slate-50 px-2 py-1.5">
-                <span className="font-medium text-slate-900">
+              <li key={a.rank} className="leading-relaxed">
+                <span className="font-semibold text-[#2C3E6B]">
                   {a.rank}. {a.title}
                 </span>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{a.detail}</p>
+                {a.detail?.trim() ? (
+                  <p className="mt-0.5 text-xs text-[#2C3E6B]/65">{a.detail}</p>
+                ) : null}
               </li>
             ))}
           </ol>
-        </div>
+        </ReportSection>
       ) : null}
 
       {tracker && tracker.resources.length > 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-[#2C3E6B]">Resources</p>
-          <ul className="mt-1 space-y-1.5 text-sm text-slate-700">
+        <ReportSection title="Resources">
+          <ul className="space-y-2 text-sm">
             {tracker.resources.map((r) => (
-              <li key={`${r.title}-${r.url}`} className="rounded bg-slate-50 px-2 py-1.5">
-                <span className="text-[11px] font-medium uppercase text-slate-500">
-                  {r.kind}
-                </span>
-                <p className="font-medium text-slate-900">{r.title}</p>
+              <li key={`${r.title}-${r.url}`}>
+                <p className="font-medium text-[#2C3E6B]">{r.title}</p>
                 {r.url ? (
                   <a
                     href={r.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-[#2C3E6B] underline"
+                    className="text-xs text-[#2C3E6B]/70 underline hover:text-[#2C3E6B]"
                   >
-                    {r.url}
+                    Open link
                   </a>
                 ) : null}
               </li>
             ))}
           </ul>
-        </div>
+        </ReportSection>
       ) : null}
     </div>
   );

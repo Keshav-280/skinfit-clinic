@@ -222,7 +222,6 @@ export function useDoctorPatientDetail(patientId: string) {
     void (async () => {
       await loadSection("profile");
       void loadSection("schedule");
-      void loadSection("scans");
       void loadSection("activity");
     })();
   }, [patientId, loadSection, resetSectionState]);

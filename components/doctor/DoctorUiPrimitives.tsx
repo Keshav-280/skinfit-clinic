@@ -1,7 +1,12 @@
 "use client";
 
 import type { ComponentType, ReactNode } from "react";
-import { doctorCardClass, doctorCardMutedClass } from "@/src/lib/doctorPortalTheme";
+import {
+  doctorCalendarPanelClass,
+  doctorCardClass,
+  doctorCardMutedClass,
+  doctorPatientsPanelClass,
+} from "@/src/lib/doctorPortalTheme";
 
 export {
   DOCTOR_NAVY,
@@ -15,7 +20,46 @@ export {
   doctorStickyTabsClass,
   doctorGlassSidebarClass,
   doctorCardClass,
+  doctorPatientHeaderClass,
+  doctorPatientPageCardClass,
+  doctorPatientPagePanelClass,
+  doctorPatientPageNavyPanelClass,
+  doctorPatientPageNavyInsetClass,
+  doctorPatientPageNavyRowClass,
+  doctorPatientPageNavyBtnPrimaryClass,
+  doctorPatientPageNavyBtnGhostClass,
+  doctorPatientPageAccentInsetClass,
+  doctorPatientPageAccentRowClass,
+  doctorRoutineAmPmColumnClass,
+  doctorBtnPrimarySmClass,
+  doctorPatientPageGhostBtnClass,
+  doctorNavyIconChipClass,
+  doctorVisitNoteFieldIconShellClass,
+  doctorPatientPageRowClass,
+  doctorPatientPageFormInputClass,
+  DOCTOR_PATIENT_PAGE_BG,
+  doctorSchedulePageCardClass,
+  DOCTOR_SCHEDULE_PAGE_BG,
   doctorCardMutedClass,
+  doctorDetailStatClass,
+  doctorSchedulePanelClass,
+  doctorScheduleFormInputClass,
+  doctorVisitRowClass,
+  doctorEmptyStateClass,
+  doctorFormInputSmClass,
+  doctorIvoryCardClass,
+  doctorPatientsPanelClass,
+  doctorCalendarPanelClass,
+  doctorPatientTileClass,
+  doctorPatientTileUrgentClass,
+  doctorPatientListRowClass,
+  doctorPatientListRowUrgentClass,
+  doctorIvoryFieldClass,
+  doctorIvoryFieldSoftClass,
+  doctorIvoryToggleShellClass,
+  doctorIvoryToggleOnClass,
+  DOCTOR_IVORY_PATIENTS_PANEL,
+  DOCTOR_IVORY_CALENDAR_PANEL,
   doctorDropdownClass,
   doctorInsetStripClass,
   doctorBtnPrimaryClass,
@@ -85,18 +129,17 @@ export function DoctorIconField({
   label,
   children,
   className = "",
+  iconShellClassName = "mt-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/55 text-[#2C3E6B]",
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   children: ReactNode;
   className?: string;
+  iconShellClassName?: string;
 }) {
   return (
     <label className={`flex items-start gap-2 ${className}`}>
-      <span
-        title={label}
-        className="mt-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/55 text-[#2C3E6B]"
-      >
+      <span title={label} className={iconShellClassName}>
         <Icon className={DOCTOR_ICON_SM} aria-hidden />
         <span className="sr-only">{label}</span>
       </span>
@@ -182,18 +225,22 @@ export function DoctorCard({
   children,
   className = "",
   as: Tag = "section",
+  variant = "default",
 }: {
   children: ReactNode;
   className?: string;
   as?: "section" | "div" | "article";
+  /** `patients` = lighter ivory panel; `calendar` = deeper ivory panel. */
+  variant?: "default" | "patients" | "calendar";
 }) {
-  return (
-    <Tag
-      className={`${doctorCardClass} ${className}`}
-    >
-      {children}
-    </Tag>
-  );
+  const shell =
+    variant === "patients"
+      ? doctorPatientsPanelClass
+      : variant === "calendar"
+        ? doctorCalendarPanelClass
+        : doctorCardClass;
+
+  return <Tag className={`${shell} ${className}`}>{children}</Tag>;
 }
 
 export function DoctorInlineLoader({

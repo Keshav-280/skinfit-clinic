@@ -1,6 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  doctorBtnPrimaryClass,
+  doctorIvoryCardClass,
+  doctorProfileFieldClass,
+  doctorProfileFieldReadOnlyClass,
+  doctorProfileHintClass,
+  doctorProfileLabelClass,
+} from "@/src/lib/doctorPortalTheme";
 
 type DoctorProfile = {
   id: string;
@@ -100,15 +108,12 @@ export default function DoctorProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <h1 className="text-xl font-bold text-slate-900">Doctor Profile</h1>
-      <p className="mt-0.5 text-sm text-slate-500">
+      <h1 className="text-xl font-bold text-[#2C3E6B]">Doctor Profile</h1>
+      <p className="mt-0.5 text-sm text-[#2C3E6B]/60">
         Manage your display name, specialty, and avatar for patient-facing chat.
       </p>
 
-      <form
-        onSubmit={onSave}
-        className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm"
-      >
+      <form onSubmit={onSave} className={`mt-5 p-6 ${doctorIvoryCardClass}`}>
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
             {error}
@@ -122,7 +127,7 @@ export default function DoctorProfilePage() {
 
         <div className="grid gap-5 sm:grid-cols-[120px_1fr] sm:items-start">
           <label
-            className="relative block h-[120px] w-[120px] cursor-pointer overflow-hidden rounded-2xl bg-slate-100 shadow-sm transition hover:ring-2 hover:ring-[#2C3E6B]/40"
+            className="relative block h-[120px] w-[120px] cursor-pointer overflow-hidden rounded-2xl bg-white/95 shadow-[0_2px_8px_rgba(72,64,48,0.08),0_4px_14px_rgba(72,64,48,0.06)] transition hover:shadow-[0_4px_16px_rgba(72,64,48,0.12)]"
             title="Click to change photo"
           >
             {imageUrl ? (
@@ -146,9 +151,9 @@ export default function DoctorProfilePage() {
           </label>
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Display name</label>
+              <label className={doctorProfileLabelClass}>Display name</label>
               <input
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={doctorProfileFieldClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Dr. Rhea Sharma"
@@ -156,22 +161,25 @@ export default function DoctorProfilePage() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Specialty</label>
+              <label className={doctorProfileLabelClass}>Specialty</label>
               <input
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className={doctorProfileFieldClass}
                 value={specialty}
                 onChange={(e) => setSpecialty(e.target.value)}
                 placeholder="Dermatology"
                 disabled={loading || saving}
               />
             </div>
-            <p className="text-xs text-slate-400">Click the photo to change it. Square images work best.</p>
+            <p className={doctorProfileHintClass}>
+              Click the photo to change it. Square images work best.
+            </p>
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700">Email</label>
+              <label className={doctorProfileLabelClass}>Email</label>
               <input
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400"
+                className={doctorProfileFieldReadOnlyClass}
                 value={profile?.email || ""}
                 readOnly
+                aria-readonly
               />
             </div>
           </div>
@@ -181,7 +189,7 @@ export default function DoctorProfilePage() {
           <button
             type="submit"
             disabled={loading || saving}
-            className="rounded-xl bg-[#2C3E6B] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50"
+            className={`${doctorBtnPrimaryClass} px-5 py-3 font-bold disabled:opacity-50`}
           >
             {saving ? "Saving…" : "Save profile"}
           </button>
