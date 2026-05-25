@@ -5,7 +5,7 @@ import { OVAL_FRAME } from "@/src/lib/scanCaptureGuidance";
 
 /**
  * Same framing idea as mobile `FaceCaptureOvalOverlay`: dimmed scrim with an
- * elliptical cutout + white ring so users align face in the oval (3:4 preview).
+ * elliptical cutout — align hairline to chin inside the oval (3:4 preview).
  */
 export function FaceCaptureOvalOverlayWeb() {
   const rawId = useId();

@@ -10,6 +10,7 @@ import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
 
 const links = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard/history", label: "History" },
   { href: "/dashboard/scan", label: "AI Scan" },
   { href: "/dashboard/schedules", label: "Schedules" },
   { href: "/dashboard/chat?assistant=support", label: "Chat With Us" },

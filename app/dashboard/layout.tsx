@@ -6,6 +6,7 @@ import { DashboardNav } from "./dashboard-nav";
 import { LogoutButton } from "./logout-button";
 import { DashboardClinicSupportBell } from "@/components/dashboard/DashboardClinicSupportBell";
 import { DashboardInboxProvider } from "@/components/dashboard/DashboardInboxContext";
+import { ScanJobReadyNotifier } from "@/components/dashboard/ScanJobReadyNotifier";
 import { GlobalRefreshButton } from "@/components/ui/GlobalRefreshButton";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
@@ -69,6 +70,7 @@ export default async function DashboardLayout({
       <main className="mx-auto max-w-7xl px-4 py-6 pb-12 md:px-8">
         {children}
       </main>
+      <ScanJobReadyNotifier />
     </div>
     </DashboardInboxProvider>
   );

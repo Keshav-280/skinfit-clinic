@@ -20,6 +20,10 @@ import {
   unpackE2eePayload,
 } from "@/src/lib/chatE2ee/format";
 import { type E2eeKeyStorage, webE2eeKeyStorage } from "@/src/lib/chatE2ee/keyStorage";
+import {
+  DOCTOR_CHAT_E2EE_OFF_PREVIEW,
+  isDoctorChatE2eeEnabled,
+} from "@/src/lib/chatDoctorE2eeConfig";
 
 export type { E2eeKeyStorage } from "@/src/lib/chatE2ee/keyStorage";
 export { webE2eeKeyStorage, asyncStorageE2eeAdapter } from "@/src/lib/chatE2ee/keyStorage";
@@ -38,6 +42,15 @@ export type DoctorThreadE2eeSession = {
   ready: boolean;
   status: string | null;
 };
+
+async function plainTextChatSession(): Promise<DoctorThreadE2eeSession> {
+  return {
+    threadId: "",
+    threadAesKey: await generateThreadAesKey(),
+    ready: true,
+    status: null,
+  };
+}
 
 async function ensureLocalE2eeKeys(
   storage: E2eeKeyStorage,
@@ -59,24 +72,39 @@ async function ensureLocalE2eeKeys(
 
 type E2eeFetchInit = RequestInit & { credentials?: RequestCredentials };
 
+/** RN/Hermes has no DOMException — match crypto failures by error name/message only. */
 function isCryptoKeyMismatchError(e: unknown): boolean {
-  if (e instanceof DOMException) {
-    return e.name === "OperationError" || e.name === "InvalidAccessError";
+  const name =
+    e && typeof e === "object" && "name" in e
+      ? String((e as { name: unknown }).name)
+      : "";
+  if (name === "OperationError" || name === "InvalidAccessError") {
+    return true;
   }
-  return e instanceof Error && /operationerror|decrypt/i.test(e.message);
+  return e instanceof Error && /operationerror|invalidaccess|decrypt/i.test(e.message);
+}
+
+function doctorE2eeQuery(opts: {
+  patientId?: string;
+  doctorId?: string;
+}): string {
+  const params = new URLSearchParams();
+  if (opts.patientId) params.set("patientId", opts.patientId);
+  if (opts.doctorId) params.set("doctorId", opts.doctorId);
+  const q = params.toString();
+  return q ? `?${q}` : "";
 }
 
 async function resetDoctorThreadEnvelopes(
   http: (path: string, init: E2eeFetchInit) => Promise<Response>,
   opts: {
     patientId?: string;
+    doctorId?: string;
     credentials?: RequestCredentials;
     authHeaders?: Record<string, string>;
   }
 ): Promise<boolean> {
-  const qs = opts.patientId
-    ? `?patientId=${encodeURIComponent(opts.patientId)}`
-    : "";
+  const qs = doctorE2eeQuery(opts);
   const res = await http(`/api/chat/e2ee/thread${qs}`, {
     method: "DELETE",
     credentials: opts.credentials ?? "include",
@@ -88,6 +116,8 @@ async function resetDoctorThreadEnvelopes(
 
 export async function setupDoctorPatientE2ee(opts: {
   patientId?: string;
+  /** Patient web: which registered doctor thread to encrypt with. */
+  doctorId?: string;
   credentials?: RequestCredentials;
   storage?: E2eeKeyStorage;
   authHeaders?: Record<string, string>;
@@ -96,6 +126,9 @@ export async function setupDoctorPatientE2ee(opts: {
   /** Internal: avoid infinite reset loops. */
   _envelopeResetAttempted?: boolean;
 }): Promise<DoctorThreadE2eeSession | null> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return plainTextChatSession();
+  }
   if (typeof globalThis.crypto?.subtle === "undefined") {
     return {
       threadId: "",
@@ -149,9 +182,10 @@ export async function setupDoctorPatientE2ee(opts: {
     };
   }
 
-  const qs = opts.patientId
-    ? `?patientId=${encodeURIComponent(opts.patientId)}`
-    : "";
+  const qs = doctorE2eeQuery({
+    patientId: opts.patientId,
+    doctorId: opts.doctorId,
+  });
   const setupRes = await http(`/api/chat/e2ee/thread${qs}`, {
     credentials,
     headers: opts.authHeaders,
@@ -188,6 +222,7 @@ export async function setupDoctorPatientE2ee(opts: {
       if (isCryptoKeyMismatchError(e) && !opts._envelopeResetAttempted) {
         const cleared = await resetDoctorThreadEnvelopes(http, {
           patientId: opts.patientId,
+          doctorId: opts.doctorId,
           credentials,
           authHeaders: opts.authHeaders,
         });
@@ -273,6 +308,9 @@ export async function encryptOutgoingText(
   plaintext: string,
   session: DoctorThreadE2eeSession | null
 ): Promise<string> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return plaintext;
+  }
   if (!session?.ready) {
     throw new Error("E2EE_NOT_READY");
   }
@@ -284,6 +322,7 @@ export async function encryptOutgoingText(
 /** Clears server thread envelopes for this doctor↔patient thread. */
 export async function resetDoctorPatientE2eeEnvelopes(opts: {
   patientId?: string;
+  doctorId?: string;
   credentials?: RequestCredentials;
   authHeaders?: Record<string, string>;
   fetchFn?: (path: string, init: E2eeFetchInit) => Promise<Response>;
@@ -294,12 +333,16 @@ export async function resetDoctorPatientE2eeEnvelopes(opts: {
 
 export async function ensureDoctorPatientE2eeReady(opts: {
   patientId?: string;
+  doctorId?: string;
   credentials?: RequestCredentials;
   storage?: E2eeKeyStorage;
   authHeaders?: Record<string, string>;
   fetchFn?: (path: string, init: E2eeFetchInit) => Promise<Response>;
   maxAttempts?: number;
 }): Promise<DoctorThreadE2eeSession | null> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return plainTextChatSession();
+  }
   const max = opts.maxAttempts ?? 3;
   let last: DoctorThreadE2eeSession | null = null;
   for (let i = 0; i < max; i++) {
@@ -316,6 +359,11 @@ export async function decryptMessages<T extends ChatMessageRow>(
   messages: T[],
   session: DoctorThreadE2eeSession | null
 ): Promise<T[]> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return messages.map((m) =>
+      isE2eePayload(m.text) ? { ...m, text: DOCTOR_CHAT_E2EE_OFF_PREVIEW } : m
+    );
+  }
   if (!session?.ready) return messages;
   const out: T[] = [];
   for (const m of messages) {

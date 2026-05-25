@@ -1,5 +1,6 @@
 "use client";
 
+import { isMediapipeEnabled } from "@/src/lib/faceCaptureConfig";
 import type { CaptureAssistModels } from "@/src/lib/scanCaptureGuidance";
 
 type Props = {
@@ -47,13 +48,16 @@ export function ScanCaptureModelStatus({
   needsExpressionModel,
 }: Props) {
   const textSize = compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug";
+  const mpEnabled = isMediapipeEnabled();
 
   const faceLine = line(
     "FaceDetector",
     models.faceDetector === "ready" ? "ok" : "warn",
     models.faceDetector === "ready"
       ? "loaded (experimental browser API)"
-      : "not in Chrome stable — use MediaPipe below for face position"
+      : mpEnabled
+        ? "not in Chrome stable — use MediaPipe below for face position"
+        : "optional — basic skin-tone framing when unavailable"
   );
 
   let mpState: "ok" | "warn" | "muted" | "loading" = "muted";
@@ -78,7 +82,53 @@ export function ScanCaptureModelStatus({
       break;
   }
 
-  const mpLine = line("MediaPipe", mpState, mpDetail);
+  const mpLine =
+    mpEnabled && models.mediapipe !== "off"
+      ? line("MediaPipe", mpState, mpDetail)
+      : null;
+
+  let rfState: "ok" | "warn" | "muted" | "loading" = "muted";
+  let rfDetail = "off";
+  if (models.retinaface !== "off") {
+    switch (models.retinaface) {
+      case "loading":
+        rfState = "loading";
+        rfDetail = "server inference…";
+        break;
+      case "ready":
+        rfState = "ok";
+        rfDetail = "RetinaFace (server)";
+        break;
+      case "failed":
+        rfState = "warn";
+        rfDetail = models.retinafaceError ?? "weights missing or API error";
+        break;
+      default:
+        rfDetail = "waiting";
+    }
+  }
+  const rfLine =
+    models.retinaface !== "off"
+      ? line("RetinaFace", rfState, rfDetail)
+      : null;
+
+  let clfDetail = "off";
+  let clfState: "ok" | "warn" | "muted" = "muted";
+  if (models.expressionClassifier !== "off") {
+    if (models.expressionClassifier === "ready") {
+      clfState = "ok";
+      clfDetail = "blink / smile classifier (server)";
+    } else if (models.expressionClassifier === "failed") {
+      clfState = "warn";
+      clfDetail = "classifier unavailable — blendshapes fallback";
+    } else {
+      clfDetail = "waiting";
+    }
+  }
+  const clfLine =
+    models.expressionClassifier !== "off"
+      ? line("Expression AI", clfState, clfDetail)
+      : null;
 
   return (
     <div
@@ -89,15 +139,18 @@ export function ScanCaptureModelStatus({
         Capture AI
       </p>
       <ul className={`space-y-0.5 ${textSize}`}>
-        {faceLine}
+        {mpEnabled && models.mediapipe !== "ready" ? faceLine : null}
+        {!mpEnabled && models.faceDetector !== "ready" ? faceLine : null}
         {mpLine}
+        {rfLine}
+        {clfLine}
       </ul>
       {models.mediapipe === "ready" && models.faceDetector === "unsupported" && (
         <p className={`mt-1 text-[#2C3E6B] ${textSize}`}>
           Face framing uses MediaPipe (FaceDetector is optional).
         </p>
       )}
-      {needsExpressionModel && models.mediapipe === "failed" && (
+      {mpEnabled && needsExpressionModel && models.mediapipe === "failed" && (
         <p className={`mt-1 font-medium text-amber-900 ${textSize}`}>
           Run <span className="font-mono">npm run mediapipe:sync-wasm</span> once, refresh, and
           allow camera + network to Google storage.

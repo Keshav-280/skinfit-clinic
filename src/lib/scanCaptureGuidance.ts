@@ -22,9 +22,14 @@ export type CaptureAssistModels = {
   /** Experimental Shape Detection API — not in Chrome stable / Safari. */
   faceDetector: "ready" | "unsupported";
   /** MediaPipe Face Landmarker (framing + blink / smile). */
-  mediapipe: "idle" | "loading" | "ready" | "failed";
+  mediapipe: "off" | "idle" | "loading" | "ready" | "failed";
   /** Set when mediapipe === "failed" (truncated for UI). */
   mediapipeError?: string;
+  /** Server RetinaFace preview (`FACE_DETECTOR=retinaface`). */
+  retinaface: "idle" | "loading" | "ready" | "failed" | "off";
+  retinafaceError?: string;
+  /** Server blink/smile classifier (`FACE_EXPRESSION=classifier`). */
+  expressionClassifier: "idle" | "ready" | "failed" | "off";
 };
 
 /** Same-origin WASM (see `npm run mediapipe:sync-wasm`), then CDN fallback. */
@@ -35,30 +40,7 @@ export function mediapipeWasmRoot(): string {
   return "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm";
 }
 
-export function faceBoxFromLandmarkPoints(
-  points: Array<{ x: number; y: number }>
-): NormalizedFaceBox | null {
-  if (!points.length) return null;
-  let minX = 1;
-  let minY = 1;
-  let maxX = 0;
-  let maxY = 0;
-  for (const p of points) {
-    minX = Math.min(minX, p.x);
-    minY = Math.min(minY, p.y);
-    maxX = Math.max(maxX, p.x);
-    maxY = Math.max(maxY, p.y);
-  }
-  const pad = 0.05;
-  const x = Math.max(0, minX - pad);
-  const y = Math.max(0, minY - pad);
-  return {
-    x,
-    y,
-    width: Math.min(1 - x, maxX - minX + pad * 2),
-    height: Math.min(1 - y, maxY - minY + pad * 2),
-  };
-}
+export { faceBoxFromLandmarkPoints } from "@/src/lib/facePortraitBox";
 
 export type CaptureGuidanceSnapshot = {
   lighting: LightingQuality;
@@ -84,12 +66,12 @@ export type NormalizedFaceBox = {
   height: number;
 };
 
-/** Visual oval + analysis region (3:4 frame, normalized 0–1). Keep in sync with overlay SVG. */
+/** Portrait oval (3:4) — hairline to chin; keep in sync with overlay SVG. */
 export const OVAL_FRAME = {
   cx: 0.5,
-  cy: 0.42,
-  rx: 0.38,
-  ry: 0.34,
+  cy: 0.44,
+  rx: 0.34,
+  ry: 0.4,
 } as const;
 
 export const OVAL_REGION = {
@@ -101,26 +83,37 @@ export const OVAL_REGION = {
 
 const FACE_TARGET = { cx: OVAL_FRAME.cx, cy: OVAL_FRAME.cy };
 
-/** Hysteresis: enter threshold vs exit (stops warning flicker). */
-const TOO_SMALL_ENTER = 0.22;
-const TOO_SMALL_EXIT = 0.3;
-const TOO_LARGE_ENTER = 0.84;
-const TOO_LARGE_EXIT = 0.74;
-const CENTER_ENTER_X = 0.22;
-const CENTER_EXIT_X = 0.17;
-const CENTER_ENTER_Y = 0.24;
-const CENTER_EXIT_Y = 0.19;
+/** Hysteresis — fill is relative to oval height (not full frame). */
+const TOO_SMALL_ENTER = 0.46;
+const TOO_SMALL_EXIT = 0.52;
+const TOO_LARGE_ENTER = 0.9;
+const TOO_LARGE_EXIT = 0.82;
+const CENTER_ENTER_X = 0.2;
+const CENTER_EXIT_X = 0.15;
+const CENTER_ENTER_Y = 0.22;
+const CENTER_EXIT_Y = 0.17;
 
 export const CAPTURE_ZOOM_AUTO = {
   min: 1,
-  max: 2.5,
-  default: 1.28,
-  targetFill: 0.44,
+  max: 2.1,
+  default: 1.12,
+  /** Target vertical fill (hairline → chin) inside the oval. */
+  targetFill: 0.56,
 } as const;
 
-/** Portrait face size — blend height/width so hair/glasses jitter less. */
+const OVAL_HEIGHT = OVAL_FRAME.ry * 2;
+
+/** Chin / neck extends below the oval (shoulders in frame). */
+export function faceExtendsBelowOval(box: NormalizedFaceBox): boolean {
+  return box.y + box.height > OVAL_REGION.y1 + 0.05;
+}
+
+/** How much of the oval band the face box occupies vertically (0–1). */
 export function effectiveFaceFill(box: NormalizedFaceBox): number {
-  return box.height * 0.72 + box.width * 0.58;
+  const y0 = Math.max(box.y, OVAL_REGION.y0);
+  const y1 = Math.min(box.y + box.height, OVAL_REGION.y1);
+  const overlapH = Math.max(0, y1 - y0);
+  return overlapH / OVAL_HEIGHT;
 }
 
 export type StableFramingState = {
@@ -313,6 +306,9 @@ export function estimateFaceBoxFromSkin(
   maxX = Math.min(width - 1, maxX + padX);
   maxY = Math.min(height - 1, maxY + padY);
 
+  const y1Cap = Math.floor(height * OVAL_REGION.y1);
+  if (maxY > y1Cap) maxY = y1Cap;
+
   return {
     x: minX / width,
     y: minY / height,
@@ -324,7 +320,7 @@ export function estimateFaceBoxFromSkin(
 function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): string {
   switch (quality) {
     case "no_face":
-      return "Center your face in the oval";
+      return "Center your face — fill the oval from hairline to chin";
     case "off_center": {
       const offX = Math.abs(cx - FACE_TARGET.cx);
       const offY = Math.abs(cy - FACE_TARGET.cy);
@@ -336,14 +332,14 @@ function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): st
           : cy < FACE_TARGET.cy
             ? "Move slightly down"
             : "Move slightly up";
-      return `${hint} to center in the oval`;
+      return `${hint} — keep hair to chin in the oval`;
     }
     case "too_small":
-      return "Move a little closer";
+      return "Move closer — hair to chin should fill the oval";
     case "too_large":
-      return "You're close — tiny adjust if needed";
+      return "Pull back a little — keep shoulders out of frame";
     default:
-      return "Face position looks good";
+      return "Hair to chin fills the oval — looks good";
   }
 }
 
@@ -351,9 +347,14 @@ function classifyFraming(
   faceFill: number,
   offX: number,
   offY: number,
-  prev: FaceFramingQuality | null
+  prev: FaceFramingQuality | null,
+  box: NormalizedFaceBox | null
 ): FaceFramingQuality {
   const p = prev ?? "no_face";
+
+  if (box && faceExtendsBelowOval(box)) {
+    return "too_large";
+  }
 
   if (p === "too_large") {
     if (faceFill >= TOO_LARGE_EXIT) return "too_large";
@@ -395,7 +396,13 @@ export function analyzeFaceFraming(
   const offX = Math.abs(cx - FACE_TARGET.cx);
   const offY = Math.abs(cy - FACE_TARGET.cy);
   const faceFill = effectiveFaceFill(box);
-  const quality = classifyFraming(faceFill, offX, offY, prev?.quality ?? null);
+  const quality = classifyFraming(
+    faceFill,
+    offX,
+    offY,
+    prev?.quality ?? null,
+    box
+  );
 
   return {
     quality,
@@ -408,13 +415,20 @@ export function analyzeFaceFraming(
 export function suggestCaptureZoom(
   currentZoom: number,
   faceFill: number | null,
+  framingQuality: FaceFramingQuality | null = null,
   targetFill = CAPTURE_ZOOM_AUTO.targetFill
 ): number | null {
   if (faceFill == null || faceFill < 0.06) return null;
+  if (framingQuality === "too_large" && currentZoom > CAPTURE_ZOOM_AUTO.min) {
+    const out = clamp(currentZoom * 0.88, CAPTURE_ZOOM_AUTO.min, CAPTURE_ZOOM_AUTO.max);
+    if (Math.abs(out - currentZoom) < 0.04) return null;
+    return Math.round(out * 20) / 20;
+  }
+  if (faceFill > TOO_LARGE_ENTER) return null;
   const ratio = targetFill / faceFill;
   const raw = clamp(currentZoom * ratio, CAPTURE_ZOOM_AUTO.min, CAPTURE_ZOOM_AUTO.max);
-  const next = currentZoom * 0.45 + raw * 0.55;
-  if (Math.abs(next - currentZoom) < 0.03) return null;
+  const next = currentZoom * 0.55 + raw * 0.45;
+  if (Math.abs(next - currentZoom) < 0.04) return null;
   return Math.round(next * 20) / 20;
 }
 
@@ -427,7 +441,11 @@ export function buildCaptureGuidance(
   framing: ReturnType<typeof analyzeFaceFraming>,
   currentZoom: number
 ): CaptureGuidanceSnapshot {
-  const suggestedZoom = suggestCaptureZoom(currentZoom, framing.faceFill);
+  const suggestedZoom = suggestCaptureZoom(
+    currentZoom,
+    framing.faceFill,
+    framing.quality
+  );
   const lightingOk =
     lighting.quality === "good" || lighting.score >= 55;
   const faceOk = framing.quality === "good";
@@ -447,22 +465,32 @@ export function buildCaptureGuidance(
   };
 }
 
-/** Sample video frame to small canvas and return ImageData. */
+/**
+ * Sample video frame (optionally the same center crop as preview zoom).
+ * `cropZoom` 1 = full frame; 2 = center half matching CSS scale(2).
+ */
 export function sampleVideoFrame(
   video: HTMLVideoElement,
   sampleWidth = 160,
-  sampleHeight = 200
+  sampleHeight = 200,
+  cropZoom = 1
 ): ImageData | null {
   const w = video.videoWidth;
   const h = video.videoHeight;
   if (!w || !h) return null;
+
+  const z = Math.max(1, cropZoom);
+  const sw = w / z;
+  const sh = h / z;
+  const sx = (w - sw) / 2;
+  const sy = (h - sh) / 2;
 
   const canvas = document.createElement("canvas");
   canvas.width = sampleWidth;
   canvas.height = sampleHeight;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
-  ctx.drawImage(video, 0, 0, sampleWidth, sampleHeight);
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sampleWidth, sampleHeight);
   return ctx.getImageData(0, 0, sampleWidth, sampleHeight);
 }
 

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { isSameWeek, subDays } from "date-fns";
-import { db } from "@/src/db";
+import { db } from "@/src/db/client";
 import {
   appointments,
   dailyLogs,

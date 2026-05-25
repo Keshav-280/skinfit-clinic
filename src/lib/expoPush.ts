@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import { db } from "@/src/db";
+import { db } from "@/src/db/client";
 import { users } from "@/src/db/schema";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -94,6 +94,32 @@ export async function notifyPatientScheduleAppointment(
     title: t,
     body: b,
     data: { type: "schedule_appointment" },
+  });
+}
+
+/** Patient push when an async scan job finishes and the report is saved. */
+export async function notifyPatientScanReportReady(
+  patientUserId: string,
+  scanId: number,
+  scanName?: string | null
+): Promise<void> {
+  const [row] = await db
+    .select({ token: users.expoPushToken })
+    .from(users)
+    .where(eq(users.id, patientUserId))
+    .limit(1);
+  const token = row?.token?.trim();
+  if (!token) return;
+
+  const body =
+    scanName?.trim() ||
+    "Your full scan report is ready — open SkinnFit to view images, masks, and kAI analysis.";
+
+  await sendExpoPushNotification({
+    expoPushToken: token,
+    title: "SkinnFit — report ready",
+    body: body.length > 140 ? `${body.slice(0, 137)}…` : body,
+    data: { type: "scan_report_ready", scanId },
   });
 }
 

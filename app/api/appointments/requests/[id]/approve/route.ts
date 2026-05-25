@@ -13,6 +13,7 @@ import { slotDateAndHmToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
 import { notifyPatientAppointmentEmail } from "@/src/lib/email/notifyPatientAppointmentEmail";
 import { formatPatientAppointmentConfirmationMessage } from "@/src/lib/patientGoogleCalendarHelp";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
+import { linkDoctorPatientCare } from "@/src/lib/doctorPatientCare";
 
 const APPOINTMENT_CONFIRM_EMAIL_SUBJECT = "SkinnFit Clinic — Appointment confirmed";
 
@@ -86,6 +87,8 @@ export async function POST(
       type: "consultation",
     })
     .returning({ id: appointments.id });
+
+  await linkDoctorPatientCare(request.doctorId, request.patientId);
 
   await db
     .update(appointmentRequests)

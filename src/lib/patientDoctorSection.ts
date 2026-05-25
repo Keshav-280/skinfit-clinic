@@ -1,13 +1,22 @@
 import { and, desc, eq, isNull, isNotNull, or } from "drizzle-orm";
 import { db } from "@/src/db";
 import { doctorFeedbackVoiceNotes, users, visitNotes } from "@/src/db/schema";
+import {
+  getAssignedDoctorIdForPatient,
+  getDoctorPatientCareRow,
+} from "@/src/lib/doctorPatientCare";
 
 export type DoctorVoiceNoteRow = {
   id: string;
-  audioDataUri: string;
+  audioDataUri: string | null;
   createdAt: string;
   listened: boolean;
 };
+
+function normalizeVoiceNoteAudioUri(raw: string | null | undefined): string | null {
+  const t = raw?.trim();
+  return t ? t : null;
+}
 
 export type DoctorFeedbackEntry = {
   id: string;
@@ -37,9 +46,11 @@ export type PatientDoctorSection = {
 export async function getPatientDoctorSection(
   userId: string
 ): Promise<PatientDoctorSection> {
-  const doctorUsers = db.$with("doctor_users").as(
-    db.select({ id: users.id, name: users.name }).from(users)
-  );
+  const assignedDoctorId = await getAssignedDoctorIdForPatient(userId);
+  const care =
+    assignedDoctorId != null
+      ? await getDoctorPatientCareRow(assignedDoctorId, userId)
+      : null;
 
   const [userRow, activeVoiceRows, archivedVoiceRows, visitRow, activeFeedbackRows, archivedFeedbackRows] =
     await Promise.all([
@@ -47,7 +58,6 @@ export async function getPatientDoctorSection(
         where: eq(users.id, userId),
         columns: {
           onboardingComplete: true,
-          doctorFeedbackNote: true,
         },
       }),
       db
@@ -62,7 +72,8 @@ export async function getPatientDoctorSection(
           and(
             eq(doctorFeedbackVoiceNotes.userId, userId),
             isNull(doctorFeedbackVoiceNotes.scanId),
-            isNull(doctorFeedbackVoiceNotes.patientArchivedAt)
+            isNull(doctorFeedbackVoiceNotes.patientArchivedAt),
+            isNotNull(doctorFeedbackVoiceNotes.audioDataUri)
           )
         )
         .orderBy(desc(doctorFeedbackVoiceNotes.createdAt)),
@@ -78,7 +89,8 @@ export async function getPatientDoctorSection(
           and(
             eq(doctorFeedbackVoiceNotes.userId, userId),
             isNull(doctorFeedbackVoiceNotes.scanId),
-            isNotNull(doctorFeedbackVoiceNotes.patientArchivedAt)
+            isNotNull(doctorFeedbackVoiceNotes.patientArchivedAt),
+            isNotNull(doctorFeedbackVoiceNotes.audioDataUri)
           )
         )
         .orderBy(desc(doctorFeedbackVoiceNotes.createdAt))
@@ -135,7 +147,7 @@ export async function getPatientDoctorSection(
 
   const mapRow = (r: (typeof activeVoiceRows)[number]): DoctorVoiceNoteRow => ({
     id: r.id,
-    audioDataUri: r.audioDataUri ?? "",
+    audioDataUri: normalizeVoiceNoteAudioUri(r.audioDataUri),
     createdAt: r.createdAt.toISOString(),
     listened: r.patientListenedAt != null,
   });
@@ -166,13 +178,22 @@ export async function getPatientDoctorSection(
     };
   };
 
-  const doctorVoiceNotes = activeVoiceRows.map(mapRow);
-  const doctorArchivedVoiceNotes = archivedVoiceRows.map(mapRow);
+  const hasPlayableAudio = (
+    v: DoctorVoiceNoteRow
+  ): v is DoctorVoiceNoteRow & { audioDataUri: string } =>
+    Boolean(v.audioDataUri?.trim());
+
+  const doctorVoiceNotes = activeVoiceRows.map(mapRow).filter(hasPlayableAudio);
+  const doctorArchivedVoiceNotes = archivedVoiceRows
+    .map(mapRow)
+    .filter(hasPlayableAudio);
   const doctorVoiceNoteIsNew = doctorVoiceNotes.some((v) => !v.listened);
 
   return {
     doctorFeedback:
-      userRow?.doctorFeedbackNote?.trim() || visitRow[0]?.notes?.trim() || "",
+      care?.doctorFeedbackNote?.trim() ||
+      visitRow[0]?.notes?.trim() ||
+      "",
     doctorVoiceNotes,
     doctorArchivedVoiceNotes,
     doctorVoiceNoteIsNew,

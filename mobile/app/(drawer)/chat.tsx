@@ -26,12 +26,7 @@ import { ChatMessageMarkdown } from "@/components/ChatMessageMarkdown";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
-import {
-  decryptMessages,
-  encryptOutgoingText,
-  setupMobileDoctorChatE2ee,
-  type DoctorThreadE2eeSession,
-} from "@/lib/chatE2ee";
+import { useMobileDoctorChatE2ee } from "@/hooks/useMobileDoctorChatE2ee";
 import {
   getClinicSupportInboxLastSeenIso,
   getDoctorInboxLastSeenIso,
@@ -112,6 +107,18 @@ const CONTACTS: {
 ];
 
 const AI_GREETING = "Hi! I'm SkinnFit AI Assistant. How can I help you today?";
+
+function chatErrorMessage(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.body.error === "E2EE_REQUIRED") {
+      return typeof e.body.message === "string"
+        ? e.body.message
+        : "Secure chat is active. Wait for encryption to finish, then send again.";
+    }
+    return e.message;
+  }
+  return e instanceof Error ? e.message : "Something went wrong.";
+}
 const HOME_CACHE_KEY = "skinfit-chat-home-v1";
 const THREAD_CACHE_KEY_PREFIX = "skinfit-chat-thread-v1:";
 const APPOINTMENT_KEYWORDS = [
@@ -190,7 +197,7 @@ export default function ChatScreen() {
   const [homeRows, setHomeRows] = useState<HomeConversation[]>([
     {
       id: "doctor",
-      title: CONTACTS[1]?.name || "Doctor",
+      title: "Doctor",
       subtitle: "Your dermatologist replies here.",
       unread: 0,
     },
@@ -227,28 +234,20 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);
   const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const doctorE2eeRef = useRef<DoctorThreadE2eeSession | null>(null);
-  const [doctorE2eeStatus, setDoctorE2eeStatus] = useState<string | null>(null);
+  const wasDoctorE2eeReadyRef = useRef(false);
 
   const peer = useMemo(() => CONTACTS.find((c) => c.id === active)!, [active]);
 
-  useEffect(() => {
-    if (active !== "doctor" || !token) {
-      doctorE2eeRef.current = null;
-      setDoctorE2eeStatus(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const s = await setupMobileDoctorChatE2ee(token);
-      if (cancelled) return;
-      doctorE2eeRef.current = s;
-      setDoctorE2eeStatus(s?.ready ? null : s?.status ?? null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [active, token]);
+  const doctorE2ee = useMobileDoctorChatE2ee(token, !homeMode && active === "doctor");
+  const {
+    e2eeFeatureEnabled: doctorE2eeFeatureOn,
+    e2eeReady: doctorE2eeReady,
+    e2eeStatus: doctorE2eeStatus,
+    decryptMessages: decryptDoctorMessages,
+    encryptOutgoingText: encryptDoctorOutgoing,
+    ensureReadyForSend: ensureDoctorE2eeForSend,
+    retryE2eeSetup: retryDoctorE2ee,
+  } = doctorE2ee;
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -274,15 +273,15 @@ export default function ChatScreen() {
       );
       if (!data.success) throw new Error("Failed to load messages.");
       let messages = normalizeApiMessages(data.messages);
-      if (assistantId === "doctor" && doctorE2eeRef.current?.ready) {
-        messages = await decryptMessages(messages, doctorE2eeRef.current);
+      if (assistantId === "doctor") {
+        messages = await decryptDoctorMessages(messages);
       }
       return {
         messages,
         clinicReadThroughIso: data.clinicReadThroughIso,
       };
     },
-    [token]
+    [token, ensureDoctorE2eeForSend, decryptDoctorMessages]
   );
 
   const createPlainThread = useCallback(
@@ -360,6 +359,32 @@ export default function ChatScreen() {
     }
   }, []);
 
+  /** Re-decrypt after E2EE boots (messages often load from cache first). */
+  useEffect(() => {
+    if (homeMode || active !== "doctor" || !doctorE2eeFeatureOn) {
+      wasDoctorE2eeReadyRef.current = false;
+      return;
+    }
+    const justReady = doctorE2eeReady && !wasDoctorE2eeReadyRef.current;
+    wasDoctorE2eeReadyRef.current = doctorE2eeReady;
+    if (!justReady) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const plain = await fetchPlainMessages("doctor");
+        if (cancelled) return;
+        setMessages(plain.messages);
+        void persistThreadCache("doctor", plain.messages);
+      } catch {
+        /* keep cached messages */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [doctorE2eeReady, doctorE2eeFeatureOn, active, homeMode, fetchPlainMessages, persistThreadCache]);
+
   const loadHomeData = useCallback(async () => {
     if (!token) return;
     setHomeLoading(true);
@@ -428,28 +453,17 @@ export default function ChatScreen() {
       const supportUnread = Math.max(0, unreadData.supportCount || 0);
       const aiUnread = 0;
 
-      const firstEventWithDoctor = calendarData.events?.find((e) => e.doctor?.name?.trim());
-      const resolvedDoctorName =
-        doctorProfileData.profile?.name?.trim() ||
-        firstEventWithDoctor?.doctor?.name?.trim() ||
-        CONTACTS[1]?.name ||
-        "Doctor";
+      const profileName = doctorProfileData.profile?.name?.trim() || "";
       const nextAppointment = calendarData.events?.find((e) => !!e.start);
       const nextAppointmentLabel = nextAppointment?.start
         ? `Next appointment on ${dateLabelFromIso(nextAppointment.start) || "upcoming date"}`
         : "No upcoming appointment reminders";
 
       const nextDoctorProfile = {
-        name: resolvedDoctorName,
-        subtitle:
-          doctorProfileData.profile?.specialty?.trim() ||
-          firstEventWithDoctor?.doctor?.specialty?.trim() ||
-          "",
+        name: profileName,
+        subtitle: doctorProfileData.profile?.specialty?.trim() || "",
         replyHint: "Typically replies in a few hours",
-        avatarUrl:
-          doctorProfileData.profile?.imageUrl?.trim() ||
-          firstEventWithDoctor?.doctor?.imageUrl?.trim() ||
-          undefined,
+        avatarUrl: doctorProfileData.profile?.imageUrl?.trim() || undefined,
       };
       setDoctorProfile(nextDoctorProfile);
 
@@ -463,7 +477,7 @@ export default function ChatScreen() {
       const nextHomeRows: HomeConversation[] = [
         {
           id: "doctor",
-          title: resolvedDoctorName,
+          title: profileName || "Doctor",
           subtitle: doctorLast?.text || "No messages yet",
           unread: doctorUnread,
           dateLabel: dateLabelFromIso(doctorLast?.createdAt),
@@ -480,7 +494,9 @@ export default function ChatScreen() {
           title: "Appointments",
           subtitle: appointmentsLast?.text || nextAppointmentLabel,
           unread: 0,
-          dateLabel: dateLabelFromIso(appointmentsLast?.createdAt) || dateLabelFromIso(nextAppointment?.start),
+          dateLabel:
+            dateLabelFromIso(appointmentsLast?.createdAt) ||
+            dateLabelFromIso(nextAppointment?.start),
         },
         {
           id: "support",
@@ -488,7 +504,7 @@ export default function ChatScreen() {
           subtitle: supportLast?.text || "No messages yet",
           unread: supportUnread,
           dateLabel: dateLabelFromIso(supportLast?.createdAt),
-        },
+        }
       ];
       setHomeRows(nextHomeRows);
       void AsyncStorage.setItem(
@@ -662,8 +678,15 @@ export default function ChatScreen() {
       const audioDataUri = `data:audio/m4a;base64,${base64}`;
 
       let caption = input.trim();
-      if (active === "doctor" && caption && doctorE2eeRef.current?.ready) {
-        caption = await encryptOutgoingText(caption, doctorE2eeRef.current);
+      if (active === "doctor" && caption && doctorE2eeFeatureOn) {
+        const session = await ensureDoctorE2eeForSend();
+        if (!session?.ready) {
+          throw new Error(
+            session?.status ??
+              "Secure chat is not ready. Wait a few seconds, then try again."
+          );
+        }
+        caption = await encryptDoctorOutgoing(caption);
       }
       await apiJson("/api/chat/plain/message", token, {
         method: "POST",
@@ -683,7 +706,7 @@ export default function ChatScreen() {
         await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send voice note.");
+      setError(chatErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -754,8 +777,15 @@ export default function ChatScreen() {
     setLoading(true);
     try {
       let outbound = text;
-      if (active === "doctor" && doctorE2eeRef.current?.ready) {
-        outbound = await encryptOutgoingText(text, doctorE2eeRef.current);
+      if (active === "doctor" && doctorE2eeFeatureOn) {
+        const session = await ensureDoctorE2eeForSend();
+        if (!session?.ready) {
+          throw new Error(
+            session?.status ??
+              "Secure chat is not ready. Wait a few seconds, then try again."
+          );
+        }
+        outbound = await encryptDoctorOutgoing(text);
       }
       await apiJson("/api/chat/plain/message", token, {
         method: "POST",
@@ -771,7 +801,7 @@ export default function ChatScreen() {
         await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Send failed.");
+      setError(chatErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -905,13 +935,13 @@ export default function ChatScreen() {
           </View>
           <View style={styles.primaryInfo}>
             <Text style={styles.primaryName} numberOfLines={1}>
-              {doctorProfile.name || CONTACTS[1]?.name || "Doctor"}
+              {doctorProfile.name || "Doctor"}
             </Text>
             <Text style={styles.primarySpec} numberOfLines={1}>
               {doctorProfile.subtitle || "Care Team"}
             </Text>
             <View style={styles.primaryPill}>
-              <Text style={styles.primaryPillText}>Your Primary Doctor</Text>
+              <Text style={styles.primaryPillText}>Doctor Chat</Text>
             </View>
             <Text style={styles.primaryHint}>
               {doctorProfile.replyHint || "Typically replies in a few hours"}
@@ -997,12 +1027,14 @@ export default function ChatScreen() {
               <Text style={styles.threadName} numberOfLines={1}>
                 {activeThreadTitle}
               </Text>
-              <Text style={styles.threadStatus}>
-                {active === "doctor" && doctorE2eeStatus
-                  ? doctorE2eeStatus
-                  : activeThreadSubtitle}
-              </Text>
-              {active === "doctor" && doctorE2eeRef.current?.ready ? (
+              {active === "doctor" && doctorE2eeFeatureOn && doctorE2eeStatus ? (
+                <Pressable onPress={() => void retryDoctorE2ee()} hitSlop={6}>
+                  <Text style={styles.threadStatus}>{doctorE2eeStatus} · Tap to retry</Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.threadStatus}>{activeThreadSubtitle}</Text>
+              )}
+              {active === "doctor" && doctorE2eeFeatureOn && doctorE2eeReady ? (
                 <Text style={styles.e2eeBadge}>End-to-end encrypted</Text>
               ) : null}
             </View>

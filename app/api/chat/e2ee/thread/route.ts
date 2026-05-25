@@ -1,12 +1,16 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
-import { appointments, chatThreads, users } from "@/src/db/schema";
-import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { chatThreads } from "@/src/db/schema";
+import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { DOCTOR_FALLBACK_ID } from "@/src/lib/auth/fallbackDoctorIdentity";
 import { ensureFallbackDoctorInDb } from "@/src/lib/auth/ensureFallbackDoctor";
-import { CLINIC_DOCTOR_EMAIL } from "@/src/lib/clinicDoctor";
+import {
+  assertDoctorPatientAccess,
+  ensureDoctorPatientChatThread,
+  resolveDoctorIdForPatientChat,
+} from "@/src/lib/doctorPatientCare";
 import {
   clearThreadE2eeEnvelopes,
   findDoctorThreadId,
@@ -17,88 +21,56 @@ import {
   threadHasE2eeEnvelopes,
 } from "@/src/lib/chatE2ee/store";
 
-async function resolvePeerDoctorId(
-  patientId: string,
-  threadId: string
-): Promise<string | null> {
-  const [appt] = await db
-    .select({ doctorId: appointments.doctorId })
-    .from(appointments)
-    .where(eq(appointments.userId, patientId))
-    .orderBy(desc(appointments.dateTime))
-    .limit(1);
-  if (appt?.doctorId) return appt.doctorId;
-
-  const envelopeUserIds = await listThreadEnvelopeUserIds(threadId);
-  for (const uid of envelopeUserIds) {
-    if (uid === patientId) continue;
-    const [row] = await db
-      .select({ id: users.id, role: users.role })
-      .from(users)
-      .where(eq(users.id, uid))
-      .limit(1);
-    if (row?.role === "doctor" || row?.role === "admin") return row.id;
-  }
-
-  const [clinicDoc] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, CLINIC_DOCTOR_EMAIL))
-    .limit(1);
-  if (clinicDoc?.id) return clinicDoc.id;
-
-  try {
-    return await ensureFallbackDoctorInDb();
-  } catch {
-    const [fallback] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, DOCTOR_FALLBACK_ID))
-      .limit(1);
-    return fallback?.id ?? null;
-  }
-}
-
-async function ensureDoctorThread(patientId: string): Promise<string> {
-  const existing = await findDoctorThreadId(patientId);
-  if (existing) return existing;
-  const [created] = await db
-    .insert(chatThreads)
-    .values({ userId: patientId, assistantId: "doctor" })
-    .returning({ id: chatThreads.id });
-  if (!created) throw new Error("THREAD_CREATE_FAILED");
-  return created.id;
-}
-
-/** GET — E2EE setup for doctor↔patient thread. */
+/** GET — E2EE setup for doctor↔patient thread (scoped per doctor–patient pair). */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const patientIdParam = url.searchParams.get("patientId")?.trim() ?? "";
 
-  const doctorId = await getDoctorPortalUserId();
+  const doctorId = await getDoctorPortalUserIdFromRequest(req);
   const sessionUserId = await getSessionUserIdFromRequest(req);
 
   let patientId: string;
   let selfUserId: string;
+  let peerUserId: string;
 
   if (doctorId && patientIdParam) {
+    try {
+      await assertDoctorPatientAccess(doctorId, patientIdParam);
+    } catch {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
     patientId = patientIdParam;
     selfUserId = doctorId;
+    peerUserId = patientId;
   } else if (sessionUserId && !patientIdParam) {
     patientId = sessionUserId;
     selfUserId = sessionUserId;
+    const doctorIdParam = url.searchParams.get("doctorId");
+    const peer = await resolveDoctorIdForPatientChat(patientId, doctorIdParam);
+    if (!peer) {
+      return NextResponse.json(
+        {
+          error: "NO_DOCTOR",
+          message: "No clinic doctor registered for secure chat yet.",
+        },
+        { status: 400 }
+      );
+    }
+    peerUserId = peer;
   } else {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const threadId = await ensureDoctorThread(patientId);
-  const peerUserId =
-    doctorId && patientIdParam
-      ? patientId
-      : await resolvePeerDoctorId(patientId, threadId);
-  if (!peerUserId) {
-    return NextResponse.json({ error: "PEER_UNKNOWN" }, { status: 400 });
+  let effectiveDoctorId = doctorId ?? peerUserId;
+  if (doctorId && doctorId === DOCTOR_FALLBACK_ID) {
+    try {
+      effectiveDoctorId = await ensureFallbackDoctorInDb();
+    } catch {
+      /* use session id */
+    }
   }
+
+  const threadId = await ensureDoctorPatientChatThread(patientId, effectiveDoctorId);
 
   let effectiveSelfUserId = selfUserId;
   if (doctorId && doctorId === DOCTOR_FALLBACK_ID) {
@@ -121,6 +93,7 @@ export async function GET(req: Request) {
     threadId,
     selfUserId: effectiveSelfUserId,
     peerUserId,
+    doctorId: effectiveDoctorId,
     selfHasPublicKey: Boolean(selfPub),
     peerHasPublicKey: Boolean(peerPub),
     peerPublicKeyJwk: peerPub,
@@ -132,7 +105,7 @@ export async function GET(req: Request) {
 
 /** POST — store wrapped thread keys (client-generated). */
 export async function POST(req: Request) {
-  const doctorId = await getDoctorPortalUserId();
+  const doctorId = await getDoctorPortalUserIdFromRequest(req);
   const sessionUserId = await getSessionUserIdFromRequest(req);
   const userId = doctorId ?? sessionUserId;
   if (!userId) {
@@ -157,7 +130,11 @@ export async function POST(req: Request) {
   }
 
   const [thread] = await db
-    .select({ userId: chatThreads.userId, assistantId: chatThreads.assistantId })
+    .select({
+      userId: chatThreads.userId,
+      assistantId: chatThreads.assistantId,
+      doctorId: chatThreads.doctorId,
+    })
     .from(chatThreads)
     .where(eq(chatThreads.id, threadId))
     .limit(1);
@@ -166,9 +143,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "THREAD_NOT_FOUND" }, { status: 404 });
   }
 
+  if (doctorId) {
+    if (thread.doctorId && thread.doctorId !== doctorId) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+    try {
+      await assertDoctorPatientAccess(doctorId, thread.userId);
+    } catch {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+    if (!thread.doctorId) {
+      await db
+        .update(chatThreads)
+        .set({ doctorId })
+        .where(eq(chatThreads.id, threadId));
+    }
+  } else if (sessionUserId === thread.userId) {
+    /* Patient may use any registered doctor thread they own. */
+  } else {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
   const allowedUserIds = new Set<string>([thread.userId]);
   if (doctorId) allowedUserIds.add(doctorId);
   if (sessionUserId) allowedUserIds.add(sessionUserId);
+  if (thread.doctorId) allowedUserIds.add(thread.doctorId);
 
   const envelopes = (b.envelopes ?? [])
     .map((e) => ({
@@ -209,19 +208,34 @@ export async function DELETE(req: Request) {
   const url = new URL(req.url);
   const patientIdParam = url.searchParams.get("patientId")?.trim() ?? "";
 
-  const doctorId = await getDoctorPortalUserId();
+  const doctorId = await getDoctorPortalUserIdFromRequest(req);
   const sessionUserId = await getSessionUserIdFromRequest(req);
 
   let patientId: string;
+  let scopeDoctorId: string | null = null;
+
   if (doctorId && patientIdParam) {
+    try {
+      await assertDoctorPatientAccess(doctorId, patientIdParam);
+    } catch {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
     patientId = patientIdParam;
+    scopeDoctorId = doctorId;
   } else if (sessionUserId && !patientIdParam) {
     patientId = sessionUserId;
+    const doctorIdParam = url.searchParams.get("doctorId");
+    scopeDoctorId = await resolveDoctorIdForPatientChat(
+      patientId,
+      doctorIdParam
+    );
   } else {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const threadId = await findDoctorThreadId(patientId);
+  const threadId = scopeDoctorId
+    ? await findDoctorThreadId(patientId, scopeDoctorId)
+    : await findDoctorThreadId(patientId);
   if (!threadId) {
     return NextResponse.json({ ok: true, deleted: 0, threadId: null });
   }

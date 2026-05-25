@@ -10,6 +10,7 @@ import {
   Paperclip,
   Send,
   Eraser,
+  type LucideIcon,
 } from "lucide-react";
 import {
   CLINIC_SUPPORT_INBOX_EVENT,
@@ -28,27 +29,17 @@ import {
   type DoctorThreadE2eeSession,
 } from "@/src/lib/chatE2ee/client";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
+import { isDoctorChatE2eeEnabledWeb } from "@/src/lib/chatDoctorE2eeConfig";
 
-const contacts = [
-  {
-    id: "ai",
-    name: "SkinnFit AI Assistant",
-    isActive: true,
-    icon: Bot,
-  },
-  {
-    id: "doctor",
-    name: "Dr. Ruby Sachdev",
-    isActive: false,
-    icon: User,
-  },
-  {
-    id: "support",
-    name: "Clinic Support",
-    isActive: false,
-    icon: User,
-  },
-];
+type AssistantId = "ai" | "doctor" | "support";
+
+type SidebarContact = {
+  key: string;
+  kind: AssistantId;
+  name: string;
+  icon: LucideIcon;
+  doctorId?: string;
+};
 
 const CARD_SHADOW = "rounded-[22px] border border-white/70 bg-white/35 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.04)]";
 
@@ -74,7 +65,6 @@ function fileToDataUri(file: File): Promise<string> {
 }
 
 export default function ChatPage() {
-  type AssistantId = "ai" | "doctor" | "support";
   type ChatMsg = {
     id: string;
     sender: AssistantId | "patient";
@@ -91,11 +81,42 @@ export default function ChatPage() {
   const AI_GREETING =
     "Hi! I'm SkinnFit AI Assistant. How can I help you today?";
   const [contactPreviews, setContactPreviews] = useState<
-    Partial<Record<AssistantId, { snippet: string; time: string }>>
+    Record<string, { snippet: string; time: string }>
   >({});
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [typingIndex, setTypingIndex] = useState(0);
   const [sidebarUnread, setSidebarUnread] = useState({ support: 0, doctor: 0 });
+  const [registeredDoctors, setRegisteredDoctors] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [activeDoctorId, setActiveDoctorId] = useState<string | null>(null);
+
+  const contacts = useMemo((): SidebarContact[] => {
+    const doctorRows: SidebarContact[] = registeredDoctors.map((d) => ({
+      key: `doctor:${d.id}`,
+      kind: "doctor",
+      name: d.name,
+      icon: User,
+      doctorId: d.id,
+    }));
+    return [
+      { key: "ai", kind: "ai", name: "SkinnFit AI Assistant", icon: Bot },
+      ...doctorRows,
+      { key: "support", kind: "support", name: "Clinic Support", icon: User },
+    ];
+  }, [registeredDoctors]);
+
+  const isContactActive = useCallback(
+    (contact: SidebarContact) => {
+      if (contact.kind === "doctor") {
+        return (
+          activeAssistant === "doctor" && activeDoctorId === contact.doctorId
+        );
+      }
+      return activeAssistant === contact.kind;
+    },
+    [activeAssistant, activeDoctorId]
+  );
   const [attachment, setAttachment] = useState<{
     fileName: string;
     dataUri: string;
@@ -112,8 +133,11 @@ export default function ChatPage() {
 
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
+  const doctorE2eeFeatureOn = isDoctorChatE2eeEnabledWeb();
+
   function messageDisplayText(msg: ChatMsg): string {
     if (
+      doctorE2eeFeatureOn &&
       activeAssistant === "doctor" &&
       msg.sender !== "patient" &&
       isE2eePayload(msg.text) &&
@@ -125,15 +149,24 @@ export default function ChatPage() {
   }
 
   useEffect(() => {
-    if (activeAssistant !== "doctor") {
+    if (activeAssistant !== "doctor" || !activeDoctorId) {
       doctorE2eeRef.current = null;
       setDoctorE2eeReady(false);
       setDoctorE2eeStatus(null);
       return;
     }
+    if (!doctorE2eeFeatureOn) {
+      doctorE2eeRef.current = null;
+      setDoctorE2eeReady(true);
+      setDoctorE2eeStatus(null);
+      return;
+    }
     let cancelled = false;
     void (async () => {
-      const s = await ensureDoctorPatientE2eeReady({ credentials: "include" });
+      const s = await ensureDoctorPatientE2eeReady({
+        credentials: "include",
+        doctorId: activeDoctorId,
+      });
       if (cancelled) return;
       doctorE2eeRef.current = s;
       setDoctorE2eeReady(Boolean(s?.ready));
@@ -142,7 +175,7 @@ export default function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeAssistant]);
+  }, [activeAssistant, activeDoctorId, doctorE2eeFeatureOn]);
 
   const scrollMessagesToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -163,21 +196,31 @@ export default function ChatPage() {
     scrollMessagesToBottom,
   ]);
 
-  const activeContact = useMemo(
-    () => contacts.find((c) => c.id === activeAssistant)!,
-    [activeAssistant]
-  );
+  const activeContact = useMemo(() => {
+    const hit = contacts.find((c) => isContactActive(c));
+    return hit ?? contacts[0]!;
+  }, [contacts, isContactActive]);
 
   const fetchPlainMessages = useCallback(
     async (
-      assistantId: AssistantId
+      assistantId: AssistantId,
+      doctorId?: string | null
     ): Promise<{ messages: ChatMsg[]; clinicReadThroughIso?: string }> => {
-      const res = await fetch(
-        `/api/chat/plain/messages?assistantId=${encodeURIComponent(
-          assistantId
-        )}`,
-        { credentials: "include" }
-      );
+      if (assistantId === "doctor" && !doctorId) {
+        return {
+          messages: [],
+          clinicReadThroughIso: new Date().toISOString(),
+        };
+      }
+
+      let url = `/api/chat/plain/messages?assistantId=${encodeURIComponent(
+        assistantId
+      )}`;
+      if (assistantId === "doctor" && doctorId) {
+        url += `&doctorId=${encodeURIComponent(doctorId)}`;
+      }
+
+      const res = await fetch(url, { credentials: "include" });
 
       const data = (await res.json()) as {
         success?: boolean;
@@ -204,10 +247,13 @@ export default function ChatPage() {
         attachmentUrl: m.attachmentUrl ?? null,
         createdAt: m.createdAt,
       }));
-      if (assistantId === "doctor") {
+      if (doctorE2eeFeatureOn && assistantId === "doctor" && doctorId) {
         let session = doctorE2eeRef.current;
         if (!session?.ready) {
-          session = await ensureDoctorPatientE2eeReady({ credentials: "include" });
+          session = await ensureDoctorPatientE2eeReady({
+            credentials: "include",
+            doctorId,
+          });
           doctorE2eeRef.current = session;
           setDoctorE2eeReady(Boolean(session?.ready));
           setDoctorE2eeStatus(session?.status ?? null);
@@ -215,6 +261,8 @@ export default function ChatPage() {
         if (session?.ready) {
           messages = await decryptMessages<ChatMsg>(messages, session);
         }
+      } else if (assistantId === "doctor") {
+        messages = await decryptMessages<ChatMsg>(messages, null);
       }
       return {
         messages,
@@ -226,7 +274,7 @@ export default function ChatPage() {
 
   /** Re-decrypt doctor thread once E2EE finishes loading (messages often fetch first). */
   useEffect(() => {
-    if (activeAssistant !== "doctor") {
+    if (!doctorE2eeFeatureOn || activeAssistant !== "doctor" || !activeDoctorId) {
       wasDoctorE2eeReadyRef.current = false;
       return;
     }
@@ -238,7 +286,7 @@ export default function ChatPage() {
     void (async () => {
       try {
         const { messages: decrypted, clinicReadThroughIso } =
-          await fetchPlainMessages("doctor");
+          await fetchPlainMessages("doctor", activeDoctorId);
         if (cancelled) return;
         setMessages(decrypted);
         markDoctorInboxSeenFromServer(clinicReadThroughIso);
@@ -249,7 +297,7 @@ export default function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [doctorE2eeReady, activeAssistant, fetchPlainMessages]);
+  }, [doctorE2eeReady, activeAssistant, activeDoctorId, fetchPlainMessages]);
 
   const createPlainThread = useCallback(
     async (assistantId: AssistantId): Promise<string> => {
@@ -364,29 +412,63 @@ export default function ChatPage() {
   }, [refreshSidebarUnread]);
 
   const loadContactPreviews = useCallback(async () => {
-    const assistants: AssistantId[] = ["ai", "doctor", "support"];
-    const next: Partial<Record<AssistantId, { snippet: string; time: string }>> = {};
+    const next: Record<string, { snippet: string; time: string }> = {};
 
-    await Promise.all(
-      assistants.map(async (assistantId) => {
+    const jobs: Array<() => Promise<void>> = [
+      async () => {
         try {
-          const { messages: plainMessages } = await fetchPlainMessages(assistantId);
+          const { messages: plainMessages } = await fetchPlainMessages("ai");
           const last = plainMessages[plainMessages.length - 1];
-          // For our UI: show snippet only if there's at least one message.
-          next[assistantId] = last
+          next.ai = last
             ? {
                 snippet: truncate(last.text, 46),
                 time: formatTimeLabel(last.createdAt),
               }
             : { snippet: "", time: "" };
         } catch {
-          next[assistantId] = { snippet: "", time: "" };
+          next.ai = { snippet: "", time: "" };
         }
-      })
-    );
+      },
+      async () => {
+        try {
+          const { messages: plainMessages } =
+            await fetchPlainMessages("support");
+          const last = plainMessages[plainMessages.length - 1];
+          next.support = last
+            ? {
+                snippet: truncate(last.text, 46),
+                time: formatTimeLabel(last.createdAt),
+              }
+            : { snippet: "", time: "" };
+        } catch {
+          next.support = { snippet: "", time: "" };
+        }
+      },
+      ...registeredDoctors.map(
+        (d) => async () => {
+          const key = `doctor:${d.id}`;
+          try {
+            const { messages: plainMessages } = await fetchPlainMessages(
+              "doctor",
+              d.id
+            );
+            const last = plainMessages[plainMessages.length - 1];
+            next[key] = last
+              ? {
+                  snippet: truncate(last.text, 46),
+                  time: formatTimeLabel(last.createdAt),
+                }
+              : { snippet: "", time: "" };
+          } catch {
+            next[key] = { snippet: "", time: "" };
+          }
+        }
+      ),
+    ];
 
+    await Promise.all(jobs.map((fn) => fn()));
     setContactPreviews(next);
-  }, [fetchPlainMessages]);
+  }, [fetchPlainMessages, registeredDoctors]);
 
   const clearClinicChatView = useCallback(async () => {
     const aid = activeAssistant;
@@ -405,7 +487,12 @@ export default function ChatPage() {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ assistantId: aid }),
+        body: JSON.stringify({
+          assistantId: aid,
+          ...(aid === "doctor" && activeDoctorId
+            ? { doctorId: activeDoctorId }
+            : {}),
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         success?: boolean;
@@ -414,7 +501,10 @@ export default function ChatPage() {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Could not clear view");
       }
-      const { messages: next, clinicReadThroughIso } = await fetchPlainMessages(aid);
+      const { messages: next, clinicReadThroughIso } = await fetchPlainMessages(
+        aid,
+        aid === "doctor" ? activeDoctorId : undefined
+      );
       setMessages(next);
       if (aid === "support") {
         markClinicSupportInboxSeenFromServer(clinicReadThroughIso);
@@ -432,6 +522,7 @@ export default function ChatPage() {
     }
   }, [
     activeAssistant,
+    activeDoctorId,
     fetchPlainMessages,
     loadContactPreviews,
     refreshSidebarUnread,
@@ -565,13 +656,54 @@ export default function ChatPage() {
   }, [loadContactPreviews, refreshSidebarUnread, fetchPlainMessages]);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/patient/doctors", {
+          credentials: "include",
+        });
+        const data = (await res.json()) as {
+          doctors?: Array<{ id?: string; name?: string }>;
+        };
+        if (cancelled) return;
+        const rows = (data.doctors ?? [])
+          .filter((d) => d.id && (d.name ?? "").trim())
+          .map((d) => ({
+            id: d.id!,
+            name: (d.name ?? "").trim(),
+          }));
+        setRegisteredDoctors(rows);
+      } catch {
+        if (!cancelled) setRegisteredDoctors([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const a = params.get("assistant");
-    if (a === "support" || a === "doctor" || a === "ai") {
+    const doctorId = params.get("doctorId");
+    if (a === "support" || a === "ai") {
       setActiveAssistant(a);
+      setActiveDoctorId(null);
+      return;
+    }
+    if (a === "doctor") {
+      setActiveAssistant("doctor");
+      if (doctorId) setActiveDoctorId(doctorId);
     }
   }, []);
+
+  useEffect(() => {
+    if (activeAssistant !== "doctor") return;
+    if (activeDoctorId) return;
+    if (registeredDoctors.length === 0) return;
+    setActiveDoctorId(registeredDoctors[0]!.id);
+  }, [activeAssistant, activeDoctorId, registeredDoctors]);
 
   useEffect(() => {
     let cancelled = false;
@@ -614,12 +746,20 @@ export default function ChatPage() {
     }
 
     async function loadPlain() {
+      if (activeAssistant === "doctor" && !activeDoctorId) {
+        setMessages([]);
+        setIsLoading(false);
+        return;
+      }
       setError(null);
       setIsLoading(true);
       setMessages([]);
       try {
         const { messages: plainMessages, clinicReadThroughIso } =
-          await fetchPlainMessages(activeAssistant);
+          await fetchPlainMessages(
+            activeAssistant,
+            activeAssistant === "doctor" ? activeDoctorId : undefined
+          );
         if (cancelled) return;
         setMessages(plainMessages);
       setAttachment(null);
@@ -648,6 +788,7 @@ export default function ChatPage() {
     };
   }, [
     activeAssistant,
+    activeDoctorId,
     fetchAssistantReply,
     fetchPlainMessages,
     createPlainThread,
@@ -674,8 +815,12 @@ export default function ChatPage() {
         return;
       }
       try {
+        if (activeAssistant === "doctor" && !activeDoctorId) return;
         const { messages: next, clinicReadThroughIso } =
-          await fetchPlainMessages(activeAssistant);
+          await fetchPlainMessages(
+            activeAssistant,
+            activeAssistant === "doctor" ? activeDoctorId : undefined
+          );
         if (cancelled) return;
         const fp = next.map((m) => m.id).join(",");
         if (!force && lastFingerprint !== null && fp === lastFingerprint) return;
@@ -710,7 +855,7 @@ export default function ChatPage() {
       window.removeEventListener(CLINIC_SUPPORT_INBOX_REFRESH_EVENT, onInboxRefresh);
       window.removeEventListener(GLOBAL_LIVE_REFRESH_EVENT, onGlobalRefresh);
     };
-  }, [activeAssistant, fetchPlainMessages, loadContactPreviews]);
+  }, [activeAssistant, activeDoctorId, fetchPlainMessages, loadContactPreviews]);
 
   async function sendMessage() {
     const text = inputValue.trim();
@@ -789,21 +934,29 @@ export default function ChatPage() {
     setIsLoading(true);
     try {
       let outboundText = text;
-      if (activeAssistant === "doctor" && text) {
-        let session = doctorE2eeRef.current;
-        if (!session?.ready) {
-          session = await ensureDoctorPatientE2eeReady({ credentials: "include" });
-          doctorE2eeRef.current = session;
-          setDoctorE2eeReady(Boolean(session?.ready));
-          setDoctorE2eeStatus(session?.status ?? null);
+      if (activeAssistant === "doctor") {
+        if (!activeDoctorId) {
+          throw new Error("Select a doctor from the list to start chatting.");
         }
-        if (!session?.ready) {
-          throw new Error(
-            session?.status ??
-              "Secure chat is not ready. Keep this tab open a few seconds, then try again."
-          );
+        if (text && doctorE2eeFeatureOn) {
+          let session = doctorE2eeRef.current;
+          if (!session?.ready) {
+            session = await ensureDoctorPatientE2eeReady({
+              credentials: "include",
+              doctorId: activeDoctorId,
+            });
+            doctorE2eeRef.current = session;
+            setDoctorE2eeReady(Boolean(session?.ready));
+            setDoctorE2eeStatus(session?.status ?? null);
+          }
+          if (!session?.ready) {
+            throw new Error(
+              session?.status ??
+                "Secure chat is not ready. Keep this tab open a few seconds, then try again."
+            );
+          }
+          outboundText = await encryptOutgoingText(text, session);
         }
-        outboundText = await encryptOutgoingText(text, session);
       }
       const res = await fetch("/api/chat/plain/message", {
         method: "POST",
@@ -811,6 +964,9 @@ export default function ChatPage() {
         credentials: "include",
         body: JSON.stringify({
           assistantId: activeAssistant,
+          ...(activeAssistant === "doctor" && activeDoctorId
+            ? { doctorId: activeDoctorId }
+            : {}),
           text: outboundText,
           attachmentUrl: attachment?.dataUri ?? null,
         }),
@@ -822,7 +978,10 @@ export default function ChatPage() {
       }
 
       const { messages: refreshed, clinicReadThroughIso } =
-        await fetchPlainMessages(activeAssistant);
+        await fetchPlainMessages(
+          activeAssistant,
+          activeAssistant === "doctor" ? activeDoctorId : undefined
+        );
       setMessages(refreshed);
       if (activeAssistant === "support") {
         markClinicSupportInboxSeenFromServer(clinicReadThroughIso);
@@ -865,21 +1024,35 @@ export default function ChatPage() {
         </div>
 
         <div className="max-h-[240px] flex-1 overflow-y-auto md:max-h-none">
+          {registeredDoctors.length === 0 ? (
+            <p className="border-b border-white/40 px-4 py-3 text-center text-xs text-[#6B7280]">
+              No clinic doctors registered yet.
+            </p>
+          ) : null}
           {contacts.map((contact) => {
             const Icon = contact.icon;
             const unreadN =
-              contact.id === "support"
+              contact.kind === "support"
                 ? sidebarUnread.support
-                : contact.id === "doctor"
+                : contact.kind === "doctor"
                   ? sidebarUnread.doctor
                   : 0;
+            const preview = contactPreviews[contact.key];
             return (
               <div
-                key={contact.id}
+                key={contact.key}
                 className={`flex cursor-pointer items-center gap-3 border-b border-white/40 px-4 py-4 transition-colors hover:bg-white/40 ${
-                  contact.id === activeAssistant ? "bg-white/30" : ""
+                  isContactActive(contact) ? "bg-white/30" : ""
                 }`}
-                onClick={() => setActiveAssistant(contact.id as AssistantId)}
+                onClick={() => {
+                  if (contact.kind === "doctor" && contact.doctorId) {
+                    setActiveAssistant("doctor");
+                    setActiveDoctorId(contact.doctorId);
+                  } else {
+                    setActiveAssistant(contact.kind);
+                    setActiveDoctorId(null);
+                  }
+                }}
               >
                 <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E8EFE6]/80">
                   <Icon className="h-5 w-5 text-[#2C3E6B]" />
@@ -893,16 +1066,15 @@ export default function ChatPage() {
                   <p className="truncate text-sm font-semibold text-[#2C3E6B]">
                     {contact.name}
                   </p>
-                  {(contactPreviews[contact.id as AssistantId]?.snippet ?? "")
-                    .trim() ? (
+                  {(preview?.snippet ?? "").trim() ? (
                     <p className="truncate text-xs text-[#6B7280]">
-                      {contactPreviews[contact.id as AssistantId]?.snippet}
+                      {preview?.snippet}
                     </p>
                   ) : null}
                 </div>
-                {(contactPreviews[contact.id as AssistantId]?.time ?? "").trim() ? (
+                {(preview?.time ?? "").trim() ? (
                   <span className="shrink-0 text-xs text-[#6B7280]">
-                    {contactPreviews[contact.id as AssistantId]?.time}
+                    {preview?.time}
                   </span>
                 ) : null}
               </div>
@@ -919,7 +1091,10 @@ export default function ChatPage() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E8EFE6]/80">
-                <Bot className="h-5 w-5 text-[#2C3E6B]" />
+                {(() => {
+                  const Icon = activeContact.icon;
+                  return <Icon className="h-5 w-5 text-[#2C3E6B]" />;
+                })()}
               </div>
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
             </div>
@@ -1085,7 +1260,10 @@ export default function ChatPage() {
         </div>
 
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
-          {activeAssistant === "doctor" && !doctorE2eeReady && doctorE2eeStatus ? (
+          {doctorE2eeFeatureOn &&
+          activeAssistant === "doctor" &&
+          !doctorE2eeReady &&
+          doctorE2eeStatus ? (
             <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
               <span className="min-w-0 flex-1">{doctorE2eeStatus}</span>
               <button
@@ -1093,15 +1271,20 @@ export default function ChatPage() {
                 className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100"
                 onClick={() => {
                   void (async () => {
-                    await resetDoctorPatientE2eeEnvelopes({ credentials: "include" });
+                    if (!activeDoctorId) return;
+                    await resetDoctorPatientE2eeEnvelopes({
+                      credentials: "include",
+                      doctorId: activeDoctorId,
+                    });
                     const s = await ensureDoctorPatientE2eeReady({
                       credentials: "include",
+                      doctorId: activeDoctorId,
                     });
                     doctorE2eeRef.current = s;
                     setDoctorE2eeReady(Boolean(s?.ready));
                     setDoctorE2eeStatus(s?.status ?? null);
                     const { messages: next, clinicReadThroughIso } =
-                      await fetchPlainMessages("doctor");
+                      await fetchPlainMessages("doctor", activeDoctorId);
                     setMessages(next);
                     markDoctorInboxSeenFromServer(clinicReadThroughIso);
                   })();
@@ -1111,7 +1294,7 @@ export default function ChatPage() {
               </button>
             </div>
           ) : null}
-          {activeAssistant === "doctor" && doctorE2eeReady ? (
+          {doctorE2eeFeatureOn && activeAssistant === "doctor" && doctorE2eeReady ? (
             <p className="mb-2 text-xs font-medium text-emerald-700">
               End-to-end encrypted · messages are stored as ciphertext
             </p>
@@ -1187,7 +1370,10 @@ export default function ChatPage() {
               title="Send"
               disabled={
                 isLoading ||
-                (activeAssistant === "doctor" && !doctorE2eeReady && Boolean(inputValue.trim())) ||
+                (doctorE2eeFeatureOn &&
+                  activeAssistant === "doctor" &&
+                  !doctorE2eeReady &&
+                  Boolean(inputValue.trim())) ||
                 (activeAssistant === "ai"
                   ? !inputValue.trim()
                   : !inputValue.trim() && !attachment)

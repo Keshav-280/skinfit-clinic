@@ -39,15 +39,36 @@ function parseDataUriField(scores: unknown, key: string): string | undefined {
   return v;
 }
 
-/** Reads `scans.scores.overlayDataUri` (combined model overlay). */
+/** Legacy data URIs or persisted file URLs (`overlayUrl`, `wrinkleMaskUrl`, etc.). */
+function parseStoredImageRef(
+  scores: unknown,
+  urlKey: string,
+  dataUriKey: string
+): string | undefined {
+  if (!scores || typeof scores !== "object") return undefined;
+  const url = (scores as Record<string, unknown>)[urlKey];
+  if (typeof url === "string") {
+    const t = url.trim();
+    if (
+      t.startsWith("http://") ||
+      t.startsWith("https://") ||
+      t.startsWith("/api/files/")
+    ) {
+      return t;
+    }
+  }
+  return parseDataUriField(scores, dataUriKey);
+}
+
+/** Reads `scans.scores.overlayDataUri` or `overlayUrl` (combined model overlay). */
 export function parseScanOverlayDataUri(scores: unknown): string | undefined {
-  return parseDataUriField(scores, "overlayDataUri");
+  return parseStoredImageRef(scores, "overlayUrl", "overlayDataUri");
 }
 
 export function parseScanWrinkleMaskDataUri(scores: unknown): string | undefined {
-  return parseDataUriField(scores, "wrinkleMaskDataUri");
+  return parseStoredImageRef(scores, "wrinkleMaskUrl", "wrinkleMaskDataUri");
 }
 
 export function parseScanAcneMaskDataUri(scores: unknown): string | undefined {
-  return parseDataUriField(scores, "acneMaskDataUri");
+  return parseStoredImageRef(scores, "acneMaskUrl", "acneMaskDataUri");
 }

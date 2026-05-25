@@ -14,6 +14,7 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
@@ -175,8 +176,48 @@ export const users = pgTable("users", {
   profilePhotoUrl: text("profile_photo_url"),
   /** Set by doctor portal when marking a patient as "Visited". */
   clinicVisitedAt: timestamp("clinic_visited_at", { withTimezone: true }),
+  /**
+   * Primary clinician for patient-portal doctor chat, feedback, and scoped reports.
+   * Updated when a new doctor–patient care link is established (e.g. approved booking).
+   */
+  assignedDoctorId: uuid("assigned_doctor_id").references((): AnyPgColumn => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Isolated doctor↔patient relationship — separate chats, feedback, visits per pair. */
+export const doctorPatientCare = pgTable(
+  "doctor_patient_care",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    doctorId: uuid("doctor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    doctorFeedbackNote: text("doctor_feedback_note"),
+    doctorFeedbackUpdatedAt: timestamp("doctor_feedback_updated_at", {
+      withTimezone: true,
+    }),
+    doctorFeedbackViewedAt: timestamp("doctor_feedback_viewed_at", {
+      withTimezone: true,
+    }),
+    clinicVisitedAt: timestamp("clinic_visited_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    doctorPatientUidx: uniqueIndex("doctor_patient_care_doctor_patient_uidx").on(
+      table.doctorId,
+      table.patientId
+    ),
+    doctorIdx: index("doctor_patient_care_doctor_idx").on(table.doctorId),
+    patientIdx: index("doctor_patient_care_patient_idx").on(table.patientId),
+  })
+);
 
 // Scans (dummy scanner / AI skin analysis results)
 export const scans = pgTable("scans", {
@@ -185,10 +226,23 @@ export const scans = pgTable("scans", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  /** Clinician who owns this scan in their portal (patient sees scans for assigned doctor). */
+  doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
   imageUrl: text("image_url").notNull(),
-  /** Ordered face captures (labels + data URIs); null for legacy single-image scans */
+  /**
+   * Ordered face captures — file paths/URLs only (no base64).
+   * Legacy rows may still use dataUri; readers should resolve via resolveScanImageUrl().
+   */
   faceCaptureImages: jsonb("face_capture_images").$type<
-    Array<{ label: string; dataUri: string; previewDataUri?: string }>
+    Array<{
+      label: string;
+      /** New rows: file URL/path only */
+      imageUrl?: string;
+      previewUrl?: string;
+      /** Legacy rows: inline base64 (do not write for new scans) */
+      dataUri?: string;
+      previewDataUri?: string;
+    }>
   >(),
   overallScore: integer("overall_score").notNull(),
   acne: integer("acne").notNull(),
@@ -204,8 +258,14 @@ export const scans = pgTable("scans", {
     pigmentation?: number;
     hydration?: number;
     overallHealth?: number;
+    overallKaiScore?: number;
+    kaiParams?: Record<string, unknown>;
     modelFeatureScores?: Record<string, number | null>;
-    /** Wrinkle + acne overlay JPEG (data URI) from Python analyzer */
+    /** Wrinkle + acne overlay — local/R2 URLs only */
+    overlayUrl?: string;
+    wrinkleMaskUrl?: string;
+    acneMaskUrl?: string;
+    /** @deprecated legacy base64 */
     overlayDataUri?: string;
     wrinkleMaskDataUri?: string;
     acneMaskDataUri?: string;
@@ -222,6 +282,28 @@ export const scans = pgTable("scans", {
    */
   trackerSnapshot: jsonb("tracker_snapshot").$type<PatientTrackerReport | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const scanJobStatusEnum = pgEnum("scan_job_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+]);
+
+export const scanJobs = pgTable("scan_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: scanJobStatusEnum("status").notNull().default("pending"),
+  payloadJson: jsonb("payload_json").$type<Record<string, unknown>>().notNull(),
+  resultScanId: integer("result_scan_id").references(() => scans.id, {
+    onDelete: "set null",
+  }),
+  errorText: text("error_text"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Skin scans (AI face scans - legacy)
@@ -429,6 +511,7 @@ export const visitNotes = pgTable("visit_notes", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
   visitDate: date("visit_date", { mode: "date" }).notNull(),
   doctorName: varchar("doctor_name", { length: 255 }).notNull(),
   notes: text("notes").notNull(),
@@ -496,7 +579,9 @@ export const annotatorImages = pgTable(
     id: serial("id").primaryKey(),
     fileName: varchar("file_name", { length: 255 }).notNull(),
     mimeType: varchar("mime_type", { length: 100 }).notNull(),
-    dataUri: text("data_uri").notNull(),
+    fileUrl: text("file_url"),
+    /** Legacy inline image; new rows use file_url only */
+    dataUri: text("data_uri"),
     sortOrder: integer("sort_order").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -579,6 +664,8 @@ export const chatThreads = pgTable(
     doctorPortalLastReadAt: timestamp("doctor_portal_last_read_at", {
       withTimezone: true,
     }),
+    /** Per-doctor thread when assistantId is doctor (one thread per doctor–patient pair). */
+    doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "cascade" }),
   }
 );
 
@@ -668,6 +755,7 @@ export const skinDnaCards = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
     skinType: varchar("skin_type", { length: 64 }),
     primaryConcern: text("primary_concern"),
     sensitivityIndex: integer("sensitivity_index"),
@@ -678,7 +766,10 @@ export const skinDnaCards = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    userUidx: uniqueIndex("skin_dna_cards_user_id_uidx").on(table.userId),
+    userDoctorUidx: uniqueIndex("skin_dna_cards_user_doctor_uidx").on(
+      table.userId,
+      table.doctorId
+    ),
   })
 );
 
@@ -711,6 +802,7 @@ export const weeklyReports = pgTable("weekly_reports", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
   weekStart: date("week_start", { mode: "date" }).notNull(),
   kaiScore: integer("kai_score"),
   weeklyDelta: integer("weekly_delta"),
@@ -749,6 +841,9 @@ export const doctorFeedbackVoiceNotes = pgTable("doctor_feedback_voice_notes", {
     .references(() => users.id, { onDelete: "cascade" }),
   doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
   scanId: integer("scan_id").references(() => scans.id, { onDelete: "set null" }),
+  /** Local or R2 audio path — never store base64 here for new rows */
+  audioUrl: text("audio_url"),
+  /** @deprecated legacy inline audio */
   audioDataUri: text("audio_data_uri"),
   /** Written feedback text that accompanies (or replaces) the voice note. */
   feedbackText: text("feedback_text"),
@@ -764,6 +859,7 @@ export const monthlyReports = pgTable("monthly_reports", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  doctorId: uuid("doctor_id").references(() => users.id, { onDelete: "set null" }),
   monthStart: date("month_start", { mode: "date" }).notNull(),
   payloadJson: jsonb("payload_json").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

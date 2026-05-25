@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import { format, parseISO } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Linking,
@@ -19,6 +18,7 @@ import {
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AnalysisMagicLoader } from "@/components/AnalysisMagicLoader";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
@@ -175,14 +175,16 @@ export default function HistoryListScreen() {
   if (loading && !data) {
     return (
       <View style={styles.loadingScreen}>
-        <View style={styles.loadingCard}>
-          <View style={styles.loadingPulse} />
-          <ActivityIndicator size="large" color={NAVY} />
-          <Text style={styles.loadingTitle}>Loading treatment history</Text>
-          <Text style={styles.loadingHint}>
-            Fetching your scans, visits, and notes.
-          </Text>
-        </View>
+        <AnalysisMagicLoader
+          title="Assembling your timeline"
+          subtitle="kAI is pulling your progress, visits, and care notes."
+          steps={[
+            "Scan reports",
+            "Clinic visits",
+            "Doctor notes",
+            "Audio summaries",
+          ]}
+        />
       </View>
     );
   }
@@ -557,44 +559,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: BG },
   loadingScreen: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: BG,
-    paddingHorizontal: 24,
-  },
-  loadingCard: {
-    width: "100%",
-    maxWidth: 400,
-    borderRadius: 22,
-    backgroundColor: GLASS,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-  },
-  loadingPulse: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: `${NAVY}15`,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: `${NAVY}25`,
-  },
-  loadingTitle: {
-    marginTop: 16,
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#18181b",
-    textAlign: "center",
-  },
-  loadingHint: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#6B7280",
-    textAlign: "center",
   },
   err: { color: "#b91c1c", padding: 16 },
   profileCard: { padding: 20, marginBottom: 8 },

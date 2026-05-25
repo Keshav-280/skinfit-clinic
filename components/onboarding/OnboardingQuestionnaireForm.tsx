@@ -415,7 +415,18 @@ export function OnboardingQuestionnaireForm() {
       } catch {
         /* */
       }
-      router.push("/onboarding/capture");
+      const resumeRes = await fetch("/api/onboarding/resume", {
+        credentials: "include",
+      });
+      const resume = (await resumeRes.json().catch(() => ({}))) as {
+        hasBaselineScan?: boolean;
+      };
+      if (resume.hasBaselineScan) {
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        router.push("/onboarding/capture");
+      }
     } catch {
       setErr("Network error. Try again.");
     } finally {

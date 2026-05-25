@@ -111,6 +111,7 @@ export async function POST(
     .insert(visitNotes)
     .values({
       userId: patientId,
+      doctorId: staffId,
       visitDate,
       doctorName,
       notes: finalNotes,

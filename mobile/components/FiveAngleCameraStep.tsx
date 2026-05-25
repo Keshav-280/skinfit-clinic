@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { FaceCaptureOvalOverlay } from "@/components/FaceCaptureOvalOverlay";
 import { ScanCaptureGuidanceBanner } from "@/components/ScanCaptureGuidanceBanner";
 import { useMobileScanCaptureGuidance } from "@/hooks/useMobileScanCaptureGuidance";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
@@ -49,22 +48,27 @@ export function FiveAngleCameraStep({
   const userAdjustedZoomAt = useRef(0);
   const insets = useSafeAreaInsets();
 
+  const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
+  const stepId = step?.id ?? "centre";
+
   const guidancePaused = busy || shooting || countdown !== null;
-  const { guidance, analyzing } = useMobileScanCaptureGuidance(
+  const { guidance, faceCheckLive } = useMobileScanCaptureGuidance(
     cameraRef,
     true,
     cameraReady,
     cameraZoom,
-    guidancePaused
+    guidancePaused,
+    stepId
   );
 
+  const autoZoomActive = faceCheckLive && autoZoomEnabled;
+
   useEffect(() => {
-    if (!autoZoomEnabled || !guidance?.suggestedZoom || guidancePaused) return;
+    if (!autoZoomActive || !guidance?.suggestedZoom || guidancePaused) return;
     if (Date.now() - userAdjustedZoomAt.current < 2500) return;
     setCameraZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!));
-  }, [autoZoomEnabled, guidance?.suggestedZoom, guidancePaused]);
+  }, [autoZoomActive, guidance?.suggestedZoom, guidancePaused]);
 
-  const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   if (!step) return null;
 
   const totalSteps = FACE_SCAN_CAPTURE_STEPS.length;
@@ -136,8 +140,6 @@ export function FiveAngleCameraStep({
         zoom={cameraZoom}
         onCameraReady={() => setCameraReady(true)}
       />
-      <FaceCaptureOvalOverlay />
-
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={onBack} style={styles.headerBtn} hitSlop={14}>
@@ -159,6 +161,7 @@ export function FiveAngleCameraStep({
             Step {stepIndex + 1}/{totalSteps}
           </Text>
           <Text style={styles.stepTitle}>{step.title}</Text>
+          <Text style={styles.stepInstruction}>{step.instruction}</Text>
         </View>
       </View>
 
@@ -173,21 +176,16 @@ export function FiveAngleCameraStep({
       )}
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        <View style={styles.bottomColumns}>
-          <View style={styles.bottomCol}>
-            <Text style={styles.colHint} numberOfLines={3}>
-              {step.instruction}
-            </Text>
-            <ScanCaptureGuidanceBanner
-              guidance={guidance}
-              analyzing={analyzing}
-              autoZoomEnabled={autoZoomEnabled}
-            />
-          </View>
-          <View style={styles.bottomCol}>
-            <View style={styles.zoomHeader}>
+        <ScanCaptureGuidanceBanner
+          guidance={guidance}
+          autoZoomEnabled={faceCheckLive && autoZoomEnabled}
+        />
+
+        {faceCheckLive ? (
+          <>
+            <View style={styles.zoomRow}>
               <Text style={styles.zoomLabel}>
-                {autoZoomEnabled ? "Auto zoom" : "Manual"}
+                {autoZoomEnabled ? "Auto zoom" : "Manual zoom"}
               </Text>
               <Pressable
                 onPress={() => setAutoZoomEnabled((v) => !v)}
@@ -195,56 +193,50 @@ export function FiveAngleCameraStep({
                 hitSlop={8}
               >
                 <Text style={styles.autoZoomToggle}>
-                  {autoZoomEnabled ? "Off" : "On"}
+                  {autoZoomEnabled ? "Switch to manual" : "Switch to auto"}
                 </Text>
               </Pressable>
             </View>
             <View style={styles.zoomControls}>
-            <Pressable
-              style={[
-                styles.zoomBtn,
-                cameraZoom <= CAMERA_ZOOM_MIN && styles.disabled,
-              ]}
-              onPress={() => {
-                userAdjustedZoomAt.current = Date.now();
-                setCameraZoom((z) =>
-                  Math.max(CAMERA_ZOOM_MIN, Math.round((z - CAMERA_ZOOM_STEP) * 100) / 100)
-                );
-              }}
-              disabled={cameraZoom <= CAMERA_ZOOM_MIN || isDisabled}
-              accessibilityLabel="Zoom out"
-            >
-              <Ionicons name="remove-outline" size={22} color="#fff" />
-            </Pressable>
-            <View style={styles.zoomTrack}>
-              <View
-                style={[
-                  styles.zoomFill,
-                  {
-                    width: `${((cameraZoom - CAMERA_ZOOM_MIN) / (CAMERA_ZOOM_MAX - CAMERA_ZOOM_MIN)) * 100}%`,
-                  },
-                ]}
-              />
+              <Pressable
+                style={[styles.zoomBtn, cameraZoom <= CAMERA_ZOOM_MIN && styles.disabled]}
+                onPress={() => {
+                  userAdjustedZoomAt.current = Date.now();
+                  setCameraZoom((z) =>
+                    Math.max(CAMERA_ZOOM_MIN, Math.round((z - CAMERA_ZOOM_STEP) * 100) / 100)
+                  );
+                }}
+                disabled={cameraZoom <= CAMERA_ZOOM_MIN || isDisabled}
+                accessibilityLabel="Zoom out"
+              >
+                <Ionicons name="remove-outline" size={20} color="#fff" />
+              </Pressable>
+              <View style={styles.zoomTrack}>
+                <View
+                  style={[
+                    styles.zoomFill,
+                    {
+                      width: `${((cameraZoom - CAMERA_ZOOM_MIN) / (CAMERA_ZOOM_MAX - CAMERA_ZOOM_MIN)) * 100}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Pressable
+                style={[styles.zoomBtn, cameraZoom >= CAMERA_ZOOM_MAX && styles.disabled]}
+                onPress={() => {
+                  userAdjustedZoomAt.current = Date.now();
+                  setCameraZoom((z) =>
+                    Math.min(CAMERA_ZOOM_MAX, Math.round((z + CAMERA_ZOOM_STEP) * 100) / 100)
+                  );
+                }}
+                disabled={cameraZoom >= CAMERA_ZOOM_MAX || isDisabled}
+                accessibilityLabel="Zoom in"
+              >
+                <Ionicons name="add-outline" size={20} color="#fff" />
+              </Pressable>
             </View>
-            <Pressable
-              style={[
-                styles.zoomBtn,
-                cameraZoom >= CAMERA_ZOOM_MAX && styles.disabled,
-              ]}
-              onPress={() => {
-                userAdjustedZoomAt.current = Date.now();
-                setCameraZoom((z) =>
-                  Math.min(CAMERA_ZOOM_MAX, Math.round((z + CAMERA_ZOOM_STEP) * 100) / 100)
-                );
-              }}
-              disabled={cameraZoom >= CAMERA_ZOOM_MAX || isDisabled}
-              accessibilityLabel="Zoom in"
-            >
-              <Ionicons name="add-outline" size={22} color="#fff" />
-            </Pressable>
-          </View>
-          </View>
-        </View>
+          </>
+        ) : null}
         <Pressable
           style={[styles.btnNavy, isDisabled && styles.disabled]}
           onPress={() => setCountdown(3)}
@@ -327,21 +319,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 10,
   },
-  bottomColumns: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "flex-start",
-  },
-  bottomCol: {
-    flex: 1,
-    gap: 8,
-    minWidth: 0,
-  },
-  colHint: {
-    fontSize: 11,
-    lineHeight: 15,
-    color: "rgba(255,255,255,0.88)",
-  },
   instructionCard: {
     width: "100%",
     maxWidth: 400,
@@ -412,17 +389,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 24,
-    gap: 14,
+    paddingHorizontal: 16,
+    gap: 10,
     zIndex: 10,
   },
   zoomRow: {
-    gap: 8,
-  },
-  zoomHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 4,
   },
   zoomLabel: {
     fontSize: 12,
@@ -438,12 +413,13 @@ const styles = StyleSheet.create({
   zoomControls: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
+    paddingHorizontal: 4,
   },
   zoomBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",

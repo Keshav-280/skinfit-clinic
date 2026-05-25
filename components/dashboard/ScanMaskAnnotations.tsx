@@ -1,6 +1,7 @@
 "use client";
 
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import { MASK_MATPLOTLIB_TITLE_CROP_RATIO } from "@/src/lib/maskImageCrop";
 import { DOT_MARKER_LEGEND } from "@/src/lib/scanMaskLabels";
 import type { ReportRegion } from "./scanReportTypes";
 
@@ -11,13 +12,48 @@ function regionMarkerColor(issue: string): string {
   return "#6b7280";
 }
 
-/** Mask PNGs from inference already include matplotlib titles above each panel. */
+function MaskPanel({
+  src,
+  alt,
+  caption,
+}: {
+  src: string;
+  alt: string;
+  caption: string;
+}) {
+  const crop = MASK_MATPLOTLIB_TITLE_CROP_RATIO;
+  return (
+    <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
+      <div
+        className="relative w-full overflow-hidden bg-zinc-50"
+        style={{ aspectRatio: "4 / 5" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          className="absolute left-0 w-full max-w-none object-cover object-bottom"
+          style={{
+            top: `${-crop * 100}%`,
+            height: `${(1 + crop) * 100}%`,
+          }}
+        />
+      </div>
+      <figcaption className="border-t border-zinc-100 px-3 py-2 text-center text-xs font-medium text-zinc-600">
+        {caption}
+      </figcaption>
+    </figure>
+  );
+}
+
 export function ScanMaskAnnotations({
   imageUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
   spatialOutputs: _spatialOutputs,
   regions,
+  wrinklePoseLabel = "Wrinkle mask (smiling)",
+  acnePoseLabel = "Acne objectness (centre)",
 }: {
   imageUrl: string;
   wrinkleMaskUrl?: string;
@@ -43,24 +79,18 @@ export function ScanMaskAnnotations({
           }`}
         >
           {wrinkle ? (
-            <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={wrinkle}
-                alt="Wrinkle mask overlay"
-                className="h-auto w-full object-contain"
-              />
-            </figure>
+            <MaskPanel
+              src={wrinkle}
+              alt="Wrinkle mask overlay"
+              caption={wrinklePoseLabel}
+            />
           ) : null}
           {acne ? (
-            <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={acne}
-                alt="Acne objectness overlay"
-                className="h-auto w-full object-contain"
-              />
-            </figure>
+            <MaskPanel
+              src={acne}
+              alt="Acne objectness overlay"
+              caption={acnePoseLabel}
+            />
           ) : null}
         </div>
       )}

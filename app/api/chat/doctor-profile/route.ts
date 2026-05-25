@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { desc, eq, or, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { listRegisteredClinicDoctors } from "@/src/lib/doctorPatientCare";
 
-const DOCTOR_FALLBACK_EMAIL = "ajaydey1946@gmail.com";
 const DOCTOR_IMAGE_TABLE = "doctor_profile_images";
 
 function rowsFromExecute<T>(result: unknown): T[] {
@@ -35,50 +35,41 @@ async function getDoctorImageByUserId(userId: string): Promise<string> {
   return rows[0]?.image_url?.trim() || "";
 }
 
+/** Patient chat doctor profile: latest configured doctor/admin identity (no Ruby hardcode). */
 export async function GET(req: Request) {
   const userId = await getSessionUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  // 1) Prefer the fallback doctor row when present, since portal edits are made there.
-  let [doctor] = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      specialty: users.primaryGoal,
-    })
+  const doctors = await listRegisteredClinicDoctors();
+  const doctor = doctors[0];
+  if (!doctor) {
+    return NextResponse.json({ profile: null, doctors: [] });
+  }
+
+  const [row] = await db
+    .select({ specialty: users.primaryGoal })
     .from(users)
-    .where(eq(users.email, DOCTOR_FALLBACK_EMAIL))
+    .where(eq(users.id, doctor.id))
     .limit(1);
 
-  // 2) Else fall back to latest real doctor/admin row.
-  if (!doctor) {
-    [doctor] = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        specialty: users.primaryGoal,
-      })
-      .from(users)
-      .where(or(eq(users.role, "doctor"), eq(users.role, "admin"))!)
-      .orderBy(desc(users.createdAt))
-      .limit(1);
-  }
-
-  if (!doctor) {
-    return NextResponse.json({ profile: null });
-  }
   const imageUrl = await getDoctorImageByUserId(doctor.id);
 
   return NextResponse.json({
+    doctors: await Promise.all(
+      doctors.map(async (d) => ({
+        id: d.id,
+        name: d.name,
+        email: d.email,
+        imageUrl: await getDoctorImageByUserId(d.id),
+      }))
+    ),
     profile: {
       id: doctor.id,
       name: doctor.name,
       email: doctor.email,
-      specialty: doctor.specialty ?? "",
+      specialty: row?.specialty ?? "",
       imageUrl,
     },
   });

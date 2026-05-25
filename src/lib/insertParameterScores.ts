@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/src/db";
+import type { db } from "@/src/db/client";
 import * as schema from "@/src/db/schema";
 import {
   type KaiParamKey,

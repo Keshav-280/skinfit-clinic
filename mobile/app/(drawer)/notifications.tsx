@@ -22,6 +22,12 @@ import {
   getDoctorInboxLastSeenIso,
 } from "@/lib/inboxReadCursors";
 import { registerForPushAndSyncToken, unregisterPushToken } from "@/lib/pushNotifications";
+import {
+  dismissUnreadReadyScan,
+  getUnreadReadyScans,
+  subscribeScanJobNotifications,
+  type ReadyScanNotification,
+} from "@/lib/scanJobNotifications";
 
 export default function NotificationsScreen() {
   const { token } = useAuth();
@@ -30,6 +36,7 @@ export default function NotificationsScreen() {
   const [doctorCount, setDoctorCount] = useState(0);
   const [voiceNoteGeneralCount, setVoiceNoteGeneralCount] = useState(0);
   const [voiceNoteReportCount, setVoiceNoteReportCount] = useState(0);
+  const [readyScans, setReadyScans] = useState<ReadyScanNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
 
@@ -67,10 +74,20 @@ export default function NotificationsScreen() {
     }
   }, [token]);
 
+  const refreshReadyScans = useCallback(async () => {
+    setReadyScans(await getUnreadReadyScans());
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load])
+      void refreshReadyScans();
+      const unsub = subscribeScanJobNotifications(() => {
+        void refreshReadyScans();
+        void load();
+      });
+      return unsub;
+    }, [load, refreshReadyScans])
   );
 
   async function onEnablePush() {
@@ -81,7 +98,7 @@ export default function NotificationsScreen() {
       if (t) {
         Alert.alert(
           "Notifications on",
-          "You'll get alerts for clinic chat and new doctor voice notes (including audio on your scan reports)."
+          "You'll get alerts for clinic chat, scan reports when ready, and doctor voice notes."
         );
       }
     } finally {
@@ -114,7 +131,12 @@ export default function NotificationsScreen() {
     }
   }
 
-  const totalUnread = supportCount + doctorCount + voiceNoteGeneralCount + voiceNoteReportCount;
+  const totalUnread =
+    supportCount +
+    doctorCount +
+    voiceNoteGeneralCount +
+    voiceNoteReportCount +
+    readyScans.length;
   const insets = useSafeAreaInsets();
 
   return (
@@ -146,6 +168,34 @@ export default function NotificationsScreen() {
           {totalUnread > 0 && (
             <>
               <Text style={s.sectionLabel}>New activity</Text>
+
+              {readyScans.map((scan) => (
+                <Pressable
+                  key={scan.scanId}
+                  style={s.card}
+                  onPress={() => {
+                    void (async () => {
+                      await dismissUnreadReadyScan(scan.scanId);
+                      void refreshReadyScans();
+                      router.push(`/(drawer)/history/${scan.scanId}`);
+                    })();
+                  }}
+                >
+                  <View style={[s.iconCircle, { backgroundColor: "#d1fae5" }]}>
+                    <Ionicons name="sparkles" size={22} color="#047857" />
+                  </View>
+                  <View style={s.cardBody}>
+                    <View style={s.cardTitleRow}>
+                      <Text style={s.cardTitle}>Scan report ready</Text>
+                      <View style={[s.countBadge, { backgroundColor: "#d1fae5" }]}>
+                        <Text style={[s.countBadgeText, { color: "#047857" }]}>New</Text>
+                      </View>
+                    </View>
+                    <Text style={s.cardSub}>{scan.title}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                </Pressable>
+              ))}
 
               {(supportCount > 0 || doctorCount > 0) && (
                 <Pressable style={s.card} onPress={() => router.push("/(drawer)/chat")}>

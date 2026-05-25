@@ -30,7 +30,9 @@ export default function Index() {
   }
 
   if (token) {
-    if (user?.onboardingComplete === false) {
+    const canAccess =
+      user?.canAccessDashboard ?? user?.onboardingComplete !== false;
+    if (!canAccess) {
       return <Redirect href={"/onboarding" as Href} />;
     }
     return <Redirect href="/(drawer)" />;

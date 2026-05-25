@@ -41,6 +41,14 @@
     },
     "plugins": [
       "react-native-quick-crypto",
+      "./plugins/withFaceLandmarkerModel",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Allow SkinnFit to capture your 5-angle kAI face scan.",
+          "enableMicrophonePermission": false
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       [

@@ -93,14 +93,14 @@ export default function KaiIntroScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-          onPress={() => router.push("/onboarding/questionnaire" as Href)}
+          onPress={() => router.push("/onboarding/capture" as Href)}
         >
           <LinearGradient colors={[NAVY, NAVY_DARK]} style={styles.btnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.btnText}>Continue to questionnaire</Text>
+            <Text style={styles.btnText}>Start baseline scan</Text>
             <Ionicons name="sparkles" size={18} color="#fff" style={{ marginLeft: 8 }} />
           </LinearGradient>
         </Pressable>
-        <Text style={styles.hint}>About 5–8 minutes · shapes your first kAI profile</Text>
+        <Text style={styles.hint}>About 2 minutes · five guided baseline photos</Text>
       </ScrollView>
     </LinearGradient>
   );

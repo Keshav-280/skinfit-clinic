@@ -1,0 +1,84 @@
+# Local full stack — no AWS/Cloudflare. Run from repo root:
+#   docker compose -f docker/docker-compose.yml up --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: skinfit
+      POSTGRES_PASSWORD: skinfit_local_dev
+      POSTGRES_DB: skinfit
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skinfit"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      LOCAL_POSTGRES_URL: postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
+      LOCAL_REDIS_URL: redis://redis:6379
+      LOCAL_STORAGE_ROOT: /uploads
+      SCAN_ASYNC_MODE: "1"
+      PUBLIC_UPLOAD_BASE_URL: http://localhost:3000/api/files
+      FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
+    volumes:
+      - uploads:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ml-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ml-worker
+    environment:
+      LOCAL_POSTGRES_URL: postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
+      LOCAL_REDIS_URL: redis://redis:6379
+      LOCAL_STORAGE_ROOT: /uploads
+      FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
+    volumes:
+      - uploads:/uploads
+    depends_on:
+      - redis
+      - postgres
+      - ml-inference
+
+  ml-inference:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ml-inference
+    ports:
+      - "8765:8765"
+    environment:
+      FACE_ANALYSIS_CHECKPOINT: /models/checkpoints/face_analyzer_v13.pt
+      DINO_LOCAL_WEIGHTS: /models/dinov2_vitl14_reg.pth
+      FACE_ANALYSIS_API_KEY: ${FACE_ANALYSIS_API_KEY:-local-dev-key}
+    volumes:
+      - ../models:/models:ro
+      - ${FACE_ANALYSIS_REPO:-/Users/sagnikdey/Desktop/face_analysis_tool}:/app/face_analysis:ro
+
+volumes:
+  pgdata:
+  uploads:

@@ -8,8 +8,10 @@ import {
   ListChecks,
   Microscope,
 } from "lucide-react";
+import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 
 type SkinProfilePayload = {
+  questionnaireLocked?: boolean;
   skinDna: {
     skinType: string | null;
     primaryConcern: string | null;
@@ -196,6 +198,10 @@ export function ProfileSkinDnaSection() {
   }
 
   if (!data) return null;
+
+  if (data.questionnaireLocked) {
+    return <QuestionnaireLockedCard title="Skin DNA is locked" />;
+  }
 
   const paramKeys = Object.keys(data.sparklines);
 

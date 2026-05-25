@@ -23,6 +23,18 @@ function kindBadge(kind: "article" | "video" | "insight") {
   return "kAI insight";
 }
 
+function parseFocusDetail(detail: string): Array<{ label: string; body: string }> {
+  return detail
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(Why|Do|Target):\s*(.*)$/i);
+      if (!m) return { label: "", body: line };
+      return { label: `${m[1]}:`, body: m[2] ?? "" };
+    });
+}
+
 type Props = {
   report: PatientTrackerReport;
   serifFamily: string;
@@ -157,7 +169,12 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.focusTitle}>{a.title}</Text>
-                <Text style={styles.focusDetail}>{a.detail}</Text>
+                {parseFocusDetail(a.detail).map((part, idx) => (
+                  <Text key={`${a.rank}-${idx}`} style={styles.focusDetail}>
+                    {part.label ? <Text style={styles.focusDetailLabel}>{part.label} </Text> : null}
+                    {part.body}
+                  </Text>
+                ))}
               </View>
             </View>
           ))}
@@ -340,4 +357,5 @@ const styles = StyleSheet.create({
   focusRankText: { fontSize: 14, fontWeight: "800", color: NAVY },
   focusTitle: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
   focusDetail: { marginTop: 6, fontSize: 13, lineHeight: 20, color: "#6B7280" },
+  focusDetailLabel: { fontWeight: "700", color: "#334155" },
 });

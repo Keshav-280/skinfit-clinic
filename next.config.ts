@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@mediapipe/tasks-vision"],
+  output: "standalone",
+  serverExternalPackages: [
+    "@mediapipe/tasks-vision",
+    "bullmq",
+    "ioredis",
+  ],
   images: {
     remotePatterns: [
       {

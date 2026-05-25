@@ -23,16 +23,17 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch } from "@/lib/api";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
+import { addPendingScanJob } from "@/lib/scanJobNotifications";
+import { submitFaceScan } from "@/lib/submitFaceScan";
 
 const NAVY = "#2B3A67";
 const GREEN = "#1B8A4A";
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
-type Phase = "intro" | "capture" | "review";
+type Phase = "intro" | "capture" | "review" | "queued";
 
 const TIPS = [
   "Make sure you're in a well-lit area.",
@@ -138,16 +139,16 @@ export default function ScanScreen() {
         } as unknown as Blob);
       }
 
-      const res = await apiFetch("/api/scan", token, { method: "POST", body: form });
-      const data = (await res.json()) as {
-        success?: boolean;
-        data?: { id?: number };
-        error?: string;
-      };
-      if (!res.ok || !data.success || !data.data?.id) {
-        throw new Error(data.error || "Scan failed.");
+      const outcome = await submitFaceScan(token, form);
+      if (outcome.mode === "queued") {
+        await addPendingScanJob(outcome.jobId, "Untitled Scan");
+        setPhase("queued");
+        return;
       }
-      setResultId(data.data.id);
+      if (outcome.mode === "error") {
+        throw new Error(outcome.message);
+      }
+      setResultId(outcome.scanId);
     } catch (e) {
       Alert.alert("Scan failed", e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
@@ -185,6 +186,40 @@ export default function ScanScreen() {
 
   // ── Camera modal (full-screen, over dock) ──
   const showCamera = phase === "capture" && uris.length < N;
+
+  // ── Queued — analysis in background ──
+  if (phase === "queued") {
+    return (
+      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <Pressable onPress={() => router.push("/(drawer)")} style={styles.headerBtn} hitSlop={14}>
+            <View style={styles.reviewIconCircle}>
+              <Ionicons name="chevron-back" size={22} color="#1A1A2E" />
+            </View>
+          </Pressable>
+          <View style={styles.headerBtn} />
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={styles.queuedBody}>
+          <View style={styles.queuedIconWrap}>
+            <Ionicons name="notifications-outline" size={40} color={NAVY} />
+          </View>
+          <Text style={styles.queuedTitle}>You&apos;re all set</Text>
+          <Text style={styles.queuedSub}>
+            Your photos are saved. Your full report (images, masks, and kAI analysis) will be
+            delivered soon — we&apos;ll notify you when it&apos;s ready.
+          </Text>
+          <Text style={styles.queuedHint}>You can leave this screen — no need to wait here.</Text>
+          <Pressable style={styles.btnNavy} onPress={() => router.push("/(drawer)/history")}>
+            <Text style={styles.btnNavyText}>View scan history</Text>
+          </Pressable>
+          <Pressable style={styles.btnOutline} onPress={() => router.push("/(drawer)")}>
+            <Text style={styles.btnOutlineText}>Go to dashboard</Text>
+          </Pressable>
+        </View>
+      </LinearGradient>
+    );
+  }
 
   // ── Review phase ──
   if (phase === "review" || uris.length >= N) {
@@ -280,10 +315,8 @@ export default function ScanScreen() {
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <MaterialCommunityIcons name="auto-fix" size={56} color={NAVY} />
               </Animated.View>
-              <Text style={styles.analyzingTitle}>Analyzing</Text>
-              <Text style={styles.analyzingSub}>
-                This usually takes 10–20 seconds
-              </Text>
+              <Text style={styles.analyzingTitle}>Submitting</Text>
+              <Text style={styles.analyzingSub}>Just a moment…</Text>
             </View>
           )}
 
@@ -657,5 +690,40 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#52525b",
+  },
+
+  queuedBody: {
+    flex: 1,
+    paddingHorizontal: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 14,
+  },
+  queuedIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(43, 58, 103, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  queuedTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1A1A2E",
+    textAlign: "center",
+  },
+  queuedSub: {
+    fontSize: 16,
+    color: "#52525b",
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  queuedHint: {
+    fontSize: 13,
+    color: "#71717a",
+    textAlign: "center",
+    marginBottom: 12,
   },
 });

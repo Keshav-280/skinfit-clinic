@@ -74,6 +74,14 @@ export type PendingScheduleRequestRow = {
 
 type ScheduleTab = "treatment" | "appointments";
 
+function isAppointmentCalendarEvent(event: ScheduleEventRow): boolean {
+  return (
+    event.id.startsWith("appt:") ||
+    event.id.startsWith("req:") ||
+    event.id.startsWith("reqclosed:")
+  );
+}
+
 type RequestAttachment = {
   fileName: string;
   mimeType: string;
@@ -335,7 +343,6 @@ export default function SchedulesPageClient({
   const router = useRouter();
   const [view, setView] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
-  const [scheduleTab, setScheduleTab] = useState<ScheduleTab>(initialScheduleTab);
   const [scheduleRefreshing, setScheduleRefreshing] = useState(false);
   const [treatmentEvents, setTreatmentEvents] = useState(initialTreatmentEvents);
   const [appointmentEvents, setAppointmentEvents] = useState(
@@ -433,8 +440,33 @@ export default function SchedulesPageClient({
     ].sort(compareScheduleEvents);
   }, [appointmentEvents, pendingRequests, closedRequests]);
 
-  const activeCalendarEvents =
-    scheduleTab === "treatment" ? treatmentEvents : appointmentCalendarEvents;
+  const mergedCalendarEvents = useMemo(
+    () =>
+      [...treatmentEvents, ...appointmentCalendarEvents].sort(
+        compareScheduleEvents
+      ),
+    [treatmentEvents, appointmentCalendarEvents]
+  );
+
+  const appointmentListEvents = useMemo(
+    () =>
+      !currentDate
+        ? []
+        : view === "month"
+          ? eventsInMonth(appointmentCalendarEvents, currentDate)
+          : eventsInWeek(appointmentCalendarEvents, currentDate),
+    [view, appointmentCalendarEvents, currentDate]
+  );
+
+  const treatmentListEvents = useMemo(
+    () =>
+      !currentDate
+        ? []
+        : view === "month"
+          ? eventsInMonth(treatmentEvents, currentDate)
+          : eventsInWeek(treatmentEvents, currentDate),
+    [view, treatmentEvents, currentDate]
+  );
 
   useEffect(() => {
     setCurrentDate(new Date());
@@ -516,16 +548,6 @@ export default function SchedulesPageClient({
     : view === "month"
       ? format(currentDate, "MMMM yyyy")
       : `Week of ${format(startOfWeek(currentDate, WEEK_OPTS), "MMM d")} – ${format(endOfWeek(currentDate, WEEK_OPTS), "MMM d, yyyy")}`;
-
-  const listEvents = useMemo(
-    () =>
-      !currentDate
-        ? []
-        : view === "month"
-          ? eventsInMonth(activeCalendarEvents, currentDate)
-          : eventsInWeek(activeCalendarEvents, currentDate),
-    [view, activeCalendarEvents, currentDate]
-  );
 
   const refreshSchedulesPage = useCallback(async () => {
     setScheduleRefreshing(true);
@@ -665,7 +687,7 @@ export default function SchedulesPageClient({
   }
 
   function openRequestModalForDate(cellYmd: string | null) {
-    if (scheduleTab !== "appointments" || !cellYmd) return;
+    if (!cellYmd) return;
     setRequestYmd(cellYmd);
     setReqCalMonth(parseLocalYmd(cellYmd));
     setRequestIssue("Skin concern");
@@ -680,8 +702,119 @@ export default function SchedulesPageClient({
     setRequestModalOpen(true);
   }
 
+  function renderScheduleEventCard(
+    event: ScheduleEventRow,
+    column: "appointments" | "treatment"
+  ) {
+    const pending = event.id.startsWith("req:");
+    const cancelled = event.cancelled === true;
+    const done = event.completed;
+    const isApptColumn = column === "appointments";
+
+    return (
+      <div
+        key={event.id}
+        className="rounded-xl border border-[#e4e4e7] bg-white p-3 shadow-sm"
+      >
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <span
+            className={`text-xs font-bold ${
+              cancelled
+                ? "text-[#52525b]"
+                : pending
+                  ? "text-[#b45309]"
+                  : done
+                    ? "text-[#0369a1]"
+                    : "text-[#2B3A67]"
+            }`}
+          >
+            {formatScheduleWhen(
+              event.eventDateYmd,
+              event.eventTimeHm,
+              event.eventSlotEndTimeHm
+            )}
+          </span>
+          {!isApptColumn &&
+          (event.eventKind === "pre_treatment" ||
+            event.eventKind === "post_treatment") ? (
+            <span className="rounded-full bg-[#e8eef6] px-2 py-0.5 text-[10px] font-bold text-[#2B3A67]">
+              {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex flex-row flex-wrap items-center gap-2">
+          <p
+            className={`min-w-[60%] flex-1 text-[15px] font-semibold leading-snug ${
+              done ? "text-[#52525b]" : cancelled ? "text-[#71717a]" : "text-[#18181b]"
+            }`}
+          >
+            {event.title}
+          </p>
+          {isApptColumn && pending ? (
+            <span className="rounded-full bg-[#fef3c7] px-2.5 py-1 text-[10px] font-bold uppercase text-[#92400e]">
+              Pending
+            </span>
+          ) : null}
+          {isApptColumn && cancelled ? (
+            <span className="rounded-full bg-[#e4e4e7] px-2.5 py-1 text-[10px] font-bold uppercase text-[#52525b]">
+              Cancelled
+            </span>
+          ) : null}
+          {isApptColumn && !pending && !cancelled && !done ? (
+            <span className="rounded-full bg-[#e8eef6] px-2.5 py-1 text-[10px] font-bold uppercase text-[#2B3A67]">
+              Confirmed
+            </span>
+          ) : null}
+          {done ? (
+            <span className="rounded-full bg-[#e0f2fe] px-2.5 py-1 text-[10px] font-bold uppercase text-[#0c4a6e]">
+              Completed
+            </span>
+          ) : null}
+        </div>
+        {isApptColumn && !pending && event.crmPatientMessage?.trim() ? (
+          <p className="mt-2 text-[13px] leading-[1.35] text-[#64748b]">
+            Clinic note: {event.crmPatientMessage.trim()}
+          </p>
+        ) : null}
+        {isApptColumn && cancelled && event.cancellationReason?.trim() ? (
+          <p className="mt-2 text-[13px] leading-[1.35] text-[#b91c1c]">
+            Reason: {event.cancellationReason.trim()}
+          </p>
+        ) : null}
+        {isApptColumn && pending && (event.attachmentsCount ?? 0) > 0 ? (
+          <p className="mt-2 text-[13px] text-[#64748b]">
+            {event.attachmentsCount} photo{event.attachmentsCount !== 1 ? "s" : ""}{" "}
+            attached ·{" "}
+            <button
+              type="button"
+              className="font-semibold text-[#2B3A67] underline"
+              onClick={() => openPendingRequestPhotos(event.id.slice(4))}
+            >
+              View photos
+            </button>
+          </p>
+        ) : null}
+        {isApptColumn &&
+        !pending &&
+        !cancelled &&
+        !event.completed &&
+        event.id.startsWith("appt:") ? (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => openClinicMessageModal(event.id.slice(5))}
+              className="text-[13px] font-semibold text-[#2B3A67] underline"
+            >
+              Message clinic
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-6xl space-y-4">
       {requestFormUrl ? (
         <div className="mx-auto max-w-lg rounded-[18px] border border-white/60 bg-white/40 px-4 py-3 text-center text-sm text-[#2C3E6B] backdrop-blur-sm">
           <p>If your clinic uses a Google Form, you can complete it here:</p>
@@ -716,69 +849,32 @@ export default function SchedulesPageClient({
         </div>
       ) : null}
 
-      <div
-        className="mt-1.5 flex gap-2.5 rounded-2xl border border-[#e2e8f0] bg-white p-1.5 shadow-sm"
-        role="tablist"
-        aria-label="Schedule type"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={scheduleTab === "treatment"}
-          onClick={() => setScheduleTab("treatment")}
-          className={`min-w-0 flex-1 rounded-xl px-1 py-3 text-center text-sm font-semibold transition-colors ${
-            scheduleTab === "treatment"
-              ? "border border-[rgba(43,58,103,0.35)] bg-[#e8eef6] font-extrabold text-[#2B3A67]"
-              : "bg-[#f4f4f5] text-[#52525b]"
-          }`}
-        >
-          Treatment &amp; care
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={scheduleTab === "appointments"}
-          onClick={() => setScheduleTab("appointments")}
-          className={`min-w-0 flex-1 rounded-xl px-1 py-3 text-center text-sm font-semibold transition-colors ${
-            scheduleTab === "appointments"
-              ? "border border-[rgba(43,58,103,0.35)] bg-[#e8eef6] font-extrabold text-[#2B3A67]"
-              : "bg-[#f4f4f5] text-[#52525b]"
-          }`}
-        >
-          Appointments
-        </button>
-      </div>
-
-      {scheduleTab === "appointments" ? (
-        <div className="flex gap-3 rounded-[20px] border border-[#e2e8f0] bg-white p-4 shadow-sm">
-          <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#e8eef6]">
-            <ShieldCheck className="h-[18px] w-[18px] text-[#2B3A67]" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-lg font-bold text-[#2a2a2a]">Linked with CRM</p>
-            <p className="mt-1.5 text-sm leading-5 text-[#71717a]">
-              Your appointments and guidelines, synced in real-time.
-            </p>
-          </div>
+      <div className="flex gap-3 rounded-[20px] border border-[#e2e8f0] bg-white p-4 shadow-sm">
+        <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#e8eef6]">
+          <ShieldCheck className="h-[18px] w-[18px] text-[#2B3A67]" aria-hidden />
         </div>
-      ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-bold text-[#2a2a2a]">Linked with CRM</p>
+          <p className="mt-1.5 text-sm leading-5 text-[#71717a]">
+            Appointments and treatment reminders stay in sync with your clinic.
+          </p>
+        </div>
+      </div>
 
       <section
         id="schedules-calendar-root"
-        className="overflow-hidden rounded-[22px] border border-[#e2e8f0] bg-white p-3 shadow-md"
+        className="mx-auto max-w-3xl overflow-hidden rounded-[20px] border border-[#e2e8f0] bg-white p-3 shadow-md md:p-4"
       >
-        <div className="mb-1">
-          <h3 className="text-[19px] font-extrabold tracking-tight text-[#18181b]">
-            {scheduleTab === "treatment" ? "Treatment & care" : "Appointments"}
+        <div className="mb-0.5">
+          <h3 className="text-[17px] font-extrabold tracking-tight text-[#18181b]">
+            Your schedule
           </h3>
-          <p className="mt-1 whitespace-pre-line text-[13px] leading-[1.35] text-[#64748b]">
-            {scheduleTab === "appointments"
-              ? `${headerLabel}\nTap a day to request a visit for that date.`
-              : headerLabel}
+          <p className="mt-0.5 whitespace-pre-line text-[12px] leading-snug text-[#64748b]">
+            {`${headerLabel}\nTap a day to request a visit. Dots show appointments and care reminders.`}
           </p>
         </div>
 
-        <div className="mb-2 mt-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="mb-1.5 mt-2 flex flex-wrap items-center justify-between gap-2">
           <div
             className="flex min-w-0 shrink gap-1 rounded-[14px] border border-[#e2e8f0] bg-[#f8fafc] p-1"
             role="group"
@@ -824,7 +920,7 @@ export default function SchedulesPageClient({
               type="button"
               onClick={() => void refreshSchedulesPage()}
               disabled={scheduleRefreshing}
-              className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-[#2B3A67] transition hover:bg-[#f8fafc] disabled:opacity-50"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#2B3A67] transition hover:bg-[#f8fafc] disabled:opacity-50"
               aria-label="Refresh calendar"
               aria-busy={scheduleRefreshing}
             >
@@ -841,7 +937,7 @@ export default function SchedulesPageClient({
               <button
                 type="button"
                 onClick={handlePrev}
-                className="flex h-[42px] w-[42px] items-center justify-center text-[#3f3f46] transition hover:bg-[#f8fafc]"
+                className="flex h-9 w-9 items-center justify-center text-[#3f3f46] transition hover:bg-[#f8fafc]"
                 aria-label="Previous month or week"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -850,7 +946,7 @@ export default function SchedulesPageClient({
               <button
                 type="button"
                 onClick={handleNext}
-                className="flex h-[42px] w-[42px] items-center justify-center text-[#3f3f46] transition hover:bg-[#f8fafc]"
+                className="flex h-9 w-9 items-center justify-center text-[#3f3f46] transition hover:bg-[#f8fafc]"
                 aria-label="Next month or week"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -859,14 +955,14 @@ export default function SchedulesPageClient({
           </div>
         </div>
 
-        <div className="w-full overflow-hidden rounded-[14px] border border-[#e2e8f0] bg-[#fafafa]">
+        <div className="w-full overflow-hidden rounded-xl border border-[#e2e8f0] bg-[#fafafa]">
           <div className="grid grid-cols-7 border-b border-[#e2e8f0] bg-[#f1f5f9]">
             {DAYS.map((d) => (
               <div
                 key={d}
-                className="border-r border-[#e2e8f0] px-0.5 py-2.5 text-center last:border-r-0"
+                className="border-r border-[#e2e8f0] px-0.5 py-1.5 text-center last:border-r-0"
               >
-                <span className="text-[10px] font-extrabold uppercase tracking-wide text-[#64748b]">
+                <span className="text-[9px] font-extrabold uppercase tracking-wide text-[#64748b]">
                   {d}
                 </span>
               </div>
@@ -877,14 +973,12 @@ export default function SchedulesPageClient({
               {row.map((day, ci) => {
                 const colIndex = ci;
                 const cellEvents =
-                  day !== null ? getCellEvents(day, activeCalendarEvents) : [];
+                  day !== null ? getCellEvents(day, mergedCalendarEvents) : [];
                 const hasContent = cellEvents.length > 0;
                 const isToday = day !== null && isSameDay(day, new Date());
                 const cellYmd = day ? localYmd(day) : null;
-                const showDots =
-                  scheduleTab === "appointments" ||
-                  (scheduleTab === "treatment" && view === "month");
-                const cellMin = view === "week" ? "min-h-32" : "min-h-[72px]";
+                const showDots = view === "month";
+                const cellMin = view === "week" ? "min-h-24" : "min-h-[56px]";
                 const borderLast = colIndex === 6 ? "border-r-0" : "border-r";
                 const bg = day ? "bg-white" : "bg-[#f8fafc]";
 
@@ -897,7 +991,7 @@ export default function SchedulesPageClient({
                         }`}
                       >
                         <span
-                          className={`text-[11px] font-semibold ${
+                          className={`text-[10px] font-semibold ${
                             hasContent ? "text-[#2B3A67]" : "text-[#64748b]"
                           } ${isToday ? "font-extrabold text-[#2B3A67]" : ""}`}
                         >
@@ -905,12 +999,17 @@ export default function SchedulesPageClient({
                         </span>
                       </div>
                       {showDots ? (
-                        <div className="mt-0.5 flex min-h-[8px] flex-row gap-1.5">
-                          {cellEvents.slice(0, 3).map((event) => (
+                        <div className="mt-0.5 flex min-h-[8px] flex-row flex-wrap gap-1">
+                          {cellEvents.slice(0, 5).map((event) => (
                             <span
                               key={event.id}
-                              className="inline-block h-[7px] w-[7px] shrink-0 rounded-full"
+                              className="inline-block h-[7px] w-[7px] shrink-0 rounded-full ring-1 ring-white"
                               style={{ backgroundColor: eventDotColor(event) }}
+                              title={
+                                isAppointmentCalendarEvent(event)
+                                  ? "Appointment"
+                                  : "Treatment"
+                              }
                             />
                           ))}
                         </div>
@@ -971,12 +1070,12 @@ export default function SchedulesPageClient({
 
                 const wrapCls = `${borderLast} border-b border-[#e2e8f0] px-0.5 py-1 ${bg} ${cellMin}`;
 
-                if (scheduleTab === "appointments" && day !== null) {
+                if (day !== null) {
                   return (
                     <button
                       key={day.toISOString()}
                       type="button"
-                      className={`${wrapCls} w-full min-w-0 cursor-pointer text-left align-top`}
+                      className={`${wrapCls} w-full min-w-0 cursor-pointer text-left align-top transition hover:bg-[#f8fafc]`}
                       onClick={() => openRequestModalForDate(cellYmd)}
                     >
                       {inner}
@@ -986,7 +1085,7 @@ export default function SchedulesPageClient({
 
                 return (
                   <div
-                    key={day ? day.toISOString() : `e-${ri}-${ci}`}
+                    key={`e-${ri}-${ci}`}
                     className={`${wrapCls} min-w-0`}
                   >
                     {inner}
@@ -997,197 +1096,83 @@ export default function SchedulesPageClient({
           ))}
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-3 px-1">
-          {scheduleTab === "appointments" ? (
-            <>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#2B3A67]" /> Upcoming
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#16a34a]" /> Completed
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#d97706]" /> Requested
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#dc2626]" /> Cancelled
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Guidelines
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#1e3a8a]" /> Pre-treatment
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Post-treatment
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#16a34a]" /> Completed
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-                <span className="h-2 w-2 rounded-full bg-[#2B3A67]" /> General
-              </span>
-            </>
-          )}
-        </div>
-
-        {scheduleTab === "treatment" ? (
-          <button
-            type="button"
-            onClick={() => setScheduleTab("appointments")}
-            className="mt-2 flex w-full items-start gap-2 rounded-xl border border-transparent px-1 py-2 text-left transition hover:bg-[#f8fafc]"
-          >
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#2B3A67]" aria-hidden />
-            <span className="flex-1 text-xs leading-[1.35] text-[#64748b]">
-              Guidelines from your doctor appear here. Switch to{" "}
-              <span className="font-extrabold text-[#475569]">Appointments</span> to see visit
-              bookings.
-            </span>
-          </button>
-        ) : null}
-
-        <div className="-mx-3 mt-4 border-t border-[#e4e4e7] bg-[rgba(253,249,240,0.65)] px-3 pb-2 pt-4">
-          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-[#71717a]">
-            {scheduleTab === "treatment"
-              ? view === "month"
-                ? "Care reminders — this month"
-                : "Care reminders — this week"
-              : view === "month"
-                ? "Visits & requests — this month"
-                : "Visits & requests — this week"}
-          </p>
-          {listEvents.length === 0 ? (
-            <p className="py-2 text-center text-sm text-[#71717a]">
-              {scheduleTab === "treatment"
-                ? `No care reminders in this ${view === "month" ? "month" : "week"}.`
-                : `No visits or requests in this ${view === "month" ? "month" : "week"}.`}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {listEvents.map((event) => {
-                const pending = event.id.startsWith("req:");
-                const cancelled = event.cancelled === true;
-                const done = event.completed;
-                return (
-                  <div
-                    key={event.id}
-                    className="rounded-xl border border-[#e4e4e7] bg-white p-3"
-                  >
-                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                      <span
-                        className={`text-xs font-bold ${
-                          cancelled
-                            ? "text-[#52525b]"
-                            : pending
-                              ? "text-[#b45309]"
-                              : done
-                                ? "text-[#0369a1]"
-                                : "text-[#2B3A67]"
-                        }`}
-                      >
-                        {formatScheduleWhen(
-                          event.eventDateYmd,
-                          event.eventTimeHm,
-                          event.eventSlotEndTimeHm
-                        )}
-                      </span>
-                      {scheduleTab === "treatment" &&
-                      (event.eventKind === "pre_treatment" ||
-                        event.eventKind === "post_treatment") ? (
-                        <span className="rounded-full bg-[#e8eef6] px-2 py-0.5 text-[10px] font-bold text-[#2B3A67]">
-                          {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-row flex-wrap items-center gap-2">
-                      <p
-                        className={`min-w-[60%] flex-1 text-[15px] font-semibold leading-snug ${
-                          done ? "text-[#52525b]" : cancelled ? "text-[#71717a]" : "text-[#18181b]"
-                        }`}
-                      >
-                        {event.title}
-                      </p>
-                      {scheduleTab === "appointments" && pending ? (
-                        <span className="rounded-full bg-[#fef3c7] px-2.5 py-1 text-[10px] font-bold uppercase text-[#92400e]">
-                          Pending
-                        </span>
-                      ) : null}
-                      {scheduleTab === "appointments" && cancelled ? (
-                        <span className="rounded-full bg-[#e4e4e7] px-2.5 py-1 text-[10px] font-bold uppercase text-[#52525b]">
-                          Cancelled
-                        </span>
-                      ) : null}
-                      {scheduleTab === "appointments" && !pending && !cancelled && !done ? (
-                        <span className="rounded-full bg-[#e8eef6] px-2.5 py-1 text-[10px] font-bold uppercase text-[#2B3A67]">
-                          Confirmed
-                        </span>
-                      ) : null}
-                      {done ? (
-                        <span className="rounded-full bg-[#e0f2fe] px-2.5 py-1 text-[10px] font-bold uppercase text-[#0c4a6e]">
-                          Completed
-                        </span>
-                      ) : null}
-                    </div>
-                    {scheduleTab === "appointments" && !pending && event.crmPatientMessage?.trim() ? (
-                      <p className="mt-2 text-[13px] leading-[1.35] text-[#64748b]">
-                        Clinic note: {event.crmPatientMessage.trim()}
-                      </p>
-                    ) : null}
-                    {scheduleTab === "appointments" &&
-                    cancelled &&
-                    event.cancellationReason?.trim() ? (
-                      <p className="mt-2 text-[13px] leading-[1.35] text-[#b91c1c]">
-                        Reason: {event.cancellationReason.trim()}
-                      </p>
-                    ) : null}
-                    {scheduleTab === "appointments" && pending && (event.attachmentsCount ?? 0) > 0 ? (
-                      <p className="mt-2 text-[13px] text-[#64748b]">
-                        {event.attachmentsCount} photo{event.attachmentsCount !== 1 ? "s" : ""}{" "}
-                        attached ·{" "}
-                        <button
-                          type="button"
-                          className="font-semibold text-[#2B3A67] underline"
-                          onClick={() => openPendingRequestPhotos(event.id.slice(4))}
-                        >
-                          View photos
-                        </button>
-                      </p>
-                    ) : null}
-                    {scheduleTab === "appointments" &&
-                    !pending &&
-                    !cancelled &&
-                    !event.completed &&
-                    event.id.startsWith("appt:") ? (
-                      <div className="mt-2">
-                        <button
-                          type="button"
-                          onClick={() => openClinicMessageModal(event.id.slice(5))}
-                          className="text-[13px] font-semibold text-[#2B3A67] underline"
-                        >
-                          Message clinic
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 px-1">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-[#94a3b8]">
+            Appointments
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
+            <span className="h-2 w-2 rounded-full bg-[#2B3A67]" /> Upcoming
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
+            <span className="h-2 w-2 rounded-full bg-[#d97706]" /> Requested
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
+            <span className="h-2 w-2 rounded-full bg-[#dc2626]" /> Cancelled
+          </span>
+          <span className="w-full text-[10px] font-bold uppercase tracking-wide text-[#94a3b8] md:w-auto md:pl-2">
+            Treatment
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
+            <span className="h-2 w-2 rounded-full bg-[#1e3a8a]" /> Pre
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
+            <span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Post
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
+            <span className="h-2 w-2 rounded-full bg-[#16a34a]" /> Done
+          </span>
         </div>
       </section>
 
-      {scheduleTab === "appointments" ? (
-        <>
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+        <section className="flex flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm">
+          <div className="border-b border-[#e4e4e7] bg-[rgba(232,238,246,0.45)] px-4 py-3">
+            <h4 className="text-base font-extrabold text-[#18181b]">Appointments</h4>
+            <p className="mt-0.5 text-xs text-[#64748b]">
+              {view === "month" ? "This month" : "This week"} — visits & requests
+            </p>
+          </div>
+          <div className="flex-1 space-y-2 p-3">
+            {appointmentListEvents.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[#71717a]">
+                No visits or requests in this {view === "month" ? "month" : "week"}.
+              </p>
+            ) : (
+              appointmentListEvents.map((event) =>
+                renderScheduleEventCard(event, "appointments")
+              )
+            )}
+          </div>
+        </section>
+
+        <section className="flex flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm">
+          <div className="border-b border-[#e4e4e7] bg-[rgba(253,249,240,0.65)] px-4 py-3">
+            <h4 className="text-base font-extrabold text-[#18181b]">Treatment &amp; care</h4>
+            <p className="mt-0.5 text-xs text-[#64748b]">
+              {view === "month" ? "This month" : "This week"} — doctor guidelines
+            </p>
+          </div>
+          <div className="flex-1 space-y-2 p-3">
+            {treatmentListEvents.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[#71717a]">
+                No care reminders in this {view === "month" ? "month" : "week"}.
+              </p>
+            ) : (
+              treatmentListEvents.map((event) =>
+                renderScheduleEventCard(event, "treatment")
+              )
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="space-y-3.5">
           {featuredUpcoming ? (
             <button
               type="button"
               id="featured-upcoming"
-              className="mt-3.5 w-full rounded-[20px] border border-[#e4e4e7] bg-[#f8faf8] p-4 text-left shadow-sm transition hover:bg-[#f4faf4]"
+              className="w-full rounded-[20px] border border-[#e4e4e7] bg-[#f8faf8] p-4 text-left shadow-sm transition hover:bg-[#f4faf4]"
               onClick={() => {
-                setScheduleTab("appointments");
                 setView("month");
                 setCurrentDate(parseLocalYmd(featuredUpcoming.eventDateYmd));
                 requestAnimationFrame(() => {
@@ -1285,8 +1270,7 @@ export default function SchedulesPageClient({
             </div>
             <ChevronRight className="h-6 w-6 shrink-0 text-white" aria-hidden />
           </button>
-        </>
-      ) : null}
+      </div>
 
       {clinicMsgOpen && clinicMsgApptId ? (
         <div
@@ -1378,11 +1362,27 @@ export default function SchedulesPageClient({
                       return;
                     }
                     if (j.sheetMirrorOk === false) {
-                      setSheetRelayNotice(
-                        j.sheetMirrorSkipped
-                          ? "Your message was saved in Skinfit, but the Google Sheet was not updated (missing schedule row link or webhook URL). The clinic may not see it on the sheet until that is fixed."
-                          : "Your message was saved in Skinfit, but the Google Sheet sync failed. Check Render logs for [clinicSheetRowSync] and your Apps Script / CLINIC_SHEET_SYNC_WEBHOOK_URL."
-                      );
+                      const detail = j.sheetMirrorDetail ?? "";
+                      let notice =
+                        "Your message was saved in Skinfit, but the Google Sheet was not updated. The clinic may not see it on the sheet until sync is configured.";
+                      if (detail === "missing_webhook_url") {
+                        notice +=
+                          " Add CLINIC_SHEET_SYNC_WEBHOOK_URL or CLINIC_SHEET_REQUEST_WEBHOOK_URL to the server .env (Apps Script web app URL).";
+                      } else if (detail === "missing_webhook_secret") {
+                        notice +=
+                          " Add CLINIC_SHEET_WEBHOOK_SECRET to the server .env (same value as SKINFIT_SECRET in Apps Script).";
+                      } else if (
+                        detail === "missing_external_ref_and_schedule_request_id"
+                      ) {
+                        notice +=
+                          " This visit is not linked to a sheet row (no schedule request with externalRef). Book via the clinic form or CRM import so the row can sync.";
+                      } else if (j.sheetMirrorSkipped) {
+                        notice +=
+                          " (missing schedule row link or webhook URL).";
+                      } else if (detail) {
+                        notice += ` Sync error: ${detail}`;
+                      }
+                      setSheetRelayNotice(notice);
                     }
                     setClinicMsgOpen(false);
                     setClinicMsgApptId(null);

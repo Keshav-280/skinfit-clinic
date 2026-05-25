@@ -11,6 +11,7 @@ import {
   Waves,
   type LucideIcon,
 } from "lucide-react";
+import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 
 type TimelineIdentity = {
   asOfDate: string;
@@ -30,6 +31,7 @@ type TimelineIdentity = {
 };
 
 type IdentityPayload = {
+  questionnaireLocked?: boolean;
   user: { name: string; email: string };
   timeline: {
     initial: TimelineIdentity;
@@ -145,6 +147,10 @@ export function ProfileSkinIdentitySection() {
     );
   }
   if (!data) return null;
+
+  if (data.questionnaireLocked) {
+    return <QuestionnaireLockedCard title="Skin identity insights are locked" />;
+  }
 
   const { initial, current, changed } = data.timeline;
   return (

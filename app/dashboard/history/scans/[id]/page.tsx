@@ -12,8 +12,9 @@ import {
 } from "../../../../../src/lib/parseClinicalScores";
 import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
-import { FACE_SCAN_CAPTURE_STEPS } from "../../../../../src/lib/faceScanCaptures";
+import { buildFaceCaptureGallery } from "../../../../../src/lib/faceCaptureGallery";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
+import type { FaceCaptureRef } from "../../../../../src/lib/resolveScanImageUrl";
 import { loadScanTrackerReport } from "../../../../../src/lib/scanTrackerSnapshot";
 import type { PatientTrackerReport } from "../../../../../src/lib/patientTrackerReport.types";
 
@@ -123,15 +124,9 @@ export default async function ScanReportPage({
 
   const faceCaptureImages =
     ("faceCaptureImages" in row ? row.faceCaptureImages : null) as
-      | Array<{ label?: string }>
+      | FaceCaptureRef[]
       | null;
-  const faceCaptureGallery =
-    faceCaptureImages && faceCaptureImages.length >= 1
-      ? faceCaptureImages.map((entry, i) => ({
-          label: FACE_SCAN_CAPTURE_STEPS[i]?.title ?? entry.label,
-          imageUrl: patientScanImagePath(row.id, { index: i }),
-        }))
-      : undefined;
+  const faceCaptureGallery = buildFaceCaptureGallery(row.id, faceCaptureImages);
 
   return (
     <ScanReportPageClient

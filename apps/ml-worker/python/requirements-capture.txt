@@ -1,0 +1,5 @@
+# Optional — live capture preview (RetinaFace + blink/smile classifier ONNX)
+onnxruntime>=1.19.0
+opencv-python-headless>=4.10.0
+numpy>=1.26.0
+Pillow>=10.0.0

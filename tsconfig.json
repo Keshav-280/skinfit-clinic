@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@skinfit/shared": ["./services/shared/src/index.ts"],
+      "@skinfit/shared/*": ["./services/shared/src/*"]
     }
   },
   "include": [

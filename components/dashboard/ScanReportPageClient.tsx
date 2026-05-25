@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { dismissUnreadReadyScan } from "@/src/lib/scanJobNotifications";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { SkinScanReportBody } from "./SkinScanReportBody";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
@@ -53,6 +54,10 @@ export function ScanReportPageClient({
   const router = useRouter();
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    dismissUnreadReadyScan(scanId);
+  }, [scanId]);
 
   const scanDate = new Date(scanDateIso);
   const displayScanTitle = (() => {

@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 
+import { ReportContainImage } from "@/components/ReportContainImage";
 import { ReportDonut } from "@/components/ReportDonut";
 import { ScanMaskAnnotationsNative } from "@/components/ScanMaskAnnotationsNative";
 import { DOT_MARKER_LEGEND } from "@/lib/scanMaskLabels";
@@ -175,9 +176,6 @@ export function SkinScanReportBodyNative({
         ? [{ label: "Primary scan", imageUrl }]
         : [];
 
-  const row2 = resolvedPhotos.slice(0, 2);
-  const row3 = resolvedPhotos.slice(2, 5);
-
   return (
     <ScrollView
       style={styles.scroll}
@@ -206,67 +204,26 @@ export function SkinScanReportBodyNative({
 
         <View style={styles.inner}>
           {resolvedPhotos.length > 0 ? (
-            <View style={{ marginBottom: 8 }}>
+            <View style={styles.captureSection}>
               <Text style={styles.captureKicker}>
                 {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
               </Text>
-              {resolvedPhotos.length === 1 ? (
-                <View style={styles.singleCaptureWrap}>
-                  <View style={styles.captureFrameLarge}>
-                    <Image
+              <View style={styles.captureStack}>
+                {resolvedPhotos.map((item, idx) => (
+                  <View key={`cap-${idx}-${item.label}`} style={styles.captureStackItem}>
+                    <ReportContainImage
                       source={resolveAuthenticatedScanImageSource(
-                        patientScanImageDisplayUrl(resolvedPhotos[0]!.imageUrl),
+                        patientScanImageDisplayUrl(item.imageUrl),
                         authToken
                       )}
-                      style={styles.captureImg}
-                      resizeMode="cover"
+                      maxWidth={300}
                     />
+                    <Text style={styles.captureCaption} numberOfLines={3}>
+                      {item.label}
+                    </Text>
                   </View>
-                  <Text style={styles.captureCaption}>{resolvedPhotos[0]!.label}</Text>
-                </View>
-              ) : null}
-              {resolvedPhotos.length > 1 && row2.length > 0 ? (
-                <View style={styles.captureRow2}>
-                  {row2.map((item, idx) => (
-                    <View key={`r2-${idx}-${item.label}`} style={styles.captureCell}>
-                      <View style={styles.captureFrameSmall}>
-                        <Image
-                          source={resolveAuthenticatedScanImageSource(
-                            patientScanImageDisplayUrl(item.imageUrl),
-                            authToken
-                          )}
-                          style={styles.captureImg}
-                          resizeMode="cover"
-                        />
-                      </View>
-                      <Text style={styles.captureCaptionSmall} numberOfLines={2}>
-                        {item.label}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              {resolvedPhotos.length > 1 && row3.length > 0 ? (
-                <View style={styles.captureRow3}>
-                  {row3.map((item, idx) => (
-                    <View key={`r3-${idx}-${item.label}`} style={styles.captureCell3}>
-                      <View style={styles.captureFrameSmall}>
-                        <Image
-                          source={resolveAuthenticatedScanImageSource(
-                            patientScanImageDisplayUrl(item.imageUrl),
-                            authToken
-                          )}
-                          style={styles.captureImg}
-                          resizeMode="cover"
-                        />
-                      </View>
-                      <Text style={styles.captureCaptionSmall} numberOfLines={2}>
-                        {item.label}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+                ))}
+              </View>
             </View>
           ) : (
             <Text style={styles.mutedCenter}>No face capture images for this scan.</Text>
@@ -276,6 +233,8 @@ export function SkinScanReportBodyNative({
             <ScanMaskAnnotationsNative
               wrinkleMaskUri={wrinkleMask || undefined}
               acneMaskUri={acneMask || undefined}
+              wrinkleLabel="Wrinkle mask (smiling)"
+              acneLabel="Acne objectness (centre)"
             />
           ) : null}
 
@@ -524,57 +483,24 @@ const styles = StyleSheet.create({
     color: T.navy,
     marginBottom: 12,
   },
-  singleCaptureWrap: { alignItems: "center" },
-  captureFrameLarge: {
-    width: 200,
-    aspectRatio: 3 / 4,
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#e4e4e7",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-  },
-  captureRow2: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
-    flexWrap: "wrap",
-    marginTop: 8,
-  },
-  captureRow3: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    flexWrap: "wrap",
-    marginTop: 12,
-  },
-  captureCell: { width: 120, alignItems: "center" },
-  captureCell3: { width: 100, alignItems: "center" },
-  captureFrameSmall: {
+  captureSection: { marginBottom: 8, width: "100%" },
+  captureStack: {
     width: "100%",
-    aspectRatio: 3 / 4,
-    maxWidth: 96,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#e4e4e7",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    gap: 20,
+    marginTop: 4,
   },
-  captureImg: { width: "100%", height: "100%" },
+  captureStackItem: {
+    width: "100%",
+    alignItems: "center",
+  },
   captureCaption: {
-    marginTop: 8,
-    fontSize: 11,
+    marginTop: 10,
+    fontSize: 12,
     fontWeight: "600",
     color: "#374151",
     textAlign: "center",
-  },
-  captureCaptionSmall: {
-    marginTop: 6,
-    fontSize: 9,
-    fontWeight: "600",
-    color: "#374151",
-    textAlign: "center",
-    lineHeight: 12,
+    paddingHorizontal: 8,
+    lineHeight: 16,
   },
   mutedCenter: {
     textAlign: "center",

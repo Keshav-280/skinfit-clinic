@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { dailyLogs, parameterScores, scans, skinDnaCards, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 
@@ -130,7 +131,10 @@ export async function GET(request: Request) {
   diff("hormonalCorrelation", initial.hormonalCorrelation, current.hormonalCorrelation);
   diff("skinType", initial.skinType, current.skinType);
 
+  const questionnaireLocked = !userHasQuestionnaire(user.primaryConcern);
+
   return NextResponse.json({
+    questionnaireLocked,
     user: { name: user.name, email: user.email },
     timeline: {
       initial,

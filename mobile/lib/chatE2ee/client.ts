@@ -19,6 +19,10 @@ import {
   unpackE2eePayload,
 } from "./format";
 import { type E2eeKeyStorage, webE2eeKeyStorage } from "./keyStorage";
+import {
+  DOCTOR_CHAT_E2EE_OFF_PREVIEW,
+  isDoctorChatE2eeEnabled,
+} from "@/src/lib/chatDoctorE2eeConfig";
 
 export type { E2eeKeyStorage } from "./keyStorage";
 export { webE2eeKeyStorage, asyncStorageE2eeAdapter } from "./keyStorage";
@@ -45,6 +49,11 @@ function unavailableSession(
   return { threadId, threadAesKey: null, ready: false, status };
 }
 
+async function plainTextChatSession(): Promise<DoctorThreadE2eeSession> {
+  const key = isWebCryptoAvailable() ? await generateThreadAesKey() : null;
+  return { threadId: "", threadAesKey: key, ready: true, status: null };
+}
+
 async function ensureLocalE2eeKeys(
   storage: E2eeKeyStorage,
   register: (publicKeyJwk: JsonWebKey) => Promise<void>
@@ -65,11 +74,16 @@ async function ensureLocalE2eeKeys(
 
 type E2eeFetchInit = RequestInit & { credentials?: RequestCredentials };
 
+/** RN/Hermes has no DOMException — match crypto failures by error name/message only. */
 function isCryptoKeyMismatchError(e: unknown): boolean {
-  if (e instanceof DOMException) {
-    return e.name === "OperationError" || e.name === "InvalidAccessError";
+  const name =
+    e && typeof e === "object" && "name" in e
+      ? String((e as { name: unknown }).name)
+      : "";
+  if (name === "OperationError" || name === "InvalidAccessError") {
+    return true;
   }
-  return e instanceof Error && /operationerror|decrypt/i.test(e.message);
+  return e instanceof Error && /operationerror|invalidaccess|decrypt/i.test(e.message);
 }
 
 async function resetDoctorThreadEnvelopes(
@@ -100,6 +114,9 @@ export async function setupDoctorPatientE2ee(opts: {
   fetchFn?: (path: string, init: E2eeFetchInit) => Promise<Response>;
   _envelopeResetAttempted?: boolean;
 }): Promise<DoctorThreadE2eeSession | null> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return plainTextChatSession();
+  }
   if (!isWebCryptoAvailable()) {
     return unavailableSession(
       "",
@@ -256,6 +273,9 @@ export async function encryptOutgoingText(
   plaintext: string,
   session: DoctorThreadE2eeSession | null
 ): Promise<string> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return plaintext;
+  }
   if (!session?.ready || !session.threadAesKey) {
     throw new Error("E2EE_NOT_READY");
   }
@@ -281,6 +301,9 @@ export async function ensureDoctorPatientE2eeReady(opts: {
   fetchFn?: (path: string, init: E2eeFetchInit) => Promise<Response>;
   maxAttempts?: number;
 }): Promise<DoctorThreadE2eeSession | null> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return plainTextChatSession();
+  }
   const max = opts.maxAttempts ?? 3;
   let last: DoctorThreadE2eeSession | null = null;
   for (let i = 0; i < max; i++) {
@@ -297,6 +320,11 @@ export async function decryptMessages<T extends ChatMessageRow>(
   messages: T[],
   session: DoctorThreadE2eeSession | null
 ): Promise<T[]> {
+  if (!isDoctorChatE2eeEnabled()) {
+    return messages.map((m) =>
+      isE2eePayload(m.text) ? { ...m, text: DOCTOR_CHAT_E2EE_OFF_PREVIEW } : m
+    );
+  }
   if (!session?.ready || !session.threadAesKey) return messages;
   const key = session.threadAesKey;
   const out: T[] = [];

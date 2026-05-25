@@ -29,8 +29,12 @@ export type AuthUser = {
   id: string;
   email: string;
   name: string;
-  /** When false, patient should complete kAI onboarding (native). */
+  /** Questionnaire finished — unlocks Today’s focus and profile insights. */
   onboardingComplete?: boolean;
+  hasQuestionnaire?: boolean;
+  /** Baseline scan done or questionnaire complete — may open dashboard. */
+  canAccessDashboard?: boolean;
+  hasBaselineScan?: boolean;
 };
 
 type AuthContextValue = {
@@ -141,6 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         typeof data.user.onboardingComplete === "boolean"
           ? data.user.onboardingComplete
           : true,
+      hasQuestionnaire: data.user.hasQuestionnaire,
+      canAccessDashboard: data.user.canAccessDashboard,
+      hasBaselineScan: data.user.hasBaselineScan,
     };
     await sessionSet(TOKEN_KEY, data.token);
     await sessionSet(USER_KEY, JSON.stringify(nextUser));
@@ -299,7 +306,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const markOnboardingComplete = useCallback(async () => {
     const u = user;
     if (!u) return;
-    const next: AuthUser = { ...u, onboardingComplete: true };
+    const next: AuthUser = {
+      ...u,
+      onboardingComplete: true,
+      hasQuestionnaire: true,
+      canAccessDashboard: true,
+    };
     await sessionSet(USER_KEY, JSON.stringify(next));
     setUser(next);
   }, [user]);
@@ -324,14 +336,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (!data.user) return;
+    const u = data.user as AuthUser;
     const next: AuthUser = {
-      id: data.user.id,
-      name: data.user.name,
-      email: data.user.email,
+      id: u.id,
+      name: u.name,
+      email: u.email,
       onboardingComplete:
-        typeof data.user.onboardingComplete === "boolean"
-          ? data.user.onboardingComplete
-          : true,
+        typeof u.onboardingComplete === "boolean" ? u.onboardingComplete : true,
+      hasQuestionnaire: u.hasQuestionnaire,
+      canAccessDashboard: u.canAccessDashboard,
+      hasBaselineScan: u.hasBaselineScan,
     };
     await sessionSet(USER_KEY, JSON.stringify(next));
     setUser(next);

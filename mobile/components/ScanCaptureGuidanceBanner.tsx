@@ -1,51 +1,59 @@
 import { Ionicons } from "@expo/vector-icons";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
-const NAVY = "#2C3E6B";
-
 type Props = {
   guidance: CaptureGuidanceSnapshot | null;
-  analyzing?: boolean;
   autoZoomEnabled?: boolean;
 };
 
-export function ScanCaptureGuidanceBanner({
-  guidance,
-  analyzing,
-  autoZoomEnabled,
-}: Props) {
-  if (!guidance) {
-    return (
-      <View style={styles.wrap}>
-        {analyzing ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : null}
-        <Text style={styles.pending}>
-          Checking lighting and face position…
-        </Text>
-      </View>
-    );
+/** Only shows checks that are actually running — nothing for broken/unloaded pipelines. */
+export function ScanCaptureGuidanceBanner({ guidance, autoZoomEnabled }: Props) {
+  if (!guidance) return null;
+
+  const rows: Array<{ key: string; ok: boolean; icon: keyof typeof Ionicons.glyphMap; text: string }> =
+    [];
+
+  if (guidance.showLightingCheck) {
+    const lightingOk =
+      guidance.lighting === "good" || guidance.lightingScore >= 55;
+    rows.push({
+      key: "lighting",
+      ok: lightingOk,
+      icon: "sunny-outline",
+      text: guidance.lightingMessage,
+    });
   }
 
-  const lightingOk =
-    guidance.lighting === "good" || guidance.lightingScore >= 55;
-  const faceOk = guidance.face === "good";
+  if (guidance.showFaceCheck) {
+    rows.push({
+      key: "face",
+      ok: guidance.face === "good",
+      icon: "scan-outline",
+      text: guidance.faceMessage,
+    });
+  }
+
+  if (guidance.showExpressionCheck && guidance.expressionMessage) {
+    rows.push({
+      key: "expression",
+      ok: guidance.expressionOk === true,
+      icon: "happy-outline",
+      text: guidance.expressionMessage,
+    });
+  }
+
+  if (rows.length === 0) return null;
 
   return (
     <View style={styles.wrap}>
-      <GuidanceRow
-        ok={lightingOk}
-        icon="sunny-outline"
-        text={guidance.lightingMessage}
-      />
-      <GuidanceRow
-        ok={faceOk}
-        icon="person-outline"
-        text={guidance.faceMessage}
-      />
-      {autoZoomEnabled && guidance.suggestedZoom != null ? (
+      {rows.map((row) => (
+        <GuidanceRow key={row.key} ok={row.ok} icon={row.icon} text={row.text} />
+      ))}
+      {autoZoomEnabled &&
+      guidance.showFaceCheck &&
+      guidance.suggestedZoom != null ? (
         <Text style={styles.hint}>Auto-adjusting zoom…</Text>
       ) : null}
       {guidance.readyToCapture ? (
@@ -68,37 +76,34 @@ function GuidanceRow({
     <View style={styles.row}>
       <Ionicons
         name={ok ? "checkmark-circle" : "alert-circle"}
-        size={18}
+        size={17}
         color={ok ? "#34d399" : "#fbbf24"}
       />
-      <Ionicons name={icon} size={16} color="rgba(255,255,255,0.85)" />
-      <Text style={[styles.rowText, !ok && styles.rowWarn]}>{text}</Text>
+      <Ionicons name={icon} size={15} color="rgba(255,255,255,0.8)" />
+      <Text style={[styles.rowText, !ok && styles.rowWarn]} numberOfLines={2}>
+        {text}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(0,0,0,0.62)",
     borderRadius: 12,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    gap: 4,
-  },
-  pending: {
-    textAlign: "center",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
+    gap: 6,
   },
   row: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 6,
   },
   rowText: {
     flex: 1,
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 16,
     color: "#fff",
   },
   rowWarn: {
@@ -107,8 +112,8 @@ const styles = StyleSheet.create({
   },
   hint: {
     textAlign: "center",
-    fontSize: 11,
-    color: "rgba(255,255,255,0.75)",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.7)",
   },
   ready: {
     textAlign: "center",

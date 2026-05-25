@@ -178,15 +178,19 @@ Produce the weekly tracker report for this scan. Be concrete and tied to data ab
 - CAUSES: exactly 4 bullets, each tagged internally: at least 2 "wins" (what helped or what held steady) and at least 1 "drag" or risk (what hurt or what could regress). Use real numbers from the data.
   - Prefix each cause with either "Win:" or "Drag:" or "Watch:" so the UI can tag it.
 - EMPATHY: acknowledge mix of wins and drags, plain language, 2-3 sentences, forward-looking.
+- ACTION DETAILS: each action.detail must be EXACTLY 3 lines in this structure:
+  Why: <1 sentence tied to this patient's numbers/signals>
+  Do: <1 practical instruction with timing/frequency>
+  Target: <1 measurable checkpoint by next scan/week>
 Return ONLY JSON with this exact shape:
 {
   "hookLine": "string (one human sentence naming what happened this week; earned, not generic)",
   "empathyParagraph": "string (2-3 sentences; balanced tone that names wins AND risks)",
   "causes": ["Win: <sentence with numbers>", "Win: <sentence>", "Drag: <sentence>", "Watch: <sentence>"],
   "actions": [
-    {"rank": 1, "title": "string", "detail": "string tied to data"},
-    {"rank": 2, "title": "string", "detail": "string"},
-    {"rank": 3, "title": "string", "detail": "string"}
+    {"rank": 1, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."},
+    {"rank": 2, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."},
+    {"rank": 3, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."}
   ],
   "article": {"title": "string derived from the best evidence chunk", "source": "string citing E# ref or textbook name+page", "why": "string (<= 25 words) explaining relevance to this patient"},
   "video": {"title": "string", "url": "string", "why": "string"},

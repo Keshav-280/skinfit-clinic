@@ -12,9 +12,22 @@ import {
 
 export type FaceCaptureStored = {
   label: string;
-  dataUri: string;
+  imageUrl?: string;
+  dataUri?: string;
+  previewUrl?: string;
   previewDataUri?: string;
 };
+
+function resolveStoredCaptureUrls(entry: FaceCaptureStored | undefined): {
+  full: string;
+  preview: string;
+} {
+  if (!entry) return { full: "", preview: "" };
+  return {
+    full: (entry.imageUrl ?? entry.dataUri ?? "").trim(),
+    preview: (entry.previewUrl ?? entry.previewDataUri ?? "").trim(),
+  };
+}
 
 export async function scanImageNextResponse(input: {
   imageUrl: string | null | undefined;
@@ -36,12 +49,17 @@ export async function scanImageNextResponse(input: {
   let fullUrl = "";
   let storedPreview = "";
 
-  if (multi && multi.length > index && multi[index]?.dataUri) {
-    fullUrl = multi[index]!.dataUri.trim();
-    storedPreview = multi[index]!.previewDataUri?.trim() ?? "";
-  } else if (index === 0) {
+  if (multi && multi.length > index) {
+    const { full, preview } = resolveStoredCaptureUrls(multi[index]);
+    if (full) {
+      fullUrl = full;
+      storedPreview = preview;
+    }
+  }
+  if (!fullUrl && index === 0) {
     fullUrl = imageUrl?.trim() ?? "";
-  } else {
+  }
+  if (!fullUrl) {
     return NextResponse.json({ error: "IMAGE_NOT_FOUND" }, { status: 404 });
   }
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
-import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
 import { resolveStaffUserIdInDb } from "@/src/lib/auth/ensureFallbackDoctor";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import {
@@ -36,7 +36,7 @@ function parsePublicKeyJwk(raw: unknown): JsonWebKey | null {
 }
 
 async function resolveUserId(req: Request): Promise<string | null> {
-  const doctorId = await getDoctorPortalUserId();
+  const doctorId = await getDoctorPortalUserIdFromRequest(req);
   if (doctorId) return doctorId;
   return getSessionUserIdFromRequest(req);
 }

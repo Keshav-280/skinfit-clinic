@@ -140,11 +140,11 @@ export default function KaiIntroPage() {
           transition={{ duration: 0.4, delay: 0.18, ease: easeOut }}
         >
           <Link
-            href="/onboarding/questionnaire"
+            href="/onboarding/capture"
             className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4 text-base font-bold text-white shadow-lg shadow-teal-600/35 transition hover:from-teal-500 hover:to-teal-600 hover:shadow-xl hover:shadow-teal-600/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
           >
             <span className="relative z-10 flex items-center gap-2">
-              Continue to questionnaire
+              Start baseline scan
               <Sparkles className="h-4 w-4 opacity-90 transition group-hover:rotate-12" />
             </span>
             <span
@@ -153,7 +153,7 @@ export default function KaiIntroPage() {
             />
           </Link>
           <p className="mt-3 text-center text-xs text-zinc-500">
-            About 5–8 minutes · your answers shape your first kAI profile
+            About 2 minutes · five guided photos for your first kAI baseline
           </p>
         </motion.div>
       </div>

@@ -15,6 +15,12 @@ import {
   getClinicSupportInboxLastSeenIso,
   getDoctorInboxLastSeenIso,
 } from "@/src/lib/clinicSupportInboxClient";
+import {
+  dismissUnreadReadyScan,
+  getUnreadReadyScans,
+  SCAN_READY_CHANGED_EVENT,
+  type ReadyScanNotification,
+} from "@/src/lib/scanJobNotifications";
 
 function countLabel(n: number, one: string, many: string) {
   return n === 1 ? one : many.replace("{n}", String(n));
@@ -135,6 +141,7 @@ export default function DashboardNotificationsPage() {
   const [doctorCount, setDoctorCount] = useState(0);
   const [voiceNoteGeneralCount, setVoiceNoteGeneralCount] = useState(0);
   const [voiceNoteReportCount, setVoiceNoteReportCount] = useState(0);
+  const [readyScans, setReadyScans] = useState<ReadyScanNotification[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,17 +192,35 @@ export default function DashboardNotificationsPage() {
     }
   }, []);
 
+  const refreshReadyScans = useCallback(() => {
+    setReadyScans(getUnreadReadyScans());
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    refreshReadyScans();
+  }, [load, refreshReadyScans]);
+
+  useEffect(() => {
+    const onReady = () => refreshReadyScans();
+    window.addEventListener(SCAN_READY_CHANGED_EVENT, onReady);
+    return () => window.removeEventListener(SCAN_READY_CHANGED_EVENT, onReady);
+  }, [refreshReadyScans]);
 
   const alertCount = useMemo(
     () =>
       supportCount +
       doctorCount +
       voiceNoteGeneralCount +
+      voiceNoteReportCount +
+      readyScans.length,
+    [
+      supportCount,
+      doctorCount,
+      voiceNoteGeneralCount,
       voiceNoteReportCount,
-    [supportCount, doctorCount, voiceNoteGeneralCount, voiceNoteReportCount]
+      readyScans.length,
+    ]
   );
 
   function markVoiceViewedThenRefresh(scope: "dashboard" | "report") {
@@ -249,6 +274,19 @@ export default function DashboardNotificationsPage() {
             </div>
 
             <div className="space-y-2.5">
+              {readyScans.map((scan) => (
+                <AlertRow
+                  key={scan.scanId}
+                  href={`/dashboard/history/scans/${scan.scanId}`}
+                  onClick={() => dismissUnreadReadyScan(scan.scanId)}
+                  icon={<Sparkles className="h-5 w-5" aria-hidden />}
+                  title="Scan report ready"
+                  subtitle={scan.title}
+                  count={1}
+                  tone="teal"
+                />
+              ))}
+
               {supportCount > 0 ? (
                 <AlertRow
                   href="/dashboard/chat?assistant=support"
@@ -338,8 +376,8 @@ export default function DashboardNotificationsPage() {
             <p className="font-semibold text-[#2C3E6B]">Mobile app</p>
             <p className="mt-2 leading-relaxed">
               Turn on push for alerts when SkinnFit isn&apos;t open. On the web,
-              the bell only shows how many items need attention — details are
-              listed here.
+              the bell counts unread chat, voice notes, and scan reports ready —
+              details are listed here.
             </p>
           </div>
         </>

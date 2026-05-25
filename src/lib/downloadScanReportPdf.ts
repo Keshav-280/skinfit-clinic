@@ -1,5 +1,6 @@
 /**
- * Renders a DOM node to a multi-page A4 PDF (client-only).
+ * Renders a DOM node to a single-page A4 PDF (client-only).
+ * The full report is captured and scaled to fit one page.
  */
 
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
@@ -79,86 +80,71 @@ function waitImgLoaded(img: HTMLImageElement): Promise<void> {
   });
 }
 
-/** Tracks vertical position so the next PDF slice can continue below the previous one instead of always starting a new page (fixes huge blank gaps between sections). */
-type PdfVerticalFlow = {
-  nextTopMm: number;
-  hasPlacedAnything: boolean;
-};
+function applyPdfCloneVisibility(clonedRoot: HTMLElement | Document) {
+  const root =
+    clonedRoot instanceof Document ? clonedRoot.body : clonedRoot;
+  if (!root) return;
+  root.querySelectorAll("[data-pdf-screen-only]").forEach((el) => {
+    (el as HTMLElement).style.display = "none";
+  });
+  root.querySelectorAll("[data-pdf-print-only]").forEach((el) => {
+    (el as HTMLElement).style.display = "block";
+  });
+}
 
-function appendCanvasToPdf(
+/** Scale one tall canvas to fit a single A4 page (width + height). */
+function appendCanvasToPdfSinglePage(
   pdf: import("jspdf").jsPDF,
-  canvas: HTMLCanvasElement,
-  flow: PdfVerticalFlow
+  canvas: HTMLCanvasElement
 ): void {
-  const marginMm = 8;
+  const marginMm = 6;
   const pageWidthMm = pdf.internal.pageSize.getWidth();
   const pageHeightMm = pdf.internal.pageSize.getHeight();
   const usableWidthMm = pageWidthMm - marginMm * 2;
   const usableHeightMm = pageHeightMm - marginMm * 2;
-  const contentBottomMm = pageHeightMm - marginMm;
-  const epsMm = 0.35;
 
-  const pxFullHeight = canvas.height;
-  const pxPageHeight = Math.round(
-    (canvas.width * usableHeightMm) / usableWidthMm
-  );
-  const nPages = Math.ceil(pxFullHeight / pxPageHeight);
+  const aspect = canvas.height / canvas.width;
+  let imgWidthMm = usableWidthMm;
+  let imgHeightMm = imgWidthMm * aspect;
 
-  for (let page = 0; page < nPages; page++) {
-    if (!flow.hasPlacedAnything) {
-      flow.nextTopMm = marginMm;
-    }
-
-    const pageCanvas = document.createElement("canvas");
-    const pageHeightPx = Math.min(
-      pxPageHeight,
-      pxFullHeight - page * pxPageHeight
-    );
-    pageCanvas.width = canvas.width;
-    pageCanvas.height = pageHeightPx;
-
-    const ctx = pageCanvas.getContext("2d");
-    if (!ctx) throw new Error("PDF generation failed: no 2D context");
-
-    ctx.drawImage(
-      canvas,
-      0,
-      page * pxPageHeight,
-      canvas.width,
-      pageHeightPx,
-      0,
-      0,
-      canvas.width,
-      pageHeightPx
-    );
-
-    const imgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-    const pageHeightMmActualUnclamped =
-      (pageHeightPx * usableWidthMm) / canvas.width;
-    const pageHeightMmActual = Math.min(
-      usableHeightMm,
-      pageHeightMmActualUnclamped
-    );
-
-    if (
-      flow.hasPlacedAnything &&
-      flow.nextTopMm + pageHeightMmActual > contentBottomMm + epsMm
-    ) {
-      pdf.addPage();
-      flow.nextTopMm = marginMm;
-    }
-
-    pdf.addImage(
-      imgData,
-      "JPEG",
-      marginMm,
-      flow.nextTopMm,
-      usableWidthMm,
-      pageHeightMmActual
-    );
-    flow.nextTopMm += pageHeightMmActual;
-    flow.hasPlacedAnything = true;
+  if (imgHeightMm > usableHeightMm) {
+    const shrink = usableHeightMm / imgHeightMm;
+    imgHeightMm = usableHeightMm;
+    imgWidthMm = imgWidthMm * shrink;
   }
+
+  const xMm = marginMm + (usableWidthMm - imgWidthMm) / 2;
+  const yMm = marginMm;
+
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+  pdf.addImage(imgData, "JPEG", xMm, yMm, imgWidthMm, imgHeightMm);
+}
+
+async function mergeSectionCanvases(
+  canvases: HTMLCanvasElement[]
+): Promise<HTMLCanvasElement> {
+  if (canvases.length === 0) {
+    throw new Error("PDF generation failed: no sections captured");
+  }
+  if (canvases.length === 1) return canvases[0]!;
+
+  const width = Math.max(...canvases.map((c) => c.width));
+  const totalHeight = canvases.reduce((sum, c) => sum + c.height, 0);
+  const merged = document.createElement("canvas");
+  merged.width = width;
+  merged.height = totalHeight;
+  const ctx = merged.getContext("2d");
+  if (!ctx) throw new Error("PDF generation failed: no 2D context");
+
+  let y = 0;
+  for (const c of canvases) {
+    ctx.fillStyle = T.pageBg;
+    ctx.fillRect(0, y, width, c.height);
+    const x = Math.floor((width - c.width) / 2);
+    ctx.drawImage(c, x, y);
+    y += c.height;
+  }
+  return merged;
 }
 
 async function renderReportToJsPdf(element: HTMLElement) {
@@ -205,31 +191,23 @@ async function renderReportToJsPdf(element: HTMLElement) {
       foreignObjectRendering: false,
       logging: false,
       backgroundColor: T.pageBg,
+      onclone: (_doc: Document, cloned: HTMLElement) => {
+        applyPdfCloneVisibility(cloned);
+      },
     } as const;
 
-    const flow: PdfVerticalFlow = {
-      nextTopMm: 8,
-      hasPlacedAnything: false,
-    };
-
+    let mergedCanvas: HTMLCanvasElement;
     if (sectionNodes.length > 0) {
-      const marginMm = 8;
+      const canvases: HTMLCanvasElement[] = [];
       for (const node of sectionNodes) {
-        if (
-          node.dataset.pdfPageBreakBefore === "true" &&
-          flow.hasPlacedAnything
-        ) {
-          pdf.addPage();
-          flow.nextTopMm = marginMm;
-        }
-        const canvas = await html2canvas(node, captureOpts);
-        appendCanvasToPdf(pdf, canvas, flow);
+        canvases.push(await html2canvas(node, captureOpts));
       }
+      mergedCanvas = await mergeSectionCanvases(canvases);
     } else {
-      const canvas = await html2canvas(element, captureOpts);
-      appendCanvasToPdf(pdf, canvas, flow);
+      mergedCanvas = await html2canvas(element, captureOpts);
     }
 
+    appendCanvasToPdfSinglePage(pdf, mergedCanvas);
     return pdf;
   } finally {
     for (const { img, previousSrc, hadCrossOrigin } of restores) {

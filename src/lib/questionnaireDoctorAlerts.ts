@@ -1,4 +1,5 @@
 import { notifyDoctorUsers } from "@/src/lib/expoPush";
+import { patientHasOnboardingClinicalAlert } from "@/src/lib/patientOnboardingClinicalAlert";
 import { postPatientDoctorThreadMessage } from "@/src/lib/patientDoctorChat";
 
 /**
@@ -10,7 +11,14 @@ export async function notifyStaffQuestionnaireRedFlags(opts: {
   chronicConcern: boolean;
   highSensitivity: boolean;
 }): Promise<void> {
-  if (!opts.chronicConcern && !opts.highSensitivity) return;
+  if (
+    !patientHasOnboardingClinicalAlert({
+      concernDuration: opts.chronicConcern ? "chronic" : null,
+      skinSensitivity: opts.highSensitivity ? "high" : null,
+    })
+  ) {
+    return;
+  }
 
   const lines: string[] = [];
   if (opts.chronicConcern) {

@@ -26,6 +26,18 @@ function kindBadge(kind: "article" | "video" | "insight") {
   return "kAI insight";
 }
 
+function parseFocusDetail(detail: string): Array<{ label: string; body: string }> {
+  return detail
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(Why|Do|Target):\s*(.*)$/i);
+      if (!m) return { label: "", body: line };
+      return { label: `${m[1]}:`, body: m[2] ?? "" };
+    });
+}
+
 export function TrackerReportSections({
   report,
   serifClassName,
@@ -183,7 +195,14 @@ export function TrackerReportSections({
                 </span>
                 {a.title}
               </p>
-              <p className="mt-1 text-sm leading-relaxed text-zinc-600">{a.detail}</p>
+              <div className="mt-1.5 space-y-1">
+                {parseFocusDetail(a.detail).map((part, idx) => (
+                  <p key={`${a.rank}-${idx}`} className="text-sm leading-relaxed text-zinc-600">
+                    {part.label ? <strong className="font-semibold text-zinc-800">{part.label} </strong> : null}
+                    {part.body}
+                  </p>
+                ))}
+              </div>
             </li>
           ))}
         </ol>

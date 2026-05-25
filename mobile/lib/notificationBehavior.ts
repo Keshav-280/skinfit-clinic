@@ -36,6 +36,15 @@ export function configureNotificationBehavior() {
       if (t === "doctor_voice_note") {
         const onReport = data?.attachedToReport === true;
         router.push((onReport ? "/(drawer)/history" : "/(drawer)") as Href);
+        return;
+      }
+      if (t === "scan_report_ready") {
+        const scanId = data?.scanId;
+        if (typeof scanId === "number" && scanId > 0) {
+          router.push(`/(drawer)/history/${scanId}` as Href);
+        } else {
+          router.push("/(drawer)/history" as Href);
+        }
       }
     });
   })();

@@ -1,11 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { ApiError, apiJson } from "@/lib/api";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
@@ -19,29 +17,11 @@ export default function BaselineReportScreen() {
         ? scanIdParam[0]
         : undefined;
   const router = useRouter();
-  const { token, markOnboardingComplete } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const { token, refreshUserFromProfile } = useAuth();
 
-  async function finish() {
-    if (!token) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      const id = Number.parseInt(scanId ?? "", 10);
-      await apiJson("/api/onboarding/complete", token, {
-        method: "POST",
-        body: JSON.stringify(
-          Number.isFinite(id) ? { baselineScanId: id } : {}
-        ),
-      });
-      await markOnboardingComplete();
-      router.replace("/(drawer)" as Href);
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Could not finish onboarding.");
-    } finally {
-      setBusy(false);
-    }
+  async function goDashboard() {
+    if (token) await refreshUserFromProfile(token);
+    router.replace("/(drawer)" as Href);
   }
 
   return (
@@ -54,16 +34,20 @@ export default function BaselineReportScreen() {
         </View>
         <Text style={styles.title}>Baseline captured</Text>
         <Text style={styles.body}>
-          Your kAI baseline report is saved. Your doctor will be notified. You can open the full report from
-          Treatment History anytime.
+          Your kAI baseline scan is saved. Answer a few questions when you&apos;re ready, or
+          explore the dashboard first.
         </Text>
-        {err ? <Text style={styles.err}>{err}</Text> : null}
         <Pressable
-          style={({ pressed }) => [styles.btn, busy && styles.dis, pressed && !busy && styles.btnPressed]}
-          onPress={() => void finish()}
-          disabled={busy}
+          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+          onPress={() => router.push("/onboarding/questionnaire" as Href)}
         >
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Go to dashboard</Text>}
+          <Text style={styles.btnText}>Continue to answer questions</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}
+          onPress={() => void goDashboard()}
+        >
+          <Text style={styles.btnOutlineText}>Go to dashboard</Text>
         </Pressable>
         <Pressable
           style={styles.linkBtn}
@@ -80,18 +64,9 @@ export default function BaselineReportScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
-  },
-  iconWrap: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
+  wrap: { flex: 1 },
+  center: { flex: 1, padding: 24, justifyContent: "center" },
+  iconWrap: { alignItems: "center", marginBottom: 20 },
   iconCircle: {
     width: 80,
     height: 80,
@@ -115,25 +90,26 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 8,
   },
-  err: { color: "#DC2626", textAlign: "center", marginTop: 12, fontWeight: "600" },
   btn: {
     marginTop: 28,
     backgroundColor: NAVY,
     paddingVertical: 17,
     borderRadius: 16,
     alignItems: "center",
-    shadowColor: NAVY,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 4,
   },
-  btnPressed: {
-    backgroundColor: NAVY_DARK,
-    transform: [{ scale: 0.98 }],
+  btnPressed: { backgroundColor: NAVY_DARK, transform: [{ scale: 0.98 }] },
+  btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  btnOutline: {
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: NAVY,
+    paddingVertical: 17,
+    borderRadius: 16,
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
-  dis: { opacity: 0.45 },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 16, letterSpacing: 0.3 },
+  btnOutlinePressed: { backgroundColor: "#E2E8F0" },
+  btnOutlineText: { color: NAVY, fontWeight: "700", fontSize: 16 },
   linkBtn: { marginTop: 18, alignItems: "center" },
   link: { color: NAVY, fontWeight: "700", fontSize: 15 },
 });

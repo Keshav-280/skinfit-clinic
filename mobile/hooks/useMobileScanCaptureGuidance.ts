@@ -1,13 +1,20 @@
 import { CameraView } from "expo-camera";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { Platform } from "react-native";
 
+import { useAuth } from "@/contexts/AuthContext";
 import {
   analyzePreviewImageUri,
   type PreviewGuidanceState,
 } from "@/lib/analyzePreviewJpeg";
+import { needsMediapipeOnClient, getMobileFaceCaptureConfig } from "@/lib/faceCaptureConfig";
+import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
+import { needsExpressionCheck } from "@/lib/captureExpression";
+import { isNativeFaceLandmarkAvailable } from "@/lib/nativeFaceLandmarkDetection";
 import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
-const TICK_MS = 1300;
+const TICK_MS = 1000;
+const EXPRESSION_TICK_MS = 650;
 
 type CameraRef = RefObject<CameraView | null>;
 
@@ -16,26 +23,56 @@ export function useMobileScanCaptureGuidance(
   enabled: boolean,
   cameraReady: boolean,
   currentZoom: number,
-  paused: boolean
+  paused: boolean,
+  stepId: FaceScanCaptureId
 ) {
   const [guidance, setGuidance] = useState<CaptureGuidanceSnapshot | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
+  const { token } = useAuth();
+  const captureCfg = getMobileFaceCaptureConfig();
+  const needsMp = needsMediapipeOnClient(captureCfg);
+  const [landmarkDetectionEnabled, setLandmarkDetectionEnabled] = useState(false);
   const busyRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const previewStateRef = useRef<PreviewGuidanceState>({
     smoothedBox: null,
     framing: null,
+    expressionCalibration: { openEarBaseline: null },
   });
+  const expressionOkRef = useRef<boolean | null>(null);
+
+  const expressionStep = needsExpressionCheck(stepId);
+  const tickMs = expressionStep ? EXPRESSION_TICK_MS : TICK_MS;
+
+  useEffect(() => {
+    if (!needsMp) {
+      setLandmarkDetectionEnabled(false);
+      return;
+    }
+    if (Platform.OS === "web") {
+      setLandmarkDetectionEnabled(true);
+      return;
+    }
+    setLandmarkDetectionEnabled(isNativeFaceLandmarkAvailable());
+  }, [needsMp]);
+
+  useEffect(() => {
+    expressionOkRef.current = null;
+    previewStateRef.current = {
+      smoothedBox: null,
+      framing: null,
+      expressionCalibration: { openEarBaseline: null },
+    };
+    setGuidance(null);
+  }, [stepId]);
 
   const tick = useCallback(async () => {
     const cam = cameraRef.current;
     if (!cam || !cameraReady || !enabled || paused || busyRef.current) return;
 
     busyRef.current = true;
-    setAnalyzing(true);
     try {
       const pic = await cam.takePictureAsync({
-        quality: 0.12,
+        quality: expressionStep ? 0.55 : 0.38,
         skipProcessing: true,
         shutterSound: false,
       });
@@ -44,7 +81,13 @@ export function useMobileScanCaptureGuidance(
       const { guidance: next, state } = await analyzePreviewImageUri(
         pic.uri,
         currentZoom,
-        previewStateRef.current
+        previewStateRef.current,
+        {
+          stepId,
+          landmarkDetectionEnabled,
+          expressionOkRef,
+          authToken: token,
+        }
       );
       previewStateRef.current = state;
       if (next) setGuidance(next);
@@ -52,9 +95,18 @@ export function useMobileScanCaptureGuidance(
       /* preview sample failed — keep last guidance */
     } finally {
       busyRef.current = false;
-      setAnalyzing(false);
     }
-  }, [cameraRef, cameraReady, enabled, paused, currentZoom]);
+  }, [
+    cameraRef,
+    cameraReady,
+    enabled,
+    paused,
+    currentZoom,
+    stepId,
+    landmarkDetectionEnabled,
+    expressionStep,
+    token,
+  ]);
 
   useEffect(() => {
     if (!enabled || !cameraReady || paused) {
@@ -62,18 +114,29 @@ export function useMobileScanCaptureGuidance(
       timerRef.current = null;
       if (!enabled) {
         setGuidance(null);
-        previewStateRef.current = { smoothedBox: null, framing: null };
+        previewStateRef.current = {
+          smoothedBox: null,
+          framing: null,
+          expressionCalibration: { openEarBaseline: null },
+        };
+        expressionOkRef.current = null;
       }
       return;
     }
 
     void tick();
-    timerRef.current = setInterval(() => void tick(), TICK_MS);
+    timerRef.current = setInterval(() => void tick(), tickMs);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
     };
-  }, [enabled, cameraReady, paused, tick]);
+  }, [enabled, cameraReady, paused, tick, tickMs]);
 
-  return { guidance, analyzing, faceDetectionAvailable: true };
+  const faceCheckLive = Boolean(guidance?.showFaceCheck);
+
+  return {
+    guidance,
+    faceCheckLive,
+    landmarkDetectionEnabled,
+  };
 }

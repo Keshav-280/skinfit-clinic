@@ -50,6 +50,28 @@ export function ProfileForm({ initial }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasQuestionnaire, setHasQuestionnaire] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/user/profile", { credentials: "include" });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          user?: { hasQuestionnaire?: boolean };
+        };
+        if (!cancelled) {
+          setHasQuestionnaire(json.user?.hasQuestionnaire === true);
+        }
+      } catch {
+        /* keep default */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setTimezone(initial.timezone ?? "Asia/Kolkata");
@@ -212,6 +234,15 @@ export function ProfileForm({ initial }: Props) {
         <p className="mt-1 text-sm text-zinc-500">
           This information appears on your treatment history and reports.
         </p>
+        {!hasQuestionnaire ? (
+          <p className="mt-3 rounded-xl border border-dashed border-amber-200 bg-amber-50/80 px-3 py-2 text-xs font-medium text-amber-950">
+            Age, gender, skin type, and goals unlock after you complete the{" "}
+            <a href="/onboarding/questionnaire" className="font-bold text-teal-700 underline">
+              onboarding questionnaire
+            </a>
+            .
+          </p>
+        ) : null}
         <div className="mt-6 space-y-4">
           <div>
             <label
@@ -299,7 +330,7 @@ export function ProfileForm({ initial }: Props) {
               inputMode="numeric"
               value={age}
               onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))}
-              disabled={loading}
+              disabled={loading || !hasQuestionnaire}
               placeholder="e.g. 28"
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
             />
@@ -315,7 +346,7 @@ export function ProfileForm({ initial }: Props) {
               id="pf-skin"
               value={skinType}
               onChange={(e) => setSkinType(e.target.value)}
-              disabled={loading}
+              disabled={loading || !hasQuestionnaire}
               placeholder="e.g. Dry, Combination, Oily"
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
             />
@@ -331,7 +362,7 @@ export function ProfileForm({ initial }: Props) {
               id="pf-goal"
               value={primaryGoal}
               onChange={(e) => setPrimaryGoal(e.target.value)}
-              disabled={loading}
+              disabled={loading || !hasQuestionnaire}
               placeholder="e.g. Acne reduction, Hydration"
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
             />
@@ -351,7 +382,7 @@ export function ProfileForm({ initial }: Props) {
                 setGender(g);
                 if (g !== "female") setCycleTrackingEnabled(false);
               }}
-              disabled={loading}
+              disabled={loading || !hasQuestionnaire}
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
             >
               <option value="">Select</option>

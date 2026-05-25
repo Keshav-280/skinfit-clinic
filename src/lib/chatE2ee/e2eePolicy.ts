@@ -1,3 +1,4 @@
+import { isDoctorChatE2eeEnabled } from "@/src/lib/chatDoctorE2eeConfig";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 import { threadHasE2eeEnvelopes } from "@/src/lib/chatE2ee/store";
 
@@ -5,6 +6,7 @@ import { threadHasE2eeEnvelopes } from "@/src/lib/chatE2ee/store";
 export async function doctorThreadRequiresE2ee(
   threadId: string
 ): Promise<boolean> {
+  if (!isDoctorChatE2eeEnabled()) return false;
   return threadHasE2eeEnvelopes(threadId);
 }
 

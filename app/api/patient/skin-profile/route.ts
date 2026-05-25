@@ -9,6 +9,7 @@ import {
   weeklyReports,
 } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { RAG_KAI_PARAM_KEYS, RAG_KAI_PARAM_LABELS } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 import { generatePersonalisedAction, isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
@@ -254,7 +255,10 @@ export async function GET(request: Request) {
       : "Fitzpatrick: set in clinic if unknown",
   ];
 
+  const questionnaireLocked = !userHasQuestionnaire(user?.primaryConcern);
+
   return NextResponse.json({
+    questionnaireLocked,
     skinDna: {
       skinType: dna?.skinType ?? user?.skinType ?? null,
       primaryConcern: dna?.primaryConcern ?? user?.primaryConcern ?? null,

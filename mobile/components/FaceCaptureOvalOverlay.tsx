@@ -10,7 +10,7 @@ const cy = VB_H * OVAL_FRAME.cy;
 const rx = VB_W * OVAL_FRAME.rx;
 const ry = VB_H * OVAL_FRAME.ry;
 
-/** Same oval geometry as web — full face (forehead to chin). */
+/** Same oval geometry as web — tight portrait (hairline to chin). */
 export function FaceCaptureOvalOverlay() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">

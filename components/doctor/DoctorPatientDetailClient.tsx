@@ -1099,6 +1099,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   } | null>(null);
 
   const {
+    e2eeFeatureEnabled,
     e2eeReady,
     e2eeStatus,
     decryptMessages: decryptDoctorChat,
@@ -4344,15 +4345,15 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               <h2 className="text-base font-semibold text-slate-900">Chat</h2>
               <p className="text-xs text-slate-500">
                 {p.name}
-                {e2eeReady ? (
+                {e2eeFeatureEnabled && e2eeReady ? (
                   <span className="ml-1.5 font-semibold text-emerald-700">· E2EE</span>
-                ) : e2eeStatus ? (
+                ) : e2eeFeatureEnabled && e2eeStatus ? (
                   <span className="ml-1.5 text-amber-700">· {e2eeStatus}</span>
                 ) : null}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {!e2eeReady ? (
+              {e2eeFeatureEnabled && !e2eeReady ? (
                 <button
                   type="button"
                   onClick={() => void resetSecureChat()}
@@ -4595,13 +4596,15 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 disabled={
                   doctorChatBusy ||
                   chatIsRecording ||
-                  !e2eeReady ||
+                  (e2eeFeatureEnabled && !e2eeReady) ||
                   (!doctorChatText.trim() && !doctorChatAttachment)
                 }
                 title={
-                  e2eeReady
-                    ? "Send encrypted message"
-                    : "Waiting for secure chat setup…"
+                  e2eeFeatureEnabled
+                    ? e2eeReady
+                      ? "Send encrypted message"
+                      : "Waiting for secure chat setup…"
+                    : "Send message"
                 }
                 onClick={() => void sendDoctorChatMessage()}
                 className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B] p-2.5 text-white hover:bg-[#243356] disabled:opacity-50"

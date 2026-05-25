@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { NotificationBell } from "@/components/NotificationBell";
+import { ScanJobReadyNotifier } from "@/components/ScanJobReadyNotifier";
 import { useAuth } from "@/contexts/AuthContext";
 
 function iconForRoute(name: string, color: string, size: number) {
@@ -181,7 +182,9 @@ export default function DrawerLayout() {
     return <Redirect href="/login" />;
   }
 
-  if (user?.onboardingComplete === false) {
+  const canAccess =
+    user?.canAccessDashboard ?? user?.onboardingComplete !== false;
+  if (!canAccess) {
     return <Redirect href={"/onboarding" as Href} />;
   }
 
@@ -195,7 +198,9 @@ export default function DrawerLayout() {
           headerStyle: { backgroundColor: "#E8EFE6" },
           headerTitleStyle: { fontWeight: "700", color: "#2C3E6B" },
           headerShadowVisible: false,
-          headerLeft: () => null,
+          // Drawer navigator only skips its toggle when headerLeft is null/undefined — not when
+          // a component returns null. With drawer width 0, the default toggle clips off-screen.
+          headerLeft: () => <View />,
           swipeEnabled: false,
           drawerType: "front",
           drawerStyle: {
@@ -347,6 +352,7 @@ export default function DrawerLayout() {
           }}
         />
       </Drawer>
+      <ScanJobReadyNotifier />
       {showGlobalDock && !keyboardVisible && (
         <>
           <AnimatedDock

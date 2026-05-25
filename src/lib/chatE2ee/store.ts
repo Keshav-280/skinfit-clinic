@@ -1,10 +1,12 @@
-import { and, desc, eq } from "drizzle-orm";
-import { db } from "@/src/db";
+import { and, desc, eq, like } from "drizzle-orm";
+import { db } from "@/src/db/client";
 import {
+  chatMessages,
   chatThreadE2eeEnvelopes,
   chatThreads,
   chatUserE2eeKeys,
 } from "@/src/db/schema";
+import { E2EE_PREFIX } from "@/src/lib/chatE2ee/format";
 
 export async function upsertUserPublicKey(
   userId: string,
@@ -68,13 +70,21 @@ export async function saveThreadEnvelopes(
   }
 }
 
-export async function findDoctorThreadId(patientId: string): Promise<string | null> {
+export async function findDoctorThreadId(
+  patientId: string,
+  doctorId?: string | null
+): Promise<string | null> {
+  const conditions = [
+    eq(chatThreads.userId, patientId),
+    eq(chatThreads.assistantId, "doctor"),
+  ];
+  if (doctorId) {
+    conditions.push(eq(chatThreads.doctorId, doctorId));
+  }
   const [row] = await db
     .select({ id: chatThreads.id })
     .from(chatThreads)
-    .where(
-      and(eq(chatThreads.userId, patientId), eq(chatThreads.assistantId, "doctor"))
-    )
+    .where(and(...conditions))
     .orderBy(desc(chatThreads.createdAt))
     .limit(1);
   return row?.id ?? null;
@@ -104,4 +114,43 @@ export async function clearThreadE2eeEnvelopes(threadId: string): Promise<number
     .where(eq(chatThreadE2eeEnvelopes.threadId, threadId))
     .returning({ userId: chatThreadE2eeEnvelopes.userId });
   return deleted.length;
+}
+
+export type ClearAllE2eeResult = {
+  envelopesDeleted: number;
+  userKeysDeleted: number;
+  encryptedMessagesDeleted: number;
+};
+
+/**
+ * Wipe all server-side E2EE state so doctor + patient can bootstrap fresh keys.
+ * Optionally deletes chat rows whose body is e2ee:v1 (undecryptable after reset).
+ */
+export async function clearAllServerE2eeState(opts?: {
+  deleteEncryptedMessages?: boolean;
+}): Promise<ClearAllE2eeResult> {
+  const deleteEncryptedMessages = opts?.deleteEncryptedMessages ?? true;
+
+  const envelopeRows = await db
+    .delete(chatThreadE2eeEnvelopes)
+    .returning({ threadId: chatThreadE2eeEnvelopes.threadId });
+
+  const keyRows = await db
+    .delete(chatUserE2eeKeys)
+    .returning({ userId: chatUserE2eeKeys.userId });
+
+  let encryptedMessagesDeleted = 0;
+  if (deleteEncryptedMessages) {
+    const msgRows = await db
+      .delete(chatMessages)
+      .where(like(chatMessages.text, `${E2EE_PREFIX}%`))
+      .returning({ id: chatMessages.id });
+    encryptedMessagesDeleted = msgRows.length;
+  }
+
+  return {
+    envelopesDeleted: envelopeRows.length,
+    userKeysDeleted: keyRows.length,
+    encryptedMessagesDeleted,
+  };
 }

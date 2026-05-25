@@ -4,6 +4,8 @@ import {
   asyncStorageE2eeAdapter,
   decryptMessages,
   encryptOutgoingText,
+  ensureDoctorPatientE2eeReady,
+  resetDoctorPatientE2eeEnvelopes,
   setupDoctorPatientE2ee,
   type ChatMessageRow,
   type DoctorThreadE2eeSession,
@@ -12,7 +14,8 @@ import { apiUrl } from "./apiBase";
 
 const storage = asyncStorageE2eeAdapter(
   (key) => AsyncStorage.getItem(key),
-  (key, value) => AsyncStorage.setItem(key, value)
+  (key, value) => AsyncStorage.setItem(key, value),
+  (keys) => AsyncStorage.multiRemove(keys)
 );
 
 function mobileE2eeFetch(token: string) {
@@ -26,14 +29,49 @@ function mobileE2eeFetch(token: string) {
   };
 }
 
+function e2eeOpts(token: string) {
+  return {
+    storage,
+    credentials: "omit" as const,
+    fetchFn: mobileE2eeFetch(token),
+  };
+}
+
 export async function setupMobileDoctorChatE2ee(
   token: string
 ): Promise<DoctorThreadE2eeSession | null> {
-  return setupDoctorPatientE2ee({
-    storage,
-    credentials: "omit",
-    fetchFn: mobileE2eeFetch(token),
-  });
+  return setupDoctorPatientE2ee(e2eeOpts(token));
 }
 
-export { decryptMessages, encryptOutgoingText, type ChatMessageRow, type DoctorThreadE2eeSession };
+export async function ensureMobileDoctorChatE2eeReady(
+  token: string,
+  maxAttempts?: number
+): Promise<DoctorThreadE2eeSession | null> {
+  return ensureDoctorPatientE2eeReady({ ...e2eeOpts(token), maxAttempts });
+}
+
+export async function resetMobileDoctorChatE2eeEnvelopes(
+  token: string
+): Promise<boolean> {
+  return resetDoctorPatientE2eeEnvelopes(e2eeOpts(token));
+}
+
+/** Wipe device E2EE keys (run after server reset-all). */
+export async function clearMobileE2eeDeviceKeys(): Promise<void> {
+  await storage.clearKeyPair();
+}
+
+/** Server envelopes + local keys — full fresh bootstrap. */
+export async function resetMobileDoctorChatE2eeFresh(
+  token: string
+): Promise<boolean> {
+  await storage.clearKeyPair();
+  return resetDoctorPatientE2eeEnvelopes(e2eeOpts(token));
+}
+
+export {
+  decryptMessages,
+  encryptOutgoingText,
+  type ChatMessageRow,
+  type DoctorThreadE2eeSession,
+};

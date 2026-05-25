@@ -68,7 +68,6 @@ export async function GET(
   if (!(await ensurePatient(patientId))) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
-
   const thread = await latestDoctorThread(patientId);
   if (!thread) {
     return NextResponse.json({ ok: true, messages: [] });
@@ -114,7 +113,6 @@ export async function POST(
   if (!(await ensurePatient(patientId))) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
-
   let body: unknown;
   try {
     body = await req.json();

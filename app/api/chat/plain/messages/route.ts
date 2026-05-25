@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { resolvePatientDoctorThread } from "@/src/lib/patientDoctorChatThread";
 
 export async function GET(req: Request) {
   const userId = await getSessionUserIdFromRequest(req);
@@ -14,16 +15,44 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "INVALID_ASSISTANT_ID" }, { status: 400 });
   }
 
-  // Patient can only read their own threads.
-  const [thread] = await db
-    .select({
-      id: chatThreads.id,
-      patientClearedChatAt: chatThreads.patientClearedChatAt,
-    })
-    .from(chatThreads)
-    .where(and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, assistantId)))
-    .orderBy(desc(chatThreads.createdAt))
-    .limit(1);
+  const doctorIdParam =
+    assistantId === "doctor" ? url.searchParams.get("doctorId") : null;
+
+  let thread: { id: string; patientClearedChatAt: Date | null } | undefined;
+
+  if (assistantId === "doctor") {
+    const resolved = await resolvePatientDoctorThread(userId, doctorIdParam);
+    if (!resolved) {
+      return NextResponse.json({
+        success: true,
+        assistantId,
+        messages: [],
+        clinicReadThroughIso: new Date().toISOString(),
+      });
+    }
+    const [row] = await db
+      .select({
+        id: chatThreads.id,
+        patientClearedChatAt: chatThreads.patientClearedChatAt,
+      })
+      .from(chatThreads)
+      .where(eq(chatThreads.id, resolved.threadId))
+      .limit(1);
+    thread = row;
+  } else {
+    const [row] = await db
+      .select({
+        id: chatThreads.id,
+        patientClearedChatAt: chatThreads.patientClearedChatAt,
+      })
+      .from(chatThreads)
+      .where(
+        and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, assistantId))
+      )
+      .orderBy(desc(chatThreads.createdAt))
+      .limit(1);
+    thread = row;
+  }
 
   if (!thread) {
     const emptyRead = new Date().toISOString();

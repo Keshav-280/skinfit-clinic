@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { questionnaireAnswers, skinDnaCards, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { finalizeOnboardingUser } from "@/src/lib/finalizeOnboardingUser";
 import { notifyStaffQuestionnaireRedFlags } from "@/src/lib/questionnaireDoctorAlerts";
 
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
@@ -281,6 +282,8 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("[onboarding/questionnaire] doctor alert notify failed", e);
   }
+
+  await finalizeOnboardingUser(userId);
 
   return NextResponse.json({ ok: true });
 }

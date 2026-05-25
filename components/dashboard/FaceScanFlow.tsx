@@ -25,8 +25,11 @@ import {
   FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
 } from "@/src/lib/faceScanCaptures";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
+import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
+import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
+import { submitFaceScan } from "@/src/lib/submitFaceScan";
 
-type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "results";
+type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "queued" | "results";
 
 interface ClinicalScores {
   active_acne?: number;
@@ -70,8 +73,8 @@ type CaptureItem = {
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 
 /** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
-const CAPTURE_ZOOM_MIN = 1;
-const CAPTURE_ZOOM_MAX = 2.5;
+const CAPTURE_ZOOM_MIN = CAPTURE_ZOOM_AUTO.min;
+const CAPTURE_ZOOM_MAX = CAPTURE_ZOOM_AUTO.max;
 const CAPTURE_ZOOM_STEP = 0.1;
 const CAPTURE_ZOOM_DEFAULT = CAPTURE_ZOOM_AUTO.default;
 
@@ -195,7 +198,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     if (!cameraOpen || !autoZoomEnabled || guidance?.suggestedZoom == null) return;
     if (Date.now() - userAdjustedZoomAt.current < 2000) return;
     const timer = setTimeout(() => {
-      setCaptureZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!, 0.55));
+      setCaptureZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!, 0.38));
     }, 0);
     return () => clearTimeout(timer);
   }, [cameraOpen, autoZoomEnabled, guidance?.suggestedZoom]);
@@ -346,44 +349,28 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       const formData = new FormData();
       formData.append("scanName", scanName.trim());
       captures.forEach((c) => formData.append("images", c.file));
-      const res = await fetch("/api/scan", {
-        method: "POST",
-        body: formData,
-      });
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: ScanResults & { id?: number };
-      };
-      if (!res.ok || !json.success) {
-        setScanError(
-          json.error ||
-            (res.status === 401
-              ? "Sign in to save your scan."
-              : "Scan failed. Try again.")
+      const outcome = await submitFaceScan(formData);
+
+      if (outcome.mode === "queued") {
+        addPendingScanJob(outcome.jobId, scanName.trim());
+        setStep("queued");
+        return;
+      }
+
+      if (outcome.mode === "error") {
+        setScanError(outcome.message);
+        setStep("naming");
+        return;
+      }
+
+      const scanId = outcome.scanId;
+      if (isOnboardingScan) {
+        router.push(
+          `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`
         );
-        setStep("naming");
         return;
       }
-      const scanId = json.data?.id;
-      if (typeof scanId === "number" && scanId >= 1) {
-        if (isOnboardingScan) {
-          router.push(
-            `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`
-          );
-          return;
-        }
-        router.push(`/dashboard/history/scans/${scanId}`);
-        return;
-      }
-      if (json.data) {
-        setScanResults(json.data);
-        setReportOpen(true);
-        setStep("results");
-      } else {
-        setScanError("Scan saved but no report id returned.");
-        setStep("naming");
-      }
+      router.push(`/dashboard/history/scans/${scanId}`);
     } catch {
       setScanError("Network error. Check your connection and try again.");
       setStep("naming");
@@ -707,6 +694,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       )}
 
       {/* Step: Scanning */}
+      {step === "queued" && (
+        <ScanQueuedConfirmation variant={variant} />
+      )}
+
       {step === "scanning" && primaryPreview && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -729,8 +720,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 >
                   <Sparkles className="h-6 w-6 text-[#2C3E6B]" />
                 </motion.div>
-                <p className="text-lg font-bold text-[#2C3E6B]">Scanning…</p>
-                <p className="mt-1 text-sm text-[#6B7280]">AI is analyzing your photo…</p>
+                <p className="text-lg font-bold text-[#2C3E6B]">Submitting your scan…</p>
+                <p className="mt-1 text-sm text-[#6B7280]">Just a moment</p>
                 <motion.div
                   className="absolute left-0 right-0 z-10 h-1 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
                   initial={{ top: "0%" }}

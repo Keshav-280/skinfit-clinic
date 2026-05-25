@@ -9,6 +9,7 @@ import {
   getSessionUserIdFromRequest,
   getSessionUserProfileFromRequest,
 } from "@/src/lib/auth/get-session";
+import { getOnboardingAccessForUser } from "@/src/lib/onboardingAccess";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
 import {
@@ -33,7 +34,15 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
-  return NextResponse.json({ user });
+  const access = await getOnboardingAccessForUser(user.id);
+  return NextResponse.json({
+    user: {
+      ...user,
+      hasQuestionnaire: access.hasQuestionnaire,
+      canAccessDashboard: access.canAccessDashboard,
+      hasBaselineScan: access.hasBaselineScan,
+    },
+  });
 }
 
 export async function PATCH(req: Request) {

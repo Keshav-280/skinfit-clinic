@@ -11,6 +11,8 @@ import {
   type DoctorThreadE2eeSession,
 } from "@/src/lib/chatE2ee/client";
 import { generateThreadAesKey } from "@/src/lib/chatE2ee/crypto";
+import { webE2eeKeyStorage } from "@/src/lib/chatE2ee/keyStorage";
+import { isDoctorChatE2eeEnabled } from "@/src/lib/chatDoctorE2eeConfig";
 
 export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
   const [session, setSession] = useState<DoctorThreadE2eeSession | null>(null);
@@ -29,6 +31,23 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled || !patientId) return;
+
+    if (!isDoctorChatE2eeEnabled()) {
+      void (async () => {
+        const plain: DoctorThreadE2eeSession = {
+          threadId: "",
+          threadAesKey: await generateThreadAesKey(),
+          ready: true,
+          status: null,
+        };
+        bootedPatientRef.current = patientId;
+        sessionRef.current = plain;
+        setSession(plain);
+        setStatus(null);
+      })();
+      return;
+    }
+
     if (bootedPatientRef.current === patientId && sessionRef.current?.ready) {
       return;
     }
@@ -101,6 +120,7 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
   const resetSecureChat = useCallback(async () => {
     if (!patientId) return null;
     bootedPatientRef.current = null;
+    await webE2eeKeyStorage.clearKeyPair();
     await resetDoctorPatientE2eeEnvelopes({
       patientId,
       credentials: "include",
@@ -113,10 +133,13 @@ export function useDoctorChatE2ee(patientId: string, enabled: boolean) {
     return retrySetup();
   }, [retrySetup]);
 
+  const featureOn = isDoctorChatE2eeEnabled();
+
   return {
     session,
-    e2eeReady: Boolean(session?.ready),
-    e2eeStatus: status,
+    e2eeFeatureEnabled: featureOn,
+    e2eeReady: featureOn ? Boolean(session?.ready) : true,
+    e2eeStatus: featureOn ? status : null,
     decryptMessages: decryptMessagesStable,
     encryptOutgoingText: encrypt,
     retryE2eeSetup: retrySetup,

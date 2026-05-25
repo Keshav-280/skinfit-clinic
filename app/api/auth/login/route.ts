@@ -130,6 +130,11 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
+    const { getOnboardingAccessForUser } = await import(
+      "@/src/lib/onboardingAccess"
+    );
+    const access = await getOnboardingAccessForUser(user.id);
+
     const nativeClient = req.headers.get("x-skinfit-client") === "native";
     return NextResponse.json({
       ok: true,
@@ -138,6 +143,9 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name,
         onboardingComplete: user.onboardingComplete ?? true,
+        hasQuestionnaire: access.hasQuestionnaire,
+        canAccessDashboard: access.canAccessDashboard,
+        hasBaselineScan: access.hasBaselineScan,
       },
       ...(nativeClient ? { token } : {}),
     });

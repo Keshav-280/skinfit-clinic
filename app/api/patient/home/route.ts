@@ -9,6 +9,7 @@ import { getPatientDoctorSection } from "@/src/lib/patientDoctorSection";
 import { patientRoutineListsForApi } from "@/src/lib/routine";
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
 import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
+import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 
 function clampPct(n: number) {
@@ -179,6 +180,7 @@ export async function GET(request: Request) {
   );
 
   const onboardingComplete = userRow.onboardingComplete;
+  const hasQuestionnaire = userHasQuestionnaire(userRow.primaryConcern);
 
   const {
     doctorFeedback,
@@ -221,9 +223,10 @@ export async function GET(request: Request) {
     weekCompletedDates,
     cycleTrackingEnabled: userRow.cycleTrackingEnabled ?? false,
     onboardingComplete,
+    hasQuestionnaire,
     routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
     routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",
-    todayFocus: await resolveTodayFocus(),
+    todayFocus: hasQuestionnaire ? await resolveTodayFocus() : null,
     feedbackEntries,
     archivedFeedbackEntries,
   });

@@ -6,7 +6,7 @@ export const FACE_SCAN_CAPTURE_STEPS = [
     id: "centre",
     title: "Front face — neutral",
     instruction:
-      "Look straight at the camera. Neutral expression, eyes open. Remove spectacles. Natural light; face fills the oval.",
+      "Look straight at the camera. Neutral expression, eyes open. Remove spectacles. Fill the oval from hairline to chin — no shoulders.",
   },
   {
     id: "left",

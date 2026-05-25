@@ -1,24 +1,127 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
+
+const NAVY = "#2C3E6B";
+
 export default function ScanReportLoading() {
   return (
-    <div className="flex min-h-[62vh] items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-3xl bg-gradient-to-b from-white to-[#F8F4EC] p-7 shadow-[0_16px_36px_-22px_rgba(15,23,42,0.35)] ring-1 ring-zinc-900/[0.04]">
-        <div className="mx-auto mb-5 h-11 w-11 animate-pulse rounded-2xl bg-teal-100 shadow-[inset_0_0_0_1px_rgba(15,118,110,0.15)]" />
+    <div className="relative min-h-[80vh] overflow-hidden px-4 py-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(1100px 520px at 50% -10%, rgba(44,62,107,0.10), transparent 60%), linear-gradient(180deg, #F4F7F1 0%, #E8EFE6 60%, #DCE8D4 100%)",
+        }}
+      />
 
-        <p className="text-center text-[28px] leading-none text-zinc-400">...</p>
+      <div className="mx-auto flex w-full max-w-[420px] flex-col items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="relative w-full overflow-hidden rounded-[28px] border border-white/70 bg-white/65 p-7 shadow-[0_28px_70px_-32px_rgba(15,23,42,0.35)] backdrop-blur-xl"
+        >
+          <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
 
-        <p className="mt-3 text-center text-xl font-semibold tracking-tight text-zinc-800">
-          Loading report
-        </p>
-        <p className="mt-2 text-center text-sm text-zinc-600">
-          Preparing your scan details and images.
-        </p>
-
-        <div className="mt-6">
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200/60">
-            <div className="h-full w-2/5 animate-pulse rounded-full bg-teal-500/70" />
+          <div className="mb-6 flex flex-col items-center">
+            <motion.div
+              animate={{
+                scale: [1, 1.06, 1],
+                boxShadow: [
+                  "0 0 0 0 rgba(44,62,107,0.18)",
+                  "0 0 0 14px rgba(44,62,107,0.00)",
+                  "0 0 0 0 rgba(44,62,107,0.18)",
+                ],
+              }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+              className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E6EEF7] to-[#CFE0EC]"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+              >
+                <Sparkles className="h-7 w-7" style={{ color: NAVY }} aria-hidden />
+              </motion.div>
+            </motion.div>
           </div>
-        </div>
+
+          <h1 className="text-center text-[22px] font-bold tracking-tight" style={{ color: NAVY }}>
+            Preparing your report
+          </h1>
+          <p className="mt-2 text-center text-[13.5px] leading-relaxed text-zinc-600">
+            kAI is laying out your scan details and images.
+          </p>
+
+          <div className="mt-7 space-y-3.5">
+            <SkeletonRow w="65%" />
+            <SkeletonRow w="92%" />
+            <SkeletonRow w="78%" />
+          </div>
+
+          <div className="mt-7 grid grid-cols-3 gap-2.5">
+            <SkeletonChip />
+            <SkeletonChip />
+            <SkeletonChip />
+          </div>
+
+          <div className="mt-7 h-2 w-full overflow-hidden rounded-full bg-zinc-200/70">
+            <motion.div
+              initial={{ x: "-40%" }}
+              animate={{ x: "120%" }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+              className="h-full w-2/5 rounded-full"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(44,62,107,0.25) 0%, #2C3E6B 50%, rgba(44,62,107,0.25) 100%)",
+              }}
+            />
+          </div>
+
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-[11.5px] font-medium text-zinc-500">
+            <span
+              className="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
+              style={{ background: NAVY }}
+            />
+            This usually takes only a few seconds
+          </p>
+        </motion.div>
       </div>
+    </div>
+  );
+}
+
+function SkeletonRow({ w }: { w: string }) {
+  return (
+    <div className="relative h-3 overflow-hidden rounded-full bg-zinc-200/60">
+      <motion.div
+        animate={{ x: ["-100%", "100%"] }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-y-0 w-1/2"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 50%, transparent 100%)",
+        }}
+      />
+      <div className="h-full rounded-full bg-zinc-300/40" style={{ width: w }} />
+    </div>
+  );
+}
+
+function SkeletonChip() {
+  return (
+    <div className="relative h-16 overflow-hidden rounded-xl bg-zinc-200/55">
+      <motion.div
+        animate={{ x: ["-100%", "100%"] }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-y-0 w-1/2"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%)",
+        }}
+      />
     </div>
   );
 }

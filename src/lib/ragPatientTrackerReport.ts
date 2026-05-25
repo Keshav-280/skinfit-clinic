@@ -4,7 +4,7 @@
  */
 
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
-import { db } from "@/src/db";
+import { db } from "@/src/db/client";
 import {
   chatMessages,
   chatThreads,
@@ -328,7 +328,7 @@ export async function buildRagPatientTrackerNarrative(input: {
       identityAtScan.primaryConcern ?? "",
       weak ? RAG_KAI_PARAM_LABELS[weak.key] : "",
     ],
-    topK: 5,
+    topK: 8,
   });
 
   const [visits, chatMsgs] = await Promise.all([
@@ -433,19 +433,19 @@ export async function buildRagPatientTrackerNarrative(input: {
               weak ? RAG_KAI_PARAM_LABELS[weak.key as RagKaiParamKey] : "your weakest parameter"
             }`,
             detail:
-              "Complete AM + PM routine for at least 5/7 days before your next upload.",
+              "Why: This area is dragging your composite score the most this week.\nDo: Complete both AM and PM routines on at least 5 of the next 7 days.\nTarget: Keep this parameter at +3 points or better by your next scan.",
           },
           {
             rank: 2 as const,
             title: "Stabilise sleep and hydration",
             detail:
-              "Target 7h+ sleep and steady water intake to support barrier recovery.",
+              "Why: Inconsistent sleep and hydration usually show up as slower barrier recovery.\nDo: Aim for 7+ hours sleep and a consistent daily water target this week.\nTarget: Reach at least 5 stable days before the next check-in.",
           },
           {
             rank: 3 as const,
             title: "Keep scan conditions consistent",
             detail:
-              "Same lighting, same time band, full 5-angle capture — makes trends trustworthy.",
+              "Why: Variable capture conditions can hide real week-to-week skin changes.\nDo: Use the same time window, lighting, and full 5-angle flow for each scan.\nTarget: Capture one clean, comparable scan set next week.",
           },
         ];
 

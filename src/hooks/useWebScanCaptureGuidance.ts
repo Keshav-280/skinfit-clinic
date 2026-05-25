@@ -17,10 +17,33 @@ import {
   type NormalizedFaceBox,
   type StableFramingState,
 } from "@/src/lib/scanCaptureGuidance";
+import { installMediapipeConsoleFilter } from "@/src/lib/mediapipeConsoleFilter";
+import {
+  applyCaptureExpression,
+  applyCaptureExpressionFromClassifier,
+  needsExpressionCheck,
+  type ExpressionCalibration,
+} from "@/src/lib/captureExpression";
+import {
+  getWebFaceCaptureConfig,
+  needsMediapipeOnClient,
+  usesServerFacePreview,
+} from "@/src/lib/faceCaptureConfig";
+import {
+  fetchFacePreviewInference,
+  imageDataToJpegBlob,
+} from "@/src/lib/fetchFacePreviewInference";
 
 const TICK_MS = 450;
 const LANDMARKER_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const FACE_CAPTURE_CONFIG = getWebFaceCaptureConfig();
+const USE_SERVER_PREVIEW = usesServerFacePreview(FACE_CAPTURE_CONFIG);
+const MEDIAPIPE_ACTIVE = needsMediapipeOnClient(FACE_CAPTURE_CONFIG);
+
+if (typeof window !== "undefined" && MEDIAPIPE_ACTIVE) {
+  installMediapipeConsoleFilter();
+}
 
 type CaptureStepId =
   | "centre"
@@ -29,21 +52,29 @@ type CaptureStepId =
   | "eyes_closed"
   | "smiling";
 
-type BlendshapeCategory = { categoryName: string; score: number };
+type BlendshapeCategory = {
+  categoryName?: string;
+  displayName?: string;
+  score?: number;
+};
 type NormalizedLandmark = { x: number; y: number; z?: number };
 type FaceLandmarkerResult = {
   faceLandmarks?: NormalizedLandmark[][];
   faceBlendshapes?: Array<{ categories: BlendshapeCategory[] }>;
 };
 type FaceLandmarkerLike = {
-  detectForVideo: (video: HTMLVideoElement, timestampMs: number) => FaceLandmarkerResult;
+  detect: (image: HTMLCanvasElement) => FaceLandmarkerResult;
 };
 
 function initialModels(): CaptureAssistModels {
   const fd = typeof window !== "undefined" && getBrowserFaceDetector() != null;
   return {
     faceDetector: fd ? "ready" : "unsupported",
-    mediapipe: "idle",
+    mediapipe: MEDIAPIPE_ACTIVE ? "idle" : "off",
+    mediapipeError: undefined,
+    retinaface: USE_SERVER_PREVIEW ? "idle" : "off",
+    expressionClassifier:
+      FACE_CAPTURE_CONFIG.expression === "classifier" ? "idle" : "off",
   };
 }
 
@@ -61,7 +92,8 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerLike> {
       modelAssetPath: LANDMARKER_MODEL,
       delegate: "CPU" as const,
     },
-    runningMode: "VIDEO" as const,
+    /** IMAGE mode: per-frame detect() — no VIDEO timestamps (avoids mismatch errors). */
+    runningMode: "IMAGE" as const,
     numFaces: 1,
     outputFaceBlendshapes: true,
   };
@@ -78,6 +110,19 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerLike> {
   }
 }
 
+function canvasFromImageData(
+  imageData: ImageData,
+  reuse: HTMLCanvasElement | null
+): HTMLCanvasElement | null {
+  const canvas = reuse ?? document.createElement("canvas");
+  canvas.width = imageData.width;
+  canvas.height = imageData.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
 export function useWebScanCaptureGuidance(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   enabled: boolean,
@@ -90,9 +135,23 @@ export function useWebScanCaptureGuidance(
   const busyRef = useRef(false);
   const landmarkerRef = useRef<FaceLandmarkerLike | null>(null);
   const loadingLandmarkerRef = useRef(false);
+  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const smoothedBoxRef = useRef<NormalizedFaceBox | null>(null);
   const framingStateRef = useRef<StableFramingState | null>(null);
   const expressionOkRef = useRef<boolean | null>(null);
+  const expressionCalibrationRef = useRef<ExpressionCalibration>({
+    openEarBaseline: null,
+  });
+  const previewAbortRef = useRef<AbortController | null>(null);
+  const previewBusyRef = useRef(false);
+  const lastPreviewAtRef = useRef(0);
+  const PREVIEW_MIN_INTERVAL_MS = 750;
+
+  const resetLandmarkerSession = useCallback(() => {
+    landmarkerRef.current = null;
+    loadingLandmarkerRef.current = false;
+    frameCanvasRef.current = null;
+  }, []);
 
   useEffect(() => {
     setModels((m) => ({
@@ -102,9 +161,13 @@ export function useWebScanCaptureGuidance(
   }, []);
 
   useEffect(() => {
+    if (!MEDIAPIPE_ACTIVE) {
+      resetLandmarkerSession();
+      setModels((m) => ({ ...m, mediapipe: "off", mediapipeError: undefined }));
+      return;
+    }
     if (!enabled) {
-      landmarkerRef.current = null;
-      loadingLandmarkerRef.current = false;
+      resetLandmarkerSession();
       setModels((m) => ({ ...m, mediapipe: "idle", mediapipeError: undefined }));
       return;
     }
@@ -123,7 +186,7 @@ export function useWebScanCaptureGuidance(
         landmarkerRef.current = await createFaceLandmarker();
         setModels((m) => ({ ...m, mediapipe: "ready", mediapipeError: undefined }));
       } catch (e) {
-        landmarkerRef.current = null;
+        resetLandmarkerSession();
         setModels((m) => ({
           ...m,
           mediapipe: "failed",
@@ -136,10 +199,9 @@ export function useWebScanCaptureGuidance(
         loadingLandmarkerRef.current = false;
       }
     })();
-  }, [enabled]);
+  }, [enabled, resetLandmarkerSession]);
 
-  const needsExpressionModel =
-    stepId === "eyes_closed" || stepId === "smiling";
+  const needsExpressionModel = needsExpressionCheck(stepId);
 
   const tick = useCallback(async () => {
     const video = videoRef.current;
@@ -150,7 +212,7 @@ export function useWebScanCaptureGuidance(
 
     busyRef.current = true;
     try {
-      const imageData = sampleVideoFrame(video);
+      const imageData = sampleVideoFrame(video, 160, 200, currentZoom);
       if (!imageData) return;
 
       const lighting = analyzeLightingFromRgba(
@@ -159,32 +221,101 @@ export function useWebScanCaptureGuidance(
         imageData.height
       );
 
-      let faceBox = await detectFaceBoxNormalized(video, w, h);
-      if (!faceBox && imageData) {
-        const canvas = document.createElement("canvas");
-        canvas.width = imageData.width;
-        canvas.height = imageData.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.putImageData(imageData, 0, 0);
-          faceBox = await detectFaceBoxNormalized(canvas, imageData.width, imageData.height);
+      const frameCanvas = canvasFromImageData(imageData, frameCanvasRef.current);
+      if (frameCanvas) frameCanvasRef.current = frameCanvas;
+
+      let faceBox: NormalizedFaceBox | null = null;
+      if (frameCanvas) {
+        faceBox = await detectFaceBoxNormalized(
+          frameCanvas,
+          imageData.width,
+          imageData.height
+        );
+      }
+
+      let serverPreview: Awaited<ReturnType<typeof fetchFacePreviewInference>> =
+        null;
+      const now = Date.now();
+      if (
+        USE_SERVER_PREVIEW &&
+        !previewBusyRef.current &&
+        now - lastPreviewAtRef.current >= PREVIEW_MIN_INTERVAL_MS
+      ) {
+        previewBusyRef.current = true;
+        lastPreviewAtRef.current = now;
+        setModels((m) => ({
+          ...m,
+          retinaface:
+            FACE_CAPTURE_CONFIG.detector === "retinaface" ? "loading" : m.retinaface,
+        }));
+        try {
+          const blob = await imageDataToJpegBlob(imageData);
+          if (blob) {
+            previewAbortRef.current?.abort();
+            previewAbortRef.current = new AbortController();
+            serverPreview = await fetchFacePreviewInference(blob, {
+              signal: previewAbortRef.current.signal,
+            });
+          }
+        } catch {
+          serverPreview = null;
+        } finally {
+          previewBusyRef.current = false;
         }
+
+        if (FACE_CAPTURE_CONFIG.detector === "retinaface") {
+          const rfOk = Boolean(serverPreview?.detectorAvailable && serverPreview.box);
+          setModels((m) => ({
+            ...m,
+            retinaface: rfOk ? "ready" : "failed",
+            retinafaceError: rfOk
+              ? undefined
+              : (serverPreview?.warning ?? "RetinaFace unavailable — using fallback").slice(
+                  0,
+                  120
+                ),
+          }));
+        }
+        if (FACE_CAPTURE_CONFIG.expression === "classifier") {
+          const clfOk = Boolean(serverPreview?.expressionAvailable);
+          setModels((m) => ({
+            ...m,
+            expressionClassifier: clfOk
+              ? "ready"
+              : serverPreview
+                ? "failed"
+                : "idle",
+          }));
+        }
+      }
+
+      if (
+        FACE_CAPTURE_CONFIG.detector === "retinaface" &&
+        serverPreview?.box &&
+        serverPreview.detectorAvailable
+      ) {
+        faceBox = serverPreview.box;
       }
 
       const lm = landmarkerRef.current;
       let landmarkerRes: FaceLandmarkerResult | null = null;
-      if (lm) {
+      if (lm && frameCanvas) {
         try {
-          const ts = typeof performance !== "undefined" ? performance.now() : Date.now();
-          landmarkerRes = lm.detectForVideo(video, ts);
+          landmarkerRes = lm.detect(frameCanvas);
           if (!faceBox) {
             const pts = landmarkerRes.faceLandmarks?.[0];
             if (pts?.length) {
               faceBox = faceBoxFromLandmarkPoints(pts);
             }
           }
-        } catch {
+        } catch (e) {
           landmarkerRes = null;
+          // Don't kill the session on a single detect blip; just log to debug.
+          // FaceLandmarker can throw transient errors when video frames are
+          // mid-resize or after tab visibility changes.
+          if (typeof window !== "undefined") {
+            console.debug("[scan] FaceLandmarker.detect skipped:", truncateErr(e));
+          }
         }
       }
 
@@ -205,49 +336,49 @@ export function useWebScanCaptureGuidance(
         quality: framing.quality,
         faceFill: framing.faceFill,
       };
-      const next = buildCaptureGuidance(lighting, framing, currentZoom);
+      let next = buildCaptureGuidance(lighting, framing, currentZoom);
 
-      if (needsExpressionModel && models.mediapipe === "failed") {
+      const useClassifier =
+        FACE_CAPTURE_CONFIG.expression === "classifier" &&
+        Boolean(serverPreview?.expressionAvailable && serverPreview.expression);
+
+      const expressionPipelineActive = useClassifier
+        ? true
+        : models.mediapipe === "ready" && Boolean(landmarkerRef.current);
+
+      if (needsExpressionModel && useClassifier) {
+        next = applyCaptureExpressionFromClassifier(
+          next,
+          stepId,
+          serverPreview!.expression,
+          expressionOkRef,
+          expressionPipelineActive
+        );
+      } else if (
+        needsExpressionModel &&
+        (models.mediapipe === "failed" || models.mediapipe === "off") &&
+        !useClassifier
+      ) {
         next.expressionOk = null;
         next.expressionMessage =
-          "Expression check unavailable (MediaPipe did not load)";
-      } else if (landmarkerRes && needsExpressionModel) {
-        try {
-          const shapes = landmarkerRes.faceBlendshapes?.[0]?.categories ?? [];
-          const get = (name: string) =>
-            Number(shapes.find((c: BlendshapeCategory) => c.categoryName === name)?.score ?? 0);
-          if (stepId === "eyes_closed") {
-            const blink = (get("eyeBlinkLeft") + get("eyeBlinkRight")) / 2;
-            const wasOk = expressionOkRef.current === true;
-            const ok = wasOk ? blink >= 0.32 : blink >= 0.42;
-            expressionOkRef.current = ok;
-            next.expressionOk = ok;
-            next.expressionMessage = ok
-              ? "Eyes closed check looks good"
-              : "Please close both eyes gently";
-            next.readyToCapture = next.readyToCapture && ok;
-          } else if (stepId === "smiling") {
-            const smile = Math.max(
-              get("mouthSmileLeft"),
-              get("mouthSmileRight"),
-              get("smile")
-            );
-            const wasOk = expressionOkRef.current === true;
-            const ok = wasOk ? smile >= 0.28 : smile >= 0.34;
-            expressionOkRef.current = ok;
-            next.expressionOk = ok;
-            next.expressionMessage = ok
-              ? "Smile check looks good"
-              : "Please smile naturally";
-            next.readyToCapture = next.readyToCapture && ok;
-          }
-        } catch {
-          next.expressionOk = null;
-          next.expressionMessage = "Expression check error — try again";
-        }
+          "Expression check unavailable right now — capture can continue";
       } else if (needsExpressionModel && models.mediapipe === "loading") {
         next.expressionOk = null;
         next.expressionMessage = "Loading expression model…";
+      } else if (needsExpressionModel) {
+        const shapes = landmarkerRes?.faceBlendshapes?.[0]?.categories as
+          | BlendshapeCategory[]
+          | undefined;
+        const landmarks = landmarkerRes?.faceLandmarks?.[0];
+        next = applyCaptureExpression(
+          next,
+          stepId,
+          shapes,
+          expressionOkRef,
+          landmarks,
+          expressionPipelineActive,
+          expressionCalibrationRef.current
+        );
       }
 
       setGuidance(next);
@@ -276,10 +407,13 @@ export function useWebScanCaptureGuidance(
 
   useEffect(() => {
     expressionOkRef.current = null;
+    expressionCalibrationRef.current = { openEarBaseline: null };
   }, [stepId]);
 
   const faceDetectionAvailable =
-    models.faceDetector === "ready" || models.mediapipe === "ready";
+    models.faceDetector === "ready" ||
+    models.mediapipe === "ready" ||
+    models.retinaface === "ready";
 
   return {
     guidance,

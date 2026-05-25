@@ -22,11 +22,19 @@ export type CaptureGuidanceSnapshot = {
   lightingMessage: string;
   face: FaceFramingQuality;
   faceMessage: string;
+  expressionOk: boolean | null;
+  expressionMessage: string | null;
   faceFill: number | null;
   /** Expo CameraView zoom 0–1 */
   suggestedZoom: number | null;
   readyToCapture: boolean;
+  /** UI: only render rows when the underlying check is actually running. */
+  showLightingCheck: boolean;
+  showFaceCheck: boolean;
+  showExpressionCheck: boolean;
 };
+
+export { faceBoxFromLandmarkPoints } from "../../src/lib/facePortraitBox";
 
 export type NormalizedFaceBox = {
   x: number;
@@ -37,9 +45,9 @@ export type NormalizedFaceBox = {
 
 export const OVAL_FRAME = {
   cx: 0.5,
-  cy: 0.42,
-  rx: 0.38,
-  ry: 0.34,
+  cy: 0.44,
+  rx: 0.34,
+  ry: 0.4,
 } as const;
 
 const OVAL_REGION = {
@@ -51,24 +59,33 @@ const OVAL_REGION = {
 
 const FACE_TARGET = { cx: OVAL_FRAME.cx, cy: OVAL_FRAME.cy };
 
-const TOO_SMALL_ENTER = 0.22;
-const TOO_SMALL_EXIT = 0.3;
-const TOO_LARGE_ENTER = 0.84;
-const TOO_LARGE_EXIT = 0.74;
-const CENTER_ENTER_X = 0.22;
-const CENTER_EXIT_X = 0.17;
-const CENTER_ENTER_Y = 0.24;
-const CENTER_EXIT_Y = 0.19;
+const TOO_SMALL_ENTER = 0.46;
+const TOO_SMALL_EXIT = 0.52;
+const TOO_LARGE_ENTER = 0.9;
+const TOO_LARGE_EXIT = 0.82;
+const CENTER_ENTER_X = 0.2;
+const CENTER_EXIT_X = 0.15;
+const CENTER_ENTER_Y = 0.22;
+const CENTER_EXIT_Y = 0.17;
 
 export const MOBILE_CAMERA_ZOOM = {
   min: 0,
-  max: 0.55,
+  max: 0.5,
   default: 0.16,
-  targetFill: 0.44,
+  targetFill: 0.56,
 } as const;
 
+const OVAL_HEIGHT = OVAL_FRAME.ry * 2;
+
+export function faceExtendsBelowOval(box: NormalizedFaceBox): boolean {
+  return box.y + box.height > OVAL_REGION.y1 + 0.05;
+}
+
 export function effectiveFaceFill(box: NormalizedFaceBox): number {
-  return box.height * 0.72 + box.width * 0.58;
+  const y0 = Math.max(box.y, OVAL_REGION.y0);
+  const y1 = Math.min(box.y + box.height, OVAL_REGION.y1);
+  const overlapH = Math.max(0, y1 - y0);
+  return overlapH / OVAL_HEIGHT;
 }
 
 export type StableFramingState = {
@@ -257,6 +274,8 @@ export function estimateFaceBoxFromSkin(
   minY = Math.max(0, minY - padY);
   maxX = Math.min(width - 1, maxX + padX);
   maxY = Math.min(height - 1, maxY + padY);
+  const y1Cap = Math.floor(height * OVAL_REGION.y1);
+  if (maxY > y1Cap) maxY = y1Cap;
 
   return {
     x: minX / width,
@@ -269,7 +288,7 @@ export function estimateFaceBoxFromSkin(
 function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): string {
   switch (quality) {
     case "no_face":
-      return "Center your face in the oval";
+      return "Center your face — fill the oval from hairline to chin";
     case "off_center": {
       const offX = Math.abs(cx - FACE_TARGET.cx);
       const offY = Math.abs(cy - FACE_TARGET.cy);
@@ -281,14 +300,14 @@ function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): st
           : cy < FACE_TARGET.cy
             ? "Move slightly down"
             : "Move slightly up";
-      return `${hint} to center in the oval`;
+      return `${hint} — keep hair to chin in the oval`;
     }
     case "too_small":
-      return "Move a little closer";
+      return "Move closer — hair to chin should fill the oval";
     case "too_large":
-      return "You're close — tiny adjust if needed";
+      return "Pull back a little — keep shoulders out of frame";
     default:
-      return "Face position looks good";
+      return "Hair to chin fills the oval — looks good";
   }
 }
 
@@ -296,9 +315,14 @@ function classifyFraming(
   faceFill: number,
   offX: number,
   offY: number,
-  prev: FaceFramingQuality | null
+  prev: FaceFramingQuality | null,
+  box: NormalizedFaceBox | null
 ): FaceFramingQuality {
   const p = prev ?? "no_face";
+
+  if (box && faceExtendsBelowOval(box)) {
+    return "too_large";
+  }
 
   if (p === "too_large") {
     if (faceFill >= TOO_LARGE_EXIT) return "too_large";
@@ -340,7 +364,13 @@ export function analyzeFaceFraming(
   const offX = Math.abs(cx - FACE_TARGET.cx);
   const offY = Math.abs(cy - FACE_TARGET.cy);
   const faceFill = effectiveFaceFill(box);
-  const quality = classifyFraming(faceFill, offX, offY, prev?.quality ?? null);
+  const quality = classifyFraming(
+    faceFill,
+    offX,
+    offY,
+    prev?.quality ?? null,
+    box
+  );
 
   return {
     quality,
@@ -352,16 +382,30 @@ export function analyzeFaceFraming(
 export function suggestMobileCameraZoom(
   currentZoom: number,
   faceFill: number | null,
+  framingQuality: FaceFramingQuality | null = null,
   targetFill = MOBILE_CAMERA_ZOOM.targetFill
 ): number | null {
   if (faceFill == null || faceFill < 0.06) return null;
+  if (
+    framingQuality === "too_large" &&
+    currentZoom > MOBILE_CAMERA_ZOOM.min
+  ) {
+    const out = clamp(
+      currentZoom * 0.88,
+      MOBILE_CAMERA_ZOOM.min,
+      MOBILE_CAMERA_ZOOM.max
+    );
+    if (Math.abs(out - currentZoom) < 0.02) return null;
+    return Math.round(out * 100) / 100;
+  }
+  if (faceFill > TOO_LARGE_ENTER) return null;
   const ratio = targetFill / faceFill;
   const raw = clamp(
     currentZoom * ratio,
     MOBILE_CAMERA_ZOOM.min,
     MOBILE_CAMERA_ZOOM.max
   );
-  const next = currentZoom * 0.45 + raw * 0.55;
+  const next = currentZoom * 0.55 + raw * 0.45;
   if (Math.abs(next - currentZoom) < 0.025) return null;
   return Math.round(next * 100) / 100;
 }
@@ -373,13 +417,21 @@ export function smoothTowardZoom(current: number, target: number, factor = 0.5):
 export function buildCaptureGuidance(
   lighting: ReturnType<typeof analyzeLightingFromRgba>,
   framing: ReturnType<typeof analyzeFaceFraming>,
-  currentZoom: number
+  currentZoom: number,
+  opts?: { showFaceCheck?: boolean }
 ): CaptureGuidanceSnapshot {
-  const suggestedZoom = suggestMobileCameraZoom(currentZoom, framing.faceFill);
+  const showFaceCheck = Boolean(opts?.showFaceCheck);
+  const suggestedZoom = showFaceCheck
+    ? suggestMobileCameraZoom(
+        currentZoom,
+        framing.faceFill,
+        framing.quality
+      )
+    : null;
   const lightingOk =
     lighting.quality === "good" || lighting.score >= 55;
   const faceOk = framing.quality === "good";
-  const readyToCapture = lightingOk && faceOk;
+  const readyToCapture = lightingOk && (!showFaceCheck || faceOk);
 
   return {
     lighting: lighting.quality,
@@ -387,8 +439,13 @@ export function buildCaptureGuidance(
     lightingMessage: lighting.message,
     face: framing.quality,
     faceMessage: framing.message,
+    expressionOk: null,
+    expressionMessage: null,
     faceFill: framing.faceFill,
     suggestedZoom,
     readyToCapture,
+    showLightingCheck: true,
+    showFaceCheck,
+    showExpressionCheck: false,
   };
 }
