@@ -9,6 +9,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Dummy URL for any build-time code paths that touch the DB (runtime uses compose env).
+ARG LOCAL_POSTGRES_URL=postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
+ENV LOCAL_POSTGRES_URL=${LOCAL_POSTGRES_URL}
 RUN npm run build
 
 FROM node:22-alpine AS runner
