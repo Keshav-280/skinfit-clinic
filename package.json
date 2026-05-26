@@ -21,6 +21,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
+    "db:delete-all-doctors": "tsx src/scripts/delete-all-doctors.ts",
     "db:seed:rag-demo": "tsx src/db/seed-rag-kai-demo.ts",
     "rag:index:textbook": "tsx src/scripts/build-rag-textbook-index.ts",
     "rag:pinecone:upsert": "tsx src/scripts/rag-pinecone-upsert.ts",

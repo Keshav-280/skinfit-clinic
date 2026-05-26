@@ -39,6 +39,10 @@ SET
   clinic_visited_at = NULL
 WHERE role = 'patient';
 
+-- Profile images (also cascade on user delete; explicit for clarity)
+DELETE FROM doctor_profile_images
+WHERE owner_user_id IN (SELECT id FROM users WHERE role IN ('doctor', 'admin'));
+
 -- Scheduling rows tied to doctors (portal isolation test — fresh calendar)
 DELETE FROM appointments;
 DELETE FROM appointment_requests;
