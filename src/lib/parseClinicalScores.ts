@@ -1,4 +1,5 @@
 import type { ClinicalScores } from "@/components/dashboard/scanReportTypes";
+import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 
 function num(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
@@ -48,14 +49,8 @@ function parseStoredImageRef(
   if (!scores || typeof scores !== "object") return undefined;
   const url = (scores as Record<string, unknown>)[urlKey];
   if (typeof url === "string") {
-    const t = url.trim();
-    if (
-      t.startsWith("http://") ||
-      t.startsWith("https://") ||
-      t.startsWith("/api/files/")
-    ) {
-      return t;
-    }
+    const normalized = publicFileDisplayUrl(url);
+    if (normalized) return normalized;
   }
   return parseDataUriField(scores, dataUriKey);
 }

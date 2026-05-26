@@ -2,6 +2,7 @@
 
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { MASK_MATPLOTLIB_TITLE_CROP_RATIO } from "@/src/lib/maskImageCrop";
+import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import { DOT_MARKER_LEGEND } from "@/src/lib/scanMaskLabels";
 import type { ReportRegion } from "./scanReportTypes";
 
@@ -16,12 +17,16 @@ function MaskPanel({
   src,
   alt,
   caption,
+  fallbackSrc,
 }: {
   src: string;
   alt: string;
   caption: string;
+  fallbackSrc?: string;
 }) {
   const crop = MASK_MATPLOTLIB_TITLE_CROP_RATIO;
+  const displaySrc = publicFileDisplayUrl(src) ?? src;
+  const fallback = fallbackSrc ? publicFileDisplayUrl(fallbackSrc) ?? fallbackSrc : "";
   return (
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
@@ -30,8 +35,12 @@ function MaskPanel({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={src}
+          src={displaySrc}
           alt={alt}
+          onError={(e) => {
+            if (!fallback || e.currentTarget.src === fallback) return;
+            e.currentTarget.src = fallback;
+          }}
           className="absolute left-0 w-full max-w-none object-cover object-bottom"
           style={{
             top: `${-crop * 100}%`,
@@ -50,6 +59,8 @@ export function ScanMaskAnnotations({
   imageUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
+  wrinkleFallbackUrl,
+  acneFallbackUrl,
   spatialOutputs: _spatialOutputs,
   regions,
   wrinklePoseLabel = "Wrinkle mask (smiling)",
@@ -58,6 +69,9 @@ export function ScanMaskAnnotations({
   imageUrl: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
+  /** Shown if mask file is missing (e.g. old absolute localhost URL). */
+  wrinkleFallbackUrl?: string;
+  acneFallbackUrl?: string;
   wrinklePoseLabel?: string;
   acnePoseLabel?: string;
   spatialOutputs?: ScanSpatialOutputs;
@@ -83,6 +97,7 @@ export function ScanMaskAnnotations({
               src={wrinkle}
               alt="Wrinkle mask overlay"
               caption={wrinklePoseLabel}
+              fallbackSrc={wrinkleFallbackUrl}
             />
           ) : null}
           {acne ? (
@@ -90,6 +105,7 @@ export function ScanMaskAnnotations({
               src={acne}
               alt="Acne objectness overlay"
               caption={acnePoseLabel}
+              fallbackSrc={acneFallbackUrl}
             />
           ) : null}
         </div>

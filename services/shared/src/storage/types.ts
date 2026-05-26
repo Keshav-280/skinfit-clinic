@@ -9,5 +9,6 @@ export interface StorageProvider {
   ): Promise<{ path: string; url: string }>;
   delete(path: string): Promise<void>;
   getUrl(path: string): string;
+  getAbsoluteUrl?(path: string): string;
   read(path: string): Promise<Buffer>;
 }

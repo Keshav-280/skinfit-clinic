@@ -6,10 +6,12 @@ const TITLE_CROP_PX = 32;
 
 function MaskPanel({
   uri,
+  fallbackUri,
   caption,
   authToken,
 }: {
   uri: string;
+  fallbackUri?: string;
   caption: string;
   authToken?: string | null;
 }) {
@@ -17,7 +19,12 @@ function MaskPanel({
     <View style={styles.item}>
       <View style={styles.imageClip}>
         <View style={styles.imageShift}>
-          <ReportContainImage imageUrl={uri} authToken={authToken} maxWidth={340} />
+          <ReportContainImage
+            imageUrl={uri}
+            fallbackImageUrl={fallbackUri}
+            authToken={authToken}
+            maxWidth={340}
+          />
         </View>
       </View>
       <Text style={styles.caption}>{caption}</Text>
@@ -28,12 +35,16 @@ function MaskPanel({
 export function ScanMaskAnnotationsNative({
   wrinkleMaskUri,
   acneMaskUri,
+  wrinkleFallbackUri,
+  acneFallbackUri,
   authToken = null,
   wrinkleLabel = "Wrinkle mask (smiling)",
   acneLabel = "Acne objectness (centre)",
 }: {
   wrinkleMaskUri?: string;
   acneMaskUri?: string;
+  wrinkleFallbackUri?: string;
+  acneFallbackUri?: string;
   authToken?: string | null;
   wrinkleLabel?: string;
   acneLabel?: string;
@@ -45,10 +56,20 @@ export function ScanMaskAnnotationsNative({
   return (
     <View style={styles.wrap}>
       {wrinkle ? (
-        <MaskPanel uri={wrinkle} caption={wrinkleLabel} authToken={authToken} />
+        <MaskPanel
+          uri={wrinkle}
+          fallbackUri={wrinkleFallbackUri}
+          caption={wrinkleLabel}
+          authToken={authToken}
+        />
       ) : null}
       {acne ? (
-        <MaskPanel uri={acne} caption={acneLabel} authToken={authToken} />
+        <MaskPanel
+          uri={acne}
+          fallbackUri={acneFallbackUri}
+          caption={acneLabel}
+          authToken={authToken}
+        />
       ) : null}
     </View>
   );

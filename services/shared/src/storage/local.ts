@@ -59,7 +59,13 @@ export class LocalStorageProvider implements StorageProvider {
     }
   }
 
+  /** Relative path so dashboard `<img>` shares origin + session cookie with the app. */
   getUrl(path: string): string {
+    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    return `/api/files/${encoded}`;
+  }
+
+  getAbsoluteUrl(path: string): string {
     const encoded = path.split("/").map(encodeURIComponent).join("/");
     return `${this.publicBase}/${encoded}`;
   }

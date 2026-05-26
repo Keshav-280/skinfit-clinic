@@ -108,6 +108,16 @@ export async function embedScanImageForPdf(
 /** Absolute API URL for fetch/download helpers. */
 export function toAbsoluteApiUrl(pathOrUrl: string): string {
   const t = pathOrUrl.trim();
-  if (t.startsWith("http://") || t.startsWith("https://")) return t;
+  if (t.startsWith("http://") || t.startsWith("https://")) {
+    try {
+      const u = new URL(t);
+      if (u.pathname.startsWith("/api/files/")) {
+        return apiUrl(`${u.pathname}${u.search}`);
+      }
+    } catch {
+      /* keep absolute */
+    }
+    return t;
+  }
   return apiUrl(t.startsWith("/") ? t : `/${t}`);
 }

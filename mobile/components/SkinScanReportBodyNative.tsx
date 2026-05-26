@@ -23,6 +23,8 @@ import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import { fetchAuthenticatedScanImageUri } from "@/lib/fetchAuthenticatedScanImage";
+import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import { publicFileDisplayUrl } from "../../src/lib/publicFileUrl";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
 
 const GLASS = "rgba(255,255,255,0.92)";
@@ -148,8 +150,10 @@ export function SkinScanReportBodyNative({
 }: Props) {
   const router = useRouter();
   const displayTitle = displayScanTitle(scanTitle);
-  const wrinkleMask = wrinkleMaskUri?.trim() || "";
-  const acneMask = acneMaskUri?.trim() || "";
+  const wrinkleMask =
+    publicFileDisplayUrl(wrinkleMaskUri) ?? wrinkleMaskUri?.trim() ?? "";
+  const acneMask =
+    publicFileDisplayUrl(acneMaskUri) ?? acneMaskUri?.trim() ?? "";
   const showMaskSection = wrinkleMask.length > 0 || acneMask.length > 0;
   const showDotMarkersOnly =
     wrinkleMask.length === 0 &&
@@ -260,9 +264,19 @@ export function SkinScanReportBodyNative({
             <ScanMaskAnnotationsNative
               wrinkleMaskUri={wrinkleMask || undefined}
               acneMaskUri={acneMask || undefined}
+              wrinkleFallbackUri={resolvedPhotos[4]?.imageUrl}
+              acneFallbackUri={resolvedPhotos[0]?.imageUrl}
               authToken={authToken}
-              wrinkleLabel="Wrinkle mask (smiling)"
-              acneLabel="Acne objectness (centre)"
+              wrinkleLabel={
+                resolvedPhotos[4]?.label ??
+                FACE_SCAN_CAPTURE_STEPS[4]?.title ??
+                "Front face — smiling"
+              }
+              acneLabel={
+                resolvedPhotos[0]?.label ??
+                FACE_SCAN_CAPTURE_STEPS[0]?.title ??
+                "Front face — neutral"
+              }
             />
           ) : null}
 

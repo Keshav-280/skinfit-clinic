@@ -17,6 +17,8 @@ type Props = {
   source?: ImageSourcePropType;
   /** API path or URL — fetched with Bearer when needed. */
   imageUrl?: string;
+  /** If primary load fails, try this URL once (e.g. face capture photo). */
+  fallbackImageUrl?: string;
   authToken?: string | null;
   maxWidth?: number;
   style?: ImageStyle;
@@ -30,6 +32,7 @@ type Props = {
 export function ReportContainImage({
   source,
   imageUrl,
+  fallbackImageUrl,
   authToken,
   maxWidth = 320,
   style,
@@ -84,24 +87,43 @@ export function ReportContainImage({
     let cancelled = false;
     setLoading(true);
     setFailed(false);
-    void fetchAuthenticatedScanImageUri(url, authToken ?? null)
-      .then((uri) => {
+    const fallback = fallbackImageUrl?.trim();
+    const tryFetch = async (target: string) =>
+      fetchAuthenticatedScanImageUri(target, authToken ?? null);
+
+    void (async () => {
+      try {
+        const uri = await tryFetch(url);
         if (!cancelled) {
           setResolvedUri(uri);
           setLoading(false);
+          setFailed(false);
         }
-      })
-      .catch(() => {
+      } catch {
+        if (fallback && fallback !== url) {
+          try {
+            const uri = await tryFetch(fallback);
+            if (!cancelled) {
+              setResolvedUri(uri);
+              setLoading(false);
+              setFailed(false);
+            }
+            return;
+          } catch {
+            /* use failed state below */
+          }
+        }
         if (!cancelled) {
           setFailed(true);
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, authToken]);
+  }, [imageUrl, fallbackImageUrl, authToken]);
 
   const displaySource: ImageSourcePropType | null = resolvedUri
     ? { uri: resolvedUri }
