@@ -45,7 +45,20 @@ export function unpackE2eePayload(
   }
 }
 
-export const E2EE_INBOX_PREVIEW = "Encrypted message";
+export const E2EE_INBOX_PREVIEW = "Earlier message";
+
+export function displayChatMessageText(text: string): string {
+  if (!text) return text;
+  if (isE2eePayload(text)) return E2EE_INBOX_PREVIEW;
+  if (text === "🔒 Unable to decrypt") return E2EE_INBOX_PREVIEW;
+  return text;
+}
+
+export function mapDisplayChatMessages<T extends { text: string }>(
+  rows: T[]
+): T[] {
+  return rows.map((m) => ({ ...m, text: displayChatMessageText(m.text) }));
+}
 
 export function inboxPreviewForText(text: string): string {
   if (isE2eePayload(text)) return E2EE_INBOX_PREVIEW;

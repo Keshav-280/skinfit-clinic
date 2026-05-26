@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -11,9 +12,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FaceLandmarkOutlineNative } from "@/components/FaceLandmarkOutlineNative";
+import { ScanCaptureDebugOverlay } from "@/components/ScanCaptureDebugOverlay";
 import { ScanCaptureGuidanceBanner } from "@/components/ScanCaptureGuidanceBanner";
+import { ScanCaptureStepTicks } from "@/components/ScanCaptureStepTicks";
 import { useMobileScanCaptureGuidance } from "@/hooks/useMobileScanCaptureGuidance";
-import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import {
+  CAPTURE_READY_VOICE_HINT,
+  captureVoiceGuide,
+  isCaptureVoiceSpeechAvailable,
+} from "@/lib/captureVoiceGuide";
+import {
+  FACE_SCAN_CAPTURE_STEPS,
+  FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
+} from "@/lib/faceScanCaptures";
 import { MOBILE_CAMERA_ZOOM, smoothTowardZoom } from "@/lib/scanCaptureGuidance";
 
 const NAVY = "#2C3E6B";
@@ -22,13 +34,13 @@ const CAMERA_ZOOM_MIN = MOBILE_CAMERA_ZOOM.min;
 const CAMERA_ZOOM_MAX = MOBILE_CAMERA_ZOOM.max;
 const CAMERA_ZOOM_STEP = 0.05;
 const CAMERA_ZOOM_DEFAULT = MOBILE_CAMERA_ZOOM.default;
-
 type Props = {
   stepIndex: number;
   onCaptured: (uri: string) => void;
   onPickFromLibrary: () => void;
   onBack: () => void;
   busy?: boolean;
+  variant?: "dashboard" | "onboarding";
 };
 
 export function FiveAngleCameraStep({
@@ -37,22 +49,36 @@ export function FiveAngleCameraStep({
   onPickFromLibrary,
   onBack,
   busy,
+  variant = "dashboard",
 }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [cameraReady, setCameraReady] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [shooting, setShooting] = useState(false);
   const [cameraZoom, setCameraZoom] = useState<number>(CAMERA_ZOOM_DEFAULT);
   const [autoZoomEnabled, setAutoZoomEnabled] = useState(true);
+  const [previewSize, setPreviewSize] = useState({ w: 0, h: 0 });
+  const [pendingUri, setPendingUri] = useState<string | null>(null);
+  const [facing, setFacing] = useState<"front" | "back">("front");
+  const voiceSpeechAvailable = isCaptureVoiceSpeechAvailable();
+  const [voiceEnabled, setVoiceEnabled] = useState(voiceSpeechAvailable);
   const userAdjustedZoomAt = useRef(0);
   const insets = useSafeAreaInsets();
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
 
-  const guidancePaused = busy || shooting || countdown !== null;
-  const { guidance, faceCheckLive } = useMobileScanCaptureGuidance(
+  const reviewingCapture = pendingUri != null;
+  const guidancePaused = busy || shooting || reviewingCapture;
+  const {
+    guidance,
+    models,
+    faceCheckLive,
+    faceTracked,
+    bboxSource,
+    needsExpressionModel,
+    faceLandmarks,
+  } = useMobileScanCaptureGuidance(
     cameraRef,
     true,
     cameraReady,
@@ -81,7 +107,7 @@ export function FiveAngleCameraStep({
         quality: 0.88,
         skipProcessing: false,
       });
-      if (pic?.uri) onCaptured(pic.uri);
+      if (pic?.uri) setPendingUri(pic.uri);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Image could not be captured.";
       Alert.alert(
@@ -92,19 +118,58 @@ export function FiveAngleCameraStep({
       );
     } finally {
       setShooting(false);
-      setCountdown(null);
     }
-  }, [cameraReady, onCaptured, shooting]);
+  }, [cameraReady, shooting]);
 
   useEffect(() => {
-    if (countdown === null) return;
-    if (countdown === 0) {
-      void takeShot();
+    captureVoiceGuide.setEnabled(voiceEnabled && !reviewingCapture);
+    if (!voiceEnabled || reviewingCapture) captureVoiceGuide.reset();
+    return () => {
+      captureVoiceGuide.setEnabled(false);
+    };
+  }, [voiceEnabled, reviewingCapture]);
+
+  useEffect(() => {
+    if (!voiceEnabled || reviewingCapture || !guidance) return;
+    if (guidance.face === "no_face") {
+      captureVoiceGuide.speak(guidance.faceMessage, "critical");
       return;
     }
-    const t = setTimeout(() => setCountdown(countdown - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown, takeShot]);
+    if (guidance.face !== "good") {
+      captureVoiceGuide.speak(guidance.faceMessage, "framing");
+      return;
+    }
+    if (guidance.expressionMessage && guidance.expressionOk === false) {
+      captureVoiceGuide.speak(guidance.expressionMessage, "expression");
+      return;
+    }
+    if (guidance.lighting !== "good") {
+      captureVoiceGuide.speak(guidance.lightingMessage, "lighting");
+      return;
+    }
+    if (guidance.readyToCapture) {
+      captureVoiceGuide.speak(CAPTURE_READY_VOICE_HINT, "ready");
+    }
+  }, [voiceEnabled, reviewingCapture, guidance]);
+
+  useEffect(() => {
+    setPendingUri(null);
+    setCameraZoom(CAMERA_ZOOM_DEFAULT);
+    userAdjustedZoomAt.current = 0;
+    captureVoiceGuide.reset();
+  }, [stepIndex]);
+
+  const confirmPendingCapture = useCallback(() => {
+    if (!pendingUri) return;
+    onCaptured(pendingUri);
+    setPendingUri(null);
+  }, [pendingUri, onCaptured]);
+
+  const retakePendingCapture = useCallback(() => {
+    setPendingUri(null);
+    setCameraZoom(CAMERA_ZOOM_DEFAULT);
+    userAdjustedZoomAt.current = 0;
+  }, []);
 
   if (!permission) {
     return (
@@ -129,17 +194,54 @@ export function FiveAngleCameraStep({
     );
   }
 
-  const isDisabled = busy || shooting || !cameraReady || countdown !== null;
+  const isDisabled = busy || shooting || !cameraReady || reviewingCapture;
+  const headerTitle =
+    variant === "onboarding" ? "kAI baseline photos" : "AI face scan";
 
   return (
     <View style={styles.wrap}>
-      <CameraView
-        ref={cameraRef}
+      <View
         style={StyleSheet.absoluteFill}
-        facing="front"
-        zoom={cameraZoom}
-        onCameraReady={() => setCameraReady(true)}
-      />
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          setPreviewSize({ w: width, h: height });
+        }}
+      >
+        <CameraView
+          ref={cameraRef}
+          style={[StyleSheet.absoluteFill, reviewingCapture && styles.cameraHidden]}
+          facing={facing}
+          zoom={cameraZoom}
+          onCameraReady={() => setCameraReady(true)}
+        />
+        {pendingUri ? (
+          <Image
+            source={{ uri: pendingUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            accessibilityLabel={`Captured ${step.title}`}
+          />
+        ) : null}
+        {!reviewingCapture ? (
+          <FaceLandmarkOutlineNative
+            landmarks={faceLandmarks}
+            layoutWidth={previewSize.w}
+            layoutHeight={previewSize.h}
+            cropZoom={cameraZoom}
+            mirrored={facing === "front"}
+          />
+        ) : null}
+        <ScanCaptureDebugOverlay
+          guidance={guidance}
+          captureZoom={cameraZoom}
+          models={models}
+          faceTracked={faceTracked}
+          extra={{
+            step: `${stepIndex + 1}/${totalSteps}`,
+            bbox: bboxSource,
+          }}
+        />
+      </View>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={onBack} style={styles.headerBtn} hitSlop={14}>
@@ -147,11 +249,28 @@ export function FiveAngleCameraStep({
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </View>
         </Pressable>
-        <Text style={styles.headerTitle}>Take a Selfie</Text>
-        <View style={styles.headerBtn}>
-          <View style={styles.headerIconCircle}>
-            <Ionicons name="help-circle-outline" size={22} color="#fff" />
-          </View>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <View style={styles.headerActions}>
+          {voiceSpeechAvailable ? (
+            <Pressable
+              onPress={() => setVoiceEnabled((v) => !v)}
+              style={styles.headerIconCircle}
+              accessibilityLabel={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+            >
+              <Ionicons
+                name={voiceEnabled ? "volume-high" : "volume-mute"}
+                size={20}
+                color="#fff"
+              />
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={() => setFacing((f) => (f === "front" ? "back" : "front"))}
+            style={styles.headerIconCircle}
+            accessibilityLabel="Switch camera"
+          >
+            <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
+          </Pressable>
         </View>
       </View>
 
@@ -162,26 +281,58 @@ export function FiveAngleCameraStep({
           </Text>
           <Text style={styles.stepTitle}>{step.title}</Text>
           <Text style={styles.stepInstruction}>{step.instruction}</Text>
+          {!reviewingCapture ? (
+            <ScanCaptureStepTicks completedCount={stepIndex} compact />
+          ) : null}
         </View>
       </View>
 
-      {/* Countdown overlay */}
-      {countdown !== null && countdown > 0 && (
-        <View style={styles.countdownOverlay} pointerEvents="none">
-          <View style={styles.countdownCircle}>
-            <Text style={styles.countdownNum}>{countdown}</Text>
-          </View>
-          <Text style={styles.countdownLabel}>Hold steady…</Text>
-        </View>
-      )}
-
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        <ScanCaptureGuidanceBanner
-          guidance={guidance}
-          autoZoomEnabled={faceCheckLive && autoZoomEnabled}
-        />
+        {reviewingCapture ? (
+          <View style={styles.reviewHint}>
+            <Text style={styles.reviewHintText}>
+              Review this photo. Continue or retake.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <ScanCaptureGuidanceBanner
+              guidance={guidance}
+              models={models}
+              needsExpressionModel={needsExpressionModel}
+              autoZoomEnabled={faceCheckLive && autoZoomEnabled}
+              compact
+            />
+            <View style={styles.tipsWrap}>
+              {FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA.map((tip) => (
+                <Text key={tip} style={styles.tipText}>
+                  · {tip}
+                </Text>
+              ))}
+            </View>
+          </>
+        )}
 
-        {faceCheckLive ? (
+        {reviewingCapture ? (
+          <>
+            <Pressable style={styles.btnOutline} onPress={retakePendingCapture}>
+              <View style={styles.btnRow}>
+                <Ionicons name="refresh-outline" size={20} color="#fff" />
+                <Text style={styles.btnOutlineText}>Retake</Text>
+              </View>
+            </Pressable>
+            <Pressable style={styles.btnNavy} onPress={confirmPendingCapture}>
+              <View style={styles.btnRow}>
+                <Ionicons name="checkmark-outline" size={20} color="#fff" />
+                <Text style={styles.btnNavyText}>
+                  {stepIndex + 1 >= totalSteps ? "Use photo & finish" : "Use photo & next"}
+                </Text>
+              </View>
+            </Pressable>
+          </>
+        ) : null}
+
+        {!reviewingCapture && (faceCheckLive || autoZoomEnabled) ? (
           <>
             <View style={styles.zoomRow}>
               <Text style={styles.zoomLabel}>
@@ -237,23 +388,26 @@ export function FiveAngleCameraStep({
             </View>
           </>
         ) : null}
-        <Pressable
-          style={[styles.btnNavy, isDisabled && styles.disabled]}
-          onPress={() => setCountdown(3)}
-          disabled={isDisabled}
-        >
-          {shooting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <View style={styles.btnRow}>
-              <Ionicons name="camera-outline" size={20} color="#fff" />
-              <Text style={styles.btnNavyText}>
-                {guidance?.readyToCapture ? "Capture" : "Capture anyway"} (
-                {stepIndex + 1}/{totalSteps})
-              </Text>
-            </View>
-          )}
-        </Pressable>
+        {!reviewingCapture ? (
+          <Pressable
+            style={[styles.btnNavy, isDisabled && styles.disabled]}
+            onPress={() => void takeShot()}
+            disabled={isDisabled}
+          >
+            {shooting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <View style={styles.btnRow}>
+                <Ionicons name="camera-outline" size={20} color="#fff" />
+                <Text style={styles.btnNavyText}>
+                  {guidance?.readyToCapture ? "Capture" : "Capture anyway"}{" "}
+                  ({stepIndex + 1}/{totalSteps})
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        ) : null}
+        {!reviewingCapture ? (
         <Pressable
           style={[styles.libraryBtn, (busy || shooting) && styles.disabled]}
           onPress={onPickFromLibrary}
@@ -262,6 +416,7 @@ export function FiveAngleCameraStep({
           <Ionicons name="images-outline" size={18} color="#fff" />
           <Text style={styles.libraryBtnText}>Pick from library</Text>
         </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -269,6 +424,31 @@ export function FiveAngleCameraStep({
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: "#000" },
+  cameraHidden: { opacity: 0 },
+  reviewHint: {
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  reviewHintText: {
+    color: "#fff",
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  btnOutline: {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.55)",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  btnOutlineText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   center: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -296,6 +476,13 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerBtn: { width: 40, alignItems: "center" },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minWidth: 88,
+    justifyContent: "flex-end",
+  },
   headerIconCircle: {
     width: 36,
     height: 36,
@@ -349,40 +536,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: "rgba(255,255,255,0.92)",
   },
-  countdownOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.35)",
-    zIndex: 20,
+  tipsWrap: {
+    gap: 2,
+    paddingHorizontal: 2,
   },
-  countdownCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: NAVY,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  countdownNum: {
-    fontSize: 56,
-    fontWeight: "900",
-    color: "#fff",
-    fontVariant: ["tabular-nums"],
-  },
-  countdownLabel: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.9)",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+  tipText: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.75)",
+    lineHeight: 14,
   },
   bottomBar: {
     position: "absolute",

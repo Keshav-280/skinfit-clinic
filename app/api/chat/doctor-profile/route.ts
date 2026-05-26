@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
@@ -43,16 +43,19 @@ export async function GET(req: Request) {
   }
 
   const doctors = await listRegisteredClinicDoctors();
-  const doctor = doctors[0];
-  if (!doctor) {
+  if (doctors.length === 0) {
     return NextResponse.json({ profile: null, doctors: [] });
   }
 
-  const [row] = await db
-    .select({ specialty: users.primaryGoal })
+  const specialtyRows = await db
+    .select({ id: users.id, specialty: users.primaryGoal })
     .from(users)
-    .where(eq(users.id, doctor.id))
-    .limit(1);
+    .where(inArray(users.id, doctors.map((d) => d.id)));
+  const specialtyById = new Map(
+    specialtyRows.map((r) => [r.id, (r.specialty ?? "").trim()])
+  );
+
+  const doctor = doctors[0];
 
   const imageUrl = await getDoctorImageByUserId(doctor.id);
 
@@ -63,13 +66,14 @@ export async function GET(req: Request) {
         name: d.name,
         email: d.email,
         imageUrl: await getDoctorImageByUserId(d.id),
+        specialty: specialtyById.get(d.id) ?? "",
       }))
     ),
     profile: {
       id: doctor.id,
       name: doctor.name,
       email: doctor.email,
-      specialty: row?.specialty ?? "",
+      specialty: specialtyById.get(doctor.id) ?? "",
       imageUrl,
     },
   });

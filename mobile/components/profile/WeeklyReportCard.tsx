@@ -10,14 +10,49 @@ import {
   BORDER_LIGHT,
 } from "@/components/profile/theme";
 
+export type ObservationRow = {
+  text: string;
+  dateLabel?: string;
+  source?: "baseline_scan" | "daily_logs" | "scan_trend" | "weekly_report";
+};
+
 type Props = {
   kaiScore: number;
   weeklyDelta: number;
   consistency: string;
   dateRange: string;
-  observations: string[];
+  observations: ObservationRow[] | string[];
+  dataUsedSummary?: string | null;
   priorityActions: string[];
+  insightsUnavailable?: boolean;
 };
+
+function sourceLabel(
+  source: ObservationRow["source"]
+): string | null {
+  switch (source) {
+    case "baseline_scan":
+      return "Baseline scan";
+    case "daily_logs":
+      return "Daily logs";
+    case "scan_trend":
+      return "Scan trend";
+    case "weekly_report":
+      return "Weekly report";
+    default:
+      return null;
+  }
+}
+
+function normalizeObservations(
+  observations: ObservationRow[] | string[]
+): ObservationRow[] {
+  if (observations.length === 0) return [];
+  if (typeof observations[0] === "string") {
+    return (observations as string[]).map((text) => ({ text }));
+  }
+  return observations as ObservationRow[];
+}
 
 export default function WeeklyReportCard({
   kaiScore,
@@ -25,19 +60,23 @@ export default function WeeklyReportCard({
   consistency,
   dateRange,
   observations,
+  dataUsedSummary,
   priorityActions,
+  insightsUnavailable,
 }: Props) {
   const deltaPositive = weeklyDelta >= 0;
   const deltaColor = deltaPositive ? GREEN : "#dc2626";
   const deltaText = deltaPositive ? `+${weeklyDelta}` : `${weeklyDelta}`;
+  const rows = normalizeObservations(observations);
 
   return (
     <View style={card.base}>
-      {/* Header */}
       <Text style={s.title}>Last week&apos;s Report</Text>
       <Text style={s.dateRange}>{dateRange}</Text>
+      {dataUsedSummary ? (
+        <Text style={s.dataUsed}>{dataUsedSummary}</Text>
+      ) : null}
 
-      {/* Metric pills */}
       <View style={s.pillRow}>
         <View style={s.pill}>
           <View style={s.iconCircle}>
@@ -63,7 +102,6 @@ export default function WeeklyReportCard({
         </View>
       </View>
 
-      {/* Weekly change */}
       <View style={s.changeRow}>
         <View style={s.iconCircle}>
           <Ionicons name="trending-up" size={14} color={GREEN} />
@@ -74,33 +112,48 @@ export default function WeeklyReportCard({
 
       <View style={s.divider} />
 
-      {/* Key Observations */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>
           Key Observations{" "}
           <Text style={s.sectionHint}>
-            ({observations.length} things to know)
+            ({rows.length} things to know)
           </Text>
         </Text>
-        {observations.length > 0 ? (
-          observations.map((item, i) => (
-            <View key={i} style={s.listItem}>
-              <View style={[s.badge, { backgroundColor: "#dcfce7" }]}>
-                <Text style={[s.badgeText, { color: GREEN }]}>{i + 1}</Text>
+        {rows.length > 0 ? (
+          rows.map((item, i) => {
+            const tag = sourceLabel(item.source);
+            return (
+              <View key={i} style={s.listItem}>
+                <View style={[s.badge, { backgroundColor: "#dcfce7" }]}>
+                  <Text style={[s.badgeText, { color: GREEN }]}>{i + 1}</Text>
+                </View>
+                <View style={s.listBody}>
+                  {item.dateLabel || tag ? (
+                    <View style={s.metaRow}>
+                      {item.dateLabel ? (
+                        <Text style={s.dateLabel}>{item.dateLabel}</Text>
+                      ) : null}
+                      {tag ? (
+                        <Text style={s.sourceTag}>{tag}</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                  <Text style={s.listText}>{item.text}</Text>
+                </View>
               </View>
-              <Text style={s.listText}>{item}</Text>
-            </View>
-          ))
+            );
+          })
         ) : (
           <Text style={s.emptyHint}>
-            Observations will appear here after your next weekly report.
+            {insightsUnavailable
+              ? "kAI insights are temporarily unavailable. Ensure OPENAI_API_KEY is set on the server and refresh."
+              : "Generating observations… pull to refresh in a moment."}
           </Text>
         )}
       </View>
 
       <View style={s.divider} />
 
-      {/* Priority Actions */}
       <View style={s.section}>
         <Text style={s.sectionTitle}>
           Priority Actions{" "}
@@ -119,7 +172,9 @@ export default function WeeklyReportCard({
           ))
         ) : (
           <Text style={s.emptyHint}>
-            Actions will appear here once enough scan data is collected.
+            {insightsUnavailable
+              ? "Priority actions need the kAI model (same server key as weekly reports)."
+              : "Generating priority actions… pull to refresh."}
           </Text>
         )}
       </View>
@@ -137,7 +192,13 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: TEXT_MUTED,
     marginTop: 2,
-    marginBottom: 16,
+  },
+  dataUsed: {
+    fontSize: 11,
+    color: TEXT_LIGHT,
+    marginTop: 6,
+    marginBottom: 12,
+    lineHeight: 16,
   },
   pillRow: {
     flexDirection: "row",
@@ -217,6 +278,28 @@ const s = StyleSheet.create({
     alignItems: "flex-start",
     gap: 10,
   },
+  listBody: {
+    flex: 1,
+    gap: 4,
+  },
+  metaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 6,
+  },
+  dateLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: NAVY,
+  },
+  sourceTag: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: TEXT_MUTED,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
   badge: {
     width: 24,
     height: 24,
@@ -230,7 +313,6 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
   listText: {
-    flex: 1,
     fontSize: 14,
     color: TEXT_PRIMARY,
     lineHeight: 20,

@@ -9,7 +9,11 @@ import {
 } from "react";
 import { Platform } from "react-native";
 
-import { apiUrl } from "@/lib/api";
+import { apiUrl, networkFetchErrorMessage } from "@/lib/api";
+import {
+  signInWithOAuthNative,
+  type NativeOAuthProvider,
+} from "@/lib/oauthSignIn";
 import { clearAllAppCaches, setCacheUserId } from "@/lib/apiCache";
 import { clearAllCachedPhotos, setPhotoUserId } from "@/lib/profilePhoto";
 import {
@@ -42,6 +46,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   ready: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithOAuth: (provider: NativeOAuthProvider) => Promise<void>;
   signUp: (input: {
     name: string;
     email: string;
@@ -97,6 +102,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const applyAuthSession = useCallback(
+    async (data: {
+      token: string;
+      user: AuthUser & { onboardingComplete?: boolean };
+    }) => {
+      const nextUser: AuthUser = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        onboardingComplete:
+          typeof data.user.onboardingComplete === "boolean"
+            ? data.user.onboardingComplete
+            : true,
+        hasQuestionnaire: data.user.hasQuestionnaire,
+        canAccessDashboard: data.user.canAccessDashboard,
+        hasBaselineScan: data.user.hasBaselineScan,
+      };
+      await sessionSet(TOKEN_KEY, data.token);
+      await sessionSet(USER_KEY, JSON.stringify(nextUser));
+      setCacheUserId(nextUser.id);
+      setPhotoUserId(nextUser.id);
+      setUser(nextUser);
+      setToken(data.token);
+
+      if (Platform.OS !== "web") {
+        void registerForPushAndSyncToken(data.token, {
+          verboseAlerts: false,
+          requestPermission: true,
+        });
+      }
+    },
+    []
+  );
+
   const signIn = useCallback(async (email: string, password: string) => {
     let res: Response;
     try {
@@ -109,9 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email: email.trim(), password }),
       });
     } catch {
-      throw new Error(
-        "Cannot reach the server. Check your internet and EXPO_PUBLIC_API_URL."
-      );
+      throw new Error(networkFetchErrorMessage());
     }
 
     const text = await res.text().catch(() => "");
@@ -137,32 +174,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!data.token || !data.user) {
       throw new Error("Server did not return a session token.");
     }
-    const nextUser: AuthUser = {
-      id: data.user.id,
-      name: data.user.name,
-      email: data.user.email,
-      onboardingComplete:
-        typeof data.user.onboardingComplete === "boolean"
-          ? data.user.onboardingComplete
-          : true,
-      hasQuestionnaire: data.user.hasQuestionnaire,
-      canAccessDashboard: data.user.canAccessDashboard,
-      hasBaselineScan: data.user.hasBaselineScan,
-    };
-    await sessionSet(TOKEN_KEY, data.token);
-    await sessionSet(USER_KEY, JSON.stringify(nextUser));
-    setCacheUserId(nextUser.id);
-    setPhotoUserId(nextUser.id);
-    setUser(nextUser);
-    setToken(data.token);
+    await applyAuthSession({ token: data.token, user: data.user });
+  }, [applyAuthSession]);
 
-    if (Platform.OS !== "web") {
-      void registerForPushAndSyncToken(data.token, {
-        verboseAlerts: false,
-        requestPermission: true,
-      });
-    }
-  }, []);
+  const signInWithOAuth = useCallback(
+    async (provider: NativeOAuthProvider) => {
+      const credential = await signInWithOAuthNative(provider);
+
+      if (credential.mobileWebSession) {
+        await applyAuthSession({
+          token: credential.mobileWebSession.token,
+          user: credential.mobileWebSession.user,
+        });
+        return;
+      }
+
+      let res: Response;
+      try {
+        res = await fetch(apiUrl("/api/auth/oauth/native"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Skinfit-Client": "native",
+          },
+          body: JSON.stringify({
+            provider: credential.provider,
+            idToken: credential.idToken ?? undefined,
+            code: credential.code ?? undefined,
+            redirectUri: credential.redirectUri ?? undefined,
+            name: credential.name ?? null,
+          }),
+        });
+      } catch {
+        throw new Error(networkFetchErrorMessage());
+      }
+
+      const text = await res.text().catch(() => "");
+      let data: {
+        ok?: boolean;
+        token?: string;
+        user?: AuthUser & { onboardingComplete?: boolean };
+        message?: string;
+        error?: string;
+      } = {};
+      try {
+        data = text ? (JSON.parse(text) as typeof data) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          data.message ||
+            data.error ||
+            `Sign in failed (HTTP ${res.status}).`
+        );
+      }
+      if (!data.token || !data.user) {
+        throw new Error("Server did not return a session token.");
+      }
+      await applyAuthSession({ token: data.token, user: data.user });
+    },
+    [applyAuthSession]
+  );
 
   const signUp = useCallback(
     async (input: {
@@ -189,9 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }),
         });
       } catch {
-        throw new Error(
-          "Cannot reach the server. Check your internet and EXPO_PUBLIC_API_URL."
-        );
+        throw new Error(networkFetchErrorMessage());
       }
 
       const text = await res.text().catch(() => "");
@@ -384,6 +456,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       ready,
       signIn,
+      signInWithOAuth,
       signUp,
       signOut,
       applySessionFromProfile,
@@ -395,6 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       ready,
       signIn,
+      signInWithOAuth,
       signUp,
       signOut,
       applySessionFromProfile,

@@ -15,7 +15,9 @@ import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NotificationBell } from "@/components/NotificationBell";
+import { TrackerSaveStatusText } from "@/components/TrackerSaveStatus";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { apiJson } from "@/lib/api";
 
 const NAVY = "#2C3E6B";
@@ -173,9 +175,10 @@ export default function HydrationTrackerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const { saveStatus, scheduleSave, markReady, markNotReady } =
+    useDebouncedTrackerAutoSave(token);
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [totalMl, setTotalMl] = useState(0);
   const [insightData, setInsightData] = useState<HydrationInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(true);
@@ -190,6 +193,7 @@ export default function HydrationTrackerScreen() {
 
   const loadData = useCallback(async () => {
     if (!token) return;
+    markNotReady();
     setLoading(true);
     try {
       const ymd = format(selectedDate, "yyyy-MM-dd");
@@ -197,7 +201,7 @@ export default function HydrationTrackerScreen() {
       setTotalMl((json.entry?.waterGlasses ?? 0) * ML_PER_GLASS);
     } catch { setTotalMl(0); }
     finally { setLoading(false); }
-  }, [token, selectedDate]);
+  }, [token, selectedDate, markNotReady]);
 
   const loadInsight = useCallback(async () => {
     if (!token) return;
@@ -211,30 +215,27 @@ export default function HydrationTrackerScreen() {
 
   useEffect(() => { void loadData(); void loadInsight(); }, [loadData, loadInsight]);
 
-  function addWater(ml: number) {
-    setTotalMl((prev) => prev + ml);
+  useEffect(() => {
+    if (loading) markNotReady();
+    else markReady();
+  }, [loading, markReady, markNotReady]);
+
+  function persistHydration(nextMl: number) {
+    scheduleSave(format(selectedDate, "yyyy-MM-dd"), {
+      waterGlasses: Math.round(nextMl / ML_PER_GLASS),
+    });
   }
 
-  const glasses = Math.round(totalMl / ML_PER_GLASS);
+  function addWater(ml: number) {
+    setTotalMl((prev) => {
+      const next = prev + ml;
+      persistHydration(next);
+      return next;
+    });
+  }
 
   function goBack() { if (canGoBack) setSelectedDate((d) => subDays(d, 1)); }
   function goForward() { if (canGoForward) setSelectedDate((d) => addDays(d, 1)); }
-
-  async function save() {
-    if (!token) return;
-    setSaving(true);
-    try {
-      await apiJson("/api/journal", token, {
-        method: "POST",
-        body: JSON.stringify({
-          date: format(selectedDate, "yyyy-MM-dd"),
-          waterGlasses: glasses,
-        }),
-      });
-      router.back();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
-  }
 
   if (loading) {
     return <View style={[s.center, { paddingTop: insets.top }]}><ActivityIndicator size="large" color={NAVY} /></View>;
@@ -249,7 +250,10 @@ export default function HydrationTrackerScreen() {
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={s.headerTitle}>Hydration</Text>
-        <NotificationBell />
+        <View style={s.headerRight}>
+          <TrackerSaveStatusText status={saveStatus} />
+          <NotificationBell />
+        </View>
       </View>
 
       <Text style={s.subtitle}>Log your water intake to keep your skin happy</Text>
@@ -272,7 +276,11 @@ export default function HydrationTrackerScreen() {
           <Text style={s.question}>How much water did you drink today?</Text>
           <HydrationGauge
             liters={liters}
-            onChangeLiters={(nextLiters) => setTotalMl(Math.max(0, Math.round(nextLiters * 1000)))}
+            onChangeLiters={(nextLiters) => {
+              const nextMl = Math.max(0, Math.round(nextLiters * 1000));
+              setTotalMl(nextMl);
+              persistHydration(nextMl);
+            }}
             onDragStart={() => setScrollEnabled(false)}
             onDragEnd={() => setScrollEnabled(true)}
           />
@@ -308,10 +316,6 @@ export default function HydrationTrackerScreen() {
             <Text style={s.insightText}>Track your hydration daily to unlock personalized insights.</Text>
           )}
         </View>
-
-        <Pressable style={s.saveBtn} onPress={save} disabled={saving}>
-          <Text style={s.saveBtnText}>{saving ? "Saving…" : "Save Hydration Data"}</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );
@@ -329,6 +333,7 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   subtitle: { fontSize: 13, color: "#6B7280", textAlign: "center", marginTop: 4, marginBottom: 8 },
 
   scrollContent: { padding: 16, paddingBottom: 48 },
@@ -369,10 +374,4 @@ const s = StyleSheet.create({
   insightTitle: { fontSize: 17, fontWeight: "800", color: "#18181b" },
   insightRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   insightText: { flex: 1, fontSize: 14, color: "#374151", lineHeight: 20 },
-
-  saveBtn: {
-    backgroundColor: NAVY, borderRadius: 16, paddingVertical: 16,
-    alignItems: "center", marginTop: 8,
-  },
-  saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

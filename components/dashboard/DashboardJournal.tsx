@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { addDays, format, parseISO, subDays } from "date-fns";
 
+import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
+
 import type { TodayJournalLog } from "./DashboardView";
 
 const MINT = "#E0F0ED";
@@ -44,8 +46,12 @@ export function DashboardJournal({ todayLog }: { todayLog: TodayJournalLog }) {
   const [saved, setSaved] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
 
+  const { saveStatus: trackerSaveStatus, scheduleSave, markReady, markNotReady } =
+    useDebouncedTrackerAutoSave();
+
   useEffect(() => {
     let cancelled = false;
+    markNotReady();
     (async () => {
       setLoading(true);
       setHint(null);
@@ -88,13 +94,28 @@ export function DashboardJournal({ todayLog }: { todayLog: TodayJournalLog }) {
           setComments("");
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          markReady();
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [selectedDate]);
+  }, [selectedDate, markNotReady, markReady]);
+
+  function persistTrackerFields(next: {
+    sleep?: string;
+    stress?: string;
+    water?: string;
+  }) {
+    scheduleSave(selectedDate, {
+      sleepHours: Number.parseFloat(next.sleep ?? sleep) || 0,
+      stressLevel: Number.parseInt(next.stress ?? stress, 10) || 0,
+      waterGlasses: Number.parseInt(next.water ?? water, 10) || 0,
+    });
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,6 +210,24 @@ export function DashboardJournal({ todayLog }: { todayLog: TodayJournalLog }) {
         </div>
       ) : null}
 
+      {trackerSaveStatus === "error" ? (
+        <div
+          role="status"
+          className="rounded-[14px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          Could not auto-save sleep, stress, or hydration. Check your connection.
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium text-zinc-500">Sleep, stress & hydration</p>
+        {trackerSaveStatus === "saving" ? (
+          <span className="text-xs text-zinc-400">Saving…</span>
+        ) : trackerSaveStatus === "saved" ? (
+          <span className="text-xs text-emerald-600">Saved ✓</span>
+        ) : null}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-zinc-600">
@@ -199,7 +238,11 @@ export function DashboardJournal({ todayLog }: { todayLog: TodayJournalLog }) {
             min={0}
             max={24}
             value={sleep}
-            onChange={(e) => setSleep(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setSleep(next);
+              persistTrackerFields({ sleep: next });
+            }}
             disabled={loading}
             className={inputClass}
           />
@@ -213,7 +256,11 @@ export function DashboardJournal({ todayLog }: { todayLog: TodayJournalLog }) {
             min={0}
             max={10}
             value={stress}
-            onChange={(e) => setStress(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setStress(next);
+              persistTrackerFields({ stress: next });
+            }}
             disabled={loading}
             className={inputClass}
           />
@@ -226,7 +273,11 @@ export function DashboardJournal({ todayLog }: { todayLog: TodayJournalLog }) {
             type="number"
             min={0}
             value={water}
-            onChange={(e) => setWater(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setWater(next);
+              persistTrackerFields({ water: next });
+            }}
             disabled={loading}
             className={inputClass}
           />

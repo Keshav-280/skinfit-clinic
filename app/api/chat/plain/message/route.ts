@@ -5,10 +5,6 @@ import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorUsers } from "@/src/lib/expoPush";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
-import {
-  doctorThreadRequiresE2ee,
-  isPlaintextDoctorMessageAllowed,
-} from "@/src/lib/chatE2ee/e2eePolicy";
 import { buildSosContextPrefix } from "@/src/lib/sosChatContext";
 import { postPatientUrgentMessageToAllClinicDoctors } from "@/src/lib/patientDoctorChat";
 import { resolvePatientDoctorThread } from "@/src/lib/patientDoctorChatThread";
@@ -154,21 +150,6 @@ export async function POST(req: Request) {
   }
 
   if (assistantId === "doctor" && !(isUrgent && !explicitDoctorId)) {
-    if (
-      patientText &&
-      (await doctorThreadRequiresE2ee(threadId)) &&
-      !isPlaintextDoctorMessageAllowed(patientText)
-    ) {
-      return NextResponse.json(
-        {
-          error: "E2EE_REQUIRED",
-          message:
-            "This chat thread uses end-to-end encryption. Open doctor chat and wait for the lock icon before sending.",
-        },
-        { status: 400 }
-      );
-    }
-
     await db.insert(chatMessages).values({
       threadId,
       sender: "patient",

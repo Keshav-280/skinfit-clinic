@@ -20,6 +20,18 @@ type SkinProfilePayload = {
     hormonalCorrelation: string | null;
   };
   lastWeekObservations: string | null;
+  keyObservations?: {
+    mode: string;
+    modeLabel: string;
+    logDaysUsed: string[];
+    scanDaysUsed: string[];
+    baselineScanDateYmd: string | null;
+    items: Array<{
+      text: string;
+      source: string;
+      dateLabel: string;
+    }>;
+  };
   priorityKnowDo: { know: string[]; do: string[] };
   sparklines: Record<
     string,
@@ -258,7 +270,35 @@ export function ProfileSkinDnaSection() {
             />
           </div>
 
-          {data.lastWeekObservations ? (
+          {data.keyObservations?.items?.length ? (
+            <div
+              className="rounded-xl bg-[#f5f2ed] px-4 py-3 text-sm leading-relaxed text-zinc-800"
+              style={{ border: "1px solid #e4ddd4" }}
+            >
+              <p className="text-[11px] font-bold uppercase tracking-wide text-teal-800">
+                Key observations
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {data.keyObservations.modeLabel}
+              </p>
+              <ul className="mt-3 space-y-3">
+                {data.keyObservations.items.map((item, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-900">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                        {item.dateLabel}
+                        {item.source ? ` · ${item.source.replace(/_/g, " ")}` : ""}
+                      </p>
+                      <p className="mt-0.5 text-zinc-700">{item.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : data.lastWeekObservations ? (
             <div
               className="rounded-xl bg-[#f5f2ed] px-4 py-3 text-sm leading-relaxed text-zinc-800"
               style={{ border: "1px solid #e4ddd4" }}

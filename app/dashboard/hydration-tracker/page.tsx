@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Droplets, Plus, Minus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+
+import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 
 const GOAL = 3.0;
 
@@ -36,13 +38,13 @@ function litersToGlasses(liters: number) {
 export default function HydrationTrackerPage() {
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didInit = useRef(false);
+  const { saveStatus, scheduleSave, markReady, markNotReady } =
+    useDebouncedTrackerAutoSave();
 
   const intake = glassesToLiters(waterGlasses);
 
   useEffect(() => {
+    markNotReady();
     const today = format(new Date(), "yyyy-MM-dd");
     fetch(`/api/journal?date=${today}`, { credentials: "include" })
       .then((r) => r.json())
@@ -50,29 +52,16 @@ export default function HydrationTrackerPage() {
         if (data.entry) {
           setWaterGlasses(data.entry.waterGlasses ?? 0);
         }
-        didInit.current = true;
       })
-      .finally(() => setLoading(false));
-  }, []);
-
-  function scheduleAutoSave(body: Record<string, unknown>) {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveStatus("saving");
-    saveTimer.current = setTimeout(async () => {
-      await fetch("/api/journal", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: format(new Date(), "yyyy-MM-dd"), ...body }),
+      .finally(() => {
+        setLoading(false);
+        markReady();
       });
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    }, 800);
-  }
+  }, [markNotReady, markReady]);
 
   function updateGlasses(newGlasses: number) {
     setWaterGlasses(newGlasses);
-    if (didInit.current) scheduleAutoSave({ waterGlasses: newGlasses });
+    scheduleSave(format(new Date(), "yyyy-MM-dd"), { waterGlasses: newGlasses });
   }
 
   function addAmount(liters: number) {
@@ -128,6 +117,7 @@ export default function HydrationTrackerPage() {
         <div className="ml-auto flex items-center gap-2">
           {saveStatus === "saving" && <span className="text-xs text-slate-400">Saving...</span>}
           {saveStatus === "saved" && <span className="text-xs text-emerald-500">Saved ✓</span>}
+          {saveStatus === "error" && <span className="text-xs text-amber-600">Could not save</span>}
           <Droplets className="h-5 w-5 text-[#4F46E5]/60" />
         </div>
       </div>

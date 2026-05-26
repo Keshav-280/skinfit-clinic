@@ -1,6 +1,6 @@
 import { apiUrl } from "./apiBase";
 
-export { getApiBase, apiUrl } from "./apiBase";
+export { getApiBase, apiUrl, networkFetchErrorMessage } from "./apiBase";
 
 
 export class ApiError extends Error {

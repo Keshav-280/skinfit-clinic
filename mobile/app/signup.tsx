@@ -14,13 +14,14 @@ import {
 } from "react-native";
 
 import { Text } from "@/components/Themed";
+import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
 
 export default function SignupScreen() {
-  const { signUp, token, ready } = useAuth();
+  const { signUp, signInWithOAuth, token, ready } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -66,6 +67,34 @@ export default function SignupScreen() {
           <View style={styles.card}>
             <Text style={styles.brand}>Create account</Text>
             <Text style={styles.subtitle}>Complete onboarding in the app</Text>
+
+            <SocialAuthButtons
+              loading={loading}
+              onGoogle={async () => {
+                setLoading(true);
+                try {
+                  await signInWithOAuth("google");
+                  router.replace("/onboarding");
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Something went wrong.";
+                  Alert.alert("Google sign in", msg);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              onApple={async () => {
+                setLoading(true);
+                try {
+                  await signInWithOAuth("apple");
+                  router.replace("/onboarding");
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Something went wrong.";
+                  Alert.alert("Apple sign in", msg);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
 
             <View style={styles.inputWrap}>
               <Text style={styles.label}>Full name</Text>

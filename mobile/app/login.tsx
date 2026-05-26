@@ -13,13 +13,14 @@ import {
 } from "react-native";
 
 import { Text } from "@/components/Themed";
+import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
 
 export default function LoginScreen() {
-  const { signIn, token, ready } = useAuth();
+  const { signIn, signInWithOAuth, token, ready } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,6 +61,34 @@ export default function LoginScreen() {
             <Text style={styles.brand}>SkinFit Clinic</Text>
             <Text style={styles.subtitle}>Patient app</Text>
 
+            <SocialAuthButtons
+              loading={loading}
+              onGoogle={async () => {
+                setLoading(true);
+                try {
+                  await signInWithOAuth("google");
+                  router.replace("/");
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Something went wrong.";
+                  Alert.alert("Google sign in", msg);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              onApple={async () => {
+                setLoading(true);
+                try {
+                  await signInWithOAuth("apple");
+                  router.replace("/");
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Something went wrong.";
+                  Alert.alert("Apple sign in", msg);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
+
             <View style={styles.inputWrap}>
               <Text style={styles.label}>Email</Text>
               <TextInput
@@ -96,6 +125,7 @@ export default function LoginScreen() {
                 <Text style={styles.buttonLabel}>Sign in</Text>
               )}
             </Pressable>
+
             <View style={styles.signupRow}>
               <Text style={styles.signupHint}>New here?</Text>
               <Link href="/signup" asChild>

@@ -93,7 +93,7 @@ export default function KaiIntroScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-          onPress={() => router.push("/onboarding/capture" as Href)}
+          onPress={() => router.push("/onboarding/capture-intro" as Href)}
         >
           <LinearGradient colors={[NAVY, NAVY_DARK]} style={styles.btnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Text style={styles.btnText}>Start baseline scan</Text>

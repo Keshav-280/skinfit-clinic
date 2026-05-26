@@ -6,9 +6,10 @@ import "dotenv/config";
 import { readFileSync } from "fs";
 import { buildScanPayloadFromAnalyzeV1 } from "@/src/lib/modelClinicalMetrics";
 import { runFaceAnalysisDualScan } from "@/src/lib/faceAnalysisInference";
+import { getFaceAnalysisServiceSecret } from "@/src/lib/faceAnalysisEnv";
 
 const base = process.env.FACE_ANALYSIS_SERVICE_URL?.trim();
-const secret = process.env.FACE_ANALYSIS_SERVICE_SECRET?.trim();
+const secret = getFaceAnalysisServiceSecret();
 
 async function main() {
   const centrePath =

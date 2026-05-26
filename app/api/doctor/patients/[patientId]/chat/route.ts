@@ -4,10 +4,6 @@ import { db } from "@/src/db";
 import { chatMessages, chatThreads, users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
-import {
-  doctorThreadRequiresE2ee,
-  isPlaintextDoctorMessageAllowed,
-} from "@/src/lib/chatE2ee/e2eePolicy";
 import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
 
 const MAX_TEXT_LEN = 4000;
@@ -148,21 +144,6 @@ export async function POST(
 
   const messageText =
     text || (attachmentUrl?.startsWith("data:audio/") ? "🎤 Voice note" : "🖼️ Image");
-
-  if (
-    text &&
-    (await doctorThreadRequiresE2ee(thread.id)) &&
-    !isPlaintextDoctorMessageAllowed(text)
-  ) {
-    return NextResponse.json(
-      {
-        error: "E2EE_REQUIRED",
-        message:
-          "Secure chat is active for this patient. Wait for encryption to finish loading, then send again.",
-      },
-      { status: 400 }
-    );
-  }
 
   const [created] = await db
     .insert(chatMessages)

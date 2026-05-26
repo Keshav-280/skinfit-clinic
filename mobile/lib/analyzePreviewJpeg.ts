@@ -11,6 +11,7 @@ import {
 import {
   getMobileFaceCaptureConfig,
   needsMediapipeOnClient,
+  shouldTryServerPreviewOnClient,
   usesServerFacePreview,
 } from "@/lib/faceCaptureConfig";
 import { fetchFacePreviewInference } from "@/lib/fetchFacePreviewInference";
@@ -29,6 +30,8 @@ import {
 } from "@/lib/scanCaptureGuidance";
 
 const PREVIEW_WIDTH = 240;
+/** Faster bbox/area tracking on device preview ticks. */
+const MOBILE_PREVIEW_SMOOTH_ALPHA = 0.32;
 /** Higher-res still for MediaPipe (eyes / smile need detail). */
 const LANDMARK_PREVIEW_WIDTH = 512;
 
@@ -36,6 +39,7 @@ export type PreviewGuidanceState = {
   smoothedBox: NormalizedFaceBox | null;
   framing: StableFramingState | null;
   expressionCalibration: ExpressionCalibration;
+  faceLandmarks: Array<{ x: number; y: number }> | null;
 };
 
 export type AnalyzePreviewOptions = {
@@ -50,10 +54,22 @@ export async function analyzePreviewImageUri(
   currentZoom: number,
   state?: PreviewGuidanceState,
   options?: AnalyzePreviewOptions
-): Promise<{ guidance: CaptureGuidanceSnapshot | null; state: PreviewGuidanceState }> {
+): Promise<{
+  guidance: CaptureGuidanceSnapshot | null;
+  state: PreviewGuidanceState;
+  meta?: {
+    bboxSource: string;
+    landmarkPipelineActive: boolean;
+    serverDetectorUsed: boolean;
+    expressionClassifierUsed: boolean;
+  };
+}> {
   const expressionStep = options ? needsExpressionCheck(options.stepId) : false;
   const captureCfg = getMobileFaceCaptureConfig();
-  const useServer = usesServerFacePreview(captureCfg);
+  const useServer =
+    usesServerFacePreview(captureCfg) ||
+    shouldTryServerPreviewOnClient(captureCfg) ||
+    Boolean(options?.authToken);
   const needsMp = needsMediapipeOnClient(captureCfg);
 
   const [small, landmarkSized] = await Promise.all([
@@ -82,17 +98,24 @@ export async function analyzePreviewImageUri(
     smoothedBox: state?.smoothedBox ?? null,
     framing: state?.framing ?? null,
     expressionCalibration: state?.expressionCalibration ?? { openEarBaseline: null },
+    faceLandmarks: state?.faceLandmarks ?? null,
   };
-  if (!small.base64) return { guidance: null, state: emptyState };
+  if (!small.base64) {
+    return { guidance: null, state: emptyState, meta: { bboxSource: "—", landmarkPipelineActive: false, serverDetectorUsed: false, expressionClassifierUsed: false } };
+  }
 
   const buf = Buffer.from(small.base64, "base64");
   const decoded = decode(buf, { useTArray: true, formatAsRGBA: true });
   const { width, height, data } = decoded;
-  if (!width || !height) return { guidance: null, state: emptyState };
+  if (!width || !height) {
+    return { guidance: null, state: emptyState, meta: { bboxSource: "—", landmarkPipelineActive: false, serverDetectorUsed: false, expressionClassifierUsed: false } };
+  }
 
   const lighting = analyzeLightingFromRgba(data, width, height);
 
   let rawBox: NormalizedFaceBox | null = null;
+  let landmarkBox: NormalizedFaceBox | null = null;
+  let bboxSource = "—";
   let blendCategories: { categoryName?: string; score: number }[] | undefined;
   let landmarkPoints: Array<{ x: number; y: number }> | undefined;
   const landmarkPipelineActive =
@@ -109,24 +132,40 @@ export async function analyzePreviewImageUri(
     const mp = await detectFaceLandmarksForPreview(landmarkUri);
     landmarkPoints = mp?.results?.[0]?.faceLandmarks?.[0];
     if (landmarkPoints?.length) {
-      rawBox = faceBoxFromLandmarkPoints(landmarkPoints);
+      landmarkBox = faceBoxFromLandmarkPoints(landmarkPoints);
     }
     blendCategories = mp?.results?.[0]?.faceBlendshapes?.[0]?.categories;
   }
 
+  if (serverPreview?.box && serverPreview.detectorAvailable) {
+    rawBox = serverPreview.box;
+    bboxSource = "retinaface";
+  } else if (landmarkBox) {
+    rawBox = landmarkBox;
+    bboxSource = "landmark";
+  }
+
   if (
+    !rawBox &&
+    !landmarkPipelineActive &&
     captureCfg.detector === "retinaface" &&
     serverPreview?.box &&
     serverPreview.detectorAvailable
   ) {
     rawBox = serverPreview.box;
+    bboxSource = "retinaface";
   }
 
-  if (!rawBox) {
+  if (!rawBox && !landmarkPipelineActive) {
     rawBox = estimateFaceBoxFromSkin(data, width, height);
+    if (rawBox) bboxSource = "skin";
   }
 
-  const smoothedBox = smoothFaceBox(emptyState.smoothedBox, rawBox);
+  const smoothedBox = smoothFaceBox(
+    emptyState.smoothedBox,
+    rawBox,
+    MOBILE_PREVIEW_SMOOTH_ALPHA
+  );
   const hasFaceEstimate =
     Boolean(smoothedBox && smoothedBox.width >= 0.05 && smoothedBox.height >= 0.05);
   const framing = analyzeFaceFraming(smoothedBox, emptyState.framing);
@@ -134,10 +173,11 @@ export async function analyzePreviewImageUri(
     smoothedBox,
     framing: { quality: framing.quality, faceFill: framing.faceFill },
     expressionCalibration: emptyState.expressionCalibration,
+    faceLandmarks: landmarkPoints?.length ? landmarkPoints : null,
   };
 
   let guidance = buildCaptureGuidance(lighting, framing, currentZoom, {
-    showFaceCheck: hasFaceEstimate,
+    showFaceCheck: needsMp || hasFaceEstimate,
   });
 
   if (options) {
@@ -173,5 +213,18 @@ export async function analyzePreviewImageUri(
     }
   }
 
-  return { guidance, state: nextState };
+  return {
+    guidance,
+    state: nextState,
+    meta: {
+      bboxSource,
+      landmarkPipelineActive,
+      serverDetectorUsed: Boolean(serverPreview?.box && serverPreview.detectorAvailable),
+      expressionClassifierUsed: Boolean(
+        captureCfg.expression === "classifier" &&
+          serverPreview?.expressionAvailable &&
+          serverPreview.expression
+      ),
+    },
+  };
 }

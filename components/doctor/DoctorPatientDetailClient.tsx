@@ -81,7 +81,6 @@ import {
   DOCTOR_ICON_SM,
 } from "@/components/doctor/DoctorUiPrimitives";
 import { DoctorScanReportPanel } from "@/components/doctor/DoctorScanReportPanel";
-import { useDoctorChatE2ee } from "@/components/doctor/useDoctorChatE2ee";
 import { useDoctorPatientDetail } from "@/components/doctor/useDoctorPatientDetail";
 import type { DoctorPatientDetailSection } from "@/src/lib/doctorPatientDetailApi";
 import {
@@ -93,7 +92,10 @@ import {
 import { prepareVisitNoteAttachmentFile } from "@/src/lib/visitNotePrepareAttachment";
 import { MAX_VISIT_NOTE_ATTACHMENT_URI_LEN } from "@/src/lib/visitNoteAttachments";
 import { DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT } from "@/src/lib/doctorPatientChatInboxEvents";
-import { isE2eePayload } from "@/src/lib/chatE2ee/format";
+import {
+  isE2eePayload,
+  mapDisplayChatMessages,
+} from "@/src/lib/chatE2ee/format";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 
 const MAX_RECORD_SECONDS = 120;
@@ -1098,16 +1100,6 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     url: string;
   } | null>(null);
 
-  const {
-    e2eeFeatureEnabled,
-    e2eeReady,
-    e2eeStatus,
-    decryptMessages: decryptDoctorChat,
-    encryptOutgoingText: encryptDoctorChat,
-    ensureReadyForSend,
-    resetSecureChat,
-  } = useDoctorChatE2ee(patientId, chatPanelOpen);
-
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -1122,8 +1114,6 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const chatVoicePreviewUrlRef = useRef<string | null>(null);
   const doctorChatLoadedRef = useRef(false);
   const chatPollSuppressUntilRef = useRef(0);
-  const wasE2eeReadyRef = useRef(false);
-
   const stopMicStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -1221,8 +1211,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         setDoctorChatHint(j.error ?? "Could not load doctor chat.");
         return;
       }
-      const decrypted = await decryptDoctorChat(j.messages ?? []);
-      setDoctorChatMessages((prev) => mergeDoctorChatMessages(decrypted, prev));
+      const displayed = mapDisplayChatMessages(j.messages ?? []);
+      setDoctorChatMessages((prev) => mergeDoctorChatMessages(displayed, prev));
       doctorChatLoadedRef.current = true;
     } catch {
       if (!silent) {
@@ -1233,29 +1223,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         setDoctorChatLoading(false);
       }
     }
-  }, [patientId, decryptDoctorChat]);
+  }, [patientId]);
 
   useEffect(() => {
     if (!chatPanelOpen) return;
     void loadDoctorChat({ silent: doctorChatLoadedRef.current });
   }, [chatPanelOpen, loadDoctorChat]);
-
-  useEffect(() => {
-    if (!chatPanelOpen) return;
-    const justBecameReady = e2eeReady && !wasE2eeReadyRef.current;
-    wasE2eeReadyRef.current = e2eeReady;
-    if (!justBecameReady) return;
-    void (async () => {
-      setDoctorChatMessages((prev) => {
-        void decryptDoctorChat(prev).then((decrypted) => {
-          setDoctorChatMessages((latest) =>
-            mergeDoctorChatMessages(decrypted, latest)
-          );
-        });
-        return prev;
-      });
-    })();
-  }, [e2eeReady, chatPanelOpen, decryptDoctorChat]);
 
   useEffect(() => {
     const tab = TABS.find((t) => t.key === activeTab);
@@ -1574,20 +1547,15 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
   const confirmDoctorChatMessage = useCallback(
     async (tempId: string, serverMsg: DoctorThreadMessage) => {
-      const decrypted = await decryptDoctorChat([serverMsg]);
-      const msg = decrypted[0] ?? serverMsg;
+      const [msg] = mapDisplayChatMessages([serverMsg]);
       setDoctorChatMessages((prev) => {
         const optimistic = prev.find((m) => m.id === tempId);
         const pendingPlainText = optimistic?.pendingPlainText;
-        const displayText =
-          pendingPlainText &&
-          (isE2eePayload(msg.text) || msg.text === "🔒 Unable to decrypt")
-            ? pendingPlainText
-            : msg.text;
+        const displayText = pendingPlainText ?? msg.text;
         const merged: DoctorThreadMessage = {
           ...msg,
           text: displayText,
-          pendingPlainText: pendingPlainText ?? undefined,
+          pendingPlainText: undefined,
           deliveryStatus: "sent",
         };
         const withoutTemp = prev.filter((m) => m.id !== tempId);
@@ -1603,7 +1571,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       chatPollSuppressUntilRef.current = Date.now() + 4000;
       requestAnimationFrame(() => scrollDoctorChatToBottom());
     },
-    [scrollDoctorChatToBottom, decryptDoctorChat]
+    [scrollDoctorChatToBottom]
   );
 
   const failDoctorChatMessage = useCallback((tempId: string) => {
@@ -1624,25 +1592,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     setDoctorChatBusy(true);
     setDoctorChatHint(null);
     try {
-      let text = plainText;
-      if (plainText) {
-        const session = await ensureReadyForSend();
-        if (!session?.ready) {
-          setDoctorChatHint(
-            session?.status ??
-              "Secure chat is not ready. Wait a moment and try again, or refresh the page."
-          );
-          failDoctorChatMessage(tempId);
-          return;
-        }
-        text = await encryptDoctorChat(plainText);
-      }
       const res = await fetch(`/api/doctor/patients/${patientId}/chat`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text,
+          text: plainText,
           attachmentUrl,
         }),
       });
@@ -1667,8 +1622,6 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     doctorChatText,
     doctorChatAttachment,
     patientId,
-    ensureReadyForSend,
-    encryptDoctorChat,
     appendOptimisticDoctorChat,
     confirmDoctorChatMessage,
     failDoctorChatMessage,
@@ -1697,25 +1650,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         clearChatVoicePreview();
         setDoctorChatText("");
         tempId = appendOptimisticDoctorChat(plainCaption, dataUri);
-        let caption = plainCaption;
-        if (plainCaption) {
-          const session = await ensureReadyForSend();
-          if (!session?.ready) {
-            setDoctorChatHint(
-              session?.status ??
-                "Secure chat is not ready. Wait a moment and try again."
-            );
-            if (tempId) failDoctorChatMessage(tempId);
-            return;
-          }
-          caption = await encryptDoctorChat(plainCaption);
-        }
         const res = await fetch(`/api/doctor/patients/${patientId}/chat`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: caption,
+            text: plainCaption,
             attachmentUrl: dataUri,
           }),
         });
@@ -1740,8 +1680,6 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     [
       patientId,
       doctorChatText,
-      ensureReadyForSend,
-      encryptDoctorChat,
       confirmDoctorChatMessage,
       failDoctorChatMessage,
       clearChatVoicePreview,
@@ -4343,26 +4281,9 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3">
             <div>
               <h2 className="text-base font-semibold text-slate-900">Chat</h2>
-              <p className="text-xs text-slate-500">
-                {p.name}
-                {e2eeFeatureEnabled && e2eeReady ? (
-                  <span className="ml-1.5 font-semibold text-emerald-700">· E2EE</span>
-                ) : e2eeFeatureEnabled && e2eeStatus ? (
-                  <span className="ml-1.5 text-amber-700">· {e2eeStatus}</span>
-                ) : null}
-              </p>
+              <p className="text-xs text-slate-500">{p.name}</p>
             </div>
             <div className="flex items-center gap-2">
-              {e2eeFeatureEnabled && !e2eeReady ? (
-                <button
-                  type="button"
-                  onClick={() => void resetSecureChat()}
-                  className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
-                  title="Clear stale encryption keys and set up again"
-                >
-                  Reset secure chat
-                </button>
-              ) : null}
               {doctorChatStaffClearAt ? (
                 <button
                   type="button"
@@ -4596,16 +4517,9 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 disabled={
                   doctorChatBusy ||
                   chatIsRecording ||
-                  (e2eeFeatureEnabled && !e2eeReady) ||
                   (!doctorChatText.trim() && !doctorChatAttachment)
                 }
-                title={
-                  e2eeFeatureEnabled
-                    ? e2eeReady
-                      ? "Send encrypted message"
-                      : "Waiting for secure chat setup…"
-                    : "Send message"
-                }
+                title="Send message"
                 onClick={() => void sendDoctorChatMessage()}
                 className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B] p-2.5 text-white hover:bg-[#243356] disabled:opacity-50"
                 aria-label="Send message"

@@ -38,7 +38,7 @@ export function facePortraitBoxFromLandmarks(
   const bottomPts = pickPoints(points, PORTRAIT_BOTTOM);
   const leftPts = pickPoints(points, PORTRAIT_LEFT);
   const rightPts = pickPoints(points, PORTRAIT_RIGHT);
-  if (topPts.length < 2 || bottomPts.length < 2) return null;
+  if (topPts.length < 1 || bottomPts.length < 1) return null;
 
   let minY = Math.min(...topPts.map((p) => p.y));
   let maxY = Math.max(...bottomPts.map((p) => p.y));
@@ -60,7 +60,7 @@ export function facePortraitBoxFromLandmarks(
 
   const width = maxX - minX;
   const height = maxY - minY;
-  if (width < 0.05 || height < 0.08) return null;
+  if (width < 0.04 || height < 0.06) return null;
 
   return { x: minX, y: minY, width, height };
 }

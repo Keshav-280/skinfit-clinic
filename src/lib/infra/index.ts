@@ -17,6 +17,7 @@ export {
   getJobStatus,
   setJobStatus,
   QUEUE_NAMES,
+  SCAN_ANALYSIS_QUEUE_JOB_OPTS,
 } from "../../../services/shared/src/queue/index";
 export {
   publishNotification,

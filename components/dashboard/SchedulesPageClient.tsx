@@ -72,8 +72,6 @@ export type PendingScheduleRequestRow = {
   cancelledReason?: string | null;
 };
 
-type ScheduleTab = "treatment" | "appointments";
-
 function isAppointmentCalendarEvent(event: ScheduleEventRow): boolean {
   return (
     event.id.startsWith("appt:") ||
@@ -331,14 +329,12 @@ export default function SchedulesPageClient({
   pendingScheduleRequests,
   closedScheduleRequests,
   initialScheduleUnreadCount = 0,
-  initialScheduleTab = "appointments",
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
   initialAppointmentEvents: ScheduleEventRow[];
   pendingScheduleRequests: PendingScheduleRequestRow[];
   closedScheduleRequests: PendingScheduleRequestRow[];
   initialScheduleUnreadCount?: number;
-  initialScheduleTab?: ScheduleTab;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"month" | "week">("month");
@@ -448,39 +444,19 @@ export default function SchedulesPageClient({
     [treatmentEvents, appointmentCalendarEvents]
   );
 
-  const appointmentListEvents = useMemo(
+  const mergedListEvents = useMemo(
     () =>
       !currentDate
         ? []
         : view === "month"
-          ? eventsInMonth(appointmentCalendarEvents, currentDate)
-          : eventsInWeek(appointmentCalendarEvents, currentDate),
-    [view, appointmentCalendarEvents, currentDate]
-  );
-
-  const treatmentListEvents = useMemo(
-    () =>
-      !currentDate
-        ? []
-        : view === "month"
-          ? eventsInMonth(treatmentEvents, currentDate)
-          : eventsInWeek(treatmentEvents, currentDate),
-    [view, treatmentEvents, currentDate]
+          ? eventsInMonth(mergedCalendarEvents, currentDate)
+          : eventsInWeek(mergedCalendarEvents, currentDate),
+    [view, mergedCalendarEvents, currentDate]
   );
 
   useEffect(() => {
     setCurrentDate(new Date());
   }, []);
-
-  useEffect(() => {
-    if (initialScheduleTab !== "appointments") return;
-    const el = document.getElementById("schedules-calendar-root");
-    if (!el) return;
-    const id = requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [initialScheduleTab]);
 
   const calendarCells: (Date | null)[] = !currentDate
     ? Array.from({ length: view === "month" ? 42 : 7 }, () => null)
@@ -702,14 +678,11 @@ export default function SchedulesPageClient({
     setRequestModalOpen(true);
   }
 
-  function renderScheduleEventCard(
-    event: ScheduleEventRow,
-    column: "appointments" | "treatment"
-  ) {
+  function renderScheduleEventCard(event: ScheduleEventRow) {
     const pending = event.id.startsWith("req:");
     const cancelled = event.cancelled === true;
     const done = event.completed;
-    const isApptColumn = column === "appointments";
+    const isAppt = isAppointmentCalendarEvent(event);
 
     return (
       <div
@@ -734,7 +707,7 @@ export default function SchedulesPageClient({
               event.eventSlotEndTimeHm
             )}
           </span>
-          {!isApptColumn &&
+          {!isAppt &&
           (event.eventKind === "pre_treatment" ||
             event.eventKind === "post_treatment") ? (
             <span className="rounded-full bg-[#e8eef6] px-2 py-0.5 text-[10px] font-bold text-[#2B3A67]">
@@ -750,17 +723,17 @@ export default function SchedulesPageClient({
           >
             {event.title}
           </p>
-          {isApptColumn && pending ? (
+          {isAppt && pending ? (
             <span className="rounded-full bg-[#fef3c7] px-2.5 py-1 text-[10px] font-bold uppercase text-[#92400e]">
               Pending
             </span>
           ) : null}
-          {isApptColumn && cancelled ? (
+          {isAppt && cancelled ? (
             <span className="rounded-full bg-[#e4e4e7] px-2.5 py-1 text-[10px] font-bold uppercase text-[#52525b]">
               Cancelled
             </span>
           ) : null}
-          {isApptColumn && !pending && !cancelled && !done ? (
+          {isAppt && !pending && !cancelled && !done ? (
             <span className="rounded-full bg-[#e8eef6] px-2.5 py-1 text-[10px] font-bold uppercase text-[#2B3A67]">
               Confirmed
             </span>
@@ -771,17 +744,17 @@ export default function SchedulesPageClient({
             </span>
           ) : null}
         </div>
-        {isApptColumn && !pending && event.crmPatientMessage?.trim() ? (
+        {isAppt && !pending && event.crmPatientMessage?.trim() ? (
           <p className="mt-2 text-[13px] leading-[1.35] text-[#64748b]">
             Clinic note: {event.crmPatientMessage.trim()}
           </p>
         ) : null}
-        {isApptColumn && cancelled && event.cancellationReason?.trim() ? (
+        {isAppt && cancelled && event.cancellationReason?.trim() ? (
           <p className="mt-2 text-[13px] leading-[1.35] text-[#b91c1c]">
             Reason: {event.cancellationReason.trim()}
           </p>
         ) : null}
-        {isApptColumn && pending && (event.attachmentsCount ?? 0) > 0 ? (
+        {isAppt && pending && (event.attachmentsCount ?? 0) > 0 ? (
           <p className="mt-2 text-[13px] text-[#64748b]">
             {event.attachmentsCount} photo{event.attachmentsCount !== 1 ? "s" : ""}{" "}
             attached ·{" "}
@@ -794,7 +767,7 @@ export default function SchedulesPageClient({
             </button>
           </p>
         ) : null}
-        {isApptColumn &&
+        {isAppt &&
         !pending &&
         !cancelled &&
         !event.completed &&
@@ -1124,47 +1097,23 @@ export default function SchedulesPageClient({
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
-        <section className="flex flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm">
-          <div className="border-b border-[#e4e4e7] bg-[rgba(232,238,246,0.45)] px-4 py-3">
-            <h4 className="text-base font-extrabold text-[#18181b]">Appointments</h4>
-            <p className="mt-0.5 text-xs text-[#64748b]">
-              {view === "month" ? "This month" : "This week"} — visits & requests
+      <section className="mx-auto flex max-w-3xl flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm">
+        <div className="border-b border-[#e4e4e7] bg-[rgba(232,238,246,0.45)] px-4 py-3">
+          <h4 className="text-base font-extrabold text-[#18181b]">This {view === "month" ? "month" : "week"}</h4>
+          <p className="mt-0.5 text-xs text-[#64748b]">
+            Visits, requests, and care reminders
+          </p>
+        </div>
+        <div className="flex-1 space-y-2 p-3">
+          {mergedListEvents.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[#71717a]">
+              Nothing scheduled in this {view === "month" ? "month" : "week"}.
             </p>
-          </div>
-          <div className="flex-1 space-y-2 p-3">
-            {appointmentListEvents.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[#71717a]">
-                No visits or requests in this {view === "month" ? "month" : "week"}.
-              </p>
-            ) : (
-              appointmentListEvents.map((event) =>
-                renderScheduleEventCard(event, "appointments")
-              )
-            )}
-          </div>
-        </section>
-
-        <section className="flex flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm">
-          <div className="border-b border-[#e4e4e7] bg-[rgba(253,249,240,0.65)] px-4 py-3">
-            <h4 className="text-base font-extrabold text-[#18181b]">Treatment &amp; care</h4>
-            <p className="mt-0.5 text-xs text-[#64748b]">
-              {view === "month" ? "This month" : "This week"} — doctor guidelines
-            </p>
-          </div>
-          <div className="flex-1 space-y-2 p-3">
-            {treatmentListEvents.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[#71717a]">
-                No care reminders in this {view === "month" ? "month" : "week"}.
-              </p>
-            ) : (
-              treatmentListEvents.map((event) =>
-                renderScheduleEventCard(event, "treatment")
-              )
-            )}
-          </div>
-        </section>
-      </div>
+          ) : (
+            mergedListEvents.map((event) => renderScheduleEventCard(event))
+          )}
+        </div>
+      </section>
 
       <div className="space-y-3.5">
           {featuredUpcoming ? (

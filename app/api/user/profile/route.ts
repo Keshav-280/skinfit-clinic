@@ -314,20 +314,33 @@ export async function PATCH(req: Request) {
         { status: 400 }
       );
     }
-    if (!currentPassword) {
-      return NextResponse.json(
-        { message: "Enter your current password to set a new one." },
-        { status: 400 }
-      );
+    if (!user.passwordHash) {
+      if (currentPassword) {
+        return NextResponse.json(
+          {
+            message:
+              "You signed in with Google. Leave current password empty to set a password.",
+          },
+          { status: 400 }
+        );
+      }
+      nextHash = await bcrypt.hash(newPassword, 10);
+    } else {
+      if (!currentPassword) {
+        return NextResponse.json(
+          { message: "Enter your current password to set a new one." },
+          { status: 400 }
+        );
+      }
+      const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!ok) {
+        return NextResponse.json(
+          { message: "Current password is incorrect." },
+          { status: 401 }
+        );
+      }
+      nextHash = await bcrypt.hash(newPassword, 10);
     }
-    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!ok) {
-      return NextResponse.json(
-        { message: "Current password is incorrect." },
-        { status: 401 }
-      );
-    }
-    nextHash = await bcrypt.hash(newPassword, 10);
   }
 
   const secret = getSessionSecret();

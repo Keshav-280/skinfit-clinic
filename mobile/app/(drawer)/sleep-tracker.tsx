@@ -14,7 +14,9 @@ import Svg, { Circle, Line, G, Text as SvgText, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NotificationBell } from "@/components/NotificationBell";
+import { TrackerSaveStatusText } from "@/components/TrackerSaveStatus";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { apiJson } from "@/lib/api";
 
 const NAVY = "#2C3E6B";
@@ -118,9 +120,10 @@ export default function SleepTrackerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const { saveStatus, scheduleSave, markReady, markNotReady } =
+    useDebouncedTrackerAutoSave(token);
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [hours, setHours] = useState(7.5);
   const [quality, setQuality] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -133,6 +136,7 @@ export default function SleepTrackerScreen() {
 
   const loadData = useCallback(async () => {
     if (!token) return;
+    markNotReady();
     setLoading(true);
     try {
       const ymd = format(selectedDate, "yyyy-MM-dd");
@@ -140,28 +144,22 @@ export default function SleepTrackerScreen() {
       setHours(json.entry?.sleepHours ?? 7.5);
     } catch { setHours(7.5); }
     finally { setLoading(false); }
-  }, [token, selectedDate]);
+  }, [token, selectedDate, markNotReady]);
 
   useEffect(() => { void loadData(); }, [loadData]);
 
+  useEffect(() => {
+    if (loading) markNotReady();
+    else markReady();
+  }, [loading, markReady, markNotReady]);
+
+  function handleSetHours(h: number) {
+    setHours(h);
+    scheduleSave(format(selectedDate, "yyyy-MM-dd"), { sleepHours: h });
+  }
+
   function goBack() { if (canGoBack) setSelectedDate((d) => subDays(d, 1)); }
   function goForward() { if (canGoForward) setSelectedDate((d) => addDays(d, 1)); }
-
-  async function save() {
-    if (!token) return;
-    setSaving(true);
-    try {
-      await apiJson("/api/journal", token, {
-        method: "POST",
-        body: JSON.stringify({
-          date: format(selectedDate, "yyyy-MM-dd"),
-          sleepHours: hours,
-        }),
-      });
-      router.back();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
-  }
 
   if (loading) {
     return <View style={[s.center, { paddingTop: insets.top }]}><ActivityIndicator size="large" color={NAVY} /></View>;
@@ -174,7 +172,10 @@ export default function SleepTrackerScreen() {
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={s.headerTitle}>Sleep</Text>
-        <NotificationBell />
+        <View style={s.headerRight}>
+          <TrackerSaveStatusText status={saveStatus} />
+          <NotificationBell />
+        </View>
       </View>
 
       <Text style={s.subtitle}>Log your sleep to help us personalize your care</Text>
@@ -202,7 +203,7 @@ export default function SleepTrackerScreen() {
               <Pressable
                 key={h}
                 style={[s.hourChip, hours === h && s.hourChipOn]}
-                onPress={() => setHours(h)}
+                onPress={() => handleSetHours(h)}
               >
                 <Text style={[s.hourChipText, hours === h && s.hourChipTextOn]}>{h}</Text>
               </Pressable>
@@ -228,10 +229,6 @@ export default function SleepTrackerScreen() {
             ))}
           </View>
         </View>
-
-        <Pressable style={s.saveBtn} onPress={save} disabled={saving}>
-          <Text style={s.saveBtnText}>{saving ? "Saving…" : "Save Sleep Data"}</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );
@@ -249,6 +246,7 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   subtitle: { fontSize: 13, color: "#6B7280", textAlign: "center", marginTop: 4, marginBottom: 8 },
 
   scrollContent: { padding: 16, paddingBottom: 48 },
@@ -293,10 +291,4 @@ const s = StyleSheet.create({
   qualityItem: { alignItems: "center", gap: 6, padding: 12, borderRadius: 14 },
   qualityItemOn: { backgroundColor: `${NAVY}10` },
   qualityLabel: { fontSize: 13, color: "#9CA3AF", fontWeight: "500" },
-
-  saveBtn: {
-    backgroundColor: NAVY, borderRadius: 16, paddingVertical: 16,
-    alignItems: "center", marginTop: 8,
-  },
-  saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

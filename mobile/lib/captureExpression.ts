@@ -37,6 +37,6 @@ export function applyCaptureExpression(
     ...next,
     showExpressionCheck:
       expressionPipelineActive &&
-      (stepId === "eyes_closed" || stepId === "smiling"),
+      stepId === "eyes_closed",
   };
 }

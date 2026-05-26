@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   AppState,
   Pressable,
   StyleSheet,
@@ -27,6 +28,7 @@ export function ScanJobReadyNotifier() {
   const { token } = useAuth();
   const router = useRouter();
   const [item, setItem] = useState<ReadyItem | null>(null);
+  const failedAlertShown = useRef(new Set<string>());
 
   const poll = useCallback(async () => {
     if (!token) return;
@@ -61,6 +63,15 @@ export function ScanJobReadyNotifier() {
         }
         if (status === "failed") {
           await removePendingScanJob(job.jobId);
+          if (!failedAlertShown.current.has(job.jobId)) {
+            failedAlertShown.current.add(job.jobId);
+            const title = job.scanName?.trim() || "Your scan";
+            Alert.alert(
+              "Scan could not finish",
+              `${title} — we retried several times. Please run a new scan when analysis is ready.`,
+              [{ text: "OK" }]
+            );
+          }
         }
       } catch {
         /* retry */

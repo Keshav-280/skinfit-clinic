@@ -1,6 +1,6 @@
-import type { FaceScanCaptureId } from "@/src/lib/faceScanCaptures";
-import type { ExpressionClassifierScores } from "@/src/lib/faceCaptureTypes";
-import type { CaptureGuidanceSnapshot } from "@/src/lib/scanCaptureGuidance";
+import type { FaceScanCaptureId } from "./faceScanCaptures";
+import type { ExpressionClassifierScores } from "./faceCaptureTypes";
+import type { CaptureGuidanceSnapshot } from "./scanCaptureGuidance";
 
 export type FaceBlendshapeCategory = {
   categoryName?: string;
@@ -13,7 +13,7 @@ export type ExpressionCalibration = {
 };
 
 export function needsExpressionCheck(stepId: FaceScanCaptureId): boolean {
-  return stepId === "eyes_closed" || stepId === "smiling";
+  return stepId === "eyes_closed";
 }
 
 function blendScore(
@@ -151,36 +151,13 @@ export function applyCaptureExpression(
     return next;
   }
 
-  if (stepId === "smiling") {
-    const smile = Math.max(
-      blendScore(categories, "mouthSmileLeft"),
-      blendScore(categories, "mouthSmileRight"),
-      blendScore(categories, "smile"),
-      blendScore(categories, "mouthSmile")
-    );
-    const wasOk = expressionOkRef.current === true;
-
-    if (smile >= 0.06) {
-      const ok = wasOk ? smile >= 0.16 : smile >= 0.22;
-      expressionOkRef.current = ok;
-      next.expressionOk = ok;
-      next.expressionMessage = ok ? "Smile — looks good" : "Smile naturally";
-      if (ok) next.readyToCapture = next.readyToCapture && ok;
-    } else if (expressionPipelineActive) {
-      next.expressionOk = null;
-      next.expressionMessage = "Hold still — checking smile…";
-    }
-  }
-
   return next;
 }
 
 const CLASSIFIER_BLINK_CLOSED = 0.55;
 const CLASSIFIER_BLINK_CLOSED_STRICT = 0.68;
-const CLASSIFIER_SMILE_OK = 0.52;
-const CLASSIFIER_SMILE_OK_STRICT = 0.62;
 
-/** Blink/smile ONNX classifier (more stable than blendshape thresholds). */
+/** Blink ONNX classifier (more stable than blendshape thresholds). */
 export function applyCaptureExpressionFromClassifier(
   guidance: CaptureGuidanceSnapshot,
   stepId: FaceScanCaptureId,
@@ -197,10 +174,7 @@ export function applyCaptureExpressionFromClassifier(
   if (!scores) {
     if (pipelineActive) {
       next.expressionOk = null;
-      next.expressionMessage =
-        stepId === "eyes_closed"
-          ? "Hold still — checking eyes…"
-          : "Hold still — checking smile…";
+      next.expressionMessage = "Hold still — checking eyes…";
     }
     return next;
   }
@@ -217,17 +191,6 @@ export function applyCaptureExpressionFromClassifier(
       : "Gently close both eyes";
     if (closed) next.readyToCapture = next.readyToCapture && closed;
     return next;
-  }
-
-  if (stepId === "smiling") {
-    const wasOk = expressionOkRef.current === true;
-    const ok = wasOk
-      ? scores.smile >= CLASSIFIER_SMILE_OK
-      : scores.smile >= CLASSIFIER_SMILE_OK_STRICT;
-    expressionOkRef.current = ok;
-    next.expressionOk = ok;
-    next.expressionMessage = ok ? "Smile — looks good" : "Smile naturally";
-    if (ok) next.readyToCapture = next.readyToCapture && ok;
   }
 
   return next;

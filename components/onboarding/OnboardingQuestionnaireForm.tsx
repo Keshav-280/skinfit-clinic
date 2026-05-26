@@ -461,13 +461,13 @@ export function OnboardingQuestionnaireForm() {
   const chip = (active: boolean) =>
     `w-full rounded-2xl border px-4 py-3.5 text-left text-[15px] font-semibold transition-colors ${
       active
-        ? "border-teal-500 bg-teal-100 text-teal-800"
+        ? "border-skinfit-navy bg-skinfit-mint text-skinfit-navy"
         : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300"
     }`;
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-bold text-teal-600">
+      <p className="text-xs font-bold text-skinfit-navy">
         Step {displayStep} / {totalSteps}
       </p>
       {err ? (
@@ -487,7 +487,7 @@ export function OnboardingQuestionnaireForm() {
             type="text"
             inputMode="numeric"
             autoComplete="bday-year"
-            className="mb-4 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-[15px] text-zinc-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+            className="mb-4 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-[15px] text-zinc-900 outline-none focus:border-skinfit-navy focus:ring-2 focus:ring-skinfit-navy/20"
             placeholder="e.g. 32"
             value={ageInput}
             onChange={(e) => setAgeInput(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
@@ -644,7 +644,7 @@ export function OnboardingQuestionnaireForm() {
             What have you tried so far? For how long?
           </h2>
           <textarea
-            className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white p-3 text-[15px] text-zinc-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+            className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white p-3 text-[15px] text-zinc-900 outline-none focus:border-skinfit-navy focus:ring-2 focus:ring-skinfit-navy/20"
             placeholder="Describe treatments or products (min 10 characters)"
             value={txText}
             onChange={(e) => setTxText(e.target.value)}
@@ -838,7 +838,7 @@ export function OnboardingQuestionnaireForm() {
           type="button"
           onClick={back}
           disabled={busy}
-          className="flex-1 rounded-2xl border-2 border-teal-600 py-3.5 text-center text-[15px] font-bold text-teal-700 transition-colors hover:bg-teal-50 disabled:opacity-50"
+          className="flex-1 rounded-2xl border-2 border-skinfit-navy py-3.5 text-center text-[15px] font-bold text-skinfit-navy transition-colors hover:bg-white/60 disabled:opacity-50"
         >
           Back
         </button>
@@ -846,7 +846,7 @@ export function OnboardingQuestionnaireForm() {
           type="button"
           onClick={next}
           disabled={!canNext || busy}
-          className="flex-1 rounded-2xl bg-teal-600 py-3.5 text-center text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-45"
+          className="flex-1 rounded-2xl bg-skinfit-navy py-3.5 text-center text-[15px] font-bold text-white shadow-md shadow-skinfit-navy/25 transition-colors hover:bg-skinfit-navy-mid disabled:cursor-not-allowed disabled:opacity-45"
         >
           {busy ? "Saving…" : step === 10 ? "Save & continue" : "Continue"}
         </button>

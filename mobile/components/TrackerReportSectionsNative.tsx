@@ -1,15 +1,22 @@
 import { Linking, Platform, StyleSheet, Text, View } from "react-native";
 
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
+import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 
 function signed(n: number) {
   return `${n > 0 ? "+" : ""}${n}`;
 }
 
 function deltaColor(n: number) {
-  if (n > 0) return "#047857";
-  if (n < 0) return "#be123c";
-  return "#52525b";
+  if (n > 0) return R.deltaUp;
+  if (n < 0) return R.deltaDown;
+  return "#71717a";
+}
+
+function causeDotColor(impact: "high" | "medium" | "low") {
+  if (impact === "high") return R.causeHigh;
+  if (impact === "medium") return R.causeMed;
+  return R.causeLow;
 }
 
 function valueForBar(n: number | null) {
@@ -121,14 +128,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
                 <View
                   style={[
                     styles.causeDot,
-                    {
-                      backgroundColor:
-                        cause.impact === "high"
-                          ? "#d97706"
-                          : cause.impact === "medium"
-                            ? "#0d9488"
-                            : "#0284c7",
-                    },
+                    { backgroundColor: causeDotColor(cause.impact) },
                   ]}
                 />
                 <Text style={styles.causeText}>{cause.text}</Text>
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   paramBarFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: NAVY,
+    backgroundColor: "#3d5080",
   },
   paramNum: {
     width: 28,

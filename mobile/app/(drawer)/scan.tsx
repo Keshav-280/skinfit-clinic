@@ -1,8 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, type Href } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -17,7 +18,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, Ellipse, Mask, Rect } from "react-native-svg";
 
 import { CameraView, useCameraPermissions } from "expo-camera";
 
@@ -55,6 +55,13 @@ export default function ScanScreen() {
   useEffect(() => {
     if (!camPermission?.granted) void requestCamPermission();
   }, []);
+
+  /** Drawer remounts can leave `capture` with a dismissed modal — show intro again. */
+  useFocusEffect(
+    useCallback(() => {
+      setPhase((p) => (p === "capture" ? "intro" : p));
+    }, [])
+  );
 
   useEffect(() => {
     if (busy) {
@@ -180,9 +187,10 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Oval dimensions for intro ──
-  const ovalRx = SCREEN_W * 0.30;
-  const ovalRy = ovalRx * 1.35;
+  // ── Rectangular frame dimensions for intro ──
+  const frameW = SCREEN_W * 0.62;
+  const frameH = frameW * 1.35;
+  const frameRadius = 26;
 
   // ── Camera modal (full-screen, over dock) ──
   const showCamera = phase === "capture" && uris.length < N;
@@ -190,6 +198,7 @@ export default function ScanScreen() {
   // ── Queued — analysis in background ──
   if (phase === "queued") {
     return (
+      <View style={styles.screenRoot}>
       <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <Pressable onPress={() => router.push("/(drawer)")} style={styles.headerBtn} hitSlop={14}>
@@ -218,6 +227,7 @@ export default function ScanScreen() {
           </Pressable>
         </View>
       </LinearGradient>
+      </View>
     );
   }
 
@@ -225,6 +235,7 @@ export default function ScanScreen() {
   if (phase === "review" || uris.length >= N) {
     const gridH = SCREEN_H * 0.58;
     return (
+      <View style={styles.screenRoot}>
       <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
         {/* Header: back + help icons in white circles, no title */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -346,11 +357,13 @@ export default function ScanScreen() {
           )}
         </View>
       </LinearGradient>
+      </View>
     );
   }
 
   // ── Intro phase ──
   return (
+    <View style={styles.screenRoot}>
     <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
       {/* Camera modal rendered here so it overlays everything */}
       <Modal
@@ -360,6 +373,7 @@ export default function ScanScreen() {
         statusBarTranslucent
       >
         <FiveAngleCameraStep
+          variant="dashboard"
           stepIndex={stepIndex}
           onCaptured={handleCaptured}
           onPickFromLibrary={() => void pickFromLibrary()}
@@ -368,57 +382,30 @@ export default function ScanScreen() {
         />
       </Modal>
 
-      <Header title="Take a Selfie" onBack={() => router.back()} dark />
+      <Header title="Take a Selfie" onBack={() => router.navigate("/(drawer)" as Href)} dark />
 
       <ScrollView
         contentContainerStyle={styles.introScroll}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* Oval live camera preview */}
-        <View style={[styles.ovalWrap, { width: ovalRx * 2, height: ovalRy * 2 }]}>
+        {/* Rectangular live camera preview */}
+        <View style={[styles.frameWrap, { width: frameW, height: frameH }]}>
           {/* Live camera feed behind the SVG mask */}
           {camPermission?.granted && phase === "intro" && (
             <CameraView style={StyleSheet.absoluteFill} facing="front" />
           )}
-          {/* SVG mask: paint corners with bg color, keep oval transparent */}
-          <Svg
-            width={ovalRx * 2}
-            height={ovalRy * 2}
-            style={StyleSheet.absoluteFill}
-          >
-            <Defs>
-              <Mask id="introOvalMask">
-                <Rect width={ovalRx * 2} height={ovalRy * 2} fill="white" />
-                <Ellipse
-                  cx={ovalRx}
-                  cy={ovalRy}
-                  rx={ovalRx}
-                  ry={ovalRy}
-                  fill="black"
-                />
-              </Mask>
-            </Defs>
-            <Rect
-              width={ovalRx * 2}
-              height={ovalRy * 2}
-              fill="#E4ECDE"
-              mask="url(#introOvalMask)"
+          {!camPermission?.granted && (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: "#0D0D0D", borderRadius: frameRadius },
+              ]}
             />
-            {/* Black fallback when camera not yet available */}
-            {!camPermission?.granted && (
-              <Ellipse
-                cx={ovalRx}
-                cy={ovalRy}
-                rx={ovalRx}
-                ry={ovalRy}
-                fill="#0D0D0D"
-              />
-            )}
-          </Svg>
+          )}
           {/* Camera icon hint */}
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <View style={styles.ovalIcon}>
+            <View style={styles.frameIcon}>
               <Ionicons
                 name="camera-outline"
                 size={44}
@@ -468,10 +455,12 @@ export default function ScanScreen() {
         </View>
       </ScrollView>
     </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenRoot: { flex: 1, backgroundColor: "#E8EFE6" },
   flex: { flex: 1 },
 
   /* ── Header ── */
@@ -493,12 +482,12 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 40,
   },
-  ovalWrap: {
+  frameWrap: {
     overflow: "hidden",
     alignSelf: "center",
     marginBottom: 24,
   },
-  ovalIcon: {
+  frameIcon: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",

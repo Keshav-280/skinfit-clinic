@@ -1,88 +1,92 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
+import { ScanCaptureModelStatus } from "@/components/ScanCaptureModelStatus";
+import type { CaptureAssistModels, CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
 type Props = {
   guidance: CaptureGuidanceSnapshot | null;
+  models: CaptureAssistModels;
+  needsExpressionModel?: boolean;
   autoZoomEnabled?: boolean;
+  compact?: boolean;
 };
 
-/** Only shows checks that are actually running — nothing for broken/unloaded pipelines. */
-export function ScanCaptureGuidanceBanner({ guidance, autoZoomEnabled }: Props) {
-  if (!guidance) return null;
+function statusIcon(ok: boolean | null) {
+  if (ok === true) {
+    return <Ionicons name="checkmark-circle" size={17} color="#34d399" />;
+  }
+  if (ok === false) {
+    return <Ionicons name="alert-circle" size={17} color="#fbbf24" />;
+  }
+  return <View style={styles.pendingDot} />;
+}
 
-  const rows: Array<{ key: string; ok: boolean; icon: keyof typeof Ionicons.glyphMap; text: string }> =
-    [];
-
-  if (guidance.showLightingCheck) {
-    const lightingOk =
-      guidance.lighting === "good" || guidance.lightingScore >= 55;
-    rows.push({
-      key: "lighting",
-      ok: lightingOk,
-      icon: "sunny-outline",
-      text: guidance.lightingMessage,
-    });
+export function ScanCaptureGuidanceBanner({
+  guidance,
+  models,
+  needsExpressionModel,
+  autoZoomEnabled,
+  compact,
+}: Props) {
+  if (!guidance) {
+    return (
+      <View style={styles.wrap}>
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" color="#fff" />
+          <Text style={styles.loadingText}>Checking lighting & face…</Text>
+        </View>
+        <ScanCaptureModelStatus
+          models={models}
+          compact={compact}
+          needsExpressionModel={needsExpressionModel}
+        />
+      </View>
+    );
   }
 
-  if (guidance.showFaceCheck) {
-    rows.push({
-      key: "face",
-      ok: guidance.face === "good",
-      icon: "scan-outline",
-      text: guidance.faceMessage,
-    });
-  }
-
-  if (guidance.showExpressionCheck && guidance.expressionMessage) {
-    rows.push({
-      key: "expression",
-      ok: guidance.expressionOk === true,
-      icon: "happy-outline",
-      text: guidance.expressionMessage,
-    });
-  }
-
-  if (rows.length === 0) return null;
+  const lightingOk =
+    guidance.lighting === "good" || guidance.lightingScore >= 55;
+  const faceOk = guidance.face === "good";
 
   return (
     <View style={styles.wrap}>
-      {rows.map((row) => (
-        <GuidanceRow key={row.key} ok={row.ok} icon={row.icon} text={row.text} />
-      ))}
-      {autoZoomEnabled &&
-      guidance.showFaceCheck &&
-      guidance.suggestedZoom != null ? (
-        <Text style={styles.hint}>Auto-adjusting zoom…</Text>
+      <View style={styles.row}>
+        {statusIcon(lightingOk)}
+        <Ionicons name="sunny-outline" size={15} color="rgba(255,255,255,0.85)" />
+        <Text style={[styles.msg, !lightingOk && styles.msgWarn]} numberOfLines={2}>
+          {guidance.lightingMessage}
+        </Text>
+      </View>
+      <View style={styles.row}>
+        {statusIcon(faceOk)}
+        <Ionicons name="person-outline" size={15} color="rgba(255,255,255,0.85)" />
+        <Text style={[styles.msg, !faceOk && styles.msgWarn]} numberOfLines={2}>
+          {guidance.faceMessage}
+        </Text>
+      </View>
+      {needsExpressionModel || guidance.expressionMessage ? (
+        <View style={styles.row}>
+          {statusIcon(guidance.expressionOk)}
+          <Text style={[styles.msg, guidance.expressionOk !== true && styles.msgWarn]} numberOfLines={2}>
+            {guidance.expressionMessage ??
+              (models.mediapipe === "loading"
+                ? "Loading expression model…"
+                : "Hold still — checking expression…")}
+          </Text>
+        </View>
+      ) : null}
+      {autoZoomEnabled && guidance.suggestedZoom != null ? (
+        <Text style={styles.hint}>Auto zoom…</Text>
       ) : null}
       {guidance.readyToCapture ? (
-        <Text style={styles.ready}>Ready — hold steady and capture</Text>
+        <Text style={styles.ready}>Ready to capture</Text>
       ) : null}
-    </View>
-  );
-}
-
-function GuidanceRow({
-  ok,
-  icon,
-  text,
-}: {
-  ok: boolean;
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-}) {
-  return (
-    <View style={styles.row}>
-      <Ionicons
-        name={ok ? "checkmark-circle" : "alert-circle"}
-        size={17}
-        color={ok ? "#34d399" : "#fbbf24"}
+      <ScanCaptureModelStatus
+        models={models}
+        compact={compact}
+        needsExpressionModel={needsExpressionModel}
       />
-      <Ionicons name={icon} size={15} color="rgba(255,255,255,0.8)" />
-      <Text style={[styles.rowText, !ok && styles.rowWarn]} numberOfLines={2}>
-        {text}
-      </Text>
     </View>
   );
 }
@@ -95,18 +99,36 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 6,
   },
-  row: {
+  loadingRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.85)",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 6,
   },
-  rowText: {
+  pendingDot: {
+    marginTop: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  msg: {
     flex: 1,
     fontSize: 12,
     lineHeight: 16,
     color: "#fff",
   },
-  rowWarn: {
+  msgWarn: {
     fontWeight: "600",
     color: "#fde68a",
   },

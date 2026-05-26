@@ -7,7 +7,7 @@
     "apps/ml-worker"
   ],
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "build:with-mediapipe": "npm run mediapipe:sync-wasm && next build",
     "start": "next start -H 0.0.0.0",
@@ -24,10 +24,9 @@
     "db:seed:rag-demo": "tsx src/db/seed-rag-kai-demo.ts",
     "rag:index:textbook": "tsx src/scripts/build-rag-textbook-index.ts",
     "rag:pinecone:upsert": "tsx src/scripts/rag-pinecone-upsert.ts",
-    "chat:e2ee:reset": "tsx src/scripts/reset-doctor-chat-e2ee.ts",
-    "chat:e2ee:reset-all": "tsx src/scripts/reset-all-chat-e2ee.ts",
     "verify:dual-pose": "tsx src/scripts/verify-dual-pose-pipeline.ts",
-    "mediapipe:sync-wasm": "mkdir -p public/mediapipe-wasm && cp -R node_modules/@mediapipe/tasks-vision/wasm/. public/mediapipe-wasm/"
+    "mediapipe:sync-wasm": "mkdir -p public/mediapipe-wasm && cp -R node_modules/@mediapipe/tasks-vision/wasm/. public/mediapipe-wasm/",
+    "capture:setup-models": "bash scripts/setup-capture-models.sh"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.35",

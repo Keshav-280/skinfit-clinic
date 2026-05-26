@@ -53,14 +53,14 @@ const CLINICAL_ROWS: {
 const EIGHT_CLINICAL_DONUT_STYLE: Partial<
   Record<keyof ClinicalScores, { fill: string; track: string }>
 > = {
-  active_acne: { fill: "#dc2626", track: "rgba(220,38,38,0.2)" },
-  acne_scars: { fill: "#ea580c", track: "rgba(234,88,12,0.2)" },
-  skin_quality: { fill: T.peach, track: T.peachTrack },
-  wrinkle_severity: { fill: "#7c3aed", track: "rgba(124, 58, 237, 0.2)" },
-  sagging_volume: { fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
-  under_eye: { fill: "#5B8FD8", track: "rgba(91, 143, 216, 0.18)" },
-  hair_health: { fill: "#78716c", track: "rgba(120, 113, 108, 0.2)" },
-  pigmentation_model: { fill: "#d97706", track: "rgba(217, 119, 6, 0.2)" },
+  active_acne: { fill: T.navyDark, track: "rgba(30, 50, 100, 0.2)" },
+  acne_scars: { fill: T.navy, track: T.accentTrack },
+  skin_quality: { fill: T.accent, track: T.accentTrack },
+  wrinkle_severity: { fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
+  sagging_volume: { fill: "#4A6FA5", track: "rgba(74, 111, 165, 0.2)" },
+  under_eye: { fill: T.navyLight, track: "rgba(91, 123, 168, 0.18)" },
+  hair_health: { fill: "#6B8FC4", track: "rgba(107, 143, 196, 0.2)" },
+  pigmentation_model: { fill: "#5B7BA8", track: "rgba(91, 123, 168, 0.2)" },
 };
 
 function severityToClarityPercent(s: number) {
@@ -70,11 +70,11 @@ function severityToClarityPercent(s: number) {
 
 function regionMarkerColor(issue: string): string {
   const x = issue.toLowerCase();
-  if (x.includes("acne")) return "#dc2626";
-  if (x.includes("wrinkle")) return "#7c3aed";
-  if (x.includes("pigment")) return "#d97706";
-  if (x.includes("texture")) return T.navyMid;
-  return "#6b7280";
+  if (x.includes("acne")) return T.navyDark;
+  if (x.includes("wrinkle")) return T.navyMid;
+  if (x.includes("pigment")) return T.navyLight;
+  if (x.includes("texture")) return T.accent;
+  return T.navy;
 }
 
 function clinicalBar(score: number) {

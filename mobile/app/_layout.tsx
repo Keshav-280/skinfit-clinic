@@ -1,4 +1,3 @@
-import '@/lib/polyfillCrypto';
 import 'react-native-gesture-handler';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -14,6 +13,7 @@ import { Platform } from 'react-native';
 import { PushTokenSync } from '@/components/PushTokenSync';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { configureNotificationBehavior } from '@/lib/notificationBehavior';
+import { configureGoogleSignIn } from '@/lib/oauthSignIn';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -43,6 +43,10 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    void configureGoogleSignIn();
+  }, []);
 
   if (!loaded) {
     return null;

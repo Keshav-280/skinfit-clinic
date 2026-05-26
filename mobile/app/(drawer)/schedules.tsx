@@ -39,6 +39,7 @@ import {
   formatEventTimeChip,
   formatScheduleWhen,
   getCellEvents,
+  isAppointmentCalendarEvent,
   localYmd,
   parseLocalYmd,
   type ScheduleEventRow,
@@ -107,7 +108,6 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 
 export default function SchedulesScreen() {
   const { token } = useAuth();
-  const [scheduleTab, setScheduleTab] = useState<"treatment" | "appointments">("appointments");
   const [view, setView] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
@@ -151,11 +151,11 @@ export default function SchedulesScreen() {
     ].sort(compareScheduleEvents);
   }, [appointmentEvents, pendingRequests, closedRequests]);
 
-  const activeCalendarEvents: ScheduleEventRow[] = useMemo(() => {
-    if (scheduleTab === "treatment") return treatmentEvents;
-    if (scheduleTab === "appointments") return appointmentCalendarEvents;
-    return [];
-  }, [scheduleTab, treatmentEvents, appointmentCalendarEvents]);
+  const mergedCalendarEvents = useMemo(
+    () =>
+      [...treatmentEvents, ...appointmentCalendarEvents].sort(compareScheduleEvents),
+    [treatmentEvents, appointmentCalendarEvents]
+  );
 
   const headerLabel =
     view === "month"
@@ -204,9 +204,9 @@ export default function SchedulesScreen() {
   const listEventsCal = useMemo(
     () =>
       view === "month"
-        ? eventsInMonth(activeCalendarEvents, currentDate)
-        : eventsInWeek(activeCalendarEvents, currentDate),
-    [view, activeCalendarEvents, currentDate]
+        ? eventsInMonth(mergedCalendarEvents, currentDate)
+        : eventsInWeek(mergedCalendarEvents, currentDate),
+    [view, mergedCalendarEvents, currentDate]
   );
   const featuredUpcoming = useMemo(
     () =>
@@ -329,7 +329,7 @@ export default function SchedulesScreen() {
 
     function renderCell(day: Date | null, idx: number, colIndex: number) {
       const cellYmd = day ? localYmd(day) : null;
-      const cellEvents = day ? getCellEvents(day, activeCalendarEvents) : [];
+      const cellEvents = day ? getCellEvents(day, mergedCalendarEvents) : [];
       const hasContent = cellEvents.length > 0;
       const isToday = day ? isSameDay(day, now) : false;
 
@@ -347,26 +347,24 @@ export default function SchedulesScreen() {
                 {getDate(day)}
               </Text>
             </View>
-            {(scheduleTab === "appointments" || (scheduleTab === "treatment" && view === "month")) ? (
+            {view === "month" ? (
               <View style={styles.appointmentDotsRow}>
-                {cellEvents
-                  .slice(0, 3)
-                  .map((event) => {
-                    const isPending = event.id.startsWith("req:");
-                    const isCancelled = event.cancelled === true;
-                    const isDone = event.completed;
-                    const isPre = event.eventKind === "pre_treatment";
-                    const isPost = event.eventKind === "post_treatment";
-                    const isGuideline = isPre || isPost || /guideline/i.test(event.title);
-                    let color = "#2B3A67";
-                    if (isCancelled) color = "#dc2626";
-                    else if (isDone) color = "#16a34a";
-                    else if (isPending) color = "#d97706";
-                    else if (isPre) color = "#1e3a8a";
-                    else if (isPost) color = "#7c3aed";
-                    else if (isGuideline) color = "#7c3aed";
-                    return <View key={event.id} style={[styles.eventDot, { backgroundColor: color }]} />;
-                  })}
+                {cellEvents.slice(0, 5).map((event) => {
+                  const isPending = event.id.startsWith("req:");
+                  const isCancelled = event.cancelled === true;
+                  const isDone = event.completed;
+                  const isPre = event.eventKind === "pre_treatment";
+                  const isPost = event.eventKind === "post_treatment";
+                  const isGuideline = isPre || isPost || /guideline/i.test(event.title);
+                  let color = "#2B3A67";
+                  if (isCancelled) color = "#dc2626";
+                  else if (isDone) color = "#16a34a";
+                  else if (isPending) color = "#d97706";
+                  else if (isPre) color = "#1e3a8a";
+                  else if (isPost) color = "#7c3aed";
+                  else if (isGuideline) color = "#7c3aed";
+                  return <View key={event.id} style={[styles.eventDot, { backgroundColor: color }]} />;
+                })}
               </View>
             ) : (
               cellEvents.map((event) => {
@@ -377,8 +375,9 @@ export default function SchedulesScreen() {
                   const pending = event.id.startsWith("req:");
                   const cancelled = event.cancelled === true;
                   const done = event.completed;
+                  const isAppt = isAppointmentCalendarEvent(event);
 
-                  if (scheduleTab === "treatment") {
+                  if (!isAppt) {
                     const isPre = event.eventKind === "pre_treatment";
                     const isPost = event.eventKind === "post_treatment";
                     const kindChipStyle = done
@@ -421,7 +420,7 @@ export default function SchedulesScreen() {
                           </Text>
                         ) : null}
                         <Text
-                          numberOfLines={view === "month" ? 2 : 4}
+                          numberOfLines={4}
                           style={[styles.eventChipTitle, kindTitleStyle]}
                         >
                           {event.title}
@@ -461,7 +460,7 @@ export default function SchedulesScreen() {
                         </Text>
                       ) : null}
                       <Text
-                        numberOfLines={view === "month" ? 2 : 4}
+                        numberOfLines={4}
                         style={[styles.eventChipTitle, titleStyle]}
                       >
                         {event.title}
@@ -499,8 +498,7 @@ export default function SchedulesScreen() {
           </>
         ) : null;
 
-      const appointmentsDayTap =
-        scheduleTab === "appointments" && cellYmd !== null && day !== null;
+      const dayTap = cellYmd !== null && day !== null;
       return (
         <View
           key={day ? String(day.getTime()) : `e-${idx}`}
@@ -510,7 +508,7 @@ export default function SchedulesScreen() {
             { minHeight: cellMinH, backgroundColor: day ? "#fff" : "#f8fafc" },
           ]}
         >
-          {appointmentsDayTap ? (
+          {dayTap ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Request visit for ${cellYmd}`}
@@ -534,13 +532,9 @@ export default function SchedulesScreen() {
       <View style={styles.calCard}>
         <View style={styles.calCardHead}>
           <View style={styles.calCardHeadText}>
-            <Text style={styles.calCardTitle}>
-              {scheduleTab === "treatment" ? "Treatment & care" : "Appointments"}
-            </Text>
-            <Text style={styles.calHeaderSub} numberOfLines={scheduleTab === "appointments" ? 3 : 2}>
-              {scheduleTab === "appointments"
-                ? `${headerLabel}\nTap a day to request a visit for that date.`
-                : headerLabel}
+            <Text style={styles.calCardTitle}>Your schedule</Text>
+            <Text style={styles.calHeaderSub} numberOfLines={3}>
+              {`${headerLabel}\nTap a day to request a visit. Dots show appointments and care reminders.`}
             </Text>
           </View>
         </View>
@@ -616,57 +610,30 @@ export default function SchedulesScreen() {
           ))}
         </View>
         <View style={styles.legendRow}>
-          {scheduleTab === "appointments" ? (
-            <>
-              <LegendDot color="#2B3A67" label="Upcoming" />
-              <LegendDot color="#16a34a" label="Completed" />
-              <LegendDot color="#d97706" label="Requested" />
-              <LegendDot color="#dc2626" label="Cancelled" />
-              <LegendDot color="#7c3aed" label="Guidelines" />
-            </>
-          ) : (
-            <>
-              <LegendDot color="#1e3a8a" label="Pre-treatment" />
-              <LegendDot color="#7c3aed" label="Post-treatment" />
-              <LegendDot color="#16a34a" label="Completed" />
-              <LegendDot color="#2B3A67" label="General" />
-            </>
-          )}
+          <LegendDot color="#2B3A67" label="Upcoming" />
+          <LegendDot color="#d97706" label="Requested" />
+          <LegendDot color="#dc2626" label="Cancelled" />
+          <LegendDot color="#1e3a8a" label="Pre" />
+          <LegendDot color="#7c3aed" label="Post" />
+          <LegendDot color="#16a34a" label="Done" />
         </View>
-        {scheduleTab === "treatment" ? (
-          <Pressable
-            style={styles.guidelineHint}
-            onPress={() => setScheduleTab("appointments")}
-          >
-            <Ionicons name="information-circle-outline" size={16} color="#2B3A67" />
-            <Text style={styles.guidelineHintText}>
-              Guidelines from your doctor appear here. Switch to{" "}
-              <Text style={{ fontWeight: "800" }}>Appointments</Text> to see visit bookings.
-            </Text>
-          </Pressable>
-        ) : null}
 
         <View style={styles.listSection}>
           <Text style={styles.listSectionLabel}>
-            {scheduleTab === "treatment"
-              ? view === "month"
-                ? "Care reminders — this month"
-                : "Care reminders — this week"
-              : view === "month"
-                ? "Visits & requests — this month"
-                : "Visits & requests — this week"}
+            {view === "month"
+              ? "This month — visits, requests & care"
+              : "This week — visits, requests & care"}
           </Text>
           {listEventsCal.length === 0 ? (
             <Text style={styles.mutedCenter}>
-              {scheduleTab === "treatment"
-                ? `No care reminders in this ${view === "month" ? "month" : "week"}.`
-                : `No visits or requests in this ${view === "month" ? "month" : "week"}.`}
+              {`Nothing scheduled in this ${view === "month" ? "month" : "week"}.`}
             </Text>
           ) : (
             listEventsCal.map((event) => {
                 const pending = event.id.startsWith("req:");
                 const cancelled = event.cancelled === true;
                 const done = event.completed;
+                const isAppt = isAppointmentCalendarEvent(event);
                 const whenStyle =
                   cancelled
                     ? styles.listWhenCancelled
@@ -685,7 +652,7 @@ export default function SchedulesScreen() {
                           event.eventSlotEndTimeHm
                         )}
                       </Text>
-                      {scheduleTab === "treatment" &&
+                      {!isAppt &&
                       (event.eventKind === "pre_treatment" ||
                         event.eventKind === "post_treatment") ? (
                         <Text style={styles.listKindPill}>
@@ -703,13 +670,13 @@ export default function SchedulesScreen() {
                       >
                         {event.title}
                       </Text>
-                      {scheduleTab === "appointments" && pending ? (
+                      {isAppt && pending ? (
                         <Text style={styles.pendingPill}>Pending</Text>
                       ) : null}
-                      {scheduleTab === "appointments" && cancelled ? (
+                      {isAppt && cancelled ? (
                         <Text style={styles.cancelledPill}>Cancelled</Text>
                       ) : null}
-                      {scheduleTab === "appointments" &&
+                      {isAppt &&
                       !pending &&
                       !cancelled &&
                       !done ? (
@@ -717,19 +684,19 @@ export default function SchedulesScreen() {
                       ) : null}
                       {done ? <Text style={styles.completedPill}>Completed</Text> : null}
                     </View>
-                    {scheduleTab === "appointments" && !pending && event.crmPatientMessage?.trim() ? (
+                    {isAppt && !pending && event.crmPatientMessage?.trim() ? (
                       <Text style={styles.listMeta}>
                         Clinic note: {event.crmPatientMessage.trim()}
                       </Text>
                     ) : null}
-                    {scheduleTab === "appointments" &&
+                    {isAppt &&
                     cancelled &&
                     event.cancellationReason?.trim() ? (
                       <Text style={styles.listMetaDanger}>
                         Reason: {event.cancellationReason.trim()}
                       </Text>
                     ) : null}
-                    {scheduleTab === "appointments" && pending && (event.attachmentsCount ?? 0) > 0 ? (
+                    {isAppt && pending && (event.attachmentsCount ?? 0) > 0 ? (
                       <Text style={styles.listMeta}>
                         {event.attachmentsCount} photo
                         {event.attachmentsCount !== 1 ? "s" : ""} attached
@@ -772,130 +739,100 @@ export default function SchedulesScreen() {
     >
       {error ? <Text style={styles.err}>{error}</Text> : null}
 
-      <View style={styles.tabs}>
-        <Pressable
-          style={[styles.tab, scheduleTab === "treatment" && styles.tabOn]}
-          onPress={() => setScheduleTab("treatment")}
-        >
-          <Text
-            style={scheduleTab === "treatment" ? styles.tabTextOn : styles.tabText}
-            numberOfLines={2}
-          >
-            Treatment & care
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tab, scheduleTab === "appointments" && styles.tabOn]}
-          onPress={() => setScheduleTab("appointments")}
-        >
-          <Text
-            style={scheduleTab === "appointments" ? styles.tabTextOn : styles.tabText}
-            numberOfLines={2}
-          >
-            Appointments
-          </Text>
-        </Pressable>
-      </View>
-      {scheduleTab === "appointments" ? (
-        <View style={styles.crmCard}>
-          <View style={styles.crmIcon}>
-            <Ionicons name="shield-checkmark" size={18} color="#2B3A67" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.crmTitle}>Linked with CRM</Text>
-            <Text style={styles.crmBody}>
-              Your appointments and guidelines, synced in real-time.
-            </Text>
-          </View>
+      <View style={styles.crmCard}>
+        <View style={styles.crmIcon}>
+          <Ionicons name="shield-checkmark" size={18} color="#2B3A67" />
         </View>
-      ) : null}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.crmTitle}>Linked with CRM</Text>
+          <Text style={styles.crmBody}>
+            Appointments and treatment reminders stay in sync with your clinic.
+          </Text>
+        </View>
+      </View>
 
       {renderCalendarGrid()}
-      {scheduleTab === "appointments" ? (
-        <>
-          {featuredUpcoming ? (
-            <Pressable
-              style={styles.featureCard}
-              onPress={() => router.push("/(drawer)/upcoming-appointments" as any)}
-            >
-              <View style={styles.featureTopRow}>
-                <Text style={styles.upcomingPill}>Upcoming</Text>
-                <Ionicons name="chevron-forward" size={20} color="#2B3A67" />
-              </View>
+      {featuredUpcoming ? (
+        <Pressable
+          style={styles.featureCard}
+          onPress={() => router.push("/(drawer)/upcoming-appointments" as any)}
+        >
+          <View style={styles.featureTopRow}>
+            <Text style={styles.upcomingPill}>Upcoming</Text>
+            <Ionicons name="chevron-forward" size={20} color="#2B3A67" />
+          </View>
 
-              <View style={styles.featureDoctorRow}>
-                {featuredUpcoming.doctorPhotoUrl ? (
-                  <Image
-                    source={{ uri: featuredUpcoming.doctorPhotoUrl }}
-                    style={styles.doctorAvatar}
-                  />
-                ) : (
-                  <View style={styles.doctorAvatarPlaceholder}>
-                    <Ionicons name="person" size={20} color="#fff" />
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.featureDoctorName}>
-                    Dr. {featuredUpcoming.doctorName ?? "Doctor"}
-                  </Text>
-                  <Text style={styles.featureType}>
-                    {featuredUpcoming.appointmentType ?? "Consultation"}
-                  </Text>
-                </View>
+          <View style={styles.featureDoctorRow}>
+            {featuredUpcoming.doctorPhotoUrl ? (
+              <Image
+                source={{ uri: featuredUpcoming.doctorPhotoUrl }}
+                style={styles.doctorAvatar}
+              />
+            ) : (
+              <View style={styles.doctorAvatarPlaceholder}>
+                <Ionicons name="person" size={20} color="#fff" />
               </View>
-
-              {featuredUpcoming.crmPatientMessage ? (
-                <View style={styles.featureNoteBox}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={14} color="#2B3A67" />
-                  <Text style={styles.featureNoteText} numberOfLines={2}>
-                    {featuredUpcoming.crmPatientMessage}
-                  </Text>
-                </View>
-              ) : null}
-
-              <View style={styles.featureTimeRow}>
-                <View style={styles.datePill}>
-                  <Text style={styles.datePillDay}>
-                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")}
-                  </Text>
-                  <Text style={styles.datePillDate}>
-                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd")}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.featureTime}>
-                    {formatScheduleWhen(
-                      featuredUpcoming.eventDateYmd,
-                      featuredUpcoming.eventTimeHm,
-                      featuredUpcoming.eventSlotEndTimeHm
-                    )}
-                  </Text>
-                  <Text style={styles.featureMonthYear}>
-                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "MMMM yyyy")}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          ) : null}
-          <Pressable
-            style={styles.requestCard}
-            onPress={() => {
-              const ymd = localYmd(new Date());
-              setVisitRequestYmd(ymd);
-              setVisitNotes("");
-              setReqCalMonth(new Date());
-              setVisitRequestOpen(true);
-            }}
-          >
-            <Ionicons name="calendar-outline" size={28} color="#fff" />
+            )}
             <View style={{ flex: 1 }}>
-              <Text style={styles.requestCardTitle}>Request an Appointment</Text>
-              <Text style={styles.requestCardSub}>Pick a date & share your preferred time slots.</Text>
+              <Text style={styles.featureDoctorName}>
+                Dr. {featuredUpcoming.doctorName ?? "Doctor"}
+              </Text>
+              <Text style={styles.featureType}>
+                {featuredUpcoming.appointmentType ?? "Consultation"}
+              </Text>
             </View>
-            <Ionicons name="chevron-forward" size={26} color="#fff" />
-          </Pressable>
-        </>
+          </View>
+
+          {featuredUpcoming.crmPatientMessage ? (
+            <View style={styles.featureNoteBox}>
+              <Ionicons name="chatbubble-ellipses-outline" size={14} color="#2B3A67" />
+              <Text style={styles.featureNoteText} numberOfLines={2}>
+                {featuredUpcoming.crmPatientMessage}
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={styles.featureTimeRow}>
+            <View style={styles.datePill}>
+              <Text style={styles.datePillDay}>
+                {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")}
+              </Text>
+              <Text style={styles.datePillDate}>
+                {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd")}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureTime}>
+                {formatScheduleWhen(
+                  featuredUpcoming.eventDateYmd,
+                  featuredUpcoming.eventTimeHm,
+                  featuredUpcoming.eventSlotEndTimeHm
+                )}
+              </Text>
+              <Text style={styles.featureMonthYear}>
+                {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "MMMM yyyy")}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
       ) : null}
+      <Pressable
+        style={styles.requestCard}
+        onPress={() => {
+          const ymd = localYmd(new Date());
+          setVisitRequestYmd(ymd);
+          setVisitNotes("");
+          setReqCalMonth(new Date());
+          setVisitRequestOpen(true);
+        }}
+      >
+        <Ionicons name="calendar-outline" size={28} color="#fff" />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.requestCardTitle}>Request an Appointment</Text>
+          <Text style={styles.requestCardSub}>Pick a date & share your preferred time slots.</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={26} color="#fff" />
+      </Pressable>
 
       <Modal
         visible={visitRequestOpen}
@@ -940,7 +877,7 @@ export default function SchedulesScreen() {
                     const selected = visitRequestYmd === ymd;
                     const isToday = isSameDay(day, new Date());
                     const isPast = day < new Date(new Date().setHours(0, 0, 0, 0));
-                    const hasEvent = getCellEvents(day, appointmentCalendarEvents).length > 0;
+                    const hasEvent = getCellEvents(day, mergedCalendarEvents).length > 0;
                     return (
                       <Pressable
                         key={ymd}

@@ -17,8 +17,14 @@ type ScanReadyToast = {
   title: string;
 };
 
+type ScanFailedToast = {
+  jobId: string;
+  title: string;
+};
+
 export function ScanJobReadyNotifier() {
   const [toasts, setToasts] = useState<ScanReadyToast[]>([]);
+  const [failedToasts, setFailedToasts] = useState<ScanFailedToast[]>([]);
 
   const poll = useCallback(async () => {
     const pending = getPendingScanJobs();
@@ -60,6 +66,11 @@ export function ScanJobReadyNotifier() {
         }
         if (status === "failed") {
           removePendingScanJob(job.jobId);
+          const title = job.scanName?.trim() || "Your scan";
+          setFailedToasts((prev) => {
+            if (prev.some((t) => t.jobId === job.jobId)) return prev;
+            return [...prev, { jobId: job.jobId, title }];
+          });
         }
       } catch {
         /* retry next poll */
@@ -83,7 +94,7 @@ export function ScanJobReadyNotifier() {
     };
   }, [poll]);
 
-  if (toasts.length === 0) return null;
+  if (toasts.length === 0 && failedToasts.length === 0) return null;
 
   return (
     <div
@@ -91,6 +102,29 @@ export function ScanJobReadyNotifier() {
       role="region"
       aria-label="Scan report notifications"
     >
+      {failedToasts.map((toast) => (
+        <div
+          key={`fail-${toast.jobId}`}
+          className="pointer-events-auto rounded-2xl border border-red-200/80 bg-white/95 p-4 shadow-lg backdrop-blur"
+        >
+          <p className="text-sm font-semibold text-red-800">Scan could not finish</p>
+          <p className="mt-1 text-sm text-zinc-600">{toast.title}</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            We retried several times. Please run a new scan when inference is ready.
+          </p>
+          <button
+            type="button"
+            className="mt-3 text-xs font-semibold text-zinc-500"
+            onClick={() =>
+              setFailedToasts((prev) =>
+                prev.filter((t) => t.jobId !== toast.jobId)
+              )
+            }
+          >
+            Dismiss
+          </button>
+        </div>
+      ))}
       {toasts.map((toast) => (
         <div
           key={toast.scanId}

@@ -16,7 +16,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NotificationBell } from "@/components/NotificationBell";
+import { TrackerSaveStatusText } from "@/components/TrackerSaveStatus";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { apiJson } from "@/lib/api";
 
 const NAVY = "#2C3E6B";
@@ -133,9 +135,10 @@ export default function StressTrackerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const { saveStatus, scheduleSave, markReady, markNotReady } =
+    useDebouncedTrackerAutoSave(token);
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [level, setLevel] = useState(5);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [cause, setCause] = useState<string | null>(null);
@@ -150,6 +153,7 @@ export default function StressTrackerScreen() {
 
   const loadData = useCallback(async () => {
     if (!token) return;
+    markNotReady();
     setLoading(true);
     try {
       const ymd = format(selectedDate, "yyyy-MM-dd");
@@ -157,28 +161,22 @@ export default function StressTrackerScreen() {
       setLevel(json.entry?.stressLevel ?? 5);
     } catch { setLevel(5); }
     finally { setLoading(false); }
-  }, [token, selectedDate]);
+  }, [token, selectedDate, markNotReady]);
 
   useEffect(() => { void loadData(); }, [loadData]);
 
+  useEffect(() => {
+    if (loading) markNotReady();
+    else markReady();
+  }, [loading, markReady, markNotReady]);
+
+  function handleSetLevel(nextLevel: number) {
+    setLevel(nextLevel);
+    scheduleSave(format(selectedDate, "yyyy-MM-dd"), { stressLevel: nextLevel });
+  }
+
   function goBack() { if (canGoBack) setSelectedDate((d) => subDays(d, 1)); }
   function goForward() { if (canGoForward) setSelectedDate((d) => addDays(d, 1)); }
-
-  async function save() {
-    if (!token) return;
-    setSaving(true);
-    try {
-      await apiJson("/api/journal", token, {
-        method: "POST",
-        body: JSON.stringify({
-          date: format(selectedDate, "yyyy-MM-dd"),
-          stressLevel: level,
-        }),
-      });
-      router.back();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
-  }
 
   if (loading) {
     return <View style={[st.center, { paddingTop: insets.top }]}><ActivityIndicator size="large" color={NAVY} /></View>;
@@ -194,7 +192,10 @@ export default function StressTrackerScreen() {
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={st.headerTitle}>Stress Level</Text>
-        <NotificationBell />
+        <View style={st.headerRight}>
+          <TrackerSaveStatusText status={saveStatus} />
+          <NotificationBell />
+        </View>
       </View>
 
       <Text style={st.subtitle}>Log your stress to help us personalize your care</Text>
@@ -225,7 +226,7 @@ export default function StressTrackerScreen() {
 
           <StressSlider
             value={level}
-            onChange={setLevel}
+            onChange={handleSetLevel}
             onDragStart={() => setScrollEnabled(false)}
             onDragEnd={() => setScrollEnabled(true)}
           />
@@ -237,7 +238,7 @@ export default function StressTrackerScreen() {
 
           <View style={st.levelChips}>
             {STRESS_LEVELS.map((n) => (
-              <Pressable key={n} style={[st.levelChip, level === n && st.levelChipOn]} onPress={() => setLevel(n)}>
+              <Pressable key={n} style={[st.levelChip, level === n && st.levelChipOn]} onPress={() => handleSetLevel(n)}>
                 <Text style={[st.levelChipText, level === n && st.levelChipTextOn]}>{n}</Text>
               </Pressable>
             ))}
@@ -276,10 +277,6 @@ export default function StressTrackerScreen() {
             ))}
           </View>
         </View>
-
-        <Pressable style={st.saveBtn} onPress={save} disabled={saving}>
-          <Text style={st.saveBtnText}>{saving ? "Saving…" : "Save Stress Data"}</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );
@@ -297,6 +294,7 @@ const st = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   subtitle: { fontSize: 13, color: "#6B7280", textAlign: "center", marginTop: 4, marginBottom: 8 },
 
   scrollContent: { padding: 16, paddingBottom: 48 },
@@ -366,10 +364,4 @@ const st = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   optionLabel: { fontSize: 12, color: "#6B7280", fontWeight: "500", textAlign: "center" },
-
-  saveBtn: {
-    backgroundColor: NAVY, borderRadius: 16, paddingVertical: 16,
-    alignItems: "center", marginTop: 8,
-  },
-  saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

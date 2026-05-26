@@ -26,7 +26,7 @@ import {
   buildScanReportPdfPayload,
   type PatientScanDetailForPdf,
 } from "@/lib/buildScanReportPdfPayload";
-import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
+import { ReportContainImage } from "@/components/ReportContainImage";
 import { shareScanReportPdf } from "@/lib/scanReportPdf";
 
 type ScanRow = {
@@ -246,10 +246,11 @@ export default function HistoryListScreen() {
             {scans.map((scan) => (
               <View key={scan.id} style={[styles.scanCard, CARD]}>
                 <View style={styles.scanImageWrap}>
-                  <Image
-                    source={resolveAuthenticatedScanImageSource(scan.imageUrl, token)}
-                    style={styles.scanImage}
+                  <ReportContainImage
+                    imageUrl={scan.imageUrl}
+                    authToken={token}
                     resizeMode="cover"
+                    style={styles.scanImage}
                   />
                   <View style={styles.scoreBadge}>
                     <Text style={styles.scoreBadgeText}>{scan.overallScore}</Text>

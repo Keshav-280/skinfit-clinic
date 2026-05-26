@@ -1,4 +1,4 @@
-import { embedScanImageForPdf } from "./resolveScanImage";
+import { embedScanImageForPdf } from "./fetchAuthenticatedScanImage";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
 import type { ScanReportPdfPayload } from "./scanReportPdfHtml";
 
@@ -24,38 +24,39 @@ export async function buildScanReportPdfPayload(
   detail: PatientScanDetailForPdf,
   token: string | null
 ): Promise<ScanReportPdfPayload> {
+  async function embedOptional(url: string | undefined): Promise<string | undefined> {
+    const t = url?.trim();
+    if (!t) return undefined;
+    try {
+      return await embedScanImageForPdf(t, token);
+    } catch {
+      return undefined;
+    }
+  }
+
   const photos: Array<{ label: string; dataUri: string }> = [];
   if (detail.faceCaptureGallery && detail.faceCaptureGallery.length > 0) {
     for (const g of detail.faceCaptureGallery) {
-      photos.push({
-        label: g.label,
-        dataUri: await embedScanImageForPdf(g.imageUrl, token),
-      });
+      const dataUri = await embedOptional(g.imageUrl);
+      if (dataUri) photos.push({ label: g.label, dataUri });
     }
-  } else {
-    photos.push({
-      label: "Primary scan",
-      dataUri: await embedScanImageForPdf(detail.imageUrl, token),
-    });
+  }
+  if (photos.length === 0) {
+    const dataUri = await embedOptional(detail.imageUrl);
+    if (dataUri) {
+      photos.push({ label: "Primary scan", dataUri });
+    }
   }
 
-  let annotatedDataUri: string | undefined;
-  const raw = detail.annotatedImageUrl?.trim();
-  if (raw) {
-    annotatedDataUri = await embedScanImageForPdf(raw, token);
+  if (photos.length === 0) {
+    throw new Error(
+      "Could not load scan photos for PDF. Check Wi‑Fi and that the server is running."
+    );
   }
 
-  let wrinkleMaskDataUri: string | undefined;
-  const wrRaw = detail.wrinkleMaskDataUri?.trim();
-  if (wrRaw) {
-    wrinkleMaskDataUri = await embedScanImageForPdf(wrRaw, token);
-  }
-
-  let acneMaskDataUri: string | undefined;
-  const acRaw = detail.acneMaskDataUri?.trim();
-  if (acRaw) {
-    acneMaskDataUri = await embedScanImageForPdf(acRaw, token);
-  }
+  const annotatedDataUri = await embedOptional(detail.annotatedImageUrl);
+  const wrinkleMaskDataUri = await embedOptional(detail.wrinkleMaskDataUri);
+  const acneMaskDataUri = await embedOptional(detail.acneMaskDataUri);
 
   return {
     userName: detail.userName,

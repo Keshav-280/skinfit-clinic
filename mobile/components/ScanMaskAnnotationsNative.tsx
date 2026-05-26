@@ -7,15 +7,17 @@ const TITLE_CROP_PX = 32;
 function MaskPanel({
   uri,
   caption,
+  authToken,
 }: {
   uri: string;
   caption: string;
+  authToken?: string | null;
 }) {
   return (
     <View style={styles.item}>
       <View style={styles.imageClip}>
         <View style={styles.imageShift}>
-          <ReportContainImage source={{ uri }} maxWidth={340} />
+          <ReportContainImage imageUrl={uri} authToken={authToken} maxWidth={340} />
         </View>
       </View>
       <Text style={styles.caption}>{caption}</Text>
@@ -26,11 +28,13 @@ function MaskPanel({
 export function ScanMaskAnnotationsNative({
   wrinkleMaskUri,
   acneMaskUri,
+  authToken = null,
   wrinkleLabel = "Wrinkle mask (smiling)",
   acneLabel = "Acne objectness (centre)",
 }: {
   wrinkleMaskUri?: string;
   acneMaskUri?: string;
+  authToken?: string | null;
   wrinkleLabel?: string;
   acneLabel?: string;
 }) {
@@ -40,8 +44,12 @@ export function ScanMaskAnnotationsNative({
 
   return (
     <View style={styles.wrap}>
-      {wrinkle ? <MaskPanel uri={wrinkle} caption={wrinkleLabel} /> : null}
-      {acne ? <MaskPanel uri={acne} caption={acneLabel} /> : null}
+      {wrinkle ? (
+        <MaskPanel uri={wrinkle} caption={wrinkleLabel} authToken={authToken} />
+      ) : null}
+      {acne ? (
+        <MaskPanel uri={acne} caption={acneLabel} authToken={authToken} />
+      ) : null}
     </View>
   );
 }

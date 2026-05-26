@@ -22,7 +22,7 @@ uploads/        → local object store (gitignored)
 
 Each clinician only sees patients linked in `doctor_patient_care` (created when an appointment is approved or booked from the doctor portal). Per pair:
 
-- **Chat + E2EE**: `chat_threads.doctor_id` — one secure thread per doctor–patient pair (fixes “keys exist for this thread but not for this account”).
+- **Doctor chat**: `chat_threads.doctor_id` — one thread per doctor–patient pair; messages stored as plain text in `chat_messages`.
 - **Scans, visits, voice notes, reports**: scoped by `doctor_id` + `user_id` (legacy rows with `doctor_id` null remain visible to the assigned doctor after migration).
 - **Written feedback / visited flag**: stored on `doctor_patient_care`, not globally on `users`.
 - **Patient portal**: `users.assigned_doctor_id` selects which clinician’s data the patient sees.
@@ -67,10 +67,14 @@ sequenceDiagram
 
 ```bash
 cp infra/.env.local.example .env.local
-docker compose -f docker/docker-compose.yml up -d postgres redis
+docker compose -f docker/docker-compose.yml up -d postgres redis ml-inference
 npm run db:migrate   # includes 0031_storage_urls_and_scan_jobs.sql
-npm run worker:dev   # apps/ml-worker
+npm run worker:dev   # apps/ml-worker — loads .env.local; needs ml-inference on :8765
 npm run dev
 ```
 
+Face analysis auth: set the same value for `FACE_ANALYSIS_SERVICE_SECRET` (worker/web → `X-API-Key`) and `FACE_ANALYSIS_API_KEY` (ml-inference `api_server.py`). Docker Compose services read `../.env.local` via `env_file` and override inference URL to `http://ml-inference:8765` inside the stack.
+
 Set `SCAN_ASYNC_MODE=1` and use `POST /api/scans/submit` instead of blocking `POST /api/scan`.
+
+Async scan jobs use BullMQ **5 attempts** with exponential backoff (5s base). Transient inference/network errors retry; auth/validation errors fail immediately. The DB stays `processing` until retries are exhausted (web + mobile poll `GET /api/scans/status/[jobId]` every 8s). Restart `npm run worker:dev` after changing worker retry logic.

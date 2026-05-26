@@ -19,7 +19,7 @@ export default function KaiIntroPage() {
     <div className="relative">
       {/* soft background accents */}
       <div
-        className="pointer-events-none absolute -left-20 -top-10 h-48 w-48 rounded-full bg-teal-400/15 blur-3xl"
+        className="pointer-events-none absolute -left-20 -top-10 h-48 w-48 rounded-full bg-skinfit-navy/10 blur-3xl"
         aria-hidden
       />
       <div
@@ -34,10 +34,10 @@ export default function KaiIntroPage() {
           transition={{ duration: 0.45, ease: easeOut }}
           className="text-center"
         >
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 shadow-lg shadow-teal-600/30 ring-4 ring-teal-100">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-skinfit-navy to-skinfit-navy-dark shadow-lg shadow-skinfit-navy/30 ring-4 ring-skinfit-mint">
             <Sparkles className="h-8 w-8 text-white" strokeWidth={2} />
           </div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-teal-700">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-skinfit-navy">
             Your skin companion
           </p>
           <h1 className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent md:text-4xl">
@@ -53,17 +53,17 @@ export default function KaiIntroPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.06, ease: easeOut }}
-          className="rounded-3xl border border-teal-100/80 bg-white/90 p-5 shadow-[0_20px_50px_-12px_rgba(13,148,136,0.18)] backdrop-blur-sm"
+          className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-[0_20px_50px_-12px_rgba(44,62,107,0.15)] backdrop-blur-sm"
         >
           <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-skinfit-mint text-skinfit-navy">
               <BadgeCheck className="h-5 w-5" />
             </div>
             <h2 className="text-lg font-bold text-zinc-900">What kAI does</h2>
           </div>
           <ul className="space-y-3.5">
             <li className="flex gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-skinfit-mint text-skinfit-navy">
                 <Scan className="h-4 w-4" />
               </span>
               <span className="text-sm leading-relaxed text-zinc-700">
@@ -73,7 +73,7 @@ export default function KaiIntroPage() {
               </span>
             </li>
             <li className="flex gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-skinfit-mint text-skinfit-navy">
                 <TrendingUp className="h-4 w-4" />
               </span>
               <span className="text-sm leading-relaxed text-zinc-700">
@@ -82,7 +82,7 @@ export default function KaiIntroPage() {
               </span>
             </li>
             <li className="flex gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-skinfit-mint text-skinfit-navy">
                 <MessageCircle className="h-4 w-4" />
               </span>
               <span className="text-sm leading-relaxed text-zinc-700">
@@ -141,7 +141,7 @@ export default function KaiIntroPage() {
         >
           <Link
             href="/onboarding/capture"
-            className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4 text-base font-bold text-white shadow-lg shadow-teal-600/35 transition hover:from-teal-500 hover:to-teal-600 hover:shadow-xl hover:shadow-teal-600/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
+            className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-skinfit-navy to-skinfit-navy-dark px-5 py-4 text-base font-bold text-white shadow-lg shadow-skinfit-navy/35 transition hover:from-skinfit-navy-mid hover:to-skinfit-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skinfit-navy"
           >
             <span className="relative z-10 flex items-center gap-2">
               Start baseline scan

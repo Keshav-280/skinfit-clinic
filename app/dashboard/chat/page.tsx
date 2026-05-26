@@ -21,15 +21,7 @@ import {
   markDoctorInboxSeenFromServer,
 } from "@/src/lib/clinicSupportInboxClient";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
-import {
-  decryptMessages,
-  ensureDoctorPatientE2eeReady,
-  encryptOutgoingText,
-  resetDoctorPatientE2eeEnvelopes,
-  type DoctorThreadE2eeSession,
-} from "@/src/lib/chatE2ee/client";
-import { isE2eePayload } from "@/src/lib/chatE2ee/format";
-import { isDoctorChatE2eeEnabledWeb } from "@/src/lib/chatDoctorE2eeConfig";
+import { mapDisplayChatMessages } from "@/src/lib/chatE2ee/format";
 
 type AssistantId = "ai" | "doctor" | "support";
 
@@ -126,56 +118,11 @@ export default function ChatPage() {
   const activeAssistantRef = useRef<AssistantId>("ai");
   activeAssistantRef.current = activeAssistant;
 
-  const doctorE2eeRef = useRef<DoctorThreadE2eeSession | null>(null);
-  const [doctorE2eeReady, setDoctorE2eeReady] = useState(false);
-  const [doctorE2eeStatus, setDoctorE2eeStatus] = useState<string | null>(null);
-  const wasDoctorE2eeReadyRef = useRef(false);
-
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
-  const doctorE2eeFeatureOn = isDoctorChatE2eeEnabledWeb();
-
   function messageDisplayText(msg: ChatMsg): string {
-    if (
-      doctorE2eeFeatureOn &&
-      activeAssistant === "doctor" &&
-      msg.sender !== "patient" &&
-      isE2eePayload(msg.text) &&
-      !doctorE2eeReady
-    ) {
-      return "Secure message from your clinic (connecting encryption…)";
-    }
     return msg.text;
   }
-
-  useEffect(() => {
-    if (activeAssistant !== "doctor" || !activeDoctorId) {
-      doctorE2eeRef.current = null;
-      setDoctorE2eeReady(false);
-      setDoctorE2eeStatus(null);
-      return;
-    }
-    if (!doctorE2eeFeatureOn) {
-      doctorE2eeRef.current = null;
-      setDoctorE2eeReady(true);
-      setDoctorE2eeStatus(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const s = await ensureDoctorPatientE2eeReady({
-        credentials: "include",
-        doctorId: activeDoctorId,
-      });
-      if (cancelled) return;
-      doctorE2eeRef.current = s;
-      setDoctorE2eeReady(Boolean(s?.ready));
-      setDoctorE2eeStatus(s?.status ?? null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeAssistant, activeDoctorId, doctorE2eeFeatureOn]);
 
   const scrollMessagesToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -240,30 +187,15 @@ export default function ChatPage() {
       }
 
       const rows = data.messages ?? [];
-      let messages: ChatMsg[] = rows.map((m) => ({
-        id: m.id,
-        sender: m.sender,
-        text: m.text,
-        attachmentUrl: m.attachmentUrl ?? null,
-        createdAt: m.createdAt,
-      }));
-      if (doctorE2eeFeatureOn && assistantId === "doctor" && doctorId) {
-        let session = doctorE2eeRef.current;
-        if (!session?.ready) {
-          session = await ensureDoctorPatientE2eeReady({
-            credentials: "include",
-            doctorId,
-          });
-          doctorE2eeRef.current = session;
-          setDoctorE2eeReady(Boolean(session?.ready));
-          setDoctorE2eeStatus(session?.status ?? null);
-        }
-        if (session?.ready) {
-          messages = await decryptMessages<ChatMsg>(messages, session);
-        }
-      } else if (assistantId === "doctor") {
-        messages = await decryptMessages<ChatMsg>(messages, null);
-      }
+      const messages = mapDisplayChatMessages(
+        rows.map((m) => ({
+          id: m.id,
+          sender: m.sender,
+          text: m.text,
+          attachmentUrl: m.attachmentUrl ?? null,
+          createdAt: m.createdAt,
+        }))
+      );
       return {
         messages,
         clinicReadThroughIso: data.clinicReadThroughIso,
@@ -271,33 +203,6 @@ export default function ChatPage() {
     },
     []
   );
-
-  /** Re-decrypt doctor thread once E2EE finishes loading (messages often fetch first). */
-  useEffect(() => {
-    if (!doctorE2eeFeatureOn || activeAssistant !== "doctor" || !activeDoctorId) {
-      wasDoctorE2eeReadyRef.current = false;
-      return;
-    }
-    const justReady = doctorE2eeReady && !wasDoctorE2eeReadyRef.current;
-    wasDoctorE2eeReadyRef.current = doctorE2eeReady;
-    if (!justReady) return;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const { messages: decrypted, clinicReadThroughIso } =
-          await fetchPlainMessages("doctor", activeDoctorId);
-        if (cancelled) return;
-        setMessages(decrypted);
-        markDoctorInboxSeenFromServer(clinicReadThroughIso);
-      } catch {
-        /* keep prior messages */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [doctorE2eeReady, activeAssistant, activeDoctorId, fetchPlainMessages]);
 
   const createPlainThread = useCallback(
     async (assistantId: AssistantId): Promise<string> => {
@@ -933,30 +838,8 @@ export default function ChatPage() {
     // Plain stored chat for Dr Ruby / Clinic Support (no AI replies).
     setIsLoading(true);
     try {
-      let outboundText = text;
-      if (activeAssistant === "doctor") {
-        if (!activeDoctorId) {
-          throw new Error("Select a doctor from the list to start chatting.");
-        }
-        if (text && doctorE2eeFeatureOn) {
-          let session = doctorE2eeRef.current;
-          if (!session?.ready) {
-            session = await ensureDoctorPatientE2eeReady({
-              credentials: "include",
-              doctorId: activeDoctorId,
-            });
-            doctorE2eeRef.current = session;
-            setDoctorE2eeReady(Boolean(session?.ready));
-            setDoctorE2eeStatus(session?.status ?? null);
-          }
-          if (!session?.ready) {
-            throw new Error(
-              session?.status ??
-                "Secure chat is not ready. Keep this tab open a few seconds, then try again."
-            );
-          }
-          outboundText = await encryptOutgoingText(text, session);
-        }
+      if (activeAssistant === "doctor" && !activeDoctorId) {
+        throw new Error("Select a doctor from the list to start chatting.");
       }
       const res = await fetch("/api/chat/plain/message", {
         method: "POST",
@@ -967,7 +850,7 @@ export default function ChatPage() {
           ...(activeAssistant === "doctor" && activeDoctorId
             ? { doctorId: activeDoctorId }
             : {}),
-          text: outboundText,
+          text,
           attachmentUrl: attachment?.dataUri ?? null,
         }),
       });
@@ -1260,45 +1143,6 @@ export default function ChatPage() {
         </div>
 
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
-          {doctorE2eeFeatureOn &&
-          activeAssistant === "doctor" &&
-          !doctorE2eeReady &&
-          doctorE2eeStatus ? (
-            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              <span className="min-w-0 flex-1">{doctorE2eeStatus}</span>
-              <button
-                type="button"
-                className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100"
-                onClick={() => {
-                  void (async () => {
-                    if (!activeDoctorId) return;
-                    await resetDoctorPatientE2eeEnvelopes({
-                      credentials: "include",
-                      doctorId: activeDoctorId,
-                    });
-                    const s = await ensureDoctorPatientE2eeReady({
-                      credentials: "include",
-                      doctorId: activeDoctorId,
-                    });
-                    doctorE2eeRef.current = s;
-                    setDoctorE2eeReady(Boolean(s?.ready));
-                    setDoctorE2eeStatus(s?.status ?? null);
-                    const { messages: next, clinicReadThroughIso } =
-                      await fetchPlainMessages("doctor", activeDoctorId);
-                    setMessages(next);
-                    markDoctorInboxSeenFromServer(clinicReadThroughIso);
-                  })();
-                }}
-              >
-                Reset secure chat
-              </button>
-            </div>
-          ) : null}
-          {doctorE2eeFeatureOn && activeAssistant === "doctor" && doctorE2eeReady ? (
-            <p className="mb-2 text-xs font-medium text-emerald-700">
-              End-to-end encrypted · messages are stored as ciphertext
-            </p>
-          ) : null}
           <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/30 px-4 py-2 backdrop-blur-sm">
             <input
               ref={attachmentInputRef}
@@ -1370,10 +1214,6 @@ export default function ChatPage() {
               title="Send"
               disabled={
                 isLoading ||
-                (doctorE2eeFeatureOn &&
-                  activeAssistant === "doctor" &&
-                  !doctorE2eeReady &&
-                  Boolean(inputValue.trim())) ||
                 (activeAssistant === "ai"
                   ? !inputValue.trim()
                   : !inputValue.trim() && !attachment)

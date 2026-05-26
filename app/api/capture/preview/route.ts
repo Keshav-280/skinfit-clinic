@@ -2,14 +2,20 @@ import { NextResponse } from "next/server";
 
 import { withApiHandler } from "@/src/lib/api/withApiHandler";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
-import {
-  getServerFaceCaptureConfig,
-  usesServerFacePreview,
-} from "@/src/lib/faceCaptureConfig";
+import { isCapturePreviewApiEnabled, isRetinaFaceModelOnDisk } from "@/src/lib/capturePreviewServer";
 import { runFacePreviewInference } from "@/src/lib/facePreviewInference";
 import { checkRateLimit } from "@/src/lib/security/rateLimit";
 
 const MAX_BYTES = 900_000;
+
+/** GET /api/capture/preview — whether RetinaFace ONNX is available on the server. */
+export const GET = withApiHandler("capture.preview.status", async () => {
+  const onDisk = isRetinaFaceModelOnDisk();
+  return NextResponse.json({
+    enabled: isCapturePreviewApiEnabled(),
+    retinafaceOnDisk: onDisk,
+  });
+});
 
 /**
  * POST /api/capture/preview — RetinaFace box/pose + blink/smile classifier (ONNX).
@@ -21,12 +27,11 @@ export const POST = withApiHandler("capture.preview", async (request) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const cfg = getServerFaceCaptureConfig();
-  if (!usesServerFacePreview(cfg)) {
+  if (!isCapturePreviewApiEnabled()) {
     return NextResponse.json(
       {
         error:
-          "Server preview disabled. Set FACE_DETECTOR=retinaface and/or FACE_EXPRESSION=classifier.",
+          "Server preview disabled. Add models/capture/retinaface.onnx or set FACE_DETECTOR=retinaface.",
       },
       { status: 503 }
     );

@@ -668,9 +668,10 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
   }
 
   var patientId = getCellByHeader_(sheet, rowNum, map, 'patientId', 3);
-  if (!patientId) {
+  var patientEmail = getCellByHeader_(sheet, rowNum, map, 'patientEmail', 5);
+  if (!patientId && !patientEmail) {
     setCellByHeader_(sheet, rowNum, map, 'crmSyncStatus', 30, 'ERROR');
-    setCellByHeader_(sheet, rowNum, map, 'crmSyncDetail', 31, 'missing patientId');
+    setCellByHeader_(sheet, rowNum, map, 'crmSyncDetail', 31, 'missing patientId (C) or patientEmail (E)');
     return;
   }
 
@@ -724,7 +725,8 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
 
   var update = {
     action: action,
-    patientId: patientId,
+    patientId: patientId || null,
+    patientEmail: patientEmail || null,
     externalRef: externalRef,
     scheduleRequestId: scheduleRequestId,
     confirmedDateTimeIso: action === 'confirm' ? iso : null,

@@ -2,17 +2,27 @@
 
 import { motion } from "framer-motion";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
+import { TRACKER_REPORT_THEME as R } from "@/src/lib/scanReportTheme";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
+
+const sectionCard =
+  "rounded-3xl border border-[rgba(44,62,107,0.14)] bg-gradient-to-b from-white via-[#F4F7FB] to-[#E8EFF8] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(44,62,107,0.22)]";
+
+const insetCard =
+  "rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/90 px-3.5 py-3.5";
+
+const statCell =
+  "rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]";
 
 function signed(n: number) {
   return `${n > 0 ? "+" : ""}${n}`;
 }
 
 function deltaClass(n: number) {
-  if (n > 0) return "text-emerald-700";
-  if (n < 0) return "text-rose-700";
-  return "text-zinc-600";
+  if (n > 0) return "text-[#2C3E6B]";
+  if (n < 0) return "text-[#5B7BA8]";
+  return "text-zinc-500";
 }
 
 function valueForBar(n: number | null) {
@@ -38,6 +48,12 @@ function parseFocusDetail(detail: string): Array<{ label: string; body: string }
     });
 }
 
+function causeDotClass(impact: "high" | "medium" | "low") {
+  if (impact === "high") return "bg-[#1E3264]";
+  if (impact === "medium") return "bg-[#2C3E6B]";
+  return "bg-[#5B7BA8]";
+}
+
 export function TrackerReportSections({
   report,
   serifClassName,
@@ -54,22 +70,22 @@ export function TrackerReportSections({
       transition={{ duration: 0.4, ease: easeOut }}
       className="mx-auto mt-3 w-full max-w-xl space-y-5 break-inside-avoid"
     >
-      <section className="rounded-3xl border border-[#E8E2D8] bg-gradient-to-b from-white via-[#FFFDF9] to-[#FBF7F0] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(90,72,45,0.28)]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+      <section className={sectionCard}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
           Section 1 - Hook
         </p>
         <p className={`mt-2 text-[1.95rem] font-medium leading-tight text-zinc-900 ${serifClassName}`}>
           {report.hookSentence}
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2.5">
-          <div className="rounded-2xl border border-[#EDE7DC] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">kAI score</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900">
+          <div className={statCell}>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">kAI score</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
               {report.scores.kaiScore}
             </p>
           </div>
-          <div className="rounded-2xl border border-[#EDE7DC] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">Weekly delta</p>
+          <div className={statCell}>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">Weekly delta</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">
               {typeof weekAverageDelta === "number" ? (
                 <span className={deltaClass(weekAverageDelta)}>{signed(weekAverageDelta)}</span>
@@ -80,9 +96,9 @@ export function TrackerReportSections({
               )}
             </p>
           </div>
-          <div className="rounded-2xl border border-[#EDE7DC] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">Consistency</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900">
+          <div className={statCell}>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">Consistency</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
               {report.scores.consistencyScore}%
             </p>
           </div>
@@ -90,8 +106,8 @@ export function TrackerReportSections({
         <p className="mt-3 text-xs leading-relaxed text-zinc-600">{report.insightText}</p>
       </section>
 
-      <section className="rounded-3xl border border-[#E8E2D8] bg-gradient-to-b from-white via-[#FFFDF9] to-[#FBF7F0] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(90,72,45,0.2)]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+      <section className={sectionCard}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
           Section 2 - Feel Understood
         </p>
 
@@ -101,7 +117,7 @@ export function TrackerReportSections({
             {report.skinPills.slice(0, 3).map((pill) => (
               <span
                 key={pill}
-                className="rounded-full border border-[#E6DFD4] bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-[0_1px_0_rgba(255,255,255,0.75)]"
+                className="rounded-full border border-[rgba(44,62,107,0.14)] bg-white px-3 py-1 text-xs font-semibold text-[#2C3E6B] shadow-[0_1px_0_rgba(255,255,255,0.75)]"
               >
                 {pill}
               </span>
@@ -109,19 +125,19 @@ export function TrackerReportSections({
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-[#EAE4DA] bg-white/90 px-3.5 py-3.5">
-          <p className="text-sm font-semibold text-zinc-900">This week's overview</p>
+        <div className={`mt-4 ${insetCard}`}>
+          <p className="text-sm font-semibold text-zinc-900">This week&apos;s overview</p>
           <div className="mt-2.5 space-y-2.5">
             {report.paramRows.slice(0, 8).map((row) => (
               <div key={row.key} className="grid grid-cols-[minmax(0,1fr)_120px_46px_30px] items-center gap-2 text-xs">
                 <span className="font-medium text-zinc-700">{row.label}</span>
-                <div className="h-2 overflow-hidden rounded-full bg-[#ECEAE4]">
+                <div className="h-2 overflow-hidden rounded-full bg-[rgba(44,62,107,0.12)]">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-teal-400 to-teal-600"
+                    className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#2C3E6B]"
                     style={{ width: `${valueForBar(row.value)}%` }}
                   />
                 </div>
-                <span className="text-right font-semibold tabular-nums text-zinc-900">
+                <span className="text-right font-semibold tabular-nums text-[#2C3E6B]">
                   {row.value ?? "-"}
                 </span>
                 <span
@@ -136,19 +152,13 @@ export function TrackerReportSections({
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-[#EAE4DA] bg-white/90 px-3.5 py-3.5">
+        <div className={`mt-4 ${insetCard}`}>
           <p className="text-sm font-semibold text-zinc-900">Why your skin behaves this way</p>
           <ul className="mt-2 space-y-2">
             {report.causes.slice(0, 3).map((cause, idx) => (
               <li key={`${cause.text}-${idx}`} className="flex items-start gap-2 text-sm text-zinc-700">
                 <span
-                  className={`mt-[6px] h-1.5 w-1.5 rounded-full ${
-                    cause.impact === "high"
-                      ? "bg-amber-600"
-                      : cause.impact === "medium"
-                        ? "bg-teal-600"
-                        : "bg-sky-600"
-                  }`}
+                  className={`mt-[6px] h-1.5 w-1.5 rounded-full ${causeDotClass(cause.impact)}`}
                 />
                 <span>{cause.text}</span>
               </li>
@@ -159,8 +169,8 @@ export function TrackerReportSections({
         <p className="mt-3 text-sm leading-relaxed text-zinc-600">{report.predictionText}</p>
       </section>
 
-      <section className="rounded-3xl border border-[#E8E2D8] bg-gradient-to-b from-white via-[#FFFDF9] to-[#FBF7F0] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(90,72,45,0.2)]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+      <section className={sectionCard}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
           Section 3 - Resource Centre
         </p>
         <div className="mt-3 space-y-2">
@@ -170,27 +180,30 @@ export function TrackerReportSections({
               href={r.url}
               target="_blank"
               rel="noreferrer"
-              className="group block rounded-2xl border border-[#EAE4DA] bg-white/92 px-3.5 py-3 transition-all duration-200 hover:-translate-y-[1px] hover:border-[#DED6C7] hover:shadow-[0_10px_24px_-16px_rgba(0,0,0,0.35)]"
+              className="group block rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/92 px-3.5 py-3 transition-all duration-200 hover:-translate-y-[1px] hover:border-[rgba(44,62,107,0.22)] hover:shadow-[0_10px_24px_-16px_rgba(44,62,107,0.35)]"
             >
-              <p className="text-sm font-semibold text-zinc-900 group-hover:text-zinc-950">{r.title}</p>
+              <p className="text-sm font-semibold text-[#2C3E6B] group-hover:text-[#1E3264]">{r.title}</p>
               <p className="mt-0.5 text-xs text-zinc-500">{kindBadge(r.kind)} · personalized pick</p>
             </a>
           ))}
         </div>
       </section>
 
-      <section className="rounded-3xl border border-[#E8E2D8] bg-gradient-to-b from-white via-[#FFFDF9] to-[#FBF7F0] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(90,72,45,0.2)]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          Section 4 - This Week's Focus
+      <section className={sectionCard}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
+          Section 4 - This Week&apos;s Focus
         </p>
         <ol className="mt-3 space-y-2.5">
           {report.focusActions.slice(0, 3).map((a) => (
             <li
               key={a.rank}
-              className="rounded-2xl border border-[#EAE4DA] bg-white/92 px-3.5 py-3"
+              className={`${insetCard}`}
             >
               <p className="text-sm font-semibold text-zinc-900">
-                <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#EEF4EF] text-xs font-bold text-emerald-700">
+                <span
+                  className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-[#2C3E6B]"
+                  style={{ backgroundColor: R.focusBadgeBg }}
+                >
                   {a.rank}
                 </span>
                 {a.title}

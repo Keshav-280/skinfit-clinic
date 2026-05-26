@@ -1,4 +1,3 @@
-import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
@@ -13,6 +12,8 @@ import {
 } from "react-native";
 
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
+import { OnboardingQueuedScreen } from "@/components/onboarding/ScanQueuedConfirmation";
+import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
@@ -91,6 +92,7 @@ export default function OnboardingCaptureScreen() {
   if (!isComplete && useCamera) {
     return (
       <FiveAngleCameraStep
+        variant="onboarding"
         stepIndex={stepIndex}
         onCaptured={(uri) => setUris((u) => [...u, uri])}
         onPickFromLibrary={() => void pickFromLibrary()}
@@ -108,7 +110,7 @@ export default function OnboardingCaptureScreen() {
 
   if (!isComplete && !useCamera) {
     return (
-      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+      <OnboardingLayoutShell title="kAI baseline photos" backHref="/onboarding/capture-intro">
         <ScrollView contentContainerStyle={styles.pad}>
           <Text style={styles.title}>Add {N} photos</Text>
           <Pressable
@@ -121,41 +123,24 @@ export default function OnboardingCaptureScreen() {
             <Text style={styles.link}>Use guided camera</Text>
           </Pressable>
         </ScrollView>
-      </LinearGradient>
+      </OnboardingLayoutShell>
     );
   }
 
   if (queued) {
     return (
-      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.pad}>
-          <View style={styles.iconWrap}>
-            <View style={styles.iconCircle}>
-              <Text style={styles.iconBell}>{"🔔"}</Text>
-            </View>
-          </View>
-          <Text style={styles.title}>You&apos;re all set</Text>
-          <Text style={styles.sub}>
-            Your baseline photos are saved. Your kAI report will be ready soon — we&apos;ll notify
-            you when it&apos;s done.
-          </Text>
-          <Text style={styles.hint}>You can leave this screen — no need to wait here.</Text>
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={() => router.replace("/(drawer)" as Href)}
-          >
-            <Text style={styles.btnText}>Continue to dashboard</Text>
-          </Pressable>
-        </ScrollView>
-      </LinearGradient>
+      <OnboardingQueuedScreen
+        onContinue={() => router.replace("/onboarding/baseline-report" as Href)}
+        onDashboard={() => router.replace("/(drawer)" as Href)}
+      />
     );
   }
 
   return (
-    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+    <OnboardingLayoutShell title="kAI baseline photos">
       <ScrollView contentContainerStyle={styles.pad}>
         <View style={styles.iconWrap}>
-          <View style={styles.iconCircle}>
+          <View style={[styles.iconCircle, styles.iconCircleNavy]}>
             <Text style={styles.iconCheck}>{"✓"}</Text>
           </View>
         </View>
@@ -183,7 +168,7 @@ export default function OnboardingCaptureScreen() {
           <Text style={styles.link}>Retake photos</Text>
         </Pressable>
       </ScrollView>
-    </LinearGradient>
+    </OnboardingLayoutShell>
   );
 }
 
@@ -204,7 +189,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconCheck: { fontSize: 28, color: NAVY, fontWeight: "800" },
+  iconCircleNavy: {
+    backgroundColor: NAVY,
+  },
+  iconCheck: { fontSize: 28, color: "#fff", fontWeight: "800" },
   iconBell: { fontSize: 28 },
   hint: {
     marginTop: 10,

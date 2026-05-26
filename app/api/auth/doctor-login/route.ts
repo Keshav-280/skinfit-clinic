@@ -96,7 +96,7 @@ export async function POST(req: Request) {
         name: string;
         email: string;
         role: string;
-        passwordHash: string;
+        passwordHash: string | null;
       }
     | undefined;
   try {
@@ -131,6 +131,16 @@ export async function POST(req: Request) {
         message: "This sign-in is for clinic staff only.",
       },
       { status: 403 }
+    );
+  }
+
+  if (!user.passwordHash) {
+    return NextResponse.json(
+      {
+        error: "OAUTH_ACCOUNT",
+        message: "This account does not use a password. Contact your administrator.",
+      },
+      { status: 401 }
     );
   }
 

@@ -82,7 +82,8 @@ export const users = pgTable("users", {
     .default("+91"),
   /** National / local number digits (no country code). */
   phone: varchar("phone", { length: 32 }),
-  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  /** Null for OAuth-only accounts (Google, Apple, etc.). */
+  passwordHash: varchar("password_hash", { length: 255 }),
   role: userRoleEnum("role").notNull().default("patient"),
   /** Optional profile fields (editable on /dashboard/profile). */
   age: integer("age"),
@@ -185,6 +186,42 @@ export const users = pgTable("users", {
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const oauthProviderEnum = pgEnum("oauth_provider", [
+  "google",
+  "apple",
+  "github",
+  "microsoft",
+]);
+
+/** Links a SkinFit user to an external identity provider (Google, Apple, …). */
+export const oauthAccounts = pgTable(
+  "oauth_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: oauthProviderEnum("provider").notNull(),
+    /** Stable subject id from the provider (e.g. Google `sub`). */
+    providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+    /** Email returned by the provider at link time (may differ from user.email for Apple relay). */
+    providerEmail: varchar("provider_email", { length: 255 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    providerAccountUidx: uniqueIndex("oauth_accounts_provider_account_uidx").on(
+      table.provider,
+      table.providerAccountId
+    ),
+    userIdIdx: index("oauth_accounts_user_id_idx").on(table.userId),
+  })
+);
 
 /** Isolated doctor↔patient relationship — separate chats, feedback, visits per pair. */
 export const doctorPatientCare = pgTable(

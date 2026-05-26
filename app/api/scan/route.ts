@@ -11,6 +11,7 @@ import {
   runFaceAnalysisService,
 } from "../../../src/lib/faceAnalysisInference";
 import { runFaceAnalysisServiceV2 } from "../../../src/lib/faceAnalysisInferenceV2";
+import { getFaceAnalysisServiceSecret } from "../../../src/lib/faceAnalysisEnv";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../src/lib/faceScanCaptures";
 import {
   inferenceParamsToRows,
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
     const imageDataUri = entries[0].dataUri;
 
     const inferenceBase = process.env.FACE_ANALYSIS_SERVICE_URL?.trim();
-    const inferenceSecret = process.env.FACE_ANALYSIS_SERVICE_SECRET?.trim();
+    const inferenceSecret = getFaceAnalysisServiceSecret();
     const allowDummyInferenceFallback =
       process.env.FACE_ANALYSIS_ALLOW_DUMMY === "1" ||
       process.env.FACE_ANALYSIS_ALLOW_DUMMY === "true";

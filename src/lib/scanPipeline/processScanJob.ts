@@ -33,6 +33,7 @@ import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import type { ScanJobPayload } from "@/src/lib/infra";
+import { getFaceAnalysisServiceSecret } from "@/src/lib/faceAnalysisEnv";
 
 async function pathToFile(relativePath: string, name: string): Promise<File> {
   const storage = getStorage();
@@ -48,11 +49,15 @@ export async function processScanJob(
   const started = Date.now();
   await database
     .update(scanJobs)
-    .set({ status: "processing", updatedAt: new Date() })
+    .set({
+      status: "processing",
+      errorText: null,
+      updatedAt: new Date(),
+    })
     .where(eq(scanJobs.id, jobId));
 
   const inferenceBase = process.env.FACE_ANALYSIS_SERVICE_URL?.trim();
-  const inferenceSecret = process.env.FACE_ANALYSIS_SERVICE_SECRET?.trim();
+  const inferenceSecret = getFaceAnalysisServiceSecret();
   const inferenceTimeoutMs = Math.max(
     5_000,
     parseInt(process.env.FACE_ANALYSIS_TIMEOUT_MS?.trim() || "120000", 10) || 120_000

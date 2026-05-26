@@ -76,6 +76,17 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!user.passwordHash) {
+      return NextResponse.json(
+        {
+          error: "OAUTH_ACCOUNT",
+          message:
+            "This account uses social sign-in. Use Continue with Google or Apple below.",
+        },
+        { status: 401 }
+      );
+    }
+
     const passwordOk = await bcrypt.compare(password, user.passwordHash);
     if (!passwordOk) {
       return NextResponse.json(

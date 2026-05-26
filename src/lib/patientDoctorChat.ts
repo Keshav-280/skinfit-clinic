@@ -1,10 +1,6 @@
 import { db } from "@/src/db";
 import { chatMessages } from "@/src/db/schema";
 import {
-  doctorThreadRequiresE2ee,
-  isPlaintextDoctorMessageAllowed,
-} from "@/src/lib/chatE2ee/e2eePolicy";
-import {
   ensureDoctorPatientChatThread,
   getAssignedDoctorIdForPatient,
   listRegisteredClinicDoctors,
@@ -22,14 +18,6 @@ async function insertPatientDoctorThreadMessage(
 ): Promise<void> {
   const text = body.text.trim().slice(0, 12_000);
   if (!text && !body.attachmentUrl) return;
-
-  if (
-    text &&
-    (await doctorThreadRequiresE2ee(threadId)) &&
-    !isPlaintextDoctorMessageAllowed(text)
-  ) {
-    throw new Error("E2EE_REQUIRED");
-  }
 
   await db.insert(chatMessages).values({
     threadId,
@@ -55,14 +43,9 @@ export async function postPatientUrgentMessageToAllClinicDoctors(
 
   for (const doc of doctors) {
     const threadId = await ensureDoctorPatientChatThread(patientId, doc.id);
-    try {
-      await insertPatientDoctorThreadMessage(threadId, body);
-      notifiedThreadCount += 1;
-      if (!primaryThreadId) primaryThreadId = threadId;
-    } catch (e) {
-      if ((e as Error).message !== "E2EE_REQUIRED") throw e;
-      // Skip threads that still require ciphertext when plaintext SOS is blocked.
-    }
+    await insertPatientDoctorThreadMessage(threadId, body);
+    notifiedThreadCount += 1;
+    if (!primaryThreadId) primaryThreadId = threadId;
   }
 
   return { primaryThreadId, notifiedThreadCount };

@@ -162,6 +162,14 @@ export function formatScheduleWhen(
   return `${dateStr} · ${chip}`;
 }
 
+export function isAppointmentCalendarEvent(event: ScheduleEventRow): boolean {
+  return (
+    event.id.startsWith("appt:") ||
+    event.id.startsWith("req:") ||
+    event.id.startsWith("reqclosed:")
+  );
+}
+
 export function compareScheduleEvents(a: ScheduleEventRow, b: ScheduleEventRow): number {
   const c = a.eventDateYmd.localeCompare(b.eventDateYmd);
   if (c !== 0) return c;

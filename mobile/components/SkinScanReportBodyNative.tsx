@@ -1,8 +1,10 @@
 import { formatDistanceToNow } from "date-fns";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
-import type { DimensionValue, ImageSourcePropType } from "react-native";
+import { useEffect, useState } from "react";
+import type { DimensionValue } from "react-native";
 import {
+  ActivityIndicator,
   Image,
   Platform,
   Pressable,
@@ -20,7 +22,7 @@ import { TrackerReportSectionsNative } from "@/components/TrackerReportSectionsN
 import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
-import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
+import { fetchAuthenticatedScanImageUri } from "@/lib/fetchAuthenticatedScanImage";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
 
 const GLASS = "rgba(255,255,255,0.92)";
@@ -84,8 +86,6 @@ type Props = {
   imageUrl: string;
   authToken: string | null;
   faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
-  /** Resolved primary image (auth headers applied). */
-  imageSource: ImageSourcePropType;
   annotatedOverlayUri?: string | null;
   wrinkleMaskUri?: string | null;
   acneMaskUri?: string | null;
@@ -105,11 +105,11 @@ function clamp(n: number) {
 
 function markerColor(issue: string): string {
   const x = issue.toLowerCase();
-  if (x.includes("acne")) return "#dc2626";
-  if (x.includes("wrinkle")) return "#7c3aed";
-  if (x.includes("pigment")) return "#d97706";
-  if (x.includes("texture")) return T.navyMid;
-  return "#6b7280";
+  if (x.includes("acne")) return T.navyDark;
+  if (x.includes("wrinkle")) return T.navyMid;
+  if (x.includes("pigment")) return T.navyLight;
+  if (x.includes("texture")) return T.accent;
+  return T.navy;
 }
 
 function displayScanTitle(raw: string | null): string | null {
@@ -134,7 +134,6 @@ export function SkinScanReportBodyNative({
   imageUrl,
   authToken,
   faceCaptureGallery,
-  imageSource,
   annotatedOverlayUri: _annotatedOverlayUri = null,
   wrinkleMaskUri = null,
   acneMaskUri = null,
@@ -157,6 +156,36 @@ export function SkinScanReportBodyNative({
     acneMask.length === 0 &&
     regions.length > 0 &&
     (imageUrl?.trim().length ?? 0) > 0;
+
+  const [markerImageUri, setMarkerImageUri] = useState<string | null>(null);
+  const [markerImageLoading, setMarkerImageLoading] = useState(false);
+
+  useEffect(() => {
+    const path = imageUrl?.trim();
+    if (!path || !showDotMarkersOnly) {
+      setMarkerImageUri(null);
+      setMarkerImageLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMarkerImageLoading(true);
+    void fetchAuthenticatedScanImageUri(
+      patientScanImageDisplayUrl(path),
+      authToken
+    )
+      .then((uri) => {
+        if (!cancelled) setMarkerImageUri(uri);
+      })
+      .catch(() => {
+        if (!cancelled) setMarkerImageUri(null);
+      })
+      .finally(() => {
+        if (!cancelled) setMarkerImageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, authToken, showDotMarkersOnly]);
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const heroIntro =
@@ -212,10 +241,8 @@ export function SkinScanReportBodyNative({
                 {resolvedPhotos.map((item, idx) => (
                   <View key={`cap-${idx}-${item.label}`} style={styles.captureStackItem}>
                     <ReportContainImage
-                      source={resolveAuthenticatedScanImageSource(
-                        patientScanImageDisplayUrl(item.imageUrl),
-                        authToken
-                      )}
+                      imageUrl={item.imageUrl}
+                      authToken={authToken}
                       maxWidth={300}
                     />
                     <Text style={styles.captureCaption} numberOfLines={3}>
@@ -233,6 +260,7 @@ export function SkinScanReportBodyNative({
             <ScanMaskAnnotationsNative
               wrinkleMaskUri={wrinkleMask || undefined}
               acneMaskUri={acneMask || undefined}
+              authToken={authToken}
               wrinkleLabel="Wrinkle mask (smiling)"
               acneLabel="Acne objectness (centre)"
             />
@@ -247,7 +275,19 @@ export function SkinScanReportBodyNative({
                   style={StyleSheet.absoluteFill}
                   pointerEvents="none"
                 />
-                <Image source={imageSource} style={styles.faceImg} resizeMode="cover" />
+                {markerImageLoading ? (
+                  <View style={[styles.faceImg, styles.markerPlaceholder]}>
+                    <ActivityIndicator color="#fff" />
+                  </View>
+                ) : markerImageUri ? (
+                  <Image
+                    source={{ uri: markerImageUri }}
+                    style={styles.faceImg}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.faceImg, styles.markerPlaceholder]} />
+                )}
                 {regions.map((region, i) => (
                   <View
                     key={i}
@@ -568,6 +608,11 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
   faceImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  markerPlaceholder: {
+    backgroundColor: "#27272a",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   marker: {
     position: "absolute",
     width: 10,
@@ -694,7 +739,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 3,
     borderRadius: 2,
-    backgroundColor: T.peach,
+    backgroundColor: T.accent,
     marginBottom: 12,
   },
   tealH: {

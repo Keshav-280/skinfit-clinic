@@ -10,6 +10,7 @@ import {
   getStorage,
   logger,
   isAsyncScanEnabled,
+  SCAN_ANALYSIS_QUEUE_JOB_OPTS,
 } from "@/src/lib/infra";
 import type { ScanJobPayload, ScanCaptureImageRef } from "@/src/lib/infra";
 
@@ -86,17 +87,10 @@ export async function POST(request: NextRequest) {
 
   const jobId = jobRow.id;
   const queue = getScanAnalysisQueue();
-  await queue.add(
-    "analyze",
-    { jobId, payload },
-    {
-      jobId,
-      removeOnComplete: 200,
-      removeOnFail: 100,
-      attempts: 2,
-      backoff: { type: "exponential", delay: 5000 },
-    }
-  );
+  await queue.add("analyze", { jobId, payload }, {
+    jobId,
+    ...SCAN_ANALYSIS_QUEUE_JOB_OPTS,
+  });
 
   await setJobStatus(jobId, "pending", { userId });
   logger.queue("scan-analysis", "enqueued", { jobId, userId });

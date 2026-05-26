@@ -16,11 +16,9 @@ import { SkinScanReportBodyNative } from "@/components/SkinScanReportBodyNative"
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { buildScanReportPdfPayload } from "@/lib/buildScanReportPdfPayload";
-import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
 import { shareScanReportPdf } from "@/lib/scanReportPdf";
 import { dismissUnreadReadyScan } from "@/lib/scanJobNotifications";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 
 type ScanDetail = {
@@ -244,10 +242,6 @@ export default function ScanDetailScreen() {
         imageUrl={row.imageUrl}
         authToken={token}
         faceCaptureGallery={row.faceCaptureGallery}
-        imageSource={resolveAuthenticatedScanImageSource(
-          patientScanImageDisplayUrl(row.imageUrl),
-          token
-        )}
         annotatedOverlayUri={row.annotatedImageUrl}
         wrinkleMaskUri={row.wrinkleMaskDataUri}
         acneMaskUri={row.acneMaskDataUri}

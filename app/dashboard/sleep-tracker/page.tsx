@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Moon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+
+import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 
 const HOUR_OPTIONS = [4, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 10];
 const QUALITY_OPTIONS = ["Very Poor", "Average", "Excellent"] as const;
@@ -36,11 +38,11 @@ export default function SleepTrackerPage() {
   const [hours, setHours] = useState(0);
   const [quality, setQuality] = useState<(typeof QUALITY_OPTIONS)[number]>("Average");
   const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didInit = useRef(false);
+  const { saveStatus, scheduleSave, markReady, markNotReady } =
+    useDebouncedTrackerAutoSave();
 
   useEffect(() => {
+    markNotReady();
     const today = format(new Date(), "yyyy-MM-dd");
     fetch(`/api/journal?date=${today}`, { credentials: "include" })
       .then((r) => r.json())
@@ -48,29 +50,16 @@ export default function SleepTrackerPage() {
         if (data.entry) {
           setHours(data.entry.sleepHours ?? 0);
         }
-        didInit.current = true;
       })
-      .finally(() => setLoading(false));
-  }, []);
-
-  function scheduleAutoSave(body: Record<string, unknown>) {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveStatus("saving");
-    saveTimer.current = setTimeout(async () => {
-      await fetch("/api/journal", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: format(new Date(), "yyyy-MM-dd"), ...body }),
+      .finally(() => {
+        setLoading(false);
+        markReady();
       });
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    }, 800);
-  }
+  }, [markNotReady, markReady]);
 
   function handleSetHours(h: number) {
     setHours(h);
-    if (didInit.current) scheduleAutoSave({ sleepHours: h });
+    scheduleSave(format(new Date(), "yyyy-MM-dd"), { sleepHours: h });
   }
 
   const startAngle = 210;
@@ -115,6 +104,7 @@ export default function SleepTrackerPage() {
         <div className="ml-auto flex items-center gap-2">
           {saveStatus === "saving" && <span className="text-xs text-slate-400">Saving...</span>}
           {saveStatus === "saved" && <span className="text-xs text-emerald-500">Saved ✓</span>}
+          {saveStatus === "error" && <span className="text-xs text-amber-600">Could not save</span>}
           <Moon className="h-5 w-5 text-[#2C3E6B]/60" />
         </div>
       </div>

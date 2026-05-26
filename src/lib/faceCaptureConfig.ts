@@ -1,8 +1,11 @@
 /**
  * Face capture guidance backends.
  *
- * MediaPipe is **off by default**. Enable with ENABLE_MEDIAPIPE / NEXT_PUBLIC_ENABLE_MEDIAPIPE /
- * EXPO_PUBLIC_ENABLE_MEDIAPIPE (=1). Legacy disable flags still honored.
+ * **Default web framing:** MediaPipe BlazeFace (bbox) + Face Landmarker (eyes / expression).
+ * **Best quality:** server RetinaFace ONNX — set FACE_DETECTOR=retinaface and add
+ * `models/capture/retinaface.onnx` (see `npm run capture:setup-models`).
+ *
+ * Disable client MediaPipe with DISABLE_MEDIAPIPE / NEXT_PUBLIC_DISABLE_MEDIAPIPE (=1).
  *
  * Web: NEXT_PUBLIC_FACE_DETECTOR, NEXT_PUBLIC_FACE_EXPRESSION
  * Mobile: EXPO_PUBLIC_FACE_DETECTOR, EXPO_PUBLIC_FACE_EXPRESSION
@@ -60,6 +63,30 @@ export function usesServerFacePreview(config: {
   );
 }
 
+/** Web/mobile: call /api/capture/preview when logged in (RetinaFace if ONNX present). */
+export function wantsOptionalServerPreview(): boolean {
+  if (
+    process.env.NEXT_PUBLIC_CAPTURE_SERVER_PREVIEW === "0" ||
+    process.env.EXPO_PUBLIC_CAPTURE_SERVER_PREVIEW === "0"
+  ) {
+    return false;
+  }
+  if (
+    process.env.NEXT_PUBLIC_CAPTURE_SERVER_PREVIEW === "1" ||
+    process.env.EXPO_PUBLIC_CAPTURE_SERVER_PREVIEW === "1"
+  ) {
+    return true;
+  }
+  return process.env.NODE_ENV === "development";
+}
+
+export function shouldTryServerPreviewOnClient(config: {
+  detector: FaceDetectorBackend;
+  expression: FaceExpressionBackend;
+}): boolean {
+  return usesServerFacePreview(config) || wantsOptionalServerPreview();
+}
+
 function mediapipeExplicitlyEnabled(): boolean {
   return (
     process.env.ENABLE_MEDIAPIPE === "1" ||
@@ -77,11 +104,11 @@ function mediapipeExplicitlyDisabled(): boolean {
   );
 }
 
-/** Global MediaPipe kill-switch — default off. */
+/** Global MediaPipe toggle — on unless explicitly disabled. */
 export function isMediapipeEnabled(): boolean {
-  if (mediapipeExplicitlyEnabled()) return true;
   if (mediapipeExplicitlyDisabled()) return false;
-  return false;
+  if (mediapipeExplicitlyEnabled()) return true;
+  return true;
 }
 
 export function needsMediapipeOnClient(config: {
