@@ -231,17 +231,18 @@ export function FiveAngleCameraStep({
             mirrored={facing === "front"}
           />
         ) : null}
-        <ScanCaptureDebugOverlay
-          guidance={guidance}
-          captureZoom={cameraZoom}
-          models={models}
-          faceTracked={faceTracked}
-          extra={{
-            step: `${stepIndex + 1}/${totalSteps}`,
-            bbox: bboxSource,
-          }}
-        />
       </View>
+      <ScanCaptureDebugOverlay
+        guidance={guidance}
+        captureZoom={cameraZoom}
+        models={models}
+        faceTracked={faceTracked}
+        insetTop={insets.top + 120}
+        extra={{
+          step: `${stepIndex + 1}/${totalSteps}`,
+          bbox: bboxSource,
+        }}
+      />
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={onBack} style={styles.headerBtn} hitSlop={14}>

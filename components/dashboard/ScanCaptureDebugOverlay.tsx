@@ -28,10 +28,11 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Live framing metrics — enable with NEXT_PUBLIC_CAPTURE_DEBUG=1 (on in dev by default). */
+/** Dev default on; set NEXT_PUBLIC_CAPTURE_DEBUG=0 to hide, =1 to force on in production. */
 export function isCaptureDebugEnabled(): boolean {
-  if (process.env.NEXT_PUBLIC_CAPTURE_DEBUG === "0") return false;
-  if (process.env.NEXT_PUBLIC_CAPTURE_DEBUG === "1") return true;
+  const flag = process.env.NEXT_PUBLIC_CAPTURE_DEBUG?.trim();
+  if (flag === "0" || flag === "false") return false;
+  if (flag === "1" || flag === "true") return true;
   return process.env.NODE_ENV === "development";
 }
 
@@ -82,7 +83,7 @@ export function ScanCaptureDebugOverlay({
 
   return (
     <div
-      className="pointer-events-none absolute left-2 top-2 z-40 max-w-[min(100%,14rem)] rounded-md bg-black/75 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-emerald-100 shadow-md"
+      className="pointer-events-none absolute left-2 top-2 z-[100] max-w-[min(100%,14rem)] rounded-md bg-black/75 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-emerald-100 shadow-md"
       aria-hidden
     >
       <p className="mb-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-400/90">

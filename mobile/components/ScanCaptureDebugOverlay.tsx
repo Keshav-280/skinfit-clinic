@@ -14,6 +14,8 @@ type Props = {
   captureZoom: number;
   models?: CaptureAssistModels;
   faceTracked?: boolean;
+  /** Safe-area top offset so the panel clears the header/instruction card. */
+  insetTop?: number;
   extra?: Record<string, string | number | boolean | null | undefined>;
 };
 
@@ -27,12 +29,12 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Set EXPO_PUBLIC_CAPTURE_DEBUG=1 to show (defaults on in dev). */
+/** Dev default on; set EXPO_PUBLIC_CAPTURE_DEBUG=0 to hide, =1 to force on in release. */
 export function isCaptureDebugEnabled(): boolean {
-  const flag = process.env.EXPO_PUBLIC_CAPTURE_DEBUG;
-  if (flag === "0") return false;
-  if (flag === "1") return true;
-  return __DEV__;
+  const flag = process.env.EXPO_PUBLIC_CAPTURE_DEBUG?.trim();
+  if (flag === "0" || flag === "false") return false;
+  if (flag === "1" || flag === "true") return true;
+  return typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
 }
 
 export function ScanCaptureDebugOverlay({
@@ -40,6 +42,7 @@ export function ScanCaptureDebugOverlay({
   captureZoom,
   models,
   faceTracked,
+  insetTop = 0,
   extra,
 }: Props) {
   if (!isCaptureDebugEnabled()) return null;
@@ -75,7 +78,7 @@ export function ScanCaptureDebugOverlay({
   }
 
   return (
-    <View style={styles.wrap} pointerEvents="none">
+    <View style={[styles.wrap, { top: insetTop + 8 }]} pointerEvents="none">
       <Text style={styles.title}>Capture debug</Text>
       {lines.map((line) => (
         <Text key={line} style={styles.line}>
@@ -89,9 +92,9 @@ export function ScanCaptureDebugOverlay({
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    bottom: 200,
     left: 8,
-    zIndex: 40,
+    zIndex: 100,
+    elevation: 100,
     maxWidth: 200,
     backgroundColor: "rgba(0,0,0,0.78)",
     borderRadius: 8,
