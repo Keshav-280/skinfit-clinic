@@ -7,6 +7,8 @@ COPY apps/ml-worker/python/requirements-worker.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 ENV PYTHONPATH=/app/face_analysis
 COPY apps/ml-worker/python/backbone_offline.py /app/patches/backbone_offline.py
-# face_analysis_tool mounted at runtime via compose volume
+# Bake torch.hub dinov2 repo so runtime needs no GitHub fetch (weights still from mount)
+RUN python -c "import torch; torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14_reg', pretrained=False)"
+# face_analysis_tool mounted read-only at runtime — copy + offline backbone patch
 EXPOSE 8765
-CMD ["sh", "-c", "cd /app/face_analysis && uvicorn api_server:app --host 0.0.0.0 --port 8765"]
+CMD ["sh", "-c", "cp -a /app/face_analysis /tmp/face_analysis && cp /app/patches/backbone_offline.py /tmp/face_analysis/models/backbone.py && cd /tmp/face_analysis && PYTHONPATH=/tmp/face_analysis uvicorn api_server:app --host 0.0.0.0 --port 8765"]

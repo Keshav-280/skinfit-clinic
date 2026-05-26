@@ -18,6 +18,7 @@ import {
   removePendingScanJob,
 } from "@/lib/scanJobNotifications";
 import { presentScanReportReadyNotification } from "@/lib/scanReadyLocalNotification";
+import { presentScanReportFailedNotification } from "@/lib/scanFailedLocalNotification";
 
 const POLL_MS = 8_000;
 const NAVY = "#2C3E6B";
@@ -66,6 +67,7 @@ export function ScanJobReadyNotifier() {
           if (!failedAlertShown.current.has(job.jobId)) {
             failedAlertShown.current.add(job.jobId);
             const title = job.scanName?.trim() || "Your scan";
+            void presentScanReportFailedNotification(job.jobId, title);
             Alert.alert(
               "Scan could not finish",
               `${title} — we retried several times. Please run a new scan when analysis is ready.`,

@@ -32,6 +32,13 @@ onNotification("scan.completed", (e) => {
   logger.info("notification_scan_completed", { userId: e.userId });
 });
 
+onNotification("scan.failed", (e) => {
+  logger.info("notification_scan_failed", {
+    userId: e.userId,
+    error: (e.payload as { error?: string } | null)?.error ?? null,
+  });
+});
+
 onNotification("doctor.reply", (e) => {
   logger.info("notification_doctor_reply", { userId: e.userId });
 });

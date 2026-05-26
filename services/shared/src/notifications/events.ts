@@ -2,6 +2,7 @@
 
 export type NotificationEventType =
   | "scan.completed"
+  | "scan.failed"
   | "doctor.reply"
   | "appointment.reminder";
 

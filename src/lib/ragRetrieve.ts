@@ -47,17 +47,20 @@ export async function productionTextbookRetrieve(params: {
   });
 
   if (!isPineconeTextbookConfigured()) {
+    console.log("[rag] Pinecone is NOT configured. Falling back to local BM25 (JSON catalog) search.");
     return bm25.slice(0, topK);
   }
 
+  console.log(`[rag] Pinecone is configured. Querying Pinecone index: ${process.env.PINECONE_INDEX_NAME}...`);
   let vector: Array<{ chunk: TextbookChunk; score: number }> = [];
   try {
     vector = await pineconeTextbookRetrieve({
       query: queryForVector || params.query,
       topK: Math.max(topK * 2, topK),
     });
+    console.log(`[rag] Pinecone retrieval completed successfully with ${vector.length} matches.`);
   } catch (e) {
-    console.error("[rag] Pinecone query failed; using BM25 only:", e);
+    console.error("[rag] Pinecone query failed; falling back to BM25 only:", e);
   }
 
   if (vector.length === 0) {

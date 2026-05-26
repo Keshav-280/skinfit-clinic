@@ -700,8 +700,6 @@ export function SkinScanReportBody({
             imageUrl={imageUrl}
             wrinkleMaskUrl={wrinkleUrl}
             acneMaskUrl={acneUrl}
-            wrinkleFallbackUrl={faceCaptureGallery?.[4]?.imageUrl}
-            acneFallbackUrl={faceCaptureGallery?.[0]?.imageUrl}
             wrinklePoseLabel={
               faceCaptureGallery?.[4]?.label ??
               FACE_SCAN_CAPTURE_STEPS[4]?.title ??

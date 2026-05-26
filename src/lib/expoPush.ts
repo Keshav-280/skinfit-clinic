@@ -123,6 +123,30 @@ export async function notifyPatientScanReportReady(
   });
 }
 
+/** Patient push when a scan job permanently fails after BullMQ retries. */
+export async function notifyPatientScanReportFailed(
+  patientUserId: string,
+  jobId: string,
+  scanName?: string | null
+): Promise<void> {
+  const [row] = await db
+    .select({ token: users.expoPushToken })
+    .from(users)
+    .where(eq(users.id, patientUserId))
+    .limit(1);
+  const token = row?.token?.trim();
+  if (!token) return;
+
+  const label = scanName?.trim() || "Your scan";
+  const body = `${label} couldn't be processed after several retries. Tap to try a new scan.`;
+  await sendExpoPushNotification({
+    expoPushToken: token,
+    title: "SkinnFit — scan didn't finish",
+    body: body.length > 140 ? `${body.slice(0, 137)}…` : body,
+    data: { type: "scan_report_failed", jobId },
+  });
+}
+
 /** Patient push when a doctor posts a voice note (general or scan/report). */
 export async function notifyPatientDoctorVoiceNote(
   patientUserId: string,

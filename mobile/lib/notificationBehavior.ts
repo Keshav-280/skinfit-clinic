@@ -45,6 +45,10 @@ export function configureNotificationBehavior() {
         } else {
           router.push("/(drawer)/history" as Href);
         }
+        return;
+      }
+      if (t === "scan_report_failed") {
+        router.push("/(drawer)/scan" as Href);
       }
     });
   })();

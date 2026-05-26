@@ -35,6 +35,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_CAPTURE_DEBUG: "1"
     env_file:
       - ../.env.local
     ports:

@@ -38,8 +38,12 @@ function MaskPanel({
           src={displaySrc}
           alt={alt}
           onError={(e) => {
-            if (!fallback || e.currentTarget.src === fallback) return;
-            e.currentTarget.src = fallback;
+            const el = e.currentTarget;
+            if (el.dataset.maskFallback === "1") return;
+            if (fallback && el.src !== fallback) {
+              el.dataset.maskFallback = "1";
+              el.src = fallback;
+            }
           }}
           className="absolute left-0 w-full max-w-none object-cover object-bottom"
           style={{

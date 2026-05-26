@@ -83,7 +83,7 @@ export function ScanCaptureDebugOverlay({
 
   return (
     <div
-      className="pointer-events-none absolute left-2 top-2 z-[100] max-w-[min(100%,14rem)] rounded-md bg-black/75 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-emerald-100 shadow-md"
+      className="pointer-events-none absolute left-2 top-2 z-[100] max-h-[min(55%,320px)] max-w-[min(100%,15rem)] overflow-y-auto rounded-md border border-emerald-500/40 bg-black/85 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-emerald-100 shadow-lg"
       aria-hidden
     >
       <p className="mb-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-400/90">

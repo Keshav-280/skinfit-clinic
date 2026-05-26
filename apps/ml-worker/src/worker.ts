@@ -14,6 +14,8 @@ import {
   setJobStatus,
 } from "../../../services/shared/src/queue/index.js";
 import { logger } from "../../../services/shared/src/logging/index.js";
+import { publishNotification } from "../../../services/shared/src/notifications/index.js";
+import { notifyPatientScanReportFailed } from "../../../src/lib/expoPush.js";
 import { processScanJob } from "../../../src/lib/scanPipeline/processScanJob.js";
 
 const connection = { url: getRedisUrl() };
@@ -79,6 +81,27 @@ const worker = new Worker(
         throw err;
       }
       await setJobStatus(jobId, "failed", { error: msg });
+
+      void publishNotification("scan.failed", payload.userId, {
+        jobId,
+        error: msg,
+      }).catch((e) => {
+        logger.warn("scan_failed_notification_publish_error", {
+          jobId,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      });
+      void notifyPatientScanReportFailed(
+        payload.userId,
+        jobId,
+        payload.scanName
+      ).catch((e) => {
+        logger.warn("scan_failed_push_error", {
+          jobId,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      });
+
       if (!retryable) {
         throw new UnrecoverableError(msg);
       }
