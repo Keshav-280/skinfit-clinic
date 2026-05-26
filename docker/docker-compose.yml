@@ -45,6 +45,8 @@ services:
       LOCAL_STORAGE_ROOT: /uploads
       SCAN_ASYNC_MODE: "1"
       PUBLIC_UPLOAD_BASE_URL: http://localhost:3000/api/files
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
       FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
     volumes:
       - uploads:/uploads

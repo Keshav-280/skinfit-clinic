@@ -3,6 +3,7 @@ import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
 import { getAppBaseUrl } from "@/src/lib/auth/oauth/config";
+import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 import { sanitizeOAuthNext } from "@/src/lib/auth/oauth/state";
 
 /** Next.js Route Handler redirects require an absolute URL. */
@@ -43,7 +44,7 @@ export async function establishPatientSessionCookie(user: {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: authCookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,

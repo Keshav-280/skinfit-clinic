@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 
 export const OAUTH_STATE_COOKIE = "skinfit_oauth_state";
 
@@ -78,7 +79,7 @@ export async function setOAuthStateCookie(stateToken: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(OAUTH_STATE_COOKIE, stateToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: authCookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: STATE_TTL_SEC,

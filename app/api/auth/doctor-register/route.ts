@@ -6,6 +6,7 @@ import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
+import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 import { createSessionToken } from "@/src/lib/auth/session";
 import { getDoctorRegistrationSecret } from "@/src/lib/doctorPatientCare";
 
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: authCookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,

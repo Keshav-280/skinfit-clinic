@@ -10,6 +10,7 @@ import {
   getSessionUserProfileFromRequest,
 } from "@/src/lib/auth/get-session";
 import { getOnboardingAccessForUser } from "@/src/lib/onboardingAccess";
+import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
 import {
@@ -391,7 +392,7 @@ export async function PATCH(req: Request) {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: authCookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
