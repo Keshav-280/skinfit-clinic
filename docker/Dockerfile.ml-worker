@@ -6,4 +6,4 @@ COPY services/shared ./services/shared
 COPY src ./src
 COPY apps/ml-worker ./apps/ml-worker
 RUN mkdir -p /uploads
-CMD ["npx", "tsx", "apps/ml-worker/src/worker.ts"]
+CMD ["npx", "tsx", "--tsconfig", "apps/ml-worker/tsconfig.json", "apps/ml-worker/src/worker.ts"]

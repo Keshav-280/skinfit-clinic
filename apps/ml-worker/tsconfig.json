@@ -12,5 +12,6 @@
     },
     "baseUrl": "."
   },
-  "include": ["src/**/*.ts", "../../src/lib/scanPipeline/**/*.ts", "../../src/db/**/*.ts"]
+  "include": ["src/**/*.ts", "../../src/**/*.ts"],
+  "exclude": ["../../src/**/*.test.ts", "../../src/scripts/**"]
 }

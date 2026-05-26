@@ -14,45 +14,21 @@ import {
   setJobStatus,
 } from "../../../services/shared/src/queue/index.js";
 import { logger } from "../../../services/shared/src/logging/index.js";
+import { processScanJob } from "../../../src/lib/scanPipeline/processScanJob.js";
 
 const connection = { url: getRedisUrl() };
-
-async function runProcessScanJob(
-  jobId: string,
-  payload: {
-    userId: string;
-    scanName: string;
-    imagePaths: Record<string, string>;
-    faceCaptureImages: Array<{ label: string; imageUrl: string }>;
-    primaryImageUrl: string;
-  }
-) {
-  const mod = await import("../../../src/lib/scanPipeline/processScanJob.js");
-  const fn =
-    (mod as { processScanJob?: (typeof import("../../../src/lib/scanPipeline/processScanJob.js"))["processScanJob"] })
-      .processScanJob ??
-    (mod as { default?: { processScanJob?: unknown } }).default?.processScanJob;
-  if (typeof fn !== "function") {
-    throw new Error("processScanJob export not found");
-  }
-  return (fn as (id: string, p: typeof payload, d: typeof db) => Promise<{ scanId: number }>)(
-    jobId,
-    payload,
-    db
-  );
-}
 
 const worker = new Worker(
   QUEUE_NAMES.scanAnalysis,
   async (job) => {
     const { jobId, payload } = job.data as {
       jobId: string;
-      payload: Parameters<typeof runProcessScanJob>[1];
+      payload: Parameters<typeof processScanJob>[1];
     };
     logger.queue(QUEUE_NAMES.scanAnalysis, "processing", { jobId });
     await setJobStatus(jobId, "processing");
     try {
-      const { scanId } = await runProcessScanJob(jobId, payload);
+      const { scanId } = await processScanJob(jobId, payload, db);
       await setJobStatus(jobId, "completed", { scanId });
       logger.queue(QUEUE_NAMES.scanAnalysis, "completed", { jobId, scanId });
       return { scanId };

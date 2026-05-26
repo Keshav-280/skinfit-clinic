@@ -162,7 +162,22 @@ export async function processScanJob(
       const text = completion.choices[0]?.message?.content?.trim();
       if (text) aiSummary = text;
     } catch (err) {
-      logger.warn("openai_summary_failed", { jobId, error: String(err) });
+      const code =
+        err &&
+        typeof err === "object" &&
+        "code" in err &&
+        typeof (err as { code?: string }).code === "string"
+          ? (err as { code: string }).code
+          : null;
+      logger.warn("openai_summary_skipped", {
+        jobId,
+        code: code ?? "unknown",
+        hint:
+          code === "insufficient_quota"
+            ? "OpenAI billing/quota — scan continues with default summary"
+            : undefined,
+        error: String(err),
+      });
     }
   }
 
