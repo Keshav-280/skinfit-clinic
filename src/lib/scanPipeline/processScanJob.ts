@@ -1,10 +1,9 @@
 import OpenAI from "openai";
 import { eq } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { scanJobs, scans, skinScans, users } from "@/src/db/schema";
-import type * as schema from "@/src/db/schema";
+import type { NodePgAppDatabase } from "@/src/db/database-types";
 
-export type ScanJobDatabase = NodePgDatabase<typeof schema>;
+export type ScanJobDatabase = NodePgAppDatabase;
 import { buildDummyAiSummary } from "@/src/lib/dummyScanSummary";
 import {
   runFaceAnalysisDualScan,

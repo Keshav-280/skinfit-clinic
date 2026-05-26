@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db as defaultDb } from "@/src/db/client";
+import type { AppDatabase } from "@/src/db/database-types";
 import { scans } from "@/src/db/schema";
 import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
@@ -13,7 +14,7 @@ function isMissingTrackerSnapshotColumn(error: unknown): boolean {
   );
 }
 
-type TrackerDb = typeof defaultDb;
+type TrackerDb = any;
 
 async function writeTrackerSnapshot(
   userId: string,

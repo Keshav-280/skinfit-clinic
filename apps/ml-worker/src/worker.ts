@@ -5,7 +5,7 @@ import "./load-env.js";
 import { UnrecoverableError, Worker } from "bullmq";
 import { eq } from "drizzle-orm";
 import { db } from "./db.js";
-import schemaModule from "../../../src/db/schema.js";
+import { scanJobs } from "../../../src/db/schema.js";
 import { getRedisUrl } from "../../../services/shared/src/env/index.js";
 import {
   QUEUE_NAMES,
@@ -14,19 +14,6 @@ import {
   setJobStatus,
 } from "../../../services/shared/src/queue/index.js";
 import { logger } from "../../../services/shared/src/logging/index.js";
-
-const scanJobs =
-  // tsx interop can wrap TS modules as default/module.exports.
-  // Handle both shapes so job failure updates always work.
-  (schemaModule as { scanJobs?: unknown }).scanJobs ??
-  (schemaModule as { default?: { scanJobs?: unknown } }).default?.scanJobs ??
-  (schemaModule as { "module.exports"?: { scanJobs?: unknown } })[
-    "module.exports"
-  ]?.scanJobs;
-
-if (!scanJobs) {
-  throw new Error("scanJobs schema export not found in worker runtime");
-}
 
 const connection = { url: getRedisUrl() };
 

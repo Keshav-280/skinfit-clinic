@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { db } from "@/src/db/client";
+import type { AppDatabase } from "@/src/db/database-types";
 import * as schema from "@/src/db/schema";
 import {
   type KaiParamKey,
@@ -15,7 +15,7 @@ type ParamRow = {
   extras?: Record<string, unknown> | null;
 };
 
-type Db = typeof db;
+type Db = any;
 
 export async function insertParameterScoresForScan(
   d: Db,

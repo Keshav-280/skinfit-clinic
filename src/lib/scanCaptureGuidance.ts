@@ -422,7 +422,9 @@ function classifyFraming(
 
 const MIN_FACE_BOX = 0.022;
 
-export function isUsableFaceBox(box: NormalizedFaceBox | null): boolean {
+export function isUsableFaceBox(
+  box: NormalizedFaceBox | null
+): box is NormalizedFaceBox {
   return Boolean(
     box && box.width >= MIN_FACE_BOX && box.height >= MIN_FACE_BOX
   );
