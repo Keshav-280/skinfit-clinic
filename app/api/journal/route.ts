@@ -10,6 +10,7 @@ import {
   parseYmdToDateOnly,
   ymdFromDateOnly,
 } from "@/src/lib/date-only";
+import { normalizeSleepQuality } from "@/src/lib/sleepQuality";
 
 async function routineLensForUser(
   userId: string
@@ -106,6 +107,7 @@ function serializeLog(row: LogRow) {
     id: row.id,
     date,
     sleepHours: row.sleepHours,
+    sleepQuality: row.sleepQuality ?? null,
     stressLevel: row.stressLevel,
     waterGlasses: row.waterGlasses,
     journalEntry: row.journalEntry,
@@ -130,6 +132,7 @@ export async function POST(req: Request) {
   let body: {
     date?: string;
     sleepHours?: number;
+    sleepQuality?: string | null;
     stressLevel?: number;
     waterGlasses?: number;
     journalEntry?: string | null;
@@ -169,6 +172,13 @@ export async function POST(req: Request) {
   const sleepHours = body.sleepHours != null
     ? clampFloat(body.sleepHours, 0, 24, existing?.sleepHours ?? 0)
     : (existing?.sleepHours ?? 0);
+  const sleepQuality =
+    body.sleepQuality !== undefined
+      ? normalizeSleepQuality(
+          body.sleepQuality,
+          normalizeSleepQuality(existing?.sleepQuality, "average")
+        )
+      : normalizeSleepQuality(existing?.sleepQuality, "average");
   const stressLevel = body.stressLevel != null
     ? clampInt(body.stressLevel, 0, 10, existing?.stressLevel ?? 5)
     : (existing?.stressLevel ?? 5);
@@ -214,6 +224,7 @@ export async function POST(req: Request) {
       userId,
       date: d,
       sleepHours,
+      sleepQuality,
       stressLevel,
       waterGlasses,
       journalEntry,
@@ -231,6 +242,7 @@ export async function POST(req: Request) {
       target: [dailyLogs.userId, dailyLogs.date],
       set: {
         sleepHours,
+        sleepQuality,
         stressLevel,
         waterGlasses,
         journalEntry,

@@ -2,8 +2,11 @@
 Drop-in replacement for face_analysis_tool/models/backbone.py — loads DINOv2 from disk.
 
 Env:
-  DINO_LOCAL_WEIGHTS — path to .pth state_dict (required for offline boot)
+  DINO_LOCAL_WEIGHTS — optional path to .pth state_dict (offline boot)
   DINO_MODEL_NAME    — default dinov2_vitl14_reg (torch.hub architecture id)
+
+If DINO_LOCAL_WEIGHTS is unset or missing, falls back to torch.hub pretrained weights
+(first start needs outbound internet — ECS NAT / local dev network).
 """
 
 from __future__ import annotations
@@ -21,21 +24,25 @@ class DINOBackbone(nn.Module):
     def __init__(self, model_name: str = "dinov2_vitl14_reg"):
         super().__init__()
         weights_path = os.environ.get("DINO_LOCAL_WEIGHTS", "").strip()
-        if not weights_path or not Path(weights_path).is_file():
-            raise RuntimeError(
-                "DINO_LOCAL_WEIGHTS must point to a pre-downloaded .pth file. "
-                "See /models/README.md"
-            )
+        local_file = bool(weights_path and Path(weights_path).is_file())
 
         # Hub architecture matches face_analyzer (224×224 → 16×16 patches). Timm's
         # vit_large_patch14_dinov2 defaults to 518×518 and breaks inference.
-        self.model = torch.hub.load(
-            "facebookresearch/dinov2",
-            model_name,
-            pretrained=False,
-        )
-        state = torch.load(weights_path, map_location="cpu", weights_only=True)
-        self.model.load_state_dict(state, strict=True)
+        if local_file:
+            self.model = torch.hub.load(
+                "facebookresearch/dinov2",
+                model_name,
+                pretrained=False,
+            )
+            state = torch.load(weights_path, map_location="cpu", weights_only=True)
+            self.model.load_state_dict(state, strict=True)
+        else:
+            # AWS ECS: no .pth on EFS yet — download backbone once via NAT (~1 GB).
+            self.model = torch.hub.load(
+                "facebookresearch/dinov2",
+                model_name,
+                pretrained=True,
+            )
         self.model.eval()
         for p in self.model.parameters():
             p.requires_grad = False

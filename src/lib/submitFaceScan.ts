@@ -24,11 +24,18 @@ export async function submitFaceScan(
     }
   }
 
-  if (submitRes.status !== 503 && submitRes.ok && submitRes.status !== 202) {
-    const errJson = (await submitRes.json().catch(() => ({}))) as { error?: string };
+  // Async mode on server: do not fall back to legacy /api/scan (returns 410).
+  if (submitRes.status !== 503) {
+    const errJson = (await submitRes.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
     return {
       mode: "error",
-      message: errJson.error || "Could not queue scan.",
+      message:
+        errJson.message ||
+        errJson.error ||
+        `Could not queue scan (${submitRes.status}).`,
       status: submitRes.status,
     };
   }

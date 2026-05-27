@@ -1,7 +1,5 @@
 import "./load-env";
-import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "../../../src/db/schema";
+import { createPgDb } from "../../../src/db/client-pg";
 
 function databaseUrl(): string {
   const url =
@@ -16,5 +14,4 @@ function databaseUrl(): string {
   return url;
 }
 
-const pool = new Pool({ connectionString: databaseUrl() });
-export const db = drizzle(pool, { schema });
+export const db = createPgDb(databaseUrl());

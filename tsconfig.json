@@ -32,5 +32,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "mobile", "apps/ml-worker", "apps/ml-inference"]
+  "exclude": [
+    "node_modules",
+    "mobile",
+    "apps/ml-worker",
+    "apps/ml-inference",
+    "src/scripts"
+  ]
 }

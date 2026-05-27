@@ -6,6 +6,10 @@ import { ArrowLeft, Moon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
+import {
+  sleepQualityFromLabel,
+  sleepQualityToLabel,
+} from "@/src/lib/sleepQuality";
 
 const HOUR_OPTIONS = [4, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 10];
 const QUALITY_OPTIONS = ["Very Poor", "Average", "Excellent"] as const;
@@ -49,6 +53,9 @@ export default function SleepTrackerPage() {
       .then((data) => {
         if (data.entry) {
           setHours(data.entry.sleepHours ?? 0);
+          if (data.entry.sleepQuality) {
+            setQuality(sleepQualityToLabel(data.entry.sleepQuality));
+          }
         }
       })
       .finally(() => {
@@ -59,7 +66,18 @@ export default function SleepTrackerPage() {
 
   function handleSetHours(h: number) {
     setHours(h);
-    scheduleSave(format(new Date(), "yyyy-MM-dd"), { sleepHours: h });
+    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+      sleepHours: h,
+      sleepQuality: sleepQualityFromLabel(quality),
+    });
+  }
+
+  function handleSetQuality(opt: (typeof QUALITY_OPTIONS)[number]) {
+    setQuality(opt);
+    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+      sleepHours: hours,
+      sleepQuality: sleepQualityFromLabel(opt),
+    });
   }
 
   const startAngle = 210;
@@ -203,7 +221,7 @@ export default function SleepTrackerPage() {
           {QUALITY_OPTIONS.map((opt) => (
             <button
               key={opt}
-              onClick={() => setQuality(opt)}
+              onClick={() => handleSetQuality(opt)}
               className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-all ${
                 quality === opt
                   ? "bg-[#2C3E6B] text-white shadow-md"

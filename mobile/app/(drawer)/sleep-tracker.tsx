@@ -140,8 +140,11 @@ export default function SleepTrackerScreen() {
     setLoading(true);
     try {
       const ymd = format(selectedDate, "yyyy-MM-dd");
-      const json = await apiJson<{ entry: { sleepHours?: number } | null }>(`/api/journal?date=${ymd}`, token, { method: "GET" });
+      const json = await apiJson<{
+        entry: { sleepHours?: number; sleepQuality?: string | null } | null;
+      }>(`/api/journal?date=${ymd}`, token, { method: "GET" });
       setHours(json.entry?.sleepHours ?? 7.5);
+      setQuality(json.entry?.sleepQuality ?? null);
     } catch { setHours(7.5); }
     finally { setLoading(false); }
   }, [token, selectedDate, markNotReady]);
@@ -155,7 +158,18 @@ export default function SleepTrackerScreen() {
 
   function handleSetHours(h: number) {
     setHours(h);
-    scheduleSave(format(selectedDate, "yyyy-MM-dd"), { sleepHours: h });
+    scheduleSave(format(selectedDate, "yyyy-MM-dd"), {
+      sleepHours: h,
+      ...(quality ? { sleepQuality: quality } : {}),
+    });
+  }
+
+  function handleSetQuality(key: string) {
+    setQuality(key);
+    scheduleSave(format(selectedDate, "yyyy-MM-dd"), {
+      sleepHours: hours,
+      sleepQuality: key,
+    });
   }
 
   function goBack() { if (canGoBack) setSelectedDate((d) => subDays(d, 1)); }
@@ -219,7 +233,7 @@ export default function SleepTrackerScreen() {
               <Pressable
                 key={q.key}
                 style={[s.qualityItem, quality === q.key && s.qualityItemOn]}
-                onPress={() => setQuality(q.key)}
+                onPress={() => handleSetQuality(q.key)}
               >
                 <Ionicons name={q.icon} size={32} color={quality === q.key ? NAVY : "#9CA3AF"} />
                 <Text style={[s.qualityLabel, quality === q.key && { color: NAVY, fontWeight: "700" }]}>

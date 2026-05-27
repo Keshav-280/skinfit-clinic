@@ -1,8 +1,8 @@
 # Local full stack — no AWS/Cloudflare. Run from repo root:
 #   cp infra/.env.local.example .env.local
 #   docker compose -f docker/docker-compose.yml up --build
-# Services load ../.env.local via env_file (FACE_ANALYSIS_* keys must match).
-# Host worker:dev uses the same .env.local with FACE_ANALYSIS_SERVICE_URL=http://127.0.0.1:8765
+# Services load ../.env then ../.env.local (later overrides). Put secrets in either file.
+# Host worker:dev uses the same files with FACE_ANALYSIS_SERVICE_URL=http://127.0.0.1:8765
 
 services:
   postgres:
@@ -38,6 +38,7 @@ services:
       args:
         NEXT_PUBLIC_CAPTURE_DEBUG: "1"
     env_file:
+      - ../.env
       - ../.env.local
     ports:
       - "3000:3000"
@@ -63,6 +64,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.ml-worker
     env_file:
+      - ../.env
       - ../.env.local
     environment:
       LOCAL_POSTGRES_URL: postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
@@ -81,6 +83,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.ml-inference
     env_file:
+      - ../.env
       - ../.env.local
     ports:
       - "8765:8765"

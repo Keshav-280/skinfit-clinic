@@ -374,6 +374,8 @@ export const dailyLogs = pgTable(
     routinePmSteps: jsonb("routine_pm_steps").$type<boolean[]>(),
     /** Hours of sleep (supports half-hours e.g. 6.5). */
     sleepHours: real("sleep_hours").notNull().default(0),
+    /** Self-reported sleep quality: very_poor | average | excellent */
+    sleepQuality: varchar("sleep_quality", { length: 32 }),
     /** Self-reported stress 1–10. */
     stressLevel: integer("stress_level").notNull().default(5),
     /** Water intake in glasses. */
