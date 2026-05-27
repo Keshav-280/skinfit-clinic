@@ -1,21 +1,9 @@
 import { mkdir, writeFile, unlink, readFile } from "node:fs/promises";
-import { join, dirname, normalize, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { dirname, normalize, resolve } from "node:path";
 import type { StorageObjectKind } from "../types/index";
 import type { StorageProvider } from "./types";
 import { getPublicUploadBaseUrl, getStorageRoot } from "../env/index";
-
-const KIND_DIRS: Record<StorageObjectKind, string> = {
-  scans: "scans",
-  audio: "audio",
-  masks: "masks",
-  reports: "reports",
-  attachments: "attachments",
-};
-
-function safeFileName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200);
-}
+import { buildStorageObjectKey, fileUrlPath } from "./paths";
 
 export class LocalStorageProvider implements StorageProvider {
   private readonly root: string;
@@ -41,10 +29,7 @@ export class LocalStorageProvider implements StorageProvider {
     data: Buffer,
     mimeType: string
   ): Promise<{ path: string; url: string }> {
-    const ext = safeFileName(fileName).includes(".")
-      ? safeFileName(fileName).split(".").pop()
-      : mimeType.split("/")[1] || "bin";
-    const rel = `${KIND_DIRS[kind]}/${randomUUID()}.${ext}`;
+    const rel = buildStorageObjectKey(kind, fileName, mimeType);
     const abs = this.absPath(rel);
     await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, data, { mode: 0o600 });
@@ -61,13 +46,11 @@ export class LocalStorageProvider implements StorageProvider {
 
   /** Relative path so dashboard `<img>` shares origin + session cookie with the app. */
   getUrl(path: string): string {
-    const encoded = path.split("/").map(encodeURIComponent).join("/");
-    return `/api/files/${encoded}`;
+    return fileUrlPath(path);
   }
 
   getAbsoluteUrl(path: string): string {
-    const encoded = path.split("/").map(encodeURIComponent).join("/");
-    return `${this.publicBase}/${encoded}`;
+    return `${this.publicBase}/${path.split("/").map(encodeURIComponent).join("/")}`;
   }
 
   async read(path: string): Promise<Buffer> {
@@ -75,4 +58,3 @@ export class LocalStorageProvider implements StorageProvider {
   }
 }
 
-/** Future: R2StorageProvider implements same StorageProvider interface. */

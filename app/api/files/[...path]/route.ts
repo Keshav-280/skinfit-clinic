@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import { resolve, normalize } from "node:path";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
-import { getStorageRoot } from "@/src/lib/infra";
+import { getStorage } from "@/src/lib/infra";
 
 const MIME: Record<string, string> = {
   jpg: "image/jpeg",
@@ -15,7 +13,7 @@ const MIME: Record<string, string> = {
 };
 
 /**
- * GET /api/files/scans/<id>.jpg — serves local uploads (auth required).
+ * GET /api/files/scans/<id>.jpg — serves uploads from local disk or R2 (auth required).
  */
 export async function GET(
   request: NextRequest,
@@ -28,16 +26,14 @@ export async function GET(
 
   const { path: segments } = await ctx.params;
   const rel = segments.map(decodeURIComponent).join("/");
-  const root = resolve(getStorageRoot());
-  const full = resolve(root, normalize(rel));
-  if (!full.startsWith(root)) {
+  if (rel.includes("..") || rel.startsWith("/")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
-    const buf = await readFile(full);
+    const buf = await getStorage().read(rel);
     const ext = rel.split(".").pop()?.toLowerCase() || "bin";
-    return new NextResponse(buf, {
+    return new NextResponse(new Uint8Array(buf), {
       headers: {
         "Content-Type": MIME[ext] || "application/octet-stream",
         "Cache-Control": "private, max-age=3600",
