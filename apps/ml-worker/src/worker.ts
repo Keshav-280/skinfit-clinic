@@ -17,8 +17,10 @@ import { logger } from "../../../services/shared/src/logging/index.js";
 import { publishNotification } from "../../../services/shared/src/notifications/index.js";
 import { notifyPatientScanReportFailed } from "../../../src/lib/expoPush.js";
 import { processScanJob } from "../../../src/lib/scanPipeline/processScanJob.js";
+import { initWorkerSentry, Sentry } from "./sentry.js";
 
 const connection = { url: getRedisUrl() };
+initWorkerSentry();
 
 const worker = new Worker(
   QUEUE_NAMES.scanAnalysis,
@@ -45,6 +47,10 @@ const worker = new Worker(
         attempt: job.attemptsMade,
         maxAttempts: job.opts.attempts ?? 1,
         willRetry,
+      });
+      Sentry.captureException(err, {
+        tags: { queue: QUEUE_NAMES.scanAnalysis, stage: "worker" },
+        extra: { jobId, attempt: job.attemptsMade, willRetry },
       });
       try {
         if (willRetry) {
@@ -113,6 +119,13 @@ const worker = new Worker(
 
 worker.on("ready", () => {
   logger.info("ml_worker_ready", { queue: QUEUE_NAMES.scanAnalysis });
+});
+
+worker.on("error", (err) => {
+  logger.error("ml_worker_error", { error: err.message });
+  Sentry.captureException(err, {
+    tags: { queue: QUEUE_NAMES.scanAnalysis, stage: "worker_event" },
+  });
 });
 
 process.on("SIGTERM", async () => {

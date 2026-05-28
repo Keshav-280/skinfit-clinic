@@ -149,7 +149,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "THREAD_CREATE_FAILED" }, { status: 500 });
   }
 
-  if (assistantId === "doctor" && !(isUrgent && !explicitDoctorId)) {
+  // Persist the patient's message for all assistants.
+  // For urgent doctor broadcasts without an explicit doctorId, rows are inserted
+  // inside postPatientUrgentMessageToAllClinicDoctors() to fan out safely.
+  if (!(assistantId === "doctor" && isUrgent && !explicitDoctorId)) {
     await db.insert(chatMessages).values({
       threadId,
       sender: "patient",
