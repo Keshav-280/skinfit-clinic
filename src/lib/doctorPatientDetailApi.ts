@@ -61,10 +61,14 @@ function faceCaptureCountFromScanRow(row: unknown): number {
   return n && n > 0 ? n : 1;
 }
 
+function scanScope(patientId: string) {
+  return eq(scans.userId, patientId);
+}
+
 async function loadDoctorPatientScans(patientId: string) {
   try {
     return await db.query.scans.findMany({
-      where: eq(scans.userId, patientId),
+      where: scanScope(patientId),
       orderBy: [desc(scans.createdAt)],
       limit: 40,
       columns: DOCTOR_PATIENT_SCAN_COLUMNS,
@@ -73,7 +77,7 @@ async function loadDoctorPatientScans(patientId: string) {
     if (!isMissingFaceCaptureColumn(e)) throw e;
     const { faceCaptureImages: _fc, ...withoutFace } = DOCTOR_PATIENT_SCAN_COLUMNS;
     return await db.query.scans.findMany({
-      where: eq(scans.userId, patientId),
+      where: scanScope(patientId),
       orderBy: [desc(scans.createdAt)],
       limit: 40,
       columns: withoutFace,

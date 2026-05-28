@@ -105,6 +105,7 @@ type HomeData = {
   } | null;
   doctorVoiceNoteIsNew: boolean;
   onboardingComplete?: boolean;
+  hasQuestionnaire?: boolean;
   /** False after onboarding until clinician saves AM/PM step list. */
   routinePlanReady?: boolean;
   routineAmReminderHm?: string;
@@ -696,7 +697,20 @@ export default function DashboardScreen() {
       />
 
       {/* ── Today's Focus ── */}
-      {data.todayFocus?.message ? (
+      {data.hasQuestionnaire === false ? (
+        <Pressable
+          style={styles.focusLocked}
+          onPress={() => router.push("/onboarding/questionnaire" as Href)}
+        >
+          <Text style={styles.focusLockedTitle}>Today&apos;s focus is locked</Text>
+          <Text style={styles.focusLockedBody}>
+            Complete your questionnaire to unlock personalised daily guidance.
+          </Text>
+          <View style={styles.focusLockedCtaWrap}>
+            <Text style={styles.focusLockedCta}>Continue questionnaire</Text>
+          </View>
+        </Pressable>
+      ) : data.todayFocus?.message ? (
         <TodayFocusCard message={data.todayFocus.message} />
       ) : null}
 
@@ -2099,5 +2113,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#78350f",
     lineHeight: 20,
+  },
+  focusLocked: {
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "rgba(44, 62, 107, 0.22)",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+  },
+  focusLockedTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#18181b",
+    textAlign: "center",
+  },
+  focusLockedBody: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  focusLockedCtaWrap: {
+    marginTop: 12,
+    alignSelf: "center",
+    backgroundColor: NAVY,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+  },
+  focusLockedCta: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "center",
   },
 });

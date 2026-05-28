@@ -5,14 +5,14 @@ import { Bell } from "lucide-react";
 import { useDashboardInbox } from "@/components/dashboard/DashboardInboxContext";
 
 export function DashboardClinicSupportBell() {
-  const { total: count, typesFull } = useDashboardInbox();
+  const { bellTotal: count, typesFull } = useDashboardInbox();
 
   const label =
     count >= 100
       ? `Many new alerts${typesFull ? ` — ${typesFull}` : ""}`
       : count > 0
         ? `${count} new${typesFull ? `: ${typesFull}` : ""}`
-        : "Notifications — open to see chat and voice alerts";
+        : "Notifications — open to see chat, scan reports, and voice alerts";
 
   return (
     <Link

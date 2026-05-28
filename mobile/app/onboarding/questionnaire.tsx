@@ -136,7 +136,7 @@ function copyForConcern(
 
 export default function QuestionnaireScreen() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, markOnboardingComplete, refreshUserFromProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -384,7 +384,18 @@ export default function QuestionnaireScreen() {
         }),
       });
       await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
-      router.push("/onboarding/capture" as Href);
+      await markOnboardingComplete();
+      if (token) await refreshUserFromProfile(token);
+      const resume = await apiJson<{ hasBaselineScan?: boolean }>(
+        "/api/onboarding/resume",
+        token,
+        { method: "GET" }
+      );
+      if (resume.hasBaselineScan) {
+        router.replace("/(drawer)" as Href);
+      } else {
+        router.push("/onboarding/capture" as Href);
+      }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not save questionnaire.");
     } finally {

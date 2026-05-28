@@ -10,9 +10,16 @@ import {
   Check,
   ImagePlus,
   SwitchCamera,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
-import { FaceCaptureOvalOverlayWeb } from "@/components/dashboard/FaceCaptureOvalOverlayWeb";
+import { ScanCaptureDebugOverlay } from "@/components/dashboard/ScanCaptureDebugOverlay";
 import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
+import { ScanCaptureStepTicks } from "@/components/dashboard/ScanCaptureStepTicks";
+import {
+  CAPTURE_READY_VOICE_HINT,
+  captureVoiceGuide,
+} from "@/src/lib/captureVoiceGuide";
 import { ScanCaptureZoomPanel } from "@/components/dashboard/ScanCaptureZoomPanel";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
 import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
@@ -25,8 +32,11 @@ import {
   FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
 } from "@/src/lib/faceScanCaptures";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
+import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
+import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
+import { submitFaceScan } from "@/src/lib/submitFaceScan";
 
-type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "results";
+type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "queued" | "results";
 
 interface ClinicalScores {
   active_acne?: number;
@@ -67,11 +77,13 @@ type CaptureItem = {
   label: (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
 };
 
+type PendingCapture = CaptureItem;
+
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 
 /** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
-const CAPTURE_ZOOM_MIN = 1;
-const CAPTURE_ZOOM_MAX = 2.5;
+const CAPTURE_ZOOM_MIN = CAPTURE_ZOOM_AUTO.min;
+const CAPTURE_ZOOM_MAX = CAPTURE_ZOOM_AUTO.max;
 const CAPTURE_ZOOM_STEP = 0.1;
 const CAPTURE_ZOOM_DEFAULT = CAPTURE_ZOOM_AUTO.default;
 
@@ -95,18 +107,39 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [captureZoom, setCaptureZoom] = useState<number>(CAPTURE_ZOOM_DEFAULT);
   const [autoZoomEnabled, setAutoZoomEnabled] = useState(true);
+  const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const userAdjustedZoomAt = useRef(0);
+  const captureStepIndexRef = useRef(0);
   const currentCameraStep = FACE_SCAN_CAPTURE_STEPS[Math.min(captures.length, N_CAPTURES - 1)];
+  const reviewingCapture = pendingCapture != null;
+  const guidanceActive = cameraOpen && !reviewingCapture;
 
-  const { guidance, models, faceDetectionAvailable, needsExpressionModel } =
+  const {
+    guidance,
+    models,
+    faceDetectionAvailable,
+    needsExpressionModel,
+    faceTracked,
+    bboxSource,
+  } =
     useWebScanCaptureGuidance(
       videoRef,
-      cameraOpen,
+      guidanceActive,
       captureZoom,
       currentCameraStep.id
     );
+
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+
+  useEffect(() => {
+    captureStepIndexRef.current = captures.length;
+  }, [captures.length]);
+
+  const clearPendingCapture = useCallback((item: PendingCapture | null) => {
+    if (item?.preview) URL.revokeObjectURL(item.preview);
+  }, []);
 
   const primaryPreview = captures[0]?.preview ?? null;
 
@@ -171,12 +204,16 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const openCameraForMultiCapture = useCallback(() => {
     setUploadError(null);
     setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
+    setPendingCapture((prev) => {
+      clearPendingCapture(prev);
+      return null;
+    });
     setCaptures((prev) => {
       revokeAllCaptures(prev);
       return [];
     });
     void startCamera("user");
-  }, [revokeAllCaptures, startCamera]);
+  }, [revokeAllCaptures, startCamera, clearPendingCapture]);
 
   const adjustCaptureZoom = useCallback((delta: number) => {
     userAdjustedZoomAt.current = Date.now();
@@ -192,13 +229,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   }, []);
 
   useEffect(() => {
-    if (!cameraOpen || !autoZoomEnabled || guidance?.suggestedZoom == null) return;
+    if (!guidanceActive || !autoZoomEnabled || guidance?.suggestedZoom == null) return;
     if (Date.now() - userAdjustedZoomAt.current < 2000) return;
     const timer = setTimeout(() => {
-      setCaptureZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!, 0.55));
+      setCaptureZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!, 0.32));
     }, 0);
     return () => clearTimeout(timer);
-  }, [cameraOpen, autoZoomEnabled, guidance?.suggestedZoom]);
+  }, [guidanceActive, autoZoomEnabled, guidance?.suggestedZoom]);
 
   const flipCamera = useCallback(() => {
     void startCamera(facingMode === "user" ? "environment" : "user");
@@ -206,7 +243,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   const captureFromCamera = useCallback(() => {
     const video = videoRef.current;
-    if (!video || !streamRef.current) return;
+    if (!video || !streamRef.current || pendingCapture) return;
+    const stepIndex = captureStepIndexRef.current;
+    if (stepIndex >= N_CAPTURES) return;
     const w = video.videoWidth;
     const h = video.videoHeight;
     if (!w || !h) return;
@@ -250,41 +289,111 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        setCaptures((prev) => {
-          if (prev.length >= N_CAPTURES) return prev;
-          const step = FACE_SCAN_CAPTURE_STEPS[prev.length];
-          const captured = new File(
-            [blob],
-            `face-scan-${step.id}-${Date.now()}.jpg`,
-            { type: "image/jpeg" }
-          );
-          const preview = URL.createObjectURL(blob);
-          const next: CaptureItem[] = [
-            ...prev,
-            { file: captured, preview, label: step.id },
-          ];
-          if (next.length >= N_CAPTURES) {
-            queueMicrotask(() => {
-              stopCamera();
-              setStep("confirm");
-            });
-          }
-          return next;
+        const idx = captureStepIndexRef.current;
+        if (idx >= N_CAPTURES) return;
+        const step = FACE_SCAN_CAPTURE_STEPS[idx];
+        const captured = new File(
+          [blob],
+          `face-scan-${step.id}-${Date.now()}.jpg`,
+          { type: "image/jpeg" }
+        );
+        const preview = URL.createObjectURL(blob);
+        setPendingCapture((prev) => {
+          clearPendingCapture(prev);
+          return { file: captured, preview, label: step.id };
         });
       },
       "image/jpeg",
       0.82
     );
-  }, [captureZoom, facingMode, stopCamera]);
+  }, [captureZoom, facingMode, pendingCapture, clearPendingCapture]);
+
+  const confirmPendingCapture = useCallback(() => {
+    if (!pendingCapture) return;
+    const item = pendingCapture;
+    setPendingCapture(null);
+    setCaptures((prev) => {
+      if (prev.length >= N_CAPTURES) return prev;
+      const next = [...prev, item];
+      if (next.length >= N_CAPTURES) {
+        queueMicrotask(() => {
+          stopCamera();
+          setStep("confirm");
+        });
+      }
+      return next;
+    });
+  }, [pendingCapture, stopCamera]);
+
+  const retakePendingCapture = useCallback(() => {
+    setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
+    userAdjustedZoomAt.current = 0;
+    setPendingCapture((prev) => {
+      clearPendingCapture(prev);
+      return null;
+    });
+  }, [clearPendingCapture]);
+
+  useEffect(() => {
+    captureVoiceGuide.setEnabled(voiceEnabled && cameraOpen);
+    if (!voiceEnabled || !cameraOpen) captureVoiceGuide.reset();
+    return () => {
+      captureVoiceGuide.setEnabled(false);
+    };
+  }, [voiceEnabled, cameraOpen]);
+
+  useEffect(() => {
+    captureVoiceGuide.reset();
+  }, [currentCameraStep.id]);
+
+  /** Match mobile: auto-zoom must not carry into the next angle (avoids 80–100% area on step 2+). */
+  useEffect(() => {
+    if (!cameraOpen) return;
+    setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
+    userAdjustedZoomAt.current = 0;
+  }, [currentCameraStep.id, cameraOpen]);
+
+  /** Speak the highest-priority guidance line (debounced/cooldown'd inside). */
+  useEffect(() => {
+    if (!voiceEnabled || !cameraOpen || reviewingCapture || !guidance) return;
+    if (guidance.face === "no_face") {
+      captureVoiceGuide.speak(guidance.faceMessage, "critical");
+      return;
+    }
+    if (guidance.face !== "good") {
+      captureVoiceGuide.speak(guidance.faceMessage, "framing");
+      return;
+    }
+    if (
+      guidance.expressionMessage &&
+      guidance.expressionOk === false
+    ) {
+      captureVoiceGuide.speak(guidance.expressionMessage, "expression");
+      return;
+    }
+    const lightingOk =
+      guidance.lighting === "good" || guidance.lightingScore >= 55;
+    if (!lightingOk) {
+      captureVoiceGuide.speak(guidance.lightingMessage, "lighting");
+      return;
+    }
+    if (guidance.readyToCapture) {
+      captureVoiceGuide.speak(CAPTURE_READY_VOICE_HINT, "ready");
+    }
+  }, [voiceEnabled, cameraOpen, reviewingCapture, guidance, models.mediapipe]);
 
   const cancelCamera = useCallback(() => {
     setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
+    setPendingCapture((prev) => {
+      clearPendingCapture(prev);
+      return null;
+    });
     setCaptures((prev) => {
       revokeAllCaptures(prev);
       return [];
     });
     stopCamera();
-  }, [revokeAllCaptures, stopCamera]);
+  }, [revokeAllCaptures, stopCamera, clearPendingCapture]);
 
   const applyFileList = useCallback(
     (files: FileList | File[] | null) => {
@@ -313,6 +422,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   const resetScan = useCallback(() => {
     stopCamera();
+    setPendingCapture((prev) => {
+      clearPendingCapture(prev);
+      return null;
+    });
     setCaptures((prev) => {
       revokeAllCaptures(prev);
       return [];
@@ -322,7 +435,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setScanResults(null);
     setUploadError(null);
     setScanError(null);
-  }, [revokeAllCaptures, stopCamera, isOnboardingScan]);
+  }, [revokeAllCaptures, stopCamera, isOnboardingScan, clearPendingCapture]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -346,44 +459,28 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       const formData = new FormData();
       formData.append("scanName", scanName.trim());
       captures.forEach((c) => formData.append("images", c.file));
-      const res = await fetch("/api/scan", {
-        method: "POST",
-        body: formData,
-      });
-      const json = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        data?: ScanResults & { id?: number };
-      };
-      if (!res.ok || !json.success) {
-        setScanError(
-          json.error ||
-            (res.status === 401
-              ? "Sign in to save your scan."
-              : "Scan failed. Try again.")
+      const outcome = await submitFaceScan(formData);
+
+      if (outcome.mode === "queued") {
+        addPendingScanJob(outcome.jobId, scanName.trim());
+        setStep("queued");
+        return;
+      }
+
+      if (outcome.mode === "error") {
+        setScanError(outcome.message);
+        setStep("naming");
+        return;
+      }
+
+      const scanId = outcome.scanId;
+      if (isOnboardingScan) {
+        router.push(
+          `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`
         );
-        setStep("naming");
         return;
       }
-      const scanId = json.data?.id;
-      if (typeof scanId === "number" && scanId >= 1) {
-        if (isOnboardingScan) {
-          router.push(
-            `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`
-          );
-          return;
-        }
-        router.push(`/dashboard/history/scans/${scanId}`);
-        return;
-      }
-      if (json.data) {
-        setScanResults(json.data);
-        setReportOpen(true);
-        setStep("results");
-      } else {
-        setScanError("Scan saved but no report id returned.");
-        setStep("naming");
-      }
+      router.push(`/dashboard/history/scans/${scanId}`);
     } catch {
       setScanError("Network error. Check your connection and try again.");
       setStep("naming");
@@ -414,10 +511,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4 rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
+          className="rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-stretch">
-            <aside className="flex flex-col gap-2 md:min-h-0">
+          <div className="flex flex-col gap-4 md:flex-row md:items-stretch md:gap-5">
+            <aside className="flex w-full shrink-0 flex-col gap-2 md:max-w-[min(100%,280px)] md:min-w-[220px]">
               <div className="rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-center backdrop-blur-sm">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
                   Step {Math.min(captureCount + 1, N_CAPTURES)}/{N_CAPTURES}
@@ -429,19 +526,26 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   {currentCameraStep.instruction}
                 </p>
               </div>
-              <ScanCaptureGuidanceBanner
-                guidance={guidance}
-                models={models}
-                needsExpressionModel={needsExpressionModel}
-                autoZoomEnabled={autoZoomEnabled}
-                compact
-              />
+              {reviewingCapture ? (
+                <div className="rounded-xl border border-[#2C3E6B]/20 bg-[#E8EFE6]/80 px-3 py-2.5 text-center text-sm text-[#374151]">
+                  Review this photo. Continue to the next angle or retake.
+                </div>
+              ) : (
+                <ScanCaptureGuidanceBanner
+                  guidance={guidance}
+                  models={models}
+                  needsExpressionModel={needsExpressionModel}
+                  autoZoomEnabled={autoZoomEnabled}
+                />
+              )}
+              <ScanCaptureStepTicks completedCount={captureCount} />
             </aside>
 
-            <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl bg-zinc-900 md:max-h-[min(62vh,500px)] md:max-w-none">
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="relative mx-auto aspect-[3/4] w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 md:mx-0 md:max-h-[min(70vh,520px)] md:w-full md:max-w-none">
               <video
                 ref={videoRef}
-                className="h-full w-full object-cover"
+                className={`h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
                 style={{
                   transformOrigin: "center center",
                   transform:
@@ -454,14 +558,107 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 autoPlay
                 aria-label="Live camera preview (mirrored for front camera)"
               />
-              <FaceCaptureOvalOverlayWeb />
-              <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-20 rounded-md bg-zinc-950/55 px-2 py-1 text-center text-[10px] text-white">
+              {pendingCapture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={pendingCapture.preview}
+                  alt={`Captured ${currentCameraStep.title}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : null}
+              <ScanCaptureDebugOverlay
+                guidance={guidance}
+                captureZoom={captureZoom}
+                models={models}
+                faceTracked={faceTracked}
+                extra={{
+                  step: `${captureCount + 1}/${N_CAPTURES}`,
+                  bbox: bboxSource,
+                }}
+              />
+              <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-30 rounded-md bg-zinc-950/55 px-2 py-1 text-center text-[10px] text-white">
                 {captureCount}/{N_CAPTURES}
-                {guidance?.readyToCapture ? " · ready" : ""}
+                {reviewingCapture
+                  ? " · review photo"
+                  : guidance?.readyToCapture
+                    ? " · ready"
+                    : ""}
               </div>
+              <button
+                type="button"
+                onClick={() => setVoiceEnabled((v) => !v)}
+                className={`absolute right-2 top-2 z-30 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur ${
+                  voiceEnabled
+                    ? "bg-[#2C3E6B] text-white"
+                    : "bg-white/70 text-[#2C3E6B] hover:bg-white"
+                }`}
+                aria-pressed={voiceEnabled}
+                aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+                title={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+              >
+                {voiceEnabled ? (
+                  <Volume2 className="h-4 w-4" />
+                ) : (
+                  <VolumeX className="h-4 w-4" />
+                )}
+              </button>
             </div>
 
-            <aside className="flex flex-col gap-2 md:min-h-0">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center md:justify-stretch">
+            {reviewingCapture ? (
+              <>
+                <button
+                  type="button"
+                  onClick={retakePendingCapture}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:min-w-[140px] sm:flex-1 md:flex-1"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                  Retake
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmPendingCapture}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] sm:min-w-[180px] sm:flex-[1.2] md:flex-[1.4]"
+                >
+                  <Check className="h-5 w-5" />
+                  {captureCount + 1 >= N_CAPTURES ? "Use photo & finish" : "Use photo & next"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={captureFromCamera}
+                  disabled={captureCount >= N_CAPTURES}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[160px] sm:flex-[1.2] md:flex-[1.4]"
+                >
+                  <Camera className="h-5 w-5" />
+                  Capture
+                </button>
+                <button
+                  type="button"
+                  onClick={flipCamera}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:min-w-[120px] sm:flex-1 md:flex-1"
+                  aria-label="Switch between front and back camera"
+                >
+                  <SwitchCamera className="h-5 w-5 text-[#2C3E6B]" />
+                  Flip
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelCamera}
+                  className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:min-w-[100px] sm:flex-1 md:flex-1"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+            </div>
+            </div>
+
+            <aside
+              className={`flex w-full shrink-0 flex-col gap-2 md:max-w-[min(100%,240px)] md:min-w-[200px] ${reviewingCapture ? "pointer-events-none opacity-50" : ""}`}
+            >
               <ScanCaptureZoomPanel
                 captureZoom={captureZoom}
                 min={CAPTURE_ZOOM_MIN}
@@ -474,34 +671,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 faceDetectionAvailable={faceDetectionAvailable}
               />
             </aside>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-            <button
-              type="button"
-              onClick={captureFromCamera}
-              disabled={captureCount >= N_CAPTURES}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[200px] sm:flex-1"
-            >
-              <Camera className="h-5 w-5" />
-              Capture
-            </button>
-            <button
-              type="button"
-              onClick={flipCamera}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:w-auto sm:min-w-[140px]"
-              aria-label="Switch between front and back camera"
-            >
-              <SwitchCamera className="h-5 w-5 text-[#2C3E6B]" />
-              Flip camera
-            </button>
-            <button
-              type="button"
-              onClick={cancelCamera}
-              className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:w-auto sm:min-w-[120px]"
-            >
-              Cancel
-            </button>
           </div>
         </motion.div>
       )}
@@ -707,6 +876,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       )}
 
       {/* Step: Scanning */}
+      {step === "queued" && (
+        <ScanQueuedConfirmation variant={variant} />
+      )}
+
       {step === "scanning" && primaryPreview && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -729,8 +902,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 >
                   <Sparkles className="h-6 w-6 text-[#2C3E6B]" />
                 </motion.div>
-                <p className="text-lg font-bold text-[#2C3E6B]">Scanning…</p>
-                <p className="mt-1 text-sm text-[#6B7280]">AI is analyzing your photo…</p>
+                <p className="text-lg font-bold text-[#2C3E6B]">Submitting your scan…</p>
+                <p className="mt-1 text-sm text-[#6B7280]">Just a moment</p>
                 <motion.div
                   className="absolute left-0 right-0 z-10 h-1 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
                   initial={{ top: "0%" }}

@@ -16,10 +16,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.skinfit.clinic",
+      "usesAppleSignIn": false,
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {
@@ -40,7 +44,14 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "react-native-quick-crypto",
+      "./plugins/withFaceLandmarkerModel",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Allow SkinnFit to capture your 5-angle kAI face scan.",
+          "enableMicrophonePermission": false
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       [
@@ -66,7 +77,9 @@
           "defaultChannel": "default"
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      "@react-native-google-signin/google-signin",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

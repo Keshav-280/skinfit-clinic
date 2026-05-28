@@ -1,7 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
-import { getSessionUserId } from "@/src/lib/auth/get-session";
+import {
+  getSessionUserId,
+  getSessionUserIdFromRequest,
+} from "@/src/lib/auth/get-session";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
@@ -66,9 +69,9 @@ export async function getDoctorPortalStaff(): Promise<DoctorPortalStaff | null> 
   return { id, role };
 }
 
-/** Staff who may use `/doctor` portal: any doctor or admin. */
-export async function getDoctorPortalUserId(): Promise<string | null> {
-  const id = await getSessionUserId();
+async function doctorPortalUserIdForSessionId(
+  id: string | null
+): Promise<string | null> {
   if (!id) return null;
 
   let row: { role: string } | undefined;
@@ -78,13 +81,26 @@ export async function getDoctorPortalUserId(): Promise<string | null> {
       columns: { role: true },
     });
   } catch {
-    // DB can be unavailable (e.g. Neon quota). Fall back to verified JWT claims.
     return fallbackDoctorIdFromToken();
   }
   if (!row) {
-    // Fallback doctor session intentionally may not exist in DB.
     return fallbackDoctorIdFromToken();
   }
   if (row.role === "doctor" || row.role === "admin") return id;
   return null;
+}
+
+/** Staff who may use `/doctor` portal: any doctor or admin (cookie session). */
+export async function getDoctorPortalUserId(): Promise<string | null> {
+  return doctorPortalUserIdForSessionId(await getSessionUserId());
+}
+
+/** Route handlers: cookie session or `Authorization: Bearer` (e.g. native apps). */
+export async function getDoctorPortalUserIdFromRequest(
+  req: Request
+): Promise<string | null> {
+  const fromBearer = await getSessionUserIdFromRequest(req);
+  const fromBearerStaff = await doctorPortalUserIdForSessionId(fromBearer);
+  if (fromBearerStaff) return fromBearerStaff;
+  return getDoctorPortalUserId();
 }

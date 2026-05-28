@@ -1,7 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
-import { monthlyReports } from "@/src/db/schema";
+import { monthlyReports, users } from "@/src/db/schema";
+import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { dateOnlyFromYmd, localCalendarYmd } from "@/src/lib/date-only";
 import type { MonthlyRagCronPayloadV1 } from "@/src/lib/ragCronMonthlyPayload";
@@ -28,6 +29,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
+  const [userRow] = await db
+    .select({ primaryConcern: users.primaryConcern })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const questionnaireLocked = !userHasQuestionnaire(userRow?.primaryConcern);
+
   const monthStartStr = `${localCalendarYmd().slice(0, 7)}-01`;
   const monthStart = dateOnlyFromYmd(monthStartStr);
 
@@ -51,9 +59,10 @@ export async function GET(request: Request) {
   const ragPayload = isRagPayloadV1(row?.payloadJson) ? row.payloadJson : null;
 
   const nextInsightAtIso = nextMonthlyCronAtUtcIso();
-  const locked = !ragPayload;
+  const locked = questionnaireLocked || !ragPayload;
 
   return NextResponse.json({
+    questionnaireLocked,
     locked,
     nextInsightAt: nextInsightAtIso,
     latestMonthStart: row ? row.monthStart.toISOString().slice(0, 10) : null,

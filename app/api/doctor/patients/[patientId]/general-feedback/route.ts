@@ -58,17 +58,11 @@ export async function POST(
 
   if (text.length) {
     const preview = text.replace(/\s+/g, " ").slice(0, 220);
-    void sendClinicSupportMessage({
+    await sendClinicSupportMessage({
       patientId,
-      text: `Your doctor updated your general feedback note.\n\n${preview}${text.length > preview.length ? "…" : ""}`,
-    }).catch((err) =>
-      console.warn("[doctorGeneralFeedback] failed to send chat notification", err)
-    );
+      text: `Your clinician left new feedback: ${preview}${text.length > 220 ? "…" : ""}`,
+    });
   }
 
-  return NextResponse.json({
-    ok: true,
-    feedback: text.length ? text : null,
-    updatedAt: text.length ? now.toISOString() : null,
-  });
+  return NextResponse.json({ ok: true });
 }

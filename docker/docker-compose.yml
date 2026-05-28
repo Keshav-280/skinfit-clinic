@@ -1,0 +1,99 @@
+# Local full stack — no AWS/Cloudflare. Run from repo root:
+#   cp infra/.env.local.example .env.local
+#   docker compose -f docker/docker-compose.yml up --build
+# Services load ../.env then ../.env.local (later overrides). Put secrets in either file.
+# Host worker:dev uses the same files with FACE_ANALYSIS_SERVICE_URL=http://127.0.0.1:8765
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: skinfit
+      POSTGRES_PASSWORD: skinfit_local_dev
+      POSTGRES_DB: skinfit
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skinfit"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_CAPTURE_DEBUG: "1"
+    env_file:
+      - ../.env
+      - ../.env.local
+    ports:
+      - "3000:3000"
+    environment:
+      LOCAL_POSTGRES_URL: postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
+      LOCAL_REDIS_URL: redis://redis:6379
+      LOCAL_STORAGE_ROOT: /uploads
+      SCAN_ASYNC_MODE: "1"
+      PUBLIC_UPLOAD_BASE_URL: http://localhost:3000/api/files
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
+    volumes:
+      - uploads:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ml-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ml-worker
+    env_file:
+      - ../.env
+      - ../.env.local
+    environment:
+      LOCAL_POSTGRES_URL: postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
+      LOCAL_REDIS_URL: redis://redis:6379
+      LOCAL_STORAGE_ROOT: /uploads
+      FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
+    volumes:
+      - uploads:/uploads
+    depends_on:
+      - redis
+      - postgres
+      - ml-inference
+
+  ml-inference:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ml-inference
+    env_file:
+      - ../.env
+      - ../.env.local
+    ports:
+      - "8765:8765"
+    environment:
+      FACE_ANALYSIS_CHECKPOINT: /models/checkpoints/face_analyzer_v13.pt
+      DINO_LOCAL_WEIGHTS: /models/dinov2_vitl14_reg.pth
+    volumes:
+      - ../models:/models:ro
+      - ${FACE_ANALYSIS_REPO:-/Users/sagnikdey/Desktop/face_analysis_tool}:/app/face_analysis:ro
+
+volumes:
+  pgdata:
+  uploads:

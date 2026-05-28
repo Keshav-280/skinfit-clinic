@@ -66,7 +66,24 @@ type SkinProfilePayload = {
     hormonalCorrelation: string | null;
   };
   lastWeekObservations: string | null;
+  keyObservations?: {
+    mode: "baseline_only" | "first_week" | "last_7_days";
+    modeLabel: string;
+    windowStartYmd: string | null;
+    windowEndYmd: string | null;
+    logDaysUsed: string[];
+    scanDaysUsed: string[];
+    baselineScanDateYmd: string | null;
+    items: Array<{
+      text: string;
+      source: "baseline_scan" | "daily_logs" | "scan_trend" | "weekly_report";
+      dateLabel: string;
+    }>;
+    narrativeText: string | null;
+  };
   priorityKnowDo: { know: string[]; do: string[] };
+  insightsSource?: "llm_rag";
+  insightsUnavailable?: boolean;
   sparklines: Record<string, { values: (number | null)[]; sources: string[] }>;
   paramLabels: Record<string, string>;
   visits: Array<{
@@ -315,21 +332,46 @@ export default function ProfileScreen() {
     ? "No data"
     : Math.abs(weeklyDelta) <= 3 ? "Good" : Math.abs(weeklyDelta) <= 8 ? "Fair" : "Needs work";
 
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - 7);
-  const weeklyDateRange = `${weekStart.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
+  const keyObs = skinExtra?.keyObservations;
+  const weeklyDateRange =
+    keyObs?.modeLabel ??
+    (() => {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - 7);
+      return `${weekStart.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
+    })();
 
-  const observations = skinExtra?.lastWeekObservations
-    ? skinExtra.lastWeekObservations
-        .split(/[.\n]/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 5)
-        .slice(0, 3)
-    : [];
+  const observations =
+    keyObs?.items?.map((item) => ({
+      text: item.text,
+      dateLabel: item.dateLabel,
+      source: item.source,
+    })) ?? [];
+
+  const dataUsedSummary = keyObs
+    ? [
+        keyObs.logDaysUsed.length > 0
+          ? `Daily logs: ${keyObs.logDaysUsed.length} day${keyObs.logDaysUsed.length === 1 ? "" : "s"}`
+          : null,
+        keyObs.scanDaysUsed.length > 0
+          ? `Scans in window: ${keyObs.scanDaysUsed.length}`
+          : null,
+        keyObs.baselineScanDateYmd
+          ? `Baseline: ${new Date(`${keyObs.baselineScanDateYmd}T12:00:00Z`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
 
   const priorityActions = skinExtra?.priorityKnowDo?.do?.slice(0, 3) ?? [];
 
-  const hasWeeklyContent = hasRealScoreData || observations.length > 0 || priorityActions.length > 0;
+  const insightsUnavailable = skinExtra?.insightsUnavailable === true;
+  const hasWeeklyContent =
+    hasRealScoreData ||
+    observations.length > 0 ||
+    priorityActions.length > 0 ||
+    insightsUnavailable;
 
   if (loading) {
     return (
@@ -402,7 +444,9 @@ export default function ProfileScreen() {
             consistency={consistency}
             dateRange={weeklyDateRange}
             observations={observations}
+            dataUsedSummary={dataUsedSummary}
             priorityActions={priorityActions}
+            insightsUnavailable={insightsUnavailable}
           />
         ) : null}
 

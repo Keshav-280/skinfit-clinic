@@ -1,4 +1,3 @@
-import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
@@ -13,10 +12,13 @@ import {
 } from "react-native";
 
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
+import { OnboardingQueuedScreen } from "@/components/onboarding/ScanQueuedConfirmation";
+import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch } from "@/lib/api";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
+import { addPendingScanJob } from "@/lib/scanJobNotifications";
+import { submitFaceScan } from "@/lib/submitFaceScan";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
@@ -28,6 +30,7 @@ export default function OnboardingCaptureScreen() {
   const [uris, setUris] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [useCamera, setUseCamera] = useState(true);
+  const [queued, setQueued] = useState(false);
 
   const stepIndex = uris.length;
   const isComplete = uris.length >= N;
@@ -64,17 +67,20 @@ export default function OnboardingCaptureScreen() {
           type: "image/jpeg",
         } as unknown as Blob);
       }
-      const res = await apiFetch("/api/scan", token, { method: "POST", body: form });
-      const data = (await res.json()) as {
-        success?: boolean;
-        data?: { id?: number };
-        error?: string;
-      };
-      if (!res.ok || !data.success || !data.data?.id) {
-        throw new Error(data.error || "Scan failed.");
+      const outcome = await submitFaceScan(token, form);
+      if (outcome.mode === "queued") {
+        await addPendingScanJob(
+          outcome.jobId,
+          "kAI baseline — onboarding"
+        );
+        setQueued(true);
+        return;
+      }
+      if (outcome.mode === "error") {
+        throw new Error(outcome.message);
       }
       router.replace(
-        `/onboarding/baseline-report?scanId=${encodeURIComponent(String(data.data.id))}` as Href
+        `/onboarding/baseline-report?scanId=${encodeURIComponent(String(outcome.scanId))}` as Href
       );
     } catch (e) {
       Alert.alert("Baseline scan", e instanceof Error ? e.message : "Failed.");
@@ -86,6 +92,7 @@ export default function OnboardingCaptureScreen() {
   if (!isComplete && useCamera) {
     return (
       <FiveAngleCameraStep
+        variant="onboarding"
         stepIndex={stepIndex}
         onCaptured={(uri) => setUris((u) => [...u, uri])}
         onPickFromLibrary={() => void pickFromLibrary()}
@@ -103,7 +110,7 @@ export default function OnboardingCaptureScreen() {
 
   if (!isComplete && !useCamera) {
     return (
-      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+      <OnboardingLayoutShell title="kAI baseline photos" backHref="/onboarding/capture-intro">
         <ScrollView contentContainerStyle={styles.pad}>
           <Text style={styles.title}>Add {N} photos</Text>
           <Pressable
@@ -116,26 +123,41 @@ export default function OnboardingCaptureScreen() {
             <Text style={styles.link}>Use guided camera</Text>
           </Pressable>
         </ScrollView>
-      </LinearGradient>
+      </OnboardingLayoutShell>
+    );
+  }
+
+  if (queued) {
+    return (
+      <OnboardingQueuedScreen
+        onContinue={() => router.replace("/onboarding/baseline-report" as Href)}
+        onDashboard={() => router.replace("/(drawer)" as Href)}
+      />
     );
   }
 
   return (
-    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+    <OnboardingLayoutShell title="kAI baseline photos">
       <ScrollView contentContainerStyle={styles.pad}>
         <View style={styles.iconWrap}>
-          <View style={styles.iconCircle}>
+          <View style={[styles.iconCircle, styles.iconCircleNavy]}>
             <Text style={styles.iconCheck}>{"✓"}</Text>
           </View>
         </View>
         <Text style={styles.title}>Baseline ready</Text>
-        <Text style={styles.sub}>We&apos;ll generate your first kAI report. This may take up to a minute.</Text>
+        <Text style={styles.sub}>
+          Tap below to submit your photos. We&apos;ll notify you when your kAI report is ready.
+        </Text>
         <Pressable
           style={({ pressed }) => [styles.btn, busy && styles.dis, pressed && !busy && styles.btnPressed]}
           onPress={() => void runBaselineScan()}
           disabled={busy}
         >
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Generate my kAI report</Text>}
+          {busy ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>Submit baseline scan</Text>
+          )}
         </Pressable>
         <Pressable
           onPress={() => {
@@ -146,7 +168,7 @@ export default function OnboardingCaptureScreen() {
           <Text style={styles.link}>Retake photos</Text>
         </Pressable>
       </ScrollView>
-    </LinearGradient>
+    </OnboardingLayoutShell>
   );
 }
 
@@ -167,7 +189,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconCheck: { fontSize: 28, color: NAVY, fontWeight: "800" },
+  iconCircleNavy: {
+    backgroundColor: NAVY,
+  },
+  iconCheck: { fontSize: 28, color: "#fff", fontWeight: "800" },
+  iconBell: { fontSize: 28 },
+  hint: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "#71717a",
+    textAlign: "center",
+    lineHeight: 20,
+  },
   title: {
     fontSize: 24,
     fontWeight: "800",

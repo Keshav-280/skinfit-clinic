@@ -15,6 +15,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -26,18 +27,14 @@ import { ChatMessageMarkdown } from "@/components/ChatMessageMarkdown";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
-import {
-  decryptMessages,
-  encryptOutgoingText,
-  setupMobileDoctorChatE2ee,
-  type DoctorThreadE2eeSession,
-} from "@/lib/chatE2ee";
+import { mapDisplayChatMessages } from "../../../src/lib/chatE2ee/format";
 import {
   getClinicSupportInboxLastSeenIso,
   getDoctorInboxLastSeenIso,
   markClinicSupportInboxSeenFromServer,
   markDoctorInboxSeenFromServer,
 } from "@/lib/inboxReadCursors";
+import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 type AssistantId = "ai" | "doctor" | "support";
 type HomeThreadId = AssistantId | "appointments";
@@ -61,6 +58,15 @@ type HomeConversation = {
   dateLabel?: string;
 };
 
+type RegisteredDoctor = {
+  id: string;
+  name: string;
+  specialty: string;
+  imageUrl?: string;
+  lastMessage?: string;
+  lastMessageAt?: string;
+};
+
 type DoctorProfile = {
   name: string;
   subtitle: string;
@@ -68,10 +74,10 @@ type DoctorProfile = {
   avatarUrl?: string;
 };
 
-const TEAL = "#0d9488";
-const CREAM = "#dfe7dc";
-const ZINC_900 = "#18181b";
-const NAVY = "#23286f";
+const TEAL = SKINFIT_THEME.navy;
+const CREAM = SKINFIT_THEME.mintDeep;
+const ZINC_900 = SKINFIT_THEME.text;
+const NAVY = SKINFIT_THEME.navy;
 
 const CONTACTS: {
   id: AssistantId;
@@ -112,7 +118,12 @@ const CONTACTS: {
 ];
 
 const AI_GREETING = "Hi! I'm SkinnFit AI Assistant. How can I help you today?";
-const HOME_CACHE_KEY = "skinfit-chat-home-v1";
+
+function chatErrorMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  return e instanceof Error ? e.message : "Something went wrong.";
+}
+const HOME_CACHE_KEY = "skinfit-chat-home-v2";
 const THREAD_CACHE_KEY_PREFIX = "skinfit-chat-thread-v1:";
 const APPOINTMENT_KEYWORDS = [
   "appointment",
@@ -170,7 +181,10 @@ function isAppointmentMessage(text: string): boolean {
   return APPOINTMENT_KEYWORDS.some((word) => t.includes(word));
 }
 
-function threadCacheKey(assistantId: AssistantId): string {
+function threadCacheKey(assistantId: AssistantId, doctorId?: string | null): string {
+  if (assistantId === "doctor" && doctorId) {
+    return `${THREAD_CACHE_KEY_PREFIX}doctor:${doctorId}`;
+  }
   return `${THREAD_CACHE_KEY_PREFIX}${assistantId}`;
 }
 
@@ -181,19 +195,10 @@ export default function ChatScreen() {
   const [homeMode, setHomeMode] = useState(true);
   const [homeLoading, setHomeLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile>({
-    name: "",
-    subtitle: "",
-    replyHint: "",
-    avatarUrl: undefined,
-  });
+  const [registeredDoctors, setRegisteredDoctors] = useState<RegisteredDoctor[]>([]);
+  const [activeDoctorId, setActiveDoctorId] = useState<string | null>(null);
+  const [doctorUnread, setDoctorUnread] = useState(0);
   const [homeRows, setHomeRows] = useState<HomeConversation[]>([
-    {
-      id: "doctor",
-      title: CONTACTS[1]?.name || "Doctor",
-      subtitle: "Your dermatologist replies here.",
-      unread: 0,
-    },
     {
       id: "ai",
       title: "Skin AI Assistant",
@@ -227,28 +232,25 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);
   const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const doctorE2eeRef = useRef<DoctorThreadE2eeSession | null>(null);
-  const [doctorE2eeStatus, setDoctorE2eeStatus] = useState<string | null>(null);
-
   const peer = useMemo(() => CONTACTS.find((c) => c.id === active)!, [active]);
 
-  useEffect(() => {
-    if (active !== "doctor" || !token) {
-      doctorE2eeRef.current = null;
-      setDoctorE2eeStatus(null);
-      return;
+  const activeDoctorProfile = useMemo((): DoctorProfile => {
+    const doctor = registeredDoctors.find((d) => d.id === activeDoctorId);
+    if (!doctor) {
+      return {
+        name: "",
+        subtitle: "",
+        replyHint: "Typically replies in a few hours",
+        avatarUrl: undefined,
+      };
     }
-    let cancelled = false;
-    void (async () => {
-      const s = await setupMobileDoctorChatE2ee(token);
-      if (cancelled) return;
-      doctorE2eeRef.current = s;
-      setDoctorE2eeStatus(s?.ready ? null : s?.status ?? null);
-    })();
-    return () => {
-      cancelled = true;
+    return {
+      name: doctor.name,
+      subtitle: doctor.specialty || "Care Team",
+      replyHint: "Typically replies in a few hours",
+      avatarUrl: doctor.imageUrl,
     };
-  }, [active, token]);
+  }, [registeredDoctors, activeDoctorId]);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -261,22 +263,24 @@ export default function ChatScreen() {
   }, [messages, scrollToEnd]);
 
   const fetchPlainMessages = useCallback(
-    async (assistantId: AssistantId) => {
-      if (!token) return { messages: [] as ChatMsg[], clinicReadThroughIso: undefined as string | undefined };
+    async (assistantId: AssistantId, doctorId?: string | null) => {
+      if (!token) {
+        return { messages: [] as ChatMsg[], clinicReadThroughIso: undefined as string | undefined };
+      }
+      if (assistantId === "doctor" && !doctorId) {
+        return { messages: [] as ChatMsg[], clinicReadThroughIso: undefined as string | undefined };
+      }
+      let url = `/api/chat/plain/messages?assistantId=${encodeURIComponent(assistantId)}`;
+      if (assistantId === "doctor" && doctorId) {
+        url += `&doctorId=${encodeURIComponent(doctorId)}`;
+      }
       const data = await apiJson<{
         success?: boolean;
         messages?: ChatMsg[];
         clinicReadThroughIso?: string;
-      }>(
-        `/api/chat/plain/messages?assistantId=${encodeURIComponent(assistantId)}`,
-        token,
-        { method: "GET" }
-      );
+      }>(url, token, { method: "GET" });
       if (!data.success) throw new Error("Failed to load messages.");
-      let messages = normalizeApiMessages(data.messages);
-      if (assistantId === "doctor" && doctorE2eeRef.current?.ready) {
-        messages = await decryptMessages(messages, doctorE2eeRef.current);
-      }
+      const messages = mapDisplayChatMessages(normalizeApiMessages(data.messages));
       return {
         messages,
         clinicReadThroughIso: data.clinicReadThroughIso,
@@ -286,14 +290,17 @@ export default function ChatScreen() {
   );
 
   const createPlainThread = useCallback(
-    async (assistantId: AssistantId) => {
+    async (assistantId: AssistantId, doctorId?: string | null) => {
       if (!token) throw new Error("Not signed in.");
       const data = await apiJson<{ success?: boolean; threadId?: string; error?: string }>(
         "/api/chat/plain/thread",
         token,
         {
           method: "POST",
-          body: JSON.stringify({ assistantId }),
+          body: JSON.stringify({
+            assistantId,
+            ...(assistantId === "doctor" && doctorId ? { doctorId } : {}),
+          }),
         }
       );
       if (!data.success || !data.threadId) {
@@ -341,24 +348,33 @@ export default function ChatScreen() {
     [token]
   );
 
-  const persistThreadCache = useCallback(async (assistantId: AssistantId, rows: ChatMsg[]) => {
-    try {
-      await AsyncStorage.setItem(threadCacheKey(assistantId), JSON.stringify(rows.slice(-120)));
-    } catch {
-      /* ignore cache write failures */
-    }
-  }, []);
+  const persistThreadCache = useCallback(
+    async (assistantId: AssistantId, rows: ChatMsg[], doctorId?: string | null) => {
+      try {
+        await AsyncStorage.setItem(
+          threadCacheKey(assistantId, doctorId),
+          JSON.stringify(rows.slice(-120))
+        );
+      } catch {
+        /* ignore cache write failures */
+      }
+    },
+    []
+  );
 
-  const readThreadCache = useCallback(async (assistantId: AssistantId): Promise<ChatMsg[]> => {
-    try {
-      const raw = await AsyncStorage.getItem(threadCacheKey(assistantId));
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as unknown;
-      return normalizeApiMessages(parsed);
-    } catch {
-      return [];
-    }
-  }, []);
+  const readThreadCache = useCallback(
+    async (assistantId: AssistantId, doctorId?: string | null): Promise<ChatMsg[]> => {
+      try {
+        const raw = await AsyncStorage.getItem(threadCacheKey(assistantId, doctorId));
+        if (!raw) return [];
+        const parsed = JSON.parse(raw) as unknown;
+        return normalizeApiMessages(parsed);
+      } catch {
+        return [];
+      }
+    },
+    []
+  );
 
   const loadHomeData = useCallback(async () => {
     if (!token) return;
@@ -369,41 +385,44 @@ export default function ChatScreen() {
         getClinicSupportInboxLastSeenIso(),
       ]);
       const unreadQuery = new URLSearchParams({ doctorSince, supportSince });
-      const [aiRes, doctorRes, supportRes, unreadRes, calendarRes, doctorProfileRes] =
+      const [aiRes, supportRes, unreadRes, calendarRes, doctorsListRes, doctorProfileRes] =
         await Promise.allSettled([
-        fetchPlainMessages("ai"),
-        fetchPlainMessages("doctor"),
-        fetchPlainMessages("support"),
-        apiJson<{
-          doctorCount?: number;
-          supportCount?: number;
-          total?: number;
-        }>(`/api/chat/inbox/unread?${unreadQuery.toString()}`, token, {
-          method: "GET",
-        }),
-        apiJson<{
-          events?: Array<{
-            start?: string;
-            doctor?: {
-              id?: string | null;
-              name?: string | null;
-              email?: string | null;
+          fetchPlainMessages("ai"),
+          fetchPlainMessages("support"),
+          apiJson<{
+            doctorCount?: number;
+            supportCount?: number;
+            total?: number;
+          }>(`/api/chat/inbox/unread?${unreadQuery.toString()}`, token, {
+            method: "GET",
+          }),
+          apiJson<{
+            events?: Array<{
+              start?: string;
+              doctor?: {
+                id?: string | null;
+                name?: string | null;
+                email?: string | null;
+                imageUrl?: string | null;
+                specialty?: string | null;
+              };
+            }>;
+          }>("/api/calendar/patient", token, { method: "GET" }),
+          apiJson<{
+            doctors?: Array<{ id?: string; name?: string; email?: string | null }>;
+          }>("/api/patient/doctors", token, { method: "GET" }),
+          apiJson<{
+            doctors?: Array<{
+              id?: string;
+              name?: string;
               imageUrl?: string | null;
               specialty?: string | null;
-            };
-          }>;
-        }>("/api/calendar/patient", token, { method: "GET" }),
-        apiJson<{
-          profile?: {
-            name?: string | null;
-            specialty?: string | null;
-            imageUrl?: string | null;
-          } | null;
-        }>("/api/chat/doctor-profile", token, { method: "GET" }),
-      ]);
+            }>;
+          }>("/api/chat/doctor-profile", token, { method: "GET" }),
+        ]);
       const aiPlain = aiRes.status === "fulfilled" ? aiRes.value : { messages: [] as ChatMsg[] };
-      const doctorPlain = doctorRes.status === "fulfilled" ? doctorRes.value : { messages: [] as ChatMsg[] };
-      const supportPlain = supportRes.status === "fulfilled" ? supportRes.value : { messages: [] as ChatMsg[] };
+      const supportPlain =
+        supportRes.status === "fulfilled" ? supportRes.value : { messages: [] as ChatMsg[] };
       const unreadData =
         unreadRes.status === "fulfilled"
           ? unreadRes.value
@@ -421,53 +440,71 @@ export default function ChatScreen() {
                 };
               }>,
             };
+      const doctorsListData =
+        doctorsListRes.status === "fulfilled" ? doctorsListRes.value : { doctors: [] };
       const doctorProfileData =
-        doctorProfileRes.status === "fulfilled" ? doctorProfileRes.value : { profile: null };
+        doctorProfileRes.status === "fulfilled" ? doctorProfileRes.value : { doctors: [] };
+
+      const profileById = new Map(
+        (doctorProfileData.doctors ?? [])
+          .filter((d) => d.id)
+          .map((d) => [
+            d.id!,
+            {
+              imageUrl: d.imageUrl?.trim() || undefined,
+              specialty: d.specialty?.trim() || "",
+            },
+          ])
+      );
+
+      const baseDoctors = (doctorsListData.doctors ?? [])
+        .filter((d) => d.id && (d.name ?? "").trim())
+        .map((d) => ({
+          id: d.id!,
+          name: (d.name ?? "").trim(),
+          specialty: profileById.get(d.id!)?.specialty ?? "",
+          imageUrl: profileById.get(d.id!)?.imageUrl,
+        }));
+
+      const doctorPreviewRows = await Promise.all(
+        baseDoctors.map(async (d) => {
+          try {
+            const plain = await fetchPlainMessages("doctor", d.id);
+            const last = plain.messages.at(-1);
+            return {
+              ...d,
+              lastMessage: last?.text || "No messages yet",
+              lastMessageAt: last?.createdAt,
+            };
+          } catch {
+            return {
+              ...d,
+              lastMessage: "No messages yet",
+              lastMessageAt: undefined,
+            };
+          }
+        })
+      );
 
       const doctorUnread = Math.max(0, unreadData.doctorCount || 0);
       const supportUnread = Math.max(0, unreadData.supportCount || 0);
       const aiUnread = 0;
 
-      const firstEventWithDoctor = calendarData.events?.find((e) => e.doctor?.name?.trim());
-      const resolvedDoctorName =
-        doctorProfileData.profile?.name?.trim() ||
-        firstEventWithDoctor?.doctor?.name?.trim() ||
-        CONTACTS[1]?.name ||
-        "Doctor";
       const nextAppointment = calendarData.events?.find((e) => !!e.start);
       const nextAppointmentLabel = nextAppointment?.start
         ? `Next appointment on ${dateLabelFromIso(nextAppointment.start) || "upcoming date"}`
         : "No upcoming appointment reminders";
 
-      const nextDoctorProfile = {
-        name: resolvedDoctorName,
-        subtitle:
-          doctorProfileData.profile?.specialty?.trim() ||
-          firstEventWithDoctor?.doctor?.specialty?.trim() ||
-          "",
-        replyHint: "Typically replies in a few hours",
-        avatarUrl:
-          doctorProfileData.profile?.imageUrl?.trim() ||
-          firstEventWithDoctor?.doctor?.imageUrl?.trim() ||
-          undefined,
-      };
-      setDoctorProfile(nextDoctorProfile);
+      setRegisteredDoctors(doctorPreviewRows);
+      setDoctorUnread(doctorUnread);
 
       const aiLast = aiPlain.messages.at(-1);
-      const doctorLast = doctorPlain.messages.at(-1);
       const supportLast = supportPlain.messages.at(-1);
       const appointmentsLast = [...supportPlain.messages]
         .reverse()
         .find((m) => m.sender !== "patient" && isAppointmentMessage(m.text));
 
       const nextHomeRows: HomeConversation[] = [
-        {
-          id: "doctor",
-          title: resolvedDoctorName,
-          subtitle: doctorLast?.text || "No messages yet",
-          unread: doctorUnread,
-          dateLabel: dateLabelFromIso(doctorLast?.createdAt),
-        },
         {
           id: "ai",
           title: "Skin AI Assistant",
@@ -480,7 +517,9 @@ export default function ChatScreen() {
           title: "Appointments",
           subtitle: appointmentsLast?.text || nextAppointmentLabel,
           unread: 0,
-          dateLabel: dateLabelFromIso(appointmentsLast?.createdAt) || dateLabelFromIso(nextAppointment?.start),
+          dateLabel:
+            dateLabelFromIso(appointmentsLast?.createdAt) ||
+            dateLabelFromIso(nextAppointment?.start),
         },
         {
           id: "support",
@@ -494,8 +533,9 @@ export default function ChatScreen() {
       void AsyncStorage.setItem(
         HOME_CACHE_KEY,
         JSON.stringify({
-          doctorProfile: nextDoctorProfile,
+          registeredDoctors: doctorPreviewRows,
           homeRows: nextHomeRows,
+          doctorUnread,
         })
       ).catch(() => {
         /* ignore cache write failures */
@@ -514,16 +554,15 @@ export default function ChatScreen() {
         const raw = await AsyncStorage.getItem(HOME_CACHE_KEY);
         if (!raw || cancelled) return;
         const parsed = JSON.parse(raw) as {
-          doctorProfile?: { name?: string; subtitle?: string; replyHint?: string; avatarUrl?: string };
+          registeredDoctors?: RegisteredDoctor[];
           homeRows?: HomeConversation[];
+          doctorUnread?: number;
         };
-        if (parsed.doctorProfile) {
-          setDoctorProfile({
-            name: parsed.doctorProfile.name || "",
-            subtitle: parsed.doctorProfile.subtitle || "",
-            replyHint: parsed.doctorProfile.replyHint || "",
-            avatarUrl: parsed.doctorProfile.avatarUrl || undefined,
-          });
+        if (Array.isArray(parsed.registeredDoctors) && parsed.registeredDoctors.length > 0) {
+          setRegisteredDoctors(parsed.registeredDoctors);
+        }
+        if (typeof parsed.doctorUnread === "number") {
+          setDoctorUnread(parsed.doctorUnread);
         }
         if (Array.isArray(parsed.homeRows) && parsed.homeRows.length > 0) {
           setHomeRows(parsed.homeRows);
@@ -564,11 +603,25 @@ export default function ChatScreen() {
   }, [homeMode, loadHomeData]);
 
   useEffect(() => {
+    if (active !== "doctor" || activeDoctorId) return;
+    if (registeredDoctors.length === 0) return;
+    setActiveDoctorId(registeredDoctors[0]!.id);
+  }, [active, activeDoctorId, registeredDoctors]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!token) return;
+      if (active === "doctor" && !activeDoctorId) {
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
       setError(null);
-      const cached = await readThreadCache(active);
+      const cached = await readThreadCache(
+        active,
+        active === "doctor" ? activeDoctorId : undefined
+      );
       if (cancelled) return;
       if (cached.length > 0) {
         setMessages(cached);
@@ -590,10 +643,17 @@ export default function ChatScreen() {
           setMessages(plain.messages);
           void persistThreadCache("ai", plain.messages);
         } else {
-          const plain = await fetchPlainMessages(active);
+          const plain = await fetchPlainMessages(
+            active,
+            active === "doctor" ? activeDoctorId : undefined
+          );
           if (cancelled) return;
           setMessages(plain.messages);
-          void persistThreadCache(active, plain.messages);
+          void persistThreadCache(
+            active,
+            plain.messages,
+            active === "doctor" ? activeDoctorId : undefined
+          );
           if (active === "support") {
             await markClinicSupportInboxSeenFromServer(plain.clinicReadThroughIso);
           } else if (active === "doctor") {
@@ -613,6 +673,7 @@ export default function ChatScreen() {
     };
   }, [
     active,
+    activeDoctorId,
     token,
     fetchPlainMessages,
     createPlainThread,
@@ -661,29 +722,34 @@ export default function ChatScreen() {
       });
       const audioDataUri = `data:audio/m4a;base64,${base64}`;
 
-      let caption = input.trim();
-      if (active === "doctor" && caption && doctorE2eeRef.current?.ready) {
-        caption = await encryptOutgoingText(caption, doctorE2eeRef.current);
-      }
+      const caption = input.trim();
       await apiJson("/api/chat/plain/message", token, {
         method: "POST",
         body: JSON.stringify({
           assistantId: active,
           text: caption || undefined,
           attachmentUrl: audioDataUri,
+          ...(active === "doctor" && activeDoctorId ? { doctorId: activeDoctorId } : {}),
         }),
       });
       setInput("");
-      const refreshed = await fetchPlainMessages(active);
+      const refreshed = await fetchPlainMessages(
+        active,
+        active === "doctor" ? activeDoctorId : undefined
+      );
       setMessages(refreshed.messages);
-      void persistThreadCache(active, refreshed.messages);
+      void persistThreadCache(
+        active,
+        refreshed.messages,
+        active === "doctor" ? activeDoctorId : undefined
+      );
       if (active === "support") {
         await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
       } else if (active === "doctor") {
         await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send voice note.");
+      setError(chatErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -753,17 +819,24 @@ export default function ChatScreen() {
 
     setLoading(true);
     try {
-      let outbound = text;
-      if (active === "doctor" && doctorE2eeRef.current?.ready) {
-        outbound = await encryptOutgoingText(text, doctorE2eeRef.current);
-      }
       await apiJson("/api/chat/plain/message", token, {
         method: "POST",
-        body: JSON.stringify({ assistantId: active, text: outbound }),
+        body: JSON.stringify({
+          assistantId: active,
+          text,
+          ...(active === "doctor" && activeDoctorId ? { doctorId: activeDoctorId } : {}),
+        }),
       });
-      const refreshed = await fetchPlainMessages(active);
+      const refreshed = await fetchPlainMessages(
+        active,
+        active === "doctor" ? activeDoctorId : undefined
+      );
       setMessages(refreshed.messages);
-      void persistThreadCache(active, refreshed.messages);
+      void persistThreadCache(
+        active,
+        refreshed.messages,
+        active === "doctor" ? activeDoctorId : undefined
+      );
       setInput("");
       if (active === "support") {
         await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
@@ -771,7 +844,7 @@ export default function ChatScreen() {
         await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Send failed.");
+      setError(chatErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -793,11 +866,21 @@ export default function ChatScreen() {
             try {
               await apiJson("/api/chat/plain/clear-view", token, {
                 method: "POST",
-                body: JSON.stringify({ assistantId: active }),
+                body: JSON.stringify({
+                  assistantId: active,
+                  ...(active === "doctor" && activeDoctorId ? { doctorId: activeDoctorId } : {}),
+                }),
               });
-              const refreshed = await fetchPlainMessages(active);
+              const refreshed = await fetchPlainMessages(
+                active,
+                active === "doctor" ? activeDoctorId : undefined
+              );
               setMessages(refreshed.messages);
-              void persistThreadCache(active, refreshed.messages);
+              void persistThreadCache(
+                active,
+                refreshed.messages,
+                active === "doctor" ? activeDoctorId : undefined
+              );
               if (active === "support") {
                 await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
               } else if (active === "doctor") {
@@ -823,10 +906,14 @@ export default function ChatScreen() {
     threadScope === "appointments"
       ? "Appointments"
       : active === "doctor"
-        ? doctorProfile.name || CONTACTS[1]?.name || "Doctor"
+        ? activeDoctorProfile.name || CONTACTS[1]?.name || "Doctor"
         : peer.name;
   const activeThreadSubtitle =
-    threadScope === "appointments" ? "Appointment updates and confirmations" : "Online";
+    threadScope === "appointments"
+      ? "Appointment updates and confirmations"
+      : active === "doctor"
+        ? activeDoctorProfile.subtitle || "Online"
+        : "Online";
   const headerAvatarIconName: keyof typeof Ionicons.glyphMap =
     threadScope === "appointments"
       ? "calendar"
@@ -857,11 +944,27 @@ export default function ChatScreen() {
     }
     laterIncomingIndexById.set(msg.id, seen);
   }
+  const filteredDoctors = registeredDoctors.filter((doctor) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      doctor.name.toLowerCase().includes(q) ||
+      doctor.specialty.toLowerCase().includes(q) ||
+      (doctor.lastMessage ?? "").toLowerCase().includes(q)
+    );
+  });
   const filteredRows = homeRows.filter((row) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return row.title.toLowerCase().includes(q) || row.subtitle.toLowerCase().includes(q);
   });
+
+  function openDoctorThread(doctorId: string) {
+    setActiveDoctorId(doctorId);
+    setActive("doctor");
+    setThreadScope("all");
+    setHomeMode(false);
+  }
 
   function openHomeThread(id: HomeThreadId) {
     if (id === "appointments") {
@@ -878,97 +981,124 @@ export default function ChatScreen() {
   if (homeMode) {
     return (
       <SafeAreaView style={[styles.flex, styles.safeHome]} edges={["top"]}>
-        <View style={[styles.homeWrap, { paddingTop: 8, paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <View style={styles.homeHeader}>
-          <Text style={styles.homeTitle}>Chat</Text>
-          <NotificationBell />
-        </View>
-
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color="#9aa4b2" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search messages"
-            placeholderTextColor="#9aa4b2"
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-
-        <Pressable style={styles.primaryCard} onPress={() => openHomeThread("doctor")}>
-          <View style={styles.primaryAvatar}>
-            {doctorProfile.avatarUrl ? (
-              <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.primaryAvatarImage} />
-            ) : (
-              <Ionicons name="person" size={24} color="#475569" />
-            )}
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            styles.homeWrap,
+            { paddingTop: 8, paddingBottom: Math.max(insets.bottom, 12) },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.homeHeader}>
+            <Text style={styles.homeTitle}>Chat</Text>
+            <NotificationBell />
           </View>
-          <View style={styles.primaryInfo}>
-            <Text style={styles.primaryName} numberOfLines={1}>
-              {doctorProfile.name || CONTACTS[1]?.name || "Doctor"}
-            </Text>
-            <Text style={styles.primarySpec} numberOfLines={1}>
-              {doctorProfile.subtitle || "Care Team"}
-            </Text>
-            <View style={styles.primaryPill}>
-              <Text style={styles.primaryPillText}>Your Primary Doctor</Text>
+
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={18} color="#9aa4b2" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search messages or doctors"
+              placeholderTextColor="#9aa4b2"
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
+
+          <Text style={styles.recentTitle}>Your Doctors</Text>
+          {filteredDoctors.length === 0 ? (
+            <View style={styles.emptyDoctorsCard}>
+              <Text style={styles.emptyDoctorsText}>
+                {homeLoading ? "Loading doctors…" : "No clinic doctors registered yet."}
+              </Text>
             </View>
-            <Text style={styles.primaryHint}>
-              {doctorProfile.replyHint || "Typically replies in a few hours"}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color={ZINC_900} />
-        </Pressable>
+          ) : (
+            filteredDoctors.map((doctor) => (
+              <Pressable
+                key={doctor.id}
+                style={styles.primaryCard}
+                onPress={() => openDoctorThread(doctor.id)}
+              >
+                <View style={styles.primaryAvatar}>
+                  {doctor.imageUrl ? (
+                    <Image source={{ uri: doctor.imageUrl }} style={styles.primaryAvatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={24} color="#475569" />
+                  )}
+                </View>
+                <View style={styles.primaryInfo}>
+                  <Text style={styles.primaryName} numberOfLines={1}>
+                    {doctor.name}
+                  </Text>
+                  <Text style={styles.primarySpec} numberOfLines={1}>
+                    {doctor.specialty || "Care Team"}
+                  </Text>
+                  <View style={styles.primaryPill}>
+                    <Text style={styles.primaryPillText}>Doctor Chat</Text>
+                  </View>
+                  <Text style={styles.primaryHint} numberOfLines={2}>
+                    {doctor.lastMessage || "No messages yet"}
+                  </Text>
+                </View>
+                <View style={styles.primaryTrailing}>
+                  {doctor.lastMessageAt ? (
+                    <Text style={styles.rowDate}>{dateLabelFromIso(doctor.lastMessageAt)}</Text>
+                  ) : null}
+                  {doctorUnread > 0 ? (
+                    <View style={styles.unreadDot}>
+                      <Text style={styles.unreadDotText}>
+                        {doctorUnread > 9 ? "9+" : doctorUnread}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Ionicons name="chevron-forward" size={24} color={ZINC_900} />
+                </View>
+              </Pressable>
+            ))
+          )}
 
-        <Text style={styles.recentTitle}>Recent Conversations</Text>
+          <Text style={styles.recentTitle}>Recent Conversations</Text>
 
-        <View style={styles.listCard}>
-          {filteredRows.map((row, idx) => (
-            <Pressable
-              key={row.id}
-              style={[styles.homeRow, idx < filteredRows.length - 1 && styles.homeRowBorder]}
-              onPress={() => openHomeThread(row.id)}
-            >
-              <View style={[styles.rowAvatar, row.id === "doctor" && styles.rowAvatarDoctor]}>
-                {row.id === "doctor" && doctorProfile.avatarUrl ? (
-                  <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.rowAvatarImage} />
-                ) : (
+          <View style={styles.listCard}>
+            {filteredRows.map((row, idx) => (
+              <Pressable
+                key={row.id}
+                style={[styles.homeRow, idx < filteredRows.length - 1 && styles.homeRowBorder]}
+                onPress={() => openHomeThread(row.id)}
+              >
+                <View style={styles.rowAvatar}>
                   <Ionicons
                     name={
-                      row.id === "doctor"
-                        ? "person"
-                        : row.id === "ai"
-                          ? "sparkles"
-                          : row.id === "appointments"
-                            ? "calendar"
-                            : "people"
+                      row.id === "ai"
+                        ? "sparkles"
+                        : row.id === "appointments"
+                          ? "calendar"
+                          : "people"
                     }
                     size={16}
-                    color={row.id === "doctor" ? "#1f2a5a" : "#6b7280"}
+                    color="#6b7280"
                   />
-                )}
-              </View>
-              <View style={styles.rowMain}>
-                <View style={styles.rowHead}>
-                  <Text style={styles.rowTitle} numberOfLines={1}>
-                    {row.title}
+                </View>
+                <View style={styles.rowMain}>
+                  <View style={styles.rowHead}>
+                    <Text style={styles.rowTitle} numberOfLines={1}>
+                      {row.title}
+                    </Text>
+                    {row.dateLabel ? <Text style={styles.rowDate}>{row.dateLabel}</Text> : null}
+                  </View>
+                  <Text style={styles.rowSub} numberOfLines={2}>
+                    {row.subtitle}
                   </Text>
-                  {row.dateLabel ? <Text style={styles.rowDate}>{row.dateLabel}</Text> : null}
                 </View>
-                <Text style={styles.rowSub} numberOfLines={2}>
-                  {row.subtitle}
-                </Text>
-              </View>
-              {row.unread > 0 ? (
-                <View style={styles.unreadDot}>
-                  <Text style={styles.unreadDotText}>{row.unread > 9 ? "9+" : row.unread}</Text>
-                </View>
-              ) : null}
-            </Pressable>
-          ))}
-        </View>
-
-        </View>
+                {row.unread > 0 ? (
+                  <View style={styles.unreadDot}>
+                    <Text style={styles.unreadDotText}>{row.unread > 9 ? "9+" : row.unread}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -987,8 +1117,8 @@ export default function ChatScreen() {
           </Pressable>
           <View style={styles.threadIdentity}>
             <View style={[styles.threadAvatar, { backgroundColor: headerAvatarBg }]}>
-              {active === "doctor" && doctorProfile.avatarUrl ? (
-                <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.threadAvatarImage} />
+              {active === "doctor" && activeDoctorProfile.avatarUrl ? (
+                <Image source={{ uri: activeDoctorProfile.avatarUrl }} style={styles.threadAvatarImage} />
               ) : (
                 <Ionicons name={headerAvatarIconName} size={18} color="#475569" />
               )}
@@ -997,14 +1127,7 @@ export default function ChatScreen() {
               <Text style={styles.threadName} numberOfLines={1}>
                 {activeThreadTitle}
               </Text>
-              <Text style={styles.threadStatus}>
-                {active === "doctor" && doctorE2eeStatus
-                  ? doctorE2eeStatus
-                  : activeThreadSubtitle}
-              </Text>
-              {active === "doctor" && doctorE2eeRef.current?.ready ? (
-                <Text style={styles.e2eeBadge}>End-to-end encrypted</Text>
-              ) : null}
+              <Text style={styles.threadStatus}>{activeThreadSubtitle}</Text>
             </View>
           </View>
           <View style={styles.threadBellWrap}>
@@ -1073,7 +1196,7 @@ export default function ChatScreen() {
                   style={[styles.sosPrimary, sosBusy && { opacity: 0.6 }]}
                   disabled={sosBusy || !sosText.trim()}
                   onPress={async () => {
-                    if (!token || !sosText.trim()) return;
+                    if (!token || !sosText.trim() || !activeDoctorId) return;
                     setSosBusy(true);
                     try {
                       let attachmentUrl: string | undefined;
@@ -1087,14 +1210,15 @@ export default function ChatScreen() {
                         method: "POST",
                         body: JSON.stringify({
                           assistantId: "doctor",
+                          doctorId: activeDoctorId,
                           text: sosText.trim(),
                           isUrgent: true,
                           attachmentUrl,
                         }),
                       });
-                      const refreshed = await fetchPlainMessages("doctor");
+                      const refreshed = await fetchPlainMessages("doctor", activeDoctorId);
                       setMessages(refreshed.messages);
-                      void persistThreadCache("doctor", refreshed.messages);
+                      void persistThreadCache("doctor", refreshed.messages, activeDoctorId);
                       await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
                       setSosOpen(false);
                       setSosText("");
@@ -1167,8 +1291,8 @@ export default function ChatScreen() {
                   <View style={[styles.msgRow, isPatient ? styles.msgRowPatient : styles.msgRowOther]}>
                     {!isPatient ? (
                       <View style={[styles.msgAvatar, { backgroundColor: incomingAvatarBg }]}>
-                        {item.sender === "doctor" && doctorProfile.avatarUrl ? (
-                          <Image source={{ uri: doctorProfile.avatarUrl }} style={styles.msgAvatarImage} />
+                        {item.sender === "doctor" && activeDoctorProfile.avatarUrl ? (
+                          <Image source={{ uri: activeDoctorProfile.avatarUrl }} style={styles.msgAvatarImage} />
                         ) : (
                           <Ionicons
                             name={
@@ -1352,6 +1476,24 @@ const styles = StyleSheet.create({
   },
   primaryPillText: { fontSize: 12, color: "#2e7d4e", fontWeight: "600" },
   primaryHint: { marginTop: 8, fontSize: 12, color: "#4b5563", lineHeight: 16 },
+  primaryTrailing: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+    gap: 8,
+  },
+  emptyDoctorsCard: {
+    marginTop: 14,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e7ebef",
+    padding: 16,
+  },
+  emptyDoctorsText: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+  },
   recentTitle: {
     marginTop: 18,
     marginBottom: 10,
@@ -1445,7 +1587,6 @@ const styles = StyleSheet.create({
   threadMeta: { flex: 1, minWidth: 0 },
   threadName: { fontSize: 24, fontWeight: "700", color: ZINC_900 },
   threadStatus: { fontSize: 13, color: "#6b7280", marginTop: 2 },
-  e2eeBadge: { fontSize: 11, color: "#047857", marginTop: 2, fontWeight: "600" },
   msgAvatar: {
     width: 34,
     height: 34,

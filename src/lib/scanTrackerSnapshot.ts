@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "@/src/db";
+import { db as defaultDb } from "@/src/db/client";
+import type { AppDatabase } from "@/src/db/database-types";
 import { scans } from "@/src/db/schema";
 import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
@@ -13,34 +14,18 @@ function isMissingTrackerSnapshotColumn(error: unknown): boolean {
   );
 }
 
-/** Use stored snapshot when present; otherwise build live (legacy scans). */
-export async function loadScanTrackerReport(
+type TrackerDb = any;
+
+async function writeTrackerSnapshot(
   userId: string,
   scanId: number,
-  stored: PatientTrackerReport | null | undefined
-): Promise<PatientTrackerReport | null> {
-  if (stored) return stored;
-  try {
-    const built = await buildPatientTrackerReport({ userId, scanId });
-    return built.ok ? built.report : null;
-  } catch (e) {
-    console.error("[loadScanTrackerReport] build failed", { userId, scanId, e });
-    return null;
-  }
-}
-
-/** Build and persist kAI tracker report once after scan insert. */
-export async function persistScanTrackerSnapshot(
-  userId: string,
-  scanId: number
+  report: PatientTrackerReport,
+  database: TrackerDb = defaultDb
 ): Promise<boolean> {
-  const built = await buildPatientTrackerReport({ userId, scanId });
-  if (!built.ok) return false;
-
   try {
-    await db
+    await database
       .update(scans)
-      .set({ trackerSnapshot: built.report })
+      .set({ trackerSnapshot: report })
       .where(and(eq(scans.id, scanId), eq(scans.userId, userId)));
     return true;
   } catch (e) {
@@ -52,4 +37,37 @@ export async function persistScanTrackerSnapshot(
     }
     throw e;
   }
+}
+
+/**
+ * Use frozen `scans.tracker_snapshot` when present.
+ * Legacy scans: build once, persist, then serve from DB on later views.
+ */
+export async function loadScanTrackerReport(
+  userId: string,
+  scanId: number,
+  stored: PatientTrackerReport | null | undefined
+): Promise<PatientTrackerReport | null> {
+  if (stored) return stored;
+
+  try {
+    const built = await buildPatientTrackerReport({ userId, scanId });
+    if (!built.ok) return null;
+    await writeTrackerSnapshot(userId, scanId, built.report);
+    return built.report;
+  } catch (e) {
+    console.error("[loadScanTrackerReport] build failed", { userId, scanId, e });
+    return null;
+  }
+}
+
+/** Build and persist kAI tracker report once after scan insert. */
+export async function persistScanTrackerSnapshot(
+  userId: string,
+  scanId: number,
+  database: TrackerDb = defaultDb
+): Promise<boolean> {
+  const built = await buildPatientTrackerReport({ userId, scanId });
+  if (!built.ok) return false;
+  return writeTrackerSnapshot(userId, scanId, built.report, database);
 }

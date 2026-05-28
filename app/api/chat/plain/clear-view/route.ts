@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { resolvePatientDoctorThread } from "@/src/lib/patientDoctorChatThread";
 
 /**
  * Patient: hide all current messages in this thread in the app. Nothing is deleted;
@@ -22,7 +23,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
   }
 
-  const assistantId = (body as Record<string, unknown>).assistantId;
+  const b = body as Record<string, unknown>;
+  const assistantId = b.assistantId;
   if (assistantId !== "support" && assistantId !== "doctor") {
     return NextResponse.json(
       { error: "assistantId must be support or doctor" },
@@ -30,14 +32,26 @@ export async function POST(req: Request) {
     );
   }
 
-  const [thread] = await db
-    .select({ id: chatThreads.id })
-    .from(chatThreads)
-    .where(and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, assistantId)))
-    .orderBy(desc(chatThreads.createdAt))
-    .limit(1);
+  let threadId: string | undefined;
+  if (assistantId === "doctor") {
+    const resolved = await resolvePatientDoctorThread(
+      userId,
+      typeof b.doctorId === "string" ? b.doctorId : null
+    );
+    threadId = resolved?.threadId;
+  } else {
+    const [thread] = await db
+      .select({ id: chatThreads.id })
+      .from(chatThreads)
+      .where(
+        and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, assistantId))
+      )
+      .orderBy(desc(chatThreads.createdAt))
+      .limit(1);
+    threadId = thread?.id;
+  }
 
-  if (!thread) {
+  if (!threadId) {
     return NextResponse.json({ success: true, updated: false });
   }
 
@@ -45,7 +59,7 @@ export async function POST(req: Request) {
   await db
     .update(chatThreads)
     .set({ patientClearedChatAt: now })
-    .where(eq(chatThreads.id, thread.id));
+    .where(eq(chatThreads.id, threadId));
 
   return NextResponse.json({ success: true, updated: true, clearedAt: now.toISOString() });
 }

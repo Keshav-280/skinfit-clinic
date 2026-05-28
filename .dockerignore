@@ -1,0 +1,33 @@
+# Ignore node package dependencies (they are installed inside the docker container)
+**/node_modules
+node_modules
+
+# Ignore local Next.js build caches
+**/.next
+.next
+
+# Ignore mobile native app entirely (not needed for web/ml-worker backend services)
+mobile/
+**/.expo
+.expo
+
+# Ignore books documentation
+books/
+
+# Ignore local ML weights (mounted via volume at runtime)
+models/
+
+# Ignore local uploaded files and media caches
+**/uploads
+uploads
+
+# Ignore git and local environment files
+.git
+.gitignore
+.github
+*.local
+*.env.local
+
+# Ignore OS files
+**/.DS_Store
+.DS_Store

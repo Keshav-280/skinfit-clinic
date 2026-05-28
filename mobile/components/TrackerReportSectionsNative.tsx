@@ -1,15 +1,22 @@
 import { Linking, Platform, StyleSheet, Text, View } from "react-native";
 
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
+import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 
 function signed(n: number) {
   return `${n > 0 ? "+" : ""}${n}`;
 }
 
 function deltaColor(n: number) {
-  if (n > 0) return "#047857";
-  if (n < 0) return "#be123c";
-  return "#52525b";
+  if (n > 0) return R.deltaUp;
+  if (n < 0) return R.deltaDown;
+  return "#71717a";
+}
+
+function causeDotColor(impact: "high" | "medium" | "low") {
+  if (impact === "high") return R.causeHigh;
+  if (impact === "medium") return R.causeMed;
+  return R.causeLow;
 }
 
 function valueForBar(n: number | null) {
@@ -21,6 +28,18 @@ function kindBadge(kind: "article" | "video" | "insight") {
   if (kind === "article") return "Article";
   if (kind === "video") return "Video";
   return "kAI insight";
+}
+
+function parseFocusDetail(detail: string): Array<{ label: string; body: string }> {
+  return detail
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(Why|Do|Target):\s*(.*)$/i);
+      if (!m) return { label: "", body: line };
+      return { label: `${m[1]}:`, body: m[2] ?? "" };
+    });
 }
 
 type Props = {
@@ -109,14 +128,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
                 <View
                   style={[
                     styles.causeDot,
-                    {
-                      backgroundColor:
-                        cause.impact === "high"
-                          ? "#d97706"
-                          : cause.impact === "medium"
-                            ? "#0d9488"
-                            : "#0284c7",
-                    },
+                    { backgroundColor: causeDotColor(cause.impact) },
                   ]}
                 />
                 <Text style={styles.causeText}>{cause.text}</Text>
@@ -157,7 +169,12 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.focusTitle}>{a.title}</Text>
-                <Text style={styles.focusDetail}>{a.detail}</Text>
+                {parseFocusDetail(a.detail).map((part, idx) => (
+                  <Text key={`${a.rank}-${idx}`} style={styles.focusDetail}>
+                    {part.label ? <Text style={styles.focusDetailLabel}>{part.label} </Text> : null}
+                    {part.body}
+                  </Text>
+                ))}
               </View>
             </View>
           ))}
@@ -274,7 +291,7 @@ const styles = StyleSheet.create({
   paramBarFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: NAVY,
+    backgroundColor: "#3d5080",
   },
   paramNum: {
     width: 28,
@@ -340,4 +357,5 @@ const styles = StyleSheet.create({
   focusRankText: { fontSize: 14, fontWeight: "800", color: NAVY },
   focusTitle: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
   focusDetail: { marginTop: 6, fontSize: 13, lineHeight: 20, color: "#6B7280" },
+  focusDetailLabel: { fontWeight: "700", color: "#334155" },
 });

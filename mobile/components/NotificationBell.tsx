@@ -11,6 +11,10 @@ import {
   getDoctorInboxLastSeenIso,
   subscribeInboxReadCursors,
 } from "@/lib/inboxReadCursors";
+import {
+  getUnreadReadyScanCount,
+  subscribeScanJobNotifications,
+} from "@/lib/scanJobNotifications";
 
 export function NotificationBell() {
   const { token } = useAuth();
@@ -23,9 +27,10 @@ export function NotificationBell() {
       return;
     }
     try {
-      const [supportSince, doctorSince] = await Promise.all([
+      const [supportSince, doctorSince, scanReady] = await Promise.all([
         getClinicSupportInboxLastSeenIso(),
         getDoctorInboxLastSeenIso(),
+        getUnreadReadyScanCount(),
       ]);
       const q = new URLSearchParams({ supportSince, doctorSince });
       const data = await apiJson<{ total?: number }>(
@@ -33,9 +38,12 @@ export function NotificationBell() {
         token,
         { method: "GET" }
       );
-      setTotal(typeof data.total === "number" ? data.total : 0);
+      const inbox =
+        typeof data.total === "number" ? data.total : 0;
+      setTotal(inbox + scanReady);
     } catch {
-      setTotal(0);
+      const scanReady = await getUnreadReadyScanCount().catch(() => 0);
+      setTotal(scanReady);
     }
   }, [token]);
 
@@ -49,11 +57,13 @@ export function NotificationBell() {
   useFocusEffect(
     useCallback(() => {
       void load();
-      const unsub = subscribeInboxReadCursors(() => void load());
+      const unsubInbox = subscribeInboxReadCursors(() => void load());
+      const unsubScan = subscribeScanJobNotifications(() => void load());
       const id = setInterval(() => void load(), 15_000);
       return () => {
         clearInterval(id);
-        unsub();
+        unsubInbox();
+        unsubScan();
       };
     }, [load])
   );

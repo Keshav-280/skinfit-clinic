@@ -1,8 +1,10 @@
 import { formatDistanceToNow } from "date-fns";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
-import type { DimensionValue, ImageSourcePropType } from "react-native";
+import { useEffect, useState } from "react";
+import type { DimensionValue } from "react-native";
 import {
+  ActivityIndicator,
   Image,
   Platform,
   Pressable,
@@ -12,6 +14,7 @@ import {
   View,
 } from "react-native";
 
+import { ReportContainImage } from "@/components/ReportContainImage";
 import { ReportDonut } from "@/components/ReportDonut";
 import { ScanMaskAnnotationsNative } from "@/components/ScanMaskAnnotationsNative";
 import { DOT_MARKER_LEGEND } from "@/lib/scanMaskLabels";
@@ -19,7 +22,9 @@ import { TrackerReportSectionsNative } from "@/components/TrackerReportSectionsN
 import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
-import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
+import { fetchAuthenticatedScanImageUri } from "@/lib/fetchAuthenticatedScanImage";
+import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import { publicFileDisplayUrl } from "../../src/lib/publicFileUrl";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
 
 const GLASS = "rgba(255,255,255,0.92)";
@@ -83,8 +88,6 @@ type Props = {
   imageUrl: string;
   authToken: string | null;
   faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
-  /** Resolved primary image (auth headers applied). */
-  imageSource: ImageSourcePropType;
   annotatedOverlayUri?: string | null;
   wrinkleMaskUri?: string | null;
   acneMaskUri?: string | null;
@@ -104,11 +107,11 @@ function clamp(n: number) {
 
 function markerColor(issue: string): string {
   const x = issue.toLowerCase();
-  if (x.includes("acne")) return "#dc2626";
-  if (x.includes("wrinkle")) return "#7c3aed";
-  if (x.includes("pigment")) return "#d97706";
-  if (x.includes("texture")) return T.navyMid;
-  return "#6b7280";
+  if (x.includes("acne")) return T.navyDark;
+  if (x.includes("wrinkle")) return T.navyMid;
+  if (x.includes("pigment")) return T.navyLight;
+  if (x.includes("texture")) return T.accent;
+  return T.navy;
 }
 
 function displayScanTitle(raw: string | null): string | null {
@@ -133,7 +136,6 @@ export function SkinScanReportBodyNative({
   imageUrl,
   authToken,
   faceCaptureGallery,
-  imageSource,
   annotatedOverlayUri: _annotatedOverlayUri = null,
   wrinkleMaskUri = null,
   acneMaskUri = null,
@@ -148,14 +150,46 @@ export function SkinScanReportBodyNative({
 }: Props) {
   const router = useRouter();
   const displayTitle = displayScanTitle(scanTitle);
-  const wrinkleMask = wrinkleMaskUri?.trim() || "";
-  const acneMask = acneMaskUri?.trim() || "";
+  const wrinkleMask =
+    publicFileDisplayUrl(wrinkleMaskUri) ?? wrinkleMaskUri?.trim() ?? "";
+  const acneMask =
+    publicFileDisplayUrl(acneMaskUri) ?? acneMaskUri?.trim() ?? "";
   const showMaskSection = wrinkleMask.length > 0 || acneMask.length > 0;
   const showDotMarkersOnly =
     wrinkleMask.length === 0 &&
     acneMask.length === 0 &&
     regions.length > 0 &&
     (imageUrl?.trim().length ?? 0) > 0;
+
+  const [markerImageUri, setMarkerImageUri] = useState<string | null>(null);
+  const [markerImageLoading, setMarkerImageLoading] = useState(false);
+
+  useEffect(() => {
+    const path = imageUrl?.trim();
+    if (!path || !showDotMarkersOnly) {
+      setMarkerImageUri(null);
+      setMarkerImageLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMarkerImageLoading(true);
+    void fetchAuthenticatedScanImageUri(
+      patientScanImageDisplayUrl(path),
+      authToken
+    )
+      .then((uri) => {
+        if (!cancelled) setMarkerImageUri(uri);
+      })
+      .catch(() => {
+        if (!cancelled) setMarkerImageUri(null);
+      })
+      .finally(() => {
+        if (!cancelled) setMarkerImageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, authToken, showDotMarkersOnly]);
   const overall = clamp(metrics.overall_score);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const heroIntro =
@@ -174,9 +208,6 @@ export function SkinScanReportBodyNative({
       : imageUrl?.trim()
         ? [{ label: "Primary scan", imageUrl }]
         : [];
-
-  const row2 = resolvedPhotos.slice(0, 2);
-  const row3 = resolvedPhotos.slice(2, 5);
 
   return (
     <ScrollView
@@ -206,67 +237,24 @@ export function SkinScanReportBodyNative({
 
         <View style={styles.inner}>
           {resolvedPhotos.length > 0 ? (
-            <View style={{ marginBottom: 8 }}>
+            <View style={styles.captureSection}>
               <Text style={styles.captureKicker}>
                 {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
               </Text>
-              {resolvedPhotos.length === 1 ? (
-                <View style={styles.singleCaptureWrap}>
-                  <View style={styles.captureFrameLarge}>
-                    <Image
-                      source={resolveAuthenticatedScanImageSource(
-                        patientScanImageDisplayUrl(resolvedPhotos[0]!.imageUrl),
-                        authToken
-                      )}
-                      style={styles.captureImg}
-                      resizeMode="cover"
+              <View style={styles.captureStack}>
+                {resolvedPhotos.map((item, idx) => (
+                  <View key={`cap-${idx}-${item.label}`} style={styles.captureStackItem}>
+                    <ReportContainImage
+                      imageUrl={item.imageUrl}
+                      authToken={authToken}
+                      maxWidth={300}
                     />
+                    <Text style={styles.captureCaption} numberOfLines={3}>
+                      {item.label}
+                    </Text>
                   </View>
-                  <Text style={styles.captureCaption}>{resolvedPhotos[0]!.label}</Text>
-                </View>
-              ) : null}
-              {resolvedPhotos.length > 1 && row2.length > 0 ? (
-                <View style={styles.captureRow2}>
-                  {row2.map((item, idx) => (
-                    <View key={`r2-${idx}-${item.label}`} style={styles.captureCell}>
-                      <View style={styles.captureFrameSmall}>
-                        <Image
-                          source={resolveAuthenticatedScanImageSource(
-                            patientScanImageDisplayUrl(item.imageUrl),
-                            authToken
-                          )}
-                          style={styles.captureImg}
-                          resizeMode="cover"
-                        />
-                      </View>
-                      <Text style={styles.captureCaptionSmall} numberOfLines={2}>
-                        {item.label}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              {resolvedPhotos.length > 1 && row3.length > 0 ? (
-                <View style={styles.captureRow3}>
-                  {row3.map((item, idx) => (
-                    <View key={`r3-${idx}-${item.label}`} style={styles.captureCell3}>
-                      <View style={styles.captureFrameSmall}>
-                        <Image
-                          source={resolveAuthenticatedScanImageSource(
-                            patientScanImageDisplayUrl(item.imageUrl),
-                            authToken
-                          )}
-                          style={styles.captureImg}
-                          resizeMode="cover"
-                        />
-                      </View>
-                      <Text style={styles.captureCaptionSmall} numberOfLines={2}>
-                        {item.label}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+                ))}
+              </View>
             </View>
           ) : (
             <Text style={styles.mutedCenter}>No face capture images for this scan.</Text>
@@ -276,6 +264,19 @@ export function SkinScanReportBodyNative({
             <ScanMaskAnnotationsNative
               wrinkleMaskUri={wrinkleMask || undefined}
               acneMaskUri={acneMask || undefined}
+              wrinkleFallbackUri={resolvedPhotos[4]?.imageUrl}
+              acneFallbackUri={resolvedPhotos[0]?.imageUrl}
+              authToken={authToken}
+              wrinkleLabel={
+                resolvedPhotos[4]?.label ??
+                FACE_SCAN_CAPTURE_STEPS[4]?.title ??
+                "Front face — smiling"
+              }
+              acneLabel={
+                resolvedPhotos[0]?.label ??
+                FACE_SCAN_CAPTURE_STEPS[0]?.title ??
+                "Front face — neutral"
+              }
             />
           ) : null}
 
@@ -288,7 +289,19 @@ export function SkinScanReportBodyNative({
                   style={StyleSheet.absoluteFill}
                   pointerEvents="none"
                 />
-                <Image source={imageSource} style={styles.faceImg} resizeMode="cover" />
+                {markerImageLoading ? (
+                  <View style={[styles.faceImg, styles.markerPlaceholder]}>
+                    <ActivityIndicator color="#fff" />
+                  </View>
+                ) : markerImageUri ? (
+                  <Image
+                    source={{ uri: markerImageUri }}
+                    style={styles.faceImg}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.faceImg, styles.markerPlaceholder]} />
+                )}
                 {regions.map((region, i) => (
                   <View
                     key={i}
@@ -524,57 +537,24 @@ const styles = StyleSheet.create({
     color: T.navy,
     marginBottom: 12,
   },
-  singleCaptureWrap: { alignItems: "center" },
-  captureFrameLarge: {
-    width: 200,
-    aspectRatio: 3 / 4,
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#e4e4e7",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-  },
-  captureRow2: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
-    flexWrap: "wrap",
-    marginTop: 8,
-  },
-  captureRow3: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    flexWrap: "wrap",
-    marginTop: 12,
-  },
-  captureCell: { width: 120, alignItems: "center" },
-  captureCell3: { width: 100, alignItems: "center" },
-  captureFrameSmall: {
+  captureSection: { marginBottom: 8, width: "100%" },
+  captureStack: {
     width: "100%",
-    aspectRatio: 3 / 4,
-    maxWidth: 96,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#e4e4e7",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    gap: 20,
+    marginTop: 4,
   },
-  captureImg: { width: "100%", height: "100%" },
+  captureStackItem: {
+    width: "100%",
+    alignItems: "center",
+  },
   captureCaption: {
-    marginTop: 8,
-    fontSize: 11,
+    marginTop: 10,
+    fontSize: 12,
     fontWeight: "600",
     color: "#374151",
     textAlign: "center",
-  },
-  captureCaptionSmall: {
-    marginTop: 6,
-    fontSize: 9,
-    fontWeight: "600",
-    color: "#374151",
-    textAlign: "center",
-    lineHeight: 12,
+    paddingHorizontal: 8,
+    lineHeight: 16,
   },
   mutedCenter: {
     textAlign: "center",
@@ -642,6 +622,11 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
   faceImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  markerPlaceholder: {
+    backgroundColor: "#27272a",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   marker: {
     position: "absolute",
     width: 10,
@@ -768,7 +753,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 3,
     borderRadius: 2,
-    backgroundColor: T.peach,
+    backgroundColor: T.accent,
     marginBottom: 12,
   },
   tealH: {

@@ -121,15 +121,19 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
 
       <div className="px-4 py-4 sm:px-5">
         <div className="rounded-xl bg-stone-200/30 px-3 py-2.5">
-          <audio
-            controls
-            preload="metadata"
-            className="h-9 w-full max-h-9 min-h-[2.25rem] [&::-webkit-media-controls-panel]:rounded-lg"
-            style={{ accentColor: "#0f766e" }}
-            src={vn.audioDataUri}
-          >
-            Your browser does not support audio.
-          </audio>
+          {vn.audioDataUri?.trim() ? (
+            <audio
+              controls
+              preload="metadata"
+              className="h-9 w-full max-h-9 min-h-[2.25rem] [&::-webkit-media-controls-panel]:rounded-lg"
+              style={{ accentColor: "#0f766e" }}
+              src={vn.audioDataUri.trim()}
+            >
+              Your browser does not support audio.
+            </audio>
+          ) : (
+            <p className="text-sm text-zinc-500">Audio unavailable for this note.</p>
+          )}
         </div>
       </div>
 
@@ -474,13 +478,19 @@ export function HistoryView({
                           </span>
                         </div>
                         <div className="rounded-lg bg-stone-200/35 px-2.5 py-2">
-                          <audio
-                            controls
-                            preload="metadata"
-                            className="h-8 w-full"
-                            style={{ accentColor: "#0f766e" }}
-                            src={vn.audioDataUri}
-                          />
+                          {vn.audioDataUri?.trim() ? (
+                            <audio
+                              controls
+                              preload="metadata"
+                              className="h-8 w-full"
+                              style={{ accentColor: "#0f766e" }}
+                              src={vn.audioDataUri.trim()}
+                            />
+                          ) : (
+                            <p className="text-sm text-zinc-500">
+                              Audio unavailable for this note.
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}

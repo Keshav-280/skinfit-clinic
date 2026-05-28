@@ -6,6 +6,7 @@ import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
+import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 import { createSessionToken } from "@/src/lib/auth/session";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -76,6 +77,17 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!user.passwordHash) {
+      return NextResponse.json(
+        {
+          error: "OAUTH_ACCOUNT",
+          message:
+            "This account uses social sign-in. Use Continue with Google or Apple below.",
+        },
+        { status: 401 }
+      );
+    }
+
     const passwordOk = await bcrypt.compare(password, user.passwordHash);
     if (!passwordOk) {
       return NextResponse.json(
@@ -124,11 +136,16 @@ export async function POST(req: Request) {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: authCookieSecure(),
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
+
+    const { getOnboardingAccessForUser } = await import(
+      "@/src/lib/onboardingAccess"
+    );
+    const access = await getOnboardingAccessForUser(user.id);
 
     const nativeClient = req.headers.get("x-skinfit-client") === "native";
     return NextResponse.json({
@@ -138,6 +155,9 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name,
         onboardingComplete: user.onboardingComplete ?? true,
+        hasQuestionnaire: access.hasQuestionnaire,
+        canAccessDashboard: access.canAccessDashboard,
+        hasBaselineScan: access.hasBaselineScan,
       },
       ...(nativeClient ? { token } : {}),
     });

@@ -14,16 +14,20 @@ function hasMissingColumn(error: unknown, column: string): boolean {
   );
 }
 
-async function loadScanImageRow(patientId: string, scanId: number) {
+async function loadScanImageRow(
+  patientId: string,
+  scanId: number
+) {
+  const scope = and(eq(scans.id, scanId), eq(scans.userId, patientId));
   try {
     return await db.query.scans.findFirst({
-      where: and(eq(scans.id, scanId), eq(scans.userId, patientId)),
+      where: scope,
       columns: { imageUrl: true, faceCaptureImages: true },
     });
   } catch (e) {
     if (!hasMissingColumn(e, "face_capture_images")) throw e;
     return await db.query.scans.findFirst({
-      where: and(eq(scans.id, scanId), eq(scans.userId, patientId)),
+      where: scope,
       columns: { imageUrl: true },
     });
   }

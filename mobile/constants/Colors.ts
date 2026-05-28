@@ -1,12 +1,14 @@
-const primary = "#1D4E3E";
-const primaryDark = "#163B2E";
-const primaryLight = "#E6F5EE";
-const accent = "#0D9488";
-const bgLight = "#FFFFFF";
-const textPrimary = "#1A1A2E";
-const textSecondary = "#6B7280";
+import { SKINFIT_THEME } from "@/lib/skinfitTheme";
+
+const primary = SKINFIT_THEME.navy;
+const primaryDark = SKINFIT_THEME.navyDark;
+const primaryLight = SKINFIT_THEME.mint;
+const accent = SKINFIT_THEME.navyMid;
+const bgLight = SKINFIT_THEME.mint;
+const textPrimary = SKINFIT_THEME.text;
+const textSecondary = SKINFIT_THEME.textMuted;
 const textMuted = "#9CA3AF";
-const card = "#F7F8FA";
+const card = "#FFFFFF";
 const surface = "#FFFFFF";
 const border = "#E5E7EB";
 const inputBg = "#F3F4F6";
@@ -31,19 +33,19 @@ export default {
   },
   dark: {
     text: "#fff",
-    background: "#000",
-    tint: "#2dd4bf",
-    tabIconDefault: "#ccc",
-    tabIconSelected: "#2dd4bf",
-    muted: "#a1a1aa",
-    card: "#111827",
-    border: "#1f2937",
-    primary: "#2dd4bf",
-    primaryDark: "#14b8a6",
-    primaryLight: "#042f2e",
-    accent: "#2dd4bf",
-    surface: "#111827",
-    inputBg: "#1f2937",
-    textMuted: "#6b7280",
+    background: "#0f172a",
+    tint: "#93c5fd",
+    tabIconDefault: "#94a3b8",
+    tabIconSelected: "#93c5fd",
+    muted: "#94a3b8",
+    card: "#1e293b",
+    border: "#334155",
+    primary: "#93c5fd",
+    primaryDark: "#60a5fa",
+    primaryLight: "#1e3a5f",
+    accent: "#60a5fa",
+    surface: "#1e293b",
+    inputBg: "#334155",
+    textMuted: "#64748b",
   },
 };

@@ -1,8 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, type Href } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -17,22 +18,22 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, Ellipse, Mask, Rect } from "react-native-svg";
 
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch } from "@/lib/api";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
+import { addPendingScanJob } from "@/lib/scanJobNotifications";
+import { submitFaceScan } from "@/lib/submitFaceScan";
 
 const NAVY = "#2B3A67";
 const GREEN = "#1B8A4A";
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
-type Phase = "intro" | "capture" | "review";
+type Phase = "intro" | "capture" | "review" | "queued";
 
 const TIPS = [
   "Make sure you're in a well-lit area.",
@@ -54,6 +55,13 @@ export default function ScanScreen() {
   useEffect(() => {
     if (!camPermission?.granted) void requestCamPermission();
   }, []);
+
+  /** Drawer remounts can leave `capture` with a dismissed modal — show intro again. */
+  useFocusEffect(
+    useCallback(() => {
+      setPhase((p) => (p === "capture" ? "intro" : p));
+    }, [])
+  );
 
   useEffect(() => {
     if (busy) {
@@ -138,16 +146,16 @@ export default function ScanScreen() {
         } as unknown as Blob);
       }
 
-      const res = await apiFetch("/api/scan", token, { method: "POST", body: form });
-      const data = (await res.json()) as {
-        success?: boolean;
-        data?: { id?: number };
-        error?: string;
-      };
-      if (!res.ok || !data.success || !data.data?.id) {
-        throw new Error(data.error || "Scan failed.");
+      const outcome = await submitFaceScan(token, form);
+      if (outcome.mode === "queued") {
+        await addPendingScanJob(outcome.jobId, "Untitled Scan");
+        setPhase("queued");
+        return;
       }
-      setResultId(data.data.id);
+      if (outcome.mode === "error") {
+        throw new Error(outcome.message);
+      }
+      setResultId(outcome.scanId);
     } catch (e) {
       Alert.alert("Scan failed", e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
@@ -179,17 +187,55 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Oval dimensions for intro ──
-  const ovalRx = SCREEN_W * 0.30;
-  const ovalRy = ovalRx * 1.35;
+  // ── Rectangular frame dimensions for intro ──
+  const frameW = SCREEN_W * 0.62;
+  const frameH = frameW * 1.35;
+  const frameRadius = 26;
 
   // ── Camera modal (full-screen, over dock) ──
   const showCamera = phase === "capture" && uris.length < N;
+
+  // ── Queued — analysis in background ──
+  if (phase === "queued") {
+    return (
+      <View style={styles.screenRoot}>
+      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <Pressable onPress={() => router.push("/(drawer)")} style={styles.headerBtn} hitSlop={14}>
+            <View style={styles.reviewIconCircle}>
+              <Ionicons name="chevron-back" size={22} color="#1A1A2E" />
+            </View>
+          </Pressable>
+          <View style={styles.headerBtn} />
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={styles.queuedBody}>
+          <View style={styles.queuedIconWrap}>
+            <Ionicons name="notifications-outline" size={40} color={NAVY} />
+          </View>
+          <Text style={styles.queuedTitle}>You&apos;re all set</Text>
+          <Text style={styles.queuedSub}>
+            Your photos are saved. Your full report (images, masks, and kAI analysis) will be
+            delivered soon — we&apos;ll notify you when it&apos;s ready.
+          </Text>
+          <Text style={styles.queuedHint}>You can leave this screen — no need to wait here.</Text>
+          <Pressable style={styles.btnNavy} onPress={() => router.push("/(drawer)/history")}>
+            <Text style={styles.btnNavyText}>View scan history</Text>
+          </Pressable>
+          <Pressable style={styles.btnOutline} onPress={() => router.push("/(drawer)")}>
+            <Text style={styles.btnOutlineText}>Go to dashboard</Text>
+          </Pressable>
+        </View>
+      </LinearGradient>
+      </View>
+    );
+  }
 
   // ── Review phase ──
   if (phase === "review" || uris.length >= N) {
     const gridH = SCREEN_H * 0.58;
     return (
+      <View style={styles.screenRoot}>
       <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
         {/* Header: back + help icons in white circles, no title */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -280,10 +326,8 @@ export default function ScanScreen() {
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <MaterialCommunityIcons name="auto-fix" size={56} color={NAVY} />
               </Animated.View>
-              <Text style={styles.analyzingTitle}>Analyzing</Text>
-              <Text style={styles.analyzingSub}>
-                This usually takes 10–20 seconds
-              </Text>
+              <Text style={styles.analyzingTitle}>Submitting</Text>
+              <Text style={styles.analyzingSub}>Just a moment…</Text>
             </View>
           )}
 
@@ -313,11 +357,13 @@ export default function ScanScreen() {
           )}
         </View>
       </LinearGradient>
+      </View>
     );
   }
 
   // ── Intro phase ──
   return (
+    <View style={styles.screenRoot}>
     <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
       {/* Camera modal rendered here so it overlays everything */}
       <Modal
@@ -327,6 +373,7 @@ export default function ScanScreen() {
         statusBarTranslucent
       >
         <FiveAngleCameraStep
+          variant="dashboard"
           stepIndex={stepIndex}
           onCaptured={handleCaptured}
           onPickFromLibrary={() => void pickFromLibrary()}
@@ -335,57 +382,30 @@ export default function ScanScreen() {
         />
       </Modal>
 
-      <Header title="Take a Selfie" onBack={() => router.back()} dark />
+      <Header title="Take a Selfie" onBack={() => router.navigate("/(drawer)" as Href)} dark />
 
       <ScrollView
         contentContainerStyle={styles.introScroll}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* Oval live camera preview */}
-        <View style={[styles.ovalWrap, { width: ovalRx * 2, height: ovalRy * 2 }]}>
+        {/* Rectangular live camera preview */}
+        <View style={[styles.frameWrap, { width: frameW, height: frameH }]}>
           {/* Live camera feed behind the SVG mask */}
           {camPermission?.granted && phase === "intro" && (
             <CameraView style={StyleSheet.absoluteFill} facing="front" />
           )}
-          {/* SVG mask: paint corners with bg color, keep oval transparent */}
-          <Svg
-            width={ovalRx * 2}
-            height={ovalRy * 2}
-            style={StyleSheet.absoluteFill}
-          >
-            <Defs>
-              <Mask id="introOvalMask">
-                <Rect width={ovalRx * 2} height={ovalRy * 2} fill="white" />
-                <Ellipse
-                  cx={ovalRx}
-                  cy={ovalRy}
-                  rx={ovalRx}
-                  ry={ovalRy}
-                  fill="black"
-                />
-              </Mask>
-            </Defs>
-            <Rect
-              width={ovalRx * 2}
-              height={ovalRy * 2}
-              fill="#E4ECDE"
-              mask="url(#introOvalMask)"
+          {!camPermission?.granted && (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: "#0D0D0D", borderRadius: frameRadius },
+              ]}
             />
-            {/* Black fallback when camera not yet available */}
-            {!camPermission?.granted && (
-              <Ellipse
-                cx={ovalRx}
-                cy={ovalRy}
-                rx={ovalRx}
-                ry={ovalRy}
-                fill="#0D0D0D"
-              />
-            )}
-          </Svg>
+          )}
           {/* Camera icon hint */}
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <View style={styles.ovalIcon}>
+            <View style={styles.frameIcon}>
               <Ionicons
                 name="camera-outline"
                 size={44}
@@ -435,10 +455,12 @@ export default function ScanScreen() {
         </View>
       </ScrollView>
     </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenRoot: { flex: 1, backgroundColor: "#E8EFE6" },
   flex: { flex: 1 },
 
   /* ── Header ── */
@@ -460,12 +482,12 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 40,
   },
-  ovalWrap: {
+  frameWrap: {
     overflow: "hidden",
     alignSelf: "center",
     marginBottom: 24,
   },
-  ovalIcon: {
+  frameIcon: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -657,5 +679,40 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#52525b",
+  },
+
+  queuedBody: {
+    flex: 1,
+    paddingHorizontal: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 14,
+  },
+  queuedIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(43, 58, 103, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  queuedTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1A1A2E",
+    textAlign: "center",
+  },
+  queuedSub: {
+    fontSize: 16,
+    color: "#52525b",
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  queuedHint: {
+    fontSize: 13,
+    color: "#71717a",
+    textAlign: "center",
+    marginBottom: 12,
   },
 });

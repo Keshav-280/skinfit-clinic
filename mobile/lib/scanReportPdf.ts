@@ -1,4 +1,4 @@
-import { File, Paths } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { format } from "date-fns";
@@ -53,12 +53,16 @@ export async function shareScanReportPdf(payload: ScanReportPdfPayload): Promise
   const tempUri = await generateScanReportPdfUri(payload);
   const fileName = buildScanReportPdfFileName(payload);
 
-  const source = new File(tempUri);
-  const dest = new File(Paths.cache, fileName);
-  if (dest.exists) {
-    dest.delete();
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) {
+    throw new Error("Device cache is unavailable.");
   }
-  source.copy(dest);
+  const shareUri = `${cacheDir}${fileName}`;
+  const existing = await FileSystem.getInfoAsync(shareUri);
+  if (existing.exists) {
+    await FileSystem.deleteAsync(shareUri, { idempotent: true });
+  }
+  await FileSystem.copyAsync({ from: tempUri, to: shareUri });
 
   const canShare = await Sharing.isAvailableAsync();
   if (!canShare) {
@@ -67,7 +71,7 @@ export async function shareScanReportPdf(payload: ScanReportPdfPayload): Promise
 
   const dialogTitle = fileName.replace(/\.pdf$/i, "");
 
-  await Sharing.shareAsync(dest.uri, {
+  await Sharing.shareAsync(shareUri, {
     UTI: "com.adobe.pdf",
     mimeType: "application/pdf",
     dialogTitle,

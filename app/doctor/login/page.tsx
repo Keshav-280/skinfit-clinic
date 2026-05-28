@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Eye, EyeOff, Stethoscope } from "lucide-react";
@@ -35,8 +36,7 @@ export default function DoctorLoginPage() {
           );
           return;
         }
-        router.push("/doctor/patients");
-        router.refresh();
+        window.location.assign("/doctor/patients");
       } catch {
         setError("Network error.");
       } finally {
@@ -118,6 +118,13 @@ export default function DoctorLoginPage() {
               {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            New clinician?{" "}
+            <Link href="/doctor/signup" className="font-semibold text-[#2C3E6B] hover:underline">
+              Create account
+            </Link>
+          </p>
         </div>
       </div>
     </div>

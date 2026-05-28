@@ -35,8 +35,14 @@ type PatientRow = {
   clinicVisited?: boolean;
   createdAt: string;
   sosRowTint?: "urgent" | "seen" | null;
+  /** kAI questionnaire red flag (chronic concern / high sensitivity). */
+  onboardingClinicalAlert?: boolean;
   lastSosAt?: string | null;
 };
+
+function patientShowsSosTag(p: PatientRow): boolean {
+  return p.sosRowTint === "urgent" || Boolean(p.onboardingClinicalAlert);
+}
 
 type PatientsViewMode = "grid" | "list";
 
@@ -52,14 +58,21 @@ const CONCERNS = [
 ] as const;
 
 function PatientBadges({ p }: { p: PatientRow }) {
-  const isUrgent = p.sosRowTint === "urgent";
-  if (!isUrgent && !p.clinicVisited && p.onboardingComplete) return null;
+  const showSos = patientShowsSosTag(p);
+  if (!showSos && !p.clinicVisited && p.onboardingComplete) return null;
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-      {isUrgent ? (
-        <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-rose-700">
+      {showSos ? (
+        <span
+          className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-rose-700"
+          title={
+            p.onboardingClinicalAlert
+              ? "kAI onboarding clinical flag — review questionnaire"
+              : "Urgent patient message"
+          }
+        >
           <AlertTriangle className="h-2.5 w-2.5" aria-hidden />
-          Alert
+          SOS
         </span>
       ) : null}
       {p.clinicVisited ? (
@@ -77,7 +90,7 @@ function PatientBadges({ p }: { p: PatientRow }) {
 }
 
 function PatientCardLink({ p }: { p: PatientRow }) {
-  const isUrgent = p.sosRowTint === "urgent";
+  const isUrgent = patientShowsSosTag(p);
 
   return (
     <Link
@@ -117,7 +130,7 @@ function PatientCardLink({ p }: { p: PatientRow }) {
 }
 
 function PatientListRow({ p }: { p: PatientRow }) {
-  const isUrgent = p.sosRowTint === "urgent";
+  const isUrgent = patientShowsSosTag(p);
 
   return (
     <Link
@@ -274,7 +287,7 @@ export function DoctorPatientsClient({
   }, [load]);
 
   const stats = useMemo(() => {
-    const sos = rows.filter((r) => r.sosRowTint === "urgent").length;
+    const sos = rows.filter((r) => patientShowsSosTag(r)).length;
     return { total: rows.length, sos };
   }, [rows]);
 
@@ -291,7 +304,7 @@ export function DoctorPatientsClient({
             {stats.sos > 0 ? (
               <span className="font-semibold text-rose-700">
                 {" "}
-                · {stats.sos} alert{stats.sos === 1 ? "" : "s"}
+                · {stats.sos} with SOS
               </span>
             ) : null}
           </p>

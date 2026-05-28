@@ -21,10 +21,17 @@ export type FaceFramingQuality =
 export type CaptureAssistModels = {
   /** Experimental Shape Detection API — not in Chrome stable / Safari. */
   faceDetector: "ready" | "unsupported";
-  /** MediaPipe Face Landmarker (framing + blink / smile). */
-  mediapipe: "idle" | "loading" | "ready" | "failed";
+  /** MediaPipe BlazeFace short-range (primary bbox). */
+  blazeFace: "off" | "idle" | "loading" | "ready" | "failed";
+  /** MediaPipe Face Landmarker (expression / eyes). */
+  mediapipe: "off" | "idle" | "loading" | "ready" | "failed";
   /** Set when mediapipe === "failed" (truncated for UI). */
   mediapipeError?: string;
+  /** Server RetinaFace preview (`FACE_DETECTOR=retinaface`). */
+  retinaface: "idle" | "loading" | "ready" | "failed" | "off";
+  retinafaceError?: string;
+  /** Server blink/smile classifier (`FACE_EXPRESSION=classifier`). */
+  expressionClassifier: "idle" | "ready" | "failed" | "off";
 };
 
 /** Same-origin WASM (see `npm run mediapipe:sync-wasm`), then CDN fallback. */
@@ -35,30 +42,7 @@ export function mediapipeWasmRoot(): string {
   return "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm";
 }
 
-export function faceBoxFromLandmarkPoints(
-  points: Array<{ x: number; y: number }>
-): NormalizedFaceBox | null {
-  if (!points.length) return null;
-  let minX = 1;
-  let minY = 1;
-  let maxX = 0;
-  let maxY = 0;
-  for (const p of points) {
-    minX = Math.min(minX, p.x);
-    minY = Math.min(minY, p.y);
-    maxX = Math.max(maxX, p.x);
-    maxY = Math.max(maxY, p.y);
-  }
-  const pad = 0.05;
-  const x = Math.max(0, minX - pad);
-  const y = Math.max(0, minY - pad);
-  return {
-    x,
-    y,
-    width: Math.min(1 - x, maxX - minX + pad * 2),
-    height: Math.min(1 - y, maxY - minY + pad * 2),
-  };
-}
+export { faceBoxFromLandmarkPoints } from "./facePortraitBox";
 
 export type CaptureGuidanceSnapshot = {
   lighting: LightingQuality;
@@ -68,7 +52,7 @@ export type CaptureGuidanceSnapshot = {
   faceMessage: string;
   expressionOk: boolean | null;
   expressionMessage: string | null;
-  /** Face height as fraction of frame (0–1), when detected */
+  /** Instant face∩frame area (0–1) — used for framing and auto-zoom */
   faceFill: number | null;
   /** Suggested digital crop zoom for web (1 = full frame) */
   suggestedZoom: number | null;
@@ -84,43 +68,93 @@ export type NormalizedFaceBox = {
   height: number;
 };
 
-/** Visual oval + analysis region (3:4 frame, normalized 0–1). Keep in sync with overlay SVG. */
-export const OVAL_FRAME = {
-  cx: 0.5,
-  cy: 0.42,
-  rx: 0.38,
-  ry: 0.34,
+/** Full camera preview — guidance uses entire frame (no cutout region). */
+export const CAPTURE_FRAME = {
+  x0: 0,
+  y0: 0,
+  x1: 1,
+  y1: 1,
 } as const;
 
-export const OVAL_REGION = {
-  x0: OVAL_FRAME.cx - OVAL_FRAME.rx,
-  y0: OVAL_FRAME.cy - OVAL_FRAME.ry,
-  x1: OVAL_FRAME.cx + OVAL_FRAME.rx,
-  y1: OVAL_FRAME.cy + OVAL_FRAME.ry,
+export const FRAME_REGION = CAPTURE_FRAME;
+
+const FACE_TARGET = {
+  cx: (FRAME_REGION.x0 + FRAME_REGION.x1) / 2,
+  cy: (FRAME_REGION.y0 + FRAME_REGION.y1) / 2,
 };
 
-const FACE_TARGET = { cx: OVAL_FRAME.cx, cy: OVAL_FRAME.cy };
+/**
+ * Ideal face bbox area as fraction of full frame (portrait box ∩ frame).
+ * Target band: **20–40%** with **±2%** hysteresis outside that band.
+ */
+export const IDEAL_FACE_FILL_MIN = 0.2;
+export const IDEAL_FACE_FILL_MAX = 0.4;
+/** ±2 percentage points — enter/exit "move closer" / "ease back" outside 20–40%. */
+export const CAPTURE_FRAMING_TOLERANCE = 0.02;
+/** Center of ideal band — auto-zoom converges here. */
+export const IDEAL_FACE_FILL_AREA =
+  (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
-/** Hysteresis: enter threshold vs exit (stops warning flicker). */
-const TOO_SMALL_ENTER = 0.22;
-const TOO_SMALL_EXIT = 0.3;
-const TOO_LARGE_ENTER = 0.84;
-const TOO_LARGE_EXIT = 0.74;
-const CENTER_ENTER_X = 0.22;
-const CENTER_EXIT_X = 0.17;
-const CENTER_ENTER_Y = 0.24;
-const CENTER_EXIT_Y = 0.19;
+/** Hysteresis — too-small / too-large bands around the 20–40% ideal band. */
+export const CAPTURE_FRAMING_THRESHOLDS = {
+  /** Below 18% — enter "move closer" */
+  tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
+  /** At or above 20% — exit "too small" / framing size OK (lower bound) */
+  tooSmallExit: IDEAL_FACE_FILL_MIN,
+  /** Above 42% — enter "ease back" */
+  tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
+  /** At or below 40% — exit "too large" (upper bound of good band) */
+  tooLargeExit: IDEAL_FACE_FILL_MAX,
+  centerEnterX: 0.2,
+  centerExitX: 0.15,
+  centerEnterY: 0.22,
+  centerExitY: 0.17,
+} as const;
+
+const TOO_SMALL_ENTER = CAPTURE_FRAMING_THRESHOLDS.tooSmallEnter;
+const TOO_SMALL_EXIT = CAPTURE_FRAMING_THRESHOLDS.tooSmallExit;
+const TOO_LARGE_ENTER = CAPTURE_FRAMING_THRESHOLDS.tooLargeEnter;
+const TOO_LARGE_EXIT = CAPTURE_FRAMING_THRESHOLDS.tooLargeExit;
+const CENTER_ENTER_X = CAPTURE_FRAMING_THRESHOLDS.centerEnterX;
+const CENTER_EXIT_X = CAPTURE_FRAMING_THRESHOLDS.centerExitX;
+const CENTER_ENTER_Y = CAPTURE_FRAMING_THRESHOLDS.centerEnterY;
+const CENTER_EXIT_Y = CAPTURE_FRAMING_THRESHOLDS.centerExitY;
+
+/** Auto-zoom converges toward center of the 20–40% ideal band (30%). */
+export function captureAutoZoomTargetFill(): number {
+  return IDEAL_FACE_FILL_AREA;
+}
 
 export const CAPTURE_ZOOM_AUTO = {
   min: 1,
-  max: 2.5,
-  default: 1.28,
-  targetFill: 0.44,
+  max: 3,
+  /** Start wider; auto-zoom adjusts in and out toward ~30% face area. */
+  default: 1.05,
+  targetFill: captureAutoZoomTargetFill(),
 } as const;
 
-/** Portrait face size — blend height/width so hair/glasses jitter less. */
+/** How long to accumulate frames before updating guidance / auto-zoom (ms). */
+export const CAPTURE_GUIDANCE_SETTLE_MS = 2000;
+
+/** EMA for portrait bbox (lower = steadier bbox; area uses instant fill only). */
+export const FACE_BOX_SMOOTH_ALPHA = 0.14;
+/** Reject sudden bbox area jumps (skin fallback vs landmarks). */
+const FACE_BOX_OUTLIER_RATIO_LO = 0.72;
+const FACE_BOX_OUTLIER_RATIO_HI = 1.38;
+
+const FRAME_WIDTH = FRAME_REGION.x1 - FRAME_REGION.x0;
+const FRAME_HEIGHT = FRAME_REGION.y1 - FRAME_REGION.y0;
+const FRAME_AREA = FRAME_WIDTH * FRAME_HEIGHT;
+
+/** How much of the frame region the face box covers by area (0–1). */
 export function effectiveFaceFill(box: NormalizedFaceBox): number {
-  return box.height * 0.72 + box.width * 0.58;
+  const x0 = Math.max(box.x, FRAME_REGION.x0);
+  const y0 = Math.max(box.y, FRAME_REGION.y0);
+  const x1 = Math.min(box.x + box.width, FRAME_REGION.x1);
+  const y1 = Math.min(box.y + box.height, FRAME_REGION.y1);
+  const overlapW = Math.max(0, x1 - x0);
+  const overlapH = Math.max(0, y1 - y0);
+  return (overlapW * overlapH) / FRAME_AREA;
 }
 
 export type StableFramingState = {
@@ -128,15 +162,23 @@ export type StableFramingState = {
   faceFill: number | null;
 };
 
-/** EMA smooth on face bbox between frames. */
+/** EMA smooth on face bbox; dampens outlier jumps between detectors. */
 export function smoothFaceBox(
   prev: NormalizedFaceBox | null,
   next: NormalizedFaceBox | null,
-  alpha = 0.32
+  alpha = FACE_BOX_SMOOTH_ALPHA
 ): NormalizedFaceBox | null {
   if (!next) return prev;
   if (!prev) return next;
-  const mix = (a: number, b: number) => a * (1 - alpha) + b * alpha;
+  const prevArea = prev.width * prev.height;
+  const nextArea = next.width * next.height;
+  const ratio = nextArea / Math.max(prevArea, 1e-4);
+  let useAlpha = alpha;
+  if (ratio < FACE_BOX_OUTLIER_RATIO_LO || ratio > FACE_BOX_OUTLIER_RATIO_HI) {
+    /** Snap on detector jumps (e.g. after step change or skin → landmark). */
+    return next;
+  }
+  const mix = (a: number, b: number) => a * (1 - useAlpha) + b * useAlpha;
   return {
     x: mix(prev.x, next.x),
     y: mix(prev.y, next.y),
@@ -155,13 +197,13 @@ function luma(r: number, g: number, b: number) {
 }
 
 /**
- * Analyze lighting inside an oval-shaped central region of RGBA pixels.
+ * Analyze lighting inside the central capture frame of RGBA pixels.
  */
 export function analyzeLightingFromRgba(
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  region = OVAL_REGION
+  region = FRAME_REGION
 ): {
   quality: LightingQuality;
   score: number;
@@ -274,7 +316,7 @@ export function estimateFaceBoxFromSkin(
   data: Uint8ClampedArray | Uint8Array,
   width: number,
   height: number,
-  region = OVAL_REGION
+  region = FRAME_REGION
 ): NormalizedFaceBox | null {
   const x0 = Math.floor(width * region.x0);
   const x1 = Math.floor(width * region.x1);
@@ -286,11 +328,11 @@ export function estimateFaceBoxFromSkin(
   let maxX = 0;
   let maxY = 0;
   let skinCount = 0;
-  let ovalCount = 0;
+  let frameCount = 0;
 
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
-      ovalCount++;
+      frameCount++;
       const i = (y * width + x) * 4;
       const r = data[i];
       const g = data[i + 1];
@@ -304,7 +346,7 @@ export function estimateFaceBoxFromSkin(
     }
   }
 
-  if (ovalCount < 16 || skinCount / ovalCount < 0.05) return null;
+  if (frameCount < 16 || skinCount / frameCount < 0.035) return null;
 
   const padX = Math.round((maxX - minX) * 0.04);
   const padY = Math.round((maxY - minY) * 0.05);
@@ -312,6 +354,9 @@ export function estimateFaceBoxFromSkin(
   minY = Math.max(0, minY - padY);
   maxX = Math.min(width - 1, maxX + padX);
   maxY = Math.min(height - 1, maxY + padY);
+
+  const y1Cap = Math.floor(height * FRAME_REGION.y1);
+  if (maxY > y1Cap) maxY = y1Cap;
 
   return {
     x: minX / width,
@@ -324,26 +369,25 @@ export function estimateFaceBoxFromSkin(
 function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): string {
   switch (quality) {
     case "no_face":
-      return "Center your face in the oval";
+      return "Face not detected, look at the camera";
     case "off_center": {
       const offX = Math.abs(cx - FACE_TARGET.cx);
       const offY = Math.abs(cy - FACE_TARGET.cy);
-      const hint =
-        offX > offY
-          ? cx < FACE_TARGET.cx
-            ? "Move slightly right"
-            : "Move slightly left"
-          : cy < FACE_TARGET.cy
-            ? "Move slightly down"
-            : "Move slightly up";
-      return `${hint} to center in the oval`;
+      if (offX > offY) {
+        return cx < FACE_TARGET.cx
+          ? "Move slightly right"
+          : "Move slightly left";
+      }
+      return cy < FACE_TARGET.cy
+        ? "Lower your chin slightly"
+        : "Raise your chin slightly";
     }
     case "too_small":
-      return "Move a little closer";
+      return "Move closer to the camera";
     case "too_large":
-      return "You're close — tiny adjust if needed";
+      return "Ease back a little";
     default:
-      return "Face position looks good";
+      return "Face framing looks good";
   }
 }
 
@@ -376,16 +420,60 @@ function classifyFraming(
   return "good";
 }
 
+const MIN_FACE_BOX = 0.022;
+
+export function isUsableFaceBox(
+  box: NormalizedFaceBox | null
+): box is NormalizedFaceBox {
+  return Boolean(
+    box && box.width >= MIN_FACE_BOX && box.height >= MIN_FACE_BOX
+  );
+}
+
+/** Average recent face boxes for stable guidance (1–1.5s window). */
+export function averageFaceBoxes(
+  boxes: Array<NormalizedFaceBox | null>
+): NormalizedFaceBox | null {
+  const usable = boxes.filter(isUsableFaceBox) as NormalizedFaceBox[];
+  if (!usable.length) return null;
+  const n = usable.length;
+  let x = 0;
+  let y = 0;
+  let w = 0;
+  let h = 0;
+  for (const b of usable) {
+    x += b.x;
+    y += b.y;
+    w += b.width;
+    h += b.height;
+  }
+  return { x: x / n, y: y / n, width: w / n, height: h / n };
+}
+
 export function analyzeFaceFraming(
   box: NormalizedFaceBox | null,
   prev?: StableFramingState | null
-): { quality: FaceFramingQuality; message: string; faceFill: number | null } {
-  if (!box || box.width < 0.03 || box.height < 0.03) {
-    const q: FaceFramingQuality =
-      prev?.quality === "good" ? "good" : "no_face";
+): {
+  quality: FaceFramingQuality;
+  message: string;
+  faceFill: number | null;
+} {
+  if (!isUsableFaceBox(box)) {
+    if (
+      prev?.quality &&
+      prev.quality !== "no_face" &&
+      prev.faceFill != null &&
+      prev.faceFill >= MIN_FACE_BOX
+    ) {
+      return {
+        quality: prev.quality,
+        message: framingMessage(prev.quality, FACE_TARGET.cx, FACE_TARGET.cy),
+        faceFill: prev.faceFill,
+      };
+    }
     return {
-      quality: q,
-      message: framingMessage(q, FACE_TARGET.cx, FACE_TARGET.cy),
+      quality: "no_face",
+      message: framingMessage("no_face", FACE_TARGET.cx, FACE_TARGET.cy),
       faceFill: prev?.faceFill ?? null,
     };
   }
@@ -395,7 +483,12 @@ export function analyzeFaceFraming(
   const offX = Math.abs(cx - FACE_TARGET.cx);
   const offY = Math.abs(cy - FACE_TARGET.cy);
   const faceFill = effectiveFaceFill(box);
-  const quality = classifyFraming(faceFill, offX, offY, prev?.quality ?? null);
+  const quality = classifyFraming(
+    faceFill,
+    offX,
+    offY,
+    prev?.quality ?? null
+  );
 
   return {
     quality,
@@ -404,17 +497,32 @@ export function analyzeFaceFraming(
   };
 }
 
-/** Map face fill to web capture zoom (digital crop, 1 = no crop). */
+/**
+ * Map face fill to web capture zoom (digital crop, 1 = no crop).
+ * Auto-zoom zooms in when face is too small and out when too large.
+ */
 export function suggestCaptureZoom(
   currentZoom: number,
   faceFill: number | null,
-  targetFill = CAPTURE_ZOOM_AUTO.targetFill
+  _framingQuality: FaceFramingQuality | null = null,
+  targetFill = captureAutoZoomTargetFill()
 ): number | null {
-  if (faceFill == null || faceFill < 0.06) return null;
-  const ratio = targetFill / faceFill;
-  const raw = clamp(currentZoom * ratio, CAPTURE_ZOOM_AUTO.min, CAPTURE_ZOOM_AUTO.max);
-  const next = currentZoom * 0.45 + raw * 0.55;
-  if (Math.abs(next - currentZoom) < 0.03) return null;
+  if (faceFill == null || faceFill < 0.04) return null;
+  if (
+    faceFill >= IDEAL_FACE_FILL_MIN &&
+    faceFill <= IDEAL_FACE_FILL_MAX
+  ) {
+    return null;
+  }
+  // Face area ~ 1/zoom² for center crop — adjust zoom toward target fill.
+  const ratio = Math.sqrt(targetFill / Math.max(faceFill, 0.04));
+  const raw = clamp(
+    currentZoom * ratio,
+    CAPTURE_ZOOM_AUTO.min,
+    CAPTURE_ZOOM_AUTO.max
+  );
+  const next = currentZoom * 0.5 + raw * 0.5;
+  if (Math.abs(next - currentZoom) < 0.04) return null;
   return Math.round(next * 20) / 20;
 }
 
@@ -427,7 +535,11 @@ export function buildCaptureGuidance(
   framing: ReturnType<typeof analyzeFaceFraming>,
   currentZoom: number
 ): CaptureGuidanceSnapshot {
-  const suggestedZoom = suggestCaptureZoom(currentZoom, framing.faceFill);
+  const suggestedZoom = suggestCaptureZoom(
+    currentZoom,
+    framing.faceFill,
+    framing.quality
+  );
   const lightingOk =
     lighting.quality === "good" || lighting.score >= 55;
   const faceOk = framing.quality === "good";
@@ -447,22 +559,32 @@ export function buildCaptureGuidance(
   };
 }
 
-/** Sample video frame to small canvas and return ImageData. */
+/**
+ * Sample video frame (optionally the same center crop as preview zoom).
+ * `cropZoom` 1 = full frame; 2 = center half matching CSS scale(2).
+ */
 export function sampleVideoFrame(
   video: HTMLVideoElement,
   sampleWidth = 160,
-  sampleHeight = 200
+  sampleHeight = 200,
+  cropZoom = 1
 ): ImageData | null {
   const w = video.videoWidth;
   const h = video.videoHeight;
   if (!w || !h) return null;
+
+  const z = Math.max(1, cropZoom);
+  const sw = w / z;
+  const sh = h / z;
+  const sx = (w - sw) / 2;
+  const sy = (h - sh) / 2;
 
   const canvas = document.createElement("canvas");
   canvas.width = sampleWidth;
   canvas.height = sampleHeight;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
-  ctx.drawImage(video, 0, 0, sampleWidth, sampleHeight);
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sampleWidth, sampleHeight);
   return ctx.getImageData(0, 0, sampleWidth, sampleHeight);
 }
 

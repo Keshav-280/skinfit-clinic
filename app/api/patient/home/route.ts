@@ -9,7 +9,9 @@ import { getPatientDoctorSection } from "@/src/lib/patientDoctorSection";
 import { patientRoutineListsForApi } from "@/src/lib/routine";
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
 import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
+import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
+import { cacheAside, CacheKeys } from "@/src/lib/infra";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -23,7 +25,31 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get("date");
+  const exists = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { id: true },
+  });
+  if (!exists) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
 
+  const cacheDateKey =
+    dateParam && parseYmdToDateOnly(dateParam)
+      ? dateParam.slice(0, 10)
+      : "rolling";
+
+  const payload = await cacheAside(
+    CacheKeys.home(userId, cacheDateKey),
+    120,
+    async () => buildPatientHomePayload(userId, dateParam)
+  );
+  return NextResponse.json(payload);
+}
+
+async function buildPatientHomePayload(
+  userId: string,
+  dateParam: string | null
+) {
   const userRow = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: {
@@ -43,7 +69,7 @@ export async function GET(request: Request) {
     },
   });
   if (!userRow) {
-    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    throw new Error("NOT_FOUND");
   }
 
   const routinePlanAmItems = userRow.routinePlanAmItems;
@@ -179,6 +205,7 @@ export async function GET(request: Request) {
   );
 
   const onboardingComplete = userRow.onboardingComplete;
+  const hasQuestionnaire = userHasQuestionnaire(userRow.primaryConcern);
 
   const {
     doctorFeedback,
@@ -195,7 +222,7 @@ export async function GET(request: Request) {
     onboardingComplete,
   });
 
-  return NextResponse.json({
+  return {
     skinScanHistory,
     todayLog: todayLogOut,
     amItems,
@@ -221,12 +248,13 @@ export async function GET(request: Request) {
     weekCompletedDates,
     cycleTrackingEnabled: userRow.cycleTrackingEnabled ?? false,
     onboardingComplete,
+    hasQuestionnaire,
     routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
     routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",
-    todayFocus: await resolveTodayFocus(),
+    todayFocus: hasQuestionnaire ? await resolveTodayFocus() : null,
     feedbackEntries,
     archivedFeedbackEntries,
-  });
+  };
 
   async function resolveTodayFocus(): Promise<{ message: string; sourceParam: string | null } | null> {
     if (todayFocusRow) {

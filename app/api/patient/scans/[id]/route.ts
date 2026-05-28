@@ -11,8 +11,63 @@ import {
   parseScanWrinkleMaskDataUri,
 } from "@/src/lib/parseClinicalScores";
 import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
-import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
+import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
+import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
+import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
+
+function hasMissingTrackerSnapshotColumn(error: unknown): boolean {
+  const err = error as { code?: string; message?: string };
+  return (
+    err?.code === "42703" ||
+    (typeof err?.message === "string" &&
+      err.message.toLowerCase().includes("tracker_snapshot"))
+  );
+}
+
+async function loadScanRow(userId: string, id: number) {
+  try {
+    return await db.query.scans.findFirst({
+      where: and(eq(scans.id, id), eq(scans.userId, userId)),
+      columns: {
+        id: true,
+        scanName: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        hydration: true,
+        pigmentation: true,
+        texture: true,
+        aiSummary: true,
+        annotations: true,
+        createdAt: true,
+        faceCaptureImages: true,
+        scores: true,
+        trackerSnapshot: true,
+      },
+    });
+  } catch (e) {
+    if (!hasMissingTrackerSnapshotColumn(e)) throw e;
+    return db.query.scans.findFirst({
+      where: and(eq(scans.id, id), eq(scans.userId, userId)),
+      columns: {
+        id: true,
+        scanName: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        hydration: true,
+        pigmentation: true,
+        texture: true,
+        aiSummary: true,
+        annotations: true,
+        createdAt: true,
+        faceCaptureImages: true,
+        scores: true,
+      },
+    });
+  }
+}
 
 export async function GET(
   req: Request,
@@ -34,35 +89,28 @@ export async function GET(
       where: eq(users.id, userId),
       columns: { name: true, email: true, age: true, skinType: true },
     }),
-    db.query.scans.findFirst({
-      where: and(eq(scans.id, id), eq(scans.userId, userId)),
-      columns: {
-        id: true,
-        scanName: true,
-        overallScore: true,
-        acne: true,
-        wrinkles: true,
-        hydration: true,
-        pigmentation: true,
-        texture: true,
-        aiSummary: true,
-        annotations: true,
-        createdAt: true,
-        faceCaptureImages: true,
-        scores: true,
-      },
-    }),
+    loadScanRow(userId, id),
   ]);
 
   if (!user || !row) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
+  const storedSnapshot =
+    "trackerSnapshot" in row
+      ? (row.trackerSnapshot as PatientTrackerReport | null | undefined)
+      : null;
+  const trackerReport = await loadScanTrackerReport(
+    userId,
+    row.id,
+    storedSnapshot ?? null
+  );
+
   const regions = parseScanRegions(row.annotations);
   const clinical_scores = parseClinicalScores(row.scores);
   const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
-  const wrinkleMaskDataUri = parseScanWrinkleMaskDataUri(row.scores);
-  const acneMaskDataUri = parseScanAcneMaskDataUri(row.scores);
+  const wrinkleMaskRef = parseScanWrinkleMaskDataUri(row.scores);
+  const acneMaskRef = parseScanAcneMaskDataUri(row.scores);
   const spatialOutputs = parseScanSpatialOutputs(row.scores);
   const kaiParams =
     row.scores &&
@@ -75,13 +123,10 @@ export async function GET(
         >)
       : undefined;
 
-  const faceCaptureGallery =
-    row.faceCaptureImages && row.faceCaptureImages.length >= 1
-      ? row.faceCaptureImages.map((entry, i) => ({
-          label: FACE_SCAN_CAPTURE_STEPS[i]?.title ?? entry.label,
-          imageUrl: patientScanImagePath(row.id, { index: i }),
-        }))
-      : undefined;
+  const faceCaptureGallery = buildFaceCaptureGallery(
+    row.id,
+    row.faceCaptureImages ?? undefined
+  );
 
   return NextResponse.json({
     scanId: row.id,
@@ -105,9 +150,10 @@ export async function GET(
     aiSummary: row.aiSummary,
     scanDateIso: row.createdAt.toISOString(),
     ...(annotatedImageUrl ? { annotatedImageUrl } : {}),
-    ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
-    ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
+    ...(wrinkleMaskRef ? { wrinkleMaskDataUri: wrinkleMaskRef } : {}),
+    ...(acneMaskRef ? { acneMaskDataUri: acneMaskRef } : {}),
     ...(spatialOutputs ? { spatialOutputs } : {}),
     ...(kaiParams ? { kaiParams } : {}),
+    trackerReport,
   });
 }

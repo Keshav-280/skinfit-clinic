@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { BookOpen, Download, Loader2, Lock } from "lucide-react";
+import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import { downloadMonthlyKaiReportPdf } from "@/src/lib/ragMonthlyReportPdf";
 
 type MonthlyInsightPayload = {
+  questionnaireLocked?: boolean;
   locked: boolean;
   nextInsightAt: string;
   latestMonthStart: string | null;
@@ -89,6 +91,16 @@ export function ProfileRagKaiInsightsSection() {
   }
 
   if (!data) return null;
+
+  if (data.questionnaireLocked) {
+    return (
+      <QuestionnaireLockedCard
+        title="Monthly kAI insights are locked"
+        description="Finish the onboarding questionnaire so kAI can personalise your monthly summary."
+      />
+    );
+  }
+
   const monthly = data.monthly;
   const nextInsightLabel = new Date(data.nextInsightAt).toLocaleString();
   const monthKai = monthly?.kaiMonthAvgFromParams ?? null;

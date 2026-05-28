@@ -1,14 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 import { useAuth } from "@/contexts/AuthContext";
-import { ApiError, apiJson } from "@/lib/api";
 
 const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
 
 export default function BaselineReportScreen() {
   const { scanId: scanIdParam } = useLocalSearchParams<{ scanId?: string }>();
@@ -19,121 +16,158 @@ export default function BaselineReportScreen() {
         ? scanIdParam[0]
         : undefined;
   const router = useRouter();
-  const { token, markOnboardingComplete } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const { token, refreshUserFromProfile } = useAuth();
 
-  async function finish() {
-    if (!token) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      const id = Number.parseInt(scanId ?? "", 10);
-      await apiJson("/api/onboarding/complete", token, {
-        method: "POST",
-        body: JSON.stringify(
-          Number.isFinite(id) ? { baselineScanId: id } : {}
-        ),
-      });
-      await markOnboardingComplete();
-      router.replace("/(drawer)" as Href);
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Could not finish onboarding.");
-    } finally {
-      setBusy(false);
-    }
+  async function goDashboard() {
+    if (token) await refreshUserFromProfile(token);
+    router.replace("/(drawer)" as Href);
   }
 
   return (
-    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.wrap}>
-      <View style={styles.center}>
-        <View style={styles.iconWrap}>
+    <OnboardingLayoutShell title="kAI baseline scan">
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.card}>
           <View style={styles.iconCircle}>
-            <Ionicons name="checkmark-circle" size={44} color={NAVY} />
+            <Ionicons name="checkmark-circle" size={36} color="#fff" />
           </View>
+
+          <Text style={styles.kicker}>Baseline</Text>
+          <Text style={styles.title}>Baseline captured</Text>
+          <Text style={styles.body}>
+            Your kAI baseline scan is saved. You can open the full report from Treatment
+            History anytime. Answer a few questions when you&apos;re ready — or explore the
+            dashboard first.
+          </Text>
+
+          <View style={styles.sparkleRow}>
+            <Ionicons name="sparkles" size={14} color={NAVY} />
+            <Text style={styles.sparkleText}>
+              Report builds in the background — no need to wait here.
+            </Text>
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+            onPress={() => router.push("/onboarding/questionnaire" as Href)}
+          >
+            <Text style={styles.btnText}>Continue to answer questions</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}
+            onPress={() => void goDashboard()}
+          >
+            <Text style={styles.btnOutlineText}>Go to dashboard</Text>
+          </Pressable>
+          {scanId ? (
+            <Pressable
+              style={styles.linkBtn}
+              onPress={() =>
+                router.replace(`/(drawer)/history/${scanId}` as Href)
+              }
+            >
+              <Text style={styles.link}>View report now</Text>
+            </Pressable>
+          ) : null}
         </View>
-        <Text style={styles.title}>Baseline captured</Text>
-        <Text style={styles.body}>
-          Your kAI baseline report is saved. Your doctor will be notified. You can open the full report from
-          Treatment History anytime.
-        </Text>
-        {err ? <Text style={styles.err}>{err}</Text> : null}
-        <Pressable
-          style={({ pressed }) => [styles.btn, busy && styles.dis, pressed && !busy && styles.btnPressed]}
-          onPress={() => void finish()}
-          disabled={busy}
-        >
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Go to dashboard</Text>}
-        </Pressable>
-        <Pressable
-          style={styles.linkBtn}
-          onPress={() =>
-            router.replace(`/(drawer)/history/${scanId ?? ""}` as Href)
-          }
-          disabled={!scanId}
-        >
-          <Text style={styles.link}>View report now</Text>
-        </Pressable>
-      </View>
-    </LinearGradient>
+      </ScrollView>
+    </OnboardingLayoutShell>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    padding: 24,
+  scroll: {
+    flexGrow: 1,
     justifyContent: "center",
+    paddingVertical: 16,
   },
-  iconWrap: {
+  card: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    backgroundColor: "rgba(255,255,255,0.35)",
+    padding: 28,
     alignItems: "center",
-    marginBottom: 20,
+    gap: 10,
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#E2E8F0",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#1A1A2E",
-    textAlign: "center",
-    letterSpacing: -0.3,
-  },
-  body: {
-    marginTop: 14,
-    fontSize: 15,
-    lineHeight: 23,
-    color: "#52525b",
-    textAlign: "center",
-    paddingHorizontal: 8,
-  },
-  err: { color: "#DC2626", textAlign: "center", marginTop: 12, fontWeight: "600" },
-  btn: {
-    marginTop: 28,
-    backgroundColor: NAVY,
-    paddingVertical: 17,
-    borderRadius: 16,
-    alignItems: "center",
+    marginBottom: 4,
     shadowColor: NAVY,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 4,
   },
-  btnPressed: {
-    backgroundColor: NAVY_DARK,
-    transform: [{ scale: 0.98 }],
+  kicker: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    color: "rgba(44,62,107,0.7)",
   },
-  dis: { opacity: 0.45 },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 16, letterSpacing: 0.3 },
-  linkBtn: { marginTop: 18, alignItems: "center" },
-  link: { color: NAVY, fontWeight: "700", fontSize: 15 },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: NAVY,
+    textAlign: "center",
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#6B7280",
+    textAlign: "center",
+  },
+  sparkleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  sparkleText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  btn: {
+    marginTop: 4,
+    width: "100%",
+    backgroundColor: NAVY,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  btnPressed: { opacity: 0.92 },
+  btnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  btnOutline: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "rgba(255,255,255,0.5)",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  btnOutlinePressed: { opacity: 0.9 },
+  btnOutlineText: {
+    color: NAVY,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  linkBtn: { marginTop: 4 },
+  link: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: NAVY,
+  },
 });

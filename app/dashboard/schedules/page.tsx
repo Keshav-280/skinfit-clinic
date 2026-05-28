@@ -49,24 +49,9 @@ function cmpCalendarEventRows(
   return a.title.localeCompare(b.title);
 }
 
-function initialScheduleTabFromSearch(
-  sp?: { [key: string]: string | string[] | undefined }
-): "treatment" | "appointments" {
-  const cal = sp?.calendar;
-  const s = Array.isArray(cal) ? cal[0] : cal;
-  if (s === "treatment" || s === "mine") return "treatment";
-  if (s === "appointments" || s === "doctor") return "appointments";
-  return "appointments";
-}
-
-export default async function SchedulesPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+export default async function SchedulesPage() {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
-  const sp = (await searchParams) ?? undefined;
 
   const [digestRow] = await db
     .select({ digest: users.scheduleCrmDigestAt })
@@ -287,18 +272,14 @@ export default async function SchedulesPage({
   const initialTreatmentEvents = [...fromSchedule].sort(cmpCalendarEventRows);
   const initialAppointmentEvents = [...fromBookings].sort(cmpCalendarEventRows);
 
-  const initialScheduleTab = initialScheduleTabFromSearch(sp);
-
   return (
     <div className="min-h-full bg-[#E8EFE6] px-4 py-5 pb-12 md:px-6">
       <SchedulesPageClient
-        key={initialScheduleTab}
         initialTreatmentEvents={initialTreatmentEvents}
         initialAppointmentEvents={initialAppointmentEvents}
         pendingScheduleRequests={pendingScheduleRequests}
         closedScheduleRequests={closedScheduleRequests}
         initialScheduleUnreadCount={initialScheduleUnreadCount}
-        initialScheduleTab={initialScheduleTab}
       />
     </div>
   );

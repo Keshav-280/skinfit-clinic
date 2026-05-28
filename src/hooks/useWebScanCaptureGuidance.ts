@@ -4,10 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   analyzeFaceFraming,
   analyzeLightingFromRgba,
+  averageFaceBoxes,
   buildCaptureGuidance,
+  CAPTURE_GUIDANCE_SETTLE_MS,
   detectFaceBoxNormalized,
   estimateFaceBoxFromSkin,
   faceBoxFromLandmarkPoints,
+  isUsableFaceBox,
   getBrowserFaceDetector,
   mediapipeWasmRoot,
   sampleVideoFrame,
@@ -17,10 +20,45 @@ import {
   type NormalizedFaceBox,
   type StableFramingState,
 } from "@/src/lib/scanCaptureGuidance";
+import { smoothLandmarks } from "@/src/lib/faceMeshOutline";
+import { installMediapipeConsoleFilter } from "@/src/lib/mediapipeConsoleFilter";
+import {
+  applyCaptureExpression,
+  applyCaptureExpressionFromClassifier,
+  needsExpressionCheck,
+  type ExpressionCalibration,
+} from "@/src/lib/captureExpression";
+import {
+  createBlazeFaceDetector,
+  faceBoxFromBlazeDetections,
+  type BlazeFaceDetectorLike,
+} from "@/src/lib/mediapipeBlazeFaceDetector";
+import {
+  getWebFaceCaptureConfig,
+  isMediapipeEnabled,
+  needsMediapipeOnClient,
+  shouldTryServerPreviewOnClient,
+} from "@/src/lib/faceCaptureConfig";
+import {
+  fetchFacePreviewInference,
+  imageDataToJpegBlob,
+} from "@/src/lib/fetchFacePreviewInference";
 
-const TICK_MS = 450;
+const TICK_MS = 220;
+/** Hold the last seen landmarks for this long if MediaPipe drops a frame. */
+const LANDMARK_HOLD_MS = 1400;
+const PREVIEW_W = 320;
+const PREVIEW_H = 400;
 const LANDMARKER_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const FACE_CAPTURE_CONFIG = getWebFaceCaptureConfig();
+const TRY_SERVER_PREVIEW = shouldTryServerPreviewOnClient(FACE_CAPTURE_CONFIG);
+const MEDIAPIPE_ACTIVE = needsMediapipeOnClient(FACE_CAPTURE_CONFIG);
+const BLAZE_FACE_ACTIVE = isMediapipeEnabled();
+
+if (typeof window !== "undefined" && MEDIAPIPE_ACTIVE) {
+  installMediapipeConsoleFilter();
+}
 
 type CaptureStepId =
   | "centre"
@@ -29,21 +67,30 @@ type CaptureStepId =
   | "eyes_closed"
   | "smiling";
 
-type BlendshapeCategory = { categoryName: string; score: number };
+type BlendshapeCategory = {
+  categoryName?: string;
+  displayName?: string;
+  score?: number;
+};
 type NormalizedLandmark = { x: number; y: number; z?: number };
 type FaceLandmarkerResult = {
   faceLandmarks?: NormalizedLandmark[][];
   faceBlendshapes?: Array<{ categories: BlendshapeCategory[] }>;
 };
 type FaceLandmarkerLike = {
-  detectForVideo: (video: HTMLVideoElement, timestampMs: number) => FaceLandmarkerResult;
+  detect: (image: HTMLCanvasElement) => FaceLandmarkerResult;
 };
 
 function initialModels(): CaptureAssistModels {
   const fd = typeof window !== "undefined" && getBrowserFaceDetector() != null;
   return {
     faceDetector: fd ? "ready" : "unsupported",
-    mediapipe: "idle",
+    blazeFace: BLAZE_FACE_ACTIVE ? "idle" : "off",
+    mediapipe: MEDIAPIPE_ACTIVE ? "idle" : "off",
+    mediapipeError: undefined,
+    retinaface: TRY_SERVER_PREVIEW ? "idle" : "off",
+    expressionClassifier:
+      FACE_CAPTURE_CONFIG.expression === "classifier" ? "idle" : "off",
   };
 }
 
@@ -61,8 +108,13 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerLike> {
       modelAssetPath: LANDMARKER_MODEL,
       delegate: "CPU" as const,
     },
-    runningMode: "VIDEO" as const,
+    /** IMAGE mode: per-frame detect() — no VIDEO timestamps (avoids mismatch errors). */
+    runningMode: "IMAGE" as const,
     numFaces: 1,
+    /** Lower-confidence thresholds = more robust with specs / reflections. */
+    minFaceDetectionConfidence: 0.3,
+    minFacePresenceConfidence: 0.3,
+    minTrackingConfidence: 0.3,
     outputFaceBlendshapes: true,
   };
   try {
@@ -78,6 +130,19 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerLike> {
   }
 }
 
+function canvasFromImageData(
+  imageData: ImageData,
+  reuse: HTMLCanvasElement | null
+): HTMLCanvasElement | null {
+  const canvas = reuse ?? document.createElement("canvas");
+  canvas.width = imageData.width;
+  canvas.height = imageData.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
 export function useWebScanCaptureGuidance(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   enabled: boolean,
@@ -85,14 +150,47 @@ export function useWebScanCaptureGuidance(
   stepId: CaptureStepId
 ) {
   const [guidance, setGuidance] = useState<CaptureGuidanceSnapshot | null>(null);
+  const [faceLandmarks, setFaceLandmarks] = useState<NormalizedLandmark[] | null>(
+    null
+  );
+  const [faceTracked, setFaceTracked] = useState(false);
   const [models, setModels] = useState<CaptureAssistModels>(initialModels);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const busyRef = useRef(false);
   const landmarkerRef = useRef<FaceLandmarkerLike | null>(null);
+  const blazeDetectorRef = useRef<BlazeFaceDetectorLike | null>(null);
   const loadingLandmarkerRef = useRef(false);
+  const loadingBlazeRef = useRef(false);
+  const [bboxSource, setBboxSource] = useState<string>("—");
+  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const smoothedBoxRef = useRef<NormalizedFaceBox | null>(null);
+  const smoothedLandmarksRef = useRef<NormalizedLandmark[] | null>(null);
+  const lastLandmarkAtRef = useRef<number>(0);
   const framingStateRef = useRef<StableFramingState | null>(null);
   const expressionOkRef = useRef<boolean | null>(null);
+  const expressionCalibrationRef = useRef<ExpressionCalibration>({
+    openEarBaseline: null,
+  });
+  const previewAbortRef = useRef<AbortController | null>(null);
+  const previewBusyRef = useRef(false);
+  const lastPreviewAtRef = useRef(0);
+  const PREVIEW_MIN_INTERVAL_MS = 750;
+  const frameSamplesRef = useRef<
+    Array<{
+      faceBox: NormalizedFaceBox | null;
+      lighting: ReturnType<typeof analyzeLightingFromRgba>;
+      landmarkerRes: FaceLandmarkerResult | null;
+    }>
+  >([]);
+  const lastGuidancePublishRef = useRef(0);
+
+  const resetLandmarkerSession = useCallback(() => {
+    landmarkerRef.current = null;
+    blazeDetectorRef.current = null;
+    loadingLandmarkerRef.current = false;
+    loadingBlazeRef.current = false;
+    frameCanvasRef.current = null;
+  }, []);
 
   useEffect(() => {
     setModels((m) => ({
@@ -102,9 +200,13 @@ export function useWebScanCaptureGuidance(
   }, []);
 
   useEffect(() => {
+    if (!MEDIAPIPE_ACTIVE) {
+      resetLandmarkerSession();
+      setModels((m) => ({ ...m, mediapipe: "off", mediapipeError: undefined }));
+      return;
+    }
     if (!enabled) {
-      landmarkerRef.current = null;
-      loadingLandmarkerRef.current = false;
+      resetLandmarkerSession();
       setModels((m) => ({ ...m, mediapipe: "idle", mediapipeError: undefined }));
       return;
     }
@@ -123,7 +225,7 @@ export function useWebScanCaptureGuidance(
         landmarkerRef.current = await createFaceLandmarker();
         setModels((m) => ({ ...m, mediapipe: "ready", mediapipeError: undefined }));
       } catch (e) {
-        landmarkerRef.current = null;
+        resetLandmarkerSession();
         setModels((m) => ({
           ...m,
           mediapipe: "failed",
@@ -136,10 +238,47 @@ export function useWebScanCaptureGuidance(
         loadingLandmarkerRef.current = false;
       }
     })();
+  }, [enabled, resetLandmarkerSession]);
+
+  useEffect(() => {
+    if (!BLAZE_FACE_ACTIVE) {
+      blazeDetectorRef.current = null;
+      loadingBlazeRef.current = false;
+      setModels((m) => ({ ...m, blazeFace: "off" }));
+      return;
+    }
+    if (!enabled) {
+      blazeDetectorRef.current = null;
+      loadingBlazeRef.current = false;
+      setModels((m) => ({ ...m, blazeFace: "idle" }));
+      return;
+    }
+    if (blazeDetectorRef.current) {
+      setModels((m) => ({ ...m, blazeFace: "ready" }));
+      return;
+    }
+    if (loadingBlazeRef.current) return;
+
+    loadingBlazeRef.current = true;
+    setModels((m) => ({ ...m, blazeFace: "loading" }));
+
+    void (async () => {
+      try {
+        blazeDetectorRef.current = await createBlazeFaceDetector();
+        setModels((m) => ({ ...m, blazeFace: "ready" }));
+      } catch (e) {
+        blazeDetectorRef.current = null;
+        setModels((m) => ({ ...m, blazeFace: "failed" }));
+        if (process.env.NODE_ENV === "development") {
+          console.error("[scan] BlazeFace load failed:", e);
+        }
+      } finally {
+        loadingBlazeRef.current = false;
+      }
+    })();
   }, [enabled]);
 
-  const needsExpressionModel =
-    stepId === "eyes_closed" || stepId === "smiling";
+  const needsExpressionModel = needsExpressionCheck(stepId);
 
   const tick = useCallback(async () => {
     const video = videoRef.current;
@@ -150,7 +289,7 @@ export function useWebScanCaptureGuidance(
 
     busyRef.current = true;
     try {
-      const imageData = sampleVideoFrame(video);
+      const imageData = sampleVideoFrame(video, PREVIEW_W, PREVIEW_H, currentZoom);
       if (!imageData) return;
 
       const lighting = analyzeLightingFromRgba(
@@ -159,111 +298,253 @@ export function useWebScanCaptureGuidance(
         imageData.height
       );
 
-      let faceBox = await detectFaceBoxNormalized(video, w, h);
-      if (!faceBox && imageData) {
-        const canvas = document.createElement("canvas");
-        canvas.width = imageData.width;
-        canvas.height = imageData.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.putImageData(imageData, 0, 0);
-          faceBox = await detectFaceBoxNormalized(canvas, imageData.width, imageData.height);
+      const frameCanvas = canvasFromImageData(imageData, frameCanvasRef.current);
+      if (frameCanvas) frameCanvasRef.current = frameCanvas;
+
+      const mpReady = models.mediapipe === "ready";
+      const blazeReady = models.blazeFace === "ready";
+      let faceBox: NormalizedFaceBox | null = null;
+      let landmarkBox: NormalizedFaceBox | null = null;
+      let source = "—";
+
+      let serverPreview: Awaited<ReturnType<typeof fetchFacePreviewInference>> =
+        null;
+      const now = Date.now();
+      if (
+        TRY_SERVER_PREVIEW &&
+        !previewBusyRef.current &&
+        now - lastPreviewAtRef.current >= PREVIEW_MIN_INTERVAL_MS
+      ) {
+        previewBusyRef.current = true;
+        lastPreviewAtRef.current = now;
+        setModels((m) => ({
+          ...m,
+          retinaface:
+            FACE_CAPTURE_CONFIG.detector === "retinaface" ? "loading" : m.retinaface,
+        }));
+        try {
+          const blob = await imageDataToJpegBlob(imageData);
+          if (blob) {
+            previewAbortRef.current?.abort();
+            previewAbortRef.current = new AbortController();
+            serverPreview = await fetchFacePreviewInference(blob, {
+              signal: previewAbortRef.current.signal,
+            });
+          }
+        } catch {
+          serverPreview = null;
+        } finally {
+          previewBusyRef.current = false;
+        }
+
+        if (FACE_CAPTURE_CONFIG.detector === "retinaface" || serverPreview?.detectorAvailable) {
+          const rfOk = Boolean(serverPreview?.detectorAvailable && serverPreview.box);
+          setModels((m) => ({
+            ...m,
+            retinaface: rfOk ? "ready" : serverPreview ? "failed" : m.retinaface,
+            retinafaceError: rfOk
+              ? undefined
+              : (serverPreview?.warning ?? "RetinaFace unavailable").slice(0, 120),
+          }));
+        }
+        if (FACE_CAPTURE_CONFIG.expression === "classifier") {
+          const clfOk = Boolean(serverPreview?.expressionAvailable);
+          setModels((m) => ({
+            ...m,
+            expressionClassifier: clfOk
+              ? "ready"
+              : serverPreview
+                ? "failed"
+                : "idle",
+          }));
         }
       }
 
       const lm = landmarkerRef.current;
       let landmarkerRes: FaceLandmarkerResult | null = null;
-      if (lm) {
+      if (lm && frameCanvas) {
         try {
-          const ts = typeof performance !== "undefined" ? performance.now() : Date.now();
-          landmarkerRes = lm.detectForVideo(video, ts);
-          if (!faceBox) {
-            const pts = landmarkerRes.faceLandmarks?.[0];
-            if (pts?.length) {
-              faceBox = faceBoxFromLandmarkPoints(pts);
-            }
+          landmarkerRes = lm.detect(frameCanvas);
+          const pts = landmarkerRes.faceLandmarks?.[0];
+          if (pts?.length) {
+            landmarkBox = faceBoxFromLandmarkPoints(pts);
           }
-        } catch {
+        } catch (e) {
           landmarkerRes = null;
+          if (typeof window !== "undefined") {
+            console.debug("[scan] FaceLandmarker.detect skipped:", truncateErr(e));
+          }
         }
       }
 
-      if (!faceBox && imageData) {
+      if (serverPreview?.box && serverPreview.detectorAvailable) {
+        faceBox = serverPreview.box;
+        source = "retinaface";
+      } else if (blazeReady && blazeDetectorRef.current && frameCanvas) {
+        try {
+          const blazeRes = blazeDetectorRef.current.detect(frameCanvas);
+          const blazeBox = faceBoxFromBlazeDetections(
+            blazeRes.detections,
+            frameCanvas.width,
+            frameCanvas.height
+          );
+          if (blazeBox) {
+            faceBox = blazeBox;
+            source = "blaze";
+          }
+        } catch {
+          /* keep prior smoothed box */
+        }
+      } else if (landmarkBox) {
+        faceBox = landmarkBox;
+        source = "landmark";
+      }
+
+      if (!faceBox && !mpReady && !blazeReady && frameCanvas) {
+        faceBox = await detectFaceBoxNormalized(
+          frameCanvas,
+          imageData.width,
+          imageData.height
+        );
+        if (faceBox) source = "browser";
+      }
+
+      if (!faceBox && !mpReady && !blazeReady && imageData) {
         faceBox = estimateFaceBoxFromSkin(
           imageData.data,
           imageData.width,
           imageData.height
         );
+        if (faceBox) source = "skin";
+      }
+
+      if (faceBox) setBboxSource(source);
+      else if (smoothedBoxRef.current) setBboxSource("hold");
+
+      const mpOutline = landmarkerRes?.faceLandmarks?.[0] ?? null;
+      if (mpOutline?.length) {
+        const smoothed = smoothLandmarks(
+          smoothedLandmarksRef.current,
+          mpOutline,
+          0.5
+        );
+        smoothedLandmarksRef.current = smoothed;
+        lastLandmarkAtRef.current = now;
+        setFaceLandmarks(smoothed);
+      } else if (
+        smoothedLandmarksRef.current &&
+        now - lastLandmarkAtRef.current < LANDMARK_HOLD_MS
+      ) {
+        setFaceLandmarks(smoothedLandmarksRef.current);
+      } else {
+        smoothedLandmarksRef.current = null;
+        setFaceLandmarks(null);
       }
 
       smoothedBoxRef.current = smoothFaceBox(smoothedBoxRef.current, faceBox);
-      const framing = analyzeFaceFraming(
-        smoothedBoxRef.current,
-        framingStateRef.current
+      setFaceTracked(
+        Boolean(
+          smoothedLandmarksRef.current?.length ||
+            isUsableFaceBox(smoothedBoxRef.current)
+        )
       );
-      framingStateRef.current = {
-        quality: framing.quality,
-        faceFill: framing.faceFill,
-      };
-      const next = buildCaptureGuidance(lighting, framing, currentZoom);
 
-      if (needsExpressionModel && models.mediapipe === "failed") {
-        next.expressionOk = null;
-        next.expressionMessage =
-          "Expression check unavailable (MediaPipe did not load)";
-      } else if (landmarkerRes && needsExpressionModel) {
-        try {
-          const shapes = landmarkerRes.faceBlendshapes?.[0]?.categories ?? [];
-          const get = (name: string) =>
-            Number(shapes.find((c: BlendshapeCategory) => c.categoryName === name)?.score ?? 0);
-          if (stepId === "eyes_closed") {
-            const blink = (get("eyeBlinkLeft") + get("eyeBlinkRight")) / 2;
-            const wasOk = expressionOkRef.current === true;
-            const ok = wasOk ? blink >= 0.32 : blink >= 0.42;
-            expressionOkRef.current = ok;
-            next.expressionOk = ok;
-            next.expressionMessage = ok
-              ? "Eyes closed check looks good"
-              : "Please close both eyes gently";
-            next.readyToCapture = next.readyToCapture && ok;
-          } else if (stepId === "smiling") {
-            const smile = Math.max(
-              get("mouthSmileLeft"),
-              get("mouthSmileRight"),
-              get("smile")
-            );
-            const wasOk = expressionOkRef.current === true;
-            const ok = wasOk ? smile >= 0.28 : smile >= 0.34;
-            expressionOkRef.current = ok;
-            next.expressionOk = ok;
-            next.expressionMessage = ok
-              ? "Smile check looks good"
-              : "Please smile naturally";
-            next.readyToCapture = next.readyToCapture && ok;
-          }
-        } catch {
-          next.expressionOk = null;
-          next.expressionMessage = "Expression check error — try again";
-        }
-      } else if (needsExpressionModel && models.mediapipe === "loading") {
-        next.expressionOk = null;
-        next.expressionMessage = "Loading expression model…";
+      frameSamplesRef.current.push({
+        faceBox: smoothedBoxRef.current,
+        lighting,
+        landmarkerRes,
+      });
+      if (frameSamplesRef.current.length > 24) {
+        frameSamplesRef.current.shift();
       }
 
-      setGuidance(next);
+      const publishNow =
+        lastGuidancePublishRef.current === 0 ||
+        now - lastGuidancePublishRef.current >= CAPTURE_GUIDANCE_SETTLE_MS;
+
+      if (publishNow) {
+        lastGuidancePublishRef.current = now;
+        const avgBox = averageFaceBoxes(
+          frameSamplesRef.current.map((s) => s.faceBox)
+        );
+        const lastLighting =
+          frameSamplesRef.current[frameSamplesRef.current.length - 1]?.lighting ??
+          lighting;
+        const framing = analyzeFaceFraming(avgBox, framingStateRef.current);
+        framingStateRef.current = {
+          quality: framing.quality,
+          faceFill: framing.faceFill,
+        };
+        let next = buildCaptureGuidance(lastLighting, framing, currentZoom);
+
+        const useClassifier =
+          FACE_CAPTURE_CONFIG.expression === "classifier" &&
+          Boolean(serverPreview?.expressionAvailable && serverPreview.expression);
+
+        const expressionPipelineActive = useClassifier
+          ? true
+          : models.mediapipe === "ready" && Boolean(landmarkerRef.current);
+
+        const latestMp =
+          frameSamplesRef.current[frameSamplesRef.current.length - 1]
+            ?.landmarkerRes ?? landmarkerRes;
+
+        if (needsExpressionModel && useClassifier) {
+          next = applyCaptureExpressionFromClassifier(
+            next,
+            stepId,
+            serverPreview!.expression,
+            expressionOkRef,
+            expressionPipelineActive
+          );
+        } else if (
+          needsExpressionModel &&
+          (models.mediapipe === "failed" || models.mediapipe === "off") &&
+          !useClassifier
+        ) {
+          next.expressionOk = null;
+          next.expressionMessage =
+            "Expression check unavailable right now — capture can continue";
+        } else if (needsExpressionModel && models.mediapipe === "loading") {
+          next.expressionOk = null;
+          next.expressionMessage = "Loading expression model…";
+        } else if (needsExpressionModel) {
+          const shapes = latestMp?.faceBlendshapes?.[0]?.categories as
+            | BlendshapeCategory[]
+            | undefined;
+          const landmarks = latestMp?.faceLandmarks?.[0];
+          next = applyCaptureExpression(
+            next,
+            stepId,
+            shapes,
+            expressionOkRef,
+            landmarks,
+            expressionPipelineActive,
+            expressionCalibrationRef.current
+          );
+        }
+
+        setGuidance(next);
+      }
     } finally {
       busyRef.current = false;
     }
-  }, [videoRef, enabled, currentZoom, stepId, needsExpressionModel, models.mediapipe]);
+  }, [videoRef, enabled, currentZoom, stepId, needsExpressionModel, models.mediapipe, models.blazeFace]);
 
   useEffect(() => {
     if (!enabled) {
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
       setGuidance(null);
+      setFaceLandmarks(null);
+      setFaceTracked(false);
       smoothedBoxRef.current = null;
+      smoothedLandmarksRef.current = null;
+      lastLandmarkAtRef.current = 0;
       framingStateRef.current = null;
       expressionOkRef.current = null;
+      frameSamplesRef.current = [];
+      lastGuidancePublishRef.current = 0;
       return;
     }
     void tick();
@@ -276,15 +557,24 @@ export function useWebScanCaptureGuidance(
 
   useEffect(() => {
     expressionOkRef.current = null;
+    expressionCalibrationRef.current = { openEarBaseline: null };
+    frameSamplesRef.current = [];
+    lastGuidancePublishRef.current = 0;
   }, [stepId]);
 
   const faceDetectionAvailable =
-    models.faceDetector === "ready" || models.mediapipe === "ready";
+    models.faceDetector === "ready" ||
+    models.blazeFace === "ready" ||
+    models.mediapipe === "ready" ||
+    models.retinaface === "ready";
 
   return {
     guidance,
     models,
     faceDetectionAvailable,
     needsExpressionModel,
+    faceLandmarks,
+    faceTracked,
+    bboxSource,
   };
 }

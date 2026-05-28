@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Minus, Plus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+
+import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 
 const moods = ["Calm", "Neutral", "Anxious", "Stressed", "Overwhelmed"] as const;
 
@@ -24,11 +26,11 @@ export default function StressTrackerPage() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didInit = useRef(false);
+  const { saveStatus, scheduleSave, markReady, markNotReady } =
+    useDebouncedTrackerAutoSave();
 
   useEffect(() => {
+    markNotReady();
     const today = format(new Date(), "yyyy-MM-dd");
     fetch(`/api/journal?date=${today}`, { credentials: "include" })
       .then((r) => r.json())
@@ -36,40 +38,37 @@ export default function StressTrackerPage() {
         if (data.entry) {
           setLevel(data.entry.stressLevel ?? 5);
           setSelectedMood(data.entry.mood ?? null);
+          if (typeof data.entry.journalEntry === "string") {
+            setNotes(data.entry.journalEntry);
+          }
         }
-        didInit.current = true;
       })
-      .finally(() => setLoading(false));
-  }, []);
-
-  function scheduleAutoSave(body: Record<string, unknown>) {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveStatus("saving");
-    saveTimer.current = setTimeout(async () => {
-      await fetch("/api/journal", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: format(new Date(), "yyyy-MM-dd"), ...body }),
+      .finally(() => {
+        setLoading(false);
+        markReady();
       });
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    }, 800);
-  }
+  }, [markNotReady, markReady]);
 
   function handleSetLevel(newLevel: number) {
     setLevel(newLevel);
-    if (didInit.current) scheduleAutoSave({ stressLevel: newLevel, mood: selectedMood });
+    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+      stressLevel: newLevel,
+      mood: selectedMood,
+    });
   }
 
   function handleSetMood(mood: string) {
     setSelectedMood(mood);
-    if (didInit.current) scheduleAutoSave({ stressLevel: level, mood });
+    scheduleSave(format(new Date(), "yyyy-MM-dd"), { stressLevel: level, mood });
   }
 
   function handleNotesChange(value: string) {
     setNotes(value);
-    if (didInit.current) scheduleAutoSave({ stressLevel: level, mood: selectedMood, journalEntry: value });
+    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+      stressLevel: level,
+      mood: selectedMood,
+      journalEntry: value,
+    });
   }
 
   const decrement = () => handleSetLevel(Math.max(0, level - 1));
@@ -100,6 +99,7 @@ export default function StressTrackerPage() {
         <div className="ml-auto flex items-center gap-2">
           {saveStatus === "saving" && <span className="text-xs text-slate-400">Saving...</span>}
           {saveStatus === "saved" && <span className="text-xs text-emerald-500">Saved ✓</span>}
+          {saveStatus === "error" && <span className="text-xs text-amber-600">Could not save</span>}
         </div>
       </div>
 

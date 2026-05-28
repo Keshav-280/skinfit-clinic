@@ -19,8 +19,19 @@ export type DoctorSosLatestRow = {
 
 /** Latest urgent doctor-thread message per patient in the time window (by recency). */
 export async function loadLatestUrgentSosPerPatientSince(
-  since: Date
+  since: Date,
+  scopeDoctorId?: string | null
 ): Promise<DoctorSosLatestRow[]> {
+  const conditions = [
+    eq(chatThreads.assistantId, "doctor"),
+    eq(chatMessages.sender, "patient"),
+    eq(chatMessages.isUrgent, true),
+    gte(chatMessages.createdAt, since),
+  ];
+  if (scopeDoctorId) {
+    conditions.push(eq(chatThreads.doctorId, scopeDoctorId));
+  }
+
   const rows = await db
     .select({
       patientId: chatThreads.userId,
@@ -32,14 +43,7 @@ export async function loadLatestUrgentSosPerPatientSince(
     .from(chatMessages)
     .innerJoin(chatThreads, eq(chatMessages.threadId, chatThreads.id))
     .innerJoin(users, eq(chatThreads.userId, users.id))
-    .where(
-      and(
-        eq(chatThreads.assistantId, "doctor"),
-        eq(chatMessages.sender, "patient"),
-        eq(chatMessages.isUrgent, true),
-        gte(chatMessages.createdAt, since)
-      )
-    )
+    .where(and(...conditions))
     .orderBy(desc(chatMessages.createdAt))
     .limit(400);
 

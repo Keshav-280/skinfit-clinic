@@ -57,7 +57,7 @@ export type SessionUserProfile = {
   gender: string | null;
   skinType: string | null;
   primaryGoal: string | null;
-  /** kAI onboarding finished (questionnaire + baseline scan). */
+  /** Questionnaire finished — unlocks full dashboard personalisation. */
   onboardingComplete: boolean;
   /** Hours before a visit to receive a Clinic Support chat reminder; 0 = off. */
   appointmentReminderHoursBefore: number;

@@ -5,11 +5,9 @@ import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorUsers } from "@/src/lib/expoPush";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
-import {
-  doctorThreadRequiresE2ee,
-  isPlaintextDoctorMessageAllowed,
-} from "@/src/lib/chatE2ee/e2eePolicy";
 import { buildSosContextPrefix } from "@/src/lib/sosChatContext";
+import { postPatientUrgentMessageToAllClinicDoctors } from "@/src/lib/patientDoctorChat";
+import { resolvePatientDoctorThread } from "@/src/lib/patientDoctorChatThread";
 
 function clampText(s: unknown, maxLen: number): string | null {
   if (typeof s !== "string") return null;
@@ -50,6 +48,7 @@ export async function POST(req: Request) {
 
   const b = body as {
     assistantId?: string;
+    doctorId?: string;
     text?: unknown;
     isUrgent?: unknown;
     attachmentUrl?: unknown;
@@ -91,53 +90,74 @@ export async function POST(req: Request) {
     messageText = `${prefix}\n\n${patientText}`.slice(0, 12_000);
   }
 
-  // Create or fetch the thread for this patient + assistant.
-  const [thread] = await db
-    .select()
-    .from(chatThreads)
-    .where(and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, assistantId)))
-    .orderBy(desc(chatThreads.createdAt))
-    .limit(1);
+  const explicitDoctorId =
+    typeof b.doctorId === "string" ? b.doctorId.trim() : "";
 
-  const threadId = thread?.id
-    ? thread.id
-    : (
-        await db
-          .insert(chatThreads)
-          .values({
-            userId,
-            assistantId,
-          })
-          .returning({ id: chatThreads.id })
-      )[0]?.id;
+  let threadId: string | undefined;
+  if (assistantId === "doctor") {
+    if (isUrgent && !explicitDoctorId) {
+      const broadcast = await postPatientUrgentMessageToAllClinicDoctors(userId, {
+        text: messageText,
+        isUrgent: true,
+        attachmentUrl,
+      });
+      if (broadcast.notifiedThreadCount === 0) {
+        return NextResponse.json(
+          {
+            error: "NO_DOCTOR",
+            message: "No clinic doctors are registered to receive urgent alerts.",
+          },
+          { status: 400 }
+        );
+      }
+      threadId = broadcast.primaryThreadId ?? undefined;
+    } else {
+      const resolved = await resolvePatientDoctorThread(
+        userId,
+        explicitDoctorId || null
+      );
+      if (!resolved) {
+        return NextResponse.json(
+          { error: "NO_DOCTOR", message: "No clinic doctor available for chat." },
+          { status: 400 }
+        );
+      }
+      threadId = resolved.threadId;
+    }
+  } else {
+    const [thread] = await db
+      .select()
+      .from(chatThreads)
+      .where(and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, assistantId)))
+      .orderBy(desc(chatThreads.createdAt))
+      .limit(1);
+
+    threadId = thread?.id
+      ? thread.id
+      : (
+          await db
+            .insert(chatThreads)
+            .values({
+              userId,
+              assistantId,
+            })
+            .returning({ id: chatThreads.id })
+        )[0]?.id;
+  }
 
   if (!threadId) {
     return NextResponse.json({ error: "THREAD_CREATE_FAILED" }, { status: 500 });
   }
 
-  if (
-    assistantId === "doctor" &&
-    patientText &&
-    (await doctorThreadRequiresE2ee(threadId)) &&
-    !isPlaintextDoctorMessageAllowed(patientText)
-  ) {
-    return NextResponse.json(
-      {
-        error: "E2EE_REQUIRED",
-        message:
-          "This chat thread uses end-to-end encryption. Open doctor chat and wait for the lock icon before sending.",
-      },
-      { status: 400 }
-    );
+  if (assistantId === "doctor" && !(isUrgent && !explicitDoctorId)) {
+    await db.insert(chatMessages).values({
+      threadId,
+      sender: "patient",
+      text: messageText,
+      isUrgent,
+      attachmentUrl: attachmentUrl || null,
+    });
   }
-
-  await db.insert(chatMessages).values({
-    threadId,
-    sender: "patient",
-    text: messageText,
-    isUrgent,
-    attachmentUrl: attachmentUrl || null,
-  });
 
   if (assistantId === "doctor") {
     const pushBody = isE2eePayload(patientText)

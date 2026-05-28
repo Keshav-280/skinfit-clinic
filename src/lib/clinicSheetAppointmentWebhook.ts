@@ -70,10 +70,35 @@ function normEmail(s: string) {
   return s.trim().toLowerCase();
 }
 
-async function resolvePatientId(
+function isUuid(value: string | null | undefined): boolean {
+  const t = value?.trim() ?? "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t);
+}
+
+/**
+ * Resolve patient for a sheet CRM row. Prefer column B `requestId` (schedule request UUID)
+ * so a stale column C `patientId` after a DB reset does not block confirm/cancel.
+ */
+async function resolvePatientIdForSheetUpdate(
+  scheduleRequestId: string | null | undefined,
   patientId: string | null | undefined,
   patientEmail: string | null | undefined
 ): Promise<string | null> {
+  const sid = scheduleRequestId?.trim();
+  if (sid && isUuid(sid)) {
+    const req = await db.query.patientScheduleRequests.findFirst({
+      where: eq(patientScheduleRequests.id, sid),
+      columns: { patientId: true },
+    });
+    if (req?.patientId) {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, req.patientId),
+        columns: { id: true, role: true },
+      });
+      if (user?.role === "patient") return user.id;
+    }
+  }
+
   if (patientId?.trim()) {
     const row = await db.query.users.findFirst({
       where: eq(users.id, patientId.trim()),
@@ -81,13 +106,16 @@ async function resolvePatientId(
     });
     if (row?.role === "patient") return row.id;
   }
+
   const em = patientEmail?.trim();
-  if (!em) return null;
-  const row = await db.query.users.findFirst({
-    where: eq(users.email, normEmail(em)),
-    columns: { id: true, role: true },
-  });
-  if (row?.role === "patient") return row.id;
+  if (em) {
+    const row = await db.query.users.findFirst({
+      where: eq(users.email, normEmail(em)),
+      columns: { id: true, role: true },
+    });
+    if (row?.role === "patient") return row.id;
+  }
+
   return null;
 }
 
@@ -115,15 +143,17 @@ async function findRequestForUpdate(
   } as const;
 
   const sid = scheduleRequestId?.trim();
-  if (sid) {
+  if (sid && isUuid(sid)) {
     const byId = await db.query.patientScheduleRequests.findFirst({
-      where: and(
-        eq(patientScheduleRequests.id, sid),
-        eq(patientScheduleRequests.patientId, patientId)
-      ),
+      where: eq(patientScheduleRequests.id, sid),
       columns: safeColumns,
     });
-    if (byId) return byId;
+    if (byId) {
+      if (byId.patientId !== patientId) {
+        return null;
+      }
+      return byId;
+    }
   }
   if (externalRef?.trim()) {
     const row = await db.query.patientScheduleRequests.findFirst({
@@ -174,9 +204,16 @@ export async function applyClinicSheetAppointmentUpdates(
 
   for (const u of updates) {
     try {
-      const patientId = await resolvePatientId(u.patientId, u.patientEmail);
+      const patientId = await resolvePatientIdForSheetUpdate(
+        u.scheduleRequestId,
+        u.patientId,
+        u.patientEmail
+      );
       if (!patientId) {
-        errors.push("patient_not_found");
+        const hint = u.scheduleRequestId?.trim()
+          ? "patient_not_found:check_requestId_column_B_or_email_column_E"
+          : "patient_not_found:stale_patientId_or_email_not_in_db";
+        errors.push(hint);
         continue;
       }
 

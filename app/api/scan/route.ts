@@ -11,12 +11,14 @@ import {
   runFaceAnalysisService,
 } from "../../../src/lib/faceAnalysisInference";
 import { runFaceAnalysisServiceV2 } from "../../../src/lib/faceAnalysisInferenceV2";
+import { getFaceAnalysisServiceSecret } from "../../../src/lib/faceAnalysisEnv";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../src/lib/faceScanCaptures";
 import {
   inferenceParamsToRows,
   insertParameterScoresForScan,
 } from "../../../src/lib/insertParameterScores";
 import { persistScanTrackerSnapshot } from "../../../src/lib/scanTrackerSnapshot";
+import { getAssignedDoctorIdForPatient } from "../../../src/lib/doctorPatientCare";
 import { readWebFormData } from "../../../src/lib/webRequestFormData";
 import {
   buildPreviewJpegDataUri,
@@ -168,6 +170,21 @@ function buildDummyKaiV2() {
 }
 
 export async function POST(request: NextRequest) {
+  if (
+    process.env.SCAN_ASYNC_MODE === "1" ||
+    process.env.SCAN_ASYNC_MODE === "true"
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "Synchronous scan disabled. Use POST /api/scans/submit and poll GET /api/scans/status/[jobId].",
+        asyncEndpoint: "/api/scans/submit",
+      },
+      { status: 410 }
+    );
+  }
+
   try {
     const formData = await readWebFormData(request);
     const scanName = (formData.get("scanName") as string) || "Untitled Scan";
@@ -227,7 +244,7 @@ export async function POST(request: NextRequest) {
     const imageDataUri = entries[0].dataUri;
 
     const inferenceBase = process.env.FACE_ANALYSIS_SERVICE_URL?.trim();
-    const inferenceSecret = process.env.FACE_ANALYSIS_SERVICE_SECRET?.trim();
+    const inferenceSecret = getFaceAnalysisServiceSecret();
     const allowDummyInferenceFallback =
       process.env.FACE_ANALYSIS_ALLOW_DUMMY === "1" ||
       process.env.FACE_ANALYSIS_ALLOW_DUMMY === "true";
@@ -466,8 +483,11 @@ export async function POST(request: NextRequest) {
       ...modelEight,
     };
 
+    const scanDoctorId = await getAssignedDoctorIdForPatient(user.id);
+
     const scanRowBase = {
       userId: user.id,
+      doctorId: scanDoctorId,
       scanName: scanName.trim() || null,
       imageUrl: imageDataUri,
       overallScore: metrics.overall_score,
@@ -532,7 +552,13 @@ export async function POST(request: NextRequest) {
 
     if (inserted?.id != null) {
       try {
-        await persistScanTrackerSnapshot(user.id, inserted.id);
+        const saved = await persistScanTrackerSnapshot(user.id, inserted.id);
+        if (!saved) {
+          console.warn(
+            "[scan] tracker snapshot not saved — report will backfill on first view",
+            { scanId: inserted.id, userId: user.id }
+          );
+        }
       } catch (snapshotErr) {
         console.error("[scan] tracker snapshot persist failed", snapshotErr);
       }

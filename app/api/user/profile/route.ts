@@ -9,6 +9,8 @@ import {
   getSessionUserIdFromRequest,
   getSessionUserProfileFromRequest,
 } from "@/src/lib/auth/get-session";
+import { getOnboardingAccessForUser } from "@/src/lib/onboardingAccess";
+import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { createSessionToken } from "@/src/lib/auth/session";
 import {
@@ -24,6 +26,12 @@ import {
   isValidHm,
   normalizeIanaTimeZone,
 } from "@/src/lib/timeZoneWallClock";
+import {
+  cacheAside,
+  CacheKeys,
+  invalidateUserHomeCache,
+  invalidateUserProfileCache,
+} from "@/src/lib/infra";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
@@ -33,7 +41,18 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
-  return NextResponse.json({ user });
+  const body = await cacheAside(CacheKeys.profile(user.id), 300, async () => {
+    const access = await getOnboardingAccessForUser(user.id);
+    return {
+      user: {
+        ...user,
+        hasQuestionnaire: access.hasQuestionnaire,
+        canAccessDashboard: access.canAccessDashboard,
+        hasBaselineScan: access.hasBaselineScan,
+      },
+    };
+  });
+  return NextResponse.json(body);
 }
 
 export async function PATCH(req: Request) {
@@ -305,20 +324,33 @@ export async function PATCH(req: Request) {
         { status: 400 }
       );
     }
-    if (!currentPassword) {
-      return NextResponse.json(
-        { message: "Enter your current password to set a new one." },
-        { status: 400 }
-      );
+    if (!user.passwordHash) {
+      if (currentPassword) {
+        return NextResponse.json(
+          {
+            message:
+              "You signed in with Google. Leave current password empty to set a password.",
+          },
+          { status: 400 }
+        );
+      }
+      nextHash = await bcrypt.hash(newPassword, 10);
+    } else {
+      if (!currentPassword) {
+        return NextResponse.json(
+          { message: "Enter your current password to set a new one." },
+          { status: 400 }
+        );
+      }
+      const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!ok) {
+        return NextResponse.json(
+          { message: "Current password is incorrect." },
+          { status: 401 }
+        );
+      }
+      nextHash = await bcrypt.hash(newPassword, 10);
     }
-    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!ok) {
-      return NextResponse.json(
-        { message: "Current password is incorrect." },
-        { status: 401 }
-      );
-    }
-    nextHash = await bcrypt.hash(newPassword, 10);
   }
 
   const secret = getSessionSecret();
@@ -369,11 +401,14 @@ export async function PATCH(req: Request) {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: authCookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
+
+  await invalidateUserProfileCache(userId);
+  await invalidateUserHomeCache(userId);
 
   const nativeClient = req.headers.get("x-skinfit-client") === "native";
   return NextResponse.json({

@@ -4,13 +4,13 @@ export const FACE_SCAN_CAPTURE_STEPS = [
     id: "centre",
     title: "Front face — neutral",
     instruction:
-      "Look straight at the camera. Neutral expression, eyes open. Remove spectacles. Natural light; face fills the oval.",
+      "Look straight at the camera. Neutral expression, eyes open. Remove spectacles. Keep your face centered in the frame.",
   },
   {
     id: "left",
     title: "Turn head left",
     instruction:
-      "Turn your head ~30° to your left. Keep shoulders still; only rotate your face. No spectacles.",
+      "Turn your head ~30° to your left. Keep the same framing and rotate your face only. No spectacles.",
   },
   {
     id: "right",
@@ -27,7 +27,7 @@ export const FACE_SCAN_CAPTURE_STEPS = [
     id: "smiling",
     title: "Front face — smiling",
     instruction:
-      "Natural smile — teeth optional. Remove spectacles. AI checks smile expression.",
+      "Natural smile — teeth optional. Remove spectacles. Same framing as the front shot.",
   },
 ] as const;
 

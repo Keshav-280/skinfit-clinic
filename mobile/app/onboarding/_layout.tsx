@@ -13,7 +13,11 @@ export default function OnboardingLayout() {
           headerShadowVisible: false,
           contentStyle: { backgroundColor: "#E8EFE6" },
         }}
-      />
+      >
+        <Stack.Screen name="capture-intro" options={{ headerShown: false }} />
+        <Stack.Screen name="capture" options={{ headerShown: false }} />
+        <Stack.Screen name="baseline-report" options={{ headerShown: false }} />
+      </Stack>
     </OnboardingResumeGate>
   );
 }

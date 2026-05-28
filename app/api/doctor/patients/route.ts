@@ -10,6 +10,7 @@ import {
   loadAckedSosMessageIdsForStaff,
   loadLatestUrgentSosPerPatientSince,
 } from "@/src/lib/doctorSosInbox";
+import { patientHasOnboardingClinicalAlert } from "@/src/lib/patientOnboardingClinicalAlert";
 
 export async function GET(req: Request) {
   try {
@@ -30,17 +31,16 @@ export async function GET(req: Request) {
   ]);
   const unackedSos = filterUnackedSosRows(latestForFlag, ackedIds);
 
-  let restrictIds: string[] | null = null;
-  if (sosOnly) {
-    restrictIds = unackedSos.map((r) => r.patientId);
-    if (restrictIds.length === 0) {
-      return NextResponse.json({ success: true, patients: [] });
-    }
-  }
-
   const conditions = [eq(users.role, "patient")];
-  if (restrictIds) {
-    conditions.push(inArray(users.id, restrictIds));
+  if (sosOnly) {
+    const sosFilter = or(
+      ...(unackedSos.length > 0
+        ? [inArray(users.id, unackedSos.map((r) => r.patientId))]
+        : []),
+      eq(users.concernDuration, "chronic"),
+      eq(users.skinSensitivity, "high")
+    );
+    if (sosFilter) conditions.push(sosFilter);
   }
   if (concern) {
     conditions.push(eq(users.primaryConcern, concern));
@@ -63,6 +63,8 @@ export async function GET(req: Request) {
       name: users.name,
       email: users.email,
       primaryConcern: users.primaryConcern,
+      concernDuration: users.concernDuration,
+      skinSensitivity: users.skinSensitivity,
       onboardingComplete: users.onboardingComplete,
       clinicVisitedAt: users.clinicVisitedAt,
       createdAt: users.createdAt,
@@ -76,12 +78,17 @@ export async function GET(req: Request) {
     success: true,
     patients: rows.map((r) => {
       const latest = latestSosByPatient.get(r.id);
-      const sosRowTint =
+      const chatSosTint =
         latest == null
           ? null
           : ackedIds.has(latest.messageId)
             ? ("seen" as const)
             : ("urgent" as const);
+      const onboardingClinicalAlert = patientHasOnboardingClinicalAlert(r);
+      const sosRowTint =
+        chatSosTint === "urgent" || onboardingClinicalAlert
+          ? ("urgent" as const)
+          : chatSosTint;
       return {
         id: r.id,
         name: r.name,
@@ -91,6 +98,7 @@ export async function GET(req: Request) {
         clinicVisited: r.clinicVisitedAt != null,
         createdAt: r.createdAt.toISOString(),
         sosRowTint,
+        onboardingClinicalAlert,
         lastSosAt: latest?.createdAt.toISOString() ?? null,
       };
     }),

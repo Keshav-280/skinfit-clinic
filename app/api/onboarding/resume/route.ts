@@ -16,7 +16,9 @@ export async function GET(req: Request) {
   return NextResponse.json({
     onboardingComplete: snap.onboardingComplete,
     hasQuestionnaire: snap.hasQuestionnaire,
+    hasBaselineScan: snap.hasBaselineScan,
     baselineScanId: snap.baselineScanId,
+    canAccessDashboard: snap.canAccessDashboard,
     continueUrl: snap.continueUrl,
   });
 }

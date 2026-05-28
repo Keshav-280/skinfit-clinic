@@ -1,0 +1,31 @@
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY services/shared/package.json ./services/shared/
+RUN npm ci
+
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+# Dummy URL for any build-time code paths that touch the DB (runtime uses compose env).
+ARG LOCAL_POSTGRES_URL=postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
+ENV LOCAL_POSTGRES_URL=${LOCAL_POSTGRES_URL}
+# Next inlines NEXT_PUBLIC_* at build time; production NODE_ENV hides debug without this.
+ARG NEXT_PUBLIC_CAPTURE_DEBUG=1
+ENV NEXT_PUBLIC_CAPTURE_DEBUG=${NEXT_PUBLIC_CAPTURE_DEBUG}
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN addgroup -S skinfit && adduser -S skinfit -G skinfit
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+RUN mkdir -p /uploads && chown -R skinfit:skinfit /uploads
+USER skinfit
+EXPOSE 3000
+CMD ["node", "server.js"]

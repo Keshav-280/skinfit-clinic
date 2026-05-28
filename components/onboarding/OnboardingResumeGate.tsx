@@ -8,7 +8,9 @@ import { ONBOARDING_QUESTIONNAIRE_DRAFT_KEY } from "@/src/lib/onboardingQuestion
 type ResumeApi = {
   onboardingComplete?: boolean;
   hasQuestionnaire?: boolean;
+  hasBaselineScan?: boolean;
   baselineScanId?: number | null;
+  canAccessDashboard?: boolean;
   continueUrl?: string;
 };
 
@@ -55,19 +57,30 @@ export function OnboardingResumeGate({
       }
 
       const segs = segments(pathname);
-      const isWelcome =
-        segs.length === 1 && segs[0] === "onboarding";
+      const isWelcome = segs.length === 1 && segs[0] === "onboarding";
       const isKai = segs.includes("kai-intro");
       const isQuest = segs.includes("questionnaire");
-      const onEarly = isWelcome || isKai || isQuest;
       const onCapture = segs.includes("capture");
       const onBaseline = segs.includes("baseline-report");
       const hasQ = data.hasQuestionnaire === true;
-      const continueUrl = data.continueUrl ?? "/onboarding/questionnaire";
+      const hasBaseline = data.hasBaselineScan === true;
+      const continueUrl = data.continueUrl ?? "/onboarding/capture";
       const baselineId =
         typeof data.baselineScanId === "number" ? data.baselineScanId : null;
 
-      if (hasQ && onEarly) {
+      if (!hasBaseline && isQuest) {
+        router.replace("/onboarding/capture");
+        return;
+      }
+
+      if (hasBaseline && !hasQ && (isWelcome || isKai)) {
+        if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
+          router.replace(continueUrl);
+        }
+        return;
+      }
+
+      if (hasQ && (isWelcome || isKai || isQuest)) {
         if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
           if (isQuest) {
             try {
@@ -78,16 +91,6 @@ export function OnboardingResumeGate({
           }
           router.replace(continueUrl);
         }
-        return;
-      }
-
-      if (!hasQ && onCapture) {
-        router.replace("/onboarding/questionnaire");
-        return;
-      }
-
-      if (!hasQ && onBaseline) {
-        router.replace("/onboarding/questionnaire");
         return;
       }
 

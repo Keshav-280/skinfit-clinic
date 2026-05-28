@@ -2,79 +2,67 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { CheckCircle2, Sparkles } from "lucide-react";
 
 export default function OnboardingBaselineReportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const scanId = searchParams.get("scanId") ?? "";
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function finish() {
-    setBusy(true);
-    setErr(null);
-    try {
-      const id = Number.parseInt(scanId, 10);
-      const res = await fetch("/api/onboarding/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          Number.isFinite(id) ? { baselineScanId: id } : {}
-        ),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        message?: string;
-        error?: string;
-      };
-      if (!res.ok) {
-        setErr(
-          typeof data.message === "string"
-            ? data.message
-            : "Could not finish onboarding."
-        );
-        return;
-      }
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
-      setErr("Could not finish onboarding.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center space-y-5 px-2 py-8 text-center">
-      <h1 className="text-2xl font-extrabold text-zinc-900">Baseline captured</h1>
-      <p className="text-sm leading-relaxed text-zinc-600">
-        Your kAI baseline report is saved. Your doctor will be notified. You can
-        open the full report from Treatment History anytime.
-      </p>
-      {err ? (
-        <div
-          role="alert"
-          className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-        >
-          {err}
+    <div className="mx-auto flex max-w-md flex-col items-center px-2 py-4 md:py-8">
+      <div className="w-full space-y-6 rounded-[22px] border border-white/70 bg-white/35 p-8 text-center backdrop-blur-sm md:p-10">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-lg shadow-[#2C3E6B]/25">
+          <CheckCircle2 className="h-8 w-8" strokeWidth={2.5} aria-hidden />
         </div>
-      ) : null}
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => void finish()}
-        className="w-full rounded-2xl bg-teal-600 px-5 py-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-teal-700 disabled:opacity-50"
-      >
-        {busy ? "Finishing…" : "Go to dashboard"}
-      </button>
-      {scanId ? (
-        <Link
-          href={`/dashboard/history/scans/${encodeURIComponent(scanId)}`}
-          className="text-sm font-bold text-teal-700 hover:text-teal-800"
-        >
-          View report now
-        </Link>
-      ) : null}
+
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2C3E6B]/70">
+            Baseline
+          </p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
+            Baseline captured
+          </h1>
+          <p className="text-sm leading-relaxed text-[#6B7280]">
+            Your kAI baseline scan is saved. You can open the full report from Treatment
+            History anytime. Answer a few questions when you&apos;re ready — or explore the
+            dashboard first.
+          </p>
+        </div>
+
+        <p className="flex items-center justify-center gap-1.5 text-xs font-medium text-[#6B7280]">
+          <Sparkles className="h-3.5 w-3.5 text-[#2C3E6B]" aria-hidden />
+          Report builds in the background — no need to wait here.
+        </p>
+
+        <div className="flex flex-col gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => router.push("/onboarding/questionnaire")}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080]"
+          >
+            Continue to answer questions
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              router.push("/dashboard");
+              router.refresh();
+            }}
+            className="w-full rounded-xl border border-white/60 bg-white/50 px-5 py-3.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
+          >
+            Go to dashboard
+          </button>
+          {scanId ? (
+            <Link
+              href={`/dashboard/history/scans/${encodeURIComponent(scanId)}`}
+              className="text-sm font-semibold text-[#2C3E6B] hover:text-[#3d5080]"
+            >
+              View report now
+            </Link>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

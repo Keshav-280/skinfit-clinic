@@ -1,13 +1,17 @@
-import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
-import { scans, users } from "@/src/db/schema";
-
-import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
+import { users } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
+import {
+  getOnboardingAccessForUser,
+  userHasQuestionnaire,
+} from "@/src/lib/onboardingAccess";
 
 export type OnboardingResumeSnapshot = {
   onboardingComplete: boolean;
   hasQuestionnaire: boolean;
+  hasBaselineScan: boolean;
   baselineScanId: number | null;
+  canAccessDashboard: boolean;
   /** Next URL to continue incomplete onboarding (web + Expo paths). */
   continueUrl: string;
 };
@@ -30,43 +34,34 @@ export async function getOnboardingResumeSnapshot(
     return {
       onboardingComplete: true,
       hasQuestionnaire: true,
+      hasBaselineScan: true,
       baselineScanId: null,
+      canAccessDashboard: true,
       continueUrl: "/dashboard",
     };
   }
 
+  const access = await getOnboardingAccessForUser(userId);
   const hasQuestionnaire =
-    u.primaryConcern != null && String(u.primaryConcern).trim() !== "";
+    access.hasQuestionnaire ||
+    userHasQuestionnaire(u.primaryConcern);
+  const { baselineScanId, hasBaselineScan, canAccessDashboard } = access;
 
-  let baselineScanId: number | null = null;
-  if (hasQuestionnaire) {
-    const [row] = await db
-      .select({ id: scans.id })
-      .from(scans)
-      .where(
-        and(
-          eq(scans.userId, userId),
-          eq(scans.scanName, BASELINE_ONBOARDING_SCAN_NAME)
-        )
-      )
-      .orderBy(desc(scans.createdAt))
-      .limit(1);
-    baselineScanId = row?.id ?? null;
-  }
-
-  let continueUrl = "/onboarding/questionnaire";
-  if (!hasQuestionnaire) {
-    continueUrl = "/onboarding/questionnaire";
-  } else if (baselineScanId != null) {
+  let continueUrl = "/onboarding/capture";
+  if (!hasBaselineScan) {
+    continueUrl = "/onboarding/capture";
+  } else if (!hasQuestionnaire) {
     continueUrl = `/onboarding/baseline-report?scanId=${baselineScanId}`;
   } else {
-    continueUrl = "/onboarding/capture";
+    continueUrl = "/onboarding/questionnaire";
   }
 
   return {
     onboardingComplete: false,
     hasQuestionnaire,
+    hasBaselineScan,
     baselineScanId,
+    canAccessDashboard,
     continueUrl,
   };
 }

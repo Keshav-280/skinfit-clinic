@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Stethoscope, UserRound, Users } from "lucide-react";
+import { UserRound, Users } from "lucide-react";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
 import { DoctorAppointmentsBell } from "@/components/doctor/DoctorAppointmentsBell";
 import { DoctorPatientChatBell } from "@/components/doctor/DoctorPatientChatBell";
 import { DoctorSosBell } from "@/components/doctor/DoctorSosBell";
+import { DoctorPortalBrandLogo } from "@/components/doctor/DoctorPortalBrandLogo";
 import { DoctorPortalSidebar } from "@/components/doctor/DoctorPortalSidebar";
 import {
   doctorGlassHeaderClass,
@@ -43,18 +44,9 @@ export default async function DoctorPortalLayout({
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header
-          className={`sticky top-0 z-20 flex items-center justify-between px-4 py-3 sm:px-6 ${doctorGlassHeaderClass}`}
+          className={`sticky top-0 z-20 flex items-center gap-2 px-3 py-1 sm:gap-3 sm:px-5 sm:py-1.5 ${doctorGlassHeaderClass}`}
         >
-          <Link
-            href="/doctor/patients"
-            className="flex items-center gap-2 md:hidden"
-            aria-label="SkinFit Clinic staff home"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2C3E6B]">
-              <Stethoscope className="h-4 w-4 text-white" aria-hidden />
-            </div>
-            <span className="text-sm font-bold text-slate-900">SkinFit</span>
-          </Link>
+          <DoctorPortalBrandLogo />
 
           <nav
             className="flex items-center gap-1 md:hidden"
@@ -76,9 +68,9 @@ export default async function DoctorPortalLayout({
             </Link>
           </nav>
 
-          <div className="hidden flex-1 md:block" />
+          <div className="flex-1" />
 
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <DoctorAppointmentsBell />
             <DoctorPatientChatBell />
             <DoctorSosBell />

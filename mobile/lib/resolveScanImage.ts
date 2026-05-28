@@ -18,18 +18,7 @@ export function resolveAuthenticatedScanImageSource(
       ? imageUrl
       : apiUrl(imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`);
 
-  const isPatientScanImage = (() => {
-    try {
-      const u = new URL(absolute);
-      return /\/api\/patient\/scans\/\d+\/image$/.test(u.pathname);
-    } catch {
-      return (
-        absolute.includes("/api/patient/scans/") &&
-        /\/image(\?|$)/.test(absolute)
-      );
-    }
-  })();
-  if (token && isPatientScanImage) {
+  if (token && requiresBearerAuthForImage(absolute)) {
     return {
       uri: absolute,
       headers: { Authorization: `Bearer ${token}` },
@@ -38,44 +27,45 @@ export function resolveAuthenticatedScanImageSource(
   return { uri: absolute };
 }
 
+export function requiresBearerAuthForImage(absoluteOrPath: string): boolean {
+  const t = absoluteOrPath.trim();
+  try {
+    const u = new URL(
+      t.startsWith("http") ? t : `http://local.invalid${t.startsWith("/") ? t : `/${t}`}`
+    );
+    if (/\/api\/patient\/scans\/\d+\/image$/.test(u.pathname)) return true;
+    if (u.pathname.startsWith("/api/files/")) return true;
+    return false;
+  } catch {
+    return (
+      (t.includes("/api/patient/scans/") && /\/image(\?|$)/.test(t)) ||
+      t.includes("/api/files/")
+    );
+  }
+}
+
 function stripPreviewFromPatientScanImageUrl(url: string): string {
   const t = url.trim();
   if (!t.includes("/api/patient/scans/") || !/\/image(\?|$)/.test(t)) {
     return t;
   }
   try {
-    const u = new URL(t, "http://local.invalid");
+    const u = new URL(
+      t.startsWith("http") ? t : `http://local.invalid${t.startsWith("/") ? t : `/${t}`}`
+    );
     if (!/\/api\/patient\/scans\/\d+\/image$/.test(u.pathname)) return t;
     u.searchParams.delete("preview");
     u.searchParams.delete("thumb");
     const q = u.searchParams.toString();
-    return q ? `${u.pathname}?${q}` : u.pathname;
+    const path = u.pathname;
+    if (t.startsWith("http")) {
+      const origin = u.origin;
+      return q ? `${origin}${path}?${q}` : `${origin}${path}`;
+    }
+    return q ? `${path}?${q}` : path;
   } catch {
     return t;
   }
 }
 
-/** Load bytes for HTML PDF (Expo Print cannot send auth headers on &lt;img&gt;). */
-export async function embedScanImageForPdf(
-  imageUrl: string,
-  token: string | null
-): Promise<string> {
-  if (imageUrl.startsWith("data:")) return imageUrl;
-
-  const fullUrl = stripPreviewFromPatientScanImageUrl(imageUrl);
-  const { uri, headers } = resolveAuthenticatedScanImageSource(fullUrl, token);
-  const res = await fetch(uri, { headers: headers ?? {} });
-  if (!res.ok) {
-    throw new Error("Could not load scan image for PDF.");
-  }
-  const mime =
-    res.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg";
-  const buf = await res.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  const b64 = btoa(binary);
-  return `data:${mime};base64,${b64}`;
-}
+export { embedScanImageForPdf } from "./fetchAuthenticatedScanImage";

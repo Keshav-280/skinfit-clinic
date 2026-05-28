@@ -15,13 +15,13 @@ import {
   Moon,
   Droplets,
   Brain,
-  Play,
-  Send,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Sparkles,
 } from "lucide-react";
+import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
+import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
 import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 
 const NAVY = "#2C3E6B";
@@ -65,7 +65,8 @@ type HomeData = {
   weeklyDeltaScore: number;
   lifestyleAlignmentScore: number;
   doctorFeedback: string | null;
-  doctorVoiceNotes: Array<{ id: string; audioDataUri: string; createdAt: string; listened: boolean }>;
+  doctorVoiceNotes: Array<{ id: string; audioDataUri: string | null; createdAt: string; listened: boolean }>;
+  doctorArchivedVoiceNotes?: Array<{ id: string; audioDataUri: string | null; createdAt: string; listened: boolean }>;
   doctorVoiceNoteIsNew: boolean;
   streakCurrent: number;
   streakLongest: number;
@@ -73,6 +74,7 @@ type HomeData = {
   todayFocus: { message: string; sourceParam: string | null } | null;
   feedbackEntries: FeedbackEntry[];
   onboardingComplete: boolean;
+  hasQuestionnaire: boolean;
   routineAmReminderHm: string;
   routinePmReminderHm: string;
 };
@@ -269,7 +271,6 @@ export function PatientDashboardDesktop() {
   const [error, setError] = useState<string | null>(null);
   const [routine, setRoutine] = useState({ am: [] as boolean[], pm: [] as boolean[] });
   const [weekOffset, setWeekOffset] = useState(0);
-  const [replyText, setReplyText] = useState("");
   const [sosBusy, setSosBusy] = useState(false);
 
   const triggerSos = useCallback(async () => {
@@ -290,8 +291,20 @@ export function PatientDashboardDesktop() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assistantId: "doctor", isUrgent: true, text }),
       });
-      const j = (await res.json()) as { success?: boolean; error?: string };
-      if (!res.ok || !j.success) return;
+      const j = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok || !j.success) {
+        window.alert(
+          j.message ??
+            (j.error === "NO_DOCTOR"
+              ? "No clinic doctors are available to receive urgent alerts."
+              : "Could not send urgent alert. Try again.")
+        );
+        return;
+      }
       router.push("/dashboard/chat?assistant=doctor");
     } catch { /* silent */ } finally {
       setSosBusy(false);
@@ -548,7 +561,9 @@ export function PatientDashboardDesktop() {
           )}
         </div>
 
-        {data.todayFocus?.message ? (
+        {!data.hasQuestionnaire ? (
+          <QuestionnaireLockedCard title="Today's focus is locked" />
+        ) : data.todayFocus?.message ? (
           <TodayFocusCard message={data.todayFocus.message} />
         ) : null}
 
@@ -595,52 +610,14 @@ export function PatientDashboardDesktop() {
           </Link>
         </div>
 
-        {/* Doctor Feedback */}
-        {data.feedbackEntries.length > 0 && (
-          <div className="rounded-[20px] border border-white/70 bg-white/35 p-6 backdrop-blur-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-base font-extrabold tracking-wide text-[#2C3E6B]">DOCTOR FEEDBACK</h3>
-              {data.doctorVoiceNoteIsNew && <span className="rounded-[10px] bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-800">New</span>}
-            </div>
-            {data.feedbackEntries.map((entry) => (
-              <div key={entry.id} className="rounded-[18px] border border-white/70 bg-white/50 p-4 mb-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#2C3E6B]">
-                    <span className="text-lg font-bold text-white">{(entry.doctorName ?? "Dr")[0]}{(entry.doctorName ?? "Dr").split(" ").pop()?.[0] ?? ""}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-base font-extrabold text-[#1E293B]">{entry.doctorName ?? "Your Doctor"}</p>
-                    <p className="text-[13px] text-[#6B7280]">Dermatologist</p>
-                    <p className="mt-0.5 text-xs text-[#94A3B8]">{format(new Date(entry.createdAt), "dd MMM yyyy, hh:mm a")}</p>
-                  </div>
-                </div>
-                {entry.feedbackText && <p className="mt-4 text-[15px] leading-relaxed text-[#334155]">{entry.feedbackText}</p>}
-                {entry.audioDataUri && (
-                  <div className="mt-4 flex items-center gap-3 rounded-[28px] border border-black/5 bg-white/35 px-3 py-2.5">
-                    <button type="button" className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white"><Play className="h-4 w-4 ml-0.5" fill="currentColor" /></button>
-                    <div className="flex flex-1 items-center gap-[2px]">
-                      {[8,14,10,18,12,20,16,22,14,8,12,18,22,16,10,14,20,12,8,16,22,18,14,10,12,20,16,8,14,18].map((h, i) => (
-                        <div key={i} className="w-[3px] rounded-full bg-[#CBD5E1]" style={{ height: `${h}px` }} />
-                      ))}
-                    </div>
-                    <span className="text-[13px] font-semibold text-[#64748B]">01:26</span>
-                  </div>
-                )}
-              </div>
-            ))}
-            <div className="mt-3 flex items-center gap-2 rounded-[24px] border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-1">
-              <input type="text" placeholder="Write a reply..." value={replyText} onChange={(e) => setReplyText(e.target.value)} className="flex-1 bg-transparent py-2.5 text-[14px] text-[#334155] placeholder:text-[#94a3b8] focus:outline-none" />
-              <button type="button" onClick={async () => {
-                if (!replyText.trim()) return;
-                await fetch("/api/chat/plain/message", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assistantId: "doctor", text: replyText.trim() }) });
-                setReplyText("");
-                router.push("/dashboard/chat?assistant=doctor");
-              }} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2C3E6B] text-white transition hover:bg-[#1e2d4d]">
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
+        <PatientDoctorHomeSections
+          doctorFeedback={data.doctorFeedback}
+          doctorVoiceNotes={data.doctorVoiceNotes}
+          doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+          doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
+          onboardingComplete={data.onboardingComplete}
+          onRefresh={() => void loadHome()}
+        />
       </main>
 
       {/* Right Column */}

@@ -132,21 +132,30 @@ export default async function HistoryPage() {
     responseRating: v.responseRating ?? null,
   }));
 
-  const mapReport = (r: (typeof reportVoiceRows)[number]) => ({
-    id: r.id,
-    scanId: r.scanId!,
-    scanLabel: r.scanName?.trim() || "Report",
-    audioDataUri: r.audioDataUri ?? "",
-    createdAt: r.createdAt,
-    listened: r.patientListenedAt != null,
-  });
+  const mapReport = (r: (typeof reportVoiceRows)[number]) => {
+    const audio = r.audioDataUri?.trim() || null;
+    return {
+      id: r.id,
+      scanId: r.scanId!,
+      scanLabel: r.scanName?.trim() || "Report",
+      audioDataUri: audio,
+      createdAt: r.createdAt,
+      listened: r.patientListenedAt != null,
+    };
+  };
+
+  const hasAudio = <T extends { audioDataUri: string | null }>(
+    row: T
+  ): row is T & { audioDataUri: string } => Boolean(row.audioDataUri);
 
   const reportVoiceNotes = reportVoiceRows
     .filter((r) => r.patientArchivedAt == null)
-    .map(mapReport);
+    .map(mapReport)
+    .filter(hasAudio);
   const reportVoiceNotesArchived = reportVoiceRows
     .filter((r) => r.patientArchivedAt != null)
-    .map(mapReport);
+    .map(mapReport)
+    .filter(hasAudio);
 
   return (
     <div className="space-y-6">

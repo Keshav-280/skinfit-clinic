@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
+import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
+import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
 type Mode = "signin" | "register";
@@ -36,6 +38,18 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   const resetErrors = useCallback(() => setError(null), []);
+
+  useEffect(() => {
+    const oauthMessage = searchParams.get("oauth_message");
+    if (searchParams.get("oauth_error") && oauthMessage) {
+      setError(oauthMessage);
+      const qs = new URLSearchParams(searchParams.toString());
+      qs.delete("oauth_error");
+      qs.delete("oauth_message");
+      const next = qs.toString();
+      router.replace(next ? `/login?${next}` : "/login", { scroll: false });
+    }
+  }, [router, searchParams]);
 
   const switchMode = useCallback(
     (next: Mode) => {
@@ -175,7 +189,10 @@ export function LoginForm() {
           </div>
 
           {mode === "signin" ? (
-            <form onSubmit={onSubmitSignIn} className="space-y-5">
+            <>
+              <SocialLoginButtons disabled={loading} />
+              <OAuthLoginDivider />
+              <form onSubmit={onSubmitSignIn} className="space-y-5">
               {error && (
                 <div
                   role="alert"
@@ -248,8 +265,12 @@ export function LoginForm() {
                 {loading ? "Signing in…" : "Sign In"}
               </button>
             </form>
+            </>
           ) : (
-            <form onSubmit={onSubmitRegister} className="space-y-5">
+            <>
+              <SocialLoginButtons disabled={loading} />
+              <OAuthLoginDivider />
+              <form onSubmit={onSubmitRegister} className="space-y-5">
               {error && (
                 <div
                   role="alert"
@@ -421,6 +442,7 @@ export function LoginForm() {
                 {loading ? "Creating account…" : "Create account"}
               </button>
             </form>
+            </>
           )}
 
           <p className="mt-8 text-center text-sm text-slate-500">

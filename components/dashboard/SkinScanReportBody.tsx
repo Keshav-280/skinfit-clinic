@@ -53,14 +53,14 @@ const CLINICAL_ROWS: {
 const EIGHT_CLINICAL_DONUT_STYLE: Partial<
   Record<keyof ClinicalScores, { fill: string; track: string }>
 > = {
-  active_acne: { fill: "#dc2626", track: "rgba(220,38,38,0.2)" },
-  acne_scars: { fill: "#ea580c", track: "rgba(234,88,12,0.2)" },
-  skin_quality: { fill: T.peach, track: T.peachTrack },
-  wrinkle_severity: { fill: "#7c3aed", track: "rgba(124, 58, 237, 0.2)" },
-  sagging_volume: { fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
-  under_eye: { fill: "#5B8FD8", track: "rgba(91, 143, 216, 0.18)" },
-  hair_health: { fill: "#78716c", track: "rgba(120, 113, 108, 0.2)" },
-  pigmentation_model: { fill: "#d97706", track: "rgba(217, 119, 6, 0.2)" },
+  active_acne: { fill: T.navyDark, track: "rgba(30, 50, 100, 0.2)" },
+  acne_scars: { fill: T.navy, track: T.accentTrack },
+  skin_quality: { fill: T.accent, track: T.accentTrack },
+  wrinkle_severity: { fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
+  sagging_volume: { fill: "#4A6FA5", track: "rgba(74, 111, 165, 0.2)" },
+  under_eye: { fill: T.navyLight, track: "rgba(91, 123, 168, 0.18)" },
+  hair_health: { fill: "#6B8FC4", track: "rgba(107, 143, 196, 0.2)" },
+  pigmentation_model: { fill: "#5B7BA8", track: "rgba(91, 123, 168, 0.2)" },
 };
 
 function severityToClarityPercent(s: number) {
@@ -70,11 +70,11 @@ function severityToClarityPercent(s: number) {
 
 function regionMarkerColor(issue: string): string {
   const x = issue.toLowerCase();
-  if (x.includes("acne")) return "#dc2626";
-  if (x.includes("wrinkle")) return "#7c3aed";
-  if (x.includes("pigment")) return "#d97706";
-  if (x.includes("texture")) return T.navyMid;
-  return "#6b7280";
+  if (x.includes("acne")) return T.navyDark;
+  if (x.includes("wrinkle")) return T.navyMid;
+  if (x.includes("pigment")) return T.navyLight;
+  if (x.includes("texture")) return T.accent;
+  return T.navy;
 }
 
 function clinicalBar(score: number) {
@@ -130,6 +130,7 @@ function ReportFaceImage({
         className={`${className}${remote ? (loaded ? " opacity-100" : " opacity-0") : ""} transition-opacity duration-200`}
         crossOrigin={crossOrigin}
         onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
       />
     </div>
   );
@@ -612,8 +613,8 @@ export function SkinScanReportBody({
           `,
       }}
     >
-      {/* PDF §1: 2 + 3 face images | §2: details, progress, overview + YouTube links (no video thumbnails in PDF) */}
-      <div ref={reportRef} className="relative w-full">
+      {/* PDF: all sections stacked and scaled to one A4 page on download */}
+      <div ref={reportRef} data-pdf-root className="relative w-full">
       <div data-pdf-section className="relative w-full break-inside-avoid">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent"
@@ -718,7 +719,6 @@ export function SkinScanReportBody({
 
       <div
         data-pdf-section
-        data-pdf-page-break-before="true"
         className="relative w-full min-w-0 max-w-full break-inside-avoid overflow-x-clip px-5 pb-10 pt-6 sm:px-9 sm:pt-8"
       >
         <motion.div
@@ -1016,6 +1016,7 @@ export function SkinScanReportBody({
       </div>
 
       <div
+        data-pdf-section
         className="relative px-5 pb-10 pt-4 sm:px-9"
         style={{ backgroundColor: T.pageBg }}
       >
@@ -1026,6 +1027,19 @@ export function SkinScanReportBody({
         <h3 className="text-center text-[10px] font-bold uppercase tracking-[0.28em] text-[#2C3E6B]">
           {showTracker ? "Resource centre" : "Recommended videos"}
         </h3>
+        {!showTracker ? (
+          <ul
+            data-pdf-print-only
+            className="mx-auto mt-4 hidden max-w-md list-none space-y-2 rounded-xl border border-zinc-200/90 bg-white/85 px-4 py-3 text-[11px] text-zinc-600"
+          >
+            {RECOMMENDED_VIDEOS.map((v) => (
+              <li key={v.href}>
+                <span className="font-semibold text-zinc-900">{v.label}: </span>
+                <span className="break-all">{v.href}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {showTracker && tracker ? (
           <div className="mx-auto mt-6 grid max-w-5xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {tracker.resources.slice(0, 3).map((r) => (
@@ -1047,7 +1061,10 @@ export function SkinScanReportBody({
             ))}
           </div>
         ) : (
-          <div className="mx-auto mt-6 grid max-w-3xl grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-4 sm:gap-4">
+          <div
+            data-pdf-screen-only
+            className="mx-auto mt-6 grid max-w-3xl grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-4 sm:gap-4"
+          >
             {RECOMMENDED_VIDEOS.map((v, i) => (
               <Link
                 key={v.href}
@@ -1085,6 +1102,7 @@ export function SkinScanReportBody({
       </div>
 
       <div
+        data-pdf-screen-only
         className="relative px-5 pb-12 pt-2 sm:px-9"
         style={{ backgroundColor: T.pageBg }}
       >

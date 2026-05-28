@@ -264,7 +264,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * { box-sizing: border-box; }
-    @page { margin: 10mm; }
+    @page { margin: 5mm; size: A4 portrait; }
     body {
       margin: 0;
       padding: 0;
@@ -274,14 +274,18 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .sheet { max-width: 720px; margin: 0 auto; background: ${T.pageBg}; }
-    .avoid-break { page-break-inside: avoid; break-inside: avoid; }
-    .page-break-before { page-break-before: always; break-before: page; }
+    .sheet {
+      max-width: 720px;
+      margin: 0 auto;
+      background: ${T.pageBg};
+      padding-bottom: 4px;
+    }
+    .avoid-break { page-break-inside: auto; break-inside: auto; }
     .muted { text-align: center; color: #71717a; font-size: 14px; margin: 24px 0; }
 
     .sec1 {
       position: relative;
-      padding: 36px 20px 40px;
+      padding: 14px 12px 12px;
       border-radius: 22px;
       border: 1px solid rgba(255,255,255,0.65);
       box-shadow: 0 32px 64px -12px rgba(0,0,0,0.14), 0 12px 24px -8px rgba(0,0,0,0.08);
@@ -311,8 +315,8 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       background: #e4e4e7;
       border: 1px solid rgba(0,0,0,0.1);
     }
-    .cap-frame-lg { width: 100%; max-width: 200px; aspect-ratio: 3/4; }
-    .cap-frame-sm { width: 100%; max-width: 120px; aspect-ratio: 3/4; }
+    .cap-frame-lg { width: 100%; max-width: 140px; aspect-ratio: 3/4; }
+    .cap-frame-sm { width: 100%; max-width: 88px; aspect-ratio: 3/4; }
     .cap-frame img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
     .cap-row2 {
       display: table; width: 100%; max-width: 420px; margin: 16px auto 0; table-layout: fixed;
@@ -324,7 +328,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .cap-row3 .cap-fig { display: table-cell; width: 33.33%; text-align: center; vertical-align: top; padding: 0 4px; }
     .cap-fig figcaption { margin-top: 6px; font-size: 9px; font-weight: 500; line-height: 1.25; color: #52525b; }
 
-    .masks-wrap { margin-top: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
+    .masks-wrap { margin-top: 12px; max-width: 400px; margin-left: auto; margin-right: auto; }
     .masks-row { display: table; width: 100%; table-layout: fixed; }
     .mask-fig { display: table-cell; width: 50%; text-align: center; vertical-align: top; padding: 0 6px; }
     .mask-img {
@@ -343,7 +347,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .overlay-bullets li { margin: 2px 0; }
     .mask-meta { font-size: 9px; color: #71717a; }
 
-    .annot-wrap { margin-top: 36px; max-width: 320px; margin-left: auto; margin-right: auto; }
+    .annot-wrap { margin-top: 12px; max-width: 220px; margin-left: auto; margin-right: auto; }
     .annot-hint { text-align: center; font-size: 11px; line-height: 1.4; color: #52525b; margin: 8px 0 0; }
     .annot-frame {
       position: relative;
@@ -387,8 +391,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-    .sec2 { padding: 24px 20px 0; }
-    @media (min-width: 640px) { .sec2 { padding-left: 32px; padding-right: 32px; } }
+    .sec2 { padding: 10px 12px 0; }
     .kicker {
       font-size: 11px;
       font-weight: 500;
@@ -398,10 +401,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     h1 {
       font-family: Georgia, 'Times New Roman', serif;
-      font-size: 2rem;
+      font-size: 1.35rem;
       font-weight: 500;
       line-height: 1.15;
-      margin: 8px 0 0;
+      margin: 4px 0 0;
       color: #18181b;
     }
     .age-line {
@@ -411,9 +414,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       color: #52525b;
     }
     .body-copy {
-      margin-top: 20px;
-      font-size: 14px;
-      line-height: 1.7;
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.45;
       color: #52525b;
     }
     .md-grid {
@@ -449,7 +452,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .md-pct { font-size: 11px; font-weight: 600; color: #27272a; min-width: 32px; }
 
-    .clinical-block { margin-top: 28px; max-width: 36rem; margin-left: auto; margin-right: auto; }
+    .clinical-block { margin-top: 10px; max-width: 36rem; margin-left: auto; margin-right: auto; }
     .clinical-k { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #71717a; margin: 0; }
     .clinical-sub { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: #52525b; }
     .clinical-grid { margin-top: 14px; display: block; }
@@ -472,11 +475,11 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .cbar { margin-top: 6px; height: 8px; border-radius: 999px; background: rgba(228,228,231,0.95); overflow: hidden; }
     .cbar-fill { height: 100%; border-radius: 999px; background: #3f3f46; }
 
-    .skin-card-wrap { margin-top: 28px; padding-bottom: 8px; }
+    .skin-card-wrap { margin-top: 10px; padding-bottom: 4px; }
     .skin-card {
       max-width: 32rem;
       margin: 0 auto;
-      padding: 22px 22px;
+      padding: 12px 14px;
       background: #fff;
       border-radius: 20px;
       border: 1px solid #fff;
@@ -494,11 +497,11 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .skin-big {
       font-family: Georgia, 'Times New Roman', serif;
-      font-size: 2.75rem;
+      font-size: 2rem;
       font-weight: 500;
       line-height: 1;
       color: ${T.peach};
-      margin-top: 6px;
+      margin-top: 4px;
     }
     .skin-sub { margin-top: 8px; font-size: 12px; font-weight: 500; color: #71717a; }
     .donut-ring {
@@ -511,8 +514,8 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
 
     .teal {
-      margin-top: 40px;
-      padding: 40px 20px 44px;
+      margin-top: 12px;
+      padding: 14px 12px 16px;
       border-top: 1px solid rgba(44,62,107,0.12);
       background: linear-gradient(180deg, ${T.navy} 0%, ${T.navyMid} 100%);
     }
@@ -544,13 +547,13 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       margin: 0 0 14px;
     }
     .teal-p {
-      font-size: 14px;
-      line-height: 1.75;
+      font-size: 10px;
+      line-height: 1.5;
       color: rgba(255,255,255,0.9);
-      margin: 0 0 14px;
+      margin: 0 0 8px;
     }
 
-    .sec3 { padding: 24px 20px 32px; }
+    .sec3 { padding: 8px 12px 10px; }
     .vid-box {
       border-radius: 12px;
       border: 1px solid rgba(228,228,231,0.9);
@@ -564,9 +567,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .vid-href { word-break: break-all; color: #52525b; }
 
     .foot {
-      padding: 20px;
+      padding: 8px;
       text-align: center;
-      font-size: 10px;
+      font-size: 8px;
       letter-spacing: 0.15em;
       text-transform: uppercase;
       color: #71717a;
@@ -582,7 +585,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       ${annotatedBlock}
     </div>
 
-    <div class="sec2 page-break-before avoid-break">
+    <div class="sec2 avoid-break">
       <p class="kicker">AI scan report</p>
       <h1>Hello ${esc(p.userName)}</h1>
       ${displayTitle ? `<p class="age-line" style="margin-top:8px;font-weight:600;color:#3f3f46">${esc(displayTitle)}</p>` : ""}
@@ -627,7 +630,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       </div>
     </div>
 
-    <div class="sec3 page-break-before avoid-break">
+    <div class="sec3 avoid-break">
       <div class="vid-box">
         <p>Recommended videos</p>
         <ul>${videosHtml}</ul>

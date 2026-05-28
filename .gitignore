@@ -20,6 +20,13 @@
 # production
 /build
 
+# local object storage + ML weights
+/uploads/
+/models/checkpoints/
+/models/*.pth
+/models/*.pt
+/models/capture/*.onnx
+
 # misc
 .DS_Store
 *.pem
@@ -43,3 +50,10 @@ mobile/.env
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# documentation files
+/docs/
+*.docx
+*.pdf
+*.html
+

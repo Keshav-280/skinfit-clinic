@@ -16,10 +16,9 @@ import { SkinScanReportBodyNative } from "@/components/SkinScanReportBodyNative"
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { buildScanReportPdfPayload } from "@/lib/buildScanReportPdfPayload";
-import { resolveAuthenticatedScanImageSource } from "@/lib/resolveScanImage";
 import { shareScanReportPdf } from "@/lib/scanReportPdf";
+import { dismissUnreadReadyScan } from "@/lib/scanJobNotifications";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 
 type ScanDetail = {
@@ -57,6 +56,8 @@ type ScanDetail = {
   wrinkleMaskDataUri?: string;
   acneMaskDataUri?: string;
   spatialOutputs?: ScanSpatialOutputs;
+  /** Frozen at scan time in `scans.tracker_snapshot` — no LLM on reload. */
+  trackerReport?: PatientTrackerReport | null;
 };
 
 /** Always open the list — `router.back()` is wrong when this screen was opened from Scan (or elsewhere). */
@@ -74,6 +75,13 @@ export default function ScanDetailScreen() {
   const [trackerSettled, setTrackerSettled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+
+  useEffect(() => {
+    const scanId = Number(id);
+    if (Number.isFinite(scanId) && scanId > 0) {
+      void dismissUnreadReadyScan(scanId);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (!token || !id) {
@@ -98,16 +106,20 @@ export default function ScanDetailScreen() {
         );
         if (!alive) return;
         setRow(json);
-        try {
-          const tr = await apiJson<PatientTrackerReport>(
-            `/api/patient/tracker?scanId=${encodeURIComponent(id)}`,
-            token,
-            { method: "GET" }
-          );
-          if (!alive) return;
-          setTracker(tr);
-        } catch {
-          if (alive) setTracker(null);
+        if (json.trackerReport) {
+          setTracker(json.trackerReport);
+        } else {
+          try {
+            const tr = await apiJson<PatientTrackerReport>(
+              `/api/patient/tracker?scanId=${encodeURIComponent(id)}`,
+              token,
+              { method: "GET" }
+            );
+            if (!alive) return;
+            setTracker(tr);
+          } catch {
+            if (alive) setTracker(null);
+          }
         }
       } catch (e) {
         if (alive) {
@@ -230,10 +242,6 @@ export default function ScanDetailScreen() {
         imageUrl={row.imageUrl}
         authToken={token}
         faceCaptureGallery={row.faceCaptureGallery}
-        imageSource={resolveAuthenticatedScanImageSource(
-          patientScanImageDisplayUrl(row.imageUrl),
-          token
-        )}
         annotatedOverlayUri={row.annotatedImageUrl}
         wrinkleMaskUri={row.wrinkleMaskDataUri}
         acneMaskUri={row.acneMaskDataUri}

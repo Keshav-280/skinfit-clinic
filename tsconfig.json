@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@skinfit/shared": ["./services/shared/src/index.ts"],
+      "@skinfit/shared/*": ["./services/shared/src/*"]
     }
   },
   "include": [
@@ -30,5 +32,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "mobile"]
+  "exclude": [
+    "node_modules",
+    "mobile",
+    "apps/ml-worker",
+    "apps/ml-inference",
+    "src/scripts"
+  ]
 }

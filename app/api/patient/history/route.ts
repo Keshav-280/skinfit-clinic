@@ -11,7 +11,6 @@ import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { displayUserPhone } from "@/src/lib/auth/phone";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
-
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
   if (!userId) {
