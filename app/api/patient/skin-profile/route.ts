@@ -16,6 +16,7 @@ import {
   buildProfileKeyObservationsLlm,
   buildProfilePriorityKnowDoLlm,
 } from "@/src/lib/profileRagInsights";
+import { CacheKeys, cacheAside } from "@/src/lib/infra";
 
 function dummyScoreFor(scanId: number, key: string) {
   let seed = scanId * 131;
@@ -29,48 +30,49 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const [user, dna, visits, insightCtx] = await Promise.all([
-    db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        skinType: true,
-        primaryConcern: true,
-        skinSensitivity: true,
-        baselineSunExposure: true,
-        fitzpatrick: true,
-        primaryGoal: true,
-      },
-    }),
-    db.query.skinDnaCards.findFirst({
-      where: eq(skinDnaCards.userId, userId),
-    }),
-    db.query.visitNotes.findMany({
-      where: eq(visitNotes.userId, userId),
-      orderBy: [desc(visitNotes.visitDate)],
-      limit: 12,
-    }),
-    gatherProfileInsightContext(userId),
-  ]);
+  const payload = await cacheAside(CacheKeys.skinProfile(userId), 600, async () => {
+    const [user, dna, visits, insightCtx] = await Promise.all([
+      db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: {
+          skinType: true,
+          primaryConcern: true,
+          skinSensitivity: true,
+          baselineSunExposure: true,
+          fitzpatrick: true,
+          primaryGoal: true,
+        },
+      }),
+      db.query.skinDnaCards.findFirst({
+        where: eq(skinDnaCards.userId, userId),
+      }),
+      db.query.visitNotes.findMany({
+        where: eq(visitNotes.userId, userId),
+        orderBy: [desc(visitNotes.visitDate)],
+        limit: 12,
+      }),
+      gatherProfileInsightContext(userId),
+    ]);
 
-  const [keyObservations, priorityKnowDo] = await Promise.all([
-    buildProfileKeyObservationsLlm(userId, insightCtx),
-    buildProfilePriorityKnowDoLlm(userId, insightCtx),
-  ]);
+    const [keyObservations, priorityKnowDo] = await Promise.all([
+      buildProfileKeyObservationsLlm(userId, insightCtx),
+      buildProfilePriorityKnowDoLlm(userId, insightCtx),
+    ]);
 
-  const recentScans = await db
-    .select({
-      id: scans.id,
-      createdAt: scans.createdAt,
-      overallScore: scans.overallScore,
-      scores: scans.scores,
-      acne: scans.acne,
-      pigmentation: scans.pigmentation,
-      wrinkles: scans.wrinkles,
-    })
-    .from(scans)
-    .where(eq(scans.userId, userId))
-    .orderBy(desc(scans.createdAt))
-    .limit(4);
+    const recentScans = await db
+      .select({
+        id: scans.id,
+        createdAt: scans.createdAt,
+        overallScore: scans.overallScore,
+        scores: scans.scores,
+        acne: scans.acne,
+        pigmentation: scans.pigmentation,
+        wrinkles: scans.wrinkles,
+      })
+      .from(scans)
+      .where(eq(scans.userId, userId))
+      .orderBy(desc(scans.createdAt))
+      .limit(4);
 
   const sparklines: Record<
     string,
@@ -97,46 +99,49 @@ export async function GET(request: Request) {
     sparklines[key] = { values, sources };
   }
 
-  const questionnaireLocked = !userHasQuestionnaire(user?.primaryConcern);
+    const questionnaireLocked = !userHasQuestionnaire(user?.primaryConcern);
 
-  const insightsUnavailable =
-    keyObservations.llmUnavailable || priorityKnowDo.llmUnavailable;
+    const insightsUnavailable =
+      keyObservations.llmUnavailable || priorityKnowDo.llmUnavailable;
 
-  return NextResponse.json({
-    questionnaireLocked,
-    skinDna: {
-      skinType: dna?.skinType ?? user?.skinType ?? null,
-      primaryConcern: dna?.primaryConcern ?? user?.primaryConcern ?? null,
-      sensitivityIndex: dna?.sensitivityIndex ?? null,
-      uvSensitivity: dna?.uvSensitivity ?? user?.baselineSunExposure ?? null,
-      hormonalCorrelation: dna?.hormonalCorrelation ?? null,
-    },
-    lastWeekObservations: keyObservations.narrativeText,
-    keyObservations,
-    priorityKnowDo: {
-      know: priorityKnowDo.know,
-      do: priorityKnowDo.do,
-    },
-    insightsSource: "llm_rag" as const,
-    insightsUnavailable,
-    sparklines,
-    paramLabels: Object.fromEntries(
-      RAG_KAI_PARAM_KEYS.map((k) => [k, RAG_KAI_PARAM_LABELS[k]])
-    ),
-    visits: visits.map((v) => ({
-      id: v.id,
-      visitDate: v.visitDate.toISOString().slice(0, 10),
-      doctorName: v.doctorName,
-      purpose: v.purpose,
-      treatments: v.treatments,
-      preAdvice: v.preAdvice,
-      postAdvice: v.postAdvice,
-      notes: v.notes,
-      prescription: v.prescription,
-      responseRating: v.responseRating,
-      attachments: v.attachments ?? [],
-      beforeImageIds: v.beforeImageIds ?? [],
-      afterImageIds: v.afterImageIds ?? [],
-    })),
+    return {
+      questionnaireLocked,
+      skinDna: {
+        skinType: dna?.skinType ?? user?.skinType ?? null,
+        primaryConcern: dna?.primaryConcern ?? user?.primaryConcern ?? null,
+        sensitivityIndex: dna?.sensitivityIndex ?? null,
+        uvSensitivity: dna?.uvSensitivity ?? user?.baselineSunExposure ?? null,
+        hormonalCorrelation: dna?.hormonalCorrelation ?? null,
+      },
+      lastWeekObservations: keyObservations.narrativeText,
+      keyObservations,
+      priorityKnowDo: {
+        know: priorityKnowDo.know,
+        do: priorityKnowDo.do,
+      },
+      insightsSource: "llm_rag" as const,
+      insightsUnavailable,
+      sparklines,
+      paramLabels: Object.fromEntries(
+        RAG_KAI_PARAM_KEYS.map((k) => [k, RAG_KAI_PARAM_LABELS[k]])
+      ),
+      visits: visits.map((v) => ({
+        id: v.id,
+        visitDate: v.visitDate.toISOString().slice(0, 10),
+        doctorName: v.doctorName,
+        purpose: v.purpose,
+        treatments: v.treatments,
+        preAdvice: v.preAdvice,
+        postAdvice: v.postAdvice,
+        notes: v.notes,
+        prescription: v.prescription,
+        responseRating: v.responseRating,
+        attachments: v.attachments ?? [],
+        beforeImageIds: v.beforeImageIds ?? [],
+        afterImageIds: v.afterImageIds ?? [],
+      })),
+    };
   });
+
+  return NextResponse.json(payload);
 }

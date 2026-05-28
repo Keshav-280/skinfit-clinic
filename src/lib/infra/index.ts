@@ -16,6 +16,10 @@ export {
   CacheKeys,
   invalidateUserProfileCache,
   invalidateUserHomeCache,
+  invalidateUserHistoryCache,
+  invalidateUserScanCache,
+  invalidateUserScanDerivedCaches,
+  invalidateUserInsightsCache,
 } from "../../../services/shared/src/cache/index";
 export {
   getScanAnalysisQueue,

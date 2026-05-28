@@ -11,7 +11,7 @@ import {
   ymdFromDateOnly,
 } from "@/src/lib/date-only";
 import { normalizeSleepQuality } from "@/src/lib/sleepQuality";
-import { invalidateUserHomeCache } from "@/src/lib/infra";
+import { invalidateUserHomeCache, invalidateUserInsightsCache } from "@/src/lib/infra";
 
 async function routineLensForUser(
   userId: string
@@ -271,6 +271,7 @@ export async function POST(req: Request) {
       pmLen
     );
     await invalidateUserHomeCache(userId);
+    await invalidateUserInsightsCache(userId);
   }
 
   return NextResponse.json({
@@ -356,6 +357,7 @@ export async function PATCH(req: Request) {
         pmLen
       );
       await invalidateUserHomeCache(userId);
+      await invalidateUserInsightsCache(userId);
     }
     return NextResponse.json({
       ok: true,
@@ -391,6 +393,7 @@ export async function PATCH(req: Request) {
       pmLen
     );
     await invalidateUserHomeCache(userId);
+    await invalidateUserInsightsCache(userId);
   }
 
   return NextResponse.json({

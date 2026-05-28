@@ -5,6 +5,7 @@ import { monthlyReports, users } from "@/src/db/schema";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { dateOnlyFromYmd, localCalendarYmd } from "@/src/lib/date-only";
+import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import type { MonthlyRagCronPayloadV1 } from "@/src/lib/ragCronMonthlyPayload";
 
 function nextMonthlyCronAtUtcIso(now = new Date()) {
@@ -29,44 +30,51 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const [userRow] = await db
-    .select({ primaryConcern: users.primaryConcern })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  const questionnaireLocked = !userHasQuestionnaire(userRow?.primaryConcern);
+  const payload = await cacheAside(CacheKeys.monthlyInsight(userId), 900, async () => {
+    const [userRow] = await db
+      .select({ primaryConcern: users.primaryConcern })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const questionnaireLocked = !userHasQuestionnaire(userRow?.primaryConcern);
 
-  const monthStartStr = `${localCalendarYmd().slice(0, 7)}-01`;
-  const monthStart = dateOnlyFromYmd(monthStartStr);
+    const monthStartStr = `${localCalendarYmd().slice(0, 7)}-01`;
+    const monthStart = dateOnlyFromYmd(monthStartStr);
 
-  const [currentMonthRow] = await db
-    .select()
-    .from(monthlyReports)
-    .where(
-      and(eq(monthlyReports.userId, userId), eq(monthlyReports.monthStart, monthStart))
-    )
-    .orderBy(desc(monthlyReports.createdAt))
-    .limit(1);
+    const [currentMonthRow] = await db
+      .select()
+      .from(monthlyReports)
+      .where(
+        and(
+          eq(monthlyReports.userId, userId),
+          eq(monthlyReports.monthStart, monthStart)
+        )
+      )
+      .orderBy(desc(monthlyReports.createdAt))
+      .limit(1);
 
-  const [latestRow] = await db
-    .select()
-    .from(monthlyReports)
-    .where(eq(monthlyReports.userId, userId))
-    .orderBy(desc(monthlyReports.monthStart), desc(monthlyReports.createdAt))
-    .limit(1);
+    const [latestRow] = await db
+      .select()
+      .from(monthlyReports)
+      .where(eq(monthlyReports.userId, userId))
+      .orderBy(desc(monthlyReports.monthStart), desc(monthlyReports.createdAt))
+      .limit(1);
 
-  const row = currentMonthRow ?? latestRow ?? null;
-  const ragPayload = isRagPayloadV1(row?.payloadJson) ? row.payloadJson : null;
+    const row = currentMonthRow ?? latestRow ?? null;
+    const ragPayload = isRagPayloadV1(row?.payloadJson) ? row.payloadJson : null;
 
-  const nextInsightAtIso = nextMonthlyCronAtUtcIso();
-  const locked = questionnaireLocked || !ragPayload;
+    const nextInsightAtIso = nextMonthlyCronAtUtcIso();
+    const locked = questionnaireLocked || !ragPayload;
 
-  return NextResponse.json({
-    questionnaireLocked,
-    locked,
-    nextInsightAt: nextInsightAtIso,
-    latestMonthStart: row ? row.monthStart.toISOString().slice(0, 10) : null,
-    monthly: ragPayload?.monthly ?? null,
+    return {
+      questionnaireLocked,
+      locked,
+      nextInsightAt: nextInsightAtIso,
+      latestMonthStart: row ? row.monthStart.toISOString().slice(0, 10) : null,
+      monthly: ragPayload?.monthly ?? null,
+    };
   });
+
+  return NextResponse.json(payload);
 }
 

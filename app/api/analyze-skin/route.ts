@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "../../../src/db";
 import { scans, users } from "../../../src/db/schema";
+import {
+  invalidateUserHomeCache,
+  invalidateUserInsightsCache,
+  invalidateUserScanDerivedCaches,
+} from "../../../src/lib/infra";
 import { runRoboflowSkinAnalysis } from "../../../src/lib/roboflowSkinAnalysis";
 
 /**
@@ -59,6 +64,12 @@ export async function POST(req: Request) {
         annotations,
       })
       .returning();
+
+    await Promise.all([
+      invalidateUserHomeCache(user.id),
+      invalidateUserScanDerivedCaches(user.id),
+      invalidateUserInsightsCache(user.id),
+    ]);
 
     return NextResponse.json({
       success: true,

@@ -10,6 +10,7 @@ import {
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { displayUserPhone } from "@/src/lib/auth/phone";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
+import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
@@ -17,87 +18,88 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: {
-      id: true,
-      name: true,
-      email: true,
-      phoneCountryCode: true,
-      phone: true,
-      age: true,
-      skinType: true,
-      primaryGoal: true,
-    },
-  });
-  if (!user) {
-    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  }
-
-  const patient = {
-    name: user.name,
-    email: user.email,
-    phone: displayUserPhone(user.phoneCountryCode, user.phone),
-    age: user.age,
-    skinType: user.skinType,
-    primaryGoal: user.primaryGoal,
-  };
-
-  const [scansList, visitsList, reportVoiceRows] = await Promise.all([
-    db.query.scans.findMany({
-      where: eq(scans.userId, user.id),
+  const payload = await cacheAside(CacheKeys.history(userId), 300, async () => {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
       columns: {
         id: true,
-        scanName: true,
-        overallScore: true,
-        acne: true,
-        pigmentation: true,
-        wrinkles: true,
-        hydration: true,
-        texture: true,
-        scores: true,
-        createdAt: true,
-        aiSummary: true,
+        name: true,
+        email: true,
+        phoneCountryCode: true,
+        phone: true,
+        age: true,
+        skinType: true,
+        primaryGoal: true,
       },
-      orderBy: [desc(scans.createdAt)],
-    }),
-    db.query.visitNotes.findMany({
-      where: eq(visitNotes.userId, user.id),
-      columns: {
-        id: true,
-        visitDate: true,
-        doctorName: true,
-        notes: true,
-        attachments: true,
-        purpose: true,
-        treatments: true,
-        preAdvice: true,
-        postAdvice: true,
-        prescription: true,
-        responseRating: true,
-      },
-      orderBy: [desc(visitNotes.visitDate)],
-    }),
-    db
-      .select({
-        id: doctorFeedbackVoiceNotes.id,
-        scanId: doctorFeedbackVoiceNotes.scanId,
-        scanName: scans.scanName,
-        audioDataUri: doctorFeedbackVoiceNotes.audioDataUri,
-        createdAt: doctorFeedbackVoiceNotes.createdAt,
-        patientListenedAt: doctorFeedbackVoiceNotes.patientListenedAt,
-        patientArchivedAt: doctorFeedbackVoiceNotes.patientArchivedAt,
-      })
-      .from(doctorFeedbackVoiceNotes)
-      .innerJoin(scans, eq(doctorFeedbackVoiceNotes.scanId, scans.id))
-      .where(
-        and(
-          eq(doctorFeedbackVoiceNotes.userId, user.id),
-          eq(scans.userId, user.id)
+    });
+    if (!user) {
+      throw new Error("NOT_FOUND");
+    }
+
+    const patient = {
+      name: user.name,
+      email: user.email,
+      phone: displayUserPhone(user.phoneCountryCode, user.phone),
+      age: user.age,
+      skinType: user.skinType,
+      primaryGoal: user.primaryGoal,
+    };
+
+    const [scansList, visitsList, reportVoiceRows] = await Promise.all([
+      db.query.scans.findMany({
+        where: eq(scans.userId, user.id),
+        columns: {
+          id: true,
+          scanName: true,
+          overallScore: true,
+          acne: true,
+          pigmentation: true,
+          wrinkles: true,
+          hydration: true,
+          texture: true,
+          scores: true,
+          createdAt: true,
+          aiSummary: true,
+        },
+        orderBy: [desc(scans.createdAt)],
+      }),
+      db.query.visitNotes.findMany({
+        where: eq(visitNotes.userId, user.id),
+        columns: {
+          id: true,
+          visitDate: true,
+          doctorName: true,
+          notes: true,
+          attachments: true,
+          purpose: true,
+          treatments: true,
+          preAdvice: true,
+          postAdvice: true,
+          prescription: true,
+          responseRating: true,
+        },
+        orderBy: [desc(visitNotes.visitDate)],
+      }),
+      db
+        .select({
+          id: doctorFeedbackVoiceNotes.id,
+          scanId: doctorFeedbackVoiceNotes.scanId,
+          scanName: scans.scanName,
+          audioDataUri: doctorFeedbackVoiceNotes.audioDataUri,
+          createdAt: doctorFeedbackVoiceNotes.createdAt,
+          patientListenedAt: doctorFeedbackVoiceNotes.patientListenedAt,
+          patientArchivedAt: doctorFeedbackVoiceNotes.patientArchivedAt,
+        })
+        .from(doctorFeedbackVoiceNotes)
+        .innerJoin(scans, eq(doctorFeedbackVoiceNotes.scanId, scans.id))
+        .where(
+          and(
+            eq(doctorFeedbackVoiceNotes.userId, user.id),
+            eq(scans.userId, user.id)
+          )
         )
-      )
-      .orderBy(desc(doctorFeedbackVoiceNotes.createdAt)),
-  ]);
+        .orderBy(desc(doctorFeedbackVoiceNotes.createdAt)),
+    ]);
 
   const scanRecords = scansList.map((s) => {
     const analysisResults: Record<string, unknown> = {
@@ -149,11 +151,21 @@ export async function GET(request: Request) {
     .filter((r) => r.patientArchivedAt != null)
     .map(mapReport);
 
-  return NextResponse.json({
-    patient,
-    scans: scanRecords,
-    visitNotes: visitRecords,
-    reportVoiceNotes,
-    reportVoiceNotesArchived,
+    return {
+      patient,
+      scans: scanRecords,
+      visitNotes: visitRecords,
+      reportVoiceNotes,
+      reportVoiceNotesArchived,
+    };
+  }).catch((err: unknown) => {
+    if (err instanceof Error && err.message === "NOT_FOUND") return null;
+    throw err;
   });
+
+  if (!payload) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+
+  return NextResponse.json(payload);
 }

@@ -16,17 +16,20 @@ import {
   insertParameterScoresForScan,
 } from "@/src/lib/insertParameterScores";
 import {
-  buildLegacyMetricsFromModel,
   buildScanPayloadFromAnalyzeV1,
   buildScanPayloadFromAnalyzeV2,
   buildScanPayloadFromCentreAndSmiling,
-  clinicalScoresFromModel,
   modelEightClarityScores,
   parseModelFeatureScores,
 } from "@/src/lib/modelClinicalMetrics";
 import { getStorage } from "@/src/lib/infra";
 import { logger } from "@/src/lib/infra";
 import { publishNotification } from "@/src/lib/infra";
+import {
+  invalidateUserHomeCache,
+  invalidateUserInsightsCache,
+  invalidateUserScanDerivedCaches,
+} from "@/src/lib/infra";
 import { notifyPatientScanReportReady } from "@/src/lib/expoPush";
 import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
@@ -280,6 +283,12 @@ export async function processScanJob(
     scanId: inserted?.id,
     jobId,
   });
+
+  await Promise.all([
+    invalidateUserHomeCache(payload.userId),
+    invalidateUserScanDerivedCaches(payload.userId),
+    invalidateUserInsightsCache(payload.userId),
+  ]);
 
   if (inserted?.id) {
     void notifyPatientScanReportReady(

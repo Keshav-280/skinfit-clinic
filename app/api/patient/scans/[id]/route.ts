@@ -13,6 +13,7 @@ import {
 import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
+import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 
@@ -84,76 +85,91 @@ export async function GET(
     return NextResponse.json({ error: "INVALID_ID" }, { status: 400 });
   }
 
-  const [user, row] = await Promise.all([
-    db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { name: true, email: true, age: true, skinType: true },
-    }),
-    loadScanRow(userId, id),
-  ]);
+  const payload = await cacheAside(
+    CacheKeys.scan(userId, id),
+    900,
+    async () => {
+      const [user, row] = await Promise.all([
+        db.query.users.findFirst({
+          where: eq(users.id, userId),
+          columns: { name: true, email: true, age: true, skinType: true },
+        }),
+        loadScanRow(userId, id),
+      ]);
 
-  if (!user || !row) {
+      if (!user || !row) {
+        throw new Error("NOT_FOUND");
+      }
+
+      const storedSnapshot =
+        "trackerSnapshot" in row
+          ? (row.trackerSnapshot as PatientTrackerReport | null | undefined)
+          : null;
+      const trackerReport = await loadScanTrackerReport(
+        userId,
+        row.id,
+        storedSnapshot ?? null
+      );
+
+      const regions = parseScanRegions(row.annotations);
+      const clinical_scores = parseClinicalScores(row.scores);
+      const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
+      const wrinkleMaskRef = parseScanWrinkleMaskDataUri(row.scores);
+      const acneMaskRef = parseScanAcneMaskDataUri(row.scores);
+      const spatialOutputs = parseScanSpatialOutputs(row.scores);
+      const kaiParams =
+        row.scores &&
+        typeof row.scores === "object" &&
+        (row.scores as Record<string, unknown>).kaiParams &&
+        typeof (row.scores as Record<string, unknown>).kaiParams === "object"
+          ? ((row.scores as Record<string, unknown>).kaiParams as Record<
+              string,
+              unknown
+            >)
+          : undefined;
+
+      const faceCaptureGallery = buildFaceCaptureGallery(
+        row.id,
+        row.faceCaptureImages ?? undefined
+      );
+
+      return {
+        scanId: row.id,
+        userName: user.name?.trim() || "there",
+        userEmail: user.email?.trim() ?? null,
+        userAge: user.age ?? 18,
+        userSkinType: user.skinType?.trim() || "—",
+        scanTitle: row.scanName,
+        imageUrl: patientScanImagePath(row.id),
+        faceCaptureGallery,
+        regions,
+        metrics: {
+          acne: row.acne,
+          hydration: row.hydration,
+          wrinkles: row.wrinkles,
+          overall_score: row.overallScore,
+          pigmentation: row.pigmentation,
+          texture: row.texture,
+          ...(clinical_scores ? { clinical_scores } : {}),
+        },
+        aiSummary: row.aiSummary,
+        scanDateIso: row.createdAt.toISOString(),
+        ...(annotatedImageUrl ? { annotatedImageUrl } : {}),
+        ...(wrinkleMaskRef ? { wrinkleMaskDataUri: wrinkleMaskRef } : {}),
+        ...(acneMaskRef ? { acneMaskDataUri: acneMaskRef } : {}),
+        ...(spatialOutputs ? { spatialOutputs } : {}),
+        ...(kaiParams ? { kaiParams } : {}),
+        trackerReport,
+      };
+    }
+  ).catch((err: unknown) => {
+    if (err instanceof Error && err.message === "NOT_FOUND") return null;
+    throw err;
+  });
+
+  if (!payload) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  const storedSnapshot =
-    "trackerSnapshot" in row
-      ? (row.trackerSnapshot as PatientTrackerReport | null | undefined)
-      : null;
-  const trackerReport = await loadScanTrackerReport(
-    userId,
-    row.id,
-    storedSnapshot ?? null
-  );
-
-  const regions = parseScanRegions(row.annotations);
-  const clinical_scores = parseClinicalScores(row.scores);
-  const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
-  const wrinkleMaskRef = parseScanWrinkleMaskDataUri(row.scores);
-  const acneMaskRef = parseScanAcneMaskDataUri(row.scores);
-  const spatialOutputs = parseScanSpatialOutputs(row.scores);
-  const kaiParams =
-    row.scores &&
-    typeof row.scores === "object" &&
-    (row.scores as Record<string, unknown>).kaiParams &&
-    typeof (row.scores as Record<string, unknown>).kaiParams === "object"
-      ? ((row.scores as Record<string, unknown>).kaiParams as Record<
-          string,
-          unknown
-        >)
-      : undefined;
-
-  const faceCaptureGallery = buildFaceCaptureGallery(
-    row.id,
-    row.faceCaptureImages ?? undefined
-  );
-
-  return NextResponse.json({
-    scanId: row.id,
-    userName: user.name?.trim() || "there",
-    userEmail: user.email?.trim() ?? null,
-    userAge: user.age ?? 18,
-    userSkinType: user.skinType?.trim() || "—",
-    scanTitle: row.scanName,
-    imageUrl: patientScanImagePath(row.id),
-    faceCaptureGallery,
-    regions,
-    metrics: {
-      acne: row.acne,
-      hydration: row.hydration,
-      wrinkles: row.wrinkles,
-      overall_score: row.overallScore,
-      pigmentation: row.pigmentation,
-      texture: row.texture,
-      ...(clinical_scores ? { clinical_scores } : {}),
-    },
-    aiSummary: row.aiSummary,
-    scanDateIso: row.createdAt.toISOString(),
-    ...(annotatedImageUrl ? { annotatedImageUrl } : {}),
-    ...(wrinkleMaskRef ? { wrinkleMaskDataUri: wrinkleMaskRef } : {}),
-    ...(acneMaskRef ? { acneMaskDataUri: acneMaskRef } : {}),
-    ...(spatialOutputs ? { spatialOutputs } : {}),
-    ...(kaiParams ? { kaiParams } : {}),
-    trackerReport,
-  });
+  return NextResponse.json(payload);
 }

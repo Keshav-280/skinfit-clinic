@@ -15,6 +15,7 @@ import {
   type VisitNoteAttachment,
 } from "@/src/lib/visitNoteAttachments";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
+import { invalidateUserHistoryCache, invalidateUserInsightsCache } from "@/src/lib/infra";
 
 export async function POST(
   req: Request,
@@ -76,7 +77,10 @@ export async function POST(
   const postAdvice = typeof b.postAdvice === "string" ? b.postAdvice.trim().slice(0, 2000) || null : null;
   const prescription = typeof b.prescription === "string" ? b.prescription.trim().slice(0, 2000) || null : null;
   const validRatings = ["excellent", "good", "moderate", "poor"] as const;
-  const responseRating = typeof b.responseRating === "string" && validRatings.includes(b.responseRating as any)
+  const isValidRating =
+    typeof b.responseRating === "string" &&
+    (validRatings as readonly string[]).includes(b.responseRating);
+  const responseRating = isValidRating
     ? (b.responseRating as (typeof validRatings)[number])
     : null;
 
@@ -141,6 +145,11 @@ export async function POST(
   if (!row) {
     return NextResponse.json({ error: "INSERT_FAILED" }, { status: 500 });
   }
+
+  await Promise.all([
+    invalidateUserHistoryCache(patientId),
+    invalidateUserInsightsCache(patientId),
+  ]);
 
   const notePreview = row.notes.trim().replace(/\s+/g, " ").slice(0, 220);
   const noteMsg =

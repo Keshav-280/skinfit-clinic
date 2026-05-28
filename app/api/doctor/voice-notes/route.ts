@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { doctorFeedbackVoiceNotes, users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import { notifyPatientDoctorVoiceNote } from "@/src/lib/expoPush";
+import { invalidateUserHistoryCache } from "@/src/lib/infra";
 
 const MAX_AUDIO_URI_LEN = 1_800_000;
 
@@ -104,6 +105,8 @@ export async function POST(req: Request) {
         id: doctorFeedbackVoiceNotes.id,
         createdAt: doctorFeedbackVoiceNotes.createdAt,
       });
+
+    await invalidateUserHistoryCache(patientId);
 
     void notifyPatientDoctorVoiceNote(patientId, {
       attachedToReport: scanId != null,

@@ -30,7 +30,9 @@ import {
   cacheAside,
   CacheKeys,
   invalidateUserHomeCache,
+  invalidateUserInsightsCache,
   invalidateUserProfileCache,
+  invalidateUserScanDerivedCaches,
 } from "@/src/lib/infra";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -409,6 +411,8 @@ export async function PATCH(req: Request) {
 
   await invalidateUserProfileCache(userId);
   await invalidateUserHomeCache(userId);
+  await invalidateUserScanDerivedCaches(userId);
+  await invalidateUserInsightsCache(userId);
 
   const nativeClient = req.headers.get("x-skinfit-client") === "native";
   return NextResponse.json({

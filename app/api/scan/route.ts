@@ -33,6 +33,11 @@ import {
   modelEightClarityScores,
   parseModelFeatureScores,
 } from "../../../src/lib/modelClinicalMetrics";
+import {
+  invalidateUserHomeCache,
+  invalidateUserInsightsCache,
+  invalidateUserScanDerivedCaches,
+} from "../../../src/lib/infra";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -571,6 +576,12 @@ export async function POST(request: NextRequest) {
       skinScore: metrics.overall_score,
       analysisResults,
     });
+
+    await Promise.all([
+      invalidateUserHomeCache(user.id),
+      invalidateUserScanDerivedCaches(user.id),
+      invalidateUserInsightsCache(user.id),
+    ]);
 
     return NextResponse.json({
       success: true,

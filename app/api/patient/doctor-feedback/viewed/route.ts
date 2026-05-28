@@ -3,6 +3,7 @@ import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/src/db";
 import { doctorFeedbackVoiceNotes } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { invalidateUserHistoryCache } from "@/src/lib/infra";
 
 type Scope = "dashboard" | "report" | "all";
 
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
         and(...listenedWhere, isNotNull(doctorFeedbackVoiceNotes.scanId))
       );
   }
+
+  await invalidateUserHistoryCache(userId);
 
   return NextResponse.json({ ok: true });
 }
