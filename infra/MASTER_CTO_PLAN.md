@@ -141,7 +141,8 @@ Until then: keep using local Redis for dev; production ECS will need ElastiCache
 
 - [ ] Route 53 or Cloudflare DNS → ALB
 - [ ] ACM certificate on ALB (HTTPS)
-- [ ] CloudWatch logs; Sentry optional
+- [ ] CloudWatch alarms + Sentry
+- [ ] Monitoring runbook: [`MONITORING_SECURITY.md`](./MONITORING_SECURITY.md)
 
 ### Phase 6 — Deferred (your choice)
 
