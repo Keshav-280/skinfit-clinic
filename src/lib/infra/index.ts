@@ -5,12 +5,17 @@
 
 export {
   getStorage,
+  createPresignedUpload,
+  assertSafeStoragePath,
   type StorageProvider,
+  type PresignedUpload,
 } from "../../../services/shared/src/storage/index";
 export {
   getCache,
   cacheAside,
   CacheKeys,
+  invalidateUserProfileCache,
+  invalidateUserHomeCache,
 } from "../../../services/shared/src/cache/index";
 export {
   getScanAnalysisQueue,

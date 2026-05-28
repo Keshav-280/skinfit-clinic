@@ -39,11 +39,16 @@ function createR2Client(config: R2Config): S3Client {
   return new S3Client({
     region: "auto",
     endpoint: config.endpoint,
+    forcePathStyle: true,
     credentials: {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
     },
   });
+}
+
+export function createR2ClientFromEnv(): S3Client {
+  return createR2Client(getR2ConfigFromEnv());
 }
 
 async function bodyToBuffer(body: unknown): Promise<Buffer> {

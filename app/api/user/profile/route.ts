@@ -26,6 +26,12 @@ import {
   isValidHm,
   normalizeIanaTimeZone,
 } from "@/src/lib/timeZoneWallClock";
+import {
+  cacheAside,
+  CacheKeys,
+  invalidateUserHomeCache,
+  invalidateUserProfileCache,
+} from "@/src/lib/infra";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
@@ -35,15 +41,18 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
-  const access = await getOnboardingAccessForUser(user.id);
-  return NextResponse.json({
-    user: {
-      ...user,
-      hasQuestionnaire: access.hasQuestionnaire,
-      canAccessDashboard: access.canAccessDashboard,
-      hasBaselineScan: access.hasBaselineScan,
-    },
+  const body = await cacheAside(CacheKeys.profile(user.id), 300, async () => {
+    const access = await getOnboardingAccessForUser(user.id);
+    return {
+      user: {
+        ...user,
+        hasQuestionnaire: access.hasQuestionnaire,
+        canAccessDashboard: access.canAccessDashboard,
+        hasBaselineScan: access.hasBaselineScan,
+      },
+    };
   });
+  return NextResponse.json(body);
 }
 
 export async function PATCH(req: Request) {
@@ -397,6 +406,9 @@ export async function PATCH(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
+
+  await invalidateUserProfileCache(userId);
+  await invalidateUserHomeCache(userId);
 
   const nativeClient = req.headers.get("x-skinfit-client") === "native";
   return NextResponse.json({

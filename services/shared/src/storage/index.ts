@@ -18,3 +18,8 @@ export function getStorage(): StorageProvider {
 export type { StorageProvider } from "./types";
 export { LocalStorageProvider } from "./local";
 export { R2StorageProvider } from "./r2";
+export {
+  createPresignedUpload,
+  assertSafeStoragePath,
+  type PresignedUpload,
+} from "./presign";

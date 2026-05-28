@@ -392,6 +392,15 @@ Resources:
         - !Ref PrivateSubnet2
       CacheSubnetGroupName: skinfit-redis-subnets
 
+  # BullMQ: volatile-lru evicts queue keys under memory pressure — use noeviction.
+  RedisParameterGroup:
+    Type: AWS::ElastiCache::ParameterGroup
+    Properties:
+      CacheParameterGroupFamily: redis7
+      Description: Skinfit Redis — noeviction for BullMQ job queues
+      Properties:
+        maxmemory-policy: noeviction
+
   RedisCluster:
     Type: AWS::ElastiCache::CacheCluster
     Properties:
@@ -400,6 +409,7 @@ Resources:
       EngineVersion: '7.1'
       CacheNodeType: cache.t4g.micro
       NumCacheNodes: 1
+      CacheParameterGroupName: !Ref RedisParameterGroup
       CacheSubnetGroupName: !Ref RedisSubnetGroup
       VpcSecurityGroupIds:
         - !Ref RedisSecurityGroup

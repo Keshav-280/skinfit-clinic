@@ -10,10 +10,19 @@ export function getCache(): CacheProvider {
 
 export const CacheKeys = {
   profile: (userId: string) => `profile:${userId}`,
-  dashboard: (userId: string) => `dashboard:${userId}`,
+  home: (userId: string, dateYmd: string) => `home:${userId}:${dateYmd}`,
+  homePrefix: (userId: string) => `home:${userId}:`,
   report: (scanId: number) => `report:${scanId}`,
   session: (sessionId: string) => `session:${sessionId}`,
 } as const;
+
+export async function invalidateUserProfileCache(userId: string): Promise<void> {
+  await getCache().del(CacheKeys.profile(userId));
+}
+
+export async function invalidateUserHomeCache(userId: string): Promise<void> {
+  await getCache().delByPrefix(CacheKeys.homePrefix(userId));
+}
 
 /** Cache-aside: check Redis → fallback → store. */
 export async function cacheAside<T>(

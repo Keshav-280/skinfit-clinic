@@ -11,6 +11,7 @@ import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallCloc
 import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
+import { cacheAside, CacheKeys } from "@/src/lib/infra";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -24,7 +25,31 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get("date");
+  const exists = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { id: true },
+  });
+  if (!exists) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
 
+  const cacheDateKey =
+    dateParam && parseYmdToDateOnly(dateParam)
+      ? dateParam.slice(0, 10)
+      : "rolling";
+
+  const payload = await cacheAside(
+    CacheKeys.home(userId, cacheDateKey),
+    120,
+    async () => buildPatientHomePayload(userId, dateParam)
+  );
+  return NextResponse.json(payload);
+}
+
+async function buildPatientHomePayload(
+  userId: string,
+  dateParam: string | null
+) {
   const userRow = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: {
@@ -44,7 +69,7 @@ export async function GET(request: Request) {
     },
   });
   if (!userRow) {
-    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    throw new Error("NOT_FOUND");
   }
 
   const routinePlanAmItems = userRow.routinePlanAmItems;
@@ -197,7 +222,7 @@ export async function GET(request: Request) {
     onboardingComplete,
   });
 
-  return NextResponse.json({
+  return {
     skinScanHistory,
     todayLog: todayLogOut,
     amItems,
@@ -229,7 +254,7 @@ export async function GET(request: Request) {
     todayFocus: hasQuestionnaire ? await resolveTodayFocus() : null,
     feedbackEntries,
     archivedFeedbackEntries,
-  });
+  };
 
   async function resolveTodayFocus(): Promise<{ message: string; sourceParam: string | null } | null> {
     if (todayFocusRow) {

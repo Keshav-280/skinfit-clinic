@@ -5,17 +5,21 @@ import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import { readWebFormData } from "@/src/lib/webRequestFormData";
 import {
+  buildScanImagesFromForm,
+  buildScanImagesFromPaths,
+  parseImagePathsField,
+} from "@/src/lib/scanSubmitPayload";
+import {
   getScanAnalysisQueue,
   setJobStatus,
-  getStorage,
   logger,
   isAsyncScanEnabled,
   SCAN_ANALYSIS_QUEUE_JOB_OPTS,
 } from "@/src/lib/infra";
-import type { ScanJobPayload, ScanCaptureImageRef } from "@/src/lib/infra";
+import type { ScanJobPayload } from "@/src/lib/infra";
 
 /**
- * Async scan submission — saves files locally, enqueues BullMQ job, returns immediately.
+ * Async scan submission — uploads (multipart or pre-signed R2 paths), enqueues BullMQ.
  * Enable with SCAN_ASYNC_MODE=1
  */
 export async function POST(request: NextRequest) {
@@ -36,35 +40,41 @@ export async function POST(request: NextRequest) {
 
   const formData = await readWebFormData(request);
   const scanName = (formData.get("scanName") as string) || "Untitled Scan";
-  const multiRaw = formData
-    .getAll("images")
-    .filter((x): x is File => x instanceof File && x.size > 0);
 
-  if (multiRaw.length !== FACE_SCAN_CAPTURE_STEPS.length) {
-    return NextResponse.json(
-      {
-        error: `Provide exactly ${FACE_SCAN_CAPTURE_STEPS.length} images.`,
-      },
-      { status: 400 }
-    );
-  }
+  let imagePaths: Record<string, string>;
+  let faceCaptureImages: ScanJobPayload["faceCaptureImages"];
 
-  const storage = getStorage();
-  const imagePaths: Record<string, string> = {};
-  const faceCaptureImages: ScanCaptureImageRef[] = [];
+  const pathsRaw = formData.get("imagePaths");
+  if (typeof pathsRaw === "string" && pathsRaw.trim()) {
+    try {
+      const pathsByStep = parseImagePathsField(pathsRaw);
+      ({ imagePaths, faceCaptureImages } = buildScanImagesFromPaths(pathsByStep));
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Invalid imagePaths" },
+        { status: 400 }
+      );
+    }
+  } else {
+    const multiRaw = formData
+      .getAll("images")
+      .filter((x): x is File => x instanceof File && x.size > 0);
 
-  for (let i = 0; i < multiRaw.length; i++) {
-    const file = multiRaw[i];
-    const step = FACE_SCAN_CAPTURE_STEPS[i];
-    const buf = Buffer.from(await file.arrayBuffer());
-    const { path, url } = await storage.upload(
-      "scans",
-      file.name || `${step.id}.jpg`,
-      buf,
-      file.type || "image/jpeg"
-    );
-    imagePaths[step.id] = path;
-    faceCaptureImages.push({ label: step.id, imageUrl: url });
+    if (multiRaw.length !== FACE_SCAN_CAPTURE_STEPS.length) {
+      return NextResponse.json(
+        {
+          error: `Provide exactly ${FACE_SCAN_CAPTURE_STEPS.length} images, or imagePaths JSON after presigned upload.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    try {
+      ({ imagePaths, faceCaptureImages } = await buildScanImagesFromForm(multiRaw));
+    } catch (err) {
+      logger.error("scan_upload_failed", { userId, error: String(err) });
+      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    }
   }
 
   const primaryImageUrl = faceCaptureImages[0]?.imageUrl ?? "";

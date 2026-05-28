@@ -43,4 +43,23 @@ export class RedisCacheProvider implements CacheProvider {
       /* noop */
     }
   }
+
+  async delByPrefix(prefix: string): Promise<void> {
+    try {
+      let cursor = "0";
+      do {
+        const [next, keys] = await this.client.scan(
+          cursor,
+          "MATCH",
+          `${prefix}*`,
+          "COUNT",
+          100
+        );
+        cursor = next;
+        if (keys.length > 0) await this.client.del(...keys);
+      } while (cursor !== "0");
+    } catch {
+      /* noop */
+    }
+  }
 }

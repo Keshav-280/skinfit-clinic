@@ -90,10 +90,46 @@ BullMQ will use the same queue names as locally; jobs enqueued in AWS stay in AW
 
 ---
 
+## BullMQ: set `noeviction` (required)
+
+Default ElastiCache often uses **`volatile-lru`**. BullMQ logs:
+
+`IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"`
+
+Under memory pressure, **`volatile-lru` can delete queue jobs**. Use **`noeviction`** so Redis returns errors instead of silently dropping work.
+
+### Fix on existing cluster (Console — ~5 min)
+
+1. **ElastiCache** → **Parameter groups** → **Create parameter group**
+   - **Name:** `skinfit-redis-noeviction`
+   - **Engine:** Redis 7.x → family **`redis7`**
+   - **Description:** BullMQ noeviction
+2. Open the new group → **Edit parameters** → find **`maxmemory-policy`** → set **`noeviction`** → **Save**
+3. **ElastiCache** → **Redis OSS caches** → cluster **`skinfit-redis`** (or your cluster id)
+4. **Modify**
+   - **Parameter group:** `skinfit-redis-noeviction`
+   - Apply **immediately** (or next maintenance window)
+5. If prompted, **reboot** the node (policy change often needs one reboot).
+6. Redeploy **ml-worker** (optional) → check `/ecs/skinfit-ml-worker` — the eviction warning should disappear.
+
+**Verify (from bastion or any host in VPC with `redis-cli`):**
+
+```bash
+redis-cli -h <RedisEndpoint> -p 6379 CONFIG GET maxmemory-policy
+# → noeviction
+```
+
+### Fix via CloudFormation (next stack update)
+
+`infra/cloudformation.yaml` includes `RedisParameterGroup` with `maxmemory-policy: noeviction` on `RedisCluster`. Updating stack `skinfit-infrastructure` may reboot Redis during apply — prefer a short maintenance window.
+
+---
+
 ## Optional later
 
 - **AUTH token** — `TransitEncryptionEnabled` + `AuthToken` on ReplicationGroup (more secure, slightly more setup).
 - **Multi-AZ replica** — for HA (not required for early production).
+- **Memory alarm** — with `noeviction`, a full `cache.t4g.micro` rejects writes; watch `BytesUsedForCache`.
 
 ---
 
