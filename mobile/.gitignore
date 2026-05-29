@@ -30,8 +30,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files (e.g. EXPO_PUBLIC_API_URL — do not commit)
-.env
+# Firebase FCM service account (secret — never commit)
+*-firebase-adminsdk-*.json
+firebase-service-account.json
 .env*.local
 
 # typescript

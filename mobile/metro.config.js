@@ -14,11 +14,29 @@ config.resolver.nodeModulesPaths = [
 
 config.resolver.assetExts = [...config.resolver.assetExts, "task"];
 
+/** Web-only WASM bundle breaks Android/iOS release builds if Metro resolves it. */
+const mediapipeVision = /node_modules[/\\]@mediapipe[/\\]tasks-vision[/\\].*/;
+config.resolver.blockList = [
+  ...(Array.isArray(config.resolver.blockList)
+    ? config.resolver.blockList
+    : config.resolver.blockList
+      ? [config.resolver.blockList]
+      : []),
+  mediapipeVision,
+];
 /** Next.js uses `@/src/...` → repo `src/`. Resolve the same when Metro bundles shared `src/lib` files. */
 const srcRoot = path.join(monorepoRoot, "src");
 const defaultResolveRequest = config.resolver.resolveRequest;
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (
+    platform !== "web" &&
+    (moduleName === "@mediapipe/tasks-vision" ||
+      moduleName.startsWith("@mediapipe/tasks-vision/"))
+  ) {
+    return { type: "empty" };
+  }
+
   if (moduleName === "@/src" || moduleName.startsWith("@/src/")) {
     const subpath =
       moduleName === "@/src" ? "" : moduleName.slice("@/src/".length);

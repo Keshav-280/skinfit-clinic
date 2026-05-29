@@ -6,9 +6,12 @@
     "start": "expo start",
     "start:clear": "expo start -c",
     "android": "expo run:android",
+    "android:apk": "cd android && ./gradlew assembleRelease -x lint -x lintVitalAnalyzeRelease",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "eas": "eas",
+    "eas:android": "eas build --platform android --profile preview --non-interactive",
+    "eas:android:local": "eas build --platform android --profile preview --local",
     "prebuild": "expo prebuild",
     "mediapipe:verify-model": "test -f assets/models/face_landmarker.task || (echo 'Missing assets/models/face_landmarker.task' && exit 1)",
     "mediapipe:download-model": "curl -fsSL \"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task\" -o assets/models/face_landmarker.task"

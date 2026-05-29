@@ -1,5 +1,3 @@
-import { Platform } from "react-native";
-
 import { FACE_LANDMARKER_MODEL_URL } from "@/lib/faceLandmarkerModel";
 import type { NativeFaceLandmarkBundle } from "@/lib/nativeFaceLandmarkDetection";
 
@@ -16,7 +14,7 @@ type FaceLandmarkerLike = {
 let landmarkerPromise: Promise<FaceLandmarkerLike | null> | null = null;
 
 async function getWebLandmarker(): Promise<FaceLandmarkerLike | null> {
-  if (Platform.OS !== "web" || typeof document === "undefined") return null;
+  if (typeof document === "undefined") return null;
   if (!landmarkerPromise) {
     landmarkerPromise = (async () => {
       try {

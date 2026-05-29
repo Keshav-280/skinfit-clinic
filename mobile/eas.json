@@ -13,7 +13,19 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://skinfit-clinic.onrender.com"
+        "EXPO_PUBLIC_API_URL": "http://13.234.166.154",
+        "EXPO_PUBLIC_CHAT_DOCTOR_E2EE_DISABLED": "1"
+      }
+    },
+    "preview-ios": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://13.234.166.154",
+        "EXPO_PUBLIC_CHAT_DOCTOR_E2EE_DISABLED": "1",
+        "EXPO_PUBLIC_IOS_PERSONAL_TEAM": "1"
       }
     },
     "production": {
@@ -21,7 +33,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://skinfit-clinic.onrender.com"
+        "EXPO_PUBLIC_API_URL": "http://13.234.166.154"
       }
     }
   },

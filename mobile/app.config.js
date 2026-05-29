@@ -1,5 +1,7 @@
 /** @type {import('expo/config').ExpoConfig} */
 const appJson = require("./app.json");
+const fs = require("fs");
+const path = require("path");
 
 function googleIosUrlScheme() {
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() ?? "";
@@ -51,6 +53,14 @@ module.exports = () => {
     };
   }
 
+  const googleServicesPath = path.join(__dirname, "google-services.json");
+  if (fs.existsSync(googleServicesPath)) {
+    expo.android = {
+      ...expo.android,
+      googleServicesFile: "./google-services.json",
+    };
+  }
+
   const pluginEntries = (expo.plugins ?? [])
     .filter((entry) => {
       const id = Array.isArray(entry) ? entry[0] : entry;
@@ -71,6 +81,7 @@ module.exports = () => {
 
   expo.plugins = [
     "./plugins/withAllowHttpApi",
+    "./plugins/withAndroidHttpApi",
     ...pluginEntries,
     "./plugins/withGoogleSignInIosUrlScheme",
     ...(iosPersonalTeam ? ["./plugins/withPersonalTeamIos"] : []),

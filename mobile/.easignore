@@ -1,0 +1,7 @@
+# Faster EAS uploads (project root = mobile/)
+android/build
+android/.gradle
+ios/build
+ios/Pods
+.expo
+node_modules/.cache

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "795172299693",
+    "project_id": "skinfitwellness",
+    "storage_bucket": "skinfitwellness.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:795172299693:android:608a3d43a25656d951b724",
+        "android_client_info": {
+          "package_name": "app.skinfit.clinic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbXYWXGz9jtJk_J-AxtJW6X5iosk8Ap2Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

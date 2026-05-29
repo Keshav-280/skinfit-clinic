@@ -15,6 +15,7 @@ import {
 import { Text } from "@/components/Themed";
 import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiBase } from "@/lib/apiBase";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
@@ -134,6 +135,9 @@ export default function LoginScreen() {
                 </Pressable>
               </Link>
             </View>
+            <Text style={styles.apiFootnote} selectable>
+              Server: {getApiBase()}
+            </Text>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -233,5 +237,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: NAVY,
+  },
+  apiFootnote: {
+    marginTop: 12,
+    fontSize: 11,
+    color: "#9CA3AF",
+    textAlign: "center",
   },
 });
