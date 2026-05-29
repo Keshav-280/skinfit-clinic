@@ -14,6 +14,7 @@ type ResumeApi = {
   onboardingComplete?: boolean;
   hasQuestionnaire?: boolean;
   hasBaselineScan?: boolean;
+  baselineScanPending?: boolean;
   baselineScanId?: number | null;
   canAccessDashboard?: boolean;
   continueUrl?: string;
@@ -39,6 +40,10 @@ function targetMatchesPathAndScan(
   const needScan = want.get("scanId");
   if (needScan == null) return true;
   return scanIdParam === needScan;
+}
+
+function isCaptureFlow(segs: string[]): boolean {
+  return segs.some((s) => s === "capture" || s === "capture-intro");
 }
 
 export function OnboardingResumeGate({ children }: { children: ReactNode }) {
@@ -70,18 +75,28 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
         const isKai = segs.includes("kai-intro");
         const isQuest = segs.includes("questionnaire");
         const onBaseline = segs.includes("baseline-report");
+        const onCaptureFlow = isCaptureFlow(segs);
         const hasQ = data.hasQuestionnaire === true;
         const hasBaseline = data.hasBaselineScan === true;
+        const baselinePending = data.baselineScanPending === true;
+        const baselineSubmitted = hasBaseline || baselinePending;
         const continueUrl = data.continueUrl ?? "/onboarding/capture";
         const baselineId =
           typeof data.baselineScanId === "number" ? data.baselineScanId : null;
 
-        if (!hasBaseline && isQuest) {
+        if (!baselineSubmitted && isQuest) {
           router.replace("/onboarding/capture" as never);
           return;
         }
 
-        if (hasBaseline && !hasQ && (isWelcome || isKai)) {
+        if (baselineSubmitted && onCaptureFlow) {
+          if (!targetMatchesPathAndScan(pathname, scanIdParam, continueUrl)) {
+            router.replace(continueUrl as never);
+          }
+          return;
+        }
+
+        if (baselineSubmitted && !hasQ && (isWelcome || isKai)) {
           if (!targetMatchesPathAndScan(pathname, scanIdParam, continueUrl)) {
             router.replace(continueUrl as never);
           }

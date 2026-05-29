@@ -31,7 +31,10 @@ export default function Index() {
 
   if (token) {
     const canAccess =
-      user?.canAccessDashboard ?? user?.onboardingComplete !== false;
+      user?.canAccessDashboard ??
+      user?.baselineScanPending ??
+      user?.hasBaselineScan ??
+      user?.onboardingComplete !== false;
     if (!canAccess) {
       return <Redirect href={"/onboarding" as Href} />;
     }

@@ -386,12 +386,11 @@ export default function QuestionnaireScreen() {
       await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
       await markOnboardingComplete();
       if (token) await refreshUserFromProfile(token);
-      const resume = await apiJson<{ hasBaselineScan?: boolean }>(
-        "/api/onboarding/resume",
-        token,
-        { method: "GET" }
-      );
-      if (resume.hasBaselineScan) {
+      const resume = await apiJson<{
+        hasBaselineScan?: boolean;
+        baselineScanPending?: boolean;
+      }>("/api/onboarding/resume", token, { method: "GET" });
+      if (resume.hasBaselineScan || resume.baselineScanPending) {
         router.replace("/(drawer)" as Href);
       } else {
         router.push("/onboarding/capture" as Href);

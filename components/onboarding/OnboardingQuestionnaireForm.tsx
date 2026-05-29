@@ -420,8 +420,9 @@ export function OnboardingQuestionnaireForm() {
       });
       const resume = (await resumeRes.json().catch(() => ({}))) as {
         hasBaselineScan?: boolean;
+        baselineScanPending?: boolean;
       };
-      if (resume.hasBaselineScan) {
+      if (resume.hasBaselineScan || resume.baselineScanPending) {
         router.push("/dashboard");
         router.refresh();
       } else {

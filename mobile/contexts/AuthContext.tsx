@@ -39,6 +39,8 @@ export type AuthUser = {
   /** Baseline scan done or questionnaire complete — may open dashboard. */
   canAccessDashboard?: boolean;
   hasBaselineScan?: boolean;
+  /** Baseline photos submitted; async scan job still running. */
+  baselineScanPending?: boolean;
 };
 
 type AuthContextValue = {
@@ -118,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasQuestionnaire: data.user.hasQuestionnaire,
         canAccessDashboard: data.user.canAccessDashboard,
         hasBaselineScan: data.user.hasBaselineScan,
+        baselineScanPending: data.user.baselineScanPending,
       };
       await sessionSet(TOKEN_KEY, data.token);
       await sessionSet(USER_KEY, JSON.stringify(nextUser));
@@ -418,6 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasQuestionnaire: u.hasQuestionnaire,
       canAccessDashboard: u.canAccessDashboard,
       hasBaselineScan: u.hasBaselineScan,
+      baselineScanPending: u.baselineScanPending,
     };
     await sessionSet(USER_KEY, JSON.stringify(next));
     setUser(next);

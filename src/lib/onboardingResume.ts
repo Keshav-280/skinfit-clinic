@@ -4,12 +4,17 @@ import { eq } from "drizzle-orm";
 import {
   getOnboardingAccessForUser,
   userHasQuestionnaire,
+  type BaselineOnboardingJobStatus,
 } from "@/src/lib/onboardingAccess";
 
 export type OnboardingResumeSnapshot = {
   onboardingComplete: boolean;
   hasQuestionnaire: boolean;
   hasBaselineScan: boolean;
+  /** True while baseline scan job is queued or processing (photos already submitted). */
+  baselineScanPending: boolean;
+  baselineScanJobId: string | null;
+  baselineScanJobStatus: BaselineOnboardingJobStatus | null;
   baselineScanId: number | null;
   canAccessDashboard: boolean;
   /** Next URL to continue incomplete onboarding (web + Expo paths). */
@@ -35,6 +40,9 @@ export async function getOnboardingResumeSnapshot(
       onboardingComplete: true,
       hasQuestionnaire: true,
       hasBaselineScan: true,
+      baselineScanPending: false,
+      baselineScanJobId: null,
+      baselineScanJobStatus: null,
       baselineScanId: null,
       canAccessDashboard: true,
       continueUrl: "/dashboard",
@@ -45,13 +53,25 @@ export async function getOnboardingResumeSnapshot(
   const hasQuestionnaire =
     access.hasQuestionnaire ||
     userHasQuestionnaire(u.primaryConcern);
-  const { baselineScanId, hasBaselineScan, canAccessDashboard } = access;
+  const {
+    baselineScanId,
+    hasBaselineScan,
+    baselineScanPending,
+    baselineScanJobId,
+    baselineScanJobStatus,
+    canAccessDashboard,
+  } = access;
+
+  const baselineSubmitted = hasBaselineScan || baselineScanPending;
 
   let continueUrl = "/onboarding/capture";
-  if (!hasBaselineScan) {
+  if (!baselineSubmitted) {
     continueUrl = "/onboarding/capture";
   } else if (!hasQuestionnaire) {
-    continueUrl = `/onboarding/baseline-report?scanId=${baselineScanId}`;
+    continueUrl =
+      baselineScanId != null
+        ? `/onboarding/baseline-report?scanId=${baselineScanId}`
+        : "/onboarding/baseline-report";
   } else {
     continueUrl = "/onboarding/questionnaire";
   }
@@ -60,6 +80,9 @@ export async function getOnboardingResumeSnapshot(
     onboardingComplete: false,
     hasQuestionnaire,
     hasBaselineScan,
+    baselineScanPending,
+    baselineScanJobId,
+    baselineScanJobStatus,
     baselineScanId,
     canAccessDashboard,
     continueUrl,

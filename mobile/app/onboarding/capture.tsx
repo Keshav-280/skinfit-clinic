@@ -26,7 +26,7 @@ const N = FACE_SCAN_CAPTURE_STEPS.length;
 
 export default function OnboardingCaptureScreen() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, refreshUserFromProfile } = useAuth();
   const [uris, setUris] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [useCamera, setUseCamera] = useState(true);
@@ -127,11 +127,28 @@ export default function OnboardingCaptureScreen() {
     );
   }
 
+  async function goAfterBaselineQueued(next: () => void) {
+    if (token) {
+      try {
+        await refreshUserFromProfile(token);
+      } catch {
+        /* continue navigation */
+      }
+    }
+    next();
+  }
+
   if (queued) {
     return (
       <OnboardingQueuedScreen
-        onContinue={() => router.replace("/onboarding/baseline-report" as Href)}
-        onDashboard={() => router.replace("/(drawer)" as Href)}
+        onContinue={() =>
+          void goAfterBaselineQueued(() =>
+            router.replace("/onboarding/baseline-report" as Href)
+          )
+        }
+        onDashboard={() =>
+          void goAfterBaselineQueued(() => router.replace("/(drawer)" as Href))
+        }
       />
     );
   }

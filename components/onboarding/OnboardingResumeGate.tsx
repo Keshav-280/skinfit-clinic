@@ -9,6 +9,7 @@ type ResumeApi = {
   onboardingComplete?: boolean;
   hasQuestionnaire?: boolean;
   hasBaselineScan?: boolean;
+  baselineScanPending?: boolean;
   baselineScanId?: number | null;
   canAccessDashboard?: boolean;
   continueUrl?: string;
@@ -37,6 +38,10 @@ function onboardingTargetMatches(
   return true;
 }
 
+function isCaptureFlow(segs: string[]): boolean {
+  return segs.some((s) => s === "capture" || s === "capture-intro");
+}
+
 export function OnboardingResumeGate({
   children,
 }: {
@@ -60,20 +65,29 @@ export function OnboardingResumeGate({
       const isWelcome = segs.length === 1 && segs[0] === "onboarding";
       const isKai = segs.includes("kai-intro");
       const isQuest = segs.includes("questionnaire");
-      const onCapture = segs.includes("capture");
       const onBaseline = segs.includes("baseline-report");
+      const onCaptureFlow = isCaptureFlow(segs);
       const hasQ = data.hasQuestionnaire === true;
       const hasBaseline = data.hasBaselineScan === true;
+      const baselinePending = data.baselineScanPending === true;
+      const baselineSubmitted = hasBaseline || baselinePending;
       const continueUrl = data.continueUrl ?? "/onboarding/capture";
       const baselineId =
         typeof data.baselineScanId === "number" ? data.baselineScanId : null;
 
-      if (!hasBaseline && isQuest) {
+      if (!baselineSubmitted && isQuest) {
         router.replace("/onboarding/capture");
         return;
       }
 
-      if (hasBaseline && !hasQ && (isWelcome || isKai)) {
+      if (baselineSubmitted && onCaptureFlow) {
+        if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
+          router.replace(continueUrl);
+        }
+        return;
+      }
+
+      if (baselineSubmitted && !hasQ && (isWelcome || isKai)) {
         if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
           router.replace(continueUrl);
         }

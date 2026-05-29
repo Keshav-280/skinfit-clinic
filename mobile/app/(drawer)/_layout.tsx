@@ -183,7 +183,10 @@ export default function DrawerLayout() {
   }
 
   const canAccess =
-    user?.canAccessDashboard ?? user?.onboardingComplete !== false;
+    user?.canAccessDashboard ??
+    user?.baselineScanPending ??
+    user?.hasBaselineScan ??
+    user?.onboardingComplete !== false;
   if (!canAccess) {
     return <Redirect href={"/onboarding" as Href} />;
   }

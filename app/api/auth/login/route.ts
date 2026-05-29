@@ -158,6 +158,7 @@ export async function POST(req: Request) {
         hasQuestionnaire: access.hasQuestionnaire,
         canAccessDashboard: access.canAccessDashboard,
         hasBaselineScan: access.hasBaselineScan,
+        baselineScanPending: access.baselineScanPending,
       },
       ...(nativeClient ? { token } : {}),
     });

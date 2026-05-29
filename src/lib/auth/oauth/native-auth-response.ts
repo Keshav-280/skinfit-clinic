@@ -19,6 +19,7 @@ export async function buildNativeOAuthLoginPayload(user: {
         hasQuestionnaire: boolean;
         canAccessDashboard: boolean;
         hasBaselineScan: boolean;
+        baselineScanPending: boolean;
       };
     }
   | { ok: false; message: string }
@@ -54,6 +55,7 @@ export async function buildNativeOAuthLoginPayload(user: {
       hasQuestionnaire: access.hasQuestionnaire,
       canAccessDashboard: access.canAccessDashboard,
       hasBaselineScan: access.hasBaselineScan,
+      baselineScanPending: access.baselineScanPending,
     },
   };
 }
