@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { subDays } from "date-fns";
 import { db } from "@/src/db";
 import { dailyFocus, dailyLogs, scans, skinScans, users } from "@/src/db/schema";
@@ -76,11 +76,13 @@ async function buildPatientHomePayload(
   const routinePlanPmItems = userRow.routinePlanPmItems;
 
   const tz = normalizeIanaTimeZone(userRow.timezone);
+  const localTodayYmd = localYmdAndHm(new Date(), tz).ymd;
   const todayYmdFromProfile =
     dateParam && parseYmdToDateOnly(dateParam)
       ? dateParam.slice(0, 10)
-      : localYmdAndHm(new Date(), tz).ymd;
+      : localTodayYmd;
   const todayDateOnly = dateOnlyFromYmd(todayYmdFromProfile);
+  const isSelectedToday = todayYmdFromProfile === localTodayYmd;
   const weekCut = subDays(todayDateOnly, 7);
 
   const [
@@ -94,6 +96,7 @@ async function buildPatientHomePayload(
     db.query.skinScans.findMany({
       where: eq(skinScans.userId, userId),
       orderBy: [desc(skinScans.createdAt)],
+      limit: 30,
       columns: {
         id: true,
         skinScore: true,
@@ -120,7 +123,11 @@ async function buildPatientHomePayload(
       .select()
       .from(dailyLogs)
       .where(
-        and(eq(dailyLogs.userId, userId), gte(dailyLogs.date, weekCut))
+        and(
+          eq(dailyLogs.userId, userId),
+          gte(dailyLogs.date, weekCut),
+          lte(dailyLogs.date, todayDateOnly)
+        )
       ),
     getPatientDoctorSection(userId),
     db.query.dailyFocus.findFirst({
@@ -251,7 +258,13 @@ async function buildPatientHomePayload(
     hasQuestionnaire,
     routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
     routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",
-    todayFocus: hasQuestionnaire ? await resolveTodayFocus() : null,
+    todayFocus: hasQuestionnaire
+      ? todayFocusRow
+        ? await resolveTodayFocus()
+        : isSelectedToday
+          ? await resolveTodayFocus()
+          : null
+      : null,
     feedbackEntries,
     archivedFeedbackEntries,
   };
@@ -260,6 +273,7 @@ async function buildPatientHomePayload(
     if (todayFocusRow) {
       return { message: todayFocusRow.message, sourceParam: todayFocusRow.sourceParam ?? null };
     }
+    if (!isSelectedToday) return null;
     if (!isLlmEnabled()) return null;
     try {
       const OpenAI = (await import("openai")).default;

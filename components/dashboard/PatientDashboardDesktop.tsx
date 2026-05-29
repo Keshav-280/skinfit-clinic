@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -269,11 +269,13 @@ export function PatientDashboardDesktop() {
   const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [routine, setRoutine] = useState({ am: [] as boolean[], pm: [] as boolean[] });
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedYmd, setSelectedYmd] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [sosBusy, setSosBusy] = useState(false);
+  const loadSeqRef = useRef(0);
 
   const triggerSos = useCallback(async () => {
     if (sosBusy) return;
@@ -314,6 +316,10 @@ export function PatientDashboardDesktop() {
   }, [router, sosBusy]);
 
   const loadHome = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
+    if (data) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `/api/patient/home?date=${encodeURIComponent(selectedYmd)}`,
@@ -321,6 +327,7 @@ export function PatientDashboardDesktop() {
       );
       if (!res.ok) throw new Error("Failed to load");
       const json = await res.json() as HomeData;
+      if (seq !== loadSeqRef.current) return;
       setData(json);
       if (json.homeDateYmd && json.homeDateYmd !== selectedYmd) {
         setSelectedYmd(json.homeDateYmd);
@@ -330,11 +337,14 @@ export function PatientDashboardDesktop() {
         pm: json.todayLog?.routinePmSteps ?? new Array(json.pmItems.length).fill(false),
       });
     } catch (e) {
+      if (seq !== loadSeqRef.current) return;
       setError(e instanceof Error ? e.message : "Failed to load dashboard");
     } finally {
+      if (seq !== loadSeqRef.current) return;
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [selectedYmd]);
+  }, [data, selectedYmd]);
 
   useEffect(() => { void loadHome(); }, [loadHome]);
 
@@ -504,18 +514,23 @@ export function PatientDashboardDesktop() {
         <div>
           <div className="mb-2 flex items-center justify-between px-1">
             <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronLeft className="h-4 w-4" /></button>
-            <button
-              type="button"
-              onClick={() => {
-                setWeekOffset(0);
-                setSelectedYmd(format(new Date(), "yyyy-MM-dd"));
-              }}
-              className="text-xs font-semibold text-[#6B7280]"
-            >
-              {format(weekDays[0].date, "MMM yyyy")}
-              {(weekOffset !== 0 || selectedYmd !== format(new Date(), "yyyy-MM-dd")) &&
-                " · tap to go today"}
-            </button>
+            <div className="flex items-center gap-2">
+              {refreshing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#6B7280]" />
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setWeekOffset(0);
+                  setSelectedYmd(format(new Date(), "yyyy-MM-dd"));
+                }}
+                className="text-xs font-semibold text-[#6B7280]"
+              >
+                {format(weekDays[0].date, "MMM yyyy")}
+                {(weekOffset !== 0 || selectedYmd !== format(new Date(), "yyyy-MM-dd")) &&
+                  " · tap to go today"}
+              </button>
+            </div>
             <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide md:gap-3">
