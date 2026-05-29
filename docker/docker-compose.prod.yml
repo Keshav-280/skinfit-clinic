@@ -5,13 +5,13 @@
 
 services:
   web:
-    # Replaces base `ports: 3000:3000` — nginx is the public entrypoint
-    ports: []
+    # !reset clears base compose `ports: 3000:3000` (empty [] alone does not)
+    ports: !reset []
     expose:
       - "3000"
 
   ml-inference:
-    ports: []
+    ports: !reset []
 
   nginx:
     image: nginx:1.27-alpine

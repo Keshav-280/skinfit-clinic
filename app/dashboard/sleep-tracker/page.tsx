@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Moon, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
+import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 import {
   sleepQualityFromLabel,
   sleepQualityToLabel,
@@ -39,6 +38,7 @@ function describeArc(
 }
 
 export default function SleepTrackerPage() {
+  const journalDate = useJournalTrackerDate();
   const [hours, setHours] = useState(0);
   const [quality, setQuality] = useState<(typeof QUALITY_OPTIONS)[number]>("Average");
   const [loading, setLoading] = useState(true);
@@ -47,8 +47,7 @@ export default function SleepTrackerPage() {
 
   useEffect(() => {
     markNotReady();
-    const today = format(new Date(), "yyyy-MM-dd");
-    fetch(`/api/journal?date=${today}`, { credentials: "include" })
+    fetch(`/api/journal?date=${encodeURIComponent(journalDate)}`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.entry) {
@@ -56,17 +55,20 @@ export default function SleepTrackerPage() {
           if (data.entry.sleepQuality) {
             setQuality(sleepQualityToLabel(data.entry.sleepQuality));
           }
+        } else {
+          setHours(0);
+          setQuality("Average");
         }
       })
       .finally(() => {
         setLoading(false);
         markReady();
       });
-  }, [markNotReady, markReady]);
+  }, [journalDate, markNotReady, markReady]);
 
   function handleSetHours(h: number) {
     setHours(h);
-    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+    scheduleSave(journalDate, {
       sleepHours: h,
       sleepQuality: sleepQualityFromLabel(quality),
     });
@@ -74,7 +76,7 @@ export default function SleepTrackerPage() {
 
   function handleSetQuality(opt: (typeof QUALITY_OPTIONS)[number]) {
     setQuality(opt);
-    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+    scheduleSave(journalDate, {
       sleepHours: hours,
       sleepQuality: sleepQualityFromLabel(opt),
     });

@@ -23,6 +23,7 @@ import {
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
 import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
+import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -269,13 +270,13 @@ export function PatientDashboardDesktop() {
   const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [routine, setRoutine] = useState({ am: [] as boolean[], pm: [] as boolean[] });
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedYmd, setSelectedYmd] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [sosBusy, setSosBusy] = useState(false);
   const loadSeqRef = useRef(0);
+  const hasLoadedRef = useRef(false);
 
   const triggerSos = useCallback(async () => {
     if (sosBusy) return;
@@ -317,8 +318,7 @@ export function PatientDashboardDesktop() {
 
   const loadHome = useCallback(async () => {
     const seq = ++loadSeqRef.current;
-    if (data) setRefreshing(true);
-    else setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError(null);
     try {
       const res = await fetch(
@@ -328,10 +328,8 @@ export function PatientDashboardDesktop() {
       if (!res.ok) throw new Error("Failed to load");
       const json = await res.json() as HomeData;
       if (seq !== loadSeqRef.current) return;
+      hasLoadedRef.current = true;
       setData(json);
-      if (json.homeDateYmd && json.homeDateYmd !== selectedYmd) {
-        setSelectedYmd(json.homeDateYmd);
-      }
       setRoutine({
         am: json.todayLog?.routineAmSteps ?? new Array(json.amItems.length).fill(false),
         pm: json.todayLog?.routinePmSteps ?? new Array(json.pmItems.length).fill(false),
@@ -342,9 +340,8 @@ export function PatientDashboardDesktop() {
     } finally {
       if (seq !== loadSeqRef.current) return;
       setLoading(false);
-      setRefreshing(false);
     }
-  }, [data, selectedYmd]);
+  }, [selectedYmd]);
 
   useEffect(() => { void loadHome(); }, [loadHome]);
 
@@ -382,10 +379,21 @@ export function PatientDashboardDesktop() {
   const pmDone = useMemo(() => routine.pm.filter(Boolean).length, [routine.pm]);
 
   const selectedDate = useMemo(() => parseISO(`${selectedYmd}T00:00:00`), [selectedYmd]);
+  const todayYmd = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+  const isViewingToday = selectedYmd === todayYmd;
+
+  const displayedWeekStart = useMemo(
+    () => addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), weekOffset * 7),
+    [selectedDate, weekOffset]
+  );
+  const monthLabel = useMemo(
+    () => format(displayedWeekStart, "MMM yyyy"),
+    [displayedWeekStart]
+  );
 
   const weekDays = useMemo(() => {
     const today = new Date();
-    const start = addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), weekOffset * 7);
+    const start = displayedWeekStart;
     return Array.from({ length: 7 }, (_, i) => {
       const d = addDays(start, i);
       return {
@@ -398,7 +406,7 @@ export function PatientDashboardDesktop() {
         isFuture: d.getTime() > today.getTime() && !isSameDay(d, today),
       };
     });
-  }, [weekOffset, selectedDate]);
+  }, [displayedWeekStart, selectedDate]);
 
   const streakDays = useMemo(() => {
     if (!data) return DAYS_OF_WEEK.map((l) => ({ label: l, done: false }));
@@ -514,23 +522,17 @@ export function PatientDashboardDesktop() {
         <div>
           <div className="mb-2 flex items-center justify-between px-1">
             <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronLeft className="h-4 w-4" /></button>
-            <div className="flex items-center gap-2">
-              {refreshing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#6B7280]" />
-              ) : null}
-              <button
-                type="button"
-                onClick={() => {
-                  setWeekOffset(0);
-                  setSelectedYmd(format(new Date(), "yyyy-MM-dd"));
-                }}
-                className="text-xs font-semibold text-[#6B7280]"
-              >
-                {format(weekDays[0].date, "MMM yyyy")}
-                {(weekOffset !== 0 || selectedYmd !== format(new Date(), "yyyy-MM-dd")) &&
-                  " · tap to go today"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setWeekOffset(0);
+                setSelectedYmd(todayYmd);
+              }}
+              className="min-w-[7.5rem] text-xs font-semibold text-[#6B7280]"
+            >
+              {monthLabel}
+              {!isViewingToday || weekOffset !== 0 ? " · tap to go today" : null}
+            </button>
             <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide md:gap-3">
@@ -540,6 +542,7 @@ export function PatientDashboardDesktop() {
                 type="button"
                 onClick={() => {
                   if (d.isFuture) return;
+                  setWeekOffset(0);
                   setSelectedYmd(d.ymd);
                 }}
                 disabled={d.isFuture}
@@ -565,7 +568,7 @@ export function PatientDashboardDesktop() {
 
         {/* Routine Cards */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Link href="/dashboard/morning-routine" className="group relative flex flex-col justify-between rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60 hover:shadow-md md:p-6">
+          <Link href={journalTrackerHref("/dashboard/morning-routine", selectedYmd)} className="group relative flex flex-col justify-between rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60 hover:shadow-md md:p-6">
             <div className="flex items-start justify-between">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2C3E6B]"><Sun className="h-5 w-5 text-amber-400" /></div>
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#334155]"><ArrowRight className="h-3.5 w-3.5 text-white" /></div>
@@ -573,7 +576,7 @@ export function PatientDashboardDesktop() {
             <h3 className="mt-3 text-lg font-extrabold text-[#18181b]">Morning Routine</h3>
             <div className="mt-3"><span className="inline-flex items-center rounded-[10px] bg-[#2C3E6B] px-3.5 py-2 text-[13px] font-bold text-white">Step {amDone}/{data.amItems.length || 0}</span></div>
           </Link>
-          <Link href="/dashboard/night-routine" className="group relative flex flex-col justify-between rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60 hover:shadow-md md:p-6">
+          <Link href={journalTrackerHref("/dashboard/night-routine", selectedYmd)} className="group relative flex flex-col justify-between rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60 hover:shadow-md md:p-6">
             <div className="flex items-start justify-between">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2C3E6B]"><CloudMoon className="h-5 w-5 text-white" /></div>
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#334155]"><ArrowRight className="h-3.5 w-3.5 text-white" /></div>
@@ -620,7 +623,7 @@ export function PatientDashboardDesktop() {
                   <p className="font-mono text-[22px] font-extrabold text-[#18181b]">{pad(reminder.h)}: {pad(reminder.m)}: {pad(reminder.s)}</p>
                 </div>
               </div>
-              <Link href={reminder.target === "am" ? "/dashboard/morning-routine" : "/dashboard/night-routine"} className="rounded-[14px] border-[1.5px] border-[#2C3E6B] px-4 py-2.5 text-[13px] font-bold text-[#2C3E6B] transition hover:bg-[#2C3E6B] hover:text-white">
+              <Link href={journalTrackerHref(reminder.target === "am" ? "/dashboard/morning-routine" : "/dashboard/night-routine", selectedYmd)} className="rounded-[14px] border-[1.5px] border-[#2C3E6B] px-4 py-2.5 text-[13px] font-bold text-[#2C3E6B] transition hover:bg-[#2C3E6B] hover:text-white">
                 View All Tasks
               </Link>
             </>
@@ -644,7 +647,7 @@ export function PatientDashboardDesktop() {
         {/* Daily Journal */}
         <div className="space-y-3">
           <h3 className="text-[14px] font-extrabold tracking-wide text-[#18181b]">DAILY JOURNAL</h3>
-          <Link href="/dashboard/sleep-tracker" className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
+          <Link href={journalTrackerHref("/dashboard/sleep-tracker", selectedYmd)} className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[14px] font-medium text-[#6B7280]">Sleep Duration</p>
@@ -654,7 +657,7 @@ export function PatientDashboardDesktop() {
             </div>
             <div className="mt-4 rounded-[14px] bg-[#2C3E6B] py-3 text-center text-[15px] font-bold text-white">Enter Data</div>
           </Link>
-          <Link href="/dashboard/hydration-tracker" className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
+          <Link href={journalTrackerHref("/dashboard/hydration-tracker", selectedYmd)} className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[14px] font-medium text-[#6B7280]">Hydration</p>
@@ -664,7 +667,7 @@ export function PatientDashboardDesktop() {
             </div>
             <div className="mt-4 rounded-[14px] bg-[#2C3E6B] py-3 text-center text-[15px] font-bold text-white">Enter Data</div>
           </Link>
-          <Link href="/dashboard/stress-tracker" className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
+          <Link href={journalTrackerHref("/dashboard/stress-tracker", selectedYmd)} className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[14px] font-medium text-[#6B7280]">Stress Level (0-10)</p>

@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Minus, Plus, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
+import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 
 const moods = ["Calm", "Neutral", "Anxious", "Stressed", "Overwhelmed"] as const;
 
@@ -22,6 +21,7 @@ function stressAccent(level: number) {
 }
 
 export default function StressTrackerPage() {
+  const journalDate = useJournalTrackerDate();
   const [level, setLevel] = useState(5);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -31,8 +31,7 @@ export default function StressTrackerPage() {
 
   useEffect(() => {
     markNotReady();
-    const today = format(new Date(), "yyyy-MM-dd");
-    fetch(`/api/journal?date=${today}`, { credentials: "include" })
+    fetch(`/api/journal?date=${encodeURIComponent(journalDate)}`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.entry) {
@@ -41,17 +40,21 @@ export default function StressTrackerPage() {
           if (typeof data.entry.journalEntry === "string") {
             setNotes(data.entry.journalEntry);
           }
+        } else {
+          setLevel(5);
+          setSelectedMood(null);
+          setNotes("");
         }
       })
       .finally(() => {
         setLoading(false);
         markReady();
       });
-  }, [markNotReady, markReady]);
+  }, [journalDate, markNotReady, markReady]);
 
   function handleSetLevel(newLevel: number) {
     setLevel(newLevel);
-    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+    scheduleSave(journalDate, {
       stressLevel: newLevel,
       mood: selectedMood,
     });
@@ -59,12 +62,12 @@ export default function StressTrackerPage() {
 
   function handleSetMood(mood: string) {
     setSelectedMood(mood);
-    scheduleSave(format(new Date(), "yyyy-MM-dd"), { stressLevel: level, mood });
+    scheduleSave(journalDate, { stressLevel: level, mood });
   }
 
   function handleNotesChange(value: string) {
     setNotes(value);
-    scheduleSave(format(new Date(), "yyyy-MM-dd"), {
+    scheduleSave(journalDate, {
       stressLevel: level,
       mood: selectedMood,
       journalEntry: value,

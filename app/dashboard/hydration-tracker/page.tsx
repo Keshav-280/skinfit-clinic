@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Droplets, Plus, Minus, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
+import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 
 const GOAL = 3.0;
 
@@ -36,6 +35,7 @@ function litersToGlasses(liters: number) {
 }
 
 export default function HydrationTrackerPage() {
+  const journalDate = useJournalTrackerDate();
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [loading, setLoading] = useState(true);
   const { saveStatus, scheduleSave, markReady, markNotReady } =
@@ -45,23 +45,24 @@ export default function HydrationTrackerPage() {
 
   useEffect(() => {
     markNotReady();
-    const today = format(new Date(), "yyyy-MM-dd");
-    fetch(`/api/journal?date=${today}`, { credentials: "include" })
+    fetch(`/api/journal?date=${encodeURIComponent(journalDate)}`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data.entry) {
           setWaterGlasses(data.entry.waterGlasses ?? 0);
+        } else {
+          setWaterGlasses(0);
         }
       })
       .finally(() => {
         setLoading(false);
         markReady();
       });
-  }, [markNotReady, markReady]);
+  }, [journalDate, markNotReady, markReady]);
 
   function updateGlasses(newGlasses: number) {
     setWaterGlasses(newGlasses);
-    scheduleSave(format(new Date(), "yyyy-MM-dd"), { waterGlasses: newGlasses });
+    scheduleSave(journalDate, { waterGlasses: newGlasses });
   }
 
   function addAmount(liters: number) {

@@ -157,6 +157,15 @@ Never delete current production resources before successful cutover tests.
 - `postgres`: local Postgres container (or external URL)
 - `nginx`: public entrypoint reverse proxy
 
+**Nginx setup (repo):** see [`nginx/README.md`](../nginx/README.md). On the VM:
+
+```bash
+cd /opt/skinfit && git pull
+bash scripts/setup-nginx-prod.sh
+```
+
+Use `docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d`.
+
 ## 7.4 Persistence
 
 Use named volumes for:

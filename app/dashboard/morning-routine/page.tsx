@@ -1,9 +1,9 @@
 "use client";
 
-import { format } from "date-fns";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Sun, Check, Loader2 } from "lucide-react";
+import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 
 const STEP_COLORS = [
   "#FDE68A",
@@ -68,13 +68,14 @@ function ProgressRing({
 }
 
 export default function MorningRoutinePage() {
+  const journalDate = useJournalTrackerDate();
   const [loading, setLoading] = useState(true);
   const [amItems, setAmItems] = useState<string[]>([]);
   const [checked, setChecked] = useState<boolean[]>([]);
   const [pmSteps, setPmSteps] = useState<boolean[]>([]);
 
   useEffect(() => {
-    fetch("/api/patient/home", { credentials: "include" })
+    fetch(`/api/patient/home?date=${encodeURIComponent(journalDate)}`, { credentials: "include" })
       .then((r) => r.json())
       .then((data: HomeResponse) => {
         setAmItems(data.amItems ?? []);
@@ -88,7 +89,7 @@ export default function MorningRoutinePage() {
         );
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [journalDate]);
 
   const save = useCallback(
     (nextAm: boolean[]) => {
@@ -97,13 +98,13 @@ export default function MorningRoutinePage() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: format(new Date(), "yyyy-MM-dd"),
+          date: journalDate,
           routineAmSteps: nextAm,
           routinePmSteps: pmSteps,
         }),
       });
     },
-    [pmSteps],
+    [journalDate, pmSteps],
   );
 
   const toggle = useCallback(
