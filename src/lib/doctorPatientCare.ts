@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import {
   chatThreads,
@@ -153,6 +153,26 @@ export async function ensureDoctorPatientChatThread(
     .limit(1);
 
   if (existing?.id) return existing.id;
+
+  const orphans = await db
+    .select({ id: chatThreads.id })
+    .from(chatThreads)
+    .where(
+      and(
+        eq(chatThreads.userId, patientId),
+        eq(chatThreads.assistantId, "doctor"),
+        isNull(chatThreads.doctorId)
+      )
+    );
+
+  if (orphans.length === 1) {
+    const [adopted] = await db
+      .update(chatThreads)
+      .set({ doctorId })
+      .where(eq(chatThreads.id, orphans[0]!.id))
+      .returning({ id: chatThreads.id });
+    if (adopted?.id) return adopted.id;
+  }
 
   const [created] = await db
     .insert(chatThreads)

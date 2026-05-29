@@ -1,8 +1,9 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
-import { chatMessages, chatThreads, users } from "@/src/db/schema";
+import { chatMessages, users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { ensureDoctorPatientChatThread } from "@/src/lib/doctorPatientCare";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
 import { publishNotification } from "@/src/lib/infra";
@@ -34,21 +35,6 @@ async function ensurePatient(patientId: string): Promise<boolean> {
   return Boolean(row?.id);
 }
 
-async function latestDoctorThread(patientId: string): Promise<{ id: string } | null> {
-  const [thread] = await db
-    .select({ id: chatThreads.id })
-    .from(chatThreads)
-    .where(
-      and(
-        eq(chatThreads.userId, patientId),
-        eq(chatThreads.assistantId, "doctor")
-      )
-    )
-    .orderBy(desc(chatThreads.createdAt))
-    .limit(1);
-  return thread ?? null;
-}
-
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ patientId: string }> }
@@ -65,10 +51,7 @@ export async function GET(
   if (!(await ensurePatient(patientId))) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
-  const thread = await latestDoctorThread(patientId);
-  if (!thread) {
-    return NextResponse.json({ ok: true, messages: [] });
-  }
+  const threadId = await ensureDoctorPatientChatThread(patientId, staffId);
 
   const rows = await db
     .select({
@@ -79,7 +62,7 @@ export async function GET(
       createdAt: chatMessages.createdAt,
     })
     .from(chatMessages)
-    .where(eq(chatMessages.threadId, thread.id))
+    .where(eq(chatMessages.threadId, threadId))
     .orderBy(asc(chatMessages.createdAt));
 
   return NextResponse.json({
@@ -131,17 +114,7 @@ export async function POST(
     return NextResponse.json({ error: "TEXT_OR_ATTACHMENT_REQUIRED" }, { status: 400 });
   }
 
-  let thread = await latestDoctorThread(patientId);
-  if (!thread) {
-    const [created] = await db
-      .insert(chatThreads)
-      .values({ userId: patientId, assistantId: "doctor" })
-      .returning({ id: chatThreads.id });
-    if (!created) {
-      return NextResponse.json({ error: "THREAD_CREATE_FAILED" }, { status: 500 });
-    }
-    thread = created;
-  }
+  const threadId = await ensureDoctorPatientChatThread(patientId, staffId);
 
   const messageText =
     text || (attachmentUrl?.startsWith("data:audio/") ? "🎤 Voice note" : "🖼️ Image");
@@ -149,7 +122,7 @@ export async function POST(
   const [created] = await db
     .insert(chatMessages)
     .values({
-      threadId: thread.id,
+      threadId,
       sender: "doctor",
       text: messageText,
       attachmentUrl: attachmentUrl ?? null,
@@ -166,7 +139,7 @@ export async function POST(
     return NextResponse.json({ error: "MESSAGE_CREATE_FAILED" }, { status: 500 });
   }
 
-  await notifyChatThreadUpdated(thread.id);
+  await notifyChatThreadUpdated(threadId);
   void publishNotification("doctor.reply", patientId, {
     messagePreview: isE2eePayload(messageText)
       ? "New secure message from your clinic"
@@ -179,7 +152,7 @@ export async function POST(
 
   return NextResponse.json({
     ok: true,
-    threadId: thread.id,
+    threadId,
     message: {
       id: created.id,
       sender: created.sender,
