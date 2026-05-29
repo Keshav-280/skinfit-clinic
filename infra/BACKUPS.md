@@ -12,10 +12,20 @@ Retention: **14 days** (override with `RETENTION_DAYS=30`).
 
 ## Install daily cron (03:00 UTC)
 
+Prefer the all-in-one installer (backup + HTTP crons):
+
 ```bash
 cd /opt/skinfit
+bash scripts/install-vm-cron.sh
+```
+
+Backup only:
+
+```bash
 bash scripts/install-pg-backup-cron.sh
 ```
+
+See [VM_CRON.md](./VM_CRON.md) for appointment/kAI schedules.
 
 Log: `/var/log/skinfit-pg-backup.log`
 
