@@ -33,6 +33,7 @@ module.exports = () => {
   /** Paid Apple Developer Program ($99/yr) required for native Sign in with Apple on device. */
   const nativeAppleSignIn =
     process.env.EXPO_PUBLIC_ENABLE_NATIVE_APPLE_SIGNIN === "1";
+  const iosPersonalTeam = process.env.EXPO_PUBLIC_IOS_PERSONAL_TEAM === "1";
 
   expo.ios = {
     ...expo.ios,
@@ -50,9 +51,15 @@ module.exports = () => {
     };
   }
 
-  expo.plugins = [
-    "./plugins/withAllowHttpApi",
-    ...(expo.plugins ?? []).map((entry) => {
+  const pluginEntries = (expo.plugins ?? [])
+    .filter((entry) => {
+      const id = Array.isArray(entry) ? entry[0] : entry;
+      if (id === "expo-apple-authentication" && !nativeAppleSignIn) {
+        return false;
+      }
+      return true;
+    })
+    .map((entry) => {
       if (entry === "@react-native-google-signin/google-signin" && iosUrlScheme) {
         return [
           "@react-native-google-signin/google-signin",
@@ -60,8 +67,13 @@ module.exports = () => {
         ];
       }
       return entry;
-    }),
+    });
+
+  expo.plugins = [
+    "./plugins/withAllowHttpApi",
+    ...pluginEntries,
     "./plugins/withGoogleSignInIosUrlScheme",
+    ...(iosPersonalTeam ? ["./plugins/withPersonalTeamIos"] : []),
   ];
 
   return expo;
