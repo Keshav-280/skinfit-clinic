@@ -19,10 +19,10 @@ export function networkFetchErrorMessage(): string {
   const base =
     process.env.EXPO_PUBLIC_API_URL?.trim()?.replace(/\/$/, "") ||
     "(EXPO_PUBLIC_API_URL not set in mobile/.env)";
-  return (
-    `Cannot reach the server at ${base}. ` +
-    "On a physical iPhone, use your Mac's Wi‑Fi IP (not localhost). " +
-    "Run `npm run dev` in the repo root, then `npx expo start -c` in mobile/. " +
-    `Open ${base} in Safari on the phone to verify.`
-  );
+  const isLocal =
+    /localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\./i.test(base);
+  const hints = isLocal
+    ? "Use your Mac's Wi‑Fi IP in mobile/.env (not localhost), run `npm run dev` in the repo root, then reload the app."
+    : "Open the same URL in Safari on the phone. If Safari fails, check EC2 security group (port 80) and nginx. If Safari works but the app does not, rebuild iOS after changing EXPO_PUBLIC_API_URL (`npx expo run:ios --device`). For http:// APIs, iOS needs ATS exceptions (see mobile/app.config.js). Prefer https:// when you have a domain.";
+  return `Cannot reach the server at ${base}. ${hints}`;
 }
