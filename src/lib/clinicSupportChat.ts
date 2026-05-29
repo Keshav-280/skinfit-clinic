@@ -1,12 +1,19 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
-import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
+import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
+import { publishNotification } from "@/src/lib/infra";
+import type { NotificationEventType } from "../../services/shared/src/notifications/events";
 
 export async function sendClinicSupportMessage(params: {
   patientId: string;
   text: string;
   assistantId?: "support" | "doctor";
+  /** Expo push category (defaults to doctor.reply). */
+  notificationType?: Extract<
+    NotificationEventType,
+    "doctor.reply" | "appointment.reminder" | "routine.reminder"
+  >;
 }) {
   const assistantId = params.assistantId ?? "support";
   const sender = assistantId === "doctor" ? "doctor" : "support";
@@ -35,5 +42,19 @@ export async function sendClinicSupportMessage(params: {
     text: params.text,
   });
 
-  void notifyPatientNewClinicChat(params.patientId, params.text);
+  await notifyChatThreadUpdated(threadId);
+
+  const notificationType = params.notificationType ?? "doctor.reply";
+  const title =
+    notificationType === "appointment.reminder"
+      ? "Appointment reminder"
+      : notificationType === "routine.reminder"
+        ? "Routine reminder"
+        : "SkinnFit Clinic";
+
+  void publishNotification(notificationType, params.patientId, {
+    messagePreview: params.text,
+    title,
+    body: params.text,
+  });
 }

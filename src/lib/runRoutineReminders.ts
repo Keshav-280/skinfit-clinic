@@ -132,7 +132,11 @@ export async function runRoutineReminders(): Promise<{
       if (!claimed) continue;
 
       try {
-        await sendClinicSupportMessage({ patientId: row.id, text });
+        await sendClinicSupportMessage({
+          patientId: row.id,
+          text,
+          notificationType: "routine.reminder",
+        });
         sent += 1;
       } catch (e) {
         console.error("runRoutineReminders send failed", row.id, kind, e);

@@ -702,8 +702,7 @@ export default function ChatPage() {
   ]);
 
   /**
-   * Doctor / Clinic Support threads: poll for new messages while this tab is open.
-   * (AI chat streams via send flow; plain threads had no live sync until this.)
+   * Doctor / Clinic Support: live updates via Redis pub/sub + SSE (no 3.5s polling).
    */
   useEffect(() => {
     if (activeAssistant !== "doctor" && activeAssistant !== "support") return;
@@ -743,8 +742,27 @@ export default function ChatPage() {
       }
     }
 
-    const intervalMs = 3500;
-    const t = window.setInterval(() => void syncPlainThread(), intervalMs);
+    const q = new URLSearchParams({ assistantId: activeAssistant });
+    if (activeAssistant === "doctor" && activeDoctorId) {
+      q.set("doctorId", activeDoctorId);
+    }
+    const es = new EventSource(`/api/chat/plain/stream?${q.toString()}`);
+
+    es.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data) as { type?: string };
+        if (data.type === "thread_updated" || data.type === "connected") {
+          void syncPlainThread(true);
+        }
+      } catch {
+        void syncPlainThread(true);
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+    };
+
     const onVisible = () => void syncPlainThread();
     const onInboxRefresh = () => void syncPlainThread(true);
     const onGlobalRefresh = () => void syncPlainThread(true);
@@ -755,7 +773,7 @@ export default function ChatPage() {
 
     return () => {
       cancelled = true;
-      window.clearInterval(t);
+      es.close();
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener(CLINIC_SUPPORT_INBOX_REFRESH_EVENT, onInboxRefresh);
       window.removeEventListener(GLOBAL_LIVE_REFRESH_EVENT, onGlobalRefresh);

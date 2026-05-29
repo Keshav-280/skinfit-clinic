@@ -4,7 +4,8 @@ import { db } from "@/src/db";
 import { chatMessages, chatThreads, users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
-import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
+import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
+import { publishNotification } from "@/src/lib/infra";
 
 const MAX_TEXT_LEN = 4000;
 const MAX_ATTACHMENT_LEN = 3_200_000;
@@ -165,10 +166,16 @@ export async function POST(
     return NextResponse.json({ error: "MESSAGE_CREATE_FAILED" }, { status: 500 });
   }
 
-  void notifyPatientNewClinicChat(
-    patientId,
-    isE2eePayload(messageText) ? "New secure message from your clinic" : messageText
-  );
+  await notifyChatThreadUpdated(thread.id);
+  void publishNotification("doctor.reply", patientId, {
+    messagePreview: isE2eePayload(messageText)
+      ? "New secure message from your clinic"
+      : messageText,
+    title: "Message from your doctor",
+    body: isE2eePayload(messageText)
+      ? "New secure message from your clinic"
+      : messageText,
+  });
 
   return NextResponse.json({
     ok: true,

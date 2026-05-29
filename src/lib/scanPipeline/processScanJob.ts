@@ -30,7 +30,6 @@ import {
   invalidateUserInsightsCache,
   invalidateUserScanDerivedCaches,
 } from "@/src/lib/infra";
-import { notifyPatientScanReportReady } from "@/src/lib/expoPush";
 import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
@@ -282,6 +281,7 @@ export async function processScanJob(
   await publishNotification("scan.completed", payload.userId, {
     scanId: inserted?.id,
     jobId,
+    scanName: payload.scanName ?? null,
   });
 
   await Promise.all([
@@ -289,16 +289,6 @@ export async function processScanJob(
     invalidateUserScanDerivedCaches(payload.userId),
     invalidateUserInsightsCache(payload.userId),
   ]);
-
-  if (inserted?.id) {
-    void notifyPatientScanReportReady(
-      payload.userId,
-      inserted.id,
-      payload.scanName
-    ).catch((e) => {
-      console.warn("[processScanJob] scan ready push failed", e);
-    });
-  }
 
   return { scanId: inserted!.id };
 }

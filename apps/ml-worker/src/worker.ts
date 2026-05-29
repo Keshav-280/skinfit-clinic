@@ -15,9 +15,9 @@ import {
 } from "../../../services/shared/src/queue/index.js";
 import { logger } from "../../../services/shared/src/logging/index.js";
 import { publishNotification } from "../../../services/shared/src/notifications/index.js";
-import { notifyPatientScanReportFailed } from "../../../src/lib/expoPush.js";
 import { processScanJob } from "../../../src/lib/scanPipeline/processScanJob.js";
 import { initWorkerSentry, Sentry } from "./sentry.js";
+import { notificationWorker } from "./notificationWorker.js";
 
 const connection = { url: getRedisUrl() };
 initWorkerSentry();
@@ -91,23 +91,13 @@ const worker = new Worker(
       void publishNotification("scan.failed", payload.userId, {
         jobId,
         error: msg,
+        scanName: payload.scanName ?? null,
       }).catch((e) => {
         logger.warn("scan_failed_notification_publish_error", {
           jobId,
           error: e instanceof Error ? e.message : String(e),
         });
       });
-      void notifyPatientScanReportFailed(
-        payload.userId,
-        jobId,
-        payload.scanName
-      ).catch((e) => {
-        logger.warn("scan_failed_push_error", {
-          jobId,
-          error: e instanceof Error ? e.message : String(e),
-        });
-      });
-
       if (!retryable) {
         throw new UnrecoverableError(msg);
       }
@@ -121,6 +111,10 @@ worker.on("ready", () => {
   logger.info("ml_worker_ready", { queue: QUEUE_NAMES.scanAnalysis });
 });
 
+notificationWorker.on("ready", () => {
+  logger.info("notification_worker_ready", { queue: QUEUE_NAMES.notifications });
+});
+
 worker.on("error", (err) => {
   logger.error("ml_worker_error", { error: err.message });
   Sentry.captureException(err, {
@@ -129,6 +123,6 @@ worker.on("error", (err) => {
 });
 
 process.on("SIGTERM", async () => {
-  await worker.close();
+  await Promise.all([worker.close(), notificationWorker.close()]);
   process.exit(0);
 });

@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorUsers } from "@/src/lib/expoPush";
+import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
 import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 import { buildSosContextPrefix } from "@/src/lib/sosChatContext";
 import { postPatientUrgentMessageToAllClinicDoctors } from "@/src/lib/patientDoctorChat";
@@ -160,6 +161,7 @@ export async function POST(req: Request) {
       isUrgent,
       attachmentUrl: attachmentUrl || null,
     });
+    await notifyChatThreadUpdated(threadId);
   }
 
   if (assistantId === "doctor") {

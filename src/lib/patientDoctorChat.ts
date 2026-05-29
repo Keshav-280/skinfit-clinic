@@ -1,5 +1,6 @@
 import { db } from "@/src/db";
 import { chatMessages } from "@/src/db/schema";
+import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
 import {
   ensureDoctorPatientChatThread,
   getAssignedDoctorIdForPatient,
@@ -26,6 +27,7 @@ async function insertPatientDoctorThreadMessage(
     isUrgent: body.isUrgent,
     attachmentUrl: body.attachmentUrl ?? null,
   });
+  await notifyChatThreadUpdated(threadId);
 }
 
 /** Urgent patient message on every registered doctor↔patient thread (shared clinic). */

@@ -28,10 +28,7 @@ export {
   QUEUE_NAMES,
   SCAN_ANALYSIS_QUEUE_JOB_OPTS,
 } from "../../../services/shared/src/queue/index";
-export {
-  publishNotification,
-  onNotification,
-} from "../../../services/shared/src/notifications/index";
+export { publishNotification } from "../../../services/shared/src/notifications/index";
 export { logger } from "../../../services/shared/src/logging/index";
 export {
   getDatabaseUrl,

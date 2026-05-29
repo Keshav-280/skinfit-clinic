@@ -65,7 +65,11 @@ export async function runAppointmentReminders(): Promise<{
         hoursBefore: hours,
       });
 
-      await sendClinicSupportMessage({ patientId: row.patientId, text });
+      await sendClinicSupportMessage({
+        patientId: row.patientId,
+        text,
+        notificationType: "appointment.reminder",
+      });
 
       await db
         .update(appointments)

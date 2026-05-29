@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
 
 function clampText(s: unknown, maxLen: number): string | null {
   if (typeof s !== "string") return null;
@@ -71,6 +72,8 @@ export async function POST(req: Request) {
     sender,
     text: messageText,
   });
+
+  await notifyChatThreadUpdated(thread.id);
 
   return NextResponse.json({ success: true });
 }

@@ -10,6 +10,7 @@
     "./cache": "./src/cache/index.ts",
     "./logging": "./src/logging/index.ts",
     "./notifications": "./src/notifications/index.ts",
+    "./chat": "./src/chat/index.ts",
     "./env": "./src/env/index.ts",
     "./types": "./src/types/index.ts"
   },
