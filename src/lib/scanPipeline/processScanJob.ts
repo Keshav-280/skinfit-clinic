@@ -118,6 +118,9 @@ export async function processScanJob(
     merged = buildScanPayloadFromAnalyzeV1(dualScan);
   }
 
+  let acneMaskFaceRestricted = false;
+  let wrinkleMaskFaceRestricted = false;
+
   if (merged.acneMaskDataUri || merged.wrinkleMaskDataUri) {
     const centreBuf = Buffer.from(await filesForV2.centre.arrayBuffer());
     const smilingBuf = Buffer.from(await filesForV2.smiling.arrayBuffer());
@@ -127,7 +130,13 @@ export async function processScanJob(
       centreJpeg: centreBuf,
       smilingJpeg: smilingBuf,
     });
-    merged = { ...merged, ...restricted };
+    acneMaskFaceRestricted = restricted.acneMaskFaceRestricted === true;
+    wrinkleMaskFaceRestricted = restricted.wrinkleMaskFaceRestricted === true;
+    merged = {
+      ...merged,
+      acneMaskDataUri: restricted.acneMaskDataUri,
+      wrinkleMaskDataUri: restricted.wrinkleMaskDataUri,
+    };
   }
 
   logger.inference(Date.now() - started, { jobId, userId: payload.userId });
@@ -240,8 +249,20 @@ export async function processScanJob(
         overallKaiScore: merged.overallKaiScore,
         kaiParams: merged.params,
         ...(overlayUrl ? { overlayUrl } : {}),
-        ...(wrinkleMaskUrl ? { wrinkleMaskUrl } : {}),
-        ...(acneMaskUrl ? { acneMaskUrl } : {}),
+        ...(wrinkleMaskUrl
+          ? {
+              wrinkleMaskUrl,
+              ...(wrinkleMaskFaceRestricted
+                ? { wrinkleMaskFaceRestricted: true }
+                : {}),
+            }
+          : {}),
+        ...(acneMaskUrl
+          ? {
+              acneMaskUrl,
+              ...(acneMaskFaceRestricted ? { acneMaskFaceRestricted: true } : {}),
+            }
+          : {}),
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
       },
     })

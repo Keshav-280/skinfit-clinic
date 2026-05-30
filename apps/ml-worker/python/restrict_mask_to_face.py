@@ -73,7 +73,7 @@ def landmarks_to_points(
     return np.array(pts, dtype=np.int32)
 
 
-def build_face_skin_mask(bgr: np.ndarray) -> np.ndarray | None:
+def build_face_skin_mask(bgr: np.ndarray, kind: str = "acne") -> np.ndarray | None:
     if mp is None:
         return None
     fh, fw = bgr.shape[:2]
@@ -97,11 +97,33 @@ def build_face_skin_mask(bgr: np.ndarray) -> np.ndarray | None:
         hole = landmarks_to_points(lm, loop, fw, fh)
         cv2.fillPoly(mask, [hole], 0)
 
-    # Stay inside cheeks — erode hair/neck bleed at the border.
-    k = max(3, int(min(fw, fh) * 0.012)) | 1
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-    mask = cv2.erode(mask, kernel, iterations=1)
-    mask = cv2.GaussianBlur(mask, (k, k), 0)
+    if kind == "acne":
+        # Tighter skin region — acne heatmaps bleed onto hair without this.
+        k = max(5, int(min(fw, fh) * 0.018)) | 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+        mask = cv2.erode(mask, kernel, iterations=2)
+
+        cx, cy = fw // 2, int(fh * 0.46)
+        scale = 0.90
+        M = cv2.getRotationMatrix2D((cx, cy), 0, scale)
+        mask = cv2.warpAffine(
+            mask, M, (fw, fh), flags=cv2.INTER_LINEAR, borderValue=0
+        )
+
+        brow_y = int((lm[107].y + lm[336].y) * 0.5 * fh)
+        top_y = int(min(lm[10].y, lm[338].y) * fh)
+        if brow_y > top_y + 8:
+            fade = np.linspace(0.0, 1.0, brow_y - top_y, dtype=np.float32)
+            mask_f = mask.astype(np.float32)
+            mask_f[top_y:brow_y, :] *= fade[:, None]
+            mask = np.clip(mask_f, 0, 255).astype(np.uint8)
+    else:
+        k = max(3, int(min(fw, fh) * 0.012)) | 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+        mask = cv2.erode(mask, kernel, iterations=1)
+
+    k_blur = max(3, int(min(fw, fh) * 0.012)) | 1
+    mask = cv2.GaussianBlur(mask, (k_blur, k_blur), 0)
     return mask
 
 
@@ -121,7 +143,7 @@ def restrict_overlay(
     fh, fw = mask_bgr.shape[:2]
     source = cv2.resize(source_bgr, (fw, fh), interpolation=cv2.INTER_AREA)
 
-    skin = build_face_skin_mask(source)
+    skin = build_face_skin_mask(source, kind)
     if skin is None:
         skin = fallback_ellipse_mask(source)
 

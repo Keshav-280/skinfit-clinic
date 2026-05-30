@@ -13,6 +13,7 @@ import {
 import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { buildFaceCaptureGallery } from "../../../../../src/lib/faceCaptureGallery";
+import { ensureScanMasksFaceRestricted } from "../../../../../src/lib/ensureScanMasksFaceRestricted";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
 import type { FaceCaptureRef } from "../../../../../src/lib/resolveScanImageUrl";
 import { loadScanTrackerReport } from "../../../../../src/lib/scanTrackerSnapshot";
@@ -42,6 +43,7 @@ async function loadScanRow(userId: string, id: number) {
         annotations: true,
         createdAt: true,
         faceCaptureImages: true,
+        imageUrl: true,
         scores: true,
         pigmentation: true,
         texture: true,
@@ -66,6 +68,7 @@ async function loadScanRow(userId: string, id: number) {
         annotations: true,
         createdAt: true,
         ...(missingFaceCapture ? {} : { faceCaptureImages: true }),
+        imageUrl: true,
         scores: true,
         pigmentation: true,
         texture: true,
@@ -109,6 +112,16 @@ export default async function ScanReportPage({
   if (!user) notFound();
   if (!row) notFound();
 
+  const scores = await ensureScanMasksFaceRestricted({
+    userId,
+    scanId: row.id,
+    scores: row.scores,
+    faceCaptureImages: (
+      "faceCaptureImages" in row ? row.faceCaptureImages : null
+    ) as FaceCaptureRef[] | null | undefined,
+    primaryImageUrl: row.imageUrl,
+  });
+
   const trackerSnapshot =
     ("trackerSnapshot" in row ? row.trackerSnapshot ?? null : null) as
       | PatientTrackerReport
@@ -116,11 +129,11 @@ export default async function ScanReportPage({
   const serverTracker = await loadScanTrackerReport(userId, row.id, trackerSnapshot);
 
   const regions = parseScanRegions(row.annotations);
-  const clinical_scores = parseClinicalScores(row.scores);
-  const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
-  const wrinkleMaskUrl = parseScanWrinkleMaskDataUri(row.scores);
-  const acneMaskUrl = parseScanAcneMaskDataUri(row.scores);
-  const spatialOutputs = parseScanSpatialOutputs(row.scores);
+  const clinical_scores = parseClinicalScores(scores);
+  const annotatedImageUrl = parseScanOverlayDataUri(scores);
+  const wrinkleMaskUrl = parseScanWrinkleMaskDataUri(scores);
+  const acneMaskUrl = parseScanAcneMaskDataUri(scores);
+  const spatialOutputs = parseScanSpatialOutputs(scores);
 
   const faceCaptureImages =
     ("faceCaptureImages" in row ? row.faceCaptureImages : null) as

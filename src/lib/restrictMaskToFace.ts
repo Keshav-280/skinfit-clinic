@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
+import { logger } from "@/src/lib/infra";
 
 const SCRIPT = resolve(
   process.cwd(),
@@ -97,6 +98,28 @@ export async function restrictMaskDataUriToFace(
   return bufferToDataUri(Buffer.from(result.jpeg_b64, "base64"));
 }
 
+async function restrictOneMask(
+  maskDataUri: string | undefined,
+  sourceJpeg: Buffer,
+  kind: "acne" | "wrinkle"
+): Promise<{ dataUri?: string; faceRestricted: boolean }> {
+  if (!maskDataUri) return { faceRestricted: false };
+  try {
+    const dataUri = await restrictMaskDataUriToFace(
+      maskDataUri,
+      sourceJpeg,
+      kind
+    );
+    return { dataUri, faceRestricted: Boolean(dataUri) };
+  } catch (err) {
+    logger.warn("mask_face_restrict_failed", {
+      kind,
+      error: String(err),
+    });
+    return { dataUri: maskDataUri, faceRestricted: false };
+  }
+}
+
 export async function restrictScanMasksToFace(opts: {
   acneMaskDataUri?: string;
   wrinkleMaskDataUri?: string;
@@ -105,20 +128,17 @@ export async function restrictScanMasksToFace(opts: {
 }): Promise<{
   acneMaskDataUri?: string;
   wrinkleMaskDataUri?: string;
+  acneMaskFaceRestricted?: boolean;
+  wrinkleMaskFaceRestricted?: boolean;
 }> {
-  const [acneMaskDataUri, wrinkleMaskDataUri] = await Promise.all([
-    opts.acneMaskDataUri
-      ? restrictMaskDataUriToFace(opts.acneMaskDataUri, opts.centreJpeg, "acne").catch(
-          () => opts.acneMaskDataUri
-        )
-      : Promise.resolve(undefined),
-    opts.wrinkleMaskDataUri
-      ? restrictMaskDataUriToFace(
-          opts.wrinkleMaskDataUri,
-          opts.smilingJpeg,
-          "wrinkle"
-        ).catch(() => opts.wrinkleMaskDataUri)
-      : Promise.resolve(undefined),
+  const [acne, wrinkle] = await Promise.all([
+    restrictOneMask(opts.acneMaskDataUri, opts.centreJpeg, "acne"),
+    restrictOneMask(opts.wrinkleMaskDataUri, opts.smilingJpeg, "wrinkle"),
   ]);
-  return { acneMaskDataUri, wrinkleMaskDataUri };
+  return {
+    acneMaskDataUri: acne.dataUri,
+    wrinkleMaskDataUri: wrinkle.dataUri,
+    ...(acne.faceRestricted ? { acneMaskFaceRestricted: true } : {}),
+    ...(wrinkle.faceRestricted ? { wrinkleMaskFaceRestricted: true } : {}),
+  };
 }

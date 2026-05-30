@@ -302,6 +302,8 @@ export const scans = pgTable("scans", {
     overlayUrl?: string;
     wrinkleMaskUrl?: string;
     acneMaskUrl?: string;
+    acneMaskFaceRestricted?: boolean;
+    wrinkleMaskFaceRestricted?: boolean;
     /** @deprecated legacy base64 */
     overlayDataUri?: string;
     wrinkleMaskDataUri?: string;

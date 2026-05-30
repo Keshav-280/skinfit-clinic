@@ -12,6 +12,7 @@ import {
 } from "@/src/lib/parseClinicalScores";
 import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
+import { ensureScanMasksFaceRestricted } from "@/src/lib/ensureScanMasksFaceRestricted";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
@@ -43,6 +44,7 @@ async function loadScanRow(userId: string, id: number) {
         annotations: true,
         createdAt: true,
         faceCaptureImages: true,
+        imageUrl: true,
         scores: true,
         trackerSnapshot: true,
       },
@@ -64,6 +66,7 @@ async function loadScanRow(userId: string, id: number) {
         annotations: true,
         createdAt: true,
         faceCaptureImages: true,
+        imageUrl: true,
         scores: true,
       },
     });
@@ -85,19 +88,29 @@ export async function GET(
     return NextResponse.json({ error: "INVALID_ID" }, { status: 400 });
   }
 
+  const row = await loadScanRow(userId, id);
+  if (!row) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+
+  const scores = await ensureScanMasksFaceRestricted({
+    userId,
+    scanId: row.id,
+    scores: row.scores,
+    faceCaptureImages: row.faceCaptureImages ?? undefined,
+    primaryImageUrl: row.imageUrl,
+  });
+
   const payload = await cacheAside(
     CacheKeys.scan(userId, id),
     900,
     async () => {
-      const [user, row] = await Promise.all([
-        db.query.users.findFirst({
-          where: eq(users.id, userId),
-          columns: { name: true, email: true, age: true, skinType: true },
-        }),
-        loadScanRow(userId, id),
-      ]);
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { name: true, email: true, age: true, skinType: true },
+      });
 
-      if (!user || !row) {
+      if (!user) {
         throw new Error("NOT_FOUND");
       }
 
@@ -112,17 +125,17 @@ export async function GET(
       );
 
       const regions = parseScanRegions(row.annotations);
-      const clinical_scores = parseClinicalScores(row.scores);
-      const annotatedImageUrl = parseScanOverlayDataUri(row.scores);
-      const wrinkleMaskRef = parseScanWrinkleMaskDataUri(row.scores);
-      const acneMaskRef = parseScanAcneMaskDataUri(row.scores);
-      const spatialOutputs = parseScanSpatialOutputs(row.scores);
+      const clinical_scores = parseClinicalScores(scores);
+      const annotatedImageUrl = parseScanOverlayDataUri(scores);
+      const wrinkleMaskRef = parseScanWrinkleMaskDataUri(scores);
+      const acneMaskRef = parseScanAcneMaskDataUri(scores);
+      const spatialOutputs = parseScanSpatialOutputs(scores);
       const kaiParams =
-        row.scores &&
-        typeof row.scores === "object" &&
-        (row.scores as Record<string, unknown>).kaiParams &&
-        typeof (row.scores as Record<string, unknown>).kaiParams === "object"
-          ? ((row.scores as Record<string, unknown>).kaiParams as Record<
+        scores &&
+        typeof scores === "object" &&
+        (scores as Record<string, unknown>).kaiParams &&
+        typeof (scores as Record<string, unknown>).kaiParams === "object"
+          ? ((scores as Record<string, unknown>).kaiParams as Record<
               string,
               unknown
             >)
