@@ -601,7 +601,6 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     : buildLegacyMetricsHtml(p, overall, lastScanLabel);
   const section3Html = buildSection3Html(p);
   const pdfScale = estimatePdfScale(p);
-  const scaleWidthPct = `${Math.round((100 / pdfScale) * 100) / 100}%`;
 
   return `<!DOCTYPE html>
 <html>
@@ -615,24 +614,20 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       margin: 0;
       padding: 0;
       width: 595pt;
-      height: 842pt;
-      overflow: hidden;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       background: ${T.pageBg};
       color: ${T.ink};
     }
     .pdf-page {
       width: 595pt;
-      height: 842pt;
-      overflow: hidden;
       background: ${T.pageBg};
       page-break-after: avoid;
       page-break-before: avoid;
     }
+    /* CSS `zoom` reflows + shrinks the layout box (unlike transform:scale, which is visual-only
+       and gets clipped by the page). This keeps the whole report on one page, no break, no blank. */
     .pdf-scale {
-      transform: scale(${pdfScale});
-      transform-origin: top center;
-      width: ${scaleWidthPct};
+      zoom: ${pdfScale};
       margin: 0 auto;
       page-break-inside: avoid;
       break-inside: avoid;
