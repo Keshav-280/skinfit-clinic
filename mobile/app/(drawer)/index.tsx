@@ -39,6 +39,23 @@ function kaiParamsFromAnalysis(analysis: unknown): { label: string; value: numbe
     value: kaiParamClarity(analysis, key, 0),
   }));
 }
+
+function formatScanChipLabel(
+  scan: SkinScanItem,
+  scans: SkinScanItem[]
+): string {
+  const d = new Date(scan.createdAt);
+  const datePart = format(d, "MMM d");
+  const sameDay = scans.filter((s) =>
+    isSameDay(new Date(s.createdAt), d)
+  ).length;
+  const timePart = sameDay > 1 ? ` · ${format(d, "h:mm a")}` : "";
+  return `${datePart}${timePart} · ${Math.round(scan.skinScore)}`;
+}
+
+function formatScanDetailLabel(scan: SkinScanItem): string {
+  return `${format(new Date(scan.createdAt), "MMM d, yyyy 'at' h:mm a")} · Overall ${Math.round(scan.skinScore)}/100`;
+}
 import { normalizeRoutineSteps } from "@/lib/routine";
 
 const NAVY = "#2C3E6B";
@@ -855,36 +872,58 @@ export default function DashboardScreen() {
         </Pressable>
       </Pressable>
 
-      <View style={[styles.card, { marginTop: 16 }]}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.h2}>Skin parameters</Text>
+      <View style={[styles.card, styles.skinParamsCard]}>
+        <View style={styles.skinParamsHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.h2}>Skin parameters</Text>
+            <Text style={styles.skinParamsSub}>
+              8 kAI metrics tracked from your scans · higher is better
+            </Text>
+          </View>
+          {skinScanHistory.length > 0 ? (
+            <Pressable
+              onPress={() => router.push("/(drawer)/all-skin-params" as Href)}
+              hitSlop={8}
+            >
+              <Text style={styles.skinParamsLink}>View all</Text>
+            </Pressable>
+          ) : null}
         </View>
         {skinScanHistory.length > 1 ? (
-          <ScrollView horizontal style={{ marginBottom: 8 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scanChipRow}
+          >
             {skinScanHistory.map((s, i) => (
               <Pressable
                 key={s.id}
                 onPress={() => setSelectedScanIdx(i)}
-                style={[styles.chip, selectedScanIdx === i && styles.chipOn]}
+                style={[styles.scanChip, selectedScanIdx === i && styles.scanChipOn]}
               >
-                <Text style={selectedScanIdx === i ? styles.chipTextOn : styles.chipText}>
-                  {format(new Date(s.createdAt), "MMM d")} · {s.skinScore}
+                <Text
+                  style={selectedScanIdx === i ? styles.scanChipTextOn : styles.scanChipText}
+                  numberOfLines={1}
+                >
+                  {formatScanChipLabel(s, skinScanHistory)}
                 </Text>
               </Pressable>
             ))}
           </ScrollView>
         ) : null}
-        <Text style={styles.muted}>
+        <Text style={styles.skinParamsMeta}>
           {selectedScan
-            ? `Scan: ${format(new Date(selectedScan.createdAt), "dd/MM/yy")}`
-            : "No scans yet — sample targets"}
+            ? `Scan · ${formatScanDetailLabel(selectedScan)}`
+            : "No scans yet — sample targets shown"}
         </Text>
         <View style={styles.paramGrid}>
           {params.map((p) => (
-            <View key={p.label} style={[styles.paramCell, { backgroundColor: MINT }]}>
+            <View key={p.label} style={styles.paramCell}>
               <View style={styles.paramHeader}>
-                <Text style={styles.paramLabel} numberOfLines={2}>{p.label}</Text>
-                <View style={styles.paramValCol}>
+                <Text style={styles.paramLabel} numberOfLines={2}>
+                  {p.label}
+                </Text>
+                <View style={styles.paramScoreRow}>
                   <Text style={styles.paramNum}>{Math.round(p.value)}/100</Text>
                   <Text
                     style={[
@@ -905,10 +944,13 @@ export default function DashboardScreen() {
                 </View>
               </View>
               <View style={styles.barBg}>
-                <View style={[styles.barFg, { width: `${p.value}%` }]} />
+                <View style={[styles.barFg, { width: `${Math.min(100, Math.max(0, p.value))}%` }]} />
               </View>
               <Text style={styles.paramWeekAvg}>
-                Prev week avg: {p.prevWeekAvg == null ? "—" : `${p.prevWeekAvg}/100`}
+                Prev week avg{" "}
+                <Text style={styles.paramWeekAvgVal}>
+                  {p.prevWeekAvg == null ? "—" : `${p.prevWeekAvg}/100`}
+                </Text>
               </Text>
             </View>
           ))}

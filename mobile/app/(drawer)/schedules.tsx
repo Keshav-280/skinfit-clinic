@@ -534,7 +534,7 @@ export default function SchedulesScreen() {
           <View style={styles.calCardHeadText}>
             <Text style={styles.calCardTitle}>Your schedule</Text>
             <Text style={styles.calHeaderSub} numberOfLines={3}>
-              {`${headerLabel}\nTap a day to request a visit. Dots show appointments and care reminders.`}
+              {`${headerLabel}\nTap a day to request a visit`}
             </Text>
           </View>
         </View>

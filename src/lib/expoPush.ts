@@ -184,7 +184,8 @@ export async function notifyPatientDoctorVoiceNote(
 /** Patient push when the clinic updates AM/PM routine plan. */
 export async function notifyPatientRoutinePlanUpdated(
   patientUserId: string,
-  effectiveFromYmd: string
+  effectiveFromYmd: string,
+  opts?: { title?: string; body?: string; doctorId?: string | null }
 ): Promise<void> {
   const [row] = await db
     .select({ token: users.expoPushToken })
@@ -192,14 +193,28 @@ export async function notifyPatientRoutinePlanUpdated(
     .where(eq(users.id, patientUserId))
     .limit(1);
   const token = row?.token?.trim();
-  if (!token) return;
+  if (!token) {
+    console.warn(
+      "[expoPush] notifyPatientRoutinePlanUpdated skipped: no expo_push_token for user",
+      patientUserId,
+      effectiveFromYmd
+    );
+    return;
+  }
 
-  const body = `Your AM/PM routine is updated from ${effectiveFromYmd}. Open SkinnFit to view your checklist.`;
+  const body =
+    opts?.body?.trim() ||
+    `Your AM/PM routine is updated from ${effectiveFromYmd}. Open SkinnFit to view your checklist.`;
+  const title = opts?.title?.trim() || "SkinnFit — routine updated";
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit — routine updated",
+    title: title.length > 56 ? `${title.slice(0, 53)}…` : title,
     body: body.length > 140 ? `${body.slice(0, 137)}…` : body,
-    data: { type: "routine_plan_updated", effectiveFromYmd },
+    data: {
+      type: "routine_plan_updated",
+      effectiveFromYmd,
+      ...(opts?.doctorId ? { doctorId: opts.doctorId } : {}),
+    },
   });
 }
 

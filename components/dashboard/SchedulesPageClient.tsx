@@ -843,7 +843,7 @@ export default function SchedulesPageClient({
             Your schedule
           </h3>
           <p className="mt-0.5 whitespace-pre-line text-[12px] leading-snug text-[#64748b]">
-            {`${headerLabel}\nTap a day to request a visit. Dots show appointments and care reminders.`}
+            {`${headerLabel}\nTap a day to request a visit`}
           </p>
         </div>
 

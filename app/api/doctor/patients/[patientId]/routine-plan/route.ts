@@ -3,9 +3,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
-import { notifyPatientRoutinePlanUpdated } from "@/src/lib/expoPush";
 import { invalidateUserHomeCache } from "@/src/lib/infra";
 import { parseDoctorRoutinePlanPatch } from "@/src/lib/routine";
+import {
+  notifyPatientRoutinePlanChanged,
+  patientHadRoutinePlan,
+} from "@/src/lib/routinePlanNotify";
 import {
   ensureInitialRoutineRevision,
   insertRoutinePlanRevision,
@@ -63,6 +66,7 @@ export async function PATCH(
   }
 
   await ensureInitialRoutineRevision(db, patientId);
+  const priorHadPlan = await patientHadRoutinePlan(patientId);
 
   if (parsed.kind === "clear") {
     await insertRoutinePlanRevision(db, {
@@ -73,7 +77,15 @@ export async function PATCH(
       createdByStaffId: staffId,
     });
     await invalidateUserHomeCache(patientId);
-    void notifyPatientRoutinePlanUpdated(patientId, effectiveParsed.ymd);
+    void notifyPatientRoutinePlanChanged({
+      patientId,
+      staffId,
+      effectiveFromYmd: effectiveParsed.ymd,
+      kind: "clear",
+      priorHadPlan,
+      amCount: 0,
+      pmCount: 0,
+    });
     return NextResponse.json({
       ok: true,
       cleared: true,
@@ -89,7 +101,15 @@ export async function PATCH(
     createdByStaffId: staffId,
   });
   await invalidateUserHomeCache(patientId);
-  void notifyPatientRoutinePlanUpdated(patientId, effectiveParsed.ymd);
+  void notifyPatientRoutinePlanChanged({
+    patientId,
+    staffId,
+    effectiveFromYmd: effectiveParsed.ymd,
+    kind: "set",
+    priorHadPlan,
+    amCount: parsed.am.length,
+    pmCount: parsed.pm.length,
+  });
 
   return NextResponse.json({
     ok: true,

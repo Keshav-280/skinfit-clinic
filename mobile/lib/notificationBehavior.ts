@@ -75,7 +75,16 @@ export function configureNotificationBehavior() {
         return;
       }
       if (t === "routine_plan_updated") {
-        router.push("/(drawer)" as Href);
+        const doctorIdRaw = data?.doctorId;
+        const doctorId =
+          typeof doctorIdRaw === "string" && doctorIdRaw.trim().length > 0
+            ? doctorIdRaw.trim()
+            : null;
+        router.push(
+          doctorId
+            ? (`/(drawer)/chat?doctorId=${encodeURIComponent(doctorId)}` as Href)
+            : ("/(drawer)" as Href)
+        );
       }
     });
   })();
