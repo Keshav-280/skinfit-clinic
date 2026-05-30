@@ -1,6 +1,7 @@
 import { requireOptionalNativeModule } from "expo-modules-core";
+import { Platform } from "react-native";
 
-import { configurePlaybackAudioMode } from "@/lib/audioSession";
+import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/audioSession";
 
 export type VoicePriority =
   | "critical"
@@ -120,16 +121,23 @@ export class CaptureVoiceGuide {
     }
 
     void configurePlaybackAudioMode()
+      .then(() => primeAudioSessionForPlayback())
       .then(() => loadSpeechModule())
       .then((Speech) => {
       if (!Speech || !this.enabled) return;
       try {
         Speech.stop();
-        Speech.speak(trimmed, {
+        const speechOpts: Parameters<typeof Speech.speak>[1] = {
           rate: 1.05,
           pitch: 1,
           language: "en-US",
-        });
+        };
+        // iOS: let the system manage speech audio separately from the camera session.
+        if (Platform.OS === "ios") {
+          (speechOpts as { useApplicationAudioSession?: boolean }).useApplicationAudioSession =
+            false;
+        }
+        Speech.speak(trimmed, speechOpts);
         this.lastSpokenAt = now;
         this.lastByText.set(trimmed, { text: trimmed, spokenAt: now });
         this.currentPriority = priority;

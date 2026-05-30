@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnalysisMagicLoader } from "@/components/AnalysisMagicLoader";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
-import { configurePlaybackAudioMode } from "@/lib/audioSession";
+import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/audioSession";
 import { getCached, setCached } from "@/lib/apiCache";
 import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
@@ -465,6 +465,7 @@ function HistoryAudioPlayButton({ uri }: { uri: string }) {
         return;
       }
       await configurePlaybackAudioMode();
+      await primeAudioSessionForPlayback();
       if (!soundRef.current) {
         const playUri = await resolveUri();
         const { sound } = await Audio.Sound.createAsync(

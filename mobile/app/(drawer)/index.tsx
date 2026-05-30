@@ -24,7 +24,7 @@ import { TodayFocusCard } from "@/components/dashboard/TodayFocusCard";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
-import { configurePlaybackAudioMode } from "@/lib/audioSession";
+import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/audioSession";
 import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { getCached, setCached } from "@/lib/apiCache";
 import {
@@ -1314,6 +1314,7 @@ function DoctorVoiceNotePlayer({ uri }: { uri: string }) {
         return;
       }
       await configurePlaybackAudioMode();
+      await primeAudioSessionForPlayback();
       if (!soundRef.current) {
         const playUri = await resolveUri();
         const { sound } = await Audio.Sound.createAsync(

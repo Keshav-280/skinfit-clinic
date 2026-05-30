@@ -24,7 +24,7 @@ import {
   captureVoiceGuide,
   isCaptureVoiceSpeechAvailable,
 } from "@/lib/captureVoiceGuide";
-import { configurePlaybackAudioMode } from "@/lib/audioSession";
+import { configurePlaybackAudioMode, startAudioPrimingLoop, stopAudioPrimingLoop } from "@/lib/audioSession";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import {
   applyCaptureAdjustments,
@@ -144,10 +144,15 @@ export function FiveAngleCameraStep({
 
   useEffect(() => {
     captureVoiceGuide.setEnabled(voiceEnabled && !reviewingCapture);
-    if (!voiceEnabled || reviewingCapture) captureVoiceGuide.reset();
-    else void configurePlaybackAudioMode();
+    if (!voiceEnabled || reviewingCapture) {
+      captureVoiceGuide.reset();
+      void stopAudioPrimingLoop();
+    } else {
+      void startAudioPrimingLoop();
+    }
     return () => {
       captureVoiceGuide.setEnabled(false);
+      void stopAudioPrimingLoop();
     };
   }, [voiceEnabled, reviewingCapture]);
 
@@ -231,7 +236,10 @@ export function FiveAngleCameraStep({
           facing={facing}
           zoom={cameraAdjust.zoom}
           enableTorch={cameraAdjust.torch}
-          onCameraReady={() => setCameraReady(true)}
+          onCameraReady={() => {
+            setCameraReady(true);
+            if (voiceEnabled) void startAudioPrimingLoop();
+          }}
         />
         {!reviewingCapture && previewOverlay.light > 0 ? (
           <View
