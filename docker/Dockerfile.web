@@ -22,8 +22,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 # MediaPipe face-mask clip (restrict_mask_to_face.py) — needs glibc; Alpine wheels fail.
+# opencv-python-headless pulls cv2; bookworm-slim needs X/GL runtime libs even headless.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 python3-venv python3-pip \
+  && apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-pip \
+    libgl1 libglib2.0-0 libxcb1 \
   && python3 -m venv /opt/mask-venv \
   && rm -rf /var/lib/apt/lists/*
 COPY apps/ml-worker/python/requirements-mask-restrict.txt /tmp/requirements-mask-restrict.txt
