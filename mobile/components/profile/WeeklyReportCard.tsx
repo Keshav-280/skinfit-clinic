@@ -89,7 +89,7 @@ export default function WeeklyReportCard({
             <Ionicons name="star" size={14} color={GREEN} />
           </View>
           <View>
-            <Text style={s.pillLabel}>Latest Score</Text>
+            <Text style={s.pillLabel}>Weekly Average</Text>
             <Text style={s.pillValue}>
               {kaiScore}
               <Text style={s.pillUnit}>/100</Text>

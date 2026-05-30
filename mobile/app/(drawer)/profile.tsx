@@ -73,6 +73,7 @@ type SkinProfilePayload = {
     logDaysUsed: string[];
     scanDaysUsed: string[];
     baselineScanDateYmd: string | null;
+    weeklyAverageKaiScore?: number | null;
     items: Array<{
       text: string;
       source: "baseline_scan" | "daily_logs" | "scan_trend" | "weekly_report";
@@ -327,17 +328,26 @@ export default function ProfileScreen() {
 
   const hasRealScoreData = homeData != null && homeData.kaiSkinScore > 0;
 
-  const kaiScore = hasRealScoreData
-    ? Math.min(100, Math.max(0, Math.round(homeData.kaiSkinScore)))
-    : 0;
+  const keyObs = skinExtra?.keyObservations;
+
+  const weeklyAverageScore =
+    keyObs?.weeklyAverageKaiScore != null && keyObs.weeklyAverageKaiScore > 0
+      ? Math.min(100, Math.max(0, Math.round(keyObs.weeklyAverageKaiScore)))
+      : hasRealScoreData
+        ? Math.min(100, Math.max(0, Math.round(homeData!.kaiSkinScore)))
+        : 0;
 
   const weeklyDelta = hasRealScoreData ? Math.round(homeData.weeklyDeltaScore) : 0;
 
-  const consistency = !hasRealScoreData
+  const hasWeeklyScore =
+    weeklyAverageScore > 0 ||
+    (keyObs?.scanDaysUsed?.length ?? 0) > 0 ||
+    hasRealScoreData;
+
+  const consistency = !hasWeeklyScore
     ? "No data"
     : Math.abs(weeklyDelta) <= 3 ? "Good" : Math.abs(weeklyDelta) <= 8 ? "Fair" : "Needs work";
 
-  const keyObs = skinExtra?.keyObservations;
   const weeklyDateRange =
     keyObs?.modeLabel ??
     (() => {
@@ -391,7 +401,7 @@ export default function ProfileScreen() {
 
   const hasWeeklyContent =
     kaiInsightsEnabled &&
-    (hasRealScoreData ||
+    (hasWeeklyScore ||
       observations.length > 0 ||
       priorityActions.length > 0 ||
       insightsUnavailable);
@@ -445,7 +455,7 @@ export default function ProfileScreen() {
         {/* 4. Weekly Report — only when real scan data exists */}
         {hasWeeklyContent ? (
           <WeeklyReportCard
-            kaiScore={kaiScore}
+            kaiScore={weeklyAverageScore}
             weeklyDelta={weeklyDelta}
             consistency={consistency}
             dateRange={weeklyDateRange}

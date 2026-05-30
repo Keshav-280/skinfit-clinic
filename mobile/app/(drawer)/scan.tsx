@@ -31,12 +31,14 @@ import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
 import {
   addPendingScanJob,
+  dismissUnreadReadyScan,
   getPendingScanJobs,
   removePendingScanJob,
+  subscribeScanJobNotifications,
 } from "@/lib/scanJobNotifications";
 import { submitFaceScan } from "@/lib/submitFaceScan";
 
-const SCAN_STATUS_POLL_MS = 8_000;
+const SCAN_STATUS_POLL_MS = 3_000;
 
 const NAVY = "#2B3A67";
 const GREEN = "#1B8A4A";
@@ -60,6 +62,7 @@ export default function ScanScreen() {
   const [scanName, setScanName] = useState("");
   const [busy, setBusy] = useState(false);
   const [resultId, setResultId] = useState<number | null>(null);
+  const [queuedJobId, setQueuedJobId] = useState<string | null>(null);
   const [camPermission, requestCamPermission] = useCameraPermissions();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -67,49 +70,73 @@ export default function ScanScreen() {
     if (!camPermission?.granted) void requestCamPermission();
   }, []);
 
+  /** Recover job id after remount (AsyncStorage still has the pending job). */
+  useEffect(() => {
+    if (phase !== "queued" || queuedJobId) return;
+    void getPendingScanJobs().then((jobs) => {
+      const latest = jobs[jobs.length - 1];
+      if (latest?.jobId) setQueuedJobId(latest.jobId);
+    });
+  }, [phase, queuedJobId]);
+
   /** When analysis finishes, leave the waiting screen and open the report automatically. */
   useEffect(() => {
     if (phase !== "queued" || !token) return;
     let cancelled = false;
 
-    const poll = async () => {
-      const pending = await getPendingScanJobs();
-      if (pending.length === 0 || cancelled) return;
+    const openReport = (scanId: number, jobId?: string | null) => {
+      if (cancelled) return;
+      void dismissUnreadReadyScan(scanId);
+      if (jobId) void removePendingScanJob(jobId);
+      setQueuedJobId(null);
+      setPhase("intro");
+      router.replace(`/(drawer)/history/${scanId}` as Href);
+    };
 
-      for (const job of pending) {
-        try {
-          const data = await apiJson<{
-            status?: string;
-            scanId?: number | null;
-          }>(`/api/scans/status/${encodeURIComponent(job.jobId)}`, token, {
-            method: "GET",
-          });
-          const status = String(data.status ?? "");
-          const scanId =
-            typeof data.scanId === "number" && data.scanId > 0
-              ? data.scanId
-              : null;
+    const checkJob = async (jobId: string): Promise<boolean> => {
+      try {
+        const data = await apiJson<{
+          status?: string;
+          scanId?: number | null;
+        }>(`/api/scans/status/${encodeURIComponent(jobId)}`, token, {
+          method: "GET",
+        });
+        const status = String(data.status ?? "");
+        const scanId =
+          typeof data.scanId === "number" && data.scanId > 0
+            ? data.scanId
+            : null;
 
-          if (status === "completed" && scanId) {
-            await removePendingScanJob(job.jobId);
-            if (!cancelled) {
-              router.replace(`/(drawer)/history/${scanId}` as Href);
-            }
-            return;
-          }
-        } catch {
-          /* retry on next tick */
+        if (status === "completed" && scanId) {
+          openReport(scanId, jobId);
+          return true;
         }
+      } catch {
+        /* retry on next tick */
+      }
+      return false;
+    };
+
+    const poll = async () => {
+      if (cancelled) return;
+
+      if (queuedJobId && (await checkJob(queuedJobId))) return;
+
+      const pending = await getPendingScanJobs();
+      for (const job of pending) {
+        if (await checkJob(job.jobId)) return;
       }
     };
 
     void poll();
     const t = setInterval(() => void poll(), SCAN_STATUS_POLL_MS);
+    const unsub = subscribeScanJobNotifications(() => void poll());
     return () => {
       cancelled = true;
       clearInterval(t);
+      unsub();
     };
-  }, [phase, token, router]);
+  }, [phase, token, router, queuedJobId]);
 
   /** Drawer remounts can leave `capture` with a dismissed modal — show intro again. */
   useFocusEffect(
@@ -181,6 +208,7 @@ export default function ScanScreen() {
     setUris([]);
     setScanName("");
     setResultId(null);
+    setQueuedJobId(null);
     setPhase("intro");
   }
 
@@ -209,6 +237,7 @@ export default function ScanScreen() {
 
       const outcome = await submitFaceScan(token, form);
       if (outcome.mode === "queued") {
+        setQueuedJobId(outcome.jobId);
         await addPendingScanJob(outcome.jobId, name);
         setPhase("queued");
         return;
