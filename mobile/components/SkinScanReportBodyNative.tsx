@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import type { DimensionValue } from "react-native";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -163,6 +165,9 @@ export function SkinScanReportBodyNative({
 
   const [markerImageUri, setMarkerImageUri] = useState<string | null>(null);
   const [markerImageLoading, setMarkerImageLoading] = useState(false);
+  const [fullscreenPhoto, setFullscreenPhoto] = useState<
+    { label: string; imageUrl: string } | null
+  >(null);
 
   useEffect(() => {
     const path = imageUrl?.trim();
@@ -210,6 +215,7 @@ export function SkinScanReportBodyNative({
         : [];
 
   return (
+    <>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
@@ -241,20 +247,46 @@ export function SkinScanReportBodyNative({
               <Text style={styles.captureKicker}>
                 {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
               </Text>
-              <View style={styles.captureStack}>
-                {resolvedPhotos.map((item, idx) => (
-                  <View key={`cap-${idx}-${item.label}`} style={styles.captureStackItem}>
-                    <ReportContainImage
-                      imageUrl={item.imageUrl}
-                      authToken={authToken}
-                      maxWidth={300}
-                    />
-                    <Text style={styles.captureCaption} numberOfLines={3}>
-                      {item.label}
-                    </Text>
+              {resolvedPhotos.length === 1 ? (
+                <Pressable
+                  style={styles.captureSingleWrap}
+                  onPress={() => setFullscreenPhoto(resolvedPhotos[0]!)}
+                >
+                  <ReportContainImage
+                    imageUrl={resolvedPhotos[0]!.imageUrl}
+                    authToken={authToken}
+                    maxWidth={300}
+                  />
+                  <Text style={styles.captureCaption} numberOfLines={2}>
+                    {resolvedPhotos[0]!.label}
+                  </Text>
+                </Pressable>
+              ) : (
+                <>
+                  <View style={styles.captureGrid}>
+                    {resolvedPhotos.map((item, idx) => (
+                      <Pressable
+                        key={`cap-${idx}-${item.label}`}
+                        style={styles.captureTile}
+                        onPress={() => setFullscreenPhoto(item)}
+                        accessibilityLabel={`View ${item.label} full screen`}
+                      >
+                        <View style={styles.captureTileImg}>
+                          <ReportContainImage
+                            imageUrl={item.imageUrl}
+                            authToken={authToken}
+                            resizeMode="cover"
+                          />
+                        </View>
+                        <Text style={styles.captureTileCaption} numberOfLines={2}>
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    ))}
                   </View>
-                ))}
-              </View>
+                  <Text style={styles.captureHint}>Tap any photo to view full screen</Text>
+                </>
+              )}
             </View>
           ) : (
             <Text style={styles.mutedCenter}>No face capture images for this scan.</Text>
@@ -480,6 +512,29 @@ export function SkinScanReportBodyNative({
         </View>
       </View>
     </ScrollView>
+
+    <Modal
+      visible={fullscreenPhoto != null}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setFullscreenPhoto(null)}
+    >
+      <Pressable style={styles.fsBackdrop} onPress={() => setFullscreenPhoto(null)}>
+        {fullscreenPhoto ? (
+          <ReportContainImage
+            imageUrl={fullscreenPhoto.imageUrl}
+            authToken={authToken}
+            maxWidth={Math.round(Dimensions.get("window").width)}
+            style={styles.fsImage}
+          />
+        ) : null}
+        <Text style={styles.fsCaption}>{fullscreenPhoto?.label ?? ""}</Text>
+        <Pressable style={styles.fsClose} onPress={() => setFullscreenPhoto(null)}>
+          <Text style={styles.fsCloseText}>Close</Text>
+        </Pressable>
+      </Pressable>
+    </Modal>
+    </>
   );
 }
 
@@ -538,14 +593,46 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   captureSection: { marginBottom: 8, width: "100%" },
-  captureStack: {
-    width: "100%",
-    gap: 20,
-    marginTop: 4,
-  },
-  captureStackItem: {
+  captureSingleWrap: {
     width: "100%",
     alignItems: "center",
+    marginTop: 4,
+  },
+  /** Compact collage: 5 captures wrap into rows of 3 instead of one tall vertical list. */
+  captureGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  captureTile: {
+    width: "31%",
+    alignItems: "center",
+  },
+  captureTileImg: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#e4e4e7",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+  },
+  captureTileCaption: {
+    marginTop: 6,
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#374151",
+    textAlign: "center",
+    lineHeight: 13,
+  },
+  captureHint: {
+    marginTop: 12,
+    fontSize: 11,
+    color: "#6B7280",
+    textAlign: "center",
+    fontStyle: "italic",
   },
   captureCaption: {
     marginTop: 10,
@@ -556,6 +643,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     lineHeight: 16,
   },
+  fsBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  fsImage: { width: "100%" },
+  fsCaption: {
+    marginTop: 16,
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  fsClose: {
+    position: "absolute",
+    top: 52,
+    right: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  fsCloseText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   mutedCenter: {
     textAlign: "center",
     fontSize: 14,
