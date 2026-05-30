@@ -87,7 +87,7 @@ export function useMobileScanCaptureGuidance(
     initialMobileModels(captureCfg, needsMp, false)
   );
 
-  const expressionStep = needsExpressionCheck(stepId);
+  const expressionStep = needsExpressionCheck();
   const needsExpressionModel = expressionStep && needsMp;
   const tickMs = expressionStep ? EXPRESSION_TICK_MS : TICK_MS;
 

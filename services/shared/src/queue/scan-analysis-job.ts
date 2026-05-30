@@ -4,7 +4,7 @@ import type { Job } from "bullmq";
 export const SCAN_ANALYSIS_QUEUE_JOB_OPTS = {
   removeOnComplete: 200,
   removeOnFail: 100,
-  attempts: 5,
+  attempts: 2,
   backoff: { type: "exponential" as const, delay: 5000 },
 } as const;
 

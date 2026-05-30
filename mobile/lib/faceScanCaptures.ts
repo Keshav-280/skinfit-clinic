@@ -23,7 +23,7 @@ export const FACE_SCAN_CAPTURE_STEPS = [
     id: "eyes_closed",
     title: "Front face — eyes closed",
     instruction:
-      "Face forward again with eyes gently closed. Remove spectacles. AI checks eye closure.",
+      "Face forward again with eyes gently closed. Remove spectacles, then tap capture.",
   },
   {
     id: "smiling",

@@ -66,6 +66,21 @@ export default function ScanScreen() {
   const [camPermission, requestCamPermission] = useCameraPermissions();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Mirror of `phase` for the focus callback (which captures only the initial render).
+  const phaseRef = useRef(phase);
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  /** Wipe all capture inputs so the next visit to the scan screen starts clean. */
+  const resetToFreshScan = useCallback(() => {
+    setUris([]);
+    setScanName("");
+    setResultId(null);
+    setQueuedJobId(null);
+    setPhase("intro");
+  }, []);
+
   useEffect(() => {
     if (!camPermission?.granted) void requestCamPermission();
   }, []);
@@ -88,8 +103,7 @@ export default function ScanScreen() {
       if (cancelled) return;
       void dismissUnreadReadyScan(scanId);
       if (jobId) void removePendingScanJob(jobId);
-      setQueuedJobId(null);
-      setPhase("intro");
+      resetToFreshScan();
       router.replace(`/(drawer)/history/${scanId}` as Href);
     };
 
@@ -136,13 +150,22 @@ export default function ScanScreen() {
       clearInterval(t);
       unsub();
     };
-  }, [phase, token, router, queuedJobId]);
+  }, [phase, token, router, queuedJobId, resetToFreshScan]);
 
-  /** Drawer remounts can leave `capture` with a dismissed modal — show intro again. */
+  /**
+   * On (re)focus, start a fresh scan whenever we're sitting on the waiting screen
+   * or a dismissed camera modal. A submitted scan keeps running in the background
+   * and the report-ready banner (ScanJobReadyNotifier) handles notifying the user,
+   * so coming back to this tab should always show a clean capture screen — never
+   * the previously captured 5 photos.
+   */
   useFocusEffect(
     useCallback(() => {
-      setPhase((p) => (p === "capture" ? "intro" : p));
-    }, [])
+      const p = phaseRef.current;
+      if (p === "capture" || p === "queued") {
+        resetToFreshScan();
+      }
+    }, [resetToFreshScan])
   );
 
   useEffect(() => {
@@ -237,8 +260,13 @@ export default function ScanScreen() {
 
       const outcome = await submitFaceScan(token, form);
       if (outcome.mode === "queued") {
-        setQueuedJobId(outcome.jobId);
         await addPendingScanJob(outcome.jobId, name);
+        // Clear the captured photos/name now so the camera screen is fresh the
+        // moment the user navigates back here, while the queued screen shows.
+        setUris([]);
+        setScanName("");
+        setResultId(null);
+        setQueuedJobId(outcome.jobId);
         setPhase("queued");
         return;
       }

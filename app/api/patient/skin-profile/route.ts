@@ -13,6 +13,7 @@ import { RAG_KAI_PARAM_KEYS, RAG_KAI_PARAM_LABELS } from "@/src/lib/ragEightPara
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 import {
   gatherProfileInsightContext,
+  averageKaiScoreInWindow,
   type ProfileInsightContext,
 } from "@/src/lib/profileInsightContext";
 import {
@@ -222,7 +223,10 @@ export async function GET(request: Request) {
         hormonalCorrelation: dna?.hormonalCorrelation ?? null,
       },
       lastWeekObservations: keyObservations.narrativeText,
-      keyObservations,
+      keyObservations: {
+        ...keyObservations,
+        weeklyAverageKaiScore: averageKaiScoreInWindow(insightCtx.scansInWindow),
+      },
       priorityKnowDo: {
         know: priorityKnowDo.know,
         do: priorityKnowDo.do,

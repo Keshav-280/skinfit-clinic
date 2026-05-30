@@ -28,6 +28,8 @@ export type ProfileKeyObservationsPayload = {
   logDaysUsed: string[];
   scanDaysUsed: string[];
   baselineScanDateYmd: string | null;
+  /** Mean kAI score for all scans in the active window (see modeLabel). */
+  weeklyAverageKaiScore?: number | null;
   items: ProfileObservationItem[];
   narrativeText: string | null;
   generatedBy: "llm_rag";

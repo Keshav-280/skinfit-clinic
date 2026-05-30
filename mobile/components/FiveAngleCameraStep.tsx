@@ -86,7 +86,8 @@ export function FiveAngleCameraStep({
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
-  const expressionStep = stepId === "eyes_closed";
+  // Eye-closure / expression detection is disabled on mobile — never gate or nag.
+  const expressionStep = false;
 
   const reviewingCapture = pendingUri != null;
   const guidancePaused = busy || shooting || reviewingCapture;

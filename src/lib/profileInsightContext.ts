@@ -131,6 +131,17 @@ function scanToSummary(
   };
 }
 
+/** Mean kAI score across every scan in the active profile window (not latest-only). */
+export function averageKaiScoreInWindow(
+  scans: ProfileScanSummary[]
+): number | null {
+  const scores = scans
+    .map((s) => s.kaiScore)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n));
+  if (scores.length === 0) return null;
+  return Math.round(scores.reduce((sum, n) => sum + n, 0) / scores.length);
+}
+
 async function loadVisitNotesSummary(userId: string, before: Date): Promise<string | null> {
   const notes = await db.query.visitNotes.findMany({
     where: eq(visitNotes.userId, userId),

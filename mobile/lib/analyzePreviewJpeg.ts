@@ -3,8 +3,6 @@ import { Buffer } from "buffer";
 import * as ImageManipulator from "expo-image-manipulator";
 
 import {
-  applyCaptureExpression,
-  applyCaptureExpressionFromClassifier,
   needsExpressionCheck,
   type ExpressionCalibration,
 } from "@/lib/captureExpression";
@@ -64,7 +62,7 @@ export async function analyzePreviewImageUri(
     expressionClassifierUsed: boolean;
   };
 }> {
-  const expressionStep = options ? needsExpressionCheck(options.stepId) : false;
+  const expressionStep = options ? needsExpressionCheck() : false;
   const captureCfg = getMobileFaceCaptureConfig();
   const useServer =
     usesServerFacePreview(captureCfg) ||
@@ -180,41 +178,11 @@ export async function analyzePreviewImageUri(
     showFaceCheck: needsMp || hasFaceEstimate,
   });
 
-  if (options) {
-    if (!expressionStep) {
-      nextState.expressionCalibration = { openEarBaseline: null };
-    }
-    // Prefer the server blink/expression classifier whenever it returns scores —
-    // on phones the native MediaPipe landmarker is often unavailable, so the
-    // server result is what makes eye-closure detection actually work.
-    const useClassifier = Boolean(
-      serverPreview?.expressionAvailable && serverPreview.expression
-    );
-
-    if (useClassifier) {
-      const classified = applyCaptureExpressionFromClassifier(
-        guidance,
-        options.stepId,
-        serverPreview!.expression,
-        options.expressionOkRef,
-        true
-      );
-      guidance = {
-        ...guidance,
-        ...classified,
-        showExpressionCheck: expressionStep,
-      };
-    } else {
-      guidance = applyCaptureExpression(
-        guidance,
-        options.stepId,
-        blendCategories,
-        options.expressionOkRef,
-        landmarkPoints,
-        landmarkPipelineActive || Boolean(serverPreview),
-        nextState.expressionCalibration
-      );
-    }
+  // Expression / eye-closure detection is disabled on mobile (expressionStep is
+  // always false), so we never apply blink guidance here. Keep calibration clear.
+  if (options && !expressionStep) {
+    nextState.expressionCalibration = { openEarBaseline: null };
+    options.expressionOkRef.current = null;
   }
 
   return {
