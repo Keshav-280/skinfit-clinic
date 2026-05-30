@@ -9,12 +9,16 @@ RUN apt-get update \
 COPY apps/ml-worker/python/requirements-mask-restrict.txt /tmp/requirements-mask-restrict.txt
 RUN /opt/mask-venv/bin/pip install --no-cache-dir -r /tmp/requirements-mask-restrict.txt
 ENV MASK_RESTRICT_PYTHON=/opt/mask-venv/bin/python3
-RUN groupadd -r skinfit && useradd -r -g skinfit skinfit
+RUN groupadd -r skinfit && useradd -r -g skinfit -d /home/skinfit skinfit \
+  && mkdir -p /home/skinfit /app/.npm /uploads \
+  && chown -R skinfit:skinfit /home/skinfit /app /uploads
+ENV HOME=/home/skinfit NPM_CONFIG_CACHE=/app/.npm
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+# tsx is a devDependency — install explicitly; do not use `npx tsx` at runtime (needs network + home dir).
+RUN npm ci --omit=dev && npm install --no-save tsx@^4.21.0
 COPY services/shared ./services/shared
 COPY src ./src
 COPY apps/ml-worker ./apps/ml-worker
-RUN mkdir -p /uploads && chown -R skinfit:skinfit /uploads
+RUN chown -R skinfit:skinfit /app /uploads
 USER skinfit
-CMD ["npx", "tsx", "--tsconfig", "apps/ml-worker/tsconfig.json", "apps/ml-worker/src/worker.ts"]
+CMD ["node_modules/.bin/tsx", "--tsconfig", "apps/ml-worker/tsconfig.json", "apps/ml-worker/src/worker.ts"]
