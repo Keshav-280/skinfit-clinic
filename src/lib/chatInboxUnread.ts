@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 
@@ -19,29 +19,17 @@ export async function countUnreadClinicMessagesForAssistant(params: {
   assistantId: "support" | "doctor";
   since: Date;
 }): Promise<number> {
-  const [thread] = await db
-    .select({ id: chatThreads.id })
-    .from(chatThreads)
-    .where(
-      and(
-        eq(chatThreads.userId, params.userId),
-        eq(chatThreads.assistantId, params.assistantId)
-      )
-    )
-    .orderBy(desc(chatThreads.createdAt))
-    .limit(1);
-
-  if (!thread) return 0;
-
   const since = params.since;
 
+  // Doctor chat uses one thread per doctor; count unread across all matching threads.
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(chatMessages)
     .innerJoin(chatThreads, eq(chatMessages.threadId, chatThreads.id))
     .where(
       and(
-        eq(chatMessages.threadId, thread.id),
+        eq(chatThreads.userId, params.userId),
+        eq(chatThreads.assistantId, params.assistantId),
         inArray(chatMessages.sender, [...CLINIC_SENDERS]),
         sql`${chatMessages.createdAt} > (${since}::timestamptz + interval '1 second')`,
         or(

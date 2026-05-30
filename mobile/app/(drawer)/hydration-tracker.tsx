@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   PanResponder,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -190,6 +191,7 @@ export default function HydrationTrackerScreen() {
   }, [params.date]);
   const [selectedDate, setSelectedDate] = useState(parsedParamDate ?? new Date());
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const minDate = useMemo(() => subMonths(new Date(), 1), []);
   const maxDate = useMemo(() => new Date(), []);
@@ -274,7 +276,25 @@ export default function HydrationTrackerScreen() {
 
       <Text style={s.subtitle}>Log your water intake to keep your skin happy</Text>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} scrollEnabled={scrollEnabled}>
+      <ScrollView
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={NAVY}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await Promise.all([loadData(), loadInsight()]);
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
         <View style={s.dateRow}>
           <Pressable style={[s.dateArrow, !canGoBack && { opacity: 0.3 }]} hitSlop={10} onPress={goBack} disabled={!canGoBack}>
             <Ionicons name="chevron-back" size={18} color={NAVY} />

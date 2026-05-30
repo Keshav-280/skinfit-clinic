@@ -9,6 +9,7 @@ import { apiJson } from "@/lib/api";
 import {
   getClinicSupportInboxLastSeenIso,
   getDoctorInboxLastSeenIso,
+  getSupplementalDoctorUnread,
   subscribeInboxReadCursors,
 } from "@/lib/inboxReadCursors";
 import {
@@ -33,19 +34,36 @@ export function NotificationBell() {
         getUnreadReadyScanCount(),
       ]);
       const q = new URLSearchParams({ supportSince, doctorSince });
-      const data = await apiJson<{ total?: number }>(
-        `/api/chat/inbox/unread?${q.toString()}`,
-        token,
-        { method: "GET" }
-      );
-      const inbox =
-        typeof data.total === "number" ? data.total : 0;
+      const data = await apiJson<{
+        total?: number;
+        doctorCount?: number;
+        supportCount?: number;
+      }>(`/api/chat/inbox/unread?${q.toString()}`, token, { method: "GET" });
+      const supplemental = getSupplementalDoctorUnread();
+      const inboxBase = typeof data.total === "number" ? data.total : 0;
+      const inbox = inboxBase + supplemental;
       setTotal(inbox + scanReady);
     } catch {
       const scanReady = await getUnreadReadyScanCount().catch(() => 0);
       setTotal(scanReady);
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setTotal(0);
+      return;
+    }
+    void load();
+    const unsubInbox = subscribeInboxReadCursors(() => void load());
+    const unsubScan = subscribeScanJobNotifications(() => void load());
+    const id = setInterval(() => void load(), 8_000);
+    return () => {
+      clearInterval(id);
+      unsubInbox();
+      unsubScan();
+    };
+  }, [load, token]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
@@ -57,14 +75,6 @@ export function NotificationBell() {
   useFocusEffect(
     useCallback(() => {
       void load();
-      const unsubInbox = subscribeInboxReadCursors(() => void load());
-      const unsubScan = subscribeScanJobNotifications(() => void load());
-      const id = setInterval(() => void load(), 15_000);
-      return () => {
-        clearInterval(id);
-        unsubInbox();
-        unsubScan();
-      };
     }, [load])
   );
 

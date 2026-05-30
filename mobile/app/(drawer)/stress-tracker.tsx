@@ -7,6 +7,7 @@ import {
   LayoutChangeEvent,
   PanResponder,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -150,6 +151,7 @@ export default function StressTrackerScreen() {
     return parseISO(`${params.date}T12:00:00`);
   }, [params.date]);
   const [selectedDate, setSelectedDate] = useState(parsedParamDate ?? new Date());
+  const [refreshing, setRefreshing] = useState(false);
 
   const minDate = useMemo(() => subMonths(new Date(), 1), []);
   const maxDate = useMemo(() => new Date(), []);
@@ -211,7 +213,25 @@ export default function StressTrackerScreen() {
 
       <Text style={st.subtitle}>Log your stress to help us personalize your care</Text>
 
-      <ScrollView contentContainerStyle={st.scrollContent} showsVerticalScrollIndicator={false} scrollEnabled={scrollEnabled}>
+      <ScrollView
+        contentContainerStyle={st.scrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={NAVY}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await loadData();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
         <View style={st.dateRow}>
           <Pressable style={[st.dateArrow, !canGoBack && { opacity: 0.3 }]} hitSlop={10} onPress={goBack} disabled={!canGoBack}>
             <Ionicons name="chevron-back" size={18} color={NAVY} />

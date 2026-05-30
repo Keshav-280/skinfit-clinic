@@ -15,12 +15,10 @@ This document summarizes all actionable code fixes implemented from `mobile/MOBI
   - Daily tracker cards now pass `?date=YYYY-MM-DD`.
   - Added offline/cached banner when serving cached home payload.
   - Today focus is shown only for selected current day.
-
 - `mobile/app/(drawer)/morning-routine.tsx`
   - Reads `date` query param.
   - Fetches home for selected date and saves routine steps to selected date journal entry.
   - Displays selected date in header context.
-
 - `mobile/app/(drawer)/night-routine.tsx`
   - Same date-aware behavior as morning routine.
 
@@ -36,20 +34,16 @@ This document summarizes all actionable code fixes implemented from `mobile/MOBI
   - Added clear tab separation: `Scans` | `Visits`.
   - Added cached/offline banner support using local cache.
   - Retained pull-to-refresh.
-
 - `mobile/app/(drawer)/history/visits.tsx`
   - Added cache-backed load (`history-visits`) with offline banner.
   - Uses dedicated visits-only server payload.
-
 - `mobile/app/(drawer)/history/visit/[visitId].tsx`
   - Switched from full `/api/patient/skin-profile` scan to dedicated endpoint.
   - Uses `GET /api/patient/visits/:id`.
   - Added cached fallback banner and pull-to-refresh.
-
 - `app/api/patient/visits/[visitId]/route.ts` (new)
   - Implemented dedicated visit detail route.
   - Authenticated by patient session and scoped to requesting user.
-
 - `app/api/patient/history/route.ts`
   - Added optional `?include=visits` mode for lightweight visits list payload.
 
@@ -57,20 +51,15 @@ This document summarizes all actionable code fixes implemented from `mobile/MOBI
 
 - `src/lib/expoPush.ts`
   - `notifyPatientNewClinicChat` now accepts optional `doctorId` and includes it in push payload data.
-
 - `src/lib/notificationPushDispatch.ts`
   - Passes through `doctorId` from `doctor.reply` payload to push sender.
-
 - `app/api/doctor/patients/[patientId]/chat/route.ts`
   - Includes `doctorId` in published `doctor.reply` notification payload.
-
 - `src/lib/clinicSupportChat.ts`
   - Supports optional `doctorId` in notification payload for downstream push routing.
-
 - `mobile/lib/notificationBehavior.ts`
   - `clinic_chat` push tap now deep-links to `/(drawer)/chat?doctorId=...` when available.
   - Invalidates local thread/home chat caches on chat push tap.
-
 - `mobile/app/(drawer)/chat.tsx`
   - Accepts `doctorId` from route query and opens that doctor thread directly.
   - Thread cache now stores `{ ts, rows }` with TTL awareness.
@@ -89,7 +78,6 @@ This document summarizes all actionable code fixes implemented from `mobile/MOBI
 
 - `app/api/doctor/patients/[patientId]/routine-plan/route.ts`
   - Added `invalidateUserHomeCache(patientId)` after routine updates/clear.
-
 - `app/api/doctor/patients/[patientId]/visit-notes/route.ts`
   - Added invalidations for home and scan-derived caches in addition to history/insights.
 
@@ -100,7 +88,6 @@ This document summarizes all actionable code fixes implemented from `mobile/MOBI
     - `getCachedEntry`
     - `getCachedFresh`
     - `isCacheStale`
-
 - Applied cache-backed stale-while-revalidate patterns to:
   - `mobile/app/(drawer)/index.tsx` (`home`)
   - `mobile/app/(drawer)/history/index.tsx` (`history`)
@@ -112,22 +99,18 @@ This document summarizes all actionable code fixes implemented from `mobile/MOBI
 - Removed chat mount side-effect:
   - `mobile/app/(drawer)/chat.tsx`
     - removed `POST /api/appointments/reminders/tick` trigger on mount.
-
 - Pull-to-refresh implemented or preserved:
   - `mobile/app/(drawer)/chat.tsx` (new thread-level pull-to-refresh)
   - `mobile/app/(drawer)/history/index.tsx` (kept)
   - `mobile/app/(drawer)/history/visits.tsx` (kept)
   - `mobile/app/(drawer)/history/visit/[visitId].tsx` (new)
-
 - Future date blocking for trackers:
   - `mobile/app/(drawer)/sleep-tracker.tsx`
   - `mobile/app/(drawer)/hydration-tracker.tsx`
   - `mobile/app/(drawer)/stress-tracker.tsx`
   - Max date now clamped to today and supports initial `?date=` hydration.
-
 - Push deep link doctorId in notification behavior:
   - `mobile/lib/notificationBehavior.ts` (implemented).
-
 - GET `/api/patient/visits/:id` usage:
   - Implemented backend route and migrated visit detail screen.
 
@@ -135,7 +118,6 @@ This document summarizes all actionable code fixes implemented from `mobile/MOBI
 
 - `app/api/chat/plain/stream/route.ts`
   - Extended auth support to accept `?token=` JWT (mobile-compatible stream access path).
-
 - `mobile/app/(drawer)/chat.tsx`
   - Added stream reachability probe against `/api/chat/plain/stream`.
   - If stream endpoint is unavailable in runtime, falls back to periodic sync.
@@ -147,7 +129,6 @@ Note: true long-lived native `EventSource` consumption requires runtime support 
 
 - `mobile/components/ScanCaptureDebugOverlay.tsx`
   - Added support for `EXPO_PUBLIC_SCAN_DEBUG_PREVIEW=1` to force-enable debug preview overlay.
-
 - `mobile/.env.example`
   - Documented `EXPO_PUBLIC_SCAN_DEBUG_PREVIEW=1`.
 
@@ -188,3 +169,4 @@ These items are outside pure code changes and require environment/deployment/ops
 - Major redesign of history IA beyond tab separation (e.g., full information architecture and migration of all linked copy).
 - Any non-code operational setup tasks (credentials, infrastructure hardening, cron orchestration, DNS/SSL).
 - Any git push/commit/deploy actions.
+

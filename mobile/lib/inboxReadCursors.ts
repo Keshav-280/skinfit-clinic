@@ -16,8 +16,26 @@ export function subscribeInboxReadCursors(listener: Listener): () => void {
   };
 }
 
+/** Reload in-app inbox badges (bell, notifications screen). */
 export function notifyInboxReadCursors(): void {
   for (const l of listeners) l();
+}
+
+/** Alias for new inbound clinic messages (same listeners as read-cursor updates). */
+export function notifyInboxUnreadChanged(): void {
+  notifyInboxReadCursors();
+}
+
+/** Extra doctor unread when chat home detects clinic messages after the read cursor. */
+let supplementalDoctorUnread = 0;
+
+export function setSupplementalDoctorUnread(count: number): void {
+  supplementalDoctorUnread = Math.max(0, count);
+  notifyInboxReadCursors();
+}
+
+export function getSupplementalDoctorUnread(): number {
+  return supplementalDoctorUnread;
 }
 
 export async function getClinicSupportInboxLastSeenIso(): Promise<string> {
@@ -47,5 +65,6 @@ export async function markDoctorInboxSeenFromServer(iso?: string | null): Promis
   const from = iso ? Date.parse(iso) : NaN;
   const ms = Math.max(Number.isNaN(from) ? 0 : from, now);
   await AsyncStorage.setItem(DOCTOR_CHAT_INBOX_LAST_SEEN_KEY, new Date(ms).toISOString());
+  supplementalDoctorUnread = 0;
   notifyInboxReadCursors();
 }

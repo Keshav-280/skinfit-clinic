@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -133,6 +134,7 @@ export default function SleepTrackerScreen() {
     return parseISO(`${params.date}T12:00:00`);
   }, [params.date]);
   const [selectedDate, setSelectedDate] = useState(parsedParamDate ?? new Date());
+  const [refreshing, setRefreshing] = useState(false);
 
   const minDate = useMemo(() => subMonths(new Date(), 1), []);
   const maxDate = useMemo(() => new Date(), []);
@@ -205,7 +207,24 @@ export default function SleepTrackerScreen() {
 
       <Text style={s.subtitle}>Log your sleep to help us personalize your care</Text>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={NAVY}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await loadData();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
         <View style={s.dateRow}>
           <Pressable style={[s.dateArrow, !canGoBack && { opacity: 0.3 }]} hitSlop={10} onPress={goBack} disabled={!canGoBack}>
             <Ionicons name="chevron-back" size={18} color={NAVY} />

@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +19,8 @@ import { ApiError, apiJson } from "@/lib/api";
 import {
   getClinicSupportInboxLastSeenIso,
   getDoctorInboxLastSeenIso,
+  getSupplementalDoctorUnread,
+  subscribeInboxReadCursors,
 } from "@/lib/inboxReadCursors";
 import {
   dismissUnreadReadyScan,
@@ -35,10 +38,11 @@ export default function NotificationsScreen() {
   const [voiceNoteReportCount, setVoiceNoteReportCount] = useState(0);
   const [readyScans, setReadyScans] = useState<ReadyScanNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!token) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const [supportSince, doctorSince] = await Promise.all([
         getClinicSupportInboxLastSeenIso(),
@@ -54,7 +58,8 @@ export default function NotificationsScreen() {
         voiceNoteReportCount?: number;
       }>(`/api/chat/inbox/unread?${inboxQ.toString()}`, token, { method: "GET" });
       setSupportCount(typeof inbox.supportCount === "number" ? inbox.supportCount : 0);
-      setDoctorCount(typeof inbox.doctorCount === "number" ? inbox.doctorCount : 0);
+      const apiDoctor = typeof inbox.doctorCount === "number" ? inbox.doctorCount : 0;
+      setDoctorCount(apiDoctor + getSupplementalDoctorUnread());
       setVoiceNoteGeneralCount(
         typeof inbox.voiceNoteGeneralCount === "number" ? inbox.voiceNoteGeneralCount : 0
       );
@@ -66,7 +71,7 @@ export default function NotificationsScreen() {
         /* signed out */
       }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [token]);
 
@@ -74,15 +79,30 @@ export default function NotificationsScreen() {
     setReadyScans(await getUnreadReadyScans());
   }, []);
 
+  const onPullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([load({ silent: true }), refreshReadyScans()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load, refreshReadyScans]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
       void refreshReadyScans();
-      const unsub = subscribeScanJobNotifications(() => {
+      const unsubScan = subscribeScanJobNotifications(() => {
         void refreshReadyScans();
         void load();
       });
-      return unsub;
+      const unsubInbox = subscribeInboxReadCursors(() => {
+        void load();
+      });
+      return () => {
+        unsubScan();
+        unsubInbox();
+      };
     }, [load, refreshReadyScans])
   );
 
@@ -108,7 +128,13 @@ export default function NotificationsScreen() {
 
   return (
     <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={{ flex: 1 }}>
-    <ScrollView style={s.scroll} contentContainerStyle={[s.content, { paddingTop: insets.top + 16 }]}>
+    <ScrollView
+      style={s.scroll}
+      contentContainerStyle={[s.content, { paddingTop: insets.top + 16 }]}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} tintColor="#2B3A67" />
+      }
+    >
       <View style={s.header}>
         <View style={s.bellWrap}>
           <Ionicons name="notifications" size={30} color="#2B3A67" />

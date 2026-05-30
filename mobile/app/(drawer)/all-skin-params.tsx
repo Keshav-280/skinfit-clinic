@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -87,6 +88,7 @@ export default function AllSkinParamsScreen() {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [scans, setScans] = useState<ScanItem[]>([]);
 
   const loadData = useCallback(async () => {
@@ -168,7 +170,24 @@ export default function AllSkinParamsScreen() {
         <NotificationBell />
       </View>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={NAVY}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await loadData();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
         <Text style={s.trendSubtitle}>Trends over the last 4 weeks</Text>
 
         <View style={s.filterRow}>

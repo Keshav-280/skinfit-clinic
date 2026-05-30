@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -78,6 +79,7 @@ export default function NightRoutineScreen() {
   const [loading, setLoading] = useState(true);
   const [steps, setSteps] = useState<boolean[]>([]);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const selectedYmd =
     typeof params.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
@@ -158,7 +160,24 @@ export default function NightRoutineScreen() {
   }
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          tintColor={NAVY}
+          onRefresh={async () => {
+            setRefreshing(true);
+            try {
+              await loadData();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+        />
+      }
+    >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color={NAVY} />

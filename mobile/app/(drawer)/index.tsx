@@ -581,10 +581,11 @@ export default function DashboardScreen() {
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
+          tintColor={NAVY}
           onRefresh={async () => {
             setRefreshing(true);
             try {
-              await loadHome();
+              await Promise.all([loadHome(), loadJournalForDate(journalDate)]);
             } finally {
               setRefreshing(false);
             }

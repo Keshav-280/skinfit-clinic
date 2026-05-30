@@ -103,7 +103,6 @@ export default function VisitDetailScreen() {
   const [visit, setVisit] = useState<Visit | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showingCached, setShowingCached] = useState(false);
 
   const cacheKey = visitId ? `visit:${visitId}` : null;
 
@@ -115,7 +114,6 @@ export default function VisitDetailScreen() {
         const cached = await getCached<Visit>(cacheKey);
         if (cached) {
           setVisit(cached);
-          setShowingCached(true);
         }
       }
       const data = await apiJson<VisitPayload>(
@@ -124,7 +122,6 @@ export default function VisitDetailScreen() {
         { method: "GET" }
       );
       setVisit(data.visit ?? null);
-      setShowingCached(false);
       if (cacheKey && data.visit) {
         await setCached(cacheKey, data.visit);
       }
@@ -187,12 +184,6 @@ export default function VisitDetailScreen() {
           />
         }
       >
-        {showingCached ? (
-          <View style={s.cacheBanner}>
-            <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
-            <Text style={s.cacheBannerText}>Showing cached visit details</Text>
-          </View>
-        ) : null}
         {/* Summary card */}
         <View style={s.card}>
           <Text style={s.date}>{fmtDate(visit.visitDate)}</Text>
@@ -378,22 +369,5 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: NAVY,
-  },
-  cacheBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FEF3C7",
-    borderColor: "#FCD34D",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 10,
-  },
-  cacheBannerText: {
-    fontSize: 12,
-    color: "#92400e",
-    fontWeight: "600",
   },
 });

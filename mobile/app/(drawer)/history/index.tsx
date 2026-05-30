@@ -105,7 +105,6 @@ export default function HistoryListScreen() {
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
   const [showArchivedReportAudio, setShowArchivedReportAudio] = useState(false);
   const [activeTab, setActiveTab] = useState<"scans" | "visits">("scans");
-  const [showingCached, setShowingCached] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -113,13 +112,11 @@ export default function HistoryListScreen() {
     const cached = await getCached<HistoryPayload>("history");
     if (cached) {
       setData(cached);
-      setShowingCached(true);
     }
     const json = await apiJson<HistoryPayload>("/api/patient/history", token, {
       method: "GET",
     });
     setData(json);
-    setShowingCached(false);
     await setCached("history", json);
   }, [token]);
 
@@ -263,12 +260,6 @@ export default function HistoryListScreen() {
         />
       }
     >
-      {showingCached ? (
-        <View style={styles.cacheBanner}>
-          <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
-          <Text style={styles.cacheBannerText}>Showing cached history</Text>
-        </View>
-      ) : null}
       {showingScans ? (
         <>
       <Text style={styles.sectionTitle}>Progress tracker</Text>
@@ -623,19 +614,6 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   err: { color: "#b91c1c", padding: 16 },
-  cacheBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FEF3C7",
-    borderColor: "#FCD34D",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 12,
-  },
-  cacheBannerText: { fontSize: 12, color: "#92400e", fontWeight: "600" },
   profileCard: { padding: 20, marginBottom: 8 },
   profileRow: { flexDirection: "row", gap: 16, alignItems: "flex-start" },
   avatarRing: {

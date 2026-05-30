@@ -24,6 +24,21 @@ export function configureNotificationBehavior() {
       }),
     });
 
+    const { notifyInboxUnreadChanged } = await import("@/lib/inboxReadCursors");
+
+    Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data as Record<string, unknown> | null;
+      const t = data?.type;
+      if (
+        t === "clinic_chat" ||
+        t === "doctor_voice_note" ||
+        t === "routine_plan_updated" ||
+        t === "scan_report_ready"
+      ) {
+        notifyInboxUnreadChanged();
+      }
+    });
+
     Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<
         string,

@@ -35,7 +35,6 @@ import {
 } from "@/components/profile/theme";
 import ProfileHeaderCard from "@/components/profile/ProfileHeaderCard";
 import LastTreatmentCard from "@/components/profile/LastTreatmentCard";
-import RecentVisitsSection from "@/components/profile/RecentVisitsSection";
 import WeeklyReportCard from "@/components/profile/WeeklyReportCard";
 import MonthlyReportCard from "@/components/profile/MonthlyReportCard";
 
@@ -409,31 +408,14 @@ export default function ProfileScreen() {
           onPhotoPress={handlePhotoPress}
         />
 
-        <Pressable
-          style={styles.historyLinkCard}
-          onPress={() => router.push("/(drawer)/history/visits" as any)}
-        >
-          <Text style={styles.historyLinkTitle}>Treatment history</Text>
-          <Text style={styles.historyLinkSub}>
-            View clinic visits, treatment notes, and doctor summaries
-          </Text>
-        </Pressable>
+      
 
-        {/* 3. Last treatment + recent visits */}
+        {/* 3. Last treatment */}
         {skinExtra && skinExtra.visits.length > 0 ? (
-          <>
-            <LastTreatmentCard
-              visits={skinExtra.visits}
-              onViewAll={() => router.push("/(drawer)/history/visits" as any)}
-            />
-            <RecentVisitsSection
-              visits={skinExtra.visits}
-              onViewAll={() => router.push("/(drawer)/history/visits" as any)}
-              onOpenVisit={(id) =>
-                router.push(`/(drawer)/history/visit/${id}` as any)
-              }
-            />
-          </>
+          <LastTreatmentCard
+            visits={skinExtra.visits}
+            onViewAll={() => router.push("/(drawer)/history/visits" as any)}
+          />
         ) : null}
 
         {/* 4. Weekly Report — only when real scan data exists */}
