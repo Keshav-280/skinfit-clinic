@@ -129,6 +129,7 @@ type HomeData = {
   routineAmReminderHm?: string;
   routinePmReminderHm?: string;
   todayFocus?: { message: string; sourceParam: string | null } | null;
+  kaiInsightsEnabled?: boolean;
   feedbackEntries?: Array<{
     id: string;
     feedbackText: string | null;
@@ -769,7 +770,9 @@ export default function DashboardScreen() {
             <Text style={styles.focusLockedCta}>Continue questionnaire</Text>
           </View>
         </Pressable>
-      ) : data.todayFocus?.message && journalDate === todayStr ? (
+      ) : data.kaiInsightsEnabled !== false &&
+        data.todayFocus?.message &&
+        journalDate === todayStr ? (
         <TodayFocusCard message={data.todayFocus.message} />
       ) : null}
 
@@ -1406,6 +1409,34 @@ function feedbackReplySnippet(entry: FeedbackEntry): string {
   return "your doctor's feedback";
 }
 
+type DoctorFeedbackGroup = {
+  key: string;
+  doctorId: string | null;
+  doctorName: string | null;
+  doctorPhotoUrl: string | null;
+  entries: FeedbackEntry[];
+};
+
+function groupFeedbackEntries(entries: FeedbackEntry[]): DoctorFeedbackGroup[] {
+  const order: string[] = [];
+  const map = new Map<string, DoctorFeedbackGroup>();
+  for (const entry of entries) {
+    const key = entry.doctorId ?? "__unassigned__";
+    if (!map.has(key)) {
+      order.push(key);
+      map.set(key, {
+        key,
+        doctorId: entry.doctorId,
+        doctorName: entry.doctorName,
+        doctorPhotoUrl: entry.doctorPhotoUrl,
+        entries: [],
+      });
+    }
+    map.get(key)!.entries.push(entry);
+  }
+  return order.map((k) => map.get(k)!);
+}
+
 function DoctorFeedbackSection({
   feedbackEntries,
   archivedEntries,
@@ -1432,9 +1463,6 @@ function DoctorFeedbackSection({
   onRefresh: () => Promise<void>;
 }) {
   const [showArchived, setShowArchived] = useState(false);
-  const [replyText, setReplyText] = useState("");
-  const [replyBusy, setReplyBusy] = useState(false);
-  const [replyError, setReplyError] = useState<string | null>(null);
 
   const entries: FeedbackEntry[] = useMemo(() => {
     if (feedbackEntries.length > 0) return feedbackEntries;
@@ -1494,16 +1522,100 @@ function DoctorFeedbackSection({
     }));
   }, [archivedEntries, legacyArchivedVoiceNotes]);
 
-  const replyTarget = entries[0] ?? null;
-  const replyDoctorId = replyTarget?.doctorId ?? null;
-  const replyDoctorName = replyTarget?.doctorName ?? "your doctor";
+  const entryGroups = useMemo(() => groupFeedbackEntries(entries), [entries]);
+  const archivedGroups = useMemo(() => groupFeedbackEntries(archived), [archived]);
+
+  const hasEntries = entries.length > 0;
+
+  return (
+    <View style={[fbStyles.container, { marginBottom: 32 }]}>
+      <View style={fbStyles.headerRow}>
+        <Text style={fbStyles.headerTitle}>DOCTOR FEEDBACK</Text>
+        {voiceNoteIsNew ? (
+          <View style={fbStyles.newBadge}>
+            <Text style={fbStyles.newBadgeText}>New</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {hasEntries ? (
+        <>
+          {entryGroups.map((group) => (
+            <DoctorFeedbackGroupBlock
+              key={group.key}
+              group={group}
+              token={token}
+              onPatch={onPatchVoiceNote}
+              voiceBusyId={voiceBusyId}
+            />
+          ))}
+        </>
+      ) : onboardingComplete === false ? (
+        <Text style={fbStyles.placeholder}>
+          Your doctor will send feedback after reviewing your baseline.
+        </Text>
+      ) : (
+        <Text style={fbStyles.placeholder}>
+          No feedback yet. When your doctor sends notes, they will appear here.
+        </Text>
+      )}
+
+      {archived.length > 0 ? (
+        <View style={{ marginTop: 14 }}>
+          <Pressable onPress={() => setShowArchived((v) => !v)} style={fbStyles.archiveToggle}>
+            <Ionicons name={showArchived ? "chevron-up" : "chevron-down"} size={16} color={NAVY} />
+            <Text style={fbStyles.archiveToggleText}>
+              {showArchived ? "Hide" : "Show"} past notes ({archived.length})
+            </Text>
+          </Pressable>
+          {showArchived
+            ? archivedGroups.map((group) => (
+                <View key={group.key} style={{ marginTop: 8 }}>
+                  {group.doctorName ? (
+                    <Text style={fbStyles.groupDoctorLabel}>{group.doctorName}</Text>
+                  ) : null}
+                  {group.entries.map((entry) => (
+                    <FeedbackEntryCard
+                      key={entry.id}
+                      entry={entry}
+                      onPatch={onPatchVoiceNote}
+                      busyId={voiceBusyId}
+                      archived
+                      showDoctorHeader={group.entries.length === 1 || !group.doctorName}
+                    />
+                  ))}
+                </View>
+              ))
+            : null}
+        </View>
+      ) : null}
+
+    </View>
+  );
+}
+
+function DoctorFeedbackGroupBlock({
+  group,
+  token,
+  onPatch,
+  voiceBusyId,
+}: {
+  group: DoctorFeedbackGroup;
+  token: string | null;
+  onPatch: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<boolean>;
+  voiceBusyId: string | null;
+}) {
+  const [replyText, setReplyText] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
+
+  const replyTarget = group.entries[0] ?? null;
+  const replyDoctorId = group.doctorId;
+  const replyDoctorName = group.doctorName ?? "your doctor";
+  const showGroupHeader = group.entries.length > 1 || Boolean(group.doctorName);
 
   const sendReply = useCallback(async () => {
-    if (!token || !replyText.trim() || !replyTarget) return;
-    if (!replyDoctorId) {
-      setReplyError("Could not find which doctor to reply to. Open Chat and message your doctor there.");
-      return;
-    }
+    if (!token || !replyText.trim() || !replyTarget || !replyDoctorId) return;
     setReplyBusy(true);
     setReplyError(null);
     try {
@@ -1532,63 +1644,37 @@ function DoctorFeedbackSection({
     }
   }, [token, replyText, replyTarget, replyDoctorId]);
 
-  const hasEntries = entries.length > 0;
-
   return (
-    <View style={[fbStyles.container, { marginBottom: 32 }]}>
-      <View style={fbStyles.headerRow}>
-        <Text style={fbStyles.headerTitle}>DOCTOR FEEDBACK</Text>
-        {voiceNoteIsNew ? (
-          <View style={fbStyles.newBadge}>
-            <Text style={fbStyles.newBadgeText}>New</Text>
+    <View style={fbStyles.groupBlock}>
+      {showGroupHeader ? (
+        <View style={fbStyles.groupHeaderRow}>
+          {group.doctorPhotoUrl ? (
+            <Image source={{ uri: group.doctorPhotoUrl }} style={fbStyles.doctorPhoto} />
+          ) : (
+            <View style={fbStyles.doctorAvatar}>
+              <Ionicons name="person" size={22} color="#fff" />
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={fbStyles.groupDoctorLabel}>{replyDoctorName}</Text>
+            <Text style={fbStyles.doctorSpec}>Dermatologist</Text>
           </View>
-        ) : null}
-      </View>
-
-      {hasEntries ? (
-        <>
-          {entries.map((entry) => (
-            <FeedbackEntryCard
-              key={entry.id}
-              entry={entry}
-              onPatch={onPatchVoiceNote}
-              busyId={voiceBusyId}
-            />
-          ))}
-        </>
-      ) : onboardingComplete === false ? (
-        <Text style={fbStyles.placeholder}>
-          Your doctor will send feedback after reviewing your baseline.
-        </Text>
-      ) : (
-        <Text style={fbStyles.placeholder}>
-          No feedback yet. When your doctor sends notes, they will appear here.
-        </Text>
-      )}
-
-      {archived.length > 0 ? (
-        <View style={{ marginTop: 14 }}>
-          <Pressable onPress={() => setShowArchived((v) => !v)} style={fbStyles.archiveToggle}>
-            <Ionicons name={showArchived ? "chevron-up" : "chevron-down"} size={16} color={NAVY} />
-            <Text style={fbStyles.archiveToggleText}>
-              {showArchived ? "Hide" : "Show"} past notes ({archived.length})
-            </Text>
-          </Pressable>
-          {showArchived
-            ? archived.map((entry) => (
-                <FeedbackEntryCard key={entry.id} entry={entry} onPatch={onPatchVoiceNote} busyId={voiceBusyId} archived />
-              ))
-            : null}
         </View>
       ) : null}
-
+      {group.entries.map((entry) => (
+        <FeedbackEntryCard
+          key={entry.id}
+          entry={entry}
+          onPatch={onPatch}
+          busyId={voiceBusyId}
+          showDoctorHeader={!showGroupHeader}
+        />
+      ))}
       <View style={fbStyles.replyRow}>
         <TextInput
           style={fbStyles.replyInput}
           placeholder={
-            replyTarget && replyDoctorId
-              ? `Reply to ${replyDoctorName}…`
-              : "Write a reply..."
+            replyDoctorId ? `Reply to ${replyDoctorName}…` : "Write a reply..."
           }
           value={replyText}
           onChangeText={(t) => {
@@ -1596,15 +1682,12 @@ function DoctorFeedbackSection({
             if (replyError) setReplyError(null);
           }}
           placeholderTextColor="#94a3b8"
-          editable={Boolean(replyTarget && replyDoctorId) && !replyBusy}
+          editable={Boolean(replyDoctorId) && !replyBusy}
         />
         <Pressable
           style={[
             fbStyles.sendBtn,
-            {
-              opacity:
-                replyBusy || !replyText.trim() || !replyDoctorId ? 0.4 : 1,
-            },
+            { opacity: replyBusy || !replyText.trim() || !replyDoctorId ? 0.4 : 1 },
           ]}
           disabled={replyBusy || !replyText.trim() || !replyDoctorId}
           onPress={() => void sendReply()}
@@ -1614,11 +1697,15 @@ function DoctorFeedbackSection({
       </View>
       {replyError ? (
         <Text style={fbStyles.replyError}>{replyError}</Text>
-      ) : replyTarget && replyDoctorId ? (
+      ) : replyDoctorId ? (
         <Text style={fbStyles.replyHint}>
           Sends to {replyDoctorName} only. We&apos;ll note which feedback you&apos;re asking about first.
         </Text>
-      ) : null}
+      ) : (
+        <Text style={fbStyles.replyError}>
+          Could not find which doctor to reply to. Open Chat and message your doctor there.
+        </Text>
+      )}
     </View>
   );
 }
@@ -1633,11 +1720,13 @@ function FeedbackEntryCard({
   onPatch,
   busyId,
   archived,
+  showDoctorHeader = true,
 }: {
   entry: FeedbackEntry;
   onPatch: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<boolean>;
   busyId: string | null;
   archived?: boolean;
+  showDoctorHeader?: boolean;
 }) {
   const [acknowledged, setAcknowledged] = useState(entry.listened);
 
@@ -1661,25 +1750,31 @@ function FeedbackEntryCard({
 
   return (
     <View style={[fbStyles.entryCard, archived && fbStyles.entryCardArchived]}>
-      <View style={fbStyles.doctorRow}>
-        {entry.doctorPhotoUrl ? (
-          <Image
-            source={{ uri: entry.doctorPhotoUrl }}
-            style={fbStyles.doctorPhoto}
-          />
-        ) : (
-          <View style={fbStyles.doctorAvatar}>
-            <Ionicons name="person" size={22} color="#fff" />
+      {showDoctorHeader ? (
+        <View style={fbStyles.doctorRow}>
+          {entry.doctorPhotoUrl ? (
+            <Image
+              source={{ uri: entry.doctorPhotoUrl }}
+              style={fbStyles.doctorPhoto}
+            />
+          ) : (
+            <View style={fbStyles.doctorAvatar}>
+              <Ionicons name="person" size={22} color="#fff" />
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={fbStyles.doctorName}>{entry.doctorName ?? "Your Doctor"}</Text>
+            <Text style={fbStyles.doctorSpec}>Dermatologist</Text>
+            <Text style={fbStyles.entryDate}>
+              {format(parseISO(entry.createdAt), "dd MMM yyyy, hh:mm a")}
+            </Text>
           </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={fbStyles.doctorName}>{entry.doctorName ?? "Your Doctor"}</Text>
-          <Text style={fbStyles.doctorSpec}>Dermatologist</Text>
-          <Text style={fbStyles.entryDate}>
-            {format(parseISO(entry.createdAt), "dd MMM yyyy, hh:mm a")}
-          </Text>
         </View>
-      </View>
+      ) : (
+        <Text style={fbStyles.entryDate}>
+          {format(parseISO(entry.createdAt), "dd MMM yyyy, hh:mm a")}
+        </Text>
+      )}
 
       {entry.feedbackText ? (
         <Text style={fbStyles.feedbackText}>{entry.feedbackText}</Text>
@@ -1761,6 +1856,20 @@ const fbStyles = StyleSheet.create({
     textAlign: "center",
     paddingVertical: 24,
     lineHeight: 20,
+  },
+  groupBlock: {
+    marginBottom: 18,
+  },
+  groupHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 10,
+  },
+  groupDoctorLabel: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: NAVY,
   },
   entryCard: {
     backgroundColor: "rgba(255,255,255,0.5)",

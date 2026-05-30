@@ -5,6 +5,7 @@ import type { NodePgAppDatabase } from "@/src/db/database-types";
 
 export type ScanJobDatabase = NodePgAppDatabase;
 import { buildDummyAiSummary } from "@/src/lib/dummyScanSummary";
+import { getFaceAnalysisServiceSecret } from "@/src/lib/faceAnalysisEnv";
 import {
   runFaceAnalysisDualScan,
   runFaceAnalysisCentreSmiling,

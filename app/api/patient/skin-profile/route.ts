@@ -17,6 +17,7 @@ import {
   buildProfilePriorityKnowDoLlm,
 } from "@/src/lib/profileRagInsights";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
+import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 
 function dummyScoreFor(scanId: number, key: string) {
   let seed = scanId * 131;
@@ -102,9 +103,12 @@ export async function GET(request: Request) {
     const questionnaireLocked = !userHasQuestionnaire(user?.primaryConcern);
 
     const insightsUnavailable =
-      keyObservations.llmUnavailable || priorityKnowDo.llmUnavailable;
+      !isKaiInsightsEnabled() ||
+      keyObservations.llmUnavailable ||
+      priorityKnowDo.llmUnavailable;
 
     return {
+      kaiInsightsEnabled: isKaiInsightsEnabled(),
       questionnaireLocked,
       skinDna: {
         skinType: dna?.skinType ?? user?.skinType ?? null,

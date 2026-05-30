@@ -83,6 +83,7 @@ type SkinProfilePayload = {
   priorityKnowDo: { know: string[]; do: string[] };
   insightsSource?: "llm_rag";
   insightsUnavailable?: boolean;
+  kaiInsightsEnabled?: boolean;
   sparklines: Record<string, { values: (number | null)[]; sources: string[] }>;
   paramLabels: Record<string, string>;
   visits: Array<{
@@ -115,6 +116,7 @@ type HomePayload = {
   kaiSkinScore: number;
   weeklyDeltaScore: number;
   lifestyleAlignmentScore: number;
+  kaiInsightsEnabled?: boolean;
 };
 
 function escHtml(s: string): string {
@@ -365,12 +367,16 @@ export default function ProfileScreen() {
 
   const priorityActions = skinExtra?.priorityKnowDo?.do?.slice(0, 3) ?? [];
 
-  const insightsUnavailable = skinExtra?.insightsUnavailable === true;
+  const kaiInsightsEnabled =
+    skinExtra?.kaiInsightsEnabled !== false && homeData?.kaiInsightsEnabled !== false;
+  const insightsUnavailable =
+    !kaiInsightsEnabled || skinExtra?.insightsUnavailable === true;
   const hasWeeklyContent =
-    hasRealScoreData ||
-    observations.length > 0 ||
-    priorityActions.length > 0 ||
-    insightsUnavailable;
+    kaiInsightsEnabled &&
+    (hasRealScoreData ||
+      observations.length > 0 ||
+      priorityActions.length > 0 ||
+      insightsUnavailable);
 
   if (loading) {
     return (
@@ -444,7 +450,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* 5. Monthly Report */}
-        {monthlyInsight ? (
+        {kaiInsightsEnabled && monthlyInsight ? (
           <MonthlyReportCard
             locked={monthlyInsight.locked}
             nextInsightAt={monthlyInsight.nextInsightAt}

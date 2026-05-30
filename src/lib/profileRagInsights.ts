@@ -1,5 +1,6 @@
 import { RAG_KAI_PARAM_LABELS } from "@/src/lib/ragEightParams";
 import { buildNarrativeSignalPack } from "@/src/lib/ragCorrelationStats";
+import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 import { productionTextbookRetrieve } from "@/src/lib/ragRetrieve";
 import OpenAI from "openai";
@@ -225,10 +226,10 @@ export async function buildProfileKeyObservationsLlm(
     items: [],
     narrativeText: null,
     generatedBy: "llm_rag",
-    llmUnavailable: !isLlmEnabled(),
+    llmUnavailable: !isKaiInsightsEnabled(),
   };
 
-  if (!isLlmEnabled()) {
+  if (!isKaiInsightsEnabled()) {
     return base;
   }
 
@@ -246,7 +247,7 @@ export async function buildProfilePriorityKnowDoLlm(
   ctx?: ProfileInsightContext
 ): Promise<{ know: string[]; do: string[]; generatedBy: "llm_rag"; llmUnavailable: boolean }> {
   const context = ctx ?? (await gatherProfileInsightContext(userId));
-  if (!isLlmEnabled()) {
+  if (!isKaiInsightsEnabled()) {
     return { know: [], do: [], generatedBy: "llm_rag", llmUnavailable: true };
   }
   const { know, do: doList } = await generateProfilePriorityActionsRag(context);

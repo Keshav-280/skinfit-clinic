@@ -23,6 +23,7 @@ import {
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
 import { needsExpressionCheck } from "@/lib/captureExpression";
 import { isNativeFaceLandmarkAvailable } from "@/lib/nativeFaceLandmarkDetection";
+import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
 import type {
   CaptureAssistModels,
   CaptureGuidanceSnapshot,
@@ -122,7 +123,7 @@ export function useMobileScanCaptureGuidance(
 
     busyRef.current = true;
     try {
-      const pic = await cam.takePictureAsync({
+      const pic = await lockedTakePictureAsync(cam, {
         quality: expressionStep ? 0.55 : 0.38,
         skipProcessing: true,
         shutterSound: false,

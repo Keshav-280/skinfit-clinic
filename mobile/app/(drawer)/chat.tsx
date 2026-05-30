@@ -129,6 +129,7 @@ function chatErrorMessage(e: unknown): string {
   return e instanceof Error ? e.message : "Something went wrong.";
 }
 const HOME_CACHE_KEY = "skinfit-chat-home-v2";
+const CHAT_LAST_DOCTOR_KEY = "skinfit-chat-last-doctor-id";
 const THREAD_CACHE_KEY_PREFIX = "skinfit-chat-thread-v1:";
 const THREAD_CACHE_TTL_MS = 5 * 60 * 1000;
 const CHAT_STREAM_PATH = "/api/chat/plain/stream";
@@ -199,6 +200,12 @@ function threadCacheKey(assistantId: AssistantId, doctorId?: string | null): str
 export default function ChatScreen() {
   const { token } = useAuth();
   const routeParams = useLocalSearchParams<{ doctorId?: string }>();
+  const routeDoctorId = useMemo(() => {
+    const raw = routeParams.doctorId;
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }, [routeParams.doctorId]);
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ChatMsg>>(null);
   const [homeMode, setHomeMode] = useState(true);
@@ -619,7 +626,14 @@ export default function ChatScreen() {
 
     void loadHomeData();
 
-    const pollTimer = setInterval(() => void loadHomeData(), 15_000);
+    let pollMs = 15_000;
+    let pollTimer = setInterval(() => void loadHomeData(), pollMs);
+
+    const restartPoll = (ms: number) => {
+      pollMs = ms;
+      clearInterval(pollTimer);
+      pollTimer = setInterval(() => void loadHomeData(), pollMs);
+    };
 
     const disconnect = connectChatSseStream({
       path: CHAT_INBOX_STREAM_PATH,
@@ -632,8 +646,12 @@ export default function ChatScreen() {
           data.type === "thread_updated" ||
           data.type === "connected"
         ) {
+          restartPoll(15_000);
           void loadHomeData();
         }
+      },
+      onUnavailable: () => {
+        if (!cancelled) restartPoll(6_000);
       },
     });
 
@@ -651,22 +669,34 @@ export default function ChatScreen() {
   );
 
   useEffect(() => {
-    if (active !== "doctor" || activeDoctorId) return;
-    if (registeredDoctors.length === 0) return;
-    setActiveDoctorId(registeredDoctors[0]!.id);
-  }, [active, activeDoctorId, registeredDoctors]);
-
-  useEffect(() => {
-    const doctorId =
-      typeof routeParams.doctorId === "string" && routeParams.doctorId.trim().length > 0
-        ? routeParams.doctorId.trim()
-        : null;
-    if (!doctorId) return;
+    if (!routeDoctorId) return;
     setHomeMode(false);
     setActive("doctor");
     setThreadScope("all");
-    setActiveDoctorId(doctorId);
-  }, [routeParams.doctorId]);
+    setActiveDoctorId(routeDoctorId);
+    void AsyncStorage.setItem(CHAT_LAST_DOCTOR_KEY, routeDoctorId).catch(() => undefined);
+  }, [routeDoctorId]);
+
+  useEffect(() => {
+    if (active !== "doctor" || activeDoctorId || routeDoctorId) return;
+    if (registeredDoctors.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const last = await AsyncStorage.getItem(CHAT_LAST_DOCTOR_KEY);
+        const pick =
+          last && registeredDoctors.some((d) => d.id === last)
+            ? last
+            : registeredDoctors[0]!.id;
+        if (!cancelled) setActiveDoctorId(pick);
+      } catch {
+        if (!cancelled) setActiveDoctorId(registeredDoctors[0]!.id);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, activeDoctorId, registeredDoctors, routeDoctorId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -778,7 +808,14 @@ export default function ChatScreen() {
     void syncThread(true);
 
     // Backup poll — RN fetch SSE can appear connected but never deliver chunks.
-    const pollTimer = setInterval(() => void syncThread(true), 4_000);
+    let pollMs = 4_000;
+    let pollTimer = setInterval(() => void syncThread(true), pollMs);
+
+    const restartPoll = (ms: number) => {
+      pollMs = ms;
+      clearInterval(pollTimer);
+      pollTimer = setInterval(() => void syncThread(true), pollMs);
+    };
 
     const q = new URLSearchParams({ assistantId: active });
     if (active === "doctor" && activeDoctorId) {
@@ -792,8 +829,12 @@ export default function ChatScreen() {
         if (cancelled) return;
         if (data.type === "ping") return;
         if (data.type === "thread_updated" || data.type === "connected") {
+          restartPoll(4_000);
           void syncThread(true);
         }
+      },
+      onUnavailable: () => {
+        if (!cancelled) restartPoll(6_000);
       },
     });
 
@@ -1123,6 +1164,7 @@ export default function ChatScreen() {
 
   function openDoctorThread(doctorId: string) {
     setActiveDoctorId(doctorId);
+    void AsyncStorage.setItem(CHAT_LAST_DOCTOR_KEY, doctorId).catch(() => undefined);
     setActive("doctor");
     setThreadScope("all");
     setHomeMode(false);

@@ -5,6 +5,7 @@ import { db } from "../../../src/db";
 import { scans, skinScans, users } from "../../../src/db/schema";
 import { getSessionUserIdFromRequest } from "../../../src/lib/auth/get-session";
 import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
+import { getFaceAnalysisServiceSecret } from "../../../src/lib/faceAnalysisEnv";
 import {
   runFaceAnalysisDualScan,
   runFaceAnalysisCentreSmiling,

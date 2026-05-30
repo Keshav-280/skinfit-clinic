@@ -6,6 +6,7 @@ import { ProfileSkinDnaSection } from "@/components/dashboard/ProfileSkinDnaSect
 import { ProfileLastTreatmentSection } from "@/components/dashboard/ProfileLastTreatmentSection";
 import { ProfileRecentVisitsSection } from "@/components/dashboard/ProfileRecentVisitsSection";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
+import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 
 export default async function ProfilePage() {
   const user = await getSessionUserProfile();
@@ -30,9 +31,11 @@ export default async function ProfilePage() {
       <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
         <ProfileSkinIdentitySection />
       </div>
-      <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
-        <ProfileRagKaiInsightsSection />
-      </div>
+      {isKaiInsightsEnabled() ? (
+        <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
+          <ProfileRagKaiInsightsSection />
+        </div>
+      ) : null}
       <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
         <ProfileForm initial={user} />
       </div>

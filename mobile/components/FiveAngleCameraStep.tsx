@@ -31,6 +31,7 @@ import {
   previewOverlayOpacity,
   type CameraAdjustments,
 } from "@/lib/cameraCaptureAdjustments";
+import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
 import { prepareCapturedScanPhotoUri } from "@/lib/normalizeScanImage";
 import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
@@ -114,7 +115,7 @@ export function FiveAngleCameraStep({
     if (!cameraRef.current || !cameraReady || shooting) return;
     setShooting(true);
     try {
-      const pic = await cameraRef.current.takePictureAsync({
+      const pic = await lockedTakePictureAsync(cameraRef.current, {
         quality: 0.88,
         skipProcessing: true,
       });
@@ -173,7 +174,6 @@ export function FiveAngleCameraStep({
 
   useEffect(() => {
     setPendingUri(null);
-    setCameraAdjust(DEFAULT_CAMERA_ADJUSTMENTS);
     setControlsOpen(false);
     captureVoiceGuide.reset();
   }, [stepIndex]);

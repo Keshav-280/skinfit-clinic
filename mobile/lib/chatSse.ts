@@ -19,6 +19,12 @@ type ConnectChatSseOptions = {
   onUnavailable?: () => void;
 };
 
+/** Append session token for proxies that drop Authorization on long-lived streams. */
+function ssePathWithToken(path: string, token: string): string {
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}token=${encodeURIComponent(token)}`;
+}
+
 function parseSseBuffer(buffer: string): { events: ChatSsePayload[]; rest: string } {
   const events: ChatSsePayload[] = [];
   const normalized = buffer.replace(/\r\n/g, "\n");
@@ -68,7 +74,7 @@ function connectXhrSseStream(
     options.onUnavailable?.();
   };
 
-  xhr.open("GET", apiUrl(options.path));
+  xhr.open("GET", apiUrl(ssePathWithToken(options.path, options.token)));
   xhr.setRequestHeader("Authorization", `Bearer ${options.token}`);
   xhr.setRequestHeader("Accept", "text/event-stream");
 
@@ -112,7 +118,7 @@ function connectFetchSseStream(
 
   void (async () => {
     try {
-      const res = await apiFetch(options.path, options.token, {
+      const res = await apiFetch(ssePathWithToken(options.path, options.token), options.token, {
         method: "GET",
         headers: { Accept: "text/event-stream" },
         signal,

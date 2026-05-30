@@ -12,6 +12,7 @@ import {
   resolveRoutinePlanForYmd,
 } from "@/src/lib/routinePlanRevisions";
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
+import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
@@ -297,13 +298,15 @@ async function buildPatientHomePayload(
     hasQuestionnaire,
     routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
     routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",
-    todayFocus: hasQuestionnaire
-      ? todayFocusRow
-        ? await resolveTodayFocus()
-        : isSelectedToday
+    todayFocus:
+      isKaiInsightsEnabled() && hasQuestionnaire
+        ? todayFocusRow
           ? await resolveTodayFocus()
-          : null
-      : null,
+          : isSelectedToday
+            ? await resolveTodayFocus()
+            : null
+        : null,
+    kaiInsightsEnabled: isKaiInsightsEnabled(),
     feedbackEntries,
     archivedFeedbackEntries,
   };
@@ -313,7 +316,7 @@ async function buildPatientHomePayload(
       return { message: todayFocusRow.message, sourceParam: todayFocusRow.sourceParam ?? null };
     }
     if (!isSelectedToday) return null;
-    if (!isLlmEnabled()) return null;
+    if (!isKaiInsightsEnabled() || !isLlmEnabled()) return null;
     try {
       const OpenAI = (await import("openai")).default;
       const key = process.env.OPENAI_API_KEY?.trim();
