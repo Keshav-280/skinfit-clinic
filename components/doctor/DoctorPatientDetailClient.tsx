@@ -1460,7 +1460,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         setVoiceMsg(j.message ?? j.error ?? "Upload failed.");
         return false;
       }
-      setVoiceMsg("Feedback sent. Patient will get a notification.");
+      setVoiceMsg("Feedback sent. Patient notified in Doctor chat.");
       void reloadAll();
       return true;
     },
@@ -3110,7 +3110,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         return;
                       }
                       setClinicianMsg(
-                        `Patient AM/PM checklist updated (effective ${routinePlanEffectiveFromYmd}).`
+                        `Patient AM/PM checklist updated (effective ${routinePlanEffectiveFromYmd}). They were notified in Doctor chat.`
                       );
                       void reloadAll();
                       setRoutinePlanTextDirty(false);
@@ -3265,7 +3265,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setClinicianMsg(j.error ?? "Could not update routine settings.");
                     return;
                   }
-                  setClinicianMsg("Routine schedule updated.");
+                  setClinicianMsg("Routine schedule updated. Patient notified in Doctor chat.");
                   void reloadAll();
                 } catch {
                   setClinicianMsg("Network error.");
@@ -3305,7 +3305,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setClinicianMsg(j.message ?? j.error ?? "Could not send AM nudge.");
                     return;
                   }
-                  setClinicianMsg("AM routine message sent in Clinic Support chat.");
+                  setClinicianMsg("AM routine reminder sent — patient notified in Doctor chat.");
                 } catch {
                   setClinicianMsg("Network error.");
                 } finally {
@@ -3344,7 +3344,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setClinicianMsg(j.message ?? j.error ?? "Could not send PM nudge.");
                     return;
                   }
-                  setClinicianMsg("PM routine message sent in Clinic Support chat.");
+                  setClinicianMsg("PM routine reminder sent — patient notified in Doctor chat.");
                 } catch {
                   setClinicianMsg("Network error.");
                 } finally {

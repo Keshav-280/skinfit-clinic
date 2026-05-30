@@ -77,15 +77,19 @@ export async function PATCH(
       createdByStaffId: staffId,
     });
     await invalidateUserHomeCache(patientId);
-    void notifyPatientRoutinePlanChanged({
-      patientId,
-      staffId,
-      effectiveFromYmd: effectiveParsed.ymd,
-      kind: "clear",
-      priorHadPlan,
-      amCount: 0,
-      pmCount: 0,
-    });
+    try {
+      await notifyPatientRoutinePlanChanged({
+        patientId,
+        staffId,
+        effectiveFromYmd: effectiveParsed.ymd,
+        kind: "clear",
+        priorHadPlan,
+        amCount: 0,
+        pmCount: 0,
+      });
+    } catch (e) {
+      console.warn("[routine-plan] notify clear failed", patientId, e);
+    }
     return NextResponse.json({
       ok: true,
       cleared: true,
@@ -101,15 +105,19 @@ export async function PATCH(
     createdByStaffId: staffId,
   });
   await invalidateUserHomeCache(patientId);
-  void notifyPatientRoutinePlanChanged({
-    patientId,
-    staffId,
-    effectiveFromYmd: effectiveParsed.ymd,
-    kind: "set",
-    priorHadPlan,
-    amCount: parsed.am.length,
-    pmCount: parsed.pm.length,
-  });
+  try {
+    await notifyPatientRoutinePlanChanged({
+      patientId,
+      staffId,
+      effectiveFromYmd: effectiveParsed.ymd,
+      kind: "set",
+      priorHadPlan,
+      amCount: parsed.am.length,
+      pmCount: parsed.pm.length,
+    });
+  } catch (e) {
+    console.warn("[routine-plan] notify save failed", patientId, e);
+  }
 
   return NextResponse.json({
     ok: true,

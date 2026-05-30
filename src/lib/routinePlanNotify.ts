@@ -1,10 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
-import { chatMessages, users } from "@/src/db/schema";
-import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
-import { ensureDoctorPatientChatThread } from "@/src/lib/doctorPatientCare";
-import { notifyPatientRoutinePlanUpdated } from "@/src/lib/expoPush";
-import { publishNotification } from "@/src/lib/infra";
+import { users } from "@/src/db/schema";
+import { sendDoctorPatientChatMessage } from "@/src/lib/clinicSupportChat";
 import { coerceRoutinePlanList } from "@/src/lib/routine";
 
 function buildRoutinePlanMessage(opts: {
@@ -43,26 +40,11 @@ export async function notifyPatientRoutinePlanChanged(opts: {
   pmCount: number;
 }): Promise<void> {
   const { title, text } = buildRoutinePlanMessage(opts);
-
-  const threadId = await ensureDoctorPatientChatThread(opts.patientId, opts.staffId);
-  await db.insert(chatMessages).values({
-    threadId,
-    sender: "doctor",
+  await sendDoctorPatientChatMessage({
+    patientId: opts.patientId,
+    staffId: opts.staffId,
     text,
-  });
-  await notifyChatThreadUpdated(threadId);
-
-  void publishNotification("doctor.reply", opts.patientId, {
-    messagePreview: text,
-    title: `SkinnFit — ${title.toLowerCase()}`,
-    body: text,
-    doctorId: opts.staffId,
-  });
-
-  void notifyPatientRoutinePlanUpdated(opts.patientId, opts.effectiveFromYmd, {
-    title: `SkinnFit — ${title.toLowerCase()}`,
-    body: text,
-    doctorId: opts.staffId,
+    pushTitle: `SkinnFit — ${title.toLowerCase()}`,
   });
 }
 

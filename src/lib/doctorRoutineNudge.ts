@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { dailyLogs, users } from "@/src/db/schema";
-import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
+import { sendDoctorPatientChatMessage } from "@/src/lib/clinicSupportChat";
 import { dateOnlyFromYmd } from "@/src/lib/date-only";
 import { normalizeRoutineSteps } from "@/src/lib/routine";
 import { getRoutinePlanForDate } from "@/src/lib/routinePlanRevisions";
@@ -18,9 +18,10 @@ function remainingLabels(
   return items.filter((_, i) => !steps[i]);
 }
 
-/** Immediate AM/PM routine message in Clinic Support chat (does not touch reminder “last sent” flags). */
+/** Immediate AM/PM routine message in the patient's doctor chat (does not touch reminder “last sent” flags). */
 export async function sendDoctorRoutineNudge(
   patientId: string,
+  staffId: string,
   kind: RoutineKind
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const userRow = await db.query.users.findFirst({
@@ -82,6 +83,11 @@ export async function sendDoctorRoutineNudge(
     return { ok: false, error: "NOTHING_TO_SEND" };
   }
 
-  await sendClinicSupportMessage({ patientId, text });
+  await sendDoctorPatientChatMessage({
+    patientId,
+    staffId,
+    text,
+    pushTitle: kind === "am" ? "SkinnFit — morning routine" : "SkinnFit — night routine",
+  });
   return { ok: true };
 }

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
-import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
+import { sendDoctorPatientChatMessage } from "@/src/lib/clinicSupportChat";
 
 const MAX_LEN = 6000;
 
@@ -58,9 +58,11 @@ export async function POST(
 
   if (text.length) {
     const preview = text.replace(/\s+/g, " ").slice(0, 220);
-    await sendClinicSupportMessage({
+    await sendDoctorPatientChatMessage({
       patientId,
-      text: `Your clinician left new feedback: ${preview}${text.length > 220 ? "…" : ""}`,
+      staffId,
+      text: preview,
+      pushTitle: "SkinnFit — feedback from your doctor",
     });
   }
 

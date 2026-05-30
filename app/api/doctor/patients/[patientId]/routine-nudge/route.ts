@@ -31,7 +31,7 @@ export async function POST(
   const body = (await req.json().catch(() => null)) as { kind?: string } | null;
   const kind: RoutineKind = body?.kind === "pm" ? "pm" : "am";
 
-  const out = await sendDoctorRoutineNudge(patientId, kind);
+  const out = await sendDoctorRoutineNudge(patientId, staffId, kind);
   if (!out.ok) {
     const code = out.error;
     if (code === "NOT_FOUND") {

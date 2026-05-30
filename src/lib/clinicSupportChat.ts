@@ -2,8 +2,43 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
+import { ensureDoctorPatientChatThread } from "@/src/lib/doctorPatientCare";
+import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
 import { publishNotification } from "@/src/lib/infra";
 import type { NotificationEventType } from "../../services/shared/src/notifications/events";
+
+/** Doctor-portal message in the patient's doctor chat thread + direct Expo push. */
+export async function sendDoctorPatientChatMessage(params: {
+  patientId: string;
+  staffId: string;
+  text: string;
+  pushTitle?: string;
+}): Promise<void> {
+  const preview = params.text.trim();
+  if (!preview) return;
+
+  const threadId = await ensureDoctorPatientChatThread(
+    params.patientId,
+    params.staffId
+  );
+  await db.insert(chatMessages).values({
+    threadId,
+    sender: "doctor",
+    text: preview,
+  });
+  await notifyChatThreadUpdated(threadId);
+
+  await notifyPatientNewClinicChat(params.patientId, preview, {
+    doctorId: params.staffId,
+  });
+
+  void publishNotification("doctor.reply", params.patientId, {
+    messagePreview: preview,
+    title: params.pushTitle ?? "Message from your doctor",
+    body: preview,
+    doctorId: params.staffId,
+  });
+}
 
 export async function sendClinicSupportMessage(params: {
   patientId: string;
@@ -58,5 +93,9 @@ export async function sendClinicSupportMessage(params: {
     title,
     body: params.text,
     ...(params.doctorId ? { doctorId: params.doctorId } : {}),
+  });
+
+  void notifyPatientNewClinicChat(params.patientId, params.text, {
+    doctorId: params.doctorId ?? undefined,
   });
 }

@@ -3,8 +3,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { doctorFeedbackVoiceNotes, users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { sendDoctorPatientChatMessage } from "@/src/lib/clinicSupportChat";
 import { notifyPatientDoctorVoiceNote } from "@/src/lib/expoPush";
-import { invalidateUserHistoryCache } from "@/src/lib/infra";
+import { invalidateUserHistoryCache, invalidateUserHomeCache } from "@/src/lib/infra";
 
 const MAX_AUDIO_URI_LEN = 1_800_000;
 
@@ -107,11 +108,26 @@ export async function POST(req: Request) {
       });
 
     await invalidateUserHistoryCache(patientId);
+    await invalidateUserHomeCache(patientId);
 
-    void notifyPatientDoctorVoiceNote(patientId, {
-      attachedToReport: scanId != null,
-      scanId,
-    });
+    const chatText =
+      feedbackText ||
+      (audioDataUri
+        ? "Your doctor sent a new voice note — open Home to listen."
+        : "");
+    if (chatText) {
+      await sendDoctorPatientChatMessage({
+        patientId,
+        staffId: doctorId,
+        text: chatText,
+        pushTitle: "SkinnFit — feedback from your doctor",
+      });
+    } else {
+      void notifyPatientDoctorVoiceNote(patientId, {
+        attachedToReport: scanId != null,
+        scanId,
+      });
+    }
 
     return NextResponse.json({
       success: true,

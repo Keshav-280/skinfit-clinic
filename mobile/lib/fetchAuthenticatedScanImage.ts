@@ -1,9 +1,10 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { Buffer } from "buffer";
 
-import { apiUrl } from "./apiBase";
 import { patientScanImageDisplayUrl } from "./patientScanImagePath";
-import { resolveAuthenticatedScanImageSource } from "./resolveScanImage";
+import {
+  resolveAuthenticatedScanImageSource,
+} from "./resolveScanImage";
 
 const uriCache = new Map<string, string>();
 
@@ -105,19 +106,4 @@ export async function embedScanImageForPdf(
   return `data:${mime};base64,${b64}`;
 }
 
-/** Absolute API URL for fetch/download helpers. */
-export function toAbsoluteApiUrl(pathOrUrl: string): string {
-  const t = pathOrUrl.trim();
-  if (t.startsWith("http://") || t.startsWith("https://")) {
-    try {
-      const u = new URL(t);
-      if (u.pathname.startsWith("/api/files/")) {
-        return apiUrl(`${u.pathname}${u.search}`);
-      }
-    } catch {
-      /* keep absolute */
-    }
-    return t;
-  }
-  return apiUrl(t.startsWith("/") ? t : `/${t}`);
-}
+export { toAbsoluteApiUrl } from "./resolveScanImage";

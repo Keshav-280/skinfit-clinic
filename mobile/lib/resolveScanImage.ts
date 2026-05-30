@@ -1,5 +1,22 @@
 import { apiUrl } from "./apiBase";
 
+/** Absolute API URL for fetch/download helpers. */
+export function toAbsoluteApiUrl(pathOrUrl: string): string {
+  const t = pathOrUrl.trim();
+  if (t.startsWith("http://") || t.startsWith("https://")) {
+    try {
+      const u = new URL(t);
+      if (u.pathname.startsWith("/api/files/")) {
+        return apiUrl(`${u.pathname}${u.search}`);
+      }
+    } catch {
+      /* keep absolute */
+    }
+    return t;
+  }
+  return apiUrl(t.startsWith("/") ? t : `/${t}`);
+}
+
 /** List/detail APIs return `/api/patient/scans/:id/image` instead of huge data URLs. */
 export function resolveAuthenticatedScanImageSource(
   imageUrl: string,

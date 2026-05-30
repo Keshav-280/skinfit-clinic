@@ -26,6 +26,7 @@ export type DoctorFeedbackEntry = {
   listened: boolean;
   doctorName: string | null;
   doctorPhotoUrl: string | null;
+  doctorId: string | null;
 };
 
 export type PatientDoctorSection = {
@@ -169,6 +170,7 @@ export async function getPatientDoctorSection(
       listened: r.patientListenedAt != null,
       doctorName: doc?.name ?? null,
       doctorPhotoUrl: doc?.photoUrl ?? null,
+      doctorId: r.doctorId ?? null,
     };
   };
 

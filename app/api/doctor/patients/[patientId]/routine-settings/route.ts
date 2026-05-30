@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { sendDoctorPatientChatMessage } from "@/src/lib/clinicSupportChat";
 import {
   isValidHm,
   normalizeIanaTimeZone,
@@ -116,6 +117,17 @@ export async function PATCH(
         : existing.routinePmReminderLastSentYmd,
     })
     .where(eq(users.id, patientId));
+
+  try {
+    await sendDoctorPatientChatMessage({
+      patientId,
+      staffId,
+      text: `Your clinic updated routine reminders: AM ${nextAm}, PM ${nextPm} (${nextTz}). Reminders are ${nextEnabled ? "on" : "off"}.`,
+      pushTitle: "SkinnFit — routine reminders updated",
+    });
+  } catch (e) {
+    console.warn("[routine-settings] notify failed", patientId, e);
+  }
 
   return NextResponse.json({ ok: true });
 }

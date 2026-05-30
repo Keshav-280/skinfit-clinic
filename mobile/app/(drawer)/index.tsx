@@ -137,6 +137,7 @@ type HomeData = {
     listened: boolean;
     doctorName: string | null;
     doctorPhotoUrl: string | null;
+    doctorId: string | null;
   }>;
   archivedFeedbackEntries?: Array<{
     id: string;
@@ -146,6 +147,7 @@ type HomeData = {
     listened: boolean;
     doctorName: string | null;
     doctorPhotoUrl: string | null;
+    doctorId: string | null;
   }>;
 };
 
@@ -269,7 +271,7 @@ export default function DashboardScreen() {
 
   const patchVoiceNote = useCallback(
     async (id: string, body: { listened?: boolean; archived?: boolean }) => {
-      if (!token) return;
+      if (!token) return false;
       setVoiceBusyId(id);
       try {
         await apiJson(`/api/patient/voice-notes/${id}`, token, {
@@ -277,8 +279,9 @@ export default function DashboardScreen() {
           body: JSON.stringify(body),
         });
         await loadHome();
+        return true;
       } catch {
-        /* ignore */
+        return false;
       } finally {
         setVoiceBusyId(null);
       }
@@ -876,9 +879,6 @@ export default function DashboardScreen() {
         <View style={styles.skinParamsHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.h2}>Skin parameters</Text>
-            <Text style={styles.skinParamsSub}>
-              8 kAI metrics tracked from your scans · higher is better
-            </Text>
           </View>
           {skinScanHistory.length > 0 ? (
             <Pressable
@@ -1396,6 +1396,13 @@ function Field({
 
 type FeedbackEntry = NonNullable<HomeData["feedbackEntries"]>[number];
 
+function feedbackReplySnippet(entry: FeedbackEntry): string {
+  const text = entry.feedbackText?.trim();
+  if (text) return text.length > 400 ? `${text.slice(0, 397)}…` : text;
+  if (entry.audioDataUri) return "your doctor's voice note";
+  return "your doctor's feedback";
+}
+
 function DoctorFeedbackSection({
   feedbackEntries,
   archivedEntries,
@@ -1417,13 +1424,14 @@ function DoctorFeedbackSection({
   voiceNoteIsNew: boolean;
   onboardingComplete?: boolean;
   token: string | null;
-  onPatchVoiceNote: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<void>;
+  onPatchVoiceNote: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<boolean>;
   voiceBusyId: string | null;
   onRefresh: () => Promise<void>;
 }) {
   const [showArchived, setShowArchived] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [replyBusy, setReplyBusy] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const entries: FeedbackEntry[] = useMemo(() => {
     if (feedbackEntries.length > 0) return feedbackEntries;
@@ -1437,6 +1445,7 @@ function DoctorFeedbackSection({
         listened: legacyVoiceNotes[0]?.listened ?? true,
         doctorName: null,
         doctorPhotoUrl: null,
+        doctorId: null,
       });
       const remainingNotes = legacyVoiceNotes.slice(1);
       for (const vn of remainingNotes) {
@@ -1448,6 +1457,7 @@ function DoctorFeedbackSection({
           listened: vn.listened,
           doctorName: null,
           doctorPhotoUrl: null,
+          doctorId: null,
         });
       }
     } else {
@@ -1460,6 +1470,7 @@ function DoctorFeedbackSection({
           listened: vn.listened,
           doctorName: null,
           doctorPhotoUrl: null,
+          doctorId: null,
         });
       }
     }
@@ -1476,24 +1487,47 @@ function DoctorFeedbackSection({
       listened: vn.listened,
       doctorName: null,
       doctorPhotoUrl: null,
+      doctorId: null,
     }));
   }, [archivedEntries, legacyArchivedVoiceNotes]);
 
+  const replyTarget = entries[0] ?? null;
+  const replyDoctorId = replyTarget?.doctorId ?? null;
+  const replyDoctorName = replyTarget?.doctorName ?? "your doctor";
+
   const sendReply = useCallback(async () => {
-    if (!token || !replyText.trim()) return;
+    if (!token || !replyText.trim() || !replyTarget) return;
+    if (!replyDoctorId) {
+      setReplyError("Could not find which doctor to reply to. Open Chat and message your doctor there.");
+      return;
+    }
     setReplyBusy(true);
+    setReplyError(null);
     try {
+      const intro = `Hi doctor, I had a query from the feedback: ${feedbackReplySnippet(replyTarget)}`;
       await apiJson(`/api/chat/plain/message`, token, {
         method: "POST",
-        body: JSON.stringify({ assistantId: "doctor", text: replyText.trim() }),
+        body: JSON.stringify({
+          assistantId: "doctor",
+          doctorId: replyDoctorId,
+          text: intro,
+        }),
+      });
+      await apiJson(`/api/chat/plain/message`, token, {
+        method: "POST",
+        body: JSON.stringify({
+          assistantId: "doctor",
+          doctorId: replyDoctorId,
+          text: replyText.trim(),
+        }),
       });
       setReplyText("");
     } catch {
-      /* ignore */
+      setReplyError("Could not send your reply. Please try again.");
     } finally {
       setReplyBusy(false);
     }
-  }, [token, replyText]);
+  }, [token, replyText, replyTarget, replyDoctorId]);
 
   const hasEntries = entries.length > 0;
 
@@ -1548,21 +1582,47 @@ function DoctorFeedbackSection({
       <View style={fbStyles.replyRow}>
         <TextInput
           style={fbStyles.replyInput}
-          placeholder="Write a reply..."
+          placeholder={
+            replyTarget && replyDoctorId
+              ? `Reply to ${replyDoctorName}…`
+              : "Write a reply..."
+          }
           value={replyText}
-          onChangeText={setReplyText}
+          onChangeText={(t) => {
+            setReplyText(t);
+            if (replyError) setReplyError(null);
+          }}
           placeholderTextColor="#94a3b8"
+          editable={Boolean(replyTarget && replyDoctorId) && !replyBusy}
         />
         <Pressable
-          style={[fbStyles.sendBtn, { opacity: replyBusy || !replyText.trim() ? 0.4 : 1 }]}
-          disabled={replyBusy || !replyText.trim()}
-          onPress={sendReply}
+          style={[
+            fbStyles.sendBtn,
+            {
+              opacity:
+                replyBusy || !replyText.trim() || !replyDoctorId ? 0.4 : 1,
+            },
+          ]}
+          disabled={replyBusy || !replyText.trim() || !replyDoctorId}
+          onPress={() => void sendReply()}
         >
           <Ionicons name="send" size={18} color="#fff" />
         </Pressable>
       </View>
+      {replyError ? (
+        <Text style={fbStyles.replyError}>{replyError}</Text>
+      ) : replyTarget && replyDoctorId ? (
+        <Text style={fbStyles.replyHint}>
+          Sends to {replyDoctorName} only. We&apos;ll note which feedback you&apos;re asking about first.
+        </Text>
+      ) : null}
     </View>
   );
+}
+
+function feedbackAckLabel(entry: FeedbackEntry, acknowledged: boolean): string {
+  if (acknowledged) return "Noted";
+  return entry.audioDataUri ? "I've listened" : "I've read this";
 }
 
 function FeedbackEntryCard({
@@ -1572,10 +1632,30 @@ function FeedbackEntryCard({
   archived,
 }: {
   entry: FeedbackEntry;
-  onPatch: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<void>;
+  onPatch: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<boolean>;
   busyId: string | null;
   archived?: boolean;
 }) {
+  const [acknowledged, setAcknowledged] = useState(entry.listened);
+
+  useEffect(() => {
+    setAcknowledged(entry.listened);
+  }, [entry.id, entry.listened]);
+
+  const isBusy = busyId === entry.id;
+
+  async function toggleAcknowledged() {
+    const next = !acknowledged;
+    setAcknowledged(next);
+    const ok = await onPatch(entry.id, { listened: next });
+    if (!ok) setAcknowledged(!next);
+  }
+
+  async function archiveEntry() {
+    const ok = await onPatch(entry.id, { archived: true });
+    if (ok) setAcknowledged(true);
+  }
+
   return (
     <View style={[fbStyles.entryCard, archived && fbStyles.entryCardArchived]}>
       <View style={fbStyles.doctorRow}>
@@ -1611,27 +1691,31 @@ function FeedbackEntryCard({
       {!archived && entry.id !== "__legacy-text__" ? (
         <View style={fbStyles.actionRow}>
           <Pressable
-            style={fbStyles.actionBtn}
-            disabled={busyId === entry.id}
-            onPress={() => void onPatch(entry.id, { listened: !entry.listened })}
+            style={[fbStyles.actionBtn, acknowledged && fbStyles.actionBtnDone]}
+            disabled={isBusy}
+            onPress={() => void toggleAcknowledged()}
           >
-            <Ionicons
-              name={entry.listened ? "checkmark-circle" : "checkmark-circle-outline"}
-              size={18}
-              color={entry.listened ? "#16a34a" : "#94a3b8"}
-            />
-            <Text style={[fbStyles.actionText, entry.listened && { color: "#16a34a" }]}>
-              {entry.listened ? "Listened" : "Mark listened"}
+            {isBusy ? (
+              <ActivityIndicator size="small" color={acknowledged ? "#16a34a" : NAVY} />
+            ) : (
+              <Ionicons
+                name={acknowledged ? "checkmark-circle" : "checkmark-circle-outline"}
+                size={18}
+                color={acknowledged ? "#16a34a" : NAVY}
+              />
+            )}
+            <Text style={[fbStyles.actionText, acknowledged && fbStyles.actionTextDone]}>
+              {feedbackAckLabel(entry, acknowledged)}
             </Text>
           </Pressable>
-          {entry.listened ? (
+          {acknowledged ? (
             <Pressable
               style={fbStyles.actionBtn}
-              disabled={busyId === entry.id}
-              onPress={() => void onPatch(entry.id, { archived: true })}
+              disabled={isBusy}
+              onPress={() => void archiveEntry()}
             >
               <Ionicons name="archive-outline" size={16} color="#64748b" />
-              <Text style={fbStyles.actionText}>Archive</Text>
+              <Text style={fbStyles.actionText}>Move to past notes</Text>
             </Pressable>
           ) : null}
         </View>
@@ -1776,9 +1860,17 @@ const fbStyles = StyleSheet.create({
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  actionBtnDone: {
+    backgroundColor: "rgba(22, 163, 74, 0.08)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
   },
   actionText: { fontSize: 13, color: "#64748b", fontWeight: "600" },
+  actionTextDone: { color: "#16a34a" },
   archiveToggle: {
     flexDirection: "row",
     alignItems: "center",
@@ -1815,6 +1907,18 @@ const fbStyles = StyleSheet.create({
     backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
+  },
+  replyHint: {
+    marginTop: 8,
+    fontSize: 11,
+    color: "#94a3b8",
+    lineHeight: 16,
+  },
+  replyError: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#b91c1c",
+    lineHeight: 17,
   },
 });
 
@@ -2208,19 +2312,90 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: MINT },
   chipText: { color: "#52525b", fontSize: 13 },
   chipTextOn: { color: NAVY, fontWeight: "600", fontSize: 13 },
-  paramGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
-  paramCell: { width: "47%", borderRadius: 16, padding: 12, overflow: "hidden" },
-  paramHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 4 },
-  paramLabel: { fontSize: 13, fontWeight: "600", color: "#27272a", flex: 1, flexShrink: 1 },
+  skinParamsCard: { marginTop: 16 },
+  skinParamsHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 4,
+  },
+  skinParamsSub: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#71717a",
+  },
+  skinParamsLink: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: NAVY,
+    marginTop: 2,
+  },
+  scanChipRow: {
+    paddingVertical: 8,
+    paddingRight: 4,
+    gap: 8,
+  },
+  scanChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  scanChipOn: {
+    backgroundColor: NAVY,
+    borderColor: NAVY,
+  },
+  scanChipText: { color: "#52525b", fontSize: 13, fontWeight: "600" },
+  scanChipTextOn: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  skinParamsMeta: {
+    fontSize: 12,
+    color: "#71717a",
+    marginBottom: 4,
+  },
+  paramGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
+  paramCell: {
+    width: "47%",
+    borderRadius: 16,
+    padding: 12,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  paramHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 36,
+  },
+  paramLabel: { fontSize: 13, fontWeight: "700", color: "#18181b", flex: 1, flexShrink: 1 },
+  paramScoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
   paramValCol: { alignItems: "flex-end", flexShrink: 0 },
-  paramNum: { fontSize: 12, color: "#52525b" },
-  paramDelta: { fontSize: 11, fontWeight: "700", marginTop: 2 },
+  paramNum: { fontSize: 12, fontWeight: "700", color: "#3f3f46", fontVariant: ["tabular-nums"] },
+  paramDelta: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] },
   deltaUp: { color: "#047857" },
   deltaDown: { color: "#b91c1c" },
   deltaNeutral: { color: "#71717a" },
-  barBg: { height: 8, borderRadius: 4, backgroundColor: "rgba(107,142,142,0.25)", marginTop: 8, overflow: "hidden" },
-  barFg: { height: 8, borderRadius: 4, backgroundColor: NAVY },
-  paramWeekAvg: { marginTop: 6, fontSize: 11, color: "#71717a", fontVariant: ["tabular-nums"] },
+  barBg: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(44, 62, 107, 0.12)",
+    marginTop: 10,
+    overflow: "hidden",
+  },
+  barFg: { height: 10, borderRadius: 999, backgroundColor: NAVY },
+  paramWeekAvg: { marginTop: 8, fontSize: 11, color: "#71717a" },
+  paramWeekAvgVal: { fontWeight: "700", color: "#52525b", fontVariant: ["tabular-nums"] },
   feedback: { marginTop: 8, fontSize: 15, color: "#3f3f46", lineHeight: 22 },
   feedbackEmpty: { minHeight: 100, borderWidth: 1, borderStyle: "dashed", borderColor: "#e4e4e7", borderRadius: 14, marginTop: 8 },
   voicePlaceholder: {
