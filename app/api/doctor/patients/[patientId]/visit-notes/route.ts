@@ -15,7 +15,12 @@ import {
   type VisitNoteAttachment,
 } from "@/src/lib/visitNoteAttachments";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
-import { invalidateUserHistoryCache, invalidateUserInsightsCache } from "@/src/lib/infra";
+import {
+  invalidateUserHistoryCache,
+  invalidateUserHomeCache,
+  invalidateUserInsightsCache,
+  invalidateUserScanDerivedCaches,
+} from "@/src/lib/infra";
 
 export async function POST(
   req: Request,
@@ -148,7 +153,9 @@ export async function POST(
 
   await Promise.all([
     invalidateUserHistoryCache(patientId),
+    invalidateUserHomeCache(patientId),
     invalidateUserInsightsCache(patientId),
+    invalidateUserScanDerivedCaches(patientId),
   ]);
 
   const notePreview = row.notes.trim().replace(/\s+/g, " ").slice(0, 220);

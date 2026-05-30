@@ -1,4 +1,5 @@
 import type { Href } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 let configured = false;
@@ -30,7 +31,29 @@ export function configureNotificationBehavior() {
       > | null;
       const t = data?.type;
       if (t === "clinic_chat") {
-        router.push("/(drawer)/chat");
+        const doctorIdRaw = data?.doctorId;
+        const doctorId =
+          typeof doctorIdRaw === "string" && doctorIdRaw.trim().length > 0
+            ? doctorIdRaw.trim()
+            : null;
+        void (async () => {
+          const keys = await AsyncStorage.getAllKeys();
+          const stale = keys.filter(
+            (k) =>
+              k.startsWith("skinfit-chat-thread-v1:") ||
+              k === "skinfit-chat-home-v2"
+          );
+          if (stale.length > 0) {
+            await AsyncStorage.multiRemove(stale);
+          }
+        })().catch(() => {
+          /* ignore cache invalidation failures */
+        });
+        router.push(
+          doctorId
+            ? (`/(drawer)/chat?doctorId=${encodeURIComponent(doctorId)}` as Href)
+            : ("/(drawer)/chat" as Href)
+        );
         return;
       }
       if (t === "doctor_voice_note") {
@@ -49,6 +72,10 @@ export function configureNotificationBehavior() {
       }
       if (t === "scan_report_failed") {
         router.push("/(drawer)/scan" as Href);
+        return;
+      }
+      if (t === "routine_plan_updated") {
+        router.push("/(drawer)" as Href);
       }
     });
   })();

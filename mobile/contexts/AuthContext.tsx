@@ -25,6 +25,7 @@ import {
   sessionGet,
   sessionSet,
 } from "@/lib/sessionStorageNativeOrWeb";
+import { notifySessionExpired, setSessionExpiredHandler } from "@/lib/sessionExpired";
 
 const TOKEN_KEY = "skinfit_session_token";
 const USER_KEY = "skinfit_user_json";
@@ -131,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (Platform.OS !== "web") {
         void registerForPushAndSyncToken(data.token, {
-          verboseAlerts: false,
+          verboseAlerts: true,
           requestPermission: true,
         });
       }
@@ -351,7 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (Platform.OS !== "web") {
         void registerForPushAndSyncToken(sessionToken, {
-          verboseAlerts: false,
+          verboseAlerts: true,
           requestPermission: true,
         });
       }
@@ -377,6 +378,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
   }, [token]);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => signOut());
+    return () => setSessionExpiredHandler(null);
+  }, [signOut]);
 
   const markOnboardingComplete = useCallback(async () => {
     const u = user;
@@ -408,6 +414,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       data = text ? (JSON.parse(text) as typeof data) : {};
     } catch {
+      return;
+    }
+    if (res.status === 401) {
+      notifySessionExpired();
       return;
     }
     if (!data.user) return;

@@ -4,14 +4,19 @@ import { subDays } from "date-fns";
 import { db } from "@/src/db";
 import { dailyFocus, dailyLogs, scans, skinScans, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
-import { dateOnlyFromYmd, parseYmdToDateOnly } from "@/src/lib/date-only";
+import { dateOnlyFromYmd, parseYmdToDateOnly, ymdFromDateOnly } from "@/src/lib/date-only";
 import { getPatientDoctorSection } from "@/src/lib/patientDoctorSection";
-import { patientRoutineListsForApi } from "@/src/lib/routine";
+import { normalizeRoutineSteps } from "@/src/lib/routine";
+import {
+  loadRoutinePlanRevisions,
+  resolveRoutinePlanForYmd,
+} from "@/src/lib/routinePlanRevisions";
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
 import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import { cacheAside, CacheKeys } from "@/src/lib/infra";
+import { coerceRoutinePlanList } from "@/src/lib/routine";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -84,6 +89,50 @@ async function buildPatientHomePayload(
   const todayDateOnly = dateOnlyFromYmd(todayYmdFromProfile);
   const isSelectedToday = todayYmdFromProfile === localTodayYmd;
   const weekCut = subDays(todayDateOnly, 7);
+
+  const routineRevisions = await loadRoutinePlanRevisions(db, userId);
+  const fallbackPlan = {
+    amItems: coerceRoutinePlanList(routinePlanAmItems),
+    pmItems: coerceRoutinePlanList(routinePlanPmItems),
+  };
+  const todayPlan = resolveRoutinePlanForYmd(
+    routineRevisions,
+    fallbackPlan,
+    todayYmdFromProfile
+  );
+
+  function isFullRoutineDay(log: {
+    routineAmSteps: boolean[] | null;
+    routinePmSteps: boolean[] | null;
+    date: Date | string;
+  }): boolean {
+    const logYmd = ymdFromDateOnly(
+      log.date instanceof Date ? log.date : String(log.date)
+    );
+    const plan = resolveRoutinePlanForYmd(
+      routineRevisions,
+      fallbackPlan,
+      logYmd
+    );
+    const amSteps = normalizeRoutineSteps(
+      log.routineAmSteps,
+      plan.amLen,
+      undefined
+    );
+    const pmSteps = normalizeRoutineSteps(
+      log.routinePmSteps,
+      plan.pmLen,
+      undefined
+    );
+    return (
+      plan.amLen > 0 &&
+      amSteps.length === plan.amLen &&
+      amSteps.every(Boolean) &&
+      plan.pmLen > 0 &&
+      pmSteps.length === plan.pmLen &&
+      pmSteps.every(Boolean)
+    );
+  }
 
   const [
     skinScanRows,
@@ -179,19 +228,9 @@ async function buildPatientHomePayload(
   let highSun = 0;
   const completedDatesSet = new Set<string>();
   for (const l of recentLogs) {
-    const amS = l.routineAmSteps ?? [];
-    const pmS = l.routinePmSteps ?? [];
-    const am =
-      amS.length > 0 && amS.length === amS.filter(Boolean).length;
-    const pm =
-      pmS.length > 0 && pmS.length === pmS.filter(Boolean).length;
-    if (am && pm) {
+    if (isFullRoutineDay(l)) {
       amPmDays += 1;
-      if (l.date instanceof Date) {
-        completedDatesSet.add(l.date.toISOString().slice(0, 10));
-      } else {
-        completedDatesSet.add(String(l.date).slice(0, 10));
-      }
+      completedDatesSet.add(ymdFromDateOnly(l.date instanceof Date ? l.date : String(l.date)));
     }
     sleepSum += l.sleepHours ?? 0;
     waterSum += l.waterGlasses ?? 0;
@@ -223,11 +262,11 @@ async function buildPatientHomePayload(
     archivedFeedbackEntries,
   } = doctorSection;
 
-  const { amItems, pmItems, routinePlanReady } = patientRoutineListsForApi({
-    routinePlanAmItems,
-    routinePlanPmItems,
-    onboardingComplete,
-  });
+  const amItems = todayPlan.amItems;
+  const pmItems = todayPlan.pmItems;
+  const routinePlanReady = Boolean(
+    onboardingComplete && amItems.length > 0 && pmItems.length > 0
+  );
 
   return {
     skinScanHistory,
@@ -292,11 +331,7 @@ async function buildPatientHomePayload(
       const avgStress = logCount > 0
         ? (recentLogs.reduce((s, l) => s + (l.stressLevel ?? 5), 0) / logCount).toFixed(1)
         : "—";
-      const routineDays = recentLogs.filter((l) => {
-        const am = l.routineAmSteps ?? [];
-        const pm = l.routinePmSteps ?? [];
-        return am.length > 0 && am.every(Boolean) && pm.length > 0 && pm.every(Boolean);
-      }).length;
+      const routineDays = recentLogs.filter((l) => isFullRoutineDay(l)).length;
 
       let weakestParam = "unknown";
       if (skinScanRows.length > 0) {

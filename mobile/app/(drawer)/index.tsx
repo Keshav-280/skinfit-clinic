@@ -1,6 +1,6 @@
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system/legacy";
-import { format, addDays, subDays, startOfWeek, parseISO, isSameDay, addMonths, subMonths } from "date-fns";
+import { format, addDays, subDays, startOfWeek, parseISO, isSameDay } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +25,7 @@ import { TodayFocusCard } from "@/components/dashboard/TodayFocusCard";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import { getCached, setCached } from "@/lib/apiCache";
 import {
   extractSkinHealthMetrics,
   extractSkinParamMetrics,
@@ -156,25 +157,6 @@ export default function DashboardScreen() {
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
-  const minWeekOffset = useMemo(() => {
-    const today = new Date();
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-    const bound = subMonths(thisWeekStart, 1);
-    let offset = 0;
-    let ws = thisWeekStart;
-    while (ws > bound) { ws = subDays(ws, 7); offset--; }
-    return offset;
-  }, []);
-  const maxWeekOffset = useMemo(() => {
-    const today = new Date();
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-    const bound = addMonths(thisWeekStart, 1);
-    let offset = 0;
-    let ws = thisWeekStart;
-    while (ws < bound) { ws = addDays(ws, 7); offset++; }
-    return offset;
-  }, []);
-
   const [journalDate, setJournalDate] = useState(todayStr);
   const [sleep, setSleep] = useState("0");
   const [stress, setStress] = useState("5");
@@ -186,6 +168,7 @@ export default function DashboardScreen() {
   const [journalLoading, setJournalLoading] = useState(false);
   const [journalSaving, setJournalSaving] = useState(false);
   const [journalHint, setJournalHint] = useState<string | null>(null);
+  const [showingCachedHome, setShowingCachedHome] = useState(false);
   const [dietType, setDietType] = useState<string>("balanced");
   const [sunExposure, setSunExposure] = useState<string>("low");
   const [cycleDay, setCycleDay] = useState("");
@@ -194,10 +177,30 @@ export default function DashboardScreen() {
   const loadHome = useCallback(async () => {
     if (!token) return;
     setError(null);
-    const json = await apiJson<HomeData>(`/api/patient/home`, token, {
+    const cacheKey = "home";
+    const cached = await getCached<HomeData>(cacheKey);
+    if (cached) {
+      setData({
+        ...cached,
+        kaiSkinScore: cached.kaiSkinScore ?? 0,
+        weeklyDeltaScore: cached.weeklyDeltaScore ?? cached.weeklyChangePercent ?? 0,
+        lifestyleAlignmentScore: cached.lifestyleAlignmentScore ?? cached.routineScore ?? 0,
+        streakCurrent: cached.streakCurrent ?? 0,
+        streakLongest: cached.streakLongest ?? 0,
+        cycleTrackingEnabled: cached.cycleTrackingEnabled ?? false,
+        homeDateYmd: cached.homeDateYmd,
+        doctorVoiceNotes: cached.doctorVoiceNotes ?? [],
+        doctorArchivedVoiceNotes: cached.doctorArchivedVoiceNotes ?? [],
+        doctorVoiceNote: cached.doctorVoiceNote ?? null,
+        doctorVoiceNoteIsNew: cached.doctorVoiceNoteIsNew ?? false,
+        routinePlanReady: cached.routinePlanReady ?? false,
+      });
+      setShowingCachedHome(true);
+    }
+    const json = await apiJson<HomeData>(`/api/patient/home?date=${encodeURIComponent(journalDate)}`, token, {
       method: "GET",
     });
-    setData({
+    const nextData: HomeData = {
       ...json,
       kaiSkinScore: json.kaiSkinScore ?? 0,
       weeklyDeltaScore:
@@ -213,7 +216,10 @@ export default function DashboardScreen() {
       doctorVoiceNote: json.doctorVoiceNote ?? null,
       doctorVoiceNoteIsNew: json.doctorVoiceNoteIsNew ?? false,
       routinePlanReady: json.routinePlanReady ?? false,
-    });
+    };
+    setData(nextData);
+    setShowingCachedHome(false);
+    await setCached(cacheKey, nextData);
     setSelectedScanIdx(0);
     const am = normalizeRoutineSteps(
       json.todayLog?.routineAmSteps,
@@ -242,7 +248,7 @@ export default function DashboardScreen() {
         typeof log.cycleDay === "number" && log.cycleDay > 0 ? String(log.cycleDay) : ""
       );
     }
-  }, [token]);
+  }, [token, journalDate]);
 
   const patchVoiceNote = useCallback(
     async (id: string, body: { listened?: boolean; archived?: boolean }) => {
@@ -289,8 +295,12 @@ export default function DashboardScreen() {
         hasLoadedOnce.current = true;
         return;
       }
-      if (token) void loadHome();
-    }, [token, loadHome])
+      if (token) {
+        void loadHome().catch(() => {
+          /* 401 handled globally; ignore other refresh errors on focus */
+        });
+      }
+    }, [token, loadHome, journalDate])
   );
 
   const loadJournalForDate = useCallback(
@@ -488,15 +498,28 @@ export default function DashboardScreen() {
     return "🌙";
   }, []);
 
+  const selectedDate = useMemo(() => parseISO(`${journalDate}T12:00:00`), [journalDate]);
   const weekDays = useMemo(() => {
     const today = new Date();
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const thisWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
     const start = addDays(thisWeekStart, weekOffset * 7);
     return Array.from({ length: 7 }, (_, i) => {
       const d = addDays(start, i);
-      return { date: d, label: format(d, "EEE"), day: format(d, "dd"), month: format(d, "MMM"), isToday: isSameDay(d, today) };
+      const ymd = format(d, "yyyy-MM-dd");
+      const isFuture = ymd > todayStr;
+      const isSelected = ymd === journalDate;
+      return {
+        date: d,
+        ymd,
+        label: format(d, "EEE"),
+        day: format(d, "dd"),
+        month: format(d, "MMM"),
+        isToday: isSameDay(d, today),
+        isFuture,
+        isSelected,
+      };
     });
-  }, [weekOffset]);
+  }, [weekOffset, selectedDate, todayStr, journalDate]);
 
   const amDone = useMemo(() => routine.am.filter(Boolean).length, [routine.am]);
   const pmDone = useMemo(() => routine.pm.filter(Boolean).length, [routine.pm]);
@@ -563,9 +586,8 @@ export default function DashboardScreen() {
       {/* ── Date strip ── */}
       <View style={styles.dateNavRow}>
         <Pressable
-          onPress={() => setWeekOffset((o) => Math.max(minWeekOffset, o - 1))}
-          disabled={weekOffset <= minWeekOffset}
-          style={[styles.dateNavArrow, weekOffset <= minWeekOffset && { opacity: 0.3 }]}
+          onPress={() => setWeekOffset((o) => o - 1)}
+          style={styles.dateNavArrow}
           hitSlop={10}
         >
           <Ionicons name="chevron-back" size={18} color={NAVY} />
@@ -577,9 +599,8 @@ export default function DashboardScreen() {
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => setWeekOffset((o) => Math.min(maxWeekOffset, o + 1))}
-          disabled={weekOffset >= maxWeekOffset}
-          style={[styles.dateNavArrow, weekOffset >= maxWeekOffset && { opacity: 0.3 }]}
+          onPress={() => setWeekOffset((o) => o + 1)}
+          style={styles.dateNavArrow}
           hitSlop={10}
         >
           <Ionicons name="chevron-forward" size={18} color={NAVY} />
@@ -592,25 +613,40 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.dateStripContent}
       >
         {weekDays.map((d) => (
-          <View
+          <Pressable
             key={`${d.month}-${d.day}`}
-            style={[styles.dateChip, d.isToday && styles.dateChipToday]}
+            onPress={() => {
+              if (d.isFuture) return;
+              setJournalDate(d.ymd);
+            }}
+            disabled={d.isFuture}
+            style={[
+              styles.dateChip,
+              d.isSelected && styles.dateChipToday,
+              d.isFuture && styles.dateChipDisabled,
+            ]}
           >
-            <Text style={[styles.dateChipLabel, d.isToday && styles.dateChipLabelToday]}>
+            <Text style={[styles.dateChipLabel, d.isSelected && styles.dateChipLabelToday]}>
               {d.label}
             </Text>
-            <Text style={[styles.dateChipDay, d.isToday && styles.dateChipDayToday]}>
+            <Text style={[styles.dateChipDay, d.isSelected && styles.dateChipDayToday]}>
               {d.day}
             </Text>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
+      <Text style={styles.selectedDateLabel}>
+        Viewing {format(selectedDate, "EEE, d MMM yyyy")}
+      </Text>
+     
 
       {/* ── Routine cards ── */}
       <View style={styles.routineCards}>
         <Pressable
           style={styles.routineCard}
-          onPress={() => router.push("/(drawer)/morning-routine" as Href)}
+          onPress={() =>
+            router.push(`/(drawer)/morning-routine?date=${encodeURIComponent(journalDate)}` as Href)
+          }
         >
           <View style={styles.routineCardTop}>
             <View style={styles.routineIconCircle}>
@@ -630,7 +666,9 @@ export default function DashboardScreen() {
 
         <Pressable
           style={styles.routineCard}
-          onPress={() => router.push("/(drawer)/night-routine" as Href)}
+          onPress={() =>
+            router.push(`/(drawer)/night-routine?date=${encodeURIComponent(journalDate)}` as Href)
+          }
         >
           <View style={styles.routineCardTop}>
             <View style={[styles.routineIconCircle, { backgroundColor: NAVY }]}>
@@ -690,8 +728,8 @@ export default function DashboardScreen() {
         onPress={(target) =>
           router.push(
             target === "am"
-              ? ("/(drawer)/morning-routine" as Href)
-              : ("/(drawer)/night-routine" as Href)
+              ? (`/(drawer)/morning-routine?date=${encodeURIComponent(journalDate)}` as Href)
+              : (`/(drawer)/night-routine?date=${encodeURIComponent(journalDate)}` as Href)
           )
         }
       />
@@ -710,7 +748,7 @@ export default function DashboardScreen() {
             <Text style={styles.focusLockedCta}>Continue questionnaire</Text>
           </View>
         </Pressable>
-      ) : data.todayFocus?.message ? (
+      ) : data.todayFocus?.message && journalDate === todayStr ? (
         <TodayFocusCard message={data.todayFocus.message} />
       ) : null}
 
@@ -752,7 +790,10 @@ export default function DashboardScreen() {
       {/* ── Daily Journal Cards ── */}
       <Text style={[styles.sectionTitle, { marginTop: 20 }]}>DAILY JOURNAL</Text>
 
-      <Pressable style={styles.journalCard} onPress={() => router.push("/(drawer)/sleep-tracker" as Href)}>
+      <Pressable
+        style={styles.journalCard}
+        onPress={() => router.push(`/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
+      >
         <View style={styles.journalCardInner}>
           <View style={{ flex: 1 }}>
             <Text style={styles.journalCardLabel}>Sleep Duration</Text>
@@ -764,12 +805,18 @@ export default function DashboardScreen() {
             <Ionicons name="bed" size={20} color="#fff" />
           </View>
         </View>
-        <Pressable style={styles.journalEnterBtn} onPress={() => router.push("/(drawer)/sleep-tracker" as Href)}>
+        <Pressable
+          style={styles.journalEnterBtn}
+          onPress={() => router.push(`/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
+        >
           <Text style={styles.journalEnterText}>Enter Data</Text>
         </Pressable>
       </Pressable>
 
-      <Pressable style={styles.journalCard} onPress={() => router.push("/(drawer)/hydration-tracker" as Href)}>
+      <Pressable
+        style={styles.journalCard}
+        onPress={() => router.push(`/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
+      >
         <View style={styles.journalCardInner}>
           <View style={{ flex: 1 }}>
             <Text style={styles.journalCardLabel}>Hydration</Text>
@@ -779,12 +826,18 @@ export default function DashboardScreen() {
             <Ionicons name="water" size={20} color="#fff" />
           </View>
         </View>
-        <Pressable style={styles.journalEnterBtn} onPress={() => router.push("/(drawer)/hydration-tracker" as Href)}>
+        <Pressable
+          style={styles.journalEnterBtn}
+          onPress={() => router.push(`/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
+        >
           <Text style={styles.journalEnterText}>Enter Data</Text>
         </Pressable>
       </Pressable>
 
-      <Pressable style={styles.journalCard} onPress={() => router.push("/(drawer)/stress-tracker" as Href)}>
+      <Pressable
+        style={styles.journalCard}
+        onPress={() => router.push(`/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
+      >
         <View style={styles.journalCardInner}>
           <View style={{ flex: 1 }}>
             <Text style={styles.journalCardLabel}>Stress Level (0-10)</Text>
@@ -794,7 +847,10 @@ export default function DashboardScreen() {
             <Ionicons name={Number(stress) > 6 ? "sad" : "happy"} size={20} color="#fff" />
           </View>
         </View>
-        <Pressable style={styles.journalEnterBtn} onPress={() => router.push("/(drawer)/stress-tracker" as Href)}>
+        <Pressable
+          style={styles.journalEnterBtn}
+          onPress={() => router.push(`/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
+        >
           <Text style={styles.journalEnterText}>Enter Data</Text>
         </Pressable>
       </Pressable>
@@ -1764,6 +1820,28 @@ const styles = StyleSheet.create({
   dateChipLabelToday: { color: "#fff" },
   dateChipDay: { fontSize: 18, fontWeight: "800", color: "#1A1A2E", marginTop: 2 },
   dateChipDayToday: { color: "#fff" },
+  dateChipDisabled: { opacity: 0.35 },
+  selectedDateLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: -8,
+    marginBottom: 12,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  cacheBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FCD34D",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  cacheBannerText: { fontSize: 12, color: "#92400e", fontWeight: "600" },
 
   routineCards: { flexDirection: "row", gap: 12, marginBottom: 16 },
   routineCard: {

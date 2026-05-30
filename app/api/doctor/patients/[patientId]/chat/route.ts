@@ -148,6 +148,7 @@ export async function POST(
     body: isE2eePayload(messageText)
       ? "New secure message from your clinic"
       : messageText,
+    doctorId: staffId,
   });
 
   return NextResponse.json({

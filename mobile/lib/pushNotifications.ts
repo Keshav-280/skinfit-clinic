@@ -89,12 +89,14 @@ export async function registerForPushAndSyncToken(
     });
     return expoPushToken;
   } catch (e) {
-    const msg =
-      e instanceof Error
-        ? e.message
-        : "Could not register. For release builds, add your EAS projectId under expo.extra.eas in app.json.";
+    if (__DEV__ && e instanceof Error) {
+      console.warn("[push] register failed:", e.message);
+    }
     if (verboseAlerts) {
-      Alert.alert("Push setup", msg);
+      Alert.alert(
+        "Notifications",
+        "We couldn't turn on alerts for this device. Check notification permissions in system Settings, then sign in again."
+      );
     }
     return null;
   }

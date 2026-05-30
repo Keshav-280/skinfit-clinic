@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
+import { getCached, setCached } from "@/lib/apiCache";
 
 const NAVY = "#2B3A67";
 const BG: [string, string] = ["#E8EFE6", "#DCE8D4"];
@@ -49,13 +50,23 @@ export default function VisitsListScreen() {
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showingCached, setShowingCached] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
-    const data = await apiJson<HistoryPayload>("/api/patient/history", token, {
+    const cacheKey = "history-visits";
+    const cached = await getCached<VisitRow[]>(cacheKey);
+    if (cached && cached.length > 0) {
+      setVisits(cached);
+      setShowingCached(true);
+    }
+    const data = await apiJson<HistoryPayload>("/api/patient/history?include=visits", token, {
       method: "GET",
     });
-    setVisits(data.visitNotes ?? []);
+    const next = data.visitNotes ?? [];
+    setVisits(next);
+    setShowingCached(false);
+    await setCached(cacheKey, next);
   }, [token]);
 
   useFocusEffect(
@@ -106,6 +117,12 @@ export default function VisitsListScreen() {
           />
         }
       >
+        {showingCached ? (
+          <View style={s.cacheBanner}>
+            <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
+            <Text style={s.cacheBannerText}>Showing cached visits</Text>
+          </View>
+        ) : null}
         {visits.length === 0 ? (
           <Text style={s.empty}>No clinic visits yet.</Text>
         ) : (
@@ -206,4 +223,17 @@ const s = StyleSheet.create({
     borderRadius: 999,
   },
   ratingText: { fontSize: 12, fontWeight: "700" },
+  cacheBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FCD34D",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  cacheBannerText: { fontSize: 12, color: "#92400e", fontWeight: "600" },
 });

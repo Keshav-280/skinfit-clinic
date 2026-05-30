@@ -3,10 +3,8 @@ import { db } from "@/src/db";
 import { dailyLogs, users } from "@/src/db/schema";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import { dateOnlyFromYmd } from "@/src/lib/date-only";
-import {
-  coerceRoutinePlanList,
-  normalizeRoutineSteps,
-} from "@/src/lib/routine";
+import { normalizeRoutineSteps } from "@/src/lib/routine";
+import { getRoutinePlanForDate } from "@/src/lib/routinePlanRevisions";
 import {
   buildRoutineReminderMessage,
   type RoutineKind,
@@ -31,8 +29,6 @@ export async function sendDoctorRoutineNudge(
       id: true,
       onboardingComplete: true,
       timezone: true,
-      routinePlanAmItems: true,
-      routinePlanPmItems: true,
     },
   });
   if (!userRow) {
@@ -42,14 +38,15 @@ export async function sendDoctorRoutineNudge(
     return { ok: false, error: "PATIENT_NOT_ONBOARDED" };
   }
 
-  const amItems = coerceRoutinePlanList(userRow.routinePlanAmItems);
-  const pmItems = coerceRoutinePlanList(userRow.routinePlanPmItems);
+  const tz = normalizeIanaTimeZone(userRow.timezone);
+  const { ymd } = localYmdAndHm(new Date(), tz);
+  const plan = await getRoutinePlanForDate(db, patientId, ymd);
+  const amItems = plan.amItems;
+  const pmItems = plan.pmItems;
   if (amItems.length === 0 || pmItems.length === 0) {
     return { ok: false, error: "ROUTINE_PLAN_NOT_SET" };
   }
 
-  const tz = normalizeIanaTimeZone(userRow.timezone);
-  const { ymd } = localYmdAndHm(new Date(), tz);
   const dayDate = dateOnlyFromYmd(ymd);
 
   const [log] = await db

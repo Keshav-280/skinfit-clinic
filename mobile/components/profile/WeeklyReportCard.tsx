@@ -146,7 +146,7 @@ export default function WeeklyReportCard({
         ) : (
           <Text style={s.emptyHint}>
             {insightsUnavailable
-              ? "kAI insights are temporarily unavailable. Ensure OPENAI_API_KEY is set on the server and refresh."
+              ? "Insights are temporarily unavailable. Pull to refresh in a moment."
               : "Generating observations… pull to refresh in a moment."}
           </Text>
         )}
@@ -173,7 +173,7 @@ export default function WeeklyReportCard({
         ) : (
           <Text style={s.emptyHint}>
             {insightsUnavailable
-              ? "Priority actions need the kAI model (same server key as weekly reports)."
+              ? "Priority actions are temporarily unavailable. Pull to refresh in a moment."
               : "Generating priority actions… pull to refresh."}
           </Text>
         )}

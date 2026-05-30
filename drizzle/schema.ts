@@ -86,6 +86,24 @@ export const dailyFocus = pgTable("daily_focus", {
 		}).onDelete("cascade"),
 ]);
 
+export const hydrationInsights = pgTable("hydration_insights", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	insightDate: date("insight_date").notNull(),
+	insight: text().notNull(),
+	tip: text().notNull(),
+	generatedAt: timestamp("generated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("hydration_insights_user_date_uidx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.insightDate.asc().nullsLast().op("date_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "hydration_insights_user_id_users_id_fk"
+		}).onDelete("cascade"),
+]);
+
 export const dailyLogs = pgTable("daily_logs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id").notNull(),
@@ -456,6 +474,29 @@ export const users = pgTable("users", {
 	clinicVisitedAt: timestamp("clinic_visited_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	unique("users_email_unique").on(table.email),
+]);
+
+export const routinePlanRevisions = pgTable("routine_plan_revisions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	effectiveFrom: date("effective_from").notNull(),
+	amItems: jsonb("am_items").notNull(),
+	pmItems: jsonb("pm_items").notNull(),
+	createdByStaffId: uuid("created_by_staff_id"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("routine_plan_revisions_user_effective_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.effectiveFrom.desc().nullsLast()),
+	uniqueIndex("routine_plan_revisions_user_effective_uidx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.effectiveFrom.asc().nullsLast()),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "routine_plan_revisions_user_id_users_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.createdByStaffId],
+			foreignColumns: [users.id],
+			name: "routine_plan_revisions_created_by_staff_id_users_id_fk"
+		}).onDelete("set null"),
 ]);
 
 export const appointmentRequests = pgTable("appointment_requests", {

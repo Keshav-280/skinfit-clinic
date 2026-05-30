@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { format, parseISO } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -70,6 +71,7 @@ function ProgressRing({ done, total, size = 56 }: { done: number; total: number;
 
 export default function MorningRoutineScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ date?: string }>();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [data, setData] = useState<HomeData | null>(null);
@@ -77,18 +79,33 @@ export default function MorningRoutineScreen() {
   const [steps, setSteps] = useState<boolean[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const selectedYmd =
+    typeof params.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
+      ? params.date
+      : format(new Date(), "yyyy-MM-dd");
+
   const loadData = useCallback(async () => {
     if (!token) return;
-    const json = await apiJson<HomeData>("/api/patient/home", token, { method: "GET" });
+    const json = await apiJson<HomeData>(
+      `/api/patient/home?date=${encodeURIComponent(selectedYmd)}`,
+      token,
+      { method: "GET" }
+    );
     setData(json);
     const am = normalizeRoutineSteps(json.todayLog?.routineAmSteps, json.amItems.length, undefined);
     setSteps(am);
-  }, [token]);
+  }, [token, selectedYmd]);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       setLoading(true);
-      try { await loadData(); } finally { setLoading(false); }
+      try {
+        await loadData();
+      } catch {
+        /* 401 signs out globally */
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [loadData]);
 
@@ -103,7 +120,7 @@ export default function MorningRoutineScreen() {
       const { format } = await import("date-fns");
       await apiJson("/api/journal", token, {
         method: "PATCH",
-        body: JSON.stringify({ date: format(new Date(), "yyyy-MM-dd"), routineAmSteps: next }),
+        body: JSON.stringify({ date: selectedYmd, routineAmSteps: next }),
       });
     } catch {
       void loadData();
@@ -149,6 +166,9 @@ export default function MorningRoutineScreen() {
         <Text style={styles.headerTitle}>Morning Routine</Text>
         <View style={{ width: 36 }} />
       </View>
+      <Text style={styles.selectedDateLabel}>
+        For {format(parseISO(`${selectedYmd}T12:00:00`), "EEE, d MMM yyyy")}
+      </Text>
 
       <View style={styles.reminderCard}>
         <View style={styles.reminderLeft}>
@@ -224,6 +244,13 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 20, fontWeight: "800", color: "#18181b" },
+  selectedDateLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 10,
+    fontWeight: "600",
+  },
 
   reminderCard: {
     backgroundColor: NAVY,

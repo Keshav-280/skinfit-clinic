@@ -411,11 +411,11 @@ export default function ProfileScreen() {
 
         <Pressable
           style={styles.historyLinkCard}
-          onPress={() => router.push("/(drawer)/history" as any)}
+          onPress={() => router.push("/(drawer)/history/visits" as any)}
         >
           <Text style={styles.historyLinkTitle}>Treatment history</Text>
           <Text style={styles.historyLinkSub}>
-            View scan reports, clinic visits, and audio notes
+            View clinic visits, treatment notes, and doctor summaries
           </Text>
         </Pressable>
 

@@ -46,8 +46,8 @@ export function coerceRoutinePlanList(raw: unknown): string[] {
 }
 
 export type DoctorRoutinePlanPatchParsed =
-  | { kind: "set"; am: string[]; pm: string[] }
-  | { kind: "clear" }
+  | { kind: "set"; am: string[]; pm: string[]; effectiveFromYmd?: string }
+  | { kind: "clear"; effectiveFromYmd?: string }
   | { kind: "error"; error: string };
 
 /**
@@ -58,9 +58,16 @@ export function parseDoctorRoutinePlanPatch(body: unknown): DoctorRoutinePlanPat
   if (!body || typeof body !== "object") {
     return { kind: "error", error: "Invalid body." };
   }
-  const o = body as { clear?: unknown; amItems?: unknown; pmItems?: unknown };
+  const o = body as {
+    clear?: unknown;
+    amItems?: unknown;
+    pmItems?: unknown;
+    effectiveFromYmd?: unknown;
+  };
+  const effectiveFromYmd =
+    typeof o.effectiveFromYmd === "string" ? o.effectiveFromYmd : undefined;
   if (o.clear === true) {
-    return { kind: "clear" };
+    return { kind: "clear", effectiveFromYmd };
   }
   const am = coerceRoutinePlanList(o.amItems);
   const pm = coerceRoutinePlanList(o.pmItems);
@@ -70,7 +77,7 @@ export function parseDoctorRoutinePlanPatch(body: unknown): DoctorRoutinePlanPat
       error: "Add at least one AM step and one PM step.",
     };
   }
-  return { kind: "set", am, pm };
+  return { kind: "set", am, pm, effectiveFromYmd };
 }
 
 /** Lists exposed on patient home / dashboard; ready only after onboarding + clinician plan. */

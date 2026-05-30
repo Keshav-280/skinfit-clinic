@@ -20,6 +20,9 @@ export const CacheKeys = {
   skinProfile: (userId: string) => `skin-profile:${userId}`,
   skinIdentity: (userId: string) => `skin-identity:${userId}`,
   monthlyInsight: (userId: string) => `monthly-insight:${userId}`,
+  hydrationInsight: (userId: string, dateYmd: string) =>
+    `hydration-insight:${userId}:${dateYmd}`,
+  hydrationInsightPrefix: (userId: string) => `hydration-insight:${userId}:`,
   report: (scanId: number) => `report:${scanId}`,
   session: (sessionId: string) => `session:${sessionId}`,
 } as const;
@@ -59,6 +62,7 @@ export async function invalidateUserInsightsCache(userId: string): Promise<void>
   await cache.del(CacheKeys.skinProfile(userId));
   await cache.del(CacheKeys.skinIdentity(userId));
   await cache.del(CacheKeys.monthlyInsight(userId));
+  await cache.delByPrefix(CacheKeys.hydrationInsightPrefix(userId));
 }
 
 /** Cache-aside: check Redis → fallback → store. */

@@ -2,6 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { getSessionSecret } from "@/src/lib/auth/session-secret";
+import { verifySessionToken } from "@/src/lib/auth/session";
 import { resolvePatientDoctorThread } from "@/src/lib/patientDoctorChatThread";
 import {
   chatThreadChannel,
@@ -40,12 +42,25 @@ async function resolveThreadId(
  * SSE stream for live doctor/support chat updates (Redis pub/sub).
  */
 export async function GET(req: Request) {
-  const userId = await getSessionUserIdFromRequest(req);
+  const url = new URL(req.url);
+  const tokenParam = url.searchParams.get("token");
+
+  let userId = await getSessionUserIdFromRequest(req);
+  if (!userId && tokenParam) {
+    const secret = getSessionSecret();
+    if (secret) {
+      try {
+        const { sub } = await verifySessionToken(tokenParam, secret);
+        userId = sub || null;
+      } catch {
+        userId = null;
+      }
+    }
+  }
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const url = new URL(req.url);
   const assistantId = url.searchParams.get("assistantId");
   if (assistantId !== "doctor" && assistantId !== "support") {
     return new Response("Invalid assistantId", { status: 400 });

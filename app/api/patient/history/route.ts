@@ -18,6 +18,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const includeVisitsOnly = searchParams.get("include") === "visits";
+
   const payload = await cacheAside(CacheKeys.history(userId), 300, async () => {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -151,13 +154,22 @@ export async function GET(request: Request) {
     .filter((r) => r.patientArchivedAt != null)
     .map(mapReport);
 
-    return {
+    const basePayload = {
       patient,
       scans: scanRecords,
       visitNotes: visitRecords,
       reportVoiceNotes,
       reportVoiceNotesArchived,
     };
+
+    if (includeVisitsOnly) {
+      return {
+        patient: basePayload.patient,
+        visitNotes: basePayload.visitNotes,
+      };
+    }
+
+    return basePayload;
   }).catch((err: unknown) => {
     if (err instanceof Error && err.message === "NOT_FOUND") return null;
     throw err;

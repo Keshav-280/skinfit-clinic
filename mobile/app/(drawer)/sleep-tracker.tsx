@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { format, addDays, subDays, addMonths, subMonths, isSameDay } from "date-fns";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { format, addDays, subDays, subMonths, isSameDay, parseISO } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -118,6 +118,7 @@ type JournalData = {
 
 export default function SleepTrackerScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ date?: string }>();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const { saveStatus, scheduleSave, markReady, markNotReady } =
@@ -126,10 +127,15 @@ export default function SleepTrackerScreen() {
   const [loading, setLoading] = useState(true);
   const [hours, setHours] = useState(7.5);
   const [quality, setQuality] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const parsedParamDate = useMemo(() => {
+    if (typeof params.date !== "string") return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(params.date)) return null;
+    return parseISO(`${params.date}T12:00:00`);
+  }, [params.date]);
+  const [selectedDate, setSelectedDate] = useState(parsedParamDate ?? new Date());
 
   const minDate = useMemo(() => subMonths(new Date(), 1), []);
-  const maxDate = useMemo(() => addMonths(new Date(), 1), []);
+  const maxDate = useMemo(() => new Date(), []);
   const isToday = isSameDay(selectedDate, new Date());
   const canGoBack = selectedDate > minDate;
   const canGoForward = selectedDate < maxDate;
@@ -150,6 +156,11 @@ export default function SleepTrackerScreen() {
   }, [token, selectedDate, markNotReady]);
 
   useEffect(() => { void loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!parsedParamDate) return;
+    setSelectedDate(parsedParamDate);
+  }, [parsedParamDate]);
 
   useEffect(() => {
     if (loading) markNotReady();

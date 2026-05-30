@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnalysisMagicLoader } from "@/components/AnalysisMagicLoader";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import { getCached, setCached } from "@/lib/apiCache";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
 import {
   buildScanReportPdfPayload,
@@ -103,14 +104,23 @@ export default function HistoryListScreen() {
   const [pdfScanId, setPdfScanId] = useState<number | null>(null);
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
   const [showArchivedReportAudio, setShowArchivedReportAudio] = useState(false);
+  const [activeTab, setActiveTab] = useState<"scans" | "visits">("scans");
+  const [showingCached, setShowingCached] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
     setError(null);
+    const cached = await getCached<HistoryPayload>("history");
+    if (cached) {
+      setData(cached);
+      setShowingCached(true);
+    }
     const json = await apiJson<HistoryPayload>("/api/patient/history", token, {
       method: "GET",
     });
     setData(json);
+    setShowingCached(false);
+    await setCached("history", json);
   }, [token]);
 
   const patchReportVoice = useCallback(
@@ -203,6 +213,9 @@ export default function HistoryListScreen() {
   const reportVoices = data?.reportVoiceNotes ?? [];
   const reportVoicesArchived = data?.reportVoiceNotesArchived ?? [];
 
+  const showingScans = activeTab === "scans";
+  const showingVisits = activeTab === "visits";
+
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -218,6 +231,20 @@ export default function HistoryListScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>Treatment History</Text>
         <View style={{ width: 36 }} />
+      </View>
+      <View style={styles.tabRow}>
+        <Pressable
+          style={[styles.tabBtn, showingScans && styles.tabBtnActive]}
+          onPress={() => setActiveTab("scans")}
+        >
+          <Text style={[styles.tabBtnText, showingScans && styles.tabBtnTextActive]}>Scans</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tabBtn, showingVisits && styles.tabBtnActive]}
+          onPress={() => setActiveTab("visits")}
+        >
+          <Text style={[styles.tabBtnText, showingVisits && styles.tabBtnTextActive]}>Visits</Text>
+        </Pressable>
       </View>
     <ScrollView
       style={styles.scroll}
@@ -236,6 +263,14 @@ export default function HistoryListScreen() {
         />
       }
     >
+      {showingCached ? (
+        <View style={styles.cacheBanner}>
+          <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
+          <Text style={styles.cacheBannerText}>Showing cached history</Text>
+        </View>
+      ) : null}
+      {showingScans ? (
+        <>
       <Text style={styles.sectionTitle}>Progress tracker</Text>
       {scans.length === 0 ? (
         <Text style={styles.empty}>
@@ -371,8 +406,11 @@ export default function HistoryListScreen() {
           </>
         )}
       </View>
+        </>
+      ) : null}
 
-      <View style={[styles.visitSection, CARD, { marginTop: 28 }]}>
+      {showingVisits ? (
+      <View style={[styles.visitSection, CARD, { marginTop: 16 }]}>
         <Text style={styles.subsectionTitle}>Clinic notes</Text>
         {visits.length === 0 ? (
           <Text style={styles.empty}>No clinic notes yet.</Text>
@@ -437,6 +475,7 @@ export default function HistoryListScreen() {
           <Text style={styles.editLink}>All visits & notes</Text>
         </Pressable>
       </View>
+      ) : null}
     </ScrollView>
     </View>
   );
@@ -555,6 +594,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
+  tabRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  tabBtn: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  tabBtnActive: {
+    backgroundColor: NAVY,
+    borderColor: NAVY,
+  },
+  tabBtnText: { fontSize: 14, fontWeight: "700", color: NAVY },
+  tabBtnTextActive: { color: "#fff" },
   scroll: { flex: 1, backgroundColor: BG },
   content: { padding: 16, paddingBottom: 48 },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: BG },
@@ -563,6 +623,19 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   err: { color: "#b91c1c", padding: 16 },
+  cacheBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FCD34D",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  cacheBannerText: { fontSize: 12, color: "#92400e", fontWeight: "600" },
   profileCard: { padding: 20, marginBottom: 8 },
   profileRow: { flexDirection: "row", gap: 16, alignItems: "flex-start" },
   avatarRing: {

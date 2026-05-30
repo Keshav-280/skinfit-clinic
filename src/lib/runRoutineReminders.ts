@@ -3,10 +3,8 @@ import { db } from "@/src/db";
 import { dailyLogs, users } from "@/src/db/schema";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import { dateOnlyFromYmd } from "@/src/lib/date-only";
-import {
-  coerceRoutinePlanList,
-  normalizeRoutineSteps,
-} from "@/src/lib/routine";
+import { normalizeRoutineSteps } from "@/src/lib/routine";
+import { getRoutinePlanForDate } from "@/src/lib/routinePlanRevisions";
 import {
   buildRoutineReminderMessage,
   type RoutineKind,
@@ -41,8 +39,6 @@ export async function runRoutineReminders(): Promise<{
       routinePmReminderHm: users.routinePmReminderHm,
       routineAmReminderLastSentYmd: users.routineAmReminderLastSentYmd,
       routinePmReminderLastSentYmd: users.routinePmReminderLastSentYmd,
-      routinePlanAmItems: users.routinePlanAmItems,
-      routinePlanPmItems: users.routinePlanPmItems,
     })
     .from(users)
     .where(
@@ -56,12 +52,13 @@ export async function runRoutineReminders(): Promise<{
   for (const row of rows) {
     if (!row.routineRemindersEnabled) continue;
 
-    const amItems = coerceRoutinePlanList(row.routinePlanAmItems);
-    const pmItems = coerceRoutinePlanList(row.routinePlanPmItems);
-    if (amItems.length === 0 || pmItems.length === 0) continue;
-
     const tz = normalizeIanaTimeZone(row.timezone);
     const { ymd, hm } = localYmdAndHm(now, tz);
+    const plan = await getRoutinePlanForDate(db, row.id, ymd);
+    const amItems = plan.amItems;
+    const pmItems = plan.pmItems;
+    if (amItems.length === 0 || pmItems.length === 0) continue;
+
     const dayDate = dateOnlyFromYmd(ymd);
 
     const [log] = await db

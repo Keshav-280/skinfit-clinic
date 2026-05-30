@@ -31,6 +31,8 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
 
 /** Dev default on; set EXPO_PUBLIC_CAPTURE_DEBUG=0 to hide, =1 to force on in release. */
 export function isCaptureDebugEnabled(): boolean {
+  const previewFlag = process.env.EXPO_PUBLIC_SCAN_DEBUG_PREVIEW?.trim();
+  if (previewFlag === "1" || previewFlag === "true") return true;
   const flag = process.env.EXPO_PUBLIC_CAPTURE_DEBUG?.trim();
   if (flag === "0" || flag === "false") return false;
   if (flag === "1" || flag === "true") return true;

@@ -739,18 +739,6 @@ export default function SchedulesScreen() {
     >
       {error ? <Text style={styles.err}>{error}</Text> : null}
 
-      <View style={styles.crmCard}>
-        <View style={styles.crmIcon}>
-          <Ionicons name="shield-checkmark" size={18} color="#2B3A67" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.crmTitle}>Linked with CRM</Text>
-          <Text style={styles.crmBody}>
-            Appointments and treatment reminders stay in sync with your clinic.
-          </Text>
-        </View>
-      </View>
-
       {renderCalendarGrid()}
       {featuredUpcoming ? (
         <Pressable

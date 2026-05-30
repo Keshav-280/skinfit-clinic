@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
+import { useLocalSearchParams } from "expo-router";
 import { format, isValid, parseISO } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as FileSystem from "expo-file-system/legacy";
@@ -26,7 +27,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { ChatMessageMarkdown } from "@/components/ChatMessageMarkdown";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
-import { ApiError, apiJson } from "@/lib/api";
+import { ApiError, apiJson, apiUrl } from "@/lib/api";
 import { mapDisplayChatMessages } from "../../../src/lib/chatE2ee/format";
 import {
   getClinicSupportInboxLastSeenIso,
@@ -125,6 +126,8 @@ function chatErrorMessage(e: unknown): string {
 }
 const HOME_CACHE_KEY = "skinfit-chat-home-v2";
 const THREAD_CACHE_KEY_PREFIX = "skinfit-chat-thread-v1:";
+const THREAD_CACHE_TTL_MS = 5 * 60 * 1000;
+const CHAT_STREAM_PATH = "/api/chat/plain/stream";
 const APPOINTMENT_KEYWORDS = [
   "appointment",
   "scheduled",
@@ -190,6 +193,7 @@ function threadCacheKey(assistantId: AssistantId, doctorId?: string | null): str
 
 export default function ChatScreen() {
   const { token } = useAuth();
+  const routeParams = useLocalSearchParams<{ doctorId?: string }>();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ChatMsg>>(null);
   const [homeMode, setHomeMode] = useState(true);
@@ -221,8 +225,10 @@ export default function ChatScreen() {
   const [active, setActive] = useState<AssistantId>("ai");
   const [threadScope, setThreadScope] = useState<ThreadScope>("all");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [showingCachedThread, setShowingCachedThread] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [refreshingThread, setRefreshingThread] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sosOpen, setSosOpen] = useState(false);
   const [sosText, setSosText] = useState("");
@@ -353,7 +359,7 @@ export default function ChatScreen() {
       try {
         await AsyncStorage.setItem(
           threadCacheKey(assistantId, doctorId),
-          JSON.stringify(rows.slice(-120))
+          JSON.stringify({ ts: Date.now(), rows: rows.slice(-120) })
         );
       } catch {
         /* ignore cache write failures */
@@ -363,14 +369,23 @@ export default function ChatScreen() {
   );
 
   const readThreadCache = useCallback(
-    async (assistantId: AssistantId, doctorId?: string | null): Promise<ChatMsg[]> => {
+    async (
+      assistantId: AssistantId,
+      doctorId?: string | null
+    ): Promise<{ rows: ChatMsg[]; stale: boolean }> => {
       try {
         const raw = await AsyncStorage.getItem(threadCacheKey(assistantId, doctorId));
-        if (!raw) return [];
+        if (!raw) return { rows: [], stale: true };
         const parsed = JSON.parse(raw) as unknown;
-        return normalizeApiMessages(parsed);
+        if (parsed && typeof parsed === "object" && "rows" in (parsed as Record<string, unknown>)) {
+          const p = parsed as { rows?: unknown; ts?: number };
+          const rows = normalizeApiMessages(p.rows ?? []);
+          const stale = typeof p.ts === "number" ? Date.now() - p.ts > THREAD_CACHE_TTL_MS : true;
+          return { rows, stale };
+        }
+        return { rows: normalizeApiMessages(parsed), stale: true };
       } catch {
-        return [];
+        return { rows: [], stale: true };
       }
     },
     []
@@ -578,19 +593,9 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    void (async () => {
-      if (!token) return;
-      try {
-        await apiJson("/api/appointments/reminders/tick", token, { method: "POST" });
-      } catch {
-        /* optional */
-      }
-    })();
-  }, [token]);
-
-  useEffect(() => {
     if (homeMode) {
       void loadHomeData();
+      setShowingCachedThread(false);
     }
   }, [homeMode, loadHomeData]);
 
@@ -609,6 +614,18 @@ export default function ChatScreen() {
   }, [active, activeDoctorId, registeredDoctors]);
 
   useEffect(() => {
+    const doctorId =
+      typeof routeParams.doctorId === "string" && routeParams.doctorId.trim().length > 0
+        ? routeParams.doctorId.trim()
+        : null;
+    if (!doctorId) return;
+    setHomeMode(false);
+    setActive("doctor");
+    setThreadScope("all");
+    setActiveDoctorId(doctorId);
+  }, [routeParams.doctorId]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!token) return;
@@ -623,12 +640,14 @@ export default function ChatScreen() {
         active === "doctor" ? activeDoctorId : undefined
       );
       if (cancelled) return;
-      if (cached.length > 0) {
-        setMessages(cached);
-        setLoading(false);
+      if (cached.rows.length > 0) {
+        setMessages(cached.rows);
+        setShowingCachedThread(true);
+        setLoading(cached.stale);
       } else {
         setMessages([]);
         setLoading(true);
+        setShowingCachedThread(false);
       }
       try {
         if (active === "ai") {
@@ -641,6 +660,7 @@ export default function ChatScreen() {
           }
           if (cancelled) return;
           setMessages(plain.messages);
+          setShowingCachedThread(false);
           void persistThreadCache("ai", plain.messages);
         } else {
           const plain = await fetchPlainMessages(
@@ -649,6 +669,7 @@ export default function ChatScreen() {
           );
           if (cancelled) return;
           setMessages(plain.messages);
+          setShowingCachedThread(false);
           void persistThreadCache(
             active,
             plain.messages,
@@ -681,6 +702,79 @@ export default function ChatScreen() {
     readThreadCache,
     persistThreadCache,
   ]);
+
+  useEffect(() => {
+    if (homeMode || !token || active === "ai") return;
+    if (active === "doctor" && !activeDoctorId) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    async function syncThread() {
+      if (cancelled) return;
+      try {
+        const refreshed = await fetchPlainMessages(
+          active,
+          active === "doctor" ? activeDoctorId : undefined
+        );
+        if (cancelled) return;
+        setMessages(refreshed.messages);
+        setShowingCachedThread(false);
+        void persistThreadCache(
+          active,
+          refreshed.messages,
+          active === "doctor" ? activeDoctorId : undefined
+        );
+      } catch {
+        /* no-op */
+      }
+    }
+
+    const streamPath =
+      active === "doctor"
+        ? `${CHAT_STREAM_PATH}?assistantId=doctor&doctorId=${encodeURIComponent(activeDoctorId)}&token=${encodeURIComponent(token)}`
+        : `${CHAT_STREAM_PATH}?assistantId=${encodeURIComponent(active)}&token=${encodeURIComponent(token)}`;
+
+    fetch(apiUrl(streamPath), { method: "GET" })
+      .then((res) => {
+        if (!res.ok) {
+          timer = setInterval(() => {
+            void syncThread();
+          }, 6000);
+        }
+      })
+      .catch(() => {
+        timer = setInterval(() => {
+          void syncThread();
+        }, 6000);
+      });
+
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [homeMode, token, active, activeDoctorId, fetchPlainMessages, persistThreadCache]);
+
+  useEffect(() => {
+    if (!token) return;
+    void (async () => {
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const stale = keys.filter((k) => {
+          if (!k.startsWith(THREAD_CACHE_KEY_PREFIX)) return false;
+          if (active === "doctor") {
+            return k !== threadCacheKey("doctor", activeDoctorId);
+          }
+          return k !== threadCacheKey(active);
+        });
+        if (stale.length > 0) {
+          await AsyncStorage.multiRemove(stale);
+        }
+      } catch {
+        /* ignore cache cleanup failures */
+      }
+    })();
+  }, [token, active, activeDoctorId]);
 
   async function startRecording() {
     try {
@@ -817,6 +911,14 @@ export default function ChatScreen() {
       return;
     }
 
+    const optimisticMsg: ChatMsg = {
+      id: `p-${Date.now()}`,
+      sender: "patient",
+      text,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setInput("");
     setLoading(true);
     try {
       await apiJson("/api/chat/plain/message", token, {
@@ -837,7 +939,6 @@ export default function ChatScreen() {
         refreshed.messages,
         active === "doctor" ? activeDoctorId : undefined
       );
-      setInput("");
       if (active === "support") {
         await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
       } else if (active === "doctor") {
@@ -1248,6 +1349,12 @@ export default function ChatScreen() {
         ) : null}
 
         <View style={styles.listWrap}>
+          {showingCachedThread ? (
+            <View style={styles.cacheBanner}>
+              <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
+              <Text style={styles.cacheBannerText}>Showing cached chat while syncing</Text>
+            </View>
+          ) : null}
           {loading && messages.length === 0 ? (
             <View style={styles.loaderBlock}>
               <ActivityIndicator size="large" color={TEAL} />
@@ -1262,6 +1369,30 @@ export default function ChatScreen() {
               keyboardDismissMode="interactive"
               keyboardShouldPersistTaps="handled"
               onContentSizeChange={scrollToEnd}
+              refreshing={refreshingThread}
+              onRefresh={async () => {
+                setRefreshingThread(true);
+                try {
+                  const refreshed = await fetchPlainMessages(
+                    active,
+                    active === "doctor" ? activeDoctorId : undefined
+                  );
+                  setMessages(refreshed.messages);
+                  setShowingCachedThread(false);
+                  void persistThreadCache(
+                    active,
+                    refreshed.messages,
+                    active === "doctor" ? activeDoctorId : undefined
+                  );
+                  if (active === "support") {
+                    await markClinicSupportInboxSeenFromServer(refreshed.clinicReadThroughIso);
+                  } else if (active === "doctor") {
+                    await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
+                  }
+                } finally {
+                  setRefreshingThread(false);
+                }
+              }}
               ListEmptyComponent={
                 <View style={styles.empty}>
                   <View style={styles.emptyIcon}>
@@ -1612,6 +1743,20 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
   },
   errorBannerText: { flex: 1, color: "#991b1b", fontSize: 13, lineHeight: 18 },
+  cacheBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FCD34D",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+    marginHorizontal: 4,
+  },
+  cacheBannerText: { fontSize: 12, color: "#92400e", fontWeight: "600", flex: 1 },
   listWrap: {
     flex: 1,
     minHeight: 160,

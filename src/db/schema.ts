@@ -356,6 +356,37 @@ export const skinScans = pgTable("skin_scans", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Versioned AM/PM routine plans — each revision applies from `effectiveFrom` onward. */
+export const routinePlanRevisions = pgTable(
+  "routine_plan_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** First calendar day this revision applies (inclusive). */
+    effectiveFrom: date("effective_from", { mode: "date" }).notNull(),
+    amItems: jsonb("am_items").$type<string[]>().notNull(),
+    pmItems: jsonb("pm_items").$type<string[]>().notNull(),
+    createdByStaffId: uuid("created_by_staff_id").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" }
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userEffectiveIdx: index("routine_plan_revisions_user_effective_idx").on(
+      table.userId,
+      table.effectiveFrom
+    ),
+    userEffectiveUidx: uniqueIndex(
+      "routine_plan_revisions_user_effective_uidx"
+    ).on(table.userId, table.effectiveFrom),
+  })
+);
+
 // Daily logs (for dashboard) — one row per user per calendar day; re-saves update that row.
 export const dailyLogs = pgTable(
   "daily_logs",
@@ -869,6 +900,30 @@ export const dailyFocus = pgTable(
     userDateUidx: uniqueIndex("daily_focus_user_date_uidx").on(
       table.userId,
       table.focusDate
+    ),
+  })
+);
+
+export const hydrationInsights = pgTable(
+  "hydration_insights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    insightDate: date("insight_date", { mode: "date" }).notNull(),
+    insight: text("insight").notNull(),
+    tip: text("tip").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userDateUidx: uniqueIndex("hydration_insights_user_date_uidx").on(
+      table.userId,
+      table.insightDate
     ),
   })
 );

@@ -1,4 +1,5 @@
 import { apiUrl } from "./apiBase";
+import { notifySessionExpired } from "./sessionExpired";
 
 export { getApiBase, apiUrl, networkFetchErrorMessage } from "./apiBase";
 
@@ -45,6 +46,9 @@ export async function apiJson<T>(
   const res = await apiFetch(path, token, init);
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
+    if (res.status === 401) {
+      notifySessionExpired();
+    }
     throw new ApiError(res.status, body);
   }
   return body as T;

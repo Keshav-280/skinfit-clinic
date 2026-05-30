@@ -40,9 +40,26 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Environment — never commit secrets (examples are allowed via !.env.example)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test.local
 mobile/.env
+!.env.example
+!mobile/.env.example
+
+# Firebase / push credentials (client configs contain API keys)
+google-services.json
+GoogleService-Info.plist
+*-firebase-adminsdk-*.json
+firebase-service-account.json
+mobile/google-services.json
+mobile/GoogleService-Info.plist
 
 # vercel
 .vercel

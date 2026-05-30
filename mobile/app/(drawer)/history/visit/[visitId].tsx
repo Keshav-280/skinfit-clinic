@@ -5,6 +5,7 @@ import {
   Alert,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +19,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
+import { getCached, setCached } from "@/lib/apiCache";
 
 const NAVY = "#2B3A67";
 const BG: [string, string] = ["#E8EFE6", "#DCE8D4"];
@@ -46,9 +48,8 @@ type Visit = {
   attachments: Attachment[] | null;
 };
 
-type SkinProfilePayload = {
-  visits: Visit[];
-  [k: string]: unknown;
+type VisitPayload = {
+  visit: Visit;
 };
 
 const RATING_COLORS: Record<string, { bg: string; text: string }> = {
@@ -101,19 +102,44 @@ export default function VisitDetailScreen() {
 
   const [visit, setVisit] = useState<Visit | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showingCached, setShowingCached] = useState(false);
+
+  const cacheKey = visitId ? `visit:${visitId}` : null;
+
+  const loadVisit = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (!token || !visitId) return;
+      const force = opts?.force === true;
+      if (!force && cacheKey) {
+        const cached = await getCached<Visit>(cacheKey);
+        if (cached) {
+          setVisit(cached);
+          setShowingCached(true);
+        }
+      }
+      const data = await apiJson<VisitPayload>(
+        `/api/patient/visits/${encodeURIComponent(visitId)}`,
+        token,
+        { method: "GET" }
+      );
+      setVisit(data.visit ?? null);
+      setShowingCached(false);
+      if (cacheKey && data.visit) {
+        await setCached(cacheKey, data.visit);
+      }
+    },
+    [token, visitId, cacheKey]
+  );
 
   useFocusEffect(
     useCallback(() => {
       if (!token || !visitId) return;
       setLoading(true);
-      apiJson<SkinProfilePayload>("/api/patient/skin-profile", token, { method: "GET" })
-        .then((data) => {
-          const found = data.visits.find((v) => v.id === visitId) ?? null;
-          setVisit(found);
-        })
+      loadVisit()
         .catch(() => setVisit(null))
         .finally(() => setLoading(false));
-    }, [token, visitId])
+    }, [token, visitId, loadVisit])
   );
 
   if (loading) {
@@ -145,7 +171,28 @@ export default function VisitDetailScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={s.content}>
+      <ScrollView
+        contentContainerStyle={s.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await loadVisit({ force: true });
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
+      >
+        {showingCached ? (
+          <View style={s.cacheBanner}>
+            <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
+            <Text style={s.cacheBannerText}>Showing cached visit details</Text>
+          </View>
+        ) : null}
         {/* Summary card */}
         <View style={s.card}>
           <Text style={s.date}>{fmtDate(visit.visitDate)}</Text>
@@ -331,5 +378,22 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: NAVY,
+  },
+  cacheBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FCD34D",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  cacheBannerText: {
+    fontSize: 12,
+    color: "#92400e",
+    fontWeight: "600",
   },
 });

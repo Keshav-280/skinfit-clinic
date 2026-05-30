@@ -1033,6 +1033,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   const [routinePlanPmText, setRoutinePlanPmText] = useState("");
   const [routinePlanAmRows, setRoutinePlanAmRows] = useState<Array<{ name: string; product: string; dosage: string }>>([]);
   const [routinePlanPmRows, setRoutinePlanPmRows] = useState<Array<{ name: string; product: string; dosage: string }>>([]);
+  const [routinePlanEffectiveFromYmd, setRoutinePlanEffectiveFromYmd] = useState("");
   /** Prevents refetch-driven useEffect from wiping AM/PM textareas mid-edit (e.g. after voice upload). */
   const [routinePlanTextDirty, setRoutinePlanTextDirty] = useState(false);
   const [visitNoteText, setVisitNoteText] = useState("");
@@ -1415,6 +1416,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       setDoctorApptDateYmd(calendarTodayYmd);
       setCarePreDateYmd(calendarTodayYmd);
       setCarePostDateYmd(calendarTodayYmd);
+      setRoutinePlanEffectiveFromYmd(calendarTodayYmd);
     }
   }, [
     patient?.id,
@@ -3047,6 +3049,23 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 ))}
               </div>
             </div>
+            <div className="mt-3 rounded-lg border border-[#2C3E6B]/10 bg-[#F6F4EB]/60 px-3 py-2">
+              <label className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                <span className="text-xs font-semibold text-[#2C3E6B]">Effective from</span>
+                <input
+                  type="date"
+                  value={routinePlanEffectiveFromYmd}
+                  onChange={(e) => {
+                    setRoutinePlanTextDirty(true);
+                    setRoutinePlanEffectiveFromYmd(e.target.value);
+                  }}
+                  className="h-8 rounded-md border border-[#2C3E6B]/15 bg-white px-2 text-xs text-[#2C3E6B]"
+                />
+              </label>
+              <p className="mt-1.5 text-[10px] leading-snug text-[#2C3E6B]/70">
+                Journal days before this date keep their previous AM/PM checklist and consistency scores.
+              </p>
+            </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 overflow-visible">
               <button
                 type="button"
@@ -3078,7 +3097,11 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           method: "PATCH",
                           credentials: "include",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ amItems, pmItems }),
+                          body: JSON.stringify({
+                            amItems,
+                            pmItems,
+                            effectiveFromYmd: routinePlanEffectiveFromYmd,
+                          }),
                         }
                       );
                       const j = (await res.json()) as { ok?: boolean; error?: string };
@@ -3086,7 +3109,9 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         setClinicianMsg(j.error ?? "Could not save routine plan.");
                         return;
                       }
-                      setClinicianMsg("Patient AM/PM checklist updated.");
+                      setClinicianMsg(
+                        `Patient AM/PM checklist updated (effective ${routinePlanEffectiveFromYmd}).`
+                      );
                       void reloadAll();
                       setRoutinePlanTextDirty(false);
                     } catch {
@@ -3125,7 +3150,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                             method: "PATCH",
                             credentials: "include",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ clear: true }),
+                            body: JSON.stringify({
+                              clear: true,
+                              effectiveFromYmd: routinePlanEffectiveFromYmd,
+                            }),
                           }
                         );
                         const j = (await res.json()) as { ok?: boolean; error?: string };

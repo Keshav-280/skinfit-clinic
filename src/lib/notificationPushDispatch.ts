@@ -36,7 +36,11 @@ export async function dispatchNotificationPush(
         typeof payload.messagePreview === "string"
           ? payload.messagePreview
           : "New message from your care team";
-      await notifyPatientNewClinicChat(event.userId, preview);
+      const doctorId =
+        typeof payload.doctorId === "string" && payload.doctorId.trim().length > 0
+          ? payload.doctorId.trim()
+          : null;
+      await notifyPatientNewClinicChat(event.userId, preview, { doctorId });
       return;
     }
     case "appointment.reminder":

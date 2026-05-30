@@ -5,8 +5,6 @@ import { useRouter, type Href } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,7 +19,6 @@ import {
   getClinicSupportInboxLastSeenIso,
   getDoctorInboxLastSeenIso,
 } from "@/lib/inboxReadCursors";
-import { registerForPushAndSyncToken, unregisterPushToken } from "@/lib/pushNotifications";
 import {
   dismissUnreadReadyScan,
   getUnreadReadyScans,
@@ -38,7 +35,6 @@ export default function NotificationsScreen() {
   const [voiceNoteReportCount, setVoiceNoteReportCount] = useState(0);
   const [readyScans, setReadyScans] = useState<ReadyScanNotification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pushBusy, setPushBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -90,22 +86,6 @@ export default function NotificationsScreen() {
     }, [load, refreshReadyScans])
   );
 
-  async function onEnablePush() {
-    if (!token) return;
-    setPushBusy(true);
-    try {
-      const t = await registerForPushAndSyncToken(token);
-      if (t) {
-        Alert.alert(
-          "Notifications on",
-          "You'll get alerts for clinic chat, scan reports when ready, and doctor voice notes."
-        );
-      }
-    } finally {
-      setPushBusy(false);
-    }
-  }
-
   async function markVoiceViewed(scope: "dashboard" | "report") {
     if (!token) return;
     try {
@@ -115,19 +95,6 @@ export default function NotificationsScreen() {
       });
     } catch {
       /* ignore */
-    }
-  }
-
-  async function onDisablePush() {
-    if (!token) return;
-    setPushBusy(true);
-    try {
-      await unregisterPushToken(token);
-      Alert.alert("Updated", "Outside-app alerts are turned off for this device.");
-    } catch {
-      Alert.alert("Error", "Could not update. Try again.");
-    } finally {
-      setPushBusy(false);
     }
   }
 
@@ -309,48 +276,6 @@ export default function NotificationsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
           </Pressable>
-
-          {Platform.OS !== "web" ? (
-            <View style={s.pushSection}>
-              <View style={s.pushHeaderRow}>
-                <View style={s.pushIconWrap}>
-                  <Ionicons name="phone-portrait-outline" size={18} color="#2B3A67" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.pushTitle}>Push notifications</Text>
-                  <Text style={s.pushSub}>
-                    Get notified even when the app is closed.
-                  </Text>
-                </View>
-              </View>
-              <View style={s.pushRow}>
-                <Pressable
-                  style={[s.pushBtn, s.pushBtnPrimary]}
-                  onPress={() => void onEnablePush()}
-                  disabled={pushBusy}
-                >
-                  {pushBusy ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="notifications-outline" size={16} color="#fff" />
-                      <Text style={s.pushBtnPrimaryText}>Enable push alerts</Text>
-                    </>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={[s.pushBtn, s.pushBtnGhost]}
-                  onPress={() => void onDisablePush()}
-                  disabled={pushBusy}
-                >
-                  <Text style={s.pushBtnGhostText}>Turn off</Text>
-                </Pressable>
-              </View>
-              <Text style={s.pushHint}>
-                Release builds need an EAS project ID in app config for Expo to issue a device token.
-              </Text>
-            </View>
-          ) : null}
         </>
       )}
     </ScrollView>
@@ -439,44 +364,4 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
   },
   countBadgeText: { fontSize: 11, fontWeight: "800", color: "#2C3E6B" },
-  pushSection: {
-    marginTop: 28,
-    padding: 18,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e2e8f0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  pushHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  pushIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#e8eef6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pushTitle: { fontSize: 15, fontWeight: "700", color: "#18181b" },
-  pushSub: { fontSize: 13, color: "#64748b", marginTop: 6, lineHeight: 19 },
-  pushRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
-  pushBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    minWidth: 140,
-  },
-  pushBtnPrimary: { backgroundColor: "#2B3A67" },
-  pushBtnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  pushBtnGhost: { backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0" },
-  pushBtnGhostText: { color: "#475569", fontWeight: "600", fontSize: 14 },
-  pushHint: { fontSize: 11, color: "#94a3b8", marginTop: 14, lineHeight: 16 },
 });

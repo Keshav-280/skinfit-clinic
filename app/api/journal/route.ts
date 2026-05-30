@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { and, desc, eq, lt } from "drizzle-orm";
 import { db } from "@/src/db";
-import { dailyLogs, users } from "@/src/db/schema";
+import { dailyLogs } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
-import { coerceRoutinePlanList, normalizeRoutineSteps } from "@/src/lib/routine";
+import { normalizeRoutineSteps } from "@/src/lib/routine";
+import { getRoutinePlanForDate } from "@/src/lib/routinePlanRevisions";
 import { refreshUserStreakAfterRoutineDay } from "@/src/lib/userStreak";
 import {
   localCalendarYmd,
@@ -12,26 +13,6 @@ import {
 } from "@/src/lib/date-only";
 import { normalizeSleepQuality } from "@/src/lib/sleepQuality";
 import { invalidateUserHomeCache, invalidateUserInsightsCache } from "@/src/lib/infra";
-
-async function routineLensForUser(
-  userId: string
-): Promise<{ amLen: number; pmLen: number }> {
-  const [r] = await db
-    .select({
-      am: users.routinePlanAmItems,
-      pm: users.routinePlanPmItems,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!r) {
-    return { amLen: 0, pmLen: 0 };
-  }
-  return {
-    amLen: coerceRoutinePlanList(r.am).length,
-    pmLen: coerceRoutinePlanList(r.pm).length,
-  };
-}
 
 export async function GET(req: Request) {
   const userId = await getSessionUserIdFromRequest(req);
@@ -60,7 +41,10 @@ export async function GET(req: Request) {
       .orderBy(desc(dailyLogs.date))
       .limit(1);
 
-    const lens = await routineLensForUser(userId);
+    const lensYmd = row
+      ? ymdFromDateOnly(row.date instanceof Date ? row.date : String(row.date))
+      : before.slice(0, 10);
+    const lens = await getRoutinePlanForDate(db, userId, lensYmd);
     if (!row) {
       return NextResponse.json({
         entry: null,
@@ -90,7 +74,7 @@ export async function GET(req: Request) {
     .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.date, d)))
     .limit(1);
 
-  const lens = await routineLensForUser(userId);
+  const lens = await getRoutinePlanForDate(db, userId, ymd);
   return NextResponse.json({
     entry: row ? serializeLog(row) : null,
     routineAmLen: lens.amLen,
@@ -168,7 +152,7 @@ export async function POST(req: Request) {
     .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.date, d)))
     .limit(1);
 
-  const { amLen, pmLen } = await routineLensForUser(userId);
+  const { amLen, pmLen } = await getRoutinePlanForDate(db, userId, ymd);
 
   const sleepHours = body.sleepHours != null
     ? clampFloat(body.sleepHours, 0, 24, existing?.sleepHours ?? 0)
@@ -316,7 +300,7 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const { amLen, pmLen } = await routineLensForUser(userId);
+  const { amLen, pmLen } = await getRoutinePlanForDate(db, userId, ymd);
 
   const [existing] = await db
     .select()

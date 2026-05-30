@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull, isNotNull, or } from "drizzle-orm";
 import { db } from "@/src/db";
-import { doctorFeedbackVoiceNotes, users, visitNotes } from "@/src/db/schema";
+import { doctorFeedbackVoiceNotes, users } from "@/src/db/schema";
 import {
   getAssignedDoctorIdForPatient,
   getDoctorPatientCareRow,
@@ -52,7 +52,7 @@ export async function getPatientDoctorSection(
       ? await getDoctorPatientCareRow(assignedDoctorId, userId)
       : null;
 
-  const [userRow, activeVoiceRows, archivedVoiceRows, visitRow, activeFeedbackRows, archivedFeedbackRows] =
+  const [userRow, activeVoiceRows, archivedVoiceRows, activeFeedbackRows, archivedFeedbackRows] =
     await Promise.all([
       db.query.users.findFirst({
         where: eq(users.id, userId),
@@ -95,12 +95,6 @@ export async function getPatientDoctorSection(
         )
         .orderBy(desc(doctorFeedbackVoiceNotes.createdAt))
         .limit(20),
-      db
-        .select({ notes: visitNotes.notes })
-        .from(visitNotes)
-        .where(eq(visitNotes.userId, userId))
-        .orderBy(desc(visitNotes.createdAt))
-        .limit(1),
       db
         .select({
           id: doctorFeedbackVoiceNotes.id,
@@ -190,10 +184,7 @@ export async function getPatientDoctorSection(
   const doctorVoiceNoteIsNew = doctorVoiceNotes.some((v) => !v.listened);
 
   return {
-    doctorFeedback:
-      care?.doctorFeedbackNote?.trim() ||
-      visitRow[0]?.notes?.trim() ||
-      "",
+    doctorFeedback: care?.doctorFeedbackNote?.trim() || "",
     doctorVoiceNotes,
     doctorArchivedVoiceNotes,
     doctorVoiceNoteIsNew,

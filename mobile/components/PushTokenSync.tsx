@@ -5,19 +5,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { registerForPushAndSyncToken } from "@/lib/pushNotifications";
 
 /**
- * When a saved session loads, POST the Expo push token again if notifications
- * are already allowed (handles token rotation and fresh installs).
- * Does not show the OS permission dialog (use sign-in or Notifications screen for that).
+ * When a saved session loads, sync the Expo push token if notifications are allowed.
+ * If the OS has never been asked, request permission once (same as sign-in).
  */
 export function PushTokenSync() {
   const { token, ready } = useAuth();
 
   useEffect(() => {
     if (!ready || !token || Platform.OS === "web") return;
-    void registerForPushAndSyncToken(token, {
-      verboseAlerts: false,
-      requestPermission: false,
-    });
+    void (async () => {
+      const Notifications = await import("expo-notifications");
+      const { status } = await Notifications.getPermissionsAsync();
+      void registerForPushAndSyncToken(token, {
+        verboseAlerts: false,
+        requestPermission: status === "undetermined",
+      });
+    })();
   }, [ready, token]);
 
   return null;

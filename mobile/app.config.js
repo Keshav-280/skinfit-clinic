@@ -2,6 +2,9 @@
 const appJson = require("./app.json");
 const fs = require("fs");
 const path = require("path");
+const { loadMobileDotEnv, readApiBaseFromEnvFile, apiUsesHttp } = require("./lib/loadMobileEnv");
+
+loadMobileDotEnv();
 
 function googleIosUrlScheme() {
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() ?? "";
@@ -30,7 +33,7 @@ function iosAppTransportSecurity(apiBase) {
 
 module.exports = () => {
   const expo = { ...appJson.expo };
-  const apiBase = process.env.EXPO_PUBLIC_API_URL ?? "";
+  const apiBase = readApiBaseFromEnvFile() || process.env.EXPO_PUBLIC_API_URL?.trim() || "";
   const iosUrlScheme = googleIosUrlScheme();
   /** Paid Apple Developer Program ($99/yr) required for native Sign in with Apple on device. */
   const nativeAppleSignIn =
@@ -53,7 +56,16 @@ module.exports = () => {
     };
   }
 
+  expo.extra = {
+    ...(expo.extra ?? {}),
+    apiUrl: apiBase.replace(/\/$/, ""),
+  };
+
   const googleServicesPath = path.join(__dirname, "google-services.json");
+  const googleServicesFromEnv = process.env.GOOGLE_SERVICES_JSON?.trim();
+  if (!fs.existsSync(googleServicesPath) && googleServicesFromEnv) {
+    fs.writeFileSync(googleServicesPath, googleServicesFromEnv, "utf8");
+  }
   if (fs.existsSync(googleServicesPath)) {
     expo.android = {
       ...expo.android,
@@ -70,6 +82,21 @@ module.exports = () => {
       return true;
     })
     .map((entry) => {
+      if (entry === "expo-build-properties" && apiUsesHttp(apiBase)) {
+        return [
+          "expo-build-properties",
+          {
+            ios: {
+              infoPlist: {
+                NSAppTransportSecurity: iosAppTransportSecurity(apiBase),
+              },
+            },
+            android: {
+              usesCleartextTraffic: true,
+            },
+          },
+        ];
+      }
       if (entry === "@react-native-google-signin/google-signin" && iosUrlScheme) {
         return [
           "@react-native-google-signin/google-signin",

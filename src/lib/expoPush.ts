@@ -41,7 +41,8 @@ export async function sendExpoPushNotification(opts: {
 /** Fire-and-forget when clinic posts a chat message to the patient. */
 export async function notifyPatientNewClinicChat(
   patientUserId: string,
-  messagePreview: string
+  messagePreview: string,
+  opts?: { doctorId?: string | null }
 ): Promise<void> {
   const [row] = await db
     .select({ token: users.expoPushToken })
@@ -60,7 +61,10 @@ export async function notifyPatientNewClinicChat(
     expoPushToken: token,
     title: "SkinnFit Clinic",
     body: body || "New message from your care team",
-    data: { type: "clinic_chat" },
+    data: {
+      type: "clinic_chat",
+      ...(opts?.doctorId ? { doctorId: opts.doctorId } : {}),
+    },
   });
 }
 
@@ -174,6 +178,28 @@ export async function notifyPatientDoctorVoiceNote(
       attachedToReport: onReport,
       ...(opts?.scanId != null ? { scanId: opts.scanId } : {}),
     },
+  });
+}
+
+/** Patient push when the clinic updates AM/PM routine plan. */
+export async function notifyPatientRoutinePlanUpdated(
+  patientUserId: string,
+  effectiveFromYmd: string
+): Promise<void> {
+  const [row] = await db
+    .select({ token: users.expoPushToken })
+    .from(users)
+    .where(eq(users.id, patientUserId))
+    .limit(1);
+  const token = row?.token?.trim();
+  if (!token) return;
+
+  const body = `Your AM/PM routine is updated from ${effectiveFromYmd}. Open SkinnFit to view your checklist.`;
+  await sendExpoPushNotification({
+    expoPushToken: token,
+    title: "SkinnFit — routine updated",
+    body: body.length > 140 ? `${body.slice(0, 137)}…` : body,
+    data: { type: "routine_plan_updated", effectiveFromYmd },
   });
 }
 

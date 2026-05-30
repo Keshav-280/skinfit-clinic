@@ -3,7 +3,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { notifyPatientRoutinePlanUpdated } from "@/src/lib/expoPush";
+import { invalidateUserHomeCache } from "@/src/lib/infra";
 import { parseDoctorRoutinePlanPatch } from "@/src/lib/routine";
+import {
+  ensureInitialRoutineRevision,
+  insertRoutinePlanRevision,
+  parseEffectiveFromYmd,
+} from "@/src/lib/routinePlanRevisions";
 
 export async function PATCH(
   req: Request,
@@ -50,26 +57,42 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  if (parsed.kind === "clear") {
-    await db
-      .update(users)
-      .set({
-        routinePlanAmItems: [],
-        routinePlanPmItems: [],
-        routinePlanClinicianLocked: false,
-      })
-      .where(eq(users.id, patientId));
-    return NextResponse.json({ ok: true, cleared: true });
+  const effectiveParsed = parseEffectiveFromYmd(parsed.effectiveFromYmd);
+  if (!effectiveParsed.ok) {
+    return NextResponse.json({ error: effectiveParsed.error }, { status: 400 });
   }
 
-  await db
-    .update(users)
-    .set({
-      routinePlanAmItems: parsed.am,
-      routinePlanPmItems: parsed.pm,
-      routinePlanClinicianLocked: true,
-    })
-    .where(eq(users.id, patientId));
+  await ensureInitialRoutineRevision(db, patientId);
 
-  return NextResponse.json({ ok: true });
+  if (parsed.kind === "clear") {
+    await insertRoutinePlanRevision(db, {
+      userId: patientId,
+      effectiveFrom: effectiveParsed.date,
+      amItems: [],
+      pmItems: [],
+      createdByStaffId: staffId,
+    });
+    await invalidateUserHomeCache(patientId);
+    void notifyPatientRoutinePlanUpdated(patientId, effectiveParsed.ymd);
+    return NextResponse.json({
+      ok: true,
+      cleared: true,
+      effectiveFromYmd: effectiveParsed.ymd,
+    });
+  }
+
+  await insertRoutinePlanRevision(db, {
+    userId: patientId,
+    effectiveFrom: effectiveParsed.date,
+    amItems: parsed.am,
+    pmItems: parsed.pm,
+    createdByStaffId: staffId,
+  });
+  await invalidateUserHomeCache(patientId);
+  void notifyPatientRoutinePlanUpdated(patientId, effectiveParsed.ymd);
+
+  return NextResponse.json({
+    ok: true,
+    effectiveFromYmd: effectiveParsed.ymd,
+  });
 }

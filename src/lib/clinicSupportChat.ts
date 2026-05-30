@@ -9,6 +9,7 @@ export async function sendClinicSupportMessage(params: {
   patientId: string;
   text: string;
   assistantId?: "support" | "doctor";
+  doctorId?: string | null;
   /** Expo push category (defaults to doctor.reply). */
   notificationType?: Extract<
     NotificationEventType,
@@ -56,5 +57,6 @@ export async function sendClinicSupportMessage(params: {
     messagePreview: params.text,
     title,
     body: params.text,
+    ...(params.doctorId ? { doctorId: params.doctorId } : {}),
   });
 }
