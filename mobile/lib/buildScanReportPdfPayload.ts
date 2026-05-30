@@ -1,4 +1,7 @@
-import { FACE_SCAN_CAPTURE_STEPS } from "../../src/lib/faceScanCaptures";
+import {
+  ACNE_MASK_PANEL_LABEL,
+  WRINKLE_MASK_PANEL_LABEL,
+} from "../../src/lib/scanMaskLabels";
 import type { PatientTrackerReport } from "./patientTrackerReport.types";
 import { embedScanImageForPdf } from "./fetchAuthenticatedScanImage";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
@@ -69,14 +72,8 @@ export async function buildScanReportPdfPayload(
   }
 
   const gallery = detail.faceCaptureGallery ?? [];
-  const wrinklePoseLabel =
-    gallery[4]?.label ??
-    FACE_SCAN_CAPTURE_STEPS[4]?.title ??
-    "Front face — smiling";
-  const acnePoseLabel =
-    gallery[0]?.label ??
-    FACE_SCAN_CAPTURE_STEPS[0]?.title ??
-    "Front face — neutral";
+  const wrinklePoseLabel = WRINKLE_MASK_PANEL_LABEL;
+  const acnePoseLabel = ACNE_MASK_PANEL_LABEL;
 
   const annotatedDataUri = await embedOptional(detail.annotatedImageUrl, PDF_FACE_CAPTURE_MAX_W);
   const wrinkleMaskDataUri = await embedOptional(detail.wrinkleMaskDataUri, PDF_MASK_MAX_W);

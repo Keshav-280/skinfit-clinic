@@ -1,6 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { ReportContainImage } from "@/components/ReportContainImage";
+import {
+  ACNE_MASK_PANEL_LABEL,
+  WRINKLE_MASK_PANEL_LABEL,
+} from "@/lib/scanMaskLabels";
 
 const TITLE_CROP_PX = 32;
 
@@ -38,8 +41,8 @@ export function ScanMaskAnnotationsNative({
   wrinkleFallbackUri,
   acneFallbackUri,
   authToken = null,
-  wrinkleLabel = "Wrinkle mask (smiling)",
-  acneLabel = "Acne objectness (centre)",
+  wrinkleLabel = WRINKLE_MASK_PANEL_LABEL,
+  acneLabel = ACNE_MASK_PANEL_LABEL,
 }: {
   wrinkleMaskUri?: string;
   acneMaskUri?: string;

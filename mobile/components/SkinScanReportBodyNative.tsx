@@ -25,7 +25,10 @@ import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import { fetchAuthenticatedScanImageUri } from "@/lib/fetchAuthenticatedScanImage";
-import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import {
+  ACNE_MASK_PANEL_LABEL,
+  WRINKLE_MASK_PANEL_LABEL,
+} from "@/lib/scanMaskLabels";
 import { publicFileDisplayUrl } from "../../src/lib/publicFileUrl";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
 
@@ -285,16 +288,8 @@ export function SkinScanReportBodyNative({
               wrinkleFallbackUri={resolvedPhotos[4]?.imageUrl}
               acneFallbackUri={resolvedPhotos[0]?.imageUrl}
               authToken={authToken}
-              wrinkleLabel={
-                resolvedPhotos[4]?.label ??
-                FACE_SCAN_CAPTURE_STEPS[4]?.title ??
-                "Front face — smiling"
-              }
-              acneLabel={
-                resolvedPhotos[0]?.label ??
-                FACE_SCAN_CAPTURE_STEPS[0]?.title ??
-                "Front face — neutral"
-              }
+              wrinkleLabel={WRINKLE_MASK_PANEL_LABEL}
+              acneLabel={ACNE_MASK_PANEL_LABEL}
             />
           ) : null}
 
