@@ -5,11 +5,7 @@
 export type { CaptureAssistModels } from "../../src/lib/scanCaptureGuidance";
 
 import {
-  CAPTURE_FRAMING_THRESHOLDS,
-  captureAutoZoomTargetFill,
   FACE_BOX_SMOOTH_ALPHA,
-  IDEAL_FACE_FILL_MAX,
-  IDEAL_FACE_FILL_MIN,
   smoothFaceBox,
 } from "../../src/lib/scanCaptureGuidance";
 
@@ -68,6 +64,36 @@ const FACE_TARGET = {
   cy: (FRAME_REGION.y0 + FRAME_REGION.y1) / 2,
 };
 
+/**
+ * Mobile-only framing band — face should fill **50–70%** of the frame.
+ * (Web `src/lib/scanCaptureGuidance.ts` keeps its own 20–40% band; do not change it.)
+ */
+export const IDEAL_FACE_FILL_MIN = 0.5;
+export const IDEAL_FACE_FILL_MAX = 0.7;
+/** ±3 pts hysteresis around the 50–70% band. */
+const CAPTURE_FRAMING_TOLERANCE = 0.03;
+const IDEAL_FACE_FILL_AREA = (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
+
+export const CAPTURE_FRAMING_THRESHOLDS = {
+  /** Below 47% — "move closer". */
+  tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
+  /** At/above 50% — size OK (lower bound). */
+  tooSmallExit: IDEAL_FACE_FILL_MIN,
+  /** Above 73% — "ease back". */
+  tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
+  /** At/below 70% — size OK (upper bound). */
+  tooLargeExit: IDEAL_FACE_FILL_MAX,
+  centerEnterX: 0.2,
+  centerExitX: 0.15,
+  centerEnterY: 0.22,
+  centerExitY: 0.17,
+} as const;
+
+/** Auto-zoom converges toward the center of the 50–70% band (60%). */
+export function captureAutoZoomTargetFill(): number {
+  return IDEAL_FACE_FILL_AREA;
+}
+
 const TOO_SMALL_ENTER = CAPTURE_FRAMING_THRESHOLDS.tooSmallEnter;
 const TOO_SMALL_EXIT = CAPTURE_FRAMING_THRESHOLDS.tooSmallExit;
 const TOO_LARGE_ENTER = CAPTURE_FRAMING_THRESHOLDS.tooLargeEnter;
@@ -77,20 +103,13 @@ const CENTER_EXIT_X = CAPTURE_FRAMING_THRESHOLDS.centerExitX;
 const CENTER_ENTER_Y = CAPTURE_FRAMING_THRESHOLDS.centerEnterY;
 const CENTER_EXIT_Y = CAPTURE_FRAMING_THRESHOLDS.centerExitY;
 
-/** Synced with web — 20–40% ideal face area; auto-zoom toward 30%. */
+/** No digital zoom on phone — preview and still capture FOV must match (iOS breaks above 0). */
 export const MOBILE_CAMERA_ZOOM = {
   min: 0,
-  max: 0.58,
-  default: 0.08,
+  max: 0,
+  default: 0,
   targetFill: captureAutoZoomTargetFill(),
 } as const;
-
-export {
-  CAPTURE_FRAMING_THRESHOLDS,
-  IDEAL_FACE_FILL_MIN,
-  IDEAL_FACE_FILL_MAX,
-  captureAutoZoomTargetFill,
-};
 
 const FRAME_WIDTH = FRAME_REGION.x1 - FRAME_REGION.x0;
 const FRAME_HEIGHT = FRAME_REGION.y1 - FRAME_REGION.y0;
@@ -292,26 +311,24 @@ export function estimateFaceBoxFromSkin(
 function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): string {
   switch (quality) {
     case "no_face":
-      return "Center your face inside the frame";
+      return "Look at the camera so I can see your face";
     case "off_center": {
       const offX = Math.abs(cx - FACE_TARGET.cx);
       const offY = Math.abs(cy - FACE_TARGET.cy);
-      const hint =
-        offX > offY
-          ? cx < FACE_TARGET.cx
-            ? "Move slightly right"
-            : "Move slightly left"
-          : cy < FACE_TARGET.cy
-            ? "Move slightly down"
-            : "Move slightly up";
-      return `${hint} — keep your face inside the frame`;
+      return offX > offY
+        ? cx < FACE_TARGET.cx
+          ? "Move a little to your right"
+          : "Move a little to your left"
+        : cy < FACE_TARGET.cy
+          ? "Lower your chin a little"
+          : "Lift your chin a little";
     }
     case "too_small":
-      return "Move closer — face should cover about 20–40% of the frame";
+      return "Bring your face closer to the camera";
     case "too_large":
-      return "Ease back a little — keep face around 20–40% of the frame";
+      return "Move back just a little";
     default:
-      return "Face framing looks good";
+      return "Perfect — hold still";
   }
 }
 
@@ -393,29 +410,14 @@ export function analyzeFaceFraming(
   };
 }
 
-/** Auto-zoom in and out toward target face fill (Expo CameraView 0–1). */
+/** Disabled on mobile — digital zoom makes preview ≠ captured photo on iOS. User moves closer instead. */
 export function suggestMobileCameraZoom(
-  currentZoom: number,
-  faceFill: number | null,
+  _currentZoom: number,
+  _faceFill: number | null,
   _framingQuality: FaceFramingQuality | null = null,
-  targetFill = MOBILE_CAMERA_ZOOM.targetFill
+  _targetFill = MOBILE_CAMERA_ZOOM.targetFill
 ): number | null {
-  if (faceFill == null || faceFill < 0.04) return null;
-  if (
-    faceFill >= IDEAL_FACE_FILL_MIN &&
-    faceFill <= IDEAL_FACE_FILL_MAX
-  ) {
-    return null;
-  }
-  const ratio = Math.sqrt(targetFill / Math.max(faceFill, 0.04));
-  const raw = clamp(
-    currentZoom * ratio,
-    MOBILE_CAMERA_ZOOM.min,
-    MOBILE_CAMERA_ZOOM.max
-  );
-  const next = currentZoom * 0.55 + raw * 0.45;
-  if (Math.abs(next - currentZoom) < 0.025) return null;
-  return Math.round(next * 100) / 100;
+  return null;
 }
 
 export function smoothTowardZoom(current: number, target: number, factor = 0.5): number {

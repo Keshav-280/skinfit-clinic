@@ -1,5 +1,4 @@
 import * as FileSystem from "expo-file-system/legacy";
-import { Buffer } from "buffer";
 
 import { patientScanImageDisplayUrl } from "./patientScanImagePath";
 import {
@@ -89,21 +88,33 @@ export async function fetchAuthenticatedScanImageUri(
 /** Base64 data URI for expo-print HTML (cannot attach auth headers on `<img>`). */
 export async function embedScanImageForPdf(
   imageUrl: string,
-  token: string | null
+  token: string | null,
+  opts?: { maxWidth?: number; compress?: number }
 ): Promise<string> {
   const trimmed = imageUrl.trim();
   if (trimmed.startsWith("data:")) return trimmed;
 
-  const { uri, headers } = resolveAuthenticatedScanImageSource(trimmed, token);
-  const res = await fetch(uri, { headers: headers ?? {} });
-  if (!res.ok) {
-    throw new Error(`Could not load image for PDF (HTTP ${res.status}).`);
+  const localUri = await fetchAuthenticatedScanImageUri(trimmed, token, {
+    preview: false,
+  });
+
+  let fileUri = localUri;
+  if (opts?.maxWidth && opts.maxWidth > 0) {
+    const { ImageManipulator, SaveFormat } = await import("expo-image-manipulator");
+    const ref = await ImageManipulator.manipulate(localUri)
+      .resize({ width: opts.maxWidth })
+      .renderAsync();
+    const saved = await ref.saveAsync({
+      format: SaveFormat.JPEG,
+      compress: opts.compress ?? 0.82,
+    });
+    fileUri = saved.uri;
   }
-  const mime =
-    res.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg";
-  const buf = await res.arrayBuffer();
-  const b64 = Buffer.from(buf).toString("base64");
-  return `data:${mime};base64,${b64}`;
+
+  const b64 = await FileSystem.readAsStringAsync(fileUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return `data:image/jpeg;base64,${b64}`;
 }
 
 export { toAbsoluteApiUrl } from "./resolveScanImage";

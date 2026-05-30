@@ -23,22 +23,21 @@ export function ScanQueuedConfirmation({
       <View style={styles.iconWrap}>
         <Ionicons name="notifications-outline" size={32} color={NAVY} />
       </View>
-      <Text style={styles.title}>You&apos;re all set</Text>
-      <Text style={styles.body}>
-        {isOnboarding
-          ? "Your baseline photos are saved. Your kAI report will be ready soon — we'll notify you when it's done."
-          : "Your photos are saved. Your full report will be delivered soon — we'll notify you when it's ready."}
-      </Text>
-      <View style={styles.sparkleRow}>
-        <Ionicons name="sparkles" size={14} color={NAVY} />
-        <Text style={styles.hint}>You can leave this screen — no need to wait here.</Text>
+      <Text style={styles.title}>We&apos;ll notify you when it&apos;s ready.</Text>
+      <View style={styles.actions}>
+        <Pressable
+          style={({ pressed }) => [styles.btnPrimary, pressed && styles.pressedBtn]}
+          onPress={onContinue}
+        >
+          <Text style={styles.btnText}>{isOnboarding ? "Continue" : "View scan history"}</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.btnSecondary, pressed && styles.pressedBtn]}
+          onPress={onSecondary}
+        >
+          <Text style={styles.btnOutlineText}>Go to dashboard</Text>
+        </Pressable>
       </View>
-      <Pressable style={styles.btn} onPress={onContinue}>
-        <Text style={styles.btnText}>{isOnboarding ? "Continue" : "View scan history"}</Text>
-      </Pressable>
-      <Pressable style={styles.btnOutline} onPress={onSecondary}>
-        <Text style={styles.btnOutlineText}>Go to dashboard</Text>
-      </Pressable>
     </View>
   );
 }
@@ -51,7 +50,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.5)",
     padding: 24,
     alignItems: "center",
-    gap: 10,
+    gap: 16,
   },
   iconWrap: {
     width: 64,
@@ -62,55 +61,51 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 18,
+    fontWeight: "700",
     color: NAVY,
     textAlign: "center",
+    lineHeight: 26,
+    maxWidth: 280,
   },
-  body: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#4B5563",
-    textAlign: "center",
-  },
-  sparkleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+  actions: {
+    width: "100%",
+    gap: 12,
     marginTop: 4,
   },
-  hint: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  btn: {
-    marginTop: 8,
+  btnPrimary: {
     width: "100%",
-    backgroundColor: NAVY,
+    minHeight: 52,
     paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: NAVY,
     alignItems: "center",
+    justifyContent: "center",
   },
   btnText: {
     color: "#fff",
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
   },
-  btnOutline: {
+  btnSecondary: {
     width: "100%",
-    borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.2)",
-    backgroundColor: "rgba(255,255,255,0.8)",
+    minHeight: 52,
     paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: NAVY,
+    backgroundColor: "rgba(255,255,255,0.8)",
     alignItems: "center",
+    justifyContent: "center",
   },
   btnOutlineText: {
     color: NAVY,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
   },
+  pressedBtn: { opacity: 0.88 },
 });
 
 function OnboardingQueuedScreen({

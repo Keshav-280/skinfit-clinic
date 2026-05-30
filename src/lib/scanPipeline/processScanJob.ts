@@ -34,7 +34,7 @@ import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import type { ScanJobPayload } from "@/src/lib/infra";
-import { getFaceAnalysisServiceSecret } from "@/src/lib/faceAnalysisEnv";
+import { restrictScanMasksToFace } from "@/src/lib/restrictMaskToFace";
 
 async function pathToFile(relativePath: string, name: string): Promise<File> {
   const storage = getStorage();
@@ -115,6 +115,18 @@ export async function processScanJob(
       inferenceOpts
     );
     merged = buildScanPayloadFromAnalyzeV1(dualScan);
+  }
+
+  if (merged.acneMaskDataUri || merged.wrinkleMaskDataUri) {
+    const centreBuf = Buffer.from(await filesForV2.centre.arrayBuffer());
+    const smilingBuf = Buffer.from(await filesForV2.smiling.arrayBuffer());
+    const restricted = await restrictScanMasksToFace({
+      acneMaskDataUri: merged.acneMaskDataUri,
+      wrinkleMaskDataUri: merged.wrinkleMaskDataUri,
+      centreJpeg: centreBuf,
+      smilingJpeg: smilingBuf,
+    });
+    merged = { ...merged, ...restricted };
   }
 
   logger.inference(Date.now() - started, { jobId, userId: payload.userId });

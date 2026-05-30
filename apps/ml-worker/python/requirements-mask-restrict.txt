@@ -1,0 +1,4 @@
+# Face-mask clipping for acne/wrinkle heatmaps (restrict_mask_to_face.py)
+opencv-python-headless>=4.10.0
+numpy>=1.26.0
+mediapipe>=0.10.14

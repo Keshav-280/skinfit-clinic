@@ -1,4 +1,3 @@
-import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -62,11 +61,11 @@ type ScanDetail = {
 
 /** Always open the list — `router.back()` is wrong when this screen was opened from Scan (or elsewhere). */
 const TREATMENT_HISTORY_HREF = "/(drawer)/history" as Href;
+const DASHBOARD_HREF = "/(drawer)" as Href;
 
 export default function ScanDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [row, setRow] = useState<ScanDetail | null>(null);
@@ -168,8 +167,10 @@ export default function ScanDetailScreen() {
           wrinkleMaskDataUri: row.wrinkleMaskDataUri,
           acneMaskDataUri: row.acneMaskDataUri,
           spatialOutputs: row.spatialOutputs,
+          trackerReport: row.trackerReport,
         },
-        token
+        token,
+        { tracker }
       );
       await shareScanReportPdf(payload);
     } catch (e) {
@@ -180,7 +181,7 @@ export default function ScanDetailScreen() {
     } finally {
       setPdfLoading(false);
     }
-  }, [row, token]);
+  }, [row, token, tracker]);
 
   if (error && !row) {
     return (
@@ -216,21 +217,22 @@ export default function ScanDetailScreen() {
     <View style={styles.wrap}>
       <View style={[styles.topBar, { paddingTop: Math.max(8, insets.top) }]}>
         <Pressable
-          style={styles.menuBtn}
-          onPress={() => router.push(TREATMENT_HISTORY_HREF)}
-          hitSlop={12}
-          accessibilityLabel="Go back"
+          style={styles.navLink}
+          onPress={() => router.replace(TREATMENT_HISTORY_HREF)}
+          hitSlop={8}
+          accessibilityLabel="Treatment history"
         >
-          <Ionicons name="chevron-back" size={24} color="#2C3E6B" />
+          <Ionicons name="chevron-back" size={20} color={NAVY} />
+          <Text style={styles.navLabel}>Treatment history</Text>
         </Pressable>
         <Pressable
-          style={styles.backRow}
-          onPress={() => router.replace(TREATMENT_HISTORY_HREF)}
-          hitSlop={12}
-          accessibilityLabel="Back to treatment history"
+          style={styles.navLink}
+          onPress={() => router.replace(DASHBOARD_HREF)}
+          hitSlop={8}
+          accessibilityLabel="Dashboard"
         >
-          <Text style={styles.backChev}>‹</Text>
-          <Text style={styles.backLabel}>Back to treatment history</Text>
+          <Ionicons name="home-outline" size={18} color={NAVY} />
+          <Text style={styles.navLabel}>Dashboard</Text>
         </Pressable>
       </View>
       <SkinScanReportBodyNative
@@ -278,27 +280,16 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingBottom: 4,
-    gap: 4,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    gap: 20,
     backgroundColor: BG,
   },
-  menuBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.06)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backRow: {
+  navLink: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
     gap: 4,
+    paddingVertical: 6,
   },
-  backChev: { fontSize: 28, color: NAVY, marginTop: -2 },
-  backLabel: { fontSize: 15, fontWeight: "700", color: NAVY },
+  navLabel: { fontSize: 14, fontWeight: "700", color: NAVY },
 });

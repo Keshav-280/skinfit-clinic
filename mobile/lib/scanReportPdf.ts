@@ -11,31 +11,11 @@ import {
 /** Same report content and section order as the web dashboard PDF (expo-print HTML, not html2canvas). */
 export type { ScanReportPdfPayload };
 
-/** URL-safe file base (ASCII) so Android/iOS keep the name when saving to Files / Downloads. */
-function slugifyTitle(raw: string): string {
-  const cleaned = raw
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return cleaned.slice(0, 48).toLowerCase();
-}
-
-function displayScanTitle(scanTitle: string | null | undefined): string {
-  const t = scanTitle?.trim() ?? "";
-  if (!t) return "";
-  return t
-    .replace(/^ai\s*skin\s*scan\s*[–-]\s*/i, "")
-    .replace(/^ai\s*skin\s*analysis\s*$/i, "")
-    .trim();
-}
-
-/** e.g. SkinnFit-morning-checkin-2026-04-03-1430.pdf */
+/** Same naming as web `SkinScanReportBody` PDF download. */
 export function buildScanReportPdfFileName(payload: ScanReportPdfPayload): string {
   const scanDate = new Date(payload.scanDateIso);
   const stamp = format(scanDate, "yyyy-MM-dd-HHmm");
-  const slug = slugifyTitle(displayScanTitle(payload.scanTitle)) || "skin-scan";
-  return `SkinnFit-${slug}-${stamp}.pdf`;
+  return `ai-scan-report-${stamp}.pdf`;
 }
 
 export async function generateScanReportPdfUri(
@@ -44,6 +24,8 @@ export async function generateScanReportPdfUri(
   const html = buildScanReportPdfHtml(payload);
   const { uri } = await Print.printToFileAsync({
     html,
+    width: 595,
+    height: 842,
     base64: false,
   });
   return uri;

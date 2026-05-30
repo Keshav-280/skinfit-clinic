@@ -79,6 +79,7 @@ export function useMobileScanCaptureGuidance(
     smoothedBox: null,
     framing: null,
     expressionCalibration: { openEarBaseline: null },
+    faceLandmarks: null,
   });
   const expressionOkRef = useRef<boolean | null>(null);
   const [models, setModels] = useState<CaptureAssistModels>(() =>
@@ -171,7 +172,7 @@ export function useMobileScanCaptureGuidance(
                 : expressionStep
                   ? prev.expressionClassifier === "ready"
                     ? "ready"
-                    : "loading"
+                    : "idle"
                   : "off",
         }));
       }

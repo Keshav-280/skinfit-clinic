@@ -1,4 +1,7 @@
+import { Platform } from "react-native";
+
 import { apiFetch } from "@/lib/api";
+import { apiUrl } from "@/lib/apiBase";
 
 export type ChatSsePayload = {
   type?: string;
@@ -18,7 +21,8 @@ type ConnectChatSseOptions = {
 
 function parseSseBuffer(buffer: string): { events: ChatSsePayload[]; rest: string } {
   const events: ChatSsePayload[] = [];
-  const blocks = buffer.split("\n\n");
+  const normalized = buffer.replace(/\r\n/g, "\n");
+  const blocks = normalized.split("\n\n");
   const rest = blocks.pop() ?? "";
   for (const block of blocks) {
     for (const line of block.split("\n")) {
@@ -35,23 +39,86 @@ function parseSseBuffer(buffer: string): { events: ChatSsePayload[]; rest: strin
   return { events, rest };
 }
 
-/**
- * Long-lived SSE reader for React Native (fetch + ReadableStream).
- * Uses Authorization Bearer; falls back via `onUnavailable` when streaming is unsupported.
- */
-export function connectChatSseStream(options: ConnectChatSseOptions): () => void {
-  const ac = new AbortController();
-  let closed = false;
+function ingestSseChunk(
+  buffer: string,
+  chunk: string,
+  onEvent: (payload: ChatSsePayload) => void
+): string {
+  const next = buffer + chunk;
+  const parsed = parseSseBuffer(next);
+  for (const ev of parsed.events) {
+    onEvent(ev);
+  }
+  return parsed.rest;
+}
+
+/** React Native: fetch streaming often buffers until close — XHR onprogress gets chunks live. */
+function connectXhrSseStream(
+  options: ConnectChatSseOptions,
+  isClosed: () => boolean
+): () => void {
+  const xhr = new XMLHttpRequest();
+  let buffer = "";
+  let lastIndex = 0;
+  let notifiedUnavailable = false;
+
+  const notifyUnavailable = () => {
+    if (notifiedUnavailable || isClosed()) return;
+    notifiedUnavailable = true;
+    options.onUnavailable?.();
+  };
+
+  xhr.open("GET", apiUrl(options.path));
+  xhr.setRequestHeader("Authorization", `Bearer ${options.token}`);
+  xhr.setRequestHeader("Accept", "text/event-stream");
+
+  xhr.onprogress = () => {
+    if (isClosed()) return;
+    const chunk = xhr.responseText.slice(lastIndex);
+    lastIndex = xhr.responseText.length;
+    if (!chunk) return;
+    buffer = ingestSseChunk(buffer, chunk, options.onEvent);
+  };
+
+  xhr.onload = () => {
+    if (isClosed()) return;
+    const chunk = xhr.responseText.slice(lastIndex);
+    lastIndex = xhr.responseText.length;
+    if (chunk) {
+      buffer = ingestSseChunk(buffer, chunk, options.onEvent);
+    }
+    notifyUnavailable();
+  };
+
+  xhr.onerror = () => notifyUnavailable();
+  xhr.onabort = () => {
+    /* intentional teardown */
+  };
+  xhr.ontimeout = () => notifyUnavailable();
+
+  xhr.send();
+
+  return () => {
+    xhr.abort();
+  };
+}
+
+function connectFetchSseStream(
+  options: ConnectChatSseOptions,
+  signal: AbortSignal,
+  isClosed: () => boolean
+): () => void {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
   void (async () => {
     try {
       const res = await apiFetch(options.path, options.token, {
         method: "GET",
         headers: { Accept: "text/event-stream" },
-        signal: ac.signal,
+        signal,
       });
 
-      if (!res.ok) {
+      if (!res.ok || isClosed()) {
         options.onUnavailable?.();
         return;
       }
@@ -62,24 +129,19 @@ export function connectChatSseStream(options: ConnectChatSseOptions): () => void
         return;
       }
 
-      const reader = body.getReader();
+      reader = body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (!closed) {
+      while (!isClosed()) {
         const { value, done } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parsed = parseSseBuffer(buffer);
-        buffer = parsed.rest;
-        for (const ev of parsed.events) {
-          options.onEvent(ev);
-        }
+        buffer = ingestSseChunk(buffer, decoder.decode(value, { stream: true }), options.onEvent);
       }
 
-      if (!closed) options.onUnavailable?.();
+      if (!isClosed()) options.onUnavailable?.();
     } catch (e) {
-      if (!closed && !ac.signal.aborted) {
+      if (!isClosed() && !signal.aborted) {
         if (__DEV__ && e instanceof Error) {
           console.warn("[chatSse] stream ended:", e.message);
         }
@@ -89,7 +151,26 @@ export function connectChatSseStream(options: ConnectChatSseOptions): () => void
   })();
 
   return () => {
+    void reader?.cancel().catch(() => undefined);
+  };
+}
+
+/**
+ * Long-lived SSE reader. Native uses XHR incremental parse; web uses fetch stream.
+ */
+export function connectChatSseStream(options: ConnectChatSseOptions): () => void {
+  const ac = new AbortController();
+  let closed = false;
+  const isClosed = () => closed;
+
+  const stopInner =
+    Platform.OS === "web"
+      ? connectFetchSseStream(options, ac.signal, isClosed)
+      : connectXhrSseStream(options, isClosed);
+
+  return () => {
     closed = true;
     ac.abort();
+    stopInner();
   };
 }

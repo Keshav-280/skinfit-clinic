@@ -10,11 +10,14 @@ import {
   Dimensions,
   Easing,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,6 +50,7 @@ export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>("intro");
   const [uris, setUris] = useState<string[]>([]);
+  const [scanName, setScanName] = useState("");
   const [busy, setBusy] = useState(false);
   const [resultId, setResultId] = useState<number | null>(null);
   const [camPermission, requestCamPermission] = useCameraPermissions();
@@ -124,19 +128,25 @@ export default function ScanScreen() {
 
   function startOver() {
     setUris([]);
+    setScanName("");
     setResultId(null);
     setPhase("intro");
   }
 
   async function runScan() {
+    const name = scanName.trim();
     if (!token || uris.length !== N) {
       Alert.alert("AI face scan", `Capture all ${N} angles first.`);
+      return;
+    }
+    if (!name) {
+      Alert.alert("AI face scan", "Name this scan before starting analysis.");
       return;
     }
     setBusy(true);
     try {
       const form = new FormData();
-      form.append("scanName", "Untitled Scan");
+      form.append("scanName", name);
       for (let i = 0; i < N; i++) {
         const uri = await normalizeScanImageUri(uris[i]);
         form.append("images", {
@@ -148,7 +158,7 @@ export default function ScanScreen() {
 
       const outcome = await submitFaceScan(token, form);
       if (outcome.mode === "queued") {
-        await addPendingScanJob(outcome.jobId, "Untitled Scan");
+        await addPendingScanJob(outcome.jobId, name);
         setPhase("queued");
         return;
       }
@@ -213,18 +223,21 @@ export default function ScanScreen() {
           <View style={styles.queuedIconWrap}>
             <Ionicons name="notifications-outline" size={40} color={NAVY} />
           </View>
-          <Text style={styles.queuedTitle}>You&apos;re all set</Text>
-          <Text style={styles.queuedSub}>
-            Your photos are saved. Your full report (images, masks, and kAI analysis) will be
-            delivered soon — we&apos;ll notify you when it&apos;s ready.
-          </Text>
-          <Text style={styles.queuedHint}>You can leave this screen — no need to wait here.</Text>
-          <Pressable style={styles.btnNavy} onPress={() => router.push("/(drawer)/history")}>
-            <Text style={styles.btnNavyText}>View scan history</Text>
-          </Pressable>
-          <Pressable style={styles.btnOutline} onPress={() => router.push("/(drawer)")}>
-            <Text style={styles.btnOutlineText}>Go to dashboard</Text>
-          </Pressable>
+          <Text style={styles.queuedTitle}>We&apos;ll notify you when it&apos;s ready.</Text>
+          <View style={styles.queuedActions}>
+            <Pressable
+              style={({ pressed }) => [styles.queuedBtnPrimary, pressed && styles.pressedBtn]}
+              onPress={() => router.push("/(drawer)/history")}
+            >
+              <Text style={styles.btnNavyText}>View scan history</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.queuedBtnSecondary, pressed && styles.pressedBtn]}
+              onPress={() => router.push("/(drawer)")}
+            >
+              <Text style={styles.btnOutlineText}>Go to dashboard</Text>
+            </Pressable>
+          </View>
         </View>
       </LinearGradient>
       </View>
@@ -233,7 +246,8 @@ export default function ScanScreen() {
 
   // ── Review phase ──
   if (phase === "review" || uris.length >= N) {
-    const gridH = SCREEN_H * 0.58;
+    const gridH = SCREEN_H * 0.48;
+    const canStartAnalysis = scanName.trim().length > 0;
     return (
       <View style={styles.screenRoot}>
       <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
@@ -252,6 +266,16 @@ export default function ScanScreen() {
           </Pressable>
         </View>
 
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={insets.top + 8}
+        >
+        <ScrollView
+          contentContainerStyle={styles.reviewScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.reviewBody}>
           {/* Mosaic image grid */}
           <View style={[styles.mosaic, { height: gridH }]}>
@@ -300,16 +324,34 @@ export default function ScanScreen() {
             </View>
           </View>
 
+          {!busy && resultId == null ? (
+            <View style={styles.scanNameCard}>
+              <Text style={styles.scanNameLabel}>Name this scan</Text>
+              <TextInput
+                style={styles.scanNameInput}
+                placeholder="e.g., Morning routine"
+                placeholderTextColor="rgba(44, 62, 107, 0.4)"
+                value={scanName}
+                onChangeText={setScanName}
+                maxLength={255}
+                returnKeyType="done"
+                autoCorrect={false}
+                editable={!busy}
+              />
+            </View>
+          ) : null}
+
           {/* Pre-scan actions */}
           {!busy && resultId == null && (
             <View style={styles.reviewActions}>
               <Pressable
-                style={styles.btnNavy}
+                style={[styles.btnNavy, !canStartAnalysis && styles.disabled]}
                 onPress={() => void runScan()}
+                disabled={!canStartAnalysis}
               >
                 <View style={styles.btnRow}>
                   <Ionicons name="scan-outline" size={20} color="#fff" />
-                  <Text style={styles.btnNavyText}>Begin Analysis</Text>
+                  <Text style={styles.btnNavyText}>Start analysis</Text>
                 </View>
               </Pressable>
 
@@ -317,17 +359,6 @@ export default function ScanScreen() {
                 <Ionicons name="refresh-outline" size={18} color="#52525b" />
                 <Text style={styles.recaptureLinkText}>Recapture Image</Text>
               </Pressable>
-            </View>
-          )}
-
-          {/* Analyzing overlay */}
-          {busy && (
-            <View style={styles.analyzingOverlay}>
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <MaterialCommunityIcons name="auto-fix" size={56} color={NAVY} />
-              </Animated.View>
-              <Text style={styles.analyzingTitle}>Submitting</Text>
-              <Text style={styles.analyzingSub}>Just a moment…</Text>
             </View>
           )}
 
@@ -356,6 +387,17 @@ export default function ScanScreen() {
             </View>
           )}
         </View>
+        </ScrollView>
+        {busy ? (
+          <View style={styles.analyzingOverlay}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <MaterialCommunityIcons name="auto-fix" size={56} color={NAVY} />
+            </Animated.View>
+            <Text style={styles.analyzingTitle}>Submitting</Text>
+            <Text style={styles.analyzingSub}>Just a moment…</Text>
+          </View>
+        ) : null}
+        </KeyboardAvoidingView>
       </LinearGradient>
       </View>
     );
@@ -607,11 +649,39 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   reviewBody: {
-    flex: 1,
     paddingHorizontal: 20,
-    justifyContent: "center",
-    gap: 28,
+    paddingBottom: 24,
+    gap: 20,
     position: "relative",
+  },
+  reviewScroll: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingBottom: 16,
+  },
+  scanNameCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    backgroundColor: "rgba(255,255,255,0.55)",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  scanNameLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: NAVY,
+    marginBottom: 10,
+  },
+  scanNameInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.65)",
+    backgroundColor: "rgba(255,255,255,0.75)",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: NAVY,
   },
   analyzingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -686,7 +756,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     justifyContent: "center",
     alignItems: "center",
-    gap: 14,
+    gap: 20,
   },
   queuedIconWrap: {
     width: 72,
@@ -695,24 +765,42 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(43, 58, 103, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
   },
   queuedTitle: {
-    fontSize: 26,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#1A1A2E",
     textAlign: "center",
+    lineHeight: 28,
+    maxWidth: 280,
   },
-  queuedSub: {
-    fontSize: 16,
-    color: "#52525b",
-    textAlign: "center",
-    lineHeight: 24,
+  queuedActions: {
+    width: "100%",
+    maxWidth: 320,
+    gap: 12,
+    marginTop: 8,
   },
-  queuedHint: {
-    fontSize: 13,
-    color: "#71717a",
-    textAlign: "center",
-    marginBottom: 12,
+  queuedBtnPrimary: {
+    width: "100%",
+    minHeight: 52,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
   },
+  queuedBtnSecondary: {
+    width: "100%",
+    minHeight: 52,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: NAVY,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pressedBtn: { opacity: 0.88 },
 });

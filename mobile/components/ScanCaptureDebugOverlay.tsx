@@ -17,6 +17,8 @@ type Props = {
   /** Safe-area top offset so the panel clears the header/instruction card. */
   insetTop?: number;
   extra?: Record<string, string | number | boolean | null | undefined>;
+  /** Explicit on-screen toggle — overrides the env/dev default when provided. */
+  visible?: boolean;
 };
 
 function fmtPct(fill: number | null | undefined): string {
@@ -46,8 +48,10 @@ export function ScanCaptureDebugOverlay({
   faceTracked,
   insetTop = 0,
   extra,
+  visible,
 }: Props) {
-  if (!isCaptureDebugEnabled()) return null;
+  const show = visible ?? isCaptureDebugEnabled();
+  if (!show) return null;
 
   const t = CAPTURE_FRAMING_THRESHOLDS;
   const targetFill = captureAutoZoomTargetFill();

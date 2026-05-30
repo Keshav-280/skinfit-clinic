@@ -616,21 +616,10 @@ export default function ChatScreen() {
     if (!homeMode || !token) return;
 
     let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const stopPoll = () => {
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-    };
-
-    const startPoll = () => {
-      if (pollTimer || cancelled) return;
-      pollTimer = setInterval(() => void loadHomeData(), 20_000);
-    };
 
     void loadHomeData();
+
+    const pollTimer = setInterval(() => void loadHomeData(), 15_000);
 
     const disconnect = connectChatSseStream({
       path: CHAT_INBOX_STREAM_PATH,
@@ -643,18 +632,14 @@ export default function ChatScreen() {
           data.type === "thread_updated" ||
           data.type === "connected"
         ) {
-          stopPoll();
           void loadHomeData();
         }
-      },
-      onUnavailable: () => {
-        if (!cancelled) startPoll();
       },
     });
 
     return () => {
       cancelled = true;
-      stopPoll();
+      clearInterval(pollTimer);
       disconnect();
     };
   }, [homeMode, token, loadHomeData]);
@@ -763,19 +748,6 @@ export default function ChatScreen() {
     if (active === "doctor" && !activeDoctorId) return;
 
     let cancelled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const stopPoll = () => {
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-    };
-
-    const startPoll = () => {
-      if (pollTimer || cancelled) return;
-      pollTimer = setInterval(() => void syncThread(false), 6_000);
-    };
 
     async function syncThread(markRead: boolean) {
       if (cancelled) return;
@@ -805,6 +777,9 @@ export default function ChatScreen() {
 
     void syncThread(true);
 
+    // Backup poll — RN fetch SSE can appear connected but never deliver chunks.
+    const pollTimer = setInterval(() => void syncThread(true), 4_000);
+
     const q = new URLSearchParams({ assistantId: active });
     if (active === "doctor" && activeDoctorId) {
       q.set("doctorId", activeDoctorId);
@@ -817,18 +792,14 @@ export default function ChatScreen() {
         if (cancelled) return;
         if (data.type === "ping") return;
         if (data.type === "thread_updated" || data.type === "connected") {
-          stopPoll();
           void syncThread(true);
         }
-      },
-      onUnavailable: () => {
-        if (!cancelled) startPoll();
       },
     });
 
     return () => {
       cancelled = true;
-      stopPoll();
+      clearInterval(pollTimer);
       disconnect();
     };
   }, [

@@ -184,12 +184,15 @@ export async function analyzePreviewImageUri(
     if (!expressionStep) {
       nextState.expressionCalibration = { openEarBaseline: null };
     }
-    const useClassifier =
-      captureCfg.expression === "classifier" &&
-      Boolean(serverPreview?.expressionAvailable && serverPreview.expression);
+    // Prefer the server blink/expression classifier whenever it returns scores —
+    // on phones the native MediaPipe landmarker is often unavailable, so the
+    // server result is what makes eye-closure detection actually work.
+    const useClassifier = Boolean(
+      serverPreview?.expressionAvailable && serverPreview.expression
+    );
 
     if (useClassifier) {
-      guidance = applyCaptureExpressionFromClassifier(
+      const classified = applyCaptureExpressionFromClassifier(
         guidance,
         options.stepId,
         serverPreview!.expression,
@@ -198,6 +201,7 @@ export async function analyzePreviewImageUri(
       );
       guidance = {
         ...guidance,
+        ...classified,
         showExpressionCheck: expressionStep,
       };
     } else {
@@ -221,9 +225,7 @@ export async function analyzePreviewImageUri(
       landmarkPipelineActive,
       serverDetectorUsed: Boolean(serverPreview?.box && serverPreview.detectorAvailable),
       expressionClassifierUsed: Boolean(
-        captureCfg.expression === "classifier" &&
-          serverPreview?.expressionAvailable &&
-          serverPreview.expression
+        serverPreview?.expressionAvailable && serverPreview.expression
       ),
     },
   };

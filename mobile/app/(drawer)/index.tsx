@@ -876,6 +876,7 @@ export default function DashboardScreen() {
         </Pressable>
       </Pressable>
 
+      {/* Skin parameters section hidden for now — uncomment to restore.
       <View style={[styles.card, styles.skinParamsCard]}>
         <View style={styles.skinParamsHeader}>
           <View style={{ flex: 1 }}>
@@ -957,6 +958,7 @@ export default function DashboardScreen() {
           ))}
         </View>
       </View>
+      */}
 
       <DoctorFeedbackSection
         feedbackEntries={data.feedbackEntries ?? []}
