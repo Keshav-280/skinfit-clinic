@@ -19,7 +19,7 @@ import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { TrackerReportSections } from "./TrackerReportSections";
 import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
-import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
+import { WRINKLE_MASK_PANEL_LABEL, ACNE_MASK_PANEL_LABEL } from "@/src/lib/scanMaskLabels";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
 
@@ -700,16 +700,8 @@ export function SkinScanReportBody({
             imageUrl={imageUrl}
             wrinkleMaskUrl={wrinkleUrl}
             acneMaskUrl={acneUrl}
-            wrinklePoseLabel={
-              faceCaptureGallery?.[4]?.label ??
-              FACE_SCAN_CAPTURE_STEPS[4]?.title ??
-              "Front face — smiling"
-            }
-            acnePoseLabel={
-              faceCaptureGallery?.[0]?.label ??
-              FACE_SCAN_CAPTURE_STEPS[0]?.title ??
-              "Front face — neutral"
-            }
+            wrinklePoseLabel={WRINKLE_MASK_PANEL_LABEL}
+            acnePoseLabel={ACNE_MASK_PANEL_LABEL}
             spatialOutputs={spatialOutputs}
             regions={regions}
           />

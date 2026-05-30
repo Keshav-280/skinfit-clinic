@@ -2,6 +2,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scans } from "@/src/db/schema";
 import { decodeDataUrlImage } from "@/src/lib/dataUrlImage";
+import {
+  ACNE_MASK_FACE_CLIP_VERSION,
+  acneMaskNeedsFaceClip,
+} from "@/src/lib/acneMaskFaceClip";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import {
   getStorage,
@@ -9,10 +13,7 @@ import {
   invalidateUserScanDerivedCaches,
   logger,
 } from "@/src/lib/infra";
-import {
-  parseScanAcneMaskDataUri,
-  parseScanWrinkleMaskDataUri,
-} from "@/src/lib/parseClinicalScores";
+import { parseScanAcneMaskDataUri } from "@/src/lib/parseClinicalScores";
 import { storageRelativePathFromRef } from "@/src/lib/publicFileUrl";
 import { restrictMaskDataUriToFace } from "@/src/lib/restrictMaskToFace";
 import type { FaceCaptureRef } from "@/src/lib/resolveScanImageUrl";
@@ -22,15 +23,10 @@ import {
 } from "@/src/lib/resolveScanImageUrl";
 
 const CENTRE_IDX = FACE_SCAN_CAPTURE_STEPS.findIndex((s) => s.id === "centre");
-const SMILING_IDX = FACE_SCAN_CAPTURE_STEPS.findIndex((s) => s.id === "smiling");
 
 function scoresRecord(scores: unknown): Record<string, unknown> {
   if (!scores || typeof scores !== "object") return {};
   return scores as Record<string, unknown>;
-}
-
-function isFlagged(scores: Record<string, unknown>, key: string): boolean {
-  return scores[key] === true;
 }
 
 async function readImageRef(ref: string): Promise<Buffer | null> {
@@ -67,9 +63,14 @@ function bufferToMaskDataUri(buf: Buffer): string {
   return `data:image/jpeg;base64,${buf.toString("base64")}`;
 }
 
+function storedOriginalUrl(scores: Record<string, unknown>): string | undefined {
+  const url = scores.acneMaskOriginalUrl;
+  return typeof url === "string" && url.trim() ? url.trim() : undefined;
+}
+
 /**
- * One-time backfill: clip stored acne/wrinkle masks to face skin and persist new URLs.
- * Skips scans already marked with `*MaskFaceRestricted` in `scans.scores`.
+ * One-time acne mask face clip (v2): hard boundary only, preserves inference heatmap on skin.
+ * Wrinkle masks are never modified here.
  */
 export async function ensureScanMasksFaceRestricted(input: {
   userId: string;
@@ -79,111 +80,78 @@ export async function ensureScanMasksFaceRestricted(input: {
   primaryImageUrl?: string | null;
 }): Promise<unknown> {
   const scores = scoresRecord(input.scores);
+  const currentAcneRef = parseScanAcneMaskDataUri(scores);
   const needsAcne =
-    !isFlagged(scores, "acneMaskFaceRestricted") &&
-    Boolean(parseScanAcneMaskDataUri(scores));
-  const needsWrinkle =
-    !isFlagged(scores, "wrinkleMaskFaceRestricted") &&
-    Boolean(parseScanWrinkleMaskDataUri(scores));
+    Boolean(currentAcneRef) && acneMaskNeedsFaceClip(scores);
 
-  if (!needsAcne && !needsWrinkle) return input.scores;
+  if (!needsAcne) return input.scores;
 
-  const centreJpeg = needsAcne
-    ? await loadCaptureJpeg(
-        input.faceCaptureImages,
-        CENTRE_IDX,
-        input.primaryImageUrl
-      )
-    : null;
-  const smilingJpeg = needsWrinkle
-    ? await loadCaptureJpeg(input.faceCaptureImages, SMILING_IDX, null)
-    : null;
+  const centreJpeg = await loadCaptureJpeg(
+    input.faceCaptureImages,
+    CENTRE_IDX,
+    input.primaryImageUrl
+  );
 
-  if (needsAcne && !centreJpeg) {
+  if (!centreJpeg) {
     logger.warn("acne_mask_face_restrict_skipped", {
       scanId: input.scanId,
       reason: "no_centre_image",
     });
-  }
-  if (needsWrinkle && !smilingJpeg) {
-    logger.warn("wrinkle_mask_face_restrict_skipped", {
-      scanId: input.scanId,
-      reason: "no_smiling_image",
-    });
+    return input.scores;
   }
 
   const storage = getStorage();
   const upload = storage.upload.bind(storage);
   const nextScores: Record<string, unknown> = { ...scores };
-  let changed = false;
 
-  if (needsAcne && centreJpeg) {
-    const acneRef = parseScanAcneMaskDataUri(scores)!;
-    const maskBuf = await readImageRef(acneRef);
-    if (!maskBuf) {
-      logger.warn("acne_mask_face_restrict_skipped", {
-        scanId: input.scanId,
-        reason: "mask_read_failed",
-      });
-    } else {
-      try {
-        const restricted = await restrictMaskDataUriToFace(
-          bufferToMaskDataUri(maskBuf),
-          centreJpeg,
-          "acne"
-        );
-        const url = restricted
-          ? await persistDataUriToStorage(restricted, "masks", upload)
-          : undefined;
-        if (url) {
-          nextScores.acneMaskUrl = url;
-          delete nextScores.acneMaskDataUri;
-          nextScores.acneMaskFaceRestricted = true;
-          changed = true;
-        }
-      } catch (err) {
-        logger.warn("acne_mask_face_restrict_failed", {
-          scanId: input.scanId,
-          error: String(err),
-        });
-      }
-    }
+  const originalRef = storedOriginalUrl(scores) ?? currentAcneRef;
+  if (!originalRef) {
+    logger.warn("acne_mask_face_restrict_skipped", {
+      scanId: input.scanId,
+      reason: "no_mask_ref",
+    });
+    return input.scores;
   }
 
-  if (needsWrinkle && smilingJpeg) {
-    const wrinkleRef = parseScanWrinkleMaskDataUri(scores)!;
-    const maskBuf = await readImageRef(wrinkleRef);
-    if (!maskBuf) {
-      logger.warn("wrinkle_mask_face_restrict_skipped", {
-        scanId: input.scanId,
-        reason: "mask_read_failed",
-      });
-    } else {
-      try {
-        const restricted = await restrictMaskDataUriToFace(
-          bufferToMaskDataUri(maskBuf),
-          smilingJpeg,
-          "wrinkle"
-        );
-        const url = restricted
-          ? await persistDataUriToStorage(restricted, "masks", upload)
-          : undefined;
-        if (url) {
-          nextScores.wrinkleMaskUrl = url;
-          delete nextScores.wrinkleMaskDataUri;
-          nextScores.wrinkleMaskFaceRestricted = true;
-          changed = true;
-        }
-      } catch (err) {
-        logger.warn("wrinkle_mask_face_restrict_failed", {
-          scanId: input.scanId,
-          error: String(err),
-        });
-      }
-    }
+  if (
+    !storedOriginalUrl(scores) &&
+    scores.acneMaskFaceRestricted !== true &&
+    currentAcneRef
+  ) {
+    nextScores.acneMaskOriginalUrl = currentAcneRef;
   }
 
-  if (!changed) return input.scores;
+  const maskBuf = await readImageRef(originalRef);
+  if (!maskBuf) {
+    logger.warn("acne_mask_face_restrict_skipped", {
+      scanId: input.scanId,
+      reason: "mask_read_failed",
+    });
+    return input.scores;
+  }
+
+  try {
+    const restricted = await restrictMaskDataUriToFace(
+      bufferToMaskDataUri(maskBuf),
+      centreJpeg,
+      "acne"
+    );
+    const url = restricted
+      ? await persistDataUriToStorage(restricted, "masks", upload)
+      : undefined;
+    if (!url) return input.scores;
+
+    nextScores.acneMaskUrl = url;
+    delete nextScores.acneMaskDataUri;
+    nextScores.acneMaskFaceClipVersion = ACNE_MASK_FACE_CLIP_VERSION;
+    nextScores.acneMaskFaceRestricted = true;
+  } catch (err) {
+    logger.warn("acne_mask_face_restrict_failed", {
+      scanId: input.scanId,
+      error: String(err),
+    });
+    return input.scores;
+  }
 
   await db
     .update(scans)

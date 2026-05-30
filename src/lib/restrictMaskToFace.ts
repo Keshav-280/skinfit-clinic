@@ -122,23 +122,14 @@ async function restrictOneMask(
 
 export async function restrictScanMasksToFace(opts: {
   acneMaskDataUri?: string;
-  wrinkleMaskDataUri?: string;
   centreJpeg: Buffer;
-  smilingJpeg: Buffer;
 }): Promise<{
   acneMaskDataUri?: string;
-  wrinkleMaskDataUri?: string;
   acneMaskFaceRestricted?: boolean;
-  wrinkleMaskFaceRestricted?: boolean;
 }> {
-  const [acne, wrinkle] = await Promise.all([
-    restrictOneMask(opts.acneMaskDataUri, opts.centreJpeg, "acne"),
-    restrictOneMask(opts.wrinkleMaskDataUri, opts.smilingJpeg, "wrinkle"),
-  ]);
+  const acne = await restrictOneMask(opts.acneMaskDataUri, opts.centreJpeg, "acne");
   return {
     acneMaskDataUri: acne.dataUri,
-    wrinkleMaskDataUri: wrinkle.dataUri,
     ...(acne.faceRestricted ? { acneMaskFaceRestricted: true } : {}),
-    ...(wrinkle.faceRestricted ? { wrinkleMaskFaceRestricted: true } : {}),
   };
 }

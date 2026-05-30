@@ -2,6 +2,9 @@ import sharp from "sharp";
 
 const PREVIEW_MAX_EDGE = 960;
 const PREVIEW_JPEG_QUALITY = 78;
+/** Stored face captures (R2/local) — matches web canvas + mobile normalizeScanImageUri. */
+export const SCAN_UPLOAD_MAX_EDGE = 1280;
+export const SCAN_UPLOAD_JPEG_QUALITY = 82;
 /** Treatment-history cards: smaller file for faster load on mobile / list. */
 const LIST_THUMB_MAX_EDGE = 480;
 const LIST_THUMB_JPEG_QUALITY = 70;

@@ -1,11 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
 
+import { ReportContainImage } from "@/components/ReportContainImage";
 import {
   ACNE_MASK_PANEL_LABEL,
   WRINKLE_MASK_PANEL_LABEL,
 } from "@/lib/scanMaskLabels";
-
-const TITLE_CROP_PX = 32;
+import { SCAN_FACE_FRAME_ASPECT } from "@/lib/maskImageCrop";
 
 function MaskPanel({
   uri,
@@ -21,14 +21,12 @@ function MaskPanel({
   return (
     <View style={styles.item}>
       <View style={styles.imageClip}>
-        <View style={styles.imageShift}>
-          <ReportContainImage
-            imageUrl={uri}
-            fallbackImageUrl={fallbackUri}
-            authToken={authToken}
-            maxWidth={340}
-          />
-        </View>
+        <ReportContainImage
+          imageUrl={uri}
+          fallbackImageUrl={fallbackUri}
+          authToken={authToken}
+          resizeMode="cover"
+        />
       </View>
       <Text style={styles.caption}>{caption}</Text>
     </View>
@@ -91,13 +89,10 @@ const styles = StyleSheet.create({
   imageClip: {
     width: "100%",
     maxWidth: 340,
+    aspectRatio: SCAN_FACE_FRAME_ASPECT,
     overflow: "hidden",
     borderRadius: 12,
     backgroundColor: "#f4f4f5",
-  },
-  imageShift: {
-    marginTop: -TITLE_CROP_PX,
-    paddingBottom: 0,
   },
   caption: {
     marginTop: 8,

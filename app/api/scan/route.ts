@@ -338,16 +338,16 @@ export async function POST(request: NextRequest) {
             });
           }
         }
-        if (merged.acneMaskDataUri || merged.wrinkleMaskDataUri) {
+        if (merged.acneMaskDataUri) {
           const centreBuf = Buffer.from(await filesForV2.centre.arrayBuffer());
-          const smilingBuf = Buffer.from(await filesForV2.smiling.arrayBuffer());
           const restricted = await restrictScanMasksToFace({
             acneMaskDataUri: merged.acneMaskDataUri,
-            wrinkleMaskDataUri: merged.wrinkleMaskDataUri,
             centreJpeg: centreBuf,
-            smilingJpeg: smilingBuf,
           });
-          merged = { ...merged, ...restricted };
+          merged = {
+            ...merged,
+            acneMaskDataUri: restricted.acneMaskDataUri,
+          };
         }
         overallKaiScore = merged.overallKaiScore;
         v2params = merged.params as Record<string, unknown>;

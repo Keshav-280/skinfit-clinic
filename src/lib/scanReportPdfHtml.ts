@@ -1,8 +1,12 @@
 import { formatDistanceToNow } from "date-fns";
 
-import { MASK_MATPLOTLIB_TITLE_CROP_RATIO } from "./maskImageCrop";
+import { SCAN_FACE_FRAME_ASPECT_CSS } from "./maskImageCrop";
 import type { PatientTrackerReport } from "./patientTrackerReport.types";
-import { DOT_MARKER_LEGEND } from "./scanMaskLabels";
+import {
+  ACNE_MASK_PANEL_LABEL,
+  DOT_MARKER_LEGEND,
+  WRINKLE_MASK_PANEL_LABEL,
+} from "./scanMaskLabels";
 import { SCAN_REPORT_THEME as T, TRACKER_REPORT_THEME as R } from "./scanReportTheme";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
 
@@ -268,7 +272,6 @@ function maskPanelHtml(
   caption: string,
   fallback?: string
 ): string {
-  const cropPct = MASK_MATPLOTLIB_TITLE_CROP_RATIO * 100;
   const fallbackAttr = fallback
     ? ` onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src=${JSON.stringify(fallback)}}"`
     : "";
@@ -298,7 +301,7 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
       html += maskPanelHtml(
         wrMask,
         "Wrinkle mask overlay",
-        p.wrinklePoseLabel ?? "Front face — smiling",
+        p.wrinklePoseLabel ?? WRINKLE_MASK_PANEL_LABEL,
         p.wrinkleFallbackDataUri
       );
     }
@@ -306,7 +309,7 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
       html += maskPanelHtml(
         acMask,
         "Acne objectness overlay",
-        p.acnePoseLabel ?? "Front face — neutral",
+        p.acnePoseLabel ?? ACNE_MASK_PANEL_LABEL,
         p.acneFallbackDataUri
       );
     }
@@ -712,7 +715,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .mask-panel-frame {
       position: relative;
       width: 100%;
-      height: 200px;
+      aspect-ratio: ${SCAN_FACE_FRAME_ASPECT_CSS};
       overflow: hidden;
       border-radius: 8px;
       background: #fafafa;
@@ -720,12 +723,11 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .mask-panel-img {
       position: absolute;
-      left: 0;
+      inset: 0;
       width: 100%;
-      top: -${MASK_MATPLOTLIB_TITLE_CROP_RATIO * 100}%;
-      height: ${(1 + MASK_MATPLOTLIB_TITLE_CROP_RATIO) * 100}%;
+      height: 100%;
       object-fit: cover;
-      object-position: bottom;
+      object-position: center;
       display: block;
     }
     .mask-panel figcaption {

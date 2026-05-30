@@ -302,6 +302,9 @@ export const scans = pgTable("scans", {
     overlayUrl?: string;
     wrinkleMaskUrl?: string;
     acneMaskUrl?: string;
+    /** Unclipped inference acne mask — used to re-clip when algorithm changes. */
+    acneMaskOriginalUrl?: string;
+    acneMaskFaceClipVersion?: number;
     acneMaskFaceRestricted?: boolean;
     wrinkleMaskFaceRestricted?: boolean;
     /** @deprecated legacy base64 */

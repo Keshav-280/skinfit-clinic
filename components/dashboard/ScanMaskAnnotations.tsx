@@ -1,9 +1,15 @@
 "use client";
 
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
-import { MASK_MATPLOTLIB_TITLE_CROP_RATIO } from "@/src/lib/maskImageCrop";
+import {
+  SCAN_FACE_FRAME_ASPECT_CSS,
+} from "@/src/lib/maskImageCrop";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
-import { DOT_MARKER_LEGEND } from "@/src/lib/scanMaskLabels";
+import {
+  ACNE_MASK_PANEL_LABEL,
+  DOT_MARKER_LEGEND,
+  WRINKLE_MASK_PANEL_LABEL,
+} from "@/src/lib/scanMaskLabels";
 import type { ReportRegion } from "./scanReportTypes";
 
 function regionMarkerColor(issue: string): string {
@@ -24,14 +30,13 @@ function MaskPanel({
   caption: string;
   fallbackSrc?: string;
 }) {
-  const crop = MASK_MATPLOTLIB_TITLE_CROP_RATIO;
   const displaySrc = publicFileDisplayUrl(src) ?? src;
   const fallback = fallbackSrc ? publicFileDisplayUrl(fallbackSrc) ?? fallbackSrc : "";
   return (
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
-        style={{ aspectRatio: "4 / 5" }}
+        style={{ aspectRatio: SCAN_FACE_FRAME_ASPECT_CSS }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -45,11 +50,7 @@ function MaskPanel({
               el.src = fallback;
             }
           }}
-          className="absolute left-0 w-full max-w-none object-cover object-bottom"
-          style={{
-            top: `${-crop * 100}%`,
-            height: `${(1 + crop) * 100}%`,
-          }}
+          className="h-full w-full object-cover object-center"
         />
       </div>
       <figcaption className="border-t border-zinc-100 px-3 py-2 text-center text-xs font-medium text-zinc-600">
@@ -67,8 +68,8 @@ export function ScanMaskAnnotations({
   acneFallbackUrl,
   spatialOutputs: _spatialOutputs,
   regions,
-  wrinklePoseLabel = "Wrinkle mask (smiling)",
-  acnePoseLabel = "Acne objectness (centre)",
+  wrinklePoseLabel = WRINKLE_MASK_PANEL_LABEL,
+  acnePoseLabel = ACNE_MASK_PANEL_LABEL,
 }: {
   imageUrl: string;
   wrinkleMaskUrl?: string;

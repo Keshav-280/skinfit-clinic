@@ -4,6 +4,11 @@ import {
   getStorage,
 } from "@/src/lib/infra";
 import type { ScanCaptureImageRef } from "@/src/lib/infra";
+import {
+  bufferToPreviewJpegBuffer,
+  SCAN_UPLOAD_JPEG_QUALITY,
+  SCAN_UPLOAD_MAX_EDGE,
+} from "@/src/lib/scanImagePreview";
 
 export async function buildScanImagesFromForm(
   multiRaw: File[]
@@ -18,12 +23,16 @@ export async function buildScanImagesFromForm(
   for (let i = 0; i < multiRaw.length; i++) {
     const file = multiRaw[i];
     const step = FACE_SCAN_CAPTURE_STEPS[i];
-    const buf = Buffer.from(await file.arrayBuffer());
+    const raw = Buffer.from(await file.arrayBuffer());
+    const buf = await bufferToPreviewJpegBuffer(raw, {
+      maxEdge: SCAN_UPLOAD_MAX_EDGE,
+      quality: SCAN_UPLOAD_JPEG_QUALITY,
+    });
     const { path, url } = await storage.upload(
       "scans",
       file.name || `${step.id}.jpg`,
       buf,
-      file.type || "image/jpeg"
+      "image/jpeg"
     );
     imagePaths[step.id] = path;
     faceCaptureImages.push({ label: step.id, imageUrl: url });

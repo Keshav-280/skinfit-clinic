@@ -36,6 +36,7 @@ import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import type { ScanJobPayload } from "@/src/lib/infra";
 import { restrictScanMasksToFace } from "@/src/lib/restrictMaskToFace";
+import { ACNE_MASK_FACE_CLIP_VERSION } from "@/src/lib/acneMaskFaceClip";
 
 async function pathToFile(relativePath: string, name: string): Promise<File> {
   const storage = getStorage();
@@ -118,31 +119,34 @@ export async function processScanJob(
     merged = buildScanPayloadFromAnalyzeV1(dualScan);
   }
 
-  let acneMaskFaceRestricted = false;
-  let wrinkleMaskFaceRestricted = false;
+  let acneMaskFaceClipVersion: number | undefined;
+  let acneMaskOriginalUrl: string | undefined;
 
-  if (merged.acneMaskDataUri || merged.wrinkleMaskDataUri) {
+  const storage = getStorage();
+  const upload = storage.upload.bind(storage);
+
+  if (merged.acneMaskDataUri) {
+    acneMaskOriginalUrl = await persistDataUriToStorage(
+      merged.acneMaskDataUri,
+      "masks",
+      upload
+    );
     const centreBuf = Buffer.from(await filesForV2.centre.arrayBuffer());
-    const smilingBuf = Buffer.from(await filesForV2.smiling.arrayBuffer());
     const restricted = await restrictScanMasksToFace({
       acneMaskDataUri: merged.acneMaskDataUri,
-      wrinkleMaskDataUri: merged.wrinkleMaskDataUri,
       centreJpeg: centreBuf,
-      smilingJpeg: smilingBuf,
     });
-    acneMaskFaceRestricted = restricted.acneMaskFaceRestricted === true;
-    wrinkleMaskFaceRestricted = restricted.wrinkleMaskFaceRestricted === true;
+    if (restricted.acneMaskFaceRestricted) {
+      acneMaskFaceClipVersion = ACNE_MASK_FACE_CLIP_VERSION;
+    }
     merged = {
       ...merged,
       acneMaskDataUri: restricted.acneMaskDataUri,
-      wrinkleMaskDataUri: restricted.wrinkleMaskDataUri,
     };
   }
 
   logger.inference(Date.now() - started, { jobId, userId: payload.userId });
 
-  const storage = getStorage();
-  const upload = storage.upload.bind(storage);
   const overlayUrl = await persistDataUriToStorage(
     merged.overlayDataUri,
     "masks",
@@ -249,18 +253,17 @@ export async function processScanJob(
         overallKaiScore: merged.overallKaiScore,
         kaiParams: merged.params,
         ...(overlayUrl ? { overlayUrl } : {}),
-        ...(wrinkleMaskUrl
-          ? {
-              wrinkleMaskUrl,
-              ...(wrinkleMaskFaceRestricted
-                ? { wrinkleMaskFaceRestricted: true }
-                : {}),
-            }
-          : {}),
+        ...(wrinkleMaskUrl ? { wrinkleMaskUrl } : {}),
         ...(acneMaskUrl
           ? {
               acneMaskUrl,
-              ...(acneMaskFaceRestricted ? { acneMaskFaceRestricted: true } : {}),
+              ...(acneMaskOriginalUrl ? { acneMaskOriginalUrl } : {}),
+              ...(acneMaskFaceClipVersion
+                ? {
+                    acneMaskFaceClipVersion,
+                    acneMaskFaceRestricted: true,
+                  }
+                : {}),
             }
           : {}),
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
