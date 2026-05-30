@@ -29,6 +29,7 @@ import { ChatMessageMarkdown } from "@/components/ChatMessageMarkdown";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import { configurePlaybackAudioMode, configureRecordingAudioMode } from "@/lib/audioSession";
 import { connectChatSseStream } from "@/lib/chatSse";
 import { mapDisplayChatMessages } from "../../../src/lib/chatE2ee/format";
 import {
@@ -880,10 +881,7 @@ export default function ChatScreen() {
         Alert.alert("Microphone access", "Please allow microphone access to record voice notes.");
         return;
       }
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
+      await configureRecordingAudioMode();
       const { recording: rec } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
@@ -943,6 +941,7 @@ export default function ChatScreen() {
       setError(chatErrorMessage(e));
     } finally {
       setLoading(false);
+      void configurePlaybackAudioMode();
     }
   }
 
@@ -955,6 +954,7 @@ export default function ChatScreen() {
     setRecording(null);
     setIsRecording(false);
     setRecordSec(0);
+    void configurePlaybackAudioMode();
   }
 
   function formatRecordTime(sec: number) {

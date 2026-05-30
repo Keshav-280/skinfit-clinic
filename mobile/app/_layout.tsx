@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 
 import { PushTokenSync } from '@/components/PushTokenSync';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { configurePlaybackAudioMode } from '@/lib/audioSession';
 import { configureNotificationBehavior } from '@/lib/notificationBehavior';
 import { configureGoogleSignIn } from '@/lib/oauthSignIn';
 
@@ -76,6 +77,9 @@ function RootLayoutNav() {
   useEffect(() => {
     if (Platform.OS !== 'web') {
       configureNotificationBehavior();
+      void configurePlaybackAudioMode().catch(() => {
+        /* ignore — retried before each playback/speech */
+      });
     }
   }, []);
 

@@ -18,6 +18,7 @@
       "bundleIdentifier": "app.skinfit.clinic",
       "usesAppleSignIn": false,
       "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow SkinnFit to record voice notes for your doctor.",
         "UIBackgroundModes": [
           "remote-notification"
         ],
@@ -67,6 +68,12 @@
         {
           "cameraPermission": "Allow SkinnFit to capture your 5-angle kAI face scan.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow SkinnFit to record voice notes for your doctor."
         }
       ],
       [

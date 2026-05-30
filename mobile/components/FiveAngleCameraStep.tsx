@@ -24,6 +24,7 @@ import {
   captureVoiceGuide,
   isCaptureVoiceSpeechAvailable,
 } from "@/lib/captureVoiceGuide";
+import { configurePlaybackAudioMode } from "@/lib/audioSession";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import {
   applyCaptureAdjustments,
@@ -144,6 +145,7 @@ export function FiveAngleCameraStep({
   useEffect(() => {
     captureVoiceGuide.setEnabled(voiceEnabled && !reviewingCapture);
     if (!voiceEnabled || reviewingCapture) captureVoiceGuide.reset();
+    else void configurePlaybackAudioMode();
     return () => {
       captureVoiceGuide.setEnabled(false);
     };

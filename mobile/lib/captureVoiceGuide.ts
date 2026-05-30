@@ -1,5 +1,7 @@
 import { requireOptionalNativeModule } from "expo-modules-core";
 
+import { configurePlaybackAudioMode } from "@/lib/audioSession";
+
 export type VoicePriority =
   | "critical"
   | "framing"
@@ -117,7 +119,9 @@ export class CaptureVoiceGuide {
       if (PRIORITY_RANK[priority] >= curRank) return false;
     }
 
-    void loadSpeechModule().then((Speech) => {
+    void configurePlaybackAudioMode()
+      .then(() => loadSpeechModule())
+      .then((Speech) => {
       if (!Speech || !this.enabled) return;
       try {
         Speech.stop();

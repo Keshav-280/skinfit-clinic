@@ -1,5 +1,4 @@
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system/legacy";
 import { format, addDays, subDays, startOfWeek, parseISO, isSameDay } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -25,6 +24,8 @@ import { TodayFocusCard } from "@/components/dashboard/TodayFocusCard";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import { configurePlaybackAudioMode } from "@/lib/audioSession";
+import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { getCached, setCached } from "@/lib/apiCache";
 import {
   extractSkinHealthMetrics,
@@ -1293,17 +1294,8 @@ function DoctorVoiceNotePlayer({ uri }: { uri: string }) {
   const fileRef = useRef<string | null>(null);
 
   const resolveUri = useCallback(async (): Promise<string> => {
-    if (!uri.startsWith("data:")) return uri;
     if (fileRef.current) return fileRef.current;
-    const commaIndex = uri.indexOf(",");
-    if (commaIndex < 0) throw new Error("Invalid audio data URI");
-    const meta = uri.slice(5, commaIndex).toLowerCase();
-    const mime = meta.split(";")[0] ?? "audio/m4a";
-    const base64 = uri.slice(commaIndex + 1);
-    const rawExt = mime.split("/")[1] ?? "m4a";
-    const ext = rawExt === "x-wav" ? "wav" : rawExt;
-    const path = `${FileSystem.cacheDirectory}voice_${Date.now()}.${ext}`;
-    await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
+    const path = await resolvePlayableAudioUri(uri, "voice");
     fileRef.current = path;
     return path;
   }, [uri]);
@@ -1321,10 +1313,13 @@ function DoctorVoiceNotePlayer({ uri }: { uri: string }) {
         setPlaying(false);
         return;
       }
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      await configurePlaybackAudioMode();
       if (!soundRef.current) {
         const playUri = await resolveUri();
-        const { sound } = await Audio.Sound.createAsync({ uri: playUri });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: playUri },
+          { shouldPlay: false, volume: 1, isMuted: false }
+        );
         soundRef.current = sound;
         sound.setOnPlaybackStatusUpdate((st) => {
           if (!st.isLoaded) return;
