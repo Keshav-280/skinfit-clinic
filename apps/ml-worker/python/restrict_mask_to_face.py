@@ -29,6 +29,21 @@ try:
 except ImportError:
     mp = None  # type: ignore
 
+
+def face_mesh_context():
+    """Legacy Face Mesh via mp.solutions (not available on newer mediapipe wheels)."""
+    if mp is None:
+        return None
+    solutions = getattr(mp, "solutions", None)
+    if solutions is None:
+        return None
+    return solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+    )
+
 # Face oval — inner skin boundary (excludes most hair / neck).
 FACE_OVAL = [
     10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
@@ -74,16 +89,12 @@ def landmarks_to_points(
 
 
 def build_face_skin_mask(bgr: np.ndarray, kind: str = "acne") -> np.ndarray | None:
-    if mp is None:
+    mesh = face_mesh_context()
+    if mesh is None:
         return None
     fh, fw = bgr.shape[:2]
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-    with mp.solutions.face_mesh.FaceMesh(
-        static_image_mode=True,
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.5,
-    ) as face_mesh:
+    with mesh as face_mesh:
         res = face_mesh.process(rgb)
         if not res.multi_face_landmarks:
             return None
