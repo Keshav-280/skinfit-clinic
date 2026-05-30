@@ -21,10 +21,14 @@ type Props = {
   weeklyDelta: number;
   consistency: string;
   dateRange: string;
+  /** Trend (Weekly Change + Consistency) is only meaningful with ≥2 scans. */
+  showTrend?: boolean;
   observations: ObservationRow[] | string[];
   dataUsedSummary?: string | null;
   priorityActions: string[];
-  insightsUnavailable?: boolean;
+  /** Decoupled so a single failing section no longer blanks both. */
+  observationsUnavailable?: boolean;
+  actionsUnavailable?: boolean;
 };
 
 function sourceLabel(
@@ -59,10 +63,12 @@ export default function WeeklyReportCard({
   weeklyDelta,
   consistency,
   dateRange,
+  showTrend = true,
   observations,
   dataUsedSummary,
   priorityActions,
-  insightsUnavailable,
+  observationsUnavailable,
+  actionsUnavailable,
 }: Props) {
   const deltaPositive = weeklyDelta >= 0;
   const deltaColor = deltaPositive ? GREEN : "#dc2626";
@@ -83,7 +89,7 @@ export default function WeeklyReportCard({
             <Ionicons name="star" size={14} color={GREEN} />
           </View>
           <View>
-            <Text style={s.pillLabel}>Average Score</Text>
+            <Text style={s.pillLabel}>Latest Score</Text>
             <Text style={s.pillValue}>
               {kaiScore}
               <Text style={s.pillUnit}>/100</Text>
@@ -91,24 +97,38 @@ export default function WeeklyReportCard({
           </View>
         </View>
 
-        <View style={s.pill}>
-          <View style={s.iconCircle}>
-            <Ionicons name="checkmark" size={14} color={GREEN} />
+        {showTrend ? (
+          <View style={s.pill}>
+            <View style={s.iconCircle}>
+              <Ionicons name="checkmark" size={14} color={GREEN} />
+            </View>
+            <View>
+              <Text style={s.pillLabel}>Consistency</Text>
+              <Text style={s.pillValue}>{consistency}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={s.pillLabel}>Consistency</Text>
-            <Text style={s.pillValue}>{consistency}</Text>
+        ) : (
+          <View style={s.pill}>
+            <View style={s.iconCircle}>
+              <Ionicons name="hourglass-outline" size={14} color={NAVY} />
+            </View>
+            <View>
+              <Text style={s.pillLabel}>Trend</Text>
+              <Text style={s.pillValueSmall}>After 2nd scan</Text>
+            </View>
           </View>
-        </View>
+        )}
       </View>
 
-      <View style={s.changeRow}>
-        <View style={s.iconCircle}>
-          <Ionicons name="trending-up" size={14} color={GREEN} />
+      {showTrend ? (
+        <View style={s.changeRow}>
+          <View style={s.iconCircle}>
+            <Ionicons name="trending-up" size={14} color={GREEN} />
+          </View>
+          <Text style={s.changeLabel}>Weekly Change</Text>
+          <Text style={[s.changeValue, { color: deltaColor }]}>{deltaText}</Text>
         </View>
-        <Text style={s.changeLabel}>Weekly Change</Text>
-        <Text style={[s.changeValue, { color: deltaColor }]}>{deltaText}</Text>
-      </View>
+      ) : null}
 
       <View style={s.divider} />
 
@@ -145,7 +165,7 @@ export default function WeeklyReportCard({
           })
         ) : (
           <Text style={s.emptyHint}>
-            {insightsUnavailable
+            {observationsUnavailable
               ? "Insights are temporarily unavailable. Pull to refresh in a moment."
               : "Generating observations… pull to refresh in a moment."}
           </Text>
@@ -172,7 +192,7 @@ export default function WeeklyReportCard({
           ))
         ) : (
           <Text style={s.emptyHint}>
-            {insightsUnavailable
+            {actionsUnavailable
               ? "Priority actions are temporarily unavailable. Pull to refresh in a moment."
               : "Generating priority actions… pull to refresh."}
           </Text>
@@ -233,6 +253,11 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: TEXT_PRIMARY,
+  },
+  pillValueSmall: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: TEXT_MUTED,
   },
   pillUnit: {
     fontSize: 13,

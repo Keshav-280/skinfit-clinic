@@ -959,6 +959,34 @@ export const monthlyReports = pgTable("monthly_reports", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Durable store for the expensive LLM+RAG profile insights (Key Observations +
+ * Priority Actions). Redis is only a short-lived L1 cache; this table is the
+ * last-good copy so a transient OpenAI/RAG failure does not blank the UI, and so
+ * we regenerate only when a new scan arrives or the row goes stale (cost control).
+ */
+export const profileInsights = pgTable(
+  "profile_insights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Number of scans the user had when this row was generated; used to detect "new scan since".
+    scanCount: integer("scan_count").notNull().default(0),
+    // Full payload: { keyObservations, priorityKnowDo } (same shapes the API returns).
+    payloadJson: jsonb("payload_json").$type<Record<string, unknown>>(),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userUidx: uniqueIndex("profile_insights_user_uidx").on(table.userId),
+  })
+);
+
 export const kaiResources = pgTable("kai_resources", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),

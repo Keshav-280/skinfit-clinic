@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
   scans,
@@ -11,18 +11,109 @@ import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { RAG_KAI_PARAM_KEYS, RAG_KAI_PARAM_LABELS } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
-import { gatherProfileInsightContext } from "@/src/lib/profileInsightContext";
+import {
+  gatherProfileInsightContext,
+  type ProfileInsightContext,
+} from "@/src/lib/profileInsightContext";
 import {
   buildProfileKeyObservationsLlm,
   buildProfilePriorityKnowDoLlm,
+  retrieveForProfile,
 } from "@/src/lib/profileRagInsights";
-import { CacheKeys, cacheAside } from "@/src/lib/infra";
+import {
+  readStoredProfileInsights,
+  writeStoredProfileInsights,
+  storedPayloadHasContent,
+  type StoredProfileInsightsPayload,
+} from "@/src/lib/profileInsightsStore";
+import { CacheKeys, getCache } from "@/src/lib/infra";
 import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
+
+/** Regenerate insights at most once per week unless a new scan arrives. */
+const INSIGHTS_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+/** Redis TTL: long for good payloads, short for failures so they self-heal fast. */
+const OK_TTL_SECONDS = 600;
+const FAILURE_TTL_SECONDS = 60;
 
 function dummyScoreFor(scanId: number, key: string) {
   let seed = scanId * 131;
   for (let i = 0; i < key.length; i += 1) seed = (seed * 33 + key.charCodeAt(i)) % 9973;
   return 45 + (seed % 41);
+}
+
+type InsightSections = StoredProfileInsightsPayload & {
+  scanCount: number;
+  generatedAt: Date | null;
+  reused: boolean;
+};
+
+/**
+ * DB-backed insight resolution:
+ * - reuse the stored last-good payload unless a new scan arrived or it is >7 days old;
+ * - otherwise regenerate with ONE shared RAG retrieval (was two) and persist it;
+ * - if regeneration yields nothing usable, fall back to the stored last-good copy so a
+ *   transient OpenAI/RAG failure never blanks the UI.
+ */
+async function resolveInsightSections(
+  userId: string,
+  insightCtx: ProfileInsightContext
+): Promise<InsightSections> {
+  const [{ value: scanCount }] = await db
+    .select({ value: count() })
+    .from(scans)
+    .where(eq(scans.userId, userId));
+
+  if (!isKaiInsightsEnabled()) {
+    const [keyObservations, priorityKnowDo] = await Promise.all([
+      buildProfileKeyObservationsLlm(userId, insightCtx),
+      buildProfilePriorityKnowDoLlm(userId, insightCtx),
+    ]);
+    return { keyObservations, priorityKnowDo, scanCount, generatedAt: null, reused: false };
+  }
+
+  const stored = await readStoredProfileInsights(userId);
+  const storedFresh =
+    stored != null &&
+    storedPayloadHasContent(stored.payload) &&
+    stored.scanCount === scanCount &&
+    Date.now() - stored.generatedAt.getTime() < INSIGHTS_STALE_MS;
+
+  if (stored && storedFresh) {
+    return {
+      keyObservations: stored.payload.keyObservations,
+      priorityKnowDo: stored.payload.priorityKnowDo,
+      scanCount,
+      generatedAt: stored.generatedAt,
+      reused: true,
+    };
+  }
+
+  // One retrieval shared by both sections (previously two separate RAG calls).
+  const evidence = await retrieveForProfile(insightCtx);
+  const [keyObservations, priorityKnowDo] = await Promise.all([
+    buildProfileKeyObservationsLlm(userId, insightCtx, evidence),
+    buildProfilePriorityKnowDoLlm(userId, insightCtx, evidence),
+  ]);
+
+  const payload: StoredProfileInsightsPayload = { keyObservations, priorityKnowDo };
+
+  if (storedPayloadHasContent(payload)) {
+    await writeStoredProfileInsights(userId, scanCount, payload);
+    return { keyObservations, priorityKnowDo, scanCount, generatedAt: new Date(), reused: false };
+  }
+
+  // Regeneration produced nothing usable — serve the last-good stored copy if we have one.
+  if (stored && storedPayloadHasContent(stored.payload)) {
+    return {
+      keyObservations: stored.payload.keyObservations,
+      priorityKnowDo: stored.payload.priorityKnowDo,
+      scanCount,
+      generatedAt: stored.generatedAt,
+      reused: true,
+    };
+  }
+
+  return { keyObservations, priorityKnowDo, scanCount, generatedAt: null, reused: false };
 }
 
 export async function GET(request: Request) {
@@ -31,7 +122,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const payload = await cacheAside(CacheKeys.skinProfile(userId), 600, async () => {
+  const cache = getCache();
+  const cacheKey = CacheKeys.skinProfile(userId);
+  const hit = await cache.get(cacheKey);
+  if (hit != null) {
+    return NextResponse.json(hit);
+  }
+
+  const payload = await (async () => {
     const [user, dna, visits, insightCtx] = await Promise.all([
       db.query.users.findFirst({
         where: eq(users.id, userId),
@@ -55,10 +153,12 @@ export async function GET(request: Request) {
       gatherProfileInsightContext(userId),
     ]);
 
-    const [keyObservations, priorityKnowDo] = await Promise.all([
-      buildProfileKeyObservationsLlm(userId, insightCtx),
-      buildProfilePriorityKnowDoLlm(userId, insightCtx),
-    ]);
+    const {
+      keyObservations,
+      priorityKnowDo,
+      scanCount,
+      generatedAt: insightsGeneratedAt,
+    } = await resolveInsightSections(userId, insightCtx);
 
     const recentScans = await db
       .select({
@@ -102,14 +202,18 @@ export async function GET(request: Request) {
 
     const questionnaireLocked = !userHasQuestionnaire(user?.primaryConcern);
 
-    const insightsUnavailable =
-      !isKaiInsightsEnabled() ||
-      keyObservations.llmUnavailable ||
-      priorityKnowDo.llmUnavailable;
+    const enabled = isKaiInsightsEnabled();
+    // Per-section flags so a partial failure no longer blanks BOTH sections.
+    const observationsUnavailable = !enabled || keyObservations.llmUnavailable;
+    const actionsUnavailable = !enabled || priorityKnowDo.llmUnavailable;
+    // Kept for backward compatibility (web + older mobile builds read this).
+    const insightsUnavailable = observationsUnavailable && actionsUnavailable;
 
     return {
-      kaiInsightsEnabled: isKaiInsightsEnabled(),
+      kaiInsightsEnabled: enabled,
       questionnaireLocked,
+      scanCount,
+      insightsGeneratedAt: insightsGeneratedAt ? insightsGeneratedAt.toISOString() : null,
       skinDna: {
         skinType: dna?.skinType ?? user?.skinType ?? null,
         primaryConcern: dna?.primaryConcern ?? user?.primaryConcern ?? null,
@@ -125,6 +229,8 @@ export async function GET(request: Request) {
       },
       insightsSource: "llm_rag" as const,
       insightsUnavailable,
+      observationsUnavailable,
+      actionsUnavailable,
       sparklines,
       paramLabels: Object.fromEntries(
         RAG_KAI_PARAM_KEYS.map((k) => [k, RAG_KAI_PARAM_LABELS[k]])
@@ -145,7 +251,12 @@ export async function GET(request: Request) {
         afterImageIds: v.afterImageIds ?? [],
       })),
     };
-  });
+  })();
+
+  // Self-healing TTL: failures expire fast so the next pull retries quickly,
+  // successes stay cached the full window.
+  const ttl = payload.insightsUnavailable ? FAILURE_TTL_SECONDS : OK_TTL_SECONDS;
+  await cache.set(cacheKey, payload, ttl);
 
   return NextResponse.json(payload);
 }

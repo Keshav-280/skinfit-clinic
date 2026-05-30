@@ -41,27 +41,47 @@ function chunkLines(chunks: Array<{ chunk: TextbookChunk; score: number }>) {
     .join("\n\n");
 }
 
+async function callJsonOnce<T>(
+  client: OpenAI,
+  system: string,
+  user: string
+): Promise<T | null> {
+  const completion = await client.chat.completions.create({
+    model: model(),
+    temperature: 0.45,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+  });
+  const txt = completion.choices[0]?.message?.content;
+  if (!txt) return null;
+  return JSON.parse(txt) as T;
+}
+
+/**
+ * One retry on transient failures. A single OpenAI hiccup previously blanked the
+ * profile insights for 10 minutes; retrying once recovers most transient errors.
+ */
 async function callJson<T>(system: string, user: string): Promise<T | null> {
   const client = getClient();
   if (!client) return null;
-  try {
-    const completion = await client.chat.completions.create({
-      model: model(),
-      temperature: 0.45,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    });
-    const txt = completion.choices[0]?.message?.content;
-    if (!txt) return null;
-    return JSON.parse(txt) as T;
-  } catch (e) {
-    console.error("[profileRagInsights] LLM call failed:", e);
-    return null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await callJsonOnce<T>(client, system, user);
+    } catch (e) {
+      if (attempt === 1) {
+        console.error("[profileRagInsights] LLM call failed (after retry):", e);
+        return null;
+      }
+      await new Promise((r) => setTimeout(r, 400));
+    }
   }
+  return null;
 }
+
+type ProfileEvidence = Awaited<ReturnType<typeof productionTextbookRetrieve>>;
 
 const VALID_SOURCES: ProfileObservationSource[] = [
   "baseline_scan",
@@ -91,7 +111,7 @@ type LlmPriorityOut = {
   actions?: Array<{ title?: string; detail?: string }>;
 };
 
-async function retrieveForProfile(ctx: ProfileInsightContext) {
+export async function retrieveForProfile(ctx: ProfileInsightContext) {
   const weak = ctx.latestScan?.params
     .filter((p) => typeof p.value === "number")
     .sort((a, b) => (a.value ?? 0) - (b.value ?? 0))[0];
@@ -106,11 +126,12 @@ async function retrieveForProfile(ctx: ProfileInsightContext) {
 }
 
 export async function generateProfileKeyObservationsRag(
-  ctx: ProfileInsightContext
+  ctx: ProfileInsightContext,
+  sharedEvidence?: ProfileEvidence
 ): Promise<ProfileObservationItem[]> {
   const correlations = profileCorrelations(ctx);
   const signalPack = buildNarrativeSignalPack(correlations, ctx.behavior);
-  const evidence = await retrieveForProfile(ctx);
+  const evidence = sharedEvidence ?? (await retrieveForProfile(ctx));
 
   const system = `You are kAI, a dermatology-informed skin health counselor for SkinFit.
 Ground clinical claims in TEXTBOOK EVIDENCE blocks when you explain mechanisms.
@@ -154,11 +175,12 @@ Return JSON:
 }
 
 export async function generateProfilePriorityActionsRag(
-  ctx: ProfileInsightContext
+  ctx: ProfileInsightContext,
+  sharedEvidence?: ProfileEvidence
 ): Promise<{ know: string[]; do: string[] }> {
   const correlations = profileCorrelations(ctx);
   const signalPack = buildNarrativeSignalPack(correlations, ctx.behavior);
-  const evidence = await retrieveForProfile(ctx);
+  const evidence = sharedEvidence ?? (await retrieveForProfile(ctx));
   const weak = ctx.latestScan?.params
     .filter((p) => typeof p.value === "number")
     .sort((a, b) => (a.value ?? 0) - (b.value ?? 0))[0];
@@ -212,7 +234,8 @@ Return JSON:
 
 export async function buildProfileKeyObservationsLlm(
   userId: string,
-  ctx?: ProfileInsightContext
+  ctx?: ProfileInsightContext,
+  sharedEvidence?: ProfileEvidence
 ): Promise<ProfileKeyObservationsPayload> {
   const context = ctx ?? (await gatherProfileInsightContext(userId));
   const base: ProfileKeyObservationsPayload = {
@@ -233,7 +256,7 @@ export async function buildProfileKeyObservationsLlm(
     return base;
   }
 
-  const items = await generateProfileKeyObservationsRag(context);
+  const items = await generateProfileKeyObservationsRag(context, sharedEvidence);
   return {
     ...base,
     items,
@@ -244,13 +267,14 @@ export async function buildProfileKeyObservationsLlm(
 
 export async function buildProfilePriorityKnowDoLlm(
   userId: string,
-  ctx?: ProfileInsightContext
+  ctx?: ProfileInsightContext,
+  sharedEvidence?: ProfileEvidence
 ): Promise<{ know: string[]; do: string[]; generatedBy: "llm_rag"; llmUnavailable: boolean }> {
   const context = ctx ?? (await gatherProfileInsightContext(userId));
   if (!isKaiInsightsEnabled()) {
     return { know: [], do: [], generatedBy: "llm_rag", llmUnavailable: true };
   }
-  const { know, do: doList } = await generateProfilePriorityActionsRag(context);
+  const { know, do: doList } = await generateProfilePriorityActionsRag(context, sharedEvidence);
   return {
     know,
     do: doList,

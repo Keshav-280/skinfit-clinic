@@ -83,6 +83,10 @@ type SkinProfilePayload = {
   priorityKnowDo: { know: string[]; do: string[] };
   insightsSource?: "llm_rag";
   insightsUnavailable?: boolean;
+  observationsUnavailable?: boolean;
+  actionsUnavailable?: boolean;
+  scanCount?: number;
+  insightsGeneratedAt?: string | null;
   kaiInsightsEnabled?: boolean;
   sparklines: Record<string, { values: (number | null)[]; sources: string[] }>;
   paramLabels: Record<string, string>;
@@ -371,6 +375,20 @@ export default function ProfileScreen() {
     skinExtra?.kaiInsightsEnabled !== false && homeData?.kaiInsightsEnabled !== false;
   const insightsUnavailable =
     !kaiInsightsEnabled || skinExtra?.insightsUnavailable === true;
+  // Per-section flags (server now decouples them); fall back to the combined flag
+  // for older backends that don't send the per-section fields.
+  const observationsUnavailable =
+    !kaiInsightsEnabled ||
+    (skinExtra?.observationsUnavailable ?? insightsUnavailable);
+  const actionsUnavailable =
+    !kaiInsightsEnabled ||
+    (skinExtra?.actionsUnavailable ?? insightsUnavailable);
+
+  // Trend numbers (Weekly Change + Consistency) need ≥2 scans to mean anything.
+  // With 0–1 scans the delta is always 0 / "No data", which looks broken — hide it.
+  const scanCount = skinExtra?.scanCount ?? (hasRealScoreData ? 1 : 0);
+  const showTrend = hasRealScoreData && scanCount >= 2;
+
   const hasWeeklyContent =
     kaiInsightsEnabled &&
     (hasRealScoreData ||
@@ -431,10 +449,12 @@ export default function ProfileScreen() {
             weeklyDelta={weeklyDelta}
             consistency={consistency}
             dateRange={weeklyDateRange}
+            showTrend={showTrend}
             observations={observations}
             dataUsedSummary={dataUsedSummary}
             priorityActions={priorityActions}
-            insightsUnavailable={insightsUnavailable}
+            observationsUnavailable={observationsUnavailable}
+            actionsUnavailable={actionsUnavailable}
           />
         ) : null}
 
