@@ -32,12 +32,16 @@ RUN apt-get update \
 COPY apps/ml-worker/python/requirements-mask-restrict.txt /tmp/requirements-mask-restrict.txt
 RUN /opt/mask-venv/bin/pip install --no-cache-dir -r /tmp/requirements-mask-restrict.txt
 ENV MASK_RESTRICT_PYTHON=/opt/mask-venv/bin/python3
-RUN groupadd -r skinfit && useradd -r -g skinfit skinfit
+ENV MPLCONFIGDIR=/app/.matplotlib
+RUN groupadd -r skinfit && useradd -r -g skinfit -d /home/skinfit skinfit \
+  && mkdir -p /home/skinfit/.config /app/.matplotlib /uploads \
+  && chown -R skinfit:skinfit /home/skinfit /app/.matplotlib /uploads
+ENV HOME=/home/skinfit
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY apps/ml-worker/python/restrict_mask_to_face.py ./apps/ml-worker/python/restrict_mask_to_face.py
-RUN mkdir -p /uploads && chown -R skinfit:skinfit /uploads
+RUN chown -R skinfit:skinfit /app
 USER skinfit
 EXPOSE 3000
 CMD ["node", "server.js"]
