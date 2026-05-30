@@ -33,7 +33,8 @@ export function configureNotificationBehavior() {
         t === "clinic_chat" ||
         t === "doctor_voice_note" ||
         t === "routine_plan_updated" ||
-        t === "scan_report_ready"
+        t === "scan_report_ready" ||
+        t === "schedule_appointment"
       ) {
         notifyInboxUnreadChanged();
       }
@@ -87,6 +88,14 @@ export function configureNotificationBehavior() {
       }
       if (t === "scan_report_failed") {
         router.push("/(drawer)/scan" as Href);
+        return;
+      }
+      if (t === "schedule_appointment") {
+        router.push("/(drawer)/schedules" as Href);
+        return;
+      }
+      if (t === "weekly_insight" || t === "monthly_insight") {
+        router.push("/(drawer)/profile" as Href);
         return;
       }
       if (t === "routine_plan_updated") {

@@ -10,6 +10,7 @@ import {
 import { dateOnlyFromYmd, localCalendarYmd } from "@/src/lib/date-only";
 import { buildMonthlyRagCronPayload } from "@/src/lib/ragCronMonthlyPayload";
 import { generateRagKaiOutput } from "@/src/lib/ragKaiTestService";
+import { publishNotification } from "@/src/lib/infra";
 
 function monthlyCronRagEnabled() {
   const v = process.env.KAI_MONTHLY_CRON_RAG?.trim().toLowerCase();
@@ -69,6 +70,8 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
       narrativeText:
         "Automated weekly kAI note: compare this week’s scan to the prior one in the app. Flag any parameter drop >10% with your doctor.",
     });
+    // Push the patient that a fresh weekly insight is ready (Expo via worker).
+    void publishNotification("weekly.insight", p.id, {});
     n += 1;
   }
   return { patientsProcessed: n };
@@ -139,6 +142,8 @@ export async function runMonthlyReportsJob(): Promise<{ rows: number }> {
           monthStartStr
         ) as Record<string, unknown>,
       });
+      // Only push for real RAG content (placeholder rows below don't notify).
+      void publishNotification("monthly.insight", p.id, {});
       ragProcessed += 1;
       n += 1;
       continue;

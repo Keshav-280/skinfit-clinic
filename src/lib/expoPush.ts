@@ -38,11 +38,15 @@ export async function sendExpoPushNotification(opts: {
   }
 }
 
-/** Fire-and-forget when clinic posts a chat message to the patient. */
+/**
+ * Fire-and-forget when clinic posts a chat message to the patient.
+ * Also used for routine reminders (they live in the support chat thread), so an
+ * optional `title` lets callers label it (e.g. "Routine reminder").
+ */
 export async function notifyPatientNewClinicChat(
   patientUserId: string,
   messagePreview: string,
-  opts?: { doctorId?: string | null }
+  opts?: { doctorId?: string | null; title?: string }
 ): Promise<void> {
   const [row] = await db
     .select({ token: users.expoPushToken })
@@ -56,15 +60,56 @@ export async function notifyPatientNewClinicChat(
     messagePreview.length > 140
       ? `${messagePreview.slice(0, 137)}…`
       : messagePreview;
+  const title = opts?.title?.trim() || "SkinnFit Clinic";
 
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit Clinic",
+    title: title.length > 56 ? `${title.slice(0, 53)}…` : title,
     body: body || "New message from your care team",
     data: {
       type: "clinic_chat",
       ...(opts?.doctorId ? { doctorId: opts.doctorId } : {}),
     },
+  });
+}
+
+/** Patient push when a new weekly kAI insight/report has been generated. */
+export async function notifyPatientWeeklyInsight(
+  patientUserId: string
+): Promise<void> {
+  const [row] = await db
+    .select({ token: users.expoPushToken })
+    .from(users)
+    .where(eq(users.id, patientUserId))
+    .limit(1);
+  const token = row?.token?.trim();
+  if (!token) return;
+
+  await sendExpoPushNotification({
+    expoPushToken: token,
+    title: "SkinnFit — weekly insight ready",
+    body: "Your weekly skin report is ready. Open SkinnFit to see your progress and priority actions.",
+    data: { type: "weekly_insight" },
+  });
+}
+
+/** Patient push when a new monthly kAI insight/report has been generated. */
+export async function notifyPatientMonthlyInsight(
+  patientUserId: string
+): Promise<void> {
+  const [row] = await db
+    .select({ token: users.expoPushToken })
+    .from(users)
+    .where(eq(users.id, patientUserId))
+    .limit(1);
+  const token = row?.token?.trim();
+  if (!token) return;
+
+  await sendExpoPushNotification({
+    expoPushToken: token,
+    title: "SkinnFit — monthly insight ready",
+    body: "Your monthly skin insight is ready. Open SkinnFit to review the full breakdown.",
+    data: { type: "monthly_insight" },
   });
 }
 

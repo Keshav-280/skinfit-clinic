@@ -5,7 +5,9 @@ export type NotificationEventType =
   | "scan.failed"
   | "doctor.reply"
   | "appointment.reminder"
-  | "routine.reminder";
+  | "routine.reminder"
+  | "weekly.insight"
+  | "monthly.insight";
 
 export type NotificationEvent = {
   type: NotificationEventType;

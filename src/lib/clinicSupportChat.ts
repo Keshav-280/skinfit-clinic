@@ -3,7 +3,6 @@ import { db } from "@/src/db";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
 import { ensureDoctorPatientChatThread } from "@/src/lib/doctorPatientCare";
-import { notifyPatientNewClinicChat } from "@/src/lib/expoPush";
 import { publishNotification } from "@/src/lib/infra";
 import type { NotificationEventType } from "../../services/shared/src/notifications/events";
 
@@ -28,10 +27,8 @@ export async function sendDoctorPatientChatMessage(params: {
   });
   await notifyChatThreadUpdated(threadId);
 
-  await notifyPatientNewClinicChat(params.patientId, preview, {
-    doctorId: params.staffId,
-  });
-
+  // Single push path (BullMQ notification worker → Expo). Avoids the previous
+  // duplicate where we sent both a direct push AND a queued one for one message.
   void publishNotification("doctor.reply", params.patientId, {
     messagePreview: preview,
     title: params.pushTitle ?? "Message from your doctor",
@@ -88,14 +85,12 @@ export async function sendClinicSupportMessage(params: {
         ? "Routine reminder"
         : "SkinnFit Clinic";
 
+  // Single push path (worker → Expo); dispatch maps the type to the right title
+  // and deep-link. Previously this also sent a direct push, causing duplicates.
   void publishNotification(notificationType, params.patientId, {
     messagePreview: params.text,
     title,
     body: params.text,
     ...(params.doctorId ? { doctorId: params.doctorId } : {}),
-  });
-
-  void notifyPatientNewClinicChat(params.patientId, params.text, {
-    doctorId: params.doctorId ?? undefined,
   });
 }

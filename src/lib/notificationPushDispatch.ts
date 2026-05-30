@@ -1,9 +1,11 @@
 import type { NotificationEvent } from "../../services/shared/src/notifications/events";
 import {
+  notifyPatientMonthlyInsight,
   notifyPatientNewClinicChat,
   notifyPatientScanReportFailed,
   notifyPatientScanReportReady,
   notifyPatientScheduleAppointment,
+  notifyPatientWeeklyInsight,
 } from "@/src/lib/expoPush";
 
 /** BullMQ notification worker — sends Expo pushes per event type. */
@@ -43,15 +45,37 @@ export async function dispatchNotificationPush(
       await notifyPatientNewClinicChat(event.userId, preview, { doctorId });
       return;
     }
-    case "appointment.reminder":
-    case "routine.reminder": {
+    case "appointment.reminder": {
       const title =
-        typeof payload.title === "string" ? payload.title : "SkinnFit reminder";
+        typeof payload.title === "string" ? payload.title : "Appointment reminder";
       const body =
         typeof payload.body === "string"
           ? payload.body
-          : "You have an update in the app.";
+          : "You have an upcoming appointment.";
       await notifyPatientScheduleAppointment(event.userId, title, body);
+      return;
+    }
+    case "routine.reminder": {
+      // Routine reminders are posted into the support chat thread, so deliver them
+      // as a clinic-chat push (tap → chat where the reminder message lives) with a
+      // clear "Routine reminder" title.
+      const title =
+        typeof payload.title === "string" ? payload.title : "Routine reminder";
+      const body =
+        typeof payload.body === "string"
+          ? payload.body
+          : typeof payload.messagePreview === "string"
+            ? payload.messagePreview
+            : "Time for your skincare routine.";
+      await notifyPatientNewClinicChat(event.userId, body, { title });
+      return;
+    }
+    case "weekly.insight": {
+      await notifyPatientWeeklyInsight(event.userId);
+      return;
+    }
+    case "monthly.insight": {
+      await notifyPatientMonthlyInsight(event.userId);
       return;
     }
     default:
