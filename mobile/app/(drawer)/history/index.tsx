@@ -24,12 +24,7 @@ import { configurePlaybackAudioMode } from "@/lib/audioSession";
 import { getCached, setCached } from "@/lib/apiCache";
 import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
-import {
-  buildScanReportPdfPayload,
-  type PatientScanDetailForPdf,
-} from "@/lib/buildScanReportPdfPayload";
 import { ReportContainImage } from "@/components/ReportContainImage";
-import { shareScanReportPdf } from "@/lib/scanReportPdf";
 
 type ScanRow = {
   id: number;
@@ -102,7 +97,6 @@ export default function HistoryListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pdfScanId, setPdfScanId] = useState<number | null>(null);
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
   const [showArchivedReportAudio, setShowArchivedReportAudio] = useState(false);
   const [activeTab, setActiveTab] = useState<"scans" | "visits">("scans");
@@ -158,27 +152,6 @@ export default function HistoryListScreen() {
       alive = false;
     };
   }, [load]);
-
-  async function downloadPdf(scanId: number) {
-    if (!token) return;
-    setPdfScanId(scanId);
-    try {
-      const detail = await apiJson<PatientScanDetailForPdf>(
-        `/api/patient/scans/${scanId}`,
-        token,
-        { method: "GET" }
-      );
-      const payload = await buildScanReportPdfPayload(detail, token);
-      await shareScanReportPdf(payload);
-    } catch (e) {
-      Alert.alert(
-        "PDF",
-        e instanceof Error ? e.message : "Could not create or share the PDF."
-      );
-    } finally {
-      setPdfScanId(null);
-    }
-  }
 
   if (loading && !data) {
     return (
@@ -302,19 +275,10 @@ export default function HistoryListScreen() {
                   </View>
                   <View style={styles.scanActions}>
                     <Pressable
-                      style={styles.btnOutline}
-                      onPress={() => downloadPdf(scan.id)}
-                      disabled={pdfScanId === scan.id}
-                    >
-                      <Text style={styles.btnOutlineText}>
-                        {pdfScanId === scan.id ? "PDF…" : "Download PDF"}
-                      </Text>
-                    </Pressable>
-                    <Pressable
                       style={styles.btnPrimary}
                       onPress={() => router.push(`/(drawer)/history/${scan.id}`)}
                     >
-                      <Text style={styles.btnPrimaryText}>View details</Text>
+                      <Text style={styles.btnPrimaryText}>View report</Text>
                     </Pressable>
                   </View>
                 </View>

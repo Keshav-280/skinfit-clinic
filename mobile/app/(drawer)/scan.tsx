@@ -26,10 +26,17 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiJson } from "@/lib/api";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
-import { addPendingScanJob } from "@/lib/scanJobNotifications";
+import {
+  addPendingScanJob,
+  getPendingScanJobs,
+  removePendingScanJob,
+} from "@/lib/scanJobNotifications";
 import { submitFaceScan } from "@/lib/submitFaceScan";
+
+const SCAN_STATUS_POLL_MS = 8_000;
 
 const NAVY = "#2B3A67";
 const GREEN = "#1B8A4A";
@@ -59,6 +66,50 @@ export default function ScanScreen() {
   useEffect(() => {
     if (!camPermission?.granted) void requestCamPermission();
   }, []);
+
+  /** When analysis finishes, leave the waiting screen and open the report automatically. */
+  useEffect(() => {
+    if (phase !== "queued" || !token) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      const pending = await getPendingScanJobs();
+      if (pending.length === 0 || cancelled) return;
+
+      for (const job of pending) {
+        try {
+          const data = await apiJson<{
+            status?: string;
+            scanId?: number | null;
+          }>(`/api/scans/status/${encodeURIComponent(job.jobId)}`, token, {
+            method: "GET",
+          });
+          const status = String(data.status ?? "");
+          const scanId =
+            typeof data.scanId === "number" && data.scanId > 0
+              ? data.scanId
+              : null;
+
+          if (status === "completed" && scanId) {
+            await removePendingScanJob(job.jobId);
+            if (!cancelled) {
+              router.replace(`/(drawer)/history/${scanId}` as Href);
+            }
+            return;
+          }
+        } catch {
+          /* retry on next tick */
+        }
+      }
+    };
+
+    void poll();
+    const t = setInterval(() => void poll(), SCAN_STATUS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [phase, token, router]);
 
   /** Drawer remounts can leave `capture` with a dismissed modal — show intro again. */
   useFocusEffect(
@@ -223,7 +274,10 @@ export default function ScanScreen() {
           <View style={styles.queuedIconWrap}>
             <Ionicons name="notifications-outline" size={40} color={NAVY} />
           </View>
-          <Text style={styles.queuedTitle}>We&apos;ll notify you when it&apos;s ready.</Text>
+          <Text style={styles.queuedTitle}>We&apos;re analyzing your scan…</Text>
+          <Text style={styles.queuedSubtitle}>
+            This usually takes a few minutes. We&apos;ll open your report automatically when it&apos;s ready.
+          </Text>
           <View style={styles.queuedActions}>
             <Pressable
               style={({ pressed }) => [styles.queuedBtnPrimary, pressed && styles.pressedBtn]}
@@ -773,6 +827,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 28,
     maxWidth: 280,
+  },
+  queuedSubtitle: {
+    fontSize: 14,
+    color: "#52525b",
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 300,
+    marginTop: -8,
   },
   queuedActions: {
     width: "100%",

@@ -98,8 +98,6 @@ type Props = {
   metrics: ReportMetricsNative;
   aiSummary: string | null;
   scanDate: Date;
-  pdfLoading: boolean;
-  onDownloadPdf: () => void;
   tracker: PatientTrackerReport | null;
 };
 
@@ -146,8 +144,6 @@ export function SkinScanReportBodyNative({
   metrics,
   aiSummary,
   scanDate,
-  pdfLoading,
-  onDownloadPdf,
   tracker,
 }: Props) {
   const router = useRouter();
@@ -221,16 +217,6 @@ export function SkinScanReportBodyNative({
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.toolbar}>
-        <Pressable
-          style={[styles.pdfBtn, pdfLoading && styles.pdfBtnDis]}
-          onPress={onDownloadPdf}
-          disabled={pdfLoading}
-        >
-          <Text style={styles.pdfBtnText}>{pdfLoading ? "…" : "Download PDF"}</Text>
-        </Pressable>
-      </View>
-
       <Text style={styles.pageTitle}>AI scan report</Text>
       {displayTitle ? <Text style={styles.pageSubtitle}>{displayTitle}</Text> : null}
 

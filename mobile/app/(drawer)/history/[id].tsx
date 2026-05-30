@@ -1,8 +1,7 @@
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -14,8 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { SkinScanReportBodyNative } from "@/components/SkinScanReportBodyNative";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
-import { buildScanReportPdfPayload } from "@/lib/buildScanReportPdfPayload";
-import { shareScanReportPdf } from "@/lib/scanReportPdf";
 import { dismissUnreadReadyScan } from "@/lib/scanJobNotifications";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
@@ -73,7 +70,6 @@ export default function ScanDetailScreen() {
   /** When false, `tracker === null` may still mean "loading" — don't show the legacy donut fallback yet. */
   const [trackerSettled, setTrackerSettled] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
     const scanId = Number(id);
@@ -147,42 +143,6 @@ export default function ScanDetailScreen() {
 
   const reportReady = reportMatchesRoute && trackerSettled;
 
-  const onDownloadPdf = useCallback(async () => {
-    if (!row) return;
-    setPdfLoading(true);
-    try {
-      const payload = await buildScanReportPdfPayload(
-        {
-          userName: row.userName,
-          userAge: row.userAge,
-          userSkinType: row.userSkinType,
-          scanTitle: row.scanTitle,
-          imageUrl: row.imageUrl,
-          faceCaptureGallery: row.faceCaptureGallery,
-          regions: row.regions,
-          metrics: row.metrics,
-          aiSummary: row.aiSummary,
-          scanDateIso: row.scanDateIso,
-          annotatedImageUrl: row.annotatedImageUrl,
-          wrinkleMaskDataUri: row.wrinkleMaskDataUri,
-          acneMaskDataUri: row.acneMaskDataUri,
-          spatialOutputs: row.spatialOutputs,
-          trackerReport: row.trackerReport,
-        },
-        token,
-        { tracker }
-      );
-      await shareScanReportPdf(payload);
-    } catch (e) {
-      Alert.alert(
-        "PDF",
-        e instanceof Error ? e.message : "Could not create or share the PDF."
-      );
-    } finally {
-      setPdfLoading(false);
-    }
-  }, [row, token, tracker]);
-
   if (error && !row) {
     return (
       <View style={styles.center}>
@@ -252,8 +212,6 @@ export default function ScanDetailScreen() {
         metrics={row.metrics}
         aiSummary={row.aiSummary}
         scanDate={new Date(row.scanDateIso)}
-        pdfLoading={pdfLoading}
-        onDownloadPdf={() => void onDownloadPdf()}
         tracker={tracker}
       />
     </View>
