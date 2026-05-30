@@ -624,8 +624,6 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       page-break-after: avoid;
       page-break-before: avoid;
     }
-    /* CSS `zoom` reflows + shrinks the layout box (unlike transform:scale, which is visual-only
-       and gets clipped by the page). This keeps the whole report on one page, no break, no blank. */
     .pdf-scale {
       zoom: ${pdfScale};
       margin: 0 auto;
