@@ -453,6 +453,11 @@ export function PatientDashboardDesktop() {
     });
   }, [data, selectedDate]);
 
+  const weekDoneCount = useMemo(
+    () => streakDays.filter((d) => d.done).length,
+    [streakDays]
+  );
+
   const radarData = useMemo(() => {
     if (!data || data.skinScanHistory.length === 0) return [
       { label: "Acne", value: 0 }, { label: "Pores", value: 0 },
@@ -704,27 +709,81 @@ export function PatientDashboardDesktop() {
               titleAs="h3"
               className="mb-3"
             />
-            <div className="mt-3 flex flex-1 items-center justify-between px-0.5">
-              {streakDays.map((d, i) => (
-                <div key={i} className="flex flex-col items-center gap-1">
-                  <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
-                      d.done
-                        ? "border-emerald-500 bg-emerald-500 text-white"
-                        : d.isFuture
-                          ? "border-slate-200 bg-white/20 text-slate-200"
-                          : "border-slate-300 bg-white/35 text-slate-300"
-                    }`}
-                    aria-hidden
-                  >
-                    {d.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
+            <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-white/60 bg-[#E8EFE6]/55 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-end gap-2">
+                    <span className="text-4xl font-extrabold leading-none text-[#2C3E6B]">
+                      {data.streakCurrent}
+                    </span>
+                    <span className="pb-0.5 text-sm font-semibold text-[#6B7280]">
+                      day{data.streakCurrent === 1 ? "" : "s"} in a row
+                    </span>
                   </div>
-                  <span className="text-[10px] font-semibold text-[#6B7280]">{d.label}</span>
+                  {data.streakLongest > data.streakCurrent ? (
+                    <p className="mt-1 text-xs font-semibold text-[#6B7280]">
+                      Personal best · {data.streakLongest} days
+                    </p>
+                  ) : data.streakLongest > 0 ? (
+                    <p className="mt-1 text-xs font-semibold text-emerald-700">
+                      Personal best · you&apos;re on it
+                    </p>
+                  ) : null}
                 </div>
-              ))}
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#2C3E6B]/10">
+                  <Flame
+                    className={`h-6 w-6 ${data.streakCurrent > 0 ? "text-orange-500" : "text-[#2C3E6B]/35"}`}
+                    aria-hidden
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-[#6B7280]">
+                  <span>This week</span>
+                  <span>{weekDoneCount}/7 complete</span>
+                </div>
+                <div
+                  className="h-2.5 overflow-hidden rounded-full bg-white/75"
+                  role="progressbar"
+                  aria-valuenow={weekDoneCount}
+                  aria-valuemin={0}
+                  aria-valuemax={7}
+                  aria-label={`${weekDoneCount} of 7 days completed this week`}
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                    style={{ width: `${Math.round((weekDoneCount / 7) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between px-0.5">
+                {streakDays.map((d, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1.5">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
+                        d.done
+                          ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
+                          : d.isFuture
+                            ? "border-slate-200 bg-white/40 text-slate-300"
+                            : "border-slate-300 bg-white/60 text-slate-400"
+                      }`}
+                      aria-hidden
+                    >
+                      {d.done ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <span>{d.label.charAt(0)}</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-semibold text-[#6B7280]">{d.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <p
-              className={`mt-2 text-sm font-bold ${
+              className={`mt-3 text-sm font-bold ${
                 allRoutineDone
                   ? "text-emerald-600"
                   : data.streakCurrent > 0

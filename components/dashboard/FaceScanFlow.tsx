@@ -90,12 +90,12 @@ type PendingCapture = CaptureItem;
 
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 
-/** 3:4 preview — tall enough to frame the face; desktop size fixed for consistent layout. */
+/** 3:4 preview — scales up on desktop to use available column space. */
 const CAMERA_PREVIEW_CLASS =
-  "relative mx-auto aspect-[3/4] w-full max-w-[300px] shrink-0 overflow-hidden rounded-2xl bg-zinc-900 sm:max-w-[320px] lg:h-[380px] lg:w-[285px] lg:max-w-none";
+  "relative mx-auto aspect-[3/4] w-full max-w-[380px] overflow-hidden rounded-2xl bg-zinc-900 sm:max-w-[420px] lg:mx-0 lg:h-[min(540px,calc(100vh-13rem))] lg:w-auto lg:max-w-none lg:shrink-0";
 
 const CAPTURE_ACTIONS_CLASS =
-  "flex w-full max-w-[320px] flex-col gap-2 sm:flex-row lg:max-w-[285px]";
+  "flex w-full flex-col gap-2 sm:flex-row";
 
 /** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
 const CAPTURE_ZOOM_MIN = CAPTURE_ZOOM_AUTO.min;
@@ -556,11 +556,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-[#1F2A44]">
               {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#64748B]">
-              {isOnboardingScan
-                ? "Five angles in order — last step of setup. Later check-ins use Scan."
-                : "Five angles in order — scores, clinical metrics, and annotated findings."}
-            </p>
           </div>
           {!isOnboardingScan ? (
             <Link
@@ -579,12 +574,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6 lg:min-h-[580px]"
+          className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-8">
-            {/* Centre camera in the area left of the guidance column */}
-            <div className="flex min-w-0 flex-1 justify-center lg:min-h-[500px]">
-              <div className="flex w-full max-w-[320px] flex-col items-center justify-start gap-4 lg:max-w-[285px] lg:justify-between lg:self-stretch">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">
+            <div className="flex min-w-0 flex-1 justify-center lg:sticky lg:top-6">
+              <div className="flex w-full max-w-[440px] flex-col gap-4 lg:max-w-[405px]">
               <div className={CAMERA_PREVIEW_CLASS}>
                 <video
                   ref={videoRef}
@@ -711,8 +705,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             </div>
             </div>
 
-            {/* Right: step guidance + manual adjustments */}
-            <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[340px]">
+            <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[320px] xl:w-[340px]">
               <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-3 text-center backdrop-blur-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
                   Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}

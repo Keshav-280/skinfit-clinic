@@ -36,7 +36,9 @@ export async function invalidateUserHomeCache(userId: string): Promise<void> {
 }
 
 export async function invalidateUserHistoryCache(userId: string): Promise<void> {
-  await getCache().del(CacheKeys.history(userId));
+  const cache = getCache();
+  await cache.del(CacheKeys.history(userId));
+  await cache.del(`${CacheKeys.history(userId)}:visits`);
 }
 
 export async function invalidateUserScanCache(

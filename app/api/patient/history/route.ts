@@ -21,6 +21,42 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const includeVisitsOnly = searchParams.get("include") === "visits";
 
+  if (includeVisitsOnly) {
+    const visitsPayload = await cacheAside(
+      `${CacheKeys.history(userId)}:visits`,
+      300,
+      async () => {
+        const visitsList = await db.query.visitNotes.findMany({
+          where: eq(visitNotes.userId, userId),
+          columns: {
+            id: true,
+            visitDate: true,
+            doctorName: true,
+            notes: true,
+            purpose: true,
+            treatments: true,
+            responseRating: true,
+          },
+          orderBy: [desc(visitNotes.visitDate)],
+        });
+
+        return {
+          visitNotes: visitsList.map((v) => ({
+            id: v.id,
+            visitDateYmd: ymdFromDateOnly(v.visitDate),
+            doctorName: v.doctorName,
+            notes: v.notes,
+            purpose: v.purpose ?? null,
+            treatments: v.treatments ?? null,
+            responseRating: v.responseRating ?? null,
+          })),
+        };
+      }
+    );
+
+    return NextResponse.json(visitsPayload);
+  }
+
   const payload = await cacheAside(CacheKeys.history(userId), 300, async () => {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -161,13 +197,6 @@ export async function GET(request: Request) {
       reportVoiceNotes,
       reportVoiceNotesArchived,
     };
-
-    if (includeVisitsOnly) {
-      return {
-        patient: basePayload.patient,
-        visitNotes: basePayload.visitNotes,
-      };
-    }
 
     return basePayload;
   }).catch((err: unknown) => {

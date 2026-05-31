@@ -1,3 +1,6 @@
+import { desc, eq } from "drizzle-orm";
+import { db } from "@/src/db";
+import { visitNotes } from "@/src/db/schema";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 
 export type VisitNoteAttachment = {
@@ -34,6 +37,28 @@ export const VISIT_RESPONSE_RATING_STYLES: Record<
 export function visitResponseRatingStyle(rating: string | null | undefined) {
   if (!rating) return null;
   return VISIT_RESPONSE_RATING_STYLES[rating.toLowerCase()] ?? null;
+}
+
+export type LatestPatientVisit = {
+  id: string;
+  visitDate: string;
+  doctorName: string;
+};
+
+export async function getLatestPatientVisit(
+  userId: string
+): Promise<LatestPatientVisit | null> {
+  const row = await db.query.visitNotes.findFirst({
+    where: eq(visitNotes.userId, userId),
+    columns: { id: true, visitDate: true, doctorName: true },
+    orderBy: [desc(visitNotes.visitDate)],
+  });
+  if (!row) return null;
+  return {
+    id: row.id,
+    visitDate: ymdFromDateOnly(row.visitDate),
+    doctorName: row.doctorName,
+  };
 }
 
 export function mapVisitNoteRow(row: {
