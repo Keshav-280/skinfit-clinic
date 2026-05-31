@@ -53,6 +53,11 @@ FACE_OVAL = [
     172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
 ]
 
+# Top arc — extend upward toward hairline (matches facePortraitBox.ts).
+FOREHEAD_TOP_INDICES = [10, 338, 297, 332, 284, 251]
+FOREHEAD_EXTEND_FRAC = 0.12
+NECK_TRIM_FRAC = 0.035
+
 
 def decode_jpeg_b64(data: str) -> np.ndarray | None:
     try:
@@ -81,8 +86,51 @@ def landmarks_to_points(
     return np.array(pts, dtype=np.int32)
 
 
+def face_height_px(landmarks: Any, fh: int) -> tuple[int, int, int]:
+    """Chin y, top-of-oval y, and face height in pixels."""
+    chin_y = int(landmarks[152].y * fh)
+    top_y = int(min(landmarks[i].y for i in FOREHEAD_TOP_INDICES) * fh)
+    face_h = max(8, chin_y - top_y)
+    return chin_y, top_y, face_h
+
+
+def extend_oval_forehead(
+    landmarks: Any, oval_pts: np.ndarray, fh: int
+) -> np.ndarray:
+    """Shift top-arc oval points upward toward the hairline."""
+    _, top_y, face_h = face_height_px(landmarks, fh)
+    extend_px = int(face_h * FOREHEAD_EXTEND_FRAC)
+    top_threshold = top_y + int(face_h * 0.15)
+
+    out = oval_pts.copy()
+    for i in range(len(FACE_OVAL)):
+        if out[i][1] <= top_threshold:
+            out[i][1] = max(0, int(out[i][1]) - extend_px)
+    return out
+
+
+def trim_neck_from_mask(
+    mask: np.ndarray, landmarks: Any, fh: int
+) -> np.ndarray:
+    """Mask out a small band below the chin to avoid neck bleed."""
+    chin_y, _, face_h = face_height_px(landmarks, fh)
+    neck_start = min(fh, chin_y + int(face_h * NECK_TRIM_FRAC))
+    if neck_start < fh:
+        mask[neck_start:, :] = 0
+    return mask
+
+
+def feather_mask_alpha(mask_binary: np.ndarray, fw: int, fh: int) -> np.ndarray:
+    """Distance-transform alpha ramp for a smooth boundary blend."""
+    binary = (mask_binary > 127).astype(np.uint8)
+    dist = cv2.distanceTransform(binary, cv2.DIST_L2, 5)
+    feather_px = max(14, min(48, int(min(fw, fh) * 0.022)))
+    alpha = np.clip(dist / float(feather_px), 0.0, 1.0)
+    return (alpha * 255.0).astype(np.uint8)
+
+
 def build_acne_face_clip_mask(bgr: np.ndarray) -> np.ndarray | None:
-    """Full face oval for acne — no threshold gating, minimal edge trim for hair."""
+    """Face oval extended to hairline with soft alpha boundary."""
     mesh = face_mesh_context()
     if mesh is None:
         return None
@@ -93,21 +141,13 @@ def build_acne_face_clip_mask(bgr: np.ndarray) -> np.ndarray | None:
         if not res.multi_face_landmarks:
             return None
 
+    landmarks = res.multi_face_landmarks[0].landmark
     mask = np.zeros((fh, fw), dtype=np.uint8)
-    oval_pts = landmarks_to_points(
-        res.multi_face_landmarks[0].landmark, FACE_OVAL, fw, fh
-    )
+    oval_pts = landmarks_to_points(landmarks, FACE_OVAL, fw, fh)
+    oval_pts = extend_oval_forehead(landmarks, oval_pts, fh)
     cv2.fillPoly(mask, [oval_pts], 255)
-
-    # Slight edge erosion — trims hair/neck fringe only, keeps full facial coverage.
-    k = max(3, int(min(fw, fh) * 0.006)) | 1
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-    mask = cv2.erode(mask, kernel, iterations=1)
-
-    # Narrow soft edge at the boundary (anti-alias), not a strength cutoff.
-    k_blur = max(3, int(min(fw, fh) * 0.005)) | 1
-    mask = cv2.GaussianBlur(mask, (k_blur, k_blur), 0)
-    return mask
+    trim_neck_from_mask(mask, landmarks, fh)
+    return feather_mask_alpha(mask, fw, fh)
 
 
 def fallback_ellipse_mask(bgr: np.ndarray) -> np.ndarray:
@@ -117,7 +157,7 @@ def fallback_ellipse_mask(bgr: np.ndarray) -> np.ndarray:
     cx, cy = fw // 2, int(fh * 0.44)
     ax, ay = int(fw * 0.36), int(fh * 0.40)
     cv2.ellipse(mask, (cx, cy), (ax, ay), 0, 0, 360, 255, -1)
-    return cv2.GaussianBlur(mask, (11, 11), 0)
+    return feather_mask_alpha(mask, fw, fh)
 
 
 def clip_acne_mask_to_face(mask_bgr: np.ndarray, source_bgr: np.ndarray) -> np.ndarray:

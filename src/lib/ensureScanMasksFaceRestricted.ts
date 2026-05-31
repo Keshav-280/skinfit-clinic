@@ -69,7 +69,7 @@ function storedOriginalUrl(scores: Record<string, unknown>): string | undefined 
 }
 
 /**
- * One-time acne mask face clip (v2): hard boundary only, preserves inference heatmap on skin.
+ * One-time acne mask face clip: boundary clip with soft feather, preserves inference heatmap on skin.
  * Wrinkle masks are never modified here.
  */
 export async function ensureScanMasksFaceRestricted(input: {
