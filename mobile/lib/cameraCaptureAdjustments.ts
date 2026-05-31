@@ -57,26 +57,33 @@ export async function applyCaptureAdjustments(
 ): Promise<string> {
   if (brightness === 0 && exposure === 0) return uri;
 
-  const b64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const buf = Buffer.from(b64, "base64");
-  const decoded = decode(buf, { useTArray: true, formatAsRGBA: true });
-  const gain = 1 + (brightness + exposure * 0.75) / 100;
-  const { data, width, height } = decoded;
+  try {
+    const b64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: "base64",
+    });
+    const buf = Buffer.from(b64, "base64");
+    const decoded = decode(buf, { useTArray: true, formatAsRGBA: true });
+    const gain = 1 + (brightness + exposure * 0.75) / 100;
+    const { data, width, height } = decoded;
 
-  for (let i = 0; i < data.length; i += 4) {
-    data[i] = clamp255(data[i] * gain);
-    data[i + 1] = clamp255(data[i + 1] * gain);
-    data[i + 2] = clamp255(data[i + 2] * gain);
+    if (!width || !height || !data?.length) return uri;
+
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = clamp255(data[i] * gain);
+      data[i + 1] = clamp255(data[i + 1] * gain);
+      data[i + 2] = clamp255(data[i + 2] * gain);
+    }
+
+    const out = encode({ data, width, height }, 88);
+    const outBytes =
+      out.data instanceof Uint8Array ? out.data : new Uint8Array(out.data as ArrayLike<number>);
+    const outUri = `${FileSystem.cacheDirectory}capture-adj-${Date.now()}.jpg`;
+    await FileSystem.writeAsStringAsync(outUri, Buffer.from(outBytes).toString("base64"), {
+      encoding: "base64",
+    });
+    return outUri;
+  } catch {
+    // If pixel adjust fails, keep the raw capture instead of blocking the scan.
+    return uri;
   }
-
-  const out = encode({ data, width, height }, 88);
-  const outUri = `${FileSystem.cacheDirectory}capture-adj-${Date.now()}.jpg`;
-  await FileSystem.writeAsStringAsync(
-    outUri,
-    Buffer.from(out.data).toString("base64"),
-    { encoding: FileSystem.EncodingType.Base64 }
-  );
-  return outUri;
 }

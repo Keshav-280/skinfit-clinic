@@ -25,11 +25,6 @@ function SectionSkeleton() {
 export default function ProfileLoading() {
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-1 pb-10 sm:px-0">
-      <section className={`${CARD} flex flex-col items-center gap-2 px-6 py-6`}>
-        <Shimmer className="h-7 w-48" />
-        <Shimmer className="h-4 w-64" />
-      </section>
-
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="space-y-6">
           <section className={`${CARD} p-4 sm:p-5`}>
@@ -50,6 +45,7 @@ export default function ProfileLoading() {
               ))}
             </div>
           </section>
+          <SectionSkeleton />
           <SectionSkeleton />
           <SectionSkeleton />
         </div>

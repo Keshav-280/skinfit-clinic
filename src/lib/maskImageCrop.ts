@@ -13,11 +13,31 @@ export const SCAN_FACE_FRAME_ASPECT_CSS = "3 / 4";
 export const SCAN_MASK_FRAME_ASPECT = 1;
 export const SCAN_MASK_FRAME_ASPECT_CSS = "1 / 1";
 
+/** Title-free JPEG overlays from `/analyze_dual_scan` (no matplotlib). */
+export const MASK_EXPORT_VERSION_TITLE_FREE = 2;
+
+export function maskExportVersionFromDataUri(
+  dataUri: string | undefined
+): number | undefined {
+  if (!dataUri?.startsWith("data:image/")) return undefined;
+  if (dataUri.startsWith("data:image/jpeg")) return MASK_EXPORT_VERSION_TITLE_FREE;
+  if (dataUri.startsWith("data:image/png")) return 1;
+  return undefined;
+}
+
 /** Legacy `/analyze_dual_scan` masks were matplotlib PNGs with a baked title band. */
 export function maskLikelyHasMatplotlibTitle(src: string): boolean {
   const s = src.trim().toLowerCase();
   if (s.startsWith("data:image/png")) return true;
   return /\.png(?:[?#]|$)/i.test(s);
+}
+
+/** Crop baked matplotlib titles unless scan was saved with title-free mask export. */
+export function shouldCropLegacyMaskTitle(
+  _src: string,
+  maskExportVersion?: number | null
+): boolean {
+  return maskExportVersion !== MASK_EXPORT_VERSION_TITLE_FREE;
 }
 
 /** Percent height/top to clip the matplotlib title band inside a square frame. */

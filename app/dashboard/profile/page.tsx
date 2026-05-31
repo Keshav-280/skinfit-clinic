@@ -2,24 +2,17 @@ import { redirect } from "next/navigation";
 import {
   Bell,
   Clock3,
-  Dna,
   Goal,
   MapPin,
   Phone,
-  Settings,
   ShieldCheck,
   Sparkles,
   Stethoscope,
   UserRound,
 } from "lucide-react";
-import {
-  DashboardPageHeader,
-  DashboardPageSection,
-} from "@/components/dashboard/DashboardPageSection";
+import { DashboardPageSection } from "@/components/dashboard/DashboardPageSection";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
-import { ProfileSkinIdentitySection } from "@/components/dashboard/ProfileSkinIdentitySection";
-import { ProfileSkinDnaSection } from "@/components/dashboard/ProfileSkinDnaSection";
 import { ProfileLastTreatmentSection } from "@/components/dashboard/ProfileLastTreatmentSection";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
 import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
@@ -134,60 +127,35 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-1 pb-10 sm:px-0">
-      <DashboardPageHeader
-        title="Your Profile"
-        subtitle={`${user.name} · ${user.email}`}
-      />
+      <ProfileForm
+        initial={user}
+        embedded
+        layout="profile-page"
+        leftSlot={
+          <>
+            <ProfileSnapshot user={user} />
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="space-y-6">
-          <ProfileSnapshot user={user} />
-
-          <DashboardPageSection
-            kicker="Clinic"
-            title="Visits"
-            description=""
-            icon={Stethoscope}
-          >
-            <ProfileLastTreatmentSection />
-          </DashboardPageSection>
-
-          {isKaiInsightsEnabled() ? (
             <DashboardPageSection
-              kicker="kAI"
-              title="Monthly insight"
-              description="Scheduled monthly summary from your scans and logs."
+              kicker="Clinic"
+              title="Visits"
+              description=""
+              icon={Stethoscope}
             >
-              <ProfileRagKaiInsightsSection embedded />
+              <ProfileLastTreatmentSection />
             </DashboardPageSection>
-          ) : null}
 
-          <DashboardPageSection
-            kicker="Insights"
-            title="Skin DNA"
-            description="Profile snapshot, focus areas, and recent scan parameters."
-            icon={Dna}
-          >
-            <div className="space-y-6">
-              <ProfileSkinDnaSection embedded />
-              <div className="border-t border-white/50 pt-6">
-                <ProfileSkinIdentitySection embedded />
-              </div>
-            </div>
-          </DashboardPageSection>
-        </div>
-
-        <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
-          <DashboardPageSection
-            kicker="Account"
-            title="Settings"
-            description="Contact details, reminders, and password."
-            icon={Settings}
-          >
-            <ProfileForm initial={user} embedded />
-          </DashboardPageSection>
-        </div>
-      </div>
+            {isKaiInsightsEnabled() ? (
+              <DashboardPageSection
+                kicker="kAI"
+                title="Monthly insight"
+                description="Scheduled monthly summary from your scans and logs."
+              >
+                <ProfileRagKaiInsightsSection embedded />
+              </DashboardPageSection>
+            ) : null}
+          </>
+        }
+      />
     </div>
   );
 }

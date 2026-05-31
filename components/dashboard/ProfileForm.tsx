@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Settings } from "lucide-react";
+import { DashboardPageSection } from "@/components/dashboard/DashboardPageSection";
 import type { SessionUserProfile } from "@/src/lib/auth/get-session";
 import {
   APPOINTMENT_REMINDER_HOURS_DEFAULT,
@@ -19,9 +21,17 @@ import {
 type Props = {
   initial: SessionUserProfile;
   embedded?: boolean;
+  /** Left: snapshot/visits + daily reminders + password. Right: contact details + visit reminders. */
+  layout?: "stacked" | "profile-page";
+  leftSlot?: ReactNode;
 };
 
-export function ProfileForm({ initial, embedded = false }: Props) {
+export function ProfileForm({
+  initial,
+  embedded = false,
+  layout = "stacked",
+  leftSlot = null,
+}: Props) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
@@ -218,8 +228,8 @@ export function ProfileForm({ initial, embedded = false }: Props) {
 
   const sectionClass = embedded ? patientFormSection : patientFormSection;
 
-  return (
-    <form onSubmit={onSubmit} className="space-y-6">
+  const alerts = (
+    <>
       {error && (
         <div
           role="alert"
@@ -236,9 +246,12 @@ export function ProfileForm({ initial, embedded = false }: Props) {
           Profile saved.
         </div>
       )}
+    </>
+  );
 
-      <section className={sectionClass}>
-        <h2 className={patientSectionTitle}>Your details</h2>
+  const detailsSection = (
+    <section className={sectionClass}>
+      <h2 className={patientSectionTitle}>Your details</h2>
         <p className={`mt-1 ${patientMuted}`}>
           This information appears on your treatment history and reports.
         </p>
@@ -416,7 +429,9 @@ export function ProfileForm({ initial, embedded = false }: Props) {
           ) : null}
         </div>
       </section>
+  );
 
+  const visitRemindersSection = (
       <section className={sectionClass}>
         <h2 className={patientSectionTitle}>Visit reminders</h2>
         <p className={`mt-1 ${patientMuted}`}>
@@ -444,7 +459,9 @@ export function ProfileForm({ initial, embedded = false }: Props) {
           />
         </div>
       </section>
+  );
 
+  const dailyRemindersSection = (
       <section className={sectionClass}>
         <h2 className={patientSectionTitle}>Daily routine reminders</h2>
         <p className={`mt-1 ${patientMuted}`}>
@@ -537,7 +554,9 @@ export function ProfileForm({ initial, embedded = false }: Props) {
           </div>
         </div>
       </section>
+  );
 
+  const passwordSection = (
       <section className={sectionClass}>
         <h2 className={patientSectionTitle}>Change password</h2>
         <p className={`mt-1 ${patientMuted}`}>
@@ -597,7 +616,9 @@ export function ProfileForm({ initial, embedded = false }: Props) {
           </div>
         </div>
       </section>
+  );
 
+  const submitButton = (
       <button
         type="submit"
         disabled={loading}
@@ -605,6 +626,45 @@ export function ProfileForm({ initial, embedded = false }: Props) {
       >
         {loading ? "Saving…" : "Save profile"}
       </button>
+  );
+
+  if (layout === "profile-page") {
+    return (
+      <form onSubmit={onSubmit} className="space-y-6">
+        {alerts}
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <div className="space-y-6">
+            {leftSlot}
+            {dailyRemindersSection}
+            {passwordSection}
+          </div>
+          <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
+            <DashboardPageSection
+              kicker="Account"
+              title="Settings"
+              description="Contact details and visit reminders."
+              icon={Settings}
+            >
+              <div className="space-y-6">
+                {detailsSection}
+                {visitRemindersSection}
+                {submitButton}
+              </div>
+            </DashboardPageSection>
+          </div>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      {alerts}
+      {detailsSection}
+      {visitRemindersSection}
+      {dailyRemindersSection}
+      {passwordSection}
+      {submitButton}
     </form>
   );
 }

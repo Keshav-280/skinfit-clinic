@@ -42,10 +42,6 @@ export default async function VisitsListPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-1 pb-10 sm:px-0">
-      <DashboardPageHeader
-        title="History & Notes"
-        subtitle={`${visits.length} clinic visit${visits.length === 1 ? "" : "s"}`}
-      />
       <DashboardPageSection
         title="All visits"
         description="Tap a visit for full notes from your doctor."

@@ -2,7 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 
 import {
   legacyMaskTitleCropPercents,
-  maskLikelyHasMatplotlibTitle,
+  shouldCropLegacyMaskTitle,
   SCAN_FACE_FRAME_ASPECT_CSS,
   SCAN_MASK_FRAME_ASPECT_CSS,
 } from "./maskImageCrop";
@@ -69,6 +69,7 @@ export type ScanReportPdfPayload = {
   acneFallbackDataUri?: string;
   wrinklePoseLabel?: string;
   acnePoseLabel?: string;
+  maskExportVersion?: number | null;
   spatialOutputs?: ScanSpatialOutputs;
   regions: Array<{ issue: string; coordinates: { x: number; y: number } }>;
   tracker?: PatientTrackerReport | null;
@@ -275,12 +276,13 @@ function maskPanelHtml(
   src: string,
   alt: string,
   caption: string,
-  fallback?: string
+  fallback?: string,
+  maskExportVersion?: number | null
 ): string {
   const fallbackAttr = fallback
     ? ` onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src=${JSON.stringify(fallback)}}"`
     : "";
-  const legacy = maskLikelyHasMatplotlibTitle(src);
+  const legacy = shouldCropLegacyMaskTitle(src, maskExportVersion);
   const imgStyle = legacy
     ? (() => {
         const { heightPct, topPct } = legacyMaskTitleCropPercents();
@@ -315,7 +317,8 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
         wrMask,
         "Wrinkle mask overlay",
         p.wrinklePoseLabel ?? WRINKLE_MASK_PANEL_LABEL,
-        p.wrinkleFallbackDataUri
+        p.wrinkleFallbackDataUri,
+        p.maskExportVersion
       );
     }
     if (acMask) {
@@ -323,7 +326,8 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
         acMask,
         "Acne objectness overlay",
         p.acnePoseLabel ?? ACNE_MASK_PANEL_LABEL,
-        p.acneFallbackDataUri
+        p.acneFallbackDataUri,
+        p.maskExportVersion
       );
     }
     html += `</div>`;

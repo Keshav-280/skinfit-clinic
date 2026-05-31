@@ -31,7 +31,10 @@ import {
   invalidateUserInsightsCache,
   invalidateUserScanDerivedCaches,
 } from "@/src/lib/infra";
-import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
+import {
+  maskExportVersionFromDataUri,
+  MASK_EXPORT_VERSION_TITLE_FREE,
+} from "@/src/lib/maskImageCrop";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import type { ScanJobPayload } from "@/src/lib/infra";
@@ -138,6 +141,14 @@ export async function processScanJob(
     upload
   );
 
+  const wrMaskVersion = maskExportVersionFromDataUri(merged.wrinkleMaskDataUri);
+  const acMaskVersion = maskExportVersionFromDataUri(merged.acneMaskDataUri);
+  const maskExportVersion =
+    wrMaskVersion === MASK_EXPORT_VERSION_TITLE_FREE &&
+    acMaskVersion === MASK_EXPORT_VERSION_TITLE_FREE
+      ? MASK_EXPORT_VERSION_TITLE_FREE
+      : wrMaskVersion ?? acMaskVersion ?? 1;
+
   const metrics = {
     ...merged.legacyMetrics,
     clinical_scores: merged.clinical_scores,
@@ -230,6 +241,7 @@ export async function processScanJob(
         ...(overlayUrl ? { overlayUrl } : {}),
         ...(wrinkleMaskUrl ? { wrinkleMaskUrl } : {}),
         ...(acneMaskUrl ? { acneMaskUrl } : {}),
+        maskExportVersion,
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
       },
     })

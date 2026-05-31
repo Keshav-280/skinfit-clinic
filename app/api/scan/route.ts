@@ -289,7 +289,7 @@ export async function POST(request: NextRequest) {
 
     /**
      * Dual-pose default: centre → acne mask + scalars; smiling → wrinkle mask + score.
-     * Uses `/analyze_dual_scan` (test_local.ipynb pipeline + matplotlib masks).
+     * Uses `/analyze_dual_scan` (title-free JPEG overlays when inference is updated).
      * `FACE_ANALYSIS_LEGACY_ANALYZE=1` → old 2× `/analyze` with center-crop overlays.
      * `FACE_ANALYSIS_SINGLE_IMAGE=1` → single centre image only.
      */

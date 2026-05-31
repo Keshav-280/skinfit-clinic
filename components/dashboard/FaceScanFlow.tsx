@@ -89,9 +89,9 @@ type PendingCapture = CaptureItem;
 
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 
-/** Fixed 3:4 preview — explicit px so grid column cannot stretch it taller. */
+/** 3:4 preview — capped height so it does not dominate, but large enough to frame the face. */
 const CAMERA_PREVIEW_CLASS =
-  "relative mx-auto h-[210px] w-[158px] shrink-0 overflow-hidden rounded-2xl bg-zinc-900 sm:h-[228px] sm:w-[171px] lg:mx-0";
+  "relative mx-auto aspect-[3/4] w-full max-w-[300px] shrink-0 overflow-hidden rounded-2xl bg-zinc-900 sm:max-w-[320px] lg:mx-0 lg:h-[340px] lg:w-[255px] lg:max-w-none";
 
 /** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
 const CAPTURE_ZOOM_MIN = CAPTURE_ZOOM_AUTO.min;
@@ -576,7 +576,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="grid gap-5 lg:grid-cols-[auto_minmax(0,340px)] lg:items-start">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
             {/* Left: live camera + capture actions */}
             <div className="flex min-w-0 flex-col items-center gap-3 lg:items-start">
               <div className={CAMERA_PREVIEW_CLASS}>
@@ -650,7 +650,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 ) : null}
               </div>
 
-              <div className="flex w-full max-w-[280px] flex-col gap-2 sm:flex-row">
+              <div className="flex w-full max-w-[320px] flex-col gap-2 sm:flex-row">
                 {reviewingCapture ? (
                   <>
                     <button

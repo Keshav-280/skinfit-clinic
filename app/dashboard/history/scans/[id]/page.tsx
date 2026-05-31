@@ -9,6 +9,7 @@ import {
   parseScanAcneMaskDataUri,
   parseScanOverlayDataUri,
   parseScanWrinkleMaskDataUri,
+  parseMaskExportVersion,
 } from "../../../../../src/lib/parseClinicalScores";
 import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
@@ -124,6 +125,7 @@ export default async function ScanReportPage({
   const annotatedImageUrl = parseScanOverlayDataUri(scores);
   const wrinkleMaskUrl = parseScanWrinkleMaskDataUri(scores);
   const acneMaskUrl = parseScanAcneMaskDataUri(scores);
+  const maskExportVersion = parseMaskExportVersion(scores);
   const spatialOutputs = parseScanSpatialOutputs(scores);
 
   const faceCaptureImages =
@@ -154,6 +156,7 @@ export default async function ScanReportPage({
       annotatedImageUrl={annotatedImageUrl ?? null}
       wrinkleMaskUrl={wrinkleMaskUrl ?? null}
       acneMaskUrl={acneMaskUrl ?? null}
+      maskExportVersion={maskExportVersion ?? null}
       spatialOutputs={spatialOutputs ?? null}
       scanDateIso={row.createdAt.toISOString()}
       autoDownload={autoDownload}

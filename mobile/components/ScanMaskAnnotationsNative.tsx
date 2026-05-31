@@ -7,7 +7,7 @@ import {
 } from "@/lib/scanMaskLabels";
 import {
   legacyMaskTitleCropImageStyle,
-  maskLikelyHasMatplotlibTitle,
+  shouldCropLegacyMaskTitle,
   SCAN_MASK_FRAME_ASPECT,
 } from "@/lib/maskImageCrop";
 
@@ -16,13 +16,15 @@ function MaskPanel({
   fallbackUri,
   caption,
   authToken,
+  maskExportVersion,
 }: {
   uri: string;
   fallbackUri?: string;
   caption: string;
   authToken?: string | null;
+  maskExportVersion?: number | null;
 }) {
-  const cropLegacyTitle = maskLikelyHasMatplotlibTitle(uri);
+  const cropLegacyTitle = shouldCropLegacyMaskTitle(uri, maskExportVersion);
   return (
     <View style={styles.item}>
       <View style={styles.imageClip}>
@@ -48,6 +50,7 @@ export function ScanMaskAnnotationsNative({
   authToken = null,
   wrinkleLabel = WRINKLE_MASK_PANEL_LABEL,
   acneLabel = ACNE_MASK_PANEL_LABEL,
+  maskExportVersion,
 }: {
   wrinkleMaskUri?: string;
   acneMaskUri?: string;
@@ -56,6 +59,7 @@ export function ScanMaskAnnotationsNative({
   authToken?: string | null;
   wrinkleLabel?: string;
   acneLabel?: string;
+  maskExportVersion?: number | null;
 }) {
   const wrinkle = wrinkleMaskUri?.trim() || "";
   const acne = acneMaskUri?.trim() || "";
@@ -69,6 +73,7 @@ export function ScanMaskAnnotationsNative({
           fallbackUri={wrinkleFallbackUri}
           caption={wrinkleLabel}
           authToken={authToken}
+          maskExportVersion={maskExportVersion}
         />
       ) : null}
       {acne ? (
@@ -77,6 +82,7 @@ export function ScanMaskAnnotationsNative({
           fallbackUri={acneFallbackUri}
           caption={acneLabel}
           authToken={authToken}
+          maskExportVersion={maskExportVersion}
         />
       ) : null}
     </View>

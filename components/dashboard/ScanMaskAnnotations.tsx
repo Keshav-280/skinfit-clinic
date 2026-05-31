@@ -3,7 +3,7 @@
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import {
   legacyMaskTitleCropStyle,
-  maskLikelyHasMatplotlibTitle,
+  shouldCropLegacyMaskTitle,
   SCAN_MASK_FRAME_ASPECT_CSS,
 } from "@/src/lib/maskImageCrop";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
@@ -26,15 +26,17 @@ function MaskPanel({
   alt,
   caption,
   fallbackSrc,
+  maskExportVersion,
 }: {
   src: string;
   alt: string;
   caption: string;
   fallbackSrc?: string;
+  maskExportVersion?: number | null;
 }) {
   const displaySrc = publicFileDisplayUrl(src) ?? src;
   const fallback = fallbackSrc ? publicFileDisplayUrl(fallbackSrc) ?? fallbackSrc : "";
-  const cropLegacyTitle = maskLikelyHasMatplotlibTitle(displaySrc);
+  const cropLegacyTitle = shouldCropLegacyMaskTitle(displaySrc, maskExportVersion);
   return (
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
@@ -78,6 +80,7 @@ export function ScanMaskAnnotations({
   regions,
   wrinklePoseLabel = WRINKLE_MASK_PANEL_LABEL,
   acnePoseLabel = ACNE_MASK_PANEL_LABEL,
+  maskExportVersion,
 }: {
   imageUrl: string;
   wrinkleMaskUrl?: string;
@@ -87,6 +90,7 @@ export function ScanMaskAnnotations({
   acneFallbackUrl?: string;
   wrinklePoseLabel?: string;
   acnePoseLabel?: string;
+  maskExportVersion?: number | null;
   spatialOutputs?: ScanSpatialOutputs;
   regions: ReportRegion[];
 }) {
@@ -111,6 +115,7 @@ export function ScanMaskAnnotations({
               alt="Wrinkle mask overlay"
               caption={wrinklePoseLabel}
               fallbackSrc={wrinkleFallbackUrl}
+              maskExportVersion={maskExportVersion}
             />
           ) : null}
           {acne ? (
@@ -119,6 +124,7 @@ export function ScanMaskAnnotations({
               alt="Acne objectness overlay"
               caption={acnePoseLabel}
               fallbackSrc={acneFallbackUrl}
+              maskExportVersion={maskExportVersion}
             />
           ) : null}
         </div>

@@ -58,6 +58,11 @@ export async function persistDataUriToStorage(
   if (!m) return undefined;
   const mime = m[1] || "image/jpeg";
   const buf = Buffer.from(m[2], "base64");
-  const { url } = await upload(kind, `mask-${Date.now()}.jpg`, buf, mime);
+  const ext = mime.includes("png")
+    ? "png"
+    : mime.includes("webp")
+      ? "webp"
+      : "jpg";
+  const { url } = await upload(kind, `mask-${Date.now()}.${ext}`, buf, mime);
   return url;
 }
