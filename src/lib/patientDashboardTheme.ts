@@ -29,11 +29,13 @@ export const patientPrimaryBtn =
 export const patientSecondaryBtn =
   "inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition hover:bg-white/80";
 
-export const patientInput =
-  "w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 backdrop-blur-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10 disabled:opacity-60";
+export const patientInputBase =
+  "rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 backdrop-blur-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10 disabled:opacity-60";
+
+export const patientInput = `w-full max-w-full ${patientInputBase}`;
 
 export const patientFormSection =
-  "rounded-xl border border-white/60 bg-white/40 p-5 backdrop-blur-sm sm:p-6";
+  "min-w-0 overflow-hidden rounded-xl border border-white/60 bg-white/40 p-5 backdrop-blur-sm sm:p-6";
 
 export const patientStatTile =
   "rounded-xl border border-white/60 bg-white/55 px-3.5 py-3 shadow-sm backdrop-blur-sm";

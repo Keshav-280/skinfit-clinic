@@ -43,7 +43,7 @@ export function DashboardPageSection({
   className?: string;
 }) {
   return (
-    <section className={`${patientGlassShell} p-5 md:p-6 ${className}`}>
+    <section className={`${patientGlassShell} min-w-0 overflow-hidden p-5 md:p-6 ${className}`}>
       <div className="mb-5 flex gap-3">
         {Icon ? (
           <span className={patientSectionIcon} aria-hidden>

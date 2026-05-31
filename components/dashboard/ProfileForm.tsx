@@ -12,6 +12,7 @@ import {
 import {
   patientFormSection,
   patientInput,
+  patientInputBase,
   patientMuted,
   patientPrimaryBtn,
   patientSecondaryBtn,
@@ -250,7 +251,7 @@ export function ProfileForm({
   );
 
   const detailsSection = (
-    <section className={sectionClass}>
+      <section className={sectionClass}>
       <h2 className={patientSectionTitle}>Your details</h2>
         <p className={`mt-1 ${patientMuted}`}>
           This information appears on your treatment history and reports.
@@ -264,7 +265,7 @@ export function ProfileForm({
             .
           </p>
         ) : null}
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 min-w-0 space-y-4">
           <div>
             <label
               htmlFor="pf-name"
@@ -305,7 +306,7 @@ export function ProfileForm({
             >
               Phone number <span className="text-red-600">*</span>
             </label>
-            <div className="flex gap-2">
+            <div className="grid max-w-full grid-cols-[5.5rem_minmax(0,1fr)] gap-2">
               <input
                 id="pf-phone-cc"
                 type="text"
@@ -315,7 +316,7 @@ export function ProfileForm({
                 value={phoneCountryCode}
                 onChange={(e) => setPhoneCountryCode(e.target.value)}
                 disabled={loading}
-                className={`${patientInput} w-[5.5rem] shrink-0 px-3 text-center`}
+                className={`${patientInputBase} px-3 text-center`}
                 placeholder="+91"
                 aria-label="Country code"
               />
@@ -330,7 +331,7 @@ export function ProfileForm({
                 }
                 disabled={loading}
                 autoComplete="tel-national"
-                className={`${patientInput} min-w-0 flex-1`}
+                className={`${patientInputBase} min-w-0`}
                 placeholder="Mobile number"
               />
             </div>
@@ -632,13 +633,13 @@ export function ProfileForm({
     return (
       <form onSubmit={onSubmit} className="space-y-6">
         {alerts}
-        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-          <div className="space-y-6">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-2 lg:items-start">
+          <div className="min-w-0 space-y-6">
             {leftSlot}
             {dailyRemindersSection}
             {passwordSection}
           </div>
-          <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
+          <div className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:self-start">
             <DashboardPageSection
               kicker="Account"
               title="Settings"
