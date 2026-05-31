@@ -311,6 +311,8 @@ export const scans = pgTable("scans", {
     overlayDataUri?: string;
     wrinkleMaskDataUri?: string;
     acneMaskDataUri?: string;
+    /** 2 = title-free JPEG masks; absent/1 = legacy matplotlib PNG export. */
+    maskExportVersion?: number;
     spatialOutputs?: {
       wrinkles: Record<string, unknown>;
       acne: Record<string, unknown>;
