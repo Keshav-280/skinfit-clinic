@@ -16,7 +16,6 @@ import {
   Loader2,
   Sparkles,
   ListChecks,
-  Flame,
   Activity,
   NotebookPen,
 } from "lucide-react";
@@ -702,59 +701,34 @@ export function PatientDashboardDesktop() {
         <div
           className={`grid gap-3 ${data.skinScanHistory.length > 0 ? "md:grid-cols-2 md:items-stretch" : ""}`}
         >
-          <div className={`flex flex-col ${DASHBOARD_SECTION_CARD} !p-4 md:!p-5`}>
-            <DashboardSectionHeader
-              icon={Flame}
-              title={`${data.streakCurrent}-DAY STREAK`}
-              titleAs="h3"
-              className="mb-3"
-            />
-            <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-white/60 bg-[#E8EFE6]/55 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-end gap-2">
-                    <span className="text-4xl font-extrabold leading-none text-[#2C3E6B]">
-                      {data.streakCurrent}
-                    </span>
-                    <span className="pb-0.5 text-sm font-semibold text-[#6B7280]">
-                      day{data.streakCurrent === 1 ? "" : "s"} in a row
-                    </span>
-                  </div>
-                  {data.streakLongest > data.streakCurrent ? (
-                    <p className="mt-1 text-xs font-semibold text-[#6B7280]">
-                      Personal best · {data.streakLongest} days
-                    </p>
-                  ) : data.streakLongest > 0 ? (
-                    <p className="mt-1 text-xs font-semibold text-emerald-700">
-                      Personal best · you&apos;re on it
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#2C3E6B]/10">
-                  <Flame
-                    className={`h-6 w-6 ${data.streakCurrent > 0 ? "text-orange-500" : "text-[#2C3E6B]/35"}`}
-                    aria-hidden
-                  />
-                </div>
-              </div>
+          <div className={`flex flex-1 flex-col gap-4 ${DASHBOARD_SECTION_CARD} !p-4 md:!p-5`}>
+            <div className="flex flex-1 flex-col justify-between gap-4">
+              <div className="space-y-3">
+                <h3 className="text-lg font-extrabold tracking-tight text-[#2C3E6B] md:text-xl">
+                  {data.streakCurrent} day streak
+                </h3>
+                <p className="text-sm font-semibold text-[#6B7280]">
+                  Personal best: {data.streakLongest} days
+                </p>
 
-              <div>
-                <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-[#6B7280]">
-                  <span>This week</span>
-                  <span>{weekDoneCount}/7 complete</span>
-                </div>
-                <div
-                  className="h-2.5 overflow-hidden rounded-full bg-white/75"
-                  role="progressbar"
-                  aria-valuenow={weekDoneCount}
-                  aria-valuemin={0}
-                  aria-valuemax={7}
-                  aria-label={`${weekDoneCount} of 7 days completed this week`}
-                >
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-[#6B7280]">
+                    <span>This week</span>
+                    <span>{weekDoneCount}/7 complete</span>
+                  </div>
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
-                    style={{ width: `${Math.round((weekDoneCount / 7) * 100)}%` }}
-                  />
+                    className="h-2.5 overflow-hidden rounded-full bg-white/75"
+                    role="progressbar"
+                    aria-valuenow={weekDoneCount}
+                    aria-valuemin={0}
+                    aria-valuemax={7}
+                    aria-label={`${weekDoneCount} of 7 days completed this week`}
+                  >
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+                      style={{ width: `${Math.round((weekDoneCount / 7) * 100)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -781,24 +755,15 @@ export function PatientDashboardDesktop() {
                   </div>
                 ))}
               </div>
+
+              <p
+                className={`text-center text-sm font-bold ${
+                  allRoutineDone ? "text-emerald-600" : "text-[#2C3E6B]"
+                }`}
+              >
+                {allRoutineDone ? "Done today" : "Complete today"}
+              </p>
             </div>
-            <p
-              className={`mt-3 text-sm font-bold ${
-                allRoutineDone
-                  ? "text-emerald-600"
-                  : data.streakCurrent > 0
-                    ? "text-emerald-600"
-                    : "text-red-600"
-              }`}
-            >
-              {allRoutineDone
-                ? data.streakCurrent > 1
-                  ? `${data.streakCurrent} days in a row · done today!`
-                  : "All completed today!"
-                : data.streakCurrent > 0
-                  ? `${data.streakCurrent}-day streak · finish today's routine`
-                  : "Complete AM & PM to start a streak"}
-            </p>
           </div>
 
           {data.skinScanHistory.length > 0 ? (
