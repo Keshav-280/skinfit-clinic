@@ -90,7 +90,7 @@ export function VisitHistoryList({ visits }: { visits: VisitHistoryRow[] }) {
                     className="mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-bold capitalize"
                     style={{
                       backgroundColor: ratingStyle.bg,
-                      color: ratingStyle.fg,
+                      color: ratingStyle.text,
                     }}
                   >
                     Response: {visit.responseRating}
