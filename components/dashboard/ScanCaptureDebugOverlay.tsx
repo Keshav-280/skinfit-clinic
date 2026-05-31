@@ -78,12 +78,10 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Dev default on; set NEXT_PUBLIC_CAPTURE_DEBUG=0 to hide, =1 to force on in production. */
+/** Opt-in only — set NEXT_PUBLIC_CAPTURE_DEBUG=1 to show capture debug UI. */
 export function isCaptureDebugEnabled(): boolean {
   const flag = process.env.NEXT_PUBLIC_CAPTURE_DEBUG?.trim();
-  if (flag === "0" || flag === "false") return false;
-  if (flag === "1" || flag === "true") return true;
-  return process.env.NODE_ENV !== "production";
+  return flag === "1" || flag === "true";
 }
 
 export function ScanCaptureDebugOverlay({

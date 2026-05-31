@@ -31,14 +31,12 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Dev default on; set EXPO_PUBLIC_CAPTURE_DEBUG=0 to hide, =1 to force on in release. */
+/** Opt-in only — set EXPO_PUBLIC_CAPTURE_DEBUG=1 to show capture debug UI. */
 export function isCaptureDebugEnabled(): boolean {
   const previewFlag = process.env.EXPO_PUBLIC_SCAN_DEBUG_PREVIEW?.trim();
   if (previewFlag === "1" || previewFlag === "true") return true;
   const flag = process.env.EXPO_PUBLIC_CAPTURE_DEBUG?.trim();
-  if (flag === "0" || flag === "false") return false;
-  if (flag === "1" || flag === "true") return true;
-  return typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV !== "production";
+  return flag === "1" || flag === "true";
 }
 
 export function ScanCaptureDebugOverlay({

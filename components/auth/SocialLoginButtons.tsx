@@ -28,8 +28,11 @@ function GoogleIcon({ className }: { className?: string }) {
 
 function AppleIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M17.05 20.28c-.98.95-2.05 1.88-3.51 1.9-1.46.02-1.93-.86-3.6-.86-1.67 0-2.19.84-3.57.88-1.38.04-2.43-.92-3.41-1.87C2.09 15.25 1.28 10.96 3.14 7.72c1.86-3.24 5.28-4.45 6.56-4.3 1.28.15 2.2 1.02 3.6 1.02 1.4 0 2.25-.88 3.78-.95 1.53-.07 2.65.8 3.9 1.88-3.43 1.88-2.87 6.02.76 7.35-.65 1.58-1.54 3.16-2.69 4.56zM12.03 4.25c.73-1.76 2.41-2.94 4.2-3.08.33 1.83-.53 3.67-1.85 4.78-1.32 1.11-3.14 1.55-2.35-.7z" />
+    <svg className={className} viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-2.032 1.58-3.006 1.56-.126-1.085.468-2.28 1.148-3.02.77-.83 2.122-1.46 3.035-1.5.018 1.287-.397 2.464-1 2.88zM20.98 17.3c-.588 1.35-.861 1.937-1.612 3.14-1.045 1.675-2.523 3.76-4.355 3.78-1.625.02-2.04-1.05-4.237-1.05-2.197 0-2.648 1.03-4.27 1.07-1.813.04-3.195-1.85-4.24-3.52-2.305-3.7-2.55-8.04-1.126-10.35 1.004-1.72 2.59-2.73 4.09-2.73 1.887 0 3.075 1.09 4.63 1.09 1.488 0 2.4-1.09 4.12-1.09 1.474 0 2.808.85 3.703 2.33-3.216 1.7-2.693 6.16.852 7.41-.185.51-.388 1.01-.737 1.71z"
+      />
     </svg>
   );
 }
@@ -47,28 +50,19 @@ function SocialIconButton({
   disabled,
   icon,
   label,
-  variant,
 }: {
   href: string;
   disabled?: boolean;
   icon: ReactNode;
   label: string;
-  variant: "google" | "apple";
 }) {
-  const base =
-    "inline-flex h-12 w-12 items-center justify-center rounded-full border shadow-sm transition-transform focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:opacity-50 hover:scale-[0.97]";
-  const styles =
-    variant === "apple"
-      ? `${base} border-slate-900 bg-slate-900 text-white hover:bg-slate-800`
-      : `${base} border-slate-200 bg-white text-slate-800 hover:bg-slate-50`;
-
   return (
     <a
       href={disabled ? undefined : href}
       aria-disabled={disabled}
       aria-label={label}
       title={label}
-      className={styles}
+      className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/25 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/20 focus:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:opacity-50"
       onClick={(e) => {
         if (disabled) e.preventDefault();
       }}
@@ -83,19 +77,17 @@ export function SocialLoginButtons({ disabled }: SocialLoginButtonsProps) {
   const next = searchParams.get("next");
 
   return (
-    <div className="flex justify-center gap-4">
+    <div className="flex justify-center gap-3">
       <SocialIconButton
         href={oauthHref("/api/auth/oauth/google", next)}
         disabled={disabled}
-        variant="google"
         icon={<GoogleIcon className="h-5 w-5 shrink-0" />}
         label="Continue with Google"
       />
       <SocialIconButton
         href={oauthHref("/api/auth/oauth/apple", next)}
         disabled={disabled}
-        variant="apple"
-        icon={<AppleIcon className="h-5 w-5 shrink-0" />}
+        icon={<AppleIcon className="h-[1.35rem] w-[1.35rem] shrink-0" />}
         label="Continue with Apple"
       />
     </div>

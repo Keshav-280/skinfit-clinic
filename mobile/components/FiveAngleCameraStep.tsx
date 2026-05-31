@@ -75,7 +75,8 @@ export function FiveAngleCameraStep({
   const [shooting, setShooting] = useState(false);
   const [pendingUri, setPendingUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("front");
-  const [showDebug, setShowDebug] = useState(isCaptureDebugEnabled());
+  const captureDebugUi = isCaptureDebugEnabled();
+  const [showDebug, setShowDebug] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [cameraAdjust, setCameraAdjust] = useState<CameraAdjustments>(
     DEFAULT_CAMERA_ADJUSTMENTS
@@ -269,18 +270,20 @@ export function FiveAngleCameraStep({
           />
         ) : null}
       </View>
-      <ScanCaptureDebugOverlay
-        guidance={guidance}
-        captureZoom={cameraAdjust.zoom}
-        models={models}
-        faceTracked={faceTracked}
-        insetTop={insets.top + 120}
-        visible={showDebug && !reviewingCapture}
-        extra={{
-          step: `${stepIndex + 1}/${totalSteps}`,
-          bbox: bboxSource,
-        }}
-      />
+      {captureDebugUi ? (
+        <ScanCaptureDebugOverlay
+          guidance={guidance}
+          captureZoom={cameraAdjust.zoom}
+          models={models}
+          faceTracked={faceTracked}
+          insetTop={insets.top + 120}
+          visible={showDebug && !reviewingCapture}
+          extra={{
+            step: `${stepIndex + 1}/${totalSteps}`,
+            bbox: bboxSource,
+          }}
+        />
+      ) : null}
       {!reviewingCapture ? (
         <ScanCameraAdjustPanel
           value={cameraAdjust}
@@ -314,13 +317,15 @@ export function FiveAngleCameraStep({
               />
             </Pressable>
           ) : null}
-          <Pressable
-            onPress={() => setShowDebug((v) => !v)}
-            style={[styles.headerIconCircle, showDebug && styles.headerIconCircleActive]}
-            accessibilityLabel={showDebug ? "Hide diagnostics log" : "Show diagnostics log"}
-          >
-            <Ionicons name="bug-outline" size={18} color="#fff" />
-          </Pressable>
+          {captureDebugUi ? (
+            <Pressable
+              onPress={() => setShowDebug((v) => !v)}
+              style={[styles.headerIconCircle, showDebug && styles.headerIconCircleActive]}
+              accessibilityLabel={showDebug ? "Hide diagnostics log" : "Show diagnostics log"}
+            >
+              <Ionicons name="bug-outline" size={18} color="#fff" />
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => setFacing((f) => (f === "front" ? "back" : "front"))}
             style={styles.headerIconCircle}

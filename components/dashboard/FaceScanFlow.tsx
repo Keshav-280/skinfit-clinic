@@ -23,6 +23,7 @@ import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal"
 import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
 import {
   ScanCaptureDebugOverlay,
+  isCaptureDebugEnabled,
 } from "@/components/dashboard/ScanCaptureDebugOverlay";
 import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
 import {
@@ -191,6 +192,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     );
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const captureDebugUi = isCaptureDebugEnabled();
   const [showDebug, setShowDebug] = useState(false);
 
   const debugExtra = {
@@ -618,20 +620,22 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 </div>
                 {!reviewingCapture ? (
                   <div className="absolute right-2 top-2 z-30 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowDebug((v) => !v)}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
-                        showDebug
-                          ? "bg-emerald-600 text-white"
-                          : "bg-white/70 text-[#2C3E6B] hover:bg-white"
-                      }`}
-                      aria-pressed={showDebug}
-                      aria-label={showDebug ? "Hide capture debug" : "Show capture debug"}
-                      title={showDebug ? "Hide capture debug" : "Show capture debug"}
-                    >
-                      <Bug className="h-4 w-4" />
-                    </button>
+                    {captureDebugUi ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowDebug((v) => !v)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
+                          showDebug
+                            ? "bg-emerald-600 text-white"
+                            : "bg-white/70 text-[#2C3E6B] hover:bg-white"
+                        }`}
+                        aria-pressed={showDebug}
+                        aria-label={showDebug ? "Hide capture debug" : "Show capture debug"}
+                        title={showDebug ? "Hide capture debug" : "Show capture debug"}
+                      >
+                        <Bug className="h-4 w-4" />
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => setVoiceEnabled((v) => !v)}
@@ -788,7 +792,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 ) : null}
               </div>
 
-              {!reviewingCapture && showDebug ? (
+              {captureDebugUi && !reviewingCapture && showDebug ? (
                 <ScanCaptureDebugOverlay
                   guidance={guidance}
                   captureZoom={captureZoom}

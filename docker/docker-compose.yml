@@ -36,7 +36,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.web
       args:
-        NEXT_PUBLIC_CAPTURE_DEBUG: "1"
+        NEXT_PUBLIC_CAPTURE_DEBUG: "0"
     env_file:
       - ../.env
       - ../.env.local

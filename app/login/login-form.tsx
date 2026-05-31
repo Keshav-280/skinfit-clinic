@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff, Sparkles } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
@@ -157,17 +158,17 @@ export function LoginForm() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="hidden min-h-screen flex-1 flex-col justify-center bg-gradient-to-br from-teal-700 via-teal-600 to-teal-800 px-12 lg:flex">
+      <div className="hidden min-h-screen flex-1 flex-col justify-center bg-gradient-to-br from-[#1a2544] via-[#2C3E6B] to-[#162038] px-12 lg:flex">
         <div className="mx-auto max-w-md space-y-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-              <Sparkles className="h-8 w-8 text-white" />
-            </div>
-            <span className="text-3xl font-bold tracking-tight text-white">
-              SkinnFit
-            </span>
-          </div>
-          <p className="text-lg leading-relaxed text-teal-50">
+          <Image
+            src="/branding/skinfit-wellness-logo.svg"
+            alt="SkinFit Wellness"
+            width={560}
+            height={135}
+            priority
+            className="h-11 w-auto max-w-[15rem] brightness-0 invert"
+          />
+          <p className="text-lg leading-relaxed text-white/80">
             {mode === "signin"
               ? "Welcome back to your personalized skincare journey."
               : "Create your account to access your private dashboard and AI skin insights."}
@@ -177,6 +178,16 @@ export function LoginForm() {
 
       <div className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-md">
+          <div className="mb-6 flex justify-center lg:hidden">
+            <Image
+              src="/branding/skinfit-wellness-logo.svg"
+              alt="SkinFit Wellness"
+              width={560}
+              height={135}
+              priority
+              className="h-9 w-auto max-w-[12rem]"
+            />
+          </div>
           <div className="mb-8 text-center lg:text-left">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
               {mode === "signin" ? "Patient Sign In" : "Create your account"}
@@ -217,7 +228,7 @@ export function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                   placeholder={DEMO_LOGIN_EMAIL}
                 />
               </div>
@@ -238,7 +249,7 @@ export function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                     placeholder="••••••••"
                   />
                   <button
@@ -260,7 +271,7 @@ export function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center rounded-full bg-teal-600 px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center rounded-full bg-[#2C3E6B] px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-[#3d5080] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Signing in…" : "Sign In"}
               </button>
@@ -295,7 +306,7 @@ export function LoginForm() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                   placeholder="Your name"
                 />
               </div>
@@ -315,7 +326,7 @@ export function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                   placeholder="you@gmail.com"
                 />
               </div>
@@ -337,7 +348,7 @@ export function LoginForm() {
                     value={phoneCountryCode}
                     onChange={(e) => setPhoneCountryCode(e.target.value)}
                     disabled={loading}
-                    className="w-[5.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-[5.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-900 shadow-sm outline-none transition focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                     placeholder="+91"
                     aria-label="Country code"
                   />
@@ -351,7 +362,7 @@ export function LoginForm() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={loading}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                     placeholder="10-digit mobile"
                   />
                 </div>
@@ -376,7 +387,7 @@ export function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                     placeholder="At least 8 characters"
                   />
                   <button
@@ -411,7 +422,7 @@ export function LoginForm() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
                     placeholder="Repeat password"
                   />
                   <button
@@ -437,7 +448,7 @@ export function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center rounded-full bg-teal-600 px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center rounded-full bg-[#2C3E6B] px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-[#3d5080] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Creating account…" : "Create account"}
               </button>
@@ -452,7 +463,7 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => switchMode("register")}
-                  className="font-medium text-teal-600 hover:text-teal-700"
+                  className="font-medium text-[#2C3E6B] hover:text-[#3d5080]"
                 >
                   Create an account
                 </button>
@@ -463,7 +474,7 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => switchMode("signin")}
-                  className="font-medium text-teal-600 hover:text-teal-700"
+                  className="font-medium text-[#2C3E6B] hover:text-[#3d5080]"
                 >
                   Sign in
                 </button>
@@ -473,11 +484,11 @@ export function LoginForm() {
 
           <p className="mt-4 text-center text-xs text-slate-400">
             Clinic staff?{" "}
-            <Link href="/doctor/login" className="text-teal-600 hover:text-teal-700">
+            <Link href="/doctor/login" className="text-[#2C3E6B] hover:text-[#3d5080]">
               Doctor portal
             </Link>
             {" · "}Need help?{" "}
-            <Link href="/contact" className="text-teal-600 hover:text-teal-700">
+            <Link href="/contact" className="text-[#2C3E6B] hover:text-[#3d5080]">
               Contact us
             </Link>
           </p>
