@@ -35,6 +35,7 @@ import {
   maskExportVersionFromDataUri,
   MASK_EXPORT_VERSION_TITLE_FREE,
 } from "@/src/lib/maskImageCrop";
+import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import type { ScanJobPayload } from "@/src/lib/infra";
