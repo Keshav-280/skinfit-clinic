@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Sun, User } from "lucide-react";
-import { ScanCaptureModelStatus } from "@/components/dashboard/ScanCaptureModelStatus";
 import type {
   CaptureAssistModels,
   CaptureGuidanceSnapshot,
@@ -43,16 +42,9 @@ export function ScanCaptureGuidanceBanner({
 
   if (!guidance) {
     return (
-      <div className="space-y-2">
-        <p className={`text-center text-[#6B7280] ${textSize}`}>
-          Checking lighting & face…
-        </p>
-        <ScanCaptureModelStatus
-          models={models}
-          compact={compact}
-          needsExpressionModel={needsExpressionModel}
-        />
-      </div>
+      <p className={`text-center text-[#6B7280] ${textSize}`}>
+        Checking lighting & face…
+      </p>
     );
   }
 
@@ -105,11 +97,6 @@ export function ScanCaptureGuidanceBanner({
           Ready to capture
         </p>
       )}
-      <ScanCaptureModelStatus
-        models={models}
-        compact={compact}
-        needsExpressionModel={needsExpressionModel}
-      />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { ScanCaptureModelStatus } from "@/components/ScanCaptureModelStatus";
 import type { CaptureAssistModels, CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
 type Props = {
@@ -36,11 +35,6 @@ export function ScanCaptureGuidanceBanner({
           <ActivityIndicator size="small" color="#fff" />
           <Text style={styles.loadingText}>Checking lighting & face…</Text>
         </View>
-        <ScanCaptureModelStatus
-          models={models}
-          compact={compact}
-          needsExpressionModel={needsExpressionModel}
-        />
       </View>
     );
   }
@@ -82,11 +76,6 @@ export function ScanCaptureGuidanceBanner({
       {guidance.readyToCapture ? (
         <Text style={styles.ready}>Ready to capture</Text>
       ) : null}
-      <ScanCaptureModelStatus
-        models={models}
-        compact={compact}
-        needsExpressionModel={needsExpressionModel}
-      />
     </View>
   );
 }
