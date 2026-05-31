@@ -1,9 +1,7 @@
 "use client";
 
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
-import {
-  SCAN_FACE_FRAME_ASPECT_CSS,
-} from "@/src/lib/maskImageCrop";
+import { SCAN_MASK_FRAME_ASPECT_CSS } from "@/src/lib/maskImageCrop";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import {
   ACNE_MASK_PANEL_LABEL,
@@ -36,7 +34,7 @@ function MaskPanel({
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
-        style={{ aspectRatio: SCAN_FACE_FRAME_ASPECT_CSS }}
+        style={{ aspectRatio: SCAN_MASK_FRAME_ASPECT_CSS }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -50,7 +48,7 @@ function MaskPanel({
               el.src = fallback;
             }
           }}
-          className="h-full w-full object-cover object-center"
+          className="h-full w-full object-contain object-center"
         />
       </div>
       <figcaption className="border-t border-zinc-100 px-3 py-2 text-center text-xs font-medium text-zinc-600">

@@ -243,7 +243,7 @@ export default function HydrationTrackerScreen() {
     else markReady();
   }, [loading, markReady, markNotReady]);
 
-  function persistHydration(nextMl: number) {
+  function scheduleHydrationSave(nextMl: number) {
     const snappedMl = snapHydrationMl(nextMl);
     scheduleSave(format(selectedDate, "yyyy-MM-dd"), {
       waterGlasses: mlToWaterGlasses(snappedMl),
@@ -252,11 +252,16 @@ export default function HydrationTrackerScreen() {
   }
 
   function setHydrationMl(nextMl: number) {
-    setTotalMl(persistHydration(nextMl));
+    setTotalMl(scheduleHydrationSave(nextMl));
   }
 
   function addWater(ml: number) {
-    setTotalMl((prev) => persistHydration(prev + ml));
+    let snappedMl = 0;
+    setTotalMl((prev) => {
+      snappedMl = snapHydrationMl(prev + ml);
+      return snappedMl;
+    });
+    scheduleHydrationSave(snappedMl);
   }
 
   function goBack() { if (canGoBack) setSelectedDate((d) => subDays(d, 1)); }

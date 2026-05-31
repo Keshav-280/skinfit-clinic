@@ -9,8 +9,6 @@ export default function HistoryLoading() {
           kAI is pulling your progress, visits, and care notes.
         </p>
 
-        <p className="text-sm font-semibold text-[#2C3E6B]">Scan reports</p>
-
         <div className="mt-2 h-1 w-full max-w-[280px] overflow-hidden rounded-full bg-[#2C3E6B]/10">
           <div className="h-full w-2/5 animate-pulse rounded-full bg-[#2C3E6B]/50" />
         </div>

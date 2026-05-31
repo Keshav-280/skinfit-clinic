@@ -5,7 +5,7 @@ import {
   ACNE_MASK_PANEL_LABEL,
   WRINKLE_MASK_PANEL_LABEL,
 } from "@/lib/scanMaskLabels";
-import { SCAN_FACE_FRAME_ASPECT } from "@/lib/maskImageCrop";
+import { SCAN_MASK_FRAME_ASPECT } from "@/lib/maskImageCrop";
 
 function MaskPanel({
   uri,
@@ -25,7 +25,7 @@ function MaskPanel({
           imageUrl={uri}
           fallbackImageUrl={fallbackUri}
           authToken={authToken}
-          resizeMode="cover"
+          resizeMode="contain"
         />
       </View>
       <Text style={styles.caption}>{caption}</Text>
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   imageClip: {
     width: "100%",
     maxWidth: 340,
-    aspectRatio: SCAN_FACE_FRAME_ASPECT,
+    aspectRatio: SCAN_MASK_FRAME_ASPECT,
     overflow: "hidden",
     borderRadius: 12,
     backgroundColor: "#f4f4f5",

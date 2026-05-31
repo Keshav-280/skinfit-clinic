@@ -1,6 +1,9 @@
 import { formatDistanceToNow } from "date-fns";
 
-import { SCAN_FACE_FRAME_ASPECT_CSS } from "./maskImageCrop";
+import {
+  SCAN_FACE_FRAME_ASPECT_CSS,
+  SCAN_MASK_FRAME_ASPECT_CSS,
+} from "./maskImageCrop";
 import type { PatientTrackerReport } from "./patientTrackerReport.types";
 import {
   ACNE_MASK_PANEL_LABEL,
@@ -715,7 +718,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .mask-panel-frame {
       position: relative;
       width: 100%;
-      aspect-ratio: ${SCAN_FACE_FRAME_ASPECT_CSS};
+      aspect-ratio: ${SCAN_MASK_FRAME_ASPECT_CSS};
       overflow: hidden;
       border-radius: 8px;
       background: #fafafa;
@@ -726,7 +729,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       object-position: center;
       display: block;
     }
