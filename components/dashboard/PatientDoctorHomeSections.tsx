@@ -12,12 +12,14 @@ import {
   MessageSquare,
 } from "lucide-react";
 import {
+  DASHBOARD_SECTION_CARD,
+  DashboardSectionHeader,
+} from "@/components/dashboard/DashboardSectionHeader";
+import {
   CLINIC_SUPPORT_INBOX_REFRESH_EVENT,
 } from "@/src/lib/clinicSupportInboxClient";
 
 const NAVY = "#2C3E6B";
-const SECTION_CARD =
-  "scroll-mt-24 rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm md:p-6";
 
 const PLAIN_DOCTOR_CHAT_MAX_LEN = 4000;
 const DOCTOR_CHECKUP_FOLLOWUP_PREFIX =
@@ -224,25 +226,14 @@ export function PatientDoctorHomeSections({
     <div className="space-y-5">
       <section
         id="doctor-written-feedback"
-        className={SECTION_CARD}
+        className={`scroll-mt-24 ${DASHBOARD_SECTION_CARD}`}
         aria-labelledby="doctor-written-feedback-heading"
       >
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-[12px] text-white shadow-md"
-              style={{ backgroundColor: NAVY }}
-            >
-              <MessageSquare className="h-4 w-4" aria-hidden />
-            </span>
-            <h2
-              id="doctor-written-feedback-heading"
-              className="text-base font-extrabold tracking-wide text-[#2C3E6B] md:text-lg"
-            >
-              DOCTOR&apos;S FEEDBACK
-            </h2>
-          </div>
-        </div>
+        <DashboardSectionHeader
+          icon={MessageSquare}
+          title="DOCTOR'S FEEDBACK"
+          headingId="doctor-written-feedback-heading"
+        />
 
         {doctorFeedback?.trim() ? (
           <>
@@ -318,37 +309,26 @@ export function PatientDoctorHomeSections({
 
       <section
         id="doctor-feedback"
-        className={SECTION_CARD}
+        className={`scroll-mt-24 ${DASHBOARD_SECTION_CARD}`}
         aria-labelledby="dashboard-voice-heading"
       >
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-white shadow-md"
-              style={{ backgroundColor: NAVY }}
-            >
-              <Mic className="h-4 w-4" aria-hidden />
-            </span>
-            <div>
-              <h2
-                id="dashboard-voice-heading"
-                className="text-base font-extrabold tracking-wide text-[#2C3E6B] md:text-lg"
-              >
-                VOICE NOTES
-              </h2>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {doctorVoiceNoteIsNew ? (
-              <span className="rounded-[10px] bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-800">
-                New
+        <DashboardSectionHeader
+          icon={Mic}
+          title="VOICE NOTES"
+          headingId="dashboard-voice-heading"
+          action={
+            <>
+              {doctorVoiceNoteIsNew ? (
+                <span className="rounded-[10px] bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-800">
+                  New
+                </span>
+              ) : null}
+              <span className="rounded-[10px] border border-white/70 bg-white/50 px-2.5 py-1 text-xs font-semibold tabular-nums text-[#64748B]">
+                {displayDate}
               </span>
-            ) : null}
-            <span className="rounded-[10px] border border-white/70 bg-white/50 px-2.5 py-1 text-xs font-semibold tabular-nums text-[#64748B]">
-              {displayDate}
-            </span>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {doctorVoiceNotes.length > 0 ? (
           <div className="space-y-4">

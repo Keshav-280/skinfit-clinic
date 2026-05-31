@@ -25,7 +25,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
-import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import { FACE_SCAN_CAPTURE_STEPS, SCAN_NAME_INPUT_PLACEHOLDER, resolveScanName } from "@/lib/faceScanCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
 import {
   addPendingScanJob,
@@ -209,13 +209,9 @@ export default function ScanScreen() {
   }
 
   async function runScan() {
-    const name = scanName.trim();
+    const name = resolveScanName(scanName);
     if (!token || uris.length !== N) {
       Alert.alert("AI face scan", `Capture all ${N} angles first.`);
-      return;
-    }
-    if (!name) {
-      Alert.alert("AI face scan", "Name this scan before starting analysis.");
       return;
     }
     setBusy(true);
@@ -331,7 +327,7 @@ export default function ScanScreen() {
   // ── Review phase ──
   if (phase === "review" || uris.length >= N) {
     const gridH = SCREEN_H * 0.48;
-    const canStartAnalysis = scanName.trim().length > 0;
+    const canStartAnalysis = uris.length >= N && !busy;
     return (
       <View style={styles.screenRoot}>
       <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
@@ -413,7 +409,7 @@ export default function ScanScreen() {
               <Text style={styles.scanNameLabel}>Name this scan</Text>
               <TextInput
                 style={styles.scanNameInput}
-                placeholder="e.g., Morning routine"
+                placeholder={SCAN_NAME_INPUT_PLACEHOLDER}
                 placeholderTextColor="rgba(44, 62, 107, 0.4)"
                 value={scanName}
                 onChangeText={setScanName}
@@ -422,6 +418,9 @@ export default function ScanScreen() {
                 autoCorrect={false}
                 editable={!busy}
               />
+              <Text style={styles.scanNameHint}>
+                Leave blank to save as "{resolveScanName("")}".
+              </Text>
             </View>
           ) : null}
 
@@ -763,6 +762,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: NAVY,
+  },
+  scanNameHint: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#6B7280",
   },
   analyzingOverlay: {
     ...StyleSheet.absoluteFillObject,

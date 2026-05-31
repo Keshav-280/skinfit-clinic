@@ -23,8 +23,6 @@ const GREEN = "#16a34a";
 const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
 
-const STEP_COLORS = ["#FDE68A", "#FCA5A5", "#BBF7D0", "#C4B5FD", "#FBCFE8", "#BAE6FD", "#FED7AA", "#DDD6FE"];
-
 const MOTIVATIONS = [
   "Great skin is built while you rest.",
   "Night is repair time. Don't skip.",
@@ -210,7 +208,6 @@ export default function NightRoutineScreen() {
 
       {data.pmItems.map((item, i) => {
         const checked = steps[i] ?? false;
-        const color = STEP_COLORS[i % STEP_COLORS.length];
         const parts = item.split("|").map((s: string) => s.trim());
         const stepName = parts[0] || item;
         const productName = parts[1] || "";
@@ -220,7 +217,6 @@ export default function NightRoutineScreen() {
             <View style={[styles.stepNum, { backgroundColor: checked ? GREEN : NAVY }]}>
               {checked ? <Ionicons name="checkmark" size={14} color="#fff" /> : <Text style={styles.stepNumText}>{i + 1}</Text>}
             </View>
-            <View style={[styles.stepColorBar, { backgroundColor: color }]} />
             <View style={styles.stepInfo}>
               <Text style={[styles.stepName, checked && styles.stepNameDone]}>{stepName}</Text>
               {productName ? <Text style={styles.stepProduct}>{productName}</Text> : null}
@@ -314,7 +310,6 @@ const styles = StyleSheet.create({
     width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center",
   },
   stepNumText: { color: "#fff", fontSize: 13, fontWeight: "800" },
-  stepColorBar: { width: 4, height: 36, borderRadius: 2 },
   stepInfo: { flex: 1 },
   stepName: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
   stepNameDone: { textDecorationLine: "line-through", color: "#9CA3AF" },

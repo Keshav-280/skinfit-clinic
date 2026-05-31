@@ -787,7 +787,7 @@ export default function SchedulesPageClient({
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className="mx-auto max-w-7xl space-y-4">
       {requestFormUrl ? (
         <div className="mx-auto max-w-lg rounded-[18px] border border-white/60 bg-white/40 px-4 py-3 text-center text-sm text-[#2C3E6B] backdrop-blur-sm">
           <p>If your clinic uses a Google Form, you can complete it here:</p>
@@ -822,9 +822,10 @@ export default function SchedulesPageClient({
         </div>
       ) : null}
 
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)] lg:items-start">
       <section
         id="schedules-calendar-root"
-        className="mx-auto max-w-3xl overflow-hidden rounded-[20px] border border-[#e2e8f0] bg-white p-3 shadow-md md:p-4"
+        className="min-w-0 overflow-hidden rounded-[20px] border border-[#e2e8f0] bg-white p-3 shadow-md md:p-4"
       >
         <div className="mb-0.5">
           <h3 className="text-[17px] font-extrabold tracking-tight text-[#18181b]">
@@ -1085,7 +1086,7 @@ export default function SchedulesPageClient({
         </div>
       </section>
 
-      <section className="mx-auto flex max-w-3xl flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm">
+      <section className="flex min-w-0 flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm lg:sticky lg:top-24">
         <div className="border-b border-[#e4e4e7] bg-[rgba(232,238,246,0.45)] px-4 py-3">
           <h4 className="text-base font-extrabold text-[#18181b]">This {view === "month" ? "month" : "week"}</h4>
           <p className="mt-0.5 text-xs text-[#64748b]">
@@ -1102,6 +1103,7 @@ export default function SchedulesPageClient({
           )}
         </div>
       </section>
+      </div>
 
       <div className="space-y-3.5">
           {featuredUpcoming ? (

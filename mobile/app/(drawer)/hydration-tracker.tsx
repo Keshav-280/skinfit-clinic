@@ -20,6 +20,12 @@ import { TrackerSaveStatusText } from "@/components/TrackerSaveStatus";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { apiJson } from "@/lib/api";
+import {
+  mlToWaterGlasses,
+  snapHydrationLiters,
+  snapHydrationMl,
+  waterGlassesToMl,
+} from "@/lib/hydrationUnits";
 
 const NAVY = "#2C3E6B";
 const BLUE = "#4F46E5";
@@ -27,7 +33,6 @@ const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
 
 const GOAL_LITERS = 3.0;
-const ML_PER_GLASS = 250;
 
 function HydrationGauge({
   liters,
@@ -89,7 +94,7 @@ function HydrationGauge({
       if (angle < 0) angle += 360;
       const clampedAngle = Math.max(startAngle, Math.min(endAngle, angle));
       const ratioFromTouch = (clampedAngle - startAngle) / totalAngle;
-      onChangeRef.current(Number((ratioFromTouch * goal).toFixed(1)));
+      onChangeRef.current(snapHydrationLiters(ratioFromTouch * goal));
     },
     [cx, cy, goal, startAngle, endAngle, totalAngle]
   );
@@ -206,7 +211,7 @@ export default function HydrationTrackerScreen() {
     try {
       const ymd = format(selectedDate, "yyyy-MM-dd");
       const json = await apiJson<{ entry: { waterGlasses?: number } | null }>(`/api/journal?date=${ymd}`, token, { method: "GET" });
-      setTotalMl((json.entry?.waterGlasses ?? 0) * ML_PER_GLASS);
+      setTotalMl(waterGlassesToMl(json.entry?.waterGlasses ?? 0));
     } catch { setTotalMl(0); }
     finally { setLoading(false); }
   }, [token, selectedDate, markNotReady]);
@@ -239,17 +244,19 @@ export default function HydrationTrackerScreen() {
   }, [loading, markReady, markNotReady]);
 
   function persistHydration(nextMl: number) {
+    const snappedMl = snapHydrationMl(nextMl);
     scheduleSave(format(selectedDate, "yyyy-MM-dd"), {
-      waterGlasses: Math.round(nextMl / ML_PER_GLASS),
+      waterGlasses: mlToWaterGlasses(snappedMl),
     });
+    return snappedMl;
+  }
+
+  function setHydrationMl(nextMl: number) {
+    setTotalMl(persistHydration(nextMl));
   }
 
   function addWater(ml: number) {
-    setTotalMl((prev) => {
-      const next = prev + ml;
-      persistHydration(next);
-      return next;
-    });
+    setTotalMl((prev) => persistHydration(prev + ml));
   }
 
   function goBack() { if (canGoBack) setSelectedDate((d) => subDays(d, 1)); }
@@ -313,9 +320,7 @@ export default function HydrationTrackerScreen() {
           <HydrationGauge
             liters={liters}
             onChangeLiters={(nextLiters) => {
-              const nextMl = Math.max(0, Math.round(nextLiters * 1000));
-              setTotalMl(nextMl);
-              persistHydration(nextMl);
+              setHydrationMl(Math.round(nextLiters * 1000));
             }}
             onDragStart={() => setScrollEnabled(false)}
             onDragEnd={() => setScrollEnabled(true)}

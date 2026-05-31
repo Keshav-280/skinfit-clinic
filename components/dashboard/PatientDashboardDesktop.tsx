@@ -15,10 +15,18 @@ import {
   ChevronRight,
   Loader2,
   Sparkles,
+  ListChecks,
+  Flame,
+  Activity,
+  NotebookPen,
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMergedCard";
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
+import {
+  DASHBOARD_SECTION_CARD,
+  DashboardSectionHeader,
+} from "@/components/dashboard/DashboardSectionHeader";
 import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
 
@@ -162,10 +170,12 @@ function RadarChart({
   data: { label: string; value: number }[];
   size?: number;
 }) {
-  const center = size / 2;
+  const chartSize = size;
+  const center = chartSize / 2;
   const levels = 4;
-  const maxRadius = (size / 260) * 90;
-  const labelPad = (size / 260) * 30;
+  const maxRadius = (chartSize / 260) * 90;
+  const labelPad = (chartSize / 260) * 30;
+  const outerSize = chartSize + labelPad * 2;
   const angleStep = (2 * Math.PI) / data.length;
   const startAngle = -Math.PI / 2;
 
@@ -183,8 +193,13 @@ function RadarChart({
   const dataPath = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size}>
+    <div className="relative mx-auto" style={{ width: outerSize, height: outerSize }}>
+      <svg
+        className="absolute"
+        style={{ left: labelPad, top: labelPad }}
+        width={chartSize}
+        height={chartSize}
+      >
         {gridPaths.map((points, i) => (<polygon key={i} points={points} fill="none" stroke="#D1D5DB" strokeWidth={1} />))}
         {data.map((_, i) => { const p = getPoint(i, maxRadius); return <line key={i} x1={center} y1={center} x2={p.x} y2={p.y} stroke="#E5E7EB" strokeWidth={1} />; })}
         <polygon points={dataPath} fill="rgba(22,163,74,0.2)" stroke={GREEN} strokeWidth={2} />
@@ -193,9 +208,17 @@ function RadarChart({
       {data.map((d, i) => {
         const p = getPoint(i, maxRadius + labelPad);
         return (
-          <div key={i} className="absolute text-center" style={{ left: p.x, top: p.y, transform: "translate(-50%, -50%)" }}>
-            <p className={`font-medium text-slate-500 ${size < 220 ? "text-[10px]" : "text-xs"}`}>{d.label}</p>
-            <p className={`font-bold text-slate-800 ${size < 220 ? "text-xs" : "text-sm"}`}>{d.value}%</p>
+          <div
+            key={i}
+            className="absolute text-center"
+            style={{
+              left: labelPad + p.x,
+              top: labelPad + p.y,
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <p className={`font-medium text-slate-500 ${chartSize < 220 ? "text-[10px]" : "text-xs"}`}>{d.label}</p>
+            <p className={`font-bold text-slate-800 ${chartSize < 220 ? "text-xs" : "text-sm"}`}>{d.value}%</p>
           </div>
         );
       })}
@@ -412,12 +435,19 @@ export function PatientDashboardDesktop() {
   }, [displayedWeekStart, selectedDate]);
 
   const streakDays = useMemo(() => {
-    if (!data) return DAYS_OF_WEEK.map((l) => ({ label: l, done: false }));
+    if (!data) return DAYS_OF_WEEK.map((l) => ({ label: l, done: false, isFuture: false }));
     const completedSet = new Set(data.weekCompletedDates);
+    const today = new Date();
     const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => {
       const d = addDays(start, i);
-      return { label: format(d, "EEE"), done: completedSet.has(format(d, "yyyy-MM-dd")) };
+      const ymd = format(d, "yyyy-MM-dd");
+      const isFuture = d.getTime() > today.getTime() && !isSameDay(d, today);
+      return {
+        label: format(d, "EEE"),
+        done: !isFuture && completedSet.has(ymd),
+        isFuture,
+      };
     });
   }, [data, selectedDate]);
 
@@ -577,13 +607,16 @@ export function PatientDashboardDesktop() {
           const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
           return (
-            <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-extrabold text-[#18181b]">Daily Routine</h3>
-                <span className="text-[13px] font-semibold text-[#6B7280]">
-                  {completedSteps}/{totalSteps || 0} steps
-                </span>
-              </div>
+            <div className={DASHBOARD_SECTION_CARD}>
+              <DashboardSectionHeader
+                icon={ListChecks}
+                title="DAILY ROUTINE"
+                action={
+                  <span className="text-[13px] font-semibold text-[#6B7280]">
+                    {completedSteps}/{totalSteps || 0} steps
+                  </span>
+                }
+              />
               {totalSteps > 0 ? (
                 <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/50">
                   <div
@@ -662,10 +695,13 @@ export function PatientDashboardDesktop() {
         <div
           className={`grid gap-3 ${data.skinScanHistory.length > 0 ? "md:grid-cols-2 md:items-stretch" : ""}`}
         >
-          <div className="flex flex-col rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-5">
-            <h3 className="text-base font-extrabold text-[#18181b]">
-              🔥 {data.streakCurrent}-Day Streak
-            </h3>
+          <div className={`flex flex-col ${DASHBOARD_SECTION_CARD} !p-4 md:!p-5`}>
+            <DashboardSectionHeader
+              icon={Flame}
+              title={`${data.streakCurrent}-DAY STREAK`}
+              titleAs="h3"
+              className="mb-3"
+            />
             <div className="mt-3 flex flex-1 items-center justify-between px-0.5">
               {streakDays.map((d, i) => (
                 <div key={i} className="flex flex-col items-center gap-1">
@@ -673,10 +709,13 @@ export function PatientDashboardDesktop() {
                     className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
                       d.done
                         ? "border-emerald-500 bg-emerald-500 text-white"
-                        : "border-slate-300 bg-white/35 text-slate-300"
+                        : d.isFuture
+                          ? "border-slate-200 bg-white/20 text-slate-200"
+                          : "border-slate-300 bg-white/35 text-slate-300"
                     }`}
+                    aria-hidden
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {d.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
                   </div>
                   <span className="text-[10px] font-semibold text-[#6B7280]">{d.label}</span>
                 </div>
@@ -692,19 +731,24 @@ export function PatientDashboardDesktop() {
               }`}
             >
               {allRoutineDone
-                ? "All completed today!"
+                ? data.streakCurrent > 1
+                  ? `${data.streakCurrent} days in a row · done today!`
+                  : "All completed today!"
                 : data.streakCurrent > 0
-                  ? "Keep it up!"
-                  : "Start your streak today!"}
+                  ? `${data.streakCurrent}-day streak · finish today's routine`
+                  : "Complete AM & PM to start a streak"}
             </p>
           </div>
 
           {data.skinScanHistory.length > 0 ? (
-            <div className="flex flex-col rounded-[22px] border border-white/70 bg-white/35 p-4 text-center backdrop-blur-sm md:p-5">
-              <h3 className="text-[13px] font-extrabold tracking-wide text-[#18181b]">
-                SKIN HEALTH METRICS
-              </h3>
-              <div className="mt-1 flex flex-1 items-center justify-center overflow-hidden">
+            <div className={`flex flex-col ${DASHBOARD_SECTION_CARD} !p-4 md:!p-5`}>
+              <DashboardSectionHeader
+                icon={Activity}
+                title="SKIN HEALTH METRICS"
+                titleAs="h3"
+                className="mb-1"
+              />
+              <div className="flex flex-1 items-center justify-center">
                 <RadarChart data={radarData} size={200} />
               </div>
             </div>

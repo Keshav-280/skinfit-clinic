@@ -5,17 +5,6 @@ import Link from "next/link";
 import { ArrowLeft, Sun, Check, Loader2 } from "lucide-react";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 
-const STEP_COLORS = [
-  "#FDE68A",
-  "#FCA5A5",
-  "#BBF7D0",
-  "#C4B5FD",
-  "#FBCFE8",
-  "#BAE6FD",
-  "#FED7AA",
-  "#DDD6FE",
-];
-
 type HomeResponse = {
   amItems: string[];
   pmItems: string[];
@@ -184,7 +173,6 @@ export default function MorningRoutinePage() {
       {/* Step Cards */}
       <ul className="flex flex-col gap-3">
         {amItems.map((step, i) => {
-          const color = STEP_COLORS[i % STEP_COLORS.length];
           const done = checked[i];
 
           return (
@@ -193,7 +181,6 @@ export default function MorningRoutinePage() {
                 type="button"
                 onClick={() => toggle(i)}
                 className="flex w-full items-center gap-4 rounded-2xl border border-white/60 bg-white/35 px-4 py-3.5 backdrop-blur-sm transition-transform active:scale-[0.98]"
-                style={{ borderLeft: `4px solid ${color}` }}
               >
                 <span
                   className={`text-sm font-medium transition-colors ${

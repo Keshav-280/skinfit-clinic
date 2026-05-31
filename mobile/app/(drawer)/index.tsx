@@ -58,6 +58,8 @@ function formatScanDetailLabel(scan: SkinScanItem): string {
   return `${format(new Date(scan.createdAt), "MMM d, yyyy 'at' h:mm a")} · Overall ${Math.round(scan.skinScore)}/100`;
 }
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
+import { formatWaterLiters } from "@/lib/hydrationUnits";
+import { subscribeJournalUpdated } from "@/lib/journalSync";
 import { normalizeRoutineSteps } from "@/lib/routine";
 
 const NAVY = "#2C3E6B";
@@ -195,31 +197,33 @@ export default function DashboardScreen() {
   const [sunExposure, setSunExposure] = useState<string>("low");
   const [cycleDay, setCycleDay] = useState("");
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
-  const { saveStatus: journalSaveStatus, scheduleSave: scheduleJournalSave, markReady: markJournalReady, markNotReady: markJournalNotReady } =
+  const { markReady: markJournalReady, markNotReady: markJournalNotReady } =
     useDebouncedTrackerAutoSave(token);
 
-  const loadHome = useCallback(async () => {
+  const loadHome = useCallback(async (opts?: { skipCache?: boolean }) => {
     if (!token) return;
     setError(null);
     const cacheKey = "home";
-    const cached = await getCached<HomeData>(cacheKey);
-    if (cached) {
-      setData({
-        ...cached,
-        kaiSkinScore: cached.kaiSkinScore ?? 0,
-        weeklyDeltaScore: cached.weeklyDeltaScore ?? cached.weeklyChangePercent ?? 0,
-        lifestyleAlignmentScore: cached.lifestyleAlignmentScore ?? cached.routineScore ?? 0,
-        streakCurrent: cached.streakCurrent ?? 0,
-        streakLongest: cached.streakLongest ?? 0,
-        cycleTrackingEnabled: cached.cycleTrackingEnabled ?? false,
-        homeDateYmd: cached.homeDateYmd,
-        doctorVoiceNotes: cached.doctorVoiceNotes ?? [],
-        doctorArchivedVoiceNotes: cached.doctorArchivedVoiceNotes ?? [],
-        doctorVoiceNote: cached.doctorVoiceNote ?? null,
-        doctorVoiceNoteIsNew: cached.doctorVoiceNoteIsNew ?? false,
-        routinePlanReady: cached.routinePlanReady ?? false,
-      });
-      setShowingCachedHome(true);
+    if (!opts?.skipCache) {
+      const cached = await getCached<HomeData>(cacheKey);
+      if (cached) {
+        setData({
+          ...cached,
+          kaiSkinScore: cached.kaiSkinScore ?? 0,
+          weeklyDeltaScore: cached.weeklyDeltaScore ?? cached.weeklyChangePercent ?? 0,
+          lifestyleAlignmentScore: cached.lifestyleAlignmentScore ?? cached.routineScore ?? 0,
+          streakCurrent: cached.streakCurrent ?? 0,
+          streakLongest: cached.streakLongest ?? 0,
+          cycleTrackingEnabled: cached.cycleTrackingEnabled ?? false,
+          homeDateYmd: cached.homeDateYmd,
+          doctorVoiceNotes: cached.doctorVoiceNotes ?? [],
+          doctorArchivedVoiceNotes: cached.doctorArchivedVoiceNotes ?? [],
+          doctorVoiceNote: cached.doctorVoiceNote ?? null,
+          doctorVoiceNoteIsNew: cached.doctorVoiceNoteIsNew ?? false,
+          routinePlanReady: cached.routinePlanReady ?? false,
+        });
+        setShowingCachedHome(true);
+      }
     }
     const json = await apiJson<HomeData>(`/api/patient/home?date=${encodeURIComponent(journalDate)}`, token, {
       method: "GET",
@@ -314,19 +318,6 @@ export default function DashboardScreen() {
   }, [loadHome]);
 
   const hasLoadedOnce = useRef(false);
-  useFocusEffect(
-    useCallback(() => {
-      if (!hasLoadedOnce.current) {
-        hasLoadedOnce.current = true;
-        return;
-      }
-      if (token) {
-        void loadHome().catch(() => {
-          /* 401 handled globally; ignore other refresh errors on focus */
-        });
-      }
-    }, [token, loadHome, journalDate])
-  );
 
   const loadJournalForDate = useCallback(
     async (ymd: string) => {
@@ -380,23 +371,35 @@ export default function DashboardScreen() {
     [token, markJournalNotReady, markJournalReady]
   );
 
-  const persistJournalTrackers = useCallback(
-    (next: { sleep?: string; water?: string; stress?: string }) => {
-      const sleepVal = Number.parseFloat(next.sleep ?? sleep) || 0;
-      const waterVal = Number.parseInt(next.water ?? water, 10) || 0;
-      const stressVal = Number.parseInt(next.stress ?? stress, 10) || 0;
-      scheduleJournalSave(journalDate, {
-        sleepHours: sleepVal,
-        waterGlasses: waterVal,
-        stressLevel: stressVal,
-      });
-    },
-    [journalDate, scheduleJournalSave, sleep, stress, water]
-  );
-
   useEffect(() => {
     void loadJournalForDate(journalDate);
   }, [journalDate, loadJournalForDate]);
+
+  useEffect(() => {
+    return subscribeJournalUpdated((patch) => {
+      if (patch.date !== journalDate) return;
+      if (patch.sleepHours != null) setSleep(String(patch.sleepHours));
+      if (patch.stressLevel != null) setStress(String(patch.stressLevel));
+      if (patch.waterGlasses != null) setWater(String(patch.waterGlasses));
+    });
+  }, [journalDate]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedOnce.current) {
+        hasLoadedOnce.current = true;
+        return;
+      }
+      if (token) {
+        void loadHome({ skipCache: true }).catch(() => {
+          /* 401 handled globally; ignore other refresh errors on focus */
+        });
+        void loadJournalForDate(journalDate).catch(() => {
+          /* ignore refresh errors on focus */
+        });
+      }
+    }, [token, loadHome, loadJournalForDate, journalDate])
+  );
 
   const skinScanHistory = useMemo(
     () => data?.skinScanHistory ?? [],
@@ -791,46 +794,39 @@ export default function DashboardScreen() {
         );
       })()}
 
-      {/* ── Streak + skin health — side by side ── */}
-      <View style={styles.streakSkinRow}>
-        <View style={[styles.streakCard, styles.streakSkinHalf]}>
-          <Text style={styles.streakTitleCompact}>🔥 {data.streakCurrent}-Day Streak</Text>
-          <View style={styles.streakDotsRowCompact}>
-            {streakDays.map((d, i) => (
-              <View key={`s-${i}`} style={styles.streakDayColCompact}>
-                <View
-                  style={[
-                    styles.streakDotCompact,
-                    d.done && styles.streakDotDone,
-                  ]}
-                >
-                  {d.done ? <Ionicons name="checkmark" size={11} color="#fff" /> : null}
-                </View>
-                <Text style={styles.streakDayLabelCompact}>{d.label.slice(0, 1)}</Text>
+      {/* ── Streak ── */}
+      <View style={styles.streakCard}>
+        <Text style={styles.streakTitle}>🔥 {data.streakCurrent}-Day Streak</Text>
+        <View style={styles.streakDotsRow}>
+          {streakDays.map((d, i) => (
+            <View key={`s-${i}`} style={styles.streakDayCol}>
+              <View
+                style={[
+                  styles.streakDot,
+                  d.done && styles.streakDotDone,
+                ]}
+              >
+                {d.done ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
               </View>
-            ))}
-          </View>
-          <Text
-            style={[
-              styles.streakMessageCompact,
-              completedRoutineSteps >= totalRoutineSteps && totalRoutineSteps > 0
-                ? { color: GREEN_ACCENT }
-                : { color: "#DC2626" },
-            ]}
-            numberOfLines={2}
-          >
-            {streakMessage}
-          </Text>
+              <Text style={styles.streakDayLabel}>{d.label}</Text>
+            </View>
+          ))}
         </View>
-
-        {latestScan ? (
-          <SkinHealthMetricsCard
-            analysis={latestScan.analysisResults}
-            compact
-            style={styles.streakSkinHalf}
-          />
-        ) : null}
+        <Text
+          style={[
+            styles.streakMessage,
+            completedRoutineSteps >= totalRoutineSteps && totalRoutineSteps > 0
+              ? { color: GREEN_ACCENT }
+              : { color: "#DC2626" },
+          ]}
+        >
+          {streakMessage}
+        </Text>
       </View>
+
+      {latestScan ? (
+        <SkinHealthMetricsCard analysis={latestScan.analysisResults} />
+      ) : null}
 
       {false ? (
       <NextReminderCard
@@ -904,101 +900,85 @@ export default function DashboardScreen() {
         </>
       ) : null}
 
-      {/* ── Daily Journal (merged) ── */}
-      <View style={styles.journalMergedCard}>
-        <View style={styles.journalMergedHeader}>
-          <Text style={[styles.sectionTitle, { marginBottom: 0, marginTop: 0 }]}>
-            DAILY JOURNAL
-          </Text>
-          {journalSaveStatus === "saving" ? (
-            <Text style={styles.journalSaveHint}>Saving…</Text>
-          ) : journalSaveStatus === "saved" ? (
-            <Text style={[styles.journalSaveHint, { color: GREEN_ACCENT }]}>Saved ✓</Text>
-          ) : journalSaveStatus === "error" ? (
-            <Text style={[styles.journalSaveHint, { color: "#D97706" }]}>Could not save</Text>
-          ) : null}
-        </View>
+      {/* ── Daily Journal Cards ── */}
+      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>DAILY JOURNAL</Text>
 
-        <View style={styles.journalMergedRow}>
-          <View style={[styles.journalCardIcon, { backgroundColor: "#16a34a" }]}>
-            <Ionicons name="bed" size={20} color="#fff" />
-          </View>
-          <View style={styles.journalMergedCopy}>
+      <Pressable
+        style={styles.journalCard}
+        onPress={() =>
+          router.push(
+            `/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href
+          )
+        }
+      >
+        <View style={styles.journalCardInner}>
+          <View style={{ flex: 1 }}>
             <Text style={styles.journalCardLabel}>Sleep Duration</Text>
-            <Text style={styles.journalMergedValue}>
+            <Text style={styles.journalCardValue}>
               {String(Math.floor(Number(sleep))).padStart(2, "0")}h{" "}
               {String(Math.round((Number(sleep) % 1) * 60)).padStart(2, "0")}m
             </Text>
           </View>
-          <View style={styles.journalStepper}>
-            <Pressable
-              style={styles.journalStepBtn}
-              onPress={() => {
-                const next = Math.min(
-                  24,
-                  Math.max(0, Math.round((Number(sleep) - 0.5) * 2) / 2)
-                );
-                setSleep(String(next));
-                persistJournalTrackers({ sleep: String(next) });
-              }}
-            >
-              <Ionicons name="remove" size={18} color={NAVY} />
-            </Pressable>
-            <Pressable
-              style={styles.journalStepBtn}
-              onPress={() => {
-                const next = Math.min(
-                  24,
-                  Math.max(0, Math.round((Number(sleep) + 0.5) * 2) / 2)
-                );
-                setSleep(String(next));
-                persistJournalTrackers({ sleep: String(next) });
-              }}
-            >
-              <Ionicons name="add" size={18} color={NAVY} />
-            </Pressable>
+          <View style={[styles.journalCardIcon, { backgroundColor: "#16a34a" }]}>
+            <Ionicons name="bed" size={20} color="#fff" />
           </View>
         </View>
+        <Pressable
+          style={styles.journalEnterBtn}
+          onPress={() =>
+            router.push(
+              `/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href
+            )
+          }
+        >
+          <Text style={styles.journalEnterText}>Enter Data</Text>
+        </Pressable>
+      </Pressable>
 
-        <View style={styles.journalMergedDivider} />
-
-        <View style={styles.journalMergedRow}>
+      <Pressable
+        style={styles.journalCard}
+        onPress={() =>
+          router.push(
+            `/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href
+          )
+        }
+      >
+        <View style={styles.journalCardInner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.journalCardLabel}>Hydration</Text>
+            <Text style={styles.journalCardValue}>
+              {formatWaterLiters(Number.parseInt(water, 10) || 0)} L
+            </Text>
+          </View>
           <View style={[styles.journalCardIcon, { backgroundColor: "#3B82F6" }]}>
             <Ionicons name="water" size={20} color="#fff" />
           </View>
-          <View style={styles.journalMergedCopy}>
-            <Text style={styles.journalCardLabel}>Hydration</Text>
-            <Text style={styles.journalMergedValue}>
-              {((Number(water) * 250) / 1000).toFixed(1)} L
-            </Text>
-          </View>
-          <View style={styles.journalStepper}>
-            <Pressable
-              style={styles.journalStepBtn}
-              onPress={() => {
-                const next = Math.max(0, Number.parseInt(water, 10) - 1 || 0);
-                setWater(String(next));
-                persistJournalTrackers({ water: String(next) });
-              }}
-            >
-              <Ionicons name="remove" size={18} color={NAVY} />
-            </Pressable>
-            <Pressable
-              style={styles.journalStepBtn}
-              onPress={() => {
-                const next = Math.min(40, (Number.parseInt(water, 10) || 0) + 1);
-                setWater(String(next));
-                persistJournalTrackers({ water: String(next) });
-              }}
-            >
-              <Ionicons name="add" size={18} color={NAVY} />
-            </Pressable>
-          </View>
         </View>
+        <Pressable
+          style={styles.journalEnterBtn}
+          onPress={() =>
+            router.push(
+              `/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href
+            )
+          }
+        >
+          <Text style={styles.journalEnterText}>Enter Data</Text>
+        </Pressable>
+      </Pressable>
 
-        <View style={styles.journalMergedDivider} />
-
-        <View style={styles.journalMergedRow}>
+      <Pressable
+        style={styles.journalCard}
+        onPress={() =>
+          router.push(
+            `/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href
+          )
+        }
+      >
+        <View style={styles.journalCardInner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.journalCardLabel}>Stress Level (0-10)</Text>
+            <Text style={styles.journalCardValue}>{stress}</Text>
+          </View>
           <View
             style={[
               styles.journalCardIcon,
@@ -1011,34 +991,18 @@ export default function DashboardScreen() {
               color="#fff"
             />
           </View>
-          <View style={styles.journalMergedCopy}>
-            <Text style={styles.journalCardLabel}>Stress Level (0-10)</Text>
-            <Text style={styles.journalMergedValue}>{stress}</Text>
-          </View>
-          <View style={styles.journalStepper}>
-            <Pressable
-              style={styles.journalStepBtn}
-              onPress={() => {
-                const next = Math.max(0, (Number.parseInt(stress, 10) || 0) - 1);
-                setStress(String(next));
-                persistJournalTrackers({ stress: String(next) });
-              }}
-            >
-              <Ionicons name="remove" size={18} color={NAVY} />
-            </Pressable>
-            <Pressable
-              style={styles.journalStepBtn}
-              onPress={() => {
-                const next = Math.min(10, (Number.parseInt(stress, 10) || 0) + 1);
-                setStress(String(next));
-                persistJournalTrackers({ stress: String(next) });
-              }}
-            >
-              <Ionicons name="add" size={18} color={NAVY} />
-            </Pressable>
-          </View>
         </View>
-      </View>
+        <Pressable
+          style={styles.journalEnterBtn}
+          onPress={() =>
+            router.push(
+              `/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href
+            )
+          }
+        >
+          <Text style={styles.journalEnterText}>Enter Data</Text>
+        </Pressable>
+      </Pressable>
 
       {/* Skin parameters section hidden for now — uncomment to restore.
       <View style={[styles.card, styles.skinParamsCard]}>

@@ -15,8 +15,16 @@ import {
   Contrast,
   ZoomIn,
   History,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
+import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
+import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
+import {
+  CAPTURE_READY_VOICE_HINT,
+  captureVoiceGuide,
+} from "@/src/lib/captureVoiceGuide";
 import { CAPTURE_ZOOM_AUTO } from "@/src/lib/scanCaptureGuidance";
 import {
   patientSecondaryBtn,
@@ -24,6 +32,8 @@ import {
 import {
   FACE_SCAN_CAPTURE_STEPS,
   FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
+  SCAN_NAME_INPUT_PLACEHOLDER,
+  resolveScanName,
 } from "@/src/lib/faceScanCaptures";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
 import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
@@ -159,6 +169,16 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const captureStepIndexRef = useRef(0);
   const currentCameraStep = FACE_SCAN_CAPTURE_STEPS[Math.min(captures.length, N_CAPTURES - 1)];
   const reviewingCapture = pendingCapture != null;
+  const guidanceActive = cameraOpen && !reviewingCapture;
+
+  const { guidance, models, needsExpressionModel } = useWebScanCaptureGuidance(
+    videoRef,
+    guidanceActive,
+    captureZoom,
+    currentCameraStep.id
+  );
+
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   const previewFilter = `brightness(${brightness}%) contrast(${contrast}%)`;
   const adjustmentsChanged =
@@ -168,6 +188,44 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setBrightness(ADJUST_DEFAULT);
     setContrast(ADJUST_DEFAULT);
   }, []);
+
+  useEffect(() => {
+    captureVoiceGuide.setEnabled(voiceEnabled && cameraOpen);
+    if (!voiceEnabled || !cameraOpen) captureVoiceGuide.reset();
+    return () => {
+      captureVoiceGuide.setEnabled(false);
+    };
+  }, [voiceEnabled, cameraOpen]);
+
+  useEffect(() => {
+    captureVoiceGuide.reset();
+  }, [currentCameraStep.id]);
+
+  /** Speak the highest-priority guidance line (debounced/cooldown'd inside). */
+  useEffect(() => {
+    if (!voiceEnabled || !cameraOpen || reviewingCapture || !guidance) return;
+    if (guidance.face === "no_face") {
+      captureVoiceGuide.speak(guidance.faceMessage, "critical");
+      return;
+    }
+    if (guidance.face !== "good") {
+      captureVoiceGuide.speak(guidance.faceMessage, "framing");
+      return;
+    }
+    if (guidance.expressionMessage && guidance.expressionOk === false) {
+      captureVoiceGuide.speak(guidance.expressionMessage, "expression");
+      return;
+    }
+    const lightingOk =
+      guidance.lighting === "good" || guidance.lightingScore >= 55;
+    if (!lightingOk) {
+      captureVoiceGuide.speak(guidance.lightingMessage, "lighting");
+      return;
+    }
+    if (guidance.readyToCapture) {
+      captureVoiceGuide.speak(CAPTURE_READY_VOICE_HINT, "ready");
+    }
+  }, [voiceEnabled, cameraOpen, reviewingCapture, guidance]);
 
   useEffect(() => {
     captureStepIndexRef.current = captures.length;
@@ -424,17 +482,18 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   };
 
   const runScan = useCallback(async () => {
-    if (captures.length !== N_CAPTURES || !scanName.trim()) return;
+    if (captures.length !== N_CAPTURES) return;
+    const finalScanName = resolveScanName(scanName);
     setStep("scanning");
     setScanError(null);
     try {
       const formData = new FormData();
-      formData.append("scanName", scanName.trim());
+      formData.append("scanName", finalScanName);
       captures.forEach((c) => formData.append("images", c.file));
       const outcome = await submitFaceScan(formData);
 
       if (outcome.mode === "queued") {
-        addPendingScanJob(outcome.jobId, scanName.trim());
+        addPendingScanJob(outcome.jobId, finalScanName);
         setStep("queued");
         return;
       }
@@ -467,14 +526,17 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mx-auto max-w-3xl"
+        className="mx-auto max-w-4xl"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+              Skin analysis
+            </p>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-[#1F2A44]">
               {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
             </h1>
-            <p className="mt-1 text-sm text-[#6B7280]">
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#64748B]">
               {isOnboardingScan
                 ? "Five angles in order — last step of setup. Later check-ins use Scan."
                 : "Five angles in order — scores, clinical metrics, and annotated findings."}
@@ -497,149 +559,199 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
+          className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
-              Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}
-            </p>
-            <p className="mt-0.5 text-lg font-bold text-[#2C3E6B]">
-              {currentCameraStep.title}
-            </p>
-            <p className="mt-0.5 text-sm leading-snug text-[#6B7280]">
-              {reviewingCapture
-                ? "Use this photo or retake it."
-                : currentCameraStep.instruction}
-            </p>
-          </div>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+            {/* Left: live camera + capture actions */}
+            <div className="flex min-w-0 flex-col gap-3">
+              <div className="relative mx-auto aspect-[3/4] w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 lg:mx-0 lg:max-w-none">
+                <video
+                  ref={videoRef}
+                  className={`h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
+                  style={{
+                    transformOrigin: "center center",
+                    transform:
+                      facingMode === "user"
+                        ? `scaleX(-1) scale(${captureZoom})`
+                        : `scale(${captureZoom})`,
+                    filter: previewFilter,
+                  }}
+                  playsInline
+                  muted
+                  autoPlay
+                  aria-label="Live camera preview (mirrored for front camera)"
+                />
+                {pendingCapture ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={pendingCapture.preview}
+                    alt={`Captured ${currentCameraStep.title}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : null}
+                <div className="pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-zinc-950/55 px-3 py-1 text-[11px] font-medium text-white">
+                  {captureCount}/{N_CAPTURES}
+                  {reviewingCapture
+                    ? " · review photo"
+                    : guidance?.readyToCapture
+                      ? " · ready"
+                      : ""}
+                </div>
+                {!reviewingCapture ? (
+                  <button
+                    type="button"
+                    onClick={() => setVoiceEnabled((v) => !v)}
+                    className={`absolute right-2 top-2 z-30 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
+                      voiceEnabled
+                        ? "bg-[#2C3E6B] text-white"
+                        : "bg-white/70 text-[#2C3E6B] hover:bg-white"
+                    }`}
+                    aria-pressed={voiceEnabled}
+                    aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+                    title={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+                  >
+                    {voiceEnabled ? (
+                      <Volume2 className="h-4 w-4" />
+                    ) : (
+                      <VolumeX className="h-4 w-4" />
+                    )}
+                  </button>
+                ) : null}
+              </div>
 
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-900">
-            <video
-              ref={videoRef}
-              className={`h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
-              style={{
-                transformOrigin: "center center",
-                transform:
-                  facingMode === "user"
-                    ? `scaleX(-1) scale(${captureZoom})`
-                    : `scale(${captureZoom})`,
-                filter: previewFilter,
-              }}
-              playsInline
-              muted
-              autoPlay
-              aria-label="Live camera preview (mirrored for front camera)"
-            />
-            {pendingCapture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={pendingCapture.preview}
-                alt={`Captured ${currentCameraStep.title}`}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            ) : null}
-            <div className="pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-zinc-950/55 px-3 py-1 text-[11px] font-medium text-white">
-              {captureCount}/{N_CAPTURES}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {reviewingCapture ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={retakePendingCapture}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
+                    >
+                      <RotateCcw className="h-5 w-5" />
+                      Retake
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmPendingCapture}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] sm:flex-[1.4]"
+                    >
+                      <Check className="h-5 w-5" />
+                      {captureCount + 1 >= N_CAPTURES ? "Use photo & finish" : "Use photo & next"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={captureFromCamera}
+                      disabled={captureCount >= N_CAPTURES}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-[1.4]"
+                    >
+                      <Camera className="h-5 w-5" />
+                      Capture
+                    </button>
+                    <button
+                      type="button"
+                      onClick={flipCamera}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
+                      aria-label="Switch between front and back camera"
+                    >
+                      <SwitchCamera className="h-5 w-5 text-[#2C3E6B]" />
+                      Flip
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelCamera}
+                      className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Brightness / contrast / zoom — simple manual controls */}
-          <div
-            className={`flex flex-col gap-3 rounded-xl border border-white/60 bg-white/50 px-3 py-3 backdrop-blur-sm ${
-              reviewingCapture ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            <AdjustSlider
-              icon={<Sun className="h-4 w-4 text-[#2C3E6B]/70" />}
-              label="Brightness"
-              value={brightness}
-              min={ADJUST_MIN}
-              max={ADJUST_MAX}
-              step={ADJUST_STEP}
-              suffix="%"
-              onChange={setBrightness}
-            />
-            <AdjustSlider
-              icon={<Contrast className="h-4 w-4 text-[#2C3E6B]/70" />}
-              label="Contrast"
-              value={contrast}
-              min={ADJUST_MIN}
-              max={ADJUST_MAX}
-              step={ADJUST_STEP}
-              suffix="%"
-              onChange={setContrast}
-            />
-            <AdjustSlider
-              icon={<ZoomIn className="h-4 w-4 text-[#2C3E6B]/70" />}
-              label="Zoom"
-              value={captureZoom}
-              min={CAPTURE_ZOOM_MIN}
-              max={CAPTURE_ZOOM_MAX}
-              step={CAPTURE_ZOOM_STEP}
-              suffix="×"
-              format={(v) => v.toFixed(1)}
-              onChange={setCaptureZoomManual}
-            />
-            {adjustmentsChanged ? (
-              <button
-                type="button"
-                onClick={resetAdjustments}
-                className="self-end text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
+            {/* Right: step guidance + manual adjustments */}
+            <aside className="flex flex-col gap-3">
+              <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-3 text-center backdrop-blur-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
+                  Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}
+                </p>
+                <p className="mt-0.5 text-lg font-bold text-[#2C3E6B]">
+                  {currentCameraStep.title}
+                </p>
+                <p className="mt-0.5 text-sm leading-snug text-[#6B7280]">
+                  {reviewingCapture
+                    ? "Use this photo or retake it."
+                    : currentCameraStep.instruction}
+                </p>
+              </div>
+
+              {reviewingCapture ? (
+                <div className="rounded-xl border border-[#2C3E6B]/20 bg-[#E8EFE6]/80 px-3 py-2.5 text-center text-sm text-[#374151]">
+                  Review this photo. Continue to the next angle or retake.
+                </div>
+              ) : (
+                <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-3 backdrop-blur-sm">
+                  <ScanCaptureGuidanceBanner
+                    guidance={guidance}
+                    models={models}
+                    needsExpressionModel={needsExpressionModel}
+                    compact
+                  />
+                </div>
+              )}
+
+              <div
+                className={`flex flex-col gap-3 rounded-xl border border-white/60 bg-white/50 px-3 py-3 backdrop-blur-sm ${
+                  reviewingCapture ? "pointer-events-none opacity-50" : ""
+                }`}
               >
-                Reset brightness & contrast
-              </button>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {reviewingCapture ? (
-              <>
-                <button
-                  type="button"
-                  onClick={retakePendingCapture}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
-                >
-                  <RotateCcw className="h-5 w-5" />
-                  Retake
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmPendingCapture}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] sm:flex-[1.4]"
-                >
-                  <Check className="h-5 w-5" />
-                  {captureCount + 1 >= N_CAPTURES ? "Use photo & finish" : "Use photo & next"}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={captureFromCamera}
-                  disabled={captureCount >= N_CAPTURES}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-[1.4]"
-                >
-                  <Camera className="h-5 w-5" />
-                  Capture
-                </button>
-                <button
-                  type="button"
-                  onClick={flipCamera}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
-                  aria-label="Switch between front and back camera"
-                >
-                  <SwitchCamera className="h-5 w-5 text-[#2C3E6B]" />
-                  Flip
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelCamera}
-                  className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
-                >
-                  Cancel
-                </button>
-              </>
-            )}
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
+                  Adjust
+                </p>
+                <AdjustSlider
+                  icon={<Sun className="h-4 w-4 text-[#2C3E6B]/70" />}
+                  label="Brightness"
+                  value={brightness}
+                  min={ADJUST_MIN}
+                  max={ADJUST_MAX}
+                  step={ADJUST_STEP}
+                  suffix="%"
+                  onChange={setBrightness}
+                />
+                <AdjustSlider
+                  icon={<Contrast className="h-4 w-4 text-[#2C3E6B]/70" />}
+                  label="Contrast"
+                  value={contrast}
+                  min={ADJUST_MIN}
+                  max={ADJUST_MAX}
+                  step={ADJUST_STEP}
+                  suffix="%"
+                  onChange={setContrast}
+                />
+                <AdjustSlider
+                  icon={<ZoomIn className="h-4 w-4 text-[#2C3E6B]/70" />}
+                  label="Zoom"
+                  value={captureZoom}
+                  min={CAPTURE_ZOOM_MIN}
+                  max={CAPTURE_ZOOM_MAX}
+                  step={CAPTURE_ZOOM_STEP}
+                  suffix="×"
+                  format={(v) => v.toFixed(1)}
+                  onChange={setCaptureZoomManual}
+                />
+                {adjustmentsChanged ? (
+                  <button
+                    type="button"
+                    onClick={resetAdjustments}
+                    className="self-end text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
+                  >
+                    Reset brightness & contrast
+                  </button>
+                ) : null}
+              </div>
+            </aside>
           </div>
         </motion.div>
       )}
@@ -649,64 +761,103 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="space-y-4"
+          className="mx-auto w-full max-w-4xl"
         >
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            className={`rounded-[22px] border-2 border-dashed p-10 text-center backdrop-blur-sm transition-colors md:p-12 ${
-              isDragging
-                ? "border-[#2C3E6B]/60 bg-[#E8EFE6]/80"
-                : "border-white/70 bg-white/35"
-            }`}
-          >
-            <input
-              id="scan-file-input"
-              type="file"
-              accept="image/*"
-              multiple
-              className="sr-only"
-              onChange={handleInputChange}
-            />
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8EFE6]/80">
-              <ImagePlus className="h-8 w-8 text-[#2C3E6B]" />
+          <div className="overflow-hidden rounded-[28px] border border-white/75 bg-white/45 p-4 shadow-[0_18px_50px_-28px_rgba(44,62,107,0.5)] backdrop-blur-sm md:p-6">
+            <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+              <button
+                type="button"
+                onClick={openCameraForMultiCapture}
+                className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition hover:-translate-y-0.5 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+              >
+                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
+                <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-full bg-emerald-400/15" />
+                <div className="relative">
+                  <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
+                    Recommended
+                  </span>
+                  <div className="mt-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
+                    <Camera className="h-7 w-7" />
+                  </div>
+                  <h2 className="mt-5 text-2xl font-extrabold tracking-tight">
+                    Use device camera
+                  </h2>
+                  <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/75">
+                    Guided capture keeps the five angles in order and reduces upload mistakes.
+                  </p>
+                  <span className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-[#2C3E6B] shadow-sm transition group-hover:bg-[#F8FAFC]">
+                    Start camera scan
+                    <Camera className="h-4 w-4" />
+                  </span>
+                </div>
+              </button>
+
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                className={`flex min-h-[270px] flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors ${
+                  isDragging
+                    ? "border-[#2C3E6B]/60 bg-[#E8EFE6]/85"
+                    : "border-white/80 bg-white/45"
+                }`}
+              >
+                <input
+                  id="scan-file-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={handleInputChange}
+                />
+                <div>
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6] shadow-sm">
+                    <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
+                  </div>
+                  <h2 className="mt-4 text-lg font-extrabold text-[#1F2A44]">
+                    Upload photos
+                  </h2>
+                  <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#64748B]">
+                    Already captured them? Drop or choose exactly {N_CAPTURES} clear photos.
+                  </p>
+                </div>
+                <label
+                  htmlFor="scan-file-input"
+                  className="mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/75 px-5 py-3 text-sm font-extrabold text-[#2C3E6B] shadow-sm transition hover:bg-white"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  Choose photos
+                </label>
+              </div>
             </div>
-            <p className="mb-1 font-bold text-[#2C3E6B]">
-              Drop or choose {N_CAPTURES} photos
-            </p>
-           
-            <label
-              htmlFor="scan-file-input"
-              className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/60 bg-white/60 px-6 py-3 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
-            >
-              Choose photos
-            </label>
+
+            <div className="mt-5 rounded-[22px] border border-white/70 bg-white/45 p-4">
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
+                Capture checklist
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-5">
+                {FACE_SCAN_CAPTURE_STEPS.map((captureStep, index) => (
+                  <div
+                    key={captureStep.id}
+                    className="rounded-2xl border border-white/70 bg-white/55 px-3 py-2 text-center"
+                  >
+                    <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#94A3B8]">
+                      {index + 1}
+                    </p>
+                    <p className="mt-0.5 text-xs font-bold text-[#2C3E6B]">
+                      {captureStep.title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-center text-sm leading-relaxed text-[#64748B]">
+                {FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA.join(" ")}
+              </p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-3 px-1">
-            <div className="h-px flex-1 bg-white/60" />
-            <span className="text-xs font-medium uppercase tracking-wide text-[#2C3E6B]/40">
-              or
-            </span>
-            <div className="h-px flex-1 bg-white/60" />
-          </div>
-
-          <button
-            type="button"
-            onClick={openCameraForMultiCapture}
-            className="flex w-full items-center justify-center gap-2 rounded-[22px] border-2 border-[#2C3E6B]/20 bg-[#E8EFE6]/60 py-4 text-sm font-semibold text-[#2C3E6B] transition-colors hover:bg-[#E8EFE6]"
-          >
-            <Camera className="h-5 w-5 text-[#2C3E6B]" />
-            Use device camera
-          </button>
-
-          <p className="rounded-2xl border border-white/60 bg-white/40 px-4 py-3 text-center text-sm text-[#6B7280] backdrop-blur-sm">
-            {FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA.join(" ")}
-          </p>
 
           {uploadError ? (
             <p
@@ -825,17 +976,19 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <input
               id="scan-name"
               type="text"
-              placeholder="e.g., Morning routine"
+              placeholder={SCAN_NAME_INPUT_PLACEHOLDER}
               value={scanName}
               onChange={(e) => setScanName(e.target.value)}
               className="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 backdrop-blur-sm focus:border-[#2C3E6B]/40 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/10"
             />
+            <p className="mt-2 text-xs text-[#6B7280]">
+              Leave blank to save as &quot;{resolveScanName("")}&quot;.
+            </p>
           </div>
           <button
             type="button"
             onClick={runScan}
-            disabled={!scanName.trim()}
-            className="w-full rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080]"
           >
             Start analysis
           </button>

@@ -14,7 +14,7 @@ export function PatientPortalBrandLogo({ className = "" }: Props) {
       aria-label="SkinFit Wellness — dashboard home"
     >
       <Image
-        src="/branding/skinfit-wellness-logo.png"
+        src="/branding/skinfit-wellness-logo.svg"
         alt="SkinFit Wellness"
         width={653}
         height={161}

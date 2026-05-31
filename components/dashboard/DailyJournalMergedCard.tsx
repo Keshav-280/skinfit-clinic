@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Droplets, Brain, Minus, Plus } from "lucide-react";
+import Link from "next/link";
+import { Moon, Droplets, Brain, Minus, Plus, ChevronRight, NotebookPen } from "lucide-react";
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
+import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
+import { formatWaterLiters } from "@/src/lib/hydrationUnits";
+import {
+  DASHBOARD_SECTION_CARD,
+  DashboardSectionHeader,
+} from "@/components/dashboard/DashboardSectionHeader";
 
 function formatSleep(hours: number) {
   const h = Math.floor(hours);
   const m = Math.round((hours % 1) * 60);
   return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m`;
-}
-
-function glassesToLiters(glasses: number) {
-  return (glasses * 250) / 1000;
 }
 
 type Props = {
@@ -81,33 +84,40 @@ export function DailyJournalMergedCard({
   const stressHigh = stressLevel > 6;
 
   return (
-    <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-[14px] font-extrabold tracking-wide text-[#18181b]">
-          DAILY JOURNAL
-        </h3>
-        <div className="text-xs font-semibold">
-          {saveStatus === "saving" ? (
-            <span className="text-[#6B7280]">Saving…</span>
-          ) : saveStatus === "saved" ? (
-            <span className="text-emerald-600">Saved ✓</span>
-          ) : saveStatus === "error" ? (
-            <span className="text-amber-600">Could not save</span>
-          ) : null}
-        </div>
-      </div>
+    <div className={DASHBOARD_SECTION_CARD}>
+      <DashboardSectionHeader
+        icon={NotebookPen}
+        title="DAILY JOURNAL"
+        action={
+          <div className="text-xs font-semibold">
+            {saveStatus === "saving" ? (
+              <span className="text-[#6B7280]">Saving…</span>
+            ) : saveStatus === "saved" ? (
+              <span className="text-emerald-600">Saved ✓</span>
+            ) : saveStatus === "error" ? (
+              <span className="text-amber-600">Could not save</span>
+            ) : null}
+          </div>
+        }
+      />
 
       <div className="space-y-1">
-        <div className="flex items-center gap-3 rounded-2xl px-2 py-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500">
-            <Moon className="h-5 w-5 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-[#6B7280]">Sleep Duration</p>
-            <p className="text-[22px] font-extrabold leading-tight text-[#18181b]">
-              {formatSleep(sleepHours)}
-            </p>
-          </div>
+        <div className="flex items-center gap-2 rounded-2xl px-2 py-3">
+          <Link
+            href={journalTrackerHref("/dashboard/sleep-tracker", selectedYmd)}
+            className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 pr-1 transition hover:bg-white/40"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500">
+              <Moon className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-medium text-[#6B7280]">Sleep Duration</p>
+              <p className="text-[22px] font-extrabold leading-tight text-[#18181b]">
+                {formatSleep(sleepHours)}
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#2C3E6B]" />
+          </Link>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -130,16 +140,22 @@ export function DailyJournalMergedCard({
 
         <div className="mx-2 border-t border-white/60" />
 
-        <div className="flex items-center gap-3 rounded-2xl px-2 py-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500">
-            <Droplets className="h-5 w-5 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-[#6B7280]">Hydration</p>
-            <p className="text-[22px] font-extrabold leading-tight text-[#18181b]">
-              {glassesToLiters(waterGlasses).toFixed(1)} L
-            </p>
-          </div>
+        <div className="flex items-center gap-2 rounded-2xl px-2 py-3">
+          <Link
+            href={journalTrackerHref("/dashboard/hydration-tracker", selectedYmd)}
+            className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 pr-1 transition hover:bg-white/40"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500">
+              <Droplets className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-medium text-[#6B7280]">Hydration</p>
+              <p className="text-[22px] font-extrabold leading-tight text-[#18181b]">
+                {formatWaterLiters(waterGlasses, 1)} L
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#2C3E6B]" />
+          </Link>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -162,20 +178,26 @@ export function DailyJournalMergedCard({
 
         <div className="mx-2 border-t border-white/60" />
 
-        <div className="flex items-center gap-3 rounded-2xl px-2 py-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-              stressHigh ? "bg-red-500" : "bg-amber-500"
-            }`}
+        <div className="flex items-center gap-2 rounded-2xl px-2 py-3">
+          <Link
+            href={journalTrackerHref("/dashboard/stress-tracker", selectedYmd)}
+            className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 pr-1 transition hover:bg-white/40"
           >
-            <Brain className="h-5 w-5 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-[#6B7280]">Stress Level (0–10)</p>
-            <p className="text-[22px] font-extrabold leading-tight text-[#18181b]">
-              {stressLevel}
-            </p>
-          </div>
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                stressHigh ? "bg-red-500" : "bg-amber-500"
+              }`}
+            >
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-medium text-[#6B7280]">Stress Level (0–10)</p>
+              <p className="text-[22px] font-extrabold leading-tight text-[#18181b]">
+                {stressLevel}
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#2C3E6B]" />
+          </Link>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"

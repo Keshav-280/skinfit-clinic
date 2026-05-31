@@ -1,6 +1,6 @@
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { format, parseISO } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -81,6 +81,7 @@ const NAVY = "#2C3E6B";
 const GREEN_ACCENT = "#16a34a";
 const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
+const DASHBOARD_HREF = "/(drawer)" as Href;
 
 const CARD = {
   backgroundColor: GLASS,
@@ -191,12 +192,10 @@ export default function HistoryListScreen() {
     <View style={{ flex: 1, backgroundColor: BG }}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.push("/(drawer)" as any);
-          }}
+          onPress={() => router.replace(DASHBOARD_HREF)}
           style={styles.backBtn}
           hitSlop={12}
+          accessibilityLabel="Back to dashboard"
         >
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
