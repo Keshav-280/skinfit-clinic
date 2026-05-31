@@ -1,7 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import { after } from "next/server";
-import { Sparkles, User } from "lucide-react";
+import { User } from "lucide-react";
+import { PatientPortalBrandLogo } from "@/components/dashboard/PatientPortalBrandLogo";
 import { DashboardNav } from "./dashboard-nav";
 import { LogoutButton } from "./logout-button";
 import { DashboardClinicSupportBell } from "@/components/dashboard/DashboardClinicSupportBell";
@@ -37,17 +38,7 @@ export default async function DashboardLayout({
       {/* Glass Navbar */}
       <nav className="sticky top-0 z-50 border-b border-white/25 bg-white/30 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 md:px-8 sm:py-4">
-          <Link
-            href="/dashboard"
-            className="flex min-w-0 shrink-0 items-center gap-2.5"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-lg shadow-[#2C3E6B]/25">
-              <Sparkles className="h-4.5 w-4.5" />
-            </div>
-            <span className="truncate text-base font-extrabold tracking-tight text-[#2C3E6B] sm:text-lg">
-              SkinnFit
-            </span>
-          </Link>
+          <PatientPortalBrandLogo />
 
           <DashboardNav />
 

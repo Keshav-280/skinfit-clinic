@@ -57,6 +57,7 @@ function formatScanChipLabel(
 function formatScanDetailLabel(scan: SkinScanItem): string {
   return `${format(new Date(scan.createdAt), "MMM d, yyyy 'at' h:mm a")} · Overall ${Math.round(scan.skinScore)}/100`;
 }
+import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { normalizeRoutineSteps } from "@/lib/routine";
 
 const NAVY = "#2C3E6B";
@@ -194,6 +195,8 @@ export default function DashboardScreen() {
   const [sunExposure, setSunExposure] = useState<string>("low");
   const [cycleDay, setCycleDay] = useState("");
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
+  const { saveStatus: journalSaveStatus, scheduleSave: scheduleJournalSave, markReady: markJournalReady, markNotReady: markJournalNotReady } =
+    useDebouncedTrackerAutoSave(token);
 
   const loadHome = useCallback(async () => {
     if (!token) return;
@@ -328,6 +331,7 @@ export default function DashboardScreen() {
   const loadJournalForDate = useCallback(
     async (ymd: string) => {
       if (!token) return;
+      markJournalNotReady();
       setJournalLoading(true);
       setJournalHint(null);
       try {
@@ -370,9 +374,24 @@ export default function DashboardScreen() {
         setJournalHint("Could not load journal for that day.");
       } finally {
         setJournalLoading(false);
+        markJournalReady();
       }
     },
-    [token]
+    [token, markJournalNotReady, markJournalReady]
+  );
+
+  const persistJournalTrackers = useCallback(
+    (next: { sleep?: string; water?: string; stress?: string }) => {
+      const sleepVal = Number.parseFloat(next.sleep ?? sleep) || 0;
+      const waterVal = Number.parseInt(next.water ?? water, 10) || 0;
+      const stressVal = Number.parseInt(next.stress ?? stress, 10) || 0;
+      scheduleJournalSave(journalDate, {
+        sleepHours: sleepVal,
+        waterGlasses: waterVal,
+        stressLevel: stressVal,
+      });
+    },
+    [journalDate, scheduleJournalSave, sleep, stress, water]
   );
 
   useEffect(() => {
@@ -613,7 +632,7 @@ export default function DashboardScreen() {
           style={styles.dateNavArrow}
           hitSlop={10}
         >
-          <Ionicons name="chevron-back" size={18} color={NAVY} />
+          <Ionicons name="chevron-back" size={16} color={NAVY} />
         </Pressable>
         <Pressable onPress={() => setWeekOffset(0)} hitSlop={8}>
           <Text style={styles.dateNavMonth}>
@@ -626,7 +645,7 @@ export default function DashboardScreen() {
           style={styles.dateNavArrow}
           hitSlop={10}
         >
-          <Ionicons name="chevron-forward" size={18} color={NAVY} />
+          <Ionicons name="chevron-forward" size={16} color={NAVY} />
         </Pressable>
       </View>
       <ScrollView
@@ -647,6 +666,7 @@ export default function DashboardScreen() {
               styles.dateChip,
               d.isSelected && styles.dateChipToday,
               d.isFuture && styles.dateChipDisabled,
+              d.isToday && !d.isSelected && styles.dateChipIsToday,
             ]}
           >
             <Text style={[styles.dateChipLabel, d.isSelected && styles.dateChipLabelToday]}>
@@ -663,84 +683,156 @@ export default function DashboardScreen() {
       </Text>
      
 
-      {/* ── Routine cards ── */}
-      <View style={styles.routineCards}>
-        <Pressable
-          style={styles.routineCard}
-          onPress={() =>
-            router.push(`/(drawer)/morning-routine?date=${encodeURIComponent(journalDate)}` as Href)
-          }
-        >
-          <View style={styles.routineCardTop}>
-            <View style={styles.routineIconCircle}>
-              <Ionicons name="sunny" size={22} color="#F59E0B" />
-            </View>
-            <View style={styles.routineArrow}>
-              <Ionicons name="arrow-forward" size={14} color="#fff" />
-            </View>
-          </View>
-          <Text style={styles.routineCardTitle}>Morning{"\n"}Routine</Text>
-          <View style={styles.routineStepPill}>
-            <Text style={styles.routineStepText}>
-              Step {amDone}/{data.amItems.length || 0}
-            </Text>
-          </View>
-        </Pressable>
+      {/* ── Daily Routine (AM + PM) ── */}
+      {(() => {
+        const amTotal = data.amItems.length || 0;
+        const pmTotal = data.pmItems.length || 0;
+        const totalSteps = amTotal + pmTotal;
+        const completedSteps = amDone + pmDone;
+        const progressPct =
+          totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+        const amComplete = amTotal > 0 && amDone >= amTotal;
+        const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
-        <Pressable
-          style={styles.routineCard}
-          onPress={() =>
-            router.push(`/(drawer)/night-routine?date=${encodeURIComponent(journalDate)}` as Href)
-          }
-        >
-          <View style={styles.routineCardTop}>
-            <View style={[styles.routineIconCircle, { backgroundColor: NAVY }]}>
-              <Ionicons name="cloudy-night" size={22} color="#fff" />
+        return (
+          <View style={styles.routineMergedCard}>
+            <View style={styles.routineMergedHeader}>
+              <Text style={styles.routineMergedTitle}>Daily Routine</Text>
+              <Text style={styles.routineMergedMeta}>
+                {completedSteps}/{totalSteps || 0} steps
+              </Text>
             </View>
-            <View style={styles.routineArrow}>
-              <Ionicons name="arrow-forward" size={14} color="#fff" />
-            </View>
-          </View>
-          <Text style={styles.routineCardTitle}>Night{"\n"}Routine</Text>
-          <View style={styles.routineStepPill}>
-            <Text style={styles.routineStepText}>
-              Step {pmDone}/{data.pmItems.length || 0}
-            </Text>
-          </View>
-        </Pressable>
-      </View>
-
-      {/* ── Streak ── */}
-      <View style={styles.streakCard}>
-        <Text style={styles.streakTitle}>🔥 {data.streakCurrent}-Day Streak</Text>
-        <View style={styles.streakDotsRow}>
-          {streakDays.map((d, i) => (
-            <View key={`s-${i}`} style={styles.streakDayCol}>
-              <View
-                style={[
-                  styles.streakDot,
-                  d.done && styles.streakDotDone,
-                ]}
-              >
-                {d.done ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+            {totalSteps > 0 ? (
+              <View style={styles.routineProgressTrack}>
+                <View
+                  style={[styles.routineProgressFill, { width: `${progressPct}%` }]}
+                />
               </View>
-              <Text style={styles.streakDayLabel}>{d.label}</Text>
-            </View>
-          ))}
+            ) : null}
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.routineMergedRow,
+                pressed && styles.routineMergedRowPressed,
+              ]}
+              onPress={() =>
+                router.push(
+                  `/(drawer)/morning-routine?date=${encodeURIComponent(journalDate)}` as Href
+                )
+              }
+            >
+              <View style={styles.routineIconCircle}>
+                <Ionicons name="sunny" size={22} color="#F59E0B" />
+              </View>
+              <View style={styles.routineMergedCopy}>
+                <Text style={styles.routineMergedRowTitle}>Morning</Text>
+                <Text style={styles.routineMergedRowSub}>
+                  {amTotal > 0
+                    ? amComplete
+                      ? "Completed for today"
+                      : `Step ${amDone} of ${amTotal}`
+                    : "No steps yet"}
+                </Text>
+              </View>
+              {amComplete ? (
+                <Ionicons name="checkmark-circle" size={22} color={GREEN_ACCENT} />
+              ) : (
+                <View style={styles.routineStepPillCompact}>
+                  <Text style={styles.routineStepText}>
+                    {amDone}/{amTotal || 0}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.routineArrow}>
+                <Ionicons name="arrow-forward" size={14} color="#fff" />
+              </View>
+            </Pressable>
+
+            <View style={styles.routineMergedDivider} />
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.routineMergedRow,
+                pressed && styles.routineMergedRowPressed,
+              ]}
+              onPress={() =>
+                router.push(
+                  `/(drawer)/night-routine?date=${encodeURIComponent(journalDate)}` as Href
+                )
+              }
+            >
+              <View style={styles.routineIconCircle}>
+                <Ionicons name="cloudy-night" size={22} color="#fff" />
+              </View>
+              <View style={styles.routineMergedCopy}>
+                <Text style={styles.routineMergedRowTitle}>Night</Text>
+                <Text style={styles.routineMergedRowSub}>
+                  {pmTotal > 0
+                    ? pmComplete
+                      ? "Completed for today"
+                      : `Step ${pmDone} of ${pmTotal}`
+                    : "No steps yet"}
+                </Text>
+              </View>
+              {pmComplete ? (
+                <Ionicons name="checkmark-circle" size={22} color={GREEN_ACCENT} />
+              ) : (
+                <View style={styles.routineStepPillCompact}>
+                  <Text style={styles.routineStepText}>
+                    {pmDone}/{pmTotal || 0}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.routineArrow}>
+                <Ionicons name="arrow-forward" size={14} color="#fff" />
+              </View>
+            </Pressable>
+          </View>
+        );
+      })()}
+
+      {/* ── Streak + skin health — side by side ── */}
+      <View style={styles.streakSkinRow}>
+        <View style={[styles.streakCard, styles.streakSkinHalf]}>
+          <Text style={styles.streakTitleCompact}>🔥 {data.streakCurrent}-Day Streak</Text>
+          <View style={styles.streakDotsRowCompact}>
+            {streakDays.map((d, i) => (
+              <View key={`s-${i}`} style={styles.streakDayColCompact}>
+                <View
+                  style={[
+                    styles.streakDotCompact,
+                    d.done && styles.streakDotDone,
+                  ]}
+                >
+                  {d.done ? <Ionicons name="checkmark" size={11} color="#fff" /> : null}
+                </View>
+                <Text style={styles.streakDayLabelCompact}>{d.label.slice(0, 1)}</Text>
+              </View>
+            ))}
+          </View>
+          <Text
+            style={[
+              styles.streakMessageCompact,
+              completedRoutineSteps >= totalRoutineSteps && totalRoutineSteps > 0
+                ? { color: GREEN_ACCENT }
+                : { color: "#DC2626" },
+            ]}
+            numberOfLines={2}
+          >
+            {streakMessage}
+          </Text>
         </View>
-        <Text
-          style={[
-            styles.streakMessage,
-            completedRoutineSteps >= totalRoutineSteps && totalRoutineSteps > 0
-              ? { color: GREEN_ACCENT }
-              : { color: "#DC2626" },
-          ]}
-        >
-          {streakMessage}
-        </Text>
+
+        {latestScan ? (
+          <SkinHealthMetricsCard
+            analysis={latestScan.analysisResults}
+            compact
+            style={styles.streakSkinHalf}
+          />
+        ) : null}
       </View>
 
-      {/* ── Next Reminder ── */}
+      {false ? (
       <NextReminderCard
         amHm={data.routineAmReminderHm ?? "08:30"}
         pmHm={data.routinePmReminderHm ?? "22:00"}
@@ -756,6 +848,7 @@ export default function DashboardScreen() {
           )
         }
       />
+      ) : null}
 
       {/* ── Today's Focus ── */}
       {data.hasQuestionnaire === false ? (
@@ -804,7 +897,6 @@ export default function DashboardScreen() {
       {/* ── Skin Health + Parameter Metrics ── */}
       {latestScan ? (
         <>
-          <SkinHealthMetricsCard analysis={latestScan.analysisResults} />
           <SkinParamMetricsCard
             analysis={latestScan.analysisResults}
             onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
@@ -812,73 +904,141 @@ export default function DashboardScreen() {
         </>
       ) : null}
 
-      {/* ── Daily Journal Cards ── */}
-      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>DAILY JOURNAL</Text>
+      {/* ── Daily Journal (merged) ── */}
+      <View style={styles.journalMergedCard}>
+        <View style={styles.journalMergedHeader}>
+          <Text style={[styles.sectionTitle, { marginBottom: 0, marginTop: 0 }]}>
+            DAILY JOURNAL
+          </Text>
+          {journalSaveStatus === "saving" ? (
+            <Text style={styles.journalSaveHint}>Saving…</Text>
+          ) : journalSaveStatus === "saved" ? (
+            <Text style={[styles.journalSaveHint, { color: GREEN_ACCENT }]}>Saved ✓</Text>
+          ) : journalSaveStatus === "error" ? (
+            <Text style={[styles.journalSaveHint, { color: "#D97706" }]}>Could not save</Text>
+          ) : null}
+        </View>
 
-      <Pressable
-        style={styles.journalCard}
-        onPress={() => router.push(`/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
-      >
-        <View style={styles.journalCardInner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.journalCardLabel}>Sleep Duration</Text>
-            <Text style={styles.journalCardValue}>
-              {String(Math.floor(Number(sleep))).padStart(2, "0")}h {String(Math.round((Number(sleep) % 1) * 60)).padStart(2, "0")}m
-            </Text>
-          </View>
+        <View style={styles.journalMergedRow}>
           <View style={[styles.journalCardIcon, { backgroundColor: "#16a34a" }]}>
             <Ionicons name="bed" size={20} color="#fff" />
           </View>
-        </View>
-        <Pressable
-          style={styles.journalEnterBtn}
-          onPress={() => router.push(`/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
-        >
-          <Text style={styles.journalEnterText}>Enter Data</Text>
-        </Pressable>
-      </Pressable>
-
-      <Pressable
-        style={styles.journalCard}
-        onPress={() => router.push(`/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
-      >
-        <View style={styles.journalCardInner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.journalCardLabel}>Hydration</Text>
-            <Text style={styles.journalCardValue}>{((Number(water) * 250) / 1000).toFixed(2)} L</Text>
+          <View style={styles.journalMergedCopy}>
+            <Text style={styles.journalCardLabel}>Sleep Duration</Text>
+            <Text style={styles.journalMergedValue}>
+              {String(Math.floor(Number(sleep))).padStart(2, "0")}h{" "}
+              {String(Math.round((Number(sleep) % 1) * 60)).padStart(2, "0")}m
+            </Text>
           </View>
+          <View style={styles.journalStepper}>
+            <Pressable
+              style={styles.journalStepBtn}
+              onPress={() => {
+                const next = Math.min(
+                  24,
+                  Math.max(0, Math.round((Number(sleep) - 0.5) * 2) / 2)
+                );
+                setSleep(String(next));
+                persistJournalTrackers({ sleep: String(next) });
+              }}
+            >
+              <Ionicons name="remove" size={18} color={NAVY} />
+            </Pressable>
+            <Pressable
+              style={styles.journalStepBtn}
+              onPress={() => {
+                const next = Math.min(
+                  24,
+                  Math.max(0, Math.round((Number(sleep) + 0.5) * 2) / 2)
+                );
+                setSleep(String(next));
+                persistJournalTrackers({ sleep: String(next) });
+              }}
+            >
+              <Ionicons name="add" size={18} color={NAVY} />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.journalMergedDivider} />
+
+        <View style={styles.journalMergedRow}>
           <View style={[styles.journalCardIcon, { backgroundColor: "#3B82F6" }]}>
             <Ionicons name="water" size={20} color="#fff" />
           </View>
+          <View style={styles.journalMergedCopy}>
+            <Text style={styles.journalCardLabel}>Hydration</Text>
+            <Text style={styles.journalMergedValue}>
+              {((Number(water) * 250) / 1000).toFixed(1)} L
+            </Text>
+          </View>
+          <View style={styles.journalStepper}>
+            <Pressable
+              style={styles.journalStepBtn}
+              onPress={() => {
+                const next = Math.max(0, Number.parseInt(water, 10) - 1 || 0);
+                setWater(String(next));
+                persistJournalTrackers({ water: String(next) });
+              }}
+            >
+              <Ionicons name="remove" size={18} color={NAVY} />
+            </Pressable>
+            <Pressable
+              style={styles.journalStepBtn}
+              onPress={() => {
+                const next = Math.min(40, (Number.parseInt(water, 10) || 0) + 1);
+                setWater(String(next));
+                persistJournalTrackers({ water: String(next) });
+              }}
+            >
+              <Ionicons name="add" size={18} color={NAVY} />
+            </Pressable>
+          </View>
         </View>
-        <Pressable
-          style={styles.journalEnterBtn}
-          onPress={() => router.push(`/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
-        >
-          <Text style={styles.journalEnterText}>Enter Data</Text>
-        </Pressable>
-      </Pressable>
 
-      <Pressable
-        style={styles.journalCard}
-        onPress={() => router.push(`/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
-      >
-        <View style={styles.journalCardInner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.journalCardLabel}>Stress Level (0-10)</Text>
-            <Text style={styles.journalCardValue}>{stress}</Text>
+        <View style={styles.journalMergedDivider} />
+
+        <View style={styles.journalMergedRow}>
+          <View
+            style={[
+              styles.journalCardIcon,
+              { backgroundColor: Number(stress) > 6 ? "#DC2626" : "#F59E0B" },
+            ]}
+          >
+            <Ionicons
+              name={Number(stress) > 6 ? "sad" : "happy"}
+              size={20}
+              color="#fff"
+            />
           </View>
-          <View style={[styles.journalCardIcon, { backgroundColor: Number(stress) > 6 ? "#DC2626" : "#F59E0B" }]}>
-            <Ionicons name={Number(stress) > 6 ? "sad" : "happy"} size={20} color="#fff" />
+          <View style={styles.journalMergedCopy}>
+            <Text style={styles.journalCardLabel}>Stress Level (0-10)</Text>
+            <Text style={styles.journalMergedValue}>{stress}</Text>
+          </View>
+          <View style={styles.journalStepper}>
+            <Pressable
+              style={styles.journalStepBtn}
+              onPress={() => {
+                const next = Math.max(0, (Number.parseInt(stress, 10) || 0) - 1);
+                setStress(String(next));
+                persistJournalTrackers({ stress: String(next) });
+              }}
+            >
+              <Ionicons name="remove" size={18} color={NAVY} />
+            </Pressable>
+            <Pressable
+              style={styles.journalStepBtn}
+              onPress={() => {
+                const next = Math.min(10, (Number.parseInt(stress, 10) || 0) + 1);
+                setStress(String(next));
+                persistJournalTrackers({ stress: String(next) });
+              }}
+            >
+              <Ionicons name="add" size={18} color={NAVY} />
+            </Pressable>
           </View>
         </View>
-        <Pressable
-          style={styles.journalEnterBtn}
-          onPress={() => router.push(`/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href)}
-        >
-          <Text style={styles.journalEnterText}>Enter Data</Text>
-        </Pressable>
-      </Pressable>
+      </View>
 
       {/* Skin parameters section hidden for now — uncomment to restore.
       <View style={[styles.card, styles.skinParamsCard]}>
@@ -1022,22 +1182,30 @@ function ConsistencyScoreCard({ value }: { value: number }) {
   );
 }
 
-const RADAR_SIZE = 260;
-const RADAR_CENTER = RADAR_SIZE / 2;
-const RADAR_RADIUS = 90;
 const RADAR_LEVELS = 4;
-const RADAR_LABEL_OFFSET = 30;
-const RADAR_OUTER = RADAR_SIZE + RADAR_LABEL_OFFSET * 2;
+const RADAR_SIZE_DEFAULT = 260;
+const RADAR_LABEL_OFFSET_DEFAULT = 30;
 
-function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }) {
+function RadarChart({
+  metrics,
+  compact = false,
+}: {
+  metrics: { label: string; value: number }[];
+  compact?: boolean;
+}) {
+  const radarSize = compact ? 168 : RADAR_SIZE_DEFAULT;
+  const radarCenter = radarSize / 2;
+  const radarRadius = compact ? 58 : 90;
+  const labelOffset = compact ? 10 : RADAR_LABEL_OFFSET_DEFAULT;
+  const radarOuter = radarSize + labelOffset * 2;
   const n = metrics.length;
   const angleSlice = (2 * Math.PI) / n;
 
   function pointOnAxis(i: number, ratio: number) {
     const angle = angleSlice * i - Math.PI / 2;
     return {
-      x: RADAR_CENTER + RADAR_RADIUS * ratio * Math.cos(angle),
-      y: RADAR_CENTER + RADAR_RADIUS * ratio * Math.sin(angle),
+      x: radarCenter + radarRadius * ratio * Math.cos(angle),
+      y: radarCenter + radarRadius * ratio * Math.sin(angle),
     };
   }
 
@@ -1054,22 +1222,22 @@ function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }
   return (
     <View
       style={{
-        width: RADAR_OUTER,
-        height: RADAR_OUTER,
+        width: radarOuter,
+        height: radarOuter,
         alignSelf: "center",
-        marginVertical: 8,
+        marginVertical: compact ? 0 : 8,
       }}
     >
       <View
         style={{
           position: "absolute",
-          left: RADAR_LABEL_OFFSET,
-          top: RADAR_LABEL_OFFSET,
-          width: RADAR_SIZE,
-          height: RADAR_SIZE,
+          left: labelOffset,
+          top: labelOffset,
+          width: radarSize,
+          height: radarSize,
         }}
       >
-        <Svg width={RADAR_SIZE} height={RADAR_SIZE}>
+        <Svg width={radarSize} height={radarSize}>
           {gridLevels.map((pts, l) => (
             <Polygon key={l} points={pts} fill="none" stroke="#D1D5DB" strokeWidth={1} />
           ))}
@@ -1078,8 +1246,8 @@ function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }
             return (
               <Line
                 key={i}
-                x1={RADAR_CENTER}
-                y1={RADAR_CENTER}
+                x1={radarCenter}
+                y1={radarCenter}
                 x2={p.x}
                 y2={p.y}
                 stroke="#E5E7EB"
@@ -1095,35 +1263,49 @@ function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }
           />
           {metrics.map((m, i) => {
             const p = pointOnAxis(i, m.value / 100);
-            return <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={4} fill={GREEN_ACCENT} />;
+            return <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={compact ? 3 : 4} fill={GREEN_ACCENT} />;
           })}
         </Svg>
       </View>
       {metrics.map((m, i) => {
         const angle = angleSlice * i - Math.PI / 2;
         const lx =
-          RADAR_LABEL_OFFSET +
-          RADAR_CENTER +
-          (RADAR_RADIUS + RADAR_LABEL_OFFSET) * Math.cos(angle);
+          labelOffset +
+          radarCenter +
+          (radarRadius + labelOffset) * Math.cos(angle);
         const ly =
-          RADAR_LABEL_OFFSET +
-          RADAR_CENTER +
-          (RADAR_RADIUS + RADAR_LABEL_OFFSET) * Math.sin(angle);
+          labelOffset +
+          radarCenter +
+          (radarRadius + labelOffset) * Math.sin(angle);
+        const labelW = compact ? 64 : 88;
         return (
           <View
             key={m.label}
             style={{
               position: "absolute",
-              left: lx - 44,
-              top: ly - 16,
-              width: 88,
+              left: lx - labelW / 2,
+              top: ly - (compact ? 12 : 16),
+              width: labelW,
               alignItems: "center",
             }}
           >
-            <Text style={{ fontSize: 12, color: "#64748b", fontWeight: "500" }}>
+            <Text
+              style={{
+                fontSize: compact ? 9 : 12,
+                color: "#64748b",
+                fontWeight: "500",
+              }}
+              numberOfLines={1}
+            >
               {m.label}
             </Text>
-            <Text style={{ fontSize: 14, color: "#18181b", fontWeight: "800" }}>
+            <Text
+              style={{
+                fontSize: compact ? 11 : 14,
+                color: "#18181b",
+                fontWeight: "800",
+              }}
+            >
               {m.value}%
             </Text>
           </View>
@@ -1133,12 +1315,22 @@ function RadarChart({ metrics }: { metrics: { label: string; value: number }[] }
   );
 }
 
-function SkinHealthMetricsCard({ analysis }: { analysis: unknown }) {
+function SkinHealthMetricsCard({
+  analysis,
+  compact = false,
+  style,
+}: {
+  analysis: unknown;
+  compact?: boolean;
+  style?: object;
+}) {
   const metrics = useMemo(() => extractSkinHealthMetrics(analysis), [analysis]);
   return (
-    <View style={styles.skinHealthCard}>
-      <Text style={styles.skinHealthTitle}>SKIN HEALTH METRICS</Text>
-      <RadarChart metrics={metrics} />
+    <View style={[styles.skinHealthCard, compact && styles.skinHealthCardCompact, style]}>
+      <Text style={[styles.skinHealthTitle, compact && styles.skinHealthTitleCompact]}>
+        SKIN HEALTH METRICS
+      </Text>
+      <RadarChart metrics={metrics} compact={compact} />
     </View>
   );
 }
@@ -1165,7 +1357,10 @@ function ParamRing({ value, color, size = 72 }: { value: number; color: string; 
 }
 
 function SkinParamMetricsCard({ analysis, onViewAll }: { analysis: unknown; onViewAll: () => void }) {
-  const topMetrics = useMemo(() => extractSkinParamMetrics(analysis), [analysis]);
+  const topMetrics = useMemo(
+    () => extractSkinParamMetrics(analysis).slice(0, 4),
+    [analysis]
+  );
 
   return (
     <View style={{ marginBottom: 16 }}>
@@ -2049,37 +2244,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 12,
-    paddingHorizontal: 4,
+    marginTop: 8,
+    paddingHorizontal: 2,
   },
   dateNavArrow: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 28, height: 28, borderRadius: 14,
     backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER,
     alignItems: "center", justifyContent: "center",
   },
-  dateNavMonth: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
-  dateStrip: { marginTop: 8, marginBottom: 16 },
-  dateStripContent: { gap: 8 },
+  dateNavMonth: { fontSize: 12, fontWeight: "600", color: "#6B7280" },
+  dateStrip: { marginTop: 4, marginBottom: 8 },
+  dateStripContent: { gap: 6 },
   dateChip: {
-    width: 56,
-    paddingVertical: 10,
-    borderRadius: 16,
+    width: 46,
+    paddingVertical: 6,
+    borderRadius: 12,
     backgroundColor: GLASS,
     alignItems: "center",
     borderWidth: 1,
     borderColor: GLASS_BORDER,
   },
   dateChipToday: { backgroundColor: NAVY, borderColor: NAVY },
-  dateChipLabel: { fontSize: 12, fontWeight: "600", color: "#6B7280" },
+  dateChipIsToday: { borderColor: "#10B981", borderWidth: 1.5 },
+  dateChipLabel: { fontSize: 10, fontWeight: "600", color: "#6B7280", lineHeight: 12 },
   dateChipLabelToday: { color: "#fff" },
-  dateChipDay: { fontSize: 18, fontWeight: "800", color: "#1A1A2E", marginTop: 2 },
+  dateChipDay: { fontSize: 15, fontWeight: "800", color: "#1A1A2E", marginTop: 2, lineHeight: 16 },
   dateChipDayToday: { color: "#fff" },
   dateChipDisabled: { opacity: 0.35 },
   selectedDateLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6B7280",
-    marginTop: -8,
-    marginBottom: 12,
+    marginTop: -4,
+    marginBottom: 8,
     textAlign: "center",
     fontWeight: "600",
   },
@@ -2097,16 +2293,58 @@ const styles = StyleSheet.create({
   },
   cacheBannerText: { fontSize: 12, color: "#92400e", fontWeight: "600" },
 
-  routineCards: { flexDirection: "row", gap: 12, marginBottom: 16 },
-  routineCard: {
-    flex: 1,
+  routineMergedCard: {
     backgroundColor: GLASS,
     borderRadius: 22,
     padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
   },
-  routineCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 },
+  routineMergedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  routineMergedTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
+  routineMergedMeta: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
+  routineProgressTrack: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  routineProgressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: GREEN_ACCENT,
+  },
+  routineMergedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  routineMergedRowPressed: { backgroundColor: "rgba(255,255,255,0.35)" },
+  routineMergedCopy: { flex: 1, minWidth: 0 },
+  routineMergedRowTitle: { fontSize: 16, fontWeight: "800", color: "#18181b" },
+  routineMergedRowSub: { fontSize: 13, fontWeight: "500", color: "#6B7280", marginTop: 2 },
+  routineMergedDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    marginHorizontal: 8,
+    marginVertical: 2,
+  },
+  routineStepPillCompact: {
+    backgroundColor: NAVY,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   routineIconCircle: {
     width: 44,
     height: 44,
@@ -2123,7 +2361,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  routineCardTitle: { fontSize: 20, fontWeight: "800", color: "#18181b", marginBottom: 10 },
   routineStepPill: {
     alignSelf: "flex-start",
     backgroundColor: NAVY,
@@ -2141,14 +2378,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: GLASS_BORDER,
   },
+  streakSkinRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+    marginBottom: 16,
+  },
+  streakSkinHalf: {
+    flex: 1,
+    minWidth: 0,
+    marginBottom: 0,
+  },
   streakTitle: { fontSize: 18, fontWeight: "800", color: "#18181b", marginBottom: 14 },
+  streakTitleCompact: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#18181b",
+    marginBottom: 10,
+  },
   streakDotsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 4,
   },
+  streakDotsRowCompact: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 0,
+  },
   streakDayCol: { alignItems: "center", gap: 6 },
+  streakDayColCompact: { alignItems: "center", gap: 4, flex: 1 },
   streakDot: {
     width: 32,
     height: 32,
@@ -2159,9 +2419,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  streakDotCompact: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    backgroundColor: "rgba(255,255,255,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   streakDotDone: { backgroundColor: GREEN_ACCENT, borderColor: GREEN_ACCENT },
   streakDayLabel: { fontSize: 11, fontWeight: "600", color: "#6B7280" },
+  streakDayLabelCompact: { fontSize: 9, fontWeight: "700", color: "#6B7280" },
   streakMessage: { fontSize: 15, fontWeight: "700", marginTop: 10 },
+  streakMessageCompact: { fontSize: 11, fontWeight: "700", marginTop: 8, lineHeight: 14 },
 
   sectionTitle: {
     fontSize: 14,
@@ -2213,7 +2485,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: GLASS_BORDER,
   },
+  skinHealthCardCompact: {
+    padding: 10,
+    paddingBottom: 8,
+    justifyContent: "flex-start",
+  },
   skinHealthTitle: { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, color: "#18181b", marginBottom: 4 },
+  skinHealthTitleCompact: {
+    fontSize: 10,
+    letterSpacing: 0.3,
+    marginBottom: 0,
+    textAlign: "center",
+  },
 
   paramMetricsGrid: {
     flexDirection: "row",
@@ -2252,6 +2535,47 @@ const styles = StyleSheet.create({
   viewAllParamsText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 
 
+  journalMergedCard: {
+    backgroundColor: GLASS,
+    borderRadius: 22,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  journalMergedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  journalSaveHint: { fontSize: 12, fontWeight: "600", color: "#6B7280" },
+  journalMergedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+  },
+  journalMergedCopy: { flex: 1, minWidth: 0 },
+  journalMergedValue: { fontSize: 22, fontWeight: "800", color: "#18181b", marginTop: 2 },
+  journalMergedDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    marginHorizontal: 8,
+  },
+  journalStepper: { flexDirection: "row", alignItems: "center", gap: 8 },
+  journalStepBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   journalCard: {
     backgroundColor: GLASS,
     borderRadius: 20,

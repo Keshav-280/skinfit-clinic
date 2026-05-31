@@ -336,10 +336,6 @@ export function PatientDoctorHomeSections({
               >
                 VOICE NOTES
               </h2>
-              <p className="mt-1 max-w-md text-xs leading-relaxed text-[#6B7280]">
-                Audio from your doctor for your home inbox — separate from written
-                notes above.
-              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

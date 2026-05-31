@@ -50,7 +50,12 @@ export async function POST(req: Request) {
     if (!item || typeof item !== "object") continue;
     const o = item as Record<string, unknown>;
     const action = o.action;
-    if (action !== "confirm" && action !== "cancel" && action !== "decline") {
+    if (
+      action !== "confirm" &&
+      action !== "cancel" &&
+      action !== "decline" &&
+      action !== "message"
+    ) {
       continue;
     }
     const appointmentType = o.appointmentType;

@@ -1,4 +1,9 @@
-import { ImageManipulator, SaveFormat, FlipType } from "expo-image-manipulator";
+import {
+  ImageManipulator,
+  manipulateAsync,
+  SaveFormat,
+  FlipType,
+} from "expo-image-manipulator";
 
 /**
  * Match the WEB capture exactly so the inference service receives equivalent bytes:
@@ -14,24 +19,27 @@ const UPLOAD_JPEG_QUALITY = 0.82;
  * before upload (matches server sharp.rotate + web canvas export).
  */
 export async function normalizeScanImageUri(uri: string): Promise<string> {
-  let ctx = ImageManipulator.manipulate(uri);
-
-  // Downscale longest edge to 1280 like the web canvas (skips if already smaller).
+  // Use the legacy manipulateAsync pipeline: it normalizes EXIF orientation
+  // BEFORE applying the resize, so a single-axis resize preserves aspect ratio.
+  // The newer stateful manipulate().resize() API resizes against the
+  // pre-orientation buffer, which stretched portrait selfies horizontally.
+  let actions: Parameters<typeof manipulateAsync>[1] = [];
   try {
-    const probe = await ImageManipulator.manipulate(uri).renderAsync();
+    // Empty action set still bakes EXIF orientation, so width/height here are
+    // the upright display dimensions we should pick the resize axis from.
+    const probe = await manipulateAsync(uri, []);
     const { width, height } = probe;
     if (width && height && (width > UPLOAD_MAX_EDGE || height > UPLOAD_MAX_EDGE)) {
-      ctx =
+      actions =
         width >= height
-          ? ctx.resize({ width: UPLOAD_MAX_EDGE })
-          : ctx.resize({ height: UPLOAD_MAX_EDGE });
+          ? [{ resize: { width: UPLOAD_MAX_EDGE } }]
+          : [{ resize: { height: UPLOAD_MAX_EDGE } }];
     }
   } catch {
     /* if probe fails, fall through and just re-encode at parity quality */
   }
 
-  const imageRef = await ctx.renderAsync();
-  const saved = await imageRef.saveAsync({
+  const saved = await manipulateAsync(uri, actions, {
     format: SaveFormat.JPEG,
     compress: UPLOAD_JPEG_QUALITY,
   });

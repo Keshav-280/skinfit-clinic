@@ -10,20 +10,25 @@ import {
   FileText,
   Mic,
   Trash2,
-  User,
 } from "lucide-react";
 import { format } from "date-fns";
-import { dateOnlyFromYmd } from "@/src/lib/date-only";
 import {
   type PatientVisitDetail,
   type VisitNoteAttachment,
-  visitResponseRatingStyle,
 } from "@/src/lib/patientVisit";
 import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
+import {
+  patientGlassShell,
+  patientInnerCard,
+  patientKicker,
+  patientMuted,
+  patientPrimaryBtn,
+  patientScoreChip,
+  patientSectionTitle,
+} from "@/src/lib/patientDashboardTheme";
 
-const CARD =
-  "rounded-[22px] border border-zinc-100 bg-white p-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)] md:p-6";
+const CARD = `${patientGlassShell} p-5 md:p-6`;
 
 export interface ScanRecord {
   id: number;
@@ -98,53 +103,53 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-[#FFFCF7] to-[#f3f2ef] shadow-[0_2px_14px_-3px_rgba(15,23,42,0.07)]">
-      <div className="flex items-start justify-between gap-3 border-b border-stone-200/40 px-4 pb-3 pt-4 sm:px-5">
+    <div className={`overflow-hidden ${patientInnerCard}`}>
+      <div className="flex items-start justify-between gap-3 border-b border-white/50 px-4 pb-3 pt-4 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100/90 text-teal-800 shadow-sm">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/10 text-[#2C3E6B] shadow-sm">
             <Mic className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0 pt-0.5">
-            <p className="text-[15px] font-semibold leading-snug text-zinc-900">
+            <p className="text-[15px] font-semibold leading-snug text-[#1A1A2E]">
               {vn.scanLabel}
             </p>
-            <p className="mt-0.5 text-xs text-zinc-500">Doctor voice note</p>
+            <p className="mt-0.5 text-xs text-[#6B7280]">Doctor voice note</p>
           </div>
         </div>
         <time
           dateTime={new Date(vn.createdAt).toISOString()}
-          className="shrink-0 rounded-full bg-white/95 px-2.5 py-1 text-xs font-medium tabular-nums text-zinc-600 shadow-[inset_0_0_0_1px_rgba(120,113,108,0.12)]"
+          className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-xs font-medium tabular-nums text-[#2C3E6B]/70 shadow-sm"
         >
           {format(new Date(vn.createdAt), "MMM d, yyyy")}
         </time>
       </div>
 
       <div className="px-4 py-4 sm:px-5">
-        <div className="rounded-xl bg-stone-200/30 px-3 py-2.5">
+        <div className="rounded-xl bg-[#E8EFE6]/50 px-3 py-2.5">
           {vn.audioDataUri?.trim() ? (
             <audio
               controls
               preload="metadata"
               className="h-9 w-full max-h-9 min-h-[2.25rem] [&::-webkit-media-controls-panel]:rounded-lg"
-              style={{ accentColor: "#0f766e" }}
+              style={{ accentColor: "#2C3E6B" }}
               src={vn.audioDataUri.trim()}
             >
               Your browser does not support audio.
             </audio>
           ) : (
-            <p className="text-sm text-zinc-500">Audio unavailable for this note.</p>
+            <p className="text-sm text-[#6B7280]">Audio unavailable for this note.</p>
           )}
         </div>
       </div>
 
-      <div className="bg-[#f7f6f3]/85 px-4 py-4 sm:px-5">
+      <div className="bg-white/30 px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <label
-              className={`inline-flex min-h-[44px] max-w-full cursor-pointer items-center gap-3 rounded-xl border border-solid px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors ${
+              className={`inline-flex min-h-[44px] max-w-full cursor-pointer items-center gap-3 rounded-xl border border-solid px-3 py-2.5 shadow-sm transition-colors ${
                 vn.listened
-                  ? "border-teal-200/70 bg-teal-50/80"
-                  : "border-stone-200/55 bg-white hover:border-stone-300/80"
+                  ? "border-[#2C3E6B]/25 bg-[#E8EFE6]/80"
+                  : "border-white/60 bg-white/60 hover:border-[#2C3E6B]/20"
               } ${busy ? "pointer-events-none opacity-60" : ""}`}
             >
               <input
@@ -157,8 +162,8 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-solid transition-colors ${
                   vn.listened
-                    ? "border-teal-600 bg-teal-600"
-                    : "border-stone-300 bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-teal-500/30"
+                    ? "border-[#2C3E6B] bg-[#2C3E6B]"
+                    : "border-[#2C3E6B]/30 bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-[#2C3E6B]/30"
                 }`}
               >
                 <Check
@@ -166,7 +171,7 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
                   aria-hidden
                 />
               </span>
-              <span className="text-sm font-medium text-zinc-800">
+              <span className="text-sm font-medium text-[#1A1A2E]">
                 I listened
               </span>
             </label>
@@ -180,7 +185,7 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
                   ? "Move to archived (still playable)"
                   : "Mark as listened first"
               }
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-solid border-stone-200/60 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-stone-300/90 hover:bg-stone-50/80 hover:text-zinc-900 disabled:cursor-not-allowed disabled:border-stone-200/40 disabled:bg-stone-100/40 disabled:text-zinc-400 disabled:shadow-none"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Archive className="h-4 w-4 opacity-70" aria-hidden />
               Archive
@@ -189,7 +194,7 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
 
           <Link
             href={`/dashboard/history/scans/${vn.scanId}`}
-            className="group inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition hover:bg-teal-700 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 sm:w-auto sm:min-w-[148px]"
+            className={`group sm:min-w-[148px] sm:w-auto w-full ${patientPrimaryBtn} min-h-[44px] py-2.5`}
           >
             <FileText className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
             Show report
@@ -261,83 +266,28 @@ export function HistoryView({
 
   return (
     <div className="space-y-6">
-      {/* Patient Profile */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={CARD}
-      >
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-          <div className="flex shrink-0 justify-center sm:justify-start">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-zinc-200 bg-[#E0F0ED]/60">
-              <User className="h-12 w-12 text-[#6B8E8E]" />
-            </div>
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <h2 className="text-xl font-bold text-zinc-900">{patient.name}</h2>
-            <p className="truncate text-sm text-zinc-600">{patient.email}</p>
-            <p className="text-sm text-zinc-600">
-              Phone:{" "}
-              {patient.phone ? (
-                <span className="font-medium text-zinc-800">{patient.phone}</span>
-              ) : (
-                <span className="text-zinc-400">Not set</span>
-              )}
-            </p>
-            <p className="text-sm text-zinc-600">
-              Age:{" "}
-              {patient.age != null ? (
-                <span className="font-medium text-zinc-800">{patient.age}</span>
-              ) : (
-                <span className="text-zinc-400">Not set</span>
-              )}
-            </p>
-            <p className="text-sm text-zinc-600">
-              Skin type:{" "}
-              {patient.skinType ? (
-                <span className="font-semibold text-teal-700">
-                  {patient.skinType}
-                </span>
-              ) : (
-                <span className="text-zinc-400">Not set</span>
-              )}
-            </p>
-            <p className="text-sm text-zinc-600">
-              Primary goal:{" "}
-              {patient.primaryGoal ? (
-                <span className="font-semibold text-teal-700">
-                  {patient.primaryGoal}
-                </span>
-              ) : (
-                <span className="text-zinc-400">Not set</span>
-              )}
-            </p>
-            <Link
-              href="/dashboard/profile"
-              className="mt-3 inline-block text-sm font-medium text-teal-600 hover:text-teal-700"
-            >
-              Edit profile
-            </Link>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Progress Tracker - Scans from DB */}
       <motion.section
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.5 }}
         className={CARD}
       >
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-lg font-bold text-zinc-900">Progress Tracker</h3>
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className={patientKicker}>AI face scans</p>
+            <h2 className={patientSectionTitle}>Your reports</h2>
+            <p className={`mt-1 ${patientMuted}`}>
+              {scans.length > 0
+                ? `${scans.length} scan${scans.length === 1 ? "" : "s"} — newest first`
+                : "Complete your first scan to start tracking progress."}
+            </p>
+          </div>
           {testScansCount > 0 ? (
             <button
               type="button"
               onClick={() => void onDeleteTestScans()}
               disabled={deleteLoading}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 shadow-sm transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-red-200/80 bg-red-50/90 px-4 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
               title="Remove only the demo/test scans from your history"
             >
               <Trash2 className="h-4 w-4" />
@@ -361,9 +311,9 @@ export function HistoryView({
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="overflow-hidden rounded-[18px] border border-zinc-200 bg-white shadow-sm"
+                className={`overflow-hidden ${patientInnerCard}`}
               >
-                <div className="relative h-48 overflow-hidden rounded-t-[18px] bg-zinc-100">
+                <div className="relative h-48 overflow-hidden rounded-t-xl bg-[#E8EFE6]/40">
                   <img
                     src={scan.imageUrl}
                     alt={scan.scanName || "AI scan"}
@@ -372,18 +322,18 @@ export function HistoryView({
                     decoding="async"
                     fetchPriority="low"
                   />
-                  <div className="absolute right-2 top-2 rounded-lg bg-white/95 px-2 py-1 text-lg font-bold text-teal-700 shadow-sm">
+                  <div className="absolute right-2 top-2 rounded-lg bg-[#2C3E6B] px-2.5 py-1 text-lg font-bold text-white shadow-sm">
                     {scan.overallScore}
                   </div>
                 </div>
-                <div className="border-t border-zinc-100 px-4 py-3">
-                  <p className="font-medium text-zinc-900">
+                <div className="border-t border-white/50 px-4 py-3">
+                  <p className="font-semibold text-[#1A1A2E]">
                     {scan.scanName || "Untitled Scan"}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
+                  <p className="mt-0.5 text-xs text-[#6B7280]">
                     {format(new Date(scan.createdAt), "MMM d, yyyy")}
                   </p>
-                  <p className="mt-1 text-lg font-bold text-teal-700">
+                  <p className="mt-1 text-lg font-bold text-[#2C3E6B]">
                     Overall {scan.overallScore}/100
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -397,21 +347,15 @@ export function HistoryView({
                         ["Eczema", scan.eczema],
                       ] as const
                     ).map(([label, val]) => (
-                      <span
-                        key={label}
-                        className="rounded-md bg-[#E0F0ED]/90 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-teal-900"
-                      >
+                      <span key={label} className={patientScoreChip}>
                         {label} {val}
                       </span>
                     ))}
                   </div>
-                  <p className="mt-2 text-[11px] leading-snug text-zinc-500">
-                    Six summary scores on this card (not separate photos). Open
-                    the report for every metric and capture angle.
-                  </p>
+
                   <Link
                     href={`/dashboard/history/scans/${scan.id}`}
-                    className="mt-3 flex w-full items-center justify-center rounded-xl bg-teal-600 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-teal-500"
+                    className={`mt-3 flex w-full items-center justify-center py-2.5 ${patientPrimaryBtn}`}
                   >
                     View details
                   </Link>
@@ -419,175 +363,32 @@ export function HistoryView({
               </motion.div>
             ))
           ) : (
-            <p className="col-span-full py-8 text-center text-sm text-zinc-600">
+            <p className={`col-span-full py-10 text-center ${patientMuted}`}>
               No scans yet. Complete your first AI scan to track progress.
             </p>
           )}
         </div>
       </motion.section>
 
-      {/* Audio notes (per-report) + clinic notes (written) */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className={CARD}
-      >
-        <div className="space-y-8">
-          <div>
-            <h3 className="mb-4 text-lg font-bold text-zinc-900">Audio notes</h3>
-            <div className="space-y-5">
-              {reportVoiceNotes.length > 0 ? (
-                reportVoiceNotes.map((vn) => (
-                  <HistoryReportVoiceCard key={vn.id} vn={vn} />
-                ))
-              ) : (
-                <p className="py-4 text-center text-sm text-zinc-600">
-                  No audio notes for your reports yet.
-                </p>
-              )}
-              {reportVoiceNotesArchived.length > 0 ? (
-                <details className="group mt-6 overflow-hidden rounded-2xl bg-stone-100/50 shadow-[0_1px_3px_rgba(15,23,42,0.05),inset_0_0_0_1px_rgba(120,113,108,0.1)]">
-                  <summary className="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold text-zinc-800 transition hover:bg-stone-200/30 [&::-webkit-details-marker]:hidden">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-2">
-                        <Archive className="h-4 w-4 text-zinc-500" aria-hidden />
-                        Archived report audio
-                        <span className="rounded-full bg-zinc-200/80 px-2 py-0.5 text-xs font-bold tabular-nums text-zinc-700">
-                          {reportVoiceNotesArchived.length}
-                        </span>
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition group-open:rotate-90" />
-                    </span>
-                  </summary>
-                  <p className="border-t border-stone-200/35 px-4 pb-3 pt-2 text-xs leading-relaxed text-zinc-600">
-                    Still here if you need them — nothing is deleted.
-                  </p>
-                  <div className="space-y-3 border-t border-stone-200/35 bg-white/40 px-4 py-4">
-                    {reportVoiceNotesArchived.map((vn) => (
-                      <div
-                        key={vn.id}
-                        className="rounded-xl bg-white/90 p-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-                      >
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-zinc-800">
-                            {vn.scanLabel}
-                          </span>
-                          <span className="text-xs font-medium text-zinc-500">
-                            {format(new Date(vn.createdAt), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                        <div className="rounded-lg bg-stone-200/35 px-2.5 py-2">
-                          {vn.audioDataUri?.trim() ? (
-                            <audio
-                              controls
-                              preload="metadata"
-                              className="h-8 w-full"
-                              style={{ accentColor: "#0f766e" }}
-                              src={vn.audioDataUri.trim()}
-                            />
-                          ) : (
-                            <p className="text-sm text-zinc-500">
-                              Audio unavailable for this note.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              ) : null}
-            </div>
+      {reportVoiceNotes.length > 0 ? (
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.4 }}
+          className={CARD}
+        >
+          <p className={patientKicker}>Doctor feedback</p>
+          <h2 className={patientSectionTitle}>Audio notes</h2>
+          <p className={`mt-1 mb-4 ${patientMuted}`}>
+            Voice messages linked to your scan reports.
+          </p>
+          <div className="space-y-3">
+            {reportVoiceNotes.map((vn) => (
+              <HistoryReportVoiceCard key={vn.id} vn={vn} />
+            ))}
           </div>
-
-          <div>
-            <h3 className="mb-4 text-lg font-bold text-zinc-900">Clinic notes</h3>
-            <div className="space-y-4">
-              {visitNotes.length > 0 ? (
-                visitNotes.map((visit) => {
-                  const ratingStyle = visitResponseRatingStyle(
-                    visit.responseRating
-                  );
-                  const hasExtra =
-                    visit.preAdvice ||
-                    visit.postAdvice ||
-                    visit.prescription ||
-                    (visit.attachments && visit.attachments.length > 0);
-
-                  return (
-                    <div
-                      key={visit.id}
-                      className="rounded-[18px] border border-zinc-100 bg-[#FDF9F0]/80 p-4"
-                    >
-                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-zinc-900">
-                            {format(
-                              dateOnlyFromYmd(visit.visitDateYmd),
-                              "MMM d, yyyy"
-                            )}{" "}
-                            · {visit.doctorName}
-                          </p>
-                          {visit.purpose ? (
-                            <p className="mt-1 text-sm text-zinc-700">
-                              Purpose: {visit.purpose}
-                            </p>
-                          ) : null}
-                          {visit.treatments ? (
-                            <p className="mt-0.5 text-sm text-zinc-700">
-                              Treatments: {visit.treatments}
-                            </p>
-                          ) : null}
-                        </div>
-                        <Link
-                          href={`/dashboard/history/visits/${visit.id}`}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3d5080]"
-                        >
-                          View details
-                          <ChevronRight className="h-4 w-4" aria-hidden />
-                        </Link>
-                      </div>
-                      {visit.notes?.trim() ? (
-                        <p className="line-clamp-3 text-sm leading-relaxed text-zinc-600">
-                          {visit.notes}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-zinc-500">No written notes.</p>
-                      )}
-                      {visit.responseRating ? (
-                        <p
-                          className="mt-2 text-xs font-semibold capitalize"
-                          style={
-                            ratingStyle
-                              ? { color: ratingStyle.text }
-                              : { color: "#0f766e" }
-                          }
-                        >
-                          Response: {visit.responseRating}
-                        </p>
-                      ) : null}
-                      {hasExtra ? (
-                        <p className="mt-2 text-xs text-zinc-500">
-                          Includes pre/post treatment advice
-                          {visit.prescription ? ", prescription" : ""}
-                          {visit.attachments?.length
-                            ? `, ${visit.attachments.length} attachment(s)`
-                            : ""}
-                          . Open for full visit notes.
-                        </p>
-                      ) : null}
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="py-4 text-center text-sm text-zinc-600">
-                  No clinic notes yet.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </motion.section>
+        </motion.section>
+      ) : null}
     </div>
   );
 }

@@ -12,7 +12,6 @@ import {
   runFaceAnalysisService,
 } from "../../../src/lib/faceAnalysisInference";
 import { runFaceAnalysisServiceV2 } from "../../../src/lib/faceAnalysisInferenceV2";
-import { restrictScanMasksToFace } from "../../../src/lib/restrictMaskToFace";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../src/lib/faceScanCaptures";
 import {
   inferenceParamsToRows,
@@ -337,17 +336,6 @@ export async function POST(request: NextRequest) {
               acne100: dualScan.metrics.acne,
             });
           }
-        }
-        if (merged.acneMaskDataUri) {
-          const centreBuf = Buffer.from(await filesForV2.centre.arrayBuffer());
-          const restricted = await restrictScanMasksToFace({
-            acneMaskDataUri: merged.acneMaskDataUri,
-            centreJpeg: centreBuf,
-          });
-          merged = {
-            ...merged,
-            acneMaskDataUri: restricted.acneMaskDataUri,
-          };
         }
         overallKaiScore = merged.overallKaiScore;
         v2params = merged.params as Record<string, unknown>;

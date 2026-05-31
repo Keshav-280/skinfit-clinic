@@ -247,9 +247,7 @@ export default function DashboardNotificationsPage() {
         <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
           Notifications
         </h1>
-        <p className="mt-2 text-sm text-[#6B7280]">
-          Tap an item to open it. Voice rows can clear the bell when opened.
-        </p>
+       
       </div>
 
       {loading ? (
@@ -372,14 +370,6 @@ export default function DashboardNotificationsPage() {
             />
           </section>
 
-          <div className="rounded-[18px] border border-dashed border-white/70 bg-white/40 p-4 text-sm text-[#6B7280] backdrop-blur-sm">
-            <p className="font-semibold text-[#2C3E6B]">Mobile app</p>
-            <p className="mt-2 leading-relaxed">
-              Turn on push for alerts when SkinnFit isn&apos;t open. On the web,
-              the bell counts unread chat, voice notes, and scan reports ready —
-              details are listed here.
-            </p>
-          </div>
         </>
       )}
     </div>

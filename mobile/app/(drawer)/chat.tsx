@@ -41,6 +41,10 @@ import {
   setSupplementalDoctorUnread,
 } from "@/lib/inboxReadCursors";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
+import {
+  AI_CHATBOT_ENABLED,
+  DEFAULT_PATIENT_CHAT_ASSISTANT,
+} from "@/lib/featureFlags";
 
 type AssistantId = "ai" | "doctor" | "support";
 type HomeThreadId = AssistantId | "appointments";
@@ -124,6 +128,33 @@ const CONTACTS: {
 ];
 
 const AI_GREETING = "Hi! I'm SkinnFit AI Assistant. How can I help you today?";
+
+function visibleHomeRows(rows: HomeConversation[]): HomeConversation[] {
+  return AI_CHATBOT_ENABLED ? rows : rows.filter((row) => row.id !== "ai");
+}
+
+function defaultHomeRows(): HomeConversation[] {
+  return visibleHomeRows([
+    {
+      id: "ai",
+      title: "Skin AI Assistant",
+      subtitle: "Instant answers about skincare and scans.",
+      unread: 0,
+    },
+    {
+      id: "appointments",
+      title: "Appointments",
+      subtitle: "Schedule updates and reminders.",
+      unread: 0,
+    },
+    {
+      id: "support",
+      title: "Clinic Team",
+      subtitle: "Billing, logistics and support.",
+      unread: 0,
+    },
+  ]);
+}
 
 function chatErrorMessage(e: unknown): string {
   if (e instanceof ApiError) return e.message;
@@ -215,27 +246,8 @@ export default function ChatScreen() {
   const [registeredDoctors, setRegisteredDoctors] = useState<RegisteredDoctor[]>([]);
   const [activeDoctorId, setActiveDoctorId] = useState<string | null>(null);
   const [doctorUnread, setDoctorUnread] = useState(0);
-  const [homeRows, setHomeRows] = useState<HomeConversation[]>([
-    {
-      id: "ai",
-      title: "Skin AI Assistant",
-      subtitle: "Instant answers about skincare and scans.",
-      unread: 0,
-    },
-    {
-      id: "appointments",
-      title: "Appointments",
-      subtitle: "Schedule updates and reminders.",
-      unread: 0,
-    },
-    {
-      id: "support",
-      title: "Clinic Team",
-      subtitle: "Billing, logistics and support.",
-      unread: 0,
-    },
-  ]);
-  const [active, setActive] = useState<AssistantId>("ai");
+  const [homeRows, setHomeRows] = useState<HomeConversation[]>(defaultHomeRows);
+  const [active, setActive] = useState<AssistantId>(DEFAULT_PATIENT_CHAT_ASSISTANT);
   const [threadScope, setThreadScope] = useState<ThreadScope>("all");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -250,7 +262,13 @@ export default function ChatScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);
   const recordTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const peer = useMemo(() => CONTACTS.find((c) => c.id === active)!, [active]);
+  const peer = useMemo(() => {
+    return (
+      CONTACTS.find((c) => c.id === active) ??
+      CONTACTS.find((c) => c.id === DEFAULT_PATIENT_CHAT_ASSISTANT) ??
+      CONTACTS[0]!
+    );
+  }, [active]);
 
   const activeDoctorProfile = useMemo((): DoctorProfile => {
     const doctor = registeredDoctors.find((d) => d.id === activeDoctorId);
@@ -275,6 +293,13 @@ export default function ChatScreen() {
       listRef.current?.scrollToEnd({ animated: true });
     });
   }, []);
+
+  useEffect(() => {
+    if (!AI_CHATBOT_ENABLED && active === "ai") {
+      setActive(DEFAULT_PATIENT_CHAT_ASSISTANT);
+      setHomeMode(true);
+    }
+  }, [active]);
 
   useEffect(() => {
     if (messages.length > 0) scrollToEnd();
@@ -414,7 +439,9 @@ export default function ChatScreen() {
       const unreadQuery = new URLSearchParams({ doctorSince, supportSince });
       const [aiRes, supportRes, unreadRes, calendarRes, doctorsListRes, doctorProfileRes] =
         await Promise.allSettled([
-          fetchPlainMessages("ai"),
+          AI_CHATBOT_ENABLED
+            ? fetchPlainMessages("ai")
+            : Promise.resolve({ messages: [] as ChatMsg[] }),
           fetchPlainMessages("support"),
           apiJson<{
             doctorCount?: number;
@@ -546,7 +573,7 @@ export default function ChatScreen() {
         .reverse()
         .find((m) => m.sender !== "patient" && isAppointmentMessage(m.text));
 
-      const nextHomeRows: HomeConversation[] = [
+      const nextHomeRows: HomeConversation[] = visibleHomeRows([
         {
           id: "ai",
           title: "Skin AI Assistant",
@@ -570,7 +597,7 @@ export default function ChatScreen() {
           unread: supportUnread,
           dateLabel: dateLabelFromIso(supportLast?.createdAt),
         },
-      ];
+      ]);
       setHomeRows(nextHomeRows);
       void AsyncStorage.setItem(
         HOME_CACHE_KEY,
@@ -608,7 +635,7 @@ export default function ChatScreen() {
           setDoctorUnread(parsed.doctorUnread);
         }
         if (Array.isArray(parsed.homeRows) && parsed.homeRows.length > 0) {
-          setHomeRows(parsed.homeRows);
+          setHomeRows(visibleHomeRows(parsed.homeRows));
         }
         setHomeLoading(false);
       } catch {
@@ -1151,7 +1178,7 @@ export default function ChatScreen() {
       (doctor.lastMessage ?? "").toLowerCase().includes(q)
     );
   });
-  const filteredRows = homeRows.filter((row) => {
+  const filteredRows = visibleHomeRows(homeRows).filter((row) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return row.title.toLowerCase().includes(q) || row.subtitle.toLowerCase().includes(q);
@@ -1159,7 +1186,7 @@ export default function ChatScreen() {
 
   function goToChatHome() {
     setHomeMode(true);
-    setActive("ai");
+    setActive(DEFAULT_PATIENT_CHAT_ASSISTANT);
   }
 
   function openDoctorThread(doctorId: string) {
@@ -1171,6 +1198,7 @@ export default function ChatScreen() {
   }
 
   function openHomeThread(id: HomeThreadId) {
+    if (id === "ai" && !AI_CHATBOT_ENABLED) return;
     if (id === "appointments") {
       setActive("support");
       setThreadScope("appointments");

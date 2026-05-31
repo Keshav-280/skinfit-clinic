@@ -16,6 +16,8 @@ type Props = {
   faceTracked?: boolean;
   /** Optional extra lines (e.g. countdown, stable ticks). */
   extra?: Record<string, string | number | boolean | null | undefined>;
+  /** Explicit toggle — overrides env default when provided. */
+  visible?: boolean;
 };
 
 function fmtPct(fill: number | null | undefined): string {
@@ -28,12 +30,10 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Dev default on; set NEXT_PUBLIC_CAPTURE_DEBUG=0 to hide, =1 to force on in production. */
+/** Off by default; set NEXT_PUBLIC_CAPTURE_DEBUG=1 to force on without the toggle. */
 export function isCaptureDebugEnabled(): boolean {
   const flag = process.env.NEXT_PUBLIC_CAPTURE_DEBUG?.trim();
-  if (flag === "0" || flag === "false") return false;
-  if (flag === "1" || flag === "true") return true;
-  return process.env.NODE_ENV === "development";
+  return flag === "1" || flag === "true";
 }
 
 export function ScanCaptureDebugOverlay({
@@ -42,8 +42,10 @@ export function ScanCaptureDebugOverlay({
   models,
   faceTracked,
   extra,
+  visible,
 }: Props) {
-  if (!isCaptureDebugEnabled()) return null;
+  const show = visible ?? isCaptureDebugEnabled();
+  if (!show) return null;
 
   const t = CAPTURE_FRAMING_THRESHOLDS;
   const targetFill = captureAutoZoomTargetFill();

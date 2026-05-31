@@ -10,17 +10,14 @@ import {
   Sun,
   CloudMoon,
   ArrowRight,
-  Clock,
   CheckCircle2,
-  Moon,
-  Droplets,
-  Brain,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Sparkles,
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
+import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMergedCard";
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
 import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
@@ -158,11 +155,17 @@ function CircularGauge({ value, size = 72, strokeWidth = 6, color }: { value: nu
 }
 
 /* ─── Radar Chart ─── */
-function RadarChart({ data }: { data: { label: string; value: number }[] }) {
-  const size = 260;
+function RadarChart({
+  data,
+  size = 260,
+}: {
+  data: { label: string; value: number }[];
+  size?: number;
+}) {
   const center = size / 2;
   const levels = 4;
-  const maxRadius = 90;
+  const maxRadius = (size / 260) * 90;
+  const labelPad = (size / 260) * 30;
   const angleStep = (2 * Math.PI) / data.length;
   const startAngle = -Math.PI / 2;
 
@@ -188,11 +191,11 @@ function RadarChart({ data }: { data: { label: string; value: number }[] }) {
         {dataPoints.map((p, i) => (<circle key={i} cx={p.x} cy={p.y} r={4} fill={GREEN} />))}
       </svg>
       {data.map((d, i) => {
-        const p = getPoint(i, maxRadius + 30);
+        const p = getPoint(i, maxRadius + labelPad);
         return (
           <div key={i} className="absolute text-center" style={{ left: p.x, top: p.y, transform: "translate(-50%, -50%)" }}>
-            <p className="text-xs font-medium text-slate-500">{d.label}</p>
-            <p className="text-sm font-bold text-slate-800">{d.value}%</p>
+            <p className={`font-medium text-slate-500 ${size < 220 ? "text-[10px]" : "text-xs"}`}>{d.label}</p>
+            <p className={`font-bold text-slate-800 ${size < 220 ? "text-xs" : "text-sm"}`}>{d.value}%</p>
           </div>
         );
       })}
@@ -433,7 +436,8 @@ export function PatientDashboardDesktop() {
     return extractSkinParams(data.skinScanHistory[0].analysisResults);
   }, [data]);
 
-  // Reminder countdown
+  // Reminder countdown — hidden with Next Reminder card below; restore when re-enabling.
+  /*
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 1000);
@@ -460,6 +464,7 @@ export function PatientDashboardDesktop() {
   }, [data, tick]);
 
   const pad = (n: number) => String(n).padStart(2, "0");
+  */
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -488,9 +493,6 @@ export function PatientDashboardDesktop() {
   }
 
   const allRoutineDone = data.amItems.length > 0 && data.pmItems.length > 0 && amDone >= data.amItems.length && pmDone >= data.pmItems.length;
-  const sleepHours = data.todayLog?.sleepHours ?? 0;
-  const waterGlasses = data.todayLog?.waterGlasses ?? 0;
-  const stressLevel = data.todayLog?.stressLevel ?? 5;
 
   return (
     <div className="md:grid md:grid-cols-12 md:gap-8">
@@ -520,22 +522,22 @@ export function PatientDashboardDesktop() {
 
         {/* Calendar Ribbon */}
         <div>
-          <div className="mb-2 flex items-center justify-between px-1">
-            <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronLeft className="h-4 w-4" /></button>
+          <div className="mb-1 flex items-center justify-between px-0.5">
+            <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronLeft className="h-3.5 w-3.5" /></button>
             <button
               type="button"
               onClick={() => {
                 setWeekOffset(0);
                 setSelectedYmd(todayYmd);
               }}
-              className="min-w-[7.5rem] text-xs font-semibold text-[#6B7280]"
+              className="min-w-[6.5rem] text-[11px] font-semibold leading-tight text-[#6B7280]"
             >
               {monthLabel}
-              {!isViewingToday || weekOffset !== 0 ? " · tap to go today" : null}
+              {!isViewingToday || weekOffset !== 0 ? " · today" : null}
             </button>
-            <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronRight className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-7 w-7 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronRight className="h-3.5 w-3.5" /></button>
           </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide md:gap-3">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2">
             {weekDays.map((d) => (
               <button
                 key={d.ymd}
@@ -546,88 +548,167 @@ export function PatientDashboardDesktop() {
                   setSelectedYmd(d.ymd);
                 }}
                 disabled={d.isFuture}
-                className={`flex min-w-[52px] flex-1 flex-col items-center rounded-2xl border px-3 py-3 transition-all md:min-w-[60px] ${
+                className={`flex min-w-[42px] flex-1 flex-col items-center rounded-xl border px-1.5 py-1.5 transition-all md:min-w-[46px] ${
                   d.isSelected
-                    ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-lg shadow-[#2C3E6B]/20"
+                    ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-md shadow-[#2C3E6B]/15"
                     : d.isFuture
                       ? "cursor-not-allowed border-white/60 bg-white/20 text-slate-400 opacity-60"
-                      : "border-white/70 bg-white/35 text-slate-700 hover:bg-white/60"
+                      : d.isToday
+                        ? "border-emerald-500/40 bg-white/35 text-slate-700 ring-1 ring-emerald-500/35 hover:bg-white/60"
+                        : "border-white/70 bg-white/35 text-slate-700 hover:bg-white/60"
                 }`}
               >
-                <span className={`text-xs font-semibold ${d.isSelected ? "text-white/80" : "text-[#6B7280]"}`}>{d.label}</span>
-                <span className={`mt-1 text-lg font-extrabold ${d.isSelected ? "text-white" : "text-[#18181b]"}`}>{d.day}</span>
-                {d.isToday && !d.isSelected ? (
-                  <span className="mt-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                    today
-                  </span>
-                ) : null}
+                <span className={`text-[10px] font-semibold leading-none ${d.isSelected ? "text-white/85" : "text-[#6B7280]"}`}>{d.label}</span>
+                <span className={`mt-0.5 text-base font-extrabold leading-none ${d.isSelected ? "text-white" : "text-[#18181b]"}`}>{d.day}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Routine Cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Link href={journalTrackerHref("/dashboard/morning-routine", selectedYmd)} className="group relative flex flex-col justify-between rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60 hover:shadow-md md:p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2C3E6B]"><Sun className="h-5 w-5 text-amber-400" /></div>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#334155]"><ArrowRight className="h-3.5 w-3.5 text-white" /></div>
-            </div>
-            <h3 className="mt-3 text-lg font-extrabold text-[#18181b]">Morning Routine</h3>
-            <div className="mt-3"><span className="inline-flex items-center rounded-[10px] bg-[#2C3E6B] px-3.5 py-2 text-[13px] font-bold text-white">Step {amDone}/{data.amItems.length || 0}</span></div>
-          </Link>
-          <Link href={journalTrackerHref("/dashboard/night-routine", selectedYmd)} className="group relative flex flex-col justify-between rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60 hover:shadow-md md:p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#2C3E6B]"><CloudMoon className="h-5 w-5 text-white" /></div>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#334155]"><ArrowRight className="h-3.5 w-3.5 text-white" /></div>
-            </div>
-            <h3 className="mt-3 text-lg font-extrabold text-[#18181b]">Night Routine</h3>
-            <div className="mt-3"><span className="inline-flex items-center rounded-[10px] bg-[#2C3E6B] px-3.5 py-2 text-[13px] font-bold text-white">Step {pmDone}/{data.pmItems.length || 0}</span></div>
-          </Link>
-        </div>
+        {/* Daily Routine — AM + PM in one card */}
+        {(() => {
+          const amTotal = data.amItems.length || 0;
+          const pmTotal = data.pmItems.length || 0;
+          const totalSteps = amTotal + pmTotal;
+          const completedSteps = amDone + pmDone;
+          const progressPct =
+            totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+          const amComplete = amTotal > 0 && amDone >= amTotal;
+          const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
-        {/* 7-Day Streak */}
-        <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
-          <h3 className="text-lg font-extrabold text-[#18181b]">🔥 {data.streakCurrent}-Day Streak</h3>
-          <div className="mt-4 flex items-center justify-between px-1">
-            {streakDays.map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-2">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full border-2 ${d.done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 bg-white/35 text-slate-300"}`}>
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-                <span className="text-[11px] font-semibold text-[#6B7280]">{d.label}</span>
+          return (
+            <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-lg font-extrabold text-[#18181b]">Daily Routine</h3>
+                <span className="text-[13px] font-semibold text-[#6B7280]">
+                  {completedSteps}/{totalSteps || 0} steps
+                </span>
               </div>
-            ))}
+              {totalSteps > 0 ? (
+                <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/50">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              ) : null}
+
+              <div className="space-y-1">
+                <Link
+                  href={journalTrackerHref("/dashboard/morning-routine", selectedYmd)}
+                  className="group flex items-center gap-4 rounded-2xl p-3 transition hover:bg-white/50"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]">
+                    <Sun className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-extrabold text-[#18181b]">Morning</p>
+                    <p className="text-[13px] font-medium text-[#6B7280]">
+                      {amTotal > 0
+                        ? amComplete
+                          ? "Completed for today"
+                          : `Step ${amDone} of ${amTotal}`
+                        : "No steps yet"}
+                    </p>
+                  </div>
+                  {amComplete ? (
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center rounded-[10px] bg-[#2C3E6B] px-3 py-1.5 text-[12px] font-bold text-white">
+                      {amDone}/{amTotal || 0}
+                    </span>
+                  )}
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#334155] transition group-hover:bg-[#2C3E6B]">
+                    <ArrowRight className="h-3.5 w-3.5 text-white" />
+                  </div>
+                </Link>
+
+                <div className="mx-3 border-t border-white/60" />
+
+                <Link
+                  href={journalTrackerHref("/dashboard/night-routine", selectedYmd)}
+                  className="group flex items-center gap-4 rounded-2xl p-3 transition hover:bg-white/50"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]">
+                    <CloudMoon className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-extrabold text-[#18181b]">Night</p>
+                    <p className="text-[13px] font-medium text-[#6B7280]">
+                      {pmTotal > 0
+                        ? pmComplete
+                          ? "Completed for today"
+                          : `Step ${pmDone} of ${pmTotal}`
+                        : "No steps yet"}
+                    </p>
+                  </div>
+                  {pmComplete ? (
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center rounded-[10px] bg-[#2C3E6B] px-3 py-1.5 text-[12px] font-bold text-white">
+                      {pmDone}/{pmTotal || 0}
+                    </span>
+                  )}
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#334155] transition group-hover:bg-[#2C3E6B]">
+                    <ArrowRight className="h-3.5 w-3.5 text-white" />
+                  </div>
+                </Link>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Streak + skin health radar — side by side */}
+        <div
+          className={`grid gap-3 ${data.skinScanHistory.length > 0 ? "md:grid-cols-2 md:items-stretch" : ""}`}
+        >
+          <div className="flex flex-col rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-5">
+            <h3 className="text-base font-extrabold text-[#18181b]">
+              🔥 {data.streakCurrent}-Day Streak
+            </h3>
+            <div className="mt-3 flex flex-1 items-center justify-between px-0.5">
+              {streakDays.map((d, i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
+                      d.done
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-slate-300 bg-white/35 text-slate-300"
+                    }`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-[10px] font-semibold text-[#6B7280]">{d.label}</span>
+                </div>
+              ))}
+            </div>
+            <p
+              className={`mt-2 text-sm font-bold ${
+                allRoutineDone
+                  ? "text-emerald-600"
+                  : data.streakCurrent > 0
+                    ? "text-emerald-600"
+                    : "text-red-600"
+              }`}
+            >
+              {allRoutineDone
+                ? "All completed today!"
+                : data.streakCurrent > 0
+                  ? "Keep it up!"
+                  : "Start your streak today!"}
+            </p>
           </div>
-          <p className={`mt-3 text-[15px] font-bold ${allRoutineDone ? "text-emerald-600" : data.streakCurrent > 0 ? "text-emerald-600" : "text-red-600"}`}>
-            {allRoutineDone ? "All completed today!" : data.streakCurrent > 0 ? "Keep it up!" : "Start your streak today!"}
-          </p>
-        </div>
 
-        {/* Next Reminder */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-white/70 bg-white/35 px-5 py-4 backdrop-blur-sm">
-          {allRoutineDone ? (
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-              <div>
-                <p className="text-[13px] font-semibold text-emerald-600">All Done for Today!</p>
-                <p className="text-base font-extrabold text-[#18181b]">AM & PM routines completed</p>
+          {data.skinScanHistory.length > 0 ? (
+            <div className="flex flex-col rounded-[22px] border border-white/70 bg-white/35 p-4 text-center backdrop-blur-sm md:p-5">
+              <h3 className="text-[13px] font-extrabold tracking-wide text-[#18181b]">
+                SKIN HEALTH METRICS
+              </h3>
+              <div className="mt-1 flex flex-1 items-center justify-center overflow-hidden">
+                <RadarChart data={radarData} size={200} />
               </div>
             </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <Clock className="h-6 w-6 text-emerald-600" />
-                <div>
-                  <p className="text-[13px] font-semibold text-[#6B7280]">Next Reminder in</p>
-                  <p className="font-mono text-[22px] font-extrabold text-[#18181b]">{pad(reminder.h)}: {pad(reminder.m)}: {pad(reminder.s)}</p>
-                </div>
-              </div>
-              <Link href={journalTrackerHref(reminder.target === "am" ? "/dashboard/morning-routine" : "/dashboard/night-routine", selectedYmd)} className="rounded-[14px] border-[1.5px] border-[#2C3E6B] px-4 py-2.5 text-[13px] font-bold text-[#2C3E6B] transition hover:bg-[#2C3E6B] hover:text-white">
-                View All Tasks
-              </Link>
-            </>
-          )}
+          ) : null}
         </div>
 
         {!data.hasQuestionnaire ? (
@@ -636,48 +717,12 @@ export function PatientDashboardDesktop() {
           <TodayFocusCard message={data.todayFocus.message} />
         ) : null}
 
-        {/* Skin Health Radar */}
-        {data.skinScanHistory.length > 0 && (
-          <div className="rounded-[22px] border border-white/70 bg-white/35 p-6 text-center backdrop-blur-sm">
-            <h3 className="text-[14px] font-extrabold tracking-wide text-[#18181b]">SKIN HEALTH METRICS</h3>
-            <div className="mt-2 flex justify-center"><RadarChart data={radarData} /></div>
-          </div>
-        )}
-
-        {/* Daily Journal */}
-        <div className="space-y-3">
-          <h3 className="text-[14px] font-extrabold tracking-wide text-[#18181b]">DAILY JOURNAL</h3>
-          <Link href={journalTrackerHref("/dashboard/sleep-tracker", selectedYmd)} className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[14px] font-medium text-[#6B7280]">Sleep Duration</p>
-                <p className="mt-1 text-[28px] font-extrabold text-[#18181b]">{String(Math.floor(sleepHours)).padStart(2, "0")}h {String(Math.round((sleepHours % 1) * 60)).padStart(2, "0")}m</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500"><Moon className="h-5 w-5 text-white" /></div>
-            </div>
-            <div className="mt-4 rounded-[14px] bg-[#2C3E6B] py-3 text-center text-[15px] font-bold text-white">Enter Data</div>
-          </Link>
-          <Link href={journalTrackerHref("/dashboard/hydration-tracker", selectedYmd)} className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[14px] font-medium text-[#6B7280]">Hydration</p>
-                <p className="mt-1 text-[28px] font-extrabold text-[#18181b]">{((waterGlasses * 250) / 1000).toFixed(1)} L</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500"><Droplets className="h-5 w-5 text-white" /></div>
-            </div>
-            <div className="mt-4 rounded-[14px] bg-[#2C3E6B] py-3 text-center text-[15px] font-bold text-white">Enter Data</div>
-          </Link>
-          <Link href={journalTrackerHref("/dashboard/stress-tracker", selectedYmd)} className="block rounded-[20px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm transition hover:bg-white/60">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[14px] font-medium text-[#6B7280]">Stress Level (0-10)</p>
-                <p className="mt-1 text-[28px] font-extrabold text-[#18181b]">{stressLevel}</p>
-              </div>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full ${stressLevel > 6 ? "bg-red-500" : "bg-amber-500"}`}><Brain className="h-5 w-5 text-white" /></div>
-            </div>
-            <div className="mt-4 rounded-[14px] bg-[#2C3E6B] py-3 text-center text-[15px] font-bold text-white">Enter Data</div>
-          </Link>
-        </div>
+        <DailyJournalMergedCard
+          selectedYmd={selectedYmd}
+          initialSleepHours={data.todayLog?.sleepHours ?? 0}
+          initialWaterGlasses={data.todayLog?.waterGlasses ?? 0}
+          initialStressLevel={data.todayLog?.stressLevel ?? 5}
+        />
 
         <PatientDoctorHomeSections
           doctorFeedback={data.doctorFeedback}
@@ -734,17 +779,6 @@ export function PatientDashboardDesktop() {
                   </div>
                 ))}
               </div>
-              {skinParams.length > 4 && (
-                <div className="mt-3 grid grid-cols-2 gap-4">
-                  {skinParams.slice(4).map((p) => (
-                    <div key={p.label} className="flex flex-col items-center gap-1.5 rounded-[18px] border border-white/70 bg-white/35 py-3">
-                      <CircularGauge value={p.value} color={p.color} size={60} strokeWidth={5} />
-                      <p className="text-[13px] font-bold text-[#18181b]">{p.label}</p>
-                      <p className={`text-[11px] font-bold ${p.sublabel === "Needs Care" ? "text-red-500" : p.sublabel === "Moderate" ? "text-amber-500" : "text-emerald-500"}`}>{p.sublabel}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
               <Link href="/dashboard/skin-params" className="mt-5 block w-full rounded-[14px] bg-[#2C3E6B] py-3.5 text-center text-[15px] font-bold text-white shadow-md transition hover:bg-[#3d5080]">
                 View all Parameters
               </Link>

@@ -21,17 +21,6 @@ FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-# MediaPipe face-mask clip (restrict_mask_to_face.py) — needs glibc; Alpine wheels fail.
-# opencv-python-headless pulls cv2; bookworm-slim needs X/GL runtime libs even headless.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-    python3 python3-venv python3-pip \
-    libgl1 libglib2.0-0 libxcb1 \
-  && python3 -m venv /opt/mask-venv \
-  && rm -rf /var/lib/apt/lists/*
-COPY apps/ml-worker/python/requirements-mask-restrict.txt /tmp/requirements-mask-restrict.txt
-RUN /opt/mask-venv/bin/pip install --no-cache-dir -r /tmp/requirements-mask-restrict.txt
-ENV MASK_RESTRICT_PYTHON=/opt/mask-venv/bin/python3
 ENV MPLCONFIGDIR=/app/.matplotlib
 RUN groupadd -r skinfit && useradd -r -g skinfit -d /home/skinfit skinfit \
   && mkdir -p /home/skinfit/.config /app/.matplotlib /uploads \
@@ -40,7 +29,6 @@ ENV HOME=/home/skinfit
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY apps/ml-worker/python/restrict_mask_to_face.py ./apps/ml-worker/python/restrict_mask_to_face.py
 RUN chown -R skinfit:skinfit /app
 USER skinfit
 EXPOSE 3000

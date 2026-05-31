@@ -1,5 +1,7 @@
 import React from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Camera } from "lucide-react";
 import { db } from "../../../src/db";
 import {
   doctorFeedbackVoiceNotes,
@@ -9,10 +11,12 @@ import {
 } from "../../../src/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { HistoryView } from "../../../components/dashboard/HistoryView";
+import { DashboardPageHeader } from "../../../components/dashboard/DashboardPageSection";
 import { getSessionUserId } from "../../../src/lib/auth/get-session";
 import { ymdFromDateOnly } from "../../../src/lib/date-only";
 import { displayUserPhone } from "../../../src/lib/auth/phone";
 import { patientScanImagePath } from "../../../src/lib/patientScanImagePath";
+import { patientPrimaryBtn } from "@/src/lib/patientDashboardTheme";
 
 export default async function HistoryPage() {
   const userId = await getSessionUserId();
@@ -158,21 +162,24 @@ export default async function HistoryPage() {
     .filter(hasAudio);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[22px] border border-white/70 bg-white/35 px-6 py-5 backdrop-blur-sm">
-        <h1 className="text-center text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
-          Treatment History
-        </h1>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <DashboardPageHeader
+        title="Scan history"
+        subtitle={`${scanRecords.length} AI scan${scanRecords.length === 1 ? "" : "s"} · open any report for full details`}
+      />
+      <div className="flex justify-center">
+        <Link href="/dashboard/scan" className={patientPrimaryBtn}>
+          <Camera className="h-4 w-4" aria-hidden />
+          New AI scan
+        </Link>
       </div>
-      <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 backdrop-blur-sm md:p-6">
-        <HistoryView
-          scans={scanRecords}
-          visitNotes={visitRecords}
-          reportVoiceNotes={reportVoiceNotes}
-          reportVoiceNotesArchived={reportVoiceNotesArchived}
-          patient={patient}
-        />
-      </div>
+      <HistoryView
+        scans={scanRecords}
+        visitNotes={visitRecords}
+        reportVoiceNotes={reportVoiceNotes}
+        reportVoiceNotesArchived={reportVoiceNotesArchived}
+        patient={patient}
+      />
     </div>
   );
 }

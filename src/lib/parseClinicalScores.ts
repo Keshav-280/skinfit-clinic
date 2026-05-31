@@ -65,5 +65,11 @@ export function parseScanWrinkleMaskDataUri(scores: unknown): string | undefined
 }
 
 export function parseScanAcneMaskDataUri(scores: unknown): string | undefined {
+  if (scores && typeof scores === "object") {
+    const original = (scores as Record<string, unknown>).acneMaskOriginalUrl;
+    if (typeof original === "string" && original.trim()) {
+      return original.trim();
+    }
+  }
   return parseStoredImageRef(scores, "acneMaskUrl", "acneMaskDataUri");
 }

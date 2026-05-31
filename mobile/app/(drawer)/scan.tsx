@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
@@ -6,9 +6,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
-  Animated,
   Dimensions,
-  Easing,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -64,7 +62,6 @@ export default function ScanScreen() {
   const [resultId, setResultId] = useState<number | null>(null);
   const [queuedJobId, setQueuedJobId] = useState<string | null>(null);
   const [camPermission, requestCamPermission] = useCameraPermissions();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Mirror of `phase` for the focus callback (which captures only the initial render).
   const phaseRef = useRef(phase);
@@ -167,30 +164,6 @@ export default function ScanScreen() {
       }
     }, [resetToFreshScan])
   );
-
-  useEffect(() => {
-    if (busy) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.25,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]),
-      ).start();
-    } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
-    }
-  }, [busy]);
 
   const stepIndex = uris.length;
 
@@ -501,9 +474,6 @@ export default function ScanScreen() {
         </ScrollView>
         {busy ? (
           <View style={styles.analyzingOverlay}>
-            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <MaterialCommunityIcons name="auto-fix" size={56} color={NAVY} />
-            </Animated.View>
             <Text style={styles.analyzingTitle}>Submitting</Text>
             <Text style={styles.analyzingSub}>Just a moment…</Text>
           </View>

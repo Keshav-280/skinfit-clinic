@@ -22,6 +22,10 @@ import {
 } from "@/src/lib/clinicSupportInboxClient";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 import { mapDisplayChatMessages } from "@/src/lib/chatE2ee/format";
+import {
+  AI_CHATBOT_ENABLED,
+  DEFAULT_PATIENT_CHAT_ASSISTANT,
+} from "@/src/lib/featureFlags";
 
 type AssistantId = "ai" | "doctor" | "support";
 
@@ -65,7 +69,9 @@ export default function ChatPage() {
     createdAt?: string;
   };
 
-  const [activeAssistant, setActiveAssistant] = useState<AssistantId>("ai");
+  const [activeAssistant, setActiveAssistant] = useState<AssistantId>(
+    DEFAULT_PATIENT_CHAT_ASSISTANT
+  );
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -92,7 +98,9 @@ export default function ChatPage() {
       doctorId: d.id,
     }));
     return [
-      { key: "ai", kind: "ai", name: "SkinnFit AI Assistant", icon: Bot },
+      ...(AI_CHATBOT_ENABLED
+        ? [{ key: "ai", kind: "ai" as const, name: "SkinnFit AI Assistant", icon: Bot }]
+        : []),
       ...doctorRows,
       { key: "support", kind: "support", name: "Clinic Support", icon: User },
     ];
@@ -115,7 +123,7 @@ export default function ChatPage() {
   } | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
 
-  const activeAssistantRef = useRef<AssistantId>("ai");
+  const activeAssistantRef = useRef<AssistantId>(DEFAULT_PATIENT_CHAT_ASSISTANT);
   activeAssistantRef.current = activeAssistant;
 
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -588,12 +596,24 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
+    if (!AI_CHATBOT_ENABLED && activeAssistant === "ai") {
+      setActiveAssistant("support");
+      setActiveDoctorId(null);
+    }
+  }, [activeAssistant]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const a = params.get("assistant");
     const doctorId = params.get("doctorId");
-    if (a === "support" || a === "ai") {
+    if (a === "support" || (a === "ai" && AI_CHATBOT_ENABLED)) {
       setActiveAssistant(a);
+      setActiveDoctorId(null);
+      return;
+    }
+    if (a === "ai" && !AI_CHATBOT_ENABLED) {
+      setActiveAssistant("support");
       setActiveDoctorId(null);
       return;
     }

@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 
 const NAVY = "#2C3E6B";
 
@@ -25,28 +24,6 @@ export default function ScanReportLoading() {
           className="relative w-full overflow-hidden rounded-[28px] border border-white/70 bg-white/65 p-7 shadow-[0_28px_70px_-32px_rgba(15,23,42,0.35)] backdrop-blur-xl"
         >
           <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
-
-          <div className="mb-6 flex flex-col items-center">
-            <motion.div
-              animate={{
-                scale: [1, 1.06, 1],
-                boxShadow: [
-                  "0 0 0 0 rgba(44,62,107,0.18)",
-                  "0 0 0 14px rgba(44,62,107,0.00)",
-                  "0 0 0 0 rgba(44,62,107,0.18)",
-                ],
-              }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-              className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E6EEF7] to-[#CFE0EC]"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-              >
-                <Sparkles className="h-7 w-7" style={{ color: NAVY }} aria-hidden />
-              </motion.div>
-            </motion.div>
-          </div>
 
           <h1 className="text-center text-[22px] font-bold tracking-tight" style={{ color: NAVY }}>
             Preparing your report

@@ -13,7 +13,6 @@ import {
 import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { buildFaceCaptureGallery } from "../../../../../src/lib/faceCaptureGallery";
-import { ensureScanMasksFaceRestricted } from "../../../../../src/lib/ensureScanMasksFaceRestricted";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
 import type { FaceCaptureRef } from "../../../../../src/lib/resolveScanImageUrl";
 import { loadScanTrackerReport } from "../../../../../src/lib/scanTrackerSnapshot";
@@ -112,15 +111,7 @@ export default async function ScanReportPage({
   if (!user) notFound();
   if (!row) notFound();
 
-  const scores = await ensureScanMasksFaceRestricted({
-    userId,
-    scanId: row.id,
-    scores: row.scores,
-    faceCaptureImages: (
-      "faceCaptureImages" in row ? row.faceCaptureImages : null
-    ) as FaceCaptureRef[] | null | undefined,
-    primaryImageUrl: row.imageUrl,
-  });
+  const scores = row.scores;
 
   const trackerSnapshot =
     ("trackerSnapshot" in row ? row.trackerSnapshot ?? null : null) as

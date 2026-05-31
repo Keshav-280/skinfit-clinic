@@ -7,12 +7,21 @@ import {
   APPOINTMENT_REMINDER_HOURS_DEFAULT,
   APPOINTMENT_REMINDER_HOURS_MAX,
 } from "@/src/lib/appointmentReminder";
+import {
+  patientFormSection,
+  patientInput,
+  patientMuted,
+  patientPrimaryBtn,
+  patientSecondaryBtn,
+  patientSectionTitle,
+} from "@/src/lib/patientDashboardTheme";
 
 type Props = {
   initial: SessionUserProfile;
+  embedded?: boolean;
 };
 
-export function ProfileForm({ initial }: Props) {
+export function ProfileForm({ initial, embedded = false }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
@@ -207,11 +216,10 @@ export function ProfileForm({ initial }: Props) {
     }
   }
 
-  const card =
-    "rounded-[22px] border border-zinc-100 bg-white p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)]";
+  const sectionClass = embedded ? patientFormSection : patientFormSection;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-8">
+    <form onSubmit={onSubmit} className="space-y-6">
       {error && (
         <div
           role="alert"
@@ -229,15 +237,15 @@ export function ProfileForm({ initial }: Props) {
         </div>
       )}
 
-      <section className={card}>
-        <h2 className="text-lg font-bold text-zinc-900">Your details</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+      <section className={sectionClass}>
+        <h2 className={patientSectionTitle}>Your details</h2>
+        <p className={`mt-1 ${patientMuted}`}>
           This information appears on your treatment history and reports.
         </p>
         {!hasQuestionnaire ? (
-          <p className="mt-3 rounded-xl border border-dashed border-amber-200 bg-amber-50/80 px-3 py-2 text-xs font-medium text-amber-950">
+          <p className="mt-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#E8EFE6]/50 px-3 py-2 text-xs font-medium text-[#2C3E6B]">
             Age, gender, skin type, and goals unlock after you complete the{" "}
-            <a href="/onboarding/questionnaire" className="font-bold text-teal-700 underline">
+            <a href="/onboarding/questionnaire" className="font-bold underline">
               onboarding questionnaire
             </a>
             .
@@ -247,7 +255,7 @@ export function ProfileForm({ initial }: Props) {
           <div>
             <label
               htmlFor="pf-name"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Full name
             </label>
@@ -256,14 +264,14 @@ export function ProfileForm({ initial }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={loading}
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
               autoComplete="name"
             />
           </div>
           <div>
             <label
               htmlFor="pf-email"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Email
             </label>
@@ -273,14 +281,14 @@ export function ProfileForm({ initial }: Props) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
               autoComplete="email"
             />
           </div>
           <div>
             <label
               htmlFor="pf-phone-cc"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Phone number <span className="text-red-600">*</span>
             </label>
@@ -294,7 +302,7 @@ export function ProfileForm({ initial }: Props) {
                 value={phoneCountryCode}
                 onChange={(e) => setPhoneCountryCode(e.target.value)}
                 disabled={loading}
-                className="w-[5.5rem] shrink-0 rounded-xl border border-zinc-200 bg-white px-3 py-3 text-center text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+                className={`${patientInput} w-[5.5rem] shrink-0 px-3 text-center`}
                 placeholder="+91"
                 aria-label="Country code"
               />
@@ -309,11 +317,11 @@ export function ProfileForm({ initial }: Props) {
                 }
                 disabled={loading}
                 autoComplete="tel-national"
-                className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+                className={`${patientInput} min-w-0 flex-1`}
                 placeholder="Mobile number"
               />
             </div>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className={`mt-1 text-xs ${patientMuted}`}>
               Country code defaults to +91. Enter at least 10 digits for your
               number.
             </p>
@@ -321,7 +329,7 @@ export function ProfileForm({ initial }: Props) {
           <div>
             <label
               htmlFor="pf-age"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Age (years)
             </label>
@@ -332,13 +340,13 @@ export function ProfileForm({ initial }: Props) {
               onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))}
               disabled={loading || !hasQuestionnaire}
               placeholder="e.g. 28"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
             />
           </div>
           <div>
             <label
               htmlFor="pf-skin"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Skin type
             </label>
@@ -348,13 +356,13 @@ export function ProfileForm({ initial }: Props) {
               onChange={(e) => setSkinType(e.target.value)}
               disabled={loading || !hasQuestionnaire}
               placeholder="e.g. Dry, Combination, Oily"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
             />
           </div>
           <div>
             <label
               htmlFor="pf-goal"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Primary goal
             </label>
@@ -364,13 +372,13 @@ export function ProfileForm({ initial }: Props) {
               onChange={(e) => setPrimaryGoal(e.target.value)}
               disabled={loading || !hasQuestionnaire}
               placeholder="e.g. Acne reduction, Hydration"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
             />
           </div>
           <div>
             <label
               htmlFor="pf-gender"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Gender
             </label>
@@ -383,7 +391,7 @@ export function ProfileForm({ initial }: Props) {
                 if (g !== "female") setCycleTrackingEnabled(false);
               }}
               disabled={loading || !hasQuestionnaire}
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
             >
               <option value="">Select</option>
               <option value="female">Female</option>
@@ -396,12 +404,12 @@ export function ProfileForm({ initial }: Props) {
             <label className="flex cursor-pointer items-center gap-3 pt-2">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-zinc-300 text-[#6B8E8E] focus:ring-[#6B8E8E]"
+                className="h-4 w-4 rounded border-[#2C3E6B]/30 text-[#2C3E6B] focus:ring-[#2C3E6B]"
                 checked={cycleTrackingEnabled}
                 onChange={(e) => setCycleTrackingEnabled(e.target.checked)}
                 disabled={loading}
               />
-              <span className="text-sm font-medium text-zinc-800">
+              <span className="text-sm font-medium text-[#374151]">
                 Track menstrual cycle day in journal
               </span>
             </label>
@@ -409,17 +417,17 @@ export function ProfileForm({ initial }: Props) {
         </div>
       </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-bold text-zinc-900">Visit reminders</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+      <section className={sectionClass}>
+        <h2 className={patientSectionTitle}>Visit reminders</h2>
+        <p className={`mt-1 ${patientMuted}`}>
           SkinnFit Clinic can send you a message in{" "}
-          <strong className="font-medium text-zinc-700">Clinic Support</strong>{" "}
+          <strong className="font-medium text-[#2C3E6B]">Clinic Support</strong>{" "}
           chat before each confirmed appointment.
         </p>
         <div className="mt-6">
           <label
             htmlFor="pf-reminder-hours"
-            className="mb-1.5 block text-sm font-medium text-zinc-700"
+            className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
           >
             Remind me how many hours before the visit?
           </label>
@@ -432,16 +440,16 @@ export function ProfileForm({ initial }: Props) {
             value={reminderHoursBefore}
             onChange={(e) => setReminderHoursBefore(e.target.value)}
             disabled={loading}
-            className="w-full max-w-[12rem] rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+            className={`${patientInput} max-w-[12rem]`}
           />
         </div>
       </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-bold text-zinc-900">Daily routine reminders</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+      <section className={sectionClass}>
+        <h2 className={patientSectionTitle}>Daily routine reminders</h2>
+        <p className={`mt-1 ${patientMuted}`}>
           SkinnFit Clinic can message you in{" "}
-          <strong className="font-medium text-zinc-700">Clinic Support</strong>{" "}
+          <strong className="font-medium text-[#2C3E6B]">Clinic Support</strong>{" "}
           if your AM or PM checklist still has steps left that day. Times use
           your timezone below.
         </p>
@@ -449,19 +457,19 @@ export function ProfileForm({ initial }: Props) {
           <label className="flex cursor-pointer items-center gap-3">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-zinc-300 text-[#6B8E8E] focus:ring-[#6B8E8E]"
-              checked={routineRemindersEnabled}
+                className="h-4 w-4 rounded border-[#2C3E6B]/30 text-[#2C3E6B] focus:ring-[#2C3E6B]"
+                checked={routineRemindersEnabled}
               onChange={(e) => setRoutineRemindersEnabled(e.target.checked)}
               disabled={loading}
             />
-            <span className="text-sm font-medium text-zinc-800">
+            <span className="text-sm font-medium text-[#374151]">
               Enable AM / PM routine reminders
             </span>
           </label>
           <div>
             <label
               htmlFor="pf-tz"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Timezone (IANA)
             </label>
@@ -472,7 +480,7 @@ export function ProfileForm({ initial }: Props) {
                 onChange={(e) => setTimezone(e.target.value)}
                 disabled={loading}
                 placeholder="e.g. Asia/Kolkata"
-                className="min-w-[12rem] flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+                className={`${patientInput} min-w-[12rem] flex-1`}
                 autoComplete="off"
               />
               <button
@@ -487,7 +495,7 @@ export function ProfileForm({ initial }: Props) {
                     /* ignore */
                   }
                 }}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-60"
+                className={patientSecondaryBtn}
               >
                 Use this device
               </button>
@@ -497,7 +505,7 @@ export function ProfileForm({ initial }: Props) {
             <div>
               <label
                 htmlFor="pf-am-rem"
-                className="mb-1.5 block text-sm font-medium text-zinc-700"
+                className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
               >
                 Morning reminder
               </label>
@@ -507,13 +515,13 @@ export function ProfileForm({ initial }: Props) {
                 value={routineAmReminderHm}
                 onChange={(e) => setRoutineAmReminderHm(e.target.value)}
                 disabled={loading || !routineRemindersEnabled}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+                className={patientInput}
               />
             </div>
             <div>
               <label
                 htmlFor="pf-pm-rem"
-                className="mb-1.5 block text-sm font-medium text-zinc-700"
+                className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
               >
                 Evening reminder
               </label>
@@ -523,23 +531,23 @@ export function ProfileForm({ initial }: Props) {
                 value={routinePmReminderHm}
                 onChange={(e) => setRoutinePmReminderHm(e.target.value)}
                 disabled={loading || !routineRemindersEnabled}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+                className={patientInput}
               />
             </div>
           </div>
         </div>
       </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-bold text-zinc-900">Change password</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+      <section className={sectionClass}>
+        <h2 className={patientSectionTitle}>Change password</h2>
+        <p className={`mt-1 ${patientMuted}`}>
           Leave blank to keep your current password.
         </p>
         <div className="mt-6 space-y-4">
           <div>
             <label
               htmlFor="pf-cur"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Current password
             </label>
@@ -550,13 +558,13 @@ export function ProfileForm({ initial }: Props) {
               onChange={(e) => setCurrentPassword(e.target.value)}
               disabled={loading}
               autoComplete="current-password"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
             />
           </div>
           <div>
             <label
               htmlFor="pf-new"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               New password
             </label>
@@ -567,13 +575,13 @@ export function ProfileForm({ initial }: Props) {
               onChange={(e) => setNewPassword(e.target.value)}
               disabled={loading}
               autoComplete="new-password"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
             />
           </div>
           <div>
             <label
               htmlFor="pf-confirm"
-              className="mb-1.5 block text-sm font-medium text-zinc-700"
+              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
             >
               Confirm new password
             </label>
@@ -584,7 +592,7 @@ export function ProfileForm({ initial }: Props) {
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={loading}
               autoComplete="new-password"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-[#6B8E8E] focus:ring-2 focus:ring-[#6B8E8E]/20"
+              className={patientInput}
             />
           </div>
         </div>
@@ -593,7 +601,7 @@ export function ProfileForm({ initial }: Props) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-full bg-[#6B8E8E] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+        className={`w-full rounded-full px-5 py-3.5 text-base font-semibold ${patientPrimaryBtn}`}
       >
         {loading ? "Saving…" : "Save profile"}
       </button>

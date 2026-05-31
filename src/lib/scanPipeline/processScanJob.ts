@@ -35,8 +35,6 @@ import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import type { ScanJobPayload } from "@/src/lib/infra";
-import { restrictScanMasksToFace } from "@/src/lib/restrictMaskToFace";
-import { ACNE_MASK_FACE_CLIP_VERSION } from "@/src/lib/acneMaskFaceClip";
 
 async function pathToFile(relativePath: string, name: string): Promise<File> {
   const storage = getStorage();
@@ -119,31 +117,8 @@ export async function processScanJob(
     merged = buildScanPayloadFromAnalyzeV1(dualScan);
   }
 
-  let acneMaskFaceClipVersion: number | undefined;
-  let acneMaskOriginalUrl: string | undefined;
-
   const storage = getStorage();
   const upload = storage.upload.bind(storage);
-
-  if (merged.acneMaskDataUri) {
-    acneMaskOriginalUrl = await persistDataUriToStorage(
-      merged.acneMaskDataUri,
-      "masks",
-      upload
-    );
-    const centreBuf = Buffer.from(await filesForV2.centre.arrayBuffer());
-    const restricted = await restrictScanMasksToFace({
-      acneMaskDataUri: merged.acneMaskDataUri,
-      centreJpeg: centreBuf,
-    });
-    if (restricted.acneMaskFaceRestricted) {
-      acneMaskFaceClipVersion = ACNE_MASK_FACE_CLIP_VERSION;
-    }
-    merged = {
-      ...merged,
-      acneMaskDataUri: restricted.acneMaskDataUri,
-    };
-  }
 
   logger.inference(Date.now() - started, { jobId, userId: payload.userId });
 
@@ -254,18 +229,7 @@ export async function processScanJob(
         kaiParams: merged.params,
         ...(overlayUrl ? { overlayUrl } : {}),
         ...(wrinkleMaskUrl ? { wrinkleMaskUrl } : {}),
-        ...(acneMaskUrl
-          ? {
-              acneMaskUrl,
-              ...(acneMaskOriginalUrl ? { acneMaskOriginalUrl } : {}),
-              ...(acneMaskFaceClipVersion
-                ? {
-                    acneMaskFaceClipVersion,
-                    acneMaskFaceRestricted: true,
-                  }
-                : {}),
-            }
-          : {}),
+        ...(acneMaskUrl ? { acneMaskUrl } : {}),
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
       },
     })

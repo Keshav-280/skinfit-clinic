@@ -822,18 +822,6 @@ export default function SchedulesPageClient({
         </div>
       ) : null}
 
-      <div className="flex gap-3 rounded-[20px] border border-[#e2e8f0] bg-white p-4 shadow-sm">
-        <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#e8eef6]">
-          <ShieldCheck className="h-[18px] w-[18px] text-[#2B3A67]" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold text-[#2a2a2a]">Linked with CRM</p>
-          <p className="mt-1.5 text-sm leading-5 text-[#71717a]">
-            Appointments and treatment reminders stay in sync with your clinic.
-          </p>
-        </div>
-      </div>
-
       <section
         id="schedules-calendar-root"
         className="mx-auto max-w-3xl overflow-hidden rounded-[20px] border border-[#e2e8f0] bg-white p-3 shadow-md md:p-4"
@@ -1250,9 +1238,7 @@ export default function SchedulesPageClient({
               </button>
             </div>
             <p className="mt-2 text-sm text-[#6B7280]">
-              If the time does not work or you have a question, your note is
-              sent to the clinic and appears on their sheet when sync is
-              enabled.
+              If the time does not work or you have a question, please write it down here and the clinic will be notified.
             </p>
             <textarea
               className="mt-3 w-full min-h-[120px] rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-sm text-[#2C3E6B] outline-none backdrop-blur-sm ring-[#2C3E6B]/20 focus:ring-2"

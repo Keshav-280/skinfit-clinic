@@ -46,7 +46,7 @@
  *   V skinfitMirrorConfirmedIso
  *   W skinfitMirrorNotes
  *   X skinfitMirrorAt
- *   Y crmVisitAction             (CRM: confirm | cancel | decline — Apps Script pushes to Skinfit)
+ *   Y crmVisitAction             (CRM: confirm | cancel | decline | message — Apps Script pushes to Skinfit)
  *   Z crmConfirmedDateTimeIso    (CRM: required for confirm, ISO 8601)
  *   AA crmPatientMessage         (CRM: prep note for patient)
  *   AB crmCancelledReason
@@ -629,6 +629,30 @@ function crmPushActiveRow() {
   Logger.log('crmPushActiveRow finished for row ' + r);
 }
 
+/**
+ * After a domain change: set Script property SKINFIT_APPOINTMENT_API_URL, then Run once
+ * to refresh column R on every row (optional; resolveSkinfitAppointmentApiUrl_ also reads the property).
+ */
+function backfillAppointmentSyncUrlFromProperty() {
+  var props = PropertiesService.getScriptProperties();
+  var url = (props.getProperty('SKINFIT_APPOINTMENT_API_URL') || '').trim();
+  if (!isValidSkinfitAppointmentApiUrl_(url)) {
+    throw new Error(
+      'Set SKINFIT_APPOINTMENT_API_URL to https://YOURDOMAIN/api/integrations/clinic-sheet/appointments first.'
+    );
+  }
+  var ss = getTargetSpreadsheet_();
+  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
+  ensureHeaderRowForSheet_(sheet);
+  var map = buildHeaderIndexMap_(sheet);
+  var col = map['appointmentsyncurl'] || 18;
+  var last = sheet.getLastRow();
+  for (var r = 2; r <= last; r++) {
+    sheet.getRange(r, col).setValue(url);
+  }
+  Logger.log('backfillAppointmentSyncUrlFromProperty: updated column R rows 2-' + last);
+}
+
 /** Optional: time-driven (every 5–10 min) to pick up rows if onEdit missed. */
 function crmTickPushPending() {
   var ss = getTargetSpreadsheet_();
@@ -645,6 +669,38 @@ function crmTickPushPending() {
   }
 }
 
+function isValidSkinfitAppointmentApiUrl_(url) {
+  return (
+    url &&
+    String(url).indexOf('/api/integrations/clinic-sheet/appointments') !== -1
+  );
+}
+
+function isLikelyProductionAppointmentApiUrl_(url) {
+  if (!isValidSkinfitAppointmentApiUrl_(url)) return false;
+  var u = String(url).toLowerCase();
+  if (u.indexOf('localhost') !== -1 || u.indexOf('127.0.0.1') !== -1) return false;
+  return true;
+}
+
+/**
+ * Prefer a non-localhost URL after domain migrations. Script property wins when it is
+ * production-ready; otherwise fall back to column R (written on each schedule request).
+ */
+function resolveSkinfitAppointmentApiUrl_(sheet, rowNum, map, props) {
+  var fromProp = (props.getProperty('SKINFIT_APPOINTMENT_API_URL') || '').trim();
+  var fromRow = getCellByHeader_(sheet, rowNum, map, 'appointmentSyncUrl', 18).trim();
+  var candidates = [fromProp, fromRow];
+  var i;
+  for (i = 0; i < candidates.length; i++) {
+    if (isLikelyProductionAppointmentApiUrl_(candidates[i])) return candidates[i];
+  }
+  for (i = 0; i < candidates.length; i++) {
+    if (isValidSkinfitAppointmentApiUrl_(candidates[i])) return candidates[i];
+  }
+  return fromProp || fromRow || '';
+}
+
 function maybePushRowToSkinfit_(sheet, rowNum) {
   ensureHeaderRowForSheet_(sheet);
   var map = buildHeaderIndexMap_(sheet);
@@ -652,9 +708,14 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
   if (!action || action === 'ok' || action === 'pushed') return;
 
   var syncSt = getCellByHeader_(sheet, rowNum, map, 'crmSyncStatus', 30);
-  if (syncSt.indexOf('OK') === 0) return;
+  if (syncSt.indexOf('OK') === 0 && action !== 'message') return;
 
-  if (action !== 'confirm' && action !== 'cancel' && action !== 'decline') {
+  if (
+    action !== 'confirm' &&
+    action !== 'cancel' &&
+    action !== 'decline' &&
+    action !== 'message'
+  ) {
     setCellByHeader_(sheet, rowNum, map, 'crmSyncStatus', 30, 'ERROR');
     setCellByHeader_(
       sheet,
@@ -662,7 +723,7 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
       map,
       'crmSyncDetail',
       31,
-      'crmVisitAction must be confirm, cancel, or decline'
+      'crmVisitAction must be confirm, cancel, decline, or message'
     );
     return;
   }
@@ -707,9 +768,22 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
     return;
   }
 
+  if (action === 'message' && !msg) {
+    setCellByHeader_(sheet, rowNum, map, 'crmSyncStatus', 30, 'ERROR');
+    setCellByHeader_(
+      sheet,
+      rowNum,
+      map,
+      'crmSyncDetail',
+      31,
+      'message requires crmPatientMessage (column AA)'
+    );
+    return;
+  }
+
   var props = PropertiesService.getScriptProperties();
   var secret = props.getProperty('SKINFIT_SECRET') || '';
-  var apiUrl = (props.getProperty('SKINFIT_APPOINTMENT_API_URL') || '').trim();
+  var apiUrl = resolveSkinfitAppointmentApiUrl_(sheet, rowNum, map, props);
   if (!apiUrl) {
     setCellByHeader_(sheet, rowNum, map, 'crmSyncStatus', 30, 'ERROR');
     setCellByHeader_(
@@ -718,7 +792,7 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
       map,
       'crmSyncDetail',
       31,
-      'Set Script property SKINFIT_APPOINTMENT_API_URL to https://YOURDOMAIN/api/integrations/clinic-sheet/appointments'
+      'Set Script property SKINFIT_APPOINTMENT_API_URL or column R appointmentSyncUrl to https://YOURDOMAIN/api/integrations/clinic-sheet/appointments'
     );
     return;
   }

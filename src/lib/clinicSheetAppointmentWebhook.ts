@@ -20,7 +20,7 @@ import {
 } from "@/src/lib/slotTimeHm";
 
 export type ClinicSheetAppointmentUpdate = {
-  action: "confirm" | "cancel" | "decline";
+  action: "confirm" | "cancel" | "decline" | "message";
   /** Row id from Google Sheet / CRM */
   externalRef?: string | null;
   /**
@@ -381,6 +381,69 @@ export async function applyClinicSheetAppointmentUpdates(
           confirmedIso: dt.toISOString(),
           notes: msg,
           confirmedSlotEndTimeHm: slotEndHm,
+        });
+        applied += 1;
+        continue;
+      }
+
+      if (u.action === "message") {
+        const msg = u.patientMessage?.trim();
+        if (!msg) {
+          errors.push("message_missing_text");
+          continue;
+        }
+        if (reqRow.status !== "confirmed" || !reqRow.appointmentId) {
+          errors.push("message_requires_confirmed_booking");
+          continue;
+        }
+        const apptRow = await db.query.appointments.findFirst({
+          where: eq(appointments.id, reqRow.appointmentId),
+          columns: {
+            id: true,
+            userId: true,
+            dateTime: true,
+            slotEndTimeHm: true,
+            status: true,
+          },
+        });
+        if (
+          !apptRow ||
+          apptRow.userId !== patientId ||
+          apptRow.status !== "scheduled"
+        ) {
+          errors.push("message_appointment_not_found");
+          continue;
+        }
+
+        await db
+          .update(patientScheduleRequests)
+          .set({
+            crmPatientMessage: msg,
+            updatedAt: now,
+            externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
+          })
+          .where(eq(patientScheduleRequests.id, reqRow.id));
+
+        const { hm: startHm } = utcInstantToClinicWallYmdHm(apptRow.dateTime);
+        const whenRange = formatSlotTimeRange(startHm, apptRow.slotEndTimeHm);
+        void notifyPatientScheduleAppointment(
+          patientId,
+          "Message from clinic",
+          msg
+        );
+        void sendClinicSupportMessage({
+          patientId,
+          text: `Message from the clinic about your visit (${whenRange}):\n\n${msg}`,
+        }).catch((err) =>
+          console.warn("[clinicSheetAppointmentWebhook] chat notice failed", err)
+        );
+        void notifyClinicSheetRowMirrored({
+          externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
+          scheduleRequestId: reqRow.id,
+          skinfitStatus: "confirmed",
+          confirmedIso: apptRow.dateTime.toISOString(),
+          notes: msg,
+          confirmedSlotEndTimeHm: apptRow.slotEndTimeHm,
         });
         applied += 1;
         continue;

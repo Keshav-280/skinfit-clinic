@@ -43,7 +43,7 @@ export function LastTreatmentCard({ visit }: { visit: LastTreatmentVisit }) {
         </p>
       </div>
       <Link
-        href={`/dashboard/history/visits/${visit.id}`}
+        href="/dashboard/history/visits"
         className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] px-[18px] py-2 text-[13px] font-semibold text-white transition hover:bg-[#3d5080]"
       >
         View

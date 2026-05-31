@@ -12,7 +12,6 @@ import {
 } from "@/src/lib/parseClinicalScores";
 import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
-import { ensureScanMasksFaceRestricted } from "@/src/lib/ensureScanMasksFaceRestricted";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
@@ -93,13 +92,7 @@ export async function GET(
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  const scores = await ensureScanMasksFaceRestricted({
-    userId,
-    scanId: row.id,
-    scores: row.scores,
-    faceCaptureImages: row.faceCaptureImages ?? undefined,
-    primaryImageUrl: row.imageUrl,
-  });
+  const scores = row.scores;
 
   const payload = await cacheAside(
     CacheKeys.scan(userId, id),

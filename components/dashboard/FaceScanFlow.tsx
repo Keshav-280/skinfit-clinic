@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Camera,
@@ -10,23 +11,16 @@ import {
   Check,
   ImagePlus,
   SwitchCamera,
-  Volume2,
-  VolumeX,
+  Sun,
+  Contrast,
+  ZoomIn,
+  History,
 } from "lucide-react";
-import { ScanCaptureDebugOverlay } from "@/components/dashboard/ScanCaptureDebugOverlay";
-import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
-import { ScanCaptureStepTicks } from "@/components/dashboard/ScanCaptureStepTicks";
-import {
-  CAPTURE_READY_VOICE_HINT,
-  captureVoiceGuide,
-} from "@/src/lib/captureVoiceGuide";
-import { ScanCaptureZoomPanel } from "@/components/dashboard/ScanCaptureZoomPanel";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
-import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
+import { CAPTURE_ZOOM_AUTO } from "@/src/lib/scanCaptureGuidance";
 import {
-  CAPTURE_ZOOM_AUTO,
-  smoothTowardZoom,
-} from "@/src/lib/scanCaptureGuidance";
+  patientSecondaryBtn,
+} from "@/src/lib/patientDashboardTheme";
 import {
   FACE_SCAN_CAPTURE_STEPS,
   FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
@@ -87,6 +81,57 @@ const CAPTURE_ZOOM_MAX = CAPTURE_ZOOM_AUTO.max;
 const CAPTURE_ZOOM_STEP = 0.1;
 const CAPTURE_ZOOM_DEFAULT = CAPTURE_ZOOM_AUTO.default;
 
+/** Brightness / contrast are percentages baked into the preview + captured photo. */
+const ADJUST_MIN = 50;
+const ADJUST_MAX = 150;
+const ADJUST_STEP = 1;
+const ADJUST_DEFAULT = 100;
+
+function AdjustSlider({
+  icon,
+  label,
+  value,
+  min,
+  max,
+  step,
+  suffix,
+  format,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
+  format?: (v: number) => string;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex w-24 shrink-0 items-center gap-1.5 text-xs font-semibold text-[#2C3E6B]">
+        {icon}
+        {label}
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="min-w-0 flex-1 accent-[#2C3E6B]"
+        aria-label={label}
+      />
+      <span className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums text-[#2C3E6B]">
+        {format ? format(value) : Math.round(value)}
+        {suffix}
+      </span>
+    </div>
+  );
+}
+
 export type FaceScanFlowVariant = "dashboard" | "onboarding";
 
 export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
@@ -106,32 +151,23 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [scanError, setScanError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [captureZoom, setCaptureZoom] = useState<number>(CAPTURE_ZOOM_DEFAULT);
-  const [autoZoomEnabled, setAutoZoomEnabled] = useState(true);
+  const [brightness, setBrightness] = useState<number>(ADJUST_DEFAULT);
+  const [contrast, setContrast] = useState<number>(ADJUST_DEFAULT);
   const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const userAdjustedZoomAt = useRef(0);
   const captureStepIndexRef = useRef(0);
   const currentCameraStep = FACE_SCAN_CAPTURE_STEPS[Math.min(captures.length, N_CAPTURES - 1)];
   const reviewingCapture = pendingCapture != null;
-  const guidanceActive = cameraOpen && !reviewingCapture;
 
-  const {
-    guidance,
-    models,
-    faceDetectionAvailable,
-    needsExpressionModel,
-    faceTracked,
-    bboxSource,
-  } =
-    useWebScanCaptureGuidance(
-      videoRef,
-      guidanceActive,
-      captureZoom,
-      currentCameraStep.id
-    );
+  const previewFilter = `brightness(${brightness}%) contrast(${contrast}%)`;
+  const adjustmentsChanged =
+    brightness !== ADJUST_DEFAULT || contrast !== ADJUST_DEFAULT;
 
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const resetAdjustments = useCallback(() => {
+    setBrightness(ADJUST_DEFAULT);
+    setContrast(ADJUST_DEFAULT);
+  }, []);
 
   useEffect(() => {
     captureStepIndexRef.current = captures.length;
@@ -204,6 +240,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const openCameraForMultiCapture = useCallback(() => {
     setUploadError(null);
     setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
+    resetAdjustments();
     setPendingCapture((prev) => {
       clearPendingCapture(prev);
       return null;
@@ -213,29 +250,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       return [];
     });
     void startCamera("user");
-  }, [revokeAllCaptures, startCamera, clearPendingCapture]);
-
-  const adjustCaptureZoom = useCallback((delta: number) => {
-    userAdjustedZoomAt.current = Date.now();
-    setCaptureZoom((z) => {
-      const next = Math.round((z + delta) * 10) / 10;
-      return Math.min(CAPTURE_ZOOM_MAX, Math.max(CAPTURE_ZOOM_MIN, next));
-    });
-  }, []);
+  }, [revokeAllCaptures, startCamera, clearPendingCapture, resetAdjustments]);
 
   const setCaptureZoomManual = useCallback((value: number) => {
-    userAdjustedZoomAt.current = Date.now();
     setCaptureZoom(value);
   }, []);
-
-  useEffect(() => {
-    if (!guidanceActive || !autoZoomEnabled || guidance?.suggestedZoom == null) return;
-    if (Date.now() - userAdjustedZoomAt.current < 2000) return;
-    const timer = setTimeout(() => {
-      setCaptureZoom((z) => smoothTowardZoom(z, guidance.suggestedZoom!, 0.32));
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [guidanceActive, autoZoomEnabled, guidance?.suggestedZoom]);
 
   const flipCamera = useCallback(() => {
     void startCamera(facingMode === "user" ? "environment" : "user");
@@ -269,6 +288,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     // Match mirrored selfie preview: flip horizontally for front camera only.
     const mirror = facingMode === "user";
     ctx.save();
+    // Bake the same brightness/contrast the user sees in the preview.
+    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
     if (mirror) {
       ctx.translate(tw, 0);
       ctx.scale(-1, 1);
@@ -306,7 +327,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       "image/jpeg",
       0.82
     );
-  }, [captureZoom, facingMode, pendingCapture, clearPendingCapture]);
+  }, [captureZoom, brightness, contrast, facingMode, pendingCapture, clearPendingCapture]);
 
   const confirmPendingCapture = useCallback(() => {
     if (!pendingCapture) return;
@@ -326,64 +347,15 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   }, [pendingCapture, stopCamera]);
 
   const retakePendingCapture = useCallback(() => {
-    setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
-    userAdjustedZoomAt.current = 0;
     setPendingCapture((prev) => {
       clearPendingCapture(prev);
       return null;
     });
   }, [clearPendingCapture]);
 
-  useEffect(() => {
-    captureVoiceGuide.setEnabled(voiceEnabled && cameraOpen);
-    if (!voiceEnabled || !cameraOpen) captureVoiceGuide.reset();
-    return () => {
-      captureVoiceGuide.setEnabled(false);
-    };
-  }, [voiceEnabled, cameraOpen]);
-
-  useEffect(() => {
-    captureVoiceGuide.reset();
-  }, [currentCameraStep.id]);
-
-  /** Match mobile: auto-zoom must not carry into the next angle (avoids 80–100% area on step 2+). */
-  useEffect(() => {
-    if (!cameraOpen) return;
-    setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
-    userAdjustedZoomAt.current = 0;
-  }, [currentCameraStep.id, cameraOpen]);
-
-  /** Speak the highest-priority guidance line (debounced/cooldown'd inside). */
-  useEffect(() => {
-    if (!voiceEnabled || !cameraOpen || reviewingCapture || !guidance) return;
-    if (guidance.face === "no_face") {
-      captureVoiceGuide.speak(guidance.faceMessage, "critical");
-      return;
-    }
-    if (guidance.face !== "good") {
-      captureVoiceGuide.speak(guidance.faceMessage, "framing");
-      return;
-    }
-    if (
-      guidance.expressionMessage &&
-      guidance.expressionOk === false
-    ) {
-      captureVoiceGuide.speak(guidance.expressionMessage, "expression");
-      return;
-    }
-    const lightingOk =
-      guidance.lighting === "good" || guidance.lightingScore >= 55;
-    if (!lightingOk) {
-      captureVoiceGuide.speak(guidance.lightingMessage, "lighting");
-      return;
-    }
-    if (guidance.readyToCapture) {
-      captureVoiceGuide.speak(CAPTURE_READY_VOICE_HINT, "ready");
-    }
-  }, [voiceEnabled, cameraOpen, reviewingCapture, guidance, models.mediapipe]);
-
   const cancelCamera = useCallback(() => {
     setCaptureZoom(CAPTURE_ZOOM_DEFAULT);
+    resetAdjustments();
     setPendingCapture((prev) => {
       clearPendingCapture(prev);
       return null;
@@ -393,7 +365,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       return [];
     });
     stopCamera();
-  }, [revokeAllCaptures, stopCamera, clearPendingCapture]);
+  }, [revokeAllCaptures, stopCamera, clearPendingCapture, resetAdjustments]);
 
   const applyFileList = useCallback(
     (files: FileList | File[] | null) => {
@@ -495,15 +467,29 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className="mx-auto max-w-3xl"
       >
-        <h1 className="text-center text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
-          {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
-        </h1>
-        <p className="mt-1 text-center text-sm text-[#6B7280]">
-          {isOnboardingScan
-            ? "Five angles in order — last step of setup. Later check-ins use Scan."
-            : "Five angles in order — scores, clinical metrics, and annotated findings."}
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
+              {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
+            </h1>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              {isOnboardingScan
+                ? "Five angles in order — last step of setup. Later check-ins use Scan."
+                : "Five angles in order — scores, clinical metrics, and annotated findings."}
+            </p>
+          </div>
+          {!isOnboardingScan ? (
+            <Link
+              href="/dashboard/history"
+              className={`shrink-0 self-center sm:self-start ${patientSecondaryBtn}`}
+            >
+              <History className="h-4 w-4" aria-hidden />
+              Scan history
+            </Link>
+          ) : null}
+        </div>
       </motion.header>
 
       {/* Step: Upload — live camera (multi-capture) */}
@@ -511,106 +497,107 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
+          className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="flex flex-col gap-4 md:flex-row md:items-stretch md:gap-5">
-            <aside className="flex w-full shrink-0 flex-col gap-2 md:max-w-[min(100%,280px)] md:min-w-[220px]">
-              <div className="rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-center backdrop-blur-sm">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
-                  Step {Math.min(captureCount + 1, N_CAPTURES)}/{N_CAPTURES}
-                </p>
-                <p className="mt-0.5 text-lg font-bold text-[#2C3E6B]">
-                  {currentCameraStep.title}
-                </p>
-                <p className="mt-1 text-base leading-snug text-[#374151]">
-                  {currentCameraStep.instruction}
-                </p>
-              </div>
-              {reviewingCapture ? (
-                <div className="rounded-xl border border-[#2C3E6B]/20 bg-[#E8EFE6]/80 px-3 py-2.5 text-center text-sm text-[#374151]">
-                  Review this photo. Continue to the next angle or retake.
-                </div>
-              ) : (
-                <ScanCaptureGuidanceBanner
-                  guidance={guidance}
-                  models={models}
-                  needsExpressionModel={needsExpressionModel}
-                  autoZoomEnabled={autoZoomEnabled}
-                />
-              )}
-              <ScanCaptureStepTicks completedCount={captureCount} />
-            </aside>
+          <div className="text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
+              Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}
+            </p>
+            <p className="mt-0.5 text-lg font-bold text-[#2C3E6B]">
+              {currentCameraStep.title}
+            </p>
+            <p className="mt-0.5 text-sm leading-snug text-[#6B7280]">
+              {reviewingCapture
+                ? "Use this photo or retake it."
+                : currentCameraStep.instruction}
+            </p>
+          </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <div className="relative mx-auto aspect-[3/4] w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 md:mx-0 md:max-h-[min(70vh,520px)] md:w-full md:max-w-none">
-              <video
-                ref={videoRef}
-                className={`h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
-                style={{
-                  transformOrigin: "center center",
-                  transform:
-                    facingMode === "user"
-                      ? `scaleX(-1) scale(${captureZoom})`
-                      : `scale(${captureZoom})`,
-                }}
-                playsInline
-                muted
-                autoPlay
-                aria-label="Live camera preview (mirrored for front camera)"
+          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-zinc-900">
+            <video
+              ref={videoRef}
+              className={`h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
+              style={{
+                transformOrigin: "center center",
+                transform:
+                  facingMode === "user"
+                    ? `scaleX(-1) scale(${captureZoom})`
+                    : `scale(${captureZoom})`,
+                filter: previewFilter,
+              }}
+              playsInline
+              muted
+              autoPlay
+              aria-label="Live camera preview (mirrored for front camera)"
+            />
+            {pendingCapture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={pendingCapture.preview}
+                alt={`Captured ${currentCameraStep.title}`}
+                className="absolute inset-0 h-full w-full object-cover"
               />
-              {pendingCapture ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={pendingCapture.preview}
-                  alt={`Captured ${currentCameraStep.title}`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : null}
-              <ScanCaptureDebugOverlay
-                guidance={guidance}
-                captureZoom={captureZoom}
-                models={models}
-                faceTracked={faceTracked}
-                extra={{
-                  step: `${captureCount + 1}/${N_CAPTURES}`,
-                  bbox: bboxSource,
-                }}
-              />
-              <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-30 rounded-md bg-zinc-950/55 px-2 py-1 text-center text-[10px] text-white">
-                {captureCount}/{N_CAPTURES}
-                {reviewingCapture
-                  ? " · review photo"
-                  : guidance?.readyToCapture
-                    ? " · ready"
-                    : ""}
-              </div>
+            ) : null}
+            <div className="pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-zinc-950/55 px-3 py-1 text-[11px] font-medium text-white">
+              {captureCount}/{N_CAPTURES}
+            </div>
+          </div>
+
+          {/* Brightness / contrast / zoom — simple manual controls */}
+          <div
+            className={`flex flex-col gap-3 rounded-xl border border-white/60 bg-white/50 px-3 py-3 backdrop-blur-sm ${
+              reviewingCapture ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
+            <AdjustSlider
+              icon={<Sun className="h-4 w-4 text-[#2C3E6B]/70" />}
+              label="Brightness"
+              value={brightness}
+              min={ADJUST_MIN}
+              max={ADJUST_MAX}
+              step={ADJUST_STEP}
+              suffix="%"
+              onChange={setBrightness}
+            />
+            <AdjustSlider
+              icon={<Contrast className="h-4 w-4 text-[#2C3E6B]/70" />}
+              label="Contrast"
+              value={contrast}
+              min={ADJUST_MIN}
+              max={ADJUST_MAX}
+              step={ADJUST_STEP}
+              suffix="%"
+              onChange={setContrast}
+            />
+            <AdjustSlider
+              icon={<ZoomIn className="h-4 w-4 text-[#2C3E6B]/70" />}
+              label="Zoom"
+              value={captureZoom}
+              min={CAPTURE_ZOOM_MIN}
+              max={CAPTURE_ZOOM_MAX}
+              step={CAPTURE_ZOOM_STEP}
+              suffix="×"
+              format={(v) => v.toFixed(1)}
+              onChange={setCaptureZoomManual}
+            />
+            {adjustmentsChanged ? (
               <button
                 type="button"
-                onClick={() => setVoiceEnabled((v) => !v)}
-                className={`absolute right-2 top-2 z-30 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur ${
-                  voiceEnabled
-                    ? "bg-[#2C3E6B] text-white"
-                    : "bg-white/70 text-[#2C3E6B] hover:bg-white"
-                }`}
-                aria-pressed={voiceEnabled}
-                aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
-                title={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+                onClick={resetAdjustments}
+                className="self-end text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
               >
-                {voiceEnabled ? (
-                  <Volume2 className="h-4 w-4" />
-                ) : (
-                  <VolumeX className="h-4 w-4" />
-                )}
+                Reset brightness & contrast
               </button>
-            </div>
+            ) : null}
+          </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center md:justify-stretch">
+          <div className="flex flex-col gap-2 sm:flex-row">
             {reviewingCapture ? (
               <>
                 <button
                   type="button"
                   onClick={retakePendingCapture}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:min-w-[140px] sm:flex-1 md:flex-1"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
                 >
                   <RotateCcw className="h-5 w-5" />
                   Retake
@@ -618,7 +605,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <button
                   type="button"
                   onClick={confirmPendingCapture}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] sm:min-w-[180px] sm:flex-[1.2] md:flex-[1.4]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] sm:flex-[1.4]"
                 >
                   <Check className="h-5 w-5" />
                   {captureCount + 1 >= N_CAPTURES ? "Use photo & finish" : "Use photo & next"}
@@ -630,7 +617,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   type="button"
                   onClick={captureFromCamera}
                   disabled={captureCount >= N_CAPTURES}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[160px] sm:flex-[1.2] md:flex-[1.4]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-[1.4]"
                 >
                   <Camera className="h-5 w-5" />
                   Capture
@@ -638,7 +625,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <button
                   type="button"
                   onClick={flipCamera}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:min-w-[120px] sm:flex-1 md:flex-1"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
                   aria-label="Switch between front and back camera"
                 >
                   <SwitchCamera className="h-5 w-5 text-[#2C3E6B]" />
@@ -647,30 +634,12 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <button
                   type="button"
                   onClick={cancelCamera}
-                  className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:min-w-[100px] sm:flex-1 md:flex-1"
+                  className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
                 >
                   Cancel
                 </button>
               </>
             )}
-            </div>
-            </div>
-
-            <aside
-              className={`flex w-full shrink-0 flex-col gap-2 md:max-w-[min(100%,240px)] md:min-w-[200px] ${reviewingCapture ? "pointer-events-none opacity-50" : ""}`}
-            >
-              <ScanCaptureZoomPanel
-                captureZoom={captureZoom}
-                min={CAPTURE_ZOOM_MIN}
-                max={CAPTURE_ZOOM_MAX}
-                step={CAPTURE_ZOOM_STEP}
-                autoZoomEnabled={autoZoomEnabled}
-                onAutoZoomChange={setAutoZoomEnabled}
-                onZoomChange={setCaptureZoomManual}
-                onZoomDelta={adjustCaptureZoom}
-                faceDetectionAvailable={faceDetectionAvailable}
-              />
-            </aside>
           </div>
         </motion.div>
       )}
@@ -709,9 +678,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <p className="mb-1 font-bold text-[#2C3E6B]">
               Drop or choose {N_CAPTURES} photos
             </p>
-            <p className="mb-6 text-sm text-[#6B7280]">
-              Same order as the camera steps: front, left, right, eyes closed, smile — or use the camera.
-            </p>
+           
             <label
               htmlFor="scan-file-input"
               className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/60 bg-white/60 px-6 py-3 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"

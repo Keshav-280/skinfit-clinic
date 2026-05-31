@@ -12,6 +12,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
+import {
+  patientGlassShell,
+  patientInnerCard,
+  patientKicker,
+  patientMuted,
+} from "@/src/lib/patientDashboardTheme";
 
 type TimelineIdentity = {
   asOfDate: string;
@@ -51,7 +57,6 @@ function EvolvingField({
   current,
   rationale,
   icon: Icon,
-  accent,
   formatter,
 }: {
   label: string;
@@ -59,20 +64,19 @@ function EvolvingField({
   current: string | number | null;
   rationale: string;
   icon: LucideIcon;
-  accent: string;
   formatter?: (v: string | number) => string;
 }) {
   const changed = initial !== current;
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/80 p-3 shadow-sm">
+    <div className={`${patientInnerCard} p-3`}>
       <div className="flex items-center gap-2">
-        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${accent}`}>
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
           <Icon className="h-4 w-4" />
         </span>
-        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/60">{label}</p>
         <span
           className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-            changed ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-600"
+            changed ? "bg-[#2C3E6B]/15 text-[#2C3E6B]" : "bg-white/60 text-[#6B7280]"
           }`}
         >
           {changed ? "Evolved" : "Stable"}
@@ -80,23 +84,23 @@ function EvolvingField({
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <div className="flex flex-col">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">Initial</span>
-          <span className="text-sm font-semibold text-slate-700">{fmt(initial, formatter)}</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-[#6B7280]">Initial</span>
+          <span className="text-sm font-semibold text-[#374151]">{fmt(initial, formatter)}</span>
         </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-[#2C3E6B]/40" />
         <div className="flex flex-col">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-emerald-700">Now</span>
-          <span className="text-sm font-bold text-slate-900">{fmt(current, formatter)}</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-[#2C3E6B]/70">Now</span>
+          <span className="text-sm font-bold text-[#1A1A2E]">{fmt(current, formatter)}</span>
         </div>
       </div>
-      <p className="mt-2 text-[11px] leading-snug text-slate-500">
-        <span className="font-semibold text-slate-600">why:</span> {rationale}
+      <p className="mt-2 text-[11px] leading-snug text-[#6B7280]">
+        <span className="font-semibold text-[#2C3E6B]/80">why:</span> {rationale}
       </p>
     </div>
   );
 }
 
-export function ProfileSkinIdentitySection() {
+export function ProfileSkinIdentitySection({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<IdentityPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -133,10 +137,10 @@ export function ProfileSkinIdentitySection() {
 
   if (loading) {
     return (
-      <section className="flex items-center gap-3 rounded-[22px] bg-gradient-to-b from-violet-50 via-white to-teal-50 px-5 py-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)] sm:px-6">
-        <Loader2 className="h-5 w-5 animate-spin text-violet-700" />
-        <p className="text-sm text-zinc-700">Loading skin identity card…</p>
-      </section>
+      <div className="flex items-center gap-3 py-2">
+        <Loader2 className="h-5 w-5 animate-spin text-[#2C3E6B]" />
+        <p className={`${patientMuted}`}>Loading skin identity…</p>
+      </div>
     );
   }
   if (err) {
@@ -153,49 +157,64 @@ export function ProfileSkinIdentitySection() {
   }
 
   const { initial, current, changed } = data.timeline;
-  return (
-    <section className="overflow-hidden rounded-[22px] border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-teal-50 p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-violet-800 shadow-sm">
-            <Dna className="h-5 w-5" />
-          </span>
+
+  const body = (
+    <>
+      {!embedded ? (
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700">
-              Skin identity card · time-aware
+            <p className={patientKicker}>Time-aware</p>
+            <h3 className="text-base font-bold text-[#2C3E6B]">
+              {data.user.name}&apos;s evolving profile
+            </h3>
+            <p className={`mt-0.5 text-xs ${patientMuted}`}>
+              Initial {initial.asOfDate} → current {current.asOfDate} · {current.dataDepth.scansConsidered} scans · {current.dataDepth.logsConsidered} logs
             </p>
-            <h2 className="text-lg font-bold text-slate-900">{data.user.name}&apos;s skin DNA</h2>
-            <p className="text-xs text-slate-500">
-              Initial analysis {initial.asOfDate} → current {current.asOfDate} · {current.dataDepth.scansConsidered} scans · {current.dataDepth.logsConsidered} logs
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#2C3E6B]/10 px-2.5 py-1 text-xs font-bold text-[#2C3E6B]">
+            {changed.length} field{changed.length > 1 ? "s" : ""} evolved
+          </span>
+        </div>
+      ) : (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className={patientKicker}>Time-aware profile</p>
+            <p className={`text-xs ${patientMuted}`}>
+              {initial.asOfDate} → {current.asOfDate} · {changed.length} evolved
             </p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-800">
-          {changed.length} field{changed.length > 1 ? "s" : ""} evolved
-        </span>
+      )}
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <EvolvingField label="Skin type" initial={initial.skinType} current={current.skinType} rationale={current.signals.skinType} icon={Dna} />
+        <EvolvingField label="Primary concern" initial={initial.primaryConcern} current={current.primaryConcern} rationale={current.signals.primaryConcern} icon={Target} />
+        <EvolvingField label="Sensitivity index" initial={initial.sensitivityIndex} current={current.sensitivityIndex} rationale={current.signals.sensitivityIndex} icon={Waves} formatter={(v) => `${v}/10`} />
+        <EvolvingField label="UV sensitivity" initial={initial.uvSensitivity} current={current.uvSensitivity} rationale={current.signals.uvSensitivity} icon={Sun} />
+        <EvolvingField label="Hormonal correlation" initial={initial.hormonalCorrelation} current={current.hormonalCorrelation} rationale={current.signals.hormonalCorrelation} icon={Activity} />
       </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <EvolvingField label="Skin type" initial={initial.skinType} current={current.skinType} rationale={current.signals.skinType} icon={Dna} accent="bg-violet-100 text-violet-800" />
-        <EvolvingField label="Primary concern" initial={initial.primaryConcern} current={current.primaryConcern} rationale={current.signals.primaryConcern} icon={Target} accent="bg-rose-100 text-rose-800" />
-        <EvolvingField label="Sensitivity index" initial={initial.sensitivityIndex} current={current.sensitivityIndex} rationale={current.signals.sensitivityIndex} icon={Waves} accent="bg-sky-100 text-sky-800" formatter={(v) => `${v}/10`} />
-        <EvolvingField label="UV sensitivity" initial={initial.uvSensitivity} current={current.uvSensitivity} rationale={current.signals.uvSensitivity} icon={Sun} accent="bg-amber-100 text-amber-800" />
-        <EvolvingField label="Hormonal correlation" initial={initial.hormonalCorrelation} current={current.hormonalCorrelation} rationale={current.signals.hormonalCorrelation} icon={Activity} accent="bg-teal-100 text-teal-800" />
-      </div>
-      {changed.length > 0 ? (
-        <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-800">What changed since initial analysis</p>
-          <ul className="mt-1.5 space-y-1 text-sm text-slate-700">
+      {false && changed.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-[#2C3E6B]/15 bg-[#E8EFE6]/50 p-3">
+          <p className={patientKicker}>What changed since initial analysis</p>
+          <ul className="mt-1.5 space-y-1 text-sm text-[#374151]">
             {changed.map((c, i) => (
               <li key={i} className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-700">{c.field}:</span>
-                <span className="text-slate-500">{String(c.from ?? "—")}</span>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                <span className="font-semibold text-slate-900">{String(c.to ?? "—")}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">{c.field}:</span>
+                <span className="text-[#6B7280]">{String(c.from ?? "—")}</span>
+                <ChevronRight className="h-3.5 w-3.5 text-[#2C3E6B]/40" />
+                <span className="font-semibold text-[#1A1A2E]">{String(c.to ?? "—")}</span>
               </li>
             ))}
           </ul>
         </div>
       ) : null}
+    </>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <section className={`overflow-hidden ${patientGlassShell} p-5 md:p-6`}>
+      {body}
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorsNewScheduleRequest } from "@/src/lib/clinicSheetAppointmentWebhook";
 import { getDefaultClinicDoctorId } from "@/src/lib/defaultClinicDoctor";
 import { dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/date-only";
+import { clinicSheetAppointmentApiUrlFromEnv } from "@/src/lib/clinicSheetAppointmentApiUrl";
 import { postGoogleAppsScriptWebAppJson } from "@/src/lib/googleAppsScriptWebAppFetch";
 import { publicAppOriginFromRequest } from "@/src/lib/publicAppOrigin";
 
@@ -216,9 +217,11 @@ export async function POST(req: Request) {
   const attachmentFileNames = attachments.map((a) => a.fileName);
   const schedulesPath = "/dashboard/schedules";
   const patientSchedulesUrl = appOrigin ? `${appOrigin}${schedulesPath}` : null;
-  const appointmentSyncUrl = appOrigin
-    ? `${appOrigin}/api/integrations/clinic-sheet/appointments`
-    : null;
+  const appointmentSyncUrl =
+    clinicSheetAppointmentApiUrlFromEnv() ||
+    (appOrigin
+      ? `${appOrigin}/api/integrations/clinic-sheet/appointments`
+      : null);
 
   void notifyDoctorsNewScheduleRequest({
     patientName,
