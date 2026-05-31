@@ -1,6 +1,8 @@
 import { formatDistanceToNow } from "date-fns";
 
 import {
+  legacyMaskTitleCropPercents,
+  maskLikelyHasMatplotlibTitle,
   SCAN_FACE_FRAME_ASPECT_CSS,
   SCAN_MASK_FRAME_ASPECT_CSS,
 } from "./maskImageCrop";
@@ -278,10 +280,18 @@ function maskPanelHtml(
   const fallbackAttr = fallback
     ? ` onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src=${JSON.stringify(fallback)}}"`
     : "";
+  const legacy = maskLikelyHasMatplotlibTitle(src);
+  const imgStyle = legacy
+    ? (() => {
+        const { heightPct, topPct } = legacyMaskTitleCropPercents();
+        return ` style="height:${heightPct}%;top:${topPct}%;object-fit:cover;object-position:center;"`;
+      })()
+    : "";
+  const imgClass = legacy ? "mask-panel-img mask-panel-img-legacy" : "mask-panel-img";
   return `
     <figure class="mask-panel">
       <div class="mask-panel-frame">
-        <img class="mask-panel-img" src=${JSON.stringify(src)} alt=${JSON.stringify(alt)}${fallbackAttr} />
+        <img class="${imgClass}" src=${JSON.stringify(src)} alt=${JSON.stringify(alt)}${imgStyle}${fallbackAttr} />
       </div>
       <figcaption>${esc(caption)}</figcaption>
     </figure>`;
@@ -732,6 +742,11 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       object-fit: contain;
       object-position: center;
       display: block;
+    }
+    .mask-panel-img-legacy {
+      inset: auto;
+      left: 0;
+      width: 100%;
     }
     .mask-panel figcaption {
       margin-top: 8px;

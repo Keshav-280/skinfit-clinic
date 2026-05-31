@@ -22,6 +22,7 @@ type Props = {
   authToken?: string | null;
   maxWidth?: number;
   style?: ImageStyle;
+  imageStyle?: ImageStyle;
   resizeMode?: "contain" | "cover";
 };
 
@@ -36,6 +37,7 @@ export function ReportContainImage({
   authToken,
   maxWidth = 320,
   style,
+  imageStyle,
   resizeMode = "contain",
 }: Props) {
   const [aspectRatio, setAspectRatio] = useState(3 / 4);
@@ -168,6 +170,7 @@ export function ReportContainImage({
         style={[
           fillParent ? styles.imgFill : styles.img,
           fillParent ? undefined : { aspectRatio },
+          imageStyle,
         ]}
         resizeMode={resizeMode}
         onLoad={(e) => {

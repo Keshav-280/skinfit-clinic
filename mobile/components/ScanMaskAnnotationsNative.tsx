@@ -5,7 +5,11 @@ import {
   ACNE_MASK_PANEL_LABEL,
   WRINKLE_MASK_PANEL_LABEL,
 } from "@/lib/scanMaskLabels";
-import { SCAN_MASK_FRAME_ASPECT } from "@/lib/maskImageCrop";
+import {
+  legacyMaskTitleCropImageStyle,
+  maskLikelyHasMatplotlibTitle,
+  SCAN_MASK_FRAME_ASPECT,
+} from "@/lib/maskImageCrop";
 
 function MaskPanel({
   uri,
@@ -18,6 +22,7 @@ function MaskPanel({
   caption: string;
   authToken?: string | null;
 }) {
+  const cropLegacyTitle = maskLikelyHasMatplotlibTitle(uri);
   return (
     <View style={styles.item}>
       <View style={styles.imageClip}>
@@ -25,7 +30,9 @@ function MaskPanel({
           imageUrl={uri}
           fallbackImageUrl={fallbackUri}
           authToken={authToken}
-          resizeMode="contain"
+          resizeMode={cropLegacyTitle ? "cover" : "contain"}
+          style={StyleSheet.absoluteFillObject}
+          imageStyle={cropLegacyTitle ? legacyMaskTitleCropImageStyle() : undefined}
         />
       </View>
       <Text style={styles.caption}>{caption}</Text>
@@ -87,6 +94,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   imageClip: {
+    position: "relative",
     width: "100%",
     maxWidth: 340,
     aspectRatio: SCAN_MASK_FRAME_ASPECT,
