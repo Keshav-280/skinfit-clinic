@@ -17,9 +17,13 @@ import {
   History,
   Volume2,
   VolumeX,
+  Bug,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
 import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
+import {
+  ScanCaptureDebugOverlay,
+} from "@/components/dashboard/ScanCaptureDebugOverlay";
 import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
 import {
   CAPTURE_READY_VOICE_HINT,
@@ -84,6 +88,10 @@ type CaptureItem = {
 type PendingCapture = CaptureItem;
 
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
+
+/** Fixed 3:4 preview — explicit px so grid column cannot stretch it taller. */
+const CAMERA_PREVIEW_CLASS =
+  "relative mx-auto h-[210px] w-[158px] shrink-0 overflow-hidden rounded-2xl bg-zinc-900 sm:h-[228px] sm:w-[171px] lg:mx-0";
 
 /** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
 const CAPTURE_ZOOM_MIN = CAPTURE_ZOOM_AUTO.min;
@@ -171,14 +179,21 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const reviewingCapture = pendingCapture != null;
   const guidanceActive = cameraOpen && !reviewingCapture;
 
-  const { guidance, models, needsExpressionModel } = useWebScanCaptureGuidance(
-    videoRef,
-    guidanceActive,
-    captureZoom,
-    currentCameraStep.id
-  );
+  const { guidance, models, needsExpressionModel, faceTracked, bboxSource } =
+    useWebScanCaptureGuidance(
+      videoRef,
+      guidanceActive,
+      captureZoom,
+      currentCameraStep.id
+    );
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [showDebug, setShowDebug] = useState(true);
+
+  const debugExtra = {
+    step: `${Math.min(captures.length + 1, N_CAPTURES)}/${N_CAPTURES}`,
+    bbox: bboxSource,
+  };
 
   const previewFilter = `brightness(${brightness}%) contrast(${contrast}%)`;
   const adjustmentsChanged =
@@ -561,10 +576,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
         >
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+          <div className="grid gap-5 lg:grid-cols-[auto_minmax(0,340px)] lg:items-start">
             {/* Left: live camera + capture actions */}
-            <div className="flex min-w-0 flex-col gap-3">
-              <div className="relative mx-auto aspect-[3/4] w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 lg:mx-0 lg:max-w-none">
+            <div className="flex min-w-0 flex-col items-center gap-3 lg:items-start">
+              <div className={CAMERA_PREVIEW_CLASS}>
                 <video
                   ref={videoRef}
                   className={`h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
@@ -598,28 +613,44 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                       : ""}
                 </div>
                 {!reviewingCapture ? (
-                  <button
-                    type="button"
-                    onClick={() => setVoiceEnabled((v) => !v)}
-                    className={`absolute right-2 top-2 z-30 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
-                      voiceEnabled
-                        ? "bg-[#2C3E6B] text-white"
-                        : "bg-white/70 text-[#2C3E6B] hover:bg-white"
-                    }`}
-                    aria-pressed={voiceEnabled}
-                    aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
-                    title={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
-                  >
-                    {voiceEnabled ? (
-                      <Volume2 className="h-4 w-4" />
-                    ) : (
-                      <VolumeX className="h-4 w-4" />
-                    )}
-                  </button>
+                  <div className="absolute right-2 top-2 z-30 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDebug((v) => !v)}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
+                        showDebug
+                          ? "bg-emerald-600 text-white"
+                          : "bg-white/70 text-[#2C3E6B] hover:bg-white"
+                      }`}
+                      aria-pressed={showDebug}
+                      aria-label={showDebug ? "Hide capture debug" : "Show capture debug"}
+                      title={showDebug ? "Hide capture debug" : "Show capture debug"}
+                    >
+                      <Bug className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVoiceEnabled((v) => !v)}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
+                        voiceEnabled
+                          ? "bg-[#2C3E6B] text-white"
+                          : "bg-white/70 text-[#2C3E6B] hover:bg-white"
+                      }`}
+                      aria-pressed={voiceEnabled}
+                      aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+                      title={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+                    >
+                      {voiceEnabled ? (
+                        <Volume2 className="h-4 w-4" />
+                      ) : (
+                        <VolumeX className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 ) : null}
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex w-full max-w-[280px] flex-col gap-2 sm:flex-row">
                 {reviewingCapture ? (
                   <>
                     <button
@@ -751,6 +782,18 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   </button>
                 ) : null}
               </div>
+
+              {!reviewingCapture && showDebug ? (
+                <ScanCaptureDebugOverlay
+                  guidance={guidance}
+                  captureZoom={captureZoom}
+                  models={models}
+                  faceTracked={faceTracked}
+                  visible
+                  variant="panel"
+                  extra={debugExtra}
+                />
+              ) : null}
             </aside>
           </div>
         </motion.div>

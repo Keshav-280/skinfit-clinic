@@ -30,32 +30,30 @@ export default function ProfileLoading() {
         <Shimmer className="h-4 w-64" />
       </section>
 
-      <section className={`${CARD} p-4 sm:p-5`}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-[18px] border border-white/70 bg-white/45 px-3.5 py-3"
-            >
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 shrink-0 animate-pulse rounded-[11px] bg-[#2C3E6B]/20" />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Shimmer className="h-2.5 w-16" />
-                  <Shimmer className="h-3.5 w-24" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="space-y-6">
+          <section className={`${CARD} p-4 sm:p-5`}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-[18px] border border-white/70 bg-white/45 px-3.5 py-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 shrink-0 animate-pulse rounded-[11px] bg-[#2C3E6B]/20" />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <Shimmer className="h-2.5 w-16" />
+                      <Shimmer className="h-3.5 w-24" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
           <SectionSkeleton />
           <SectionSkeleton />
         </div>
         <div className="space-y-6">
-          <SectionSkeleton />
           <SectionSkeleton />
         </div>
       </div>

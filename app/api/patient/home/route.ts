@@ -6,7 +6,12 @@ import { dailyFocus, dailyLogs, scans, skinScans, users } from "@/src/db/schema"
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { dateOnlyFromYmd, parseYmdToDateOnly, ymdFromDateOnly } from "@/src/lib/date-only";
 import { getPatientDoctorSection } from "@/src/lib/patientDoctorSection";
-import { normalizeRoutineSteps } from "@/src/lib/routine";
+import {
+  buildCompletedRoutineDateSet,
+  computeStreakStats,
+  createRoutinePlanResolver,
+  isFullRoutineDayLog,
+} from "@/src/lib/userStreak";
 import {
   loadRoutinePlanRevisions,
   resolveRoutinePlanForYmd,
@@ -96,10 +101,9 @@ async function buildPatientHomePayload(
     amItems: coerceRoutinePlanList(routinePlanAmItems),
     pmItems: coerceRoutinePlanList(routinePlanPmItems),
   };
-  const todayPlan = resolveRoutinePlanForYmd(
+  const resolveRoutinePlan = createRoutinePlanResolver(
     routineRevisions,
-    fallbackPlan,
-    todayYmdFromProfile
+    fallbackPlan
   );
 
   function isFullRoutineDay(log: {
@@ -107,39 +111,22 @@ async function buildPatientHomePayload(
     routinePmSteps: boolean[] | null;
     date: Date | string;
   }): boolean {
-    const logYmd = ymdFromDateOnly(
-      log.date instanceof Date ? log.date : String(log.date)
-    );
-    const plan = resolveRoutinePlanForYmd(
-      routineRevisions,
-      fallbackPlan,
-      logYmd
-    );
-    const amSteps = normalizeRoutineSteps(
-      log.routineAmSteps,
-      plan.amLen,
-      undefined
-    );
-    const pmSteps = normalizeRoutineSteps(
-      log.routinePmSteps,
-      plan.pmLen,
-      undefined
-    );
-    return (
-      plan.amLen > 0 &&
-      amSteps.length === plan.amLen &&
-      amSteps.every(Boolean) &&
-      plan.pmLen > 0 &&
-      pmSteps.length === plan.pmLen &&
-      pmSteps.every(Boolean)
-    );
+    return isFullRoutineDayLog(log, resolveRoutinePlan);
   }
+
+  const streakCut = subDays(todayDateOnly, 120);
+  const todayPlan = resolveRoutinePlanForYmd(
+    routineRevisions,
+    fallbackPlan,
+    todayYmdFromProfile
+  );
 
   const [
     skinScanRows,
     todayLog,
     lastScans,
     recentLogs,
+    streakLogs,
     doctorSection,
     todayFocusRow,
   ] = await Promise.all([
@@ -176,6 +163,20 @@ async function buildPatientHomePayload(
         and(
           eq(dailyLogs.userId, userId),
           gte(dailyLogs.date, weekCut),
+          lte(dailyLogs.date, todayDateOnly)
+        )
+      ),
+    db
+      .select({
+        date: dailyLogs.date,
+        routineAmSteps: dailyLogs.routineAmSteps,
+        routinePmSteps: dailyLogs.routinePmSteps,
+      })
+      .from(dailyLogs)
+      .where(
+        and(
+          eq(dailyLogs.userId, userId),
+          gte(dailyLogs.date, streakCut),
           lte(dailyLogs.date, todayDateOnly)
         )
       ),
@@ -240,6 +241,16 @@ async function buildPatientHomePayload(
     }
   }
   const weekCompletedDates = Array.from(completedDatesSet).sort();
+  const streakCompleted = buildCompletedRoutineDateSet(
+    streakLogs,
+    resolveRoutinePlan
+  );
+  const streakStats = computeStreakStats(streakCompleted, localTodayYmd);
+  const streakCurrent = streakStats.current;
+  const streakLongest = Math.max(
+    userRow.streakLongest ?? 0,
+    streakStats.longest
+  );
   const n = Math.max(1, recentLogs.length);
   const routineCompletion7d = amPmDays / 7;
   const avgSleep = sleepSum / n;
@@ -290,8 +301,8 @@ async function buildPatientHomePayload(
     doctorVoiceNoteIsNew,
     /** Calendar date used for today’s log (patient profile timezone when `date` query omitted). */
     homeDateYmd: todayYmdFromProfile,
-    streakCurrent: userRow.streakCurrent ?? 0,
-    streakLongest: userRow.streakLongest ?? 0,
+    streakCurrent,
+    streakLongest,
     weekCompletedDates,
     cycleTrackingEnabled: userRow.cycleTrackingEnabled ?? false,
     onboardingComplete,

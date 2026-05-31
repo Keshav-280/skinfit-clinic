@@ -18,35 +18,17 @@ type Props = {
   extra?: Record<string, string | number | boolean | null | undefined>;
   /** Explicit toggle — overrides env default when provided. */
   visible?: boolean;
+  /** overlay = on preview; panel = sidebar debugger card */
+  variant?: "overlay" | "panel";
 };
 
-function fmtPct(fill: number | null | undefined): string {
-  if (fill == null || !Number.isFinite(fill)) return "—";
-  return `${(fill * 100).toFixed(1)}%`;
-}
-
-function fmtNum(n: number | null | undefined, digits = 2): string {
-  if (n == null || !Number.isFinite(n)) return "—";
-  return n.toFixed(digits);
-}
-
-/** Off by default; set NEXT_PUBLIC_CAPTURE_DEBUG=1 to force on without the toggle. */
-export function isCaptureDebugEnabled(): boolean {
-  const flag = process.env.NEXT_PUBLIC_CAPTURE_DEBUG?.trim();
-  return flag === "1" || flag === "true";
-}
-
-export function ScanCaptureDebugOverlay({
-  guidance,
-  captureZoom,
-  models,
-  faceTracked,
-  extra,
-  visible,
-}: Props) {
-  const show = visible ?? isCaptureDebugEnabled();
-  if (!show) return null;
-
+function buildCaptureDebugRows(
+  guidance: CaptureGuidanceSnapshot | null,
+  captureZoom: number,
+  models: CaptureAssistModels | undefined,
+  faceTracked: boolean | undefined,
+  extra: Props["extra"]
+): Array<[string, string]> {
   const t = CAPTURE_FRAMING_THRESHOLDS;
   const targetFill = captureAutoZoomTargetFill();
   const area = guidance?.faceFill ?? null;
@@ -83,12 +65,66 @@ export function ScanCaptureDebugOverlay({
     }
   }
 
+  return rows;
+}
+
+function fmtPct(fill: number | null | undefined): string {
+  if (fill == null || !Number.isFinite(fill)) return "—";
+  return `${(fill * 100).toFixed(1)}%`;
+}
+
+function fmtNum(n: number | null | undefined, digits = 2): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return n.toFixed(digits);
+}
+
+/** Dev default on; set NEXT_PUBLIC_CAPTURE_DEBUG=0 to hide, =1 to force on in production. */
+export function isCaptureDebugEnabled(): boolean {
+  const flag = process.env.NEXT_PUBLIC_CAPTURE_DEBUG?.trim();
+  if (flag === "0" || flag === "false") return false;
+  if (flag === "1" || flag === "true") return true;
+  return process.env.NODE_ENV !== "production";
+}
+
+export function ScanCaptureDebugOverlay({
+  guidance,
+  captureZoom,
+  models,
+  faceTracked,
+  extra,
+  visible,
+  variant = "overlay",
+}: Props) {
+  const show = visible ?? isCaptureDebugEnabled();
+  if (!show) return null;
+
+  const rows = buildCaptureDebugRows(
+    guidance,
+    captureZoom,
+    models,
+    faceTracked,
+    extra
+  );
+
+  const isPanel = variant === "panel";
+
   return (
     <div
-      className="pointer-events-none absolute left-2 top-2 z-[100] max-h-[min(55%,320px)] max-w-[min(100%,15rem)] overflow-y-auto rounded-md border border-emerald-500/40 bg-black/85 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-emerald-100 shadow-lg"
-      aria-hidden
+      className={
+        isPanel
+          ? "max-h-52 overflow-y-auto rounded-xl border border-emerald-500/35 bg-zinc-900 px-3 py-2 font-mono text-[10px] leading-relaxed text-emerald-100 shadow-inner"
+          : "pointer-events-none absolute left-2 top-2 z-[100] max-h-[min(55%,320px)] max-w-[min(100%,15rem)] overflow-y-auto rounded-md border border-emerald-500/40 bg-black/85 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-emerald-100 shadow-lg"
+      }
+      aria-hidden={!isPanel}
+      aria-label={isPanel ? "Capture debug metrics" : undefined}
     >
-      <p className="mb-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-400/90">
+      <p
+        className={
+          isPanel
+            ? "mb-1 text-[10px] font-bold uppercase tracking-wide text-emerald-400"
+            : "mb-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-400/90"
+        }
+      >
         Capture debug
       </p>
       {rows.map(([label, value]) => (

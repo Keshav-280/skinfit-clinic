@@ -102,7 +102,7 @@ function ProfileSnapshot({
 
   return (
     <section className="rounded-[22px] border border-white/70 bg-white/40 p-4 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm sm:p-5">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {items.map(({ label, value, icon: Icon }) => (
           <div
             key={label}
@@ -139,18 +139,28 @@ export default async function ProfilePage() {
         subtitle={`${user.name} · ${user.email}`}
       />
 
-      <ProfileSnapshot user={user} />
-
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="space-y-6">
+          <ProfileSnapshot user={user} />
+
           <DashboardPageSection
             kicker="Clinic"
             title="Visits"
-            description="Your most recent visit — tap View to see full history."
+            description=""
             icon={Stethoscope}
           >
             <ProfileLastTreatmentSection />
           </DashboardPageSection>
+
+          {isKaiInsightsEnabled() ? (
+            <DashboardPageSection
+              kicker="kAI"
+              title="Monthly insight"
+              description="Scheduled monthly summary from your scans and logs."
+            >
+              <ProfileRagKaiInsightsSection embedded />
+            </DashboardPageSection>
+          ) : null}
 
           <DashboardPageSection
             kicker="Insights"
@@ -167,7 +177,7 @@ export default async function ProfilePage() {
           </DashboardPageSection>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
           <DashboardPageSection
             kicker="Account"
             title="Settings"
@@ -176,16 +186,6 @@ export default async function ProfilePage() {
           >
             <ProfileForm initial={user} embedded />
           </DashboardPageSection>
-
-          {isKaiInsightsEnabled() ? (
-            <DashboardPageSection
-              kicker="kAI"
-              title="Monthly insight"
-              description="Scheduled monthly summary from your scans and logs."
-            >
-              <ProfileRagKaiInsightsSection embedded />
-            </DashboardPageSection>
-          ) : null}
         </div>
       </div>
     </div>

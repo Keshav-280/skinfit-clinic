@@ -59,6 +59,7 @@ type FeedbackEntry = {
   listened: boolean;
   doctorName: string | null;
   doctorPhotoUrl: string | null;
+  doctorId: string | null;
 };
 
 type HomeData = {
@@ -79,6 +80,7 @@ type HomeData = {
   weekCompletedDates: string[];
   todayFocus: { message: string; sourceParam: string | null } | null;
   feedbackEntries: FeedbackEntry[];
+  archivedFeedbackEntries?: FeedbackEntry[];
   onboardingComplete: boolean;
   hasQuestionnaire: boolean;
   routineAmReminderHm: string;
@@ -769,6 +771,8 @@ export function PatientDashboardDesktop() {
         />
 
         <PatientDoctorHomeSections
+          feedbackEntries={data.feedbackEntries ?? []}
+          archivedFeedbackEntries={data.archivedFeedbackEntries ?? []}
           doctorFeedback={data.doctorFeedback}
           doctorVoiceNotes={data.doctorVoiceNotes}
           doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}

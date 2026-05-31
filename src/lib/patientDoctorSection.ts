@@ -185,8 +185,13 @@ export async function getPatientDoctorSection(
     .filter(hasPlayableAudio);
   const doctorVoiceNoteIsNew = doctorVoiceNotes.some((v) => !v.listened);
 
+  const latestTextFeedback = activeFeedbackRows.find((r) =>
+    r.feedbackText?.trim()
+  )?.feedbackText?.trim();
+
   return {
-    doctorFeedback: care?.doctorFeedbackNote?.trim() || "",
+    doctorFeedback:
+      latestTextFeedback || care?.doctorFeedbackNote?.trim() || "",
     doctorVoiceNotes,
     doctorArchivedVoiceNotes,
     doctorVoiceNoteIsNew,

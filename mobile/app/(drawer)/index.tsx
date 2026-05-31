@@ -287,7 +287,7 @@ export default function DashboardScreen() {
           method: "PATCH",
           body: JSON.stringify(body),
         });
-        await loadHome();
+        await loadHome({ skipCache: true });
         return true;
       } catch {
         return false;
@@ -469,6 +469,7 @@ export default function DashboardScreen() {
           routinePmSteps: nextPm,
         }),
       });
+      void loadHome({ skipCache: true });
     } catch {
       void loadHome();
     }

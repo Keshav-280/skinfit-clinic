@@ -16,10 +16,10 @@ export function PatientPortalBrandLogo({ className = "" }: Props) {
       <Image
         src="/branding/skinfit-wellness-logo.svg"
         alt="SkinFit Wellness"
-        width={653}
-        height={161}
+        width={560}
+        height={135}
         priority
-        className="h-8 w-auto max-w-[9.5rem] object-contain object-left sm:max-w-[10.5rem]"
+        className="h-8 w-auto max-w-[11rem] object-contain object-left sm:max-w-[12rem]"
       />
     </Link>
   );

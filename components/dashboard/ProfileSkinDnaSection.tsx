@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import {
   ChevronRight,
   ListChecks,
-  Microscope,
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import {
@@ -205,7 +204,7 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
     return <QuestionnaireLockedCard title="Skin DNA is locked" />;
   }
 
-  const paramKeys = Object.keys(data.sparklines);
+  // const paramKeys = Object.keys(data.sparklines);
 
   const body = (
     <>
@@ -293,6 +292,8 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
             </ol>
           </div>
 
+          {/*
+          Last scans (up to 4) — hidden per profile layout request.
           <div>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -322,6 +323,7 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
               })}
             </div>
           </div>
+          */}
         </div>
     </>
   );
