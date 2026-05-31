@@ -89,9 +89,12 @@ type PendingCapture = CaptureItem;
 
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 
-/** 3:4 preview — capped height so it does not dominate, but large enough to frame the face. */
+/** 3:4 preview — tall enough to frame the face; desktop size fixed for consistent layout. */
 const CAMERA_PREVIEW_CLASS =
-  "relative mx-auto aspect-[3/4] w-full max-w-[300px] shrink-0 overflow-hidden rounded-2xl bg-zinc-900 sm:max-w-[320px] lg:mx-0 lg:h-[340px] lg:w-[255px] lg:max-w-none";
+  "relative mx-auto aspect-[3/4] w-full max-w-[300px] shrink-0 overflow-hidden rounded-2xl bg-zinc-900 sm:max-w-[320px] lg:h-[380px] lg:w-[285px] lg:max-w-none";
+
+const CAPTURE_ACTIONS_CLASS =
+  "flex w-full max-w-[320px] flex-col gap-2 sm:flex-row lg:max-w-[285px]";
 
 /** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
 const CAPTURE_ZOOM_MIN = CAPTURE_ZOOM_AUTO.min;
@@ -188,7 +191,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     );
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [showDebug, setShowDebug] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
 
   const debugExtra = {
     step: `${Math.min(captures.length + 1, N_CAPTURES)}/${N_CAPTURES}`,
@@ -574,11 +577,12 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
+          className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6 lg:min-h-[580px]"
         >
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-            {/* Left: live camera + capture actions */}
-            <div className="flex min-w-0 flex-col items-center gap-3 lg:items-start">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-8">
+            {/* Centre camera in the area left of the guidance column */}
+            <div className="flex min-w-0 flex-1 justify-center lg:min-h-[500px]">
+              <div className="flex w-full max-w-[320px] flex-col items-center justify-start gap-4 lg:max-w-[285px] lg:justify-between lg:self-stretch">
               <div className={CAMERA_PREVIEW_CLASS}>
                 <video
                   ref={videoRef}
@@ -650,7 +654,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 ) : null}
               </div>
 
-              <div className="flex w-full max-w-[320px] flex-col gap-2 sm:flex-row">
+              <div className={CAPTURE_ACTIONS_CLASS}>
                 {reviewingCapture ? (
                   <>
                     <button
@@ -701,9 +705,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 )}
               </div>
             </div>
+            </div>
 
             {/* Right: step guidance + manual adjustments */}
-            <aside className="flex flex-col gap-3">
+            <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[340px]">
               <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-3 text-center backdrop-blur-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
                   Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}
