@@ -640,21 +640,24 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .pdf-page {
       width: 595pt;
-      background: ${T.pageBg};
+      min-height: 830pt;
+      background: linear-gradient(180deg, #ffffff 0%, ${T.pageBg} 32%, ${T.sageBand} 72%, ${T.sageBandEnd} 100%);
       page-break-after: avoid;
       page-break-before: avoid;
     }
     .pdf-scale {
       zoom: ${pdfScale};
-      margin: 0 auto;
+      margin: 0;
+      width: 100%;
       page-break-inside: avoid;
       break-inside: avoid;
     }
     .sheet {
-      max-width: 720px;
-      margin: 0 auto;
-      background: ${T.pageBg};
-      padding-bottom: 4px;
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      background: transparent;
+      padding: 0 8pt 6pt;
       page-break-inside: avoid;
       break-inside: avoid;
     }
