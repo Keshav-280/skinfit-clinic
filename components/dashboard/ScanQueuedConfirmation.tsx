@@ -28,8 +28,8 @@ export function ScanQueuedConfirmation({
         <h2 className="text-xl font-bold text-[#2C3E6B]">You&apos;re all set</h2>
         <p className="text-sm leading-relaxed text-[#4B5563]">
           {isOnboarding
-            ? "Your baseline photos are saved. Your kAI report will be ready soon — we'll notify you when it's done."
-            : "Your photos are saved. Your full report (images, masks, and kAI analysis) will be delivered soon — we'll notify you when it's ready."}
+            ? "Your kAI report will be ready soon — we'll notify you when it's done."
+            : "Your report will be delivered soon — we'll notify you when it's ready."}
         </p>
       </div>
       <p className="flex items-center justify-center gap-1.5 text-xs font-medium text-[#6B7280]">
