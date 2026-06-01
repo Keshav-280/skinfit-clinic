@@ -153,7 +153,7 @@ export default async function ProfilePage() {
               <DashboardPageSection
                 kicker="kAI"
                 title="Monthly insight"
-                description="Scheduled monthly summary from your scans and logs."
+                description="A once-a-month recap of your skin progress from scans and daily logs."
               >
                 <ProfileRagKaiInsightsSection embedded />
               </DashboardPageSection>

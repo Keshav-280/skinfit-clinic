@@ -35,8 +35,7 @@ function isAllowedArticleHost(hostname: string): boolean {
 }
 
 /** Old hardcoded fallback that pointed at a unrelated music video — never reuse. */
-const BLOCKED_YOUTUBE_VIDEO_IDS = new Set(["0KSOMA3QBU0"]);
-
+const BLOCKED_YOUTUBE_VIDEO_IDS = new Set(["9pg-OybGGCc"]);
 const YOUTUBE_VIDEO_ID = /^[\w-]{6,12}$/;
 
 function isPlausibleYouTubeVideoId(id: string): boolean {

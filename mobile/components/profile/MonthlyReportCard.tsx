@@ -31,8 +31,11 @@ function currentMonthName(): string {
 
 function formatInsightDate(iso: string): string {
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  if (isNaN(d.getTime())) return "the start of next month";
+  return d.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function BulletList({ items, color }: { items: string[]; color: string }) {
@@ -63,8 +66,11 @@ export default function MonthlyReportCard({
           <View style={s.lockCircle}>
             <Ionicons name="lock-closed" size={22} color={TEXT_LIGHT} />
           </View>
-          <Text style={s.lockedText}>Next insight on</Text>
+          <Text style={s.lockedText}>Your next summary arrives around</Text>
           <Text style={s.lockedDate}>{formatInsightDate(nextInsightAt)}</Text>
+          <Text style={s.lockedHint}>
+            Keep scanning and logging — we&apos;ll put your monthly recap together.
+          </Text>
         </View>
       ) : monthly ? (
         <View style={s.body}>
@@ -145,8 +151,17 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   lockedDate: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: NAVY,
+  },
+  lockedHint: {
     fontSize: 13,
-    color: TEXT_LIGHT,
+    color: TEXT_MUTED,
+    textAlign: "center",
+    lineHeight: 19,
+    marginTop: 8,
+    paddingHorizontal: 8,
   },
 
   body: {

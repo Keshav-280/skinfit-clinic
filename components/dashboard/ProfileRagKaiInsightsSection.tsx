@@ -28,6 +28,16 @@ type MonthlyInsightPayload = {
   } | null;
 };
 
+/** Patient-facing date — no time, no jargon. */
+function formatNextInsightFriendly(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "the start of next month";
+  return d.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function ProfileRagKaiInsightsSection({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<MonthlyInsightPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,14 +119,16 @@ export function ProfileRagKaiInsightsSection({ embedded = false }: { embedded?: 
   }
 
   const monthly = data.monthly;
-  const nextInsightLabel = new Date(data.nextInsightAt).toLocaleString();
+  const nextInsightFriendly = formatNextInsightFriendly(data.nextInsightAt);
   const monthKai = monthly?.kaiMonthAvgFromParams ?? null;
 
   const body = (
     <>
       {!embedded ? (
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <p className={patientMuted}>Unlocks after the scheduled monthly run.</p>
+          <p className={patientMuted}>
+            A once-a-month recap from your scans and daily check-ins.
+          </p>
           <button
             type="button"
             onClick={onPdf}
@@ -141,18 +153,16 @@ export function ProfileRagKaiInsightsSection({ embedded = false }: { embedded?: 
         </div>
       )}
 
-      <p className={`mb-4 text-xs ${patientMuted}`}>
-        Next cron window: {nextInsightLabel}
-      </p>
-
       {data.locked || !monthly ? (
         <div className={`${patientInnerCard} px-4 py-4`}>
           <p className={`inline-flex items-center gap-2 ${patientKicker}`}>
             <Lock className="h-4 w-4" aria-hidden />
-            Locked until next monthly run
+            Not ready yet
           </p>
-          <p className={`mt-2 text-sm ${patientMuted}`}>
-            Next insight on <span className="font-semibold text-[#2C3E6B]">{nextInsightLabel}</span>.
+          <p className={`mt-2 text-sm leading-relaxed ${patientMuted}`}>
+            Your next monthly summary will appear here around{" "}
+            <span className="font-semibold text-[#2C3E6B]">{nextInsightFriendly}</span>.
+            Keep scanning and logging — we&apos;ll pull it together for you.
           </p>
         </div>
       ) : (
@@ -165,7 +175,7 @@ export function ProfileRagKaiInsightsSection({ embedded = false }: { embedded?: 
               {monthKai != null ? monthKai : "—"}
             </p>
             <p className="mt-2 text-xs leading-snug text-white/75">
-              Weighted month score from mean of 8 parameters.
+              Your overall skin score for the month.
             </p>
           </div>
           <div className={`${patientInnerCard} px-4 py-4 lg:col-span-2`}>
