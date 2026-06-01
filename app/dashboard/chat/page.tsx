@@ -10,6 +10,9 @@ import {
   Paperclip,
   Send,
   Eraser,
+  Mic,
+  X,
+  Square,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -26,6 +29,14 @@ import {
   AI_CHATBOT_ENABLED,
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/src/lib/featureFlags";
+import {
+  dataUriKind,
+  MAX_CHAT_PENDING_ATTACHMENTS,
+  parseChatAttachments,
+  prepareChatAttachmentFromBlob,
+  prepareChatAttachmentFromFile,
+  type ChatPendingAttachment,
+} from "@/src/lib/chatAttachments";
 
 type AssistantId = "ai" | "doctor" | "support";
 
@@ -39,25 +50,12 @@ type SidebarContact = {
 
 const CARD_SHADOW = "rounded-[22px] border border-white/70 bg-white/35 backdrop-blur-sm shadow-[0_8px_30px_rgba(0,0,0,0.04)]";
 
-const MAX_CHAT_ATTACHMENT_URI_LEN = 3_200_000;
+const MAX_RECORD_SECONDS = 120;
 
-function dataUriKind(uri: string | null | undefined): "image" | "audio" | "other" | null {
-  if (!uri) return null;
-  if (uri.startsWith("data:image/")) return "image";
-  if (uri.startsWith("data:audio/")) return "audio";
-  return "other";
-}
-
-function fileToDataUri(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") resolve(reader.result);
-      else reject(new Error("FILE_READ_FAILED"));
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+function formatMmSs(totalSec: number) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export default function ChatPage() {
@@ -117,11 +115,14 @@ export default function ChatPage() {
     },
     [activeAssistant, activeDoctorId]
   );
-  const [attachment, setAttachment] = useState<{
-    fileName: string;
-    dataUri: string;
-  } | null>(null);
+  const [attachments, setAttachments] = useState<ChatPendingAttachment[]>([]);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordElapsed, setRecordElapsed] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordStreamRef = useRef<MediaStream | null>(null);
+  const recordChunksRef = useRef<Blob[]>([]);
+  const recordTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const activeAssistantRef = useRef<AssistantId>(DEFAULT_PATIENT_CHAT_ASSISTANT);
   activeAssistantRef.current = activeAssistant;
@@ -800,6 +801,166 @@ export default function ChatPage() {
     };
   }, [activeAssistant, activeDoctorId, fetchPlainMessages, loadContactPreviews]);
 
+  const stopRecordStream = useCallback(() => {
+    recordStreamRef.current?.getTracks().forEach((t) => t.stop());
+    recordStreamRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopRecordStream();
+      if (recordTickRef.current) clearInterval(recordTickRef.current);
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state !== "inactive") {
+        try {
+          mr.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+  }, [stopRecordStream]);
+
+  useEffect(() => {
+    setAttachments([]);
+  }, [activeAssistant, activeDoctorId]);
+
+  const addAttachmentFiles = useCallback(async (files: FileList | File[]) => {
+    if (activeAssistant === "ai") {
+      setError("Attachments are only available in Doctor and Clinic Support chats.");
+      return;
+    }
+    const list = Array.from(files);
+    if (list.length === 0) return;
+
+    const next: ChatPendingAttachment[] = [];
+    for (const file of list) {
+      try {
+        next.push(await prepareChatAttachmentFromFile(file));
+      } catch (e) {
+        const code = e instanceof Error ? e.message : "";
+        if (code === "ONLY_IMAGE_OR_AUDIO") {
+          setError("Only image or audio files are supported.");
+        } else if (code === "AUDIO_TOO_LARGE") {
+          setError(`${file.name} is too large. Try a shorter clip or smaller image.`);
+        } else {
+          setError("Could not read attachment.");
+        }
+      }
+    }
+    if (next.length === 0) return;
+
+    setAttachments((prev) => {
+      const merged = [...prev, ...next].slice(0, MAX_CHAT_PENDING_ATTACHMENTS);
+      if (prev.length + next.length > MAX_CHAT_PENDING_ATTACHMENTS) {
+        setError(`Only ${MAX_CHAT_PENDING_ATTACHMENTS} files per message.`);
+      } else {
+        setError(null);
+      }
+      return merged;
+    });
+  }, [activeAssistant]);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    if (isLoading || isRecording) return;
+    if (activeAssistant === "ai") {
+      setError("Voice notes are only available in Doctor and Clinic Support chats.");
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setError("Microphone not available in this browser.");
+      return;
+    }
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordStreamRef.current = stream;
+      recordChunksRef.current = [];
+
+      const preferred =
+        MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+            ? "audio/webm;codecs=opus"
+            : MediaRecorder.isTypeSupported("audio/webm")
+              ? "audio/webm"
+              : "";
+
+      const recorder = preferred
+        ? new MediaRecorder(stream, { mimeType: preferred })
+        : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        stopRecordStream();
+        const blob = new Blob(recordChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        recordChunksRef.current = [];
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+        if (recordTickRef.current) {
+          clearInterval(recordTickRef.current);
+          recordTickRef.current = null;
+        }
+        setRecordElapsed(0);
+        if (blob.size < 800) {
+          setError("Recording too short — try again.");
+          return;
+        }
+        void (async () => {
+          try {
+            const pending = await prepareChatAttachmentFromBlob(
+              blob,
+              `voice-note-${Date.now()}.wav`
+            );
+            setAttachments((prev) => {
+              if (prev.length >= MAX_CHAT_PENDING_ATTACHMENTS) {
+                setError(`Only ${MAX_CHAT_PENDING_ATTACHMENTS} files per message.`);
+                return prev;
+              }
+              return [...prev, pending];
+            });
+          } catch {
+            setError("Could not process voice note.");
+          }
+        })();
+      };
+
+      recorder.start(250);
+      setIsRecording(true);
+      setRecordElapsed(0);
+      recordTickRef.current = setInterval(() => {
+        setRecordElapsed((sec) => {
+          const next = sec + 1;
+          if (next >= MAX_RECORD_SECONDS) {
+            if (recordTickRef.current) clearInterval(recordTickRef.current);
+            recordTickRef.current = null;
+            const mr = mediaRecorderRef.current;
+            if (mr && mr.state === "recording") mr.stop();
+            return MAX_RECORD_SECONDS;
+          }
+          return next;
+        });
+      }, 1000);
+    } catch {
+      setError("Allow microphone access to record a voice note.");
+    }
+  }, [activeAssistant, isLoading, isRecording, stopRecordStream]);
+
+  const stopRecording = useCallback(() => {
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== "inactive") mr.stop();
+  }, []);
+
   async function sendMessage() {
     const text = inputValue.trim();
     if (isLoading) return;
@@ -871,7 +1032,9 @@ export default function ChatPage() {
       return;
     }
 
-    if (!text && !attachment) return;
+    if (!text && attachments.length === 0) return;
+
+    const attachmentUrls = attachments.map((a) => a.dataUri);
 
     // Plain stored chat for Dr Ruby / Clinic Support (no AI replies).
     setIsLoading(true);
@@ -889,7 +1052,11 @@ export default function ChatPage() {
             ? { doctorId: activeDoctorId }
             : {}),
           text,
-          attachmentUrl: attachment?.dataUri ?? null,
+          ...(attachmentUrls.length > 1
+            ? { attachmentUrls }
+            : attachmentUrls.length === 1
+              ? { attachmentUrl: attachmentUrls[0] }
+              : {}),
         }),
       });
 
@@ -911,7 +1078,7 @@ export default function ChatPage() {
         markDoctorInboxSeenFromServer(clinicReadThroughIso);
       }
       setInputValue("");
-      setAttachment(null);
+      setAttachments([]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to send message.");
     } finally {
@@ -1091,28 +1258,31 @@ export default function ChatPage() {
                           : "rounded-r-2xl rounded-tl-2xl border border-white/60 bg-white/45 text-[#2C3E6B] backdrop-blur-sm"
                       }`}
                     >
-                      {dataUriKind(msg.attachmentUrl) === "image" ? (
-                        <a
-                          href={msg.attachmentUrl ?? "#"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mb-2 block"
-                        >
-                          <img
-                            src={msg.attachmentUrl ?? undefined}
-                            alt="Chat attachment"
-                            className="max-h-56 w-auto rounded-xl border border-black/10 object-contain"
+                      {parseChatAttachments(msg.attachmentUrl).map((uri, idx) =>
+                        dataUriKind(uri) === "image" ? (
+                          <a
+                            key={`${msg.id}-img-${idx}`}
+                            href={uri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mb-2 block"
+                          >
+                            <img
+                              src={uri}
+                              alt="Chat attachment"
+                              className="max-h-56 w-auto rounded-xl border border-black/10 object-contain"
+                            />
+                          </a>
+                        ) : dataUriKind(uri) === "audio" ? (
+                          <audio
+                            key={`${msg.id}-audio-${idx}`}
+                            controls
+                            preload="metadata"
+                            src={uri}
+                            className="mb-2 h-9 w-full max-w-sm"
                           />
-                        </a>
-                      ) : null}
-                      {dataUriKind(msg.attachmentUrl) === "audio" ? (
-                        <audio
-                          controls
-                          preload="metadata"
-                          src={msg.attachmentUrl ?? undefined}
-                          className="mb-2 h-9 w-full max-w-sm"
-                        />
-                      ) : null}
+                        ) : null
+                      )}
                       <div className="text-sm leading-relaxed [&_a]:break-words">
                         <ReactMarkdown
                           skipHtml={true}
@@ -1181,34 +1351,55 @@ export default function ChatPage() {
         </div>
 
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/30 px-4 py-2 backdrop-blur-sm">
+          {attachments.length > 0 ? (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {attachments.map((file) => (
+                <span
+                  key={file.id}
+                  className="inline-flex max-w-full items-center gap-1 rounded-full border border-teal-100 bg-teal-50/90 py-1 pl-2.5 pr-1 text-xs font-medium text-teal-900"
+                >
+                  <span className="max-w-[140px] truncate">{file.fileName}</span>
+                  <button
+                    type="button"
+                    title="Remove attachment"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-teal-700 hover:bg-teal-100"
+                    onClick={() => removeAttachment(file.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {isRecording ? (
+            <div className="mb-2 flex flex-wrap items-center gap-3 rounded-2xl border border-rose-200/80 bg-rose-50/80 px-3 py-2">
+              <span className="text-sm font-bold tabular-nums text-rose-700">
+                {formatMmSs(recordElapsed)}
+              </span>
+              <button
+                type="button"
+                onClick={stopRecording}
+                className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500"
+              >
+                <Square className="h-3 w-3 fill-current" aria-hidden />
+                Stop recording
+              </button>
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/30 px-3 py-2 backdrop-blur-sm">
             <input
               ref={attachmentInputRef}
               type="file"
               accept="image/*,audio/*"
+              multiple
               className="hidden"
               onChange={async (e) => {
-                const f = e.target.files?.[0];
+                const picked = e.target.files;
                 e.currentTarget.value = "";
-                if (!f) return;
-                if (activeAssistant === "ai") {
-                  setError("Attachments are only available in Doctor and Clinic Support chats.");
-                  return;
-                }
-                if (!f.type.startsWith("image/") && !f.type.startsWith("audio/")) {
-                  setError("Only image or audio files are supported.");
-                  return;
-                }
-                try {
-                  const uri = await fileToDataUri(f);
-                  if (uri.length > MAX_CHAT_ATTACHMENT_URI_LEN) {
-                    setError("Attachment is too large. Try a smaller file.");
-                    return;
-                  }
-                  setAttachment({ fileName: f.name, dataUri: uri });
-                } catch {
-                  setError("Could not read attachment.");
-                }
+                if (!picked?.length) return;
+                await addAttachmentFiles(picked);
               }}
             />
             <button
@@ -1217,27 +1408,36 @@ export default function ChatPage() {
               title={
                 activeAssistant === "ai"
                   ? "Attachments are disabled for AI chat"
-                  : "Attach image or audio"
+                  : "Attach images or audio files"
               }
-              disabled={activeAssistant === "ai" || isLoading}
+              disabled={activeAssistant === "ai" || isLoading || isRecording}
               onClick={() => attachmentInputRef.current?.click()}
             >
               <Paperclip className="h-5 w-5" />
             </button>
-            {attachment ? (
-              <span className="max-w-[160px] truncate rounded-full bg-teal-50 px-2 py-1 text-xs font-medium text-teal-800">
-                {attachment.fileName}
-              </span>
-            ) : null}
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2C3E6B]/50 transition-colors hover:bg-white/60 hover:text-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-40"
+              title={
+                activeAssistant === "ai"
+                  ? "Voice notes are disabled for AI chat"
+                  : "Record voice note"
+              }
+              disabled={activeAssistant === "ai" || isLoading || isRecording}
+              onClick={() => void startRecording()}
+            >
+              <Mic className="h-5 w-5" />
+            </button>
             <input
               type="text"
               placeholder={
                 activeAssistant === "ai"
                   ? "Type a message for AI..."
-                  : "Type a message (you can also attach image/audio)..."
+                  : "Type a message (attach images/audio with + or mic)..."
               }
-              className="max-h-24 flex-1 bg-transparent px-2 py-2 text-sm text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 focus:outline-none"
+              className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 focus:outline-none"
               value={inputValue}
+              disabled={isRecording}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -1248,13 +1448,14 @@ export default function ChatPage() {
             />
             <button
               type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-md transition-colors hover:bg-[#3d5080]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:opacity-40"
               title="Send"
               disabled={
                 isLoading ||
+                isRecording ||
                 (activeAssistant === "ai"
                   ? !inputValue.trim()
-                  : !inputValue.trim() && !attachment)
+                  : !inputValue.trim() && attachments.length === 0)
               }
               onClick={() => void sendMessage()}
             >

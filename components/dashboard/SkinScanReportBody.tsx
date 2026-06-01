@@ -15,13 +15,16 @@ import {
   downloadScanReportPdf,
   renderScanReportPdfBlob,
 } from "@/src/lib/downloadScanReportPdf";
+import { TRACKER_RECOMMENDED_VIDEOS } from "@/src/lib/trackerResourceLinks";
 import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { TrackerReportSections } from "./TrackerReportSections";
+import { ScanReportPdfBackdrop } from "./ScanReportPdfBackdrop";
 import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
 import { WRINKLE_MASK_PANEL_LABEL, ACNE_MASK_PANEL_LABEL } from "@/src/lib/scanMaskLabels";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
+import { SCAN_REPORT_PDF_BG } from "@/src/lib/scanReportPdfBackground";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -198,33 +201,17 @@ function Donut({
   );
 }
 
-/** Screen-only thumbnails; PDF lists `href` text only (inside reportRef). */
-const RECOMMENDED_VIDEOS: { label: string; href: string; thumb: string }[] = [
-  {
-    label: "Routine basics",
-    href: "https://www.youtube.com/watch?v=placeholder1",
-    thumb:
-      "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=280&h=400&fit=crop&q=85",
-  },
-  {
-    label: "Hydration tips",
-    href: "https://www.youtube.com/watch?v=placeholder2",
-    thumb:
-      "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=280&h=400&fit=crop&q=85",
-  },
-  {
-    label: "Barrier care",
-    href: "https://www.youtube.com/watch?v=placeholder3",
-    thumb:
-      "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=280&h=400&fit=crop&q=85",
-  },
-  {
-    label: "Sun protection",
-    href: "https://www.youtube.com/watch?v=placeholder4",
-    thumb:
-      "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=280&h=400&fit=crop&q=85",
-  },
-];
+/** Screen-only thumbnails; PDF lists curated AAD / dermatology links. */
+const RECOMMENDED_VIDEOS = TRACKER_RECOMMENDED_VIDEOS.map((video, index) => ({
+  label: video.label,
+  href: video.href,
+  thumb: [
+    "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=280&h=400&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=280&h=400&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=280&h=400&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=280&h=400&fit=crop&q=85",
+  ][index]!,
+}));
 
 export interface SkinScanReportBodyProps {
   userName: string;
@@ -605,19 +592,20 @@ export function SkinScanReportBody({
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: easeOut }}
-      className="relative w-full overflow-hidden rounded-[22px] border border-[rgba(44,62,107,0.14)]"
+      className="relative w-full overflow-hidden rounded-[22px] border border-[rgba(44,62,107,0.16)]"
       style={{
-        backgroundColor: T.pageBg,
+        background: SCAN_REPORT_PDF_BG.linear,
         boxShadow: `
-            0 0 0 1px rgba(255,255,255,0.65) inset,
-            0 32px 64px -12px rgba(0,0,0,0.14),
-            0 12px 24px -8px rgba(0,0,0,0.08)
+            0 0 0 1px rgba(255,255,255,0.72) inset,
+            0 36px 72px -14px rgba(44,62,107,0.22),
+            0 14px 28px -10px rgba(44,62,107,0.12)
           `,
       }}
     >
       {/* PDF: all sections stacked and scaled to one A4 page on download */}
       <div ref={reportRef} data-pdf-root className="relative w-full">
-      <div data-pdf-section className="relative w-full break-inside-avoid">
+      <ScanReportPdfBackdrop />
+      <div data-pdf-section className="relative z-[1] w-full break-inside-avoid">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent"
         aria-hidden
@@ -714,7 +702,7 @@ export function SkinScanReportBody({
 
       <div
         data-pdf-section
-        className="relative w-full min-w-0 max-w-full break-inside-avoid overflow-x-clip px-5 pb-10 pt-6 sm:px-9 sm:pt-8"
+        className="relative z-[1] w-full min-w-0 max-w-full break-inside-avoid overflow-x-clip px-5 pb-10 pt-6 sm:px-9 sm:pt-8"
       >
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -1012,8 +1000,7 @@ export function SkinScanReportBody({
 
       <div
         data-pdf-section
-        className="relative px-5 pb-10 pt-4 sm:px-9"
-        style={{ backgroundColor: T.pageBg }}
+        className="relative z-[1] px-5 pb-10 pt-4 sm:px-9"
       >
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black to-transparent"

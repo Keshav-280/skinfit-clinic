@@ -1,159 +1,160 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Sparkles,
+  ArrowRight,
   Scan,
   TrendingUp,
-  MessageCircle,
+  Sparkles,
   Shield,
-  Stethoscope,
-  BadgeCheck,
+  type LucideIcon,
 } from "lucide-react";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
+const HIGHLIGHTS: {
+  icon: LucideIcon;
+  title: string;
+  caption: string;
+}[] = [
+  {
+    icon: Scan,
+    title: "Five-angle scans",
+    caption: "Same capture flow every week",
+  },
+  {
+    icon: TrendingUp,
+    title: "Weekly trends",
+    caption: "See progress, not one-off scores",
+  },
+  {
+    icon: Sparkles,
+    title: "Personal focus",
+    caption: "Short, actionable guidance",
+  },
+];
+
+const BOUNDARIES = [
+  "Not a diagnosis",
+  "Not a prescription",
+  "Your doctor leads care",
+];
+
 export default function KaiIntroPage() {
   return (
-    <div className="relative">
-      {/* soft background accents */}
+    <div className="relative overflow-hidden">
       <div
-        className="pointer-events-none absolute -left-20 -top-10 h-48 w-48 rounded-full bg-skinfit-navy/10 blur-3xl"
+        className="pointer-events-none absolute -left-24 top-0 h-56 w-56 rounded-full bg-[#2C3E6B]/12 blur-3xl"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -right-16 top-32 h-40 w-40 rounded-full bg-amber-200/25 blur-3xl"
+        className="pointer-events-none absolute -right-20 top-40 h-48 w-48 rounded-full bg-[#94B6A2]/35 blur-3xl"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute bottom-20 left-1/2 h-40 w-72 -translate-x-1/2 rounded-full bg-white/50 blur-3xl"
         aria-hidden
       />
 
-      <div className="relative space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
+      <div className="relative mx-auto max-w-lg space-y-8">
+        <motion.header
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: easeOut }}
           className="text-center"
         >
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-skinfit-navy to-skinfit-navy-dark shadow-lg shadow-skinfit-navy/30 ring-4 ring-skinfit-mint">
-            <Sparkles className="h-8 w-8 text-white" strokeWidth={2} />
+          <div className="mx-auto mb-6 flex justify-center">
+            <Image
+              src="/branding/skinfit-wellness-logo.svg"
+              alt="SkinFit Wellness"
+              width={560}
+              height={135}
+              priority
+              className="h-10 w-auto max-w-[220px] object-contain sm:h-11 sm:max-w-[260px]"
+            />
           </div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-skinfit-navy">
+          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#3d5080]">
             Your skin companion
           </p>
-          <h1 className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent md:text-4xl">
-            Meet kAI
+          <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-[#1E3264] md:text-[2.75rem]">
+            Meet{" "}
+            <span className="bg-gradient-to-r from-[#2C3E6B] via-[#4A6FA5] to-[#2C3E6B] bg-clip-text text-transparent">
+              kAI
+            </span>
           </h1>
-          <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-zinc-600">
-            kAI reads your photos across many skin parameters, spots trends when
-            you stay consistent, and turns that into clear, personal guidance.
+          <p className="mx-auto mt-3 max-w-xs text-[15px] leading-relaxed text-zinc-600">
+            Eight skin parameters. One clear picture of what&apos;s working.
           </p>
-        </motion.div>
+        </motion.header>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.06, ease: easeOut }}
-          className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-[0_20px_50px_-12px_rgba(44,62,107,0.15)] backdrop-blur-sm"
+          className="grid gap-3 sm:grid-cols-3"
         >
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-skinfit-mint text-skinfit-navy">
-              <BadgeCheck className="h-5 w-5" />
+          {HIGHLIGHTS.map(({ icon: Icon, title, caption }, i) => (
+            <div
+              key={title}
+              className="group rounded-2xl border border-white/80 bg-white/75 p-4 shadow-[0_16px_40px_-20px_rgba(44,62,107,0.28)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/90"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#E8EFF8] to-[#D6E4F0] text-[#2C3E6B] shadow-inner">
+                <Icon className="h-5 w-5" strokeWidth={2} />
+              </div>
+              <p className="text-sm font-bold text-[#1E3264]">{title}</p>
+              <p className="mt-1 text-xs leading-snug text-zinc-500">{caption}</p>
             </div>
-            <h2 className="text-lg font-bold text-zinc-900">What kAI does</h2>
-          </div>
-          <ul className="space-y-3.5">
-            <li className="flex gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-skinfit-mint text-skinfit-navy">
-                <Scan className="h-4 w-4" />
-              </span>
-              <span className="text-sm leading-relaxed text-zinc-700">
-                <strong className="text-zinc-900">Five-angle scoring</strong> —
-                standardised photos, consistent metrics you can trust week to
-                week.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-skinfit-mint text-skinfit-navy">
-                <TrendingUp className="h-4 w-4" />
-              </span>
-              <span className="text-sm leading-relaxed text-zinc-700">
-                <strong className="text-zinc-900">Trends, not one-offs</strong> —
-                highlights progress when you keep up your routine and scans.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-skinfit-mint text-skinfit-navy">
-                <MessageCircle className="h-4 w-4" />
-              </span>
-              <span className="text-sm leading-relaxed text-zinc-700">
-                <strong className="text-zinc-900">Plain-language focus</strong> —
-                actionable nudges; your doctor still leads your care plan.
-              </span>
-            </li>
-          </ul>
+          ))}
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.12, ease: easeOut }}
-          className="rounded-3xl border border-amber-200/60 bg-gradient-to-b from-amber-50/90 to-white p-5 shadow-[0_12px_40px_-16px_rgba(180,83,9,0.15)]"
+          transition={{ duration: 0.4, delay: 0.12, ease: easeOut }}
+          className="rounded-2xl border border-[#2C3E6B]/10 bg-[#2C3E6B]/[0.04] px-4 py-3.5 backdrop-blur-sm"
         >
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
-              <Shield className="h-5 w-5" />
-            </div>
-            <h2 className="text-lg font-bold text-zinc-900">
-              What kAI doesn&apos;t do
-            </h2>
+          <div className="mb-2.5 flex items-center justify-center gap-2 text-[#2C3E6B]">
+            <Shield className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+            <p className="text-xs font-semibold uppercase tracking-[0.16em]">
+              Good to know
+            </p>
           </div>
-          <ul className="space-y-3">
-            <li className="flex gap-3 text-sm leading-relaxed text-zinc-700">
-              <Stethoscope className="mt-0.5 h-4 w-4 shrink-0 text-amber-700/80" />
-              <span>
-                <strong className="text-zinc-900">No diagnosis or prescriptions</strong>{" "}
-                — it doesn&apos;t replace medical judgment.
+          <div className="flex flex-wrap justify-center gap-2">
+            {BOUNDARIES.map((line) => (
+              <span
+                key={line}
+                className="rounded-full border border-white/70 bg-white/80 px-3 py-1 text-[11px] font-medium text-zinc-600 shadow-sm"
+              >
+                {line}
               </span>
-            </li>
-            <li className="flex gap-3 text-sm leading-relaxed text-zinc-700">
-              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-700/80" />
-              <span>
-                <strong className="text-zinc-900">Not a full exam</strong> — some
-                measures still need your clinician in person.
-              </span>
-            </li>
-            <li className="flex gap-3 text-sm leading-relaxed text-zinc-700">
-              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-200/80 text-[10px] font-bold text-amber-900">
-                !
-              </span>
-              <span>
-                <strong className="text-zinc-900">No guaranteed outcomes</strong> —
-                your doctor sets the plan; kAI supports the journey.
-              </span>
-            </li>
-          </ul>
+            ))}
+          </div>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.18, ease: easeOut }}
+          className="pt-1"
         >
           <Link
             href="/onboarding/capture"
-            className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-skinfit-navy to-skinfit-navy-dark px-5 py-4 text-base font-bold text-white shadow-lg shadow-skinfit-navy/35 transition hover:from-skinfit-navy-mid hover:to-skinfit-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skinfit-navy"
+            className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-[#2C3E6B] via-[#3d5080] to-[#1E3264] px-5 py-4 text-base font-bold text-white shadow-[0_14px_36px_-10px_rgba(44,62,107,0.55)] transition hover:shadow-[0_18px_44px_-12px_rgba(44,62,107,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B]"
           >
             <span className="relative z-10 flex items-center gap-2">
               Start baseline scan
-              <Sparkles className="h-4 w-4 opacity-90 transition group-hover:rotate-12" />
+              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </span>
             <span
-              className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 opacity-0 transition group-hover:opacity-100 group-hover:duration-500"
+              className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/12 to-white/0 opacity-0 transition group-hover:opacity-100"
               aria-hidden
             />
           </Link>
-          <p className="mt-3 text-center text-xs text-zinc-500">
-            About 2 minutes · five guided photos for your first kAI baseline
+          <p className="mt-3 text-center text-[11px] font-medium tracking-wide text-zinc-500">
+            ~2 min · 5 guided photos
           </p>
         </motion.div>
       </div>

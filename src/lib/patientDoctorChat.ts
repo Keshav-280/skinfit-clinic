@@ -2,6 +2,9 @@ import { db } from "@/src/db";
 import { chatMessages } from "@/src/db/schema";
 import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
 import {
+  chatAttachmentPreviewText,
+} from "@/src/lib/chatAttachments";
+import {
   ensureDoctorPatientChatThread,
   getAssignedDoctorIdForPatient,
   listRegisteredClinicDoctors,
@@ -23,7 +26,7 @@ async function insertPatientDoctorThreadMessage(
   await db.insert(chatMessages).values({
     threadId,
     sender: "patient",
-    text: text || (body.attachmentUrl?.startsWith("data:audio/") ? "🎤 Voice note" : "🖼️ Image"),
+    text: text || chatAttachmentPreviewText(body.attachmentUrl),
     isUrgent: body.isUrgent,
     attachmentUrl: body.attachmentUrl ?? null,
   });

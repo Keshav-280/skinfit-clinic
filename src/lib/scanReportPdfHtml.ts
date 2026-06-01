@@ -13,6 +13,8 @@ import {
   WRINKLE_MASK_PANEL_LABEL,
 } from "./scanMaskLabels";
 import { SCAN_REPORT_THEME as T, TRACKER_REPORT_THEME as R } from "./scanReportTheme";
+import { scanReportPdfBackgroundCss } from "./scanReportPdfBackground";
+import { TRACKER_RECOMMENDED_VIDEOS } from "./trackerResourceLinks";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
 
 const CAUSES_P1 =
@@ -22,13 +24,6 @@ const CAUSES_P2 =
 
 const OVERVIEW_P2 =
   "Maintaining gentle cleansing, daily photoprotection, and targeted hydration supports long-term barrier health and helps preserve the improvements shown in your latest scan.";
-
-const RECOMMENDED_VIDEOS: { label: string; href: string }[] = [
-  { label: "Routine basics", href: "https://www.youtube.com/watch?v=placeholder1" },
-  { label: "Hydration tips", href: "https://www.youtube.com/watch?v=placeholder2" },
-  { label: "Barrier care", href: "https://www.youtube.com/watch?v=placeholder3" },
-  { label: "Sun protection", href: "https://www.youtube.com/watch?v=placeholder4" },
-];
 
 export type ClinicalScores = {
   active_acne?: number;
@@ -578,7 +573,7 @@ function buildSection3Html(p: ScanReportPdfPayload): string {
       </div>`;
   }
 
-  const videosHtml = RECOMMENDED_VIDEOS.map(
+  const videosHtml = TRACKER_RECOMMENDED_VIDEOS.map(
     (v) =>
       `<li><span class="vid-lbl">${esc(v.label)}: </span><span class="vid-href">${esc(v.href)}</span></li>`
   ).join("");
@@ -638,10 +633,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       background: ${T.pageBg};
       color: ${T.ink};
     }
+    ${scanReportPdfBackgroundCss()}
     .pdf-page {
       width: 595pt;
       min-height: 830pt;
-      background: linear-gradient(180deg, #ffffff 0%, ${T.pageBg} 32%, ${T.sageBand} 72%, ${T.sageBandEnd} 100%);
       page-break-after: avoid;
       page-break-before: avoid;
     }
@@ -671,9 +666,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       position: relative;
       padding: 14px 12px 12px;
       border-radius: 22px;
-      border: 1px solid rgba(255,255,255,0.65);
-      box-shadow: 0 32px 64px -12px rgba(0,0,0,0.14), 0 12px 24px -8px rgba(0,0,0,0.08);
+      border: 1px solid rgba(255,255,255,0.72);
+      box-shadow: 0 24px 48px -16px rgba(44,62,107,0.24), inset 0 1px 0 rgba(255,255,255,0.95);
       overflow: hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(248,251,255,0.88) 100%);
     }
     .sec1::before {
       content: "";
@@ -946,9 +942,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       margin-bottom: 14px;
       padding: 14px 12px;
       border-radius: 20px;
-      border: 1px solid rgba(44,62,107,0.14);
-      background: linear-gradient(180deg, #fff 0%, ${T.pageBg} 55%, #E8EFF8 100%);
-      box-shadow: 0 12px 28px -16px rgba(44,62,107,0.22);
+      border: 1px solid rgba(255,255,255,0.72);
+      background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,255,0.92) 52%, rgba(232,239,248,0.88) 100%);
+      box-shadow: 0 16px 36px -18px rgba(44,62,107,0.28), inset 0 1px 0 rgba(255,255,255,0.95);
     }
     .tr-kicker { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #3d5080; margin: 0; }
     .tr-hook { font-family: Georgia, 'Times New Roman', serif; font-size: 1.35rem; font-weight: 500; line-height: 1.2; color: #18181b; margin: 8px 0 0; }
@@ -1055,6 +1051,13 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
 </head>
 <body>
   <div class="pdf-page">
+    <div class="pdf-bg" aria-hidden="true">
+      <div class="pdf-bg-orb pdf-bg-orb-navy"></div>
+      <div class="pdf-bg-orb pdf-bg-orb-sage"></div>
+      <div class="pdf-bg-orb pdf-bg-orb-accent"></div>
+      <div class="pdf-bg-band"></div>
+      <div class="pdf-bg-dots"></div>
+    </div>
     <div class="pdf-scale">
   <div class="sheet">
     <div class="sec1 avoid-break">

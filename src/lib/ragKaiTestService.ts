@@ -36,6 +36,7 @@ import {
   deriveSkinIdentityAt,
   type DerivedSkinIdentity,
 } from "@/src/lib/ragSkinIdentityDerive";
+import { buildTrackerResources } from "@/src/lib/trackerResourceLinks";
 
 type ParamRow = {
   key: RagKaiParamKey;
@@ -856,6 +857,44 @@ export async function generateRagKaiOutput(input: {
       );
     }
 
+    const section3Article =
+      llmOut?.article ??
+      (evidence[0]
+        ? {
+            title: `Clinical note: ${evidence[0].chunk.tags[0] ?? "Dermatology guidance"}`,
+            source: `${evidence[0].chunk.source}${
+              evidence[0].chunk.pageHint ? ` p.${evidence[0].chunk.pageHint}` : ""
+            }`,
+            why: evidence[0].chunk.text.slice(0, 140).trim(),
+          }
+        : {
+            title: "Barrier-first skincare basics",
+            source: "kAI fallback library",
+            why: "Supports stability while trends are still forming.",
+          });
+    const section3Video = llmOut?.video ?? {
+      title: "Weekly skin check-in routine (5-angle method)",
+      url: "",
+      why: "Keep capture quality stable so trend lines are trustworthy.",
+    };
+    const section3Insight =
+      llmOut?.insight ??
+      (evidence[1]
+        ? {
+            title: "kAI insight from textbook evidence",
+            body: evidence[1].chunk.text.slice(0, 200).trim(),
+          }
+        : {
+            title: "kAI insight",
+            body: "Consistency in AM/PM execution is the fastest lever for better weekly trend quality.",
+          });
+    const section3Resources = buildTrackerResources({
+      article: section3Article,
+      video: section3Video,
+      insight: section3Insight,
+      primaryConcern: identityAtScan.primaryConcern,
+    });
+
     const tracker: WeeklyReportContract = {
       section1: {
         hookLine: llmOut?.hookLine ?? hookFallback(weeklyDelta),
@@ -886,39 +925,15 @@ export async function generateRagKaiOutput(input: {
           "Your trend is still forming. Keep uploads weekly and AM/PM logs complete — that's what lets kAI tie behaviour to outcomes with real confidence.",
       },
       section3: {
-        article:
-          llmOut?.article ??
-          (evidence[0]
-            ? {
-                title: `Clinical note: ${evidence[0].chunk.tags[0] ?? "Dermatology guidance"}`,
-                source: `${evidence[0].chunk.source}${
-                  evidence[0].chunk.pageHint
-                    ? ` p.${evidence[0].chunk.pageHint}`
-                    : ""
-                }`,
-                why: evidence[0].chunk.text.slice(0, 140).trim(),
-              }
-            : {
-                title: "Barrier-first skincare basics",
-                source: "kAI fallback library",
-                why: "Supports stability while trends are still forming.",
-              }),
-        video: llmOut?.video ?? {
-          title: "Weekly skin check-in routine (5-angle method)",
-          url: "https://www.youtube.com/watch?v=0KSOMA3QBU0",
-          why: "Keep capture quality stable so trend lines are trustworthy.",
+        article: {
+          ...section3Article,
+          source: section3Resources[0]!.url,
         },
-        insight:
-          llmOut?.insight ??
-          (evidence[1]
-            ? {
-                title: "kAI insight from textbook evidence",
-                body: evidence[1].chunk.text.slice(0, 200).trim(),
-              }
-            : {
-                title: "kAI insight",
-                body: "Consistency in AM/PM execution is the fastest lever for better weekly trend quality.",
-              }),
+        video: {
+          ...section3Video,
+          url: section3Resources[1]!.url,
+        },
+        insight: section3Insight,
       },
       section4: {
         actions:

@@ -97,6 +97,7 @@ import {
   mapDisplayChatMessages,
 } from "@/src/lib/chatE2ee/format";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
+import { parseChatAttachments } from "@/src/lib/chatAttachments";
 
 const MAX_RECORD_SECONDS = 120;
 const MAX_AUDIO_URI_LEN = 1_800_000;
@@ -4377,29 +4378,32 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         : "border border-slate-200/90 bg-white text-slate-800"
                     }`}
                   >
-                    {dataUriKind(m.attachmentUrl) === "image" ? (
-                      <a
-                        href={m.attachmentUrl ?? "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mb-2 block"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={m.attachmentUrl ?? undefined}
-                          alt=""
-                          className="max-h-40 w-auto rounded-lg object-contain"
+                    {parseChatAttachments(m.attachmentUrl).map((uri, idx) =>
+                      dataUriKind(uri) === "image" ? (
+                        <a
+                          key={`${m.id}-att-${idx}`}
+                          href={uri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mb-2 block"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={uri}
+                            alt=""
+                            className="max-h-40 w-auto rounded-lg object-contain"
+                          />
+                        </a>
+                      ) : dataUriKind(uri) === "audio" ? (
+                        <audio
+                          key={`${m.id}-att-${idx}`}
+                          controls
+                          preload="metadata"
+                          className="mb-2 h-9 w-full max-w-xs"
+                          src={uri}
                         />
-                      </a>
-                    ) : null}
-                    {dataUriKind(m.attachmentUrl) === "audio" ? (
-                      <audio
-                        controls
-                        preload="metadata"
-                        className="mb-2 h-9 w-full max-w-xs"
-                        src={m.attachmentUrl ?? undefined}
-                      />
-                    ) : null}
+                      ) : null
+                    )}
                     {doctorChatDisplayText(m).trim() ? (
                       <p className="whitespace-pre-wrap leading-relaxed">
                         {doctorChatDisplayText(m)}

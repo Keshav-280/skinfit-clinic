@@ -33,6 +33,7 @@ import type {
   PatientTrackerFocusAction,
   PatientTrackerResource,
 } from "@/src/lib/patientTrackerReport.types";
+import { buildTrackerResources } from "@/src/lib/trackerResourceLinks";
 
 type ScanRow = {
   id: number;
@@ -94,29 +95,10 @@ function mapCauses(lines: string[]): PatientTrackerCause[] {
 function resourcesFromRag(
   article: { title: string; source: string; why: string },
   video: { title: string; url: string; why: string },
-  insight: { title: string; body: string }
+  insight: { title: string; body: string },
+  primaryConcern: string | null | undefined
 ): PatientTrackerResource[] {
-  const articleUrl =
-    article.source.startsWith("http")
-      ? article.source
-      : "https://www.aad.org/public/everyday-care/skin-care-basics";
-  return [
-    {
-      title: article.title,
-      url: articleUrl,
-      kind: "article",
-    },
-    {
-      title: video.title,
-      url: video.url || "https://www.youtube.com/watch?v=0KSOMA3QBU0",
-      kind: "video",
-    },
-    {
-      title: insight.title,
-      url: "https://skinfit.example/kai/insight",
-      kind: "insight",
-    },
-  ];
+  return buildTrackerResources({ article, video, insight, primaryConcern });
 }
 
 async function loadVisitNotesUpTo(userId: string, before: Date) {
@@ -407,7 +389,7 @@ export async function buildRagPatientTrackerNarrative(input: {
 
   const video = llmOut?.video ?? {
     title: "Weekly skin check-in routine (5-angle method)",
-    url: "https://www.youtube.com/watch?v=0KSOMA3QBU0",
+    url: "",
     why: "Stable capture keeps trend lines trustworthy.",
   };
 
@@ -468,7 +450,12 @@ export async function buildRagPatientTrackerNarrative(input: {
     detail: a.detail,
   }));
 
-  const resources = resourcesFromRag(article, video, insight);
+  const resources = resourcesFromRag(
+    article,
+    video,
+    insight,
+    identityAtScan.primaryConcern
+  );
 
   const insightText = `${insight.title}. ${insight.body}`;
   const predictionText = `${empathyParagraph} ${scanContextNote}`.trim();

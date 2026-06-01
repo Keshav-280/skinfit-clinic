@@ -18,19 +18,11 @@ function clampText(s: unknown, maxLen: number): string | null {
   return t;
 }
 
-function normalizeAttachment(
-  raw: unknown
-): string | null | "INVALID" {
-  if (raw == null) return null;
-  if (typeof raw !== "string") return "INVALID";
-  const t = raw.trim();
-  if (!t) return null;
-  if (t.length > 3_200_000) return "INVALID";
-  if (!t.startsWith("data:image/") && !t.startsWith("data:audio/")) {
-    return "INVALID";
-  }
-  return t;
-}
+import {
+  chatAttachmentPreviewText,
+  normalizeChatAttachmentsInput,
+  parseChatAttachments,
+} from "@/src/lib/chatAttachments";
 
 export async function POST(req: Request) {
   const userId = await getSessionUserIdFromRequest(req);
@@ -53,6 +45,7 @@ export async function POST(req: Request) {
     text?: unknown;
     isUrgent?: unknown;
     attachmentUrl?: unknown;
+    attachmentUrls?: unknown;
   };
 
   const { assistantId } = b;
@@ -62,7 +55,10 @@ export async function POST(req: Request) {
   }
 
   const isUrgent = Boolean(b.isUrgent);
-  const attachmentParsed = normalizeAttachment(b.attachmentUrl);
+  const attachmentParsed = normalizeChatAttachmentsInput({
+    attachmentUrl: b.attachmentUrl,
+    attachmentUrls: b.attachmentUrls,
+  });
   if (attachmentParsed === "INVALID") {
     return NextResponse.json({ error: "INVALID_ATTACHMENT" }, { status: 400 });
   }
@@ -76,9 +72,7 @@ export async function POST(req: Request) {
 
   let patientText = clampText(b.text, 12000);
   if (!patientText && attachmentUrl) {
-    patientText = attachmentUrl.startsWith("data:audio/")
-      ? "🎤 Voice note"
-      : "🖼️ Image";
+    patientText = chatAttachmentPreviewText(attachmentUrl);
   }
   if (!patientText) {
     return NextResponse.json({ error: "TEXT_REQUIRED" }, { status: 400 });

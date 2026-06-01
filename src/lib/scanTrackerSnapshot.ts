@@ -4,6 +4,7 @@ import type { AppDatabase } from "@/src/db/database-types";
 import { scans } from "@/src/db/schema";
 import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
+import { sanitizeTrackerResources } from "@/src/lib/trackerResourceLinks";
 
 function isMissingTrackerSnapshotColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -48,13 +49,22 @@ export async function loadScanTrackerReport(
   scanId: number,
   stored: PatientTrackerReport | null | undefined
 ): Promise<PatientTrackerReport | null> {
-  if (stored) return stored;
+  if (stored) {
+    return {
+      ...stored,
+      resources: sanitizeTrackerResources(stored.resources),
+    };
+  }
 
   try {
     const built = await buildPatientTrackerReport({ userId, scanId });
     if (!built.ok) return null;
-    await writeTrackerSnapshot(userId, scanId, built.report);
-    return built.report;
+    const report = {
+      ...built.report,
+      resources: sanitizeTrackerResources(built.report.resources),
+    };
+    await writeTrackerSnapshot(userId, scanId, report);
+    return report;
   } catch (e) {
     console.error("[loadScanTrackerReport] build failed", { userId, scanId, e });
     return null;

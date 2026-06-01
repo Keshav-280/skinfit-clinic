@@ -7,7 +7,7 @@ import { TRACKER_REPORT_THEME as R } from "@/src/lib/scanReportTheme";
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
 const sectionCard =
-  "rounded-3xl border border-[rgba(44,62,107,0.14)] bg-gradient-to-b from-white via-[#F4F7FB] to-[#E8EFF8] px-5 py-5 shadow-[0_22px_44px_-20px_rgba(44,62,107,0.22)]";
+  "rounded-3xl border border-white/70 bg-gradient-to-b from-white/95 via-[#F8FBFF]/90 to-[#E8EFF8]/85 px-5 py-5 shadow-[0_24px_48px_-22px_rgba(44,62,107,0.28)] ring-1 ring-[rgba(44,62,107,0.08)] backdrop-blur-[2px]";
 
 const insetCard =
   "rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/90 px-3.5 py-3.5";

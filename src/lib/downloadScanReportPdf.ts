@@ -4,6 +4,10 @@
  */
 
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
+import {
+  paintScanReportPdfBackground,
+  SCAN_REPORT_PDF_MARGIN_RGB,
+} from "@/src/lib/scanReportPdfBackground";
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -136,11 +140,16 @@ function cropCanvasToContent(
   const { width, height } = canvas;
   const { data } = ctx.getImageData(0, 0, width, height);
   const bg = hexToRgb(T.pageBg);
-  const tolerance = 22;
+  const tolerance = 26;
 
   const isMarginPixel = (r: number, g: number, b: number, a: number) => {
     if (a < 8) return true;
-    return (
+    return SCAN_REPORT_PDF_MARGIN_RGB.some(
+      (sample) =>
+        Math.abs(r - sample.r) <= tolerance &&
+        Math.abs(g - sample.g) <= tolerance &&
+        Math.abs(b - sample.b) <= tolerance
+    ) || (
       Math.abs(r - bg.r) <= tolerance &&
       Math.abs(g - bg.g) <= tolerance &&
       Math.abs(b - bg.b) <= tolerance
@@ -188,18 +197,12 @@ function paintPdfPageBackground(pdf: import("jspdf").jsPDF): void {
   const pageWidthMm = pdf.internal.pageSize.getWidth();
   const pageHeightMm = pdf.internal.pageSize.getHeight();
   const bg = document.createElement("canvas");
-  bg.width = 40;
-  bg.height = 80;
+  bg.width = 80;
+  bg.height = 120;
   const ctx = bg.getContext("2d");
   if (!ctx) return;
-  const gradient = ctx.createLinearGradient(0, 0, 0, 80);
-  gradient.addColorStop(0, "#ffffff");
-  gradient.addColorStop(0.22, T.pageBg);
-  gradient.addColorStop(0.72, T.sageBand);
-  gradient.addColorStop(1, T.sageBandEnd);
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 40, 80);
-  pdf.addImage(bg.toDataURL("image/jpeg", 0.9), "JPEG", 0, 0, pageWidthMm, pageHeightMm);
+  paintScanReportPdfBackground(ctx, bg.width, bg.height);
+  pdf.addImage(bg.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, pageWidthMm, pageHeightMm);
 }
 
 /** Scale one tall canvas to fit a single A4 page (width + height). */
@@ -303,7 +306,7 @@ async function renderReportToJsPdf(element: HTMLElement) {
       allowTaint: true,
       foreignObjectRendering: false,
       logging: false,
-      backgroundColor: T.pageBg,
+      backgroundColor: "#eef4fb",
       onclone: (_doc: Document, cloned: HTMLElement) => {
         applyPdfCloneLayout(cloned);
       },

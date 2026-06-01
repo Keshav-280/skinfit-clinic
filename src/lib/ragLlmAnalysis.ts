@@ -193,7 +193,7 @@ Return ONLY JSON with this exact shape:
     {"rank": 3, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."}
   ],
   "article": {"title": "string derived from the best evidence chunk", "source": "string citing E# ref or textbook name+page", "why": "string (<= 25 words) explaining relevance to this patient"},
-  "video": {"title": "string", "url": "string", "why": "string"},
+  "video": {"title": "string", "url": "string (https YouTube or educational link)", "why": "string"},
   "insight": {"title": "string", "body": "string (<= 40 words), grounded in evidence or correlation"}
 }`;
 
