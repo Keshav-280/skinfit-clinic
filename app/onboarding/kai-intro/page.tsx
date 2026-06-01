@@ -38,6 +38,7 @@ const HIGHLIGHTS: {
 const BOUNDARIES = [
   "No diagnosis",
   "No prescriptions",
+  "Some concerns need a clinic visit",
   "Your doctor guides your care",
 ];
 
@@ -51,7 +52,7 @@ export default function KaiIntroPage() {
           className="text-center"
         >
           <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#3d5080]">
-            Your monthly skin check-in
+            Your skin companion
           </p>
           <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-[#1E3264] md:text-[2.75rem]">
             Meet{" "}
@@ -129,9 +130,6 @@ export default function KaiIntroPage() {
               aria-hidden
             />
           </Link>
-          <p className="mt-3 text-center text-[11px] font-medium tracking-wide text-zinc-500">
-            ~2 min · 5 guided photos
-          </p>
         </motion.div>
     </div>
   );

@@ -3,22 +3,27 @@ import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
 /** Shared palette for web capture + jsPDF page paint. */
 export const SCAN_REPORT_PDF_BG = {
   linear:
-    "linear-gradient(165deg, #ffffff 0%, #f8fbff 16%, #eef4fb 42%, #e4edf8 68%, #d9e6f3 100%)",
+    "linear-gradient(165deg, #f7f9f6 0%, #edf3eb 20%, #e6eff8 50%, #dae7f5 80%, #cbdced 100%)",
   orbNavy:
-    "radial-gradient(circle, rgba(44,62,107,0.16) 0%, rgba(44,62,107,0.06) 42%, transparent 72%)",
+    "radial-gradient(circle, rgba(44,62,107,0.26) 0%, rgba(44,62,107,0.09) 45%, transparent 75%)",
   orbSage:
-    "radial-gradient(circle, rgba(148,186,162,0.38) 0%, rgba(168,198,178,0.14) 45%, transparent 72%)",
+    "radial-gradient(circle, rgba(148,186,162,0.52) 0%, rgba(148,186,162,0.18) 45%, transparent 75%)",
   orbAccent:
-    "radial-gradient(circle, rgba(74,111,165,0.18) 0%, rgba(74,111,165,0.06) 40%, transparent 70%)",
+    "radial-gradient(circle, rgba(74,111,165,0.32) 0%, rgba(74,111,165,0.1) 40%, transparent 70%)",
   topBand:
     "linear-gradient(90deg, rgba(30,50,100,0) 0%, rgba(44,62,107,0.22) 50%, rgba(30,50,100,0) 100%)",
-  dotGrid: `radial-gradient(rgba(44,62,107,0.09) 0.55px, transparent 0.55px)`,
-  dotGridSize: "20px 20px",
+  dotGrid: `radial-gradient(rgba(44,62,107,0.13) 0.7px, transparent 0.7px)`,
+  dotGridSize: "24px 24px",
 } as const;
 
 /** Colors treated as empty margin when trimming html2canvas output. */
 export const SCAN_REPORT_PDF_MARGIN_RGB = [
   { r: 255, g: 255, b: 255 },
+  { r: 247, g: 249, b: 246 },
+  { r: 237, g: 243, b: 235 },
+  { r: 230, g: 239, b: 248 },
+  { r: 218, g: 231, b: 245 },
+  { r: 203, g: 220, b: 237 },
   { r: 248, g: 251, b: 255 },
   { r: 238, g: 244, b: 251 },
   { r: 228, g: 237, b: 248 },
@@ -63,17 +68,17 @@ export function paintScanReportPdfBackground(
   height: number
 ): void {
   const base = ctx.createLinearGradient(0, 0, width * 0.35, height);
-  base.addColorStop(0, "#ffffff");
-  base.addColorStop(0.16, "#f8fbff");
-  base.addColorStop(0.42, "#eef4fb");
-  base.addColorStop(0.68, "#e4edf8");
-  base.addColorStop(1, "#d9e6f3");
+  base.addColorStop(0, "#f7f9f6");
+  base.addColorStop(0.2, "#edf3eb");
+  base.addColorStop(0.5, "#e6eff8");
+  base.addColorStop(0.8, "#dae7f5");
+  base.addColorStop(1, "#cbdced");
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, width, height);
 
-  paintOrb(ctx, width * 0.86, height * 0.07, width * 0.42, "44,62,107", 0.14);
-  paintOrb(ctx, width * 0.1, height * 0.52, width * 0.36, "148,186,162", 0.32);
-  paintOrb(ctx, width * 0.74, height * 0.88, width * 0.3, "74,111,165", 0.16);
+  paintOrb(ctx, width * 0.86, height * 0.07, width * 0.42, "44,62,107", 0.24);
+  paintOrb(ctx, width * 0.1, height * 0.52, width * 0.36, "148,186,162", 0.44);
+  paintOrb(ctx, width * 0.74, height * 0.88, width * 0.3, "74,111,165", 0.28);
 
   const band = ctx.createLinearGradient(0, 0, width, 0);
   band.addColorStop(0, "rgba(30,50,100,0)");
@@ -82,12 +87,12 @@ export function paintScanReportPdfBackground(
   ctx.fillStyle = band;
   ctx.fillRect(0, 0, width, Math.max(4, height * 0.012));
 
-  ctx.fillStyle = "rgba(44,62,107,0.045)";
-  const step = Math.max(8, Math.round(width / 24));
+  ctx.fillStyle = "rgba(44,62,107,0.095)";
+  const step = 24;
   for (let y = 0; y < height; y += step) {
     for (let x = 0; x < width; x += step) {
       ctx.beginPath();
-      ctx.arc(x + step / 2, y + step / 2, 0.65, 0, Math.PI * 2);
+      ctx.arc(x + step / 2, y + step / 2, 0.8, 0, Math.PI * 2);
       ctx.fill();
     }
   }

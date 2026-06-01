@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -7,20 +8,41 @@ const NAVY_DARK = "#1E3264";
 const NAVY_LIGHT = "#E8EFF8";
 
 const HIGHLIGHTS = [
-  { icon: "scan-outline" as const, title: "Five-angle scans", caption: "Same flow every week" },
-  { icon: "trending-up-outline" as const, title: "Weekly trends", caption: "Progress over time" },
-  { icon: "sparkles-outline" as const, title: "Personal focus", caption: "Short, clear guidance" },
+  {
+    icon: "scan-outline" as const,
+    title: "Five-angle photos",
+    caption: "Same angles each time, easier to compare",
+  },
+  {
+    icon: "trending-up-outline" as const,
+    title: "Progress over time",
+    caption: "Look at the trend, not just one scan",
+  },
+  {
+    icon: "sparkles-outline" as const,
+    title: "Simple next steps",
+    caption: "Small routine nudges based on your skin",
+  },
 ];
 
-const BOUNDARIES = ["Not a diagnosis", "Not a prescription", "Doctor leads care"];
+const BOUNDARIES = [
+  "No diagnosis",
+  "No prescriptions",
+  "Some concerns need a clinic visit",
+  "Doctor guides care",
+];
 
 export default function KaiIntroScreen() {
   const router = useRouter();
   return (
+    <LinearGradient colors={["#D6E4D0", "#E0EADA", "#EAF0E6"]} style={styles.flex}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.kicker}>YOUR SKIN COMPANION</Text>
+        <Text style={styles.kicker}>YOUR MONTHLY SKIN CHECK-IN</Text>
         <Text style={styles.title}>Meet kAI</Text>
-        <Text style={styles.body}>Eight skin parameters. One clear picture of what&apos;s working.</Text>
+        <Text style={styles.body}>
+          Take the same guided photos each time, so your skin changes are easier
+          to follow.
+        </Text>
 
         <View style={styles.highlightGrid}>
           {HIGHLIGHTS.map((item) => (
@@ -37,7 +59,7 @@ export default function KaiIntroScreen() {
         <View style={styles.boundaryBox}>
           <View style={styles.boundaryHead}>
             <Ionicons name="shield-checkmark-outline" size={16} color={NAVY_DARK} />
-            <Text style={styles.boundaryKicker}>GOOD TO KNOW</Text>
+            <Text style={styles.boundaryKicker}>BEFORE YOU START</Text>
           </View>
           <View style={styles.boundaryRow}>
             {BOUNDARIES.map((line) => (
@@ -57,8 +79,8 @@ export default function KaiIntroScreen() {
             <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
           </LinearGradient>
         </Pressable>
-        <Text style={styles.hint}>~2 min · 5 guided photos</Text>
       </ScrollView>
+    </LinearGradient>
   );
 }
 

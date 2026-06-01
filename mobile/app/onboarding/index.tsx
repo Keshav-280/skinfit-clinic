@@ -12,10 +12,7 @@ export default function OnboardingWelcome() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.kicker}>SKINFIT WELLNESS</Text>
         <Text style={styles.title}>Welcome to your{"\n"}skin journey</Text>
-        <Text style={styles.body}>
-          Your doctor has prepared a short welcome — next you will meet kAI, our analysis assistant, and
-          complete a guided skin assessment (about 10 minutes).
-        </Text>
+        
         <View style={styles.videoPlaceholder}>
           <View style={styles.playCircle}>
             <Text style={styles.playIcon}>{"▶"}</Text>
