@@ -47,6 +47,27 @@ export function inReminderMinuteWindow(
   return now >= t && now < t + windowMinutes;
 }
 
+/**
+ * Hourly cron fires at H:00 — match targets from (H-1):00 through H:00 inclusive.
+ * Example: cron at 09:00 catches an 08:30 AM reminder (narrow 8-minute windows miss this).
+ */
+export function inHourlyCronReminderWindow(
+  nowHm: string,
+  targetHm: string
+): boolean {
+  const nowTotal = hmToMinutes(nowHm);
+  const targetTotal = hmToMinutes(targetHm);
+  const nowHour = Math.floor(nowTotal / 60);
+  const windowEnd = nowHour * 60;
+
+  if (windowEnd === 0) {
+    return targetTotal >= 23 * 60 && targetTotal <= 23 * 60 + 59;
+  }
+
+  const windowStart = windowEnd - 60;
+  return targetTotal >= windowStart && targetTotal <= windowEnd;
+}
+
 export const VALID_HM = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export function isValidHm(s: string): boolean {

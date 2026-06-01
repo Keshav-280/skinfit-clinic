@@ -18,7 +18,7 @@ bash scripts/install-vm-cron.sh
 | Schedule (UTC) | Script | API route |
 |----------------|--------|-----------|
 | Daily 03:00 | `scripts/pg-backup.sh` | (local `pg_dump`) |
-| Hourly `:00` | `scripts/cron-http-call.sh appointment-reminders` | `/api/cron/appointment-reminders` |
+| Every 2 min | `scripts/cron-http-call.sh appointment-reminders` | `/api/cron/appointment-reminders` |
 | Sun 01:00 | `scripts/cron-http-call.sh kai-weekly` | `/api/cron/kai-weekly` |
 | 1st 02:00 | `scripts/cron-http-call.sh kai-monthly` | `/api/cron/kai-monthly` |
 

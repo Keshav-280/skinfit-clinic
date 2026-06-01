@@ -12,6 +12,7 @@ import { GlobalRefreshButton } from "@/components/ui/GlobalRefreshButton";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
 import { runAppointmentReminders } from "@/src/lib/runAppointmentReminders";
+import { runRoutineReminders } from "@/src/lib/runRoutineReminders";
 export default async function DashboardLayout({
   children,
 }: {
@@ -25,9 +26,10 @@ export default async function DashboardLayout({
         await Promise.all([
           markPastAppointmentsCompleted(),
           runAppointmentReminders(),
+          runRoutineReminders(),
         ]);
       } catch (e) {
-        console.error("dashboard appointment sync", e);
+        console.error("dashboard reminder sync", e);
       }
     });
   }

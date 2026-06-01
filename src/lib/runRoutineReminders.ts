@@ -10,6 +10,7 @@ import {
   type RoutineKind,
 } from "@/src/lib/routineReminder";
 import {
+  inHourlyCronReminderWindow,
   inReminderMinuteWindow,
   localYmdAndHm,
   normalizeIanaTimeZone,
@@ -26,10 +27,14 @@ function remainingLabels(
   return items.filter((_, i) => !steps[i]);
 }
 
-export async function runRoutineReminders(): Promise<{
+export async function runRoutineReminders(options?: {
+  /** Hourly VM cron uses a full previous-hour window; client ticks use a narrow window. */
+  trigger?: "cron" | "client";
+}): Promise<{
   sent: number;
   errors: number;
 }> {
+  const trigger = options?.trigger ?? "client";
   const rows = await db
     .select({
       id: users.id,
@@ -93,7 +98,12 @@ export async function runRoutineReminders(): Promise<{
           : row.routinePmReminderLastSentYmd;
       const left = kind === "am" ? amLeft : pmLeft;
 
-      if (!inReminderMinuteWindow(hm, targetHm ?? "08:30", WINDOW_MINUTES)) {
+      const reminderHm = targetHm ?? "08:30";
+      const inWindow =
+        trigger === "cron"
+          ? inHourlyCronReminderWindow(hm, reminderHm)
+          : inReminderMinuteWindow(hm, reminderHm, WINDOW_MINUTES);
+      if (!inWindow) {
         continue;
       }
       if (left.length === 0) continue;
