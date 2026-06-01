@@ -24,9 +24,11 @@ export function SocialAuthButtons({
   disabled,
 }: Props) {
   const googleStatus = getGoogleSignInConfigStatus();
-  const showGoogle = googleStatus !== "hidden";
+  const showGoogle = true;
   const googleReady =
-    googleStatus === "ready" || googleStatus === "needs_native_build";
+    googleStatus === "ready" ||
+    googleStatus === "needs_native_build" ||
+    googleStatus === "needs_web_client_id";
   const showApple = isAppleSignInAvailable();
   const googleHint = googleSignInConfigHint();
 

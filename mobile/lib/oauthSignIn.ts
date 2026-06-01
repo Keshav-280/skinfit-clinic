@@ -3,6 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Platform, TurboModuleRegistry } from "react-native";
 
 import { apiUrl } from "@/lib/api";
+import { decodeBase64UrlToUtf8 } from "@/lib/base64UrlDecode";
 
 export type NativeOAuthProvider = "google" | "apple";
 
@@ -62,7 +63,8 @@ export type GoogleSignInConfigStatus =
 export function getGoogleSignInConfigStatus(): GoogleSignInConfigStatus {
   if (!googleWebClientId()) {
     if (Platform.OS === "ios" && googleIosClientId()) return "needs_web_client_id";
-    return "hidden";
+    // Native id not in env — still allow sign-in via in-app browser → server OAuth.
+    return "needs_native_build";
   }
   if (!isGoogleSignInNativeModuleLinked()) return "needs_native_build";
   return "ready";
@@ -156,17 +158,19 @@ function parseMobileGoogleHandoffUrl(
     return { error: message };
   }
 
+  const tokenRaw = parsed.queryParams?.token;
+  const userRaw = parsed.queryParams?.user;
   const token =
-    typeof parsed.queryParams?.token === "string"
-      ? parsed.queryParams.token
-      : Array.isArray(parsed.queryParams?.token)
-        ? parsed.queryParams.token[0]
+    typeof tokenRaw === "string"
+      ? decodeURIComponent(tokenRaw)
+      : Array.isArray(tokenRaw)
+        ? decodeURIComponent(tokenRaw[0] ?? "")
         : null;
   const userB64 =
-    typeof parsed.queryParams?.user === "string"
-      ? parsed.queryParams.user
-      : Array.isArray(parsed.queryParams?.user)
-        ? parsed.queryParams.user[0]
+    typeof userRaw === "string"
+      ? decodeURIComponent(userRaw)
+      : Array.isArray(userRaw)
+        ? decodeURIComponent(userRaw[0] ?? "")
         : null;
 
   if (!token || !userB64) {
@@ -174,13 +178,16 @@ function parseMobileGoogleHandoffUrl(
   }
 
   try {
-    const userJson = Buffer.from(userB64, "base64url").toString("utf8");
+    const userJson = decodeBase64UrlToUtf8(userB64);
     const user = JSON.parse(userJson) as NativeOAuthMobileSession["user"];
     if (!user?.id || !user?.email) {
       return { error: "Invalid session payload from Google sign-in." };
     }
     return { token, user };
-  } catch {
+  } catch (e) {
+    if (__DEV__) {
+      console.warn("[oauth] parseMobileGoogleHandoffUrl failed", e, url.slice(0, 120));
+    }
     return { error: "Could not read Google sign-in response." };
   }
 }
@@ -257,10 +264,7 @@ async function signInWithGoogleNativeSdk(): Promise<NativeOAuthCredential> {
 
 export async function signInWithGoogleNative(): Promise<NativeOAuthCredential> {
   if (!isGoogleSignInConfigured()) {
-    throw new Error(
-      googleSignInConfigHint() ??
-        "Google sign-in is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in mobile/.env."
-    );
+    return signInWithGoogleWebBrowser();
   }
 
   if (isGoogleSignInNativeModuleLinked()) {

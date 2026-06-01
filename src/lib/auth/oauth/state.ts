@@ -109,11 +109,12 @@ export function sanitizeOAuthMobileReturn(
 ): string | null {
   if (!value || typeof value !== "string") return null;
   const trimmed = value.trim();
-  if (
-    trimmed === "skinfit://oauth/google" ||
-    trimmed.startsWith("skinfit://oauth/google?")
-  ) {
-    return "skinfit://oauth/google";
-  }
-  return null;
+  if (!trimmed.includes("oauth/google")) return null;
+
+  const allowedScheme =
+    /^(skinfit|exp(\+[a-z0-9.-]+)?):\/\//i.test(trimmed);
+  if (!allowedScheme) return null;
+
+  const q = trimmed.indexOf("?");
+  return q === -1 ? trimmed : trimmed.slice(0, q);
 }
