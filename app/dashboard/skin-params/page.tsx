@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Camera, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
+import {
+  RAG_KAI_PARAM_KEYS,
+  RAG_KAI_PARAM_LABELS,
+} from "@/src/lib/ragEightParams";
 
 interface SkinParam {
   name: string;
@@ -10,62 +15,26 @@ interface SkinParam {
   history: { value: number; date: string }[];
 }
 
-const PARAM_KEYS: { key: string; label: string }[] = [
-  { key: "acne_pimples", label: "Acne" },
-  { key: "pores", label: "Pores" },
-  { key: "wrinkles", label: "Wrinkles" },
-  { key: "redness", label: "Redness" },
-  { key: "pigmentation", label: "Pigmentation" },
-  { key: "under_eye", label: "Under Eye" },
-  { key: "skin_quality", label: "Skin Quality" },
-  { key: "hair_health", label: "Hair Health" },
-];
-
-const MODEL_KEY_MAP: Record<string, string> = {
-  under_eye: "under_eye",
-  hair_health: "hair_health",
-  skin_quality: "skin_quality",
-  active_acne: "active_acne",
-};
-
-function severityToClarity(s: number) {
-  const x = Math.max(1, Math.min(5, s));
-  return Math.round(100 - ((x - 1) / 4) * 100);
-}
-
-function extractParamValue(analysisResults: unknown, key: string): number {
-  const a = analysisResults && typeof analysisResults === "object" ? (analysisResults as Record<string, unknown>) : {};
-  const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
-  const fromKai = kp?.[key]?.value;
-  if (typeof fromKai === "number" && Number.isFinite(fromKai)) {
-    return Math.min(100, Math.max(0, Math.round(fromKai)));
-  }
-  const mfs = a.modelFeatureScores as Record<string, unknown> | undefined;
-  const modelKey = MODEL_KEY_MAP[key];
-  if (mfs && modelKey && typeof mfs[modelKey] === "number") {
-    return severityToClarity(mfs[modelKey] as number);
-  }
-  const camelMap: Record<string, string> = {
-    under_eye: "underEye",
-    hair_health: "hairHealth",
-    skin_quality: "skinQuality",
-    active_acne: "activeAcne",
-  };
-  const camel = camelMap[key];
-  if (camel && typeof a[camel] === "number") {
-    return Math.min(100, Math.max(0, Math.round(a[camel] as number)));
-  }
-  return 0;
-}
-
 function extractAllParams(scanHistory: { analysisResults: unknown; createdAt: string }[]): SkinParam[] {
-  return PARAM_KEYS.map(({ key, label }) => {
-    const history = scanHistory.map((scan) => ({
-      value: extractParamValue(scan.analysisResults, key),
-      date: new Date(scan.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    })).reverse();
-    const latestValue = scanHistory.length > 0 ? extractParamValue(scanHistory[0].analysisResults, key) : 0;
-    return { name: label, value: latestValue, history };
+  return RAG_KAI_PARAM_KEYS.map((key) => {
+    const label = RAG_KAI_PARAM_LABELS[key];
+    const history = [...scanHistory]
+      .reverse()
+      .map((scan) => {
+        const row = analysisResultsToParams(scan.analysisResults).find((p) => p.label === label);
+        return {
+          value: row?.value ?? 0,
+          date: new Date(scan.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+        };
+      });
+    const latest =
+      scanHistory.length > 0
+        ? analysisResultsToParams(scanHistory[0].analysisResults).find((p) => p.label === label)
+        : null;
+    return { name: label, value: latest?.value ?? 0, history };
   });
 }
 
@@ -240,10 +209,22 @@ export default function SkinParamsPage() {
           const d = new Date(history[0].createdAt);
           setLastScanDate(d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
         } else {
-          setParameters(PARAM_KEYS.map(({ label }) => ({ name: label, value: 0, history: [] })));
+          setParameters(
+            RAG_KAI_PARAM_KEYS.map((key) => ({
+              name: RAG_KAI_PARAM_LABELS[key],
+              value: 0,
+              history: [],
+            }))
+          );
         }
       } catch {
-        setParameters(PARAM_KEYS.map(({ label }) => ({ name: label, value: 0, history: [] })));
+        setParameters(
+          RAG_KAI_PARAM_KEYS.map((key) => ({
+            name: RAG_KAI_PARAM_LABELS[key],
+            value: 0,
+            history: [],
+          }))
+        );
       } finally {
         setLoading(false);
       }

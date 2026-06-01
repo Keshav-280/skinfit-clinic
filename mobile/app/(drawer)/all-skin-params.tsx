@@ -17,7 +17,7 @@ import { format, subDays } from "date-fns";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
-import { SKIN_HEALTH_PARAM_KEYS, kaiParamClarity } from "@/lib/skinAnalysis";
+import { analysisResultsToParams } from "@/lib/skinAnalysis";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -25,14 +25,14 @@ const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
 
 const PARAM_COLORS: Record<string, string> = {
-  Acne: "#BBF7D0",
-  Pores: "#BAE6FD",
-  Wrinkles: "#DDD6FE",
-  Redness: "#FECACA",
-  Pigmentation: "#C4B5FD",
-  "Under Eye": "#FDE68A",
-  "Skin Quality": "#A7F3D0",
+  "Active Acne": "#BBF7D0",
+  "Sagging & Volume": "#BAE6FD",
   "Hair Health": "#E9D5FF",
+  Wrinkles: "#DDD6FE",
+  "Skin Quality": "#A7F3D0",
+  "Acne Scar": "#FECACA",
+  "Under Eye": "#FDE68A",
+  Pigmentation: "#C4B5FD",
 };
 
 type ScanItem = {
@@ -106,31 +106,21 @@ export default function AllSkinParamsScreen() {
     if (scans.length === 0) return [];
 
     const latest = scans[0];
-    const currentParams = SKIN_HEALTH_PARAM_KEYS.map(
-      ({ key, label }) => ({
-        label,
-        value: kaiParamClarity(latest.analysisResults, key, 0),
-      })
-    );
+    const currentParams = analysisResultsToParams(latest.analysisResults);
 
     const prev = scans.length > 1 ? scans[scans.length - 1] : null;
     const prevMap = new Map(
-      prev
-        ? SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => [
-            label,
-            kaiParamClarity(prev.analysisResults, key, 0),
-          ])
-        : []
+      prev ? analysisResultsToParams(prev.analysisResults).map((p) => [p.label, p.value]) : []
     );
 
     const scansByLabel = new Map<string, number[]>();
-    for (const { label } of SKIN_HEALTH_PARAM_KEYS) {
+    for (const { label } of currentParams) {
       scansByLabel.set(label, []);
     }
     const reversedScans = [...scans].reverse();
     for (const s of reversedScans) {
-      for (const { key, label } of SKIN_HEALTH_PARAM_KEYS) {
-        scansByLabel.get(label)?.push(kaiParamClarity(s.analysisResults, key, 0));
+      for (const row of analysisResultsToParams(s.analysisResults)) {
+        scansByLabel.get(row.label)?.push(row.value);
       }
     }
 

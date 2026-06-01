@@ -28,10 +28,26 @@ import {
 } from "@/components/dashboard/DashboardSectionHeader";
 import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
+import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
+import {
+  RAG_KAI_PARAM_KEYS,
+  RAG_KAI_PARAM_LABELS,
+} from "@/src/lib/ragEightParams";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const EMPTY_RADAR_DATA = RAG_KAI_PARAM_KEYS.map((key) => ({
+  label: RAG_KAI_PARAM_LABELS[key],
+  value: 0,
+}));
+
+function classifySkinParam(v: number) {
+  if (v >= 75) return { color: GREEN, sublabel: "Mild" };
+  if (v >= 50) return { color: "#F59E0B", sublabel: "Moderate" };
+  return { color: "#DC2626", sublabel: "Needs Care" };
+}
 
 type SkinScanItem = {
   id: string;
@@ -86,57 +102,6 @@ type HomeData = {
   routinePmReminderHm: string;
   homeDateYmd?: string;
 };
-
-function extractSkinHealthMetrics(analysis: unknown): { label: string; value: number }[] {
-  const a = analysis && typeof analysis === "object" ? (analysis as Record<string, unknown>) : {};
-  const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
-  function val(key: string, fallback: number): number {
-    const v = kp?.[key]?.value;
-    return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : fallback;
-  }
-  return [
-    { label: "Acne", value: val("acne_pimples", 0) },
-    { label: "Pores", value: val("pores", 0) },
-    { label: "Wrinkles", value: val("wrinkles", 0) },
-    { label: "Redness", value: val("redness", 0) },
-    { label: "Pigmentation", value: val("pigmentation", 0) },
-    { label: "Under Eye", value: val("under_eye", 0) },
-    { label: "Skin Quality", value: val("skin_quality", 0) },
-    { label: "Hair Health", value: val("hair_health", 0) },
-  ];
-}
-
-function extractSkinParams(analysis: unknown): { label: string; value: number; color: string; sublabel: string }[] {
-  const a = analysis && typeof analysis === "object" ? (analysis as Record<string, unknown>) : {};
-  const kp = a.kaiParams as Record<string, { value?: number }> | undefined;
-  function val(key: string, fallback: number): number {
-    const v = kp?.[key]?.value;
-    return typeof v === "number" && Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v))) : fallback;
-  }
-  function classify(v: number) {
-    if (v >= 75) return { color: GREEN, sublabel: "Mild" };
-    if (v >= 50) return { color: "#F59E0B", sublabel: "Moderate" };
-    return { color: "#DC2626", sublabel: "Needs Care" };
-  }
-  const acne = val("acne_pimples", 0);
-  const pores = val("pores", 0);
-  const wrinkles = val("wrinkles", 0);
-  const redness = val("redness", 0);
-  const pigmentation = val("pigmentation", 0);
-  const underEye = val("under_eye", 0);
-  const skinQuality = val("skin_quality", 0);
-  const hairHealth = val("hair_health", 0);
-  return [
-    { label: "Acne", value: acne, ...classify(acne) },
-    { label: "Pores", value: pores, ...classify(pores) },
-    { label: "Wrinkles", value: wrinkles, ...classify(wrinkles) },
-    { label: "Redness", value: redness, ...classify(redness) },
-    { label: "Pigmentation", value: pigmentation, ...classify(pigmentation) },
-    { label: "Under Eye", value: underEye, ...classify(underEye) },
-    { label: "Skin Quality", value: skinQuality, ...classify(skinQuality) },
-    { label: "Hair Health", value: hairHealth, ...classify(hairHealth) },
-  ];
-}
 
 /* ─── Circular Gauge ─── */
 function CircularGauge({ value, size = 72, strokeWidth = 6, color }: { value: number; size?: number; strokeWidth?: number; color: string }) {
@@ -458,18 +423,16 @@ export function PatientDashboardDesktop() {
   );
 
   const radarData = useMemo(() => {
-    if (!data || data.skinScanHistory.length === 0) return [
-      { label: "Acne", value: 0 }, { label: "Pores", value: 0 },
-      { label: "Wrinkles", value: 0 }, { label: "Redness", value: 0 },
-      { label: "Pigmentation", value: 0 }, { label: "Under Eye", value: 0 },
-      { label: "Skin Quality", value: 0 }, { label: "Hair Health", value: 0 },
-    ];
-    return extractSkinHealthMetrics(data.skinScanHistory[0].analysisResults);
+    if (!data || data.skinScanHistory.length === 0) return EMPTY_RADAR_DATA;
+    return analysisResultsToParams(data.skinScanHistory[0].analysisResults);
   }, [data]);
 
   const skinParams = useMemo(() => {
     if (!data || data.skinScanHistory.length === 0) return [];
-    return extractSkinParams(data.skinScanHistory[0].analysisResults);
+    return analysisResultsToParams(data.skinScanHistory[0].analysisResults).map((p) => ({
+      ...p,
+      ...classifySkinParam(p.value),
+    }));
   }, [data]);
 
   // Reminder countdown — hidden with Next Reminder card below; restore when re-enabling.

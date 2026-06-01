@@ -51,16 +51,16 @@ export type SkinParamRow = {
   detail?: string;
 };
 
-/** Same 8 kAI keys as web dashboard radar + skin-params page. */
+/** Same 8 kAI keys as patient report (`ragEightParams`). */
 export const SKIN_HEALTH_PARAM_KEYS = [
-  { key: "acne_pimples", label: "Acne" },
-  { key: "pores", label: "Pores" },
-  { key: "wrinkles", label: "Wrinkles" },
-  { key: "redness", label: "Redness" },
-  { key: "pigmentation", label: "Pigmentation" },
-  { key: "under_eye", label: "Under Eye" },
-  { key: "skin_quality", label: "Skin Quality" },
+  { key: "active_acne", label: "Active Acne" },
+  { key: "sagging_volume", label: "Sagging & Volume" },
   { key: "hair_health", label: "Hair Health" },
+  { key: "wrinkles", label: "Wrinkles" },
+  { key: "skin_quality", label: "Skin Quality" },
+  { key: "acne_scar", label: "Acne Scar" },
+  { key: "under_eye", label: "Under Eye" },
+  { key: "pigmentation", label: "Pigmentation" },
 ] as const;
 
 function analysisRecord(analysis: unknown): Record<string, unknown> {
@@ -69,24 +69,24 @@ function analysisRecord(analysis: unknown): Record<string, unknown> {
     : {};
 }
 
-/** 0–100 clarity from `kaiParams` (matches web `extractSkinHealthMetrics`). */
+/** 0–100 clarity from `kaiParams` (legacy helper — prefer `analysisResultsToParams`). */
 export function kaiParamClarity(
   analysis: unknown,
   key: string,
   fallback = 0
 ): number {
-  const v = kaiParamValue(analysisRecord(analysis).kaiParams, key);
-  return v != null ? clamp100(v) : fallback;
+  const row = analysisResultsToParams(analysis).find((p) => {
+    const match = SKIN_HEALTH_PARAM_KEYS.find((k) => k.key === key);
+    return match ? p.label === match.label : false;
+  });
+  return row?.value ?? fallback;
 }
 
-/** Octagonal radar data — same labels/keys as website. */
+/** Octagonal radar data — same 8 parameters as the patient report. */
 export function extractSkinHealthMetrics(
   analysis: unknown
 ): { label: string; value: number }[] {
-  return SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => ({
-    label,
-    value: kaiParamClarity(analysis, key, 0),
-  }));
+  return analysisResultsToParams(analysis);
 }
 
 export type SkinParamMetricRow = SkinParamRow & {
@@ -100,20 +100,19 @@ function classifyParam(v: number): { color: string; status: string } {
   return { color: "#DC2626", status: "Needs Care" };
 }
 
-/** Ring grid on home — 8 parameters matching web `extractSkinParams`. */
+/** Ring grid on home — 8 parameters matching the patient report. */
 export function extractSkinParamMetrics(analysis: unknown): SkinParamMetricRow[] {
   const a = analysisRecord(analysis);
   const spatial = parseSpatialOutputsFromAnalysis(a);
   const wrinkleDetail = formatWrinkleHeadDetail(spatial);
   const acneDetail = formatAcneHeadDetail(spatial);
 
-  return SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => {
-    const value = kaiParamClarity(analysis, key, 0);
-    const base = { label, value, ...classifyParam(value) };
-    if (key === "acne_pimples" && acneDetail) {
+  return analysisResultsToParams(analysis).map((row) => {
+    const base = { label: row.label, value: row.value, ...classifyParam(row.value) };
+    if (row.label === "Active Acne" && acneDetail) {
       return { ...base, detail: acneDetail };
     }
-    if (key === "wrinkles" && wrinkleDetail) {
+    if (row.label === "Wrinkles" && wrinkleDetail) {
       return { ...base, detail: wrinkleDetail };
     }
     return base;
