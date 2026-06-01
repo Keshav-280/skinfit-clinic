@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -18,9 +17,7 @@ const BOUNDARIES = ["Not a diagnosis", "Not a prescription", "Doctor leads care"
 export default function KaiIntroScreen() {
   const router = useRouter();
   return (
-    <LinearGradient colors={["#D6E4D0", "#E0EADA", "#EAF0E6"]} style={styles.flex}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.brand}>SkinFit Wellness</Text>
         <Text style={styles.kicker}>YOUR SKIN COMPANION</Text>
         <Text style={styles.title}>Meet kAI</Text>
         <Text style={styles.body}>Eight skin parameters. One clear picture of what&apos;s working.</Text>
@@ -62,7 +59,6 @@ export default function KaiIntroScreen() {
         </Pressable>
         <Text style={styles.hint}>~2 min · 5 guided photos</Text>
       </ScrollView>
-    </LinearGradient>
   );
 }
 

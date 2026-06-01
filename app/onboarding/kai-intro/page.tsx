@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -21,62 +20,38 @@ const HIGHLIGHTS: {
 }[] = [
   {
     icon: Scan,
-    title: "Five-angle scans",
-    caption: "Same capture flow every week",
+    title: "Five-angle photos",
+    caption: "Same angles each time, easier to compare",
   },
   {
     icon: TrendingUp,
-    title: "Weekly trends",
-    caption: "See progress, not one-off scores",
+    title: "Progress over time",
+    caption: "Look at the trend, not just one scan",
   },
   {
     icon: Sparkles,
-    title: "Personal focus",
-    caption: "Short, actionable guidance",
+    title: "Simple next steps",
+    caption: "Small routine nudges based on your skin",
   },
 ];
 
 const BOUNDARIES = [
-  "Not a diagnosis",
-  "Not a prescription",
-  "Your doctor leads care",
+  "No diagnosis",
+  "No prescriptions",
+  "Your doctor guides your care",
 ];
 
 export default function KaiIntroPage() {
   return (
-    <div className="relative overflow-hidden">
-      <div
-        className="pointer-events-none absolute -left-24 top-0 h-56 w-56 rounded-full bg-[#2C3E6B]/12 blur-3xl"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -right-20 top-40 h-48 w-48 rounded-full bg-[#94B6A2]/35 blur-3xl"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute bottom-20 left-1/2 h-40 w-72 -translate-x-1/2 rounded-full bg-white/50 blur-3xl"
-        aria-hidden
-      />
-
-      <div className="relative mx-auto max-w-lg space-y-8">
+    <div className="mx-auto max-w-lg space-y-8">
         <motion.header
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: easeOut }}
           className="text-center"
         >
-          <div className="mx-auto mb-6 flex justify-center">
-            <Image
-              src="/branding/skinfit-wellness-logo.svg"
-              alt="SkinFit Wellness"
-              width={560}
-              height={135}
-              priority
-              className="h-10 w-auto max-w-[220px] object-contain sm:h-11 sm:max-w-[260px]"
-            />
-          </div>
           <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#3d5080]">
-            Your skin companion
+            Your monthly skin check-in
           </p>
           <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-[#1E3264] md:text-[2.75rem]">
             Meet{" "}
@@ -85,7 +60,8 @@ export default function KaiIntroPage() {
             </span>
           </h1>
           <p className="mx-auto mt-3 max-w-xs text-[15px] leading-relaxed text-zinc-600">
-            Eight skin parameters. One clear picture of what&apos;s working.
+            Take the same guided photos each time, so your skin changes are
+            easier to follow.
           </p>
         </motion.header>
 
@@ -98,7 +74,7 @@ export default function KaiIntroPage() {
           {HIGHLIGHTS.map(({ icon: Icon, title, caption }, i) => (
             <div
               key={title}
-              className="group rounded-2xl border border-white/80 bg-white/75 p-4 shadow-[0_16px_40px_-20px_rgba(44,62,107,0.28)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/90"
+              className="group rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               style={{ animationDelay: `${i * 40}ms` }}
             >
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#E8EFF8] to-[#D6E4F0] text-[#2C3E6B] shadow-inner">
@@ -114,12 +90,12 @@ export default function KaiIntroPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.12, ease: easeOut }}
-          className="rounded-2xl border border-[#2C3E6B]/10 bg-[#2C3E6B]/[0.04] px-4 py-3.5 backdrop-blur-sm"
+          className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5"
         >
           <div className="mb-2.5 flex items-center justify-center gap-2 text-[#2C3E6B]">
             <Shield className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
             <p className="text-xs font-semibold uppercase tracking-[0.16em]">
-              Good to know
+              Before you start
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
@@ -157,7 +133,6 @@ export default function KaiIntroPage() {
             ~2 min · 5 guided photos
           </p>
         </motion.div>
-      </div>
     </div>
   );
 }

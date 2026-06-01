@@ -60,8 +60,8 @@ export function OnboardingLayoutShell({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6]">
-      <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 px-4 py-3 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
+    <div className="min-h-screen bg-white">
+      <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white px-4 py-3 shadow-sm">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <Link
             href="/onboarding"
