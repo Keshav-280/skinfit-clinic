@@ -59,10 +59,13 @@ export function OnboardingLayoutShell({
     );
   }
 
+  const isKaiIntro = pathname === "/onboarding/kai-intro";
+  const maxWidthClass = isKaiIntro ? "max-w-5xl" : "max-w-3xl";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6]">
       <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 px-4 py-3 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        <div className={`mx-auto flex ${maxWidthClass} items-center justify-between gap-3`}>
           <Link
             href="/onboarding"
             className="inline-flex shrink-0 items-center"
@@ -79,7 +82,7 @@ export function OnboardingLayoutShell({
           <span className="hidden w-[7rem] sm:block" aria-hidden />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl px-4 py-8 pb-16">{children}</main>
+      <main className={`mx-auto w-full ${maxWidthClass} px-4 py-8 pb-16`}>{children}</main>
     </div>
   );
 }
