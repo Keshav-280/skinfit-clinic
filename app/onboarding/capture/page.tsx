@@ -46,7 +46,7 @@ export default function OnboardingCaptureIntroPage() {
           {n} baseline photos
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-[#6B7280]">
-          ~2 minutes · we prompt each angle. Camera or upload — same flow as Scan.
+          ~2 minutes · We prompt each angle. Take a photo or upload from library.
         </p>
       </div>
 

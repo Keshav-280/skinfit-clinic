@@ -183,12 +183,15 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const reviewingCapture = pendingCapture != null;
   const guidanceActive = cameraOpen && !reviewingCapture;
 
+  const previewFilter = `brightness(${brightness}%) contrast(${contrast}%)`;
+
   const { guidance, models, needsExpressionModel, faceTracked, bboxSource } =
     useWebScanCaptureGuidance(
       videoRef,
       guidanceActive,
       captureZoom,
-      currentCameraStep.id
+      currentCameraStep.id,
+      previewFilter
     );
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -199,8 +202,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     step: `${Math.min(captures.length + 1, N_CAPTURES)}/${N_CAPTURES}`,
     bbox: bboxSource,
   };
-
-  const previewFilter = `brightness(${brightness}%) contrast(${contrast}%)`;
   const adjustmentsChanged =
     brightness !== ADJUST_DEFAULT || contrast !== ADJUST_DEFAULT;
 
@@ -742,6 +743,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
                   Adjust
+                </p>
+                <p className="text-[11px] leading-snug text-[#6B7280]">
+                  Brightness and contrast update the preview, photo, and lighting
+                  tips. Zoom only crops the frame.
                 </p>
                 <AdjustSlider
                   icon={<Sun className="h-4 w-4 text-[#2C3E6B]/70" />}

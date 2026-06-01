@@ -567,7 +567,9 @@ export function sampleVideoFrame(
   video: HTMLVideoElement,
   sampleWidth = 160,
   sampleHeight = 200,
-  cropZoom = 1
+  cropZoom = 1,
+  /** Same CSS filter as live preview (brightness/contrast sliders). */
+  imageFilter?: string
 ): ImageData | null {
   const w = video.videoWidth;
   const h = video.videoHeight;
@@ -584,7 +586,9 @@ export function sampleVideoFrame(
   canvas.height = sampleHeight;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
+  ctx.filter = imageFilter?.trim() || "none";
   ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sampleWidth, sampleHeight);
+  ctx.filter = "none";
   return ctx.getImageData(0, 0, sampleWidth, sampleHeight);
 }
 

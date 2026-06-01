@@ -606,10 +606,6 @@ export function LoginForm() {
             <Link href="/doctor/login" className="text-[#2C3E6B] hover:text-[#3d5080]">
               Doctor portal
             </Link>
-            {" · "}Need help?{" "}
-            <Link href="/contact" className="text-[#2C3E6B] hover:text-[#3d5080]">
-              Contact us
-            </Link>
           </p>
         </div>
       </div>

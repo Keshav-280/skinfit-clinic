@@ -147,7 +147,9 @@ export function useWebScanCaptureGuidance(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   enabled: boolean,
   currentZoom: number,
-  stepId: CaptureStepId
+  stepId: CaptureStepId,
+  /** Match preview/capture brightness & contrast so guidance reflects adjusted image. */
+  previewFilter = "brightness(100%) contrast(100%)"
 ) {
   const [guidance, setGuidance] = useState<CaptureGuidanceSnapshot | null>(null);
   const [faceLandmarks, setFaceLandmarks] = useState<NormalizedLandmark[] | null>(
@@ -289,7 +291,13 @@ export function useWebScanCaptureGuidance(
 
     busyRef.current = true;
     try {
-      const imageData = sampleVideoFrame(video, PREVIEW_W, PREVIEW_H, currentZoom);
+      const imageData = sampleVideoFrame(
+        video,
+        PREVIEW_W,
+        PREVIEW_H,
+        currentZoom,
+        previewFilter
+      );
       if (!imageData) return;
 
       const lighting = analyzeLightingFromRgba(
@@ -529,7 +537,16 @@ export function useWebScanCaptureGuidance(
     } finally {
       busyRef.current = false;
     }
-  }, [videoRef, enabled, currentZoom, stepId, needsExpressionModel, models.mediapipe, models.blazeFace]);
+  }, [
+    videoRef,
+    enabled,
+    currentZoom,
+    stepId,
+    needsExpressionModel,
+    models.mediapipe,
+    models.blazeFace,
+    previewFilter,
+  ]);
 
   useEffect(() => {
     if (!enabled) {

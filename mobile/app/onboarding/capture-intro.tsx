@@ -42,7 +42,7 @@ export default function OnboardingCaptureIntroScreen() {
         <Text style={styles.kicker}>Baseline</Text>
         <Text style={styles.title}>{N} baseline photos</Text>
         <Text style={styles.sub}>
-          ~2 minutes · we prompt each angle. Camera or upload — same flow as Scan.
+          ~2 minutes · We prompt each angle. Take a photo or upload from library.
         </Text>
 
         <View style={styles.card}>
