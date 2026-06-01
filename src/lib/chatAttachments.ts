@@ -23,6 +23,45 @@ function fileToDataUri(file: Blob): Promise<string> {
   });
 }
 
+const IMAGE_EXT =
+  /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif|avif)$/i;
+const AUDIO_EXT =
+  /\.(mp3|wav|m4a|aac|ogg|webm|mp4|caf)$/i;
+
+/** Some browsers report empty or generic MIME for camera/gallery picks. */
+export function resolveChatAttachmentMime(file: File): string {
+  const raw = file.type.trim().toLowerCase();
+  if (raw && raw !== "application/octet-stream") return raw;
+  const name = file.name.toLowerCase();
+  if (IMAGE_EXT.test(name)) {
+    if (name.endsWith(".png")) return "image/png";
+    if (name.endsWith(".gif")) return "image/gif";
+    if (name.endsWith(".webp")) return "image/webp";
+    if (name.endsWith(".svg")) return "image/svg+xml";
+    if (name.endsWith(".heic") || name.endsWith(".heif")) return "image/heic";
+    if (name.endsWith(".avif")) return "image/avif";
+    return "image/jpeg";
+  }
+  if (AUDIO_EXT.test(name)) {
+    if (name.endsWith(".wav")) return "audio/wav";
+    if (name.endsWith(".webm")) return "audio/webm";
+    if (name.endsWith(".m4a") || name.endsWith(".mp4")) return "audio/mp4";
+    if (name.endsWith(".ogg")) return "audio/ogg";
+    return "audio/mpeg";
+  }
+  return raw;
+}
+
+export function isChatImageFile(file: File): boolean {
+  const mime = resolveChatAttachmentMime(file);
+  return mime.startsWith("image/") || IMAGE_EXT.test(file.name);
+}
+
+export function isChatAudioFile(file: File): boolean {
+  const mime = resolveChatAttachmentMime(file);
+  return mime.startsWith("audio/") || AUDIO_EXT.test(file.name);
+}
+
 function loadImageForCanvas(dataUri: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -40,42 +79,50 @@ export async function compressChatImageDataUri(
   const original = await fileToDataUri(file);
   if (original.length <= limitChars) return original;
 
-  const img = await loadImageForCanvas(original);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return original;
+  try {
+    const img = await loadImageForCanvas(original);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return original;
 
-  const scales = [1, 0.85, 0.7, 0.55, 0.45, 0.35];
-  const qualities = [0.88, 0.78, 0.68, 0.58, 0.48, 0.38];
+    const scales = [1, 0.85, 0.7, 0.55, 0.45, 0.35];
+    const qualities = [0.88, 0.78, 0.68, 0.58, 0.48, 0.38];
 
-  let best = original;
-  for (const scale of scales) {
-    const w = Math.max(280, Math.round(img.width * scale));
-    const h = Math.max(280, Math.round(img.height * scale));
-    canvas.width = w;
-    canvas.height = h;
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
+    let best = original;
+    for (const scale of scales) {
+      const w = Math.max(280, Math.round(img.width * scale));
+      const h = Math.max(280, Math.round(img.height * scale));
+      canvas.width = w;
+      canvas.height = h;
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
 
-    for (const q of qualities) {
-      const candidate = canvas.toDataURL("image/jpeg", q);
-      if (candidate.length < best.length) best = candidate;
-      if (candidate.length <= limitChars) return candidate;
+      for (const q of qualities) {
+        const candidate = canvas.toDataURL("image/jpeg", q);
+        if (candidate.length < best.length) best = candidate;
+        if (candidate.length <= limitChars) return candidate;
+      }
     }
+    return best;
+  } catch {
+    // HEIC / unsupported decode — keep original if small enough, else fail upstream.
+    return original;
   }
-  return best;
 }
 
 export async function prepareChatAttachmentFromFile(
   file: File
 ): Promise<ChatPendingAttachment> {
-  if (!file.type.startsWith("image/") && !file.type.startsWith("audio/")) {
+  if (!isChatImageFile(file) && !isChatAudioFile(file)) {
     throw new Error("ONLY_IMAGE_OR_AUDIO");
   }
 
   let dataUri: string;
-  if (file.type.startsWith("image/")) {
+  if (isChatImageFile(file)) {
     dataUri = await compressChatImageDataUri(file);
+    if (dataUri.length > PER_FILE_TARGET_CHARS) {
+      throw new Error("IMAGE_TOO_LARGE");
+    }
   } else {
     dataUri = await fileToDataUri(file);
     if (dataUri.length > PER_FILE_TARGET_CHARS) {

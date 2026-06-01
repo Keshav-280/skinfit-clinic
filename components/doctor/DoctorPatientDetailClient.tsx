@@ -97,7 +97,11 @@ import {
   mapDisplayChatMessages,
 } from "@/src/lib/chatE2ee/format";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
-import { parseChatAttachments } from "@/src/lib/chatAttachments";
+import {
+  compressChatImageDataUri,
+  isChatImageFile,
+  parseChatAttachments,
+} from "@/src/lib/chatAttachments";
 
 const MAX_RECORD_SECONDS = 120;
 const MAX_AUDIO_URI_LEN = 1_800_000;
@@ -4432,25 +4436,29 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                e.currentTarget.value = "";
-                if (!f?.type.startsWith("image/")) {
+              onChange={(e) => {
+                const input = e.currentTarget;
+                const f = input.files?.[0] ?? null;
+                input.value = "";
+                if (!f) return;
+                if (!isChatImageFile(f)) {
                   setDoctorChatHint("Images only for file attach — use mic for voice.");
                   return;
                 }
-                try {
-                  const dataUri = await blobToDataUri(f);
-                  if (dataUri.length > MAX_CHAT_ATTACHMENT_URI_LEN) {
-                    setDoctorChatHint("Image is too large.");
-                    return;
+                void (async () => {
+                  try {
+                    const dataUri = await compressChatImageDataUri(f);
+                    if (dataUri.length > MAX_CHAT_ATTACHMENT_URI_LEN) {
+                      setDoctorChatHint("Image is too large. Try a smaller JPG or PNG.");
+                      return;
+                    }
+                    clearChatVoicePreview();
+                    setDoctorChatAttachment({ fileName: f.name, dataUri });
+                    setDoctorChatHint(null);
+                  } catch {
+                    setDoctorChatHint("Could not read image. Try JPG or PNG.");
                   }
-                  clearChatVoicePreview();
-                  setDoctorChatAttachment({ fileName: f.name, dataUri });
-                  setDoctorChatHint(null);
-                } catch {
-                  setDoctorChatHint("Could not read image.");
-                }
+                })();
               }}
             />
 

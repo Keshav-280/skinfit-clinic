@@ -116,6 +116,7 @@ export default function ChatPage() {
     [activeAssistant, activeDoctorId]
   );
   const [attachments, setAttachments] = useState<ChatPendingAttachment[]>([]);
+  const [composerError, setComposerError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordElapsed, setRecordElapsed] = useState(0);
@@ -823,28 +824,28 @@ export default function ChatPage() {
 
   useEffect(() => {
     setAttachments([]);
+    setComposerError(null);
   }, [activeAssistant, activeDoctorId]);
 
-  const addAttachmentFiles = useCallback(async (files: FileList | File[]) => {
+  const addAttachmentFiles = useCallback(async (files: File[]) => {
     if (activeAssistant === "ai") {
-      setError("Attachments are only available in Doctor and Clinic Support chats.");
+      setComposerError("Attachments are only available in Doctor and Clinic Support chats.");
       return;
     }
-    const list = Array.from(files);
-    if (list.length === 0) return;
+    if (files.length === 0) return;
 
     const next: ChatPendingAttachment[] = [];
-    for (const file of list) {
+    for (const file of files) {
       try {
         next.push(await prepareChatAttachmentFromFile(file));
       } catch (e) {
         const code = e instanceof Error ? e.message : "";
         if (code === "ONLY_IMAGE_OR_AUDIO") {
-          setError("Only image or audio files are supported.");
-        } else if (code === "AUDIO_TOO_LARGE") {
-          setError(`${file.name} is too large. Try a shorter clip or smaller image.`);
+          setComposerError("Only image or audio files are supported.");
+        } else if (code === "IMAGE_TOO_LARGE" || code === "AUDIO_TOO_LARGE") {
+          setComposerError(`${file.name} is too large. Try a smaller image or shorter clip.`);
         } else {
-          setError("Could not read attachment.");
+          setComposerError("Could not read attachment. Try JPG or PNG.");
         }
       }
     }
@@ -853,9 +854,9 @@ export default function ChatPage() {
     setAttachments((prev) => {
       const merged = [...prev, ...next].slice(0, MAX_CHAT_PENDING_ATTACHMENTS);
       if (prev.length + next.length > MAX_CHAT_PENDING_ATTACHMENTS) {
-        setError(`Only ${MAX_CHAT_PENDING_ATTACHMENTS} files per message.`);
+        setComposerError(`Only ${MAX_CHAT_PENDING_ATTACHMENTS} files per message.`);
       } else {
-        setError(null);
+        setComposerError(null);
       }
       return merged;
     });
@@ -1351,6 +1352,11 @@ export default function ChatPage() {
         </div>
 
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
+          {composerError ? (
+            <p role="alert" className="mb-2 text-xs font-medium text-rose-700">
+              {composerError}
+            </p>
+          ) : null}
           {attachments.length > 0 ? (
             <div className="mb-2 flex flex-wrap gap-2">
               {attachments.map((file) => (
@@ -1395,11 +1401,12 @@ export default function ChatPage() {
               accept="image/*,audio/*"
               multiple
               className="hidden"
-              onChange={async (e) => {
-                const picked = e.target.files;
-                e.currentTarget.value = "";
-                if (!picked?.length) return;
-                await addAttachmentFiles(picked);
+              onChange={(e) => {
+                const input = e.currentTarget;
+                const picked = input.files ? Array.from(input.files) : [];
+                input.value = "";
+                if (picked.length === 0) return;
+                void addAttachmentFiles(picked);
               }}
             />
             <button
@@ -1433,7 +1440,7 @@ export default function ChatPage() {
               placeholder={
                 activeAssistant === "ai"
                   ? "Type a message for AI..."
-                  : "Type a message (attach images/audio with + or mic)..."
+                  : "Type a message (attach with paperclip or mic)..."
               }
               className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 focus:outline-none"
               value={inputValue}
