@@ -299,8 +299,6 @@ async function renderReportToJsPdf(element: HTMLElement) {
       format: "a4",
       orientation: "portrait",
     });
-    pdf.viewerPreferences({ FitWindow: true }, true);
-    pdf.setDisplayMode("fullpage", "single");
 
     const captureOpts = {
       scale: 2,

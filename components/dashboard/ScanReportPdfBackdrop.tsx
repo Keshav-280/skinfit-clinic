@@ -25,7 +25,7 @@ export function ScanReportPdfBackdrop() {
         style={{ background: SCAN_REPORT_PDF_BG.topBand }}
       />
       <div
-        className="absolute inset-0 opacity-55"
+        className="absolute inset-0 opacity-40"
         style={{
           backgroundImage: SCAN_REPORT_PDF_BG.dotGrid,
           backgroundSize: SCAN_REPORT_PDF_BG.dotGridSize,
