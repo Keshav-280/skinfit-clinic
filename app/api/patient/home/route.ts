@@ -245,7 +245,7 @@ async function buildPatientHomePayload(
     streakLogs,
     resolveRoutinePlan
   );
-  const streakStats = computeStreakStats(streakCompleted, localTodayYmd);
+  const streakStats = computeStreakStats(streakCompleted, todayYmdFromProfile);
   const streakCurrent = streakStats.current;
   const streakLongest = Math.max(
     userRow.streakLongest ?? 0,

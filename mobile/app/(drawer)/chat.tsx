@@ -57,6 +57,7 @@ type ChatMsg = {
   id: string;
   sender: ChatSender;
   text: string;
+  attachmentUrl?: string | null;
   createdAt?: string;
 };
 
@@ -75,6 +76,7 @@ type RegisteredDoctor = {
   imageUrl?: string;
   lastMessage?: string;
   lastMessageAt?: string;
+  hasUnreadClinicMessage?: boolean;
 };
 
 type DoctorProfile = {
@@ -166,6 +168,7 @@ const THREAD_CACHE_KEY_PREFIX = "skinfit-chat-thread-v1:";
 const THREAD_CACHE_TTL_MS = 5 * 60 * 1000;
 const CHAT_STREAM_PATH = "/api/chat/plain/stream";
 const CHAT_INBOX_STREAM_PATH = "/api/chat/plain/inbox-stream";
+const MAX_CHAT_IMAGE_DATA_URI_LEN = 520_000;
 const APPOINTMENT_KEYWORDS = [
   "appointment",
   "scheduled",
@@ -195,15 +198,41 @@ function normalizeApiMessages(rows: unknown): ChatMsg[] {
     const r = row as Record<string, unknown>;
     const id = typeof r.id === "string" ? r.id : null;
     const text = typeof r.text === "string" ? r.text : "";
+    const attachmentUrl =
+      typeof r.attachmentUrl === "string" && r.attachmentUrl.trim()
+        ? r.attachmentUrl.trim()
+        : null;
     const sender = r.sender;
     if (sender !== "patient" && sender !== "doctor" && sender !== "support") continue;
     if (!id) continue;
     let createdAt: string | undefined;
     if (typeof r.createdAt === "string") createdAt = r.createdAt;
     else if (r.createdAt instanceof Date) createdAt = r.createdAt.toISOString();
-    out.push({ id, sender, text, createdAt });
+    out.push({ id, sender, text, attachmentUrl, createdAt });
   }
   return out;
+}
+
+function parseChatAttachments(stored: string | null | undefined): string[] {
+  if (!stored) return [];
+  if (stored.startsWith("skinfit-chat-multi:")) {
+    try {
+      const parsed = JSON.parse(stored.slice("skinfit-chat-multi:".length)) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+  return [stored];
+}
+
+function dataUriKind(uri: string | null | undefined): "image" | "audio" | "other" | null {
+  if (!uri) return null;
+  if (uri.startsWith("data:image/")) return "image";
+  if (uri.startsWith("data:audio/")) return "audio";
+  return "other";
 }
 
 function dateLabelFromIso(iso?: string): string | undefined {
@@ -258,6 +287,11 @@ export default function ChatScreen() {
   const [sosText, setSosText] = useState("");
   const [sosImageUri, setSosImageUri] = useState<string | null>(null);
   const [sosBusy, setSosBusy] = useState(false);
+  const [pendingImage, setPendingImage] = useState<{
+    uri: string;
+    dataUri: string;
+    fileName: string;
+  } | null>(null);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordSec, setRecordSec] = useState(0);
@@ -304,6 +338,10 @@ export default function ChatScreen() {
   useEffect(() => {
     if (messages.length > 0) scrollToEnd();
   }, [messages, scrollToEnd]);
+
+  useEffect(() => {
+    setPendingImage(null);
+  }, [active, activeDoctorId, homeMode]);
 
   const fetchPlainMessages = useCallback(
     async (assistantId: AssistantId, doctorId?: string | null) => {
@@ -984,6 +1022,51 @@ export default function ChatScreen() {
     void configurePlaybackAudioMode();
   }
 
+  async function pickChatImage() {
+    if (active === "ai") {
+      Alert.alert("Photos", "Photo attachments are available in doctor and clinic chats.");
+      return;
+    }
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Photos", "Allow photo library access to attach an image.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 0.55,
+        base64: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset?.uri) return;
+
+      const base64 =
+        asset.base64 ??
+        (await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        }));
+      const mime = asset.mimeType?.startsWith("image/")
+        ? asset.mimeType
+        : "image/jpeg";
+      const dataUri = `data:${mime};base64,${base64}`;
+      if (dataUri.length > MAX_CHAT_IMAGE_DATA_URI_LEN) {
+        Alert.alert("Image too large", "Please choose a smaller photo or screenshot.");
+        return;
+      }
+      setPendingImage({
+        uri: asset.uri,
+        dataUri,
+        fileName: asset.fileName || "photo.jpg",
+      });
+      setError(null);
+    } catch {
+      Alert.alert("Photos", "Could not attach this image. Try another photo.");
+    }
+  }
+
   function formatRecordTime(sec: number) {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
@@ -992,7 +1075,8 @@ export default function ChatScreen() {
 
   async function send() {
     const text = input.trim();
-    if (!text || loading || !token) return;
+    const attachmentUrl = active === "ai" ? null : pendingImage?.dataUri ?? null;
+    if ((!text && !attachmentUrl) || loading || !token) return;
     Keyboard.dismiss();
     setError(null);
 
@@ -1038,11 +1122,13 @@ export default function ChatScreen() {
     const optimisticMsg: ChatMsg = {
       id: `p-${Date.now()}`,
       sender: "patient",
-      text,
+      text: text || "Image",
+      attachmentUrl,
       createdAt: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimisticMsg]);
     setInput("");
+    setPendingImage(null);
     setLoading(true);
     try {
       await apiJson("/api/chat/plain/message", token, {
@@ -1050,6 +1136,7 @@ export default function ChatScreen() {
         body: JSON.stringify({
           assistantId: active,
           text,
+          ...(attachmentUrl ? { attachmentUrl } : {}),
           ...(active === "doctor" && activeDoctorId ? { doctorId: activeDoctorId } : {}),
         }),
       });
@@ -1069,6 +1156,11 @@ export default function ChatScreen() {
         await markDoctorInboxSeenFromServer(refreshed.clinicReadThroughIso);
       }
     } catch (e) {
+      setPendingImage(
+        attachmentUrl
+          ? { uri: attachmentUrl, dataUri: attachmentUrl, fileName: "photo.jpg" }
+          : null
+      );
       setError(chatErrorMessage(e));
     } finally {
       setLoading(false);
@@ -1122,7 +1214,9 @@ export default function ChatScreen() {
     );
   }
 
-  const canSend = input.trim().length > 0 && !loading;
+  const canSend =
+    !loading &&
+    (input.trim().length > 0 || (active !== "ai" && pendingImage != null));
   const threadMessages =
     threadScope === "appointments"
       ? messages.filter((m) => m.sender === "patient" || isAppointmentMessage(m.text))
@@ -1573,10 +1667,38 @@ export default function ChatScreen() {
                         isPatient ? styles.bubblePatient : styles.bubbleOther,
                       ]}
                     >
-                      <ChatMessageMarkdown
-                        text={item.text}
-                        variant={isPatient ? "patient" : "incoming"}
-                      />
+                      {parseChatAttachments(item.attachmentUrl).map((uri, idx) =>
+                        dataUriKind(uri) === "image" ? (
+                          <Image
+                            key={`${item.id}-image-${idx}`}
+                            source={{ uri }}
+                            style={styles.messageImage}
+                            resizeMode="cover"
+                          />
+                        ) : dataUriKind(uri) === "audio" ? (
+                          <View key={`${item.id}-audio-${idx}`} style={styles.audioPill}>
+                            <Ionicons
+                              name="mic"
+                              size={14}
+                              color={isPatient ? NAVY : "#64748b"}
+                            />
+                            <Text
+                              style={[
+                                styles.audioPillText,
+                                isPatient ? styles.audioPillTextPatient : null,
+                              ]}
+                            >
+                              Voice note
+                            </Text>
+                          </View>
+                        ) : null
+                      )}
+                      {item.text.trim() ? (
+                        <ChatMessageMarkdown
+                          text={item.text}
+                          variant={isPatient ? "patient" : "incoming"}
+                        />
+                      ) : null}
                       <View style={styles.metaRow}>
                         {t ? (
                           <Text style={[styles.ts, isPatient ? styles.tsPatient : styles.tsOther]}>{t}</Text>
@@ -1621,6 +1743,35 @@ export default function ChatScreen() {
             </View>
           ) : (
             <>
+              {pendingImage && active !== "ai" ? (
+                <View style={styles.pendingImageCard}>
+                  <Image source={{ uri: pendingImage.uri }} style={styles.pendingImageThumb} />
+                  <View style={styles.pendingImageMeta}>
+                    <Text style={styles.pendingImageTitle} numberOfLines={1}>
+                      Photo attached
+                    </Text>
+                    <Text style={styles.pendingImageName} numberOfLines={1}>
+                      {pendingImage.fileName}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={pickChatImage}
+                    style={styles.pendingImageAction}
+                    disabled={loading}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.pendingImageActionText}>Change</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setPendingImage(null)}
+                    style={styles.pendingImageRemove}
+                    disabled={loading}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close" size={18} color="#64748b" />
+                  </Pressable>
+                </View>
+              ) : null}
               <TextInput
                 style={styles.input}
                 placeholder="Write a message…"
@@ -1631,6 +1782,16 @@ export default function ChatScreen() {
                 maxLength={4000}
                 editable={!loading}
               />
+              {active !== "ai" ? (
+                <Pressable
+                  style={styles.imageFab}
+                  onPress={pickChatImage}
+                  disabled={loading}
+                  accessibilityLabel={pendingImage ? "Change attached photo" : "Attach photo"}
+                >
+                  <Ionicons name="image-outline" size={20} color={NAVY} />
+                </Pressable>
+              ) : null}
               {active !== "ai" ? (
                 <Pressable
                   style={styles.micFab}
@@ -1937,6 +2098,27 @@ const styles = StyleSheet.create({
   tsPatient: { color: "#6b7280", alignSelf: "flex-end", fontWeight: "600" },
   tsOther: { color: "#94a3b8" },
   tickIcon: { marginTop: 1 },
+  messageImage: {
+    width: 190,
+    height: 190,
+    borderRadius: 14,
+    marginBottom: 8,
+    backgroundColor: "#e2e8f0",
+  },
+  audioPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  audioPillText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#64748b",
+  },
+  audioPillTextPatient: {
+    color: NAVY,
+  },
   clearBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1949,6 +2131,7 @@ const styles = StyleSheet.create({
   clearBtnText: { color: "#64748b", fontSize: 13, fontWeight: "600" },
   composer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "flex-end",
     gap: 8,
     paddingTop: 8,
@@ -1957,6 +2140,56 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     backgroundColor: "transparent",
     flexShrink: 0,
+  },
+  pendingImageCard: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#dbe5ef",
+    backgroundColor: "#fff",
+    padding: 8,
+  },
+  pendingImageThumb: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: "#e2e8f0",
+  },
+  pendingImageMeta: {
+    flex: 1,
+    minWidth: 0,
+  },
+  pendingImageTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: ZINC_900,
+  },
+  pendingImageName: {
+    marginTop: 2,
+    fontSize: 12,
+    color: "#64748b",
+  },
+  pendingImageAction: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#e7f4ec",
+  },
+  pendingImageActionText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: NAVY,
+  },
+  pendingImageRemove: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
   },
   input: {
     flex: 1,
@@ -2041,6 +2274,14 @@ const styles = StyleSheet.create({
   sosPrimaryText: { color: "#fff", fontWeight: "800" },
   sendFabDisabled: { opacity: 0.45, shadowOpacity: 0 },
   micFab: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageFab: {
     width: 40,
     height: 40,
     borderRadius: 14,

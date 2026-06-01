@@ -203,7 +203,7 @@ export default function DashboardScreen() {
   const loadHome = useCallback(async (opts?: { skipCache?: boolean }) => {
     if (!token) return;
     setError(null);
-    const cacheKey = "home";
+    const cacheKey = `home:${journalDate}`;
     if (!opts?.skipCache) {
       const cached = await getCached<HomeData>(cacheKey);
       if (cached) {
@@ -581,15 +581,14 @@ export default function DashboardScreen() {
 
   const streakDays = useMemo(() => {
     const completedSet = new Set(data?.weekCompletedDates ?? []);
-    const today = new Date();
-    const start = startOfWeek(today, { weekStartsOn: 1 });
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => {
       const d = addDays(start, i);
       const dayLabel = format(d, "EEE");
       const ymd = format(d, "yyyy-MM-dd");
       return { label: dayLabel, done: completedSet.has(ymd) };
     });
-  }, [data?.weekCompletedDates]);
+  }, [data?.weekCompletedDates, selectedDate]);
 
   if (loading || !data) {
     return (
@@ -638,7 +637,13 @@ export default function DashboardScreen() {
         >
           <Ionicons name="chevron-back" size={16} color={NAVY} />
         </Pressable>
-        <Pressable onPress={() => setWeekOffset(0)} hitSlop={8}>
+        <Pressable
+          onPress={() => {
+            setJournalDate(todayStr);
+            setWeekOffset(0);
+          }}
+          hitSlop={8}
+        >
           <Text style={styles.dateNavMonth}>
             {format(weekDays[0].date, "MMM yyyy")}
             {weekOffset !== 0 ? "  ·  tap to go to today" : ""}
@@ -664,6 +669,7 @@ export default function DashboardScreen() {
             onPress={() => {
               if (d.isFuture) return;
               setJournalDate(d.ymd);
+              setWeekOffset(0);
             }}
             disabled={d.isFuture}
             style={[
