@@ -35,10 +35,24 @@ export function LoginForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpHint, setOtpHint] = useState<string | null>(null);
+  const [sendOtpLoading, setSendOtpLoading] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const resetErrors = useCallback(() => setError(null), []);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = window.setTimeout(
+      () => setResendSeconds((s) => Math.max(0, s - 1)),
+      1000
+    );
+    return () => window.clearTimeout(timer);
+  }, [resendSeconds]);
 
   useEffect(() => {
     const oauthMessage = searchParams.get("oauth_message");
@@ -62,6 +76,10 @@ export function LoginForm() {
       setConfirmPassword("");
       setShowPassword(false);
       setShowConfirmPassword(false);
+      setOtp("");
+      setOtpSent(false);
+      setOtpHint(null);
+      setResendSeconds(0);
       const qs = new URLSearchParams();
       if (next === "register") qs.set("mode", "register");
       const n = searchParams.get("next");
@@ -113,6 +131,54 @@ export function LoginForm() {
     }
   }
 
+  async function sendSignupOtp() {
+    resetErrors();
+    setOtpHint(null);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Enter your email before requesting a verification code.");
+      return;
+    }
+    setSendOtpLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        retryAfterSeconds?: number;
+        cooldownSeconds?: number;
+      };
+      if (!res.ok) {
+        setError(
+          typeof data.message === "string"
+            ? data.message
+            : "Could not send verification code."
+        );
+        if (typeof data.retryAfterSeconds === "number") {
+          setResendSeconds(data.retryAfterSeconds);
+        }
+        return;
+      }
+      setOtpSent(true);
+      setOtp("");
+      setOtpHint(
+        typeof data.message === "string"
+          ? data.message
+          : "Verification code sent. Check your inbox."
+      );
+      setResendSeconds(
+        typeof data.cooldownSeconds === "number" ? data.cooldownSeconds : 60
+      );
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setSendOtpLoading(false);
+    }
+  }
+
   async function onSubmitRegister(e: React.FormEvent) {
     e.preventDefault();
     resetErrors();
@@ -131,6 +197,7 @@ export function LoginForm() {
           phoneCountryCode: phoneCountryCode.trim() || "+91",
           phone: phone.trim(),
           password,
+          otp: otp.trim(),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -318,17 +385,69 @@ export function LoginForm() {
                 >
                   Email
                 </label>
+                <div className="flex gap-2">
+                  <input
+                    id="reg-email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setOtpSent(false);
+                      setOtp("");
+                      setOtpHint(null);
+                    }}
+                    disabled={loading}
+                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                    placeholder="you@gmail.com"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendSignupOtp}
+                    disabled={loading || sendOtpLoading || resendSeconds > 0}
+                    className="shrink-0 rounded-xl border border-[#2C3E6B]/20 bg-[#2C3E6B]/5 px-3 py-3 text-sm font-medium text-[#2C3E6B] transition hover:bg-[#2C3E6B]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {sendOtpLoading
+                      ? "Sending…"
+                      : resendSeconds > 0
+                        ? `${resendSeconds}s`
+                        : otpSent
+                          ? "Resend"
+                          : "Send code"}
+                  </button>
+                </div>
+                {otpHint && (
+                  <p className="mt-1.5 text-xs text-emerald-700">{otpHint}</p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="reg-otp"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
+                >
+                  Email verification code
+                </label>
                 <input
-                  id="reg-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="reg-otp"
+                  name="otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
                   disabled={loading}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
-                  placeholder="you@gmail.com"
+                  placeholder="6-digit code from email"
                 />
+                <p className="mt-1 text-xs text-slate-500">
+                  We email a code to verify your address before creating your
+                  account.
+                </p>
               </div>
 
               <div>

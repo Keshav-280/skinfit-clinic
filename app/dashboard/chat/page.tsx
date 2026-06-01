@@ -688,7 +688,7 @@ export default function ChatPage() {
           );
         if (cancelled) return;
         setMessages(plainMessages);
-      setAttachment(null);
+        setAttachments([]);
         if (activeAssistant === "support") {
           markClinicSupportInboxSeenFromServer(clinicReadThroughIso);
         }

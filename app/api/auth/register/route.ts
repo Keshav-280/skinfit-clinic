@@ -12,8 +12,12 @@ import {
   normalizeCountryCode,
   validateNationalPhone,
 } from "@/src/lib/auth/phone";
+import {
+  isSignupEmailOtpRequired,
+  normalizeSignupEmail,
+  verifySignupEmailOtp,
+} from "@/src/lib/auth/signupEmailOtp";
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
 const MAX_NAME = 255;
 
@@ -24,6 +28,7 @@ export async function POST(req: Request) {
     password?: string;
     phone?: string;
     phoneCountryCode?: string;
+    otp?: string;
   };
   try {
     body = await req.json();
@@ -63,7 +68,8 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (!EMAIL_REGEX.test(email)) {
+  const normalizedEmail = normalizeSignupEmail(email);
+  if (!normalizedEmail) {
     return NextResponse.json(
       {
         error: "INVALID_EMAIL",
@@ -82,7 +88,25 @@ export async function POST(req: Request) {
     );
   }
 
-  const normalizedEmail = email.toLowerCase();
+  if (isSignupEmailOtpRequired()) {
+    const otp = typeof body.otp === "string" ? body.otp : "";
+    if (!otp.trim()) {
+      return NextResponse.json(
+        {
+          error: "OTP_REQUIRED",
+          message: "Enter the verification code sent to your email.",
+        },
+        { status: 400 }
+      );
+    }
+    const otpResult = await verifySignupEmailOtp(normalizedEmail, otp);
+    if (!otpResult.ok) {
+      return NextResponse.json(
+        { error: otpResult.code, message: otpResult.message },
+        { status: 400 }
+      );
+    }
+  }
 
   const [existing] = await db
     .select({ id: users.id })

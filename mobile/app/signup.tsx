@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, Redirect, router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import {
 import { Text } from "@/components/Themed";
 import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiUrl, networkFetchErrorMessage } from "@/lib/api";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
@@ -26,7 +27,20 @@ export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpHint, setOtpHint] = useState<string | null>(null);
+  const [sendOtpLoading, setSendOtpLoading] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = setTimeout(
+      () => setResendSeconds((s) => Math.max(0, s - 1)),
+      1000
+    );
+    return () => clearTimeout(timer);
+  }, [resendSeconds]);
 
   if (!ready) {
     return (
@@ -40,10 +54,57 @@ export default function SignupScreen() {
     return <Redirect href="/" />;
   }
 
+  async function sendSignupOtp() {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      Alert.alert("Sign up", "Enter your email before requesting a code.");
+      return;
+    }
+    setSendOtpLoading(true);
+    setOtpHint(null);
+    try {
+      const res = await fetch(apiUrl("/api/auth/signup/send-otp"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        retryAfterSeconds?: number;
+        cooldownSeconds?: number;
+      };
+      if (!res.ok) {
+        Alert.alert(
+          "Verification code",
+          typeof data.message === "string"
+            ? data.message
+            : "Could not send verification code."
+        );
+        if (typeof data.retryAfterSeconds === "number") {
+          setResendSeconds(data.retryAfterSeconds);
+        }
+        return;
+      }
+      setOtp("");
+      setOtpHint(
+        typeof data.message === "string"
+          ? data.message
+          : "Code sent. Check your inbox."
+      );
+      setResendSeconds(
+        typeof data.cooldownSeconds === "number" ? data.cooldownSeconds : 60
+      );
+    } catch {
+      Alert.alert("Verification code", networkFetchErrorMessage());
+    } finally {
+      setSendOtpLoading(false);
+    }
+  }
+
   async function onSubmit() {
     setLoading(true);
     try {
-      await signUp({ name, email, phone, password, phoneCountryCode: "+91" });
+      await signUp({ name, email, phone, password, phoneCountryCode: "+91", otp });
       router.replace("/onboarding");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
@@ -108,15 +169,54 @@ export default function SignupScreen() {
             </View>
             <View style={styles.inputWrap}>
               <Text style={styles.label}>Email</Text>
+              <View style={styles.emailRow}>
+                <TextInput
+                  style={[styles.input, styles.emailInput]}
+                  placeholder="you@example.com"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    setOtp("");
+                    setOtpHint(null);
+                  }}
+                />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.sendCodeBtn,
+                    (sendOtpLoading || resendSeconds > 0 || loading) &&
+                      styles.sendCodeBtnDisabled,
+                    pressed && styles.sendCodeBtnPressed,
+                  ]}
+                  onPress={sendSignupOtp}
+                  disabled={sendOtpLoading || resendSeconds > 0 || loading}
+                >
+                  {sendOtpLoading ? (
+                    <ActivityIndicator color={NAVY} size="small" />
+                  ) : (
+                    <Text style={styles.sendCodeLabel}>
+                      {resendSeconds > 0 ? `${resendSeconds}s` : "Send code"}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+              {otpHint ? <Text style={styles.otpHint}>{otpHint}</Text> : null}
+            </View>
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>Verification code</Text>
               <TextInput
                 style={styles.input}
-                placeholder="you@example.com"
+                placeholder="6-digit code"
                 placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otp}
+                onChangeText={(value) =>
+                  setOtp(value.replace(/\D/g, "").slice(0, 6))
+                }
               />
             </View>
             <View style={styles.inputWrap}>
@@ -223,6 +323,42 @@ const styles = StyleSheet.create({
     color: "#1A1A2E",
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
+  },
+  emailRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "stretch",
+  },
+  emailInput: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sendCodeBtn: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1.5,
+    borderColor: "#C7D2FE",
+    minWidth: 92,
+  },
+  sendCodeBtnPressed: {
+    opacity: 0.85,
+  },
+  sendCodeBtnDisabled: {
+    opacity: 0.6,
+  },
+  sendCodeLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: NAVY,
+  },
+  otpHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#047857",
+    marginLeft: 2,
   },
   button: {
     borderRadius: 14,

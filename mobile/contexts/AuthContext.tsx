@@ -56,6 +56,7 @@ type AuthContextValue = {
     phone: string;
     phoneCountryCode?: string;
     password: string;
+    otp?: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
   /** After profile save (email change issues a new JWT on native). */
@@ -249,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone: string;
       phoneCountryCode?: string;
       password: string;
+      otp?: string;
     }) => {
       let res: Response;
       try {
@@ -264,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password: input.password,
             phone: input.phone.trim(),
             phoneCountryCode: (input.phoneCountryCode || "+91").trim(),
+            otp: input.otp?.trim() || "",
           }),
         });
       } catch {
