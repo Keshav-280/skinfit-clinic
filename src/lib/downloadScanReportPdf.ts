@@ -5,8 +5,8 @@
 
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
 import {
-  paintScanReportPdfBackground,
   SCAN_REPORT_PDF_MARGIN_RGB,
+  SCAN_REPORT_PDF_PAGE_BG,
 } from "@/src/lib/scanReportPdfBackground";
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -111,6 +111,7 @@ function applyPdfCloneLayout(clonedRoot: HTMLElement | Document) {
     node.style.marginLeft = "auto";
     node.style.marginRight = "auto";
     node.style.boxSizing = "border-box";
+    node.style.background = SCAN_REPORT_PDF_PAGE_BG;
   });
 
   root
@@ -193,25 +194,11 @@ function cropCanvasToContent(
   return out;
 }
 
-function paintPdfPageBackground(pdf: import("jspdf").jsPDF): void {
-  const pageWidthMm = pdf.internal.pageSize.getWidth();
-  const pageHeightMm = pdf.internal.pageSize.getHeight();
-  const bg = document.createElement("canvas");
-  bg.width = 80;
-  bg.height = 120;
-  const ctx = bg.getContext("2d");
-  if (!ctx) return;
-  paintScanReportPdfBackground(ctx, bg.width, bg.height);
-  pdf.addImage(bg.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, pageWidthMm, pageHeightMm);
-}
-
 /** Scale one tall canvas to fit a single A4 page (width + height). */
 function appendCanvasToPdfSinglePage(
   pdf: import("jspdf").jsPDF,
   canvas: HTMLCanvasElement
 ): void {
-  paintPdfPageBackground(pdf);
-
   const marginMm = 4;
   const pageWidthMm = pdf.internal.pageSize.getWidth();
   const pageHeightMm = pdf.internal.pageSize.getHeight();
@@ -232,6 +219,13 @@ function appendCanvasToPdfSinglePage(
 
   const imgData = canvas.toDataURL("image/jpeg", 0.92);
   pdf.addImage(imgData, "JPEG", xMm, yMm, imgWidthMm, imgHeightMm);
+}
+
+/** Hint PDF viewers to open at full-page fit (honored by Acrobat, Preview, many mobile viewers). */
+function applyScanReportPdfOpenView(pdf: import("jspdf").jsPDF): void {
+  if (typeof pdf.setDisplayMode === "function") {
+    pdf.setDisplayMode("fullpage", "single");
+  }
 }
 
 async function mergeSectionCanvases(
@@ -306,7 +300,7 @@ async function renderReportToJsPdf(element: HTMLElement) {
       allowTaint: true,
       foreignObjectRendering: false,
       logging: false,
-      backgroundColor: "#eef4fb",
+      backgroundColor: SCAN_REPORT_PDF_PAGE_BG,
       onclone: (_doc: Document, cloned: HTMLElement) => {
         applyPdfCloneLayout(cloned);
       },
@@ -327,6 +321,7 @@ async function renderReportToJsPdf(element: HTMLElement) {
     }
 
     appendCanvasToPdfSinglePage(pdf, mergedCanvas);
+    applyScanReportPdfOpenView(pdf);
     return pdf;
   } finally {
     for (const { img, previousSrc, hadCrossOrigin } of restores) {

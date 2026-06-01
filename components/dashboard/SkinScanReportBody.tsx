@@ -24,7 +24,10 @@ import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
 import { WRINKLE_MASK_PANEL_LABEL, ACNE_MASK_PANEL_LABEL } from "@/src/lib/scanMaskLabels";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
-import { SCAN_REPORT_PDF_BG } from "@/src/lib/scanReportPdfBackground";
+import {
+  SCAN_REPORT_PDF_BG,
+  SCAN_REPORT_PDF_PAGE_BG,
+} from "@/src/lib/scanReportPdfBackground";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -603,11 +606,17 @@ export function SkinScanReportBody({
       }}
     >
       {/* PDF: all sections stacked and scaled to one A4 page on download */}
-      <div ref={reportRef} data-pdf-root className="relative w-full">
+      <div
+        ref={reportRef}
+        data-pdf-root
+        className="relative w-full"
+        style={{ background: SCAN_REPORT_PDF_PAGE_BG }}
+      >
       <ScanReportPdfBackdrop />
       <div data-pdf-section className="relative z-[1] w-full break-inside-avoid">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent"
+        data-pdf-screen-only
         aria-hidden
       />
 

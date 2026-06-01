@@ -1051,13 +1051,6 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
 </head>
 <body>
   <div class="pdf-page">
-    <div class="pdf-bg" aria-hidden="true">
-      <div class="pdf-bg-orb pdf-bg-orb-navy"></div>
-      <div class="pdf-bg-orb pdf-bg-orb-sage"></div>
-      <div class="pdf-bg-orb pdf-bg-orb-accent"></div>
-      <div class="pdf-bg-band"></div>
-      <div class="pdf-bg-dots"></div>
-    </div>
     <div class="pdf-scale">
   <div class="sheet">
     <div class="sec1 avoid-break">
