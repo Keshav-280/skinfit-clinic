@@ -1,6 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 
 export default function OnboardingWelcomePage() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <div className="space-y-6 text-center">
       <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-skinfit-navy">
@@ -20,12 +32,22 @@ export default function OnboardingWelcomePage() {
           ready.
         </p>
       </div>
-      <Link
-        href="/onboarding/kai-intro"
-        className="inline-flex w-full items-center justify-center rounded-2xl bg-skinfit-navy px-5 py-4 text-base font-bold text-white shadow-md shadow-skinfit-navy/25 transition-colors hover:bg-skinfit-navy-mid"
-      >
-        Begin my skin assessment
-      </Link>
+      <div className="flex flex-col gap-3">
+        <Link
+          href="/onboarding/kai-intro"
+          className="inline-flex w-full items-center justify-center rounded-2xl bg-skinfit-navy px-5 py-4 text-base font-bold text-white shadow-md shadow-skinfit-navy/25 transition-colors hover:bg-skinfit-navy-mid"
+        >
+          Begin my skin assessment
+        </Link>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-300 bg-white/50 px-5 py-4 text-base font-bold text-zinc-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-white/80"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }

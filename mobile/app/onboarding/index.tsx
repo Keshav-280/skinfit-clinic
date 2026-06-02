@@ -1,12 +1,25 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "../../contexts/AuthContext";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
 
 export default function OnboardingWelcome() {
   const router = useRouter();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace("/login" as Href);
+    } catch (e) {
+      console.error("Sign out failed:", e);
+    }
+  };
+
   return (
     <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -21,12 +34,23 @@ export default function OnboardingWelcome() {
             Doctor welcome video — add your MP4 to assets and replace this placeholder.
           </Text>
         </View>
-        <Pressable
-          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-          onPress={() => router.push("/onboarding/kai-intro" as Href)}
-        >
-          <Text style={styles.btnText}>Begin my skin assessment</Text>
-        </Pressable>
+
+        <View style={styles.actionContainer}>
+          <Pressable
+            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+            onPress={() => router.push("/onboarding/kai-intro" as Href)}
+          >
+            <Text style={styles.btnText}>Begin my skin assessment</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.signOutBtn, pressed && styles.signOutBtnPressed]}
+            onPress={handleSignOut}
+          >
+            <Ionicons name="log-out-outline" size={18} color="#52525b" style={{ marginRight: 6 }} />
+            <Text style={styles.signOutBtnText}>Sign out</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </LinearGradient>
   );
@@ -51,14 +75,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: -0.5,
     lineHeight: 36,
-  },
-  body: {
-    marginTop: 16,
-    fontSize: 15,
-    lineHeight: 23,
-    color: "#52525b",
-    textAlign: "center",
-    paddingHorizontal: 8,
   },
   videoPlaceholder: {
     marginTop: 28,
@@ -90,8 +106,11 @@ const styles = StyleSheet.create({
   },
   playIcon: { color: "#fff", fontSize: 20, marginLeft: 3 },
   videoNote: { fontSize: 13, color: "#9CA3AF", textAlign: "center", lineHeight: 19 },
-  btn: {
+  actionContainer: {
     marginTop: 28,
+    gap: 12,
+  },
+  btn: {
     backgroundColor: NAVY,
     paddingVertical: 17,
     borderRadius: 16,
@@ -107,4 +126,26 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   btnText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
+  
+  // Sign out button
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.08)",
+    paddingVertical: 15,
+    borderRadius: 16,
+  },
+  signOutBtnPressed: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    transform: [{ scale: 0.98 }],
+  },
+  signOutBtnText: {
+    color: "#52525b",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
 });
