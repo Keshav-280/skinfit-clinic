@@ -619,6 +619,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   const clinicPhone = "+91 98765 43210";
   const clinicEmail = "hello@skinfit.clinic";
   const clinicAddress = "123 Medical Plaza, Bangalore, Karnataka 560001";
+  const clinicWebsite = "https://my.skinfitwellness.in";
+  const clinicInstagram = "@skinfitwellness";
+  const clinicLinkedIn = "linkedin.com/company/skinfit-wellness";
+  const qrImageSrc = `https://api.qrserver.com/v1/create-qr-code/?size=144x144&margin=0&data=${encodeURIComponent(clinicWebsite)}`;
 
   return `<!DOCTYPE html>
 <html>
@@ -633,8 +637,8 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       padding: 0;
       width: 595pt;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      background: ${T.pageBg};
-      color: ${T.ink};
+      background: radial-gradient(130% 100% at 50% 0%, #101d3b 0%, #070d1f 48%, #030711 100%);
+      color: #e8eeff;
     }
     ${scanReportPdfBackgroundCss()}
     .pdf-page {
@@ -659,6 +663,18 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       page-break-inside: avoid;
       break-inside: avoid;
     }
+    .sheet::before {
+      content: "";
+      position: absolute;
+      inset: 9% 7% auto;
+      height: 420px;
+      background: url("/branding/skinfit-wellness-logo.svg") center/64% no-repeat;
+      opacity: 0.08;
+      filter: grayscale(1) brightness(2.7) contrast(0.92);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .sheet > * { position: relative; z-index: 1; }
     .brand-top {
       margin: 0 0 10px;
       display: flex;
@@ -666,11 +682,12 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       justify-content: space-between;
       padding: 8px 12px;
       border-radius: 14px;
-      border: 1px solid rgba(44,62,107,0.16);
+      border: 1px solid rgba(138, 164, 255, 0.38);
       background:
-        linear-gradient(90deg, rgba(255,255,255,0.86), rgba(255,255,255,0.72)),
-        radial-gradient(circle at 18% 20%, rgba(61,80,128,0.2), transparent 56%);
-      box-shadow: 0 10px 20px -16px rgba(26,38,72,0.5);
+        linear-gradient(92deg, rgba(17, 30, 62, 0.78), rgba(13, 28, 54, 0.68)),
+        radial-gradient(circle at 18% 20%, rgba(120, 165, 255, 0.24), transparent 56%);
+      box-shadow: 0 18px 30px -20px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(198, 215, 255, 0.28);
+      backdrop-filter: blur(9px);
     }
     .brand-left { display: flex; align-items: center; gap: 10px; }
     .brand-logo {
@@ -684,16 +701,16 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       font-size: 8px;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: #2C3E6B;
+      color: #dbe7ff;
       padding: 5px 8px;
       border-radius: 999px;
-      border: 1px solid rgba(44,62,107,0.16);
-      background: rgba(255,255,255,0.88);
+      border: 1px solid rgba(167, 192, 255, 0.32);
+      background: rgba(147, 180, 255, 0.15);
       white-space: nowrap;
     }
     .brand-right {
       font-size: 8px;
-      color: #374151;
+      color: #e3ebff;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
@@ -701,7 +718,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     }
     .brand-right span::before {
       content: "• ";
-      color: #5B7BA8;
+      color: #98b7ff;
     }
     .brand-right span:first-child::before { content: ""; }
     .avoid-break, .sec1, .sec2, .sec3, .tr-card, .tracker-wrap {
@@ -1089,23 +1106,89 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
 
     .foot {
       margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(44,62,107,0.14);
-      background: rgba(255,255,255,0.82);
-      text-align: center;
+      padding: 10px 12px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(157,185,255,0.35);
+      background: linear-gradient(120deg, rgba(11, 24, 50, 0.84), rgba(8, 17, 36, 0.74));
       font-size: 8px;
-      color: #52525b;
+      color: #cedbff;
+      box-shadow: inset 0 1px 0 rgba(205, 220, 255, 0.25);
     }
+    .foot-grid {
+      display: grid;
+      grid-template-columns: 1fr 84px;
+      gap: 10px;
+      align-items: center;
+    }
+    .foot-text { text-align: left; }
     .foot-line1 {
       letter-spacing: 0.18em;
       text-transform: uppercase;
       font-weight: 700;
-      color: #2C3E6B;
+      color: #eaf1ff;
     }
     .foot-line2 {
       margin-top: 4px;
       letter-spacing: 0.04em;
+      color: #c2d1f6;
+    }
+    .foot-line3 {
+      margin-top: 4px;
+      color: #9fb5eb;
+      word-break: break-all;
+    }
+    .foot-qr-wrap {
+      width: 84px;
+      text-align: center;
+    }
+    .foot-qr {
+      width: 78px;
+      height: 78px;
+      border-radius: 8px;
+      border: 1px solid rgba(166, 194, 255, 0.56);
+      background: #ffffff;
+      padding: 3px;
+      display: block;
+      margin: 0 auto;
+    }
+    .foot-qr-note {
+      margin-top: 4px;
+      font-size: 6px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #9ab0e6;
+    }
+
+    /* Dark glassmorphism overrides for report cards */
+    .sec1,
+    .tr-card,
+    .resource-card,
+    .tr-resource,
+    .vid-box,
+    .clinical-card,
+    .skin-card,
+    .tr-inset,
+    .tr-stat,
+    .tr-focus-item,
+    .legend li {
+      border-color: rgba(157,185,255,0.22) !important;
+      background: linear-gradient(145deg, rgba(20, 35, 72, 0.72), rgba(10, 20, 43, 0.64)) !important;
+      box-shadow: inset 0 1px 0 rgba(220, 232, 255, 0.14);
+      color: #dfe9ff;
+    }
+    .cap-kicker, .kicker, .metrics-kicker, .tr-kicker, .sec3-title, .clinical-k, .skin-lbl, .tr-stat-k, .tr-resource-meta, .resource-meta {
+      color: #9cb4ea !important;
+    }
+    h1, .tr-hook, .tr-focus-title, .tr-subhead, .resource-title, .tr-resource-title {
+      color: #ecf3ff !important;
+    }
+    .age-line, .body-copy, .tr-insight, .tr-prediction, .tr-cause, .tr-focus-detail, .tr-resource-url, .resource-url, .vid-box li, .vid-href, .clinical-lbl, .clinical-val {
+      color: #ccdbfb !important;
+    }
+    .teal {
+      border-radius: 16px;
+      border: 1px solid rgba(157,185,255,0.24);
+      background: linear-gradient(180deg, rgba(13, 28, 58, 0.9) 0%, rgba(9, 20, 41, 0.88) 100%);
     }
   </style>
 </head>
@@ -1141,8 +1224,18 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     ${section3Html}
 
     <div class="foot avoid-break">
-      <div class="foot-line1">SkinnFit Wellness Clinic · AI-powered dermatology insights</div>
-      <div class="foot-line2">${esc(clinicAddress)}</div>
+      <div class="foot-grid">
+        <div class="foot-text">
+          <div class="foot-line1">SkinnFit Wellness Clinic · AI-powered dermatology insights</div>
+          <div class="foot-line2">${esc(clinicAddress)}</div>
+          <div class="foot-line2">${esc(clinicPhone)} · ${esc(clinicEmail)}</div>
+          <div class="foot-line3">${esc(clinicWebsite)} · Instagram ${esc(clinicInstagram)} · ${esc(clinicLinkedIn)}</div>
+        </div>
+        <div class="foot-qr-wrap">
+          <img class="foot-qr" src="${qrImageSrc}" alt="Scan QR for SkinFit website" />
+          <div class="foot-qr-note">Scan for website</div>
+        </div>
+      </div>
     </div>
   </div>
     </div>
