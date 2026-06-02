@@ -33,6 +33,36 @@ export function scanReportPdfBackgroundCss(): string {
       overflow: hidden;
       background: ${SCAN_REPORT_PDF_PAGE_BG};
     }
+    .pdf-page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(820px 420px at -12% -6%, rgba(62, 94, 166, 0.26), transparent 56%),
+        radial-gradient(680px 360px at 112% 18%, rgba(41, 197, 168, 0.2), transparent 58%),
+        radial-gradient(780px 420px at 50% 108%, rgba(22, 160, 133, 0.18), transparent 62%),
+        repeating-linear-gradient(
+          115deg,
+          rgba(255, 255, 255, 0.22) 0px,
+          rgba(255, 255, 255, 0.22) 1px,
+          transparent 1px,
+          transparent 26px
+        );
+      pointer-events: none;
+      z-index: 0;
+    }
+    .pdf-page::after {
+      content: "";
+      position: absolute;
+      left: 6pt;
+      right: 6pt;
+      top: 6pt;
+      bottom: 6pt;
+      border: 1px solid rgba(44, 62, 107, 0.12);
+      border-radius: 18px;
+      pointer-events: none;
+      z-index: 0;
+    }
     .pdf-scale, .sheet { position: relative; z-index: 1; }
   `;
 }

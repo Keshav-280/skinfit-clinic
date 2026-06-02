@@ -616,6 +616,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     : buildLegacyMetricsHtml(p, overall, lastScanLabel);
   const section3Html = buildSection3Html(p);
   const pdfScale = estimatePdfScale(p);
+  const clinicPhone = "+91 98765 43210";
+  const clinicEmail = "hello@skinfit.clinic";
+  const clinicAddress = "123 Medical Plaza, Bangalore, Karnataka 560001";
 
   return `<!DOCTYPE html>
 <html>
@@ -648,14 +651,59 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       break-inside: avoid;
     }
     .sheet {
-      width: 100%;
-      max-width: none;
-      margin: 0;
+      width: 86%;
+      max-width: 86%;
+      margin: 0 auto;
       background: transparent;
-      padding: 0 8pt 6pt;
+      padding: 10pt 0 6pt;
       page-break-inside: avoid;
       break-inside: avoid;
     }
+    .brand-top {
+      margin: 0 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(44,62,107,0.16);
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.86), rgba(255,255,255,0.72)),
+        radial-gradient(circle at 18% 20%, rgba(61,80,128,0.2), transparent 56%);
+      box-shadow: 0 10px 20px -16px rgba(26,38,72,0.5);
+    }
+    .brand-left { display: flex; align-items: center; gap: 10px; }
+    .brand-logo {
+      width: 92px;
+      height: 30px;
+      object-fit: contain;
+      object-position: left center;
+      display: block;
+    }
+    .brand-chip {
+      font-size: 8px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #2C3E6B;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(44,62,107,0.16);
+      background: rgba(255,255,255,0.88);
+      white-space: nowrap;
+    }
+    .brand-right {
+      font-size: 8px;
+      color: #374151;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .brand-right span::before {
+      content: "• ";
+      color: #5B7BA8;
+    }
+    .brand-right span:first-child::before { content: ""; }
     .avoid-break, .sec1, .sec2, .sec3, .tr-card, .tracker-wrap {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
@@ -1040,12 +1088,24 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .vid-href { word-break: break-all; color: #52525b; }
 
     .foot {
-      padding: 8px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(44,62,107,0.14);
+      background: rgba(255,255,255,0.82);
       text-align: center;
       font-size: 8px;
-      letter-spacing: 0.15em;
+      color: #52525b;
+    }
+    .foot-line1 {
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: #71717a;
+      font-weight: 700;
+      color: #2C3E6B;
+    }
+    .foot-line2 {
+      margin-top: 4px;
+      letter-spacing: 0.04em;
     }
   </style>
 </head>
@@ -1053,6 +1113,17 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   <div class="pdf-page">
     <div class="pdf-scale">
   <div class="sheet">
+    <div class="brand-top avoid-break">
+      <div class="brand-left">
+        <img class="brand-logo" src="/branding/skinfit-wellness-logo.svg" alt="SkinFit Wellness" />
+        <span class="brand-chip">AI skin intelligence report</span>
+      </div>
+      <div class="brand-right">
+        <span>${esc(clinicPhone)}</span>
+        <span>${esc(clinicEmail)}</span>
+      </div>
+    </div>
+
     <div class="sec1 avoid-break">
       ${galleryHtml}
       ${masksHtml}
@@ -1069,7 +1140,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
 
     ${section3Html}
 
-    <div class="foot">SkinnFit Clinic · AI scan report</div>
+    <div class="foot avoid-break">
+      <div class="foot-line1">SkinnFit Wellness Clinic · AI-powered dermatology insights</div>
+      <div class="foot-line2">${esc(clinicAddress)}</div>
+    </div>
   </div>
     </div>
   </div>
