@@ -61,30 +61,34 @@ export function ScanReportPdfBackdrop() {
         <div
           className="absolute inset-0"
           style={{
-            background:
-              "radial-gradient(130% 100% at 50% 0%, #101d3b 0%, #070d1f 48%, #030711 100%)",
+            background: "#F4F7FB",
+          }}
+        />
+        {/* Subtle dot grid pattern for a high-tech/clinical look */}
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: "radial-gradient(#2C3E6B 1.2px, transparent 0)",
+            backgroundSize: "24px 24px",
+          }}
+        />
+        {/* Soft clinical ambient glow */}
+        <div
+          className="absolute -right-24 -top-24 h-[26rem] w-[26rem] rounded-full opacity-[0.12]"
+          style={{
+            background: "radial-gradient(circle, #2C3E6B 0%, transparent 70%)",
           }}
         />
         <div
-          className="absolute inset-0 opacity-60"
+          className="absolute -left-24 top-[40%] h-[24rem] w-[24rem] rounded-full opacity-[0.08]"
           style={{
-            background:
-              "radial-gradient(760px 360px at -8% -5%, rgba(86,131,230,0.3), transparent 56%), radial-gradient(700px 340px at 108% 16%, rgba(39,193,173,0.22), transparent 58%), radial-gradient(780px 360px at 50% 108%, rgba(54,116,214,0.2), transparent 60%)",
+            background: "radial-gradient(circle, #4A6FA5 0%, transparent 72%)",
           }}
         />
         <div
-          className="absolute inset-0 opacity-20"
+          className="absolute -bottom-16 right-[10%] h-[20rem] w-[20rem] rounded-full opacity-[0.1]"
           style={{
-            backgroundImage:
-              "linear-gradient(115deg, rgba(170,194,255,0.22) 1px, transparent 1px)",
-            backgroundSize: "26px 26px",
-          }}
-        />
-        <div
-          className="absolute left-[18%] top-[26%] h-[20rem] w-[20rem] opacity-10"
-          style={{
-            background: "center / contain no-repeat url('/branding/skinfit-wellness-logo.svg')",
-            filter: "grayscale(1) brightness(2.4)",
+            background: "radial-gradient(circle, #2C3E6B 0%, transparent 70%)",
           }}
         />
       </div>
