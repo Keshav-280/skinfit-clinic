@@ -284,10 +284,6 @@ async function renderReportToJsPdf(element: HTMLElement) {
     const html2canvas = (await import("html2canvas-pro")).default;
     const { jsPDF } = await import("jspdf");
 
-    const sectionNodes = Array.from(
-      element.querySelectorAll("[data-pdf-section]")
-    ) as HTMLElement[];
-
     const pdf = new jsPDF({
       unit: "mm",
       format: "a4",
@@ -306,19 +302,12 @@ async function renderReportToJsPdf(element: HTMLElement) {
       },
     } as const;
 
-    let mergedCanvas: HTMLCanvasElement;
-    if (sectionNodes.length > 0) {
-      const canvases: HTMLCanvasElement[] = [];
-      for (const node of sectionNodes) {
-        canvases.push(await html2canvas(node, captureOpts));
-      }
-      mergedCanvas = await mergeSectionCanvases(canvases);
-    } else {
-      mergedCanvas = cropCanvasToContent(
-        await html2canvas(element, captureOpts),
-        6
-      );
-    }
+    // Capture the full PDF root in one pass so shared backdrop layers
+    // (outside individual sections) are included in exported output.
+    const mergedCanvas = cropCanvasToContent(
+      await html2canvas(element, captureOpts),
+      6
+    );
 
     appendCanvasToPdfSinglePage(pdf, mergedCanvas);
     applyScanReportPdfOpenView(pdf);
