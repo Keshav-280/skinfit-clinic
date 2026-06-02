@@ -83,9 +83,6 @@ export function googleSignInConfigHint(): string | null {
   if (status === "needs_web_client_id") {
     return "Add EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID (Web OAuth client) in mobile/.env — required even when EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is set.";
   }
-  if (status === "needs_native_build") {
-    return "Google needs a dev build (not Expo Go). From mobile/: npx expo run:ios — then open that app. Or use browser sign-in below.";
-  }
   return null;
 }
 
