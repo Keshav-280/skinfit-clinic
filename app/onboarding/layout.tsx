@@ -11,7 +11,7 @@ export default async function OnboardingLayout({
 }) {
   const profile = await getSessionUserProfile();
   if (!profile) {
-    redirect("/login?next=/onboarding");
+    redirect("/login?next=/onboarding/kai-intro");
   }
   if (profile.onboardingComplete) {
     redirect("/dashboard");

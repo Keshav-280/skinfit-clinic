@@ -3,6 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
 const NAVY_LIGHT = "#E8EFF8";
@@ -34,7 +36,17 @@ const BOUNDARIES = [
 
 export default function KaiIntroScreen() {
   const router = useRouter();
-  
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace("/login" as Href);
+    } catch (e) {
+      console.error("Sign out failed:", e);
+    }
+  };
+
   return (
     <LinearGradient colors={["#D6E4D0", "#E0EADA", "#EAF0E6"]} style={styles.flex}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -140,6 +152,14 @@ export default function KaiIntroScreen() {
             <Text style={styles.btnText}>Start baseline scan</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
           </LinearGradient>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.signOutBtn, pressed && styles.signOutBtnPressed]}
+          onPress={() => void handleSignOut()}
+        >
+          <Ionicons name="log-out-outline" size={18} color="#52525b" style={{ marginRight: 6 }} />
+          <Text style={styles.signOutBtnText}>Sign out</Text>
         </Pressable>
 
       </ScrollView>
@@ -366,6 +386,27 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 15,
     fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.08)",
+    paddingVertical: 15,
+    borderRadius: 16,
+  },
+  signOutBtnPressed: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    transform: [{ scale: 0.98 }],
+  },
+  signOutBtnText: {
+    color: "#52525b",
+    fontSize: 15,
+    fontWeight: "700",
     letterSpacing: 0.3,
   },
 });

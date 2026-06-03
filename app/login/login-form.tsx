@@ -16,7 +16,7 @@ function postAuthDestination(
   onboardingComplete: boolean | undefined
 ): string {
   if (next && next.startsWith("/")) return next;
-  if (onboardingComplete === false) return "/onboarding";
+  if (onboardingComplete === false) return "/onboarding/kai-intro";
   return "/dashboard";
 }
 

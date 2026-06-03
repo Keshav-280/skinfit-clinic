@@ -23,7 +23,7 @@ export function OnboardingLayoutShell({
   const pathname = usePathname();
   const scanTheme = isScanThemeRoute(pathname);
   const onCapturePhotos = pathname?.startsWith("/onboarding/capture/photos");
-  const backHref = onCapturePhotos ? "/onboarding/capture" : "/onboarding";
+  const backHref = onCapturePhotos ? "/onboarding/capture" : "/onboarding/kai-intro";
   const headerTitle =
     pathname === "/onboarding/capture"
       ? "kAI baseline photos"
@@ -67,7 +67,7 @@ export function OnboardingLayoutShell({
       <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 px-4 py-3 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
         <div className={`mx-auto flex ${maxWidthClass} items-center justify-between gap-3`}>
           <Link
-            href="/onboarding"
+            href="/onboarding/kai-intro"
             className="inline-flex shrink-0 items-center"
             aria-label="SkinFit Wellness — onboarding home"
           >

@@ -29,7 +29,6 @@ import {
   Moon,
   Paperclip,
   Phone,
-  Plus,
   Pill,
   RefreshCw,
   Save,
@@ -63,7 +62,6 @@ import {
   doctorPatientPagePanelClass,
   doctorPatientPageAccentInsetClass,
   doctorPatientPageAccentRowClass,
-  doctorRoutineAmPmColumnClass,
   doctorPatientPageGhostBtnClass,
   doctorNavyIconChipClass,
   doctorVisitNoteFieldIconShellClass,
@@ -80,13 +78,22 @@ import {
   doctorScheduleFormInputClass,
   DOCTOR_ICON_SM,
 } from "@/components/doctor/DoctorUiPrimitives";
+import { DoctorRoutinePlanEditor } from "@/components/doctor/DoctorRoutinePlanEditor";
 import { DoctorScanReportPanel } from "@/components/doctor/DoctorScanReportPanel";
+import { DoctorSnippetTextarea } from "@/components/doctor/DoctorSnippetTextarea";
+import {
+  DOCTOR_FEEDBACK_SNIPPETS,
+  DOCTOR_POST_ADVICE_SNIPPETS,
+  DOCTOR_PRE_ADVICE_SNIPPETS,
+  DOCTOR_TREATMENT_SNIPPETS,
+} from "@/src/lib/doctorQuickSnippets";
 import { useDoctorPatientDetail } from "@/components/doctor/useDoctorPatientDetail";
 import type { DoctorPatientDetailSection } from "@/src/lib/doctorPatientDetailApi";
 import {
   formatOnboardingAnswer,
   isQuestionnaireAlert,
   isQuestionnaireNote,
+  referralSourceFromQuestionnaireAnswers,
   sortQuestionnaireAnswers,
 } from "@/src/lib/onboardingQuestionnaireDisplay";
 import { prepareVisitNoteAttachmentFile } from "@/src/lib/visitNotePrepareAttachment";
@@ -2022,6 +2029,9 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   };
 
   const profileLine = [p.skinType, p.primaryGoal].filter(Boolean).join(" · ") || "—";
+  const referralLine = referralSourceFromQuestionnaireAnswers(
+    data?.questionnaireAnswers ?? []
+  );
   const routineSummary = p.routineRemindersEnabled
     ? `AM ${p.routineAmReminderHm} · PM ${p.routinePmReminderHm}`
     : "Off";
@@ -2119,6 +2129,16 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               </span>
               <p className="min-w-0 text-sm font-medium leading-snug text-white/90">{profileLine}</p>
             </div>
+            {referralLine ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">
+                  Heard about us
+                </span>
+                <p className="min-w-0 text-sm font-medium leading-snug text-white/90">
+                  {referralLine}
+                </p>
+              </div>
+            ) : null}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2 border-l border-white/20 pl-3 sm:flex-row sm:items-center">
             {ageLabel ? (
@@ -2901,159 +2921,13 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           </p>
         ) : (
           <>
-            <div className="flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] md:items-stretch md:gap-0">
-              {/* AM steps */}
-              <div className={`${doctorRoutineAmPmColumnClass} md:pr-4`}>
-                <div className="mb-2 flex items-center justify-between gap-1">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-[#2C3E6B]">
-                    <Sunrise className="h-3.5 w-3.5" aria-hidden />
-                    AM
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRoutinePlanTextDirty(true);
-                      setRoutinePlanAmRows((prev) => [...prev, { name: "", product: "", dosage: "" }]);
-                    }}
-                    className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-[#2C3E6B]/25 px-1.5 text-[10px] font-semibold text-[#2C3E6B]/70 hover:bg-[#F6F4EB]"
-                  >
-                    <Plus className="h-3 w-3" aria-hidden />
-                    Add step
-                  </button>
-                </div>
-                {routinePlanAmRows.map((row, i) => (
-                  <div
-                    key={`am-row-${i}`}
-                    className="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-1 py-1"
-                  >
-                    <span className="text-center text-[10px] font-bold text-[#2C3E6B]">{i + 1}</span>
-                    <input
-                      value={row.name}
-                      onChange={(e) => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanAmRows((prev) =>
-                          prev.map((r, j) => (j === i ? { ...r, name: e.target.value } : r))
-                        );
-                      }}
-                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
-                      placeholder="Step"
-                    />
-                    <input
-                      value={row.product}
-                      onChange={(e) => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanAmRows((prev) =>
-                          prev.map((r, j) => (j === i ? { ...r, product: e.target.value } : r))
-                        );
-                      }}
-                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
-                      placeholder="Product"
-                    />
-                    <input
-                      value={row.dosage}
-                      onChange={(e) => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanAmRows((prev) =>
-                          prev.map((r, j) => (j === i ? { ...r, dosage: e.target.value } : r))
-                        );
-                      }}
-                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
-                      placeholder="Dose"
-                    />
-                    <button
-                      type="button"
-                      title="Remove step"
-                      aria-label={`Remove AM step ${i + 1}`}
-                      onClick={() => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanAmRows((prev) => prev.filter((_, j) => j !== i));
-                      }}
-                      className="flex h-5 w-5 items-center justify-center rounded text-red-500 hover:bg-red-50"
-                    >
-                      <X className="h-3 w-3" aria-hidden />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div
-                className="h-px w-full shrink-0 bg-[#2C3E6B]/50 md:h-auto md:w-px md:self-stretch"
-                role="separator"
-                aria-hidden
-              />
-              {/* PM steps */}
-              <div className={`${doctorRoutineAmPmColumnClass} md:pl-4`}>
-                <div className="mb-2 flex items-center justify-between gap-1">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-[#2C3E6B]">
-                    <Sunset className="h-3.5 w-3.5" aria-hidden />
-                    PM
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRoutinePlanTextDirty(true);
-                      setRoutinePlanPmRows((prev) => [...prev, { name: "", product: "", dosage: "" }]);
-                    }}
-                    className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-[#2C3E6B]/25 px-1.5 text-[10px] font-semibold text-[#2C3E6B]/70 hover:bg-[#F6F4EB]"
-                  >
-                    <Plus className="h-3 w-3" aria-hidden />
-                    Add step
-                  </button>
-                </div>
-                {routinePlanPmRows.map((row, i) => (
-                  <div
-                    key={`pm-row-${i}`}
-                    className="grid grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-1 py-1"
-                  >
-                    <span className="text-center text-[10px] font-bold text-[#2C3E6B]">{i + 1}</span>
-                    <input
-                      value={row.name}
-                      onChange={(e) => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanPmRows((prev) =>
-                          prev.map((r, j) => (j === i ? { ...r, name: e.target.value } : r))
-                        );
-                      }}
-                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
-                      placeholder="Step"
-                    />
-                    <input
-                      value={row.product}
-                      onChange={(e) => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanPmRows((prev) =>
-                          prev.map((r, j) => (j === i ? { ...r, product: e.target.value } : r))
-                        );
-                      }}
-                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
-                      placeholder="Product"
-                    />
-                    <input
-                      value={row.dosage}
-                      onChange={(e) => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanPmRows((prev) =>
-                          prev.map((r, j) => (j === i ? { ...r, dosage: e.target.value } : r))
-                        );
-                      }}
-                      className={`${doctorPatientPageFormInputClass} py-1.5 text-xs`}
-                      placeholder="Dose"
-                    />
-                    <button
-                      type="button"
-                      title="Remove step"
-                      aria-label={`Remove PM step ${i + 1}`}
-                      onClick={() => {
-                        setRoutinePlanTextDirty(true);
-                        setRoutinePlanPmRows((prev) => prev.filter((_, j) => j !== i));
-                      }}
-                      className="flex h-5 w-5 items-center justify-center rounded text-red-500 hover:bg-red-50"
-                    >
-                      <X className="h-3 w-3" aria-hidden />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <DoctorRoutinePlanEditor
+              amRows={routinePlanAmRows}
+              pmRows={routinePlanPmRows}
+              onAmRowsChange={setRoutinePlanAmRows}
+              onPmRowsChange={setRoutinePlanPmRows}
+              onDirty={() => setRoutinePlanTextDirty(true)}
+            />
             <div className="mt-3 rounded-lg border border-[#2C3E6B]/10 bg-[#F6F4EB]/60 px-3 py-2">
               <label className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
                 <span className="text-xs font-semibold text-[#2C3E6B]">Effective from</span>
@@ -3381,16 +3255,18 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </div>
 
         <div className="space-y-2">
-          <textarea
+          <DoctorSnippetTextarea
             value={generalFeedbackText}
-            onChange={(e) => {
-              setGeneralFeedbackText(e.target.value);
+            onChange={(next) => {
+              setGeneralFeedbackText(next);
               setGeneralFeedbackDirty(true);
             }}
+            groups={[{ label: "Common feedback", items: DOCTOR_FEEDBACK_SNIPPETS }]}
             rows={3}
-            aria-label="Feedback"
-            className={`${doctorPatientPageFormInputClass} resize-y py-2 text-sm`}
+            ariaLabel="Feedback"
             placeholder="Guidance, progress, next steps…"
+            className="py-2 text-sm"
+            paletteHint="Drag or click a phrase, then edit freely below."
           />
 
           {!scansLoaded ? (
@@ -3979,11 +3855,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
               <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Treatments completed</p>
-              <textarea
+              <DoctorSnippetTextarea
                 value={visitNoteTreatments}
-                onChange={(e) => setVisitNoteTreatments(e.target.value)}
+                onChange={setVisitNoteTreatments}
+                groups={[{ label: "Common treatments", items: DOCTOR_TREATMENT_SNIPPETS }]}
                 rows={2}
-                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
+                ariaLabel="Treatments completed"
                 placeholder="Peel, laser, extraction, etc."
               />
             </DoctorIconField>
@@ -3993,11 +3870,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
               <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Pre-treatment advice</p>
-              <textarea
+              <DoctorSnippetTextarea
                 value={visitNotePreAdvice}
-                onChange={(e) => setVisitNotePreAdvice(e.target.value)}
+                onChange={setVisitNotePreAdvice}
+                groups={[{ label: "Pre-treatment", items: DOCTOR_PRE_ADVICE_SNIPPETS }]}
                 rows={2}
-                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
+                ariaLabel="Pre-treatment advice"
                 placeholder="Preparation instructions"
               />
             </DoctorIconField>
@@ -4007,11 +3885,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
               <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Post-treatment advice</p>
-              <textarea
+              <DoctorSnippetTextarea
                 value={visitNotePostAdvice}
-                onChange={(e) => setVisitNotePostAdvice(e.target.value)}
+                onChange={setVisitNotePostAdvice}
+                groups={[{ label: "Post-treatment", items: DOCTOR_POST_ADVICE_SNIPPETS }]}
                 rows={2}
-                className={`${doctorPatientPageFormInputClass} min-h-[3.25rem] resize-y py-1.5`}
+                ariaLabel="Post-treatment advice"
                 placeholder="Aftercare instructions"
               />
             </DoctorIconField>

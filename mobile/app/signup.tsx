@@ -105,7 +105,7 @@ export default function SignupScreen() {
     setLoading(true);
     try {
       await signUp({ name, email, phone, password, phoneCountryCode: "+91", otp });
-      router.replace("/onboarding");
+      router.replace("/onboarding/kai-intro");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
       Alert.alert("Sign up", msg);
@@ -135,7 +135,7 @@ export default function SignupScreen() {
                 setLoading(true);
                 try {
                   await signInWithOAuth("google");
-                  router.replace("/onboarding");
+                  router.replace("/onboarding/kai-intro");
                 } catch (e) {
                   const msg = e instanceof Error ? e.message : "Something went wrong.";
                   Alert.alert("Google sign in", msg);
@@ -147,7 +147,7 @@ export default function SignupScreen() {
                 setLoading(true);
                 try {
                   await signInWithOAuth("apple");
-                  router.replace("/onboarding");
+                  router.replace("/onboarding/kai-intro");
                 } catch (e) {
                   const msg = e instanceof Error ? e.message : "Something went wrong.";
                   Alert.alert("Apple sign in", msg);

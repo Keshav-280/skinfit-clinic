@@ -3,6 +3,9 @@ import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
 import type { ReportMetrics, ReportRegion } from "@/components/dashboard/scanReportTypes";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
+import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
+import { parseScanAcneMaskDataUri, parseScanWrinkleMaskDataUri } from "@/src/lib/parseClinicalScores";
+import type { FaceCaptureRef } from "@/src/lib/resolveScanImageUrl";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
 import { parseClinicalScores } from "@/src/lib/parseClinicalScores";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
@@ -76,6 +79,19 @@ function doctorScanImagePath(
   return q ? `${base}?${q}` : base;
 }
 
+function doctorScanMaskPath(
+  patientId: string,
+  scanId: number,
+  kind: "wrinkle" | "acne",
+  opts?: { preview?: boolean }
+): string {
+  const pid = encodeURIComponent(patientId);
+  const base = `/api/doctor/patients/${pid}/scans/${scanId}/mask`;
+  const p = new URLSearchParams({ type: kind });
+  if (opts?.preview) p.set("preview", "1");
+  return `${base}?${p.toString()}`;
+}
+
 /** Same report payload as patient `/dashboard/history/scans/[id]`. */
 export async function buildDoctorScanReportPayload(
   patientId: string,
@@ -108,15 +124,25 @@ export async function buildDoctorScanReportPayload(
 
   const regions = parseScanRegions(row.annotations);
   const clinical_scores = parseClinicalScores(row.scores);
-  // Do not embed mask data URIs in JSON — they can be multi‑MB and break the report API.
+  const wrinkleMaskStored = parseScanWrinkleMaskDataUri(row.scores);
+  const acneMaskStored = parseScanAcneMaskDataUri(row.scores);
 
-  const faceCaptureGallery =
-    row.faceCaptureImages && row.faceCaptureImages.length >= 1
-      ? row.faceCaptureImages.map((entry, i) => ({
-          label: FACE_SCAN_CAPTURE_STEPS[i]?.title ?? entry.label,
-          imageUrl: doctorScanImagePath(patientId, row.id, { index: i, preview: true }),
-        }))
-      : undefined;
+  const faceCaptureImages = row.faceCaptureImages as FaceCaptureRef[] | null | undefined;
+  const builtGallery = buildFaceCaptureGallery(row.id, faceCaptureImages);
+  const faceCaptureGallery = builtGallery
+    ? builtGallery.map((entry, i) => ({
+        label: entry.label,
+        imageUrl: doctorScanImagePath(patientId, row.id, {
+          index: i,
+          preview: true,
+        }),
+      }))
+    : [
+        {
+          label: FACE_SCAN_CAPTURE_STEPS[0]?.title ?? "Primary scan",
+          imageUrl: doctorScanImagePath(patientId, row.id, { preview: true }),
+        },
+      ];
 
   return {
     scanId: row.id,
@@ -139,8 +165,12 @@ export async function buildDoctorScanReportPayload(
     },
     aiSummary: row.aiSummary,
     annotatedImageUrl: null,
-    wrinkleMaskUrl: null,
-    acneMaskUrl: null,
+    wrinkleMaskUrl: wrinkleMaskStored
+      ? doctorScanMaskPath(patientId, row.id, "wrinkle", { preview: true })
+      : null,
+    acneMaskUrl: acneMaskStored
+      ? doctorScanMaskPath(patientId, row.id, "acne", { preview: true })
+      : null,
     spatialOutputs: null,
     scanDateIso: row.createdAt.toISOString(),
     trackerReport,

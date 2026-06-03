@@ -8,6 +8,10 @@ import {
   ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
   type OnboardingQuestionnaireDraftV2,
 } from "@/src/lib/onboardingQuestionnaireDraft";
+import {
+  REFERRAL_SOURCE_OPTIONS,
+  type ReferralSourceId,
+} from "@/src/lib/onboardingReferralSource";
 
 const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "female", label: "Female" },
@@ -63,17 +67,17 @@ function questionnaireProgress(
   priorTx: "yes" | "no" | null
 ): { displayStep: number; totalSteps: number } {
   if (priorTx === "yes") {
-    return { displayStep: step + 1, totalSteps: 11 };
+    return { displayStep: step + 1, totalSteps: 12 };
   }
   if (priorTx === "no") {
-    const order = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10];
+    const order = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11];
     const ix = order.indexOf(step);
     return {
       displayStep: ix >= 0 ? ix + 1 : step + 1,
-      totalSteps: 10,
+      totalSteps: 11,
     };
   }
-  return { displayStep: step + 1, totalSteps: 11 };
+  return { displayStep: step + 1, totalSteps: 12 };
 }
 
 function copyForConcern(
@@ -161,6 +165,10 @@ export function OnboardingQuestionnaireForm() {
   const [skinType, setSkinType] = useState<(typeof SKIN_TYPES)[number] | null>(null);
   const [ageInput, setAgeInput] = useState("");
   const [gender, setGender] = useState<string | null>(null);
+  const [referralSource, setReferralSource] = useState<ReferralSourceId | null>(
+    null
+  );
+  const [referralOther, setReferralOther] = useState("");
   const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
@@ -175,7 +183,7 @@ export function OnboardingQuestionnaireForm() {
         setDraftReady(true);
         return;
       }
-      if (typeof d.step === "number" && d.step >= 0 && d.step <= 10) {
+      if (typeof d.step === "number" && d.step >= 0 && d.step <= 11) {
         setStep(d.step);
       }
       if (typeof d.ageInput === "string") setAgeInput(d.ageInput);
@@ -241,6 +249,13 @@ export function OnboardingQuestionnaireForm() {
       ) {
         setSkinType(d.skinType as (typeof SKIN_TYPES)[number]);
       }
+      if (
+        typeof d.referralSource === "string" &&
+        REFERRAL_SOURCE_OPTIONS.some((o) => o.id === d.referralSource)
+      ) {
+        setReferralSource(d.referralSource as ReferralSourceId);
+      }
+      if (typeof d.referralOther === "string") setReferralOther(d.referralOther);
     } catch {
       /* ignore */
     } finally {
@@ -270,6 +285,8 @@ export function OnboardingQuestionnaireForm() {
           diet,
           sun,
           skinType,
+          referralSource,
+          referralOther,
         };
         localStorage.setItem(
           ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
@@ -298,6 +315,8 @@ export function OnboardingQuestionnaireForm() {
     skinType,
     ageInput,
     gender,
+    referralSource,
+    referralOther,
   ]);
 
   const toggleTrigger = (id: string) => {
@@ -331,6 +350,10 @@ export function OnboardingQuestionnaireForm() {
         return water != null && diet != null && sun != null;
       case 10:
         return skinType != null;
+      case 11:
+        if (referralSource == null) return false;
+        if (referralSource === "other") return referralOther.trim().length >= 3;
+        return true;
       default:
         return false;
     }
@@ -351,6 +374,8 @@ export function OnboardingQuestionnaireForm() {
     diet,
     sun,
     skinType,
+    referralSource,
+    referralOther,
   ]);
 
   const { displayStep, totalSteps } = questionnaireProgress(step, priorTx);
@@ -369,7 +394,8 @@ export function OnboardingQuestionnaireForm() {
       !diet ||
       !sun ||
       !skinType ||
-      !priorTx
+      !priorTx ||
+      !referralSource
     )
       return;
     setBusy(true);
@@ -396,6 +422,9 @@ export function OnboardingQuestionnaireForm() {
           baselineDietType: diet,
           baselineSunExposure: sun,
           skinType,
+          referralSource,
+          referralSourceOther:
+            referralSource === "other" ? referralOther.trim() : undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -436,7 +465,7 @@ export function OnboardingQuestionnaireForm() {
   }
 
   function next() {
-    if (step === 10) {
+    if (step === 11) {
       void submit();
       return;
     }
@@ -834,6 +863,38 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
+      {step === 11 ? (
+        <>
+          <h2 className="text-lg font-bold text-zinc-900">
+            How did you hear about SkinFit Wellness?
+          </h2>
+          <p className="text-sm text-zinc-500">
+            This helps us understand what brought you here.
+          </p>
+          <div className="mt-2 space-y-2">
+            {REFERRAL_SOURCE_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={chip(referralSource === opt.id)}
+                onClick={() => setReferralSource(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {referralSource === "other" ? (
+            <input
+              type="text"
+              className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-[15px] text-zinc-900 outline-none focus:border-skinfit-navy focus:ring-2 focus:ring-skinfit-navy/20"
+              placeholder="Please specify (min 3 characters)"
+              value={referralOther}
+              onChange={(e) => setReferralOther(e.target.value)}
+            />
+          ) : null}
+        </>
+      ) : null}
+
       <div className="flex gap-3 pt-4">
         <button
           type="button"
@@ -849,7 +910,7 @@ export function OnboardingQuestionnaireForm() {
           disabled={!canNext || busy}
           className="flex-1 rounded-2xl bg-skinfit-navy py-3.5 text-center text-[15px] font-bold text-white shadow-md shadow-skinfit-navy/25 transition-colors hover:bg-skinfit-navy-mid disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {busy ? "Saving…" : step === 10 ? "Save & continue" : "Continue"}
+          {busy ? "Saving…" : step === 11 ? "Save & continue" : "Continue"}
         </button>
       </div>
     </div>

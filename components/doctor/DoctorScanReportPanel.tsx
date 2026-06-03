@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { DoctorScanReportPayload } from "@/src/lib/doctorScanReportPayload";
 import {
+  ACNE_MASK_PANEL_LABEL,
+  WRINKLE_MASK_PANEL_LABEL,
+} from "@/src/lib/scanMaskLabels";
+import { SCAN_MASK_FRAME_ASPECT_CSS } from "@/src/lib/maskImageCrop";
+import {
   DoctorInlineLoader,
   doctorPatientPageRowClass,
 } from "@/components/doctor/DoctorUiPrimitives";
@@ -78,6 +83,60 @@ function ReportSection({
       <h4 className="mb-1.5 text-xs font-semibold text-[#2C3E6B]">{title}</h4>
       {children}
     </section>
+  );
+}
+
+function DoctorScanImage({
+  src,
+  alt,
+  caption,
+  className = "aspect-[3/4] w-full object-cover object-center",
+}: {
+  src: string;
+  alt: string;
+  caption?: string;
+  className?: string;
+}) {
+  return (
+    <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className={className} loading="lazy" />
+      {caption ? (
+        <figcaption className="border-t border-[#2C3E6B]/8 px-2 py-1.5 text-center text-[10px] font-medium text-[#2C3E6B]/70">
+          {caption}
+        </figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+function DoctorScanMaskImage({
+  src,
+  alt,
+  caption,
+}: {
+  src: string;
+  alt: string;
+  caption: string;
+}) {
+  return (
+    <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
+      <div
+        className="relative w-full overflow-hidden bg-zinc-50"
+        style={{ aspectRatio: SCAN_MASK_FRAME_ASPECT_CSS }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          className="h-full w-full object-contain object-center"
+          loading="lazy"
+        />
+      </div>
+      <figcaption className="border-t border-[#2C3E6B]/8 px-2 py-1.5 text-center text-[10px] font-medium text-[#2C3E6B]/70">
+        {caption}
+      </figcaption>
+    </figure>
   );
 }
 
@@ -210,6 +269,13 @@ export function DoctorScanReportPanel({
     report.userName?.trim(),
   ].filter(Boolean);
 
+  const faceCaptures =
+    report.faceCaptureGallery && report.faceCaptureGallery.length > 0
+      ? report.faceCaptureGallery
+      : [{ label: "Primary scan", imageUrl: report.imageUrl }];
+  const wrinkleMask = report.wrinkleMaskUrl?.trim() || "";
+  const acneMask = report.acneMaskUrl?.trim() || "";
+
   return (
     <div className="space-y-4">
       {metaBits.length > 0 || !tracker ? (
@@ -217,6 +283,46 @@ export function DoctorScanReportPanel({
           {metaBits.join(" · ")}
           {!tracker ? " · scores only (no saved tracker)" : null}
         </p>
+      ) : null}
+
+      <ReportSection title="Face captures">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {faceCaptures.map((photo) => (
+            <DoctorScanImage
+              key={`${photo.label}-${photo.imageUrl}`}
+              src={photo.imageUrl}
+              alt={photo.label}
+              caption={photo.label}
+            />
+          ))}
+        </div>
+      </ReportSection>
+
+      {wrinkleMask || acneMask ? (
+        <ReportSection title="AI scan overlays">
+          <div
+            className={`grid gap-2 ${
+              wrinkleMask && acneMask
+                ? "grid-cols-1 sm:grid-cols-2"
+                : "max-w-xs"
+            }`}
+          >
+            {wrinkleMask ? (
+              <DoctorScanMaskImage
+                src={wrinkleMask}
+                alt="Wrinkle mask overlay"
+                caption={WRINKLE_MASK_PANEL_LABEL}
+              />
+            ) : null}
+            {acneMask ? (
+              <DoctorScanMaskImage
+                src={acneMask}
+                alt="Acne mask overlay"
+                caption={ACNE_MASK_PANEL_LABEL}
+              />
+            ) : null}
+          </div>
+        </ReportSection>
       ) : null}
 
       {report.aiSummary?.trim() ? (

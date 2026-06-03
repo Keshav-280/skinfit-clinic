@@ -19,6 +19,10 @@ import {
   ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
   type OnboardingQuestionnaireDraftV2,
 } from "@/lib/onboardingQuestionnaireDraft";
+import {
+  REFERRAL_SOURCE_OPTIONS,
+  type ReferralSourceId,
+} from "../../../src/lib/onboardingReferralSource";
 
 const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "female", label: "Female" },
@@ -71,17 +75,17 @@ function questionnaireProgress(
   priorTx: "yes" | "no" | null
 ): { displayStep: number; totalSteps: number } {
   if (priorTx === "yes") {
-    return { displayStep: step + 1, totalSteps: 11 };
+    return { displayStep: step + 1, totalSteps: 12 };
   }
   if (priorTx === "no") {
-    const order = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10];
+    const order = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11];
     const ix = order.indexOf(step);
     return {
       displayStep: ix >= 0 ? ix + 1 : step + 1,
-      totalSteps: 10,
+      totalSteps: 11,
     };
   }
-  return { displayStep: step + 1, totalSteps: 11 };
+  return { displayStep: step + 1, totalSteps: 12 };
 }
 
 function copyForConcern(
@@ -156,6 +160,10 @@ export default function QuestionnaireScreen() {
   const [skinType, setSkinType] = useState<(typeof SKIN_TYPES)[number] | null>(null);
   const [ageInput, setAgeInput] = useState("");
   const [gender, setGender] = useState<string | null>(null);
+  const [referralSource, setReferralSource] = useState<ReferralSourceId | null>(
+    null
+  );
+  const [referralOther, setReferralOther] = useState("");
   const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
@@ -167,7 +175,7 @@ export default function QuestionnaireScreen() {
         if (!raw) return;
         const d = JSON.parse(raw) as OnboardingQuestionnaireDraftV2;
         if (d.v !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) return;
-        if (typeof d.step === "number" && d.step >= 0 && d.step <= 10) {
+        if (typeof d.step === "number" && d.step >= 0 && d.step <= 11) {
           setStep(d.step);
         }
         if (typeof d.ageInput === "string") setAgeInput(d.ageInput);
@@ -233,6 +241,13 @@ export default function QuestionnaireScreen() {
         ) {
           setSkinType(d.skinType as (typeof SKIN_TYPES)[number]);
         }
+        if (
+          typeof d.referralSource === "string" &&
+          REFERRAL_SOURCE_OPTIONS.some((o) => o.id === d.referralSource)
+        ) {
+          setReferralSource(d.referralSource as ReferralSourceId);
+        }
+        if (typeof d.referralOther === "string") setReferralOther(d.referralOther);
       } catch {
         /* ignore */
       } finally {
@@ -265,6 +280,8 @@ export default function QuestionnaireScreen() {
         diet,
         sun,
         skinType,
+        referralSource,
+        referralOther,
       };
       void AsyncStorage.setItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY, JSON.stringify(draft));
     }, 450);
@@ -287,6 +304,8 @@ export default function QuestionnaireScreen() {
     skinType,
     ageInput,
     gender,
+    referralSource,
+    referralOther,
   ]);
 
   const toggleTrigger = (id: string) => {
@@ -318,6 +337,10 @@ export default function QuestionnaireScreen() {
         return water != null && diet != null && sun != null;
       case 10:
         return skinType != null;
+      case 11:
+        if (referralSource == null) return false;
+        if (referralSource === "other") return referralOther.trim().length >= 3;
+        return true;
       default:
         return false;
     }
@@ -338,6 +361,8 @@ export default function QuestionnaireScreen() {
     diet,
     sun,
     skinType,
+    referralSource,
+    referralOther,
   ]);
 
   const { displayStep, totalSteps } = questionnaireProgress(step, priorTx);
@@ -357,7 +382,8 @@ export default function QuestionnaireScreen() {
       !diet ||
       !sun ||
       !skinType ||
-      !priorTx
+      !priorTx ||
+      !referralSource
     )
       return;
     setBusy(true);
@@ -381,6 +407,9 @@ export default function QuestionnaireScreen() {
           baselineDietType: diet,
           baselineSunExposure: sun,
           skinType,
+          referralSource,
+          referralSourceOther:
+            referralSource === "other" ? referralOther.trim() : undefined,
         }),
       });
       await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
@@ -403,7 +432,7 @@ export default function QuestionnaireScreen() {
   }
 
   function next() {
-    if (step === 10) {
+    if (step === 11) {
       void submit();
       return;
     }
@@ -732,6 +761,38 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
+      {step === 11 ? (
+        <>
+          <Text style={styles.q}>How did you hear about SkinFit Wellness?</Text>
+          <Text style={styles.sub}>This helps us understand what brought you here.</Text>
+          {REFERRAL_SOURCE_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.id}
+              style={[styles.chip, referralSource === opt.id && styles.chipOn]}
+              onPress={() => setReferralSource(opt.id)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  referralSource === opt.id && styles.chipTextOn,
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+          {referralSource === "other" ? (
+            <TextInput
+              style={styles.input}
+              placeholder="Please specify (min 3 characters)"
+              placeholderTextColor="#94a3b8"
+              value={referralOther}
+              onChangeText={setReferralOther}
+            />
+          ) : null}
+        </>
+      ) : null}
+
       <View style={styles.row}>
         <Pressable style={styles.btnGhost} onPress={back} disabled={busy}>
           <Text style={styles.btnGhostText}>Back</Text>
@@ -745,7 +806,7 @@ export default function QuestionnaireScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.btnText}>
-              {step === 10 ? "Save & continue" : "Continue"}
+              {step === 11 ? "Save & continue" : "Continue"}
             </Text>
           )}
         </Pressable>

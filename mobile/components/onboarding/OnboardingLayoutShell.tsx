@@ -19,7 +19,7 @@ type Props = {
 export function OnboardingLayoutShell({
   children,
   title = "kAI baseline scan",
-  backHref = "/onboarding" as Href,
+  backHref = "/onboarding/kai-intro" as Href,
   scanTheme = true,
 }: Props) {
   const router = useRouter();

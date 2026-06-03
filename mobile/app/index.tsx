@@ -36,7 +36,7 @@ export default function Index() {
       user?.hasBaselineScan ??
       user?.onboardingComplete !== false;
     if (!canAccess) {
-      return <Redirect href={"/onboarding" as Href} />;
+      return <Redirect href={"/onboarding/kai-intro" as Href} />;
     }
     return <Redirect href="/(drawer)" />;
   }

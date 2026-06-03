@@ -2,7 +2,7 @@ export const ONBOARDING_QUESTIONNAIRE_DRAFT_KEY =
   "skinfit_onboarding_questionnaire_v1";
 
 /** Draft schema version (bump when step order or required fields change). */
-export const ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA = 2 as const;
+export const ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA = 3 as const;
 
 export type OnboardingQuestionnaireDraftV2 = {
   v: typeof ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA;
@@ -22,6 +22,8 @@ export type OnboardingQuestionnaireDraftV2 = {
   diet: string | null;
   sun: string | null;
   skinType?: string | null;
+  referralSource?: string | null;
+  referralOther?: string;
 };
 
 /** @deprecated v1 drafts are no longer loaded. */

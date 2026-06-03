@@ -1,7 +1,13 @@
 /** Human-readable labels for doctor portal / staff views of onboarding answers. */
 
+import {
+  formatReferralSourceAnswer,
+  type ReferralSourceAnswer,
+} from "@/src/lib/onboardingReferralSource";
+
 const QUESTION_TITLES: Record<string, string> = {
   PROFILE_01: "About you",
+  REF_01: "How they heard about us",
   CONCERN_01: "Primary concern",
   SEV_01: "Severity",
   DUR_01: "Duration",
@@ -71,6 +77,7 @@ const GENERIC_VALUE_LABELS: Record<string, string> = {
 
 const DISPLAY_ORDER = [
   "PROFILE_01",
+  "REF_01",
   "CONCERN_01",
   "SEV_01",
   "DUR_01",
@@ -167,6 +174,24 @@ export function formatOnboardingAnswer(
     };
   }
 
+  if (questionId === "REF_01") {
+    const rec = asRecord(answer);
+    const source = typeof rec?.source === "string" ? rec.source : null;
+    if (!source) {
+      return { title, kind: "text", body: "—", tags: [] };
+    }
+    const other = typeof rec?.other === "string" ? rec.other : undefined;
+    return {
+      title,
+      kind: "text",
+      body: formatReferralSourceAnswer({
+        source: source as ReferralSourceAnswer["source"],
+        other,
+      }),
+      tags: [],
+    };
+  }
+
   if (questionId === "TX_02") {
     const rec = asRecord(answer);
     const text = typeof rec?.text === "string" ? rec.text.trim() : "";
@@ -240,4 +265,13 @@ export function isQuestionnaireAlert(questionId: string): boolean {
 
 export function isQuestionnaireNote(questionId: string): boolean {
   return questionId.startsWith("NOTE_");
+}
+
+export function referralSourceFromQuestionnaireAnswers(
+  rows: Array<{ questionId: string; answer: unknown }>
+): string | null {
+  const row = rows.find((r) => r.questionId === "REF_01");
+  if (!row) return null;
+  const display = formatOnboardingAnswer("REF_01", row.answer);
+  return display.body && display.body !== "—" ? display.body : null;
 }

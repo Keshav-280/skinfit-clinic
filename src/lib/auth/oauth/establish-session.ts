@@ -18,7 +18,7 @@ export function postAuthPath(params: {
 }): string {
   const safeNext = sanitizeOAuthNext(params.next);
   if (safeNext) return safeNext;
-  if (params.onboardingComplete === false) return "/onboarding";
+  if (params.onboardingComplete === false) return "/onboarding/kai-intro";
   return "/dashboard";
 }
 

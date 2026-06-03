@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { questionnaireAnswers, skinDnaCards, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { finalizeOnboardingUser } from "@/src/lib/finalizeOnboardingUser";
+import { isReferralSourceId } from "@/src/lib/onboardingReferralSource";
 import { notifyStaffQuestionnaireRedFlags } from "@/src/lib/questionnaireDoctorAlerts";
 
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
@@ -165,6 +166,35 @@ export async function POST(req: Request) {
     );
   }
 
+  const referralSourceRaw =
+    typeof body.referralSource === "string" ? body.referralSource.trim() : "";
+  if (!isReferralSourceId(referralSourceRaw)) {
+    return NextResponse.json(
+      {
+        error: "REFERRAL_SOURCE_REQUIRED",
+        message: "Please tell us how you heard about SkinFit.",
+      },
+      { status: 400 }
+    );
+  }
+  let referralSourceOther: string | null = null;
+  if (referralSourceRaw === "other") {
+    const other =
+      typeof body.referralSourceOther === "string"
+        ? body.referralSourceOther.trim()
+        : "";
+    if (other.length < 3) {
+      return NextResponse.json(
+        {
+          error: "REFERRAL_OTHER_REQUIRED",
+          message: "Please specify how you heard about us.",
+        },
+        { status: 400 }
+      );
+    }
+    referralSourceOther = other;
+  }
+
   const primaryGoalLabel =
     {
       acne: "Acne & breakouts",
@@ -198,6 +228,10 @@ export async function POST(req: Request) {
 
   const audit: Record<string, unknown> = {
     PROFILE_01: { age, gender: genderRaw },
+    REF_01: {
+      source: referralSourceRaw,
+      ...(referralSourceOther ? { other: referralSourceOther } : {}),
+    },
     CONCERN_01: primaryConcern,
     SEV_01: concernSeverity,
     DUR_01: concernDuration,

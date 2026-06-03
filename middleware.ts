@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
       if (!canAccess) {
         const allowed = /^\/dashboard\/history\/scans\/[^/]+$/.test(pathname);
         if (!allowed) {
-          return NextResponse.redirect(new URL("/onboarding", request.url));
+          return NextResponse.redirect(new URL("/onboarding/kai-intro", request.url));
         }
       }
     }

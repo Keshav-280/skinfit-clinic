@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
+  LogOut,
   Scan,
   TrendingUp,
   Sparkles,
@@ -44,6 +46,14 @@ const BOUNDARIES = [
 ];
 
 export default function KaiIntroPage() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <div className="mx-auto w-full md:max-h-[85vh]">
       {/* 2-Column Dashboard Grid: Stacks on mobile, side-by-side on desktop */}
@@ -214,6 +224,21 @@ export default function KaiIntroPage() {
               aria-hidden
             />
           </Link>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.38, ease: easeOut }}
+        >
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white/50 px-4 py-3 text-sm font-bold text-zinc-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-white/80"
+          >
+            <LogOut className="h-4 w-4" aria-hidden />
+            Sign out
+          </button>
         </motion.div>
 
       </div>
