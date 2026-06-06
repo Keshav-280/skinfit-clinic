@@ -6,7 +6,7 @@ import { CircularGauge } from "@/components/dashboard/CircularGauge";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 
 const SKIN_PARAM_INNER_CELL =
-  "flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-[14px] border border-[#E8EBE8] bg-[#F5F7F5] px-2 py-2.5";
+  "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[14px] border border-[#E8EBE8] bg-[#F5F7F5] px-2 py-3";
 
 export type SkinParamMetric = {
   label: string;
@@ -38,15 +38,15 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
             <CircularGauge
               value={p.value}
               color={p.color}
-              size={56}
-              strokeWidth={4.5}
-              valueClassName="text-[15px] sm:text-[17px] text-[#18181b]"
+              size={76}
+              strokeWidth={5.5}
+              valueClassName="text-[22px] sm:text-[24px] text-[#18181b]"
             />
-            <p className="text-center text-[13px] font-extrabold leading-tight text-[#18181b] sm:text-[14px]">
+            <p className="text-center text-[15px] font-extrabold leading-tight text-[#18181b] sm:text-[16px]">
               {p.label}
             </p>
             <p
-              className={`text-[11px] font-extrabold sm:text-[12px] ${
+              className={`text-[13px] font-extrabold sm:text-[14px] ${
                 p.sublabel === "Needs Care"
                   ? "text-red-500"
                   : p.sublabel === "Moderate"

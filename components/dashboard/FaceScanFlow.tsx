@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Camera,
@@ -13,7 +12,6 @@ import {
   Sun,
   Contrast,
   ZoomIn,
-  History,
   X,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
@@ -33,9 +31,6 @@ import {
   captureVoiceGuide,
 } from "@/src/lib/captureVoiceGuide";
 import { CAPTURE_ZOOM_AUTO } from "@/src/lib/scanCaptureGuidance";
-import {
-  patientSecondaryBtn,
-} from "@/src/lib/patientDashboardTheme";
 import {
   FACE_SCAN_CAPTURE_STEPS,
   buildAutoScanName,
@@ -752,24 +747,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         transition={{ duration: 0.5 }}
         className="mx-auto max-w-4xl"
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 text-center sm:text-left">
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
-              Skin analysis
-            </p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-[#1F2A44]">
-              {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
-            </h1>
-          </div>
-          {!isOnboardingScan && step !== "confirm" ? (
-            <Link
-              href="/dashboard/history"
-              className={`shrink-0 self-center sm:self-start ${patientSecondaryBtn}`}
-            >
-              <History className="h-4 w-4" aria-hidden />
-              Scan history
-            </Link>
-          ) : null}
+        <div className="text-center sm:text-left">
+          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+            Skin analysis
+          </p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-[#1F2A44]">
+            {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
+          </h1>
         </div>
       </motion.header>
       ) : null}
@@ -1063,17 +1047,16 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   );
                 })}
               </div>
-              <ScanPhotoGuideDismissCheckbox
-                checked={skipPhotoGuide}
-                onChange={handleSkipPhotoGuideChange}
-                className="mx-auto max-w-lg bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
-              />
-
-              <div className="flex justify-center pt-1">
+              <div className="flex flex-row flex-wrap items-stretch gap-3">
+                <ScanPhotoGuideDismissCheckbox
+                  checked={skipPhotoGuide}
+                  onChange={handleSkipPhotoGuideChange}
+                  className="min-w-[min(100%,240px)] flex-1 bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
+                />
                 <button
                   type="button"
                   onClick={openPhotoGuideReview}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white/60 px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-white/80"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white/60 px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-white/80 sm:px-6"
                 >
                   <Sun className="h-4 w-4" aria-hidden />
                   View photo tips
