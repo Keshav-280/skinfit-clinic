@@ -18,6 +18,7 @@ import {
   Volume2,
   VolumeX,
   Bug,
+  X,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
 import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
@@ -90,6 +91,31 @@ type PendingCapture = CaptureItem;
 
 const N_CAPTURES = FACE_SCAN_CAPTURE_STEPS.length;
 
+type SlotCaptures = (CaptureItem | null)[];
+
+function emptySlotCaptures(): SlotCaptures {
+  return Array.from({ length: N_CAPTURES }, () => null);
+}
+
+function filledSlotCount(slots: SlotCaptures): number {
+  return slots.filter(Boolean).length;
+}
+
+function allSlotsFilled(slots: SlotCaptures): boolean {
+  return slots.every(Boolean);
+}
+
+function firstEmptySlotIndex(slots: SlotCaptures): number {
+  const idx = slots.findIndex((s) => !s);
+  return idx < 0 ? N_CAPTURES : idx;
+}
+
+function revokeSlotCaptures(slots: SlotCaptures) {
+  slots.forEach((c) => {
+    if (c) URL.revokeObjectURL(c.preview);
+  });
+}
+
 /** 3:4 preview — scales up on desktop to use available column space. */
 const CAMERA_PREVIEW_CLASS =
   "relative mx-auto aspect-[3/4] w-full max-w-[380px] overflow-hidden rounded-2xl bg-zinc-900 sm:max-w-[420px] lg:mx-0 lg:h-[min(540px,calc(100vh-13rem))] lg:w-auto lg:max-w-none lg:shrink-0";
@@ -160,7 +186,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const router = useRouter();
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
-  const [captures, setCaptures] = useState<CaptureItem[]>([]);
+  const [slotCaptures, setSlotCaptures] = useState<SlotCaptures>(emptySlotCaptures);
+  const [cameraStepIndex, setCameraStepIndex] = useState(0);
+  const [uploadTargetIndex, setUploadTargetIndex] = useState<number | null>(null);
+  const slotUploadInputRef = useRef<HTMLInputElement>(null);
   const [scanName, setScanName] = useState(() =>
     variant === "onboarding" ? BASELINE_ONBOARDING_SCAN_NAME : ""
   );
@@ -178,8 +207,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const captureStepIndexRef = useRef(0);
-  const currentCameraStep = FACE_SCAN_CAPTURE_STEPS[Math.min(captures.length, N_CAPTURES - 1)];
+  const currentCameraStep =
+    FACE_SCAN_CAPTURE_STEPS[Math.min(cameraStepIndex, N_CAPTURES - 1)];
   const reviewingCapture = pendingCapture != null;
   const guidanceActive = cameraOpen && !reviewingCapture;
 
@@ -199,7 +228,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [showDebug, setShowDebug] = useState(false);
 
   const debugExtra = {
-    step: `${Math.min(captures.length + 1, N_CAPTURES)}/${N_CAPTURES}`,
+    step: `${Math.min(cameraStepIndex + 1, N_CAPTURES)}/${N_CAPTURES}`,
     bbox: bboxSource,
   };
   const adjustmentsChanged =
@@ -248,18 +277,88 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     }
   }, [voiceEnabled, cameraOpen, reviewingCapture, guidance]);
 
-  useEffect(() => {
-    captureStepIndexRef.current = captures.length;
-  }, [captures.length]);
-
   const clearPendingCapture = useCallback((item: PendingCapture | null) => {
     if (item?.preview) URL.revokeObjectURL(item.preview);
   }, []);
 
-  const primaryPreview = captures[0]?.preview ?? null;
+  const primaryPreview =
+    slotCaptures[0]?.preview ?? slotCaptures.find((c) => c)?.preview ?? null;
 
-  const revokeAllCaptures = useCallback((items: CaptureItem[]) => {
-    items.forEach((c) => URL.revokeObjectURL(c.preview));
+  const captureCount = filledSlotCount(slotCaptures);
+  const slotsComplete = allSlotsFilled(slotCaptures);
+
+  const assignFileToSlot = useCallback((index: number, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please choose an image file.");
+      return;
+    }
+    setUploadError(null);
+    setSlotCaptures((prev) => {
+      const next = [...prev];
+      if (next[index]) URL.revokeObjectURL(next[index]!.preview);
+      next[index] = {
+        file,
+        preview: URL.createObjectURL(file),
+        label: FACE_SCAN_CAPTURE_STEPS[index].id,
+      };
+      if (allSlotsFilled(next)) {
+        queueMicrotask(() => setStep("confirm"));
+      }
+      return next;
+    });
+    setScanResults(null);
+  }, []);
+
+  const clearSlot = useCallback((index: number) => {
+    setSlotCaptures((prev) => {
+      const next = [...prev];
+      const removed = next[index];
+      if (removed) URL.revokeObjectURL(removed.preview);
+      next[index] = null;
+      return next;
+    });
+    if (step === "confirm") setStep("upload");
+  }, [step]);
+
+  const openUploadForSlot = useCallback((index: number) => {
+    setUploadTargetIndex(index);
+    slotUploadInputRef.current?.click();
+  }, []);
+
+  const applyFilesToEmptySlots = useCallback((files: FileList | File[] | null) => {
+    if (!files?.length) return;
+    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) {
+      setUploadError("Please choose image files only.");
+      return;
+    }
+    setUploadError(null);
+    setSlotCaptures((prev) => {
+      const next = [...prev];
+      let imageIdx = 0;
+      let added = 0;
+      for (let slotIdx = 0; slotIdx < N_CAPTURES && imageIdx < images.length; slotIdx++) {
+        if (next[slotIdx]) continue;
+        const file = images[imageIdx++]!;
+        next[slotIdx] = {
+          file,
+          preview: URL.createObjectURL(file),
+          label: FACE_SCAN_CAPTURE_STEPS[slotIdx].id,
+        };
+        added += 1;
+      }
+      const leftover = images.length - added;
+      if (leftover > 0) {
+        setUploadError(
+          `Added ${added} photo${added === 1 ? "" : "s"} to empty slots. ${leftover} extra file${leftover === 1 ? " was" : "s were"} skipped — tap a slot to replace one.`
+        );
+      }
+      if (allSlotsFilled(next)) {
+        queueMicrotask(() => setStep("confirm"));
+      }
+      return next;
+    });
+    setScanResults(null);
   }, []);
 
   const stopCamera = useCallback(() => {
@@ -324,12 +423,16 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       clearPendingCapture(prev);
       return null;
     });
-    setCaptures((prev) => {
-      revokeAllCaptures(prev);
-      return [];
-    });
+    const nextIdx = firstEmptySlotIndex(slotCaptures);
+    if (nextIdx >= N_CAPTURES) {
+      setUploadError(
+        "All five angles are filled. Remove one below to retake with the camera, or continue to preview."
+      );
+      return;
+    }
+    setCameraStepIndex(nextIdx);
     void startCamera("user");
-  }, [revokeAllCaptures, startCamera, clearPendingCapture, resetAdjustments]);
+  }, [slotCaptures, startCamera, clearPendingCapture, resetAdjustments]);
 
   const setCaptureZoomManual = useCallback((value: number) => {
     setCaptureZoom(value);
@@ -342,8 +445,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const captureFromCamera = useCallback(() => {
     const video = videoRef.current;
     if (!video || !streamRef.current || pendingCapture) return;
-    const stepIndex = captureStepIndexRef.current;
-    if (stepIndex >= N_CAPTURES) return;
+    if (cameraStepIndex >= N_CAPTURES) return;
     const w = video.videoWidth;
     const h = video.videoHeight;
     if (!w || !h) return;
@@ -389,9 +491,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        const idx = captureStepIndexRef.current;
-        if (idx >= N_CAPTURES) return;
-        const step = FACE_SCAN_CAPTURE_STEPS[idx];
+        if (cameraStepIndex >= N_CAPTURES) return;
+        const step = FACE_SCAN_CAPTURE_STEPS[cameraStepIndex];
         const captured = new File(
           [blob],
           `face-scan-${step.id}-${Date.now()}.jpg`,
@@ -406,24 +507,28 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       "image/jpeg",
       0.82
     );
-  }, [captureZoom, brightness, contrast, facingMode, pendingCapture, clearPendingCapture]);
+  }, [captureZoom, brightness, contrast, facingMode, pendingCapture, clearPendingCapture, cameraStepIndex]);
 
   const confirmPendingCapture = useCallback(() => {
     if (!pendingCapture) return;
     const item = pendingCapture;
     setPendingCapture(null);
-    setCaptures((prev) => {
-      if (prev.length >= N_CAPTURES) return prev;
-      const next = [...prev, item];
-      if (next.length >= N_CAPTURES) {
+    setSlotCaptures((prev) => {
+      if (cameraStepIndex >= N_CAPTURES) return prev;
+      const next = [...prev];
+      if (next[cameraStepIndex]) URL.revokeObjectURL(next[cameraStepIndex]!.preview);
+      next[cameraStepIndex] = item;
+      if (allSlotsFilled(next)) {
         queueMicrotask(() => {
           stopCamera();
           setStep("confirm");
         });
+      } else {
+        setCameraStepIndex(firstEmptySlotIndex(next));
       }
       return next;
     });
-  }, [pendingCapture, stopCamera]);
+  }, [pendingCapture, stopCamera, cameraStepIndex]);
 
   const retakePendingCapture = useCallback(() => {
     setPendingCapture((prev) => {
@@ -439,37 +544,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       clearPendingCapture(prev);
       return null;
     });
-    setCaptures((prev) => {
-      revokeAllCaptures(prev);
-      return [];
-    });
     stopCamera();
-  }, [revokeAllCaptures, stopCamera, clearPendingCapture, resetAdjustments]);
-
-  const applyFileList = useCallback(
-    (files: FileList | File[] | null) => {
-      if (!files?.length) return;
-      const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
-      if (arr.length !== N_CAPTURES) {
-        setUploadError(
-          `Choose exactly ${N_CAPTURES} photos in order (you picked ${arr.length}).`
-        );
-        return;
-      }
-      setUploadError(null);
-      setCaptures((prev) => {
-        revokeAllCaptures(prev);
-        return arr.map((file, i) => ({
-          file,
-          preview: URL.createObjectURL(file),
-          label: FACE_SCAN_CAPTURE_STEPS[i].id,
-        }));
-      });
-      setScanResults(null);
-      setStep("confirm");
-    },
-    [revokeAllCaptures]
-  );
+  }, [stopCamera, clearPendingCapture, resetAdjustments]);
 
   const resetScan = useCallback(() => {
     stopCamera();
@@ -477,40 +553,51 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       clearPendingCapture(prev);
       return null;
     });
-    setCaptures((prev) => {
-      revokeAllCaptures(prev);
-      return [];
+    setSlotCaptures((prev) => {
+      revokeSlotCaptures(prev);
+      return emptySlotCaptures();
     });
+    setCameraStepIndex(0);
     setStep("upload");
     setScanName(isOnboardingScan ? BASELINE_ONBOARDING_SCAN_NAME : "");
     setScanResults(null);
     setUploadError(null);
     setScanError(null);
-  }, [revokeAllCaptures, stopCamera, isOnboardingScan, clearPendingCapture]);
+  }, [stopCamera, isOnboardingScan, clearPendingCapture]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      applyFileList(e.dataTransfer.files);
+      applyFilesToEmptySlots(e.dataTransfer.files);
     },
-    [applyFileList]
+    [applyFilesToEmptySlots]
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    applyFileList(e.target.files);
+    applyFilesToEmptySlots(e.target.files);
     e.target.value = "";
   };
 
+  const handleSlotUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || uploadTargetIndex == null) return;
+    assignFileToSlot(uploadTargetIndex, file);
+    setUploadTargetIndex(null);
+  };
+
   const runScan = useCallback(async () => {
-    if (captures.length !== N_CAPTURES) return;
+    if (!slotsComplete) return;
     const finalScanName = resolveScanName(scanName);
     setStep("scanning");
     setScanError(null);
     try {
       const formData = new FormData();
       formData.append("scanName", finalScanName);
-      captures.forEach((c) => formData.append("images", c.file));
+      slotCaptures.forEach((c) => {
+        if (c) formData.append("images", c.file);
+      });
       const outcome = await submitFaceScan(formData);
 
       if (outcome.mode === "queued") {
@@ -537,9 +624,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       setScanError("Network error. Check your connection and try again.");
       setStep("naming");
     }
-  }, [captures, scanName, router, isOnboardingScan]);
-
-  const captureCount = captures.length;
+  }, [slotCaptures, slotsComplete, scanName, router, isOnboardingScan]);
 
   return (
     <div className="space-y-6">
@@ -678,7 +763,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                     <button
                       type="button"
                       onClick={captureFromCamera}
-                      disabled={captureCount >= N_CAPTURES}
+                      disabled={slotsComplete}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-[1.4]"
                     >
                       <Camera className="h-5 w-5" />
@@ -709,7 +794,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[320px] xl:w-[340px]">
               <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-3 text-center backdrop-blur-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
-                  Step {Math.min(captureCount + 1, N_CAPTURES)} of {N_CAPTURES}
+                  Step {Math.min(cameraStepIndex + 1, N_CAPTURES)} of {N_CAPTURES}
                 </p>
                 <p className="mt-0.5 text-lg font-bold text-[#2C3E6B]">
                   {currentCameraStep.title}
@@ -863,20 +948,31 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   className="sr-only"
                   onChange={handleInputChange}
                 />
+                <input
+                  ref={slotUploadInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleSlotUploadChange}
+                />
                 <div>
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6] shadow-sm">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
                     <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
                   </div>
                   <h2 className="mt-4 text-lg font-extrabold text-[#1F2A44]">
                     Upload photos
                   </h2>
                   <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#64748B]">
-                    Already captured them? Drop or choose exactly {N_CAPTURES} clear photos.
+                    Tap each slot below to add one photo at a time, or drop several
+                    files to fill empty slots.
+                  </p>
+                  <p className="mx-auto mt-1 text-xs font-semibold text-[#4CAF50]">
+                    {captureCount}/{N_CAPTURES} added
                   </p>
                 </div>
                 <label
                   htmlFor="scan-file-input"
-                  className="mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/75 px-5 py-3 text-sm font-extrabold text-[#2C3E6B] shadow-sm transition hover:bg-white"
+                  className="mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/75 px-5 py-3 text-sm font-extrabold text-[#2C3E6B] transition hover:bg-white"
                 >
                   <ImagePlus className="h-4 w-4" />
                   Choose photos
@@ -889,23 +985,78 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 Capture checklist
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-5">
-                {FACE_SCAN_CAPTURE_STEPS.map((captureStep, index) => (
-                  <div
-                    key={captureStep.id}
-                    className="rounded-2xl border border-white/70 bg-white/55 px-3 py-2 text-center"
-                  >
-                    <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#94A3B8]">
-                      {index + 1}
-                    </p>
-                    <p className="mt-0.5 text-xs font-bold text-[#2C3E6B]">
-                      {captureStep.title}
-                    </p>
-                  </div>
-                ))}
+                {FACE_SCAN_CAPTURE_STEPS.map((captureStep, index) => {
+                  const filled = slotCaptures[index];
+                  return (
+                    <div
+                      key={captureStep.id}
+                      className={`relative rounded-2xl border px-2 py-2 text-center transition-colors ${
+                        filled
+                          ? "border-[#4CAF50] bg-[#E8F5E9]"
+                          : "cursor-pointer border-white/70 bg-white/55 hover:border-[#2C3E6B]/25 hover:bg-white/80"
+                      }`}
+                    >
+                      {filled ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => clearSlot(index)}
+                            className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#64748B] shadow-sm transition hover:bg-rose-50 hover:text-rose-600"
+                            aria-label={`Remove ${captureStep.title}`}
+                          >
+                            <X className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={filled.preview}
+                            alt={captureStep.title}
+                            className="mx-auto h-12 w-12 rounded-xl object-cover ring-1 ring-[#4CAF50]/30"
+                          />
+                          <p className="mt-1 line-clamp-2 text-[10px] font-bold leading-tight text-[#1E5E3A]">
+                            {captureStep.title}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => openUploadForSlot(index)}
+                            className="mt-1 text-[10px] font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
+                          >
+                            Replace
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openUploadForSlot(index)}
+                          className="flex w-full flex-col items-center py-1"
+                        >
+                          <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#94A3B8]">
+                            {index + 1}
+                          </p>
+                          <p className="mt-0.5 text-xs font-bold text-[#2C3E6B]">
+                            {captureStep.title}
+                          </p>
+                          <p className="mt-1 text-[10px] font-medium text-[#94A3B8]">
+                            Tap to upload
+                          </p>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <p className="mt-4 text-center text-sm leading-relaxed text-[#64748B]">
                 {FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA.join(" ")}
               </p>
+              {slotsComplete ? (
+                <button
+                  type="button"
+                  onClick={() => setStep("confirm")}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] py-3 text-sm font-bold text-white transition hover:bg-[#243456]"
+                >
+                  <Check className="h-4 w-4" aria-hidden />
+                  Continue to preview
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -929,7 +1080,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       )}
 
       {/* Step: Confirm */}
-      {step === "confirm" && captures.length === N_CAPTURES && (
+      {step === "confirm" && slotsComplete && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -941,30 +1092,41 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               Preview
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-              {captures.map((c, i) => (
-                <figure key={`${c.label}-${i}`} className="flex min-w-0 flex-col gap-2">
-                  <div className="relative aspect-[3/4] w-full min-h-[140px] overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/80 sm:min-h-[160px] lg:min-h-0">
-                    <img
-                      src={c.preview}
-                      alt={FACE_SCAN_CAPTURE_STEPS[i].title}
-                      className="h-full w-full object-cover object-center"
-                    />
-                  </div>
-                  <figcaption className="line-clamp-2 text-center text-xs font-medium leading-snug text-zinc-600">
-                    {FACE_SCAN_CAPTURE_STEPS[i].title}
-                  </figcaption>
-                </figure>
-              ))}
+              {slotCaptures.map((c, i) =>
+                c ? (
+                  <figure key={`${c.label}-${i}`} className="flex min-w-0 flex-col gap-2">
+                    <div className="relative aspect-[3/4] w-full min-h-[140px] overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/80 sm:min-h-[160px] lg:min-h-0">
+                      <img
+                        src={c.preview}
+                        alt={FACE_SCAN_CAPTURE_STEPS[i].title}
+                        className="h-full w-full object-cover object-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => clearSlot(i)}
+                        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#64748B] shadow-sm transition hover:bg-rose-50 hover:text-rose-600"
+                        aria-label={`Remove ${FACE_SCAN_CAPTURE_STEPS[i].title}`}
+                      >
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
+                    <figcaption className="line-clamp-2 text-center text-xs font-medium leading-snug text-zinc-600">
+                      {FACE_SCAN_CAPTURE_STEPS[i].title}
+                    </figcaption>
+                  </figure>
+                ) : null
+              )}
             </div>
           </div>
           <div className="flex gap-4">
             <button
               type="button"
               onClick={() => {
-                setCaptures((prev) => {
-                  revokeAllCaptures(prev);
-                  return [];
+                setSlotCaptures((prev) => {
+                  revokeSlotCaptures(prev);
+                  return emptySlotCaptures();
                 });
+                setCameraStepIndex(0);
                 setStep("upload");
               }}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
@@ -985,7 +1147,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       )}
 
       {/* Step: Naming */}
-      {step === "naming" && primaryPreview && captures.length === N_CAPTURES && (
+      {step === "naming" && primaryPreview && slotsComplete && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -997,18 +1159,20 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               Photo in this scan
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-              {captures.map((c, i) => (
-                <div
-                  key={`thumb-${c.label}-${i}`}
-                  className="relative aspect-[3/4] w-full min-h-[140px] overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/80 sm:min-h-[160px] lg:min-h-0"
-                >
-                  <img
-                    src={c.preview}
-                    alt=""
-                    className="h-full w-full object-cover object-center grayscale-[15%]"
-                  />
-                </div>
-              ))}
+              {slotCaptures.map((c, i) =>
+                c ? (
+                  <div
+                    key={`thumb-${c.label}-${i}`}
+                    className="relative aspect-[3/4] w-full min-h-[140px] overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/80 sm:min-h-[160px] lg:min-h-0"
+                  >
+                    <img
+                      src={c.preview}
+                      alt=""
+                      className="h-full w-full object-cover object-center grayscale-[15%]"
+                    />
+                  </div>
+                ) : null
+              )}
             </div>
           </div>
           {scanError ? (
@@ -1098,10 +1262,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             onClose={() => setReportOpen(false)}
             userName={scanResults.userName?.trim() || "there"}
             imageUrl={primaryPreview}
-            faceCaptureGallery={captures.map((c, i) => ({
-              label: FACE_SCAN_CAPTURE_STEPS[i].title,
-              imageUrl: c.preview,
-            }))}
+            faceCaptureGallery={slotCaptures.flatMap((c, i) =>
+              c
+                ? [{ label: FACE_SCAN_CAPTURE_STEPS[i].title, imageUrl: c.preview }]
+                : []
+            )}
             regions={scanResults.detected_regions}
             metrics={{
               acne: scanResults.metrics.acne,

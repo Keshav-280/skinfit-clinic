@@ -95,31 +95,31 @@ export function NavyMetricsCard({
     <div
       className={`rounded-[20px] bg-[#2D3E6B] px-5 py-2 md:px-6 md:py-2.5 h-full ${className}`}
     >
-      <div className="grid h-full min-h-[200px] grid-cols-12 items-stretch gap-4">
+      <div className="grid h-full min-h-0 grid-cols-12 items-center gap-4">
         {/* Left Column: Stacked sub-cards */}
-        <div className="col-span-5 flex h-full flex-col gap-2.5">
-          <div className="flex min-h-[112px] flex-1 flex-col justify-center rounded-[20px] bg-[#E8EFE6] px-4 py-3 text-center">
-            <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
-            <p className="mt-1.5 text-[2.5rem] font-extrabold leading-none text-[#1E5E3A]">
+        <div className="col-span-5 flex h-full flex-col justify-center gap-2">
+          <div className="flex flex-col justify-center rounded-[16px] bg-[#E8EFE6] px-3 py-2 text-center">
+            <p className="text-[11px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
+            <p className="mt-0.5 text-[2rem] font-extrabold leading-none text-[#1E5E3A]">
               {kaiSkinScore}
             </p>
-            <p className="mt-1.5 text-[10px] font-medium leading-none text-[#6B7280]">
+            <p className="mt-0.5 text-[10px] font-medium leading-none text-[#6B7280]">
               {latestScanAt
                 ? `Updated ${format(new Date(latestScanAt), "MMM d")}`
                 : "No scans yet"}
             </p>
           </div>
-          <div className="flex min-h-[112px] flex-1 flex-col justify-center rounded-[20px] bg-[#E8EFE6] px-4 py-3 text-center">
-            <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
+          <div className="flex flex-col justify-center rounded-[16px] bg-[#E8EFE6] px-3 py-2 text-center">
+            <p className="text-[11px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
             <p
-              className={`mt-1.5 text-[2.5rem] font-extrabold leading-none ${
+              className={`mt-0.5 text-[2rem] font-extrabold leading-none ${
                 weeklyDeltaScore >= 0 ? "text-[#1E5E3A]" : "text-[#EF4444]"
               }`}
             >
               {weeklyDeltaScore >= 0 ? "+" : ""}
               {weeklyDeltaScore}
             </p>
-            <p className="mt-1.5 text-[10px] font-medium leading-none text-[#6B7280]">vs last week</p>
+            <p className="mt-0.5 text-[10px] font-medium leading-none text-[#6B7280]">vs last week</p>
           </div>
         </div>
 
