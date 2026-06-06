@@ -4,7 +4,11 @@ import { db } from "@/src/db";
 import { patientScheduleRequests, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorsNewScheduleRequest } from "@/src/lib/clinicSheetAppointmentWebhook";
-import { getDefaultClinicDoctorId } from "@/src/lib/defaultClinicDoctor";
+import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
+import {
+  getClinicDoctorDisplayName,
+  resolveClinicDoctorForAppointment,
+} from "@/src/lib/resolveClinicDoctor";
 import { dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/date-only";
 import { clinicSheetAppointmentApiUrlFromEnv } from "@/src/lib/clinicSheetAppointmentApiUrl";
 import { postGoogleAppsScriptWebAppJson } from "@/src/lib/googleAppsScriptWebAppFetch";
@@ -162,19 +166,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "ISSUE_REQUIRED" }, { status: 400 });
   }
 
-  let doctorId: string | null = null;
-  if (doctorIdRaw) {
-    const doc = await db.query.users.findFirst({
-      where: eq(users.id, doctorIdRaw),
-      columns: { id: true, role: true },
-    });
-    if (doc && (doc.role === "doctor" || doc.role === "admin")) {
-      doctorId = doc.id;
-    }
-  }
+  const assignedDoctorId = await getAssignedDoctorIdForPatient(userId);
+  const doctorId = await resolveClinicDoctorForAppointment({
+    doctorId: doctorIdRaw || null,
+    doctorName: null,
+    fallbackDoctorId: assignedDoctorId,
+  });
   if (!doctorId) {
-    doctorId = await getDefaultClinicDoctorId();
+    return NextResponse.json({ error: "NO_CLINIC_DOCTOR" }, { status: 503 });
   }
+  const doctorName = await getClinicDoctorDisplayName(doctorId);
 
   const [patient] = await db
     .select({
@@ -227,6 +228,7 @@ export async function POST(req: Request) {
     patientName,
     preferredDateYmd,
     preview: `${issue} · ${timePreferences}`,
+    doctorId,
   });
 
   const outboundUrlRaw = process.env.CLINIC_SHEET_REQUEST_WEBHOOK_URL?.trim();
@@ -251,6 +253,7 @@ export async function POST(req: Request) {
         patientPhone,
         patientTimezone,
         doctorId,
+        doctorName,
         preferredDateYmd,
         /** Same as preferredDateYmd; alias for sheets that label the column Ym. */
         preferredDateYm: preferredDateYmd,

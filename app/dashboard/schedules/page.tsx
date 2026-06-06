@@ -11,8 +11,12 @@ import {
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { DEFAULT_PRIORITY_REMINDERS } from "@/src/lib/defaultSchedulesData";
 import { appointmentCalendarTitle } from "@/src/lib/doctorDisplayName";
+import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { utcInstantToClinicWallYmdHm } from "@/src/lib/clinicSlotUtcInstant";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
+import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
+import { getLatestPatientVisit } from "@/src/lib/patientVisit";
+import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import SchedulesPageClient from "@/components/dashboard/SchedulesPageClient";
 
 function appointmentTypeLabel(t: string): string {
@@ -94,7 +98,14 @@ export default async function SchedulesPage() {
     );
   }
 
-  const [eventRows, bookedBase, pendingRows, closedRows] = await Promise.all([
+  const [
+    eventRows,
+    bookedBase,
+    pendingRows,
+    closedRows,
+    latestVisit,
+    assignedDoctorId,
+  ] = await Promise.all([
     db.query.scheduleEvents.findMany({
       where: eq(scheduleEvents.userId, userId),
       orderBy: [
@@ -169,7 +180,24 @@ export default async function SchedulesPage() {
         cancelledReason: true,
       },
     }),
+    getLatestPatientVisit(userId),
+    getAssignedDoctorIdForPatient(userId),
   ]);
+
+  let assignedDoctor: { name: string; photoUrl: string | null } | null = null;
+  if (assignedDoctorId) {
+    const [doc] = await db
+      .select({ name: users.name, profilePhotoUrl: users.profilePhotoUrl })
+      .from(users)
+      .where(eq(users.id, assignedDoctorId))
+      .limit(1);
+    if (doc) {
+      assignedDoctor = {
+        name: (doc.name ?? "").trim() || "Doctor",
+        photoUrl: publicFileDisplayUrl(doc.profilePhotoUrl) ?? null,
+      };
+    }
+  }
 
   const apptIds = bookedBase.map((r) => r.id);
   const crmByAppt = new Map<string, string | null>();
@@ -244,7 +272,7 @@ export default async function SchedulesPage() {
       crmPatientMessage: tip,
       cancellationReason: cancelNote,
       doctorName: r.doctorName ?? "",
-      doctorPhotoUrl: r.doctorPhotoUrl ?? null,
+      doctorPhotoUrl: publicFileDisplayUrl(r.doctorPhotoUrl) ?? null,
       appointmentType: appointmentTypeLabel(r.type),
     };
   });
@@ -272,6 +300,11 @@ export default async function SchedulesPage() {
   const initialTreatmentEvents = [...fromSchedule].sort(cmpCalendarEventRows);
   const initialAppointmentEvents = [...fromBookings].sort(cmpCalendarEventRows);
 
+  const latestVisitForClient =
+    latestVisit && !latestVisit.doctorPhotoUrl && assignedDoctor?.photoUrl
+      ? { ...latestVisit, doctorPhotoUrl: assignedDoctor.photoUrl }
+      : latestVisit;
+
   return (
     <div className="min-h-full bg-[#E8EFE6] px-4 py-5 pb-12 md:px-6">
       <SchedulesPageClient
@@ -280,6 +313,9 @@ export default async function SchedulesPage() {
         pendingScheduleRequests={pendingScheduleRequests}
         closedScheduleRequests={closedScheduleRequests}
         initialScheduleUnreadCount={initialScheduleUnreadCount}
+        latestVisit={latestVisitForClient}
+        assignedDoctor={assignedDoctor}
+        showKaiInsights={isKaiInsightsEnabled()}
       />
     </div>
   );

@@ -13,7 +13,8 @@ import {
  * Body: `{ "updates": [ { "action": "confirm", "patientId": "uuid", "scheduleRequestId": "<uuid column B>",
  *   "externalRef": "sheet-row-12",
  *   "confirmedDateTimeIso": "2026-05-10T14:30:00+05:30", "confirmedSlotEndTimeHm": "11:00",
- *   "appointmentType": "consultation", "patientMessage": "Apply cream X before you come." } ] }`
+ *   "appointmentType": "consultation", "patientMessage": "Apply cream X before you come.",
+ *   "doctorId": "uuid", "doctorName": "Dr. Ruby" } ] }`
  * Re-confirm same `externalRef` after booking → reschedules the visit (patient notified).
  * Cancel / decline: use `cancelledReason` and/or `patientMessage` (both go to patient notification + DB).
  */
@@ -54,7 +55,8 @@ export async function POST(req: Request) {
       action !== "confirm" &&
       action !== "cancel" &&
       action !== "decline" &&
-      action !== "message"
+      action !== "message" &&
+      action !== "assign_doctor"
     ) {
       continue;
     }
@@ -71,6 +73,15 @@ export async function POST(req: Request) {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         schedIdRaw
       );
+    const doctorIdRaw =
+      typeof o.doctorId === "string" ? o.doctorId.trim() : "";
+    const doctorNameRaw =
+      typeof o.doctorName === "string" ? o.doctorName.trim() : "";
+    const doctorIdOk =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        doctorIdRaw
+      );
+
     updates.push({
       action,
       scheduleRequestId: uuidOk ? schedIdRaw : null,
@@ -97,6 +108,8 @@ export async function POST(req: Request) {
         patientMessageRaw.length > 0
           ? patientMessageRaw.slice(0, 4000)
           : null,
+      doctorId: doctorIdOk ? doctorIdRaw : null,
+      doctorName: doctorNameRaw.length > 0 ? doctorNameRaw.slice(0, 120) : null,
     });
   }
 

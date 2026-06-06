@@ -57,6 +57,10 @@
  *   AG skinfitMirrorSlotEndHm   (Skinfit write-back)
  *   AH skinfitPatientReply      (patient “Message clinic” from app)
  *   AI skinfitPatientReplyAt    (ISO timestamp)
+ *   AJ doctorName               (human-readable; CRM dropdown — synced to Skinfit on confirm)
+ *
+ * Optional tab **Doctors** (columns A=name, B=id UUID) for name → id lookup when staff pick doctorName.
+ * Roster API: GET /api/integrations/clinic-sheet/doctors (header x-skinfit-sheet-secret).
  *
  * Optional: respond with JSON { "ok": true, "externalRef": "sheet-row-12" } so Skinfit stores
  * the row key for confirm/cancel webhooks (see externalRef in /api/integrations/clinic-sheet/appointments).
@@ -228,7 +232,8 @@ function doPostHandler_(e) {
     '',
     '',
     '',
-    ''
+    '',
+    data.doctorName || ''
   ];
 
   sheet.appendRow(row);
@@ -398,7 +403,8 @@ function getFullHeaderRow_() {
     'crmSlotEndTimeHm',
     'skinfitMirrorSlotEndHm',
     'skinfitPatientReply',
-    'skinfitPatientReplyAt'
+    'skinfitPatientReplyAt',
+    'doctorName'
   ];
 }
 
@@ -701,6 +707,62 @@ function resolveSkinfitAppointmentApiUrl_(sheet, rowNum, map, props) {
   return fromProp || fromRow || '';
 }
 
+function normalizeDoctorNameKey_(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^(dr\.?|doctor)\s+/i, '')
+    .replace(/\s+/g, ' ');
+}
+
+/** Optional tab Doctors: col A = display name, col B = Skinfit user UUID. */
+function lookupDoctorIdFromDoctorsTab_(doctorName) {
+  var key = normalizeDoctorNameKey_(doctorName);
+  if (!key) return '';
+  var ss = getTargetSpreadsheet_();
+  var sh = ss.getSheetByName('Doctors');
+  if (!sh || sh.getLastRow() < 2) return '';
+  var values = sh.getRange(2, 1, sh.getLastRow(), 2).getValues();
+  for (var i = 0; i < values.length; i++) {
+    var name = String(values[i][0] || '').trim();
+    var id = String(values[i][1] || '').trim();
+    if (!name || !id) continue;
+    if (normalizeDoctorNameKey_(name) === key) return id;
+  }
+  return '';
+}
+
+function resolveDoctorFieldsForRow_(sheet, rowNum, map) {
+  var doctorId = getCellByHeader_(sheet, rowNum, map, 'doctorId', 13).trim();
+  var doctorName = getCellByHeader_(sheet, rowNum, map, 'doctorName', '').trim();
+  if (!doctorId && doctorName) {
+    var lookedUp = lookupDoctorIdFromDoctorsTab_(doctorName);
+    if (lookedUp) {
+      doctorId = lookedUp;
+      if (map['doctorid']) {
+        setCellByHeader_(sheet, rowNum, map, 'doctorId', 13, doctorId);
+      }
+    }
+  }
+  return {
+    doctorId: doctorId || null,
+    doctorName: doctorName || null
+  };
+}
+
+/** Run once: creates Doctors tab with headers (paste names + UUIDs from Skinfit). */
+function ensureDoctorsTabTemplate_() {
+  var ss = getTargetSpreadsheet_();
+  var sh = ss.getSheetByName('Doctors');
+  if (!sh) {
+    sh = ss.insertSheet('Doctors');
+  }
+  if (String(sh.getRange(1, 1).getValue() || '').trim() !== 'name') {
+    sh.getRange(1, 1, 1, 2).setValues([['name', 'id']]);
+  }
+  Logger.log('Doctors tab ready — add one row per clinician (name in A, UUID in B).');
+}
+
 function maybePushRowToSkinfit_(sheet, rowNum) {
   ensureHeaderRowForSheet_(sheet);
   var map = buildHeaderIndexMap_(sheet);
@@ -797,6 +859,8 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
     return;
   }
 
+  var doctorFields = resolveDoctorFieldsForRow_(sheet, rowNum, map);
+
   var update = {
     action: action,
     patientId: patientId || null,
@@ -807,7 +871,9 @@ function maybePushRowToSkinfit_(sheet, rowNum) {
     confirmedSlotEndTimeHm: action === 'confirm' && slotEndHm ? slotEndHm : null,
     appointmentType: apptTypeRaw || null,
     cancelledReason: cancelReason || null,
-    patientMessage: msg || null
+    patientMessage: msg || null,
+    doctorId: doctorFields.doctorId,
+    doctorName: doctorFields.doctorName
   };
 
   var payload = { updates: [update] };

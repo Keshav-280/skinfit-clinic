@@ -6,8 +6,11 @@ import {
   users,
 } from "@/src/db/schema";
 import { utcInstantToClinicWallYmdHm } from "@/src/lib/clinicSlotUtcInstant";
-import { getDefaultClinicDoctorId } from "@/src/lib/defaultClinicDoctor";
 import { notifyClinicSheetRowMirrored } from "@/src/lib/clinicSheetRowSync";
+import {
+  assignPatientClinicDoctor,
+  resolveClinicDoctorForAppointment,
+} from "@/src/lib/resolveClinicDoctor";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import {
   notifyDoctorUsers,
@@ -20,7 +23,7 @@ import {
 } from "@/src/lib/slotTimeHm";
 
 export type ClinicSheetAppointmentUpdate = {
-  action: "confirm" | "cancel" | "decline" | "message";
+  action: "confirm" | "cancel" | "decline" | "message" | "assign_doctor";
   /** Row id from Google Sheet / CRM */
   externalRef?: string | null;
   /**
@@ -40,7 +43,36 @@ export type ClinicSheetAppointmentUpdate = {
    * merged with `cancelledReason` for cancel/decline when notifying.
    */
   patientMessage?: string | null;
+  /** CRM sheet column `doctorId` (UUID). */
+  doctorId?: string | null;
+  /** CRM sheet column `doctorName` — resolved when id missing or stale. */
+  doctorName?: string | null;
 };
+
+async function resolveDoctorForSheetUpdate(
+  u: Pick<ClinicSheetAppointmentUpdate, "doctorId" | "doctorName">,
+  reqRowDoctorId: string | null | undefined
+): Promise<string | null> {
+  return resolveClinicDoctorForAppointment({
+    doctorId: u.doctorId,
+    doctorName: u.doctorName,
+    fallbackDoctorId: reqRowDoctorId,
+  });
+}
+
+function notifyAssignedDoctorFromSheet(
+  doctorId: string,
+  title: string,
+  body: string,
+  data: Record<string, unknown>
+) {
+  void notifyDoctorUsers({
+    title,
+    body,
+    data,
+    doctorIds: [doctorId],
+  });
+}
 
 function parseOptionalSlotEndHm(
   startUtc: Date,
@@ -229,6 +261,25 @@ export async function applyClinicSheetAppointmentUpdates(
 
       const now = new Date();
 
+      if (u.action === "assign_doctor") {
+        const doctorId = await resolveDoctorForSheetUpdate(u, reqRow.doctorId);
+        if (!doctorId) {
+          errors.push("no_doctor");
+          continue;
+        }
+        await db
+          .update(patientScheduleRequests)
+          .set({
+            doctorId,
+            updatedAt: now,
+            externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
+          })
+          .where(eq(patientScheduleRequests.id, reqRow.id));
+        await assignPatientClinicDoctor(patientId, doctorId);
+        applied += 1;
+        continue;
+      }
+
       if (u.action === "confirm") {
         const iso = u.confirmedDateTimeIso?.trim();
         if (!iso) {
@@ -249,8 +300,7 @@ export async function applyClinicSheetAppointmentUpdates(
         }
         const slotEndHm = parsedEnd.hm;
 
-        const doctorId =
-          reqRow.doctorId ?? (await getDefaultClinicDoctorId());
+        const doctorId = await resolveDoctorForSheetUpdate(u, reqRow.doctorId);
         if (!doctorId) {
           errors.push("no_doctor");
           continue;
@@ -282,18 +332,22 @@ export async function applyClinicSheetAppointmentUpdates(
             .set({
               dateTime: dt,
               slotEndTimeHm: slotEndHm,
+              doctorId,
             })
             .where(eq(appointments.id, existing.id));
 
           await db
             .update(patientScheduleRequests)
             .set({
+              doctorId,
               crmPatientMessage: msg,
               confirmedAt: now,
               updatedAt: now,
               externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
             })
             .where(eq(patientScheduleRequests.id, reqRow.id));
+
+          await assignPatientClinicDoctor(patientId, doctorId);
 
           const body = msg
             ? `Your visit was rescheduled to ${whenRange} on ${dt.toLocaleDateString()}. ${msg}`
@@ -311,11 +365,12 @@ export async function applyClinicSheetAppointmentUpdates(
           }).catch((err) =>
             console.warn("[clinicSheetAppointmentWebhook] chat notice failed", err)
           );
-          void notifyDoctorUsers({
-            title: "Appointment updated from CRM sheet",
-            body: `${whenRange} · patient ${patientId}`,
-            data: { type: "appointment_rescheduled_from_sheet", patientId },
-          });
+          notifyAssignedDoctorFromSheet(
+            doctorId,
+            "Appointment updated from CRM sheet",
+            `${whenRange} · patient ${patientId}`,
+            { type: "appointment_rescheduled_from_sheet", patientId }
+          );
           void notifyClinicSheetRowMirrored({
             externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
             scheduleRequestId: reqRow.id,
@@ -349,6 +404,7 @@ export async function applyClinicSheetAppointmentUpdates(
           .update(patientScheduleRequests)
           .set({
             status: "confirmed",
+            doctorId,
             confirmedAt: now,
             appointmentId: appt.id,
             updatedAt: now,
@@ -356,6 +412,8 @@ export async function applyClinicSheetAppointmentUpdates(
             crmPatientMessage: msg,
           })
           .where(eq(patientScheduleRequests.id, reqRow.id));
+
+        await assignPatientClinicDoctor(patientId, doctorId);
 
         const body = msg
           ? `Your appointment is set for ${whenRange} on ${dt.toLocaleDateString()}. ${msg}`
@@ -369,11 +427,12 @@ export async function applyClinicSheetAppointmentUpdates(
         }).catch((err) =>
           console.warn("[clinicSheetAppointmentWebhook] chat notice failed", err)
         );
-        void notifyDoctorUsers({
-          title: "Appointment confirmed in CRM",
-          body: `${whenRange} · patient ${patientId}`,
-          data: { type: "appointment_confirmed_from_sheet", patientId },
-        });
+        notifyAssignedDoctorFromSheet(
+          doctorId,
+          "Appointment confirmed in CRM",
+          `${whenRange} · patient ${patientId}`,
+          { type: "appointment_confirmed_from_sheet", patientId }
+        );
         void notifyClinicSheetRowMirrored({
           externalRef: u.externalRef?.trim() ?? reqRow.externalRef,
           scheduleRequestId: reqRow.id,
@@ -551,12 +610,22 @@ export async function notifyDoctorsNewScheduleRequest(opts: {
   patientName: string;
   preferredDateYmd: string;
   preview: string;
+  doctorId?: string | null;
 }): Promise<void> {
+  const body = `${opts.patientName} · ${opts.preferredDateYmd} · ${opts.preview.slice(0, 100)}`;
+  const data = { type: "patient_schedule_request" };
+  if (opts.doctorId?.trim()) {
+    notifyAssignedDoctorFromSheet(
+      opts.doctorId.trim(),
+      "New patient visit request",
+      body,
+      data
+    );
+    return;
+  }
   void notifyDoctorUsers({
     title: "New patient visit request",
-    body: `${opts.patientName} · ${opts.preferredDateYmd} · ${opts.preview.slice(0, 100)}`,
-    data: {
-      type: "patient_schedule_request",
-    },
+    body,
+    data,
   });
 }

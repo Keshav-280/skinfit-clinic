@@ -7,16 +7,10 @@ import {
   Phone,
   ShieldCheck,
   Sparkles,
-  Stethoscope,
   UserRound,
 } from "lucide-react";
-import { DashboardPageSection } from "@/components/dashboard/DashboardPageSection";
-import { LastTreatmentCard } from "@/components/dashboard/LastTreatmentCard";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
-import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
-import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
-import { getLatestPatientVisit } from "@/src/lib/patientVisit";
 
 function prettyValue(value: string | number | null | undefined, fallback = "Not added") {
   if (value == null) return fallback;
@@ -126,40 +120,13 @@ export default async function ProfilePage() {
   const user = await getSessionUserProfile();
   if (!user) redirect("/login");
 
-  const latestVisit = await getLatestPatientVisit(user.id);
-
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-1 pb-10 sm:px-0">
       <ProfileForm
         initial={user}
         embedded
         layout="profile-page"
-        leftSlot={
-          <>
-            <ProfileSnapshot user={user} />
-
-            {latestVisit ? (
-              <DashboardPageSection
-                kicker="Clinic"
-                title="Visits"
-                description=""
-                icon={Stethoscope}
-              >
-                <LastTreatmentCard visit={latestVisit} />
-              </DashboardPageSection>
-            ) : null}
-
-            {isKaiInsightsEnabled() ? (
-              <DashboardPageSection
-                kicker="kAI"
-                title="Monthly insight"
-                description="A once-a-month recap of your skin progress from scans and daily logs."
-              >
-                <ProfileRagKaiInsightsSection embedded />
-              </DashboardPageSection>
-            ) : null}
-          </>
-        }
+        leftSlot={<ProfileSnapshot user={user} />}
       />
     </div>
   );

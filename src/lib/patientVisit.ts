@@ -1,7 +1,8 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
-import { visitNotes } from "@/src/db/schema";
+import { users, visitNotes } from "@/src/db/schema";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
+import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 
 export type VisitNoteAttachment = {
   fileName: string;
@@ -43,21 +44,30 @@ export type LatestPatientVisit = {
   id: string;
   visitDate: string;
   doctorName: string;
+  doctorPhotoUrl: string | null;
 };
 
 export async function getLatestPatientVisit(
   userId: string
 ): Promise<LatestPatientVisit | null> {
-  const row = await db.query.visitNotes.findFirst({
-    where: eq(visitNotes.userId, userId),
-    columns: { id: true, visitDate: true, doctorName: true },
-    orderBy: [desc(visitNotes.visitDate)],
-  });
+  const [row] = await db
+    .select({
+      id: visitNotes.id,
+      visitDate: visitNotes.visitDate,
+      doctorName: visitNotes.doctorName,
+      doctorPhotoUrl: users.profilePhotoUrl,
+    })
+    .from(visitNotes)
+    .leftJoin(users, eq(visitNotes.doctorId, users.id))
+    .where(eq(visitNotes.userId, userId))
+    .orderBy(desc(visitNotes.visitDate))
+    .limit(1);
   if (!row) return null;
   return {
     id: row.id,
     visitDate: ymdFromDateOnly(row.visitDate),
     doctorName: row.doctorName,
+    doctorPhotoUrl: publicFileDisplayUrl(row.doctorPhotoUrl) ?? null,
   };
 }
 

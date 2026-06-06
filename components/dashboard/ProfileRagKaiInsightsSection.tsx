@@ -38,7 +38,14 @@ function formatNextInsightFriendly(iso: string): string {
   });
 }
 
-export function ProfileRagKaiInsightsSection({ embedded = false }: { embedded?: boolean }) {
+export function ProfileRagKaiInsightsSection({
+  embedded = false,
+  compact = false,
+}: {
+  embedded?: boolean;
+  /** Fits a manage-page grid cell — shorter copy and single-column summary. */
+  compact?: boolean;
+}) {
   const [data, setData] = useState<MonthlyInsightPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -164,6 +171,39 @@ export function ProfileRagKaiInsightsSection({ embedded = false }: { embedded?: 
             <span className="font-semibold text-[#2C3E6B]">{nextInsightFriendly}</span>.
             Keep scanning and logging — we&apos;ll pull it together for you.
           </p>
+        </div>
+      ) : compact ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 rounded-xl bg-[#2C3E6B] px-4 py-3 text-white">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-white/70">
+                Month kAI
+              </p>
+              <p className="text-3xl font-bold tabular-nums">
+                {monthKai != null ? monthKai : "—"}
+              </p>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/70">
+                {monthly.summaryTitle}
+              </p>
+              <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-white/90">
+                {monthly.summaryBody}
+              </p>
+            </div>
+          </div>
+          {(monthly.highlights ?? []).length > 0 ? (
+            <div className={`${patientInnerCard} px-3 py-3`}>
+              <p className={patientKicker}>Highlights</p>
+              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-sm text-[#374151]">
+                {(monthly.highlights ?? []).slice(0, 2).map((x, i) => (
+                  <li key={i} className="line-clamp-2">
+                    {x}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">

@@ -232,9 +232,7 @@ export async function GET(request: Request) {
     id: `req:${r.id}`,
     eventDateYmd: ymdFromDateOnly(r.preferredDate),
     eventTimeHm: null,
-    title: `Visit request (pending) — ${r.issue}: ${r.timePreferences.slice(0, 72)}${
-      r.timePreferences.length > 72 ? "…" : ""
-    }`,
+    title: "Visit request (pending)",
     completed: false,
   }));
 

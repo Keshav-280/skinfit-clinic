@@ -207,13 +207,19 @@ export async function resolveRegisteredStaffUserId(
 }
 
 export async function listRegisteredClinicDoctors(): Promise<
-  { id: string; name: string; email: string | null }[]
+  {
+    id: string;
+    name: string;
+    email: string | null;
+    photoUrl: string | null;
+  }[]
 > {
   const rows = await db
     .select({
       id: users.id,
       name: users.name,
       email: users.email,
+      profilePhotoUrl: users.profilePhotoUrl,
     })
     .from(users)
     .where(or(eq(users.role, "doctor"), eq(users.role, "admin")))
@@ -223,6 +229,7 @@ export async function listRegisteredClinicDoctors(): Promise<
     id: r.id,
     name: (r.name ?? "").trim() || "Doctor",
     email: r.email,
+    photoUrl: r.profilePhotoUrl ?? null,
   }));
 }
 

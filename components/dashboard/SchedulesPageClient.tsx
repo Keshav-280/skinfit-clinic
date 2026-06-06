@@ -19,6 +19,7 @@ import {
   isSameDay,
 } from "date-fns";
 import {
+  Archive,
   Calendar,
   CalendarDays,
   ChevronLeft,
@@ -30,13 +31,30 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
+  Stethoscope,
   User,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  LastTreatmentCard,
+  type LastTreatmentVisit,
+} from "@/components/dashboard/LastTreatmentCard";
+import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
+import { patientDoctorLabel } from "@/src/lib/doctorDisplayName";
+import {
+  patientKicker,
+  patientMuted,
+  patientSectionIcon,
+  patientSectionTitle,
+} from "@/src/lib/patientDashboardTheme";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
+import {
+  archiveScheduleListItem,
+  loadScheduleListArchivedIds,
+} from "@/src/lib/scheduleListArchive";
 import {
   VISIT_WINDOW_OPTIONS,
   visitWindowsToTimePreferences,
@@ -282,9 +300,7 @@ function pendingToSyntheticEvents(
     id: `req:${r.id}`,
     eventDateYmd: r.preferredDateYmd,
     eventTimeHm: null,
-    title: `Visit request (pending) — ${(r.issue?.trim() || "Skin concern")}: ${r.timePreferences.slice(0, 72)}${
-      r.timePreferences.length > 72 ? "…" : ""
-    }`,
+    title: "Visit request (pending)",
     completed: false,
     attachmentsCount: r.attachmentsCount ?? 0,
   }));
@@ -322,18 +338,86 @@ async function fetchAttachmentsForRequest(
     }));
 }
 
+type AssignedDoctorSummary = {
+  name: string;
+  photoUrl: string | null;
+};
+
+function ManageGridDoctorAvatar({
+  photoUrl,
+  className = "h-11 w-11",
+}: {
+  photoUrl?: string | null;
+  className?: string;
+}) {
+  if (photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photoUrl}
+        alt=""
+        className={`${className} shrink-0 rounded-full object-cover`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-[#2B3A67]`}
+    >
+      <User className="h-5 w-5 text-white" aria-hidden />
+    </div>
+  );
+}
+
+function ManageGridSectionHeader({
+  kicker,
+  title,
+  description,
+  icon: Icon,
+}: {
+  kicker?: string;
+  title: string;
+  description?: string;
+  icon?: typeof Stethoscope;
+}) {
+  return (
+    <div className="mb-3 flex gap-2.5">
+      {Icon ? (
+        <span className={`${patientSectionIcon} h-9 w-9`} aria-hidden>
+          <Icon className="h-4 w-4" />
+        </span>
+      ) : null}
+      <div className="min-w-0">
+        {kicker ? <p className={patientKicker}>{kicker}</p> : null}
+        <h3 className={`${patientSectionTitle} text-lg`}>{title}</h3>
+        {description ? (
+          <p className={`mt-0.5 line-clamp-2 text-xs ${patientMuted}`}>
+            {description}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function SchedulesPageClient({
   initialTreatmentEvents,
   initialAppointmentEvents,
   pendingScheduleRequests,
   closedScheduleRequests,
   initialScheduleUnreadCount = 0,
+  latestVisit = null,
+  assignedDoctor = null,
+  showKaiInsights = false,
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
   initialAppointmentEvents: ScheduleEventRow[];
   pendingScheduleRequests: PendingScheduleRequestRow[];
   closedScheduleRequests: PendingScheduleRequestRow[];
   initialScheduleUnreadCount?: number;
+  latestVisit?: LastTreatmentVisit | null;
+  assignedDoctor?: AssignedDoctorSummary | null;
+  showKaiInsights?: boolean;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"month" | "week">("month");
@@ -345,6 +429,9 @@ export default function SchedulesPageClient({
   );
   const [pendingRequests, setPendingRequests] = useState(pendingScheduleRequests);
   const [closedRequests, setClosedRequests] = useState(closedScheduleRequests);
+  const [archivedListIds, setArchivedListIds] = useState<Set<string>>(
+    () => new Set()
+  );
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestYmd, setRequestYmd] = useState<string | null>(null);
@@ -356,6 +443,10 @@ export default function SchedulesPageClient({
   const [requestTimes, setRequestTimes] = useState("");
   const [requestAttachments, setRequestAttachments] = useState<RequestAttachment[]>([]);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestDoctorId, setRequestDoctorId] = useState<string | null>(null);
+  const [clinicDoctors, setClinicDoctors] = useState<
+    Array<{ id: string; name: string; photoUrl: string | null }>
+  >([]);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestFormUrl, setRequestFormUrl] = useState<string | null>(null);
   const [sheetRelayNotice, setSheetRelayNotice] = useState<string | null>(null);
@@ -417,9 +508,7 @@ export default function SchedulesPageClient({
         eventDateYmd: r.preferredDateYmd,
         eventTimeHm: null,
         eventSlotEndTimeHm: null,
-        title: `${label} — ${(r.issue?.trim() || "Skin concern")}: ${r.timePreferences.slice(0, 72)}${
-          r.timePreferences.length > 72 ? "…" : ""
-        }`,
+        title: label,
         completed: false,
         cancelled: true,
         cancellationReason: reason,
@@ -450,8 +539,26 @@ export default function SchedulesPageClient({
     [view, mergedCalendarEvents, currentDate]
   );
 
+  const visibleListEvents = useMemo(
+    () => mergedListEvents.filter((event) => !archivedListIds.has(event.id)),
+    [mergedListEvents, archivedListIds]
+  );
+
+  const archivedListCount = useMemo(
+    () => mergedListEvents.filter((event) => archivedListIds.has(event.id)).length,
+    [mergedListEvents, archivedListIds]
+  );
+
+  useEffect(() => {
+    setArchivedListIds(loadScheduleListArchivedIds());
+  }, []);
+
   useEffect(() => {
     setCurrentDate(new Date());
+  }, []);
+
+  const archiveListEvent = useCallback((eventId: string) => {
+    setArchivedListIds(archiveScheduleListItem(eventId));
   }, []);
 
   const calendarCells: (Date | null)[] = !currentDate
@@ -495,14 +602,75 @@ export default function SchedulesPageClient({
     return cells;
   }, [reqCalMonth]);
 
-  const featuredUpcoming = useMemo(
-    () =>
+  const featuredUpcoming = useMemo(() => {
+    const todayYmd = localYmd(new Date());
+    return (
       appointmentCalendarEvents.find(
         (e) =>
-          e.id.startsWith("appt:") && !e.completed && !e.cancelled
-      ) ?? null,
-    [appointmentCalendarEvents]
+          e.id.startsWith("appt:") &&
+          !e.completed &&
+          !e.cancelled &&
+          e.eventDateYmd >= todayYmd
+      ) ?? null
+    );
+  }, [appointmentCalendarEvents]);
+
+  const primeRequestDoctor = useCallback(
+    (
+      doctors: Array<{ id: string; name: string; photoUrl: string | null }>,
+      assignedDoctorId: string | null | undefined
+    ) => {
+      if (assignedDoctorId && doctors.some((d) => d.id === assignedDoctorId)) {
+        setRequestDoctorId(assignedDoctorId);
+        return;
+      }
+      setRequestDoctorId(doctors[0]?.id ?? null);
+    },
+    []
   );
+
+  const loadClinicDoctorsForRequest = useCallback(async () => {
+    try {
+      const res = await fetch("/api/patient/doctors", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        doctors?: Array<{ id: string; name: string; photoUrl?: string | null }>;
+        assignedDoctorId?: string | null;
+      };
+      const doctors = (data.doctors ?? []).map((d) => ({
+        id: d.id,
+        name: d.name,
+        photoUrl: d.photoUrl ?? null,
+      }));
+      setClinicDoctors(doctors);
+      primeRequestDoctor(doctors, data.assignedDoctorId);
+    } catch {
+      /* optional picker */
+    }
+  }, [primeRequestDoctor]);
+
+  useEffect(() => {
+    if (!requestModalOpen) return;
+    void loadClinicDoctorsForRequest();
+  }, [requestModalOpen, loadClinicDoctorsForRequest]);
+
+  const openRequestModal = useCallback(() => {
+    const ymd = localYmd(new Date());
+    setRequestYmd(ymd);
+    setReqCalMonth(new Date());
+    setRequestVisitNotes("");
+    setRequestSelectedWindows([]);
+    setRequestIssue("Skin concern");
+    setRequestDaysAffected("");
+    setRequestTimes("");
+    setRequestAttachments([]);
+    setRequestError(null);
+    setSheetRelayNotice(null);
+    setRequestModalOpen(true);
+  }, []);
 
   const handlePrev = () => {
     if (!currentDate) return;
@@ -611,6 +779,7 @@ export default function SchedulesPageClient({
           daysAffected: daysAffectedNum,
           timePreferences: t,
           attachments: requestAttachments,
+          ...(requestDoctorId ? { doctorId: requestDoctorId } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -685,31 +854,42 @@ export default function SchedulesPageClient({
         key={event.id}
         className="rounded-xl border border-[#e4e4e7] bg-white p-3 shadow-sm"
       >
-        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-          <span
-            className={`text-xs font-bold ${
-              cancelled
-                ? "text-[#52525b]"
-                : pending
-                  ? "text-[#b45309]"
-                  : done
-                    ? "text-[#0369a1]"
-                    : "text-[#2B3A67]"
-            }`}
-          >
-            {formatScheduleWhen(
-              event.eventDateYmd,
-              event.eventTimeHm,
-              event.eventSlotEndTimeHm
-            )}
-          </span>
-          {!isAppt &&
-          (event.eventKind === "pre_treatment" ||
-            event.eventKind === "post_treatment") ? (
-            <span className="rounded-full bg-[#e8eef6] px-2 py-0.5 text-[10px] font-bold text-[#2B3A67]">
-              {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span
+              className={`text-xs font-bold ${
+                cancelled
+                  ? "text-[#52525b]"
+                  : pending
+                    ? "text-[#b45309]"
+                    : done
+                      ? "text-[#0369a1]"
+                      : "text-[#2B3A67]"
+              }`}
+            >
+              {formatScheduleWhen(
+                event.eventDateYmd,
+                event.eventTimeHm,
+                event.eventSlotEndTimeHm
+              )}
             </span>
-          ) : null}
+            {!isAppt &&
+            (event.eventKind === "pre_treatment" ||
+              event.eventKind === "post_treatment") ? (
+              <span className="rounded-full bg-[#e8eef6] px-2 py-0.5 text-[10px] font-bold text-[#2B3A67]">
+                {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => archiveListEvent(event.id)}
+            title="Archive — hide from this list"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#2C3E6B]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2C3E6B]/25 hover:bg-[#e8eef6]"
+          >
+            <Archive className="h-3 w-3 opacity-80" aria-hidden />
+            Archive
+          </button>
         </div>
         <div className="flex flex-row flex-wrap items-center gap-2">
           <p
@@ -1090,120 +1270,151 @@ export default function SchedulesPageClient({
           </p>
         </div>
         <div className="flex-1 space-y-2 p-3">
-          {mergedListEvents.length === 0 ? (
+          {visibleListEvents.length === 0 ? (
             <p className="py-6 text-center text-sm text-[#71717a]">
-              Nothing scheduled in this {view === "month" ? "month" : "week"}.
+              {mergedListEvents.length > 0 && archivedListCount > 0
+                ? `All ${view === "month" ? "month" : "week"} items are archived.`
+                : `Nothing scheduled in this ${view === "month" ? "month" : "week"}.`}
             </p>
           ) : (
-            mergedListEvents.map((event) => renderScheduleEventCard(event))
+            visibleListEvents.map((event) => renderScheduleEventCard(event))
           )}
+          {archivedListCount > 0 ? (
+            <p className="pt-1 text-center text-[11px] text-[#94a3b8]">
+              {archivedListCount} archived — still on your calendar
+            </p>
+          ) : null}
         </div>
       </section>
       </div>
 
-      <div className="space-y-3.5">
-          {featuredUpcoming ? (
-            <button
-              type="button"
-              id="featured-upcoming"
-              className="w-full rounded-[20px] border border-[#e4e4e7] bg-[#f8faf8] p-4 text-left shadow-sm transition hover:bg-[#f4faf4]"
-              onClick={() => {
-                setView("month");
-                setCurrentDate(parseLocalYmd(featuredUpcoming.eventDateYmd));
-                requestAnimationFrame(() => {
-                  document
-                    .getElementById("schedules-calendar-root")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                });
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="rounded-xl border border-[#2B3A67] px-3 py-1 text-base font-bold text-[#2B3A67]">
-                  Upcoming
-                </span>
-                <ChevronRight className="h-5 w-5 text-[#2B3A67]" aria-hidden />
-              </div>
-              <div className="mt-3.5 flex items-center gap-3">
-                {featuredUpcoming.doctorPhotoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={featuredUpcoming.doctorPhotoUrl}
-                    alt=""
-                    className="h-11 w-11 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2B3A67]">
-                    <User className="h-5 w-5 text-white" aria-hidden />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-bold text-[#18181b]">
-                    Dr. {featuredUpcoming.doctorName?.trim() || "Doctor"}
-                  </p>
-                  <p className="mt-0.5 text-[13px] text-[#71717a]">
-                    {featuredUpcoming.appointmentType?.trim() || "Consultation"}
-                  </p>
-                </div>
-              </div>
-              {featuredUpcoming.crmPatientMessage ? (
-                <div className="mt-2.5 flex gap-2 rounded-[10px] bg-[#f0f4ff] p-2.5">
-                  <MessageCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2B3A67]" aria-hidden />
-                  <p className="line-clamp-2 flex-1 text-[13px] leading-[1.35] text-[#2B3A67]">
-                    {featuredUpcoming.crmPatientMessage}
-                  </p>
-                </div>
-              ) : null}
-              <div className="mt-3.5 flex items-center gap-3.5">
-                <div className="flex h-[88px] w-[78px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-[#262b74] text-white">
-                  <span className="text-sm font-bold">
-                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")}
-                  </span>
-                  <span className="mt-0.5 text-[26px] font-bold leading-none">
-                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd")}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-base font-bold text-[#2f2f2f]">
-                    {formatScheduleWhen(
-                      featuredUpcoming.eventDateYmd,
-                      featuredUpcoming.eventTimeHm,
-                      featuredUpcoming.eventSlotEndTimeHm
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-[13px] text-[#71717a]">
-                    {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "MMMM yyyy")}
-                  </p>
-                </div>
-              </div>
-            </button>
-          ) : null}
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        {featuredUpcoming ? (
           <button
             type="button"
-            className="mt-3.5 flex w-full items-center gap-3.5 rounded-[20px] bg-[#272d77] px-[18px] py-[18px] text-left shadow-lg shadow-[#272d77]/25 transition hover:bg-[#1f245c]"
+            id="featured-upcoming"
+            className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-[#f8faf8] p-4 text-left shadow-sm transition hover:bg-[#f4faf4]"
             onClick={() => {
-              const ymd = localYmd(new Date());
-              setRequestYmd(ymd);
-              setReqCalMonth(new Date());
-              setRequestVisitNotes("");
-              setRequestSelectedWindows([]);
-              setRequestIssue("Skin concern");
-              setRequestDaysAffected("");
-              setRequestTimes("");
-              setRequestAttachments([]);
-              setRequestError(null);
-              setSheetRelayNotice(null);
-              setRequestModalOpen(true);
+              setView("month");
+              setCurrentDate(parseLocalYmd(featuredUpcoming.eventDateYmd));
+              requestAnimationFrame(() => {
+                document
+                  .getElementById("schedules-calendar-root")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
             }}
           >
-            <Calendar className="h-7 w-7 shrink-0 text-white" strokeWidth={2} aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-bold text-white">Request an Appointment</p>
-              <p className="mt-1 text-[13px] leading-5 text-white/90">
-                Pick a date & share your preferred time slots.
+            <div className="flex items-center justify-between">
+              <span className="rounded-xl border border-[#2B3A67] px-3 py-1 text-base font-bold text-[#2B3A67]">
+                Upcoming
+              </span>
+              <ChevronRight className="h-5 w-5 text-[#2B3A67]" aria-hidden />
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <ManageGridDoctorAvatar photoUrl={featuredUpcoming.doctorPhotoUrl} />
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-bold text-[#18181b]">
+                  {patientDoctorLabel(featuredUpcoming.doctorName)}
+                </p>
+                <p className="mt-0.5 text-[13px] text-[#71717a]">
+                  {featuredUpcoming.appointmentType?.trim() || "Consultation"}
+                </p>
+              </div>
+            </div>
+            {featuredUpcoming.crmPatientMessage ? (
+              <div className="mt-2.5 flex gap-2 rounded-[10px] bg-[#f0f4ff] p-2.5">
+                <MessageCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2B3A67]" aria-hidden />
+                <p className="line-clamp-2 flex-1 text-[13px] leading-[1.35] text-[#2B3A67]">
+                  {featuredUpcoming.crmPatientMessage}
+                </p>
+              </div>
+            ) : null}
+            <div className="mt-auto flex items-center gap-3 pt-3.5">
+              <div className="flex h-[72px] w-[68px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-[#262b74] text-white">
+                <span className="text-sm font-bold">
+                  {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")}
+                </span>
+                <span className="mt-0.5 text-[22px] font-bold leading-none">
+                  {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd")}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-bold text-[#2f2f2f]">
+                  {formatScheduleWhen(
+                    featuredUpcoming.eventDateYmd,
+                    featuredUpcoming.eventTimeHm,
+                    featuredUpcoming.eventSlotEndTimeHm
+                  )}
+                </p>
+                <p className="mt-0.5 text-[13px] text-[#71717a]">
+                  {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "MMMM yyyy")}
+                </p>
+              </div>
+            </div>
+          </button>
+        ) : (
+          <div className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-[#f8faf8] p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="rounded-xl border border-[#2B3A67] px-3 py-1 text-base font-bold text-[#2B3A67]">
+                Upcoming
+              </span>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <ManageGridDoctorAvatar photoUrl={assignedDoctor?.photoUrl} />
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-bold text-[#18181b]">
+                  {patientDoctorLabel(assignedDoctor?.name)}
+                </p>
+                <p className="mt-0.5 text-[13px] text-[#71717a]">Your clinic doctor</p>
+              </div>
+            </div>
+            <p className="mt-auto pt-4 text-sm text-[#71717a]">
+              No upcoming appointments. Request one when you&apos;re ready.
+            </p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="flex h-full min-h-[200px] items-center gap-3.5 rounded-[20px] bg-[#272d77] px-[18px] py-[18px] text-left shadow-lg shadow-[#272d77]/25 transition hover:bg-[#1f245c]"
+          onClick={openRequestModal}
+        >
+          <Calendar className="h-7 w-7 shrink-0 text-white" strokeWidth={2} aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-bold text-white">Request an Appointment</p>
+            <p className="mt-1 text-[13px] leading-5 text-white/90">
+              Pick a date & share your preferred time slots.
+            </p>
+          </div>
+          <ChevronRight className="h-6 w-6 shrink-0 text-white" aria-hidden />
+        </button>
+
+        <div className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+          <ManageGridSectionHeader kicker="Clinic" title="Visits" icon={Stethoscope} />
+          {latestVisit ? (
+            <LastTreatmentCard visit={latestVisit} compact />
+          ) : (
+            <div className="flex flex-1 flex-col justify-center rounded-2xl bg-[#e0e5df] px-4 py-6 text-center">
+              <p className="text-sm font-semibold text-[#1A1A2E]">No visits yet</p>
+              <p className="mt-1 text-[13px] text-zinc-600">
+                Your last clinic treatment will show up here after your first visit.
               </p>
             </div>
-            <ChevronRight className="h-6 w-6 shrink-0 text-white" aria-hidden />
-          </button>
+          )}
+        </div>
+
+        {showKaiInsights ? (
+          <div className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+            <ManageGridSectionHeader
+              kicker="kAI"
+              title="Monthly insight"
+              description="A once-a-month recap of your skin progress from scans and daily logs."
+            />
+            <div className="min-h-0 flex-1">
+              <ProfileRagKaiInsightsSection embedded compact />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {clinicMsgOpen && clinicMsgApptId ? (
@@ -1491,6 +1702,53 @@ export default function SchedulesPageClient({
                   </div>
                 ))}
               </div>
+
+              {clinicDoctors.length > 0 ? (
+                <>
+                  <p className="mt-4 text-base font-bold text-[#18181b]">
+                    Preferred doctor
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {clinicDoctors.map((doctor) => {
+                      const selected = requestDoctorId === doctor.id;
+                      return (
+                        <button
+                          key={doctor.id}
+                          type="button"
+                          disabled={requestSubmitting}
+                          onClick={() => setRequestDoctorId(doctor.id)}
+                          className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                            selected
+                              ? "border-[#2B3A67] bg-[#2B3A67] text-white"
+                              : "border-[#e5e7eb] bg-white text-[#18181b] hover:border-[#cbd5e1]"
+                          }`}
+                        >
+                          {doctor.photoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={doctor.photoUrl}
+                              alt=""
+                              className="h-9 w-9 shrink-0 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                                selected ? "bg-white/20" : "bg-[#2B3A67]"
+                              }`}
+                            >
+                              <User
+                                className={`h-4 w-4 ${selected ? "text-white" : "text-white"}`}
+                                aria-hidden
+                              />
+                            </span>
+                          )}
+                          <span className="text-sm font-semibold">{doctor.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : null}
 
               <p className="mt-4 text-base font-bold text-[#18181b]">Choose new time</p>
               <div className="mt-3 flex flex-col gap-2">

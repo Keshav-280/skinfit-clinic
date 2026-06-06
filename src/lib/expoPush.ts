@@ -263,18 +263,49 @@ export async function notifyPatientRoutinePlanUpdated(
   });
 }
 
+/** Notify one clinic doctor/admin by user id (Expo push). */
+export async function notifyDoctorUserById(
+  doctorId: string,
+  opts: {
+    title: string;
+    body: string;
+    data?: Record<string, unknown>;
+  }
+): Promise<boolean> {
+  const id = doctorId.trim();
+  if (!id) return false;
+  const [row] = await db
+    .select({ token: users.expoPushToken, role: users.role })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  if (!row || (row.role !== "doctor" && row.role !== "admin")) return false;
+  const t = row.token?.trim();
+  if (!t) return false;
+  return sendExpoPushNotification({
+    expoPushToken: t,
+    title: opts.title,
+    body: opts.body,
+    data: opts.data ?? {},
+  });
+}
+
 /** Notify every doctor account with a registered Expo push token. */
 export async function notifyDoctorUsers(opts: {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  /** When set, only these staff accounts are notified. */
+  doctorIds?: string[];
 }): Promise<number> {
+  const filterIds = opts.doctorIds?.map((id) => id.trim()).filter(Boolean);
   const doctors = await db
-    .select({ token: users.expoPushToken })
+    .select({ id: users.id, token: users.expoPushToken })
     .from(users)
     .where(inArray(users.role, ["doctor", "admin"]));
   let n = 0;
   for (const d of doctors) {
+    if (filterIds && filterIds.length > 0 && !filterIds.includes(d.id)) continue;
     const t = d.token?.trim();
     if (!t) continue;
     if (
