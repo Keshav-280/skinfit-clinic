@@ -112,6 +112,7 @@ type HomeData = {
   pmItems: string[];
   kaiSkinScore: number;
   weeklyDeltaScore: number;
+  weeklyDeltaMeaningful?: boolean;
   lifestyleAlignmentScore: number;
   routineScore: number;
   weeklyChangePercent: number;
@@ -741,6 +742,7 @@ export default function DashboardScreen() {
         <NavyMetricsCard
           kaiSkinScore={kaiSkinScore}
           weeklyDeltaScore={data.weeklyDeltaScore}
+          weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
           latestScanAt={latestScan?.createdAt ?? null}
           consistencyScore={data.lifestyleAlignmentScore}
           style={isWideLayout ? styles.topRowHalf : undefined}
@@ -753,9 +755,10 @@ export default function DashboardScreen() {
         ) : null}
       </View>
 
-      {/* ── Routine, skin params, journal, streak (2×2 on tablet) ── */}
+      {/* ── Routine + journal/streak (left) | skin params (right) ── */}
       <View style={styles.dashboardGrid}>
       <View style={[styles.dashboardRow, isWideLayout && styles.dashboardRowWide]}>
+      <View style={[styles.dashboardLeftStack, isWideLayout && styles.dashboardRoutineWide]}>
       {(() => {
         const amTotal = data.amItems.length || 0;
         const pmTotal = data.pmItems.length || 0;
@@ -767,7 +770,7 @@ export default function DashboardScreen() {
         const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
         return (
-          <View style={[styles.routineMergedCard, isWideLayout && styles.dashboardCellHalf]}>
+          <View style={styles.routineMergedCard}>
             <View style={styles.routineMergedHeader}>
               <Text style={styles.routineMergedTitle}>DAILY ROUTINE</Text>
               <Text style={styles.routineMergedMeta}>
@@ -863,25 +866,13 @@ export default function DashboardScreen() {
         );
       })()}
 
-      {latestScan ? (
-        <View
-          style={[
-            styles.sectionCard,
-            styles.sectionCardFlush,
-            isWideLayout && styles.dashboardCellHalf,
-            isWideLayout && styles.dashboardCellSelfStart,
-          ]}
-        >
-          <SkinParamMetricsCard
-            analysis={latestScan.analysisResults}
-            onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
-          />
-        </View>
-      ) : null}
-      </View>
-
-      <View style={[styles.dashboardRow, isWideLayout && styles.dashboardRowWide]}>
-        <View style={isWideLayout ? styles.dashboardJournalWide : undefined}>
+      <View
+        style={[
+          styles.dashboardJournalStreakRow,
+          isWideLayout && styles.dashboardJournalStreakRowWide,
+        ]}
+      >
+        <View style={isWideLayout ? styles.dashboardJournalStreakHalf : styles.dashboardFullWidth}>
           <Text style={[styles.sectionTitle, { marginTop: 4 }]}>DAILY JOURNAL</Text>
 
       <Pressable
@@ -986,7 +977,12 @@ export default function DashboardScreen() {
       </Pressable>
         </View>
 
-        <View style={[styles.streakCard, isWideLayout && styles.dashboardStreakNarrow]}>
+        <View
+          style={[
+            styles.streakCard,
+            isWideLayout ? styles.dashboardJournalStreakHalf : styles.dashboardFullWidth,
+          ]}
+        >
           <Text style={styles.streakTitleNavy}>{data.streakCurrent} day streak</Text>
           <Text style={styles.streakPersonalBest}>
             Personal best: {data.streakLongest} days
@@ -1034,6 +1030,24 @@ export default function DashboardScreen() {
             </Text>
           ) : null}
         </View>
+      </View>
+      </View>
+
+      {latestScan ? (
+        <View
+          style={[
+            styles.sectionCardSkinParams,
+            styles.sectionCardFlush,
+            isWideLayout && styles.dashboardParamsNarrow,
+            isWideLayout && styles.dashboardCellSelfStart,
+          ]}
+        >
+          <SkinParamMetricsCard
+            analysis={latestScan.analysisResults}
+            onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
+          />
+        </View>
+      ) : null}
       </View>
       </View>
 
@@ -2274,7 +2288,13 @@ const styles = StyleSheet.create({
   dashboardRow: { gap: 16 },
   dashboardRowWide: { flexDirection: "row", alignItems: "flex-start" },
   dashboardCellHalf: { flex: 1, minWidth: 0, marginBottom: 0 },
+  dashboardLeftStack: { gap: 16 },
+  dashboardRoutineWide: { flex: 3, minWidth: 0, marginBottom: 0 },
+  dashboardParamsNarrow: { flex: 2, minWidth: 0, marginBottom: 0 },
   dashboardCellSelfStart: { alignSelf: "flex-start" },
+  dashboardJournalStreakRow: { gap: 16 },
+  dashboardJournalStreakRowWide: { flexDirection: "row", alignItems: "flex-start" },
+  dashboardJournalStreakHalf: { flex: 1, minWidth: 0 },
   dashboardJournalWide: { flex: 1.65, minWidth: 0 },
   dashboardStreakNarrow: { flex: 1, minWidth: 0, marginBottom: 0 },
 
@@ -2288,6 +2308,18 @@ const styles = StyleSheet.create({
     ...dashboardCardShadow,
   },
   sectionCardFlush: { marginBottom: 0 },
+  sectionCardSkinParams: {
+    backgroundColor: "transparent",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 0,
+    shadowColor: "#2D3E6B",
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    elevation: 8,
+  },
 
   skinHealthCardInRow: { marginBottom: 0 },
 
@@ -2556,14 +2588,13 @@ const styles = StyleSheet.create({
     width: "48%",
     aspectRatio: 4 / 5,
     maxHeight: 148,
-    backgroundColor: DASHBOARD_BG,
+    backgroundColor: "#E8EFE6",
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 6,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
+    borderWidth: 0,
     gap: 4,
   },
   paramMetricLabel: {

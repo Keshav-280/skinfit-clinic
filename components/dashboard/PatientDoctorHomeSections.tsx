@@ -386,6 +386,7 @@ type Props = {
   doctorVoiceNoteIsNew?: boolean;
   onboardingComplete?: boolean;
   onRefresh: () => void;
+  className?: string;
 };
 
 export function PatientDoctorHomeSections({
@@ -397,6 +398,7 @@ export function PatientDoctorHomeSections({
   doctorVoiceNoteIsNew = false,
   onboardingComplete = true,
   onRefresh,
+  className = "",
 }: Props) {
   const router = useRouter();
   const [doctorFollowUpBusy, setDoctorFollowUpBusy] = useState(false);
@@ -472,10 +474,12 @@ export function PatientDoctorHomeSections({
   );
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 items-start w-full">
+    <div
+      className={`grid w-full min-h-0 flex-1 gap-4 md:grid-rows-[minmax(0,3fr)_minmax(0,3fr)] md:min-h-[24rem] ${className}`}
+    >
       <section
         id="doctor-written-feedback"
-        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD} h-full`}
+        className={`scroll-mt-24 flex min-h-0 h-full w-full flex-col ${DASHBOARD_SECTION_CARD}`}
         aria-labelledby="doctor-written-feedback-heading"
       >
         <DashboardSectionHeader
@@ -567,7 +571,7 @@ export function PatientDoctorHomeSections({
 
       <section
         id="doctor-feedback"
-        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD} h-full`}
+        className={`scroll-mt-24 flex min-h-0 h-full w-full flex-col ${DASHBOARD_SECTION_CARD}`}
         aria-labelledby="dashboard-voice-heading"
       >
         <DashboardSectionHeader

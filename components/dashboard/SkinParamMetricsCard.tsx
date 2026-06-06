@@ -3,8 +3,12 @@
 import Link from "next/link";
 
 import { CircularGauge } from "@/components/dashboard/CircularGauge";
-import { DASHBOARD_SECTION_CARD } from "@/components/dashboard/DashboardSectionHeader";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
+
+const SKIN_PARAM_SHELL =
+  "self-start rounded-[20px] bg-transparent p-5 shadow-[0_14px_44px_rgba(45,62,107,0.2)] md:p-6";
+const SKIN_PARAM_INNER_CELL =
+  "flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-[16px] bg-[#E8EFE6] px-3 py-4";
 
 export type SkinParamMetric = {
   label: string;
@@ -21,7 +25,7 @@ type Props = {
 
 export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: Props) {
   return (
-    <div className={`${DASHBOARD_SECTION_CARD} self-start ${className}`}>
+    <div className={`${SKIN_PARAM_SHELL} ${className}`}>
       <h3 className="mb-4 text-[14px] font-extrabold tracking-wide text-[#18181b]">
         SKIN PARAMETER METRICS
       </h3>
@@ -29,7 +33,7 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
         {metrics.slice(0, 4).map((p) => (
           <div
             key={p.label}
-            className="flex flex-col items-center justify-center gap-2 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] px-3 py-4 shadow-sm"
+            className={SKIN_PARAM_INNER_CELL}
           >
             <CircularGauge value={p.value} color={p.color} size={52} strokeWidth={5} />
             <p className="text-center text-[12px] font-bold leading-tight text-[#18181b] sm:text-[13px]">

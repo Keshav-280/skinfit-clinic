@@ -23,6 +23,7 @@ import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import { cacheAside, CacheKeys } from "@/src/lib/infra";
 import { coerceRoutinePlanList } from "@/src/lib/routine";
+import { computeHomeWeeklyDeltaScore } from "@/src/lib/patientHomeWeeklyDelta";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -124,7 +125,7 @@ async function buildPatientHomePayload(
   const [
     skinScanRows,
     todayLog,
-    lastScans,
+    recentScansForMetrics,
     recentLogs,
     streakLogs,
     doctorSection,
@@ -151,11 +152,15 @@ async function buildPatientHomePayload(
       .select({
         overallScore: scans.overallScore,
         createdAt: scans.createdAt,
+        scores: scans.scores,
+        pigmentation: scans.pigmentation,
+        acne: scans.acne,
+        wrinkles: scans.wrinkles,
       })
       .from(scans)
       .where(eq(scans.userId, userId))
       .orderBy(desc(scans.createdAt))
-      .limit(2),
+      .limit(30),
     db
       .select()
       .from(dailyLogs)
@@ -216,13 +221,12 @@ async function buildPatientHomePayload(
     : null;
 
   const kaiSkinScore =
-    lastScans[0]?.overallScore ?? skinScanRows[0]?.skinScore ?? 0;
+    recentScansForMetrics[0]?.overallScore ?? skinScanRows[0]?.skinScore ?? 0;
 
-  let weeklyDeltaScore = 0;
-  if (lastScans.length >= 2) {
-    weeklyDeltaScore =
-      lastScans[0].overallScore - lastScans[1].overallScore;
-  }
+  const { weeklyDeltaScore, weeklyDeltaMeaningful } = computeHomeWeeklyDeltaScore(
+    recentScansForMetrics,
+    todayDateOnly
+  );
 
   let amPmDays = 0;
   let sleepSum = 0;
@@ -288,6 +292,7 @@ async function buildPatientHomePayload(
     routinePlanReady,
     kaiSkinScore: clampPct(kaiSkinScore),
     weeklyDeltaScore: Math.round(weeklyDeltaScore),
+    weeklyDeltaMeaningful,
     lifestyleAlignmentScore,
     /** @deprecated use lifestyleAlignmentScore */
     routineScore: lifestyleAlignmentScore,

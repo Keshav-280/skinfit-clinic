@@ -89,6 +89,7 @@ type HomeData = {
   routinePlanReady: boolean;
   kaiSkinScore: number;
   weeklyDeltaScore: number;
+  weeklyDeltaMeaningful?: boolean;
   lifestyleAlignmentScore: number;
   doctorFeedback: string | null;
   doctorVoiceNotes: Array<{ id: string; audioDataUri: string | null; createdAt: string; listened: boolean }>;
@@ -551,6 +552,7 @@ export function PatientDashboardDesktop() {
           <NavyMetricsCard
             kaiSkinScore={data.kaiSkinScore}
             weeklyDeltaScore={data.weeklyDeltaScore}
+            weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
             latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
             consistencyScore={data.lifestyleAlignmentScore}
           />
@@ -574,8 +576,10 @@ export function PatientDashboardDesktop() {
           )}
         </div>
 
-        {/* Routine, skin params, journal, streak — 2×2 grid (prevents skin params stretching) */}
+        {/* Routine + journal/streak (left 60%) | skin params (right 40%) */}
         <div className="grid gap-4 md:grid-cols-12 md:items-start">
+        <div className="grid gap-4 md:col-span-12 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
         {/* Daily Routine — AM + PM in one card */}
         {(() => {
           const amTotal = data.amItems.length || 0;
@@ -588,7 +592,7 @@ export function PatientDashboardDesktop() {
           const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
           return (
-            <div className={`${DASHBOARD_SECTION_CARD} md:col-span-6`}>
+            <div className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
               <DashboardSectionHeader
                 icon={ListChecks}
                 title="DAILY ROUTINE"
@@ -672,15 +676,37 @@ export function PatientDashboardDesktop() {
           );
         })()}
 
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.5fr)]">
+            <DailyJournalMergedCard
+              selectedYmd={selectedYmd}
+              initialSleepHours={data.todayLog?.sleepHours ?? 0}
+              initialWaterGlasses={data.todayLog?.waterGlasses ?? 0}
+              initialStressLevel={data.todayLog?.stressLevel ?? 5}
+              className="min-w-0"
+            />
+
+            <DashboardStreakCard
+              streakCurrent={data.streakCurrent}
+              streakLongest={data.streakLongest}
+              weekDoneCount={weekDoneCount}
+              streakDays={streakDays}
+              allRoutineDone={allRoutineDone}
+              routinePlanReady={data.routinePlanReady}
+              className="min-w-0"
+            />
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-4 self-stretch">
           {skinParams.length > 0 ? (
             <SkinParamMetricsCard
               metrics={skinParams}
               viewAllHref="/dashboard/skin-params"
-              className="md:col-span-6"
+              className="min-w-0 self-start"
             />
           ) : (
             <div
-              className={`flex items-center justify-center ${DASHBOARD_SECTION_CARD} md:col-span-6 self-start`}
+              className={`flex min-w-0 items-center justify-center self-start ${DASHBOARD_SECTION_CARD}`}
             >
               <p className="text-sm font-semibold text-[#6B7280]">
                 Skin parameters appear after your first scan
@@ -688,23 +714,19 @@ export function PatientDashboardDesktop() {
             </div>
           )}
 
-          <DailyJournalMergedCard
-            selectedYmd={selectedYmd}
-            initialSleepHours={data.todayLog?.sleepHours ?? 0}
-            initialWaterGlasses={data.todayLog?.waterGlasses ?? 0}
-            initialStressLevel={data.todayLog?.stressLevel ?? 5}
-            className="md:col-span-7"
+          <PatientDoctorHomeSections
+            feedbackEntries={data.feedbackEntries ?? []}
+            archivedFeedbackEntries={data.archivedFeedbackEntries ?? []}
+            doctorFeedback={data.doctorFeedback}
+            doctorVoiceNotes={data.doctorVoiceNotes}
+            doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+            doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
+            onboardingComplete={data.onboardingComplete}
+            onRefresh={() => void loadHome()}
+            className="min-h-0 flex-1"
           />
-
-          <DashboardStreakCard
-            streakCurrent={data.streakCurrent}
-            streakLongest={data.streakLongest}
-            weekDoneCount={weekDoneCount}
-            streakDays={streakDays}
-            allRoutineDone={allRoutineDone}
-            routinePlanReady={data.routinePlanReady}
-            className="md:col-span-5"
-          />
+        </div>
+        </div>
 
           {!data.hasQuestionnaire ? (
             <div className="w-full min-w-0 md:col-span-12">
@@ -715,19 +737,6 @@ export function PatientDashboardDesktop() {
               <TodayFocusCard message={data.todayFocus.message} />
             </div>
           ) : null}
-
-          <div className="w-full min-w-0 md:col-span-12">
-            <PatientDoctorHomeSections
-              feedbackEntries={data.feedbackEntries ?? []}
-              archivedFeedbackEntries={data.archivedFeedbackEntries ?? []}
-              doctorFeedback={data.doctorFeedback}
-              doctorVoiceNotes={data.doctorVoiceNotes}
-              doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
-              doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
-              onboardingComplete={data.onboardingComplete}
-              onRefresh={() => void loadHome()}
-            />
-          </div>
         </div>
     </div>
   );
