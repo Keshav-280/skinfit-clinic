@@ -1,6 +1,7 @@
 "use client";
 
 import type { FaceScanCaptureId } from "@/src/lib/faceScanCaptures";
+import { FRONT_GUIDE_ELLIPSE } from "@/src/lib/faceGuideCrop";
 
 type GuidePose = "front" | "left" | "right";
 
@@ -25,7 +26,13 @@ const STROKE = {
 function FrontGuide() {
   return (
     <>
-      <ellipse cx="50" cy="50" rx="42" ry="52" {...STROKE} />
+      <ellipse
+        cx={FRONT_GUIDE_ELLIPSE.cx}
+        cy={FRONT_GUIDE_ELLIPSE.cy}
+        rx={FRONT_GUIDE_ELLIPSE.rx}
+        ry={FRONT_GUIDE_ELLIPSE.ry}
+        {...STROKE}
+      />
       <path
         d="M 24 92 Q 14 103 10 100 M 76 92 Q 86 103 90 100"
         {...STROKE}

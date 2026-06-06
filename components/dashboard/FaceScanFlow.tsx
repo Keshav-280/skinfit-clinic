@@ -49,6 +49,11 @@ import {
   isScanPhotoGuideDismissed,
   setScanPhotoGuideDismissed,
 } from "@/src/lib/scanPhotoGuideDismissed";
+import {
+  computeFaceGuideCropOnCanvas,
+  cropCanvasToFaceGuide,
+  shouldCropToFaceGuide,
+} from "@/src/lib/faceGuideCrop";
 
 type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "queued" | "results";
 
@@ -577,11 +582,32 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
     ctx.restore();
-    canvas.toBlob(
+
+    const step = FACE_SCAN_CAPTURE_STEPS[cameraStepIndex];
+    let outputCanvas: HTMLCanvasElement = canvas;
+    if (shouldCropToFaceGuide(step.id)) {
+      const viewfinderW = video.clientWidth;
+      const viewfinderH = video.clientHeight;
+      const crop = computeFaceGuideCropOnCanvas({
+        videoW: w,
+        videoH: h,
+        canvasW: tw,
+        canvasH: th,
+        viewfinderW,
+        viewfinderH,
+        zoom: captureZoom,
+        mirror,
+      });
+      if (crop) {
+        const cropped = cropCanvasToFaceGuide(canvas, crop);
+        if (cropped) outputCanvas = cropped;
+      }
+    }
+
+    outputCanvas.toBlob(
       (blob) => {
         if (!blob) return;
         if (cameraStepIndex >= N_CAPTURES) return;
-        const step = FACE_SCAN_CAPTURE_STEPS[cameraStepIndex];
         const captured = new File(
           [blob],
           `face-scan-${step.id}-${Date.now()}.jpg`,
