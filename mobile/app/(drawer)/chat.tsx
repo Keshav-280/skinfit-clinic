@@ -1660,13 +1660,7 @@ export default function ChatScreen() {
                 }
               }}
               ListEmptyComponent={
-                doctorChatBlocked ? (
-                  <DoctorChatClinicVisitGate
-                    variant="empty"
-                    message={doctorChatDisabledMessage}
-                    onSupportPress={openClinicSupport}
-                  />
-                ) : (
+                doctorChatBlocked ? null : (
                   <View style={styles.empty}>
                     <View style={styles.emptyIcon}>
                       <Ionicons name="chatbubbles-outline" size={30} color={TEAL} />
@@ -1786,17 +1780,15 @@ export default function ChatScreen() {
         <View
           style={[
             styles.composer,
-            doctorChatBlocked && threadMessages.length > 0 ? styles.composerGateOnly : null,
+            doctorChatBlocked ? styles.composerGateOnly : null,
           ]}
         >
           {doctorChatBlocked ? (
-            threadMessages.length > 0 ? (
-              <DoctorChatClinicVisitGate
-                variant="composer"
-                message={doctorChatDisabledMessage}
-                onSupportPress={openClinicSupport}
-              />
-            ) : null
+            <DoctorChatClinicVisitGate
+              variant="composer"
+              message={doctorChatDisabledMessage}
+              onSupportPress={openClinicSupport}
+            />
           ) : isRecording ? (
             <View style={styles.recordingRow}>
               <View style={styles.recordingDot} />

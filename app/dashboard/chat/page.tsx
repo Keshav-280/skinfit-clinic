@@ -96,6 +96,17 @@ export default function ChatPage() {
   const doctorChatBlocked =
     activeAssistant === "doctor" && !doctorChatEnabled;
 
+  const openClinicSupport = useCallback(() => {
+    setActiveAssistant("support");
+    setActiveDoctorId(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("assistant", "support");
+      url.searchParams.delete("doctorId");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }
+  }, []);
+
   const contacts = useMemo((): SidebarContact[] => {
     const doctorRows: SidebarContact[] = registeredDoctors.map((d) => ({
       key: `doctor:${d.id}`,
@@ -1258,12 +1269,6 @@ export default function ChatPage() {
           ref={messagesScrollRef}
           className="flex flex-1 flex-col overflow-y-auto bg-[#E8EFE6]/20 p-4 sm:p-6"
         >
-          {doctorChatBlocked && messages.length === 0 ? (
-            <DoctorChatClinicVisitGate
-              message={doctorChatDisabledMessage}
-              variant="empty"
-            />
-          ) : null}
           <div className="flex flex-col gap-4">
             {messages.map((msg) => {
               const ts =
@@ -1381,9 +1386,11 @@ export default function ChatPage() {
         </div>
 
         {doctorChatBlocked ? (
-          messages.length > 0 ? (
-            <DoctorChatClinicVisitGate message={doctorChatDisabledMessage} variant="composer" />
-          ) : null
+          <DoctorChatClinicVisitGate
+            message={doctorChatDisabledMessage}
+            variant="composer"
+            onSupportPress={openClinicSupport}
+          />
         ) : (
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
           {composerError ? (

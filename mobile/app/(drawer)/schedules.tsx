@@ -45,6 +45,11 @@ import {
   type ScheduleEventRow,
   WEEK_OPTS,
 } from "@/lib/schedulesCalendar";
+import {
+  VISIT_WINDOW_OPTIONS,
+  visitWindowsToTimePreferences,
+  type VisitWindowId,
+} from "../../src/lib/scheduleVisitWindows";
 
 type PendingScheduleRequestRow = {
   id: string;
@@ -126,8 +131,7 @@ export default function SchedulesScreen() {
   const [visitDaysAffected, setVisitDaysAffected] = useState("");
   const [visitTimes, setVisitTimes] = useState("");
   const [visitNotes, setVisitNotes] = useState("");
-  const [visitWindow, setVisitWindow] = useState<"morning" | "afternoon" | "evening">("morning");
-  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [selectedWindows, setSelectedWindows] = useState<VisitWindowId[]>([]);
   const [visitBusy, setVisitBusy] = useState(false);
 
   const calendarCells = useMemo(
@@ -243,10 +247,10 @@ export default function SchedulesScreen() {
       return;
     }
     const notes = visitNotes.trim();
-    const tRaw = (visitTimes.trim() || selectedSlots.join(", ")).trim();
+    const tRaw = (visitTimes.trim() || visitWindowsToTimePreferences(selectedWindows)).trim();
     const t = notes ? `${tRaw}${tRaw ? " | " : ""}Notes: ${notes}` : tRaw;
     if (t.length < 2) {
-      Alert.alert("Request", "Add your preferred times or availability.");
+      Alert.alert("Request", "Choose a preferred time window.");
       return;
     }
     const daysAffectedNum = visitDaysAffected.trim()
@@ -278,8 +282,7 @@ export default function SchedulesScreen() {
       setVisitDaysAffected("");
       setVisitTimes("");
       setVisitNotes("");
-      setVisitWindow("morning");
-      setSelectedSlots([]);
+      setSelectedWindows([]);
       await loadBootstrap();
     } catch (e) {
       Alert.alert("Request", e instanceof Error ? e.message : "Failed.");
@@ -288,18 +291,10 @@ export default function SchedulesScreen() {
     }
   }
 
-  const slotOptions: Record<"morning" | "afternoon" | "evening", string[]> = {
-    morning: ["9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"],
-    afternoon: ["12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM"],
-    evening: ["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM"],
-  };
-
-  function toggleSlot(slot: string) {
-    setSelectedSlots((prev) => {
-      const next = prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot];
-      setVisitTimes(next.join(", "));
-      return next;
-    });
+  function toggleWindow(id: VisitWindowId) {
+    setSelectedWindows((prev) =>
+      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
+    );
   }
 
   const [reqCalMonth, setReqCalMonth] = useState(() => new Date());
@@ -830,8 +825,7 @@ export default function SchedulesScreen() {
           setVisitRequestOpen(false);
           setVisitRequestYmd(null);
           setVisitNotes("");
-          setVisitWindow("morning");
-          setSelectedSlots([]);
+          setSelectedWindows([]);
         }}
       >
         <View style={styles.modalBg}>
@@ -897,29 +891,18 @@ export default function SchedulesScreen() {
               ))}
             </View>
             <Text style={styles.labelBig}>Choose new time</Text>
-            <View style={styles.windowTabs}>
-              {(["morning", "afternoon", "evening"] as const).map((w) => (
-                <Pressable
-                  key={w}
-                  onPress={() => setVisitWindow(w)}
-                  style={[styles.windowTab, visitWindow === w && styles.windowTabOn]}
-                >
-                  <Text style={visitWindow === w ? styles.windowTabOnText : styles.windowTabText}>
-                    {w.charAt(0).toUpperCase() + w.slice(1)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.slotGrid}>
-              {slotOptions[visitWindow].map((slot) => {
-                const on = selectedSlots.includes(slot);
+            <View style={styles.windowList}>
+              {VISIT_WINDOW_OPTIONS.map((w) => {
+                const on = selectedWindows.includes(w.id);
                 return (
                   <Pressable
-                    key={slot}
-                    onPress={() => toggleSlot(slot)}
-                    style={[styles.slotChip, on && styles.slotChipOn]}
+                    key={w.id}
+                    onPress={() => toggleWindow(w.id)}
+                    style={[styles.windowOption, on && styles.windowOptionOn]}
                   >
-                    <Text style={on ? styles.slotChipOnText : styles.slotChipText}>{slot}</Text>
+                    <Text style={on ? styles.windowOptionOnText : styles.windowOptionText}>
+                      {w.label}
+                    </Text>
                   </Pressable>
                 );
               })}
@@ -933,7 +916,7 @@ export default function SchedulesScreen() {
                 </Text>
               </View>
             </View>
-            <Text style={styles.label}>Add notes (optional)</Text>
+            <Text style={styles.label}>Add notes</Text>
             <TextInput
               style={[styles.input, { minHeight: 76 }]}
               multiline
@@ -949,8 +932,7 @@ export default function SchedulesScreen() {
                   setVisitRequestOpen(false);
                   setVisitRequestYmd(null);
                   setVisitNotes("");
-                  setVisitWindow("morning");
-                  setSelectedSlots([]);
+                  setSelectedWindows([]);
                 }}
               >
                 <Text style={styles.btnGhostTextStrong}>Cancel</Text>
@@ -1551,34 +1533,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#22c55e",
   },
   labelBig: { fontSize: 17, fontWeight: "700", color: "#18181b", marginTop: 8, marginBottom: 10 },
-  windowTabs: {
-    flexDirection: "row",
-    backgroundColor: "#f4f4f5",
-    borderRadius: 14,
-    padding: 4,
-    gap: 4,
+  windowList: { marginTop: 4, gap: 8 },
+  windowOption: {
+    borderWidth: 1,
+    borderColor: "#e4e4e7",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  windowTab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderRadius: 10,
-  },
-  windowTabOn: { backgroundColor: "#e4e4e7" },
-  windowTabText: { color: "#52525b", fontWeight: "600", fontSize: 16 },
-  windowTabOnText: { color: "#1e3a8a", fontWeight: "700", fontSize: 16 },
-  slotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 },
-  slotChip: {
-    width: "31%",
-    minWidth: 95,
-    backgroundColor: "#f4f4f5",
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  slotChipOn: { backgroundColor: "#262b74" },
-  slotChipText: { color: "#3f3f46", fontWeight: "600", fontSize: 14 },
-  slotChipOnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  windowOptionOn: { backgroundColor: "#262b74", borderColor: "#262b74" },
+  windowOptionText: { color: "#18181b", fontWeight: "600", fontSize: 15 },
+  windowOptionOnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   noteBox: {
     marginTop: 16,
     borderRadius: 14,

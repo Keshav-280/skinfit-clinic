@@ -2,10 +2,7 @@
 
 import { format } from "date-fns";
 
-import {
-  PATIENT_GREEN,
-  patientDashboardNavyCard,
-} from "@/src/lib/patientDashboardTheme";
+import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 
 const NAVY_TRACK = "rgba(255,255,255,0.22)";
 const SALMON = "#FCA5A5";
@@ -65,7 +62,12 @@ function ConsistencyRing({
         )}
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[32px] font-extrabold leading-none text-white">{v}</span>
+        <span
+          className="font-extrabold leading-none text-white"
+          style={{ fontSize: Math.round(size * 0.26) }}
+        >
+          {v}
+        </span>
       </div>
     </div>
   );
@@ -90,44 +92,46 @@ export function NavyMetricsCard({
   const v = Math.min(100, Math.max(0, Math.round(consistencyScore)));
 
   return (
-    <div className={`${patientDashboardNavyCard} h-full ${className}`}>
-      <div className="grid grid-cols-12 gap-5 items-center h-full min-h-[210px]">
+    <div
+      className={`rounded-[20px] bg-[#2D3E6B] px-5 py-2 md:px-6 md:py-2.5 h-full ${className}`}
+    >
+      <div className="grid h-full min-h-[200px] grid-cols-12 items-stretch gap-4">
         {/* Left Column: Stacked sub-cards */}
-        <div className="col-span-5 flex flex-col gap-3">
-          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[96px]">
+        <div className="col-span-5 flex h-full flex-col gap-2.5">
+          <div className="flex min-h-[112px] flex-1 flex-col justify-center rounded-[20px] bg-[#E8EFE6] px-4 py-3 text-center">
             <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
-            <p className="mt-2 text-4xl font-extrabold leading-none text-[#1E5E3A]">
+            <p className="mt-1.5 text-[2.5rem] font-extrabold leading-none text-[#1E5E3A]">
               {kaiSkinScore}
             </p>
-            <p className="mt-2 text-[10px] font-medium leading-none text-[#6B7280]">
+            <p className="mt-1.5 text-[10px] font-medium leading-none text-[#6B7280]">
               {latestScanAt
                 ? `Updated ${format(new Date(latestScanAt), "MMM d")}`
                 : "No scans yet"}
             </p>
           </div>
-          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[96px]">
+          <div className="flex min-h-[112px] flex-1 flex-col justify-center rounded-[20px] bg-[#E8EFE6] px-4 py-3 text-center">
             <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
             <p
-              className={`mt-2 text-4xl font-extrabold leading-none ${
+              className={`mt-1.5 text-[2.5rem] font-extrabold leading-none ${
                 weeklyDeltaScore >= 0 ? "text-[#1E5E3A]" : "text-[#EF4444]"
               }`}
             >
               {weeklyDeltaScore >= 0 ? "+" : ""}
               {weeklyDeltaScore}
             </p>
-            <p className="mt-2 text-[10px] font-medium leading-none text-[#6B7280]">vs last week</p>
+            <p className="mt-1.5 text-[10px] font-medium leading-none text-[#6B7280]">vs last week</p>
           </div>
         </div>
 
         {/* Right Column: Consistency Score display */}
-        <div className="col-span-7 flex flex-col items-center justify-center text-center pl-2">
+        <div className="col-span-7 flex h-full flex-col items-center justify-center pl-2 text-center">
           <h3 className="text-[13px] font-extrabold tracking-wide text-white/90">
             WEEKLY CONSISTENCY SCORE
           </h3>
-          <div className="mt-4 flex justify-center">
-            <ConsistencyRing value={consistencyScore} size={115} strokeWidth={9} />
+          <div className="mt-1 flex justify-center">
+            <ConsistencyRing value={consistencyScore} size={140} strokeWidth={10} />
           </div>
-          <p className="mt-3.5 text-base font-extrabold text-white">
+          <p className="mt-1.5 text-base font-extrabold text-white">
             {consistencyLabel(v)}
           </p>
         </div>

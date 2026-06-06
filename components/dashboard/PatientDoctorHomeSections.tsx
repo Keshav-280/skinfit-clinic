@@ -179,7 +179,7 @@ function FeedbackAckActions({
             ? "Move to archived (still readable / playable)"
             : "Mark as read or listened first"
         }
-        className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#2C3E6B]/20 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-white hover:shadow disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100/60 disabled:text-slate-400 disabled:shadow-none"
+        className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#2C3E6B]/20 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100/60 disabled:text-slate-400"
       >
         <Archive className="h-4 w-4 opacity-80" aria-hidden />
         Archive
@@ -200,11 +200,11 @@ function DashboardHomeTextBlock({
   if (!text) return null;
 
   return (
-    <div className="overflow-hidden rounded-[20px] border border-white/80 bg-white/55 shadow-[0_4px_20px_rgba(44,62,107,0.08)] backdrop-blur-sm">
+    <div className="overflow-hidden rounded-[20px] border border-white/80 bg-white/55 backdrop-blur-sm">
       <div className="flex items-start justify-between gap-3 border-b border-white/60 bg-gradient-to-r from-[#E8EFE6]/50 to-white/40 px-4 py-3.5 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
           <span
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] shadow-sm"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px]"
             style={{ backgroundColor: NAVY }}
           >
             <MessageSquare className="h-5 w-5 text-white" aria-hidden />
@@ -230,7 +230,7 @@ function DashboardHomeTextBlock({
       </div>
 
       <div className="space-y-4 px-4 py-4 sm:px-5">
-        <div className="rounded-[18px] border border-white/70 bg-white/50 px-4 py-3.5 text-[15px] leading-relaxed text-[#334155] shadow-inner backdrop-blur-sm">
+        <div className="rounded-[18px] border border-white/70 bg-white/50 px-4 py-3.5 text-[15px] leading-relaxed text-[#334155] backdrop-blur-sm">
           {text}
         </div>
         <FeedbackAckActions
@@ -254,11 +254,11 @@ function DashboardHomeVoiceBlock({
   const created = new Date(entry.createdAt);
 
   return (
-    <div className="overflow-hidden rounded-[20px] border border-white/80 bg-white/55 shadow-[0_4px_20px_rgba(44,62,107,0.08)] backdrop-blur-sm">
+    <div className="overflow-hidden rounded-[20px] border border-white/80 bg-white/55 backdrop-blur-sm">
       <div className="flex items-start justify-between gap-3 border-b border-white/60 bg-gradient-to-r from-[#E8EFE6]/50 to-white/40 px-4 py-3.5 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
           <span
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] shadow-sm"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px]"
             style={{ backgroundColor: NAVY }}
           >
             <Mic className="h-5 w-5 text-white" aria-hidden />
@@ -534,7 +534,7 @@ export function PatientDoctorHomeSections({
                      }
                   })();
                 }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#3d5080] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {doctorFollowUpBusy ? (
                   <>
@@ -614,7 +614,7 @@ export function PatientDoctorHomeSections({
         )}
 
         {archivedEntries.length > 0 ? (
-          <details className="group mt-5 overflow-hidden rounded-[18px] border border-white/70 bg-white/30 shadow-sm backdrop-blur-sm">
+          <details className="group mt-5 overflow-hidden rounded-[18px] border border-white/70 bg-white/30 backdrop-blur-sm">
             <summary className="cursor-pointer list-none px-4 py-3.5 text-sm font-bold text-[#2C3E6B] transition hover:bg-white/40 [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2">
@@ -634,7 +634,7 @@ export function PatientDoctorHomeSections({
               {archivedEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="rounded-[14px] border border-white/70 bg-white/60 p-3 shadow-sm"
+                  className="rounded-[14px] border border-white/70 bg-white/60 p-3"
                 >
                   <p className="text-xs font-semibold text-[#64748B]">
                     {format(new Date(entry.createdAt), "dd/MM/yy · h:mm a")}

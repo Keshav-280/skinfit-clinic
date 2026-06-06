@@ -63,7 +63,7 @@ export function DashboardStreakCard({
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
                 d.done
-                  ? "border-[#4CAF50] bg-[#4CAF50] text-white shadow-sm"
+                  ? "border-[#4CAF50] bg-[#4CAF50] text-white"
                   : d.isFuture
                     ? "border-slate-200 bg-white text-slate-300"
                     : "border-slate-300 bg-white text-slate-400"

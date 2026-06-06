@@ -37,6 +37,11 @@ import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
+import {
+  VISIT_WINDOW_OPTIONS,
+  visitWindowsToTimePreferences,
+  type VisitWindowId,
+} from "@/src/lib/scheduleVisitWindows";
 
 export type ScheduleEventRow = {
   id: string;
@@ -98,12 +103,6 @@ const MAX_REQUEST_IMAGE_URI_LEN = 3_200_000;
 const WEEK_OPTS = { weekStartsOn: 0 as const };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-const SLOT_OPTIONS: Record<"morning" | "afternoon" | "evening", string[]> = {
-  morning: ["9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"],
-  afternoon: ["12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM"],
-  evening: ["4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM"],
-};
 
 function chunkWeeks(cells: (Date | null)[]): (Date | null)[][] {
   const rows: (Date | null)[][] = [];
@@ -350,10 +349,7 @@ export default function SchedulesPageClient({
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestYmd, setRequestYmd] = useState<string | null>(null);
   const [reqCalMonth, setReqCalMonth] = useState(() => new Date());
-  const [requestVisitWindow, setRequestVisitWindow] = useState<
-    "morning" | "afternoon" | "evening"
-  >("morning");
-  const [requestSelectedSlots, setRequestSelectedSlots] = useState<string[]>([]);
+  const [requestSelectedWindows, setRequestSelectedWindows] = useState<VisitWindowId[]>([]);
   const [requestVisitNotes, setRequestVisitNotes] = useState("");
   const [requestIssue, setRequestIssue] = useState("Skin concern");
   const [requestDaysAffected, setRequestDaysAffected] = useState("");
@@ -590,10 +586,12 @@ export default function SchedulesPageClient({
       return;
     }
     const notes = requestVisitNotes.trim();
-    const tRaw = (requestTimes.trim() || requestSelectedSlots.join(", ")).trim();
+    const tRaw = (
+      requestTimes.trim() || visitWindowsToTimePreferences(requestSelectedWindows)
+    ).trim();
     const t = notes ? `${tRaw}${tRaw ? " | " : ""}Notes: ${notes}` : tRaw;
     if (t.length < 2) {
-      setRequestError("Add your preferred times or availability.");
+      setRequestError("Choose a preferred time window.");
       return;
     }
     const daysAffectedNum = requestDaysAffected.trim()
@@ -646,8 +644,7 @@ export default function SchedulesPageClient({
       setRequestDaysAffected("");
       setRequestTimes("");
       setRequestVisitNotes("");
-      setRequestVisitWindow("morning");
-      setRequestSelectedSlots([]);
+      setRequestSelectedWindows([]);
       setReqCalMonth(new Date());
       setRequestAttachments([]);
       if (data.clinicAppointmentFormUrl) {
@@ -670,8 +667,7 @@ export default function SchedulesPageClient({
     setRequestDaysAffected("");
     setRequestTimes("");
     setRequestVisitNotes("");
-    setRequestVisitWindow("morning");
-    setRequestSelectedSlots([]);
+    setRequestSelectedWindows([]);
     setRequestAttachments([]);
     setRequestError(null);
     setSheetRelayNotice(null);
@@ -1189,8 +1185,7 @@ export default function SchedulesPageClient({
               setRequestYmd(ymd);
               setReqCalMonth(new Date());
               setRequestVisitNotes("");
-              setRequestVisitWindow("morning");
-              setRequestSelectedSlots([]);
+              setRequestSelectedWindows([]);
               setRequestIssue("Skin concern");
               setRequestDaysAffected("");
               setRequestTimes("");
@@ -1498,44 +1493,27 @@ export default function SchedulesPageClient({
               </div>
 
               <p className="mt-4 text-base font-bold text-[#18181b]">Choose new time</p>
-              <div className="mt-2 flex gap-1 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-1">
-                {(["morning", "afternoon", "evening"] as const).map((w) => (
-                  <button
-                    key={w}
-                    type="button"
-                    onClick={() => setRequestVisitWindow(w)}
-                    className={`flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${
-                      requestVisitWindow === w
-                        ? "bg-white font-bold text-[#2B3A67] shadow-sm"
-                        : "text-[#64748b]"
-                    }`}
-                  >
-                    {w}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-3">
-                {SLOT_OPTIONS[requestVisitWindow].map((slot) => {
-                  const on = requestSelectedSlots.includes(slot);
+              <div className="mt-3 flex flex-col gap-2">
+                {VISIT_WINDOW_OPTIONS.map((w) => {
+                  const on = requestSelectedWindows.includes(w.id);
                   return (
                     <button
-                      key={slot}
+                      key={w.id}
                       type="button"
                       onClick={() => {
-                        setRequestSelectedSlots((prev) => {
-                          const next = prev.includes(slot)
-                            ? prev.filter((s) => s !== slot)
-                            : [...prev, slot];
-                          return next;
-                        });
+                        setRequestSelectedWindows((prev) =>
+                          prev.includes(w.id)
+                            ? prev.filter((id) => id !== w.id)
+                            : [...prev, w.id]
+                        );
                       }}
-                      className={`rounded-full border px-2 py-2 text-center text-xs font-semibold transition-colors ${
+                      className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
                         on
                           ? "border-[#2B3A67] bg-[#2B3A67] text-white"
-                          : "border-[#e5e7eb] bg-white text-[#3f3f46] hover:border-[#cbd5e1]"
+                          : "border-[#e5e7eb] bg-white text-[#18181b] hover:border-[#cbd5e1]"
                       }`}
                     >
-                      {slot}
+                      {w.label}
                     </button>
                   );
                 })}
@@ -1551,8 +1529,8 @@ export default function SchedulesPageClient({
                 </div>
               </div>
 
-              <label className="mt-4 block text-sm font-medium text-[#374151]">
-                Add notes (optional)
+              <label className="mt-4 block text-sm font-medium text-[#18181b]">
+                Add notes
               </label>
               <textarea
                 value={requestVisitNotes}
@@ -1563,23 +1541,24 @@ export default function SchedulesPageClient({
                 className="mt-1.5 w-full rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-sm text-[#18181b] outline-none ring-[#2B3A67]/15 focus:ring-2"
               />
 
-              <details className="mt-3 rounded-xl border border-[#e5e7eb] bg-[#fafafa] px-3 py-2 text-sm">
-                <summary className="cursor-pointer font-semibold text-[#2B3A67]">
-                  Optional details &amp; photos
+              <details className="mt-3 rounded-xl border border-[#e5e7eb] bg-[#fafafa] px-3 py-2 text-sm text-[#18181b]">
+                <summary className="cursor-pointer font-semibold text-[#18181b]">
+                  Details &amp; photos
                 </summary>
                 <div className="mt-3 space-y-3 border-t border-[#e5e7eb] pt-3">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#64748b]">Issue</label>
+                    <label className="mb-1 block text-xs font-medium text-[#18181b]">Issue</label>
                     <input
                       value={requestIssue}
                       onChange={(e) => setRequestIssue(e.target.value)}
-                      className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm"
+                      placeholder="Skin concern"
+                      className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm text-[#18181b]"
                       disabled={requestSubmitting}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#64748b]">
-                      Days affected (optional)
+                    <label className="mb-1 block text-xs font-medium text-[#18181b]">
+                      Days affected
                     </label>
                     <input
                       value={requestDaysAffected}
@@ -1588,24 +1567,24 @@ export default function SchedulesPageClient({
                         setRequestDaysAffected(v);
                       }}
                       inputMode="numeric"
-                      className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm text-[#18181b]"
                       disabled={requestSubmitting}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#64748b]">
-                      Free-text availability (optional)
+                    <label className="mb-1 block text-xs font-medium text-[#18181b]">
+                      Free-text availability
                     </label>
                     <textarea
                       value={requestTimes}
                       onChange={(e) => setRequestTimes(e.target.value)}
                       rows={2}
-                      className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm text-[#18181b]"
                       disabled={requestSubmitting}
                     />
                   </div>
                   <div>
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#2B3A67]">
+                    <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#18181b]">
                       <Paperclip className="h-4 w-4" aria-hidden />
                       Upload image(s)
                       <input
@@ -1693,8 +1672,7 @@ export default function SchedulesPageClient({
                     setRequestModalOpen(false);
                     setRequestYmd(null);
                     setRequestVisitNotes("");
-                    setRequestVisitWindow("morning");
-                    setRequestSelectedSlots([]);
+                    setRequestSelectedWindows([]);
                     setRequestAttachments([]);
                   }}
                 >

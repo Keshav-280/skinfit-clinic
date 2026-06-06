@@ -505,7 +505,7 @@ export function PatientDashboardDesktop() {
         {/* Calendar Ribbon */}
         <div>
           <div className="mb-1 flex items-center justify-between px-0.5">
-            <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm hover:bg-[#F2F9F2]"><ChevronLeft className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F2F9F2]"><ChevronLeft className="h-3.5 w-3.5" /></button>
             <button
               type="button"
               onClick={() => {
@@ -517,7 +517,7 @@ export function PatientDashboardDesktop() {
               {monthLabel}
               {!isViewingToday || weekOffset !== 0 ? " · today" : null}
             </button>
-            <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm hover:bg-[#F2F9F2]"><ChevronRight className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F2F9F2]"><ChevronRight className="h-3.5 w-3.5" /></button>
           </div>
           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2">
             {weekDays.map((d) => (
@@ -532,7 +532,7 @@ export function PatientDashboardDesktop() {
                 disabled={d.isFuture}
                 className={`flex min-w-[42px] flex-1 flex-col items-center rounded-xl border px-1.5 py-1.5 transition-all md:min-w-[46px] ${
                   d.isSelected
-                    ? "border-[#2D3E6B] bg-[#2D3E6B] text-white shadow-md shadow-[#2D3E6B]/15"
+                    ? "border-[#2D3E6B] bg-[#2D3E6B] text-white"
                     : d.isFuture
                       ? "cursor-not-allowed border-[#E5E7EB] bg-white text-slate-400 opacity-60"
                       : d.isToday

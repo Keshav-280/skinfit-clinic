@@ -29,7 +29,7 @@ export function DashboardSectionHeader({
     <div className={`flex flex-wrap items-center justify-between gap-2 ${className}`}>
       <div className="flex min-w-0 items-center gap-2.5">
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-white shadow-md"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-white"
           style={{ backgroundColor: NAVY }}
         >
           <Icon className="h-4 w-4" aria-hidden />
