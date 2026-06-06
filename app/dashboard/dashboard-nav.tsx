@@ -10,8 +10,8 @@ import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
 
 const links = [
-  { href: "/dashboard", label: "Measure" },
-  { href: "/dashboard/scan", label: "Monitor" },
+  { href: "/dashboard/scan", label: "Measure" },
+  { href: "/dashboard", label: "Monitor" },
   { href: "/dashboard/schedules", label: "Manage" },
   { href: "/dashboard/chat?assistant=support", label: "Chat With Us" },
 ] as const;

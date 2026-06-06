@@ -37,9 +37,9 @@ const DOCK_ITEMS: Array<{
   icon: keyof typeof Ionicons.glyphMap;
   match: string[];
 }> = [
+  { key: "scan", href: "/scan" as Href, icon: "camera-outline", match: ["/scan"] },
   { key: "home", href: "/(drawer)" as Href, icon: "home-outline", match: ["/", "/index"] },
   { key: "schedules", href: "/schedules" as Href, icon: "calendar-outline", match: ["/schedules"] },
-  { key: "scan", href: "/scan" as Href, icon: "camera-outline", match: ["/scan"] },
   { key: "chat", href: "/chat" as Href, icon: "chatbubbles", match: ["/chat"] },
   { key: "profile", href: "/profile" as Href, icon: "person-circle-outline", match: ["/profile"] },
 ];
@@ -231,8 +231,21 @@ export default function DrawerLayout() {
         })}
       >
         <Drawer.Screen
+          name="scan"
+          options={{
+            title: "Measure",
+            drawerLabel: "Measure",
+            headerShown: false,
+            lazy: false,
+          }}
+        />
+        <Drawer.Screen
           name="index"
-          options={{ title: "Dashboard", drawerLabel: "Dashboard", headerShown: false }}
+          options={{ title: "Monitor", drawerLabel: "Monitor", headerShown: false }}
+        />
+        <Drawer.Screen
+          name="schedules"
+          options={{ title: "Manage", drawerLabel: "Manage", headerStyle: { backgroundColor: "#F2F9F2" } }}
         />
         <Drawer.Screen
           name="history"
@@ -241,19 +254,6 @@ export default function DrawerLayout() {
             drawerLabel: "Treatment History",
             headerShown: false,
           }}
-        />
-        <Drawer.Screen
-          name="scan"
-          options={{
-            title: "AI Scan",
-            drawerLabel: "AI Scan",
-            headerShown: false,
-            lazy: false,
-          }}
-        />
-        <Drawer.Screen
-          name="schedules"
-          options={{ title: "Schedules", drawerLabel: "Schedules", headerStyle: { backgroundColor: "#F2F9F2" } }}
         />
         <Drawer.Screen
           name="wellness"

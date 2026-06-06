@@ -1031,6 +1031,20 @@ export default function DashboardScreen() {
           ) : null}
         </View>
       </View>
+
+      <DoctorFeedbackSection
+        feedbackEntries={data.feedbackEntries ?? []}
+        archivedEntries={data.archivedFeedbackEntries ?? []}
+        legacyFeedback={data.doctorFeedback}
+        legacyVoiceNotes={data.doctorVoiceNotes ?? []}
+        legacyArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+        voiceNoteIsNew={data.doctorVoiceNoteIsNew ?? false}
+        onboardingComplete={data.onboardingComplete}
+        token={token}
+        onPatchVoiceNote={patchVoiceNote}
+        voiceBusyId={voiceBusyId}
+        onRefresh={loadHome}
+      />
       </View>
 
       {latestScan ? (
@@ -1154,22 +1168,6 @@ export default function DashboardScreen() {
         </View>
       </View>
       */}
-
-      <View style={styles.dashboardFullWidth}>
-        <DoctorFeedbackSection
-          feedbackEntries={data.feedbackEntries ?? []}
-          archivedEntries={data.archivedFeedbackEntries ?? []}
-          legacyFeedback={data.doctorFeedback}
-          legacyVoiceNotes={data.doctorVoiceNotes ?? []}
-          legacyArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
-          voiceNoteIsNew={data.doctorVoiceNoteIsNew ?? false}
-          onboardingComplete={data.onboardingComplete}
-          token={token}
-          onPatchVoiceNote={patchVoiceNote}
-          voiceBusyId={voiceBusyId}
-          onRefresh={loadHome}
-        />
-      </View>
     </ScrollView>
   );
 }

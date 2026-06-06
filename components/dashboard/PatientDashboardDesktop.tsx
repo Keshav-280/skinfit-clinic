@@ -695,24 +695,6 @@ export function PatientDashboardDesktop() {
               className="min-w-0"
             />
           </div>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-4 self-stretch">
-          {skinParams.length > 0 ? (
-            <SkinParamMetricsCard
-              metrics={skinParams}
-              viewAllHref="/dashboard/skin-params"
-              className="min-w-0 self-start"
-            />
-          ) : (
-            <div
-              className={`flex min-w-0 items-center justify-center self-start ${DASHBOARD_SECTION_CARD}`}
-            >
-              <p className="text-sm font-semibold text-[#6B7280]">
-                Skin parameters appear after your first scan
-              </p>
-            </div>
-          )}
 
           <PatientDoctorHomeSections
             feedbackEntries={data.feedbackEntries ?? []}
@@ -723,9 +705,25 @@ export function PatientDashboardDesktop() {
             doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
             onboardingComplete={data.onboardingComplete}
             onRefresh={() => void loadHome()}
-            className="min-h-0 flex-1"
+            className="min-h-0"
           />
         </div>
+
+        {skinParams.length > 0 ? (
+          <SkinParamMetricsCard
+            metrics={skinParams}
+            viewAllHref="/dashboard/skin-params"
+            className="min-w-0 self-start"
+          />
+        ) : (
+          <div
+            className={`flex min-w-0 items-center justify-center self-start ${DASHBOARD_SECTION_CARD}`}
+          >
+            <p className="text-sm font-semibold text-[#6B7280]">
+              Skin parameters appear after your first scan
+            </p>
+          </div>
+        )}
         </div>
 
           {!data.hasQuestionnaire ? (
