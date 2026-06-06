@@ -472,10 +472,10 @@ export function PatientDoctorHomeSections({
   );
 
   return (
-    <div className="w-full space-y-5">
+    <div className="grid gap-4 md:grid-cols-2 items-start w-full">
       <section
         id="doctor-written-feedback"
-        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD}`}
+        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD} h-full`}
         aria-labelledby="doctor-written-feedback-heading"
       >
         <DashboardSectionHeader
@@ -567,7 +567,7 @@ export function PatientDoctorHomeSections({
 
       <section
         id="doctor-feedback"
-        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD}`}
+        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD} h-full`}
         aria-labelledby="dashboard-voice-heading"
       >
         <DashboardSectionHeader

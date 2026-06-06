@@ -29,7 +29,7 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
         {metrics.slice(0, 4).map((p) => (
           <div
             key={p.label}
-            className="flex aspect-[4/5] max-h-[148px] flex-col items-center justify-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] px-2 py-3"
+            className="flex flex-col items-center justify-center gap-2 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] px-3 py-4 shadow-sm"
           >
             <CircularGauge value={p.value} color={p.color} size={52} strokeWidth={5} />
             <p className="text-center text-[12px] font-bold leading-tight text-[#18181b] sm:text-[13px]">
