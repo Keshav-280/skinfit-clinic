@@ -5,7 +5,8 @@
  * 1. Extensions → Apps Script → paste this file (or merge doPost + helpers).
  * 2. Project Settings → Script properties:
  *    - SKINFIT_SECRET = same value as CLINIC_SHEET_WEBHOOK_SECRET (required)
- *    - SKINFIT_SHEET_NAME = tab name with CRM headers (optional; defaults to SHEET_NAME in Code.gs)
+ *    - SKINFIT_SHEET_NAME = appointments CRM tab name (required if not "skinnfit-test-appointments")
+ *      Must NOT be "Doctors". Example: Sheet2
  *    - SKINFIT_SPREADSHEET_ID = spreadsheet id (required if this script is NOT “bound” to the sheet)
  *      From URL: https://docs.google.com/spreadsheets/d/THIS_PART/edit
  *    - SKINFIT_DRIVE_FOLDER_ID = Google Drive folder ID from the folder URL (recommended)
@@ -74,11 +75,40 @@
  */
 
 var SHEET_NAME = 'skinnfit-test-appointments'; // default tab; override with Script property SKINFIT_SHEET_NAME
+var DOCTORS_ROSTER_SHEET_NAME = 'Doctors';
 
 function getCrmSheetName_() {
   var p = PropertiesService.getScriptProperties().getProperty('SKINFIT_SHEET_NAME');
   if (p && String(p).trim()) return String(p).trim();
   return SHEET_NAME;
+}
+
+function isDoctorsRosterSheet_(sheet) {
+  return (
+    sheet && String(sheet.getName() || '').trim() === DOCTORS_ROSTER_SHEET_NAME
+  );
+}
+
+/**
+ * Appointments / CRM tab only — never falls back to sheet[0] (that was polluting Doctors).
+ */
+function getCrmSheet_(ss) {
+  if (!ss) ss = getTargetSpreadsheet_();
+  var name = getCrmSheetName_();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    throw new Error(
+      'CRM sheet not found: "' +
+        name +
+        '". Set Script Property SKINFIT_SHEET_NAME to your appointments tab name (e.g. Sheet2). The Doctors tab is roster-only.'
+    );
+  }
+  if (isDoctorsRosterSheet_(sheet)) {
+    throw new Error(
+      'SKINFIT_SHEET_NAME must not be "Doctors". Point it at your appointments tab.'
+    );
+  }
+  return sheet;
 }
 
 function doPost(e) {
@@ -178,7 +208,7 @@ function doPostHandler_(e) {
   }
 
   var ss = getTargetSpreadsheet_();
-  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
+  var sheet = getCrmSheet_(ss);
   ensureHeaderRowForSheet_(sheet);
 
   if (data.kind === 'skinfit_row_sync') {
@@ -305,7 +335,7 @@ function jsonOut(obj, statusCode) {
  */
 function ensureHeaderRow() {
   var ss = getTargetSpreadsheet_();
-  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
+  var sheet = getCrmSheet_(ss);
   ensureHeaderRowForSheet_(sheet);
 }
 
@@ -431,6 +461,8 @@ function padRowToWidth_(row, width) {
 }
 
 function ensureHeaderRowForSheet_(sheet) {
+  if (isDoctorsRosterSheet_(sheet)) return;
+
   var headers = getFullHeaderRow_();
 
   if (sheet.getLastRow() === 0) {
@@ -574,6 +606,7 @@ function setCellByHeader_(sheet, rowNum, headerMap, name, fallback1Based, value)
 function onEditInstallable_(e) {
   if (!e || !e.range) return;
   var sh = e.range.getSheet();
+  if (isDoctorsRosterSheet_(sh)) return;
   ensureHeaderRowForSheet_(sh);
   var map = buildHeaderIndexMap_(sh);
   if (!map['crmvisitaction']) return;
@@ -647,7 +680,7 @@ function backfillAppointmentSyncUrlFromProperty() {
     );
   }
   var ss = getTargetSpreadsheet_();
-  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
+  var sheet = getCrmSheet_(ss);
   ensureHeaderRowForSheet_(sheet);
   var map = buildHeaderIndexMap_(sheet);
   var col = map['appointmentsyncurl'] || 18;
@@ -661,7 +694,7 @@ function backfillAppointmentSyncUrlFromProperty() {
 /** Optional: time-driven (every 5–10 min) to pick up rows if onEdit missed. */
 function crmTickPushPending() {
   var ss = getTargetSpreadsheet_();
-  var sheet = ss.getSheetByName(getCrmSheetName_()) || ss.getSheets()[0];
+  var sheet = getCrmSheet_(ss);
   ensureHeaderRowForSheet_(sheet);
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return;
@@ -749,17 +782,23 @@ function resolveDoctorFieldsForRow_(sheet, rowNum, map) {
   };
 }
 
-/** Run once: creates Doctors tab with headers (paste names + UUIDs from Skinfit). */
+/**
+ * Run once: Doctors roster tab ONLY (name | id). Does not touch the appointments CRM tab.
+ * Optional — skip entirely if staff paste doctor UUIDs in column M on the CRM tab.
+ */
 function ensureDoctorsTabTemplate_() {
   var ss = getTargetSpreadsheet_();
-  var sh = ss.getSheetByName('Doctors');
+  var sh = ss.getSheetByName(DOCTORS_ROSTER_SHEET_NAME);
   if (!sh) {
-    sh = ss.insertSheet('Doctors');
+    sh = ss.insertSheet(DOCTORS_ROSTER_SHEET_NAME);
   }
-  if (String(sh.getRange(1, 1).getValue() || '').trim() !== 'name') {
-    sh.getRange(1, 1, 1, 2).setValues([['name', 'id']]);
-  }
-  Logger.log('Doctors tab ready — add one row per clinician (name in A, UUID in B).');
+  sh.clear();
+  sh.getRange(1, 1, 1, 2).setValues([['name', 'id']]);
+  sh.setFrozenRows(1);
+  Logger.log(
+    'Doctors tab reset (columns A=name, B=id only). Add clinicians from row 2. CRM requests stay on tab: ' +
+      getCrmSheetName_()
+  );
 }
 
 function maybePushRowToSkinfit_(sheet, rowNum) {
