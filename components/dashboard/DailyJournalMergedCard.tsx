@@ -104,7 +104,7 @@ export function DailyJournalMergedCard({
       />
 
       <div className="space-y-1">
-        <div className="flex items-center gap-2 rounded-2xl px-2 py-3">
+        <div className="flex items-center gap-2 rounded-2xl px-2 py-1.5">
           <Link
             href={journalTrackerHref("/dashboard/sleep-tracker", selectedYmd)}
             className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 pr-1 transition hover:bg-white/40"
@@ -142,7 +142,7 @@ export function DailyJournalMergedCard({
 
         <div className="mx-2 border-t border-white/60" />
 
-        <div className="flex items-center gap-2 rounded-2xl px-2 py-3">
+        <div className="flex items-center gap-2 rounded-2xl px-2 py-1.5">
           <Link
             href={journalTrackerHref("/dashboard/hydration-tracker", selectedYmd)}
             className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 pr-1 transition hover:bg-white/40"
@@ -180,7 +180,7 @@ export function DailyJournalMergedCard({
 
         <div className="mx-2 border-t border-white/60" />
 
-        <div className="flex items-center gap-2 rounded-2xl px-2 py-3">
+        <div className="flex items-center gap-2 rounded-2xl px-2 py-1.5">
           <Link
             href={journalTrackerHref("/dashboard/stress-tracker", selectedYmd)}
             className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 pr-1 transition hover:bg-white/40"

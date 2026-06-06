@@ -57,7 +57,7 @@ export function DashboardStreakCard({
           </div>
         </div>
       </div>
-      <div className="mt-4 flex justify-between px-0.5">
+      <div className="mt-6.5 flex justify-between px-0.5">
         {streakDays.map((d, i) => (
           <div key={i} className="flex flex-col items-center gap-1.5">
             <div
@@ -80,7 +80,7 @@ export function DashboardStreakCard({
         ))}
       </div>
       <p
-        className={`mt-auto pt-4 text-center text-sm font-bold ${
+        className={`mt-5 text-center text-sm font-bold ${
           allRoutineDone ? "text-[#4CAF50]" : "text-[#2D3E6B]"
         }`}
       >
