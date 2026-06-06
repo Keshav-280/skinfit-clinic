@@ -5,10 +5,10 @@ import Link from "next/link";
 import { CircularGauge } from "@/components/dashboard/CircularGauge";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 
-const SKIN_PARAM_SHELL =
-  "self-start rounded-[20px] bg-transparent p-5 shadow-[0_14px_44px_rgba(45,62,107,0.2)] md:p-6";
+import { patientDashboardCard } from "@/src/lib/patientDashboardTheme";
+
 const SKIN_PARAM_INNER_CELL =
-  "flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-[16px] bg-[#E8EFE6] px-3 py-4";
+  "flex h-[130px] w-full flex-col items-center justify-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] px-2 py-3 shadow-sm";
 
 export type SkinParamMetric = {
   label: string;
@@ -25,7 +25,7 @@ type Props = {
 
 export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: Props) {
   return (
-    <div className={`${SKIN_PARAM_SHELL} ${className}`}>
+    <div className={`${patientDashboardCard} self-start ${className}`}>
       <h3 className="mb-4 text-[14px] font-extrabold tracking-wide text-[#18181b]">
         SKIN PARAMETER METRICS
       </h3>
