@@ -65,7 +65,7 @@ function ConsistencyRing({
         )}
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[38px] font-extrabold leading-none text-white">{v}</span>
+        <span className="text-[32px] font-extrabold leading-none text-white">{v}</span>
       </div>
     </div>
   );
@@ -91,10 +91,10 @@ export function NavyMetricsCard({
 
   return (
     <div className={`${patientDashboardNavyCard} h-full ${className}`}>
-      <div className="grid grid-cols-12 gap-5 items-center h-full min-h-[250px]">
+      <div className="grid grid-cols-12 gap-5 items-center h-full min-h-[210px]">
         {/* Left Column: Stacked sub-cards */}
-        <div className="col-span-5 flex flex-col gap-3.5">
-          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[116px]">
+        <div className="col-span-5 flex flex-col gap-3">
+          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[96px]">
             <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
             <p className="mt-2 text-4xl font-extrabold leading-none text-[#1E5E3A]">
               {kaiSkinScore}
@@ -105,7 +105,7 @@ export function NavyMetricsCard({
                 : "No scans yet"}
             </p>
           </div>
-          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[116px]">
+          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[96px]">
             <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
             <p
               className={`mt-2 text-4xl font-extrabold leading-none ${
@@ -125,7 +125,7 @@ export function NavyMetricsCard({
             WEEKLY CONSISTENCY SCORE
           </h3>
           <div className="mt-4 flex justify-center">
-            <ConsistencyRing value={consistencyScore} size={130} strokeWidth={11} />
+            <ConsistencyRing value={consistencyScore} size={115} strokeWidth={9} />
           </div>
           <p className="mt-3.5 text-base font-extrabold text-white">
             {consistencyLabel(v)}

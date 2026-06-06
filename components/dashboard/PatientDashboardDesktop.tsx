@@ -566,7 +566,7 @@ export function PatientDashboardDesktop() {
                 className="mb-1"
               />
               <div className="flex flex-1 items-center justify-center py-2">
-                <RadarChart data={radarData} size={220} />
+                <RadarChart data={radarData} size={190} />
               </div>
             </div>
           ) : (
