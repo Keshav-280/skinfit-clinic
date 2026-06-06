@@ -747,6 +747,18 @@ function normalizeDoctorNameKey_(name) {
     .replace(/\s+/g, ' ');
 }
 
+function scoreDoctorNameMatch_(key, rosterName) {
+  var normalized = normalizeDoctorNameKey_(rosterName);
+  if (!key || !normalized) return 0;
+  if (normalized === key) return 100;
+  if (normalized.indexOf(key + ' ') === 0) return 80;
+  if (key.indexOf(normalized + ' ') === 0) return 70;
+  var keyFirst = key.split(' ')[0];
+  var nameFirst = normalized.split(' ')[0];
+  if (keyFirst && keyFirst.length >= 2 && keyFirst === nameFirst) return 50;
+  return 0;
+}
+
 /** Optional tab Doctors: col A = display name, col B = Skinfit user UUID. */
 function lookupDoctorIdFromDoctorsTab_(doctorName) {
   var key = normalizeDoctorNameKey_(doctorName);
@@ -755,13 +767,19 @@ function lookupDoctorIdFromDoctorsTab_(doctorName) {
   var sh = ss.getSheetByName('Doctors');
   if (!sh || sh.getLastRow() < 2) return '';
   var values = sh.getRange(2, 1, sh.getLastRow(), 2).getValues();
+  var bestId = '';
+  var bestScore = 0;
   for (var i = 0; i < values.length; i++) {
     var name = String(values[i][0] || '').trim();
     var id = String(values[i][1] || '').trim();
     if (!name || !id) continue;
-    if (normalizeDoctorNameKey_(name) === key) return id;
+    var score = scoreDoctorNameMatch_(key, name);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = id;
+    }
   }
-  return '';
+  return bestId;
 }
 
 function resolveDoctorFieldsForRow_(sheet, rowNum, map) {

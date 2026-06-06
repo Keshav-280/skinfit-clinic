@@ -24,6 +24,6 @@ export function appointmentCalendarTitle(
   typeLabel: string,
   doctorName: string
 ): string {
-  const dr = doctorDisplayName(doctorName);
+  const dr = patientDoctorLabel(doctorName);
   return `${typeLabel} with ${dr}`;
 }

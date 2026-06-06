@@ -9,6 +9,7 @@ import { utcInstantToClinicWallYmdHm } from "@/src/lib/clinicSlotUtcInstant";
 import { notifyClinicSheetRowMirrored } from "@/src/lib/clinicSheetRowSync";
 import {
   assignPatientClinicDoctor,
+  getClinicDoctorDisplayName,
   resolveClinicDoctorForAppointment,
 } from "@/src/lib/resolveClinicDoctor";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
@@ -53,10 +54,12 @@ async function resolveDoctorForSheetUpdate(
   u: Pick<ClinicSheetAppointmentUpdate, "doctorId" | "doctorName">,
   reqRowDoctorId: string | null | undefined
 ): Promise<string | null> {
+  const hadExplicit = Boolean(u.doctorId?.trim() || u.doctorName?.trim());
   return resolveClinicDoctorForAppointment({
     doctorId: u.doctorId,
     doctorName: u.doctorName,
     fallbackDoctorId: reqRowDoctorId,
+    strictExplicitDoctor: hadExplicit,
   });
 }
 
@@ -197,35 +200,7 @@ async function findRequestForUpdate(
     });
     if (row) return row;
   }
-  const selectCols = {
-    id: patientScheduleRequests.id,
-    patientId: patientScheduleRequests.patientId,
-    doctorId: patientScheduleRequests.doctorId,
-    preferredDate: patientScheduleRequests.preferredDate,
-    issue: patientScheduleRequests.issue,
-    daysAffected: patientScheduleRequests.daysAffected,
-    timePreferences: patientScheduleRequests.timePreferences,
-    attachments: patientScheduleRequests.attachments,
-    status: patientScheduleRequests.status,
-    externalRef: patientScheduleRequests.externalRef,
-    cancelledReason: patientScheduleRequests.cancelledReason,
-    crmPatientMessage: patientScheduleRequests.crmPatientMessage,
-    appointmentId: patientScheduleRequests.appointmentId,
-    createdAt: patientScheduleRequests.createdAt,
-    updatedAt: patientScheduleRequests.updatedAt,
-  };
-  const [row] = await db
-    .select(selectCols)
-    .from(patientScheduleRequests)
-    .where(
-      and(
-        eq(patientScheduleRequests.patientId, patientId),
-        eq(patientScheduleRequests.status, "pending")
-      )
-    )
-    .orderBy(desc(patientScheduleRequests.createdAt))
-    .limit(1);
-  return row ?? null;
+  return null;
 }
 
 export async function applyClinicSheetAppointmentUpdates(
@@ -305,10 +280,12 @@ export async function applyClinicSheetAppointmentUpdates(
           errors.push("no_doctor");
           continue;
         }
+        const doctorLabel = await getClinicDoctorDisplayName(doctorId);
         const apptType = u.appointmentType ?? "consultation";
         const msg = u.patientMessage?.trim() || null;
         const { hm: startHm } = utcInstantToClinicWallYmdHm(dt);
         const whenRange = formatSlotTimeRange(startHm, slotEndHm);
+        const dateLabel = dt.toLocaleDateString();
 
         const rescheduleApptId =
           reqRow.status === "confirmed" ? reqRow.appointmentId : null;
@@ -350,8 +327,8 @@ export async function applyClinicSheetAppointmentUpdates(
           await assignPatientClinicDoctor(patientId, doctorId);
 
           const body = msg
-            ? `Your visit was rescheduled to ${whenRange} on ${dt.toLocaleDateString()}. ${msg}`
-            : `Your visit was rescheduled to ${whenRange} on ${dt.toLocaleDateString()}. Open Schedules for details.`;
+            ? `Your visit with ${doctorLabel} was rescheduled to ${whenRange} on ${dateLabel}. ${msg}`
+            : `Your visit with ${doctorLabel} was rescheduled to ${whenRange} on ${dateLabel}. Open Schedules for details.`;
           void notifyPatientScheduleAppointment(
             patientId,
             "Visit time updated",
@@ -360,8 +337,8 @@ export async function applyClinicSheetAppointmentUpdates(
           void sendClinicSupportMessage({
             patientId,
             text: msg
-              ? `Your appointment was updated to ${whenRange} on ${dt.toLocaleDateString()}.\n\nClinic note: ${msg}`
-              : `Your appointment was updated to ${whenRange} on ${dt.toLocaleDateString()}.`,
+              ? `Your appointment with ${doctorLabel} was updated to ${whenRange} on ${dateLabel}.\n\nClinic note: ${msg}`
+              : `Your appointment with ${doctorLabel} was updated to ${whenRange} on ${dateLabel}.`,
           }).catch((err) =>
             console.warn("[clinicSheetAppointmentWebhook] chat notice failed", err)
           );
@@ -416,14 +393,14 @@ export async function applyClinicSheetAppointmentUpdates(
         await assignPatientClinicDoctor(patientId, doctorId);
 
         const body = msg
-          ? `Your appointment is set for ${whenRange} on ${dt.toLocaleDateString()}. ${msg}`
-          : `Your appointment is set for ${whenRange} on ${dt.toLocaleDateString()}. Open Schedules for details.`;
+          ? `Your appointment with ${doctorLabel} is set for ${whenRange} on ${dateLabel}. ${msg}`
+          : `Your appointment with ${doctorLabel} is set for ${whenRange} on ${dateLabel}. Open Schedules for details.`;
         void notifyPatientScheduleAppointment(patientId, "Visit confirmed", body);
         void sendClinicSupportMessage({
           patientId,
           text: msg
-            ? `Your appointment is confirmed for ${whenRange} on ${dt.toLocaleDateString()}.\n\nClinic note: ${msg}`
-            : `Your appointment is confirmed for ${whenRange} on ${dt.toLocaleDateString()}.`,
+            ? `Your appointment with ${doctorLabel} is confirmed for ${whenRange} on ${dateLabel}.\n\nClinic note: ${msg}`
+            : `Your appointment with ${doctorLabel} is confirmed for ${whenRange} on ${dateLabel}.`,
         }).catch((err) =>
           console.warn("[clinicSheetAppointmentWebhook] chat notice failed", err)
         );

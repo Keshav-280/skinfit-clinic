@@ -1,5 +1,13 @@
-import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import type { Config } from "drizzle-kit";
+
+const root = process.cwd();
+for (const name of [".env.local", ".env"] as const) {
+  const path = resolve(root, name);
+  if (existsSync(path)) loadEnv({ path });
+}
 
 const dbUrl =
   process.env.AWS_RDS_URL?.trim() ||
