@@ -15,7 +15,6 @@ import {
   downloadScanReportPdf,
   renderScanReportPdfBlob,
 } from "@/src/lib/downloadScanReportPdf";
-import { TRACKER_RECOMMENDED_VIDEOS } from "@/src/lib/trackerResourceLinks";
 import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { TrackerReportSections } from "./TrackerReportSections";
@@ -203,18 +202,6 @@ function Donut({
     </svg>
   );
 }
-
-/** Screen-only thumbnails; PDF lists curated AAD / dermatology links. */
-const RECOMMENDED_VIDEOS = TRACKER_RECOMMENDED_VIDEOS.map((video, index) => ({
-  label: video.label,
-  href: video.href,
-  thumb: [
-    "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=280&h=400&fit=crop&q=85",
-    "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=280&h=400&fit=crop&q=85",
-    "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=280&h=400&fit=crop&q=85",
-    "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=280&h=400&fit=crop&q=85",
-  ][index]!,
-}));
 
 export interface SkinScanReportBodyProps {
   userName: string;
@@ -612,12 +599,16 @@ export function SkinScanReportBody({
       <ScanReportPdfBackdrop />
       
       {/* ─── CLINICAL REPORT HEADER (Top Section on PDF & Screen) ─── */}
-      <div data-pdf-section className="relative z-[1] w-full break-inside-avoid border-b border-[rgba(44,62,107,0.12)] bg-[#1E3264] px-5 py-6 text-white sm:px-9">
+      <div
+        data-pdf-section
+        className="relative z-[1] w-full break-inside-avoid border-b border-[rgba(44,62,107,0.12)] px-5 py-6 sm:px-9"
+        style={{ background: `linear-gradient(180deg, ${T.pageBg} 0%, #eef4fb 100%)`, color: T.navyDark }}
+      >
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           {/* Left: Branding & Patient Info Table */}
           <div className="flex-1 space-y-3.5">
             <div className="flex items-center gap-3">
-              <div className="relative h-9 w-40 brightness-0 invert">
+              <div className="relative h-9 w-40">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/branding/skinfit-wellness-logo.svg"
@@ -626,46 +617,34 @@ export function SkinScanReportBody({
                 />
               </div>
             </div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#a8c4e6]">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#2C3E6B]/80">
               AI-Powered Clinical Scan Report
             </p>
-            
-            {/* Patient metadata table */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-xl bg-white/10 p-3.5 text-xs text-white/90 backdrop-blur-sm border border-white/10">
+
+            {/* Patient metadata table — navy text for readable PDF export */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-xl border border-[rgba(44,62,107,0.14)] bg-white/90 p-3.5 text-xs text-[#1E3264]">
               <div>
-                <span className="font-semibold text-white/60">Patient Name: </span>
-                <span className="font-bold text-white">{userName}</span>
+                <span className="font-semibold text-[#2C3E6B]/65">Patient Name: </span>
+                <span className="font-bold text-[#1E3264]">{userName}</span>
               </div>
               <div>
-                <span className="font-semibold text-white/60">Age / Sex: </span>
-                <span className="font-bold text-white">{age}yrs / M</span>
+                <span className="font-semibold text-[#2C3E6B]/65">Age / Sex: </span>
+                <span className="font-bold text-[#1E3264]">{age}yrs / M</span>
               </div>
               <div>
-                <span className="font-semibold text-white/60">Skin Type: </span>
-                <span className="font-bold text-white">{skinType}</span>
+                <span className="font-semibold text-[#2C3E6B]/65">Skin Type: </span>
+                <span className="font-bold text-[#1E3264]">{skinType}</span>
               </div>
               <div>
-                <span className="font-semibold text-white/60">Report ID: </span>
-                <span className="font-bold text-white">SF-{(scanId || 1024).toString()}</span>
+                <span className="font-semibold text-[#2C3E6B]/65">Report ID: </span>
+                <span className="font-bold text-[#1E3264]">SF-{(scanId || 1024).toString()}</span>
               </div>
               <div className="col-span-2">
-                <span className="font-semibold text-white/60">Scan Date: </span>
-                <span className="font-bold text-white">{format(scanDate, "dd MMMM yyyy, hh:mm a")}</span>
+                <span className="font-semibold text-[#2C3E6B]/65">Scan Date: </span>
+                <span className="font-bold text-[#1E3264]">
+                  {format(scanDate, "dd MMMM yyyy, hh:mm a")}
+                </span>
               </div>
-            </div>
-          </div>
-
-          {/* Right: Premium Tech AI Image Overlay */}
-          <div className="relative shrink-0 overflow-hidden rounded-2xl border border-white/20 shadow-md w-full md:w-52 aspect-[1.35/1] bg-zinc-950">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/kai-skin-analysis.png"
-              alt="AI skin analysis visual scanner"
-              className="h-full w-full object-cover opacity-90"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-900/10 to-transparent" />
-            <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-widest text-[#a8c4e6]">
-              kAI Scanner v13
             </div>
           </div>
         </div>
@@ -1063,143 +1042,16 @@ export function SkinScanReportBody({
         )}
 
         {/* ─── Signature Validation & QR Code Block ─── */}
-        <div className="mt-8 border-t border-zinc-200/80 pt-6 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between break-inside-avoid">
-          {/* Left: Validation & Signature */}
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E8EFF8] text-[#2C3E6B]">
-              <Shield className="h-5.5 w-5.5" strokeWidth={2.2} />
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-widest text-[#2C3E6B]">
-                AI VERIFIED REPORT
-              </p>
-              <p className="text-[10px] text-zinc-500 mt-0.5">
-                Generated by kAI Skin Engine v13.0
-              </p>
-              <div className="mt-2 text-xs font-semibold text-zinc-700 italic border-b border-zinc-300 w-40 pb-0.5">
-                Dr. Mehta
-              </div>
-              <p className="text-[8px] text-zinc-400 mt-0.5">
-                Consultant Dermatologist, SkinFit Wellness
-              </p>
-            </div>
-          </div>
-
-          {/* Right: QR Code & Address */}
-          <div className="flex items-center gap-3 border border-[rgba(44,62,107,0.15)] rounded-2xl bg-white px-3.5 py-3 sm:max-w-xs shadow-sm">
-            <div className="h-12 w-12 shrink-0 bg-white p-1 rounded-lg border border-zinc-100 flex items-center justify-center">
-              <svg className="h-full w-full text-zinc-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3 3h5v5H3V3zm0 13h5v5H3v-5zm13-13h5v5h-5V3zm2 13h3m-3 3h3M13 13h3v3h-3v-3zm0 5h3v3h-3v-3zm5-5h3v3h-3v-3zm-5-3h3M3 10h18M10 3v18" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-extrabold uppercase tracking-wide text-[#2C3E6B]">
-                Clinical Copy
-              </p>
-              <p className="text-[9px] text-zinc-500 leading-normal mt-0.5 line-clamp-2">
-                Scan to access your interactive 3D model & detailed logs online.
-              </p>
-              <p className="text-[8px] text-zinc-400 font-semibold mt-0.5">
-                MG Road, Bangalore, India
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* ─── Medical Clinical Footer ─── */}
         <div className="mt-8 border-t border-zinc-200/80 pt-4 text-center break-inside-avoid">
           <p className="text-[9px] text-zinc-400 leading-relaxed max-w-2xl mx-auto">
-            © {new Date().getFullYear()} SkinFit Wellness. All rights reserved. This diagnostic summary is generated by machine learning algorithms (kAI Analyzer v13) for educational and progress-tracking purposes. It does not substitute formal medical advice, diagnosis, or prescription.
+            © {new Date().getFullYear()} SkinFit Wellness. All rights reserved. This diagnostic summary is generated by machine learning algorithms and does not substitute formal medical advice, diagnosis, or prescription.
           </p>
         </div>
 
       </div>
 
-      </div>
-
-      <div
-        data-pdf-section
-        className="relative z-[1] px-5 pb-10 pt-4 sm:px-9"
-      >
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black to-transparent"
-          aria-hidden
-        />
-        <h3 className="text-center text-[10px] font-bold uppercase tracking-[0.28em] text-[#2C3E6B]">
-          {showTracker ? "Resource centre" : "Recommended videos"}
-        </h3>
-        {!showTracker ? (
-          <ul
-            data-pdf-print-only
-            className="mx-auto mt-4 hidden max-w-md list-none space-y-2 rounded-xl border border-zinc-200/90 bg-white/85 px-4 py-3 text-[11px] text-zinc-600"
-          >
-            {RECOMMENDED_VIDEOS.map((v) => (
-              <li key={v.href}>
-                <span className="font-semibold text-zinc-900">{v.label}: </span>
-                <span className="break-all">{v.href}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {showTracker && tracker ? (
-          <div className="mx-auto mt-6 grid max-w-5xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tracker.resources.slice(0, 3).map((r) => (
-              <Link
-                key={r.url}
-                href={r.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group rounded-2xl border border-zinc-200/80 bg-white/90 p-4 text-left shadow-[0_8px_22px_-16px_rgba(0,0,0,0.35)] transition duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_16px_30px_-18px_rgba(0,0,0,0.35)]"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2C3E6B]">
-                  {r.kind === "insight" ? "kAI insight" : r.kind}
-                </p>
-                <p className="mt-2 text-[14px] font-semibold leading-snug text-zinc-900 group-hover:text-zinc-950">
-                  {r.title}
-                </p>
-                <p className="mt-2 text-[12px] text-zinc-500">Personalized for this week</p>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div
-            data-pdf-screen-only
-            className="mx-auto mt-6 grid max-w-3xl grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-4 sm:gap-4"
-          >
-            {RECOMMENDED_VIDEOS.map((v, i) => (
-              <Link
-                key={v.href}
-                href={v.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block"
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ delay: i * 0.06, duration: 0.4, ease: easeOut }}
-                  className="relative aspect-[3/5] overflow-hidden rounded-[14px] bg-zinc-200 ring-1 ring-[rgba(0,0,0,0.18)] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-8px_rgba(0,0,0,0.15)]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={v.thumb}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                    crossOrigin="anonymous"
-                  />
-                  <div
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"
-                    aria-hidden
-                  />
-                  <p className="absolute inset-x-0 bottom-0 p-2 text-center text-[10px] font-semibold leading-tight text-white">
-                    {v.label}
-                  </p>
-                </motion.div>
-              </Link>
-            ))}
-          </div>
-        )}
       </div>
 
       <div

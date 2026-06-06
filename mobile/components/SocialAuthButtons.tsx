@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { Text } from "@/components/Themed";
@@ -8,6 +8,17 @@ import {
   googleSignInConfigHint,
   isAppleSignInAvailable,
 } from "@/lib/oauthSignIn";
+
+function AppleIcon({ size = 22, color = "#000" }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        fill={color}
+        d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-2.032 1.58-3.006 1.56-.126-1.085.468-2.28 1.148-3.02.77-.83 2.122-1.46 3.035-1.5.018 1.287-.397 2.464-1 2.88zM20.98 17.3c-.588 1.35-.861 1.937-1.612 3.14-1.045 1.675-2.523 3.76-4.355 3.78-1.625.02-2.04-1.05-4.237-1.05-2.197 0-2.648 1.03-4.27 1.07-1.813.04-3.195-1.85-4.24-3.52-2.305-3.7-2.55-8.04-1.126-10.35 1.004-1.72 2.59-2.73 4.09-2.73 1.887 0 3.075 1.09 4.63 1.09 1.488 0 2.4-1.09 4.12-1.09 1.474 0 2.808.85 3.703 2.33-3.216 1.7-2.693 6.16.852 7.41-.185.51-.388 1.01-.737 1.71z"
+      />
+    </Svg>
+  );
+}
 
 function GoogleMulticolorIcon({ size = 22 }: { size?: number }) {
   return (
@@ -32,20 +43,39 @@ function GoogleMulticolorIcon({ size = 22 }: { size?: number }) {
   );
 }
 
-const ICON_SIZE = 48;
+const ICON_SIZE = 52;
+const SQUARE_ICON_SIZE = 56;
 
 type Props = {
   onGoogle: () => void;
   onApple: () => void;
+  onFacebook?: () => void;
   loading?: boolean;
   disabled?: boolean;
+  showFacebook?: boolean;
+  alwaysShowApple?: boolean;
+  divider?: "none" | "before" | "after";
+  dividerLabel?: string;
+  dividerUppercase?: boolean;
+  iconShape?: "circle" | "square";
+  iconOrder?: "google-first" | "facebook-first";
+  facebookStyle?: "filled" | "outlined";
 };
 
 export function SocialAuthButtons({
   onGoogle,
   onApple,
+  onFacebook,
   loading,
   disabled,
+  showFacebook = false,
+  alwaysShowApple = false,
+  divider = "after",
+  dividerLabel = "or",
+  dividerUppercase = true,
+  iconShape = "circle",
+  iconOrder = "google-first",
+  facebookStyle = "filled",
 }: Props) {
   const googleStatus = getGoogleSignInConfigStatus();
   const showGoogle = true;
@@ -53,14 +83,21 @@ export function SocialAuthButtons({
     googleStatus === "ready" ||
     googleStatus === "needs_native_build" ||
     googleStatus === "needs_web_client_id";
-  const showApple = isAppleSignInAvailable();
+  const appleReady = isAppleSignInAvailable();
+  const showApple = alwaysShowApple || appleReady;
   const googleHint = googleSignInConfigHint();
 
-  if (!showGoogle && !showApple) {
+  if (!showGoogle && !showApple && !showFacebook) {
     return null;
   }
 
   const blocked = Boolean(loading || disabled);
+  const iconSize = iconShape === "square" ? SQUARE_ICON_SIZE : ICON_SIZE;
+  const iconBtnStyle: ViewStyle = {
+    width: iconSize,
+    height: iconSize,
+    borderRadius: iconShape === "square" ? 12 : iconSize / 2,
+  };
 
   function onGooglePress() {
     if (googleReady && !blocked) {
@@ -72,44 +109,117 @@ export function SocialAuthButtons({
     }
   }
 
+  function onFacebookPress() {
+    if (blocked) return;
+    if (onFacebook) {
+      onFacebook();
+      return;
+    }
+    Alert.alert(
+      "Facebook sign-in",
+      "Facebook sign-in is not available in the app yet."
+    );
+  }
+
+  const dividerNode =
+    divider === "none" ? null : (
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text
+          style={[styles.dividerText, !dividerUppercase && styles.dividerTextNormal]}
+        >
+          {dividerLabel}
+        </Text>
+        <View style={styles.dividerLine} />
+      </View>
+    );
+
+  const googleBtn = showGoogle ? (
+    <Pressable
+      key="google"
+      style={({ pressed }) => [
+        styles.iconBtn,
+        iconBtnStyle,
+        styles.iconBtnLight,
+        (!googleReady || blocked) && styles.iconBtnDisabled,
+        pressed && googleReady && !blocked && styles.iconBtnPressed,
+      ]}
+      onPress={onGooglePress}
+      disabled={blocked}
+      accessibilityRole="button"
+      accessibilityLabel="Continue with Google"
+      accessibilityState={{ disabled: !googleReady || blocked }}
+    >
+      <GoogleMulticolorIcon size={22} />
+    </Pressable>
+  ) : null;
+
+  const facebookBtn = showFacebook ? (
+    <Pressable
+      key="facebook"
+      style={({ pressed }) => [
+        styles.iconBtn,
+        iconBtnStyle,
+        facebookStyle === "filled" ? styles.iconBtnFacebook : styles.iconBtnLight,
+        blocked && styles.iconBtnDisabled,
+        pressed && !blocked && styles.iconBtnPressed,
+      ]}
+      onPress={onFacebookPress}
+      disabled={blocked}
+      accessibilityRole="button"
+      accessibilityLabel="Continue with Facebook"
+    >
+      <Ionicons
+        name="logo-facebook"
+        size={24}
+        color={facebookStyle === "filled" ? "#fff" : "#1877F2"}
+      />
+    </Pressable>
+  ) : null;
+
+  const appleBtn = showApple ? (
+    <Pressable
+      key="apple"
+      style={({ pressed }) => [
+        styles.iconBtn,
+        iconBtnStyle,
+        styles.iconBtnLight,
+        (!appleReady || blocked) && styles.iconBtnDisabled,
+        pressed && appleReady && !blocked && styles.iconBtnPressed,
+      ]}
+      onPress={() => {
+        if (appleReady && !blocked) {
+          onApple();
+          return;
+        }
+        if (!appleReady) {
+          Alert.alert(
+            "Apple sign-in",
+            Platform.OS === "ios"
+              ? "Sign in with Apple requires a paid Apple Developer account. Set EXPO_PUBLIC_ENABLE_NATIVE_APPLE_SIGNIN=1 and rebuild, or use Google or email."
+              : "Set EXPO_PUBLIC_APPLE_SERVICES_ID for Apple sign-in on Android."
+          );
+        }
+      }}
+      disabled={blocked}
+      accessibilityRole="button"
+      accessibilityLabel="Continue with Apple"
+      accessibilityState={{ disabled: !appleReady || blocked }}
+    >
+      <AppleIcon size={22} />
+    </Pressable>
+  ) : null;
+
+  const iconButtons =
+    iconOrder === "facebook-first"
+      ? [facebookBtn, googleBtn, appleBtn]
+      : [googleBtn, facebookBtn, appleBtn];
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.iconRow}>
-        {showGoogle ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconBtn,
-              styles.iconBtnGoogle,
-              (!googleReady || blocked) && styles.iconBtnDisabled,
-              pressed && googleReady && !blocked && styles.iconBtnPressed,
-            ]}
-            onPress={onGooglePress}
-            disabled={blocked}
-            accessibilityRole="button"
-            accessibilityLabel="Continue with Google"
-            accessibilityState={{ disabled: !googleReady || blocked }}
-          >
-            <GoogleMulticolorIcon size={22} />
-          </Pressable>
-        ) : null}
+      {divider === "before" ? dividerNode : null}
 
-        {showApple ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconBtn,
-              styles.iconBtnApple,
-              blocked && styles.iconBtnDisabled,
-              pressed && !blocked && styles.iconBtnPressed,
-            ]}
-            onPress={onApple}
-            disabled={blocked}
-            accessibilityRole="button"
-            accessibilityLabel="Continue with Apple"
-          >
-            <Ionicons name="logo-apple" size={24} color="#fff" />
-          </Pressable>
-        ) : null}
-      </View>
+      <View style={styles.iconRow}>{iconButtons}</View>
 
       {googleHint ? (
         <Text style={styles.hint}>{googleHint}</Text>
@@ -119,41 +229,33 @@ export function SocialAuthButtons({
         </Text>
       ) : null}
 
-      <View style={styles.dividerRow}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
+      {divider === "after" ? dividerNode : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 20,
     gap: 10,
   },
   iconRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
+    gap: 20,
   },
   iconBtn: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
-    borderRadius: ICON_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: "#E8ECF4",
   },
-  iconBtnGoogle: {
+  iconBtnLight: {
     backgroundColor: "#fff",
-    borderColor: "#E5E7EB",
   },
-  iconBtnApple: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+  iconBtnFacebook: {
+    backgroundColor: "#1877F2",
+    borderColor: "#1877F2",
   },
   iconBtnPressed: {
     opacity: 0.88,
@@ -173,18 +275,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginTop: 4,
+    marginVertical: 4,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#E8ECF4",
   },
   dividerText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: "#8391A1",
     textTransform: "uppercase",
     letterSpacing: 0.8,
+  },
+  dividerTextNormal: {
+    textTransform: "none",
+    letterSpacing: 0,
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

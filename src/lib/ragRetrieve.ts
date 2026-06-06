@@ -1,8 +1,14 @@
 import { bm25Retrieve } from "@/src/lib/ragBm25";
 import {
+  isPgvectorRagConfigured,
+  isPgvectorRagPopulated,
+  pgvectorTextbookRetrieve,
+} from "@/src/lib/ragPgvector";
+import {
   isPineconeTextbookConfigured,
   pineconeTextbookRetrieve,
 } from "@/src/lib/ragPinecone";
+import { ragVectorStoreMode } from "@/src/lib/ragVectorStore";
 import type { TextbookChunk } from "@/src/lib/ragTextbookIndex";
 
 const RRF_K = 60;
@@ -28,8 +34,8 @@ function rrfMerge(
 }
 
 /**
- * Production retrieval: hybrid Reciprocal Rank Fusion of Pinecone + BM25 when
- * Pinecone is configured; otherwise BM25-only (local JSON catalog).
+ * Production retrieval: hybrid vector + BM25 (RRF), or BM25-only.
+ * Vector store: pgvector (Postgres) preferred in auto mode, then Pinecone, else keyword BM25.
  */
 export async function productionTextbookRetrieve(params: {
   query: string;
@@ -39,6 +45,7 @@ export async function productionTextbookRetrieve(params: {
   const topK = params.topK ?? 6;
   const boost = (params.boostTerms ?? []).filter(Boolean).join(" ");
   const queryForVector = [params.query, boost].filter(Boolean).join(" ").trim();
+  const mode = ragVectorStoreMode();
 
   const bm25 = bm25Retrieve({
     query: params.query,
@@ -46,24 +53,49 @@ export async function productionTextbookRetrieve(params: {
     topK: Math.max(topK * 2, topK),
   });
 
-  if (!isPineconeTextbookConfigured()) {
-    console.log("[rag] Pinecone is NOT configured. Falling back to local BM25 (JSON catalog) search.");
+  if (mode === "bm25") {
     return bm25.slice(0, topK);
   }
 
-  console.log(`[rag] Pinecone is configured. Querying Pinecone index: ${process.env.PINECONE_INDEX_NAME}...`);
   let vector: Array<{ chunk: TextbookChunk; score: number }> = [];
-  try {
-    vector = await pineconeTextbookRetrieve({
+
+  const tryPgvector =
+    mode === "pgvector" ||
+    (mode === "auto" && isPgvectorRagConfigured() && (await isPgvectorRagPopulated()));
+
+  if (tryPgvector) {
+    console.log("[rag] Querying pgvector (Postgres)...");
+    vector = await pgvectorTextbookRetrieve({
       query: queryForVector || params.query,
       topK: Math.max(topK * 2, topK),
     });
-    console.log(`[rag] Pinecone retrieval completed successfully with ${vector.length} matches.`);
-  } catch (e) {
-    console.error("[rag] Pinecone query failed; falling back to BM25 only:", e);
+    if (vector.length > 0) {
+      console.log(`[rag] pgvector returned ${vector.length} matches.`);
+    }
+  }
+
+  const tryPinecone =
+    vector.length === 0 &&
+    (mode === "pinecone" || mode === "auto") &&
+    isPineconeTextbookConfigured();
+
+  if (tryPinecone) {
+    console.log(
+      `[rag] Querying Pinecone index: ${process.env.PINECONE_INDEX_NAME}...`
+    );
+    try {
+      vector = await pineconeTextbookRetrieve({
+        query: queryForVector || params.query,
+        topK: Math.max(topK * 2, topK),
+      });
+      console.log(`[rag] Pinecone returned ${vector.length} matches.`);
+    } catch (e) {
+      console.error("[rag] Pinecone query failed:", e);
+    }
   }
 
   if (vector.length === 0) {
+    console.log("[rag] No vector matches — using BM25 keyword search only.");
     return bm25.slice(0, topK);
   }
 

@@ -1,35 +1,45 @@
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { Link, Redirect, router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text } from "@/components/Themed";
 import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
 
-const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
+const PRIMARY = "#5B61E9";
+const PRIMARY_DARK = "#4A50D4";
+const TEAL = "#2D9B82";
+
+const WEB_PORTAL_URL =
+  process.env.EXPO_PUBLIC_WEB_PORTAL_URL?.replace(/\/$/, "") ??
+  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
+  "";
 
 export default function LoginScreen() {
   const { signIn, signInWithOAuth, token, ready } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   if (!ready) {
     return (
-      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
-        <ActivityIndicator size="large" color={NAVY} style={{ marginTop: 48 }} />
-      </LinearGradient>
+      <View style={[styles.flex, styles.screen]}>
+        <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 48 }} />
+      </View>
     );
   }
 
@@ -50,188 +60,267 @@ export default function LoginScreen() {
     }
   }
 
+  function openWebPath(path: string) {
+    if (!WEB_PORTAL_URL) {
+      Alert.alert("Unavailable", "Web portal URL is not configured.");
+      return;
+    }
+    void Linking.openURL(`${WEB_PORTAL_URL}${path}`);
+  }
+
   return (
-    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+    <SafeAreaView style={[styles.flex, styles.screen]} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
       >
-        <View style={styles.inner}>
-          <View style={styles.card}>
-            <Text style={styles.brand}>SkinFit Clinic</Text>
-            <Text style={styles.subtitle}>Patient app</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.title}>Welcome back 👋</Text>
 
-            <SocialAuthButtons
-              loading={loading}
-              onGoogle={async () => {
-                setLoading(true);
-                try {
-                  await signInWithOAuth("google");
-                  router.replace("/");
-                } catch (e) {
-                  const msg = e instanceof Error ? e.message : "Something went wrong.";
-                  Alert.alert("Google sign in", msg);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              onApple={async () => {
-                setLoading(true);
-                try {
-                  await signInWithOAuth("apple");
-                  router.replace("/");
-                } catch (e) {
-                  const msg = e instanceof Error ? e.message : "Something went wrong.";
-                  Alert.alert("Apple sign in", msg);
-                } finally {
-                  setLoading(false);
-                }
-              }}
+          <View style={styles.inputWrap}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter email"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
             />
+          </View>
 
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Email</Text>
+          <View style={styles.inputWrap}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.passwordRow}>
               <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Enter password"
                 placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#9CA3AF"
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
               />
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-              onPress={onSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonLabel}>Sign in</Text>
-              )}
-            </Pressable>
-
-            <View style={styles.signupRow}>
-              <Text style={styles.signupHint}>New here?</Text>
-              <Link href="/signup" asChild>
-                <Pressable hitSlop={8}>
-                  <Text style={styles.signupLink}>Create account</Text>
-                </Pressable>
-              </Link>
+              <Pressable
+                style={styles.eyeBtn}
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-outline" : "eye-off-outline"}
+                  size={20}
+                  color="#9CA3AF"
+                />
+              </Pressable>
             </View>
           </View>
-        </View>
+
+          <Link href="/forgot-password" asChild>
+            <Pressable style={styles.forgotRow} hitSlop={8}>
+              <Text style={styles.forgotLink}>Forgot password?</Text>
+            </Pressable>
+          </Link>
+
+          <Pressable
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+            onPress={onSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonLabel}>Sign In</Text>
+            )}
+          </Pressable>
+
+          <Text style={styles.oauthDivider}>OR LOG IN WITH</Text>
+
+          <SocialAuthButtons
+            loading={loading}
+            divider="none"
+            showFacebook
+            alwaysShowApple
+            onFacebook={() =>
+              Alert.alert(
+                "Facebook sign-in",
+                "Facebook sign-in is not available in the app yet. Use Google, Apple, or email instead."
+              )
+            }
+            onGoogle={async () => {
+              setLoading(true);
+              try {
+                await signInWithOAuth("google");
+                router.replace("/");
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "Something went wrong.";
+                Alert.alert("Google sign in", msg);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onApple={async () => {
+              setLoading(true);
+              try {
+                await signInWithOAuth("apple");
+                router.replace("/");
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "Something went wrong.";
+                Alert.alert("Apple sign in", msg);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
+
+          <View style={styles.staffRow}>
+            <Text style={styles.staffText}>
+              Clinic staff?{" "}
+              <Text style={styles.staffLink} onPress={() => openWebPath("/doctor/login")}>
+                Doctor portal
+              </Text>
+              {" · "}Need help?{" "}
+              <Text style={styles.staffLink} onPress={() => openWebPath("/contact")}>
+                Contact us
+              </Text>
+            </Text>
+          </View>
+
+          <View style={styles.signupRow}>
+            <Text style={styles.signupHint}>Don&apos;t have an account? </Text>
+            <Link href="/signup" asChild>
+              <Pressable hitSlop={8}>
+                <Text style={styles.signupLink}>Sign up</Text>
+              </Pressable>
+            </Link>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  inner: {
-    flex: 1,
-    padding: 24,
+  screen: {
+    backgroundColor: "#FFFFFF",
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
+    paddingTop: 48,
+    paddingBottom: 32,
     justifyContent: "center",
     maxWidth: 420,
     width: "100%",
     alignSelf: "center",
   },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 4,
-  },
-  brand: {
-    fontSize: 26,
+  title: {
+    fontSize: 28,
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: 36,
     textAlign: "center",
-    color: "#1A1A2E",
+    color: "#111827",
     letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 28,
-    textAlign: "center",
-    fontWeight: "500",
-  },
   inputWrap: {
-    marginBottom: 16,
+    marginBottom: 18,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
     color: "#374151",
-    marginBottom: 6,
-    marginLeft: 2,
+    marginBottom: 8,
   },
   input: {
     borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 15,
     fontSize: 16,
     backgroundColor: "#F3F4F6",
-    color: "#1A1A2E",
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
+    color: "#111827",
+    borderWidth: 0,
+  },
+  passwordRow: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeBtn: {
+    position: "absolute",
+    right: 14,
+    height: "100%",
+    justifyContent: "center",
+  },
+  forgotRow: {
+    alignItems: "flex-end",
+    marginBottom: 24,
+    marginTop: -4,
+  },
+  forgotLink: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: PRIMARY,
   },
   button: {
-    borderRadius: 14,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
-    marginTop: 8,
-    backgroundColor: NAVY,
-    shadowColor: NAVY,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 4,
+    backgroundColor: PRIMARY,
   },
   buttonPressed: {
-    backgroundColor: NAVY_DARK,
+    backgroundColor: PRIMARY_DARK,
     transform: [{ scale: 0.98 }],
   },
   buttonLabel: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 0.3,
+  },
+  oauthDivider: {
+    marginTop: 28,
+    marginBottom: 20,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    letterSpacing: 1.2,
+  },
+  staffRow: {
+    marginTop: 32,
+    paddingHorizontal: 4,
+  },
+  staffText: {
+    fontSize: 13,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  staffLink: {
+    color: TEAL,
+    fontWeight: "600",
   },
   signupRow: {
     marginTop: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
   },
   signupHint: {
     fontSize: 14,
-    color: "#6B7280",
+    color: "#111827",
   },
   signupLink: {
     fontSize: 14,
     fontWeight: "700",
-    color: NAVY,
+    color: PRIMARY,
   },
 });

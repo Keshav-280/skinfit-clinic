@@ -1,4 +1,4 @@
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { Link, Redirect, router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -12,14 +12,19 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text } from "@/components/Themed";
 import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUrl, networkFetchErrorMessage } from "@/lib/api";
 
-const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
+const DARK = "#1E232C";
+const DARK_PRESSED = "#111820";
+const LINK = "#35C2C1";
+const INPUT_BG = "#F7F8F9";
+const BORDER = "#E8ECF4";
+const PLACEHOLDER = "#8391A1";
 
 export default function SignupScreen() {
   const { signUp, signInWithOAuth, token, ready } = useAuth();
@@ -27,6 +32,9 @@ export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpHint, setOtpHint] = useState<string | null>(null);
   const [sendOtpLoading, setSendOtpLoading] = useState(false);
@@ -44,14 +52,22 @@ export default function SignupScreen() {
 
   if (!ready) {
     return (
-      <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
-        <ActivityIndicator size="large" color={NAVY} style={{ marginTop: 48 }} />
-      </LinearGradient>
+      <View style={[styles.flex, styles.screen]}>
+        <ActivityIndicator size="large" color={DARK} style={{ marginTop: 48 }} />
+      </View>
     );
   }
 
   if (token) {
     return <Redirect href="/" />;
+  }
+
+  function onBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/login");
   }
 
   async function sendSignupOtp() {
@@ -102,6 +118,14 @@ export default function SignupScreen() {
   }
 
   async function onSubmit() {
+    if (password !== confirmPassword) {
+      Alert.alert("Sign up", "Passwords do not match.");
+      return;
+    }
+    if (!otp.trim()) {
+      Alert.alert("Sign up", "Enter the verification code sent to your email.");
+      return;
+    }
     setLoading(true);
     try {
       await signUp({ name, email, phone, password, phoneCountryCode: "+91", otp });
@@ -115,7 +139,7 @@ export default function SignupScreen() {
   }
 
   return (
-    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
+    <SafeAreaView style={[styles.flex, styles.screen]} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
@@ -125,92 +149,54 @@ export default function SignupScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.card}>
-            <Text style={styles.brand}>Create account</Text>
-            <Text style={styles.subtitle}>Complete onboarding in the app</Text>
+          <Pressable
+            style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+            onPress={onBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={22} color={DARK} />
+          </Pressable>
 
-            <SocialAuthButtons
-              loading={loading}
-              onGoogle={async () => {
-                setLoading(true);
-                try {
-                  await signInWithOAuth("google");
-                  router.replace("/onboarding/kai-intro");
-                } catch (e) {
-                  const msg = e instanceof Error ? e.message : "Something went wrong.";
-                  Alert.alert("Google sign in", msg);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              onApple={async () => {
-                setLoading(true);
-                try {
-                  await signInWithOAuth("apple");
-                  router.replace("/onboarding/kai-intro");
-                } catch (e) {
-                  const msg = e instanceof Error ? e.message : "Something went wrong.";
-                  Alert.alert("Apple sign in", msg);
-                } finally {
-                  setLoading(false);
-                }
+          <Text style={styles.title}>
+            Hello! Register to{"\n"}get started
+          </Text>
+
+          <View style={styles.field}>
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor={PLACEHOLDER}
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={PLACEHOLDER}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              value={email}
+              onChangeText={(value) => {
+                setEmail(value);
+                setOtp("");
+                setOtpHint(null);
               }}
             />
+          </View>
 
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Full name</Text>
+          <View style={styles.field}>
+            <View style={styles.otpRow}>
               <TextInput
-                style={styles.input}
-                placeholder="John Doe"
-                placeholderTextColor="#9CA3AF"
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Email</Text>
-              <View style={styles.emailRow}>
-                <TextInput
-                  style={[styles.input, styles.emailInput]}
-                  placeholder="you@example.com"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  value={email}
-                  onChangeText={(value) => {
-                    setEmail(value);
-                    setOtp("");
-                    setOtpHint(null);
-                  }}
-                />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.sendCodeBtn,
-                    (sendOtpLoading || resendSeconds > 0 || loading) &&
-                      styles.sendCodeBtnDisabled,
-                    pressed && styles.sendCodeBtnPressed,
-                  ]}
-                  onPress={sendSignupOtp}
-                  disabled={sendOtpLoading || resendSeconds > 0 || loading}
-                >
-                  {sendOtpLoading ? (
-                    <ActivityIndicator color={NAVY} size="small" />
-                  ) : (
-                    <Text style={styles.sendCodeLabel}>
-                      {resendSeconds > 0 ? `${resendSeconds}s` : "Send code"}
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-              {otpHint ? <Text style={styles.otpHint}>{otpHint}</Text> : null}
-            </View>
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Verification code</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="6-digit code"
-                placeholderTextColor="#9CA3AF"
+                style={[styles.input, styles.otpInput]}
+                placeholder="Verification code"
+                placeholderTextColor={PLACEHOLDER}
                 keyboardType="number-pad"
                 maxLength={6}
                 value={otp}
@@ -218,176 +204,278 @@ export default function SignupScreen() {
                   setOtp(value.replace(/\D/g, "").slice(0, 6))
                 }
               />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.sendCodeBtn,
+                  (sendOtpLoading || resendSeconds > 0 || loading) &&
+                    styles.sendCodeBtnDisabled,
+                  pressed && styles.sendCodeBtnPressed,
+                ]}
+                onPress={sendSignupOtp}
+                disabled={sendOtpLoading || resendSeconds > 0 || loading}
+              >
+                {sendOtpLoading ? (
+                  <ActivityIndicator color={DARK} size="small" />
+                ) : (
+                  <Text style={styles.sendCodeLabel}>
+                    {resendSeconds > 0 ? `${resendSeconds}s` : "Send code"}
+                  </Text>
+                )}
+              </Pressable>
             </View>
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Phone</Text>
+            {otpHint ? <Text style={styles.otpHint}>{otpHint}</Text> : null}
+          </View>
+
+          <View style={styles.field}>
+            <View style={styles.passwordRow}>
               <TextInput
-                style={styles.input}
-                placeholder="10-digit number"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={setPhone}
-              />
-            </View>
-            <View style={styles.inputWrap}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Min 8 characters"
-                placeholderTextColor="#9CA3AF"
-                secureTextEntry
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Password"
+                placeholderTextColor={PLACEHOLDER}
+                secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
               />
+              <Pressable
+                style={styles.eyeBtn}
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-outline" : "eye-off-outline"}
+                  size={20}
+                  color={PLACEHOLDER}
+                />
+              </Pressable>
             </View>
+          </View>
 
-            <Pressable
-              style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-              onPress={onSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonLabel}>Sign up</Text>
-              )}
-            </Pressable>
-
-            <View style={styles.loginRow}>
-              <Text style={styles.loginHint}>Already have an account?</Text>
-              <Link href="/login" asChild>
-                <Pressable hitSlop={8}>
-                  <Text style={styles.loginLink}>Sign in</Text>
-                </Pressable>
-              </Link>
+          <View style={styles.field}>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Confirm password"
+                placeholderTextColor={PLACEHOLDER}
+                secureTextEntry={!showConfirmPassword}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+              <Pressable
+                style={styles.eyeBtn}
+                onPress={() => setShowConfirmPassword((v) => !v)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showConfirmPassword ? "Hide confirm password" : "Show confirm password"
+                }
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
+                  size={20}
+                  color={PLACEHOLDER}
+                />
+              </Pressable>
             </View>
+          </View>
+
+          <View style={styles.field}>
+            <TextInput
+              style={styles.input}
+              placeholder="Phone number"
+              placeholderTextColor={PLACEHOLDER}
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
+            />
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+            onPress={onSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonLabel}>Register</Text>
+            )}
+          </Pressable>
+
+          <SocialAuthButtons
+            loading={loading}
+            divider="before"
+            dividerLabel="Or Register with"
+            dividerUppercase={false}
+            iconShape="square"
+            iconOrder="facebook-first"
+            facebookStyle="outlined"
+            showFacebook
+            alwaysShowApple
+            onFacebook={() =>
+              Alert.alert(
+                "Facebook sign-in",
+                "Facebook sign-in is not available in the app yet. Use Google, Apple, or email instead."
+              )
+            }
+            onGoogle={async () => {
+              setLoading(true);
+              try {
+                await signInWithOAuth("google");
+                router.replace("/onboarding/kai-intro");
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "Something went wrong.";
+                Alert.alert("Google sign in", msg);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onApple={async () => {
+              setLoading(true);
+              try {
+                await signInWithOAuth("apple");
+                router.replace("/onboarding/kai-intro");
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "Something went wrong.";
+                Alert.alert("Apple sign in", msg);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginHint}>Already have an account? </Text>
+            <Link href="/login" asChild>
+              <Pressable hitSlop={8}>
+                <Text style={styles.loginLink}>Login Now</Text>
+              </Pressable>
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  screen: {
+    backgroundColor: "#FFFFFF",
+  },
   scroll: {
     flexGrow: 1,
-    padding: 24,
-    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 32,
     maxWidth: 420,
     width: "100%",
     alignSelf: "center",
   },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 4,
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 28,
   },
-  brand: {
-    fontSize: 26,
+  backBtnPressed: {
+    opacity: 0.75,
+  },
+  title: {
+    fontSize: 30,
     fontWeight: "800",
-    marginBottom: 4,
-    textAlign: "center",
-    color: "#1A1A2E",
+    color: DARK,
+    lineHeight: 38,
+    marginBottom: 32,
     letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 28,
-    textAlign: "center",
-    fontWeight: "500",
-  },
-  inputWrap: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 6,
-    marginLeft: 2,
+  field: {
+    marginBottom: 14,
   },
   input: {
-    borderRadius: 14,
+    borderRadius: 10,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     fontSize: 16,
-    backgroundColor: "#F3F4F6",
-    color: "#1A1A2E",
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
+    backgroundColor: INPUT_BG,
+    color: DARK,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
-  emailRow: {
+  otpRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
     alignItems: "stretch",
   },
-  emailInput: {
+  otpInput: {
     flex: 1,
     minWidth: 0,
   },
   sendCodeBtn: {
-    borderRadius: 14,
-    paddingHorizontal: 12,
+    borderRadius: 10,
+    paddingHorizontal: 14,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#EEF2FF",
-    borderWidth: 1.5,
-    borderColor: "#C7D2FE",
-    minWidth: 92,
+    backgroundColor: INPUT_BG,
+    borderWidth: 1,
+    borderColor: BORDER,
+    minWidth: 96,
   },
   sendCodeBtnPressed: {
     opacity: 0.85,
   },
   sendCodeBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
   sendCodeLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: NAVY,
+    color: DARK,
   },
   otpHint: {
-    marginTop: 6,
+    marginTop: 8,
     fontSize: 12,
-    color: "#047857",
-    marginLeft: 2,
+    color: "#6B7280",
+  },
+  passwordRow: {
+    position: "relative",
+    justifyContent: "center",
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeBtn: {
+    position: "absolute",
+    right: 14,
+    height: "100%",
+    justifyContent: "center",
   },
   button: {
-    borderRadius: 14,
+    borderRadius: 10,
     paddingVertical: 16,
     alignItems: "center",
-    marginTop: 8,
-    backgroundColor: NAVY,
-    shadowColor: NAVY,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 4,
+    marginTop: 10,
+    backgroundColor: DARK,
   },
   buttonPressed: {
-    backgroundColor: NAVY_DARK,
+    backgroundColor: DARK_PRESSED,
     transform: [{ scale: 0.98 }],
   },
   buttonLabel: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 0.3,
   },
   loginRow: {
-    marginTop: 20,
+    marginTop: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
   },
   loginHint: {
     fontSize: 14,
@@ -396,6 +484,6 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     fontWeight: "700",
-    color: NAVY,
+    color: LINK,
   },
 });

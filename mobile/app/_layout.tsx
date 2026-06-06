@@ -100,8 +100,18 @@ function RootLayoutNav() {
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="login" options={{ title: 'Sign in' }} />
-            <Stack.Screen name="signup" options={{ title: 'Create account' }} />
+            <Stack.Screen
+              name="login"
+              options={{ headerShown: false, contentStyle: { backgroundColor: "#FFFFFF" } }}
+            />
+            <Stack.Screen
+              name="signup"
+              options={{ headerShown: false, contentStyle: { backgroundColor: "#FFFFFF" } }}
+            />
+            <Stack.Screen
+              name="forgot-password"
+              options={{ headerShown: false, contentStyle: { backgroundColor: "#FFFFFF" } }}
+            />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
           </Stack>

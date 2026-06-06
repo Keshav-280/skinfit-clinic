@@ -14,7 +14,6 @@ import {
 } from "./scanMaskLabels";
 import { SCAN_REPORT_THEME as T, TRACKER_REPORT_THEME as R } from "./scanReportTheme";
 import { scanReportPdfBackgroundCss } from "./scanReportPdfBackground";
-import { TRACKER_RECOMMENDED_VIDEOS } from "./trackerResourceLinks";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
 
 const CAUSES_P1 =
@@ -554,39 +553,6 @@ function buildLegacyMetricsHtml(p: ScanReportPdfPayload, overall: number, lastSc
     </div>`;
 }
 
-function buildSection3Html(p: ScanReportPdfPayload): string {
-  const tracker = p.tracker;
-  if (tracker) {
-    let cards = "";
-    for (const r of tracker.resources.slice(0, 3)) {
-      cards += `
-        <div class="resource-card">
-          <p class="resource-title">${esc(r.title)}</p>
-          <p class="resource-meta">${esc(kindBadge(r.kind))} · personalized pick</p>
-          <p class="resource-url">${esc(r.url)}</p>
-        </div>`;
-    }
-    return `
-      <div class="sec3 avoid-break">
-        <h3 class="sec3-title">Resource centre</h3>
-        <div class="resource-grid">${cards}</div>
-      </div>`;
-  }
-
-  const videosHtml = TRACKER_RECOMMENDED_VIDEOS.map(
-    (v) =>
-      `<li><span class="vid-lbl">${esc(v.label)}: </span><span class="vid-href">${esc(v.href)}</span></li>`
-  ).join("");
-
-  return `
-    <div class="sec3 avoid-break">
-      <div class="vid-box">
-        <p>Recommended videos</p>
-        <ul>${videosHtml}</ul>
-      </div>
-    </div>`;
-}
-
 /**
  * HTML for expo-print / server PDF. Mirrors web `SkinScanReportBody` PDF sections.
  */
@@ -614,7 +580,6 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   const metricsHtml = tracker
     ? buildTrackerSectionsHtml(tracker)
     : buildLegacyMetricsHtml(p, overall, lastScanLabel);
-  const section3Html = buildSection3Html(p);
   const pdfScale = estimatePdfScale(p);
   const clinicPhone = "+91 98765 43210";
   const clinicEmail = "hello@skinfit.clinic";
@@ -1220,8 +1185,6 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       <p class="body-copy">${esc(heroIntro)}</p>
       ${metricsHtml}
     </div>
-
-    ${section3Html}
 
     <div class="foot avoid-break">
       <div class="foot-grid">
