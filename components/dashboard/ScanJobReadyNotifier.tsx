@@ -134,9 +134,6 @@ export function ScanJobReadyNotifier() {
             Your report is ready
           </p>
           <p className="mt-1 text-sm text-zinc-600">{toast.title}</p>
-          <p className="mt-1 text-xs text-zinc-500">
-            Images, masks, and kAI analysis are saved — opening is instant.
-          </p>
           <div className="mt-3 flex items-center gap-3 text-xs font-semibold">
             <Link
               href={`/dashboard/history/scans/${toast.scanId}`}

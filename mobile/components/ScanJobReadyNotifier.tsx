@@ -100,9 +100,6 @@ export function ScanJobReadyNotifier() {
       <View style={styles.card}>
         <Text style={styles.title}>Your report is ready</Text>
         <Text style={styles.sub}>{item.title}</Text>
-        <Text style={styles.hint}>
-          Images, masks, and kAI analysis are saved — opening is instant.
-        </Text>
         <View style={styles.row}>
           <Pressable
             style={styles.primaryBtn}
@@ -151,7 +148,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 15, fontWeight: "700", color: NAVY },
   sub: { marginTop: 4, fontSize: 14, color: "#52525b" },
-  hint: { marginTop: 6, fontSize: 12, color: "#71717a", lineHeight: 17 },
   row: {
     marginTop: 12,
     flexDirection: "row",

@@ -1258,16 +1258,21 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="space-y-6"
+          className="mx-auto w-full max-w-3xl"
         >
-          <div className="relative overflow-hidden rounded-[22px] border border-white/70 bg-white/35 backdrop-blur-sm">
-            <div className="relative aspect-[3/4] max-h-[400px] w-full">
-              <img
-                src={primaryPreview}
-                alt="Scanning"
-                className="h-full w-full object-cover grayscale-[30%]"
-              />
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm">
+          <div className="overflow-hidden rounded-[22px] border border-white/70 bg-white/35 backdrop-blur-sm">
+            <div className="flex min-h-[200px] flex-col sm:flex-row">
+              <div className="relative w-full shrink-0 sm:w-[42%]">
+                <div className="relative aspect-[4/3] h-full min-h-[180px] sm:aspect-auto sm:min-h-[220px]">
+                  <img
+                    src={primaryPreview}
+                    alt="Scanning"
+                    className="h-full w-full object-cover object-center grayscale-[30%]"
+                  />
+                  <div className="absolute inset-0 bg-[#2C3E6B]/10" aria-hidden />
+                </div>
+              </div>
+              <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-8 text-center sm:px-8">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -1277,16 +1282,18 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 </motion.div>
                 <p className="text-lg font-bold text-[#2C3E6B]">Submitting your scan…</p>
                 <p className="mt-1 text-sm text-[#6B7280]">Just a moment</p>
-                <motion.div
-                  className="absolute left-0 right-0 z-10 h-1 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
-                  initial={{ top: "0%" }}
-                  animate={{ top: ["0%", "100%", "0%"] }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
+                <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden bg-[#2C3E6B]/10">
+                  <motion.div
+                    className="h-full w-1/3 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: ["-100%", "400%"] }}
+                    transition={{
+                      duration: 2.2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -203,9 +203,8 @@ export function ProfileRagKaiInsightsSection({
                 : `text-sm ${patientMuted}`
             }`}
           >
-            Your monthly summary unlocks 1 month after your first scan — around{" "}
+            Unlocks around{" "}
             <span className="font-semibold text-[#2C3E6B]">{nextInsightFriendly}</span>.
-            Keep scanning and logging — we&apos;ll pull it together for you.
           </p>
         </div>
       ) : compact ? (

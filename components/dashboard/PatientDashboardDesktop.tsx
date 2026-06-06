@@ -20,6 +20,7 @@ import {
   NotebookPen,
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
+import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMergedCard";
 import { DashboardStreakCard } from "@/components/dashboard/DashboardStreakCard";
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
@@ -103,6 +104,7 @@ type HomeData = {
   archivedFeedbackEntries?: FeedbackEntry[];
   onboardingComplete: boolean;
   hasQuestionnaire: boolean;
+  progress?: PatientProgressSnapshot;
   routineAmReminderHm: string;
   routinePmReminderHm: string;
   homeDateYmd?: string;
@@ -500,20 +502,34 @@ export function PatientDashboardDesktop() {
             </h1>
             <p className="mt-1 text-sm text-[#6B7280] md:text-base">Let&apos;s achieve your best skin day!</p>
           </div>
-          <button
-            type="button"
-            onClick={triggerSos}
-            disabled={sosBusy}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#EF4444] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-60"
-            title="Urgent: notify doctor immediately"
-          >
-            {sosBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <AlertTriangle className="h-4 w-4" />
-            )}
-            Urgent
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {data.progress && !data.progress.allComplete ? (
+              <Link
+                href="/dashboard/profile"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/20 bg-white px-3 py-2 text-xs font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F2F9F2] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
+              >
+                Complete your profile
+                <span className="text-[10px] font-bold text-[#6B7280] sm:text-xs">
+                  {data.progress.completedCount}/{data.progress.milestones.length}
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={triggerSos}
+              disabled={sosBusy}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#EF4444] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-60"
+              title="Urgent: notify doctor immediately"
+            >
+              {sosBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-4 w-4" />
+              )}
+              Urgent
+            </button>
+          </div>
         </div>
 
         {/* Calendar Ribbon */}

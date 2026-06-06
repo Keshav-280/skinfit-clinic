@@ -20,6 +20,7 @@ import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallCloc
 import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 import { isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
+import { getPatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import { cacheAside, CacheKeys } from "@/src/lib/infra";
 import { coerceRoutinePlanList } from "@/src/lib/routine";
@@ -268,6 +269,7 @@ async function buildPatientHomePayload(
 
   const onboardingComplete = userRow.onboardingComplete;
   const hasQuestionnaire = userHasQuestionnaire(userRow.primaryConcern);
+  const progress = await getPatientProgressSnapshot(userId);
 
   const {
     doctorFeedback,
@@ -312,6 +314,7 @@ async function buildPatientHomePayload(
     cycleTrackingEnabled: userRow.cycleTrackingEnabled ?? false,
     onboardingComplete,
     hasQuestionnaire,
+    progress,
     routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
     routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",
     todayFocus:
