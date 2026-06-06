@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+
 /** Per-step tips shown during live capture (mobile + web). */
 export const CAPTURE_STEP_TIPS = {
   centre: [
@@ -72,14 +74,50 @@ export const FACE_SCAN_CAPTURE_STEPS = [
 
 export type FaceScanCaptureId = (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
 
-/** Used when the patient skips naming a scan. */
+/** @deprecated use buildAutoScanName — kept for legacy rows/labels */
 export const DEFAULT_SCAN_NAME = "Untitled Scan";
 
-export const SCAN_NAME_INPUT_PLACEHOLDER = "e.g., Morning routine (optional)";
+export type BuildAutoScanNameOptions = {
+  /** 1-based scan index for this patient; omitted when unknown. */
+  scanNumber?: number;
+  at?: Date;
+};
 
-export function resolveScanName(name: string | null | undefined): string {
+/** `Scan-3-06-06-2026-14-30` — number, date, and time for easy sorting. */
+export function buildAutoScanName(options: BuildAutoScanNameOptions = {}): string {
+  const at = options.at ?? new Date();
+  const datePart = format(at, "dd-MM-yyyy");
+  const timePart = format(at, "HH-mm");
+  const n = options.scanNumber;
+  if (typeof n === "number" && n > 0) {
+    return `Scan-${n}-${datePart}-${timePart}`;
+  }
+  return `Scan-${datePart}-${timePart}`;
+}
+
+export const SCAN_NAME_INPUT_PLACEHOLDER = buildAutoScanName({
+  scanNumber: 1,
+  at: new Date(2026, 5, 6, 14, 30),
+});
+
+export function resolveScanName(
+  name: string | null | undefined,
+  options?: BuildAutoScanNameOptions
+): string {
   const trimmed = name?.trim();
-  return trimmed || DEFAULT_SCAN_NAME;
+  return trimmed || buildAutoScanName(options);
+}
+
+export async function fetchNextScanNumber(
+  loadHome: () => Promise<{ skinScanHistory?: unknown[] | null }>
+): Promise<number> {
+  try {
+    const data = await loadHome();
+    const count = Array.isArray(data.skinScanHistory) ? data.skinScanHistory.length : 0;
+    return count + 1;
+  } catch {
+    return 1;
+  }
 }
 
 /** Short tips under the upload zone (web has no shutter countdown). */

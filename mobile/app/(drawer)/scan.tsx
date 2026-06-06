@@ -11,7 +11,9 @@ import { OnboardingCaptureReview } from "@/components/onboarding/OnboardingCaptu
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
 import {
+  buildAutoScanName,
   FACE_SCAN_CAPTURE_STEPS,
+  fetchNextScanNumber,
   SCAN_NAME_INPUT_PLACEHOLDER,
   resolveScanName,
 } from "@/lib/faceScanCaptures";
@@ -122,6 +124,24 @@ export default function ScanScreen() {
   const inRetakeFlow = retakeIndex !== null;
   const inCaptureFlow =
     (phase === "capture" && uris.length < N) || inRetakeFlow;
+
+  useEffect(() => {
+    if (phase !== "review" || !token) return;
+    let cancelled = false;
+    void (async () => {
+      const scanNumber = await fetchNextScanNumber(() =>
+        apiJson<{ skinScanHistory?: unknown[] }>("/api/patient/home", token, {
+          method: "GET",
+        })
+      );
+      if (!cancelled) {
+        setScanName(buildAutoScanName({ scanNumber }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, token]);
 
   async function pickFromLibrary() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();

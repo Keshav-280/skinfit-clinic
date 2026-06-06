@@ -143,7 +143,7 @@ export function OnboardingCaptureReview({
 
         {onScanNameChange ? (
           <View style={styles.scanNameCard}>
-            <Text style={styles.scanNameLabel}>Name this scan (optional)</Text>
+            <Text style={styles.scanNameLabel}>Name this scan</Text>
             <TextInput
               style={styles.scanNameInput}
               placeholder={scanNamePlaceholder}

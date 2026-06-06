@@ -38,6 +38,8 @@ import {
 import {
   FACE_SCAN_CAPTURE_STEPS,
   FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
+  buildAutoScanName,
+  fetchNextScanNumber,
   SCAN_NAME_INPUT_PLACEHOLDER,
   resolveScanName,
 } from "@/src/lib/faceScanCaptures";
@@ -250,6 +252,24 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   useEffect(() => {
     captureVoiceGuide.reset();
   }, [currentCameraStep.id]);
+
+  useEffect(() => {
+    if (step !== "naming" || isOnboardingScan) return;
+    let cancelled = false;
+    void (async () => {
+      const scanNumber = await fetchNextScanNumber(async () => {
+        const res = await fetch("/api/patient/home", { credentials: "include" });
+        if (!res.ok) throw new Error("home");
+        return (await res.json()) as { skinScanHistory?: unknown[] };
+      });
+      if (!cancelled) {
+        setScanName(buildAutoScanName({ scanNumber }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, isOnboardingScan]);
 
   /** Speak the highest-priority guidance line (debounced/cooldown'd inside). */
   useEffect(() => {
@@ -1196,7 +1216,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               className="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 backdrop-blur-sm focus:border-[#2C3E6B]/40 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/10"
             />
             <p className="mt-2 text-xs text-[#6B7280]">
-              Leave blank to save as &quot;{resolveScanName("")}&quot;.
+              Prefilled as scan number, date, and time — edit anytime.
             </p>
           </div>
           <button

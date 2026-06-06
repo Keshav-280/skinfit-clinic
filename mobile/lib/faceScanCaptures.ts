@@ -74,15 +74,14 @@ export const FACE_SCAN_CAPTURE_STEPS = [
 
 export type FaceScanCaptureId = (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
 
-/** Used when the patient skips naming a scan. */
-export const DEFAULT_SCAN_NAME = "Untitled Scan";
-
-export const SCAN_NAME_INPUT_PLACEHOLDER = "e.g., Morning routine (optional)";
-
-export function resolveScanName(name: string | null | undefined): string {
-  const trimmed = name?.trim();
-  return trimmed || DEFAULT_SCAN_NAME;
-}
+export {
+  buildAutoScanName,
+  DEFAULT_SCAN_NAME,
+  fetchNextScanNumber,
+  resolveScanName,
+  SCAN_NAME_INPUT_PLACEHOLDER,
+  type BuildAutoScanNameOptions,
+} from "../../src/lib/faceScanCaptures";
 
 export const FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA = [
   "Natural light; avoid harsh backlight.",
