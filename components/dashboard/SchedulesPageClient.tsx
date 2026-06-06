@@ -378,38 +378,51 @@ function ManageGridSectionHeader({
   description,
   icon: Icon,
   compact = false,
+  aside,
 }: {
   kicker?: string;
   title: string;
   description?: string;
   icon?: typeof Stethoscope;
   compact?: boolean;
+  aside?: string;
 }) {
   return (
-    <div className={`flex gap-2.5 ${compact ? "mb-2" : "mb-3"}`}>
-      {Icon ? (
-        <span
-          className={`${patientSectionIcon} ${compact ? "h-8 w-8" : "h-9 w-9"}`}
-          aria-hidden
-        >
-          <Icon className="h-4 w-4" />
-        </span>
-      ) : null}
-      <div className="min-w-0">
-        {kicker ? <p className={patientKicker}>{kicker}</p> : null}
-        <h3 className={`${patientSectionTitle} ${compact ? "text-base" : "text-lg"}`}>
-          {title}
-        </h3>
-        {description ? (
-          <p
-            className={`mt-0.5 line-clamp-1 text-xs ${patientMuted} ${
-              compact ? "leading-snug" : ""
-            }`}
+    <div
+      className={`flex items-start justify-between gap-2 ${
+        compact && !description ? "" : compact ? "mb-2" : "mb-3"
+      }`}
+    >
+      <div className="flex min-w-0 gap-2.5">
+        {Icon ? (
+          <span
+            className={`${patientSectionIcon} ${compact ? "h-8 w-8" : "h-9 w-9"}`}
+            aria-hidden
           >
-            {description}
-          </p>
+            <Icon className="h-4 w-4" />
+          </span>
         ) : null}
+        <div className="min-w-0">
+          {kicker ? <p className={patientKicker}>{kicker}</p> : null}
+          <h3 className={`${patientSectionTitle} ${compact ? "text-base" : "text-lg"}`}>
+            {title}
+          </h3>
+          {description ? (
+            <p
+              className={`mt-0.5 line-clamp-1 text-xs ${patientMuted} ${
+                compact ? "leading-snug" : ""
+              }`}
+            >
+              {description}
+            </p>
+          ) : null}
+        </div>
       </div>
+      {aside ? (
+        <p className="shrink-0 pt-1 text-right text-[11px] leading-snug text-[#94a3b8]">
+          {aside}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1396,53 +1409,58 @@ export default function SchedulesPageClient({
               </div>
             </div>
             <p className="mt-auto pt-4 text-sm text-[#71717a]">
-              No upcoming appointments. Request one when you&apos;re ready.
+              No upcoming appointments.
             </p>
           </div>
         )}
 
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-[20px] bg-[#272d77] px-4 py-3.5 text-left shadow-md shadow-[#272d77]/20 transition hover:bg-[#1f245c]"
-          onClick={openRequestModal}
-        >
-          <Calendar className="h-6 w-6 shrink-0 text-white" strokeWidth={2} aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-bold leading-tight text-white">
-              Request an Appointment
-            </p>
-            <p className="mt-0.5 text-[12px] leading-snug text-white/85">
-              Pick a date & share your preferred time slots.
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 shrink-0 text-white" aria-hidden />
-        </button>
-
-        <div className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
-          <ManageGridSectionHeader kicker="Clinic" title="Visits" icon={Stethoscope} />
-          {latestVisit ? (
-            <LastTreatmentCard visit={latestVisit} compact />
-          ) : (
-            <div className="flex flex-1 flex-col justify-center rounded-2xl bg-[#e0e5df] px-4 py-6 text-center">
-              <p className="text-sm font-semibold text-[#1A1A2E]">No visits yet</p>
-              <p className="mt-1 text-[13px] text-zinc-600">
-                Your last clinic treatment will show up here after your first visit.
+        <div className="flex flex-col gap-3.5 sm:row-span-2 sm:self-start">
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-[20px] bg-[#272d77] px-4 py-3.5 text-left shadow-md shadow-[#272d77]/20 transition hover:bg-[#1f245c]"
+            onClick={openRequestModal}
+          >
+            <Calendar className="h-6 w-6 shrink-0 text-white" strokeWidth={2} aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-bold leading-tight text-white">
+                Request an Appointment
+              </p>
+              <p className="mt-0.5 text-[12px] leading-snug text-white/85">
+                Pick a date & share your preferred time slots.
               </p>
             </div>
-          )}
+            <ChevronRight className="h-5 w-5 shrink-0 text-white" aria-hidden />
+          </button>
+
+          {showKaiInsights ? (
+            <div className="flex flex-col overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+              <ManageGridSectionHeader
+                kicker="kAI"
+                title="Monthly insight"
+                description="A once-a-month recap of your skin progress from scans and daily logs."
+                compact
+              />
+              <ProfileRagKaiInsightsSection embedded compact />
+            </div>
+          ) : null}
         </div>
 
-        {showKaiInsights ? (
-          <div className="flex flex-col overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+        <div className="flex flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+          {latestVisit ? (
+            <>
+              <ManageGridSectionHeader kicker="Clinic" title="Visits" icon={Stethoscope} />
+              <LastTreatmentCard visit={latestVisit} compact />
+            </>
+          ) : (
             <ManageGridSectionHeader
-              kicker="kAI"
-              title="Monthly insight"
-              description="A once-a-month recap of your skin progress from scans and daily logs."
+              kicker="Clinic"
+              title="Visits"
+              icon={Stethoscope}
               compact
+              aside="No visits yet"
             />
-            <ProfileRagKaiInsightsSection embedded compact />
-          </div>
-        ) : null}
+          )}
+        </div>
       </div>
 
       {clinicMsgOpen && clinicMsgApptId ? (
