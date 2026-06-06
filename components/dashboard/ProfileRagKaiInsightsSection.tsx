@@ -87,6 +87,14 @@ export function ProfileRagKaiInsightsSection({
   };
 
   if (loading) {
+    if (embedded && compact) {
+      return (
+        <div className="flex items-center gap-2 py-1 text-xs text-zinc-600" aria-busy="true">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600" />
+          Loading monthly insight…
+        </div>
+      );
+    }
     return (
       <section
         className="flex items-center gap-3 rounded-[22px] bg-gradient-to-b from-indigo-50/80 to-white px-5 py-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)] sm:px-6"
@@ -146,6 +154,18 @@ export function ProfileRagKaiInsightsSection({
             Monthly PDF
           </button>
         </div>
+      ) : compact ? (
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={onPdf}
+            disabled={!monthly?.detail}
+            className="inline-flex items-center gap-1 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1.5 text-[11px] font-semibold text-[#6B7280] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Monthly PDF
+          </button>
+        </div>
       ) : (
         <div className="mb-4 flex justify-end">
           <button
@@ -161,12 +181,28 @@ export function ProfileRagKaiInsightsSection({
       )}
 
       {data.locked || !monthly ? (
-        <div className={`${patientInnerCard} px-4 py-4`}>
-          <p className={`inline-flex items-center gap-2 ${patientKicker}`}>
-            <Lock className="h-4 w-4" aria-hidden />
+        <div
+          className={`${patientInnerCard} ${
+            compact && embedded ? "px-3 py-2.5" : "px-4 py-4"
+          }`}
+        >
+          <p
+            className={`inline-flex items-center gap-1.5 ${
+              compact && embedded
+                ? "text-[10px] font-bold uppercase tracking-wide text-[#2D3E6B]/60"
+                : patientKicker
+            }`}
+          >
+            <Lock className={compact && embedded ? "h-3.5 w-3.5" : "h-4 w-4"} aria-hidden />
             Not ready yet
           </p>
-          <p className={`mt-2 text-sm leading-relaxed ${patientMuted}`}>
+          <p
+            className={`mt-1.5 leading-snug ${
+              compact && embedded
+                ? "line-clamp-3 text-[11px] text-[#6B7280]"
+                : `text-sm ${patientMuted}`
+            }`}
+          >
             Your monthly summary unlocks 1 month after your first scan — around{" "}
             <span className="font-semibold text-[#2C3E6B]">{nextInsightFriendly}</span>.
             Keep scanning and logging — we&apos;ll pull it together for you.

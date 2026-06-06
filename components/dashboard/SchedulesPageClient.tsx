@@ -20,6 +20,7 @@ import {
 } from "date-fns";
 import {
   Archive,
+  ArchiveRestore,
   Calendar,
   CalendarDays,
   ChevronLeft,
@@ -54,6 +55,8 @@ import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
 import {
   archiveScheduleListItem,
   loadScheduleListArchivedIds,
+  unarchiveScheduleListItem,
+  unarchiveScheduleListItems,
 } from "@/src/lib/scheduleListArchive";
 import {
   VISIT_WINDOW_OPTIONS,
@@ -374,24 +377,35 @@ function ManageGridSectionHeader({
   title,
   description,
   icon: Icon,
+  compact = false,
 }: {
   kicker?: string;
   title: string;
   description?: string;
   icon?: typeof Stethoscope;
+  compact?: boolean;
 }) {
   return (
-    <div className="mb-3 flex gap-2.5">
+    <div className={`flex gap-2.5 ${compact ? "mb-2" : "mb-3"}`}>
       {Icon ? (
-        <span className={`${patientSectionIcon} h-9 w-9`} aria-hidden>
+        <span
+          className={`${patientSectionIcon} ${compact ? "h-8 w-8" : "h-9 w-9"}`}
+          aria-hidden
+        >
           <Icon className="h-4 w-4" />
         </span>
       ) : null}
       <div className="min-w-0">
         {kicker ? <p className={patientKicker}>{kicker}</p> : null}
-        <h3 className={`${patientSectionTitle} text-lg`}>{title}</h3>
+        <h3 className={`${patientSectionTitle} ${compact ? "text-base" : "text-lg"}`}>
+          {title}
+        </h3>
         {description ? (
-          <p className={`mt-0.5 line-clamp-2 text-xs ${patientMuted}`}>
+          <p
+            className={`mt-0.5 line-clamp-1 text-xs ${patientMuted} ${
+              compact ? "leading-snug" : ""
+            }`}
+          >
             {description}
           </p>
         ) : null}
@@ -432,6 +446,7 @@ export default function SchedulesPageClient({
   const [archivedListIds, setArchivedListIds] = useState<Set<string>>(
     () => new Set()
   );
+  const [showArchivedList, setShowArchivedList] = useState(false);
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestYmd, setRequestYmd] = useState<string | null>(null);
@@ -443,10 +458,6 @@ export default function SchedulesPageClient({
   const [requestTimes, setRequestTimes] = useState("");
   const [requestAttachments, setRequestAttachments] = useState<RequestAttachment[]>([]);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
-  const [requestDoctorId, setRequestDoctorId] = useState<string | null>(null);
-  const [clinicDoctors, setClinicDoctors] = useState<
-    Array<{ id: string; name: string; photoUrl: string | null }>
-  >([]);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestFormUrl, setRequestFormUrl] = useState<string | null>(null);
   const [sheetRelayNotice, setSheetRelayNotice] = useState<string | null>(null);
@@ -544,10 +555,12 @@ export default function SchedulesPageClient({
     [mergedListEvents, archivedListIds]
   );
 
-  const archivedListCount = useMemo(
-    () => mergedListEvents.filter((event) => archivedListIds.has(event.id)).length,
+  const archivedListEvents = useMemo(
+    () => mergedListEvents.filter((event) => archivedListIds.has(event.id)),
     [mergedListEvents, archivedListIds]
   );
+
+  const archivedListCount = archivedListEvents.length;
 
   useEffect(() => {
     setArchivedListIds(loadScheduleListArchivedIds());
@@ -560,6 +573,17 @@ export default function SchedulesPageClient({
   const archiveListEvent = useCallback((eventId: string) => {
     setArchivedListIds(archiveScheduleListItem(eventId));
   }, []);
+
+  const unarchiveListEvent = useCallback((eventId: string) => {
+    setArchivedListIds(unarchiveScheduleListItem(eventId));
+  }, []);
+
+  const unarchiveAllListEvents = useCallback(() => {
+    setArchivedListIds(
+      unarchiveScheduleListItems(archivedListEvents.map((event) => event.id))
+    );
+    setShowArchivedList(false);
+  }, [archivedListEvents]);
 
   const calendarCells: (Date | null)[] = !currentDate
     ? Array.from({ length: view === "month" ? 42 : 7 }, () => null)
@@ -614,48 +638,6 @@ export default function SchedulesPageClient({
       ) ?? null
     );
   }, [appointmentCalendarEvents]);
-
-  const primeRequestDoctor = useCallback(
-    (
-      doctors: Array<{ id: string; name: string; photoUrl: string | null }>,
-      assignedDoctorId: string | null | undefined
-    ) => {
-      if (assignedDoctorId && doctors.some((d) => d.id === assignedDoctorId)) {
-        setRequestDoctorId(assignedDoctorId);
-        return;
-      }
-      setRequestDoctorId(doctors[0]?.id ?? null);
-    },
-    []
-  );
-
-  const loadClinicDoctorsForRequest = useCallback(async () => {
-    try {
-      const res = await fetch("/api/patient/doctors", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        doctors?: Array<{ id: string; name: string; photoUrl?: string | null }>;
-        assignedDoctorId?: string | null;
-      };
-      const doctors = (data.doctors ?? []).map((d) => ({
-        id: d.id,
-        name: d.name,
-        photoUrl: d.photoUrl ?? null,
-      }));
-      setClinicDoctors(doctors);
-      primeRequestDoctor(doctors, data.assignedDoctorId);
-    } catch {
-      /* optional picker */
-    }
-  }, [primeRequestDoctor]);
-
-  useEffect(() => {
-    if (!requestModalOpen) return;
-    void loadClinicDoctorsForRequest();
-  }, [requestModalOpen, loadClinicDoctorsForRequest]);
 
   const openRequestModal = useCallback(() => {
     const ymd = localYmd(new Date());
@@ -779,7 +761,6 @@ export default function SchedulesPageClient({
           daysAffected: daysAffectedNum,
           timePreferences: t,
           attachments: requestAttachments,
-          ...(requestDoctorId ? { doctorId: requestDoctorId } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -843,7 +824,11 @@ export default function SchedulesPageClient({
     setRequestModalOpen(true);
   }
 
-  function renderScheduleEventCard(event: ScheduleEventRow) {
+  function renderScheduleEventCard(
+    event: ScheduleEventRow,
+    opts?: { archived?: boolean }
+  ) {
+    const isArchivedView = opts?.archived === true;
     const pending = event.id.startsWith("req:");
     const cancelled = event.cancelled === true;
     const done = event.completed;
@@ -881,15 +866,27 @@ export default function SchedulesPageClient({
               </span>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => archiveListEvent(event.id)}
-            title="Archive — hide from this list"
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#2C3E6B]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2C3E6B]/25 hover:bg-[#e8eef6]"
-          >
-            <Archive className="h-3 w-3 opacity-80" aria-hidden />
-            Archive
-          </button>
+          {isArchivedView ? (
+            <button
+              type="button"
+              onClick={() => unarchiveListEvent(event.id)}
+              title="Restore to this list"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#2C3E6B]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2B3A67]/25 hover:bg-[#e8eef6]"
+            >
+              <ArchiveRestore className="h-3 w-3 opacity-80" aria-hidden />
+              Restore
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => archiveListEvent(event.id)}
+              title="Archive — hide from this list"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#2C3E6B]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2C3E6B]/25 hover:bg-[#e8eef6]"
+            >
+              <Archive className="h-3 w-3 opacity-80" aria-hidden />
+              Archive
+            </button>
+          )}
         </div>
         <div className="flex flex-row flex-wrap items-center gap-2">
           <p
@@ -1280,15 +1277,45 @@ export default function SchedulesPageClient({
             visibleListEvents.map((event) => renderScheduleEventCard(event))
           )}
           {archivedListCount > 0 ? (
-            <p className="pt-1 text-center text-[11px] text-[#94a3b8]">
-              {archivedListCount} archived — still on your calendar
-            </p>
+            <div className="space-y-2 border-t border-[#e4e4e7] pt-2">
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                <button
+                  type="button"
+                  onClick={() => setShowArchivedList((open) => !open)}
+                  className="text-xs font-semibold text-[#2B3A67] underline decoration-[#2B3A67]/40 underline-offset-2 hover:text-[#1f245c]"
+                >
+                  {showArchivedList
+                    ? "Hide archived"
+                    : `Show ${archivedListCount} archived`}
+                </button>
+                {showArchivedList ? (
+                  <button
+                    type="button"
+                    onClick={unarchiveAllListEvents}
+                    className="text-xs font-semibold text-[#2B3A67] underline decoration-[#2B3A67]/40 underline-offset-2 hover:text-[#1f245c]"
+                  >
+                    Restore all
+                  </button>
+                ) : null}
+              </div>
+              {!showArchivedList ? (
+                <p className="text-center text-[11px] text-[#94a3b8]">
+                  Still on your calendar
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {archivedListEvents.map((event) =>
+                    renderScheduleEventCard(event, { archived: true })
+                  )}
+                </div>
+              )}
+            </div>
           ) : null}
         </div>
       </section>
       </div>
 
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:items-start">
         {featuredUpcoming ? (
           <button
             type="button"
@@ -1376,17 +1403,19 @@ export default function SchedulesPageClient({
 
         <button
           type="button"
-          className="flex h-full min-h-[200px] items-center gap-3.5 rounded-[20px] bg-[#272d77] px-[18px] py-[18px] text-left shadow-lg shadow-[#272d77]/25 transition hover:bg-[#1f245c]"
+          className="flex w-full items-center gap-3 rounded-[20px] bg-[#272d77] px-4 py-3.5 text-left shadow-md shadow-[#272d77]/20 transition hover:bg-[#1f245c]"
           onClick={openRequestModal}
         >
-          <Calendar className="h-7 w-7 shrink-0 text-white" strokeWidth={2} aria-hidden />
+          <Calendar className="h-6 w-6 shrink-0 text-white" strokeWidth={2} aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="text-lg font-bold text-white">Request an Appointment</p>
-            <p className="mt-1 text-[13px] leading-5 text-white/90">
+            <p className="text-base font-bold leading-tight text-white">
+              Request an Appointment
+            </p>
+            <p className="mt-0.5 text-[12px] leading-snug text-white/85">
               Pick a date & share your preferred time slots.
             </p>
           </div>
-          <ChevronRight className="h-6 w-6 shrink-0 text-white" aria-hidden />
+          <ChevronRight className="h-5 w-5 shrink-0 text-white" aria-hidden />
         </button>
 
         <div className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
@@ -1404,15 +1433,14 @@ export default function SchedulesPageClient({
         </div>
 
         {showKaiInsights ? (
-          <div className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+          <div className="flex flex-col overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
             <ManageGridSectionHeader
               kicker="kAI"
               title="Monthly insight"
               description="A once-a-month recap of your skin progress from scans and daily logs."
+              compact
             />
-            <div className="min-h-0 flex-1">
-              <ProfileRagKaiInsightsSection embedded compact />
-            </div>
+            <ProfileRagKaiInsightsSection embedded compact />
           </div>
         ) : null}
       </div>
@@ -1702,53 +1730,6 @@ export default function SchedulesPageClient({
                   </div>
                 ))}
               </div>
-
-              {clinicDoctors.length > 0 ? (
-                <>
-                  <p className="mt-4 text-base font-bold text-[#18181b]">
-                    Preferred doctor
-                  </p>
-                  <div className="mt-2 flex flex-col gap-2">
-                    {clinicDoctors.map((doctor) => {
-                      const selected = requestDoctorId === doctor.id;
-                      return (
-                        <button
-                          key={doctor.id}
-                          type="button"
-                          disabled={requestSubmitting}
-                          onClick={() => setRequestDoctorId(doctor.id)}
-                          className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                            selected
-                              ? "border-[#2B3A67] bg-[#2B3A67] text-white"
-                              : "border-[#e5e7eb] bg-white text-[#18181b] hover:border-[#cbd5e1]"
-                          }`}
-                        >
-                          {doctor.photoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={doctor.photoUrl}
-                              alt=""
-                              className="h-9 w-9 shrink-0 rounded-full object-cover"
-                            />
-                          ) : (
-                            <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                                selected ? "bg-white/20" : "bg-[#2B3A67]"
-                              }`}
-                            >
-                              <User
-                                className={`h-4 w-4 ${selected ? "text-white" : "text-white"}`}
-                                aria-hidden
-                              />
-                            </span>
-                          )}
-                          <span className="text-sm font-semibold">{doctor.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : null}
 
               <p className="mt-4 text-base font-bold text-[#18181b]">Choose new time</p>
               <div className="mt-3 flex flex-col gap-2">

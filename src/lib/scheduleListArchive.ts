@@ -35,3 +35,10 @@ export function unarchiveScheduleListItem(eventId: string): Set<string> {
   writeSet(next);
   return next;
 }
+
+export function unarchiveScheduleListItems(eventIds: string[]): Set<string> {
+  const next = readSet();
+  for (const id of eventIds) next.delete(id);
+  writeSet(next);
+  return next;
+}

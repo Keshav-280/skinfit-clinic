@@ -129,10 +129,6 @@ export default function SchedulesScreen() {
   const [visitNotes, setVisitNotes] = useState("");
   const [selectedWindows, setSelectedWindows] = useState<VisitWindowId[]>([]);
   const [visitBusy, setVisitBusy] = useState(false);
-  const [visitDoctorId, setVisitDoctorId] = useState<string | null>(null);
-  const [clinicDoctors, setClinicDoctors] = useState<
-    Array<{ id: string; name: string; photoUrl: string | null }>
-  >([]);
 
   const calendarCells = useMemo(
     () => buildCalendarCells(currentDate, view),
@@ -165,35 +161,6 @@ export default function SchedulesScreen() {
     view === "month"
       ? format(currentDate, "MMMM yyyy")
       : `Week of ${format(startOfWeek(currentDate, WEEK_OPTS), "MMM d")} – ${format(endOfWeek(currentDate, WEEK_OPTS), "MMM d, yyyy")}`;
-
-  const loadClinicDoctors = useCallback(async () => {
-    if (!token) return;
-    try {
-      const json = await apiJson<{
-        doctors?: Array<{ id: string; name: string; photoUrl?: string | null }>;
-        assignedDoctorId?: string | null;
-      }>("/api/patient/doctors", token, { method: "GET" });
-      const doctors = (json.doctors ?? []).map((d) => ({
-        id: d.id,
-        name: d.name,
-        photoUrl: d.photoUrl ?? null,
-      }));
-      setClinicDoctors(doctors);
-      const assigned = json.assignedDoctorId;
-      if (assigned && doctors.some((d) => d.id === assigned)) {
-        setVisitDoctorId(assigned);
-      } else {
-        setVisitDoctorId(doctors[0]?.id ?? null);
-      }
-    } catch {
-      /* optional */
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (!visitRequestOpen) return;
-    void loadClinicDoctors();
-  }, [visitRequestOpen, loadClinicDoctors]);
 
   const loadBootstrap = useCallback(async () => {
     if (!token) return;
@@ -299,7 +266,6 @@ export default function SchedulesScreen() {
           daysAffected: daysAffectedNum,
           timePreferences: t,
           attachments: [],
-          ...(visitDoctorId ? { doctorId: visitDoctorId } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
@@ -920,34 +886,6 @@ export default function SchedulesScreen() {
                 </View>
               ))}
             </View>
-            {clinicDoctors.length > 0 ? (
-              <>
-                <Text style={styles.labelBig}>Preferred doctor</Text>
-                <View style={styles.windowList}>
-                  {clinicDoctors.map((doctor) => {
-                    const on = visitDoctorId === doctor.id;
-                    return (
-                      <Pressable
-                        key={doctor.id}
-                        onPress={() => setVisitDoctorId(doctor.id)}
-                        style={[styles.doctorOption, on && styles.doctorOptionOn]}
-                      >
-                        {doctor.photoUrl ? (
-                          <Image source={{ uri: doctor.photoUrl }} style={styles.doctorAvatar} />
-                        ) : (
-                          <View style={styles.doctorAvatarPlaceholder}>
-                            <Ionicons name="person" size={18} color="#fff" />
-                          </View>
-                        )}
-                        <Text style={on ? styles.doctorOptionOnText : styles.doctorOptionText}>
-                          {doctor.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </>
-            ) : null}
             <Text style={styles.labelBig}>Choose new time</Text>
             <View style={styles.windowList}>
               {VISIT_WINDOW_OPTIONS.map((w) => {
@@ -1603,29 +1541,6 @@ const styles = StyleSheet.create({
   windowOptionOn: { backgroundColor: "#262b74", borderColor: "#262b74" },
   windowOptionText: { color: "#18181b", fontWeight: "600", fontSize: 15 },
   windowOptionOnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  doctorOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#e4e4e7",
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  doctorOptionOn: { backgroundColor: "#262b74", borderColor: "#262b74" },
-  doctorOptionText: { color: "#18181b", fontWeight: "600", fontSize: 15, flex: 1 },
-  doctorOptionOnText: { color: "#fff", fontWeight: "700", fontSize: 15, flex: 1 },
-  doctorAvatar: { width: 36, height: 36, borderRadius: 18 },
-  doctorAvatarPlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#262b74",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   noteBox: {
     marginTop: 16,
     borderRadius: 14,
