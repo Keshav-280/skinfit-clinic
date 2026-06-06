@@ -447,11 +447,10 @@ function ensureHeaderRowForSheet_(sheet) {
 
   var curCols = sheet.getLastColumn();
   if (curCols < headers.length) {
-    var missing = [];
-    for (var i = curCols; i < headers.length; i++) {
-      missing.push(headers[i]);
-    }
-    sheet.getRange(1, curCols + 1, 1, headers.length).setValues([missing]);
+    // getRange(row, col, numRows, numColumns) — not end row/col.
+    var missing = headers.slice(curCols);
+    var numMissing = missing.length;
+    sheet.getRange(1, curCols + 1, 1, numMissing).setValues([missing]);
   }
 }
 
