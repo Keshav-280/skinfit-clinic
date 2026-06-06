@@ -84,7 +84,7 @@ export function DashboardStreakCard({
           allRoutineDone ? "text-[#4CAF50]" : "text-[#2D3E6B]"
         }`}
       >
-        {allRoutineDone ? "Done today" : "Complete today"}
+        {allRoutineDone ? "Done today" : "Complete today's routine"}
       </p>
     </div>
   );

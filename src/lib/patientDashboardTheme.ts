@@ -14,10 +14,10 @@ export const PATIENT_SAGE = "#E8EFE6";
 export const PATIENT_SAGE_MUTED = "#e0e5df";
 
 export const patientDashboardCard =
-  "rounded-[20px] border border-[#E5E7EB] bg-white p-5 shadow-[0_4px_24px_rgba(45,62,107,0.08)] md:p-6";
+  "rounded-[20px] border border-[#E5E7EB] bg-white p-5 shadow-3d-white md:p-6";
 
 export const patientDashboardNavyCard =
-  "rounded-[20px] bg-[#2D3E6B] p-5 shadow-[0_8px_30px_rgba(45,62,107,0.22)] md:p-6";
+  "rounded-[20px] bg-[#2D3E6B] p-5 shadow-3d-navy md:p-6";
 
 export const patientGlassShell = patientDashboardCard;
 

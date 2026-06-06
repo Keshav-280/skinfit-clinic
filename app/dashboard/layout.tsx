@@ -37,7 +37,7 @@ export default async function DashboardLayout({
   return (
     <DashboardInboxProvider>
     <div className="min-h-screen bg-[#F2F9F2]">
-      <nav className="sticky top-0 z-50 border-b border-[#E5E7EB]/70 bg-[#F2F9F2]">
+      <nav className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-[#E8EFE6] shadow-[0_2px_16px_rgba(45,62,107,0.06)]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 md:px-8 sm:py-4">
           <PatientPortalBrandLogo />
 

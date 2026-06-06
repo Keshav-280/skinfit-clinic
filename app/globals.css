@@ -98,3 +98,21 @@ body {
 .quest-complete-check {
   animation: quest-complete-check 0.9s cubic-bezier(0.34, 1.45, 0.64, 1) both;
 }
+
+/* Custom 3D box shadows (very fade/subtle) */
+.shadow-3d-white {
+  box-shadow: 
+    0 1px 0 #D8DCE3,
+    0 2px 0 #D8DCE3,
+    0 3px 0 #D8DCE3,
+    0 12px 30px rgba(45, 62, 107, 0.06);
+}
+
+.shadow-3d-navy {
+  box-shadow: 
+    0 1px 0 #1D2A4D,
+    0 2px 0 #1D2A4D,
+    0 3px 0 #1D2A4D,
+    0 12px 36px rgba(45, 62, 107, 0.25);
+}
+

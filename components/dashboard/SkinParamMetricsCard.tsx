@@ -8,7 +8,7 @@ import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 import { patientDashboardCard } from "@/src/lib/patientDashboardTheme";
 
 const SKIN_PARAM_INNER_CELL =
-  "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] px-2 py-3 shadow-sm";
+  "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-white/30 px-2 py-3 shadow-sm";
 
 export type SkinParamMetric = {
   label: string;
@@ -35,12 +35,18 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
             key={p.label}
             className={SKIN_PARAM_INNER_CELL}
           >
-            <CircularGauge value={p.value} color={p.color} size={52} strokeWidth={5} />
-            <p className="text-center text-[12px] font-bold leading-tight text-[#18181b] sm:text-[13px]">
+            <CircularGauge
+              value={p.value}
+              color={p.color}
+              size={60}
+              strokeWidth={5.5}
+              valueClassName="text-lg sm:text-xl text-[#18181b]"
+            />
+            <p className="text-center text-[14px] font-extrabold leading-tight text-[#18181b] sm:text-[15px]">
               {p.label}
             </p>
             <p
-              className={`text-[11px] font-bold ${
+              className={`text-[12px] font-extrabold ${
                 p.sublabel === "Needs Care"
                   ? "text-red-500"
                   : p.sublabel === "Moderate"

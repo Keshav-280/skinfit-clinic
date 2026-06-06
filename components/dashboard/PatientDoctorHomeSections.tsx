@@ -474,12 +474,10 @@ export function PatientDoctorHomeSections({
   );
 
   return (
-    <div
-      className={`grid w-full min-h-0 flex-1 gap-4 md:grid-rows-[minmax(0,3fr)_minmax(0,3fr)] md:min-h-[24rem] ${className}`}
-    >
+    <div className={`flex w-full flex-col gap-4 ${className}`}>
       <section
         id="doctor-written-feedback"
-        className={`scroll-mt-24 flex min-h-0 h-full w-full flex-col ${DASHBOARD_SECTION_CARD}`}
+        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD}`}
         aria-labelledby="doctor-written-feedback-heading"
       >
         <DashboardSectionHeader
@@ -504,36 +502,36 @@ export function PatientDoctorHomeSections({
                 disabled={doctorFollowUpBusy}
                 onClick={() => {
                   void (async () => {
-                    setDoctorFollowUpHint(null);
-                    setDoctorFollowUpBusy(true);
-                    try {
-                      const text = buildAutoDoctorFollowUpMessage(primaryTextForChat);
-                      const res = await fetch("/api/chat/plain/message", {
-                        method: "POST",
-                        credentials: "include",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          assistantId: "doctor",
-                          text,
-                        }),
-                      });
-                      const j = (await res.json()) as {
-                        success?: boolean;
-                        error?: string;
-                        message?: string;
-                      };
-                      if (!res.ok || !j.success) {
-                        setDoctorFollowUpHint(
-                          j.message ?? j.error ?? "Could not open chat. Try again."
-                        );
-                        return;
-                      }
-                      router.push("/dashboard/chat?assistant=doctor");
-                    } catch {
-                      setDoctorFollowUpHint("Network error. Try again.");
-                    } finally {
-                      setDoctorFollowUpBusy(false);
-                    }
+                     setDoctorFollowUpHint(null);
+                     setDoctorFollowUpBusy(true);
+                     try {
+                       const text = buildAutoDoctorFollowUpMessage(primaryTextForChat);
+                       const res = await fetch("/api/chat/plain/message", {
+                         method: "POST",
+                         credentials: "include",
+                         headers: { "Content-Type": "application/json" },
+                         body: JSON.stringify({
+                           assistantId: "doctor",
+                           text,
+                         }),
+                       });
+                       const j = (await res.json()) as {
+                         success?: boolean;
+                         error?: string;
+                         message?: string;
+                       };
+                       if (!res.ok || !j.success) {
+                         setDoctorFollowUpHint(
+                           j.message ?? j.error ?? "Could not open chat. Try again."
+                         );
+                         return;
+                       }
+                       router.push("/dashboard/chat?assistant=doctor");
+                     } catch {
+                       setDoctorFollowUpHint("Network error. Try again.");
+                     } finally {
+                       setDoctorFollowUpBusy(false);
+                     }
                   })();
                 }}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#3d5080] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
@@ -571,7 +569,7 @@ export function PatientDoctorHomeSections({
 
       <section
         id="doctor-feedback"
-        className={`scroll-mt-24 flex min-h-0 h-full w-full flex-col ${DASHBOARD_SECTION_CARD}`}
+        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD}`}
         aria-labelledby="dashboard-voice-heading"
       >
         <DashboardSectionHeader

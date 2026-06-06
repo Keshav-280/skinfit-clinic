@@ -331,7 +331,7 @@ export function HistoryView({
                     {scan.scanName || "Untitled Scan"}
                   </p>
                   <p className="mt-0.5 text-xs text-[#6B7280]">
-                    {format(new Date(scan.createdAt), "MMM d, yyyy")}
+                    {format(new Date(scan.createdAt), "MMM d, yyyy · h:mm a")}
                   </p>
                   <p className="mt-1 text-lg font-bold text-[#2C3E6B]">
                     Overall {scan.overallScore}/100
