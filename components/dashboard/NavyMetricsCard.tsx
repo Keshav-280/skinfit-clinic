@@ -83,20 +83,18 @@ type NavyMetricsCardProps = {
 export function NavyMetricsCard({
   kaiSkinScore,
   weeklyDeltaScore,
-  weeklyDeltaMeaningful = true,
   latestScanAt,
   consistencyScore,
   className = "",
 }: NavyMetricsCardProps) {
   const v = Math.min(100, Math.max(0, Math.round(consistencyScore)));
-  const showWeeklyDelta = weeklyDeltaMeaningful;
 
   return (
-    <div className={`${patientDashboardNavyCard} pb-3 md:pb-4 ${className}`}>
-      <div className="grid grid-cols-12 gap-5 items-center">
+    <div className={`${patientDashboardNavyCard} h-full ${className}`}>
+      <div className="grid grid-cols-12 gap-5 items-center h-full min-h-[250px]">
         {/* Left Column: Stacked sub-cards */}
-        <div className="col-span-5 flex flex-col gap-3">
-          <div className="rounded-[20px] bg-[#E8EFE6] px-4 py-5 text-center shadow-sm flex flex-col justify-center min-h-[118px]">
+        <div className="col-span-5 flex flex-col gap-3.5">
+          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[116px]">
             <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
             <p className="mt-2 text-4xl font-extrabold leading-none text-[#1E5E3A]">
               {kaiSkinScore}
@@ -107,29 +105,17 @@ export function NavyMetricsCard({
                 : "No scans yet"}
             </p>
           </div>
-          <div className="rounded-[20px] bg-[#E8EFE6] px-4 py-5 text-center shadow-sm flex flex-col justify-center min-h-[118px]">
+          <div className="rounded-[20px] bg-[#E8EFE6] p-4 text-center shadow-sm flex flex-col justify-center min-h-[116px]">
             <p className="text-[12px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
             <p
               className={`mt-2 text-4xl font-extrabold leading-none ${
-                !showWeeklyDelta
-                  ? "text-[#6B7280]"
-                  : weeklyDeltaScore >= 0
-                    ? "text-[#1E5E3A]"
-                    : "text-[#EF4444]"
+                weeklyDeltaScore >= 0 ? "text-[#1E5E3A]" : "text-[#EF4444]"
               }`}
             >
-              {showWeeklyDelta ? (
-                <>
-                  {weeklyDeltaScore >= 0 ? "+" : ""}
-                  {weeklyDeltaScore}
-                </>
-              ) : (
-                "—"
-              )}
+              {weeklyDeltaScore >= 0 ? "+" : ""}
+              {weeklyDeltaScore}
             </p>
-            <p className="mt-2 text-[10px] font-medium leading-none text-[#6B7280]">
-              {showWeeklyDelta ? "vs last week" : "scan again to compare"}
-            </p>
+            <p className="mt-2 text-[10px] font-medium leading-none text-[#6B7280]">vs last week</p>
           </div>
         </div>
 
@@ -141,7 +127,7 @@ export function NavyMetricsCard({
           <div className="mt-4 flex justify-center">
             <ConsistencyRing value={consistencyScore} size={130} strokeWidth={11} />
           </div>
-          <p className="mt-2.5 text-base font-extrabold text-white">
+          <p className="mt-3.5 text-base font-extrabold text-white">
             {consistencyLabel(v)}
           </p>
         </div>
