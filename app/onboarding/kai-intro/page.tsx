@@ -37,7 +37,7 @@ export default function KaiIntroPage() {
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.45, delay: 0.15, ease: easeOut }}
-            className="relative w-full aspect-[4/3] md:aspect-[1.6/1] overflow-hidden rounded-xl shadow-sm border border-zinc-200 group"
+            className="relative w-full aspect-[4/3] md:aspect-[1.6/1] overflow-hidden rounded-xl border border-zinc-200 bg-[#E8EFE6] shadow-sm group"
           >
             <Image
               src="/images/kai-holographic-scan.png"
@@ -62,7 +62,7 @@ export default function KaiIntroPage() {
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.45, delay: 0.22, ease: easeOut }}
-            className="relative w-full aspect-[4/3] md:aspect-[1.6/1] overflow-hidden rounded-xl shadow-sm border border-zinc-200 group"
+            className="relative w-full aspect-[4/3] md:aspect-[1.6/1] overflow-hidden rounded-xl border border-zinc-200 bg-[#E8EFE6] shadow-sm group"
           >
             <Image
               src="/images/kai-features-visual.png"
@@ -111,24 +111,26 @@ export default function KaiIntroPage() {
           </div>
         </motion.div>
 
-        {/* Start Scan Button */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.34, ease: easeOut }}
+          className="flex flex-col gap-2"
         >
           <Link
-            href="/onboarding/capture"
+            href="/onboarding/capture/photos"
             className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-[#2C3E6B] via-[#3d5080] to-[#1E3264] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_24px_-8px_rgba(44,62,107,0.4)] transition hover:shadow-[0_14px_30px_-10px_rgba(44,62,107,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B]"
           >
             <span className="relative z-10 flex items-center gap-2">
               Start baseline scan
               <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
             </span>
-            <span
-              className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/12 to-white/0 opacity-0 transition group-hover:opacity-100"
-              aria-hidden
-            />
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
+          >
+            Skip for now
           </Link>
         </motion.div>
 

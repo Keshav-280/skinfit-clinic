@@ -64,9 +64,9 @@ export async function getOnboardingResumeSnapshot(
 
   const baselineSubmitted = hasBaselineScan || baselineScanPending;
 
-  let continueUrl = "/onboarding/capture";
+  let continueUrl = "/onboarding/capture/photos";
   if (!baselineSubmitted) {
-    continueUrl = "/onboarding/capture";
+    continueUrl = "/onboarding/capture/photos";
   } else if (!hasQuestionnaire) {
     continueUrl =
       baselineScanId != null

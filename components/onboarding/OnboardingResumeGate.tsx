@@ -71,14 +71,9 @@ export function OnboardingResumeGate({
       const hasBaseline = data.hasBaselineScan === true;
       const baselinePending = data.baselineScanPending === true;
       const baselineSubmitted = hasBaseline || baselinePending;
-      const continueUrl = data.continueUrl ?? "/onboarding/capture";
+      const continueUrl = data.continueUrl ?? "/onboarding/capture/photos";
       const baselineId =
         typeof data.baselineScanId === "number" ? data.baselineScanId : null;
-
-      if (!baselineSubmitted && isQuest) {
-        router.replace("/onboarding/capture");
-        return;
-      }
 
       if (baselineSubmitted && onCaptureFlow) {
         if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {

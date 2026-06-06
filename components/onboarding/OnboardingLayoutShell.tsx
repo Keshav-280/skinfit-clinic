@@ -9,7 +9,6 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 function isScanThemeRoute(pathname: string | null): boolean {
   if (!pathname) return false;
   return (
-    pathname === "/onboarding/capture" ||
     pathname.startsWith("/onboarding/capture/") ||
     pathname.startsWith("/onboarding/baseline-report")
   );
@@ -22,22 +21,15 @@ export function OnboardingLayoutShell({
 }) {
   const pathname = usePathname();
   const scanTheme = isScanThemeRoute(pathname);
-  const isCaptureIntro = pathname === "/onboarding/capture";
-  const onCapturePhotos = pathname?.startsWith("/onboarding/capture/photos");
-  const backHref = onCapturePhotos ? "/onboarding/capture" : "/onboarding/kai-intro";
-  const headerTitle =
-    pathname === "/onboarding/capture"
-      ? "kAI baseline photos"
-      : "kAI baseline scan";
+  const headerTitle = "kAI baseline photos";
 
   if (scanTheme) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6]">
-        {!isCaptureIntro ? (
         <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 md:px-8">
             <Link
-              href={backHref}
+              href="/onboarding/kai-intro"
               className="flex items-center gap-1.5 rounded-full border border-white/60 bg-white/50 px-3 py-1.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -54,10 +46,7 @@ export function OnboardingLayoutShell({
             <div className="hidden w-[88px] sm:block" aria-hidden />
           </div>
         </header>
-        ) : null}
-        <main
-          className={`mx-auto max-w-7xl px-4 pb-12 md:px-8 ${isCaptureIntro ? "py-6 md:py-8" : "py-6"}`}
-        >
+        <main className="mx-auto max-w-7xl px-4 py-6 pb-12 md:px-8">
           {children}
         </main>
       </div>

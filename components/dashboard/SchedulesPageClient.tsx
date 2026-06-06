@@ -1311,17 +1311,13 @@ export default function SchedulesPageClient({
                   </button>
                 ) : null}
               </div>
-              {!showArchivedList ? (
-                <p className="text-center text-[11px] text-[#94a3b8]">
-                  Still on your calendar
-                </p>
-              ) : (
+              {showArchivedList ? (
                 <div className="space-y-2">
                   {archivedListEvents.map((event) =>
                     renderScheduleEventCard(event, { archived: true })
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -39,6 +40,7 @@ import {
   resolveScanName,
 } from "@/src/lib/faceScanCaptures";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
+import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 import { FaceScanPhotoGuide } from "@/components/dashboard/FaceScanPhotoGuide";
 import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
 import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
@@ -215,8 +217,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const router = useRouter();
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
-  const [photoGuideOpen, setPhotoGuideOpen] = useState(false);
-  const [photoGuideIntent, setPhotoGuideIntent] = useState<"camera" | "review">("camera");
+  const [photoGuideOpen, setPhotoGuideOpen] = useState(
+    () => variant === "onboarding"
+  );
+  const [onboardingGuideComplete, setOnboardingGuideComplete] = useState(false);
+  const [photoGuideIntent, setPhotoGuideIntent] = useState<"camera" | "review">(
+    () => (variant === "onboarding" ? "review" : "camera")
+  );
   const [skipPhotoGuide, setSkipPhotoGuide] = useState(false);
   const [slotCaptures, setSlotCaptures] = useState<SlotCaptures>(emptySlotCaptures);
   const [cameraStepIndex, setCameraStepIndex] = useState(0);
@@ -518,15 +525,17 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   const closePhotoGuide = useCallback(() => {
     setPhotoGuideOpen(false);
-  }, []);
+    if (isOnboardingScan) setOnboardingGuideComplete(true);
+  }, [isOnboardingScan]);
 
   const completePhotoGuide = useCallback(() => {
     const intent = photoGuideIntent;
     setPhotoGuideOpen(false);
+    if (isOnboardingScan) setOnboardingGuideComplete(true);
     if (intent === "camera") {
       openCameraForMultiCapture();
     }
-  }, [openCameraForMultiCapture, photoGuideIntent]);
+  }, [openCameraForMultiCapture, photoGuideIntent, isOnboardingScan]);
 
   const setCaptureZoomManual = useCallback((value: number) => {
     setCaptureZoom(value);
@@ -746,6 +755,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   const showPhotoGuide =
     step === "upload" && !cameraOpen && photoGuideOpen;
+  const onboardingPastGuide = !isOnboardingScan || onboardingGuideComplete;
+  const showUploadChrome = !showPhotoGuide && onboardingPastGuide;
+  const navy = SKINFIT_THEME.navy;
   return (
     <div
       className={`${
@@ -753,7 +765,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
           : variant === "dashboard"
             ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
-            : "space-y-6"
+            : "mx-auto max-w-4xl space-y-6"
       }`}
     >
       {showPhotoGuide ? (
@@ -766,7 +778,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         />
       ) : null}
 
-      {!showPhotoGuide && !(step === "upload" && cameraOpen) ? (
+      {showUploadChrome && !(step === "upload" && cameraOpen) ? (
       <motion.header
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -777,7 +789,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
             Skin analysis
           </p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-[#1F2A44]">
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight" style={{ color: navy }}>
             {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
           </h1>
         </div>
@@ -920,7 +932,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         </motion.div>
       )}
 
-      {!showPhotoGuide && step === "upload" && !cameraOpen && (
+      {showUploadChrome && step === "upload" && !cameraOpen && (
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -966,7 +978,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 className={`flex min-h-[270px] flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors ${
                   isDragging
                     ? "border-[#2C3E6B]/60 bg-[#E8EFE6]/85"
-                    : "border-white/80 bg-white/45"
+                    : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
                 }`}
               >
                 <input
@@ -988,7 +1000,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
                     <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
                   </div>
-                  <h2 className="mt-4 text-lg font-extrabold text-[#1F2A44]">
+                  <h2 className="mt-4 text-lg font-extrabold" style={{ color: navy }}>
                     Upload photos
                   </h2>
                   <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#64748B]">
@@ -1022,7 +1034,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                       className={`relative rounded-2xl border px-2 py-2 text-center transition-colors ${
                         filled
                           ? "border-[#4CAF50] bg-[#E8F5E9]"
-                          : "cursor-pointer border-white/70 bg-white/55 hover:border-[#2C3E6B]/25 hover:bg-white/80"
+                          : "cursor-pointer border-[#2C3E6B]/15 bg-white/60 hover:border-[#2C3E6B]/30 hover:bg-white/80"
                       }`}
                     >
                       {filled ? (
@@ -1098,6 +1110,15 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   <Check className="h-4 w-4" aria-hidden />
                   Continue to preview
                 </button>
+              ) : null}
+
+              {isOnboardingScan ? (
+                <Link
+                  href="/onboarding/questionnaire"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
+                >
+                  Continue to questionnaire
+                </Link>
               ) : null}
             </div>
           </div>

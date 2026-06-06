@@ -456,7 +456,7 @@ export function OnboardingQuestionnaireForm() {
         router.push("/dashboard");
         router.refresh();
       } else {
-        router.push("/onboarding/capture");
+        router.push("/onboarding/capture/photos");
       }
     } catch {
       setErr("Network error. Try again.");
