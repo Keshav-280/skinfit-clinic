@@ -2155,6 +2155,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               type="button"
               disabled={clinicVisitedBusy}
               title={clinicVisited ? "Mark as not visited" : "Mark clinic visit done"}
+              aria-pressed={clinicVisited}
               onClick={() => {
                 const next = !clinicVisited;
                 setClinicVisitedOptimistic(next);
@@ -2190,7 +2191,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   : "border border-white/30 bg-white/10 text-white hover:bg-white/20"
               }`}
             >
-              {clinicVisitedBusy ? "Saving…" : clinicVisited ? "Visited ✓" : "Mark visited"}
+              {clinicVisitedBusy ? "Saving…" : clinicVisited ? "Not visit" : "Visit"}
             </button>
             </div>
           </div>

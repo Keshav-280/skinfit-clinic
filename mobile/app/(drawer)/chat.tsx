@@ -45,6 +45,7 @@ import {
   AI_CHATBOT_ENABLED,
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/lib/featureFlags";
+import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "../../../src/lib/patientClinicVisit";
 
 type AssistantId = "ai" | "doctor" | "support";
 type HomeThreadId = AssistantId | "appointments";
@@ -274,6 +275,10 @@ export default function ChatScreen() {
   const [search, setSearch] = useState("");
   const [registeredDoctors, setRegisteredDoctors] = useState<RegisteredDoctor[]>([]);
   const [activeDoctorId, setActiveDoctorId] = useState<string | null>(null);
+  const [doctorChatEnabled, setDoctorChatEnabled] = useState(true);
+  const [doctorChatDisabledMessage, setDoctorChatDisabledMessage] = useState(
+    DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE
+  );
   const [doctorUnread, setDoctorUnread] = useState(0);
   const [homeRows, setHomeRows] = useState<HomeConversation[]>(defaultHomeRows);
   const [active, setActive] = useState<AssistantId>(DEFAULT_PATIENT_CHAT_ASSISTANT);
@@ -502,6 +507,8 @@ export default function ChatScreen() {
           }>("/api/calendar/patient", token, { method: "GET" }),
           apiJson<{
             doctors?: Array<{ id?: string; name?: string; email?: string | null }>;
+            doctorChatEnabled?: boolean;
+            doctorChatDisabledMessage?: string | null;
           }>("/api/patient/doctors", token, { method: "GET" }),
           apiJson<{
             doctors?: Array<{
@@ -534,6 +541,14 @@ export default function ChatScreen() {
             };
       const doctorsListData =
         doctorsListRes.status === "fulfilled" ? doctorsListRes.value : { doctors: [] };
+      if (doctorsListRes.status === "fulfilled") {
+        setDoctorChatEnabled(doctorsListRes.value.doctorChatEnabled !== false);
+        setDoctorChatDisabledMessage(
+          typeof doctorsListRes.value.doctorChatDisabledMessage === "string"
+            ? doctorsListRes.value.doctorChatDisabledMessage
+            : DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE
+        );
+      }
       const doctorProfileData =
         doctorProfileRes.status === "fulfilled" ? doctorProfileRes.value : { doctors: [] };
 
@@ -684,6 +699,31 @@ export default function ChatScreen() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiJson<{
+          doctorChatEnabled?: boolean;
+          doctorChatDisabledMessage?: string | null;
+        }>("/api/patient/doctors", token, { method: "GET" });
+        if (cancelled) return;
+        setDoctorChatEnabled(data.doctorChatEnabled !== false);
+        setDoctorChatDisabledMessage(
+          typeof data.doctorChatDisabledMessage === "string"
+            ? data.doctorChatDisabledMessage
+            : DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE
+        );
+      } catch {
+        /* keep defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (!homeMode || !token) return;
@@ -1214,8 +1254,10 @@ export default function ChatScreen() {
     );
   }
 
+  const doctorChatBlocked = active === "doctor" && !doctorChatEnabled;
   const canSend =
     !loading &&
+    !doctorChatBlocked &&
     (input.trim().length > 0 || (active !== "ai" && pendingImage != null));
   const threadMessages =
     threadScope === "appointments"
@@ -1461,7 +1503,7 @@ export default function ChatScreen() {
           </View>
         </View>
 
-        {active === "doctor" ? (
+        {active === "doctor" && doctorChatEnabled ? (
           <Pressable
             style={styles.sosBtn}
             onPress={() => {
@@ -1728,7 +1770,11 @@ export default function ChatScreen() {
         ) : null}
 
         <View style={styles.composer}>
-          {isRecording ? (
+          {doctorChatBlocked ? (
+            <View style={styles.doctorChatDisabledBanner}>
+              <Text style={styles.doctorChatDisabledText}>{doctorChatDisabledMessage}</Text>
+            </View>
+          ) : isRecording ? (
             <View style={styles.recordingRow}>
               <View style={styles.recordingDot} />
               <Text style={styles.recordingTimer}>{formatRecordTime(recordSec)}</Text>
@@ -2129,6 +2175,20 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   clearBtnText: { color: "#64748b", fontSize: 13, fontWeight: "600" },
+  doctorChatDisabledBanner: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(251, 191, 36, 0.45)",
+    backgroundColor: "rgba(255, 251, 235, 0.95)",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  doctorChatDisabledText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#78350f",
+    textAlign: "center",
+  },
   composer: {
     flexDirection: "row",
     flexWrap: "wrap",

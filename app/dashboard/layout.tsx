@@ -59,7 +59,7 @@ export default async function DashboardLayout({
       </nav>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-6 pb-12 md:px-8">
+      <main className="mx-auto max-w-5xl px-4 py-6 pb-12 md:px-8">
         {children}
       </main>
       <ScanJobReadyNotifier />

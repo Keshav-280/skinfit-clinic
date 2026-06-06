@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import {
@@ -18,6 +18,7 @@ import {
 import {
   CLINIC_SUPPORT_INBOX_REFRESH_EVENT,
 } from "@/src/lib/clinicSupportInboxClient";
+import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisit";
 
 const NAVY = "#2C3E6B";
 
@@ -402,6 +403,23 @@ export function PatientDoctorHomeSections({
   const [doctorFollowUpHint, setDoctorFollowUpHint] = useState<string | null>(
     null
   );
+  const [doctorChatEnabled, setDoctorChatEnabled] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/patient/doctors", { credentials: "include" });
+        const data = (await res.json()) as { doctorChatEnabled?: boolean };
+        if (!cancelled) setDoctorChatEnabled(data.doctorChatEnabled !== false);
+      } catch {
+        /* keep default */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const activeEntries = useMemo(
     () =>
@@ -476,6 +494,7 @@ export function PatientDoctorHomeSections({
               />
             ))}
             {primaryTextForChat ? (
+              doctorChatEnabled ? (
               <button
                 type="button"
                 disabled={doctorFollowUpBusy}
@@ -497,10 +516,11 @@ export function PatientDoctorHomeSections({
                       const j = (await res.json()) as {
                         success?: boolean;
                         error?: string;
+                        message?: string;
                       };
                       if (!res.ok || !j.success) {
                         setDoctorFollowUpHint(
-                          j.error ?? "Could not open chat. Try again."
+                          j.message ?? j.error ?? "Could not open chat. Try again."
                         );
                         return;
                       }
@@ -526,6 +546,11 @@ export function PatientDoctorHomeSections({
                   </>
                 )}
               </button>
+              ) : (
+                <p className="rounded-[14px] border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm leading-relaxed text-amber-950">
+                  {DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE}
+                </p>
+              )
             ) : null}
             {doctorFollowUpHint ? (
               <p className="text-xs font-medium text-red-600">{doctorFollowUpHint}</p>

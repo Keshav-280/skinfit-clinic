@@ -9,6 +9,11 @@ import { isE2eePayload } from "@/src/lib/chatE2ee/format";
 import { buildSosContextPrefix } from "@/src/lib/sosChatContext";
 import { postPatientUrgentMessageToAllClinicDoctors } from "@/src/lib/patientDoctorChat";
 import { resolvePatientDoctorThread } from "@/src/lib/patientDoctorChatThread";
+import {
+  DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_ERROR,
+  DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE,
+  isPatientClinicVisited,
+} from "@/src/lib/patientClinicVisit";
 
 function clampText(s: unknown, maxLen: number): string | null {
   if (typeof s !== "string") return null;
@@ -52,6 +57,19 @@ export async function POST(req: Request) {
 
   if (assistantId !== "doctor" && assistantId !== "support" && assistantId !== "ai") {
     return NextResponse.json({ error: "INVALID_ASSISTANT_ID" }, { status: 400 });
+  }
+
+  if (assistantId === "doctor") {
+    const clinicVisited = await isPatientClinicVisited(userId);
+    if (!clinicVisited) {
+      return NextResponse.json(
+        {
+          error: DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_ERROR,
+          message: DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE,
+        },
+        { status: 403 }
+      );
+    }
   }
 
   const isUrgent = Boolean(b.isUrgent);

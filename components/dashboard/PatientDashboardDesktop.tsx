@@ -479,8 +479,9 @@ export function PatientDashboardDesktop() {
         {/* Greeting */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-[#18181b] md:text-[28px]">
-              Hello {displayName} ☀️
+            <h1 className="text-2xl text-[#18181b] md:text-[28px]">
+              <span className="font-light">Hello </span>
+              <span className="font-extrabold">{displayName} ☀️</span>
             </h1>
             <p className="mt-1 text-sm text-[#6B7280] md:text-base">Let&apos;s achieve your best skin day!</p>
           </div>
@@ -532,10 +533,10 @@ export function PatientDashboardDesktop() {
                   d.isSelected
                     ? "border-[#2D3E6B] bg-[#2D3E6B] text-white shadow-md shadow-[#2D3E6B]/15"
                     : d.isFuture
-                      ? "cursor-not-allowed border-[#E5E7EB] bg-white text-slate-400 opacity-60"
+                      ? "cursor-not-allowed border-transparent bg-transparent text-slate-400 opacity-60"
                       : d.isToday
-                        ? "border-[#4CAF50]/50 bg-white text-slate-700 ring-1 ring-[#4CAF50]/40 hover:bg-[#F2F9F2]"
-                        : "border-[#E5E7EB] bg-white text-slate-700 hover:bg-[#F2F9F2]"
+                        ? "border-[#4CAF50]/30 bg-[#4CAF50]/5 text-slate-700 hover:bg-[#F2F9F2]"
+                        : "border-transparent bg-transparent text-slate-700 hover:bg-[#F2F9F2]"
                 }`}
               >
                 <span className={`text-[10px] font-semibold leading-none ${d.isSelected ? "text-white/85" : "text-[#6B7280]"}`}>{d.label}</span>

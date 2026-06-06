@@ -79,15 +79,13 @@ export function DashboardStreakCard({
           </div>
         ))}
       </div>
-      {routinePlanReady ? (
-        <p
-          className={`mt-auto pt-4 text-center text-sm font-bold ${
-            allRoutineDone ? "text-[#4CAF50]" : "text-[#2D3E6B]"
-          }`}
-        >
-          {allRoutineDone ? "Done today" : "Complete today"}
-        </p>
-      ) : null}
+      <p
+        className={`mt-auto pt-4 text-center text-sm font-bold ${
+          allRoutineDone ? "text-[#4CAF50]" : "text-[#2D3E6B]"
+        }`}
+      >
+        {allRoutineDone ? "Done today" : "Complete today"}
+      </p>
     </div>
   );
 }

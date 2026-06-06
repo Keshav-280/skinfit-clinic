@@ -90,28 +90,28 @@ export function NavyMetricsCard({
   return (
     <div className={`${patientDashboardNavyCard} flex flex-col ${className}`}>
       <div className="grid grid-cols-2 gap-4">
-        <div className="text-center">
-          <p className="text-[13px] font-bold leading-snug text-white/80">kAI Skin Score</p>
-          <p className="mt-1 text-4xl font-extrabold leading-none text-[#4CAF50]">
+        <div className="rounded-[16px] bg-[#F2F9F2] p-4 text-center shadow-sm">
+          <p className="text-[13px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
+          <p className="mt-2 text-4xl font-extrabold leading-none text-[#4CAF50]">
             {kaiSkinScore}
           </p>
-          <p className="mt-1 text-[11px] leading-snug text-white/60">
+          <p className="mt-2 text-[11px] leading-snug text-[#6B7280]">
             {latestScanAt
               ? `Updated ${format(new Date(latestScanAt), "MMM d")}`
               : "No scans yet"}
           </p>
         </div>
-        <div className="text-center">
-          <p className="text-[13px] font-bold leading-snug text-white/80">Weekly Progress</p>
+        <div className="rounded-[16px] bg-[#F2F9F2] p-4 text-center shadow-sm">
+          <p className="text-[13px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
           <p
-            className={`mt-1 text-4xl font-extrabold leading-none ${
-              weeklyDeltaScore >= 0 ? "text-[#4CAF50]" : "text-[#FCA5A5]"
+            className={`mt-2 text-4xl font-extrabold leading-none ${
+              weeklyDeltaScore >= 0 ? "text-[#4CAF50]" : "text-[#EF4444]"
             }`}
           >
             {weeklyDeltaScore >= 0 ? "+" : ""}
             {weeklyDeltaScore}
           </p>
-          <p className="mt-1 text-[11px] leading-snug text-white/60">vs last week</p>
+          <p className="mt-2 text-[11px] leading-snug text-[#6B7280]">vs last week</p>
         </div>
       </div>
 

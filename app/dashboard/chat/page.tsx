@@ -29,6 +29,7 @@ import {
   AI_CHATBOT_ENABLED,
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/src/lib/featureFlags";
+import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisit";
 import {
   dataUriKind,
   MAX_CHAT_PENDING_ATTACHMENTS,
@@ -86,6 +87,13 @@ export default function ChatPage() {
     { id: string; name: string }[]
   >([]);
   const [activeDoctorId, setActiveDoctorId] = useState<string | null>(null);
+  const [doctorChatEnabled, setDoctorChatEnabled] = useState(true);
+  const [doctorChatDisabledMessage, setDoctorChatDisabledMessage] = useState(
+    DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE
+  );
+
+  const doctorChatBlocked =
+    activeAssistant === "doctor" && !doctorChatEnabled;
 
   const contacts = useMemo((): SidebarContact[] => {
     const doctorRows: SidebarContact[] = registeredDoctors.map((d) => ({
@@ -579,6 +587,8 @@ export default function ChatPage() {
         });
         const data = (await res.json()) as {
           doctors?: Array<{ id?: string; name?: string }>;
+          doctorChatEnabled?: boolean;
+          doctorChatDisabledMessage?: string | null;
         };
         if (cancelled) return;
         const rows = (data.doctors ?? [])
@@ -588,6 +598,12 @@ export default function ChatPage() {
             name: (d.name ?? "").trim(),
           }));
         setRegisteredDoctors(rows);
+        setDoctorChatEnabled(data.doctorChatEnabled !== false);
+        setDoctorChatDisabledMessage(
+          typeof data.doctorChatDisabledMessage === "string"
+            ? data.doctorChatDisabledMessage
+            : DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE
+        );
       } catch {
         if (!cancelled) setRegisteredDoctors([]);
       }
@@ -1061,9 +1077,15 @@ export default function ChatPage() {
         }),
       });
 
-      const data = (await res.json()) as { success?: boolean; error?: string };
+      const data = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
       if (!res.ok || !data.success) {
-        throw new Error(data.error || `Failed to send message (${res.status})`);
+        throw new Error(
+          data.message || data.error || `Failed to send message (${res.status})`
+        );
       }
 
       const { messages: refreshed, clinicReadThroughIso } =
@@ -1231,6 +1253,12 @@ export default function ChatPage() {
           </div>
         </div>
 
+        {doctorChatBlocked ? (
+          <div className="border-b border-amber-200/70 bg-amber-50/90 px-4 py-3 text-sm leading-relaxed text-amber-950 sm:px-6">
+            {doctorChatDisabledMessage}
+          </div>
+        ) : null}
+
         <div
           ref={messagesScrollRef}
           className="flex-1 overflow-y-auto bg-[#E8EFE6]/20 p-4 sm:p-6"
@@ -1351,6 +1379,7 @@ export default function ChatPage() {
           </div>
         </div>
 
+        {!doctorChatBlocked ? (
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
           {composerError ? (
             <p role="alert" className="mb-2 text-xs font-medium text-rose-700">
@@ -1394,82 +1423,83 @@ export default function ChatPage() {
             </div>
           ) : null}
 
-          <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/30 px-3 py-2 backdrop-blur-sm">
-            <input
-              ref={attachmentInputRef}
-              type="file"
-              accept="image/*,audio/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const input = e.currentTarget;
-                const picked = input.files ? Array.from(input.files) : [];
-                input.value = "";
-                if (picked.length === 0) return;
-                void addAttachmentFiles(picked);
-              }}
-            />
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2C3E6B]/50 transition-colors hover:bg-white/60 hover:text-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-40"
-              title={
-                activeAssistant === "ai"
-                  ? "Attachments are disabled for AI chat"
-                  : "Attach images or audio files"
-              }
-              disabled={activeAssistant === "ai" || isLoading || isRecording}
-              onClick={() => attachmentInputRef.current?.click()}
-            >
-              <Paperclip className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2C3E6B]/50 transition-colors hover:bg-white/60 hover:text-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-40"
-              title={
-                activeAssistant === "ai"
-                  ? "Voice notes are disabled for AI chat"
-                  : "Record voice note"
-              }
-              disabled={activeAssistant === "ai" || isLoading || isRecording}
-              onClick={() => void startRecording()}
-            >
-              <Mic className="h-5 w-5" />
-            </button>
-            <input
-              type="text"
-              placeholder={
-                activeAssistant === "ai"
-                  ? "Type a message for AI..."
-                  : "Type a message (attach with paperclip or mic)..."
-              }
-              className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 focus:outline-none"
-              value={inputValue}
-              disabled={isRecording}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void sendMessage();
+            <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/30 px-3 py-2 backdrop-blur-sm">
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                accept="image/*,audio/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const input = e.currentTarget;
+                  const picked = input.files ? Array.from(input.files) : [];
+                  input.value = "";
+                  if (picked.length === 0) return;
+                  void addAttachmentFiles(picked);
+                }}
+              />
+              <button
+                type="button"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2C3E6B]/50 transition-colors hover:bg-white/60 hover:text-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-40"
+                title={
+                  activeAssistant === "ai"
+                    ? "Attachments are disabled for AI chat"
+                    : "Attach images or audio files"
                 }
-              }}
-            />
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:opacity-40"
-              title="Send"
-              disabled={
-                isLoading ||
-                isRecording ||
-                (activeAssistant === "ai"
-                  ? !inputValue.trim()
-                  : !inputValue.trim() && attachments.length === 0)
-              }
-              onClick={() => void sendMessage()}
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
+                disabled={activeAssistant === "ai" || isLoading || isRecording}
+                onClick={() => attachmentInputRef.current?.click()}
+              >
+                <Paperclip className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2C3E6B]/50 transition-colors hover:bg-white/60 hover:text-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-40"
+                title={
+                  activeAssistant === "ai"
+                    ? "Voice notes are disabled for AI chat"
+                    : "Record voice note"
+                }
+                disabled={activeAssistant === "ai" || isLoading || isRecording}
+                onClick={() => void startRecording()}
+              >
+                <Mic className="h-5 w-5" />
+              </button>
+              <input
+                type="text"
+                placeholder={
+                  activeAssistant === "ai"
+                    ? "Type a message for AI..."
+                    : "Type a message (attach with paperclip or mic)..."
+                }
+                className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 focus:outline-none"
+                value={inputValue}
+                disabled={isRecording}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void sendMessage();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:opacity-40"
+                title="Send"
+                disabled={
+                  isLoading ||
+                  isRecording ||
+                  (activeAssistant === "ai"
+                    ? !inputValue.trim()
+                    : !inputValue.trim() && attachments.length === 0)
+                }
+                onClick={() => void sendMessage()}
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
         </div>
+        ) : null}
       </div>
     </motion.div>
   );
