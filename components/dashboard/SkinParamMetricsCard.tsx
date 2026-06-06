@@ -8,7 +8,7 @@ import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 import { patientDashboardCard } from "@/src/lib/patientDashboardTheme";
 
 const SKIN_PARAM_INNER_CELL =
-  "flex h-[130px] w-full flex-col items-center justify-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] px-2 py-3 shadow-sm";
+  "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] px-2 py-3 shadow-sm";
 
 export type SkinParamMetric = {
   label: string;

@@ -193,7 +193,7 @@ export function DailyJournalMergedCard({
               <Brain className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-medium text-[#6B7280]">Stress Level (0–10)</p>
+              <p className="text-[14px] font-medium text-[#6B7280]">Stress Level</p>
               <p className="text-[22px] font-extrabold leading-tight text-[#18181b]">
                 {stressLevel}
               </p>

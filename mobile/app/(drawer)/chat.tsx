@@ -45,6 +45,7 @@ import {
   AI_CHATBOT_ENABLED,
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/lib/featureFlags";
+import { DoctorChatClinicVisitGate } from "@/components/chat/DoctorChatClinicVisitGate";
 import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "../../../src/lib/patientClinicVisitMessages";
 
 type AssistantId = "ai" | "doctor" | "support";
@@ -1255,6 +1256,11 @@ export default function ChatScreen() {
   }
 
   const doctorChatBlocked = active === "doctor" && !doctorChatEnabled;
+  const openClinicSupport = useCallback(() => {
+    setHomeMode(false);
+    setActive("support");
+    setThreadScope("all");
+  }, []);
   const canSend =
     !loading &&
     !doctorChatBlocked &&
@@ -1654,13 +1660,21 @@ export default function ChatScreen() {
                 }
               }}
               ListEmptyComponent={
-                <View style={styles.empty}>
-                  <View style={styles.emptyIcon}>
-                    <Ionicons name="chatbubbles-outline" size={30} color={TEAL} />
+                doctorChatBlocked ? (
+                  <DoctorChatClinicVisitGate
+                    variant="empty"
+                    message={doctorChatDisabledMessage}
+                    onSupportPress={openClinicSupport}
+                  />
+                ) : (
+                  <View style={styles.empty}>
+                    <View style={styles.emptyIcon}>
+                      <Ionicons name="chatbubbles-outline" size={30} color={TEAL} />
+                    </View>
+                    <Text style={styles.emptyTitle}>No messages yet</Text>
+                    <Text style={styles.emptySub}>Type below to start the conversation.</Text>
                   </View>
-                  <Text style={styles.emptyTitle}>No messages yet</Text>
-                  <Text style={styles.emptySub}>Type below to start the conversation.</Text>
-                </View>
+                )
               }
               contentContainerStyle={[
                 styles.listContent,
@@ -1769,11 +1783,20 @@ export default function ChatScreen() {
           </Pressable>
         ) : null}
 
-        <View style={styles.composer}>
+        <View
+          style={[
+            styles.composer,
+            doctorChatBlocked && threadMessages.length > 0 ? styles.composerGateOnly : null,
+          ]}
+        >
           {doctorChatBlocked ? (
-            <View style={styles.doctorChatDisabledBanner}>
-              <Text style={styles.doctorChatDisabledText}>{doctorChatDisabledMessage}</Text>
-            </View>
+            threadMessages.length > 0 ? (
+              <DoctorChatClinicVisitGate
+                variant="composer"
+                message={doctorChatDisabledMessage}
+                onSupportPress={openClinicSupport}
+              />
+            ) : null
           ) : isRecording ? (
             <View style={styles.recordingRow}>
               <View style={styles.recordingDot} />
@@ -2175,20 +2198,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   clearBtnText: { color: "#64748b", fontSize: 13, fontWeight: "600" },
-  doctorChatDisabledBanner: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.45)",
-    backgroundColor: "rgba(255, 251, 235, 0.95)",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  doctorChatDisabledText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#78350f",
-    textAlign: "center",
-  },
   composer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -2200,6 +2209,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     backgroundColor: "transparent",
     flexShrink: 0,
+  },
+  composerGateOnly: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    paddingTop: 0,
   },
   pendingImageCard: {
     width: "100%",

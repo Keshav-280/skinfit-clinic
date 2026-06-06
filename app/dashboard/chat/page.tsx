@@ -29,6 +29,7 @@ import {
   AI_CHATBOT_ENABLED,
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/src/lib/featureFlags";
+import { DoctorChatClinicVisitGate } from "@/components/chat/DoctorChatClinicVisitGate";
 import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisitMessages";
 import {
   dataUriKind,
@@ -1253,16 +1254,16 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {doctorChatBlocked ? (
-          <div className="border-b border-amber-200/70 bg-amber-50/90 px-4 py-3 text-sm leading-relaxed text-amber-950 sm:px-6">
-            {doctorChatDisabledMessage}
-          </div>
-        ) : null}
-
         <div
           ref={messagesScrollRef}
-          className="flex-1 overflow-y-auto bg-[#E8EFE6]/20 p-4 sm:p-6"
+          className="flex flex-1 flex-col overflow-y-auto bg-[#E8EFE6]/20 p-4 sm:p-6"
         >
+          {doctorChatBlocked && messages.length === 0 ? (
+            <DoctorChatClinicVisitGate
+              message={doctorChatDisabledMessage}
+              variant="empty"
+            />
+          ) : null}
           <div className="flex flex-col gap-4">
             {messages.map((msg) => {
               const ts =
@@ -1379,7 +1380,11 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {!doctorChatBlocked ? (
+        {doctorChatBlocked ? (
+          messages.length > 0 ? (
+            <DoctorChatClinicVisitGate message={doctorChatDisabledMessage} variant="composer" />
+          ) : null
+        ) : (
         <div className="border-t border-white/40 bg-white/30 p-4 backdrop-blur-sm">
           {composerError ? (
             <p role="alert" className="mb-2 text-xs font-medium text-rose-700">
@@ -1499,7 +1504,7 @@ export default function ChatPage() {
               </button>
             </div>
         </div>
-        ) : null}
+        )}
       </div>
     </motion.div>
   );
