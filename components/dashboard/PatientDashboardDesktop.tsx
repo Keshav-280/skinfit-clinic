@@ -21,15 +21,20 @@ import {
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMergedCard";
+import { DashboardStreakCard } from "@/components/dashboard/DashboardStreakCard";
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
+import {
+  classifySkinParamMetric,
+  SkinParamMetricsCard,
+} from "@/components/dashboard/SkinParamMetricsCard";
 import {
   DASHBOARD_SECTION_CARD,
   DashboardSectionHeader,
 } from "@/components/dashboard/DashboardSectionHeader";
+import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
 import {
   PATIENT_GREEN,
   PATIENT_NAVY,
-  patientDashboardNavyCard,
 } from "@/src/lib/patientDashboardTheme";
 import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
@@ -47,12 +52,6 @@ const EMPTY_RADAR_DATA = RAG_KAI_PARAM_KEYS.map((key) => ({
   label: RAG_KAI_PARAM_LABELS[key],
   value: 0,
 }));
-
-function classifySkinParam(v: number) {
-  if (v >= 75) return { color: GREEN, sublabel: "Mild" };
-  if (v >= 50) return { color: "#F59E0B", sublabel: "Moderate" };
-  return { color: "#DC2626", sublabel: "Needs Care" };
-}
 
 type SkinScanItem = {
   id: string;
@@ -108,43 +107,6 @@ type HomeData = {
   homeDateYmd?: string;
   userName?: string;
 };
-
-/* ─── Circular Gauge ─── */
-function CircularGauge({
-  value,
-  size = 72,
-  strokeWidth = 6,
-  color,
-  valueClassName = "text-[#18181b]",
-}: {
-  value: number;
-  size?: number;
-  strokeWidth?: number;
-  color: string;
-  valueClassName?: string;
-}) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - Math.min(value, 100) / 100);
-  return (
-    <div
-      className="relative mx-auto block shrink-0"
-      style={{ width: size, height: size }}
-    >
-      <svg
-        width={size}
-        height={size}
-        className="-rotate-90 origin-center block"
-      >
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#E5E7EB" strokeWidth={strokeWidth} />
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-700 ease-out" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`text-lg font-extrabold ${valueClassName}`}>{value}</span>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Radar Chart ─── */
 function RadarChart({
@@ -449,7 +411,7 @@ export function PatientDashboardDesktop() {
     if (!data || data.skinScanHistory.length === 0) return [];
     return analysisResultsToParams(data.skinScanHistory[0].analysisResults).map((p) => ({
       ...p,
-      ...classifySkinParam(p.value),
+      ...classifySkinParamMetric(p.value),
     }));
   }, [data]);
 
@@ -585,56 +547,12 @@ export function PatientDashboardDesktop() {
 
         {/* Top row — navy scores + radar */}
         <div className="grid gap-4 md:grid-cols-2 md:items-stretch">
-          <div className={patientDashboardNavyCard}>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-[13px] font-bold text-white/80">kAI Skin Score</p>
-                <p className="mt-1 text-4xl font-extrabold text-[#4CAF50]">{data.kaiSkinScore}</p>
-                <p className="mt-1 text-[11px] text-white/60">
-                  {data.skinScanHistory.length > 0
-                    ? `Updated ${format(new Date(data.skinScanHistory[0].createdAt), "MMM d")}`
-                    : "No scans yet"}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-[13px] font-bold text-white/80">Weekly Progress</p>
-                <p
-                  className={`mt-1 text-4xl font-extrabold ${
-                    data.weeklyDeltaScore >= 0 ? "text-[#4CAF50]" : "text-[#FCA5A5]"
-                  }`}
-                >
-                  {data.weeklyDeltaScore >= 0 ? "+" : ""}
-                  {data.weeklyDeltaScore}
-                </p>
-                <p className="mt-1 text-[11px] text-white/60">vs last week</p>
-              </div>
-            </div>
-            <div className="mt-5 border-t border-white/15 pt-5 text-center">
-              <h3 className="text-[12px] font-extrabold tracking-wide text-white/85">
-                WEEKLY CONSISTENCY SCORE
-              </h3>
-              <div className="mt-3 flex justify-center">
-                <CircularGauge
-                  value={data.lifestyleAlignmentScore}
-                  size={100}
-                  strokeWidth={8}
-                  color="#4CAF50"
-                  valueClassName="text-white"
-                />
-              </div>
-              <p
-                className={`mt-2 text-sm font-bold ${
-                  data.lifestyleAlignmentScore >= 50 ? "text-[#4CAF50]" : "text-[#FCA5A5]"
-                }`}
-              >
-                {data.lifestyleAlignmentScore >= 75
-                  ? "Aligned"
-                  : data.lifestyleAlignmentScore >= 50
-                    ? "On Track"
-                    : "Needs Work"}
-              </p>
-            </div>
-          </div>
+          <NavyMetricsCard
+            kaiSkinScore={data.kaiSkinScore}
+            weeklyDeltaScore={data.weeklyDeltaScore}
+            latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
+            consistencyScore={data.lifestyleAlignmentScore}
+          />
 
           {data.skinScanHistory.length > 0 ? (
             <div className={`flex flex-col ${DASHBOARD_SECTION_CARD}`}>
@@ -655,9 +573,8 @@ export function PatientDashboardDesktop() {
           )}
         </div>
 
-        {/* Middle row — routine + skin parameters */}
-        <div className="grid gap-4 md:grid-cols-2 md:items-start">
-
+        {/* Routine, skin params, journal, streak — 2×2 grid (prevents skin params stretching) */}
+        <div className="grid gap-4 md:grid-cols-12 md:items-start">
         {/* Daily Routine — AM + PM in one card */}
         {(() => {
           const amTotal = data.amItems.length || 0;
@@ -670,7 +587,7 @@ export function PatientDashboardDesktop() {
           const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
           return (
-            <div className={DASHBOARD_SECTION_CARD}>
+            <div className={`${DASHBOARD_SECTION_CARD} md:col-span-6`}>
               <DashboardSectionHeader
                 icon={ListChecks}
                 title="DAILY ROUTINE"
@@ -755,126 +672,62 @@ export function PatientDashboardDesktop() {
         })()}
 
           {skinParams.length > 0 ? (
-            <div className={DASHBOARD_SECTION_CARD}>
-              <h3 className="mb-5 text-[14px] font-extrabold tracking-wide text-[#18181b]">
-                SKIN PARAMETER METRICS
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                {skinParams.slice(0, 4).map((p) => (
-                  <div
-                    key={p.label}
-                    className="flex flex-col items-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] py-3"
-                  >
-                    <CircularGauge value={p.value} color={p.color} size={60} strokeWidth={5} />
-                    <p className="text-center text-[13px] font-bold text-[#18181b]">{p.label}</p>
-                    <p
-                      className={`text-[11px] font-bold ${
-                        p.sublabel === "Needs Care"
-                          ? "text-red-500"
-                          : p.sublabel === "Moderate"
-                            ? "text-amber-500"
-                            : "text-[#4CAF50]"
-                      }`}
-                    >
-                      {p.sublabel}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <Link
-                href="/dashboard/skin-params"
-                className="mt-5 block w-full rounded-[14px] bg-[#2D3E6B] py-3.5 text-center text-[15px] font-bold text-white shadow-md transition hover:bg-[#243456]"
-              >
-                View all Parameters
-              </Link>
-            </div>
+            <SkinParamMetricsCard
+              metrics={skinParams}
+              viewAllHref="/dashboard/skin-params"
+              className="md:col-span-6"
+            />
           ) : (
-            <div className={`flex items-center justify-center ${DASHBOARD_SECTION_CARD}`}>
-              <p className="text-sm font-semibold text-[#6B7280]">Skin parameters appear after your first scan</p>
+            <div
+              className={`flex items-center justify-center ${DASHBOARD_SECTION_CARD} md:col-span-6 self-start`}
+            >
+              <p className="text-sm font-semibold text-[#6B7280]">
+                Skin parameters appear after your first scan
+              </p>
             </div>
           )}
-        </div>
 
-        {!data.hasQuestionnaire ? (
-          <QuestionnaireLockedCard title="Today's focus is locked" />
-        ) : data.todayFocus?.message ? (
-          <TodayFocusCard message={data.todayFocus.message} />
-        ) : null}
-
-        {/* Bottom row — journal + streak */}
-        <div className="grid gap-4 md:grid-cols-2 md:items-stretch">
           <DailyJournalMergedCard
             selectedYmd={selectedYmd}
             initialSleepHours={data.todayLog?.sleepHours ?? 0}
             initialWaterGlasses={data.todayLog?.waterGlasses ?? 0}
             initialStressLevel={data.todayLog?.stressLevel ?? 5}
+            className="md:col-span-7"
           />
 
-          <div className={`flex flex-col gap-4 ${DASHBOARD_SECTION_CARD}`}>
-            <div className="space-y-3">
-              <h3 className="text-lg font-extrabold tracking-tight text-[#2D3E6B] md:text-xl">
-                {data.streakCurrent} day streak
-              </h3>
-              <p className="text-sm font-semibold text-[#6B7280]">
-                Personal best: {data.streakLongest} days
-              </p>
-              <div>
-                <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-[#6B7280]">
-                  <span>This week</span>
-                  <span>{weekDoneCount}/7 complete</span>
-                </div>
-                <div
-                  className="h-2.5 overflow-hidden rounded-full bg-[#F2F9F2]"
-                  role="progressbar"
-                  aria-valuenow={weekDoneCount}
-                  aria-valuemin={0}
-                  aria-valuemax={7}
-                >
-                  <div
-                    className="h-full rounded-full bg-[#4CAF50] transition-all duration-500"
-                    style={{ width: `${Math.round((weekDoneCount / 7) * 100)}%` }}
-                  />
-                </div>
-              </div>
+          <DashboardStreakCard
+            streakCurrent={data.streakCurrent}
+            streakLongest={data.streakLongest}
+            weekDoneCount={weekDoneCount}
+            streakDays={streakDays}
+            allRoutineDone={allRoutineDone}
+            routinePlanReady={data.routinePlanReady}
+            className="md:col-span-5"
+          />
+
+          {!data.hasQuestionnaire ? (
+            <div className="w-full min-w-0 md:col-span-12">
+              <QuestionnaireLockedCard title="Today's focus is locked" />
             </div>
-            <div className="flex justify-between px-0.5">
-              {streakDays.map((d, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5">
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
-                      d.done
-                        ? "border-[#4CAF50] bg-[#4CAF50] text-white shadow-sm"
-                        : d.isFuture
-                          ? "border-slate-200 bg-white text-slate-300"
-                          : "border-slate-300 bg-white text-slate-400"
-                    }`}
-                  >
-                    {d.done ? <CheckCircle2 className="h-4 w-4" /> : <span>{d.label.charAt(0)}</span>}
-                  </div>
-                  <span className="text-[10px] font-semibold text-[#6B7280]">{d.label}</span>
-                </div>
-              ))}
+          ) : data.todayFocus?.message ? (
+            <div className="w-full min-w-0 md:col-span-12">
+              <TodayFocusCard message={data.todayFocus.message} />
             </div>
-            <p
-              className={`text-center text-sm font-bold ${
-                allRoutineDone ? "text-[#4CAF50]" : "text-[#2D3E6B]"
-              }`}
-            >
-              {allRoutineDone ? "Done today" : "Complete today"}
-            </p>
+          ) : null}
+
+          <div className="w-full min-w-0 md:col-span-12">
+            <PatientDoctorHomeSections
+              feedbackEntries={data.feedbackEntries ?? []}
+              archivedFeedbackEntries={data.archivedFeedbackEntries ?? []}
+              doctorFeedback={data.doctorFeedback}
+              doctorVoiceNotes={data.doctorVoiceNotes}
+              doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+              doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
+              onboardingComplete={data.onboardingComplete}
+              onRefresh={() => void loadHome()}
+            />
           </div>
         </div>
-
-        <PatientDoctorHomeSections
-          feedbackEntries={data.feedbackEntries ?? []}
-          archivedFeedbackEntries={data.archivedFeedbackEntries ?? []}
-          doctorFeedback={data.doctorFeedback}
-          doctorVoiceNotes={data.doctorVoiceNotes}
-          doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
-          doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
-          onboardingComplete={data.onboardingComplete}
-          onRefresh={() => void loadHome()}
-        />
     </div>
   );
 }

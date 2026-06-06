@@ -22,6 +22,7 @@ type Props = {
   initialSleepHours: number;
   initialWaterGlasses: number;
   initialStressLevel: number;
+  className?: string;
 };
 
 export function DailyJournalMergedCard({
@@ -29,6 +30,7 @@ export function DailyJournalMergedCard({
   initialSleepHours,
   initialWaterGlasses,
   initialStressLevel,
+  className = "",
 }: Props) {
   const [sleepHours, setSleepHours] = useState(initialSleepHours);
   const [waterGlasses, setWaterGlasses] = useState(initialWaterGlasses);
@@ -84,7 +86,7 @@ export function DailyJournalMergedCard({
   const stressHigh = stressLevel > 6;
 
   return (
-    <div className={DASHBOARD_SECTION_CARD}>
+    <div className={`${DASHBOARD_SECTION_CARD} ${className}`}>
       <DashboardSectionHeader
         icon={NotebookPen}
         title="DAILY JOURNAL"

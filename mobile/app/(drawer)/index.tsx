@@ -21,6 +21,7 @@ import Svg, { Circle, Polygon, Line, G, Text as SvgText } from "react-native-svg
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 
+import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
 import { TodayFocusCard } from "@/components/dashboard/TodayFocusCard";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
@@ -74,7 +75,6 @@ import {
   DASHBOARD_GREEN,
   DASHBOARD_NAVY,
   dashboardCardShadow,
-  dashboardNavyCardShadow,
 } from "@/lib/dashboardTheme";
 
 const NAVY = DASHBOARD_NAVY;
@@ -738,31 +738,13 @@ export default function DashboardScreen() {
 
       {/* ── Top row: navy metrics + radar ── */}
       <View style={[styles.topRow, isWideLayout && styles.topRowWide]}>
-        <View style={[styles.navyMetricsCard, isWideLayout && styles.topRowHalf]}>
-          <View style={styles.scoreRowNavy}>
-            <View style={styles.scoreCardNavy}>
-              <Text style={styles.scoreLabelNavy}>kAI Skin Score</Text>
-              <Text style={styles.scoreValueNavy}>{kaiSkinScore}</Text>
-              <Text style={styles.scoreUpdatedNavy}>
-                {latestScan ? `Updated ${format(new Date(latestScan.createdAt), "MMM d")}` : "No scans yet"}
-              </Text>
-            </View>
-            <View style={styles.scoreCardNavy}>
-              <Text style={styles.scoreLabelNavy}>Weekly{"\n"}Progress</Text>
-              <Text
-                style={[
-                  styles.scoreValueNavy,
-                  { color: data.weeklyDeltaScore >= 0 ? GREEN_ACCENT : "#FCA5A5" },
-                ]}
-              >
-                {data.weeklyDeltaScore >= 0 ? "+" : ""}
-                {Math.round(data.weeklyDeltaScore)}
-              </Text>
-              <Text style={styles.scoreUpdatedNavy}>vs last week</Text>
-            </View>
-          </View>
-          <ConsistencyScoreCard value={data.lifestyleAlignmentScore} onNavy />
-        </View>
+        <NavyMetricsCard
+          kaiSkinScore={kaiSkinScore}
+          weeklyDeltaScore={data.weeklyDeltaScore}
+          latestScanAt={latestScan?.createdAt ?? null}
+          consistencyScore={data.lifestyleAlignmentScore}
+          style={isWideLayout ? styles.topRowHalf : undefined}
+        />
         {latestScan ? (
           <SkinHealthMetricsCard
             analysis={latestScan.analysisResults}
@@ -771,8 +753,9 @@ export default function DashboardScreen() {
         ) : null}
       </View>
 
-      {/* ── Middle row: routine + skin parameters ── */}
-      <View style={[styles.middleRow, isWideLayout && styles.middleRowWide]}>
+      {/* ── Routine, skin params, journal, streak (2×2 on tablet) ── */}
+      <View style={styles.dashboardGrid}>
+      <View style={[styles.dashboardRow, isWideLayout && styles.dashboardRowWide]}>
       {(() => {
         const amTotal = data.amItems.length || 0;
         const pmTotal = data.pmItems.length || 0;
@@ -784,7 +767,7 @@ export default function DashboardScreen() {
         const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
         return (
-          <View style={[styles.routineMergedCard, isWideLayout && styles.topRowHalf]}>
+          <View style={[styles.routineMergedCard, isWideLayout && styles.dashboardCellHalf]}>
             <View style={styles.routineMergedHeader}>
               <Text style={styles.routineMergedTitle}>DAILY ROUTINE</Text>
               <Text style={styles.routineMergedMeta}>
@@ -881,7 +864,14 @@ export default function DashboardScreen() {
       })()}
 
       {latestScan ? (
-        <View style={[styles.sectionCard, isWideLayout && styles.topRowHalf, styles.sectionCardFlush]}>
+        <View
+          style={[
+            styles.sectionCard,
+            styles.sectionCardFlush,
+            isWideLayout && styles.dashboardCellHalf,
+            isWideLayout && styles.dashboardCellSelfStart,
+          ]}
+        >
           <SkinParamMetricsCard
             analysis={latestScan.analysisResults}
             onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
@@ -890,29 +880,8 @@ export default function DashboardScreen() {
       ) : null}
       </View>
 
-      {/* ── Today's Focus ── */}
-      {data.hasQuestionnaire === false ? (
-        <Pressable
-          style={styles.focusLocked}
-          onPress={() => router.push("/onboarding/questionnaire" as Href)}
-        >
-          <Text style={styles.focusLockedTitle}>Today&apos;s focus is locked</Text>
-          <Text style={styles.focusLockedBody}>
-            Complete your questionnaire to unlock personalised daily guidance.
-          </Text>
-          <View style={styles.focusLockedCtaWrap}>
-            <Text style={styles.focusLockedCta}>Continue questionnaire</Text>
-          </View>
-        </Pressable>
-      ) : data.kaiInsightsEnabled !== false &&
-        data.todayFocus?.message &&
-        journalDate === todayStr ? (
-        <TodayFocusCard message={data.todayFocus.message} />
-      ) : null}
-
-      {/* ── Bottom row: journal + streak ── */}
-      <View style={[styles.bottomRow, isWideLayout && styles.bottomRowWide]}>
-        <View style={isWideLayout ? styles.bottomRowHalf : undefined}>
+      <View style={[styles.dashboardRow, isWideLayout && styles.dashboardRowWide]}>
+        <View style={isWideLayout ? styles.dashboardJournalWide : undefined}>
           <Text style={[styles.sectionTitle, { marginTop: 4 }]}>DAILY JOURNAL</Text>
 
       <Pressable
@@ -1017,7 +986,7 @@ export default function DashboardScreen() {
       </Pressable>
         </View>
 
-        <View style={[styles.streakCard, isWideLayout && styles.bottomRowHalf]}>
+        <View style={[styles.streakCard, isWideLayout && styles.dashboardStreakNarrow]}>
           <Text style={styles.streakTitleNavy}>{data.streakCurrent} day streak</Text>
           <Text style={styles.streakPersonalBest}>
             Personal best: {data.streakLongest} days
@@ -1054,16 +1023,39 @@ export default function DashboardScreen() {
               </View>
             ))}
           </View>
-          <Text
-            style={[
-              styles.streakCompleteToday,
-              allRoutineDone ? { color: GREEN_ACCENT } : { color: NAVY },
-            ]}
-          >
-            {allRoutineDone ? "Done today" : "Complete today"}
-          </Text>
+          {data.routinePlanReady ? (
+            <Text
+              style={[
+                styles.streakCompleteToday,
+                allRoutineDone ? { color: GREEN_ACCENT } : { color: NAVY },
+              ]}
+            >
+              {allRoutineDone ? "Done today" : "Complete today"}
+            </Text>
+          ) : null}
         </View>
       </View>
+      </View>
+
+      {/* ── Today's Focus ── */}
+      {data.hasQuestionnaire === false ? (
+        <Pressable
+          style={styles.focusLocked}
+          onPress={() => router.push("/onboarding/questionnaire" as Href)}
+        >
+          <Text style={styles.focusLockedTitle}>Today&apos;s focus is locked</Text>
+          <Text style={styles.focusLockedBody}>
+            Complete your questionnaire to unlock personalised daily guidance.
+          </Text>
+          <View style={styles.focusLockedCtaWrap}>
+            <Text style={styles.focusLockedCta}>Continue questionnaire</Text>
+          </View>
+        </Pressable>
+      ) : data.kaiInsightsEnabled !== false &&
+        data.todayFocus?.message &&
+        journalDate === todayStr ? (
+        <TodayFocusCard message={data.todayFocus.message} />
+      ) : null}
 
       {/* Skin parameters section hidden for now — uncomment to restore.
       <View style={[styles.card, styles.skinParamsCard]}>
@@ -1149,95 +1141,22 @@ export default function DashboardScreen() {
       </View>
       */}
 
-      <DoctorFeedbackSection
-        feedbackEntries={data.feedbackEntries ?? []}
-        archivedEntries={data.archivedFeedbackEntries ?? []}
-        legacyFeedback={data.doctorFeedback}
-        legacyVoiceNotes={data.doctorVoiceNotes ?? []}
-        legacyArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
-        voiceNoteIsNew={data.doctorVoiceNoteIsNew ?? false}
-        onboardingComplete={data.onboardingComplete}
-        token={token}
-        onPatchVoiceNote={patchVoiceNote}
-        voiceBusyId={voiceBusyId}
-        onRefresh={loadHome}
-      />
-    </ScrollView>
-  );
-}
-
-function ConsistencyScoreCard({
-  value,
-  onNavy = false,
-}: {
-  value: number;
-  onNavy?: boolean;
-}) {
-  const v = Math.min(100, Math.max(0, Math.round(value)));
-  const size = 100;
-  const strokeWidth = 8;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - v / 100);
-  const label =
-    v >= 75 ? "Aligned" : v >= 50 ? "On Track" : "Needs Work";
-
-  const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const dateRange = `${format(weekStart, "MMM d")} – ${format(now, "MMM d, yyyy")}`;
-
-  return (
-    <View style={[styles.consistencyCard, onNavy && styles.consistencyCardNavy]}>
-      <Text style={[styles.consistencyTitle, onNavy && styles.consistencyTitleNavy]}>
-        WEEKLY CONSISTENCY SCORE
-      </Text>
-      <View
-        style={{
-          width: size,
-          height: size,
-          alignItems: "center",
-          justifyContent: "center",
-          alignSelf: "center",
-          marginVertical: 12,
-        }}
-      >
-        <Svg width={size} height={size}>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={onNavy ? "rgba(255,255,255,0.2)" : "#E5E7EB"}
-            strokeWidth={strokeWidth}
-            fill="none"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={GREEN_ACCENT}
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={`${circumference}`}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-            rotation="-90"
-            origin={`${size / 2}, ${size / 2}`}
-          />
-        </Svg>
-        <Text style={[styles.consistencyValue, onNavy && styles.consistencyValueNavy]}>
-          {v}
-        </Text>
+      <View style={styles.dashboardFullWidth}>
+        <DoctorFeedbackSection
+          feedbackEntries={data.feedbackEntries ?? []}
+          archivedEntries={data.archivedFeedbackEntries ?? []}
+          legacyFeedback={data.doctorFeedback}
+          legacyVoiceNotes={data.doctorVoiceNotes ?? []}
+          legacyArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+          voiceNoteIsNew={data.doctorVoiceNoteIsNew ?? false}
+          onboardingComplete={data.onboardingComplete}
+          token={token}
+          onPatchVoiceNote={patchVoiceNote}
+          voiceBusyId={voiceBusyId}
+          onRefresh={loadHome}
+        />
       </View>
-      <Text
-        style={[
-          styles.consistencyLabel,
-          v >= 50 ? { color: GREEN_ACCENT } : { color: onNavy ? "#FCA5A5" : "#DC2626" },
-        ]}
-      >
-        {label}
-      </Text>
-      {!onNavy ? <Text style={styles.consistencyUpdated}>{dateRange}</Text> : null}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -1427,8 +1346,8 @@ function SkinParamMetricsCard({ analysis, onViewAll }: { analysis: unknown; onVi
       <View style={styles.paramMetricsGrid}>
         {topMetrics.map((m) => (
           <View key={m.label} style={styles.paramMetricCell}>
+            <ParamRing value={m.value} color={m.color} size={52} />
             <Text style={styles.paramMetricLabel}>{m.label}</Text>
-            <ParamRing value={m.value} color={m.color} />
             <Text style={[styles.paramMetricStatus, { color: m.color }]}>{m.status}</Text>
             {m.detail ? (
               <Text style={styles.paramMetricDetail} numberOfLines={2}>
@@ -2075,6 +1994,8 @@ function FeedbackEntryCard({
 const fbStyles = StyleSheet.create({
   container: {
     marginTop: 4,
+    width: "100%",
+    alignSelf: "stretch",
     backgroundColor: GLASS,
     borderRadius: 20,
     padding: 20,
@@ -2348,23 +2269,14 @@ const styles = StyleSheet.create({
   topRow: { gap: 16, marginBottom: 16 },
   topRowWide: { flexDirection: "row", alignItems: "stretch" },
   topRowHalf: { flex: 1, minWidth: 0, marginBottom: 0 },
-  middleRow: { gap: 16, marginBottom: 16 },
-  middleRowWide: { flexDirection: "row", alignItems: "flex-start" },
-  bottomRow: { gap: 16, marginBottom: 16 },
-  bottomRowWide: { flexDirection: "row", alignItems: "stretch" },
-  bottomRowHalf: { flex: 1, minWidth: 0 },
-
-  navyMetricsCard: {
-    backgroundColor: NAVY,
-    borderRadius: 20,
-    padding: 20,
-    ...dashboardNavyCardShadow,
-  },
-  scoreRowNavy: { flexDirection: "row", gap: 12 },
-  scoreCardNavy: { flex: 1, alignItems: "center" },
-  scoreLabelNavy: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.8)", textAlign: "center" },
-  scoreValueNavy: { fontSize: 36, fontWeight: "800", color: GREEN_ACCENT, marginTop: 4 },
-  scoreUpdatedNavy: { fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 4, textAlign: "center" },
+  dashboardFullWidth: { width: "100%", alignSelf: "stretch" },
+  dashboardGrid: { gap: 16, marginBottom: 16 },
+  dashboardRow: { gap: 16 },
+  dashboardRowWide: { flexDirection: "row", alignItems: "flex-start" },
+  dashboardCellHalf: { flex: 1, minWidth: 0, marginBottom: 0 },
+  dashboardCellSelfStart: { alignSelf: "flex-start" },
+  dashboardJournalWide: { flex: 1.65, minWidth: 0 },
+  dashboardStreakNarrow: { flex: 1, minWidth: 0, marginBottom: 0 },
 
   sectionCard: {
     backgroundColor: GLASS,
@@ -2610,41 +2522,6 @@ const styles = StyleSheet.create({
   scoreValue: { fontSize: 36, fontWeight: "800", color: GREEN_ACCENT, marginTop: 4 },
   scoreUpdated: { fontSize: 12, color: "#9CA3AF", marginTop: 4, textAlign: "center" },
 
-  consistencyCard: {
-    backgroundColor: GLASS,
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    ...dashboardCardShadow,
-  },
-  consistencyCardNavy: {
-    backgroundColor: "transparent",
-    borderWidth: 0,
-    marginBottom: 0,
-    marginTop: 20,
-    paddingTop: 20,
-    paddingHorizontal: 0,
-    paddingBottom: 0,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.15)",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  consistencyTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 0.5, color: "#18181b" },
-  consistencyTitleNavy: { color: "rgba(255,255,255,0.85)" },
-  consistencyValue: {
-    position: "absolute" as const,
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#18181b",
-  },
-  consistencyValueNavy: { color: "#fff" },
-  consistencyLabel: { fontSize: 16, fontWeight: "700", marginTop: 2 },
-  consistencyUpdated: { fontSize: 12, color: "#9CA3AF", marginTop: 4 },
-
   skinHealthCard: {
     backgroundColor: GLASS,
     borderRadius: 20,
@@ -2671,20 +2548,30 @@ const styles = StyleSheet.create({
   paramMetricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 10,
     marginTop: 12,
+    justifyContent: "space-between",
   },
   paramMetricCell: {
-    width: "47%",
+    width: "48%",
+    aspectRatio: 4 / 5,
+    maxHeight: 148,
     backgroundColor: DASHBOARD_BG,
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: GLASS_BORDER,
-    gap: 6,
+    gap: 4,
   },
-  paramMetricLabel: { fontSize: 15, fontWeight: "700", color: "#18181b" },
+  paramMetricLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#18181b",
+    textAlign: "center",
+  },
   paramMetricStatus: { fontSize: 13, fontWeight: "700" },
   paramMetricDetail: {
     marginTop: 4,
