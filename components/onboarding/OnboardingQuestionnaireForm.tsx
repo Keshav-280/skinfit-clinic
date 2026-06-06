@@ -15,7 +15,14 @@ import {
 import {
   applyOnboardingStepSkip,
   buildOnboardingQuestionnairePayload,
+  type BaselineDietType,
+  type BaselineHydration,
+  type BaselineSleep,
+  type BaselineSunExposure,
+  type ConcernDuration,
+  type ConcernSeverity,
   type OnboardingQuestionnaireFormState,
+  type SkinSensitivity,
 } from "@/src/lib/onboardingQuestionnaireDefaults";
 import {
   REFERRAL_SOURCE_OPTIONS,
@@ -139,31 +146,17 @@ export function OnboardingQuestionnaireForm() {
   const [err, setErr] = useState<string | null>(null);
 
   const [concern, setConcern] = useState<Concern | null>(null);
-  const [severity, setSeverity] = useState<
-    "mild" | "moderate" | "severe" | null
-  >(null);
-  const [duration, setDuration] = useState<
-    "recent" | "ongoing" | "chronic" | null
-  >(null);
+  const [severity, setSeverity] = useState<ConcernSeverity | null>(null);
+  const [duration, setDuration] = useState<ConcernDuration | null>(null);
   const [triggers, setTriggers] = useState<string[]>([]);
   const [priorTx, setPriorTx] = useState<"yes" | "no" | null>(null);
   const [txText, setTxText] = useState("");
   const [txDur, setTxDur] = useState("");
-  const [sensitivity, setSensitivity] = useState<
-    "low" | "moderate" | "high" | null
-  >(null);
-  const [sleep, setSleep] = useState<
-    "under5" | "5to6" | "7to8" | "8plus" | null
-  >(null);
-  const [water, setWater] = useState<
-    "under1l" | "1to1_5l" | "1_5to2l" | "2lplus" | null
-  >(null);
-  const [diet, setDiet] = useState<
-    "vegetarian" | "vegan" | "nonveg" | "mixed" | null
-  >(null);
-  const [sun, setSun] = useState<
-    "minimal" | "low" | "moderate" | "high" | null
-  >(null);
+  const [sensitivity, setSensitivity] = useState<SkinSensitivity | null>(null);
+  const [sleep, setSleep] = useState<BaselineSleep | null>(null);
+  const [water, setWater] = useState<BaselineHydration | null>(null);
+  const [diet, setDiet] = useState<BaselineDietType | null>(null);
+  const [sun, setSun] = useState<BaselineSunExposure | null>(null);
   const [skinType, setSkinType] = useState<(typeof SKIN_TYPES)[number] | null>(null);
   const [ageInput, setAgeInput] = useState("");
   const [gender, setGender] = useState<string | null>(null);

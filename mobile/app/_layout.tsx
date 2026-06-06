@@ -80,15 +80,16 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-const NAVY = "#2C3E6B";
+const NAVY = "#2D3E6B";
+const DASHBOARD_BG = "#F2F9F2";
 
 const skinfitNavigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
     primary: NAVY,
-    background: "#E8EFE6",
-    card: "#E8EFE6",
+    background: DASHBOARD_BG,
+    card: DASHBOARD_BG,
     text: NAVY,
     border: "transparent",
     notification: "#0d9488",
@@ -108,18 +109,18 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#E8EFE6" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: DASHBOARD_BG }}>
       <StatusBar style="dark" />
       <AuthProvider>
         <PushTokenSync />
         <ThemeProvider value={theme}>
           <Stack
             screenOptions={{
-              headerStyle: { backgroundColor: "#E8EFE6" },
+              headerStyle: { backgroundColor: DASHBOARD_BG },
               headerTitleStyle: { fontWeight: "700", color: NAVY },
               headerShadowVisible: false,
               headerTintColor: NAVY,
-              contentStyle: { backgroundColor: "#E8EFE6" },
+              contentStyle: { backgroundColor: DASHBOARD_BG },
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />

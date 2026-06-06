@@ -198,7 +198,7 @@ export default function DrawerLayout() {
           drawerActiveTintColor: "#2C3E6B",
           drawerInactiveTintColor: "#64748b",
           headerTintColor: "#2C3E6B",
-          headerStyle: { backgroundColor: "#E8EFE6" },
+          headerStyle: { backgroundColor: "#F2F9F2" },
           headerTitleStyle: { fontWeight: "700", color: "#2C3E6B" },
           headerShadowVisible: false,
           // Drawer navigator only skips its toggle when headerLeft is null/undefined — not when
@@ -220,7 +220,7 @@ export default function DrawerLayout() {
             fontWeight: "600",
           },
           sceneContainerStyle: {
-            backgroundColor: "#E8EFE6",
+            backgroundColor: "#F2F9F2",
             paddingBottom: dockVisible ? 100 : 0,
           },
           drawerIcon: ({ color, size }) => iconForRoute(route.name, color, size),
@@ -253,7 +253,7 @@ export default function DrawerLayout() {
         />
         <Drawer.Screen
           name="schedules"
-          options={{ title: "Schedules", drawerLabel: "Schedules", headerStyle: { backgroundColor: "#E8EFE6" } }}
+          options={{ title: "Schedules", drawerLabel: "Schedules", headerStyle: { backgroundColor: "#F2F9F2" } }}
         />
         <Drawer.Screen
           name="wellness"
@@ -275,7 +275,7 @@ export default function DrawerLayout() {
           options={{
             title: "Profile",
             drawerLabel: "Profile",
-            headerStyle: { backgroundColor: "#E8EFE6" },
+            headerStyle: { backgroundColor: "#F2F9F2" },
           }}
         />
         <Drawer.Screen

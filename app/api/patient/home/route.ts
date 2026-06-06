@@ -318,6 +318,7 @@ async function buildPatientHomePayload(
             : null
         : null,
     kaiInsightsEnabled: isKaiInsightsEnabled(),
+    userName: userRow.name ?? "Patient",
     feedbackEntries,
     archivedFeedbackEntries,
   };

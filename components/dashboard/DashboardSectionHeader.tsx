@@ -1,9 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 
-export const DASHBOARD_SECTION_CARD =
-  "rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm md:p-6";
+import { patientDashboardCard } from "@/src/lib/patientDashboardTheme";
 
-const NAVY = "#2C3E6B";
+export const DASHBOARD_SECTION_CARD = patientDashboardCard;
+
+const NAVY = "#2D3E6B";
 
 type Props = {
   icon: LucideIcon;

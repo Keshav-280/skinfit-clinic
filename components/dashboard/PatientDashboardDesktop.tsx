@@ -26,6 +26,11 @@ import {
   DASHBOARD_SECTION_CARD,
   DashboardSectionHeader,
 } from "@/components/dashboard/DashboardSectionHeader";
+import {
+  PATIENT_GREEN,
+  PATIENT_NAVY,
+  patientDashboardNavyCard,
+} from "@/src/lib/patientDashboardTheme";
 import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
@@ -34,8 +39,8 @@ import {
   RAG_KAI_PARAM_LABELS,
 } from "@/src/lib/ragEightParams";
 
-const NAVY = "#2C3E6B";
-const GREEN = "#16a34a";
+const NAVY = PATIENT_NAVY;
+const GREEN = PATIENT_GREEN;
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const EMPTY_RADAR_DATA = RAG_KAI_PARAM_KEYS.map((key) => ({
@@ -101,10 +106,23 @@ type HomeData = {
   routineAmReminderHm: string;
   routinePmReminderHm: string;
   homeDateYmd?: string;
+  userName?: string;
 };
 
 /* ─── Circular Gauge ─── */
-function CircularGauge({ value, size = 72, strokeWidth = 6, color }: { value: number; size?: number; strokeWidth?: number; color: string }) {
+function CircularGauge({
+  value,
+  size = 72,
+  strokeWidth = 6,
+  color,
+  valueClassName = "text-[#18181b]",
+}: {
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+  color: string;
+  valueClassName?: string;
+}) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - Math.min(value, 100) / 100);
@@ -122,7 +140,7 @@ function CircularGauge({ value, size = 72, strokeWidth = 6, color }: { value: nu
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-700 ease-out" />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-lg font-extrabold text-[#18181b]">{value}</span>
+        <span className={`text-lg font-extrabold ${valueClassName}`}>{value}</span>
       </div>
     </div>
   );
@@ -168,7 +186,7 @@ function RadarChart({
       >
         {gridPaths.map((points, i) => (<polygon key={i} points={points} fill="none" stroke="#D1D5DB" strokeWidth={1} />))}
         {data.map((_, i) => { const p = getPoint(i, maxRadius); return <line key={i} x1={center} y1={center} x2={p.x} y2={p.y} stroke="#E5E7EB" strokeWidth={1} />; })}
-        <polygon points={dataPath} fill="rgba(22,163,74,0.2)" stroke={GREEN} strokeWidth={2} />
+        <polygon points={dataPath} fill="rgba(76,175,80,0.22)" stroke={GREEN} strokeWidth={2} />
         {dataPoints.map((p, i) => (<circle key={i} cx={p.x} cy={p.y} r={4} fill={GREEN} />))}
       </svg>
       {data.map((d, i) => {
@@ -465,12 +483,11 @@ export function PatientDashboardDesktop() {
   const pad = (n: number) => String(n).padStart(2, "0");
   */
 
-  const greeting = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good Morning 👋";
-    if (h < 17) return "Good Afternoon ☀️";
-    return "Good Evening 🌙";
-  }, []);
+  const greetingName = useMemo(() => {
+    const raw = data?.userName?.trim();
+    if (!raw) return "there";
+    return raw.split(/\s+/)[0] ?? raw;
+  }, [data?.userName]);
 
   if (loading) {
     return (
@@ -493,21 +510,23 @@ export function PatientDashboardDesktop() {
 
   const allRoutineDone = data.amItems.length > 0 && data.pmItems.length > 0 && amDone >= data.amItems.length && pmDone >= data.pmItems.length;
 
+  const displayName = greetingName;
+
   return (
-    <div className="md:grid md:grid-cols-12 md:gap-8">
-      {/* Left Column */}
-      <main className="space-y-5 md:col-span-7 lg:col-span-8">
+    <div className="space-y-5">
         {/* Greeting */}
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-[#18181b] md:text-3xl">{greeting}</h1>
+            <h1 className="text-2xl font-extrabold text-[#18181b] md:text-[28px]">
+              Hello {displayName} ☀️
+            </h1>
             <p className="mt-1 text-sm text-[#6B7280] md:text-base">Let&apos;s achieve your best skin day!</p>
           </div>
           <button
             type="button"
             onClick={triggerSos}
             disabled={sosBusy}
-            className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#EF4444] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-60"
             title="Urgent: notify doctor immediately"
           >
             {sosBusy ? (
@@ -522,7 +541,7 @@ export function PatientDashboardDesktop() {
         {/* Calendar Ribbon */}
         <div>
           <div className="mb-1 flex items-center justify-between px-0.5">
-            <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronLeft className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => setWeekOffset((o) => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm hover:bg-[#F2F9F2]"><ChevronLeft className="h-3.5 w-3.5" /></button>
             <button
               type="button"
               onClick={() => {
@@ -534,7 +553,7 @@ export function PatientDashboardDesktop() {
               {monthLabel}
               {!isViewingToday || weekOffset !== 0 ? " · today" : null}
             </button>
-            <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-7 w-7 items-center justify-center rounded-full bg-white/35 text-slate-500 backdrop-blur-sm hover:bg-white/60"><ChevronRight className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => setWeekOffset((o) => o + 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm hover:bg-[#F2F9F2]"><ChevronRight className="h-3.5 w-3.5" /></button>
           </div>
           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:gap-2">
             {weekDays.map((d) => (
@@ -549,12 +568,12 @@ export function PatientDashboardDesktop() {
                 disabled={d.isFuture}
                 className={`flex min-w-[42px] flex-1 flex-col items-center rounded-xl border px-1.5 py-1.5 transition-all md:min-w-[46px] ${
                   d.isSelected
-                    ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-md shadow-[#2C3E6B]/15"
+                    ? "border-[#2D3E6B] bg-[#2D3E6B] text-white shadow-md shadow-[#2D3E6B]/15"
                     : d.isFuture
-                      ? "cursor-not-allowed border-white/60 bg-white/20 text-slate-400 opacity-60"
+                      ? "cursor-not-allowed border-[#E5E7EB] bg-white text-slate-400 opacity-60"
                       : d.isToday
-                        ? "border-emerald-500/40 bg-white/35 text-slate-700 ring-1 ring-emerald-500/35 hover:bg-white/60"
-                        : "border-white/70 bg-white/35 text-slate-700 hover:bg-white/60"
+                        ? "border-[#4CAF50]/50 bg-white text-slate-700 ring-1 ring-[#4CAF50]/40 hover:bg-[#F2F9F2]"
+                        : "border-[#E5E7EB] bg-white text-slate-700 hover:bg-[#F2F9F2]"
                 }`}
               >
                 <span className={`text-[10px] font-semibold leading-none ${d.isSelected ? "text-white/85" : "text-[#6B7280]"}`}>{d.label}</span>
@@ -563,6 +582,81 @@ export function PatientDashboardDesktop() {
             ))}
           </div>
         </div>
+
+        {/* Top row — navy scores + radar */}
+        <div className="grid gap-4 md:grid-cols-2 md:items-stretch">
+          <div className={patientDashboardNavyCard}>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-[13px] font-bold text-white/80">kAI Skin Score</p>
+                <p className="mt-1 text-4xl font-extrabold text-[#4CAF50]">{data.kaiSkinScore}</p>
+                <p className="mt-1 text-[11px] text-white/60">
+                  {data.skinScanHistory.length > 0
+                    ? `Updated ${format(new Date(data.skinScanHistory[0].createdAt), "MMM d")}`
+                    : "No scans yet"}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-[13px] font-bold text-white/80">Weekly Progress</p>
+                <p
+                  className={`mt-1 text-4xl font-extrabold ${
+                    data.weeklyDeltaScore >= 0 ? "text-[#4CAF50]" : "text-[#FCA5A5]"
+                  }`}
+                >
+                  {data.weeklyDeltaScore >= 0 ? "+" : ""}
+                  {data.weeklyDeltaScore}
+                </p>
+                <p className="mt-1 text-[11px] text-white/60">vs last week</p>
+              </div>
+            </div>
+            <div className="mt-5 border-t border-white/15 pt-5 text-center">
+              <h3 className="text-[12px] font-extrabold tracking-wide text-white/85">
+                WEEKLY CONSISTENCY SCORE
+              </h3>
+              <div className="mt-3 flex justify-center">
+                <CircularGauge
+                  value={data.lifestyleAlignmentScore}
+                  size={100}
+                  strokeWidth={8}
+                  color="#4CAF50"
+                  valueClassName="text-white"
+                />
+              </div>
+              <p
+                className={`mt-2 text-sm font-bold ${
+                  data.lifestyleAlignmentScore >= 50 ? "text-[#4CAF50]" : "text-[#FCA5A5]"
+                }`}
+              >
+                {data.lifestyleAlignmentScore >= 75
+                  ? "Aligned"
+                  : data.lifestyleAlignmentScore >= 50
+                    ? "On Track"
+                    : "Needs Work"}
+              </p>
+            </div>
+          </div>
+
+          {data.skinScanHistory.length > 0 ? (
+            <div className={`flex flex-col ${DASHBOARD_SECTION_CARD}`}>
+              <DashboardSectionHeader
+                icon={Activity}
+                title="SKIN HEALTH METRICS"
+                titleAs="h3"
+                className="mb-1"
+              />
+              <div className="flex flex-1 items-center justify-center py-2">
+                <RadarChart data={radarData} size={220} />
+              </div>
+            </div>
+          ) : (
+            <div className={`flex flex-col items-center justify-center ${DASHBOARD_SECTION_CARD}`}>
+              <p className="text-sm font-semibold text-[#6B7280]">Take a scan to see skin health metrics</p>
+            </div>
+          )}
+        </div>
+
+        {/* Middle row — routine + skin parameters */}
+        <div className="grid gap-4 md:grid-cols-2 md:items-start">
 
         {/* Daily Routine — AM + PM in one card */}
         {(() => {
@@ -587,9 +681,9 @@ export function PatientDashboardDesktop() {
                 }
               />
               {totalSteps > 0 ? (
-                <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/50">
+                <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[#F2F9F2]">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                    className="h-full rounded-full bg-[#4CAF50] transition-all duration-300"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -598,9 +692,9 @@ export function PatientDashboardDesktop() {
               <div className="space-y-1">
                 <Link
                   href={journalTrackerHref("/dashboard/morning-routine", selectedYmd)}
-                  className="group flex items-center gap-4 rounded-2xl p-3 transition hover:bg-white/50"
+                  className="group flex items-center gap-4 rounded-2xl p-3 transition hover:bg-[#F2F9F2]"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2D3E6B]">
                     <Sun className="h-5 w-5 text-amber-400" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -614,24 +708,24 @@ export function PatientDashboardDesktop() {
                     </p>
                   </div>
                   {amComplete ? (
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-[#4CAF50]" />
                   ) : (
-                    <span className="inline-flex shrink-0 items-center rounded-[10px] bg-[#2C3E6B] px-3 py-1.5 text-[12px] font-bold text-white">
+                    <span className="inline-flex shrink-0 items-center rounded-[10px] bg-[#2D3E6B] px-3 py-1.5 text-[12px] font-bold text-white">
                       {amDone}/{amTotal || 0}
                     </span>
                   )}
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#334155] transition group-hover:bg-[#2C3E6B]">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#334155] transition group-hover:bg-[#2D3E6B]">
                     <ArrowRight className="h-3.5 w-3.5 text-white" />
                   </div>
                 </Link>
 
-                <div className="mx-3 border-t border-white/60" />
+                <div className="mx-3 border-t border-[#E5E7EB]" />
 
                 <Link
                   href={journalTrackerHref("/dashboard/night-routine", selectedYmd)}
-                  className="group flex items-center gap-4 rounded-2xl p-3 transition hover:bg-white/50"
+                  className="group flex items-center gap-4 rounded-2xl p-3 transition hover:bg-[#F2F9F2]"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2D3E6B]">
                     <CloudMoon className="h-5 w-5 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -645,9 +739,9 @@ export function PatientDashboardDesktop() {
                     </p>
                   </div>
                   {pmComplete ? (
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-[#4CAF50]" />
                   ) : (
-                    <span className="inline-flex shrink-0 items-center rounded-[10px] bg-[#2C3E6B] px-3 py-1.5 text-[12px] font-bold text-white">
+                    <span className="inline-flex shrink-0 items-center rounded-[10px] bg-[#2D3E6B] px-3 py-1.5 text-[12px] font-bold text-white">
                       {pmDone}/{pmTotal || 0}
                     </span>
                   )}
@@ -660,88 +754,45 @@ export function PatientDashboardDesktop() {
           );
         })()}
 
-        {/* Streak + skin health radar — side by side */}
-        <div
-          className={`grid gap-3 ${data.skinScanHistory.length > 0 ? "md:grid-cols-2 md:items-stretch" : ""}`}
-        >
-          <div className={`flex flex-1 flex-col gap-4 ${DASHBOARD_SECTION_CARD} !p-4 md:!p-5`}>
-            <div className="flex flex-1 flex-col justify-between gap-4">
-              <div className="space-y-3">
-                <h3 className="text-lg font-extrabold tracking-tight text-[#2C3E6B] md:text-xl">
-                  {data.streakCurrent} day streak
-                </h3>
-                <p className="text-sm font-semibold text-[#6B7280]">
-                  Personal best: {data.streakLongest} days
-                </p>
-
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-[#6B7280]">
-                    <span>This week</span>
-                    <span>{weekDoneCount}/7 complete</span>
-                  </div>
+          {skinParams.length > 0 ? (
+            <div className={DASHBOARD_SECTION_CARD}>
+              <h3 className="mb-5 text-[14px] font-extrabold tracking-wide text-[#18181b]">
+                SKIN PARAMETER METRICS
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {skinParams.slice(0, 4).map((p) => (
                   <div
-                    className="h-2.5 overflow-hidden rounded-full bg-white/75"
-                    role="progressbar"
-                    aria-valuenow={weekDoneCount}
-                    aria-valuemin={0}
-                    aria-valuemax={7}
-                    aria-label={`${weekDoneCount} of 7 days completed this week`}
+                    key={p.label}
+                    className="flex flex-col items-center gap-1.5 rounded-[16px] border border-[#E5E7EB] bg-[#F2F9F2] py-3"
                   >
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
-                      style={{ width: `${Math.round((weekDoneCount / 7) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between px-0.5">
-                {streakDays.map((d, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1.5">
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
-                        d.done
-                          ? "border-emerald-500 bg-emerald-500 text-white shadow-sm"
-                          : d.isFuture
-                            ? "border-slate-200 bg-white/40 text-slate-300"
-                            : "border-slate-300 bg-white/60 text-slate-400"
+                    <CircularGauge value={p.value} color={p.color} size={60} strokeWidth={5} />
+                    <p className="text-center text-[13px] font-bold text-[#18181b]">{p.label}</p>
+                    <p
+                      className={`text-[11px] font-bold ${
+                        p.sublabel === "Needs Care"
+                          ? "text-red-500"
+                          : p.sublabel === "Moderate"
+                            ? "text-amber-500"
+                            : "text-[#4CAF50]"
                       }`}
-                      aria-hidden
                     >
-                      {d.done ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : (
-                        <span>{d.label.charAt(0)}</span>
-                      )}
-                    </div>
-                    <span className="text-[10px] font-semibold text-[#6B7280]">{d.label}</span>
+                      {p.sublabel}
+                    </p>
                   </div>
                 ))}
               </div>
-
-              <p
-                className={`text-center text-sm font-bold ${
-                  allRoutineDone ? "text-emerald-600" : "text-[#2C3E6B]"
-                }`}
+              <Link
+                href="/dashboard/skin-params"
+                className="mt-5 block w-full rounded-[14px] bg-[#2D3E6B] py-3.5 text-center text-[15px] font-bold text-white shadow-md transition hover:bg-[#243456]"
               >
-                {allRoutineDone ? "Done today" : "Complete today"}
-              </p>
+                View all Parameters
+              </Link>
             </div>
-          </div>
-
-          {data.skinScanHistory.length > 0 ? (
-            <div className={`flex flex-col ${DASHBOARD_SECTION_CARD} !p-4 md:!p-5`}>
-              <DashboardSectionHeader
-                icon={Activity}
-                title="SKIN HEALTH METRICS"
-                titleAs="h3"
-                className="mb-1"
-              />
-              <div className="flex flex-1 items-center justify-center">
-                <RadarChart data={radarData} size={200} />
-              </div>
+          ) : (
+            <div className={`flex items-center justify-center ${DASHBOARD_SECTION_CARD}`}>
+              <p className="text-sm font-semibold text-[#6B7280]">Skin parameters appear after your first scan</p>
             </div>
-          ) : null}
+          )}
         </div>
 
         {!data.hasQuestionnaire ? (
@@ -750,12 +801,69 @@ export function PatientDashboardDesktop() {
           <TodayFocusCard message={data.todayFocus.message} />
         ) : null}
 
-        <DailyJournalMergedCard
-          selectedYmd={selectedYmd}
-          initialSleepHours={data.todayLog?.sleepHours ?? 0}
-          initialWaterGlasses={data.todayLog?.waterGlasses ?? 0}
-          initialStressLevel={data.todayLog?.stressLevel ?? 5}
-        />
+        {/* Bottom row — journal + streak */}
+        <div className="grid gap-4 md:grid-cols-2 md:items-stretch">
+          <DailyJournalMergedCard
+            selectedYmd={selectedYmd}
+            initialSleepHours={data.todayLog?.sleepHours ?? 0}
+            initialWaterGlasses={data.todayLog?.waterGlasses ?? 0}
+            initialStressLevel={data.todayLog?.stressLevel ?? 5}
+          />
+
+          <div className={`flex flex-col gap-4 ${DASHBOARD_SECTION_CARD}`}>
+            <div className="space-y-3">
+              <h3 className="text-lg font-extrabold tracking-tight text-[#2D3E6B] md:text-xl">
+                {data.streakCurrent} day streak
+              </h3>
+              <p className="text-sm font-semibold text-[#6B7280]">
+                Personal best: {data.streakLongest} days
+              </p>
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-[#6B7280]">
+                  <span>This week</span>
+                  <span>{weekDoneCount}/7 complete</span>
+                </div>
+                <div
+                  className="h-2.5 overflow-hidden rounded-full bg-[#F2F9F2]"
+                  role="progressbar"
+                  aria-valuenow={weekDoneCount}
+                  aria-valuemin={0}
+                  aria-valuemax={7}
+                >
+                  <div
+                    className="h-full rounded-full bg-[#4CAF50] transition-all duration-500"
+                    style={{ width: `${Math.round((weekDoneCount / 7) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between px-0.5">
+              {streakDays.map((d, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
+                      d.done
+                        ? "border-[#4CAF50] bg-[#4CAF50] text-white shadow-sm"
+                        : d.isFuture
+                          ? "border-slate-200 bg-white text-slate-300"
+                          : "border-slate-300 bg-white text-slate-400"
+                    }`}
+                  >
+                    {d.done ? <CheckCircle2 className="h-4 w-4" /> : <span>{d.label.charAt(0)}</span>}
+                  </div>
+                  <span className="text-[10px] font-semibold text-[#6B7280]">{d.label}</span>
+                </div>
+              ))}
+            </div>
+            <p
+              className={`text-center text-sm font-bold ${
+                allRoutineDone ? "text-[#4CAF50]" : "text-[#2D3E6B]"
+              }`}
+            >
+              {allRoutineDone ? "Done today" : "Complete today"}
+            </p>
+          </div>
+        </div>
 
         <PatientDoctorHomeSections
           feedbackEntries={data.feedbackEntries ?? []}
@@ -767,60 +875,6 @@ export function PatientDashboardDesktop() {
           onboardingComplete={data.onboardingComplete}
           onRefresh={() => void loadHome()}
         />
-      </main>
-
-      {/* Right Column */}
-      <aside className="mt-6 md:col-span-5 md:mt-0 lg:col-span-4">
-        <div className="space-y-5 md:sticky md:top-24">
-          {/* Score Cards */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 text-center backdrop-blur-sm">
-              <p className="text-[14px] font-bold text-[#374151]">kAI Skin Score</p>
-              <p className="mt-1 text-4xl font-extrabold text-emerald-600">{data.kaiSkinScore}</p>
-              <p className="mt-1 text-xs text-[#9CA3AF]">
-                {data.skinScanHistory.length > 0 ? `Updated ${format(new Date(data.skinScanHistory[0].createdAt), "MMM d")}` : "No scans yet"}
-              </p>
-            </div>
-            <div className="rounded-[22px] border border-white/70 bg-white/35 p-5 text-center backdrop-blur-sm">
-              <p className="text-[14px] font-bold text-[#374151]">Weekly Progress</p>
-              <p className={`mt-1 text-4xl font-extrabold ${data.weeklyDeltaScore >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                {data.weeklyDeltaScore >= 0 ? "+" : ""}{data.weeklyDeltaScore}
-              </p>
-              <p className="mt-1 text-xs text-[#9CA3AF]">vs last week</p>
-            </div>
-          </div>
-
-          {/* Consistency Score */}
-          <div className="rounded-[22px] border border-white/70 bg-white/35 p-6 text-center backdrop-blur-sm">
-            <h3 className="text-[14px] font-extrabold tracking-wide text-[#18181b]">WEEKLY CONSISTENCY SCORE</h3>
-            <div className="mt-4 flex w-full justify-center">
-              <CircularGauge value={data.lifestyleAlignmentScore} size={100} strokeWidth={8} color="#2563EB" />
-            </div>
-            <p className={`mt-2 text-base font-bold ${data.lifestyleAlignmentScore >= 50 ? "text-emerald-600" : "text-red-600"}`}>
-              {data.lifestyleAlignmentScore >= 75 ? "Aligned" : data.lifestyleAlignmentScore >= 50 ? "On Track" : "Needs Work"}
-            </p>
-          </div>
-
-          {/* Skin Parameter Metrics */}
-          {skinParams.length > 0 && (
-            <div className="rounded-[22px] border border-white/70 bg-white/35 p-6 backdrop-blur-sm">
-              <h3 className="mb-5 text-[14px] font-extrabold tracking-wide text-[#18181b]">SKIN PARAMETER METRICS</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {skinParams.slice(0, 4).map((p) => (
-                  <div key={p.label} className="flex flex-col items-center gap-1.5 rounded-[18px] border border-white/70 bg-white/35 py-3">
-                    <CircularGauge value={p.value} color={p.color} size={60} strokeWidth={5} />
-                    <p className="text-[13px] font-bold text-[#18181b]">{p.label}</p>
-                    <p className={`text-[11px] font-bold ${p.sublabel === "Needs Care" ? "text-red-500" : p.sublabel === "Moderate" ? "text-amber-500" : "text-emerald-500"}`}>{p.sublabel}</p>
-                  </div>
-                ))}
-              </div>
-              <Link href="/dashboard/skin-params" className="mt-5 block w-full rounded-[14px] bg-[#2C3E6B] py-3.5 text-center text-[15px] font-bold text-white shadow-md transition hover:bg-[#3d5080]">
-                View all Parameters
-              </Link>
-            </div>
-          )}
-        </div>
-      </aside>
     </div>
   );
 }

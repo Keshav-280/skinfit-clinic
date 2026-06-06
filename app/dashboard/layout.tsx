@@ -36,9 +36,8 @@ export default async function DashboardLayout({
 
   return (
     <DashboardInboxProvider>
-    <div className="min-h-screen bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6]">
-      {/* Glass Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-white/25 bg-white/30 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
+    <div className="min-h-screen bg-[#F2F9F2]">
+      <nav className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white shadow-[0_2px_16px_rgba(45,62,107,0.06)]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 md:px-8 sm:py-4">
           <PatientPortalBrandLogo />
 
@@ -49,7 +48,7 @@ export default async function DashboardLayout({
             <DashboardClinicSupportBell />
             <Link
               href="/dashboard/profile"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/50 text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-[#F2F9F2] text-[#2D3E6B] transition-colors hover:bg-white"
               title="Profile"
             >
               <User className="h-4 w-4" />

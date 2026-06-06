@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -66,11 +67,20 @@ import {
 } from "@/lib/journalSync";
 import { normalizeRoutineSteps } from "@/lib/routine";
 
-const NAVY = "#2C3E6B";
-const MINT = "#E2E8F0";
-const GLASS = "rgba(255,255,255,0.55)";
-const GLASS_BORDER = "rgba(255,255,255,0.7)";
-const GREEN_ACCENT = "#16a34a";
+import {
+  DASHBOARD_BG,
+  DASHBOARD_CARD_BG,
+  DASHBOARD_CARD_BORDER,
+  DASHBOARD_GREEN,
+  DASHBOARD_NAVY,
+  dashboardCardShadow,
+  dashboardNavyCardShadow,
+} from "@/lib/dashboardTheme";
+
+const NAVY = DASHBOARD_NAVY;
+const GLASS = DASHBOARD_CARD_BG;
+const GLASS_BORDER = DASHBOARD_CARD_BORDER;
+const GREEN_ACCENT = DASHBOARD_GREEN;
 
 type SkinScanItem = {
   id: string;
@@ -132,6 +142,7 @@ type HomeData = {
   doctorVoiceNoteIsNew: boolean;
   onboardingComplete?: boolean;
   hasQuestionnaire?: boolean;
+  userName?: string;
   /** False after onboarding until clinician saves AM/PM step list. */
   routinePlanReady?: boolean;
   routineAmReminderHm?: string;
@@ -563,19 +574,14 @@ export default function DashboardScreen() {
   }
 
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWideLayout = windowWidth >= 768;
 
-  const greeting = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
-  }, []);
-  const greetingEmoji = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 12) return "👋";
-    if (h < 17) return "☀️";
-    return "🌙";
-  }, []);
+  const greetingName = useMemo(() => {
+    const raw = data?.userName?.trim();
+    if (!raw) return "there";
+    return raw.split(/\s+/)[0] ?? raw;
+  }, [data?.userName]);
 
   const selectedDate = useMemo(() => parseISO(`${journalDate}T12:00:00`), [journalDate]);
   const weekDays = useMemo(() => {
@@ -605,24 +611,28 @@ export default function DashboardScreen() {
   const totalRoutineSteps = (data?.amItems.length ?? 0) + (data?.pmItems.length ?? 0);
   const completedRoutineSteps = amDone + pmDone;
 
-  const streakMessage = useMemo(() => {
-    if (totalRoutineSteps <= 0) return "Keep it up!";
-    if (completedRoutineSteps >= totalRoutineSteps) return "All completed";
-    if (completedRoutineSteps <= 0) return "Falling short";
-    if (completedRoutineSteps <= Math.max(1, Math.floor(totalRoutineSteps * 0.4))) return "Good start!";
-    return "Keep going!";
-  }, [totalRoutineSteps, completedRoutineSteps]);
-
   const streakDays = useMemo(() => {
     const completedSet = new Set(data?.weekCompletedDates ?? []);
     const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const today = new Date();
     return Array.from({ length: 7 }, (_, i) => {
       const d = addDays(start, i);
       const dayLabel = format(d, "EEE");
       const ymd = format(d, "yyyy-MM-dd");
-      return { label: dayLabel, done: completedSet.has(ymd) };
+      return {
+        label: dayLabel,
+        done: completedSet.has(ymd),
+        isFuture: d > today && !isSameDay(d, today),
+      };
     });
   }, [data?.weekCompletedDates, selectedDate]);
+
+  const weekDoneCount = useMemo(
+    () => streakDays.filter((d) => d.done).length,
+    [streakDays]
+  );
+  const allRoutineDone =
+    totalRoutineSteps > 0 && completedRoutineSteps >= totalRoutineSteps;
 
   if (loading || !data) {
     return (
@@ -655,7 +665,7 @@ export default function DashboardScreen() {
       <View style={styles.greetingRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.greetingText}>
-            {greeting} {greetingEmoji}
+            Hello {greetingName} ☀️
           </Text>
           <Text style={styles.greetingSub}>Let's achieve your best skin day!</Text>
         </View>
@@ -725,9 +735,44 @@ export default function DashboardScreen() {
       <Text style={styles.selectedDateLabel}>
         Viewing {format(selectedDate, "EEE, d MMM yyyy")}
       </Text>
-     
 
-      {/* ── Daily Routine (AM + PM) ── */}
+      {/* ── Top row: navy metrics + radar ── */}
+      <View style={[styles.topRow, isWideLayout && styles.topRowWide]}>
+        <View style={[styles.navyMetricsCard, isWideLayout && styles.topRowHalf]}>
+          <View style={styles.scoreRowNavy}>
+            <View style={styles.scoreCardNavy}>
+              <Text style={styles.scoreLabelNavy}>kAI Skin Score</Text>
+              <Text style={styles.scoreValueNavy}>{kaiSkinScore}</Text>
+              <Text style={styles.scoreUpdatedNavy}>
+                {latestScan ? `Updated ${format(new Date(latestScan.createdAt), "MMM d")}` : "No scans yet"}
+              </Text>
+            </View>
+            <View style={styles.scoreCardNavy}>
+              <Text style={styles.scoreLabelNavy}>Weekly{"\n"}Progress</Text>
+              <Text
+                style={[
+                  styles.scoreValueNavy,
+                  { color: data.weeklyDeltaScore >= 0 ? GREEN_ACCENT : "#FCA5A5" },
+                ]}
+              >
+                {data.weeklyDeltaScore >= 0 ? "+" : ""}
+                {Math.round(data.weeklyDeltaScore)}
+              </Text>
+              <Text style={styles.scoreUpdatedNavy}>vs last week</Text>
+            </View>
+          </View>
+          <ConsistencyScoreCard value={data.lifestyleAlignmentScore} onNavy />
+        </View>
+        {latestScan ? (
+          <SkinHealthMetricsCard
+            analysis={latestScan.analysisResults}
+            style={[isWideLayout && styles.topRowHalf, styles.skinHealthCardInRow]}
+          />
+        ) : null}
+      </View>
+
+      {/* ── Middle row: routine + skin parameters ── */}
+      <View style={[styles.middleRow, isWideLayout && styles.middleRowWide]}>
       {(() => {
         const amTotal = data.amItems.length || 0;
         const pmTotal = data.pmItems.length || 0;
@@ -739,9 +784,9 @@ export default function DashboardScreen() {
         const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
         return (
-          <View style={styles.routineMergedCard}>
+          <View style={[styles.routineMergedCard, isWideLayout && styles.topRowHalf]}>
             <View style={styles.routineMergedHeader}>
-              <Text style={styles.routineMergedTitle}>Daily Routine</Text>
+              <Text style={styles.routineMergedTitle}>DAILY ROUTINE</Text>
               <Text style={styles.routineMergedMeta}>
                 {completedSteps}/{totalSteps || 0} steps
               </Text>
@@ -835,57 +880,15 @@ export default function DashboardScreen() {
         );
       })()}
 
-      {/* ── Streak ── */}
-      <View style={styles.streakCard}>
-        <Text style={styles.streakTitle}>🔥 {data.streakCurrent}-Day Streak</Text>
-        <View style={styles.streakDotsRow}>
-          {streakDays.map((d, i) => (
-            <View key={`s-${i}`} style={styles.streakDayCol}>
-              <View
-                style={[
-                  styles.streakDot,
-                  d.done && styles.streakDotDone,
-                ]}
-              >
-                {d.done ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
-              </View>
-              <Text style={styles.streakDayLabel}>{d.label}</Text>
-            </View>
-          ))}
-        </View>
-        <Text
-          style={[
-            styles.streakMessage,
-            completedRoutineSteps >= totalRoutineSteps && totalRoutineSteps > 0
-              ? { color: GREEN_ACCENT }
-              : { color: "#DC2626" },
-          ]}
-        >
-          {streakMessage}
-        </Text>
-      </View>
-
       {latestScan ? (
-        <SkinHealthMetricsCard analysis={latestScan.analysisResults} />
+        <View style={[styles.sectionCard, isWideLayout && styles.topRowHalf, styles.sectionCardFlush]}>
+          <SkinParamMetricsCard
+            analysis={latestScan.analysisResults}
+            onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
+          />
+        </View>
       ) : null}
-
-      {false ? (
-      <NextReminderCard
-        amHm={data.routineAmReminderHm ?? "08:30"}
-        pmHm={data.routinePmReminderHm ?? "22:00"}
-        amDone={amDone}
-        amTotal={data.amItems.length}
-        pmDone={pmDone}
-        pmTotal={data.pmItems.length}
-        onPress={(target) =>
-          router.push(
-            target === "am"
-              ? (`/(drawer)/morning-routine?date=${encodeURIComponent(journalDate)}` as Href)
-              : (`/(drawer)/night-routine?date=${encodeURIComponent(journalDate)}` as Href)
-          )
-        }
-      />
-      ) : null}
+      </View>
 
       {/* ── Today's Focus ── */}
       {data.hasQuestionnaire === false ? (
@@ -907,42 +910,10 @@ export default function DashboardScreen() {
         <TodayFocusCard message={data.todayFocus.message} />
       ) : null}
 
-      {/* ── Score cards ── */}
-      <Text style={styles.sectionTitle}>YOUR DAILY CHECKLIST</Text>
-      <View style={styles.scoreRow}>
-        <View style={styles.scoreCard}>
-          <Text style={styles.scoreLabel}>kAI Skin Score</Text>
-          <Text style={styles.scoreValue}>{kaiSkinScore}</Text>
-          <Text style={styles.scoreUpdated}>
-            Updated {latestScan ? format(new Date(latestScan.createdAt), "MMM d, h:mm a") : "—"}
-          </Text>
-        </View>
-        <View style={styles.scoreCard}>
-          <Text style={styles.scoreLabel}>Weekly{"\n"}Progress</Text>
-          <Text style={[styles.scoreValue, { color: data.weeklyDeltaScore >= 0 ? GREEN_ACCENT : "#DC2626" }]}>
-            {data.weeklyDeltaScore >= 0 ? "+" : ""}{Math.round(data.weeklyDeltaScore)}
-          </Text>
-          <Text style={styles.scoreUpdated}>
-            {format(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7), "MMM d")} – {format(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "MMM d")} vs{"\n"}{format(startOfWeek(new Date(), { weekStartsOn: 1 }), "MMM d")} – {format(new Date(), "MMM d")}
-          </Text>
-        </View>
-      </View>
-
-      {/* ── Consistency Score ── */}
-      <ConsistencyScoreCard value={data.lifestyleAlignmentScore} />
-
-      {/* ── Skin Health + Parameter Metrics ── */}
-      {latestScan ? (
-        <>
-          <SkinParamMetricsCard
-            analysis={latestScan.analysisResults}
-            onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
-          />
-        </>
-      ) : null}
-
-      {/* ── Daily Journal Cards ── */}
-      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>DAILY JOURNAL</Text>
+      {/* ── Bottom row: journal + streak ── */}
+      <View style={[styles.bottomRow, isWideLayout && styles.bottomRowWide]}>
+        <View style={isWideLayout ? styles.bottomRowHalf : undefined}>
+          <Text style={[styles.sectionTitle, { marginTop: 4 }]}>DAILY JOURNAL</Text>
 
       <Pressable
         style={styles.journalCard}
@@ -1044,6 +1015,55 @@ export default function DashboardScreen() {
           <Text style={styles.journalEnterText}>Enter Data</Text>
         </Pressable>
       </Pressable>
+        </View>
+
+        <View style={[styles.streakCard, isWideLayout && styles.bottomRowHalf]}>
+          <Text style={styles.streakTitleNavy}>{data.streakCurrent} day streak</Text>
+          <Text style={styles.streakPersonalBest}>
+            Personal best: {data.streakLongest} days
+          </Text>
+          <View style={styles.streakWeekHeader}>
+            <Text style={styles.streakWeekLabel}>THIS WEEK</Text>
+            <Text style={styles.streakWeekLabel}>{weekDoneCount}/7 complete</Text>
+          </View>
+          <View style={styles.streakWeekTrack}>
+            <View
+              style={[
+                styles.streakWeekFill,
+                { width: `${Math.round((weekDoneCount / 7) * 100)}%` },
+              ]}
+            />
+          </View>
+          <View style={styles.streakDotsRow}>
+            {streakDays.map((d, i) => (
+              <View key={`s-${i}`} style={styles.streakDayCol}>
+                <View
+                  style={[
+                    styles.streakDot,
+                    d.done && styles.streakDotDone,
+                    d.isFuture && !d.done && styles.streakDotFuture,
+                  ]}
+                >
+                  {d.done ? (
+                    <Ionicons name="checkmark" size={14} color="#fff" />
+                  ) : (
+                    <Text style={styles.streakDotLetter}>{d.label.charAt(0)}</Text>
+                  )}
+                </View>
+                <Text style={styles.streakDayLabel}>{d.label}</Text>
+              </View>
+            ))}
+          </View>
+          <Text
+            style={[
+              styles.streakCompleteToday,
+              allRoutineDone ? { color: GREEN_ACCENT } : { color: NAVY },
+            ]}
+          >
+            {allRoutineDone ? "Done today" : "Complete today"}
+          </Text>
+        </View>
+      </View>
 
       {/* Skin parameters section hidden for now — uncomment to restore.
       <View style={[styles.card, styles.skinParamsCard]}>
@@ -1146,43 +1166,77 @@ export default function DashboardScreen() {
   );
 }
 
-function ConsistencyScoreCard({ value }: { value: number }) {
+function ConsistencyScoreCard({
+  value,
+  onNavy = false,
+}: {
+  value: number;
+  onNavy?: boolean;
+}) {
   const v = Math.min(100, Math.max(0, Math.round(value)));
   const size = 100;
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - v / 100);
-  const label = v >= 75 ? "Aligned" : v >= 50 ? "On Track" : v >= 25 ? "Needs Work" : "Low";
+  const label =
+    v >= 75 ? "Aligned" : v >= 50 ? "On Track" : "Needs Work";
 
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const dateRange = `${format(weekStart, "MMM d")} – ${format(now, "MMM d, yyyy")}`;
 
   return (
-    <View style={styles.consistencyCard}>
-      <Text style={styles.consistencyTitle}>WEEKLY CONSISTENCY SCORE</Text>
-      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center", alignSelf: "center", marginVertical: 12 }}>
+    <View style={[styles.consistencyCard, onNavy && styles.consistencyCardNavy]}>
+      <Text style={[styles.consistencyTitle, onNavy && styles.consistencyTitleNavy]}>
+        WEEKLY CONSISTENCY SCORE
+      </Text>
+      <View
+        style={{
+          width: size,
+          height: size,
+          alignItems: "center",
+          justifyContent: "center",
+          alignSelf: "center",
+          marginVertical: 12,
+        }}
+      >
         <Svg width={size} height={size}>
           <Circle
-            cx={size / 2} cy={size / 2} r={radius}
-            stroke="#E5E7EB" strokeWidth={strokeWidth} fill="none"
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={onNavy ? "rgba(255,255,255,0.2)" : "#E5E7EB"}
+            strokeWidth={strokeWidth}
+            fill="none"
           />
           <Circle
-            cx={size / 2} cy={size / 2} r={radius}
-            stroke="#2563EB" strokeWidth={strokeWidth} fill="none"
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={GREEN_ACCENT}
+            strokeWidth={strokeWidth}
+            fill="none"
             strokeDasharray={`${circumference}`}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            rotation="-90" origin={`${size / 2}, ${size / 2}`}
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
           />
         </Svg>
-        <Text style={styles.consistencyValue}>{v}</Text>
+        <Text style={[styles.consistencyValue, onNavy && styles.consistencyValueNavy]}>
+          {v}
+        </Text>
       </View>
-      <Text style={[styles.consistencyLabel, v >= 50 ? { color: GREEN_ACCENT } : { color: "#DC2626" }]}>
+      <Text
+        style={[
+          styles.consistencyLabel,
+          v >= 50 ? { color: GREEN_ACCENT } : { color: onNavy ? "#FCA5A5" : "#DC2626" },
+        ]}
+      >
         {label}
       </Text>
-      <Text style={styles.consistencyUpdated}>{dateRange}</Text>
+      {!onNavy ? <Text style={styles.consistencyUpdated}>{dateRange}</Text> : null}
     </View>
   );
 }
@@ -1368,7 +1422,7 @@ function SkinParamMetricsCard({ analysis, onViewAll }: { analysis: unknown; onVi
   );
 
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View>
       <Text style={styles.skinHealthTitle}>SKIN PARAMETER METRICS</Text>
       <View style={styles.paramMetricsGrid}>
         {topMetrics.map((m) => (
@@ -2020,12 +2074,13 @@ function FeedbackEntryCard({
 
 const fbStyles = StyleSheet.create({
   container: {
-    marginTop: 16,
+    marginTop: 4,
     backgroundColor: GLASS,
     borderRadius: 20,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
   },
   headerRow: {
     flexDirection: "row",
@@ -2231,9 +2286,14 @@ const fbStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#E8EFE6" },
+  scroll: { flex: 1, backgroundColor: DASHBOARD_BG },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6" },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: DASHBOARD_BG,
+  },
   err: { color: "#b91c1c", padding: 16 },
 
   greetingRow: {
@@ -2270,7 +2330,7 @@ const styles = StyleSheet.create({
     borderColor: GLASS_BORDER,
   },
   dateChipToday: { backgroundColor: NAVY, borderColor: NAVY },
-  dateChipIsToday: { borderColor: "#10B981", borderWidth: 1.5 },
+  dateChipIsToday: { borderColor: "rgba(76,175,80,0.5)", borderWidth: 1.5 },
   dateChipLabel: { fontSize: 10, fontWeight: "600", color: "#6B7280", lineHeight: 12 },
   dateChipLabelToday: { color: "#fff" },
   dateChipDay: { fontSize: 15, fontWeight: "800", color: "#1A1A2E", marginTop: 2, lineHeight: 16 },
@@ -2284,6 +2344,41 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
   },
+
+  topRow: { gap: 16, marginBottom: 16 },
+  topRowWide: { flexDirection: "row", alignItems: "stretch" },
+  topRowHalf: { flex: 1, minWidth: 0, marginBottom: 0 },
+  middleRow: { gap: 16, marginBottom: 16 },
+  middleRowWide: { flexDirection: "row", alignItems: "flex-start" },
+  bottomRow: { gap: 16, marginBottom: 16 },
+  bottomRowWide: { flexDirection: "row", alignItems: "stretch" },
+  bottomRowHalf: { flex: 1, minWidth: 0 },
+
+  navyMetricsCard: {
+    backgroundColor: NAVY,
+    borderRadius: 20,
+    padding: 20,
+    ...dashboardNavyCardShadow,
+  },
+  scoreRowNavy: { flexDirection: "row", gap: 12 },
+  scoreCardNavy: { flex: 1, alignItems: "center" },
+  scoreLabelNavy: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.8)", textAlign: "center" },
+  scoreValueNavy: { fontSize: 36, fontWeight: "800", color: GREEN_ACCENT, marginTop: 4 },
+  scoreUpdatedNavy: { fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 4, textAlign: "center" },
+
+  sectionCard: {
+    backgroundColor: GLASS,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
+  },
+  sectionCardFlush: { marginBottom: 0 },
+
+  skinHealthCardInRow: { marginBottom: 0 },
+
   cacheBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -2300,11 +2395,12 @@ const styles = StyleSheet.create({
 
   routineMergedCard: {
     backgroundColor: GLASS,
-    borderRadius: 22,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
   },
   routineMergedHeader: {
     flexDirection: "row",
@@ -2317,7 +2413,7 @@ const styles = StyleSheet.create({
   routineProgressTrack: {
     height: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.5)",
+    backgroundColor: DASHBOARD_BG,
     overflow: "hidden",
     marginBottom: 12,
   },
@@ -2340,7 +2436,7 @@ const styles = StyleSheet.create({
   routineMergedRowSub: { fontSize: 13, fontWeight: "500", color: "#6B7280", marginTop: 2 },
   routineMergedDivider: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: GLASS_BORDER,
     marginHorizontal: 8,
     marginVertical: 2,
   },
@@ -2377,11 +2473,63 @@ const styles = StyleSheet.create({
 
   streakCard: {
     backgroundColor: GLASS,
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 16,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 0,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
+  },
+  streakTitleNavy: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: NAVY,
+    marginBottom: 4,
+  },
+  streakPersonalBest: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginBottom: 12,
+  },
+  streakWeekHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  streakWeekLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    color: "#6B7280",
+    textTransform: "uppercase",
+  },
+  streakWeekTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: DASHBOARD_BG,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  streakWeekFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: GREEN_ACCENT,
+  },
+  streakDotFuture: {
+    borderColor: "#E5E7EB",
+    backgroundColor: "#fff",
+  },
+  streakDotLetter: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9CA3AF",
+  },
+  streakCompleteToday: {
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 12,
   },
   streakSkinRow: {
     flexDirection: "row",
@@ -2470,25 +2618,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
   },
-  consistencyTitle: { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, color: "#18181b" },
+  consistencyCardNavy: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    marginBottom: 0,
+    marginTop: 20,
+    paddingTop: 20,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.15)",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  consistencyTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 0.5, color: "#18181b" },
+  consistencyTitleNavy: { color: "rgba(255,255,255,0.85)" },
   consistencyValue: {
     position: "absolute" as const,
     fontSize: 28,
     fontWeight: "800",
     color: "#18181b",
   },
+  consistencyValueNavy: { color: "#fff" },
   consistencyLabel: { fontSize: 16, fontWeight: "700", marginTop: 2 },
   consistencyUpdated: { fontSize: 12, color: "#9CA3AF", marginTop: 4 },
 
   skinHealthCard: {
     backgroundColor: GLASS,
-    borderRadius: 22,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
   },
   skinHealthCardCompact: {
     padding: 10,
@@ -2511,9 +2676,9 @@ const styles = StyleSheet.create({
   },
   paramMetricCell: {
     width: "47%",
-    backgroundColor: GLASS,
-    borderRadius: 18,
-    paddingVertical: 18,
+    backgroundColor: DASHBOARD_BG,
+    borderRadius: 16,
+    paddingVertical: 14,
     alignItems: "center",
     borderWidth: 1,
     borderColor: GLASS_BORDER,
@@ -2531,7 +2696,7 @@ const styles = StyleSheet.create({
   },
 
   viewAllParamsBtn: {
-    backgroundColor: GREEN_ACCENT,
+    backgroundColor: NAVY,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
@@ -2588,6 +2753,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
   },
   journalCardInner: {
     flexDirection: "row",
@@ -2746,7 +2912,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4f4f5",
     marginRight: 8,
   },
-  chipOn: { backgroundColor: MINT },
+  chipOn: { backgroundColor: DASHBOARD_BG },
   chipText: { color: "#52525b", fontSize: 13 },
   chipTextOn: { color: NAVY, fontWeight: "600", fontSize: 13 },
   skinParamsCard: { marginTop: 16 },

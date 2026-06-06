@@ -1,6 +1,14 @@
 import { parseOnboardingAge } from "@/src/lib/onboardingAgeOptions";
 import type { ReferralSourceId } from "@/src/lib/onboardingReferralSource";
 
+export type ConcernSeverity = "mild" | "moderate" | "severe";
+export type ConcernDuration = "recent" | "ongoing" | "chronic";
+export type SkinSensitivity = "low" | "moderate" | "high";
+export type BaselineSleep = "under5" | "5to6" | "7to8" | "8plus";
+export type BaselineHydration = "under1l" | "1to1_5l" | "1_5to2l" | "2lplus";
+export type BaselineDietType = "vegetarian" | "vegan" | "nonveg" | "mixed";
+export type BaselineSunExposure = "minimal" | "low" | "moderate" | "high";
+
 export const ONBOARDING_QUESTIONNAIRE_DEFAULTS = {
   age: 30,
   gender: "prefer_not_say",
@@ -25,17 +33,17 @@ export type OnboardingQuestionnaireFormState = {
   ageInput: string;
   gender: string | null;
   concern: string | null;
-  severity: string | null;
-  duration: string | null;
+  severity: ConcernSeverity | null;
+  duration: ConcernDuration | null;
   triggers: string[];
   priorTx: "yes" | "no" | null;
   txText: string;
   txDur: string;
-  sensitivity: string | null;
-  sleep: string | null;
-  water: string | null;
-  diet: string | null;
-  sun: string | null;
+  sensitivity: SkinSensitivity | null;
+  sleep: BaselineSleep | null;
+  water: BaselineHydration | null;
+  diet: BaselineDietType | null;
+  sun: BaselineSunExposure | null;
   skinType: string | null;
   referralSource: ReferralSourceId | null;
   referralOther: string;
