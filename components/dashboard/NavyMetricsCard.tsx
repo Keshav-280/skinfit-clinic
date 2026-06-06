@@ -97,7 +97,7 @@ export function NavyMetricsCard({
     >
       <div className="grid h-full min-h-0 grid-cols-12 items-center gap-4">
         {/* Left Column: Stacked sub-cards */}
-        <div className="col-span-5 flex h-full flex-col justify-center gap-2">
+        <div className="col-span-5 flex h-full flex-col justify-center gap-4">
           <div className="flex flex-col justify-center rounded-[16px] bg-[#E8EFE6] px-3 py-2 text-center h-[120px]">
             <p className="text-[11px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
             <p className="mt-0.5 text-[2rem] font-extrabold leading-none text-[#1E5E3A]">
