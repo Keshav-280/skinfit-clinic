@@ -67,6 +67,8 @@ export function getGoogleSignInConfigStatus(): GoogleSignInConfigStatus {
     return "needs_native_build";
   }
   if (!isGoogleSignInNativeModuleLinked()) return "needs_native_build";
+  // iOS native SDK requires iosClientId or GoogleService-Info.plist — skip native otherwise.
+  if (Platform.OS === "ios" && !googleIosClientId()) return "needs_native_build";
   return "ready";
 }
 
@@ -123,18 +125,24 @@ async function loadGoogleSignInSdk(): Promise<GoogleSignInSdk | null> {
 }
 
 export async function configureGoogleSignIn(): Promise<void> {
-  if (googleConfigured || !googleWebClientId()) return;
+  if (googleConfigured || !isGoogleSignInNativeReady()) return;
   if (Platform.OS === "web") return;
 
   const sdk = await loadGoogleSignInSdk();
   if (!sdk) return;
 
-  sdk.GoogleSignin.configure({
-    webClientId: googleWebClientId(),
-    iosClientId: googleIosClientId() || undefined,
-    offlineAccess: false,
-  });
-  googleConfigured = true;
+  try {
+    sdk.GoogleSignin.configure({
+      webClientId: googleWebClientId(),
+      iosClientId: googleIosClientId() || undefined,
+      offlineAccess: false,
+    });
+    googleConfigured = true;
+  } catch (e) {
+    if (__DEV__) {
+      console.warn("[oauth] configureGoogleSignIn failed", e);
+    }
+  }
 }
 
 function parseMobileGoogleHandoffUrl(
@@ -264,7 +272,7 @@ export async function signInWithGoogleNative(): Promise<NativeOAuthCredential> {
     return signInWithGoogleWebBrowser();
   }
 
-  if (isGoogleSignInNativeModuleLinked()) {
+  if (isGoogleSignInNativeReady()) {
     try {
       return await signInWithGoogleNativeSdk();
     } catch (e) {
@@ -272,7 +280,9 @@ export async function signInWithGoogleNative(): Promise<NativeOAuthCredential> {
       if (
         !msg.includes("configure") &&
         !msg.includes("RNGoogleSignin") &&
-        !msg.includes("native module")
+        !msg.includes("native module") &&
+        !msg.includes("clientID") &&
+        !msg.includes("GoogleService-Info")
       ) {
         throw e;
       }

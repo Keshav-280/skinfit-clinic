@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   ActivityIndicator,
   Alert,
@@ -10,14 +11,11 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { ScanCameraAdjustPanel } from "@/components/ScanCameraAdjustPanel";
 import {
   ScanCaptureDebugOverlay,
   isCaptureDebugEnabled,
 } from "@/components/ScanCaptureDebugOverlay";
-import { ScanCaptureStepTicks } from "@/components/ScanCaptureStepTicks";
+import { OnboardingCaptureStepUI } from "@/components/onboarding/OnboardingCaptureStepUI";
 import { useMobileScanCaptureGuidance } from "@/hooks/useMobileScanCaptureGuidance";
 import {
   CAPTURE_READY_VOICE_HINT,
@@ -26,6 +24,7 @@ import {
 } from "@/lib/captureVoiceGuide";
 import { configurePlaybackAudioMode, startAudioPrimingLoop, stopAudioPrimingLoop } from "@/lib/audioSession";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import { SKINFIT_GRADIENT } from "@/lib/skinfitTheme";
 import {
   applyCaptureAdjustments,
   DEFAULT_CAMERA_ADJUSTMENTS,
@@ -34,7 +33,10 @@ import {
 } from "@/lib/cameraCaptureAdjustments";
 import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
 import { prepareCapturedScanPhotoUri } from "@/lib/normalizeScanImage";
-import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
+import {
+  MOBILE_PORTRAIT_PREVIEW_ASPECT,
+  type CaptureGuidanceSnapshot,
+} from "@/lib/scanCaptureGuidance";
 
 const NAVY = "#2C3E6B";
 
@@ -59,6 +61,7 @@ type Props = {
   onBack: () => void;
   busy?: boolean;
   variant?: "dashboard" | "onboarding";
+  previousCaptureUri?: string | null;
 };
 
 export function FiveAngleCameraStep({
@@ -68,6 +71,7 @@ export function FiveAngleCameraStep({
   onBack,
   busy,
   variant = "dashboard",
+  previousCaptureUri = null,
 }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -75,15 +79,14 @@ export function FiveAngleCameraStep({
   const [shooting, setShooting] = useState(false);
   const [pendingUri, setPendingUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("front");
-  const captureDebugUi = isCaptureDebugEnabled();
-  const [showDebug, setShowDebug] = useState(false);
-  const [controlsOpen, setControlsOpen] = useState(false);
+  const [showDebug, setShowDebug] = useState(
+    () => variant === "onboarding" || variant === "dashboard" || isCaptureDebugEnabled()
+  );
   const [cameraAdjust, setCameraAdjust] = useState<CameraAdjustments>(
     DEFAULT_CAMERA_ADJUSTMENTS
   );
   const voiceSpeechAvailable = isCaptureVoiceSpeechAvailable();
   const [voiceEnabled, setVoiceEnabled] = useState(voiceSpeechAvailable);
-  const insets = useSafeAreaInsets();
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
@@ -97,6 +100,10 @@ export function FiveAngleCameraStep({
     models,
     faceTracked,
     bboxSource,
+    bboxKind,
+    landmarkCount,
+    previewAspect,
+    mpNativeAvailable,
   } = useMobileScanCaptureGuidance(
     cameraRef,
     true,
@@ -110,11 +117,10 @@ export function FiveAngleCameraStep({
     setCameraReady(false);
   }, [facing]);
 
-  if (!step) return null;
-
   const totalSteps = FACE_SCAN_CAPTURE_STEPS.length;
 
   const takeShot = useCallback(async () => {
+    if (!step) return;
     if (!cameraRef.current || !cameraReady || shooting) return;
     setShooting(true);
     try {
@@ -142,7 +148,7 @@ export function FiveAngleCameraStep({
     } finally {
       setShooting(false);
     }
-  }, [cameraReady, shooting, facing, cameraAdjust.brightness, cameraAdjust.exposure]);
+  }, [step, cameraReady, shooting, facing, cameraAdjust.brightness, cameraAdjust.exposure]);
 
   useEffect(() => {
     captureVoiceGuide.setEnabled(voiceEnabled && !reviewingCapture);
@@ -183,7 +189,6 @@ export function FiveAngleCameraStep({
 
   useEffect(() => {
     setPendingUri(null);
-    setControlsOpen(false);
     captureVoiceGuide.reset();
   }, [stepIndex]);
 
@@ -206,8 +211,8 @@ export function FiveAngleCameraStep({
   }
 
   if (!permission.granted) {
-    return (
-      <View style={styles.center}>
+    const permBody = (
+      <>
         <Ionicons name="camera-outline" size={48} color={NAVY} style={{ marginBottom: 16 }} />
         <Text style={styles.permTitle}>Camera Access Required</Text>
         <Text style={styles.permSub}>
@@ -216,220 +221,147 @@ export function FiveAngleCameraStep({
         <Pressable style={styles.btnNavy} onPress={() => void requestPermission()}>
           <Text style={styles.btnNavyText}>Allow Camera</Text>
         </Pressable>
-      </View>
+      </>
+    );
+    return (
+      <LinearGradient colors={[...SKINFIT_GRADIENT.scan]} style={styles.center}>
+        {permBody}
+      </LinearGradient>
     );
   }
 
   const isDisabled = busy || shooting || !cameraReady || reviewingCapture;
-  const headerTitle =
-    variant === "onboarding" ? "kAI baseline photos" : "AI face scan";
   const previewOverlay = previewOverlayOpacity(
     cameraAdjust.brightness,
     cameraAdjust.exposure
   );
 
+  const cameraPreview = (
+    <>
+      <CameraView
+        key={facing}
+        ref={cameraRef}
+        style={[styles.onboardingCameraFeed, reviewingCapture && styles.cameraHidden]}
+        facing={facing}
+        zoom={cameraAdjust.zoom}
+        enableTorch={cameraAdjust.torch}
+        onCameraReady={() => {
+          setCameraReady(true);
+          if (voiceEnabled) void startAudioPrimingLoop();
+        }}
+      />
+      {!reviewingCapture && previewOverlay.light > 0 ? (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: `rgba(255,255,255,${previewOverlay.light})` },
+          ]}
+        />
+      ) : null}
+      {!reviewingCapture && previewOverlay.dark > 0 ? (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: `rgba(0,0,0,${previewOverlay.dark})` },
+          ]}
+        />
+      ) : null}
+      {pendingUri ? (
+        <Image
+          source={{ uri: pendingUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          accessibilityLabel={`Captured ${step?.title ?? "photo"}`}
+        />
+      ) : null}
+      {!reviewingCapture && !cameraReady ? (
+        <View style={styles.cameraLoading}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.cameraLoadingText}>Starting camera…</Text>
+        </View>
+      ) : null}
+    </>
+  );
+
+  if (!step) return null;
+
   return (
-    <View style={styles.wrap}>
-      <View style={StyleSheet.absoluteFill}>
-        <CameraView
-          key={facing}
-          ref={cameraRef}
-          style={[StyleSheet.absoluteFill, reviewingCapture && styles.cameraHidden]}
-          facing={facing}
-          zoom={cameraAdjust.zoom}
-          enableTorch={cameraAdjust.torch}
-          onCameraReady={() => {
-            setCameraReady(true);
-            if (voiceEnabled) void startAudioPrimingLoop();
-          }}
-        />
-        {!reviewingCapture && previewOverlay.light > 0 ? (
-          <View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: `rgba(255,255,255,${previewOverlay.light})` },
-            ]}
+    <OnboardingCaptureStepUI
+      step={step}
+      stepIndex={stepIndex}
+      totalSteps={totalSteps}
+      viewfinder={
+        <View style={styles.onboardingViewfinder}>
+          {cameraPreview}
+          <ScanCaptureDebugOverlay
+            guidance={guidance}
+            captureZoom={cameraAdjust.zoom}
+            models={models}
+            faceTracked={faceTracked}
+            mpNativeAvailable={mpNativeAvailable}
+            landmarkCount={landmarkCount}
+            insetTop={8}
+            visible={showDebug && !reviewingCapture}
+            extra={{
+              step: `${stepIndex + 1}/${totalSteps}`,
+              bbox: bboxSource,
+              box: bboxKind,
+              preview: previewAspect,
+            }}
           />
-        ) : null}
-        {!reviewingCapture && previewOverlay.dark > 0 ? (
-          <View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: `rgba(0,0,0,${previewOverlay.dark})` },
-            ]}
-          />
-        ) : null}
-        {pendingUri ? (
-          <Image
-            source={{ uri: pendingUri }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-            accessibilityLabel={`Captured ${step.title}`}
-          />
-        ) : null}
-      </View>
-      {captureDebugUi ? (
-        <ScanCaptureDebugOverlay
-          guidance={guidance}
-          captureZoom={cameraAdjust.zoom}
-          models={models}
-          faceTracked={faceTracked}
-          insetTop={insets.top + 120}
-          visible={showDebug && !reviewingCapture}
-          extra={{
-            step: `${stepIndex + 1}/${totalSteps}`,
-            bbox: bboxSource,
-          }}
-        />
-      ) : null}
-      {!reviewingCapture ? (
-        <ScanCameraAdjustPanel
-          value={cameraAdjust}
-          onChange={setCameraAdjust}
-          expanded={controlsOpen}
-          onToggleExpanded={() => setControlsOpen((v) => !v)}
-          disabled={isDisabled}
-          insetTop={insets.top}
-          insetBottom={insets.bottom}
-        />
-      ) : null}
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={onBack} style={styles.headerBtn} hitSlop={14}>
-          <View style={styles.headerIconCircle}>
-            <Ionicons name="chevron-back" size={22} color="#fff" />
-          </View>
-        </Pressable>
-        <Text style={styles.headerTitle}>{headerTitle}</Text>
-        <View style={styles.headerActions}>
-          {voiceSpeechAvailable ? (
-            <Pressable
-              onPress={() => setVoiceEnabled((v) => !v)}
-              style={styles.headerIconCircle}
-              accessibilityLabel={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
-            >
-              <Ionicons
-                name={voiceEnabled ? "volume-high" : "volume-mute"}
-                size={20}
-                color="#fff"
-              />
-            </Pressable>
-          ) : null}
-          {captureDebugUi ? (
-            <Pressable
-              onPress={() => setShowDebug((v) => !v)}
-              style={[styles.headerIconCircle, showDebug && styles.headerIconCircleActive]}
-              accessibilityLabel={showDebug ? "Hide diagnostics log" : "Show diagnostics log"}
-            >
-              <Ionicons name="bug-outline" size={18} color="#fff" />
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={() => setFacing((f) => (f === "front" ? "back" : "front"))}
-            style={styles.headerIconCircle}
-            accessibilityLabel="Switch camera"
-          >
-            <Ionicons name="camera-reverse-outline" size={20} color="#fff" />
-          </Pressable>
         </View>
-      </View>
-
-      <View style={[styles.instructionWrap, { top: insets.top + 52 }]}>
-        <View style={styles.instructionCard}>
-          <Text style={styles.stepKicker}>
-            Step {stepIndex + 1}/{totalSteps}
-          </Text>
-          <Text style={styles.stepTitle}>{step.title}</Text>
-          <Text style={styles.stepInstruction}>{step.instruction}</Text>
-          {!reviewingCapture ? (
-            <ScanCaptureStepTicks completedCount={stepIndex} compact />
-          ) : null}
-        </View>
-      </View>
-
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        {reviewingCapture ? (
-          <View style={styles.reviewHint}>
-            <Text style={styles.reviewHintText}>
-              Review this photo. Continue or retake.
-            </Text>
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.guidePill,
-              guidance?.readyToCapture && styles.guidePillReady,
-            ]}
-          >
-            <Ionicons
-              name={guidance?.readyToCapture ? "checkmark-circle" : "information-circle-outline"}
-              size={20}
-              color={guidance?.readyToCapture ? "#34d399" : "#fff"}
-            />
-            <Text style={styles.guideText} numberOfLines={2}>
-              {humanGuidanceMessage(guidance, expressionStep)}
-            </Text>
-          </View>
-        )}
-
-        {reviewingCapture ? (
-          <>
-            <Pressable style={styles.btnOutline} onPress={retakePendingCapture}>
-              <View style={styles.btnRow}>
-                <Ionicons name="refresh-outline" size={20} color="#fff" />
-                <Text style={styles.btnOutlineText}>Retake</Text>
-              </View>
-            </Pressable>
-            <Pressable style={styles.btnNavy} onPress={confirmPendingCapture}>
-              <View style={styles.btnRow}>
-                <Ionicons name="checkmark-outline" size={20} color="#fff" />
-                <Text style={styles.btnNavyText}>
-                  {stepIndex + 1 >= totalSteps ? "Use photo & finish" : "Use photo & next"}
-                </Text>
-              </View>
-            </Pressable>
-          </>
-        ) : null}
-
-        {!reviewingCapture ? (
-          <Pressable
-            style={[styles.btnNavy, isDisabled && styles.disabled]}
-            onPress={() => void takeShot()}
-            disabled={isDisabled}
-          >
-            {shooting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <View style={styles.btnRow}>
-                <Ionicons name="camera-outline" size={20} color="#fff" />
-                <Text style={styles.btnNavyText}>
-                  {guidance?.readyToCapture ? "Capture" : "Capture anyway"}{" "}
-                  ({stepIndex + 1}/{totalSteps})
-                </Text>
-              </View>
-            )}
-          </Pressable>
-        ) : null}
-        {!reviewingCapture ? (
-        <Pressable
-          style={[styles.libraryBtn, (busy || shooting) && styles.disabled]}
-          onPress={onPickFromLibrary}
-          disabled={busy || shooting}
-        >
-          <Ionicons name="images-outline" size={18} color="#fff" />
-          <Text style={styles.libraryBtnText}>Pick from library</Text>
-        </Pressable>
-        ) : null}
-      </View>
-    </View>
+      }
+      previousCaptureUri={previousCaptureUri}
+      reviewingCapture={reviewingCapture}
+      shooting={shooting}
+      shutterDisabled={isDisabled}
+      guidanceMessage={humanGuidanceMessage(guidance, expressionStep)}
+      guidanceReady={guidance?.readyToCapture ?? false}
+      voiceEnabled={voiceEnabled}
+      voiceAvailable={voiceSpeechAvailable}
+      onToggleVoice={() => setVoiceEnabled((v) => !v)}
+      showDebug={showDebug}
+      onToggleDebug={() => setShowDebug((v) => !v)}
+      onBack={onBack}
+      onShutter={() => void takeShot()}
+      onFlip={() => setFacing((f) => (f === "front" ? "back" : "front"))}
+      onRetake={retakePendingCapture}
+      onConfirm={confirmPendingCapture}
+      isLastStep={stepIndex + 1 >= totalSteps}
+      onPickFromLibrary={onPickFromLibrary}
+      cameraReady={cameraReady}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: "#000" },
+  onboardingViewfinder: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+    justifyContent: "center",
+    backgroundColor: "#111827",
+  },
+  /** Portrait sensor with cover crop — avoids square-stretch inflating face-fill %. */
+  onboardingCameraFeed: {
+    width: "100%",
+    aspectRatio: MOBILE_PORTRAIT_PREVIEW_ASPECT,
+  },
   cameraHidden: { opacity: 0 },
+  cameraLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#111827",
+    gap: 10,
+  },
+  cameraLoadingText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   reviewHint: {
     backgroundColor: "rgba(0,0,0,0.45)",
     borderRadius: 12,

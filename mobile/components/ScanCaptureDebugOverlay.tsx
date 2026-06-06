@@ -14,6 +14,8 @@ type Props = {
   captureZoom: number;
   models?: CaptureAssistModels;
   faceTracked?: boolean;
+  mpNativeAvailable?: boolean;
+  landmarkCount?: number;
   /** Safe-area top offset so the panel clears the header/instruction card. */
   insetTop?: number;
   extra?: Record<string, string | number | boolean | null | undefined>;
@@ -39,11 +41,30 @@ export function isCaptureDebugEnabled(): boolean {
   return flag === "1" || flag === "true";
 }
 
+function mpStatusLine(
+  models: CaptureAssistModels | undefined,
+  mpNativeAvailable: boolean | undefined,
+  landmarkCount: number | undefined
+): string {
+  if (mpNativeAvailable === false) {
+    return "MP: off (need dev build)";
+  }
+  const state = models?.mediapipe ?? "—";
+  const pts =
+    landmarkCount != null && landmarkCount > 0 ? ` ${landmarkCount}pts` : "";
+  if (state === "ready") return `MP: working${pts}`;
+  if (state === "loading" || state === "idle") return `MP: starting${pts}`;
+  if (state === "failed") return "MP: unavailable";
+  return `MP: ${state}${pts}`;
+}
+
 export function ScanCaptureDebugOverlay({
   guidance,
   captureZoom,
   models,
   faceTracked,
+  mpNativeAvailable,
+  landmarkCount,
   insetTop = 0,
   extra,
   visible,
@@ -70,7 +91,7 @@ export function ScanCaptureDebugOverlay({
     `zoom: ${fmtNum(captureZoom, 1)}×`,
     `sugg zoom: ${fmtNum(guidance?.suggestedZoom, 2)}`,
     `ready: ${guidance?.readyToCapture ? "yes" : "no"}`,
-    `mediapipe: ${models?.mediapipe ?? "—"}`,
+    mpStatusLine(models, mpNativeAvailable, landmarkCount),
     `in band: ${areaOk ? "yes" : "no"}`,
     `tracked: ${faceTracked ? "yes" : "no"}`,
   ];

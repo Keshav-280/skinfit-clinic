@@ -4,19 +4,12 @@ import { db } from "@/src/db";
 import { monthlyReports, users } from "@/src/db/schema";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
-import { dateOnlyFromYmd, localCalendarYmd } from "@/src/lib/date-only";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
+import {
+  computePatientInsightSchedule,
+  getPatientFirstScanAt,
+} from "@/src/lib/patientInsightSchedule";
 import type { MonthlyRagCronPayloadV1 } from "@/src/lib/ragCronMonthlyPayload";
-
-function nextMonthlyCronAtUtcIso(now = new Date()) {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  let next = new Date(Date.UTC(y, m, 1, 5, 30, 0, 0));
-  if (now.getTime() >= next.getTime()) {
-    next = new Date(Date.UTC(y, m + 1, 1, 5, 30, 0, 0));
-  }
-  return next.toISOString();
-}
 
 function isRagPayloadV1(v: unknown): v is MonthlyRagCronPayloadV1 {
   if (!v || typeof v !== "object") return false;
@@ -31,50 +24,63 @@ export async function GET(request: Request) {
   }
 
   const payload = await cacheAside(CacheKeys.monthlyInsight(userId), 900, async () => {
-    const [userRow] = await db
-      .select({ primaryConcern: users.primaryConcern })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const [userRow, firstScanAt] = await Promise.all([
+      db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { primaryConcern: true },
+      }),
+      getPatientFirstScanAt(userId),
+    ]);
     const questionnaireLocked = !userHasQuestionnaire(userRow?.primaryConcern);
+    const schedule = computePatientInsightSchedule(firstScanAt);
 
-    const monthStartStr = `${localCalendarYmd().slice(0, 7)}-01`;
-    const monthStart = dateOnlyFromYmd(monthStartStr);
-
-    const [currentMonthRow] = await db
-      .select()
-      .from(monthlyReports)
-      .where(
-        and(
-          eq(monthlyReports.userId, userId),
-          eq(monthlyReports.monthStart, monthStart)
+    let row = null;
+    if (schedule.dueMonthlyPeriodStart) {
+      [row] = await db
+        .select()
+        .from(monthlyReports)
+        .where(
+          and(
+            eq(monthlyReports.userId, userId),
+            eq(monthlyReports.monthStart, schedule.dueMonthlyPeriodStart)
+          )
         )
-      )
-      .orderBy(desc(monthlyReports.createdAt))
-      .limit(1);
+        .orderBy(desc(monthlyReports.createdAt))
+        .limit(1);
+    }
 
-    const [latestRow] = await db
-      .select()
-      .from(monthlyReports)
-      .where(eq(monthlyReports.userId, userId))
-      .orderBy(desc(monthlyReports.monthStart), desc(monthlyReports.createdAt))
-      .limit(1);
+    if (!row) {
+      const [latestRow] = await db
+        .select()
+        .from(monthlyReports)
+        .where(eq(monthlyReports.userId, userId))
+        .orderBy(desc(monthlyReports.monthStart), desc(monthlyReports.createdAt))
+        .limit(1);
+      row = latestRow ?? null;
+    }
 
-    const row = currentMonthRow ?? latestRow ?? null;
     const ragPayload = isRagPayloadV1(row?.payloadJson) ? row.payloadJson : null;
+    const hasDueReport =
+      schedule.dueMonthlyPeriodStart != null &&
+      row != null &&
+      row.monthStart.getTime() === schedule.dueMonthlyPeriodStart.getTime() &&
+      ragPayload != null;
 
-    const nextInsightAtIso = nextMonthlyCronAtUtcIso();
-    const locked = questionnaireLocked || !ragPayload;
+    const locked = questionnaireLocked || schedule.monthlyLocked || !hasDueReport;
+    const nextInsightAt =
+      schedule.nextMonthlyInsightAt ??
+      schedule.dueMonthlyPeriodStart?.toISOString() ??
+      null;
 
     return {
       questionnaireLocked,
       locked,
-      nextInsightAt: nextInsightAtIso,
+      nextInsightAt,
+      firstScanYmd: schedule.firstScanYmd,
       latestMonthStart: row ? row.monthStart.toISOString().slice(0, 10) : null,
-      monthly: ragPayload?.monthly ?? null,
+      monthly: hasDueReport ? ragPayload?.monthly ?? null : null,
     };
   });
 
   return NextResponse.json(payload);
 }
-

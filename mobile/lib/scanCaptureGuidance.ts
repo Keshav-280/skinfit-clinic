@@ -50,6 +50,9 @@ export type NormalizedFaceBox = {
   height: number;
 };
 
+/** Portrait front-camera preview (width / height) — matches scan stills. */
+export const MOBILE_PORTRAIT_PREVIEW_ASPECT = 3 / 4;
+
 export const CAPTURE_FRAME = {
   x0: 0,
   y0: 0,
@@ -65,23 +68,23 @@ const FACE_TARGET = {
 };
 
 /**
- * Mobile-only framing band — face should fill **50–70%** of the frame.
+ * Mobile-only framing band — face should fill **70–90%** of the frame.
  * (Web `src/lib/scanCaptureGuidance.ts` keeps its own 20–40% band; do not change it.)
  */
-export const IDEAL_FACE_FILL_MIN = 0.5;
-export const IDEAL_FACE_FILL_MAX = 0.7;
-/** ±3 pts hysteresis around the 50–70% band. */
+export const IDEAL_FACE_FILL_MIN = 0.7;
+export const IDEAL_FACE_FILL_MAX = 0.9;
+/** ±3 pts hysteresis around the 70–90% band. */
 const CAPTURE_FRAMING_TOLERANCE = 0.03;
 const IDEAL_FACE_FILL_AREA = (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 47% — "move closer". */
+  /** Below 67% — "move closer". */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At/above 50% — size OK (lower bound). */
+  /** At/above 70% — size OK (lower bound). */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 73% — "ease back". */
+  /** Above 93% — "ease back". */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At/below 70% — size OK (upper bound). */
+  /** At/below 90% — size OK (upper bound). */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
   centerEnterX: 0.2,
   centerExitX: 0.15,
@@ -89,7 +92,7 @@ export const CAPTURE_FRAMING_THRESHOLDS = {
   centerExitY: 0.17,
 } as const;
 
-/** Auto-zoom converges toward the center of the 50–70% band (60%). */
+/** Auto-zoom converges toward the center of the 70–90% band (80%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }
@@ -123,6 +126,46 @@ export function effectiveFaceFill(box: NormalizedFaceBox): number {
   const overlapW = Math.max(0, x1 - x0);
   const overlapH = Math.max(0, y1 - y0);
   return (overlapW * overlapH) / FRAME_AREA;
+}
+
+export function isSquarePreviewImage(width: number, height: number): boolean {
+  if (width < 1 || height < 1) return false;
+  const wh = width / height;
+  return wh > 0.9 && wh < 1.1;
+}
+
+/**
+ * Guidance stills cropped to a square viewfinder are a center band of the portrait
+ * sensor — remap the face box to full-frame coords before computing fill %.
+ */
+export function expandSquarePreviewBoxToPortraitFrame(
+  box: NormalizedFaceBox,
+  portraitAspect: number = MOBILE_PORTRAIT_PREVIEW_ASPECT
+): NormalizedFaceBox {
+  const cropH = portraitAspect;
+  const yOffset = (1 - cropH) / 2;
+  return {
+    x: box.x,
+    y: box.y * cropH + yOffset,
+    width: box.width,
+    height: box.height * cropH,
+  };
+}
+
+/** Shrink a normalized box toward its center (server RetinaFace tends to overshoot). */
+export function shrinkNormalizedFaceBox(
+  box: NormalizedFaceBox,
+  scale: number
+): NormalizedFaceBox {
+  const s = Math.max(0.5, Math.min(1, scale));
+  const dw = (box.width * (1 - s)) / 2;
+  const dh = (box.height * (1 - s)) / 2;
+  return {
+    x: box.x + dw,
+    y: box.y + dh,
+    width: box.width * s,
+    height: box.height * s,
+  };
 }
 
 export type StableFramingState = {

@@ -2,8 +2,8 @@
 # Install all prod crons on the VM (replaces cron-job.org / Render schedulers).
 # - Postgres backup (daily 03:00 UTC)
 # - Appointment + routine reminders (every 2 minutes)
-# - kAI weekly (Sunday 01:00 UTC)
-# - kAI monthly (1st of month 02:00 UTC)
+# - kAI weekly (daily 06:00 UTC — per-patient 7-day windows from first scan)
+# - kAI monthly (daily 07:00 UTC — per-patient month windows from first scan)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,8 +28,8 @@ LINES="$(cat <<EOF
 # skinfit-vm-cron (managed by scripts/install-vm-cron.sh)
 0 3 * * * $BACKUP >> $LOG_DIR/skinfit-pg-backup.log 2>&1
 */2 * * * * $CALL appointment-reminders >> $LOG_DIR/skinfit-cron-reminders.log 2>&1
-0 1 * * 0 $CALL kai-weekly >> $LOG_DIR/skinfit-cron-kai-weekly.log 2>&1
-0 2 1 * * $CALL kai-monthly >> $LOG_DIR/skinfit-cron-kai-monthly.log 2>&1
+0 6 * * * $CALL kai-weekly >> $LOG_DIR/skinfit-cron-kai-weekly.log 2>&1
+0 7 * * * $CALL kai-monthly >> $LOG_DIR/skinfit-cron-kai-monthly.log 2>&1
 EOF
 )"
 

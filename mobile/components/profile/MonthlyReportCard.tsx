@@ -58,15 +58,17 @@ export default function MonthlyReportCard({
 }: Props) {
   return (
     <View style={card.base}>
-      <Text style={s.title}>This Month's Report</Text>
-      <Text style={s.subtitle}>{currentMonthName()}</Text>
+      <Text style={s.title}>Monthly insight</Text>
+      <Text style={s.subtitle}>
+        {locked ? "1 month after your first scan" : currentMonthName()}
+      </Text>
 
       {locked ? (
         <View style={s.lockedWrap}>
           <View style={s.lockCircle}>
             <Ionicons name="lock-closed" size={22} color={TEXT_LIGHT} />
           </View>
-          <Text style={s.lockedText}>Your next summary arrives around</Text>
+          <Text style={s.lockedText}>Your first monthly summary unlocks around</Text>
           <Text style={s.lockedDate}>{formatInsightDate(nextInsightAt)}</Text>
           <Text style={s.lockedHint}>
             Keep scanning and logging — we&apos;ll put your monthly recap together.

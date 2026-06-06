@@ -9,9 +9,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/splash-logo-transparent.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#D6E4D0"
     },
     "ios": {
       "supportsTablet": true,
@@ -31,8 +31,8 @@
     "android": {
       "package": "app.skinfit.clinic",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0d9488"
+        "foregroundImage": "./assets/images/splash-logo-transparent.png",
+        "backgroundColor": "#D6E4D0"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -46,6 +46,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-logo-transparent.png",
+          "imageWidth": 340,
+          "resizeMode": "contain",
+          "backgroundColor": "#D6E4D0"
+        }
+      ],
       "./plugins/withFaceLandmarkerModel",
       [
         "react-native-vision-camera",
@@ -80,7 +89,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#0d9488",
+          "color": "#2C3E6B",
           "sounds": [],
           "defaultChannel": "default"
         }

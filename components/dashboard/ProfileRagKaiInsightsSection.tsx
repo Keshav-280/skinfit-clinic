@@ -160,7 +160,7 @@ export function ProfileRagKaiInsightsSection({ embedded = false }: { embedded?: 
             Not ready yet
           </p>
           <p className={`mt-2 text-sm leading-relaxed ${patientMuted}`}>
-            Your next monthly summary will appear here around{" "}
+            Your monthly summary unlocks 1 month after your first scan — around{" "}
             <span className="font-semibold text-[#2C3E6B]">{nextInsightFriendly}</span>.
             Keep scanning and logging — we&apos;ll pull it together for you.
           </p>

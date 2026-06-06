@@ -1,5 +1,5 @@
-import { and, asc, desc, eq, gte } from "drizzle-orm";
-import { subDays } from "date-fns";
+import { addDays } from "date-fns";
+import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
   monthlyReports,
@@ -7,10 +7,15 @@ import {
   users,
   weeklyReports,
 } from "@/src/db/schema";
-import { dateOnlyFromYmd, localCalendarYmd } from "@/src/lib/date-only";
+import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { buildMonthlyRagCronPayload } from "@/src/lib/ragCronMonthlyPayload";
 import { generateRagKaiOutput } from "@/src/lib/ragKaiTestService";
 import { publishNotification } from "@/src/lib/infra";
+import {
+  computePatientInsightSchedule,
+  getPatientFirstScanAt,
+  WEEKLY_INSIGHT_DAYS_AFTER_FIRST_SCAN,
+} from "@/src/lib/patientInsightSchedule";
 
 function monthlyCronRagEnabled() {
   const v = process.env.KAI_MONTHLY_CRON_RAG?.trim().toLowerCase();
@@ -24,11 +29,9 @@ function monthlyCronRagMaxPatients() {
   return Math.min(n, 500);
 }
 
-/** Sunday-style weekly rollup: patients with 2+ scans in the last 7 days. */
+/** Weekly rollup per patient: 7-day periods anchored to their first scan. */
 export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> {
-  const anchor = dateOnlyFromYmd(localCalendarYmd());
-  const weekStart = subDays(anchor, 7);
-  const weekStartTs = weekStart;
+  const now = new Date();
 
   const patients = await db
     .select({ id: users.id })
@@ -37,6 +40,13 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
 
   let n = 0;
   for (const p of patients) {
+    const firstScanAt = await getPatientFirstScanAt(p.id);
+    const schedule = computePatientInsightSchedule(firstScanAt, now);
+    const weekStart = schedule.dueWeeklyPeriodStart;
+    if (!weekStart) continue;
+
+    const periodEnd = addDays(weekStart, WEEKLY_INSIGHT_DAYS_AFTER_FIRST_SCAN);
+
     const recent = await db
       .select({
         id: scans.id,
@@ -44,10 +54,16 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
         createdAt: scans.createdAt,
       })
       .from(scans)
-      .where(and(eq(scans.userId, p.id), gte(scans.createdAt, weekStartTs)))
+      .where(
+        and(
+          eq(scans.userId, p.id),
+          gte(scans.createdAt, weekStart),
+          lt(scans.createdAt, periodEnd)
+        )
+      )
       .orderBy(desc(scans.createdAt));
 
-    if (recent.length < 2) continue;
+    if (recent.length < 1) continue;
 
     const dup = await db.query.weeklyReports.findFirst({
       where: and(
@@ -59,7 +75,8 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
 
     const latest = recent[0];
     const prev = recent[1];
-    const delta = latest.overallScore - prev.overallScore;
+    const delta =
+      prev != null ? latest.overallScore - prev.overallScore : 0;
 
     await db.insert(weeklyReports).values({
       userId: p.id,
@@ -70,7 +87,6 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
       narrativeText:
         "Automated weekly kAI note: compare this week’s scan to the prior one in the app. Flag any parameter drop >10% with your doctor.",
     });
-    // Push the patient that a fresh weekly insight is ready (Expo via worker).
     void publishNotification("weekly.insight", p.id, {});
     n += 1;
   }
@@ -94,9 +110,7 @@ export async function runDailyFocusJob(): Promise<{ upserts: number }> {
  *   the job or increase the cap to drain the queue.
  */
 export async function runMonthlyReportsJob(): Promise<{ rows: number }> {
-  const ymd = localCalendarYmd();
-  const monthStart = dateOnlyFromYmd(`${ymd.slice(0, 7)}-01`);
-  const monthStartStr = `${ymd.slice(0, 7)}-01`;
+  const now = new Date();
 
   const patients = await db
     .select({ id: users.id })
@@ -110,6 +124,13 @@ export async function runMonthlyReportsJob(): Promise<{ rows: number }> {
   let n = 0;
 
   for (const p of patients) {
+    const firstScanAt = await getPatientFirstScanAt(p.id);
+    const schedule = computePatientInsightSchedule(firstScanAt, now);
+    const monthStart = schedule.dueMonthlyPeriodStart;
+    if (!monthStart) continue;
+
+    const monthStartStr = ymdFromDateOnly(monthStart);
+
     const [exists] = await db
       .select({ id: monthlyReports.id })
       .from(monthlyReports)
@@ -123,12 +144,6 @@ export async function runMonthlyReportsJob(): Promise<{ rows: number }> {
     if (exists) continue;
 
     if (useRag) {
-      const [hasScan] = await db
-        .select({ id: scans.id })
-        .from(scans)
-        .where(eq(scans.userId, p.id))
-        .limit(1);
-      if (!hasScan) continue;
       if (ragProcessed >= ragCap) continue;
 
       const output = await generateRagKaiOutput({ userId: p.id });
@@ -142,7 +157,6 @@ export async function runMonthlyReportsJob(): Promise<{ rows: number }> {
           monthStartStr
         ) as Record<string, unknown>,
       });
-      // Only push for real RAG content (placeholder rows below don't notify).
       void publishNotification("monthly.insight", p.id, {});
       ragProcessed += 1;
       n += 1;

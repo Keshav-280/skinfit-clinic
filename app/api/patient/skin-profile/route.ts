@@ -29,6 +29,10 @@ import {
 } from "@/src/lib/profileInsightsStore";
 import { CacheKeys, getCache } from "@/src/lib/infra";
 import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
+import {
+  computePatientInsightSchedule,
+  getPatientFirstScanAt,
+} from "@/src/lib/patientInsightSchedule";
 
 /** Regenerate insights at most once per week unless a new scan arrives. */
 const INSIGHTS_STALE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -131,7 +135,7 @@ export async function GET(request: Request) {
   }
 
   const payload = await (async () => {
-    const [user, dna, visits, insightCtx] = await Promise.all([
+    const [user, dna, visits, insightCtx, firstScanAt] = await Promise.all([
       db.query.users.findFirst({
         where: eq(users.id, userId),
         columns: {
@@ -152,7 +156,10 @@ export async function GET(request: Request) {
         limit: 12,
       }),
       gatherProfileInsightContext(userId),
+      getPatientFirstScanAt(userId),
     ]);
+
+    const insightSchedule = computePatientInsightSchedule(firstScanAt);
 
     const {
       keyObservations,
@@ -213,6 +220,12 @@ export async function GET(request: Request) {
     return {
       kaiInsightsEnabled: enabled,
       questionnaireLocked,
+      weeklyInsight: {
+        locked: insightSchedule.weeklyLocked,
+        nextInsightAt: insightSchedule.nextWeeklyInsightAt,
+        firstScanYmd: insightSchedule.firstScanYmd,
+        daysSinceFirstScan: insightSchedule.daysSinceFirstScan,
+      },
       scanCount,
       insightsGeneratedAt: insightsGeneratedAt ? insightsGeneratedAt.toISOString() : null,
       skinDna: {

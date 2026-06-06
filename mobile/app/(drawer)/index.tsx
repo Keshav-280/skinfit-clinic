@@ -59,7 +59,11 @@ function formatScanDetailLabel(scan: SkinScanItem): string {
 }
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { formatWaterLiters } from "@/lib/hydrationUnits";
-import { subscribeJournalUpdated } from "@/lib/journalSync";
+import {
+  clearJournalSyncPatch,
+  peekJournalSyncPatch,
+  subscribeJournalUpdated,
+} from "@/lib/journalSync";
 import { normalizeRoutineSteps } from "@/lib/routine";
 
 const NAVY = "#2C3E6B";
@@ -200,6 +204,18 @@ export default function DashboardScreen() {
   const { markReady: markJournalReady, markNotReady: markJournalNotReady } =
     useDebouncedTrackerAutoSave(token);
 
+  const hasLoadedOnce = useRef(false);
+  const journalLoadGenRef = useRef(0);
+
+  const applyJournalSyncPatch = useCallback(
+    (patch: { sleepHours?: number; stressLevel?: number; waterGlasses?: number }) => {
+      if (patch.sleepHours != null) setSleep(String(patch.sleepHours));
+      if (patch.stressLevel != null) setStress(String(patch.stressLevel));
+      if (patch.waterGlasses != null) setWater(String(patch.waterGlasses));
+    },
+    []
+  );
+
   const loadHome = useCallback(async (opts?: { skipCache?: boolean }) => {
     if (!token) return;
     setError(null);
@@ -263,6 +279,7 @@ export default function DashboardScreen() {
 
     const log = json.todayLog;
     if (log) {
+      clearJournalSyncPatch(journalDate);
       setSleep(String(log.sleepHours ?? 0));
       setStress(String(log.stressLevel ?? 5));
       setWater(String(log.waterGlasses ?? 0));
@@ -275,8 +292,11 @@ export default function DashboardScreen() {
       setCycleDay(
         typeof log.cycleDay === "number" && log.cycleDay > 0 ? String(log.cycleDay) : ""
       );
+    } else {
+      const optimistic = peekJournalSyncPatch(journalDate);
+      if (optimistic) applyJournalSyncPatch(optimistic);
     }
-  }, [token, journalDate]);
+  }, [token, journalDate, applyJournalSyncPatch]);
 
   const patchVoiceNote = useCallback(
     async (id: string, body: { listened?: boolean; archived?: boolean }) => {
@@ -317,11 +337,10 @@ export default function DashboardScreen() {
     };
   }, [loadHome]);
 
-  const hasLoadedOnce = useRef(false);
-
   const loadJournalForDate = useCallback(
     async (ymd: string) => {
       if (!token) return;
+      const loadGen = ++journalLoadGenRef.current;
       markJournalNotReady();
       setJournalLoading(true);
       setJournalHint(null);
@@ -331,8 +350,11 @@ export default function DashboardScreen() {
           token,
           { method: "GET" }
         );
+        if (loadGen !== journalLoadGenRef.current) return;
+
         const entry = res.entry;
         if (entry) {
+          clearJournalSyncPatch(ymd);
           setSleep(String(entry.sleepHours ?? 0));
           setStress(String(entry.stressLevel ?? 5));
           setWater(String(entry.waterGlasses ?? 0));
@@ -350,9 +372,19 @@ export default function DashboardScreen() {
               : ""
           );
         } else {
-          setSleep("0");
-          setStress("5");
-          setWater("0");
+          const optimistic = peekJournalSyncPatch(ymd);
+          if (
+            optimistic &&
+            (optimistic.sleepHours != null ||
+              optimistic.stressLevel != null ||
+              optimistic.waterGlasses != null)
+          ) {
+            applyJournalSyncPatch(optimistic);
+          } else {
+            setSleep("0");
+            setStress("5");
+            setWater("0");
+          }
           setJournalText("");
           setMood("Neutral");
           setAmRoutine(false);
@@ -362,13 +394,17 @@ export default function DashboardScreen() {
           setCycleDay("");
         }
       } catch {
-        setJournalHint("Could not load journal for that day.");
+        if (loadGen === journalLoadGenRef.current) {
+          setJournalHint("Could not load journal for that day.");
+        }
       } finally {
-        setJournalLoading(false);
-        markJournalReady();
+        if (loadGen === journalLoadGenRef.current) {
+          setJournalLoading(false);
+          markJournalReady();
+        }
       }
     },
-    [token, markJournalNotReady, markJournalReady]
+    [token, markJournalNotReady, markJournalReady, applyJournalSyncPatch]
   );
 
   useEffect(() => {
@@ -378,11 +414,9 @@ export default function DashboardScreen() {
   useEffect(() => {
     return subscribeJournalUpdated((patch) => {
       if (patch.date !== journalDate) return;
-      if (patch.sleepHours != null) setSleep(String(patch.sleepHours));
-      if (patch.stressLevel != null) setStress(String(patch.stressLevel));
-      if (patch.waterGlasses != null) setWater(String(patch.waterGlasses));
+      applyJournalSyncPatch(patch);
     });
-  }, [journalDate]);
+  }, [journalDate, applyJournalSyncPatch]);
 
   useFocusEffect(
     useCallback(() => {

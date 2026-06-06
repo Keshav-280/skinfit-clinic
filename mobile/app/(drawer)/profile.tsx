@@ -89,6 +89,12 @@ type SkinProfilePayload = {
   scanCount?: number;
   insightsGeneratedAt?: string | null;
   kaiInsightsEnabled?: boolean;
+  weeklyInsight?: {
+    locked: boolean;
+    nextInsightAt: string | null;
+    firstScanYmd: string | null;
+    daysSinceFirstScan: number;
+  };
   sparklines: Record<string, { values: (number | null)[]; sources: string[] }>;
   paramLabels: Record<string, string>;
   visits: Array<{
@@ -399,9 +405,14 @@ export default function ProfileScreen() {
   const scanCount = skinExtra?.scanCount ?? (hasRealScoreData ? 1 : 0);
   const showTrend = hasRealScoreData && scanCount >= 2;
 
+  const weeklyLocked = skinExtra?.weeklyInsight?.locked ?? true;
+  const weeklyNextAt = skinExtra?.weeklyInsight?.nextInsightAt ?? null;
+
   const hasWeeklyContent =
     kaiInsightsEnabled &&
-    (hasWeeklyScore ||
+    scanCount > 0 &&
+    (weeklyLocked ||
+      hasWeeklyScore ||
       observations.length > 0 ||
       priorityActions.length > 0 ||
       insightsUnavailable);
@@ -455,6 +466,8 @@ export default function ProfileScreen() {
         {/* 4. Weekly Report — only when real scan data exists */}
         {hasWeeklyContent ? (
           <WeeklyReportCard
+            locked={weeklyLocked}
+            nextInsightAt={weeklyNextAt}
             kaiScore={weeklyAverageScore}
             weeklyDelta={weeklyDelta}
             consistency={consistency}

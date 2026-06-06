@@ -14,9 +14,26 @@ export default function OnboardingLayout() {
           contentStyle: { backgroundColor: "#E8EFE6" },
         }}
       >
-        <Stack.Screen name="capture-intro" options={{ headerShown: false }} />
-        <Stack.Screen name="capture" options={{ headerShown: false }} />
-        <Stack.Screen name="baseline-report" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="kai-intro"
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#D6E4D0" } }}
+        />
+        <Stack.Screen
+          name="capture-intro"
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#D6E4D0" } }}
+        />
+        <Stack.Screen
+          name="capture"
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#F6F5F2" } }}
+        />
+        <Stack.Screen
+          name="baseline-report"
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#E8EFE6" } }}
+        />
+        <Stack.Screen
+          name="questionnaire"
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#E8EFE6" } }}
+        />
       </Stack>
     </OnboardingResumeGate>
   );

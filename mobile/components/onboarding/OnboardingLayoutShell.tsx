@@ -14,6 +14,7 @@ type Props = {
   title?: string;
   backHref?: Href;
   scanTheme?: boolean;
+  showHeader?: boolean;
 };
 
 export function OnboardingLayoutShell({
@@ -21,6 +22,7 @@ export function OnboardingLayoutShell({
   title = "kAI baseline scan",
   backHref = "/onboarding/kai-intro" as Href,
   scanTheme = true,
+  showHeader = true,
 }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -46,26 +48,35 @@ export function OnboardingLayoutShell({
       colors={[...SKINFIT_GRADIENT.scan]}
       style={styles.flex}
     >
-      <View style={[styles.scanHeader, { paddingTop: insets.top + 8 }]}>
-        <Pressable
-          onPress={() => router.push(backHref)}
-          style={styles.backBtn}
-          hitSlop={8}
-        >
-          <Ionicons name="arrow-back" size={18} color={NAVY} />
-          <Text style={styles.backLabel}>Back</Text>
-        </Pressable>
-        <View style={styles.titleRow}>
-          <View style={styles.sparkleCircle}>
-            <Ionicons name="sparkles" size={16} color="#fff" />
+      {showHeader ? (
+        <View style={[styles.scanHeader, { paddingTop: insets.top + 8 }]}>
+          <Pressable
+            onPress={() => router.push(backHref)}
+            style={styles.backBtn}
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-back" size={18} color={NAVY} />
+            <Text style={styles.backLabel}>Back</Text>
+          </Pressable>
+          <View style={styles.titleRow}>
+            <View style={styles.sparkleCircle}>
+              <Ionicons name="sparkles" size={16} color="#fff" />
+            </View>
+            <Text style={styles.scanTitle} numberOfLines={1}>
+              {title}
+            </Text>
           </View>
-          <Text style={styles.scanTitle} numberOfLines={1}>
-            {title}
-          </Text>
+          <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.headerSpacer} />
+      ) : null}
+      <View
+        style={[
+          styles.scanMain,
+          !showHeader && { paddingTop: insets.top + 20 },
+        ]}
+      >
+        {children}
       </View>
-      <View style={styles.scanMain}>{children}</View>
     </LinearGradient>
   );
 }

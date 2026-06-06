@@ -70,6 +70,9 @@ export function useMobileScanCaptureGuidance(
     null
   );
   const [bboxSource, setBboxSource] = useState("—");
+  const [bboxKind, setBboxKind] = useState("—");
+  const [landmarkCount, setLandmarkCount] = useState(0);
+  const [previewAspect, setPreviewAspect] = useState("—");
   const { token } = useAuth();
   const captureCfg = useMemo(() => getMobileFaceCaptureConfig(), []);
   const needsMp = needsMediapipeOnClient(captureCfg);
@@ -114,6 +117,9 @@ export function useMobileScanCaptureGuidance(
     setGuidance(null);
     setFaceLandmarks(null);
     setBboxSource("—");
+    setBboxKind("—");
+    setLandmarkCount(0);
+    setPreviewAspect("—");
     setModels(initialMobileModels(captureCfg, needsMp, landmarkDetectionEnabled));
   }, [stepId, needsMp, landmarkDetectionEnabled, captureCfg]);
 
@@ -146,17 +152,22 @@ export function useMobileScanCaptureGuidance(
       if (next) setGuidance(next);
       if (meta) {
         setBboxSource(meta.bboxSource);
+        setBboxKind(meta.bboxKind);
+        setLandmarkCount(meta.landmarkCount);
+        setPreviewAspect(meta.previewAspect);
         setModels((prev) => ({
           ...prev,
-          mediapipe: meta.landmarkPipelineActive
+          mediapipe: !needsMp
+            ? "off"
+            : !landmarkDetectionEnabled
+              ? "failed"
+            : meta.landmarkPipelineActive
             ? state.faceLandmarks?.length
               ? "ready"
               : prev.mediapipe === "ready"
                 ? "ready"
                 : "loading"
-            : needsMp
-              ? "off"
-              : "off",
+            : "off",
           retinaface:
             prev.retinaface === "off"
               ? "off"
@@ -210,6 +221,9 @@ export function useMobileScanCaptureGuidance(
         setFaceLandmarks(null);
         expressionOkRef.current = null;
         setBboxSource("—");
+        setBboxKind("—");
+        setLandmarkCount(0);
+        setPreviewAspect("—");
       }
       return;
     }
@@ -238,8 +252,12 @@ export function useMobileScanCaptureGuidance(
     faceCheckLive,
     faceTracked,
     bboxSource,
+    bboxKind,
+    landmarkCount,
+    previewAspect,
     needsExpressionModel,
     landmarkDetectionEnabled,
+    mpNativeAvailable: landmarkDetectionEnabled,
     faceLandmarks,
   };
 }

@@ -1,8 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
-
 const NAVY = "#2C3E6B";
 
 type Props = {
@@ -107,23 +105,3 @@ const styles = StyleSheet.create({
   },
   pressedBtn: { opacity: 0.88 },
 });
-
-function OnboardingQueuedScreen({
-  onContinue,
-  onDashboard,
-}: {
-  onContinue: () => void;
-  onDashboard: () => void;
-}) {
-  return (
-    <OnboardingLayoutShell title="kAI baseline photos">
-      <ScanQueuedConfirmation
-        variant="onboarding"
-        onContinue={onContinue}
-        onSecondary={onDashboard}
-      />
-    </OnboardingLayoutShell>
-  );
-}
-
-export { OnboardingQueuedScreen };

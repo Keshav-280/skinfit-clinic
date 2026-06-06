@@ -66,6 +66,8 @@ type AuthContextValue = {
   }) => Promise<void>;
   /** After baseline onboarding finishes — updates local session without re-login. */
   markOnboardingComplete: () => Promise<void>;
+  /** Right after baseline photos upload — unlocks dashboard before profile cache catches up. */
+  markBaselineSubmitted: (opts?: { pending?: boolean }) => Promise<void>;
   /** Refresh `user` from GET /api/user/profile (e.g. gate routing). */
   refreshUserFromProfile: (bearerToken: string) => Promise<void>;
 };
@@ -400,6 +402,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(next);
   }, [user]);
 
+  const markBaselineSubmitted = useCallback(
+    async (opts?: { pending?: boolean }) => {
+      const u = user;
+      if (!u) return;
+      const pending = opts?.pending !== false;
+      const next: AuthUser = {
+        ...u,
+        canAccessDashboard: true,
+        baselineScanPending: pending,
+        hasBaselineScan: !pending,
+      };
+      await sessionSet(USER_KEY, JSON.stringify(next));
+      setUser(next);
+    },
+    [user]
+  );
+
   const refreshUserFromProfile = useCallback(async (bearerToken: string) => {
     let res: Response;
     try {
@@ -478,6 +497,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       applySessionFromProfile,
       markOnboardingComplete,
+      markBaselineSubmitted,
       refreshUserFromProfile,
     }),
     [
@@ -490,6 +510,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       applySessionFromProfile,
       markOnboardingComplete,
+      markBaselineSubmitted,
       refreshUserFromProfile,
     ]
   );

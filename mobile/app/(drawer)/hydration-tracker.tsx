@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { format, addDays, subDays, subMonths, isSameDay, parseISO } from "date-fns";
+import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -182,7 +183,7 @@ export default function HydrationTrackerScreen() {
   const params = useLocalSearchParams<{ date?: string }>();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
-  const { saveStatus, scheduleSave, markReady, markNotReady } =
+  const { saveStatus, scheduleSave, flushSave, markReady, markNotReady } =
     useDebouncedTrackerAutoSave(token);
 
   const [loading, setLoading] = useState(true);
@@ -242,6 +243,14 @@ export default function HydrationTrackerScreen() {
     if (loading) markNotReady();
     else markReady();
   }, [loading, markReady, markNotReady]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        void flushSave();
+      };
+    }, [flushSave])
+  );
 
   function scheduleHydrationSave(nextMl: number) {
     const snappedMl = snapHydrationMl(nextMl);

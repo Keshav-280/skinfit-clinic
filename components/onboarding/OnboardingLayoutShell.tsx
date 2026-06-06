@@ -22,6 +22,7 @@ export function OnboardingLayoutShell({
 }) {
   const pathname = usePathname();
   const scanTheme = isScanThemeRoute(pathname);
+  const isCaptureIntro = pathname === "/onboarding/capture";
   const onCapturePhotos = pathname?.startsWith("/onboarding/capture/photos");
   const backHref = onCapturePhotos ? "/onboarding/capture" : "/onboarding/kai-intro";
   const headerTitle =
@@ -32,6 +33,7 @@ export function OnboardingLayoutShell({
   if (scanTheme) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6]">
+        {!isCaptureIntro ? (
         <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 md:px-8">
             <Link
@@ -52,7 +54,10 @@ export function OnboardingLayoutShell({
             <div className="hidden w-[88px] sm:block" aria-hidden />
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 pb-12 md:px-8">
+        ) : null}
+        <main
+          className={`mx-auto max-w-7xl px-4 pb-12 md:px-8 ${isCaptureIntro ? "py-6 md:py-8" : "py-6"}`}
+        >
           {children}
         </main>
       </div>
@@ -64,25 +69,31 @@ export function OnboardingLayoutShell({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6]">
-      <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 px-4 py-3 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
-        <div className={`mx-auto flex ${maxWidthClass} items-center justify-between gap-3`}>
-          <Link
-            href="/onboarding/kai-intro"
-            className="inline-flex shrink-0 items-center"
-            aria-label="SkinFit Wellness — onboarding home"
-          >
-            <Image
-              src="/branding/skinfit-wellness-logo.svg"
-              alt="SkinFit Wellness"
-              width={560}
-              height={135}
-              className="h-8 w-auto max-w-[10.5rem] object-contain object-left sm:max-w-[11.5rem]"
-            />
-          </Link>
-          <span className="hidden w-[7rem] sm:block" aria-hidden />
-        </div>
-      </header>
-      <main className={`mx-auto w-full ${maxWidthClass} px-4 py-8 pb-16`}>{children}</main>
+      {!isKaiIntro ? (
+        <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 px-4 py-3 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
+          <div className={`mx-auto flex ${maxWidthClass} items-center justify-between gap-3`}>
+            <Link
+              href="/onboarding/kai-intro"
+              className="inline-flex shrink-0 items-center"
+              aria-label="SkinFit Wellness — onboarding home"
+            >
+              <Image
+                src="/branding/skinfit-wellness-logo.svg"
+                alt="SkinFit Wellness"
+                width={560}
+                height={135}
+                className="h-8 w-auto max-w-[10.5rem] object-contain object-left sm:max-w-[11.5rem]"
+              />
+            </Link>
+            <span className="hidden w-[7rem] sm:block" aria-hidden />
+          </div>
+        </header>
+      ) : null}
+      <main
+        className={`mx-auto w-full ${maxWidthClass} px-4 pb-16 ${isKaiIntro ? "py-6 md:py-8" : "py-8"}`}
+      >
+        {children}
+      </main>
     </div>
   );
 }

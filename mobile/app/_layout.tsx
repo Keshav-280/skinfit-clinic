@@ -9,7 +9,7 @@ import { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
-import { Platform } from 'react-native';
+import { Dimensions, Image, Platform, View } from 'react-native';
 
 import { PushTokenSync } from '@/components/PushTokenSync';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -29,6 +29,11 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+const SPLASH_GREEN = "#D6E4D0";
+const SPLASH_LOGO = require("../assets/images/splash-logo-transparent.png");
+const SPLASH_LOGO_WIDTH = Dimensions.get("window").width * 0.84;
+const SPLASH_LOGO_HEIGHT = SPLASH_LOGO_WIDTH * (217 / 900);
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -47,11 +52,29 @@ export default function RootLayout() {
   }, [loaded]);
 
   useEffect(() => {
-    void configureGoogleSignIn();
+    void configureGoogleSignIn().catch(() => {
+      /* sign-in falls back to in-app browser when native Google is unavailable */
+    });
   }, []);
 
   if (!loaded) {
-    return null;
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: SPLASH_GREEN,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Image
+          source={SPLASH_LOGO}
+          style={{ width: SPLASH_LOGO_WIDTH, height: SPLASH_LOGO_HEIGHT }}
+          resizeMode="contain"
+          accessibilityLabel="SkinFit Wellness"
+        />
+      </View>
+    );
   }
 
   return <RootLayoutNav />;

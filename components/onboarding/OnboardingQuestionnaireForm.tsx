@@ -9,6 +9,15 @@ import {
   type OnboardingQuestionnaireDraftV2,
 } from "@/src/lib/onboardingQuestionnaireDraft";
 import {
+  ONBOARDING_AGE_OPTIONS,
+  parseOnboardingAge,
+} from "@/src/lib/onboardingAgeOptions";
+import {
+  applyOnboardingStepSkip,
+  buildOnboardingQuestionnairePayload,
+  type OnboardingQuestionnaireFormState,
+} from "@/src/lib/onboardingQuestionnaireDefaults";
+import {
   REFERRAL_SOURCE_OPTIONS,
   type ReferralSourceId,
 } from "@/src/lib/onboardingReferralSource";
@@ -19,13 +28,6 @@ const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "other", label: "Other" },
   { value: "prefer_not_say", label: "Prefer not to say" },
 ];
-
-function parseOnboardingAge(raw: string): number | null {
-  const n = parseInt(raw.trim(), 10);
-  if (!Number.isFinite(n)) return null;
-  if (n < 1 || n > 120) return null;
-  return n;
-}
 
 type Concern = "acne" | "pigmentation" | "ageing" | "hair" | "general";
 
@@ -380,52 +382,58 @@ export function OnboardingQuestionnaireForm() {
 
   const { displayStep, totalSteps } = questionnaireProgress(step, priorTx);
 
+  function formState(): OnboardingQuestionnaireFormState {
+    return {
+      ageInput,
+      gender,
+      concern,
+      severity,
+      duration,
+      triggers,
+      priorTx,
+      txText,
+      txDur,
+      sensitivity,
+      sleep,
+      water,
+      diet,
+      sun,
+      skinType,
+      referralSource,
+      referralOther,
+    };
+  }
+
+  function applySkipPatch(patch: Partial<OnboardingQuestionnaireFormState>) {
+    if (patch.ageInput !== undefined) setAgeInput(patch.ageInput);
+    if (patch.gender !== undefined) setGender(patch.gender);
+    if (patch.concern !== undefined) setConcern(patch.concern as Concern);
+    if (patch.severity !== undefined) setSeverity(patch.severity);
+    if (patch.duration !== undefined) setDuration(patch.duration);
+    if (patch.triggers !== undefined) setTriggers(patch.triggers);
+    if (patch.priorTx !== undefined) setPriorTx(patch.priorTx);
+    if (patch.txText !== undefined) setTxText(patch.txText);
+    if (patch.txDur !== undefined) setTxDur(patch.txDur);
+    if (patch.sensitivity !== undefined) setSensitivity(patch.sensitivity);
+    if (patch.sleep !== undefined) setSleep(patch.sleep);
+    if (patch.water !== undefined) setWater(patch.water);
+    if (patch.diet !== undefined) setDiet(patch.diet);
+    if (patch.sun !== undefined) setSun(patch.sun);
+    if (patch.skinType !== undefined) {
+      setSkinType(patch.skinType as (typeof SKIN_TYPES)[number]);
+    }
+    if (patch.referralSource !== undefined) setReferralSource(patch.referralSource);
+    if (patch.referralOther !== undefined) setReferralOther(patch.referralOther);
+  }
+
   async function submit() {
-    const age = parseOnboardingAge(ageInput);
-    if (
-      age == null ||
-      !gender ||
-      !concern ||
-      !severity ||
-      !duration ||
-      !sensitivity ||
-      !sleep ||
-      !water ||
-      !diet ||
-      !sun ||
-      !skinType ||
-      !priorTx ||
-      !referralSource
-    )
-      return;
     setBusy(true);
     setErr(null);
     try {
       const res = await fetch("/api/onboarding/questionnaire", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          age,
-          gender,
-          primaryConcern: concern,
-          concernSeverity: severity,
-          concernDuration: duration,
-          triggers,
-          priorTreatment: priorTx,
-          treatmentHistoryText:
-            priorTx === "yes" ? txText.trim() : undefined,
-          treatmentHistoryDuration:
-            priorTx === "yes" ? txDur.trim() : undefined,
-          skinSensitivity: sensitivity,
-          baselineSleep: sleep,
-          baselineHydration: water,
-          baselineDietType: diet,
-          baselineSunExposure: sun,
-          skinType,
-          referralSource,
-          referralSourceOther:
-            referralSource === "other" ? referralOther.trim() : undefined,
-        }),
+        body: JSON.stringify(buildOnboardingQuestionnairePayload(formState())),
       });
       const data = (await res.json().catch(() => ({}))) as {
         message?: string;
@@ -476,6 +484,11 @@ export function OnboardingQuestionnaireForm() {
     setStep((s) => s + 1);
   }
 
+  function skip() {
+    applySkipPatch(applyOnboardingStepSkip(step));
+    next();
+  }
+
   function back() {
     if (step <= 0) {
       router.back();
@@ -513,15 +526,23 @@ export function OnboardingQuestionnaireForm() {
         <>
           <h2 className="text-lg font-bold text-zinc-900">About you</h2>
           <p className="text-sm text-zinc-500">Age (years)</p>
-          <input
-            type="text"
-            inputMode="numeric"
+          <select
             autoComplete="bday-year"
-            className="mb-4 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-[15px] text-zinc-900 outline-none focus:border-skinfit-navy focus:ring-2 focus:ring-skinfit-navy/20"
-            placeholder="e.g. 32"
+            className="mb-4 w-full appearance-none rounded-xl border border-zinc-200 bg-white bg-[length:1rem] bg-[right_0.75rem_center] bg-no-repeat px-3 py-3 text-[15px] text-zinc-900 outline-none focus:border-skinfit-navy focus:ring-2 focus:ring-skinfit-navy/20"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='%2371717a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\")",
+            }}
             value={ageInput}
-            onChange={(e) => setAgeInput(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
-          />
+            onChange={(e) => setAgeInput(e.target.value)}
+          >
+            <option value="">Select age</option>
+            {ONBOARDING_AGE_OPTIONS.map((age) => (
+              <option key={age} value={String(age)}>
+                {age}
+              </option>
+            ))}
+          </select>
           <p className="text-sm font-semibold text-zinc-600">Gender</p>
           <div className="mt-2 space-y-2">
             {GENDER_OPTIONS.map((opt) => (
@@ -895,23 +916,33 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      <div className="flex gap-3 pt-4">
+      <div className="pt-4">
         <button
           type="button"
-          onClick={back}
+          onClick={skip}
           disabled={busy}
-          className="flex-1 rounded-2xl border-2 border-skinfit-navy py-3.5 text-center text-[15px] font-bold text-skinfit-navy transition-colors hover:bg-white/60 disabled:opacity-50"
+          className="mb-3 w-full py-2 text-center text-sm font-semibold text-zinc-500 transition-colors hover:text-skinfit-navy disabled:opacity-50"
         >
-          Back
+          Skip this question
         </button>
-        <button
-          type="button"
-          onClick={next}
-          disabled={!canNext || busy}
-          className="flex-1 rounded-2xl bg-skinfit-navy py-3.5 text-center text-[15px] font-bold text-white shadow-md shadow-skinfit-navy/25 transition-colors hover:bg-skinfit-navy-mid disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          {busy ? "Saving…" : step === 11 ? "Save & continue" : "Continue"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={back}
+            disabled={busy}
+            className="flex-1 rounded-2xl border-2 border-skinfit-navy py-3.5 text-center text-[15px] font-bold text-skinfit-navy transition-colors hover:bg-white/60 disabled:opacity-50"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={next}
+            disabled={!canNext || busy}
+            className="flex-1 rounded-2xl bg-skinfit-navy py-3.5 text-center text-[15px] font-bold text-white shadow-md shadow-skinfit-navy/25 transition-colors hover:bg-skinfit-navy-mid disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {busy ? "Saving…" : step === 11 ? "Save & continue" : "Continue"}
+          </button>
+        </div>
       </div>
     </div>
   );

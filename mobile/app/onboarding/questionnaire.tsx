@@ -11,7 +11,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AgeDropdown } from "@/components/onboarding/AgeDropdown";
+import { SKINFIT_GRADIENT } from "@/lib/skinfitTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import {
@@ -19,6 +22,12 @@ import {
   ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
   type OnboardingQuestionnaireDraftV2,
 } from "@/lib/onboardingQuestionnaireDraft";
+import { parseOnboardingAge } from "../../../src/lib/onboardingAgeOptions";
+import {
+  applyOnboardingStepSkip,
+  buildOnboardingQuestionnairePayload,
+  type OnboardingQuestionnaireFormState,
+} from "../../../src/lib/onboardingQuestionnaireDefaults";
 import {
   REFERRAL_SOURCE_OPTIONS,
   type ReferralSourceId,
@@ -30,13 +39,6 @@ const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "other", label: "Other" },
   { value: "prefer_not_say", label: "Prefer not to say" },
 ];
-
-function parseOnboardingAge(raw: string): number | null {
-  const n = parseInt(raw.trim(), 10);
-  if (!Number.isFinite(n)) return null;
-  if (n < 1 || n > 120) return null;
-  return n;
-}
 
 type Concern = "acne" | "pigmentation" | "ageing" | "hair" | "general";
 
@@ -140,6 +142,7 @@ function copyForConcern(
 
 export default function QuestionnaireScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { token, markOnboardingComplete, refreshUserFromProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -367,50 +370,58 @@ export default function QuestionnaireScreen() {
 
   const { displayStep, totalSteps } = questionnaireProgress(step, priorTx);
 
+  function formState(): OnboardingQuestionnaireFormState {
+    return {
+      ageInput,
+      gender,
+      concern,
+      severity,
+      duration,
+      triggers,
+      priorTx,
+      txText,
+      txDur,
+      sensitivity,
+      sleep,
+      water,
+      diet,
+      sun,
+      skinType,
+      referralSource,
+      referralOther,
+    };
+  }
+
+  function applySkipPatch(patch: Partial<OnboardingQuestionnaireFormState>) {
+    if (patch.ageInput !== undefined) setAgeInput(patch.ageInput);
+    if (patch.gender !== undefined) setGender(patch.gender);
+    if (patch.concern !== undefined) setConcern(patch.concern as Concern);
+    if (patch.severity !== undefined) setSeverity(patch.severity);
+    if (patch.duration !== undefined) setDuration(patch.duration);
+    if (patch.triggers !== undefined) setTriggers(patch.triggers);
+    if (patch.priorTx !== undefined) setPriorTx(patch.priorTx);
+    if (patch.txText !== undefined) setTxText(patch.txText);
+    if (patch.txDur !== undefined) setTxDur(patch.txDur);
+    if (patch.sensitivity !== undefined) setSensitivity(patch.sensitivity);
+    if (patch.sleep !== undefined) setSleep(patch.sleep);
+    if (patch.water !== undefined) setWater(patch.water);
+    if (patch.diet !== undefined) setDiet(patch.diet);
+    if (patch.sun !== undefined) setSun(patch.sun);
+    if (patch.skinType !== undefined) {
+      setSkinType(patch.skinType as (typeof SKIN_TYPES)[number]);
+    }
+    if (patch.referralSource !== undefined) setReferralSource(patch.referralSource);
+    if (patch.referralOther !== undefined) setReferralOther(patch.referralOther);
+  }
+
   async function submit() {
-    const age = parseOnboardingAge(ageInput);
-    if (
-      !token ||
-      age == null ||
-      !gender ||
-      !concern ||
-      !severity ||
-      !duration ||
-      !sensitivity ||
-      !sleep ||
-      !water ||
-      !diet ||
-      !sun ||
-      !skinType ||
-      !priorTx ||
-      !referralSource
-    )
-      return;
+    if (!token) return;
     setBusy(true);
     setErr(null);
     try {
       await apiJson("/api/onboarding/questionnaire", token, {
         method: "POST",
-        body: JSON.stringify({
-          age,
-          gender,
-          primaryConcern: concern,
-          concernSeverity: severity,
-          concernDuration: duration,
-          triggers,
-          priorTreatment: priorTx,
-          treatmentHistoryText: priorTx === "yes" ? txText.trim() : undefined,
-          treatmentHistoryDuration: priorTx === "yes" ? txDur.trim() : undefined,
-          skinSensitivity: sensitivity,
-          baselineSleep: sleep,
-          baselineHydration: water,
-          baselineDietType: diet,
-          baselineSunExposure: sun,
-          skinType,
-          referralSource,
-          referralSourceOther:
-            referralSource === "other" ? referralOther.trim() : undefined,
-        }),
+        body: JSON.stringify(buildOnboardingQuestionnairePayload(formState())),
       });
       await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
       await markOnboardingComplete();
@@ -443,6 +454,11 @@ export default function QuestionnaireScreen() {
     setStep((s) => s + 1);
   }
 
+  function skip() {
+    applySkipPatch(applyOnboardingStepSkip(step));
+    next();
+  }
+
   function back() {
     if (step <= 0) {
       router.back();
@@ -456,8 +472,14 @@ export default function QuestionnaireScreen() {
   }
 
   return (
-    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={styles.flex}>
-    <ScrollView contentContainerStyle={styles.content}>
+    <LinearGradient colors={[...SKINFIT_GRADIENT.patient]} style={styles.flex}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 40 },
+      ]}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.progress}>
         Step {displayStep} / {totalSteps}
       </Text>
@@ -467,14 +489,7 @@ export default function QuestionnaireScreen() {
         <>
           <Text style={styles.q}>About you</Text>
           <Text style={styles.sub}>Age (years)</Text>
-          <TextInput
-            style={styles.ageInput}
-            placeholder="e.g. 32"
-            placeholderTextColor="#94a3b8"
-            keyboardType="number-pad"
-            value={ageInput}
-            onChangeText={(t) => setAgeInput(t.replace(/[^\d]/g, "").slice(0, 3))}
-          />
+          <AgeDropdown value={ageInput} onChange={setAgeInput} />
           <Text style={styles.sub2}>Gender</Text>
           {GENDER_OPTIONS.map((opt) => (
             <Pressable
@@ -793,6 +808,10 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
+      <Pressable style={styles.skipBtn} onPress={skip} disabled={busy}>
+        <Text style={styles.skipBtnText}>Skip this question</Text>
+      </Pressable>
+
       <View style={styles.row}>
         <Pressable style={styles.btnGhost} onPress={back} disabled={busy}>
           <Text style={styles.btnGhostText}>Back</Text>
@@ -818,7 +837,7 @@ export default function QuestionnaireScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: 24, paddingBottom: 48, flexGrow: 1 },
+  content: { paddingHorizontal: 24, flexGrow: 1 },
   progress: {
     fontSize: 12,
     fontWeight: "700",
@@ -860,16 +879,6 @@ const styles = StyleSheet.create({
     color: "#92400E",
     marginTop: 8,
   },
-  ageInput: {
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 16,
-    backgroundColor: "#FFFFFF",
-    marginBottom: 12,
-    color: "#1A1A2E",
-  },
   input: {
     minHeight: 100,
     borderWidth: 1.5,
@@ -882,7 +891,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#1A1A2E",
   },
-  row: { flexDirection: "row", gap: 12, marginTop: 28 },
+  skipBtn: {
+    marginTop: 24,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  skipBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#71717a",
+  },
+  row: { flexDirection: "row", gap: 12, marginTop: 12 },
   btn: {
     flex: 1,
     backgroundColor: NAVY,

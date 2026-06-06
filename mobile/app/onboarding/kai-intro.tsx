@@ -2,31 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KaiTypingIntro } from "@/components/KaiTypingIntro";
 import { useAuth } from "@/contexts/AuthContext";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
-const NAVY_LIGHT = "#E8EFF8";
-
-const HIGHLIGHTS = [
-  {
-    icon: "scan-outline" as const,
-    title: "Five-angle photos",
-    caption: "Same angles each time, easier to compare",
-  },
-  {
-    icon: "trending-up-outline" as const,
-    title: "Progress over time",
-    caption: "Look at the trend, not just one scan",
-  },
-  {
-    icon: "sparkles-outline" as const,
-    title: "Simple next steps",
-    caption: "Small routine nudges based on your skin",
-  },
-];
-
 const BOUNDARIES = [
   "No diagnosis",
   "No prescriptions",
@@ -34,9 +16,12 @@ const BOUNDARIES = [
   "Doctor guides care",
 ];
 
+const GRADIENT_TOP = "#D6E4D0";
+
 export default function KaiIntroScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const handleSignOut = async () => {
     try {
@@ -48,28 +33,13 @@ export default function KaiIntroScreen() {
   };
 
   return (
-    <LinearGradient colors={["#D6E4D0", "#E0EADA", "#EAF0E6"]} style={styles.flex}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <LinearGradient colors={[GRADIENT_TOP, "#E0EADA", "#EAF0E6"]} style={styles.flex}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
         
-        {/* ─── Hero Image with text overlay ─── */}
-        <View style={styles.heroCard}>
-          <Image
-            source={require("../../assets/images/kai-skin-analysis.png")}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={["transparent", "rgba(30,50,100,0.85)"]}
-            style={styles.heroGradient}
-          />
-          <View style={styles.heroTextContainer}>
-            <Text style={styles.heroKicker}>YOUR SKIN COMPANION</Text>
-            <Text style={styles.heroTitle}>Meet kAI</Text>
-            <Text style={styles.heroSubtitle}>
-              Take the same guided photos each time, so your skin changes are easier to follow.
-            </Text>
-          </View>
-        </View>
+        <KaiTypingIntro />
 
         {/* ─── Side-by-Side Tech Showcase ─── */}
         <View style={styles.techShowcaseRow}>
@@ -106,21 +76,6 @@ export default function KaiIntroScreen() {
               <Text style={styles.techTitle}>Track & improve</Text>
             </View>
           </View>
-        </View>
-
-        {/* ─── Horizontal Feature List items ─── */}
-        <View style={styles.highlightList}>
-          {HIGHLIGHTS.map((item) => (
-            <View key={item.title} style={styles.highlightListItem}>
-              <View style={styles.highlightIcon}>
-                <Ionicons name={item.icon} size={18} color={NAVY_DARK} />
-              </View>
-              <View style={styles.highlightText}>
-                <Text style={styles.highlightTitle}>{item.title}</Text>
-                <Text style={styles.highlightCaption}>{item.caption}</Text>
-              </View>
-            </View>
-          ))}
         </View>
 
         {/* ─── Boundary Warnings Box ─── */}
@@ -171,59 +126,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { padding: 20, paddingBottom: 40 },
   
-  // Hero Styles
-  heroCard: {
-    width: "100%",
-    aspectRatio: 16 / 10,
-    borderRadius: 24,
-    overflow: "hidden",
-    backgroundColor: "#000",
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  heroImage: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    opacity: 0.85,
-  },
-  heroGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroTextContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-  },
-  heroKicker: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 2,
-    color: "#a8c4e6",
-  },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#fff",
-    marginTop: 4,
-  },
-  heroSubtitle: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: "rgba(255,255,255,0.8)",
-    marginTop: 6,
-  },
-
   // Tech Showcase
   techShowcaseRow: {
     flexDirection: "row",
@@ -272,51 +174,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#fff",
     marginTop: 2,
-  },
-
-  // Highlights List
-  highlightList: {
-    backgroundColor: "rgba(255,255,255,0.6)",
-    borderRadius: 20,
-    padding: 12,
-    gap: 10,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
-  },
-  highlightListItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 12,
-    shadowColor: NAVY,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  highlightIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: NAVY_LIGHT,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  highlightText: {
-    flex: 1,
-  },
-  highlightTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: NAVY_DARK,
-  },
-  highlightCaption: {
-    fontSize: 10.5,
-    color: "#71717a",
-    marginTop: 2.5,
   },
 
   // Boundaries

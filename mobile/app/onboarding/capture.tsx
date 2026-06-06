@@ -1,18 +1,10 @@
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
-import { OnboardingQueuedScreen } from "@/components/onboarding/ScanQueuedConfirmation";
+import { OnboardingCaptureReview } from "@/components/onboarding/OnboardingCaptureReview";
 import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
@@ -20,20 +12,19 @@ import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
 import { addPendingScanJob } from "@/lib/scanJobNotifications";
 import { submitFaceScan } from "@/lib/submitFaceScan";
 
-const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 
 export default function OnboardingCaptureScreen() {
   const router = useRouter();
-  const { token, refreshUserFromProfile } = useAuth();
+  const { token, markBaselineSubmitted } = useAuth();
   const [uris, setUris] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [useCamera, setUseCamera] = useState(true);
-  const [queued, setQueued] = useState(false);
+  const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
 
-  const stepIndex = uris.length;
+  const stepIndex = retakeIndex ?? uris.length;
   const isComplete = uris.length >= N;
+  const inRetakeFlow = retakeIndex !== null;
 
   async function pickFromLibrary() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -46,7 +37,17 @@ export default function OnboardingCaptureScreen() {
       quality: 0.88,
     });
     if (!res.canceled && res.assets[0]?.uri) {
-      setUris((u) => [...u, res.assets[0].uri]);
+      const picked = res.assets[0].uri;
+      if (retakeIndex !== null) {
+        setUris((u) => {
+          const next = [...u];
+          next[retakeIndex] = picked;
+          return next;
+        });
+        setRetakeIndex(null);
+      } else {
+        setUris((u) => [...u, picked]);
+      }
     }
   }
 
@@ -68,19 +69,21 @@ export default function OnboardingCaptureScreen() {
         } as unknown as Blob);
       }
       const outcome = await submitFaceScan(token, form);
+      if (outcome.mode === "error") {
+        throw new Error(outcome.message);
+      }
       if (outcome.mode === "queued") {
         await addPendingScanJob(
           outcome.jobId,
           "kAI baseline — onboarding"
         );
-        setQueued(true);
+        await markBaselineSubmitted({ pending: true });
+        router.replace("/onboarding/baseline-report?pending=1" as Href);
         return;
       }
-      if (outcome.mode === "error") {
-        throw new Error(outcome.message);
-      }
+      await markBaselineSubmitted({ pending: false });
       router.replace(
-        `/onboarding/baseline-report?scanId=${encodeURIComponent(String(outcome.scanId))}` as Href
+        `/onboarding/baseline-report?scanId=${encodeURIComponent(String(outcome.scanId))}&pending=0` as Href
       );
     } catch (e) {
       Alert.alert("Baseline scan", e instanceof Error ? e.message : "Failed.");
@@ -89,14 +92,34 @@ export default function OnboardingCaptureScreen() {
     }
   }
 
-  if (!isComplete && useCamera) {
+  if ((!isComplete || inRetakeFlow) && useCamera) {
     return (
       <FiveAngleCameraStep
         variant="onboarding"
         stepIndex={stepIndex}
-        onCaptured={(uri) => setUris((u) => [...u, uri])}
+        previousCaptureUri={
+          inRetakeFlow
+            ? (uris[retakeIndex] ?? uris[retakeIndex - 1] ?? null)
+            : (uris[uris.length - 1] ?? null)
+        }
+        onCaptured={(uri) => {
+          if (inRetakeFlow && retakeIndex !== null) {
+            setUris((u) => {
+              const next = [...u];
+              next[retakeIndex] = uri;
+              return next;
+            });
+            setRetakeIndex(null);
+            return;
+          }
+          setUris((u) => [...u, uri]);
+        }}
         onPickFromLibrary={() => void pickFromLibrary()}
         onBack={() => {
+          if (inRetakeFlow) {
+            setRetakeIndex(null);
+            return;
+          }
           if (uris.length > 0) {
             setUris((u) => u.slice(0, -1));
           } else {
@@ -127,65 +150,17 @@ export default function OnboardingCaptureScreen() {
     );
   }
 
-  async function goAfterBaselineQueued(next: () => void) {
-    if (token) {
-      try {
-        await refreshUserFromProfile(token);
-      } catch {
-        /* continue navigation */
-      }
-    }
-    next();
-  }
-
-  if (queued) {
-    return (
-      <OnboardingQueuedScreen
-        onContinue={() =>
-          void goAfterBaselineQueued(() =>
-            router.replace("/onboarding/baseline-report" as Href)
-          )
-        }
-        onDashboard={() =>
-          void goAfterBaselineQueued(() => router.replace("/(drawer)" as Href))
-        }
-      />
-    );
-  }
-
   return (
-    <OnboardingLayoutShell title="kAI baseline photos">
-      <ScrollView contentContainerStyle={styles.pad}>
-        <View style={styles.iconWrap}>
-          <View style={[styles.iconCircle, styles.iconCircleNavy]}>
-            <Text style={styles.iconCheck}>{"✓"}</Text>
-          </View>
-        </View>
-        <Text style={styles.title}>Baseline ready</Text>
-        <Text style={styles.sub}>
-          Tap below to submit your photos. We&apos;ll notify you when your kAI report is ready.
-        </Text>
-        <Pressable
-          style={({ pressed }) => [styles.btn, busy && styles.dis, pressed && !busy && styles.btnPressed]}
-          onPress={() => void runBaselineScan()}
-          disabled={busy}
-        >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnText}>Submit baseline scan</Text>
-          )}
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            setUris([]);
-            setUseCamera(true);
-          }}
-        >
-          <Text style={styles.link}>Retake photos</Text>
-        </Pressable>
-      </ScrollView>
-    </OnboardingLayoutShell>
+    <OnboardingCaptureReview
+      uris={uris}
+      busy={busy}
+      onBack={() => {
+        setUris((u) => u.slice(0, -1));
+        setUseCamera(true);
+      }}
+      onLooksGood={() => void runBaselineScan()}
+      onRetakeIndex={setRetakeIndex}
+    />
   );
 }
 
@@ -196,27 +171,6 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     flexGrow: 1,
     justifyContent: "center",
-  },
-  iconWrap: { alignItems: "center", marginBottom: 20 },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconCircleNavy: {
-    backgroundColor: NAVY,
-  },
-  iconCheck: { fontSize: 28, color: "#fff", fontWeight: "800" },
-  iconBell: { fontSize: 28 },
-  hint: {
-    marginTop: 10,
-    fontSize: 13,
-    color: "#71717a",
-    textAlign: "center",
-    lineHeight: 20,
   },
   title: {
     fontSize: 24,
@@ -235,26 +189,17 @@ const styles = StyleSheet.create({
   },
   btn: {
     marginTop: 28,
-    backgroundColor: NAVY,
+    backgroundColor: "#2C3E6B",
     paddingVertical: 17,
     borderRadius: 16,
     alignItems: "center",
-    shadowColor: NAVY,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 4,
   },
-  btnPressed: {
-    backgroundColor: NAVY_DARK,
-    transform: [{ scale: 0.98 }],
-  },
-  dis: { opacity: 0.45 },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 16, letterSpacing: 0.3 },
+  btnPressed: { opacity: 0.9 },
+  btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   link: {
     marginTop: 18,
     textAlign: "center",
-    color: NAVY,
+    color: "#2C3E6B",
     fontWeight: "600",
     fontSize: 15,
   },

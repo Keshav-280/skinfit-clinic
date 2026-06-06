@@ -324,10 +324,10 @@ export async function gatherProfileInsightContext(
       ? "baseline_only"
       : "first_week";
   const modeLabel = useRolling7
-    ? `Rolling 7-day window · ${fmtRange(windowStartYmd, windowEndYmd)}`
+    ? `7-day window since first scan · ${fmtRange(windowStartYmd, windowEndYmd)}`
     : daysSinceBaseline < 1
       ? `Baseline scan · ${fmtDay(baselineYmd)}`
-      : `First week since baseline · ${fmtRange(windowStartYmd, windowEndYmd)}`;
+      : `First 7 days since first scan · ${fmtRange(windowStartYmd, windowEndYmd)}`;
 
   const identityAt = deriveSkinIdentityAt({
     asOfDate: todayDate,

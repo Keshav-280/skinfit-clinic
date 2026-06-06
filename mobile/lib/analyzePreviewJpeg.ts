@@ -15,12 +15,15 @@ import {
 import { fetchFacePreviewInference } from "@/lib/fetchFacePreviewInference";
 import { detectFaceLandmarksForPreview } from "@/lib/detectFaceLandmarksForPreview";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
+import { facePortraitBoxFromLandmarks } from "../../src/lib/facePortraitBox";
 import {
   analyzeFaceFraming,
   analyzeLightingFromRgba,
   buildCaptureGuidance,
   estimateFaceBoxFromSkin,
-  faceBoxFromLandmarkPoints,
+  expandSquarePreviewBoxToPortraitFrame,
+  isSquarePreviewImage,
+  shrinkNormalizedFaceBox,
   smoothFaceBox,
   type CaptureGuidanceSnapshot,
   type NormalizedFaceBox,
@@ -57,9 +60,12 @@ export async function analyzePreviewImageUri(
   state: PreviewGuidanceState;
   meta?: {
     bboxSource: string;
+    bboxKind: string;
+    landmarkCount: number;
     landmarkPipelineActive: boolean;
     serverDetectorUsed: boolean;
     expressionClassifierUsed: boolean;
+    previewAspect: string;
   };
 }> {
   const expressionStep = options ? needsExpressionCheck() : false;
@@ -98,22 +104,33 @@ export async function analyzePreviewImageUri(
     expressionCalibration: state?.expressionCalibration ?? { openEarBaseline: null },
     faceLandmarks: state?.faceLandmarks ?? null,
   };
+  const emptyMeta = {
+    bboxSource: "—",
+    bboxKind: "—",
+    landmarkCount: 0,
+    landmarkPipelineActive: false,
+    serverDetectorUsed: false,
+    expressionClassifierUsed: false,
+    previewAspect: "—",
+  };
   if (!small.base64) {
-    return { guidance: null, state: emptyState, meta: { bboxSource: "—", landmarkPipelineActive: false, serverDetectorUsed: false, expressionClassifierUsed: false } };
+    return { guidance: null, state: emptyState, meta: emptyMeta };
   }
 
   const buf = Buffer.from(small.base64, "base64");
   const decoded = decode(buf, { useTArray: true, formatAsRGBA: true });
   const { width, height, data } = decoded;
   if (!width || !height) {
-    return { guidance: null, state: emptyState, meta: { bboxSource: "—", landmarkPipelineActive: false, serverDetectorUsed: false, expressionClassifierUsed: false } };
+    return { guidance: null, state: emptyState, meta: emptyMeta };
   }
+  const previewAspect = `${width}:${height}`;
 
   const lighting = analyzeLightingFromRgba(data, width, height);
 
   let rawBox: NormalizedFaceBox | null = null;
   let landmarkBox: NormalizedFaceBox | null = null;
   let bboxSource = "—";
+  let bboxKind = "—";
   let blendCategories: { categoryName?: string; score: number }[] | undefined;
   let landmarkPoints: Array<{ x: number; y: number }> | undefined;
   const landmarkPipelineActive =
@@ -130,33 +147,33 @@ export async function analyzePreviewImageUri(
     const mp = await detectFaceLandmarksForPreview(landmarkUri);
     landmarkPoints = mp?.results?.[0]?.faceLandmarks?.[0];
     if (landmarkPoints?.length) {
-      landmarkBox = faceBoxFromLandmarkPoints(landmarkPoints);
+      // Tight portrait box only — the all-landmarks fallback inflates fill %.
+      landmarkBox = facePortraitBoxFromLandmarks(landmarkPoints);
+      if (landmarkBox) bboxKind = "portrait";
     }
     blendCategories = mp?.results?.[0]?.faceBlendshapes?.[0]?.categories;
   }
 
-  if (serverPreview?.box && serverPreview.detectorAvailable) {
-    rawBox = serverPreview.box;
-    bboxSource = "retinaface";
-  } else if (landmarkBox) {
+  // On-device MediaPipe is calibrated for the 70–90% mobile band; server RetinaFace
+  // often reports a much larger box and was overriding landmarks while logged in.
+  if (landmarkBox) {
     rawBox = landmarkBox;
     bboxSource = "landmark";
+  } else {
+    const skinBox = estimateFaceBoxFromSkin(data, width, height);
+    if (skinBox) {
+      rawBox = skinBox;
+      bboxSource = "skin";
+      bboxKind = "skin";
+    } else if (serverPreview?.box && serverPreview.detectorAvailable) {
+      rawBox = shrinkNormalizedFaceBox(serverPreview.box, 0.82);
+      bboxSource = "retinaface";
+      bboxKind = "server";
+    }
   }
 
-  if (
-    !rawBox &&
-    !landmarkPipelineActive &&
-    captureCfg.detector === "retinaface" &&
-    serverPreview?.box &&
-    serverPreview.detectorAvailable
-  ) {
-    rawBox = serverPreview.box;
-    bboxSource = "retinaface";
-  }
-
-  if (!rawBox && !landmarkPipelineActive) {
-    rawBox = estimateFaceBoxFromSkin(data, width, height);
-    if (rawBox) bboxSource = "skin";
+  if (rawBox && isSquarePreviewImage(width, height)) {
+    rawBox = expandSquarePreviewBoxToPortraitFrame(rawBox);
   }
 
   const smoothedBox = smoothFaceBox(
@@ -190,11 +207,14 @@ export async function analyzePreviewImageUri(
     state: nextState,
     meta: {
       bboxSource,
+      bboxKind,
+      landmarkCount: landmarkPoints?.length ?? 0,
       landmarkPipelineActive,
       serverDetectorUsed: Boolean(serverPreview?.box && serverPreview.detectorAvailable),
       expressionClassifierUsed: Boolean(
         serverPreview?.expressionAvailable && serverPreview.expression
       ),
+      previewAspect,
     },
   };
 }

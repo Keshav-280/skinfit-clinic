@@ -4,39 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  LogOut,
-  Scan,
-  TrendingUp,
-  Sparkles,
-  Shield,
-  type LucideIcon,
-} from "lucide-react";
+
+import { KaiTypingIntro } from "@/components/onboarding/KaiTypingIntro";
+import { ArrowRight, LogOut, Shield } from "lucide-react";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
-
-const HIGHLIGHTS: {
-  icon: LucideIcon;
-  title: string;
-  caption: string;
-}[] = [
-  {
-    icon: Scan,
-    title: "Five-angle photos",
-    caption: "Same angles each time, easier to compare",
-  },
-  {
-    icon: TrendingUp,
-    title: "Progress over time",
-    caption: "Look at the trend, not just one scan",
-  },
-  {
-    icon: Sparkles,
-    title: "Simple next steps",
-    caption: "Small routine nudges based on your skin",
-  },
-];
 
 const BOUNDARIES = [
   "No diagnosis",
@@ -56,73 +28,9 @@ export default function KaiIntroPage() {
 
   return (
     <div className="mx-auto w-full md:max-h-[85vh]">
-      {/* 2-Column Dashboard Grid: Stacks on mobile, side-by-side on desktop */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-12 md:gap-5 md:items-start">
-        
-        {/* ─── LEFT COLUMN: HERO IMAGE & FEATURE HIGHLIGHTS (8/12 width) ─── */}
-        <div className="flex flex-col gap-4 md:col-span-8">
-          
-          {/* Main Hero Card (Shorter aspect ratio on desktop to fit 1 page) */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: easeOut }}
-            className="relative w-full aspect-[16/10] md:aspect-[2/1] overflow-hidden rounded-2xl bg-zinc-950 shadow-[0_12px_32px_-12px_rgba(44,62,107,0.3)]"
-          >
-            <Image
-              src="/images/kai-skin-analysis.png"
-              alt="kAI advanced skin analysis — facial mapping with molecular insights"
-              fill
-              className="object-cover opacity-90 transition-transform duration-700 hover:scale-105"
-              priority
-              sizes="(max-width: 768px) 100vw, 680px"
-            />
-            {/* Soft gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-zinc-900/15 to-transparent" />
-            
-            {/* Text Overlay */}
-            <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 z-10 text-white">
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.3em] text-[#a8c4e6]">
-                Your skin companion
-              </p>
-              <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-                Meet{" "}
-                <span className="bg-gradient-to-r from-white via-[#b4d2f5] to-white bg-clip-text text-transparent">
-                  kAI
-                </span>
-              </h1>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-200 max-w-xl">
-                Take the same guided photos each time, so your skin changes are
-                easier to follow.
-              </p>
-            </div>
-          </motion.div>
+      <KaiTypingIntro />
 
-          {/* 3 Highlights Side-by-Side Under the Hero */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.08, ease: easeOut }}
-            className="grid gap-2.5 grid-cols-1 sm:grid-cols-3"
-          >
-            {HIGHLIGHTS.map(({ icon: Icon, title, caption }, i) => (
-              <div
-                key={title}
-                className="group rounded-xl border border-zinc-200 bg-white px-3.5 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#E8EFF8] to-[#D6E4F0] text-[#2C3E6B] shadow-inner">
-                  <Icon className="h-4 w-4" strokeWidth={2.2} />
-                </div>
-                <p className="text-xs font-bold text-[#1E3264]">{title}</p>
-                <p className="mt-0.5 text-[10px] leading-snug text-zinc-500">{caption}</p>
-              </div>
-            ))}
-          </motion.div>
-          
-        </div>
-
-        {/* ─── RIGHT COLUMN: OTHER 2 IMAGES STACKED VERTICALLY (4/12 width) ─── */}
-        <div className="flex flex-col gap-3 md:col-span-4">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           
           {/* Card 1: Holographic Scan */}
           <motion.div
@@ -173,8 +81,6 @@ export default function KaiIntroPage() {
               </p>
             </div>
           </motion.div>
-
-        </div>
       </div>
 
       {/* ─── BOTTOM SECTION: BOUNDARIES & ACTION BUTTON ─── */}

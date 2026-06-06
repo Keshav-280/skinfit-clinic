@@ -17,6 +17,8 @@ export type ObservationRow = {
 };
 
 type Props = {
+  locked?: boolean;
+  nextInsightAt?: string | null;
   kaiScore: number;
   weeklyDelta: number;
   consistency: string;
@@ -30,6 +32,15 @@ type Props = {
   observationsUnavailable?: boolean;
   actionsUnavailable?: boolean;
 };
+
+function formatInsightDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "7 days after your first scan";
+  return d.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+  });
+}
 
 function sourceLabel(
   source: ObservationRow["source"]
@@ -59,6 +70,8 @@ function normalizeObservations(
 }
 
 export default function WeeklyReportCard({
+  locked = false,
+  nextInsightAt,
   kaiScore,
   weeklyDelta,
   consistency,
@@ -77,8 +90,26 @@ export default function WeeklyReportCard({
 
   return (
     <View style={card.base}>
-      <Text style={s.title}>Last week&apos;s Report</Text>
-      <Text style={s.dateRange}>{dateRange}</Text>
+      <Text style={s.title}>Weekly insight</Text>
+      <Text style={s.dateRange}>
+        {locked ? "7 days after your first scan" : dateRange}
+      </Text>
+
+      {locked ? (
+        <View style={s.lockedWrap}>
+          <View style={s.lockCircle}>
+            <Ionicons name="lock-closed" size={22} color={TEXT_LIGHT} />
+          </View>
+          <Text style={s.lockedText}>Your first weekly summary unlocks around</Text>
+          <Text style={s.lockedDate}>
+            {nextInsightAt ? formatInsightDate(nextInsightAt) : "your first week milestone"}
+          </Text>
+          <Text style={s.lockedHint}>
+            Keep scanning and logging daily — we&apos;ll build your week-one recap.
+          </Text>
+        </View>
+      ) : (
+        <>
       {dataUsedSummary ? (
         <Text style={s.dataUsed}>{dataUsedSummary}</Text>
       ) : null}
@@ -198,6 +229,8 @@ export default function WeeklyReportCard({
           </Text>
         )}
       </View>
+        </>
+      )}
     </View>
   );
 }
@@ -212,6 +245,39 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: TEXT_MUTED,
     marginTop: 2,
+    marginBottom: 4,
+  },
+  lockedWrap: {
+    alignItems: "center",
+    paddingVertical: 28,
+  },
+  lockCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  lockedText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: TEXT_MUTED,
+    marginBottom: 4,
+  },
+  lockedDate: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: NAVY,
+  },
+  lockedHint: {
+    fontSize: 13,
+    color: TEXT_MUTED,
+    textAlign: "center",
+    lineHeight: 19,
+    marginTop: 8,
+    paddingHorizontal: 8,
   },
   dataUsed: {
     fontSize: 11,
