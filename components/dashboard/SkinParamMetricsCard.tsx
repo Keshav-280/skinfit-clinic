@@ -26,10 +26,10 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
     <div
       className={`w-full self-start rounded-[20px] border border-[#E5E7EB] bg-white p-4 md:p-5 ${className}`}
     >
-      <h3 className="mb-3 text-[13px] font-extrabold tracking-wide text-[#18181b] md:text-sm">
+      <h3 className="mb-4 text-[14px] font-extrabold tracking-wide text-[#18181b]">
         SKIN PARAMETER METRICS
       </h3>
-      <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 sm:gap-x-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {metrics.slice(0, 4).map((p) => (
           <div
             key={p.label}
@@ -38,15 +38,15 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
             <CircularGauge
               value={p.value}
               color={p.color}
-              size={53}
-              strokeWidth={5}
-              valueClassName="text-base text-[#18181b]"
+              size={68}
+              strokeWidth={6}
+              valueClassName="text-2xl sm:text-3xl text-[#18181b]"
             />
-            <p className="line-clamp-2 text-center text-[11px] font-extrabold leading-tight text-[#18181b] sm:text-xs">
+            <p className="text-center text-[18px] font-extrabold leading-tight text-[#18181b] sm:text-[20px]">
               {p.label}
             </p>
             <p
-              className={`text-[11px] font-extrabold leading-none ${
+              className={`text-[15px] font-extrabold sm:text-[17px] ${
                 p.sublabel === "Needs Care"
                   ? "text-red-500"
                   : p.sublabel === "Moderate"
