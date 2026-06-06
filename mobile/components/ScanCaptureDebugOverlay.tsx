@@ -33,11 +33,13 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Opt-in only — set EXPO_PUBLIC_CAPTURE_DEBUG=1 to show capture debug UI. */
+/** On in __DEV__; set EXPO_PUBLIC_CAPTURE_DEBUG=1 to force on in release builds. */
 export function isCaptureDebugEnabled(): boolean {
+  if (__DEV__) return true;
   const previewFlag = process.env.EXPO_PUBLIC_SCAN_DEBUG_PREVIEW?.trim();
   if (previewFlag === "1" || previewFlag === "true") return true;
   const flag = process.env.EXPO_PUBLIC_CAPTURE_DEBUG?.trim();
+  if (flag === "0" || flag === "false") return false;
   return flag === "1" || flag === "true";
 }
 

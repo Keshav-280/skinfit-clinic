@@ -850,8 +850,8 @@ export function SkinScanReportBody({
                   {
                     label: "Pigmentation",
                     value: metrics.pigmentation ?? 72,
-                    fill: "#d97706",
-                    track: "rgba(217, 119, 6, 0.2)",
+                    fill: T.navyLight,
+                    track: "rgba(91, 123, 168, 0.18)",
                   },
                   {
                     label: "Hydration",

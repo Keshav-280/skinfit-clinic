@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { WhyWeNeedScanPhotosCard } from "@/components/capture/WhyWeNeedScanPhotosCard";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
@@ -30,46 +31,46 @@ export function CaptureDoneScreen(props: Props) {
   const isOnboarding = props.mode === "onboarding";
 
   const body = reportPending
-    ? "We've got your five photos. We'll let you know when your report is ready — you don't have to wait here."
-    : "We've got your five photos. Your report will show up in Treatment History soon.";
+    ? "Your report will be delivered soon — we'll notify you when it's ready."
+    : "Your report will show up in Treatment History soon.";
 
   const hint = isOnboarding
     ? "Answer a few quick questions now, or head straight to the app."
-    : "You can keep using the app while we finish up.";
+    : "You can leave this screen — no need to wait here.";
 
-  const primaryLabel = isOnboarding
-    ? "Answer a few questions"
-    : "View scan history";
+  const primaryLabel = isOnboarding ? "Answer a few questions" : "View scan history";
 
   return (
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <View style={styles.center}>
-        <View style={styles.card}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="checkmark" size={32} color="#fff" />
-          </View>
-
-          <Text style={styles.title}>Photos saved</Text>
-          <Text style={styles.body}>{body}</Text>
-          <Text style={styles.hint}>{hint}</Text>
-
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={props.onPrimary}
-          >
-            <Text style={styles.btnText}>{primaryLabel}</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.btnOutline,
-              pressed && styles.btnOutlinePressed,
-            ]}
-            onPress={props.onDashboard}
-          >
-            <Text style={styles.btnOutlineText}>Go to dashboard</Text>
-          </Pressable>
-        </View>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <WhyWeNeedScanPhotosCard
+          footer={
+            <>
+              <View style={styles.iconCircle}>
+                <Ionicons name="notifications-outline" size={26} color="#fff" />
+              </View>
+              <Text style={styles.title}>You&apos;re all set</Text>
+              <Text style={styles.body}>{body}</Text>
+              <Text style={styles.hint}>{hint}</Text>
+              <Pressable
+                style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+                onPress={props.onPrimary}
+              >
+                <Text style={styles.btnText}>{primaryLabel}</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}
+                onPress={props.onDashboard}
+              >
+                <Text style={styles.btnOutlineText}>Go to dashboard</Text>
+              </Pressable>
+            </>
+          }
+        />
+      </ScrollView>
     </View>
   );
 }
@@ -79,57 +80,49 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-  center: {
-    flex: 1,
+  scroll: {
+    flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  card: {
-    borderRadius: 22,
-    backgroundColor: "#FFFFFF",
-    padding: 28,
-    alignItems: "center",
-    shadowColor: "#2C3E6B",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "800",
     color: NAVY,
     textAlign: "center",
-    letterSpacing: -0.3,
   },
   body: {
-    marginTop: 12,
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#5C6478",
-    textAlign: "center",
-  },
-  hint: {
-    marginTop: 10,
+    marginTop: 8,
     fontSize: 14,
     lineHeight: 20,
+    color: "#5C6478",
+    textAlign: "center",
+    maxWidth: 300,
+  },
+  hint: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
     color: "#7A8499",
     textAlign: "center",
+    maxWidth: 280,
   },
   btn: {
-    marginTop: 22,
+    marginTop: 16,
     width: "100%",
+    maxWidth: 320,
     backgroundColor: NAVY,
-    paddingVertical: 15,
+    paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
   },
@@ -138,16 +131,17 @@ const styles = StyleSheet.create({
   },
   btnText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
   },
   btnOutline: {
-    marginTop: 12,
+    marginTop: 10,
     width: "100%",
+    maxWidth: 320,
     borderWidth: 2,
     borderColor: NAVY,
     backgroundColor: "#fff",
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 14,
     alignItems: "center",
   },
@@ -156,7 +150,7 @@ const styles = StyleSheet.create({
   },
   btnOutlineText: {
     color: NAVY,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
   },
 });

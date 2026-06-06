@@ -47,11 +47,11 @@ export default async function VisitsListPage() {
         description="Tap a visit for full notes from your doctor."
       >
         <Link
-          href="/dashboard/profile"
+          href="/dashboard"
           className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-[#2C3E6B] hover:text-[#3d5080]"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
-          Back to profile
+          Back to Monitor
         </Link>
         <VisitHistoryList visits={visits} />
       </DashboardPageSection>

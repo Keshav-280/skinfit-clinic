@@ -53,9 +53,9 @@ type VisitPayload = {
 };
 
 const RATING_COLORS: Record<string, { bg: string; text: string }> = {
-  excellent: { bg: "#dcfce7", text: "#166534" },
-  good: { bg: "#dcfce7", text: "#166534" },
-  moderate: { bg: "#fef9c3", text: "#854d0e" },
+  excellent: { bg: "#E8EFF8", text: NAVY },
+  good: { bg: "#E8EFF8", text: NAVY },
+  moderate: { bg: "#DCE8F4", text: "#243456" },
   poor: { bg: "#fee2e2", text: "#991b1b" },
 };
 

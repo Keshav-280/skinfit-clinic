@@ -42,7 +42,7 @@ export const FACE_SCAN_CAPTURE_STEPS = [
   {
     id: "left",
     title: "Left Side Profile",
-    subtitle: "Turn your face to the left.",
+    subtitle: "Turn your face to the left until your profile fits the outline.",
     tips: CAPTURE_STEP_TIPS.left,
     instruction:
       "Turn your head ~30° to your left. Keep the same framing and rotate your face only. No spectacles.",
@@ -50,7 +50,7 @@ export const FACE_SCAN_CAPTURE_STEPS = [
   {
     id: "right",
     title: "Right Side Profile",
-    subtitle: "Turn your face to the right.",
+    subtitle: "Turn your face to the right until your profile fits the outline.",
     tips: CAPTURE_STEP_TIPS.right,
     instruction: "Turn your head ~30° to your right. Same framing as the previous shot. No spectacles.",
   },

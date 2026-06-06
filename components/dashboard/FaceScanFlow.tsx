@@ -10,18 +10,19 @@ import {
   RotateCcw,
   Check,
   ImagePlus,
-  SwitchCamera,
   Sun,
   Contrast,
   ZoomIn,
   History,
-  Volume2,
-  VolumeX,
-  Bug,
   X,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
-import { ScanCaptureGuidanceBanner } from "@/components/dashboard/ScanCaptureGuidanceBanner";
+import { CaptureFaceGuideOverlayWeb } from "@/components/dashboard/CaptureFaceGuideOverlayWeb";
+import { ScanCaptureExtraTipsPanel } from "@/components/dashboard/ScanCaptureExtraTipsPanel";
+import {
+  WebCaptureShutterControls,
+  WebCaptureStepShell,
+} from "@/components/dashboard/WebCaptureStepShell";
 import {
   ScanCaptureDebugOverlay,
   isCaptureDebugEnabled,
@@ -37,16 +38,22 @@ import {
 } from "@/src/lib/patientDashboardTheme";
 import {
   FACE_SCAN_CAPTURE_STEPS,
-  FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA,
   buildAutoScanName,
   fetchNextScanNumber,
   SCAN_NAME_INPUT_PLACEHOLDER,
   resolveScanName,
 } from "@/src/lib/faceScanCaptures";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
+import { FaceScanPhotoGuide } from "@/components/dashboard/FaceScanPhotoGuide";
 import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
 import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
 import { submitFaceScan } from "@/src/lib/submitFaceScan";
+import { ScanPhotoGuideDismissCheckbox } from "@/components/dashboard/ScanPhotoGuideDismissCheckbox";
+import {
+  clearScanPhotoGuideDismissed,
+  isScanPhotoGuideDismissed,
+  setScanPhotoGuideDismissed,
+} from "@/src/lib/scanPhotoGuideDismissed";
 
 type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "queued" | "results";
 
@@ -118,13 +125,6 @@ function revokeSlotCaptures(slots: SlotCaptures) {
   });
 }
 
-/** 3:4 preview — scales up on desktop to use available column space. */
-const CAMERA_PREVIEW_CLASS =
-  "relative mx-auto aspect-[3/4] w-full max-w-[380px] overflow-hidden rounded-2xl bg-zinc-900 sm:max-w-[420px] lg:mx-0 lg:h-[min(540px,calc(100vh-13rem))] lg:w-auto lg:max-w-none lg:shrink-0";
-
-const CAPTURE_ACTIONS_CLASS =
-  "flex w-full flex-col gap-2 sm:flex-row";
-
 /** Preview + capture crop zoom (1 = full frame, higher = face closer for the model). */
 const CAPTURE_ZOOM_MIN = CAPTURE_ZOOM_AUTO.min;
 const CAPTURE_ZOOM_MAX = CAPTURE_ZOOM_AUTO.max;
@@ -146,6 +146,7 @@ function AdjustSlider({
   step,
   suffix,
   format,
+  compact = false,
   onChange,
 }: {
   icon: React.ReactNode;
@@ -156,8 +157,35 @@ function AdjustSlider({
   step: number;
   suffix?: string;
   format?: (v: number) => string;
+  compact?: boolean;
   onChange: (v: number) => void;
 }) {
+  const display = `${format ? format(value) : Math.round(value)}${suffix ?? ""}`;
+
+  if (compact) {
+    return (
+      <div className="space-y-0.5">
+        <div className="flex items-center justify-between gap-1 text-[10px] font-semibold text-[#2C3E6B]">
+          <span className="flex min-w-0 items-center gap-1 truncate">
+            {icon}
+            {label}
+          </span>
+          <span className="shrink-0 tabular-nums">{display}</span>
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className="h-1 w-full accent-[#2C3E6B]"
+          aria-label={label}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-3">
       <div className="flex w-24 shrink-0 items-center gap-1.5 text-xs font-semibold text-[#2C3E6B]">
@@ -175,8 +203,7 @@ function AdjustSlider({
         aria-label={label}
       />
       <span className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums text-[#2C3E6B]">
-        {format ? format(value) : Math.round(value)}
-        {suffix}
+        {display}
       </span>
     </div>
   );
@@ -188,6 +215,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const router = useRouter();
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
+  const [photoGuideOpen, setPhotoGuideOpen] = useState(false);
+  const [photoGuideIntent, setPhotoGuideIntent] = useState<"camera" | "review">("camera");
+  const [skipPhotoGuide, setSkipPhotoGuide] = useState(false);
   const [slotCaptures, setSlotCaptures] = useState<SlotCaptures>(emptySlotCaptures);
   const [cameraStepIndex, setCameraStepIndex] = useState(0);
   const [uploadTargetIndex, setUploadTargetIndex] = useState<number | null>(null);
@@ -216,7 +246,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   const previewFilter = `brightness(${brightness}%) contrast(${contrast}%)`;
 
-  const { guidance, models, needsExpressionModel, faceTracked, bboxSource } =
+  const { guidance, models, faceTracked, bboxSource } =
     useWebScanCaptureGuidance(
       videoRef,
       guidanceActive,
@@ -239,6 +269,16 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const resetAdjustments = useCallback(() => {
     setBrightness(ADJUST_DEFAULT);
     setContrast(ADJUST_DEFAULT);
+  }, []);
+
+  useEffect(() => {
+    setSkipPhotoGuide(isScanPhotoGuideDismissed());
+  }, []);
+
+  const handleSkipPhotoGuideChange = useCallback((checked: boolean) => {
+    setSkipPhotoGuide(checked);
+    if (checked) setScanPhotoGuideDismissed();
+    else clearScanPhotoGuideDismissed();
   }, []);
 
   useEffect(() => {
@@ -396,12 +436,20 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!cameraOpen || !videoRef.current || !streamRef.current) return;
-    const el = videoRef.current;
+  const attachVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (!el || !streamRef.current) return;
     el.srcObject = streamRef.current;
     void el.play().catch(() => {});
-  }, [cameraOpen, facingMode]);
+  }, []);
+
+  useEffect(() => {
+    if (!cameraOpen || !streamRef.current) return;
+    const el = videoRef.current;
+    if (!el) return;
+    el.srcObject = streamRef.current;
+    void el.play().catch(() => {});
+  }, [cameraOpen, facingMode, cameraStepIndex]);
 
   const startCamera = useCallback(
     async (facing: "user" | "environment") => {
@@ -453,6 +501,32 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setCameraStepIndex(nextIdx);
     void startCamera("user");
   }, [slotCaptures, startCamera, clearPendingCapture, resetAdjustments]);
+
+  const requestOpenCamera = useCallback(() => {
+    if (skipPhotoGuide) {
+      openCameraForMultiCapture();
+      return;
+    }
+    setPhotoGuideIntent("camera");
+    setPhotoGuideOpen(true);
+  }, [skipPhotoGuide, openCameraForMultiCapture]);
+
+  const openPhotoGuideReview = useCallback(() => {
+    setPhotoGuideIntent("review");
+    setPhotoGuideOpen(true);
+  }, []);
+
+  const closePhotoGuide = useCallback(() => {
+    setPhotoGuideOpen(false);
+  }, []);
+
+  const completePhotoGuide = useCallback(() => {
+    const intent = photoGuideIntent;
+    setPhotoGuideOpen(false);
+    if (intent === "camera") {
+      openCameraForMultiCapture();
+    }
+  }, [openCameraForMultiCapture, photoGuideIntent]);
 
   const setCaptureZoomManual = useCallback((value: number) => {
     setCaptureZoom(value);
@@ -583,6 +657,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setScanResults(null);
     setUploadError(null);
     setScanError(null);
+    setPhotoGuideOpen(false);
+    setPhotoGuideIntent("camera");
+    setSkipPhotoGuide(isScanPhotoGuideDismissed());
   }, [stopCamera, isOnboardingScan, clearPendingCapture]);
 
   const handleDrop = useCallback(
@@ -646,8 +723,29 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     }
   }, [slotCaptures, slotsComplete, scanName, router, isOnboardingScan]);
 
+  const showPhotoGuide =
+    step === "upload" && !cameraOpen && photoGuideOpen;
   return (
-    <div className="space-y-6">
+    <div
+      className={`${
+        cameraOpen
+          ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
+          : variant === "dashboard"
+            ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
+            : "space-y-6"
+      }`}
+    >
+      {showPhotoGuide ? (
+        <FaceScanPhotoGuide
+          mode={photoGuideIntent}
+          dontRemind={skipPhotoGuide}
+          onDontRemindChange={handleSkipPhotoGuideChange}
+          onContinue={completePhotoGuide}
+          onBack={closePhotoGuide}
+        />
+      ) : null}
+
+      {!showPhotoGuide && !(step === "upload" && cameraOpen) ? (
       <motion.header
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -663,7 +761,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
             </h1>
           </div>
-          {!isOnboardingScan ? (
+          {!isOnboardingScan && step !== "confirm" ? (
             <Link
               href="/dashboard/history"
               className={`shrink-0 self-center sm:self-start ${patientSecondaryBtn}`}
@@ -674,21 +772,33 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           ) : null}
         </div>
       </motion.header>
+      ) : null}
 
       {/* Step: Upload — live camera (multi-capture) */}
-      {step === "upload" && cameraOpen && (
+      {!showPhotoGuide && step === "upload" && cameraOpen && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-auto w-full max-w-5xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm md:p-6"
+          className="flex min-h-0 w-full flex-1 flex-col"
         >
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">
-            <div className="flex min-w-0 flex-1 justify-center lg:sticky lg:top-6">
-              <div className="flex w-full max-w-[440px] flex-col gap-4 lg:max-w-[405px]">
-              <div className={CAMERA_PREVIEW_CLASS}>
+          <WebCaptureStepShell
+            step={currentCameraStep}
+            stepIndex={cameraStepIndex}
+            totalSteps={N_CAPTURES}
+            reviewingCapture={reviewingCapture}
+            guidance={guidance}
+            guidanceReady={guidance?.readyToCapture ?? false}
+            voiceEnabled={voiceEnabled}
+            showDebug={showDebug}
+            captureDebugUi={captureDebugUi}
+            onToggleVoice={() => setVoiceEnabled((v) => !v)}
+            onToggleDebug={() => setShowDebug((v) => !v)}
+            onBack={cancelCamera}
+            viewfinder={
+              <>
                 <video
-                  ref={videoRef}
-                  className={`h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
+                  ref={attachVideoRef}
+                  className={`block h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
                   style={{
                     transformOrigin: "center center",
                     transform:
@@ -710,219 +820,108 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : null}
-                <div className="pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-zinc-950/55 px-3 py-1 text-[11px] font-medium text-white">
-                  {captureCount}/{N_CAPTURES}
-                  {reviewingCapture
-                    ? " · review photo"
-                    : guidance?.readyToCapture
-                      ? " · ready"
-                      : ""}
-                </div>
                 {!reviewingCapture ? (
-                  <div className="absolute right-2 top-2 z-30 flex flex-col gap-2">
-                    {captureDebugUi ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowDebug((v) => !v)}
-                        className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
-                          showDebug
-                            ? "bg-emerald-600 text-white"
-                            : "bg-white/70 text-[#2C3E6B] hover:bg-white"
-                        }`}
-                        aria-pressed={showDebug}
-                        aria-label={showDebug ? "Hide capture debug" : "Show capture debug"}
-                        title={showDebug ? "Hide capture debug" : "Show capture debug"}
-                      >
-                        <Bug className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => setVoiceEnabled((v) => !v)}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-colors ${
-                        voiceEnabled
-                          ? "bg-[#2C3E6B] text-white"
-                          : "bg-white/70 text-[#2C3E6B] hover:bg-white"
-                      }`}
-                      aria-pressed={voiceEnabled}
-                      aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
-                      title={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
-                    >
-                      {voiceEnabled ? (
-                        <Volume2 className="h-4 w-4" />
-                      ) : (
-                        <VolumeX className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
+                  <CaptureFaceGuideOverlayWeb stepId={currentCameraStep.id} />
                 ) : null}
-              </div>
-
-              <div className={CAPTURE_ACTIONS_CLASS}>
-                {reviewingCapture ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={retakePendingCapture}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
-                    >
-                      <RotateCcw className="h-5 w-5" />
-                      Retake
-                    </button>
-                    <button
-                      type="button"
-                      onClick={confirmPendingCapture}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] sm:flex-[1.4]"
-                    >
-                      <Check className="h-5 w-5" />
-                      {captureCount + 1 >= N_CAPTURES ? "Use photo & finish" : "Use photo & next"}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={captureFromCamera}
-                      disabled={slotsComplete}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-[1.4]"
-                    >
-                      <Camera className="h-5 w-5" />
-                      Capture
-                    </button>
-                    <button
-                      type="button"
-                      onClick={flipCamera}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
-                      aria-label="Switch between front and back camera"
-                    >
-                      <SwitchCamera className="h-5 w-5 text-[#2C3E6B]" />
-                      Flip
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelCamera}
-                      className="flex w-full items-center justify-center rounded-xl border border-white/60 bg-white/50 py-3.5 text-sm font-medium text-[#6B7280] backdrop-blur-sm transition-colors hover:bg-white/80 sm:flex-1"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            </div>
-
-            <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[320px] xl:w-[340px]">
-              <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-3 text-center backdrop-blur-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
-                  Step {Math.min(cameraStepIndex + 1, N_CAPTURES)} of {N_CAPTURES}
-                </p>
-                <p className="mt-0.5 text-lg font-bold text-[#2C3E6B]">
-                  {currentCameraStep.title}
-                </p>
-                <p className="mt-0.5 text-sm leading-snug text-[#6B7280]">
-                  {reviewingCapture
-                    ? "Use this photo or retake it."
-                    : currentCameraStep.instruction}
-                </p>
-              </div>
-
-              {reviewingCapture ? (
-                <div className="rounded-xl border border-[#2C3E6B]/20 bg-[#E8EFE6]/80 px-3 py-2.5 text-center text-sm text-[#374151]">
-                  Review this photo. Continue to the next angle or retake.
-                </div>
-              ) : (
-                <div className="rounded-xl border border-white/60 bg-white/55 px-3 py-3 backdrop-blur-sm">
-                  <ScanCaptureGuidanceBanner
-                    guidance={guidance}
-                    models={models}
-                    needsExpressionModel={needsExpressionModel}
-                    compact
-                  />
-                </div>
-              )}
-
+              </>
+            }
+            controls={
+              <WebCaptureShutterControls
+                reviewingCapture={reviewingCapture}
+                shutterDisabled={slotsComplete}
+                onShutter={captureFromCamera}
+                onFlip={flipCamera}
+                onRetake={retakePendingCapture}
+                onConfirm={confirmPendingCapture}
+                isLastStep={captureCount + 1 >= N_CAPTURES}
+              />
+            }
+            sidebar={
               <div
-                className={`flex flex-col gap-3 rounded-xl border border-white/60 bg-white/50 px-3 py-3 backdrop-blur-sm ${
+                className={`flex min-h-0 flex-col gap-2 ${
                   reviewingCapture ? "pointer-events-none opacity-50" : ""
                 }`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
-                  Adjust
-                </p>
-                <p className="text-[11px] leading-snug text-[#6B7280]">
-                  Brightness and contrast update the preview, photo, and lighting
-                  tips. Zoom only crops the frame.
-                </p>
-                <AdjustSlider
-                  icon={<Sun className="h-4 w-4 text-[#2C3E6B]/70" />}
-                  label="Brightness"
-                  value={brightness}
-                  min={ADJUST_MIN}
-                  max={ADJUST_MAX}
-                  step={ADJUST_STEP}
-                  suffix="%"
-                  onChange={setBrightness}
-                />
-                <AdjustSlider
-                  icon={<Contrast className="h-4 w-4 text-[#2C3E6B]/70" />}
-                  label="Contrast"
-                  value={contrast}
-                  min={ADJUST_MIN}
-                  max={ADJUST_MAX}
-                  step={ADJUST_STEP}
-                  suffix="%"
-                  onChange={setContrast}
-                />
-                <AdjustSlider
-                  icon={<ZoomIn className="h-4 w-4 text-[#2C3E6B]/70" />}
-                  label="Zoom"
-                  value={captureZoom}
-                  min={CAPTURE_ZOOM_MIN}
-                  max={CAPTURE_ZOOM_MAX}
-                  step={CAPTURE_ZOOM_STEP}
-                  suffix="×"
-                  format={(v) => v.toFixed(1)}
-                  onChange={setCaptureZoomManual}
-                />
-                {adjustmentsChanged ? (
-                  <button
-                    type="button"
-                    onClick={resetAdjustments}
-                    className="self-end text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
-                  >
-                    Reset brightness & contrast
-                  </button>
+                <ScanCaptureExtraTipsPanel compact dense />
+                <div className="shrink-0 rounded-lg border border-[#2C3E6B]/10 bg-white/70 p-2 sm:rounded-xl sm:p-2.5">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#2C3E6B]/60 sm:text-[11px]">
+                    Adjust
+                  </p>
+                  <div className="mt-1.5 space-y-1.5">
+                    <AdjustSlider
+                      compact
+                      icon={<Sun className="h-3 w-3 text-[#2C3E6B]/70" />}
+                      label="Brightness"
+                      value={brightness}
+                      min={ADJUST_MIN}
+                      max={ADJUST_MAX}
+                      step={ADJUST_STEP}
+                      suffix="%"
+                      onChange={setBrightness}
+                    />
+                    <AdjustSlider
+                      compact
+                      icon={<Contrast className="h-3 w-3 text-[#2C3E6B]/70" />}
+                      label="Contrast"
+                      value={contrast}
+                      min={ADJUST_MIN}
+                      max={ADJUST_MAX}
+                      step={ADJUST_STEP}
+                      suffix="%"
+                      onChange={setContrast}
+                    />
+                    <AdjustSlider
+                      compact
+                      icon={<ZoomIn className="h-3 w-3 text-[#2C3E6B]/70" />}
+                      label="Zoom"
+                      value={captureZoom}
+                      min={CAPTURE_ZOOM_MIN}
+                      max={CAPTURE_ZOOM_MAX}
+                      step={CAPTURE_ZOOM_STEP}
+                      suffix="×"
+                      format={(v) => v.toFixed(1)}
+                      onChange={setCaptureZoomManual}
+                    />
+                    {adjustmentsChanged ? (
+                      <button
+                        type="button"
+                        onClick={resetAdjustments}
+                        className="text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
+                      >
+                        Reset brightness & contrast
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                {captureDebugUi && !reviewingCapture && showDebug ? (
+                  <ScanCaptureDebugOverlay
+                    guidance={guidance}
+                    captureZoom={captureZoom}
+                    models={models}
+                    faceTracked={faceTracked}
+                    visible
+                    variant="panel"
+                    extra={debugExtra}
+                  />
                 ) : null}
               </div>
-
-              {captureDebugUi && !reviewingCapture && showDebug ? (
-                <ScanCaptureDebugOverlay
-                  guidance={guidance}
-                  captureZoom={captureZoom}
-                  models={models}
-                  faceTracked={faceTracked}
-                  visible
-                  variant="panel"
-                  extra={debugExtra}
-                />
-              ) : null}
-            </aside>
-          </div>
+            }
+          />
         </motion.div>
       )}
 
-      {step === "upload" && !cameraOpen && (
+      {!showPhotoGuide && step === "upload" && !cameraOpen && (
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="mx-auto w-full max-w-4xl"
+          className="w-full"
         >
-          <div className="overflow-hidden rounded-[28px] border border-white/75 bg-white/45 p-4 shadow-[0_18px_50px_-28px_rgba(44,62,107,0.5)] backdrop-blur-sm md:p-6">
+          <div className="space-y-5">
             <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
               <button
                 type="button"
-                onClick={openCameraForMultiCapture}
+                onClick={requestOpenCamera}
                 className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition hover:-translate-y-0.5 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
               >
                 <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
@@ -1000,7 +999,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               </div>
             </div>
 
-            <div className="mt-5 rounded-[22px] border border-white/70 bg-white/45 p-4">
+            <div className="space-y-4 pt-1">
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
                 Capture checklist
               </p>
@@ -1064,14 +1063,28 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   );
                 })}
               </div>
-              <p className="mt-4 text-center text-sm leading-relaxed text-[#64748B]">
-                {FACE_SCAN_INSTRUCTIONS_BELOW_CAMERA.join(" ")}
-              </p>
+              <ScanPhotoGuideDismissCheckbox
+                checked={skipPhotoGuide}
+                onChange={handleSkipPhotoGuideChange}
+                className="mx-auto max-w-lg bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
+              />
+
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={openPhotoGuideReview}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white/60 px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-white/80"
+                >
+                  <Sun className="h-4 w-4" aria-hidden />
+                  View photo tips
+                </button>
+              </div>
+
               {slotsComplete ? (
                 <button
                   type="button"
                   onClick={() => setStep("confirm")}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] py-3 text-sm font-bold text-white transition hover:bg-[#243456]"
+                  className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] py-3 text-sm font-bold text-white transition hover:bg-[#243456]"
                 >
                   <Check className="h-4 w-4" aria-hidden />
                   Continue to preview
@@ -1215,9 +1228,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               onChange={(e) => setScanName(e.target.value)}
               className="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 backdrop-blur-sm focus:border-[#2C3E6B]/40 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/10"
             />
-            <p className="mt-2 text-xs text-[#6B7280]">
-              Prefilled as scan number, date, and time — edit anytime.
-            </p>
           </div>
           <button
             type="button"

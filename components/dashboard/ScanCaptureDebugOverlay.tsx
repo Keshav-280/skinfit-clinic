@@ -78,9 +78,11 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Opt-in only — set NEXT_PUBLIC_CAPTURE_DEBUG=1 to show capture debug UI. */
+/** On in development; set NEXT_PUBLIC_CAPTURE_DEBUG=1 to force on in production builds. */
 export function isCaptureDebugEnabled(): boolean {
+  if (process.env.NODE_ENV === "development") return true;
   const flag = process.env.NEXT_PUBLIC_CAPTURE_DEBUG?.trim();
+  if (flag === "0" || flag === "false") return false;
   return flag === "1" || flag === "true";
 }
 
@@ -110,8 +112,8 @@ export function ScanCaptureDebugOverlay({
     <div
       className={
         isPanel
-          ? "max-h-52 overflow-y-auto rounded-xl border border-emerald-500/35 bg-zinc-900 px-3 py-2 font-mono text-[10px] leading-relaxed text-emerald-100 shadow-inner"
-          : "pointer-events-none absolute left-2 top-2 z-[100] max-h-[min(55%,320px)] max-w-[min(100%,15rem)] overflow-y-auto rounded-md border border-emerald-500/40 bg-black/85 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-emerald-100 shadow-lg"
+          ? "max-h-28 shrink-0 overflow-y-auto rounded-lg border border-emerald-500/35 bg-zinc-900 px-2 py-1.5 font-mono text-[9px] leading-snug text-emerald-100 shadow-inner sm:max-h-32 sm:rounded-xl sm:px-2.5 sm:py-2 sm:text-[10px]"
+          : "pointer-events-none absolute left-1 top-1 z-[100] max-h-[42%] max-w-[7.5rem] overflow-y-auto rounded border border-emerald-500/40 bg-black/80 px-1.5 py-1 font-mono text-[7px] leading-tight text-emerald-100 shadow-md"
       }
       aria-hidden={!isPanel}
       aria-label={isPanel ? "Capture debug metrics" : undefined}
