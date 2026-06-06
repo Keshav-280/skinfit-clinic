@@ -153,15 +153,29 @@ function RadarChart({
         {dataPoints.map((p, i) => (<circle key={i} cx={p.x} cy={p.y} r={4} fill={GREEN} />))}
       </svg>
       {data.map((d, i) => {
-        const p = getPoint(i, maxRadius + labelPad);
+        const angle = startAngle + i * angleStep;
+        const cosVal = Math.cos(angle);
+        const sinVal = Math.sin(angle);
+
+        let tx = "-50%";
+        let ty = "-50%";
+
+        if (cosVal > 0.3) tx = "0%";
+        else if (cosVal < -0.3) tx = "-100%";
+
+        if (sinVal > 0.5) ty = "0%";
+        else if (sinVal < -0.5) ty = "-100%";
+
+        // Place coordinate slightly outside the maxRadius point
+        const p = getPoint(i, maxRadius + 8);
         return (
           <div
             key={i}
-            className="absolute text-center"
+            className="absolute text-center whitespace-nowrap"
             style={{
               left: labelPad + p.x,
               top: labelPad + p.y,
-              transform: "translate(-50%, -50%)",
+              transform: `translate(${tx}, ${ty})`,
             }}
           >
             <p className={`font-medium text-slate-500 ${chartSize < 220 ? "text-[10px]" : "text-xs"}`}>{d.label}</p>

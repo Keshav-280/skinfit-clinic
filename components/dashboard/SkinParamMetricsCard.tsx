@@ -38,15 +38,15 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
             <CircularGauge
               value={p.value}
               color={p.color}
-              size={68}
-              strokeWidth={6}
-              valueClassName="text-2xl sm:text-3xl text-[#18181b]"
+              size={52}
+              strokeWidth={4.5}
+              valueClassName="text-sm sm:text-base text-[#18181b]"
             />
-            <p className="text-center text-[18px] font-extrabold leading-tight text-[#18181b] sm:text-[20px]">
+            <p className="text-center text-[12px] font-extrabold leading-tight text-[#18181b] sm:text-[13px]">
               {p.label}
             </p>
             <p
-              className={`text-[15px] font-extrabold sm:text-[17px] ${
+              className={`text-[10.5px] font-extrabold sm:text-[11.5px] ${
                 p.sublabel === "Needs Care"
                   ? "text-red-500"
                   : p.sublabel === "Moderate"
