@@ -45,7 +45,7 @@ import {
   AI_CHATBOT_ENABLED,
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/lib/featureFlags";
-import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "../../../src/lib/patientClinicVisit";
+import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "../../../src/lib/patientClinicVisitMessages";
 
 type AssistantId = "ai" | "doctor" | "support";
 type HomeThreadId = AssistantId | "appointments";

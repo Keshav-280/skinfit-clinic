@@ -29,7 +29,7 @@ import {
   AI_CHATBOT_ENABLED,
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/src/lib/featureFlags";
-import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisit";
+import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisitMessages";
 import {
   dataUriKind,
   MAX_CHAT_PENDING_ATTACHMENTS,

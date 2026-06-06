@@ -18,7 +18,7 @@ import {
 import {
   CLINIC_SUPPORT_INBOX_REFRESH_EVENT,
 } from "@/src/lib/clinicSupportInboxClient";
-import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisit";
+import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisitMessages";
 
 const NAVY = "#2C3E6B";
 
