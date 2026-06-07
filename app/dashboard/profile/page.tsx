@@ -134,8 +134,8 @@ export default async function ProfilePage() {
         layout="profile-page"
         leftSlot={
           <>
-            <ProfileSnapshot user={user} />
             <FamilyWalletCard />
+            <ProfileSnapshot user={user} />
           </>
         }
       />
