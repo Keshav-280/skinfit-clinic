@@ -43,6 +43,8 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Docker sets HOSTNAME to the container id; Next.js binds to that IP (not 127.0.0.1).
+      HOSTNAME: "0.0.0.0"
       LOCAL_POSTGRES_URL: postgresql://skinfit:skinfit_local_dev@postgres:5432/skinfit
       LOCAL_REDIS_URL: redis://redis:6379
       LOCAL_STORAGE_ROOT: /uploads

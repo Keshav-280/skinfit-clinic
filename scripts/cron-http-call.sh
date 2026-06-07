@@ -40,20 +40,23 @@ fi
 
 COMPOSE=(docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml)
 CRON_PATH="/api/cron/${PATH_SUFFIX}"
+# Next.js in Docker often binds to the container hostname (not 127.0.0.1). Use compose DNS.
+CRON_DOCKER_URL="${CRON_DOCKER_URL:-http://web:3000}"
 
 web_container_running() {
   [[ -n "$("${COMPOSE[@]}" ps -q web 2>/dev/null | head -n1 || true)" ]]
 }
 
 call_via_docker() {
-  echo "[$(date -Is)] GET ${CRON_PATH} (via web container)"
+  echo "[$(date -Is)] GET ${CRON_PATH} (via web container -> ${CRON_DOCKER_URL})"
   "${COMPOSE[@]}" exec -T \
     -e "CRON_SECRET=${SECRET}" \
     -e "CRON_PATH=${CRON_PATH}" \
+    -e "CRON_DOCKER_URL=${CRON_DOCKER_URL}" \
     web node -e '
 const secret = process.env.CRON_SECRET;
 const path = process.env.CRON_PATH;
-fetch("http://127.0.0.1:3000" + path, {
+fetch(process.env.CRON_DOCKER_URL + path, {
   headers: { Authorization: "Bearer " + secret },
 })
   .then(async (res) => {
