@@ -8,12 +8,27 @@ upstream skinfit_web_ssl {
   keepalive 32;
 }
 
+# Public HTTP → HTTPS (browser traffic)
 server {
   listen 80;
   listen [::]:80;
   server_name YOUR_DOMAIN;
   return 301 https://$host$request_uri;
 }
+
+# Optional: VM cron on loopback without TLS redirect (alternative to scripts/cron-http-call.sh docker mode).
+# server {
+#   listen 127.0.0.1:80;
+#   server_name localhost;
+#   location /api/cron/ {
+#     proxy_pass http://web:3000;
+#     proxy_http_version 1.1;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_set_header X-Forwarded-Proto https;
+#   }
+# }
 
 server {
   listen 443 ssl http2;

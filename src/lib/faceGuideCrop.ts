@@ -86,11 +86,55 @@ export function viewfinderNormRectToVideoSource(
   viewfinderW: number,
   viewfinderH: number
 ): { x: number; y: number; w: number; h: number } {
+  return viewfinderNormRectToVideoSourceWithZoom(
+    rect,
+    videoW,
+    videoH,
+    viewfinderW,
+    viewfinderH,
+    1
+  );
+}
+
+/**
+ * Source video region visible in the viewfinder with `object-cover` and center CSS zoom.
+ * Matches `<video class="object-cover" style="transform: scale(zoom)">`.
+ */
+export function getVisibleVideoRect(
+  videoW: number,
+  videoH: number,
+  viewfinderW: number,
+  viewfinderH: number,
+  zoom: number
+): { sx: number; sy: number; sw: number; sh: number } {
+  const z = zoom > 0 ? zoom : 1;
   const scale = Math.max(viewfinderW / videoW, viewfinderH / videoH);
-  const displayW = videoW * scale;
-  const displayH = videoH * scale;
-  const offsetX = (displayW - viewfinderW) / 2;
-  const offsetY = (displayH - viewfinderH) / 2;
+  const sw = viewfinderW / scale / z;
+  const sh = viewfinderH / scale / z;
+  return {
+    sx: (videoW - sw) / 2,
+    sy: (videoH - sh) / 2,
+    sw,
+    sh,
+  };
+}
+
+/** Map a viewfinder-normalized rect to source pixels within the visible video region. */
+export function viewfinderNormRectToVideoSourceWithZoom(
+  rect: { x: number; y: number; w: number; h: number },
+  videoW: number,
+  videoH: number,
+  viewfinderW: number,
+  viewfinderH: number,
+  zoom: number
+): { x: number; y: number; w: number; h: number } {
+  const { sx, sy, sw, sh } = getVisibleVideoRect(
+    videoW,
+    videoH,
+    viewfinderW,
+    viewfinderH,
+    zoom
+  );
 
   const fx = rect.x * viewfinderW;
   const fy = rect.y * viewfinderH;
@@ -98,22 +142,10 @@ export function viewfinderNormRectToVideoSource(
   const fh = rect.h * viewfinderH;
 
   return {
-    x: (fx + offsetX) / scale,
-    y: (fy + offsetY) / scale,
-    w: fw / scale,
-    h: fh / scale,
-  };
-}
-
-function getZoomWindow(videoW: number, videoH: number, zoom: number) {
-  const z = zoom > 0 ? zoom : 1;
-  const sw = videoW / z;
-  const sh = videoH / z;
-  return {
-    sx: (videoW - sw) / 2,
-    sy: (videoH - sh) / 2,
-    sw,
-    sh,
+    x: sx + (fx / viewfinderW) * sw,
+    y: sy + (fy / viewfinderH) * sh,
+    w: (fw / viewfinderW) * sw,
+    h: (fh / viewfinderH) * sh,
   };
 }
 
@@ -178,34 +210,25 @@ export function computeFaceGuideCropInSourcePixels(params: {
 
   const viewBoxRect = getFrontGuideCropRectViewBox(ellipse);
   const vfNorm = viewBoxRectToViewfinderNorm(viewBoxRect);
-  const videoRect = viewfinderNormRectToVideoSource(
+  const videoRect = viewfinderNormRectToVideoSourceWithZoom(
     vfNorm,
     sourceW,
     sourceH,
     viewfinderW,
-    viewfinderH
+    viewfinderH,
+    zoom
   );
 
-  const { sx, sy, sw, sh } = getZoomWindow(sourceW, sourceH, zoom);
-
-  let x = videoRect.x - sx;
-  let y = videoRect.y - sy;
-  let w = videoRect.w;
-  let h = videoRect.h;
+  const y = videoRect.y;
+  const w = videoRect.w;
+  const h = videoRect.h;
+  let x = videoRect.x;
 
   if (mirror) {
-    x = sw - x - w;
+    x = sourceW - x - w;
   }
 
-  const inWindow = enforcePortrait34Crop(x, y, w, h, sw, sh, mirror);
-  if (!inWindow) return null;
-
-  return {
-    x: inWindow.x + sx,
-    y: inWindow.y + sy,
-    w: inWindow.w,
-    h: inWindow.h,
-  };
+  return enforcePortrait34Crop(x, y, w, h, sourceW, sourceH, mirror);
 }
 
 export function computeFaceGuideCropOnCanvas(params: {
@@ -236,14 +259,20 @@ export function computeFaceGuideCropOnCanvas(params: {
   });
   if (!sourceCrop) return null;
 
-  const { sx, sy, sw, sh } = getZoomWindow(videoW, videoH, zoom);
+  const { sx, sy, sw, sh } = getVisibleVideoRect(
+    videoW,
+    videoH,
+    viewfinderW,
+    viewfinderH,
+    zoom
+  );
   const scaleX = canvasW / sw;
   const scaleY = canvasH / sh;
 
+  const y = (sourceCrop.y - sy) * scaleY;
+  const w = sourceCrop.w * scaleX;
+  const h = sourceCrop.h * scaleY;
   let x = (sourceCrop.x - sx) * scaleX;
-  let y = (sourceCrop.y - sy) * scaleY;
-  let w = sourceCrop.w * scaleX;
-  let h = sourceCrop.h * scaleY;
 
   if (mirror) {
     x = canvasW - x - w;

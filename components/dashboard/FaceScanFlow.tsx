@@ -54,6 +54,7 @@ import {
 import {
   computeFaceGuideCropOnCanvas,
   cropCanvasToFaceGuide,
+  getVisibleVideoRect,
   shouldCropToFaceGuide,
 } from "@/src/lib/faceGuideCrop";
 
@@ -586,24 +587,21 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       ctx.scale(-1, 1);
     }
     const zoom = captureZoom;
-    let sx = 0;
-    let sy = 0;
-    let sw = w;
-    let sh = h;
-    if (zoom > 1) {
-      sw = w / zoom;
-      sh = h / zoom;
-      sx = (w - sw) / 2;
-      sy = (h - sh) / 2;
-    }
+    const viewfinderW = video.clientWidth;
+    const viewfinderH = video.clientHeight;
+    const { sx, sy, sw, sh } = getVisibleVideoRect(
+      w,
+      h,
+      viewfinderW,
+      viewfinderH,
+      zoom
+    );
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
     ctx.restore();
 
     const step = FACE_SCAN_CAPTURE_STEPS[cameraStepIndex];
     let outputCanvas: HTMLCanvasElement = canvas;
     if (shouldCropToFaceGuide(step.id)) {
-      const viewfinderW = video.clientWidth;
-      const viewfinderH = video.clientHeight;
       const crop = computeFaceGuideCropOnCanvas({
         videoW: w,
         videoH: h,
@@ -853,7 +851,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   <img
                     src={pendingCapture.preview}
                     alt={`Captured ${currentCameraStep.title}`}
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className={`absolute inset-0 h-full w-full ${
+                      shouldCropToFaceGuide(currentCameraStep.id)
+                        ? "object-contain"
+                        : "object-cover"
+                    }`}
                   />
                 ) : null}
                 {!reviewingCapture ? (
