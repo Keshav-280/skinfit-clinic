@@ -1,4 +1,9 @@
-export type OAuthProvider = "google" | "apple" | "github" | "microsoft";
+export type OAuthProvider =
+  | "google"
+  | "apple"
+  | "facebook"
+  | "github"
+  | "microsoft";
 
 export type OAuthProfile = {
   provider: OAuthProvider;

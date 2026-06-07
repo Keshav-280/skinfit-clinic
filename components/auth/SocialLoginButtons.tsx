@@ -26,6 +26,17 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"
+      />
+    </svg>
+  );
+}
+
 function AppleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden>
@@ -39,6 +50,7 @@ function AppleIcon({ className }: { className?: string }) {
 
 type SocialLoginButtonsProps = {
   disabled?: boolean;
+  variant?: "light" | "dark";
 };
 
 function oauthHref(path: string, next: string | null): string {
@@ -50,19 +62,27 @@ function SocialIconButton({
   disabled,
   icon,
   label,
+  variant,
 }: {
   href: string;
   disabled?: boolean;
   icon: ReactNode;
   label: string;
+  variant: "light" | "dark";
 }) {
+  const isDark = variant === "dark";
+
   return (
     <a
       href={disabled ? undefined : href}
       aria-disabled={disabled}
       aria-label={label}
       title={label}
-      className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/25 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/20 focus:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+      className={`inline-flex h-12 w-12 items-center justify-center rounded-xl border shadow-sm transition focus:outline-none focus:ring-2 aria-disabled:pointer-events-none aria-disabled:opacity-50 ${
+        isDark
+          ? "border-white/20 bg-white/10 text-white hover:border-white/30 hover:bg-white/15 focus:ring-[#E8EFE6]/25 focus:ring-offset-2 focus:ring-offset-[#2C3E6B]"
+          : "border-slate-200 bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/25 hover:bg-slate-50 focus:ring-[#2C3E6B]/20 focus:ring-offset-2"
+      }`}
       onClick={(e) => {
         if (disabled) e.preventDefault();
       }}
@@ -72,7 +92,10 @@ function SocialIconButton({
   );
 }
 
-export function SocialLoginButtons({ disabled }: SocialLoginButtonsProps) {
+export function SocialLoginButtons({
+  disabled,
+  variant = "light",
+}: SocialLoginButtonsProps) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
 
@@ -81,12 +104,21 @@ export function SocialLoginButtons({ disabled }: SocialLoginButtonsProps) {
       <SocialIconButton
         href={oauthHref("/api/auth/oauth/google", next)}
         disabled={disabled}
+        variant={variant}
         icon={<GoogleIcon className="h-5 w-5 shrink-0" />}
         label="Continue with Google"
       />
       <SocialIconButton
+        href={oauthHref("/api/auth/oauth/facebook", next)}
+        disabled={disabled}
+        variant={variant}
+        icon={<FacebookIcon className="h-5 w-5 shrink-0 text-[#1877F2]" />}
+        label="Continue with Facebook"
+      />
+      <SocialIconButton
         href={oauthHref("/api/auth/oauth/apple", next)}
         disabled={disabled}
+        variant={variant}
         icon={<AppleIcon className="h-[1.35rem] w-[1.35rem] shrink-0" />}
         label="Continue with Apple"
       />

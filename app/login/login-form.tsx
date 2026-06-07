@@ -9,6 +9,19 @@ import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
+const NAVY_PANEL =
+  "bg-gradient-to-br from-[#1a2544] via-[#2C3E6B] to-[#162038]";
+const LABEL = "mb-1.5 block text-sm font-medium text-white/80";
+const INPUT =
+  "w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white shadow-sm outline-none transition placeholder:text-white/50 focus:border-[#E8EFE6]/40 focus:ring-2 focus:ring-[#E8EFE6]/20";
+const ERROR =
+  "rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200";
+const LINK = "font-medium text-[#E8EFE6] hover:text-white";
+const SUBMIT_BTN =
+  "flex w-full items-center justify-center rounded-full bg-[#E8EFE6] px-5 py-3 text-base font-medium text-[#2C3E6B] shadow-sm transition-colors hover:bg-[#DCE8D4] focus:outline-none focus:ring-2 focus:ring-[#E8EFE6] focus:ring-offset-2 focus:ring-offset-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-60";
+const EYE_BTN =
+  "absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-white/60 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60";
+
 type Mode = "signin" | "register";
 
 function postAuthDestination(
@@ -225,7 +238,9 @@ export function LoginForm() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="hidden min-h-screen flex-1 flex-col justify-center bg-gradient-to-br from-[#1a2544] via-[#2C3E6B] to-[#162038] px-12 lg:flex">
+      <div
+        className={`hidden min-h-screen flex-1 flex-col justify-center px-12 lg:flex ${NAVY_PANEL}`}
+      >
         <div className="mx-auto max-w-md space-y-8">
           <Image
             src="/branding/skinfit-wellness-logo.svg"
@@ -243,7 +258,9 @@ export function LoginForm() {
         </div>
       </div>
 
-      <div className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-12">
+      <div
+        className={`flex min-h-screen flex-1 items-center justify-center px-6 py-12 ${NAVY_PANEL}`}
+      >
         <div className="w-full max-w-md">
           <div className="mb-6 flex justify-center lg:hidden">
             <Image
@@ -252,14 +269,14 @@ export function LoginForm() {
               width={560}
               height={135}
               priority
-              className="h-9 w-auto max-w-[12rem]"
+              className="h-9 w-auto max-w-[12rem] brightness-0 invert"
             />
           </div>
           <div className="mb-8 text-center lg:text-left">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
               {mode === "signin" ? "Patient Sign In" : "Create your account"}
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-white/60">
               {mode === "signin"
                 ? "Private patient portal"
                 : "Join the private patient portal"}
@@ -268,23 +285,17 @@ export function LoginForm() {
 
           {mode === "signin" ? (
             <>
-              <SocialLoginButtons disabled={loading} />
-              <OAuthLoginDivider />
+              <SocialLoginButtons disabled={loading} variant="dark" />
+              <OAuthLoginDivider variant="dark" />
               <form onSubmit={onSubmitSignIn} className="space-y-5">
               {error && (
-                <div
-                  role="alert"
-                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-                >
+                <div role="alert" className={ERROR}>
                   {error}
                 </div>
               )}
 
               <div>
-                <label
-                  htmlFor="email"
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                >
+                <label htmlFor="email" className={LABEL}>
                   Email
                 </label>
                 <input
@@ -295,23 +306,17 @@ export function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                  className={INPUT}
                   placeholder={DEMO_LOGIN_EMAIL}
                 />
               </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium text-slate-700"
-                  >
+                  <label htmlFor="password" className={LABEL}>
                     Password
                   </label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-sm font-medium text-[#2C3E6B] hover:text-[#3d5080]"
-                  >
+                  <Link href="/forgot-password" className={`text-sm ${LINK}`}>
                     Forgot password?
                   </Link>
                 </div>
@@ -324,14 +329,14 @@ export function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                    className={`${INPUT} pr-11`}
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     disabled={loading}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className={EYE_BTN}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -343,34 +348,24 @@ export function LoginForm() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center rounded-full bg-[#2C3E6B] px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-[#3d5080] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              >
+              <button type="submit" disabled={loading} className={SUBMIT_BTN}>
                 {loading ? "Signing in…" : "Sign In"}
               </button>
             </form>
             </>
           ) : (
             <>
-              <SocialLoginButtons disabled={loading} />
-              <OAuthLoginDivider />
+              <SocialLoginButtons disabled={loading} variant="dark" />
+              <OAuthLoginDivider variant="dark" />
               <form onSubmit={onSubmitRegister} className="space-y-5">
               {error && (
-                <div
-                  role="alert"
-                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-                >
+                <div role="alert" className={ERROR}>
                   {error}
                 </div>
               )}
 
               <div>
-                <label
-                  htmlFor="name"
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                >
+                <label htmlFor="name" className={LABEL}>
                   Full name
                 </label>
                 <input
@@ -381,16 +376,13 @@ export function LoginForm() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                  className={INPUT}
                   placeholder="Your name"
                 />
               </div>
 
               <div>
-                <label
-                  htmlFor="reg-email"
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                >
+                <label htmlFor="reg-email" className={LABEL}>
                   Email
                 </label>
                 <div className="flex gap-2">
@@ -407,14 +399,14 @@ export function LoginForm() {
                       setOtpHint(null);
                     }}
                     disabled={loading}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                    className={`min-w-0 flex-1 ${INPUT}`}
                     placeholder="you@gmail.com"
                   />
                   <button
                     type="button"
                     onClick={sendSignupOtp}
                     disabled={loading || sendOtpLoading || resendSeconds > 0}
-                    className="shrink-0 rounded-xl border border-[#2C3E6B]/20 bg-[#2C3E6B]/5 px-3 py-3 text-sm font-medium text-[#2C3E6B] transition hover:bg-[#2C3E6B]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="shrink-0 rounded-xl border border-[#E8EFE6]/30 bg-[#E8EFE6]/10 px-3 py-3 text-sm font-medium text-[#E8EFE6] transition hover:bg-[#E8EFE6]/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {sendOtpLoading
                       ? "Sending…"
@@ -426,15 +418,12 @@ export function LoginForm() {
                   </button>
                 </div>
                 {otpHint && (
-                  <p className="mt-1.5 text-xs text-emerald-700">{otpHint}</p>
+                  <p className="mt-1.5 text-xs text-emerald-300">{otpHint}</p>
                 )}
               </div>
 
               <div>
-                <label
-                  htmlFor="reg-otp"
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                >
+                <label htmlFor="reg-otp" className={LABEL}>
                   Email verification code
                 </label>
                 <input
@@ -449,21 +438,18 @@ export function LoginForm() {
                     setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
                   disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                  className={INPUT}
                   placeholder="6-digit code from email"
                 />
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-white/50">
                   We email a code to verify your address before creating your
                   account.
                 </p>
               </div>
 
               <div>
-                <label
-                  htmlFor="reg-phone"
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                >
-                  Phone number <span className="text-red-600">*</span>
+                <label htmlFor="reg-phone" className={LABEL}>
+                  Phone number <span className="text-red-300">*</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -475,7 +461,7 @@ export function LoginForm() {
                     value={phoneCountryCode}
                     onChange={(e) => setPhoneCountryCode(e.target.value)}
                     disabled={loading}
-                    className="w-[5.5rem] shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-slate-900 shadow-sm outline-none transition focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                    className="w-[5.5rem] shrink-0 rounded-xl border border-white/20 bg-white/10 px-3 py-3 text-center text-white shadow-sm outline-none transition focus:border-[#E8EFE6]/40 focus:ring-2 focus:ring-[#E8EFE6]/20"
                     placeholder="+91"
                     aria-label="Country code"
                   />
@@ -489,20 +475,17 @@ export function LoginForm() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={loading}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                    className={`min-w-0 flex-1 ${INPUT}`}
                     placeholder="10-digit mobile"
                   />
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-white/50">
                   Defaults to +91. Enter at least 10 digits for your number.
                 </p>
               </div>
 
               <div>
-                <label
-                  htmlFor="reg-password"
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                >
+                <label htmlFor="reg-password" className={LABEL}>
                   Password
                 </label>
                 <div className="relative">
@@ -514,14 +497,14 @@ export function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                    className={`${INPUT} pr-11`}
                     placeholder="At least 8 characters"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     disabled={loading}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className={EYE_BTN}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -534,10 +517,7 @@ export function LoginForm() {
               </div>
 
               <div>
-                <label
-                  htmlFor="confirm-password"
-                  className="mb-1.5 block text-sm font-medium text-slate-700"
-                >
+                <label htmlFor="confirm-password" className={LABEL}>
                   Confirm password
                 </label>
                 <div className="relative">
@@ -549,14 +529,14 @@ export function LoginForm() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={loading}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                    className={`${INPUT} pr-11`}
                     placeholder="Repeat password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((v) => !v)}
                     disabled={loading}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className={EYE_BTN}
                     aria-label={
                       showConfirmPassword
                         ? "Hide confirm password"
@@ -572,46 +552,34 @@ export function LoginForm() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center rounded-full bg-[#2C3E6B] px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-[#3d5080] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              >
+              <button type="submit" disabled={loading} className={SUBMIT_BTN}>
                 {loading ? "Creating account…" : "Create account"}
               </button>
             </form>
             </>
           )}
 
-          <p className="mt-8 text-center text-sm text-slate-500">
+          <p className="mt-8 text-center text-sm text-white/60">
             {mode === "signin" ? (
               <>
                 Don&apos;t have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => switchMode("register")}
-                  className="font-medium text-[#2C3E6B] hover:text-[#3d5080]"
-                >
+                <button type="button" onClick={() => switchMode("register")} className={LINK}>
                   Create an account
                 </button>
               </>
             ) : (
               <>
                 Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => switchMode("signin")}
-                  className="font-medium text-[#2C3E6B] hover:text-[#3d5080]"
-                >
+                <button type="button" onClick={() => switchMode("signin")} className={LINK}>
                   Sign in
                 </button>
               </>
             )}
           </p>
 
-          <p className="mt-4 text-center text-xs text-slate-400">
+          <p className="mt-4 text-center text-xs text-white/40">
             Clinic staff?{" "}
-            <Link href="/doctor/login" className="text-[#2C3E6B] hover:text-[#3d5080]">
+            <Link href="/doctor/login" className={LINK}>
               Doctor portal
             </Link>
           </p>

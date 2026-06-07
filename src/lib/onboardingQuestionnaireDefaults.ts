@@ -29,6 +29,143 @@ export const ONBOARDING_QUESTIONNAIRE_DEFAULTS = {
   referralSourceOther: "Prefer not to say",
 } as const;
 
+export const QUESTIONNAIRE_STEPS_ALL = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+] as const;
+
+/**
+ * Parent step → dependent follow-ups that should be skipped together.
+ * - 1: concern follow-ups (severity, duration, triggers)
+ * - 5: treatment details (only when prior treatment = no / skipped)
+ */
+export const QUESTIONNAIRE_SKIP_CASCADE: Record<number, readonly number[]> = {
+  1: [2, 3, 4],
+  5: [6],
+};
+
+/** Active steps given current answers (step 6 only when prior treatment = yes). */
+export function getActiveQuestionnaireSteps(
+  priorTx: "yes" | "no" | null
+): number[] {
+  if (priorTx === "no") {
+    return [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11];
+  }
+  return [...QUESTIONNAIRE_STEPS_ALL];
+}
+
+export function isQuestionnaireStepActive(
+  step: number,
+  priorTx: "yes" | "no" | null
+): boolean {
+  return getActiveQuestionnaireSteps(priorTx).includes(step);
+}
+
+/** Snap invalid / bypassed steps to the next active step. */
+export function normalizeOnboardingQuestionnaireStep(
+  step: number,
+  priorTx: "yes" | "no" | null
+): number {
+  const active = getActiveQuestionnaireSteps(priorTx);
+  if (active.includes(step)) return step;
+  const next = active.find((s) => s >= step);
+  if (next !== undefined) return next;
+  return active[active.length - 1] ?? 0;
+}
+
+export function questionnaireProgress(
+  step: number,
+  priorTx: "yes" | "no" | null
+): { displayStep: number; totalSteps: number } {
+  const active = getActiveQuestionnaireSteps(priorTx);
+  const normalized = normalizeOnboardingQuestionnaireStep(step, priorTx);
+  const ix = active.indexOf(normalized);
+  return {
+    displayStep: ix >= 0 ? ix + 1 : 1,
+    totalSteps: active.length,
+  };
+}
+
+export function nextOnboardingQuestionnaireStep(
+  step: number,
+  priorTx: "yes" | "no" | null
+): number {
+  if (step >= 11) return 11;
+  const active = getActiveQuestionnaireSteps(priorTx);
+  return active.find((s) => s > step) ?? 11;
+}
+
+export function prevOnboardingQuestionnaireStep(
+  step: number,
+  priorTx: "yes" | "no" | null
+): number {
+  if (step <= 0) return 0;
+  const active = getActiveQuestionnaireSteps(priorTx);
+  return [...active].reverse().find((s) => s < step) ?? 0;
+}
+
+/** First active step after a block of steps (used after skip cascades). */
+export function stepAfterQuestionnaireBlock(
+  lastStepInBlock: number,
+  priorTx: "yes" | "no" | null
+): number {
+  const active = getActiveQuestionnaireSteps(priorTx);
+  return active.find((s) => s > lastStepInBlock) ?? active[active.length - 1] ?? 11;
+}
+
+export function expandSkippedStepsForSkip(
+  step: number,
+  skippedSteps: number[]
+): number[] {
+  const result = new Set(skippedSteps);
+  result.add(step);
+  for (const dependent of QUESTIONNAIRE_SKIP_CASCADE[step] ?? []) {
+    result.add(dependent);
+  }
+  return [...result].sort((a, b) => a - b);
+}
+
+/** Ensure saved drafts include cascaded skips for any skipped parent step. */
+export function reconcileSkippedSteps(skippedSteps: number[]): number[] {
+  const result = new Set(skippedSteps);
+  for (const [parent, dependents] of Object.entries(QUESTIONNAIRE_SKIP_CASCADE)) {
+    const parentStep = Number(parent);
+    if (!result.has(parentStep)) continue;
+    for (const dependent of dependents) {
+      result.add(dependent);
+    }
+  }
+  return [...result].sort((a, b) => a - b);
+}
+
+/** Apply skip defaults for a step and any cascaded dependents. */
+export function mergeOnboardingStepSkipPatches(
+  step: number
+): Partial<OnboardingQuestionnaireFormState> {
+  const steps = [step, ...(QUESTIONNAIRE_SKIP_CASCADE[step] ?? [])];
+  let patch: Partial<OnboardingQuestionnaireFormState> = {};
+  for (const s of steps) {
+    patch = { ...patch, ...applyOnboardingStepSkip(s) };
+  }
+  return patch;
+}
+
+export function nextOnboardingQuestionnaireStepAfterSkip(
+  step: number,
+  priorTx: "yes" | "no" | null,
+  patch: Partial<OnboardingQuestionnaireFormState>
+): number {
+  const effectivePriorTx =
+    patch.priorTx === "yes" || patch.priorTx === "no" ? patch.priorTx : priorTx;
+  const cascade = QUESTIONNAIRE_SKIP_CASCADE[step];
+  if (cascade?.length) {
+    return stepAfterQuestionnaireBlock(
+      cascade[cascade.length - 1],
+      effectivePriorTx
+    );
+  }
+  return nextOnboardingQuestionnaireStep(step, effectivePriorTx);
+}
+
 export type OnboardingQuestionnaireFormState = {
   ageInput: string;
   gender: string | null;

@@ -47,6 +47,23 @@ body {
   min-height: 100vh;
 }
 
+/* Patient onboarding — always mint (ignore OS dark mode body bleed). */
+[data-onboarding-shell] {
+  color-scheme: light;
+  color: #1f2a44;
+  background-color: #d6e4d0;
+  background-image: linear-gradient(180deg, #d6e4d0 0%, #e0eada 45%, #eaf0e6 100%);
+  min-height: 100dvh;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-onboarding-shell] {
+    background-color: #d6e4d0;
+    background-image: linear-gradient(180deg, #d6e4d0 0%, #e0eada 45%, #eaf0e6 100%);
+    color: #1f2a44;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   [data-doctor-portal] {
     background: linear-gradient(180deg, #f4f2e8 0%, #f6f4eb 50%, #faf8f4 100%);

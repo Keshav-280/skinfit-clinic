@@ -5,8 +5,6 @@ import {
   getOnboardingAccessForUser,
   type BaselineOnboardingJobStatus,
 } from "@/src/lib/onboardingAccess";
-import { isQuestionnaireMilestoneComplete } from "@/src/lib/questionnaireCompletion";
-
 export type OnboardingResumeSnapshot = {
   /** True when baseline + questionnaire milestones are both done. */
   onboardingComplete: boolean;
@@ -33,14 +31,12 @@ export async function getOnboardingResumeSnapshot(
 
   if (!u) return null;
 
-  const [access, questionnaireMilestoneComplete] = await Promise.all([
-    getOnboardingAccessForUser(userId),
-    isQuestionnaireMilestoneComplete(userId),
-  ]);
+  const access = await getOnboardingAccessForUser(userId);
 
   const {
     baselineScanId,
     hasBaselineScan,
+    hasQuestionnaire: questionnaireSubmitted,
     baselineScanPending,
     baselineScanJobId,
     baselineScanJobStatus,
@@ -48,23 +44,21 @@ export async function getOnboardingResumeSnapshot(
   } = access;
 
   const baselineSubmitted = hasBaselineScan || baselineScanPending;
-  const onboardingComplete =
-    baselineSubmitted && questionnaireMilestoneComplete;
+  const onboardingComplete = baselineSubmitted && questionnaireSubmitted;
 
   let continueUrl = "/onboarding/capture/photos";
   if (!baselineSubmitted) {
     continueUrl = "/onboarding/capture/photos";
-  } else if (!questionnaireMilestoneComplete) {
+  } else if (!questionnaireSubmitted) {
     continueUrl = "/onboarding/questionnaire";
-  } else if (baselineScanId != null) {
-    continueUrl = `/onboarding/baseline-report?scanId=${baselineScanId}`;
   } else {
     continueUrl = "/dashboard";
   }
 
   return {
     onboardingComplete,
-    hasQuestionnaire: questionnaireMilestoneComplete,
+    /** Questionnaire POST completed (primary concern saved), including skipped steps. */
+    hasQuestionnaire: questionnaireSubmitted,
     hasBaselineScan,
     baselineScanPending,
     baselineScanJobId,

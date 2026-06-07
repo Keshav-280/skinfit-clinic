@@ -18,14 +18,24 @@ import { SKINFIT_GRADIENT } from "@/lib/skinfitTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import {
+  applyOnboardingQuestionnaireDraft,
+  buildOnboardingQuestionnaireDraft,
+  mergeOnboardingQuestionnaireDrafts,
   ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
-  ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
+  parseOnboardingQuestionnaireDraft,
   type OnboardingQuestionnaireDraftV2,
 } from "@/lib/onboardingQuestionnaireDraft";
 import { parseOnboardingAge } from "../../../src/lib/onboardingAgeOptions";
 import {
-  applyOnboardingStepSkip,
   buildOnboardingQuestionnairePayload,
+  expandSkippedStepsForSkip,
+  mergeOnboardingStepSkipPatches,
+  reconcileSkippedSteps,
+  nextOnboardingQuestionnaireStep,
+  nextOnboardingQuestionnaireStepAfterSkip,
+  normalizeOnboardingQuestionnaireStep,
+  prevOnboardingQuestionnaireStep,
+  questionnaireProgress,
   type BaselineDietType,
   type BaselineHydration,
   type BaselineSleep,
@@ -78,24 +88,6 @@ const TRIGGERS: { id: string; label: string }[] = [
   { id: "unsure", label: "I'm not sure" },
 ];
 const SKIN_TYPES = ["Dry", "Oily", "Combination", "Normal", "Sensitive"] as const;
-
-function questionnaireProgress(
-  step: number,
-  priorTx: "yes" | "no" | null
-): { displayStep: number; totalSteps: number } {
-  if (priorTx === "yes") {
-    return { displayStep: step + 1, totalSteps: 12 };
-  }
-  if (priorTx === "no") {
-    const order = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11];
-    const ix = order.indexOf(step);
-    return {
-      displayStep: ix >= 0 ? ix + 1 : step + 1,
-      totalSteps: 11,
-    };
-  }
-  return { displayStep: step + 1, totalSteps: 12 };
-}
 
 function copyForConcern(
   concern: Concern | null,
@@ -178,135 +170,190 @@ export default function QuestionnaireScreen() {
   const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
+    const normalized = normalizeOnboardingQuestionnaireStep(step, priorTx);
+    if (normalized !== step) setStep(normalized);
+    if (priorTx === "no" && (txText || txDur)) {
+      setTxText("");
+      setTxDur("");
+    }
+  }, [step, priorTx, txText, txDur]);
+
+  function draftSetters() {
+    return {
+      setStep,
+      setAgeInput,
+      setGender,
+      setConcern: (value: string | null) =>
+        setConcern(value && VALID_CONCERN.has(value) ? (value as Concern) : null),
+      setSeverity: (value: string | null) =>
+        setSeverity(
+          value === "mild" || value === "moderate" || value === "severe"
+            ? value
+            : null
+        ),
+      setDuration: (value: string | null) =>
+        setDuration(
+          value === "recent" || value === "ongoing" || value === "chronic"
+            ? value
+            : null
+        ),
+      setTriggers,
+      setPriorTx: (value: string | null) =>
+        setPriorTx(value === "yes" || value === "no" ? value : null),
+      setTxText,
+      setTxDur,
+      setSensitivity: (value: string | null) =>
+        setSensitivity(
+          value === "low" || value === "moderate" || value === "high"
+            ? value
+            : null
+        ),
+      setSleep: (value: string | null) =>
+        setSleep(
+          value === "under5" ||
+            value === "5to6" ||
+            value === "7to8" ||
+            value === "8plus"
+            ? value
+            : null
+        ),
+      setWater: (value: string | null) =>
+        setWater(
+          value === "under1l" ||
+            value === "1to1_5l" ||
+            value === "1_5to2l" ||
+            value === "2lplus"
+            ? value
+            : null
+        ),
+      setDiet: (value: string | null) =>
+        setDiet(
+          value === "vegetarian" ||
+            value === "vegan" ||
+            value === "nonveg" ||
+            value === "mixed"
+            ? value
+            : null
+        ),
+      setSun: (value: string | null) =>
+        setSun(
+          value === "minimal" ||
+            value === "low" ||
+            value === "moderate" ||
+            value === "high"
+            ? value
+            : null
+        ),
+      setSkinType: (value: string | null) =>
+        setSkinType(
+          value && (SKIN_TYPES as readonly string[]).includes(value)
+            ? (value as (typeof SKIN_TYPES)[number])
+            : null
+        ),
+      setReferralSource: (value: string | null) =>
+        setReferralSource(
+          value && REFERRAL_SOURCE_OPTIONS.some((o) => o.id === value)
+            ? (value as ReferralSourceId)
+            : null
+        ),
+      setReferralOther,
+      setSkippedSteps,
+    };
+  }
+
+  function persistDraft(
+    stepOverride?: number,
+    patch: Partial<OnboardingQuestionnaireDraftV2> = {},
+    skippedOverride?: number[]
+  ) {
+    if (!token) return;
+    const draft = buildOnboardingQuestionnaireDraft({
+      step: stepOverride ?? step,
+      ageInput: patch.ageInput ?? ageInput,
+      gender: patch.gender ?? gender,
+      concern: patch.concern ?? concern,
+      severity: patch.severity ?? severity,
+      duration: patch.duration ?? duration,
+      triggers: patch.triggers ?? triggers,
+      priorTx: patch.priorTx ?? priorTx,
+      txText: patch.txText ?? txText,
+      txDur: patch.txDur ?? txDur,
+      sensitivity: patch.sensitivity ?? sensitivity,
+      sleep: patch.sleep ?? sleep,
+      water: patch.water ?? water,
+      diet: patch.diet ?? diet,
+      sun: patch.sun ?? sun,
+      skinType: patch.skinType ?? skinType,
+      referralSource: patch.referralSource ?? referralSource,
+      referralOther: patch.referralOther ?? referralOther,
+      skippedSteps: skippedOverride ?? patch.skippedSteps ?? skippedSteps,
+    });
+    void AsyncStorage.setItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY, JSON.stringify(draft));
+    void apiJson("/api/onboarding/questionnaire/draft", token, {
+      method: "PUT",
+      body: JSON.stringify({ draft }),
+    }).catch(() => {
+      /* offline */
+    });
+  }
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
+      let localDraft: OnboardingQuestionnaireDraftV2 | null = null;
       try {
         const raw = await AsyncStorage.getItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
-        if (cancelled) return;
-        if (!raw) return;
-        const d = JSON.parse(raw) as OnboardingQuestionnaireDraftV2;
-        if (d.v !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) return;
-        if (typeof d.step === "number" && d.step >= 0 && d.step <= 11) {
-          setStep(d.step);
-        }
-        if (typeof d.ageInput === "string") setAgeInput(d.ageInput);
-        if (
-          d.gender === "female" ||
-          d.gender === "male" ||
-          d.gender === "other" ||
-          d.gender === "prefer_not_say"
-        ) {
-          setGender(d.gender);
-        }
-        if (d.concern && VALID_CONCERN.has(d.concern)) {
-          setConcern(d.concern as Concern);
-        }
-        if (d.severity === "mild" || d.severity === "moderate" || d.severity === "severe") {
-          setSeverity(d.severity);
-        }
-        if (d.duration === "recent" || d.duration === "ongoing" || d.duration === "chronic") {
-          setDuration(d.duration);
-        }
-        if (Array.isArray(d.triggers)) setTriggers(d.triggers);
-        if (d.priorTx === "yes" || d.priorTx === "no") setPriorTx(d.priorTx);
-        if (typeof d.txText === "string") setTxText(d.txText);
-        if (typeof d.txDur === "string") setTxDur(d.txDur);
-        if (d.sensitivity === "low" || d.sensitivity === "moderate" || d.sensitivity === "high") {
-          setSensitivity(d.sensitivity);
-        }
-        if (
-          d.sleep === "under5" ||
-          d.sleep === "5to6" ||
-          d.sleep === "7to8" ||
-          d.sleep === "8plus"
-        ) {
-          setSleep(d.sleep);
-        }
-        if (
-          d.water === "under1l" ||
-          d.water === "1to1_5l" ||
-          d.water === "1_5to2l" ||
-          d.water === "2lplus"
-        ) {
-          setWater(d.water);
-        }
-        if (
-          d.diet === "vegetarian" ||
-          d.diet === "vegan" ||
-          d.diet === "nonveg" ||
-          d.diet === "mixed"
-        ) {
-          setDiet(d.diet);
-        }
-        if (
-          d.sun === "minimal" ||
-          d.sun === "low" ||
-          d.sun === "moderate" ||
-          d.sun === "high"
-        ) {
-          setSun(d.sun);
-        }
-        if (
-          typeof d.skinType === "string" &&
-          (SKIN_TYPES as readonly string[]).includes(d.skinType)
-        ) {
-          setSkinType(d.skinType as (typeof SKIN_TYPES)[number]);
-        }
-        if (
-          typeof d.referralSource === "string" &&
-          REFERRAL_SOURCE_OPTIONS.some((o) => o.id === d.referralSource)
-        ) {
-          setReferralSource(d.referralSource as ReferralSourceId);
-        }
-        if (typeof d.referralOther === "string") setReferralOther(d.referralOther);
-        if (Array.isArray(d.skippedSteps)) {
-          setSkippedSteps(
-            d.skippedSteps.filter(
-              (n): n is number => typeof n === "number" && Number.isInteger(n)
-            )
-          );
+        if (raw) {
+          localDraft = parseOnboardingQuestionnaireDraft(JSON.parse(raw));
         }
       } catch {
         /* ignore */
-      } finally {
-        if (!cancelled) setDraftReady(true);
       }
+
+      let serverDraft: OnboardingQuestionnaireDraftV2 | null = null;
+      if (token) {
+        try {
+          const data = await apiJson<{ draft?: unknown }>(
+            "/api/onboarding/questionnaire/draft",
+            token,
+            { method: "GET" }
+          );
+          serverDraft = parseOnboardingQuestionnaireDraft(data.draft ?? null);
+        } catch {
+          /* offline */
+        }
+      }
+
+      if (cancelled) return;
+
+      const merged = mergeOnboardingQuestionnaireDrafts(localDraft, serverDraft);
+      if (merged) {
+        merged.skippedSteps = reconcileSkippedSteps(merged.skippedSteps ?? []);
+        applyOnboardingQuestionnaireDraft(merged, draftSetters());
+        await AsyncStorage.setItem(
+          ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
+          JSON.stringify(merged)
+        ).catch(() => {
+          /* */
+        });
+      }
+
+      if (!cancelled) setDraftReady(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, [token]);
 
   useEffect(() => {
     if (!draftReady) return;
-    const t = setTimeout(() => {
-      const draft: OnboardingQuestionnaireDraftV2 = {
-        v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
-        step,
-        ageInput,
-        gender,
-        concern,
-        severity,
-        duration,
-        triggers,
-        priorTx,
-        txText,
-        txDur,
-        sensitivity,
-        sleep,
-        water,
-        diet,
-        sun,
-        skinType,
-        referralSource,
-        referralOther,
-        skippedSteps,
-      };
-      void AsyncStorage.setItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY, JSON.stringify(draft));
-    }, 450);
+    const t = setTimeout(() => persistDraft(), 450);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- persist when form fields change
   }, [
     draftReady,
+    token,
     step,
     concern,
     severity,
@@ -332,8 +379,10 @@ export default function QuestionnaireScreen() {
     setTriggers((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
   };
 
+  const activeStep = normalizeOnboardingQuestionnaireStep(step, priorTx);
+
   const canNext = useMemo(() => {
-    switch (step) {
+    switch (activeStep) {
       case 0:
         return parseOnboardingAge(ageInput) != null && gender != null;
       case 1:
@@ -365,7 +414,7 @@ export default function QuestionnaireScreen() {
         return false;
     }
   }, [
-    step,
+    activeStep,
     ageInput,
     gender,
     concern,
@@ -385,7 +434,7 @@ export default function QuestionnaireScreen() {
     referralOther,
   ]);
 
-  const { displayStep, totalSteps } = questionnaireProgress(step, priorTx);
+  const { displayStep, totalSteps } = questionnaireProgress(activeStep, priorTx);
 
   function formState(): OnboardingQuestionnaireFormState {
     return {
@@ -443,17 +492,14 @@ export default function QuestionnaireScreen() {
         ),
       });
       await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
+      await apiJson("/api/onboarding/questionnaire/draft", token, {
+        method: "DELETE",
+      }).catch(() => {
+        /* */
+      });
       await markOnboardingComplete();
       if (token) await refreshUserFromProfile(token);
-      const resume = await apiJson<{
-        hasBaselineScan?: boolean;
-        baselineScanPending?: boolean;
-      }>("/api/onboarding/resume", token, { method: "GET" });
-      if (resume.hasBaselineScan || resume.baselineScanPending) {
-        router.replace("/(drawer)" as Href);
-      } else {
-        router.push("/onboarding/capture" as Href);
-      }
+      router.replace("/(drawer)" as Href);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not save questionnaire.");
     } finally {
@@ -462,35 +508,43 @@ export default function QuestionnaireScreen() {
   }
 
   function next() {
-    if (step === 11) {
+    if (activeStep === 11) {
       void submit();
       return;
     }
-    if (step === 5 && priorTx === "no") {
-      setStep(7);
-      return;
-    }
-    setStep((s) => s + 1);
+    const nextStep = nextOnboardingQuestionnaireStep(activeStep, priorTx);
+    setStep(nextStep);
+    persistDraft(nextStep);
   }
 
   function skip() {
-    setSkippedSteps((prev) =>
-      prev.includes(step) ? prev : [...prev, step]
+    if (activeStep === 11) {
+      void submit();
+      return;
+    }
+    const patch = mergeOnboardingStepSkipPatches(activeStep);
+    const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
+    setSkippedSteps(nextSkipped);
+    applySkipPatch(patch);
+    const effectivePriorTx =
+      patch.priorTx === "yes" || patch.priorTx === "no" ? patch.priorTx : priorTx;
+    const nextStep = nextOnboardingQuestionnaireStepAfterSkip(
+      activeStep,
+      effectivePriorTx,
+      patch
     );
-    applySkipPatch(applyOnboardingStepSkip(step));
-    next();
+    setStep(nextStep);
+    persistDraft(nextStep, patch, nextSkipped);
   }
 
   function back() {
-    if (step <= 0) {
+    if (activeStep <= 0) {
       router.back();
       return;
     }
-    if (step === 7 && priorTx === "no") {
-      setStep(5);
-      return;
-    }
-    setStep((s) => s - 1);
+    const prevStep = prevOnboardingQuestionnaireStep(activeStep, priorTx);
+    setStep(prevStep);
+    persistDraft(prevStep);
   }
 
   return (
@@ -507,7 +561,7 @@ export default function QuestionnaireScreen() {
       </Text>
       {err ? <Text style={styles.err}>{err}</Text> : null}
 
-      {step === 0 ? (
+      {activeStep === 0 ? (
         <>
           <Text style={styles.q}>About you</Text>
           <Text style={styles.sub}>Age (years)</Text>
@@ -527,7 +581,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 1 ? (
+      {activeStep === 1 ? (
         <>
           <Text style={styles.q}>What brings you to SkinFit today?</Text>
           {CONCERNS.map((c) => (
@@ -542,7 +596,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 2 ? (
+      {activeStep === 2 ? (
         <>
           <Text style={styles.q}>
             {concern
@@ -567,7 +621,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 3 ? (
+      {activeStep === 3 ? (
         <>
           <Text style={styles.q}>{copyForConcern(concern, "durTitle")}</Text>
           {(
@@ -593,7 +647,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 4 ? (
+      {activeStep === 4 ? (
         <>
           <Text style={styles.q}>{copyForConcern(concern, "trigTitle")}</Text>
           <Text style={styles.sub}>Select all that apply.</Text>
@@ -616,7 +670,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 5 ? (
+      {activeStep === 5 ? (
         <>
           <Text style={styles.q}>Have you tried treating this before?</Text>
           {(
@@ -628,7 +682,13 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, priorTx === id && styles.chipOn]}
-              onPress={() => setPriorTx(id)}
+              onPress={() => {
+                setPriorTx(id);
+                if (id === "no") {
+                  setTxText("");
+                  setTxDur("");
+                }
+              }}
             >
               <Text style={[styles.chipText, priorTx === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -636,7 +696,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 6 && priorTx === "yes" ? (
+      {activeStep === 6 ? (
         <>
           <Text style={styles.q}>What have you tried so far? For how long?</Text>
           <TextInput
@@ -671,7 +731,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 7 ? (
+      {activeStep === 7 ? (
         <>
           <Text style={styles.q}>How would you describe your skin&apos;s sensitivity?</Text>
           {(
@@ -698,7 +758,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 8 ? (
+      {activeStep === 8 ? (
         <>
           <Text style={styles.q}>How&apos;s your sleep most nights?</Text>
           {(
@@ -726,7 +786,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 9 ? (
+      {activeStep === 9 ? (
         <>
           <Text style={styles.q}>Lifestyle snapshot</Text>
           <Text style={styles.sub}>Daily water intake</Text>
@@ -783,7 +843,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 10 ? (
+      {activeStep === 10 ? (
         <>
           <Text style={styles.q}>How would you describe your skin type?</Text>
           {SKIN_TYPES.map((v) => (
@@ -798,7 +858,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {step === 11 ? (
+      {activeStep === 11 ? (
         <>
           <Text style={styles.q}>How did you hear about SkinFit Wellness?</Text>
           <Text style={styles.sub}>This helps us understand what brought you here.</Text>
@@ -847,7 +907,7 @@ export default function QuestionnaireScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.btnText}>
-              {step === 11 ? "Save & continue" : "Continue"}
+              {activeStep === 11 ? "Save & continue" : "Continue"}
             </Text>
           )}
         </Pressable>

@@ -7,6 +7,7 @@ import { finalizeOnboardingUser } from "@/src/lib/finalizeOnboardingUser";
 import { isReferralSourceId } from "@/src/lib/onboardingReferralSource";
 import { notifyStaffQuestionnaireRedFlags } from "@/src/lib/questionnaireDoctorAlerts";
 import { saveQuestionnaireCompletionMeta } from "@/src/lib/questionnaireCompletion";
+import { clearQuestionnaireDraft } from "@/src/lib/questionnaireDraft";
 
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
 const CONCERNS = new Set(["acne", "pigmentation", "ageing", "hair", "general"]);
@@ -324,6 +325,7 @@ export async function POST(req: Request) {
       )
     : [];
   await saveQuestionnaireCompletionMeta(userId, skippedSteps);
+  await clearQuestionnaireDraft(userId);
 
   await finalizeOnboardingUser(userId);
 

@@ -53,12 +53,24 @@ export function appleRedirectUri(): string {
   return `${getAppBaseUrl()}/api/auth/oauth/callback/apple`;
 }
 
+export function facebookOAuthConfigured(): boolean {
+  return Boolean(
+    process.env.FACEBOOK_APP_ID?.trim() &&
+      process.env.FACEBOOK_APP_SECRET?.trim()
+  );
+}
+
+export function facebookRedirectUri(): string {
+  return `${getAppBaseUrl()}/api/auth/oauth/callback/facebook`;
+}
+
 export function isSupportedOAuthProvider(
   value: string
 ): value is OAuthProvider {
   return (
     value === "google" ||
     value === "apple" ||
+    value === "facebook" ||
     value === "github" ||
     value === "microsoft"
   );

@@ -115,13 +115,20 @@ export async function resolveOAuthUser(
   }
 
   if (!normalizedEmail) {
+    const emailMessages: Partial<Record<OAuthProfile["provider"], string>> = {
+      apple:
+        "We could not get an email from Apple. Use email sign-in or share email with Apple on first sign-in.",
+      facebook:
+        "We could not get an email from Facebook. Allow email access or use email sign-in.",
+      google:
+        "We could not get an email from Google. Allow email access or use email sign-in.",
+    };
     return {
       ok: false,
       code: "EMAIL_REQUIRED",
       message:
-        profile.provider === "apple"
-          ? "We could not get an email from Apple. Use email sign-in or share email with Apple on first sign-in."
-          : "We could not get an email from Google. Allow email access or use email sign-in.",
+        emailMessages[profile.provider] ??
+        "We could not get an email from this provider. Use email sign-in.",
     };
   }
 

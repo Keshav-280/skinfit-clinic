@@ -734,7 +734,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
           : variant === "dashboard"
             ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
-            : "mx-auto w-full max-w-5xl space-y-5"
+            : "mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center space-y-5"
       }`}
     >
       {showPhotoGuide ? (

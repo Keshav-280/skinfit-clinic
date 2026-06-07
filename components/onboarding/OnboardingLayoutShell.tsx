@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
 
@@ -27,15 +28,17 @@ function OnboardingSignOutLink() {
     <button
       type="button"
       onClick={() => void handleLogout()}
-      className="text-sm font-medium text-[#2C3E6B]/70 transition hover:text-[#2C3E6B] hover:underline"
+      aria-label="Sign out"
+      title="Sign out"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/55 text-[#2C3E6B] shadow-[0_4px_16px_-8px_rgba(44,62,107,0.35)] backdrop-blur-md transition hover:border-[#2C3E6B]/28 hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/25 focus:ring-offset-2 focus:ring-offset-[#E0EADA]"
     >
-      Sign out
+      <LogOut className="h-[1.125rem] w-[1.125rem]" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }
 
 const onboardingShellClass =
-  "min-h-dvh bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6] text-[#1F2A44] [color-scheme:light]";
+  "min-h-dvh bg-[#D6E4D0] bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6] pt-[env(safe-area-inset-top)] text-[#1F2A44] [color-scheme:light]";
 
 export function OnboardingLayoutShell({
   children,
@@ -47,8 +50,11 @@ export function OnboardingLayoutShell({
 
   if (scanTheme) {
     return (
-      <div className={onboardingShellClass}>
-        <main className="mx-auto w-full max-w-5xl px-4 pb-12 pt-2 md:px-6">
+      <div
+        data-onboarding-shell
+        className={`${onboardingShellClass} flex min-h-dvh flex-col`}
+      >
+        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 py-6 md:px-6 md:py-8">
           {children}
         </main>
       </div>
@@ -59,9 +65,9 @@ export function OnboardingLayoutShell({
   const maxWidthClass = isKaiIntro ? "max-w-5xl" : "max-w-3xl";
 
   return (
-    <div className={onboardingShellClass}>
+    <div data-onboarding-shell className={onboardingShellClass}>
       {isKaiIntro ? (
-        <header className="sticky top-0 z-40 px-4 pt-3 md:px-8">
+        <header className="sticky top-0 z-40 border-b border-[#2C3E6B]/10 bg-[#D6E4D0]/90 bg-gradient-to-b from-[#D6E4D0] to-[#E0EADA]/80 px-4 pb-3 pt-3 shadow-[0_4px_24px_-12px_rgba(44,62,107,0.12)] backdrop-blur-md md:px-8">
           <div
             className={`mx-auto flex ${maxWidthClass} items-center justify-end`}
           >
@@ -69,7 +75,7 @@ export function OnboardingLayoutShell({
           </div>
         </header>
       ) : (
-        <header className="sticky top-0 z-40 border-b border-white/25 bg-white/30 px-4 py-3 shadow-[0_4px_30px_rgba(0,0,0,0.04)] backdrop-blur-xl backdrop-saturate-150">
+        <header className="sticky top-0 z-40 border-b border-[#2C3E6B]/10 bg-[#E0EADA]/85 px-4 py-3 shadow-[0_4px_24px_-12px_rgba(44,62,107,0.1)] backdrop-blur-md">
           <div className={`mx-auto flex ${maxWidthClass} items-center justify-between gap-3`}>
             <Link
               href="/onboarding/kai-intro"
@@ -84,7 +90,7 @@ export function OnboardingLayoutShell({
                 className="h-8 w-auto max-w-[10.5rem] object-contain object-left sm:max-w-[11.5rem]"
               />
             </Link>
-            <span className="hidden w-[7rem] sm:block" aria-hidden />
+            <OnboardingSignOutLink />
           </div>
         </header>
       )}

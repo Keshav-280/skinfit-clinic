@@ -1,3 +1,5 @@
+import { normalizeOnboardingQuestionnaireStep } from "@/src/lib/onboardingQuestionnaireDefaults";
+
 /** Web: localStorage. Native: AsyncStorage with same key. */
 export const ONBOARDING_QUESTIONNAIRE_DRAFT_KEY = "skinfit_onboarding_questionnaire_v1";
 
@@ -26,6 +28,213 @@ export type OnboardingQuestionnaireDraftV2 = {
   referralOther?: string;
   skippedSteps?: number[];
 };
+
+const VALID_GENDERS = new Set([
+  "female",
+  "male",
+  "other",
+  "prefer_not_say",
+]);
+
+const VALID_CONCERNS = new Set([
+  "acne",
+  "pigmentation",
+  "ageing",
+  "hair",
+  "general",
+]);
+
+const VALID_SEVERITY = new Set(["mild", "moderate", "severe"]);
+const VALID_DURATION = new Set(["recent", "ongoing", "chronic"]);
+const VALID_PRIOR_TX = new Set(["yes", "no"]);
+const VALID_SENSITIVITY = new Set(["low", "moderate", "high"]);
+const VALID_SLEEP = new Set(["under5", "5to6", "7to8", "8plus"]);
+const VALID_WATER = new Set(["under1l", "1to1_5l", "1_5to2l", "2lplus"]);
+const VALID_DIET = new Set(["vegetarian", "vegan", "nonveg", "mixed"]);
+const VALID_SUN = new Set(["minimal", "low", "moderate", "high"]);
+const VALID_SKIN_TYPES = new Set([
+  "Dry",
+  "Oily",
+  "Combination",
+  "Normal",
+  "Sensitive",
+]);
+
+function draftProgress(d: OnboardingQuestionnaireDraftV2): number {
+  let score = d.step * 10;
+  if (d.ageInput.trim()) score += 1;
+  if (d.gender) score += 1;
+  if (d.concern) score += 1;
+  if (d.severity) score += 1;
+  if (d.duration) score += 1;
+  if (d.triggers.length > 0) score += 1;
+  if (d.priorTx) score += 1;
+  if (d.sensitivity) score += 1;
+  if (d.sleep) score += 1;
+  if (d.water && d.diet && d.sun) score += 1;
+  if (d.skinType) score += 1;
+  if (d.referralSource) score += 1;
+  score += (d.skippedSteps?.length ?? 0) * 0.1;
+  return score;
+}
+
+/** Validate and normalize a stored draft (localStorage or DB). */
+export function parseOnboardingQuestionnaireDraft(
+  raw: unknown
+): OnboardingQuestionnaireDraftV2 | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const d = raw as Record<string, unknown>;
+  if (d.v !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) return null;
+  if (typeof d.step !== "number" || d.step < 0 || d.step > 11) return null;
+
+  const triggers = Array.isArray(d.triggers)
+    ? d.triggers.filter((x): x is string => typeof x === "string")
+    : [];
+
+  const skippedSteps = Array.isArray(d.skippedSteps)
+    ? d.skippedSteps.filter(
+        (n): n is number => typeof n === "number" && Number.isInteger(n)
+      )
+    : [];
+
+  const gender =
+    typeof d.gender === "string" && VALID_GENDERS.has(d.gender)
+      ? d.gender
+      : null;
+  const concern =
+    typeof d.concern === "string" && VALID_CONCERNS.has(d.concern)
+      ? d.concern
+      : null;
+  const severity =
+    typeof d.severity === "string" && VALID_SEVERITY.has(d.severity)
+      ? d.severity
+      : null;
+  const duration =
+    typeof d.duration === "string" && VALID_DURATION.has(d.duration)
+      ? d.duration
+      : null;
+  const priorTx =
+    typeof d.priorTx === "string" && VALID_PRIOR_TX.has(d.priorTx)
+      ? d.priorTx
+      : null;
+  const sensitivity =
+    typeof d.sensitivity === "string" && VALID_SENSITIVITY.has(d.sensitivity)
+      ? d.sensitivity
+      : null;
+  const sleep =
+    typeof d.sleep === "string" && VALID_SLEEP.has(d.sleep) ? d.sleep : null;
+  const water =
+    typeof d.water === "string" && VALID_WATER.has(d.water) ? d.water : null;
+  const diet =
+    typeof d.diet === "string" && VALID_DIET.has(d.diet) ? d.diet : null;
+  const sun =
+    typeof d.sun === "string" && VALID_SUN.has(d.sun) ? d.sun : null;
+  const skinType =
+    typeof d.skinType === "string" && VALID_SKIN_TYPES.has(d.skinType)
+      ? d.skinType
+      : null;
+
+  return {
+    v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
+    step: d.step,
+    ageInput: typeof d.ageInput === "string" ? d.ageInput : "",
+    gender,
+    concern,
+    severity,
+    duration,
+    triggers,
+    priorTx,
+    txText: typeof d.txText === "string" ? d.txText : "",
+    txDur: typeof d.txDur === "string" ? d.txDur : "",
+    sensitivity,
+    sleep,
+    water,
+    diet,
+    sun,
+    skinType,
+    referralSource:
+      typeof d.referralSource === "string" ? d.referralSource : null,
+    referralOther:
+      typeof d.referralOther === "string" ? d.referralOther : "",
+    skippedSteps,
+  };
+}
+
+/** Prefer the draft with more progress; server wins on a tie. */
+export function mergeOnboardingQuestionnaireDrafts(
+  local: OnboardingQuestionnaireDraftV2 | null,
+  server: OnboardingQuestionnaireDraftV2 | null
+): OnboardingQuestionnaireDraftV2 | null {
+  if (!local) return server;
+  if (!server) return local;
+  const localScore = draftProgress(local);
+  const serverScore = draftProgress(server);
+  if (serverScore > localScore) return server;
+  if (localScore > serverScore) return local;
+  return server;
+}
+
+export function buildOnboardingQuestionnaireDraft(
+  fields: Omit<OnboardingQuestionnaireDraftV2, "v">
+): OnboardingQuestionnaireDraftV2 {
+  return {
+    v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
+    ...fields,
+  };
+}
+
+export type OnboardingQuestionnaireDraftSetters = {
+  setStep: (step: number) => void;
+  setAgeInput: (value: string) => void;
+  setGender: (value: string | null) => void;
+  setConcern: (value: string | null) => void;
+  setSeverity: (value: string | null) => void;
+  setDuration: (value: string | null) => void;
+  setTriggers: (value: string[]) => void;
+  setPriorTx: (value: string | null) => void;
+  setTxText: (value: string) => void;
+  setTxDur: (value: string) => void;
+  setSensitivity: (value: string | null) => void;
+  setSleep: (value: string | null) => void;
+  setWater: (value: string | null) => void;
+  setDiet: (value: string | null) => void;
+  setSun: (value: string | null) => void;
+  setSkinType: (value: string | null) => void;
+  setReferralSource: (value: string | null) => void;
+  setReferralOther: (value: string) => void;
+  setSkippedSteps: (value: number[]) => void;
+};
+
+/** Hydrate questionnaire form state from a saved draft. */
+export function applyOnboardingQuestionnaireDraft(
+  d: OnboardingQuestionnaireDraftV2,
+  set: OnboardingQuestionnaireDraftSetters
+): void {
+  set.setStep(
+    normalizeOnboardingQuestionnaireStep(
+      d.step,
+      d.priorTx === "yes" || d.priorTx === "no" ? d.priorTx : null
+    )
+  );
+  set.setAgeInput(d.ageInput);
+  set.setGender(d.gender);
+  set.setConcern(d.concern);
+  set.setSeverity(d.severity);
+  set.setDuration(d.duration);
+  set.setTriggers(d.triggers);
+  set.setPriorTx(d.priorTx);
+  set.setTxText(d.txText);
+  set.setTxDur(d.txDur);
+  set.setSensitivity(d.sensitivity);
+  set.setSleep(d.sleep);
+  set.setWater(d.water);
+  set.setDiet(d.diet);
+  set.setSun(d.sun);
+  set.setSkinType(d.skinType ?? null);
+  set.setReferralSource(d.referralSource ?? null);
+  set.setReferralOther(d.referralOther ?? "");
+  set.setSkippedSteps(d.skippedSteps ?? []);
+}
 
 /** @deprecated Loaded only for migration; v1 drafts are discarded. */
 export type OnboardingQuestionnaireDraftV1 = {
