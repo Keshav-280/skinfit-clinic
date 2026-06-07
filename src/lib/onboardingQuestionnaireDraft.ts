@@ -60,24 +60,6 @@ const VALID_SKIN_TYPES = new Set([
   "Sensitive",
 ]);
 
-function draftProgress(d: OnboardingQuestionnaireDraftV2): number {
-  let score = d.step * 10;
-  if (d.ageInput.trim()) score += 1;
-  if (d.gender) score += 1;
-  if (d.concern) score += 1;
-  if (d.severity) score += 1;
-  if (d.duration) score += 1;
-  if (d.triggers.length > 0) score += 1;
-  if (d.priorTx) score += 1;
-  if (d.sensitivity) score += 1;
-  if (d.sleep) score += 1;
-  if (d.water && d.diet && d.sun) score += 1;
-  if (d.skinType) score += 1;
-  if (d.referralSource) score += 1;
-  score += (d.skippedSteps?.length ?? 0) * 0.1;
-  return score;
-}
-
 /** Validate and normalize a stored draft (localStorage or DB). */
 export function parseOnboardingQuestionnaireDraft(
   raw: unknown
@@ -160,18 +142,76 @@ export function parseOnboardingQuestionnaireDraft(
   };
 }
 
-/** Prefer the draft with more progress; server wins on a tie. */
+function pickRicherString(a: string, b: string): string {
+  const at = a.trim();
+  const bt = b.trim();
+  if (!at) return bt;
+  if (!bt) return at;
+  return at.length >= bt.length ? at : bt;
+}
+
+function pickNullable<T>(a: T | null, b: T | null): T | null {
+  return a ?? b;
+}
+
+function pickTriggers(a: string[], b: string[]): string[] {
+  if (a.length === 0) return b;
+  if (b.length === 0) return a;
+  return a.length >= b.length ? a : b;
+}
+
+/** Merge field-by-field so answers are not lost when step counters differ. */
 export function mergeOnboardingQuestionnaireDrafts(
   local: OnboardingQuestionnaireDraftV2 | null,
   server: OnboardingQuestionnaireDraftV2 | null
 ): OnboardingQuestionnaireDraftV2 | null {
   if (!local) return server;
   if (!server) return local;
-  const localScore = draftProgress(local);
-  const serverScore = draftProgress(server);
-  if (serverScore > localScore) return server;
-  if (localScore > serverScore) return local;
-  return server;
+
+  const priorTx = pickNullable(local.priorTx, server.priorTx) as
+    | "yes"
+    | "no"
+    | null;
+  const merged: OnboardingQuestionnaireDraftV2 = {
+    v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
+    step: Math.max(local.step, server.step),
+    ageInput: pickRicherString(local.ageInput, server.ageInput),
+    gender: pickNullable(local.gender, server.gender),
+    concern: pickNullable(local.concern, server.concern),
+    severity: pickNullable(local.severity, server.severity),
+    duration: pickNullable(local.duration, server.duration),
+    triggers: pickTriggers(local.triggers, server.triggers),
+    priorTx,
+    txText: pickRicherString(local.txText, server.txText),
+    txDur: pickRicherString(local.txDur, server.txDur),
+    sensitivity: pickNullable(local.sensitivity, server.sensitivity),
+    sleep: pickNullable(local.sleep, server.sleep),
+    water: pickNullable(local.water, server.water),
+    diet: pickNullable(local.diet, server.diet),
+    sun: pickNullable(local.sun, server.sun),
+    skinType: pickNullable(local.skinType ?? null, server.skinType ?? null),
+    referralSource: pickNullable(
+      local.referralSource ?? null,
+      server.referralSource ?? null
+    ),
+    referralOther: pickRicherString(
+      local.referralOther ?? "",
+      server.referralOther ?? ""
+    ),
+    skippedSteps: [
+      ...new Set([
+        ...(local.skippedSteps ?? []),
+        ...(server.skippedSteps ?? []),
+      ]),
+    ].sort((a, b) => a - b),
+  };
+
+  merged.step = normalizeOnboardingQuestionnaireStep(
+    merged.step,
+    priorTx === "yes" || priorTx === "no" ? priorTx : null
+  );
+
+  return merged;
 }
 
 export function buildOnboardingQuestionnaireDraft(

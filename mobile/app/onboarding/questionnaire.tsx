@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -168,6 +168,51 @@ export default function QuestionnaireScreen() {
   const [referralOther, setReferralOther] = useState("");
   const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
   const [draftReady, setDraftReady] = useState(false);
+  const draftReadyRef = useRef(false);
+  const hydratingRef = useRef(true);
+
+  const fieldsRef = useRef({
+    step,
+    ageInput,
+    gender,
+    concern,
+    severity,
+    duration,
+    triggers,
+    priorTx,
+    txText,
+    txDur,
+    sensitivity,
+    sleep,
+    water,
+    diet,
+    sun,
+    skinType,
+    referralSource,
+    referralOther,
+    skippedSteps,
+  });
+  fieldsRef.current = {
+    step,
+    ageInput,
+    gender,
+    concern,
+    severity,
+    duration,
+    triggers,
+    priorTx,
+    txText,
+    txDur,
+    sensitivity,
+    sleep,
+    water,
+    diet,
+    sun,
+    skinType,
+    referralSource,
+    referralOther,
+    skippedSteps,
+  };
 
   useEffect(() => {
     const normalized = normalizeOnboardingQuestionnaireStep(step, priorTx);
@@ -267,26 +312,31 @@ export default function QuestionnaireScreen() {
     skippedOverride?: number[]
   ) {
     if (!token) return;
+    const base = fieldsRef.current;
     const draft = buildOnboardingQuestionnaireDraft({
-      step: stepOverride ?? step,
-      ageInput: patch.ageInput ?? ageInput,
-      gender: patch.gender ?? gender,
-      concern: patch.concern ?? concern,
-      severity: patch.severity ?? severity,
-      duration: patch.duration ?? duration,
-      triggers: patch.triggers ?? triggers,
-      priorTx: patch.priorTx ?? priorTx,
-      txText: patch.txText ?? txText,
-      txDur: patch.txDur ?? txDur,
-      sensitivity: patch.sensitivity ?? sensitivity,
-      sleep: patch.sleep ?? sleep,
-      water: patch.water ?? water,
-      diet: patch.diet ?? diet,
-      sun: patch.sun ?? sun,
-      skinType: patch.skinType ?? skinType,
-      referralSource: patch.referralSource ?? referralSource,
-      referralOther: patch.referralOther ?? referralOther,
-      skippedSteps: skippedOverride ?? patch.skippedSteps ?? skippedSteps,
+      step: stepOverride ?? patch.step ?? base.step,
+      ageInput: patch.ageInput ?? base.ageInput,
+      gender: patch.gender !== undefined ? patch.gender : base.gender,
+      concern: patch.concern !== undefined ? patch.concern : base.concern,
+      severity: patch.severity !== undefined ? patch.severity : base.severity,
+      duration: patch.duration !== undefined ? patch.duration : base.duration,
+      triggers: patch.triggers ?? base.triggers,
+      priorTx: patch.priorTx !== undefined ? patch.priorTx : base.priorTx,
+      txText: patch.txText ?? base.txText,
+      txDur: patch.txDur ?? base.txDur,
+      sensitivity:
+        patch.sensitivity !== undefined ? patch.sensitivity : base.sensitivity,
+      sleep: patch.sleep !== undefined ? patch.sleep : base.sleep,
+      water: patch.water !== undefined ? patch.water : base.water,
+      diet: patch.diet !== undefined ? patch.diet : base.diet,
+      sun: patch.sun !== undefined ? patch.sun : base.sun,
+      skinType: patch.skinType !== undefined ? patch.skinType : base.skinType,
+      referralSource:
+        patch.referralSource !== undefined
+          ? patch.referralSource
+          : base.referralSource,
+      referralOther: patch.referralOther ?? base.referralOther,
+      skippedSteps: skippedOverride ?? patch.skippedSteps ?? base.skippedSteps,
     });
     void AsyncStorage.setItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY, JSON.stringify(draft));
     void apiJson("/api/onboarding/questionnaire/draft", token, {
@@ -295,6 +345,10 @@ export default function QuestionnaireScreen() {
     }).catch(() => {
       /* offline */
     });
+  }
+
+  function saveAnswer(patch: Partial<OnboardingQuestionnaireDraftV2>) {
+    persistDraft(undefined, patch);
   }
 
   useEffect(() => {
@@ -338,7 +392,11 @@ export default function QuestionnaireScreen() {
         });
       }
 
-      if (!cancelled) setDraftReady(true);
+      if (!cancelled) {
+        hydratingRef.current = false;
+        draftReadyRef.current = true;
+        setDraftReady(true);
+      }
     })();
     return () => {
       cancelled = true;
@@ -347,9 +405,12 @@ export default function QuestionnaireScreen() {
   }, [token]);
 
   useEffect(() => {
-    if (!draftReady) return;
-    const t = setTimeout(() => persistDraft(), 450);
-    return () => clearTimeout(t);
+    if (!draftReady || hydratingRef.current) return;
+    const t = setTimeout(() => persistDraft(), 400);
+    return () => {
+      clearTimeout(t);
+      if (draftReadyRef.current) persistDraft();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- persist when form fields change
   }, [
     draftReady,
@@ -376,7 +437,11 @@ export default function QuestionnaireScreen() {
   ]);
 
   const toggleTrigger = (id: string) => {
-    setTriggers((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
+    setTriggers((t) => {
+      const next = t.includes(id) ? t.filter((x) => x !== id) : [...t, id];
+      saveAnswer({ triggers: next });
+      return next;
+    });
   };
 
   const activeStep = normalizeOnboardingQuestionnaireStep(step, priorTx);
@@ -565,13 +630,22 @@ export default function QuestionnaireScreen() {
         <>
           <Text style={styles.q}>About you</Text>
           <Text style={styles.sub}>Age (years)</Text>
-          <AgeDropdown value={ageInput} onChange={setAgeInput} />
+          <AgeDropdown
+            value={ageInput}
+            onChange={(value) => {
+              setAgeInput(value);
+              saveAnswer({ ageInput: value });
+            }}
+          />
           <Text style={styles.sub2}>Gender</Text>
           {GENDER_OPTIONS.map((opt) => (
             <Pressable
               key={opt.value}
               style={[styles.chip, gender === opt.value && styles.chipOn]}
-              onPress={() => setGender(opt.value)}
+              onPress={() => {
+                setGender(opt.value);
+                saveAnswer({ gender: opt.value });
+              }}
             >
               <Text style={[styles.chipText, gender === opt.value && styles.chipTextOn]}>
                 {opt.label}
@@ -588,7 +662,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={c.id}
               style={[styles.chip, concern === c.id && styles.chipOn]}
-              onPress={() => setConcern(c.id)}
+              onPress={() => {
+                setConcern(c.id);
+                saveAnswer({ concern: c.id });
+              }}
             >
               <Text style={[styles.chipText, concern === c.id && styles.chipTextOn]}>{c.label}</Text>
             </Pressable>
@@ -613,7 +690,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, severity === id && styles.chipOn]}
-              onPress={() => setSeverity(id)}
+              onPress={() => {
+                setSeverity(id);
+                saveAnswer({ severity: id });
+              }}
             >
               <Text style={[styles.chipText, severity === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -634,7 +714,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, duration === id && styles.chipOn]}
-              onPress={() => setDuration(id)}
+              onPress={() => {
+                setDuration(id);
+                saveAnswer({ duration: id });
+              }}
             >
               <Text style={[styles.chipText, duration === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -687,6 +770,9 @@ export default function QuestionnaireScreen() {
                 if (id === "no") {
                   setTxText("");
                   setTxDur("");
+                  saveAnswer({ priorTx: id, txText: "", txDur: "" });
+                } else {
+                  saveAnswer({ priorTx: id });
                 }
               }}
             >
@@ -704,7 +790,10 @@ export default function QuestionnaireScreen() {
             placeholder="Describe treatments or products (min 10 characters)"
             placeholderTextColor="#94a3b8"
             value={txText}
-            onChangeText={setTxText}
+            onChangeText={(value) => {
+              setTxText(value);
+              saveAnswer({ txText: value });
+            }}
             multiline
           />
           {txText.trim().length > 0 && txText.trim().length < 10 ? (
@@ -723,7 +812,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, txDur === id && styles.chipOn]}
-              onPress={() => setTxDur(id)}
+              onPress={() => {
+                setTxDur(id);
+                saveAnswer({ txDur: id });
+              }}
             >
               <Text style={[styles.chipText, txDur === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -744,7 +836,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, sensitivity === id && styles.chipOn]}
-              onPress={() => setSensitivity(id)}
+              onPress={() => {
+                setSensitivity(id);
+                saveAnswer({ sensitivity: id });
+              }}
             >
               <Text style={[styles.chipText, sensitivity === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -772,7 +867,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, sleep === id && styles.chipOn]}
-              onPress={() => setSleep(id)}
+              onPress={() => {
+                setSleep(id);
+                saveAnswer({ sleep: id });
+              }}
             >
               <Text style={[styles.chipText, sleep === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -801,7 +899,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, water === id && styles.chipOn]}
-              onPress={() => setWater(id)}
+              onPress={() => {
+                setWater(id);
+                saveAnswer({ water: id });
+              }}
             >
               <Text style={[styles.chipText, water === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -818,7 +919,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, diet === id && styles.chipOn]}
-              onPress={() => setDiet(id)}
+              onPress={() => {
+                setDiet(id);
+                saveAnswer({ diet: id });
+              }}
             >
               <Text style={[styles.chipText, diet === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -835,7 +939,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={id}
               style={[styles.chip, sun === id && styles.chipOn]}
-              onPress={() => setSun(id)}
+              onPress={() => {
+                setSun(id);
+                saveAnswer({ sun: id });
+              }}
             >
               <Text style={[styles.chipText, sun === id && styles.chipTextOn]}>{label}</Text>
             </Pressable>
@@ -850,7 +957,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={v}
               style={[styles.chip, skinType === v && styles.chipOn]}
-              onPress={() => setSkinType(v)}
+              onPress={() => {
+                setSkinType(v);
+                saveAnswer({ skinType: v });
+              }}
             >
               <Text style={[styles.chipText, skinType === v && styles.chipTextOn]}>{v}</Text>
             </Pressable>
@@ -866,7 +976,10 @@ export default function QuestionnaireScreen() {
             <Pressable
               key={opt.id}
               style={[styles.chip, referralSource === opt.id && styles.chipOn]}
-              onPress={() => setReferralSource(opt.id)}
+              onPress={() => {
+                setReferralSource(opt.id);
+                saveAnswer({ referralSource: opt.id });
+              }}
             >
               <Text
                 style={[
@@ -884,7 +997,10 @@ export default function QuestionnaireScreen() {
               placeholder="Please specify (min 3 characters)"
               placeholderTextColor="#94a3b8"
               value={referralOther}
-              onChangeText={setReferralOther}
+              onChangeText={(value) => {
+                setReferralOther(value);
+                saveAnswer({ referralOther: value });
+              }}
             />
           ) : null}
         </>

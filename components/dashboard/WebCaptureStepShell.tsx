@@ -135,9 +135,9 @@ export function WebCaptureStepShell({
           </div>
         </div>
 
-        {/* 3 columns on desktop, stack on mobile */}
-        <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden sm:gap-3 md:grid-cols-3 md:gap-4">
-          <div className="flex min-h-0 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-contain px-1 text-center">
+        {/* 3 columns on large screens; stack on smaller viewports to avoid overlap */}
+        <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden sm:gap-3 lg:grid-cols-3 lg:gap-4">
+          <div className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-contain px-1 text-center lg:items-end lg:pr-2 lg:text-right">
             {!reviewingCapture ? (
               <div
                 className={`flex w-full max-w-[280px] flex-col items-center gap-2.5 rounded-2xl border px-4 py-4 shadow-sm sm:max-w-xs sm:px-5 sm:py-5 ${
@@ -171,23 +171,23 @@ export function WebCaptureStepShell({
           </div>
 
           <div className="flex min-h-0 min-w-0 flex-col items-center gap-1 sm:gap-1.5">
-            <div className="shrink-0 text-center">
+            <div className="w-full max-w-[min(100%,390px)] shrink-0 text-center">
               <h2 className="text-sm font-extrabold leading-tight sm:text-base lg:text-lg" style={{ color: NAVY }}>
                 {step.title}
               </h2>
-              <p className="line-clamp-1 text-[10px] leading-snug sm:text-xs" style={{ color: MUTED }}>
+              <p className="line-clamp-2 text-[10px] leading-snug sm:text-xs" style={{ color: MUTED }}>
                 {step.subtitle}
               </p>
             </div>
 
-            <div className="relative h-[320px] w-[240px] shrink-0 overflow-hidden rounded-xl bg-zinc-900 shadow-inner sm:rounded-2xl md:h-[384px] md:w-[288px] lg:h-[440px] lg:w-[330px] xl:h-[520px] xl:w-[390px]">
-              {viewfinder}
+            <div className="relative aspect-[3/4] w-full max-w-[min(100%,390px)] shrink-0 overflow-hidden rounded-xl bg-zinc-900 shadow-inner sm:rounded-2xl">
+              <div className="absolute inset-0">{viewfinder}</div>
             </div>
 
-            <div className="w-full shrink-0">{controls}</div>
+            <div className="w-full max-w-[min(100%,390px)] shrink-0">{controls}</div>
           </div>
 
-          <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain pl-0.5">
+          <aside className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain pl-0.5 lg:pl-0">
             {sidebar}
           </aside>
         </div>

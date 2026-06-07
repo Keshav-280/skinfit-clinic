@@ -788,7 +788,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               <>
                 <video
                   ref={attachVideoRef}
-                  className={`block h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
+                  className={`absolute inset-0 h-full w-full object-cover ${reviewingCapture ? "invisible" : ""}`}
                   style={{
                     transformOrigin: "center center",
                     transform:

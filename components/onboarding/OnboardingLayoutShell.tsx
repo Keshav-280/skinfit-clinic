@@ -30,7 +30,7 @@ function OnboardingSignOutLink() {
       onClick={() => void handleLogout()}
       aria-label="Sign out"
       title="Sign out"
-      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/55 text-[#2C3E6B] shadow-[0_4px_16px_-8px_rgba(44,62,107,0.35)] backdrop-blur-md transition hover:border-[#2C3E6B]/28 hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/25 focus:ring-offset-2 focus:ring-offset-[#E0EADA]"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#2C3E6B] transition hover:bg-[#2C3E6B]/8 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/25 focus:ring-offset-2 focus:ring-offset-[#E0EADA]"
     >
       <LogOut className="h-[1.125rem] w-[1.125rem]" strokeWidth={2.25} aria-hidden />
     </button>

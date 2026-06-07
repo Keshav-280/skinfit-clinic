@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   applyOnboardingQuestionnaireDraft,
@@ -157,6 +157,51 @@ export function OnboardingQuestionnaireForm() {
   const [referralOther, setReferralOther] = useState("");
   const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
   const [draftReady, setDraftReady] = useState(false);
+  const draftReadyRef = useRef(false);
+  const hydratingRef = useRef(true);
+
+  const fieldsRef = useRef({
+    step,
+    ageInput,
+    gender,
+    concern,
+    severity,
+    duration,
+    triggers,
+    priorTx,
+    txText,
+    txDur,
+    sensitivity,
+    sleep,
+    water,
+    diet,
+    sun,
+    skinType,
+    referralSource,
+    referralOther,
+    skippedSteps,
+  });
+  fieldsRef.current = {
+    step,
+    ageInput,
+    gender,
+    concern,
+    severity,
+    duration,
+    triggers,
+    priorTx,
+    txText,
+    txDur,
+    sensitivity,
+    sleep,
+    water,
+    diet,
+    sun,
+    skinType,
+    referralSource,
+    referralOther,
+    skippedSteps,
+  };
 
   useEffect(() => {
     const normalized = normalizeOnboardingQuestionnaireStep(step, priorTx);
@@ -255,26 +300,31 @@ export function OnboardingQuestionnaireForm() {
     patch: Partial<OnboardingQuestionnaireDraftV2> = {},
     skippedOverride?: number[]
   ) {
+    const base = fieldsRef.current;
     const draft = buildOnboardingQuestionnaireDraft({
-      step: stepOverride ?? step,
-      ageInput: patch.ageInput ?? ageInput,
-      gender: patch.gender ?? gender,
-      concern: patch.concern ?? concern,
-      severity: patch.severity ?? severity,
-      duration: patch.duration ?? duration,
-      triggers: patch.triggers ?? triggers,
-      priorTx: patch.priorTx ?? priorTx,
-      txText: patch.txText ?? txText,
-      txDur: patch.txDur ?? txDur,
-      sensitivity: patch.sensitivity ?? sensitivity,
-      sleep: patch.sleep ?? sleep,
-      water: patch.water ?? water,
-      diet: patch.diet ?? diet,
-      sun: patch.sun ?? sun,
-      skinType: patch.skinType ?? skinType,
-      referralSource: patch.referralSource ?? referralSource,
-      referralOther: patch.referralOther ?? referralOther,
-      skippedSteps: skippedOverride ?? patch.skippedSteps ?? skippedSteps,
+      step: stepOverride ?? patch.step ?? base.step,
+      ageInput: patch.ageInput ?? base.ageInput,
+      gender: patch.gender !== undefined ? patch.gender : base.gender,
+      concern: patch.concern !== undefined ? patch.concern : base.concern,
+      severity: patch.severity !== undefined ? patch.severity : base.severity,
+      duration: patch.duration !== undefined ? patch.duration : base.duration,
+      triggers: patch.triggers ?? base.triggers,
+      priorTx: patch.priorTx !== undefined ? patch.priorTx : base.priorTx,
+      txText: patch.txText ?? base.txText,
+      txDur: patch.txDur ?? base.txDur,
+      sensitivity:
+        patch.sensitivity !== undefined ? patch.sensitivity : base.sensitivity,
+      sleep: patch.sleep !== undefined ? patch.sleep : base.sleep,
+      water: patch.water !== undefined ? patch.water : base.water,
+      diet: patch.diet !== undefined ? patch.diet : base.diet,
+      sun: patch.sun !== undefined ? patch.sun : base.sun,
+      skinType: patch.skinType !== undefined ? patch.skinType : base.skinType,
+      referralSource:
+        patch.referralSource !== undefined
+          ? patch.referralSource
+          : base.referralSource,
+      referralOther: patch.referralOther ?? base.referralOther,
+      skippedSteps: skippedOverride ?? patch.skippedSteps ?? base.skippedSteps,
     });
     try {
       localStorage.setItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY, JSON.stringify(draft));
@@ -284,10 +334,15 @@ export function OnboardingQuestionnaireForm() {
     void fetch("/api/onboarding/questionnaire/draft", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
+      keepalive: true,
       body: JSON.stringify({ draft }),
     }).catch(() => {
       /* offline */
     });
+  }
+
+  function saveAnswer(patch: Partial<OnboardingQuestionnaireDraftV2>) {
+    persistDraft(undefined, patch);
   }
 
   useEffect(() => {
@@ -333,6 +388,8 @@ export function OnboardingQuestionnaireForm() {
         }
       }
 
+      hydratingRef.current = false;
+      draftReadyRef.current = true;
       setDraftReady(true);
     })();
 
@@ -343,9 +400,12 @@ export function OnboardingQuestionnaireForm() {
   }, []);
 
   useEffect(() => {
-    if (!draftReady) return;
-    const t = window.setTimeout(() => persistDraft(), 450);
-    return () => clearTimeout(t);
+    if (!draftReady || hydratingRef.current) return;
+    const t = window.setTimeout(() => persistDraft(), 400);
+    return () => {
+      clearTimeout(t);
+      if (draftReadyRef.current) persistDraft();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- persist when form fields change
   }, [
     draftReady,
@@ -371,9 +431,11 @@ export function OnboardingQuestionnaireForm() {
   ]);
 
   const toggleTrigger = (id: string) => {
-    setTriggers((t) =>
-      t.includes(id) ? t.filter((x) => x !== id) : [...t, id]
-    );
+    setTriggers((t) => {
+      const next = t.includes(id) ? t.filter((x) => x !== id) : [...t, id];
+      saveAnswer({ triggers: next });
+      return next;
+    });
   };
 
   const activeStep = normalizeOnboardingQuestionnaireStep(step, priorTx);
@@ -592,7 +654,10 @@ export function OnboardingQuestionnaireForm() {
                 "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='%2371717a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\")",
             }}
             value={ageInput}
-            onChange={(e) => setAgeInput(e.target.value)}
+            onChange={(e) => {
+              setAgeInput(e.target.value);
+              saveAnswer({ ageInput: e.target.value });
+            }}
           >
             <option value="">Select age</option>
             {ONBOARDING_AGE_OPTIONS.map((age) => (
@@ -608,7 +673,10 @@ export function OnboardingQuestionnaireForm() {
                 key={opt.value}
                 type="button"
                 className={chip(gender === opt.value)}
-                onClick={() => setGender(opt.value)}
+                onClick={() => {
+                  setGender(opt.value);
+                  saveAnswer({ gender: opt.value });
+                }}
               >
                 {opt.label}
               </button>
@@ -628,7 +696,10 @@ export function OnboardingQuestionnaireForm() {
                 key={c.id}
                 type="button"
                 className={chip(concern === c.id)}
-                onClick={() => setConcern(c.id)}
+                onClick={() => {
+                  setConcern(c.id);
+                  saveAnswer({ concern: c.id });
+                }}
               >
                 {c.label}
               </button>
@@ -656,7 +727,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(severity === id)}
-                onClick={() => setSeverity(id)}
+                onClick={() => {
+                  setSeverity(id);
+                  saveAnswer({ severity: id });
+                }}
               >
                 {label}
               </button>
@@ -682,7 +756,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(duration === id)}
-                onClick={() => setDuration(id)}
+                onClick={() => {
+                  setDuration(id);
+                  saveAnswer({ duration: id });
+                }}
               >
                 {label}
               </button>
@@ -743,6 +820,9 @@ export function OnboardingQuestionnaireForm() {
                   if (id === "no") {
                     setTxText("");
                     setTxDur("");
+                    saveAnswer({ priorTx: id, txText: "", txDur: "" });
+                  } else {
+                    saveAnswer({ priorTx: id });
                   }
                 }}
               >
@@ -762,7 +842,10 @@ export function OnboardingQuestionnaireForm() {
             className="min-h-[100px] w-full rounded-xl border border-zinc-200 bg-white p-3 text-[15px] text-zinc-900 outline-none focus:border-skinfit-navy focus:ring-2 focus:ring-skinfit-navy/20"
             placeholder="Describe treatments or products (min 10 characters)"
             value={txText}
-            onChange={(e) => setTxText(e.target.value)}
+            onChange={(e) => {
+              setTxText(e.target.value);
+              saveAnswer({ txText: e.target.value });
+            }}
           />
           {txText.trim().length > 0 && txText.trim().length < 10 ? (
             <p className="text-sm font-medium text-amber-800">
@@ -784,7 +867,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(txDur === id)}
-                onClick={() => setTxDur(id)}
+                onClick={() => {
+                  setTxDur(id);
+                  saveAnswer({ txDur: id });
+                }}
               >
                 {label}
               </button>
@@ -810,7 +896,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(sensitivity === id)}
-                onClick={() => setSensitivity(id)}
+                onClick={() => {
+                  setSensitivity(id);
+                  saveAnswer({ sensitivity: id });
+                }}
               >
                 {label}
               </button>
@@ -843,7 +932,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(sleep === id)}
-                onClick={() => setSleep(id)}
+                onClick={() => {
+                  setSleep(id);
+                  saveAnswer({ sleep: id });
+                }}
               >
                 {label}
               </button>
@@ -877,7 +969,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(water === id)}
-                onClick={() => setWater(id)}
+                onClick={() => {
+                  setWater(id);
+                  saveAnswer({ water: id });
+                }}
               >
                 {label}
               </button>
@@ -897,7 +992,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(diet === id)}
-                onClick={() => setDiet(id)}
+                onClick={() => {
+                  setDiet(id);
+                  saveAnswer({ diet: id });
+                }}
               >
                 {label}
               </button>
@@ -919,7 +1017,10 @@ export function OnboardingQuestionnaireForm() {
                 key={id}
                 type="button"
                 className={chip(sun === id)}
-                onClick={() => setSun(id)}
+                onClick={() => {
+                  setSun(id);
+                  saveAnswer({ sun: id });
+                }}
               >
                 {label}
               </button>
@@ -939,7 +1040,10 @@ export function OnboardingQuestionnaireForm() {
                 key={v}
                 type="button"
                 className={chip(skinType === v)}
-                onClick={() => setSkinType(v)}
+                onClick={() => {
+                  setSkinType(v);
+                  saveAnswer({ skinType: v });
+                }}
               >
                 {v}
               </button>
@@ -962,7 +1066,10 @@ export function OnboardingQuestionnaireForm() {
                 key={opt.id}
                 type="button"
                 className={chip(referralSource === opt.id)}
-                onClick={() => setReferralSource(opt.id)}
+                onClick={() => {
+                  setReferralSource(opt.id);
+                  saveAnswer({ referralSource: opt.id });
+                }}
               >
                 {opt.label}
               </button>
@@ -974,7 +1081,10 @@ export function OnboardingQuestionnaireForm() {
               className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-[15px] text-zinc-900 outline-none focus:border-skinfit-navy focus:ring-2 focus:ring-skinfit-navy/20"
               placeholder="Please specify (min 3 characters)"
               value={referralOther}
-              onChange={(e) => setReferralOther(e.target.value)}
+              onChange={(e) => {
+                setReferralOther(e.target.value);
+                saveAnswer({ referralOther: e.target.value });
+              }}
             />
           ) : null}
         </>
