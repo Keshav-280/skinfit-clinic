@@ -9,6 +9,7 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
+import { FamilyWalletCard } from "@/components/dashboard/FamilyWalletCard";
 import { PatientProgressTracker } from "@/components/dashboard/PatientProgressTracker";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
@@ -126,6 +127,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-1 pb-10 sm:px-0">
+      <FamilyWalletCard />
       {!progress.allComplete ? <PatientProgressTracker {...progress} /> : null}
       <ProfileForm
         initial={user}

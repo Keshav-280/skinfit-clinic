@@ -1004,3 +1004,95 @@ export const kaiResources = pgTable("kai_resources", {
   tags: jsonb("tags").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Clinic family card — shared credit balance topped up / deducted at the clinic. */
+export const familyWalletMemberRoleEnum = pgEnum("family_wallet_member_role", [
+  "owner",
+  "member",
+]);
+
+export const familyWalletTxTypeEnum = pgEnum("family_wallet_tx_type", [
+  "topup",
+  "deduction",
+  "refund",
+]);
+
+export const familyWallets = pgTable(
+  "family_wallets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerUserId: uuid("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: varchar("display_name", { length: 120 })
+      .notNull()
+      .default("Family card"),
+    /** Spendable clinic credits (whole rupees / points). */
+    balanceCredits: integer("balance_credits").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    ownerUidx: uniqueIndex("family_wallets_owner_uidx").on(table.ownerUserId),
+  })
+);
+
+export const familyWalletMembers = pgTable(
+  "family_wallet_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    walletId: uuid("wallet_id")
+      .notNull()
+      .references(() => familyWallets.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: familyWalletMemberRoleEnum("role").notNull().default("member"),
+    linkedAt: timestamp("linked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    walletUserUidx: uniqueIndex("family_wallet_members_wallet_user_uidx").on(
+      table.walletId,
+      table.userId
+    ),
+    userUidx: uniqueIndex("family_wallet_members_user_uidx").on(table.userId),
+  })
+);
+
+export const familyWalletTransactions = pgTable(
+  "family_wallet_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    walletId: uuid("wallet_id")
+      .notNull()
+      .references(() => familyWallets.id, { onDelete: "cascade" }),
+    type: familyWalletTxTypeEnum("type").notNull(),
+    /** Positive for top-up/refund; negative for deduction. */
+    amountCredits: integer("amount_credits").notNull(),
+    balanceAfter: integer("balance_after").notNull(),
+    /** Patient who received the service (for deductions). */
+    patientUserId: uuid("patient_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    /** Doctor/staff who performed the clinic action. */
+    performedByUserId: uuid("performed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    walletCreatedIdx: index("family_wallet_tx_wallet_created_idx").on(
+      table.walletId,
+      table.createdAt
+    ),
+  })
+);
