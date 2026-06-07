@@ -27,6 +27,8 @@ export type OnboardingQuestionnaireDraftV2 = {
   referralSource?: string | null;
   referralOther?: string;
   skippedSteps?: number[];
+  /** Unix ms — used to merge local vs server drafts without losing back navigation. */
+  updatedAt?: number;
 };
 
 const VALID_GENDERS = new Set([
@@ -139,6 +141,10 @@ export function parseOnboardingQuestionnaireDraft(
     referralOther:
       typeof d.referralOther === "string" ? d.referralOther : "",
     skippedSteps,
+    updatedAt:
+      typeof d.updatedAt === "number" && Number.isFinite(d.updatedAt)
+        ? d.updatedAt
+        : undefined,
   };
 }
 
@@ -168,13 +174,17 @@ export function mergeOnboardingQuestionnaireDrafts(
   if (!local) return server;
   if (!server) return local;
 
+  const localTs = local.updatedAt ?? 0;
+  const serverTs = server.updatedAt ?? 0;
+  const preferLocal = localTs >= serverTs;
+
   const priorTx = pickNullable(local.priorTx, server.priorTx) as
     | "yes"
     | "no"
     | null;
   const merged: OnboardingQuestionnaireDraftV2 = {
     v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
-    step: Math.max(local.step, server.step),
+    step: preferLocal ? local.step : server.step,
     ageInput: pickRicherString(local.ageInput, server.ageInput),
     gender: pickNullable(local.gender, server.gender),
     concern: pickNullable(local.concern, server.concern),
@@ -198,12 +208,10 @@ export function mergeOnboardingQuestionnaireDrafts(
       local.referralOther ?? "",
       server.referralOther ?? ""
     ),
-    skippedSteps: [
-      ...new Set([
-        ...(local.skippedSteps ?? []),
-        ...(server.skippedSteps ?? []),
-      ]),
-    ].sort((a, b) => a - b),
+    skippedSteps: preferLocal
+      ? [...(local.skippedSteps ?? [])]
+      : [...(server.skippedSteps ?? [])],
+    updatedAt: Math.max(localTs, serverTs, Date.now()),
   };
 
   merged.step = normalizeOnboardingQuestionnaireStep(
@@ -219,6 +227,7 @@ export function buildOnboardingQuestionnaireDraft(
 ): OnboardingQuestionnaireDraftV2 {
   return {
     v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
+    updatedAt: Date.now(),
     ...fields,
   };
 }

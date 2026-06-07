@@ -137,6 +137,101 @@ export function reconcileSkippedSteps(skippedSteps: number[]): number[] {
   return [...result].sort((a, b) => a - b);
 }
 
+/** Drop skip marks when the patient re-answers a step (or its skip block). */
+export function removeSkippedStepsForAnswer(
+  step: number,
+  skippedSteps: number[]
+): number[] {
+  const toRemove = new Set<number>([step]);
+  for (const dependent of QUESTIONNAIRE_SKIP_CASCADE[step] ?? []) {
+    toRemove.add(dependent);
+  }
+  for (const [parent, dependents] of Object.entries(QUESTIONNAIRE_SKIP_CASCADE)) {
+    const parentStep = Number(parent);
+    if (dependents.includes(step) || step === parentStep) {
+      toRemove.add(parentStep);
+      for (const dependent of dependents) {
+        toRemove.add(dependent);
+      }
+    }
+  }
+  return skippedSteps.filter((s) => !toRemove.has(s)).sort((a, b) => a - b);
+}
+
+/** Clear fields filled by skip defaults so back navigation prompts a real answer. */
+export function clearOnboardingStepFields(
+  step: number
+): Partial<OnboardingQuestionnaireFormState> {
+  switch (step) {
+    case 0:
+      return { ageInput: "", gender: null };
+    case 1:
+      return { concern: null };
+    case 2:
+      return { severity: null };
+    case 3:
+      return { duration: null };
+    case 4:
+      return { triggers: [] };
+    case 5:
+      return { priorTx: null, txText: "", txDur: "" };
+    case 6:
+      return { txText: "", txDur: "" };
+    case 7:
+      return { sensitivity: null };
+    case 8:
+      return { sleep: null };
+    case 9:
+      return { water: null, diet: null, sun: null };
+    case 10:
+      return { skinType: null };
+    case 11:
+      return { referralSource: null, referralOther: "" };
+    default:
+      return {};
+  }
+}
+
+export function clearOnboardingStepBlockFields(
+  step: number
+): Partial<OnboardingQuestionnaireFormState> {
+  const steps = [step, ...(QUESTIONNAIRE_SKIP_CASCADE[step] ?? [])];
+  let patch: Partial<OnboardingQuestionnaireFormState> = {};
+  for (const s of steps) {
+    patch = { ...patch, ...clearOnboardingStepFields(s) };
+  }
+  return patch;
+}
+
+export function prepareQuestionnaireNext(
+  activeStep: number,
+  priorTx: "yes" | "no" | null,
+  skippedSteps: number[]
+): { nextStep: number; nextSkipped: number[] } {
+  return {
+    nextSkipped: removeSkippedStepsForAnswer(activeStep, skippedSteps),
+    nextStep: nextOnboardingQuestionnaireStep(activeStep, priorTx),
+  };
+}
+
+export function prepareQuestionnaireBack(
+  activeStep: number,
+  priorTx: "yes" | "no" | null,
+  skippedSteps: number[]
+): {
+  prevStep: number;
+  nextSkipped: number[];
+  clearPatch: Partial<OnboardingQuestionnaireFormState>;
+} {
+  const prevStep = prevOnboardingQuestionnaireStep(activeStep, priorTx);
+  const wasSkipped = skippedSteps.includes(prevStep);
+  return {
+    prevStep,
+    nextSkipped: removeSkippedStepsForAnswer(prevStep, skippedSteps),
+    clearPatch: wasSkipped ? clearOnboardingStepBlockFields(prevStep) : {},
+  };
+}
+
 /** Apply skip defaults for a step and any cascaded dependents. */
 export function mergeOnboardingStepSkipPatches(
   step: number

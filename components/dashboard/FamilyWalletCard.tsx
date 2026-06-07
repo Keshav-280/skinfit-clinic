@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  ChevronDown,
   CreditCard,
   Loader2,
   Plus,
   ShieldCheck,
   Trash2,
-  Users,
+  UserPlus,
 } from "lucide-react";
 import type { FamilyWalletSnapshot } from "@/src/lib/familyWallet";
 
@@ -20,11 +21,14 @@ function formatWhen(iso: string) {
     return new Date(iso).toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
-      year: "numeric",
     });
   } catch {
     return iso;
   }
+}
+
+function memberInitial(name: string) {
+  return (name.trim()[0] ?? "?").toUpperCase();
 }
 
 export function FamilyWalletCard() {
@@ -38,6 +42,8 @@ export function FamilyWalletCard() {
   const [otpHint, setOtpHint] = useState<string | null>(null);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
+  const [showInvite, setShowInvite] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -116,6 +122,7 @@ export function FamilyWalletCard() {
       setInviteEmail("");
       setOtp("");
       setOtpSent(false);
+      setShowInvite(false);
       setOtpHint(json.message ?? "Member linked.");
       await load();
     } catch {
@@ -145,8 +152,8 @@ export function FamilyWalletCard() {
 
   if (loading) {
     return (
-      <section className="flex min-h-[140px] items-center justify-center rounded-[22px] border border-white/70 bg-gradient-to-br from-[#2C3E6B] to-[#1a2544] p-6 text-white shadow-[0_12px_40px_rgba(44,62,107,0.22)]">
-        <Loader2 className="h-6 w-6 animate-spin opacity-80" aria-hidden />
+      <section className="flex min-h-[100px] items-center justify-center rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm">
+        <Loader2 className="h-5 w-5 animate-spin text-[#2C3E6B]/60" aria-hidden />
       </section>
     );
   }
@@ -159,95 +166,111 @@ export function FamilyWalletCard() {
     );
   }
 
-  return (
-    <section className="overflow-hidden rounded-[22px] border border-white/70 shadow-[0_12px_40px_rgba(44,62,107,0.18)]">
-      <div className="relative bg-gradient-to-br from-[#2C3E6B] via-[#344875] to-[#1a2544] p-5 text-white sm:p-6">
-        <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-[#4CAF50]/20 blur-2xl" />
+  const otherMembers = data.members.filter((m) => m.role !== "owner");
+  const hasActivity = data.recentTransactions.length > 0;
 
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-white/75">
-              <CreditCard className="h-4 w-4" aria-hidden />
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em]">
-                SkinFit Family Card
-              </span>
-            </div>
-            <p className="mt-3 text-4xl font-extrabold tracking-tight sm:text-[2.75rem]">
-              {formatCredits(data.balanceCredits)}
-              <span className="ml-2 text-lg font-semibold text-white/70">credits</span>
+  return (
+    <section className="rounded-[22px] border border-white/70 bg-white/40 p-4 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[#2C3E6B] text-white shadow-sm">
+          <CreditCard className="h-4 w-4" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#64748B]">
+              Family card
             </p>
-            <p className="mt-1 text-sm text-white/70">
-              {data.isOwner
-                ? "Top up at the clinic — shared with linked family"
-                : `Shared card · held by ${data.ownerName}`}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-white/80">
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#2C3E6B]/8 px-2 py-0.5 text-[10px] font-semibold text-[#2C3E6B]">
+              <ShieldCheck className="h-3 w-3" aria-hidden />
               Clinic verified
-            </div>
-            <p className="mt-0.5 text-xs text-white/65">Offline top-up · portal deduct</p>
+            </span>
           </div>
+          <p className="mt-1 text-2xl font-extrabold tracking-tight text-[#1F2A44]">
+            {formatCredits(data.balanceCredits)}
+            <span className="ml-1.5 text-sm font-semibold text-[#64748B]">credits</span>
+          </p>
+          <p className="mt-0.5 text-xs text-[#64748B]">
+            {data.isOwner
+              ? "Top up at the clinic · shared with family"
+              : `Shared · held by ${data.ownerName}`}
+          </p>
         </div>
       </div>
 
-      <div className="space-y-4 bg-white/90 p-4 backdrop-blur-sm sm:p-5">
-        {error ? (
-          <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
-            {error}
-          </p>
-        ) : null}
-        {otpHint && !error ? (
-          <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            {otpHint}
-          </p>
-        ) : null}
-
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <Users className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
-            <h3 className="text-sm font-bold text-[#1F2A44]">Family members</h3>
-          </div>
-          <ul className="space-y-2">
-            {data.members.map((m) => (
-              <li
-                key={m.userId}
-                className="flex items-center justify-between gap-2 rounded-xl border border-[#E8EFE6] bg-[#F8FBF7] px-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#1F2A44]">
-                    {m.name}
-                    {m.role === "owner" ? (
-                      <span className="ml-2 rounded-full bg-[#2C3E6B]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[#2C3E6B]">
-                        Holder
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="truncate text-xs text-[#64748B]">{m.email}</p>
-                </div>
-                {data.isOwner && m.role === "member" ? (
-                  <button
-                    type="button"
-                    onClick={() => void removeMember(m.userId)}
-                    className="shrink-0 rounded-lg p-2 text-[#64748B] transition hover:bg-red-50 hover:text-red-600"
-                    aria-label={`Remove ${m.name}`}
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden />
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {data.isOwner ? (
-          <div className="rounded-xl border border-dashed border-[#2C3E6B]/25 bg-[#F2F9F2]/60 p-3 sm:p-4">
-            <p className="mb-3 text-xs font-semibold text-[#2C3E6B]">
-              Link a family member by email (they must already have a SkinFit account)
+      {(error || otpHint) && (
+        <div className="mt-3">
+          {error ? (
+            <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">
+              {error}
             </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
+          ) : null}
+          {otpHint && !error ? (
+            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              {otpHint}
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-[#E8EFE6]/80 pt-4">
+        <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#64748B]">
+          Members · {data.members.length}
+        </p>
+        <ul className="space-y-1.5">
+          {data.members.map((m) => (
+            <li
+              key={m.userId}
+              className="flex items-center gap-2.5 rounded-[14px] border border-white/70 bg-white/45 px-2.5 py-2"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]/10 text-xs font-bold text-[#2C3E6B]">
+                {memberInitial(m.name)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[#1F2A44]">
+                  {m.name}
+                  {m.role === "owner" ? (
+                    <span className="ml-1.5 text-[10px] font-bold uppercase text-[#64748B]">
+                      · Holder
+                    </span>
+                  ) : null}
+                </p>
+                <p className="truncate text-xs text-[#64748B]">{m.email}</p>
+              </div>
+              {data.isOwner && m.role === "member" ? (
+                <button
+                  type="button"
+                  onClick={() => void removeMember(m.userId)}
+                  className="shrink-0 rounded-lg p-1.5 text-[#94A3B8] transition hover:bg-red-50 hover:text-red-600"
+                  aria-label={`Remove ${m.name}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {data.isOwner ? (
+        <div className="mt-3">
+          {!showInvite ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowInvite(true);
+                setOtpHint(null);
+                setError(null);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/15 bg-white/60 px-3 py-1.5 text-xs font-semibold text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5"
+            >
+              <UserPlus className="h-3.5 w-3.5" aria-hidden />
+              {otherMembers.length === 0 ? "Add family member" : "Link another member"}
+            </button>
+          ) : (
+            <div className="rounded-[14px] border border-[#E5E7EB] bg-white/60 p-3">
+              <p className="mb-2 text-xs text-[#64748B]">
+                They need an existing SkinFit account. We&apos;ll email them a code.
+              </p>
               <input
                 type="email"
                 value={inviteEmail}
@@ -257,78 +280,96 @@ export function FamilyWalletCard() {
                 }}
                 placeholder="family@email.com"
                 disabled={inviteBusy}
-                className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
               />
-              <button
-                type="button"
-                onClick={() => void sendOtp()}
-                disabled={inviteBusy || !inviteEmail.trim() || resendSeconds > 0}
-                className="shrink-0 rounded-lg bg-[#2C3E6B]/10 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-[#2C3E6B]/15 disabled:opacity-50"
-              >
-                {inviteBusy ? "…" : resendSeconds > 0 ? `${resendSeconds}s` : "Send OTP"}
-              </button>
-            </div>
-            {otpSent ? (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) =>
-                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  placeholder="6-digit code from their email"
-                  disabled={inviteBusy}
-                  className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/15"
-                />
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => void verifyAndLink()}
-                  disabled={inviteBusy || otp.length < 6}
-                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#2C3E6B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243456] disabled:opacity-50"
+                  onClick={() => void sendOtp()}
+                  disabled={inviteBusy || !inviteEmail.trim() || resendSeconds > 0}
+                  className="rounded-lg bg-[#2C3E6B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#243456] disabled:opacity-50"
                 >
-                  <Plus className="h-4 w-4" aria-hidden />
-                  Link member
+                  {inviteBusy ? "…" : resendSeconds > 0 ? `Resend in ${resendSeconds}s` : "Send code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInvite(false);
+                    setOtpSent(false);
+                    setInviteEmail("");
+                    setOtp("");
+                  }}
+                  className="rounded-lg px-3 py-2 text-xs font-semibold text-[#64748B] transition hover:bg-[#F1F5F9]"
+                >
+                  Cancel
                 </button>
               </div>
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-xs leading-relaxed text-[#64748B]">
-            Credits are shared from {data.ownerName}&apos;s family card. Visit the
-            clinic to use credits — staff will deduct after confirming your visit.
-          </p>
-        )}
+              {otpSent ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    placeholder="6-digit code"
+                    disabled={inviteBusy}
+                    className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void verifyAndLink()}
+                    disabled={inviteBusy || otp.length < 6}
+                    className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-[#2C3E6B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#243456] disabled:opacity-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    Link
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs leading-relaxed text-[#64748B]">
+          Visit the clinic to use shared credits — staff deduct after your visit.
+        </p>
+      )}
 
-        {data.recentTransactions.length > 0 ? (
-          <div>
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#64748B]">
-              Recent activity
-            </h3>
-            <ul className="space-y-1.5">
+      {hasActivity ? (
+        <div className="mt-3 border-t border-[#E8EFE6]/80 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowActivity((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 text-left text-xs font-semibold text-[#64748B] transition hover:text-[#1F2A44]"
+          >
+            <span>Recent activity</span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 transition ${showActivity ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          {showActivity ? (
+            <ul className="mt-2 space-y-1">
               {data.recentTransactions.map((tx) => (
                 <li
                   key={tx.id}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-[#F8FAFC] px-3 py-2 text-xs"
+                  className="flex items-center justify-between gap-2 rounded-lg bg-white/50 px-2.5 py-1.5 text-xs"
                 >
                   <div className="min-w-0">
-                    <span className="font-semibold capitalize text-[#1F2A44]">
-                      {tx.type}
-                    </span>
+                    <span className="font-medium capitalize text-[#1F2A44]">{tx.type}</span>
                     {tx.patientName ? (
-                      <span className="text-[#64748B]"> · {tx.patientName}</span>
-                    ) : null}
-                    {tx.note ? (
-                      <p className="truncate text-[#94A3B8]">{tx.note}</p>
+                      <span className="text-[#94A3B8]"> · {tx.patientName}</span>
                     ) : null}
                   </div>
                   <div className="shrink-0 text-right">
                     <span
                       className={
                         tx.amountCredits >= 0
-                          ? "font-bold text-emerald-600"
-                          : "font-bold text-[#1F2A44]"
+                          ? "font-semibold text-emerald-600"
+                          : "font-semibold text-[#1F2A44]"
                       }
                     >
                       {tx.amountCredits >= 0 ? "+" : ""}
@@ -339,9 +380,9 @@ export function FamilyWalletCard() {
                 </li>
               ))}
             </ul>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }

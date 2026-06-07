@@ -42,7 +42,7 @@ export async function getQuestionnaireCompletionMeta(
   };
 }
 
-/** Questionnaire milestone = submitted and no steps were skipped. */
+/** Questionnaire milestone = at least one successful submit (profile has primary concern). */
 export async function isQuestionnaireMilestoneComplete(
   userId: string
 ): Promise<boolean> {
@@ -52,17 +52,7 @@ export async function isQuestionnaireMilestoneComplete(
     .where(eq(users.id, userId))
     .limit(1);
 
-  if (!userHasQuestionnaire(user?.primaryConcern)) {
-    return false;
-  }
-
-  const meta = await getQuestionnaireCompletionMeta(userId);
-  if (!meta) {
-    // No completion record yet (in progress or submitted before skip tracking).
-    return false;
-  }
-
-  return meta.fullyComplete;
+  return userHasQuestionnaire(user?.primaryConcern);
 }
 
 export async function saveQuestionnaireCompletionMeta(

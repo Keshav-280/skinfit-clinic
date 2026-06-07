@@ -1,58 +1,56 @@
-import * as ImagePicker from "expo-image-picker";
-import { useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Alert } from "react-native";
 
+import { FaceScanUploadScreen } from "@/components/capture/FaceScanUploadScreen";
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { OnboardingCaptureReview } from "@/components/onboarding/OnboardingCaptureReview";
-import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
+import {
+  allFaceScanSlotsFilled,
+  assignFaceScanSlot,
+  emptyFaceScanSlots,
+  faceScanSlotsToUris,
+  firstEmptyFaceScanSlotIndex,
+  type FaceScanSlotUris,
+} from "@/lib/faceScanSlotCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
+import { pickSingleFaceScanImage } from "@/lib/pickFaceScanImages";
 import { addPendingScanJob } from "@/lib/scanJobNotifications";
 import { submitFaceScan } from "@/lib/submitFaceScan";
 
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 
+type Flow = "upload" | "camera" | "review";
+
 export default function OnboardingCaptureScreen() {
   const router = useRouter();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const { token, markBaselineSubmitted } = useAuth();
-  const [uris, setUris] = useState<string[]>([]);
+  const [slots, setSlots] = useState<FaceScanSlotUris>(() => emptyFaceScanSlots());
   const [busy, setBusy] = useState(false);
-  const [useCamera, setUseCamera] = useState(true);
+  const [flow, setFlow] = useState<Flow>(mode === "camera" ? "camera" : "upload");
   const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
 
-  const stepIndex = retakeIndex ?? uris.length;
-  const isComplete = uris.length >= N;
+  const uris = faceScanSlotsToUris(slots);
+  const isComplete = allFaceScanSlotsFilled(slots);
   const inRetakeFlow = retakeIndex !== null;
+  const stepIndex =
+    retakeIndex ?? (isComplete ? N - 1 : firstEmptyFaceScanSlotIndex(slots));
 
-  async function pickFromLibrary() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Photos", "Allow photo library access.");
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.88,
-    });
-    if (!res.canceled && res.assets[0]?.uri) {
-      const picked = res.assets[0].uri;
-      if (retakeIndex !== null) {
-        setUris((u) => {
-          const next = [...u];
-          next[retakeIndex] = picked;
-          return next;
-        });
-        setRetakeIndex(null);
-      } else {
-        setUris((u) => [...u, picked]);
-      }
-    }
+  async function pickFromLibraryForCamera() {
+    const picked = await pickSingleFaceScanImage();
+    if (!picked) return;
+    const index = inRetakeFlow && retakeIndex !== null ? retakeIndex : stepIndex;
+    const next = assignFaceScanSlot(slots, index, picked);
+    setSlots(next);
+    setRetakeIndex(null);
+    if (allFaceScanSlotsFilled(next)) setFlow("review");
   }
 
   async function runBaselineScan() {
-    if (!token || uris.length !== N) {
+    if (!token || !isComplete) {
       Alert.alert("Capture", `Need all ${N} angles.`);
       return;
     }
@@ -61,7 +59,7 @@ export default function OnboardingCaptureScreen() {
       const form = new FormData();
       form.append("scanName", "kAI baseline — onboarding");
       for (let i = 0; i < N; i++) {
-        const uri = await normalizeScanImageUri(uris[i]);
+        const uri = await normalizeScanImageUri(slots[i]!);
         form.append("images", {
           uri,
           name: `face-${FACE_SCAN_CAPTURE_STEPS[i].id}.jpg`,
@@ -73,10 +71,7 @@ export default function OnboardingCaptureScreen() {
         throw new Error(outcome.message);
       }
       if (outcome.mode === "queued") {
-        await addPendingScanJob(
-          outcome.jobId,
-          "kAI baseline — onboarding"
-        );
+        await addPendingScanJob(outcome.jobId, "kAI baseline — onboarding");
         await markBaselineSubmitted({ pending: true });
         router.replace("/onboarding/baseline-report?pending=1" as Href);
         return;
@@ -92,61 +87,57 @@ export default function OnboardingCaptureScreen() {
     }
   }
 
-  if ((!isComplete || inRetakeFlow) && useCamera) {
+  if (flow === "upload" && !isComplete) {
+    return (
+      <FaceScanUploadScreen
+        slots={slots}
+        onSlotsChange={setSlots}
+        onContinue={() => setFlow("review")}
+        onStartCamera={() => setFlow("camera")}
+        onBack={() => router.back()}
+        title="Baseline photos"
+      />
+    );
+  }
+
+  if ((!isComplete || inRetakeFlow) && flow === "camera") {
     return (
       <FiveAngleCameraStep
         variant="onboarding"
         stepIndex={stepIndex}
         previousCaptureUri={
           inRetakeFlow
-            ? (uris[retakeIndex] ?? uris[retakeIndex - 1] ?? null)
-            : (uris[uris.length - 1] ?? null)
+            ? (slots[retakeIndex!] ?? slots[retakeIndex! - 1] ?? null)
+            : (slots.filter(Boolean).at(-1) ?? null)
         }
         onCaptured={(uri) => {
-          if (inRetakeFlow && retakeIndex !== null) {
-            setUris((u) => {
-              const next = [...u];
-              next[retakeIndex] = uri;
-              return next;
-            });
-            setRetakeIndex(null);
-            return;
-          }
-          setUris((u) => [...u, uri]);
+          const index = inRetakeFlow && retakeIndex !== null ? retakeIndex : stepIndex;
+          const next = assignFaceScanSlot(slots, index, uri);
+          setSlots(next);
+          setRetakeIndex(null);
+          if (allFaceScanSlotsFilled(next)) setFlow("review");
         }}
-        onPickFromLibrary={() => void pickFromLibrary()}
+        onPickFromLibrary={() => void pickFromLibraryForCamera()}
         onBack={() => {
           if (inRetakeFlow) {
             setRetakeIndex(null);
+            if (isComplete) setFlow("review");
             return;
           }
-          if (uris.length > 0) {
-            setUris((u) => u.slice(0, -1));
+          const lastFilled = [...slots].reverse().findIndex((s) => s);
+          if (lastFilled >= 0) {
+            const clearIndex = N - 1 - lastFilled;
+            setSlots((s) => {
+              const next = [...s];
+              next[clearIndex] = null;
+              return next;
+            });
           } else {
-            router.back();
+            setFlow("upload");
           }
         }}
         busy={busy}
       />
-    );
-  }
-
-  if (!isComplete && !useCamera) {
-    return (
-      <OnboardingLayoutShell title="kAI baseline photos" backHref="/onboarding/capture-intro">
-        <ScrollView contentContainerStyle={styles.pad}>
-          <Text style={styles.title}>Add {N} photos</Text>
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={() => void pickFromLibrary()}
-          >
-            <Text style={styles.btnText}>Pick photo ({uris.length}/{N})</Text>
-          </Pressable>
-          <Pressable onPress={() => setUseCamera(true)}>
-            <Text style={styles.link}>Use guided camera</Text>
-          </Pressable>
-        </ScrollView>
-      </OnboardingLayoutShell>
     );
   }
 
@@ -155,52 +146,13 @@ export default function OnboardingCaptureScreen() {
       uris={uris}
       busy={busy}
       onBack={() => {
-        setUris((u) => u.slice(0, -1));
-        setUseCamera(true);
+        setFlow("upload");
       }}
       onLooksGood={() => void runBaselineScan()}
-      onRetakeIndex={setRetakeIndex}
+      onRetakeIndex={(index) => {
+        setRetakeIndex(index);
+        setFlow("camera");
+      }}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  pad: {
-    padding: 24,
-    paddingBottom: 48,
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#1A1A2E",
-    textAlign: "center",
-    letterSpacing: -0.3,
-  },
-  sub: {
-    marginTop: 12,
-    fontSize: 15,
-    color: "#52525b",
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
-  btn: {
-    marginTop: 28,
-    backgroundColor: "#2C3E6B",
-    paddingVertical: 17,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  btnPressed: { opacity: 0.9 },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  link: {
-    marginTop: 18,
-    textAlign: "center",
-    color: "#2C3E6B",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-});

@@ -1,4 +1,3 @@
-import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -6,6 +5,7 @@ import { Alert, View } from "react-native";
 
 import { CaptureDoneScreen } from "@/components/capture/CaptureDoneScreen";
 import { CapturePrepScreen } from "@/components/capture/CapturePrepScreen";
+import { FaceScanUploadScreen } from "@/components/capture/FaceScanUploadScreen";
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
 import { OnboardingCaptureReview } from "@/components/onboarding/OnboardingCaptureReview";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +17,16 @@ import {
   SCAN_NAME_INPUT_PLACEHOLDER,
   resolveScanName,
 } from "@/lib/faceScanCaptures";
+import {
+  allFaceScanSlotsFilled,
+  assignFaceScanSlot,
+  emptyFaceScanSlots,
+  faceScanSlotsToUris,
+  firstEmptyFaceScanSlotIndex,
+  type FaceScanSlotUris,
+} from "@/lib/faceScanSlotCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
+import { pickSingleFaceScanImage } from "@/lib/pickFaceScanImages";
 import {
   addPendingScanJob,
   dismissUnreadReadyScan,
@@ -30,13 +39,13 @@ import { submitFaceScan } from "@/lib/submitFaceScan";
 const SCAN_STATUS_POLL_MS = 3_000;
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 
-type Phase = "intro" | "capture" | "review" | "done";
+type Phase = "intro" | "upload" | "capture" | "review" | "done";
 
 export default function ScanScreen() {
   const { token } = useAuth();
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("intro");
-  const [uris, setUris] = useState<string[]>([]);
+  const [slots, setSlots] = useState<FaceScanSlotUris>(() => emptyFaceScanSlots());
   const [scanName, setScanName] = useState("");
   const [busy, setBusy] = useState(false);
   const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
@@ -49,7 +58,7 @@ export default function ScanScreen() {
   }, [phase]);
 
   const resetToFreshScan = useCallback(() => {
-    setUris([]);
+    setSlots(emptyFaceScanSlots());
     setScanName("");
     setRetakeIndex(null);
     setReportPending(false);
@@ -60,7 +69,7 @@ export default function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       const p = phaseRef.current;
-      if (p === "capture" || p === "done") {
+      if (p === "capture" || p === "upload" || p === "done") {
         resetToFreshScan();
       }
     }, [resetToFreshScan])
@@ -120,10 +129,12 @@ export default function ScanScreen() {
     };
   }, [phase, token, router, queuedJobId, reportPending, resetToFreshScan]);
 
-  const stepIndex = retakeIndex ?? uris.length;
+  const uris = faceScanSlotsToUris(slots);
+  const stepIndex =
+    retakeIndex ?? (allFaceScanSlotsFilled(slots) ? N - 1 : firstEmptyFaceScanSlotIndex(slots));
   const inRetakeFlow = retakeIndex !== null;
   const inCaptureFlow =
-    (phase === "capture" && uris.length < N) || inRetakeFlow;
+    phase === "capture" && (!allFaceScanSlotsFilled(slots) || inRetakeFlow);
 
   useEffect(() => {
     if (phase !== "review" || !token) return;
@@ -143,37 +154,27 @@ export default function ScanScreen() {
     };
   }, [phase, token]);
 
-  async function pickFromLibrary() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Photos", "Allow photo library access to choose an image.");
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.88,
-      allowsMultipleSelection: false,
-    });
-    if (res.canceled || !res.assets?.[0]?.uri) return;
-    const picked = res.assets[0].uri;
+  async function pickFromLibraryForCamera() {
+    const picked = await pickSingleFaceScanImage();
+    if (!picked) return;
     if (inRetakeFlow && retakeIndex !== null) {
-      setUris((u) => {
-        const next = [...u];
-        next[retakeIndex] = picked;
-        return next;
-      });
+      setSlots((s) => assignFaceScanSlot(s, retakeIndex, picked));
       setRetakeIndex(null);
+      if (allFaceScanSlotsFilled(assignFaceScanSlot(slots, retakeIndex, picked))) {
+        setPhase("review");
+      }
       return;
     }
-    const newUris = [...uris, picked];
-    setUris(newUris);
-    if (newUris.length >= N) setPhase("review");
+    const index = firstEmptyFaceScanSlotIndex(slots);
+    const next = assignFaceScanSlot(slots, index, picked);
+    setSlots(next);
+    if (allFaceScanSlotsFilled(next)) setPhase("review");
   }
 
   async function runScan() {
     const name = resolveScanName(scanName);
     if (!token || uris.length !== N) {
-      Alert.alert("Face scan", `Capture all ${N} angles first.`);
+      Alert.alert("Face scan", `Add all ${N} photos first.`);
       return;
     }
     setBusy(true);
@@ -181,7 +182,7 @@ export default function ScanScreen() {
       const form = new FormData();
       form.append("scanName", name);
       for (let i = 0; i < N; i++) {
-        const uri = await normalizeScanImageUri(uris[i]);
+        const uri = await normalizeScanImageUri(slots[i]!);
         form.append("images", {
           uri,
           name: `face-${FACE_SCAN_CAPTURE_STEPS[i].id}.jpg`,
@@ -195,14 +196,14 @@ export default function ScanScreen() {
       }
       if (outcome.mode === "queued") {
         await addPendingScanJob(outcome.jobId, name);
-        setUris([]);
+        setSlots(emptyFaceScanSlots());
         setScanName("");
         setQueuedJobId(outcome.jobId);
         setReportPending(true);
         setPhase("done");
         return;
       }
-      setUris([]);
+      setSlots(emptyFaceScanSlots());
       setScanName("");
       setReportPending(false);
       setPhase("done");
@@ -227,7 +228,20 @@ export default function ScanScreen() {
     );
   }
 
-  if (phase === "review" && uris.length >= N && !inRetakeFlow) {
+  if (phase === "upload") {
+    return (
+      <FaceScanUploadScreen
+        slots={slots}
+        onSlotsChange={setSlots}
+        onContinue={() => setPhase("review")}
+        onStartCamera={() => setPhase("capture")}
+        onBack={() => setPhase("intro")}
+        reserveBottomDock
+      />
+    );
+  }
+
+  if (phase === "review" && allFaceScanSlotsFilled(slots) && !inRetakeFlow) {
     return (
       <OnboardingCaptureReview
         uris={uris}
@@ -237,11 +251,13 @@ export default function ScanScreen() {
         onScanNameChange={setScanName}
         scanNamePlaceholder={SCAN_NAME_INPUT_PLACEHOLDER}
         onBack={() => {
-          setUris((u) => u.slice(0, -1));
-          setPhase("capture");
+          setPhase("upload");
         }}
         onLooksGood={() => void runScan()}
-        onRetakeIndex={setRetakeIndex}
+        onRetakeIndex={(index) => {
+          setRetakeIndex(index);
+          setPhase("capture");
+        }}
       />
     );
   }
@@ -254,33 +270,35 @@ export default function ScanScreen() {
           stepIndex={stepIndex}
           previousCaptureUri={
             inRetakeFlow
-              ? (uris[retakeIndex!] ?? uris[retakeIndex! - 1] ?? null)
-              : (uris[uris.length - 1] ?? null)
+              ? (slots[retakeIndex!] ?? slots[retakeIndex! - 1] ?? null)
+              : (slots.filter(Boolean).at(-1) ?? null)
           }
           onCaptured={(uri) => {
-            if (inRetakeFlow && retakeIndex !== null) {
-              setUris((u) => {
-                const next = [...u];
-                next[retakeIndex] = uri;
-                return next;
-              });
-              setRetakeIndex(null);
-              return;
-            }
-            const newUris = [...uris, uri];
-            setUris(newUris);
-            if (newUris.length >= N) setPhase("review");
+            const index = inRetakeFlow && retakeIndex !== null ? retakeIndex : stepIndex;
+            const next = assignFaceScanSlot(slots, index, uri);
+            setSlots(next);
+            setRetakeIndex(null);
+            if (allFaceScanSlotsFilled(next)) setPhase("review");
           }}
-          onPickFromLibrary={() => void pickFromLibrary()}
+          onPickFromLibrary={() => void pickFromLibraryForCamera()}
           onBack={() => {
             if (inRetakeFlow) {
               setRetakeIndex(null);
+              if (allFaceScanSlotsFilled(slots)) {
+                setPhase("review");
+              }
               return;
             }
-            if (uris.length > 0) {
-              setUris((u) => u.slice(0, -1));
+            const lastFilled = [...slots].reverse().findIndex((s) => s);
+            if (lastFilled >= 0) {
+              const clearIndex = N - 1 - lastFilled;
+              setSlots((s) => {
+                const next = [...s];
+                next[clearIndex] = null;
+                return next;
+              });
             } else {
-              setPhase("intro");
+              setPhase(slots.some(Boolean) ? "upload" : "intro");
             }
           }}
           busy={busy}
@@ -291,7 +309,14 @@ export default function ScanScreen() {
 
   return (
     <CapturePrepScreen
-      onStart={() => setPhase("capture")}
+      onStart={() => {
+        setSlots(emptyFaceScanSlots());
+        setPhase("capture");
+      }}
+      onUploadPhotos={() => {
+        setSlots(emptyFaceScanSlots());
+        setPhase("upload");
+      }}
       onBack={() => router.replace("/(drawer)" as Href)}
       reserveBottomDock
       onViewHistory={() => router.push("/(drawer)/history" as Href)}

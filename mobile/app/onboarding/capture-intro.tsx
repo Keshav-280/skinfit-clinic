@@ -7,7 +7,8 @@ export default function OnboardingCaptureIntroScreen() {
 
   return (
     <CapturePrepScreen
-      onStart={() => router.push("/onboarding/capture" as Href)}
+      onStart={() => router.push("/onboarding/capture?mode=camera" as Href)}
+      onUploadPhotos={() => router.push("/onboarding/capture?mode=upload" as Href)}
       showPrivacy
     />
   );

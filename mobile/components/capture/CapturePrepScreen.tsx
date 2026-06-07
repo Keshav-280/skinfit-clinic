@@ -31,6 +31,7 @@ const TIPS = [
 
 type Props = {
   onStart: () => void;
+  onUploadPhotos?: () => void;
   onBack?: () => void;
   showPrivacy?: boolean;
   onViewHistory?: () => void;
@@ -40,6 +41,7 @@ type Props = {
 
 export function CapturePrepScreen({
   onStart,
+  onUploadPhotos,
   onBack,
   showPrivacy = true,
   onViewHistory,
@@ -135,6 +137,16 @@ export function CapturePrepScreen({
           >
             <Text style={styles.btnText}>Start Scan</Text>
           </Pressable>
+
+          {onUploadPhotos ? (
+            <Pressable
+              style={({ pressed }) => [styles.uploadBtn, pressed && styles.uploadBtnPressed]}
+              onPress={onUploadPhotos}
+            >
+              <Ionicons name="images-outline" size={18} color={NAVY} />
+              <Text style={styles.uploadBtnText}>Upload photos instead</Text>
+            </Pressable>
+          ) : null}
 
           {onViewHistory ? (
             <Pressable style={styles.historyLink} onPress={onViewHistory}>
@@ -259,6 +271,23 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+  uploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(44,62,107,0.2)",
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
+  uploadBtnPressed: { opacity: 0.92 },
+  uploadBtnText: {
+    color: NAVY,
+    fontSize: 15,
+    fontWeight: "700",
   },
   historyLink: {
     flexDirection: "row",

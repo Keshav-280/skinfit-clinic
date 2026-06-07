@@ -33,6 +33,8 @@ import {
 } from "@/components/profile/theme";
 import ProfileHeaderCard from "@/components/profile/ProfileHeaderCard";
 import FamilyWalletCard from "@/components/profile/FamilyWalletCard";
+import PatientProgressTracker from "@/components/profile/PatientProgressTracker";
+import type { PatientProgressSnapshot } from "../../../src/lib/patientProgressMilestones";
 
 type ProfileUser = {
   id: string;
@@ -54,6 +56,7 @@ type ProfileUser = {
 
 type HomePayload = {
   kaiSkinScore: number;
+  progress?: PatientProgressSnapshot;
 };
 
 export default function ProfileScreen() {
@@ -226,6 +229,10 @@ export default function ProfileScreen() {
         />
 
         <FamilyWalletCard refreshing={refreshing} />
+
+        {homeData?.progress && !homeData.progress.allComplete ? (
+          <PatientProgressTracker {...homeData.progress} />
+        ) : null}
 
         {!hasRealScoreData ? (
           <View style={styles.emptyCard}>

@@ -19,11 +19,12 @@ import {
   buildOnboardingQuestionnairePayload,
   expandSkippedStepsForSkip,
   mergeOnboardingStepSkipPatches,
+  prepareQuestionnaireBack,
+  prepareQuestionnaireNext,
   reconcileSkippedSteps,
-  nextOnboardingQuestionnaireStep,
+  removeSkippedStepsForAnswer,
   nextOnboardingQuestionnaireStepAfterSkip,
   normalizeOnboardingQuestionnaireStep,
-  prevOnboardingQuestionnaireStep,
   questionnaireProgress,
   type BaselineDietType,
   type BaselineHydration,
@@ -342,7 +343,18 @@ export function OnboardingQuestionnaireForm() {
   }
 
   function saveAnswer(patch: Partial<OnboardingQuestionnaireDraftV2>) {
-    persistDraft(undefined, patch);
+    const base = fieldsRef.current;
+    const stepNow = normalizeOnboardingQuestionnaireStep(
+      base.step,
+      base.priorTx === "yes" || base.priorTx === "no" ? base.priorTx : null
+    );
+    const nextSkipped = base.skippedSteps.includes(stepNow)
+      ? removeSkippedStepsForAnswer(stepNow, base.skippedSteps)
+      : base.skippedSteps;
+    if (nextSkipped.length !== base.skippedSteps.length) {
+      setSkippedSteps(nextSkipped);
+    }
+    persistDraft(undefined, patch, nextSkipped);
   }
 
   useEffect(() => {
@@ -586,9 +598,16 @@ export function OnboardingQuestionnaireForm() {
       void submit();
       return;
     }
-    const nextStep = nextOnboardingQuestionnaireStep(activeStep, priorTx);
+    const { nextStep, nextSkipped } = prepareQuestionnaireNext(
+      activeStep,
+      priorTx,
+      skippedSteps
+    );
+    if (nextSkipped.length !== skippedSteps.length) {
+      setSkippedSteps(nextSkipped);
+    }
     setStep(nextStep);
-    persistDraft(nextStep);
+    persistDraft(nextStep, {}, nextSkipped);
   }
 
   function skip() {
@@ -616,9 +635,19 @@ export function OnboardingQuestionnaireForm() {
       router.back();
       return;
     }
-    const prevStep = prevOnboardingQuestionnaireStep(activeStep, priorTx);
+    const { prevStep, nextSkipped, clearPatch } = prepareQuestionnaireBack(
+      activeStep,
+      priorTx,
+      skippedSteps
+    );
+    if (nextSkipped.length !== skippedSteps.length) {
+      setSkippedSteps(nextSkipped);
+    }
+    if (Object.keys(clearPatch).length > 0) {
+      applySkipPatch(clearPatch);
+    }
     setStep(prevStep);
-    persistDraft(prevStep);
+    persistDraft(prevStep, clearPatch, nextSkipped);
   }
 
   function skipToDashboard() {
