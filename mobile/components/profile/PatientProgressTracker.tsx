@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, type Href } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { card, NAVY, TEXT_MUTED } from "@/components/profile/theme";
+import { NAVY, TEXT_MUTED } from "@/components/profile/theme";
 import type {
   PatientProgressSnapshot,
   ProgressMilestone,
@@ -13,6 +13,14 @@ const GREEN = "#4CAF50";
 const MUTED = "#9CA3AF";
 
 type Props = PatientProgressSnapshot;
+
+const MOBILE_SHORT_LABELS: Record<ProgressMilestoneId, string> = {
+  account: "Account",
+  onboarding_scan: "Scan",
+  questionnaire: "Survey",
+  daily_journal: "Journal",
+  clinic_visit: "Clinic",
+};
 
 function mobileMilestoneHref(id: ProgressMilestoneId): Href | null {
   switch (id) {
@@ -59,16 +67,9 @@ function StepCircle({
       ]}
     >
       {done ? (
-        <Ionicons name="checkmark" size={14} color="#fff" />
+        <Ionicons name="checkmark" size={11} color="#fff" />
       ) : (
-        <Text
-          style={[
-            s.circleNum,
-            (active || done) && s.circleNumLight,
-          ]}
-        >
-          {index + 1}
-        </Text>
+        <Text style={[s.circleNum, (active || done) && s.circleNumLight]}>{index + 1}</Text>
       )}
     </View>
   );
@@ -89,63 +90,68 @@ export default function PatientProgressTracker({
   if (allComplete) return null;
 
   const activeIndex = milestones.findIndex((m) => !m.done);
+  const lastIndex = milestones.length - 1;
 
   return (
-    <View style={[card.base, s.wrap]} accessibilityLabel="Your progress">
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}
-      >
+    <View style={s.wrap} accessibilityLabel="Your progress">
+      <View style={s.stepsRow}>
         {milestones.map((step, index) => {
           const done = step.done;
           const active = !done && index === activeIndex;
-          const isLast = index === milestones.length - 1;
           const href = !done ? mobileMilestoneHref(step.id) : null;
           const labelStyle = done ? s.labelDone : active ? s.labelActive : s.labelPending;
+          const label = MOBILE_SHORT_LABELS[step.id] ?? step.label;
+          const prevDone = index > 0 ? milestones[index - 1]?.done : false;
+          const isFirst = index === 0;
+          const isLast = index === lastIndex;
+
+          const labelNode = (
+            <Text style={[s.label, labelStyle]} numberOfLines={2}>
+              {label}
+            </Text>
+          );
 
           return (
             <View key={step.id} style={s.stepCol}>
-              <View style={s.stepRow}>
-                {index > 0 ? (
-                  <View
-                    style={[
-                      s.connector,
-                      milestones[index - 1]?.done ? s.connectorDone : s.connectorPending,
-                    ]}
-                  />
-                ) : (
-                  <View style={s.connectorSpacer} />
-                )}
+              <View style={s.trackRow}>
+                <View
+                  style={[
+                    s.connector,
+                    isFirst ? s.connectorHidden : prevDone ? s.connectorDone : s.connectorPending,
+                  ]}
+                />
                 <StepCircle
                   step={step}
                   index={index}
                   active={active}
                   onPress={href ? () => router.push(href) : undefined}
                 />
-                {!isLast ? (
-                  <View
-                    style={[s.connector, done ? s.connectorDone : s.connectorPending]}
-                  />
-                ) : (
-                  <View style={s.connectorSpacer} />
-                )}
+                <View
+                  style={[
+                    s.connector,
+                    isLast
+                      ? s.connectorHidden
+                      : done
+                        ? s.connectorDone
+                        : s.connectorPending,
+                  ]}
+                />
               </View>
               {href ? (
-                <Pressable onPress={() => router.push(href)} hitSlop={4}>
-                  <Text style={[s.label, labelStyle]} numberOfLines={3}>
-                    {step.label}
-                  </Text>
+                <Pressable
+                  onPress={() => router.push(href)}
+                  hitSlop={4}
+                  style={s.labelPress}
+                >
+                  {labelNode}
                 </Pressable>
               ) : (
-                <Text style={[s.label, labelStyle]} numberOfLines={3}>
-                  {step.label}
-                </Text>
+                <View style={s.labelPress}>{labelNode}</View>
               )}
             </View>
           );
         })}
-      </ScrollView>
+      </View>
 
       {questionnaireUnlocks.length > 0 ? (
         <Text style={s.hint}>
@@ -164,24 +170,35 @@ export default function PatientProgressTracker({
   );
 }
 
+const CIRCLE = 22;
+
 const s = StyleSheet.create({
-  wrap: { paddingVertical: 16, paddingHorizontal: 12 },
-  scrollContent: {
-    minWidth: "100%",
-    paddingHorizontal: 4,
+  wrap: {
+    marginBottom: 14,
+    paddingHorizontal: 2,
+  },
+  stepsRow: {
+    flexDirection: "row",
+    width: "100%",
   },
   stepCol: {
-    width: 92,
+    flex: 1,
+    minWidth: 0,
     alignItems: "center",
   },
-  stepRow: {
+  trackRow: {
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
   },
   connector: {
     flex: 1,
-    height: 1,
+    height: 2,
+    minWidth: 0,
+    borderRadius: 1,
+  },
+  connectorHidden: {
+    backgroundColor: "transparent",
   },
   connectorDone: {
     backgroundColor: GREEN,
@@ -189,16 +206,14 @@ const s = StyleSheet.create({
   connectorPending: {
     backgroundColor: "#E5E7EB",
   },
-  connectorSpacer: {
-    flex: 1,
-  },
   circle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: CIRCLE,
+    height: CIRCLE,
+    borderRadius: CIRCLE / 2,
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   circleDone: {
     borderColor: GREEN,
@@ -213,20 +228,25 @@ const s = StyleSheet.create({
     backgroundColor: "transparent",
   },
   circleNum: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
     color: MUTED,
   },
   circleNumLight: {
     color: "#fff",
   },
-  label: {
+  labelPress: {
     marginTop: 6,
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: 1,
+  },
+  label: {
     textAlign: "center",
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "600",
-    lineHeight: 12,
-    paddingHorizontal: 2,
+    lineHeight: 11,
+    width: "100%",
   },
   labelDone: {
     color: GREEN,
