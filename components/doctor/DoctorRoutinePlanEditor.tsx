@@ -271,6 +271,7 @@ export function DoctorRoutinePlanEditor({
     <div className="space-y-3">
       <DoctorQuickSnippetPalette
         groups={snippetGroups}
+        customPhraseScope="routine"
         hint="Drag onto AM/PM steps (or a Step/Product/Dose field). Click to add to the first empty step."
         onInsert={(text) => {
           onDirty();

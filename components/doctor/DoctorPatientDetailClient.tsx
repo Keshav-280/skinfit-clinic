@@ -79,6 +79,7 @@ import {
   doctorScheduleFormInputClass,
   DOCTOR_ICON_SM,
 } from "@/components/doctor/DoctorUiPrimitives";
+import { DoctorClinicTreatmentsPanel } from "@/components/doctor/DoctorClinicTreatmentsPanel";
 import { DoctorRoutinePlanEditor } from "@/components/doctor/DoctorRoutinePlanEditor";
 import { DoctorScanReportPanel } from "@/components/doctor/DoctorScanReportPanel";
 import { DoctorSnippetTextarea } from "@/components/doctor/DoctorSnippetTextarea";
@@ -3325,6 +3326,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               setGeneralFeedbackDirty(true);
             }}
             groups={[{ label: "Common feedback", items: DOCTOR_FEEDBACK_SNIPPETS }]}
+            customPhraseScope="feedback"
             rows={3}
             ariaLabel="Feedback"
             placeholder="Guidance, progress, next steps…"
@@ -3839,6 +3841,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
       {/* ══════════════════════ TAB: NOTES ══════════════════════ */}
       {activeTab === "notes" && (
+      <>
+      <DoctorClinicTreatmentsPanel patientId={patientId} />
       <div className={`${doctorPatientPageCardClass} p-4`}>
         <h2
           className="mb-4 flex items-center gap-2 border-b border-[#2C3E6B]/15 pb-3 text-[#2C3E6B]"
@@ -3922,6 +3926,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 value={visitNoteTreatments}
                 onChange={setVisitNoteTreatments}
                 groups={[{ label: "Common treatments", items: DOCTOR_TREATMENT_SNIPPETS }]}
+                customPhraseScope="visit-treatment"
                 rows={2}
                 ariaLabel="Treatments completed"
                 placeholder="Peel, laser, extraction, etc."
@@ -3937,6 +3942,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 value={visitNotePreAdvice}
                 onChange={setVisitNotePreAdvice}
                 groups={[{ label: "Pre-treatment", items: DOCTOR_PRE_ADVICE_SNIPPETS }]}
+                customPhraseScope="visit-pre"
                 rows={2}
                 ariaLabel="Pre-treatment advice"
                 placeholder="Preparation instructions"
@@ -3952,6 +3958,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 value={visitNotePostAdvice}
                 onChange={setVisitNotePostAdvice}
                 groups={[{ label: "Post-treatment", items: DOCTOR_POST_ADVICE_SNIPPETS }]}
+                customPhraseScope="visit-post"
                 rows={2}
                 ariaLabel="Post-treatment advice"
                 placeholder="Aftercare instructions"
@@ -4232,6 +4239,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           );
         })()}
       </div>
+      </>
       )}
 
       {deleteAccountOpen ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import type { DoctorSnippetGroup } from "@/src/lib/doctorQuickSnippets";
+import type { DoctorCustomSnippetScope } from "@/src/lib/doctorCustomSnippets";
 import {
   appendDoctorSnippet,
   readDoctorSnippetFromDataTransfer,
@@ -17,6 +18,7 @@ type DoctorSnippetTextareaProps = {
   ariaLabel: string;
   className?: string;
   paletteHint?: string;
+  customPhraseScope?: DoctorCustomSnippetScope;
 };
 
 export function DoctorSnippetTextarea({
@@ -28,6 +30,7 @@ export function DoctorSnippetTextarea({
   ariaLabel,
   className = "",
   paletteHint,
+  customPhraseScope = "feedback",
 }: DoctorSnippetTextareaProps) {
   const insertSnippet = (snippet: string) => {
     onChange(appendDoctorSnippet(value, snippet));
@@ -39,6 +42,7 @@ export function DoctorSnippetTextarea({
         groups={groups}
         onInsert={insertSnippet}
         hint={paletteHint}
+        customPhraseScope={customPhraseScope}
       />
       <textarea
         value={value}
