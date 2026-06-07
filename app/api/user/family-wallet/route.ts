@@ -8,6 +8,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const snapshot = await getFamilyWalletSnapshot(userId);
-  return NextResponse.json(snapshot);
+  try {
+    const snapshot = await getFamilyWalletSnapshot(userId);
+    return NextResponse.json(snapshot);
+  } catch (err) {
+    console.error("[family-wallet GET]", err);
+    return NextResponse.json(
+      { message: "Could not load family card. Please try again shortly." },
+      { status: 500 }
+    );
+  }
 }

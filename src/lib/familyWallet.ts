@@ -6,6 +6,13 @@ import {
   familyWalletTransactions,
   users,
 } from "@/src/db/schema";
+import { ensureFamilyWalletSchema } from "@/src/lib/ensureFamilyWalletSchema";
+
+function toIso(value: Date | string): string {
+  if (value instanceof Date) return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString();
+}
 
 export type FamilyWalletMemberView = {
   userId: string;
@@ -54,7 +61,7 @@ async function loadMemberRows(walletId: string): Promise<FamilyWalletMemberView[
     name: r.name,
     email: r.email,
     role: r.role,
-    linkedAt: r.linkedAt.toISOString(),
+    linkedAt: toIso(r.linkedAt),
   }));
 }
 
@@ -85,11 +92,12 @@ async function loadRecentTransactions(
     balanceAfter: r.balanceAfter,
     patientName: r.patientName,
     note: r.note,
-    createdAt: r.createdAt.toISOString(),
+    createdAt: toIso(r.createdAt),
   }));
 }
 
 export async function getWalletMembershipForUser(userId: string) {
+  await ensureFamilyWalletSchema();
   const [row] = await db
     .select({
       walletId: familyWalletMembers.walletId,

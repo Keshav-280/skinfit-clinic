@@ -58,6 +58,7 @@ import {
   DASHBOARD_SECTION_CARD,
   DashboardSectionHeader,
 } from "@/components/dashboard/DashboardSectionHeader";
+import { WeeklyInsightSection } from "@/components/dashboard/WeeklyInsightSection";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
 import {
   PATIENT_GREEN,
@@ -133,6 +134,7 @@ type HomeData = {
   routinePmReminderHm: string;
   homeDateYmd?: string;
   userName?: string;
+  kaiInsightsEnabled?: boolean;
 };
 
 /* ─── Radar Chart ─── */
@@ -225,6 +227,7 @@ export function PatientDashboardDesktop() {
   const [sosBusy, setSosBusy] = useState(false);
   const loadSeqRef = useRef(0);
   const hasLoadedRef = useRef(false);
+  const [skinInsightReloadNonce, setSkinInsightReloadNonce] = useState(0);
 
   const triggerSos = useCallback(async () => {
     if (sosBusy) return;
@@ -278,6 +281,7 @@ export function PatientDashboardDesktop() {
       if (seq !== loadSeqRef.current) return;
       hasLoadedRef.current = true;
       setData(json);
+      setSkinInsightReloadNonce((n) => n + 1);
       setRoutine({
         am: json.todayLog?.routineAmSteps ?? new Array(json.amItems.length).fill(false),
         pm: json.todayLog?.routinePmSteps ?? new Array(json.pmItems.length).fill(false),
@@ -700,11 +704,22 @@ export function PatientDashboardDesktop() {
         </div>
 
         {skinParams.length > 0 ? (
-          <SkinParamMetricsCard
-            metrics={skinParams}
-            viewAllHref="/dashboard/skin-params"
-            className="min-w-0 self-start"
-          />
+          <div className="flex min-w-0 flex-col gap-4 self-start">
+            <SkinParamMetricsCard
+              metrics={skinParams}
+              viewAllHref="/dashboard/skin-params"
+              className="min-w-0"
+            />
+            <WeeklyInsightSection
+              className="min-w-0"
+              reloadNonce={skinInsightReloadNonce}
+              home={{
+                kaiSkinScore: data.kaiSkinScore,
+                weeklyDeltaScore: data.weeklyDeltaScore,
+                kaiInsightsEnabled: data.kaiInsightsEnabled,
+              }}
+            />
+          </div>
         ) : (
           <FirstScanCta
             message="Skin parameters appear after your first scan"

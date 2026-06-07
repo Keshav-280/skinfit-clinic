@@ -19,6 +19,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
+    "db:apply-family-wallet": "tsx src/scripts/apply-family-wallet-migration.ts",
     "db:verify-aws": "tsx src/scripts/verify-aws-rds.ts",
     "db:bootstrap-aws": "tsx src/scripts/bootstrap-aws-rds.ts",
     "db:studio": "drizzle-kit studio",
