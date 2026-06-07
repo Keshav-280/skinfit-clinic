@@ -601,13 +601,24 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       ctx.scale(-1, 1);
     }
     const zoom = captureZoom;
-    const { sx, sy, sw, sh } = getVisibleVideoRect(
-      w,
-      h,
-      viewfinderW,
-      viewfinderH,
-      zoom
-    );
+    let sx = 0;
+    let sy = 0;
+    let sw = w;
+    let sh = h;
+    if (cropToGuide) {
+      ({ sx, sy, sw, sh } = getVisibleVideoRect(
+        w,
+        h,
+        viewfinderW,
+        viewfinderH,
+        zoom
+      ));
+    } else if (zoom > 1) {
+      sw = w / zoom;
+      sh = h / zoom;
+      sx = (w - sw) / 2;
+      sy = (h - sh) / 2;
+    }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
     ctx.restore();
 
