@@ -11,12 +11,9 @@ import {
   SunMoon,
   ChevronsUp,
 } from "lucide-react";
-import { normalizeRoutineSteps, routineStepsProgress } from "@/src/lib/routine";
+import { normalizeRoutineSteps } from "@/src/lib/routine";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
-import {
-  DashboardDayQuestBanner,
-  DashboardSectionCountdown,
-} from "./DashboardDayQuest";
+import { DashboardSectionCountdown } from "./DashboardDayQuest";
 import { DashboardJournal } from "./DashboardJournal";
 import {
   PatientDoctorHomeSections,
@@ -64,7 +61,6 @@ interface DashboardViewProps {
   kaiSkinScore?: number;
   weeklyProgressDelta?: number;
   lifestyleAlignmentScore?: number;
-  todayFocusMessage?: string | null;
   routineScore?: number;
   weeklyChangePercent?: number;
   streakCurrent?: number;
@@ -205,7 +201,6 @@ export function DashboardView({
   kaiSkinScore,
   weeklyProgressDelta,
   lifestyleAlignmentScore,
-  todayFocusMessage = null,
   routineScore = 80,
   weeklyChangePercent = 5,
   streakCurrent = 0,
@@ -500,11 +495,6 @@ export function DashboardView({
   const amDone = routine.am;
   const pmDone = routine.pm;
 
-  const routineProgress = useMemo(
-    () => routineStepsProgress(routine.am, routine.pm),
-    [routine.am, routine.pm]
-  );
-
   const streak7Progress = Math.min(7, Math.max(0, streakCurrent));
   const streak30Progress = Math.min(30, Math.max(0, streakCurrent));
 
@@ -529,18 +519,6 @@ export function DashboardView({
           />
         </div>
       </section>
-
-      <DashboardDayQuestBanner
-        routineProgress={routineProgress}
-        focusMessage={hasQuestionnaire ? todayFocusMessage : null}
-        questSubtext={
-          !hasQuestionnaire
-            ? "Complete your questionnaire to unlock Today's focus."
-            : onboardingComplete && !routineHasSteps
-              ? "Your customised daily plan will be given by the clinic soon."
-              : null
-        }
-      />
 
       {/* AM/PM Schedule */}
       <section

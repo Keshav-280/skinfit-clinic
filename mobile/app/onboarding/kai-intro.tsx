@@ -1,11 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { KaiTypingIntro } from "@/components/KaiTypingIntro";
-import { useAuth } from "@/contexts/AuthContext";
+import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
@@ -13,37 +20,67 @@ const BOUNDARIES = [
   "No diagnosis",
   "No prescriptions",
   "Some concerns need a clinic visit",
-  "Doctor guides care",
+  "Your doctor guides your care",
 ];
 
-const GRADIENT_TOP = "#D6E4D0";
+const WIDE_BREAKPOINT = 768;
+const HERO_HEIGHT_PHONE = 220;
+const HERO_HEIGHT_WIDE = 280;
 
 export default function KaiIntroScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
-  const insets = useSafeAreaInsets();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.replace("/login" as Href);
-    } catch (e) {
-      console.error("Sign out failed:", e);
-    }
-  };
+  const { width } = useWindowDimensions();
+  const isWide = width >= WIDE_BREAKPOINT;
+  const heroHeight = isWide ? HERO_HEIGHT_WIDE : HERO_HEIGHT_PHONE;
 
   return (
-    <LinearGradient colors={[GRADIENT_TOP, "#E0EADA", "#EAF0E6"]} style={styles.flex}>
+    <OnboardingLayoutShell scanTheme={false} showHeader={false} showSignOut contentMaxWidth={896}>
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 20 }]}
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        
-        <KaiTypingIntro />
+        <Pressable
+          onPress={() => router.push("/onboarding/questionnaire" as Href)}
+          hitSlop={8}
+          style={styles.skipLinkWrap}
+        >
+          <Text style={styles.skipLink}>Skip to questionnaire</Text>
+        </Pressable>
 
-        {/* ─── Side-by-Side Tech Showcase ─── */}
+        <View style={[styles.heroRow, isWide && styles.heroRowWide]}>
+          <View style={[styles.heroBanner, { height: heroHeight }, isWide && styles.heroWide]}>
+            <Image
+              source={require("../../assets/images/kai-skin-analysis.png")}
+              style={styles.heroImage}
+              resizeMode="cover"
+              accessibilityLabel="kAI advanced skin analysis — facial mapping with molecular insights"
+            />
+            <LinearGradient
+              colors={["transparent", "rgba(24,24,27,0.2)", "rgba(24,24,27,0.9)"]}
+              locations={[0, 0.35, 1]}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={styles.heroTextWrap}>
+              <Text style={styles.heroKicker}>YOUR SKIN COMPANION</Text>
+              <Text style={styles.heroTitle}>Meet kAI</Text>
+              <Text style={styles.heroSub}>
+                Take the same guided photos each time, so your skin changes are easier to follow.
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.introSlot,
+              isWide && { height: heroHeight, flex: 0.3 },
+              !isWide && styles.introSlotStacked,
+            ]}
+          >
+            <KaiTypingIntro showHeader={false} variant="sidebar" />
+          </View>
+        </View>
+
         <View style={styles.techShowcaseRow}>
-          {/* Dashboard Preview */}
           <View style={styles.techCard}>
             <Image
               source={require("../../assets/images/kai-holographic-scan.png")}
@@ -56,11 +93,10 @@ export default function KaiIntroScreen() {
             />
             <View style={styles.techTextContainer}>
               <Text style={styles.techKicker}>DASHBOARD</Text>
-              <Text style={styles.techTitle}>Real-time metrics</Text>
+              <Text style={styles.techTitle}>Real-time skin health metrics</Text>
             </View>
           </View>
 
-          {/* Insights Preview */}
           <View style={styles.techCard}>
             <Image
               source={require("../../assets/images/kai-features-visual.png")}
@@ -73,12 +109,11 @@ export default function KaiIntroScreen() {
             />
             <View style={styles.techTextContainer}>
               <Text style={styles.techKicker}>INSIGHTS</Text>
-              <Text style={styles.techTitle}>Track & improve</Text>
+              <Text style={styles.techTitle}>Track, analyse & improve your skin</Text>
             </View>
           </View>
         </View>
 
-        {/* ─── Boundary Warnings Box ─── */}
         <View style={styles.boundaryBox}>
           <View style={styles.boundaryHead}>
             <Ionicons name="shield-checkmark-outline" size={14} color={NAVY_DARK} />
@@ -93,7 +128,6 @@ export default function KaiIntroScreen() {
           </View>
         </View>
 
-        {/* ─── Start Baseline Scan button ─── */}
         <Pressable
           style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
           onPress={() => router.push("/onboarding/capture-intro" as Href)}
@@ -108,25 +142,90 @@ export default function KaiIntroScreen() {
             <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
           </LinearGradient>
         </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.signOutBtn, pressed && styles.signOutBtnPressed]}
-          onPress={() => void handleSignOut()}
-        >
-          <Ionicons name="log-out-outline" size={18} color="#52525b" style={{ marginRight: 6 }} />
-          <Text style={styles.signOutBtnText}>Sign out</Text>
-        </Pressable>
-
       </ScrollView>
-    </LinearGradient>
+    </OnboardingLayoutShell>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  scroll: { padding: 20, paddingBottom: 40 },
-  
-  // Tech Showcase
+  scroll: {
+    paddingBottom: 40,
+    gap: 4,
+  },
+  skipLinkWrap: {
+    alignSelf: "flex-start",
+    marginBottom: 8,
+  },
+  skipLink: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(44, 62, 107, 0.8)",
+    textDecorationLine: "underline",
+  },
+  heroRow: {
+    gap: 16,
+    marginBottom: 16,
+  },
+  heroRowWide: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 20,
+  },
+  heroBanner: {
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#18181b",
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  heroWide: {
+    flex: 0.7,
+  },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+    opacity: 0.9,
+  },
+  heroTextWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 20,
+    zIndex: 2,
+  },
+  heroKicker: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 3,
+    color: "#a8c4e6",
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    marginTop: 4,
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.4,
+  },
+  heroSub: {
+    marginTop: 4,
+    maxWidth: 320,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#e4e4e7",
+  },
+  introSlot: {
+    minWidth: 0,
+    overflow: "visible",
+  },
+  introSlotStacked: {
+    marginTop: -4,
+  },
   techShowcaseRow: {
     flexDirection: "row",
     gap: 12,
@@ -145,11 +244,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   techImage: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
   },
@@ -175,12 +270,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginTop: 2,
   },
-
-  // Boundaries
   boundaryBox: {
     padding: 12,
     borderRadius: 18,
-    backgroundColor: "rgba(44,62,107,0.05)",
+    backgroundColor: "rgba(255,255,255,0.35)",
     borderWidth: 1,
     borderColor: "rgba(44,62,107,0.1)",
     marginBottom: 16,
@@ -206,9 +299,9 @@ const styles = StyleSheet.create({
   },
   boundaryPill: {
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(255,255,255,0.8)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.95)",
+    borderColor: "rgba(255,255,255,0.7)",
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
@@ -217,8 +310,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#52525b",
   },
-
-  // Button
   btn: {
     borderRadius: 16,
     overflow: "hidden",
@@ -243,27 +334,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 15,
     fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-  signOutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.08)",
-    paddingVertical: 15,
-    borderRadius: 16,
-  },
-  signOutBtnPressed: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    transform: [{ scale: 0.98 }],
-  },
-  signOutBtnText: {
-    color: "#52525b",
-    fontSize: 15,
-    fontWeight: "700",
     letterSpacing: 0.3,
   },
 });

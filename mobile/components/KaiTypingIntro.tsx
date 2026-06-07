@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
 } from "react-native";
 
 import {
@@ -18,28 +19,43 @@ import {
 const NAVY = "#2C3E6B";
 const SCREEN_W = Dimensions.get("window").width;
 const AVATAR_W = Math.min(SCREEN_W * 0.36, 132);
-const AVATAR_H = AVATAR_W * (276 / 125);
+const AVATAR_H = AVATAR_W * (291 / 132);
+const SIDEBAR_AVATAR_H = Math.min(Dimensions.get("window").height * 0.44, 268);
+const SIDEBAR_AVATAR_W = SIDEBAR_AVATAR_H * (132 / 291);
 
-export function KaiTypingIntro() {
+type Props = {
+  /** When false, only avatar + speech (hero carries the title). */
+  showHeader?: boolean;
+  /** Tighter layout beside the hero banner on wide screens. */
+  variant?: "default" | "sidebar";
+  style?: ViewStyle;
+};
+
+export function KaiTypingIntro({
+  showHeader = true,
+  variant = "default",
+  style,
+}: Props) {
   const [lineIndex, setLineIndex] = useState(0);
   const [typed, setTyped] = useState("");
   const floatY = useRef(new Animated.Value(0)).current;
   const cursorOpacity = useRef(new Animated.Value(1)).current;
 
   const line = KAI_INTRO_LINES[lineIndex] ?? KAI_INTRO_LINES[0];
+  const isSidebar = variant === "sidebar";
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(floatY, {
-          toValue: -6,
-          duration: 2400,
+          toValue: -5,
+          duration: 2250,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(floatY, {
           toValue: 0,
-          duration: 2400,
+          duration: 2250,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -85,15 +101,69 @@ export function KaiTypingIntro() {
     return () => clearTimeout(timer);
   }, [typed, line]);
 
+  const bubbleContent = (
+    <View style={isSidebar ? styles.sidebarBubbleRow : styles.bubbleRow}>
+      <View style={styles.bubbleTail} />
+      <View style={[styles.bubble, isSidebar && styles.sidebarBubble]}>
+        <Text style={[styles.bubbleText, isSidebar && styles.sidebarBubbleText]}>
+          {typed}
+          <Animated.Text style={[styles.cursor, { opacity: cursorOpacity }]}>
+            |
+          </Animated.Text>
+        </Text>
+      </View>
+    </View>
+  );
+
+  if (isSidebar) {
+    return (
+      <View style={[styles.sidebarRoot, style]}>
+        {showHeader ? (
+          <>
+            <Text style={styles.sidebarKicker}>YOUR SKIN COMPANION</Text>
+            <Text style={styles.sidebarTitle}>
+              Meet <Text style={styles.sidebarTitleAccent}>kAI</Text>
+            </Text>
+          </>
+        ) : null}
+
+        <View style={styles.sidebarStage}>
+          <Animated.View
+            style={[styles.sidebarAvatarWrap, { transform: [{ translateY: floatY }] }]}
+          >
+            <Image
+              source={require("../assets/images/kai-avatar.png")}
+              style={styles.sidebarAvatar}
+              resizeMode="contain"
+              accessibilityLabel="kAI, your SkinFit AI skin companion"
+            />
+          </Animated.View>
+          <View
+            style={[
+              styles.sidebarBubbleAbs,
+              { left: SIDEBAR_AVATAR_W * 0.72 },
+            ]}
+          >
+            {bubbleContent}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, style]}>
       <View style={styles.glowTop} />
       <View style={styles.glowBottom} />
 
-      <Text style={styles.kicker}>YOUR SKIN COMPANION</Text>
-      <Text style={styles.title}>
-        Meet <Text style={styles.titleAccent}>kAI</Text>
-      </Text>
+      {showHeader ? (
+        <>
+          <Text style={styles.kicker}>YOUR SKIN COMPANION</Text>
+          <Text style={styles.title}>
+            Meet <Text style={styles.titleAccent}>kAI</Text>
+          </Text>
+        </>
+      ) : null}
 
       <View style={styles.stageRow}>
         <Animated.View style={[styles.avatarStage, { transform: [{ translateY: floatY }] }]}>
@@ -104,20 +174,8 @@ export function KaiTypingIntro() {
             accessibilityLabel="kAI, your SkinFit AI skin companion"
           />
         </Animated.View>
-
-        <View style={styles.bubbleRow}>
-          <View style={styles.bubbleTail} />
-          <View style={styles.bubble}>
-            <Text style={styles.bubbleText}>
-              {typed}
-              <Animated.Text style={[styles.cursor, { opacity: cursorOpacity }]}>
-                |
-              </Animated.Text>
-            </Text>
-          </View>
-        </View>
+        {bubbleContent}
       </View>
-
     </View>
   );
 }
@@ -193,38 +251,97 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  sidebarBubbleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    width: "100%",
+  },
   bubbleTail: {
     width: 0,
     height: 0,
     marginRight: -1,
-    borderTopWidth: 9,
-    borderBottomWidth: 9,
-    borderRightWidth: 10,
+    marginTop: 12,
+    borderTopWidth: 7,
+    borderBottomWidth: 7,
+    borderRightWidth: 9,
     borderTopColor: "transparent",
     borderBottomColor: "transparent",
-    borderRightColor: "#f8fafc",
+    borderRightColor: "rgba(255,255,255,0.7)",
   },
   bubble: {
     flex: 1,
     borderRadius: 18,
-    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.75)",
+    backgroundColor: "rgba(255,255,255,0.5)",
     paddingHorizontal: 14,
     paddingVertical: 12,
-    shadowColor: "#000",
+    shadowColor: NAVY,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 2,
+  },
+  sidebarBubble: {
+    borderTopLeftRadius: 6,
   },
   bubbleText: {
     minHeight: 72,
     fontSize: 14,
     lineHeight: 20,
-    color: "#1e293b",
+    color: "#374151",
     fontWeight: "500",
+  },
+  sidebarBubbleText: {
+    minHeight: 48,
+    fontSize: 13,
+    lineHeight: 19,
   },
   cursor: {
     color: NAVY,
     fontWeight: "400",
+  },
+  sidebarRoot: {
+    width: "100%",
+    minWidth: 0,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  sidebarKicker: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2.2,
+    color: "rgba(44,62,107,0.6)",
+  },
+  sidebarTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1F2A44",
+    marginTop: 4,
+    letterSpacing: -0.4,
+  },
+  sidebarTitleAccent: {
+    color: NAVY,
+  },
+  sidebarStage: {
+    position: "relative",
+    minHeight: SIDEBAR_AVATAR_H,
+    width: "100%",
+    marginTop: 4,
+  },
+  sidebarAvatarWrap: {
+    position: "relative",
+    zIndex: 20,
+    alignSelf: "flex-start",
+  },
+  sidebarAvatar: {
+    width: SIDEBAR_AVATAR_W,
+    height: SIDEBAR_AVATAR_H,
+  },
+  sidebarBubbleAbs: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    zIndex: 10,
   },
 });

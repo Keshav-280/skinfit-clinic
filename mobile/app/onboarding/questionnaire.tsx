@@ -127,7 +127,7 @@ function copyForConcern(
       trigTitle: "What do you think causes your hair loss?",
     },
     general: {
-      sevTitle: "What best describes your skin goals?",
+      sevTitle: "How would you rate your overall skin health?",
       sevA: "Maintenance",
       sevB: "Need to improve",
       sevC: "Ongoing concerns",

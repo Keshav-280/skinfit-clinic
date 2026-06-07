@@ -20,6 +20,7 @@ import { TrackerSaveStatusText } from "@/components/TrackerSaveStatus";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { apiJson } from "@/lib/api";
+import { goToDashboard } from "@/lib/dashboardNavigation";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -204,7 +205,7 @@ export default function SleepTrackerScreen() {
   return (
     <View style={s.root}>
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
+        <Pressable onPress={() => goToDashboard(router)} style={s.backBtn} hitSlop={12}>
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={s.headerTitle}>Sleep</Text>

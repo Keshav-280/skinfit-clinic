@@ -17,6 +17,7 @@ import { format, subDays } from "date-fns";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
+import { goToDashboard } from "@/lib/dashboardNavigation";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
 
 const NAVY = "#2C3E6B";
@@ -153,7 +154,7 @@ export default function AllSkinParamsScreen() {
   return (
     <View style={s.root}>
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
+        <Pressable onPress={() => goToDashboard(router)} style={s.backBtn} hitSlop={12}>
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={s.headerTitle}>All Skin Parameters</Text>

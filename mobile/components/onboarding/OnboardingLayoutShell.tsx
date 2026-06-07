@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { SKINFIT_GRADIENT, SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
@@ -15,7 +16,43 @@ type Props = {
   backHref?: Href;
   scanTheme?: boolean;
   showHeader?: boolean;
+  /** Fixed top-right icon sign-out for patient onboarding routes. */
+  showSignOut?: boolean;
+  /** Max content width for patient onboarding screens (default 480). */
+  contentMaxWidth?: number;
 };
+
+function OnboardingSignOutButton() {
+  const router = useRouter();
+  const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace("/login" as Href);
+    } catch (e) {
+      console.error("Sign out failed:", e);
+    }
+  };
+
+  return (
+    <View
+      pointerEvents="box-none"
+      style={[styles.signOutFixed, { paddingTop: Math.max(insets.top, 8) + 4 }]}
+    >
+      <Pressable
+        onPress={() => void handleSignOut()}
+        style={({ pressed }) => [styles.signOutBtn, pressed && styles.signOutBtnPressed]}
+        hitSlop={8}
+        accessibilityLabel="Sign out"
+        accessibilityRole="button"
+      >
+        <Ionicons name="log-out-outline" size={18} color={NAVY} />
+      </Pressable>
+    </View>
+  );
+}
 
 export function OnboardingLayoutShell({
   children,
@@ -23,6 +60,8 @@ export function OnboardingLayoutShell({
   backHref = "/onboarding/kai-intro" as Href,
   scanTheme = true,
   showHeader = true,
+  showSignOut = false,
+  contentMaxWidth = 480,
 }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -31,14 +70,28 @@ export function OnboardingLayoutShell({
     return (
       <LinearGradient
         colors={[...SKINFIT_GRADIENT.patient]}
-        style={[styles.flex, { paddingTop: insets.top }]}
+        style={styles.flex}
       >
-        <View style={styles.plainHeader}>
-          <Pressable onPress={() => router.push(backHref)} hitSlop={10}>
-            <Text style={styles.plainBack}>SkinFit — kAI setup</Text>
-          </Pressable>
+        {showSignOut ? <OnboardingSignOutButton /> : null}
+        {showHeader ? (
+          <View style={[styles.plainHeader, { paddingTop: insets.top + 8 }]}>
+            <Pressable onPress={() => router.push(backHref)} hitSlop={10}>
+              <Text style={styles.plainBack}>SkinFit — kAI setup</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <View
+          style={[
+            styles.plainMain,
+            { maxWidth: contentMaxWidth },
+            !showHeader && {
+              paddingTop: insets.top + (showSignOut ? 12 : 20),
+              paddingRight: showSignOut ? 52 : 16,
+            },
+          ]}
+        >
+          {children}
         </View>
-        <View style={styles.plainMain}>{children}</View>
       </LinearGradient>
     );
   }
@@ -83,6 +136,23 @@ export function OnboardingLayoutShell({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  signOutFixed: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    zIndex: 50,
+    paddingRight: 12,
+  },
+  signOutBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+  },
+  signOutBtnPressed: {
+    opacity: 0.65,
+  },
   scanHeader: {
     flexDirection: "row",
     alignItems: "center",

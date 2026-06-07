@@ -49,7 +49,7 @@ import {
   VISIT_WINDOW_OPTIONS,
   visitWindowsToTimePreferences,
   type VisitWindowId,
-} from "../../src/lib/scheduleVisitWindows";
+} from "@/lib/scheduleVisitWindows";
 
 type PendingScheduleRequestRow = {
   id: string;
@@ -1168,9 +1168,9 @@ const styles = StyleSheet.create({
   eventChipPost: { backgroundColor: "rgba(237, 233, 254, 0.95)", borderWidth: 1, borderColor: "rgba(109, 40, 217, 0.45)" },
   eventChipDone: { backgroundColor: "rgba(224, 242, 254, 0.95)", borderWidth: 1, borderColor: "rgba(14, 165, 233, 0.35)" },
   eventChipPending: {
-    backgroundColor: "rgba(254, 243, 199, 0.95)",
+    backgroundColor: "rgba(232, 238, 246, 0.95)",
     borderWidth: 1,
-    borderColor: "rgba(217, 119, 6, 0.4)",
+    borderColor: "rgba(217, 119, 6, 0.35)",
   },
   eventChipConfirmed: {
     backgroundColor: "rgba(232, 238, 246, 0.95)",
@@ -1348,12 +1348,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#e4e4e7",
-    backgroundColor: "rgba(253, 249, 240, 0.65)",
-    marginHorizontal: -12,
-    paddingHorizontal: 12,
     paddingBottom: 8,
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
   },
   listSectionLabel: { fontSize: 11, fontWeight: "700", color: "#71717a", textTransform: "uppercase", marginBottom: 10 },
   listRow: {
@@ -1396,8 +1391,8 @@ const styles = StyleSheet.create({
   pendingPill: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#92400e",
-    backgroundColor: "#fef3c7",
+    color: "#b45309",
+    backgroundColor: "#e8eef6",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,

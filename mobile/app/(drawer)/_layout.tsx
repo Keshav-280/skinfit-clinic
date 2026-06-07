@@ -112,7 +112,7 @@ function AnimatedDock({
               style={styles.dockButton}
               onPress={() => {
                 onInteraction();
-                router.push(item.href);
+                router.replace(item.href);
               }}
               hitSlop={8}
             >
@@ -194,6 +194,7 @@ export default function DrawerLayout() {
   return (
     <View style={styles.root}>
       <Drawer
+        initialRouteName="index"
         screenOptions={({ route }) => ({
           drawerActiveTintColor: "#2C3E6B",
           drawerInactiveTintColor: "#64748b",
@@ -231,6 +232,10 @@ export default function DrawerLayout() {
         })}
       >
         <Drawer.Screen
+          name="index"
+          options={{ title: "Monitor", drawerLabel: "Monitor", headerShown: false }}
+        />
+        <Drawer.Screen
           name="scan"
           options={{
             title: "Measure",
@@ -238,10 +243,6 @@ export default function DrawerLayout() {
             headerShown: false,
             lazy: false,
           }}
-        />
-        <Drawer.Screen
-          name="index"
-          options={{ title: "Monitor", drawerLabel: "Monitor", headerShown: false }}
         />
         <Drawer.Screen
           name="schedules"

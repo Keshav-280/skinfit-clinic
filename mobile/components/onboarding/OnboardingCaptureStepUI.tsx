@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   Pressable,
   StyleSheet,
@@ -19,6 +20,25 @@ const NAVY_DARK = SKINFIT_THEME.navyDark;
 const MUTED = "#6B7280";
 const ACCENT = "#E07088";
 const ACCENT_SOFT = "rgba(224, 112, 136, 0.22)";
+
+/** Portrait viewfinder sizes aligned with web capture shell (240×320 base, up to ~390×520). */
+const VIEWFINDER_BASE_W = 240;
+const VIEWFINDER_BASE_H = 320;
+const VIEWFINDER_MAX_W = 390;
+const VIEWFINDER_MAX_H = 520;
+
+function getViewfinderSize(screenWidth: number) {
+  const horizontalPadding = 44;
+  const availableW = screenWidth - horizontalPadding;
+  const scale = Math.min(
+    availableW / VIEWFINDER_BASE_W,
+    VIEWFINDER_MAX_W / VIEWFINDER_BASE_W,
+    VIEWFINDER_MAX_H / VIEWFINDER_BASE_H
+  );
+  const width = Math.round(Math.min(VIEWFINDER_BASE_W * scale, VIEWFINDER_MAX_W));
+  const height = Math.round(Math.min(width * (VIEWFINDER_BASE_H / VIEWFINDER_BASE_W), VIEWFINDER_MAX_H));
+  return { width, height };
+}
 
 type StepMeta = {
   id: FaceScanCaptureId;
@@ -80,6 +100,7 @@ export function OnboardingCaptureStepUI({
 }: Props) {
   const insets = useSafeAreaInsets();
   const progress = (stepIndex + 1) / totalSteps;
+  const viewfinderSize = getViewfinderSize(Dimensions.get("window").width);
 
   return (
     <View style={styles.root}>
@@ -131,8 +152,16 @@ export function OnboardingCaptureStepUI({
         <Text style={styles.title}>{step.title}</Text>
         <Text style={styles.subtitle}>{step.subtitle}</Text>
 
-        <View style={styles.viewfinder} collapsable={false}>
-          {viewfinder}
+        <View style={styles.viewfinderWrap}>
+          <View
+            style={[
+              styles.viewfinder,
+              { width: viewfinderSize.width, height: viewfinderSize.height },
+            ]}
+            collapsable={false}
+          >
+            {viewfinder}
+          </View>
         </View>
 
         {!reviewingCapture ? (
@@ -320,19 +349,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: MUTED,
   },
-  viewfinder: {
+  viewfinderWrap: {
     marginTop: 18,
-    width: "100%",
-    aspectRatio: 1,
+    marginBottom: 4,
+    alignItems: "center",
+    minHeight: VIEWFINDER_BASE_H,
+  },
+  viewfinder: {
     borderRadius: 20,
     overflow: "hidden",
     backgroundColor: "#111827",
     position: "relative",
   },
   tipsCard: {
-    marginTop: 14,
+    marginTop: 16,
     gap: 8,
     flexShrink: 0,
+    minHeight: 72,
   },
   tipsHeading: {
     fontSize: 15,

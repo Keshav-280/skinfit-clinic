@@ -22,6 +22,7 @@ import { TrackerSaveStatusText } from "@/components/TrackerSaveStatus";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import { apiJson } from "@/lib/api";
+import { goToDashboard } from "@/lib/dashboardNavigation";
 
 const NAVY = "#2C3E6B";
 const GLASS = "rgba(255,255,255,0.55)";
@@ -210,7 +211,7 @@ export default function StressTrackerScreen() {
   return (
     <View style={st.root}>
       <View style={[st.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={st.backBtn} hitSlop={12}>
+        <Pressable onPress={() => goToDashboard(router)} style={st.backBtn} hitSlop={12}>
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={st.headerTitle}>Stress Level</Text>

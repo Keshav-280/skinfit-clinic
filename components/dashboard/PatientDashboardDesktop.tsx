@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { format, startOfWeek, addDays, isSameDay, parseISO } from "date-fns";
 import {
@@ -14,7 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Sparkles,
   ListChecks,
   Activity,
   Camera,
@@ -48,7 +46,6 @@ function FirstScanCta({
     </div>
   );
 }
-import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMergedCard";
 import { DashboardStreakCard } from "@/components/dashboard/DashboardStreakCard";
@@ -66,7 +63,6 @@ import {
   PATIENT_GREEN,
   PATIENT_NAVY,
 } from "@/src/lib/patientDashboardTheme";
-import { splitTodayFocusMessage } from "@/src/lib/splitTodayFocusMessage";
 import { journalTrackerHref } from "@/src/hooks/useJournalTrackerDate";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import {
@@ -128,7 +124,6 @@ type HomeData = {
   streakCurrent: number;
   streakLongest: number;
   weekCompletedDates: string[];
-  todayFocus: { message: string; sourceParam: string | null } | null;
   feedbackEntries: FeedbackEntry[];
   archivedFeedbackEntries?: FeedbackEntry[];
   onboardingComplete: boolean;
@@ -215,71 +210,6 @@ function RadarChart({
         );
       })}
     </div>
-  );
-}
-
-/** Mint “Today’s Focus” card: API copy + portrait ring (`public/images/todays-focus-portrait.png`). */
-function TodayFocusCard({ message }: { message: string }) {
-  const { headline, detail } = splitTodayFocusMessage(message);
-  const portraitSrc = "/images/todays-focus-portrait.png";
-
-  return (
-    <article
-      className="relative overflow-hidden rounded-[22px] border border-emerald-100/90 shadow-[0_8px_28px_-10px_rgba(16,185,129,0.2)]"
-      style={{
-        background:
-          "radial-gradient(115% 105% at 50% 28%, #ffffff 0%, #f4fdf7 40%, #ecfdf5 74%, #d1fae5 100%)",
-      }}
-    >
-      <div
-        className="pointer-events-none absolute right-[5%] top-1/2 z-0 hidden h-24 w-24 -translate-y-1/2 rounded-2xl border border-emerald-200/45 bg-emerald-50/15 sm:block"
-        aria-hidden
-      />
-
-      <div className="relative z-[1] flex flex-col items-stretch gap-7 px-5 py-7 sm:flex-row sm:items-center sm:justify-between sm:gap-10 sm:px-8 sm:py-8">
-        <div className="min-w-0 flex-1 text-left">
-          <div className="flex items-center gap-2">
-            <Sparkles
-              className="h-4 w-4 shrink-0 text-[#2E7D32]"
-              strokeWidth={2}
-              aria-hidden
-            />
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#2E7D32]">
-              Today&apos;s Focus
-            </p>
-          </div>
-          <h2 className="mt-2.5 text-[17px] font-bold leading-snug text-neutral-900 sm:text-lg">
-            {headline}
-          </h2>
-          {detail ? (
-            <p className="mt-2.5 text-[15px] leading-relaxed text-neutral-600">{detail}</p>
-          ) : null}
-        </div>
-
-        <div className="flex w-full shrink-0 justify-center sm:w-auto sm:justify-end">
-          <div className="relative aspect-square w-[min(220px,58vw)] max-w-[220px] sm:w-56">
-            <div
-              className="pointer-events-none absolute inset-[-12%] rounded-full bg-emerald-200/40 blur-2xl"
-              aria-hidden
-            />
-            <div className="relative h-full w-full overflow-hidden rounded-full border-[3px] border-white bg-white shadow-[0_14px_40px_-14px_rgba(5,150,105,0.38)]">
-              <Image
-                src={portraitSrc}
-                alt=""
-                fill
-                sizes="(max-width: 640px) 58vw, 224px"
-                className="object-cover object-center"
-                quality={95}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-center pb-4 pt-0.5" aria-hidden>
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/80" />
-      </div>
-    </article>
   );
 }
 
@@ -783,15 +713,6 @@ export function PatientDashboardDesktop() {
         )}
         </div>
 
-          {!data.hasQuestionnaire ? (
-            <div className="w-full min-w-0 md:col-span-12">
-              <QuestionnaireLockedCard title="Today's focus is locked" />
-            </div>
-          ) : data.todayFocus?.message ? (
-            <div className="w-full min-w-0 md:col-span-12">
-              <TodayFocusCard message={data.todayFocus.message} />
-            </div>
-          ) : null}
         </div>
     </div>
   );

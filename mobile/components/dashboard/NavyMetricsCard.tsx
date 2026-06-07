@@ -8,8 +8,11 @@ import {
   dashboardNavyCardShadow,
 } from "@/lib/dashboardTheme";
 
-const NAVY_TRACK = "rgba(255,255,255,0.22)";
-const SALMON = "#FCA5A5";
+const SUB_CARD_BG = "#E8EFE6";
+const VALUE_GREEN = "#1E5E3A";
+const MUTED = "#6B7280";
+const RING_TRACK = "#D8E6DD";
+const NEGATIVE_RED = "#EF4444";
 
 function consistencyLabel(value: number) {
   if (value >= 75) return "Aligned";
@@ -17,9 +20,16 @@ function consistencyLabel(value: number) {
   return "Needs Work";
 }
 
-function ConsistencyRing({ value, size = 100 }: { value: number; size?: number }) {
+function ConsistencyRing({
+  value,
+  size = 118,
+  strokeWidth = 9,
+}: {
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+}) {
   const v = Math.min(100, Math.max(0, Math.round(value)));
-  const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - v / 100);
@@ -31,25 +41,27 @@ function ConsistencyRing({ value, size = 100 }: { value: number; size?: number }
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={NAVY_TRACK}
+          stroke={RING_TRACK}
           strokeWidth={strokeWidth}
           fill="none"
         />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={DASHBOARD_GREEN}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={`${circumference}`}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
-        />
+        {v > 0 ? (
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={DASHBOARD_GREEN}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={`${circumference}`}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
+          />
+        ) : null}
       </Svg>
-      <Text style={styles.ringValue}>{v}</Text>
+      <Text style={[styles.ringValue, { fontSize: Math.round(size * 0.26) }]}>{v}</Text>
     </View>
   );
 }
@@ -57,6 +69,7 @@ function ConsistencyRing({ value, size = 100 }: { value: number; size?: number }
 type NavyMetricsCardProps = {
   kaiSkinScore: number;
   weeklyDeltaScore: number;
+  weeklyDeltaMeaningful?: boolean;
   latestScanAt: string | null;
   consistencyScore: number;
   style?: object;
@@ -70,43 +83,40 @@ export function NavyMetricsCard({
   style,
 }: NavyMetricsCardProps) {
   const v = Math.min(100, Math.max(0, Math.round(consistencyScore)));
-  const statusColor = v >= 50 ? DASHBOARD_GREEN : SALMON;
 
   return (
     <View style={[styles.card, style]}>
-      <View style={styles.scoresRow}>
-        <View style={styles.scoreCol}>
-          <Text style={styles.label}>kAI Skin Score</Text>
-          <Text style={styles.value}>{kaiSkinScore}</Text>
-          <Text style={styles.sub}>
-            {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
-          </Text>
+      <View style={styles.row}>
+        <View style={styles.leftCol}>
+          <View style={styles.subCard}>
+            <Text style={styles.subLabel}>kAI Skin Score</Text>
+            <Text style={styles.subValue}>{kaiSkinScore}</Text>
+            <Text style={styles.subMeta}>
+              {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
+            </Text>
+          </View>
+          <View style={styles.subCard}>
+            <Text style={styles.subLabel}>Weekly Progress</Text>
+            <Text
+              style={[
+                styles.subValue,
+                weeklyDeltaScore < 0 ? { color: NEGATIVE_RED } : null,
+              ]}
+            >
+              {weeklyDeltaScore >= 0 ? "+" : ""}
+              {Math.round(weeklyDeltaScore)}
+            </Text>
+            <Text style={styles.subMeta}>vs last week</Text>
+          </View>
         </View>
-        <View style={styles.scoreCol}>
-          <Text style={styles.label}>Weekly Progress</Text>
-          <Text
-            style={[
-              styles.value,
-              weeklyDeltaScore < 0 ? { color: SALMON } : null,
-            ]}
-          >
-            {weeklyDeltaScore >= 0 ? "+" : ""}
-            {Math.round(weeklyDeltaScore)}
-          </Text>
-          <Text style={styles.sub}>vs last week</Text>
-        </View>
-      </View>
 
-      <View style={styles.divider} />
-
-      <View style={styles.consistencySection}>
-        <Text style={styles.consistencyTitle}>WEEKLY CONSISTENCY SCORE</Text>
-        <View style={styles.ringWrap}>
-          <ConsistencyRing value={consistencyScore} />
+        <View style={styles.rightCol}>
+          <Text style={styles.consistencyTitle}>WEEKLY CONSISTENCY SCORE</Text>
+          <View style={styles.ringWrap}>
+            <ConsistencyRing value={consistencyScore} />
+          </View>
+          <Text style={styles.statusLabel}>{consistencyLabel(v)}</Text>
         </View>
-        <Text style={[styles.statusLabel, { color: statusColor }]}>
-          {consistencyLabel(v)}
-        </Text>
       </View>
     </View>
   );
@@ -116,71 +126,80 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: DASHBOARD_NAVY,
     borderRadius: 20,
-    padding: 20,
-    flexDirection: "column",
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     ...dashboardNavyCardShadow,
   },
-  scoresRow: {
+  row: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: 16,
   },
-  scoreCol: {
-    flex: 1,
+  leftCol: {
+    flex: 5,
+    gap: 10,
+    justifyContent: "center",
+  },
+  subCard: {
+    backgroundColor: SUB_CARD_BG,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    height: 100,
     alignItems: "center",
     justifyContent: "center",
   },
-  label: {
-    fontSize: 13,
+  subLabel: {
+    fontSize: 10,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.8)",
+    color: DASHBOARD_NAVY,
     textAlign: "center",
+    lineHeight: 13,
   },
-  value: {
-    marginTop: 4,
-    fontSize: 36,
+  subValue: {
+    marginTop: 2,
+    fontSize: 28,
     fontWeight: "800",
-    color: DASHBOARD_GREEN,
+    color: VALUE_GREEN,
     textAlign: "center",
-    lineHeight: 40,
+    lineHeight: 30,
   },
-  sub: {
-    marginTop: 4,
-    fontSize: 11,
+  subMeta: {
+    marginTop: 2,
+    fontSize: 9,
     fontWeight: "500",
-    color: "rgba(255,255,255,0.6)",
+    color: MUTED,
     textAlign: "center",
+    lineHeight: 11,
   },
-  divider: {
-    marginTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.15)",
-  },
-  consistencySection: {
-    paddingTop: 20,
+  rightCol: {
+    flex: 7,
     alignItems: "center",
+    justifyContent: "center",
+    paddingLeft: 8,
   },
   consistencyTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "800",
     letterSpacing: 0.5,
-    color: "rgba(255,255,255,0.85)",
+    color: "rgba(255,255,255,0.9)",
     textAlign: "center",
   },
   ringWrap: {
     marginTop: 12,
-    marginBottom: 4,
     alignItems: "center",
   },
   ringValue: {
     position: "absolute",
-    fontSize: 28,
     fontWeight: "800",
     color: "#fff",
+    lineHeight: 36,
   },
   statusLabel: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: "700",
+    marginTop: 6,
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#fff",
     textAlign: "center",
   },
 });

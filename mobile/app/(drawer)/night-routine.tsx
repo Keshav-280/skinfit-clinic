@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
+import { goToDashboard } from "@/lib/dashboardNavigation";
 import { normalizeRoutineSteps } from "@/lib/routine";
 
 const NAVY = "#2C3E6B";
@@ -149,7 +150,7 @@ export default function NightRoutineScreen() {
   if (!data || !data.routinePlanReady || data.pmItems.length === 0) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+        <Pressable onPress={() => goToDashboard(router)} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={styles.empty}>Your night routine hasn't been set up yet. Your clinic will configure it soon.</Text>
@@ -177,7 +178,7 @@ export default function NightRoutineScreen() {
       }
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+        <Pressable onPress={() => goToDashboard(router)} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={styles.headerTitle}>Night Routine</Text>

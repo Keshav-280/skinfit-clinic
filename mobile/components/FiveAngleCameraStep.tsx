@@ -33,10 +33,7 @@ import {
 } from "@/lib/cameraCaptureAdjustments";
 import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
 import { prepareCapturedScanPhotoUri } from "@/lib/normalizeScanImage";
-import {
-  MOBILE_PORTRAIT_PREVIEW_ASPECT,
-  type CaptureGuidanceSnapshot,
-} from "@/lib/scanCaptureGuidance";
+import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
 const NAVY = "#2C3E6B";
 
@@ -344,10 +341,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#111827",
   },
-  /** Portrait sensor with cover crop — avoids square-stretch inflating face-fill %. */
+  /** Fill fixed portrait viewfinder; parent clips overflow. */
   onboardingCameraFeed: {
-    width: "100%",
-    aspectRatio: MOBILE_PORTRAIT_PREVIEW_ASPECT,
+    ...StyleSheet.absoluteFillObject,
   },
   cameraHidden: { opacity: 0 },
   cameraLoading: {

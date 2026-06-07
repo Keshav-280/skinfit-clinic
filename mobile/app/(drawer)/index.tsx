@@ -3,7 +3,10 @@ import { format, addDays, subDays, startOfWeek, parseISO, isSameDay } from "date
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  BackHandler,
   Image,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +15,8 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,8 +26,10 @@ import Svg, { Circle, Polygon, Line, G, Text as SvgText } from "react-native-svg
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 
+import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMergedCard";
+import { DashboardStreakCard } from "@/components/dashboard/DashboardStreakCard";
+import { FirstScanCta } from "@/components/dashboard/FirstScanCta";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
-import { TodayFocusCard } from "@/components/dashboard/TodayFocusCard";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
@@ -60,7 +67,6 @@ function formatScanDetailLabel(scan: SkinScanItem): string {
   return `${format(new Date(scan.createdAt), "MMM d, yyyy 'at' h:mm a")} · Overall ${Math.round(scan.skinScore)}/100`;
 }
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
-import { formatWaterLiters } from "@/lib/hydrationUnits";
 import {
   clearJournalSyncPatch,
   peekJournalSyncPatch,
@@ -74,6 +80,7 @@ import {
   DASHBOARD_CARD_BORDER,
   DASHBOARD_GREEN,
   DASHBOARD_NAVY,
+  DASHBOARD_URGENT,
   dashboardCardShadow,
 } from "@/lib/dashboardTheme";
 
@@ -148,7 +155,6 @@ type HomeData = {
   routinePlanReady?: boolean;
   routineAmReminderHm?: string;
   routinePmReminderHm?: string;
-  todayFocus?: { message: string; sourceParam: string | null } | null;
   kaiInsightsEnabled?: boolean;
   feedbackEntries?: Array<{
     id: string;
@@ -213,6 +219,7 @@ export default function DashboardScreen() {
   const [sunExposure, setSunExposure] = useState<string>("low");
   const [cycleDay, setCycleDay] = useState("");
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
+  const [sosBusy, setSosBusy] = useState(false);
   const { markReady: markJournalReady, markNotReady: markJournalNotReady } =
     useDebouncedTrackerAutoSave(token);
 
@@ -432,9 +439,11 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      const backSub = BackHandler.addEventListener("hardwareBackPress", () => true);
+
       if (!hasLoadedOnce.current) {
         hasLoadedOnce.current = true;
-        return;
+        return () => backSub.remove();
       }
       if (token) {
         void loadHome({ skipCache: true }).catch(() => {
@@ -444,6 +453,7 @@ export default function DashboardScreen() {
           /* ignore refresh errors on focus */
         });
       }
+      return () => backSub.remove();
     }, [token, loadHome, loadJournalForDate, journalDate])
   );
 
@@ -578,6 +588,56 @@ export default function DashboardScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const isWideLayout = windowWidth >= 768;
 
+  const triggerSos = useCallback(async () => {
+    if (sosBusy || !token) return;
+
+    const sendSos = async (detail: string) => {
+      const text = detail.trim()
+        ? `SOS: ${detail.trim()}`
+        : "SOS: Adverse reaction after treatment. Need urgent doctor help.";
+      setSosBusy(true);
+      try {
+        await apiJson("/api/chat/plain/message", token, {
+          method: "POST",
+          body: JSON.stringify({ assistantId: "doctor", isUrgent: true, text }),
+        });
+        router.push("/(drawer)/chat?assistant=doctor" as Href);
+      } catch (e) {
+        const msg =
+          e instanceof ApiError && e.message
+            ? e.message
+            : "Could not send urgent alert. Try again.";
+        Alert.alert("Urgent alert failed", msg);
+      } finally {
+        setSosBusy(false);
+      }
+    };
+
+    if (Platform.OS === "ios") {
+      Alert.prompt(
+        "SOS alert",
+        "Describe symptoms briefly (redness, swelling, pain, etc).",
+        (detail) => {
+          if (detail != null) void sendSos(detail);
+        },
+        "plain-text",
+        ""
+      );
+    } else {
+      Alert.alert(
+        "Urgent SOS",
+        "Send an urgent alert to your doctor?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Send",
+            onPress: () => void sendSos(""),
+          },
+        ]
+      );
+    }
+  }, [sosBusy, token, router]);
+
   const greetingName = useMemo(() => {
     const raw = data?.userName?.trim();
     if (!raw) return "there";
@@ -646,7 +706,11 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
+      contentContainerStyle={[
+        styles.scrollContent,
+        { paddingTop: insets.top + 16 },
+        isWideLayout && styles.scrollContentWide,
+      ]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -670,72 +734,70 @@ export default function DashboardScreen() {
           </Text>
           <Text style={styles.greetingSub}>Let's achieve your best skin day!</Text>
         </View>
-        <NotificationBell />
+        <View style={styles.greetingActions}>
+          <Pressable
+            style={[styles.sosBtn, sosBusy && styles.sosBtnDisabled]}
+            onPress={() => void triggerSos()}
+            disabled={sosBusy}
+            accessibilityLabel="Urgent: notify doctor immediately"
+          >
+            {sosBusy ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="warning" size={13} color="#fff" />
+            )}
+          </Pressable>
+          <NotificationBell />
+        </View>
       </View>
 
-      {/* ── Date strip ── */}
-      <View style={styles.dateNavRow}>
+      {/* ── Date strip: arrows + week chips in one row ── */}
+      <View style={styles.dateCalendarRow}>
         <Pressable
           onPress={() => setWeekOffset((o) => o - 1)}
           style={styles.dateNavArrow}
           hitSlop={10}
+          accessibilityLabel="Previous week"
         >
           <Ionicons name="chevron-back" size={16} color={NAVY} />
         </Pressable>
-        <Pressable
-          onPress={() => {
-            setJournalDate(todayStr);
-            setWeekOffset(0);
-          }}
-          hitSlop={8}
-        >
-          <Text style={styles.dateNavMonth}>
-            {format(weekDays[0].date, "MMM yyyy")}
-            {weekOffset !== 0 ? "  ·  tap to go to today" : ""}
-          </Text>
-        </Pressable>
+
+        <View style={styles.dateChipsTrack}>
+          {weekDays.map((d) => (
+            <Pressable
+              key={d.ymd}
+              onPress={() => {
+                if (d.isFuture) return;
+                setJournalDate(d.ymd);
+                setWeekOffset(0);
+              }}
+              disabled={d.isFuture}
+              style={[
+                styles.dateChip,
+                d.isSelected && styles.dateChipToday,
+                d.isFuture && styles.dateChipDisabled,
+                d.isToday && !d.isSelected && styles.dateChipIsToday,
+              ]}
+            >
+              <Text style={[styles.dateChipLabel, d.isSelected && styles.dateChipLabelToday]}>
+                {d.label}
+              </Text>
+              <Text style={[styles.dateChipDay, d.isSelected && styles.dateChipDayToday]}>
+                {d.day}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         <Pressable
           onPress={() => setWeekOffset((o) => o + 1)}
           style={styles.dateNavArrow}
           hitSlop={10}
+          accessibilityLabel="Next week"
         >
           <Ionicons name="chevron-forward" size={16} color={NAVY} />
         </Pressable>
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.dateStrip}
-        contentContainerStyle={styles.dateStripContent}
-      >
-        {weekDays.map((d) => (
-          <Pressable
-            key={`${d.month}-${d.day}`}
-            onPress={() => {
-              if (d.isFuture) return;
-              setJournalDate(d.ymd);
-              setWeekOffset(0);
-            }}
-            disabled={d.isFuture}
-            style={[
-              styles.dateChip,
-              d.isSelected && styles.dateChipToday,
-              d.isFuture && styles.dateChipDisabled,
-              d.isToday && !d.isSelected && styles.dateChipIsToday,
-            ]}
-          >
-            <Text style={[styles.dateChipLabel, d.isSelected && styles.dateChipLabelToday]}>
-              {d.label}
-            </Text>
-            <Text style={[styles.dateChipDay, d.isSelected && styles.dateChipDayToday]}>
-              {d.day}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <Text style={styles.selectedDateLabel}>
-        Viewing {format(selectedDate, "EEE, d MMM yyyy")}
-      </Text>
 
       {/* ── Top row: navy metrics + radar ── */}
       <View style={[styles.topRow, isWideLayout && styles.topRowWide]}>
@@ -750,15 +812,21 @@ export default function DashboardScreen() {
         {latestScan ? (
           <SkinHealthMetricsCard
             analysis={latestScan.analysisResults}
+            compact
             style={[isWideLayout && styles.topRowHalf, styles.skinHealthCardInRow]}
           />
-        ) : null}
+        ) : (
+          <FirstScanCta
+            message="Take a scan to see skin health metrics"
+            style={[isWideLayout && styles.topRowHalf, styles.skinHealthCardInRow]}
+          />
+        )}
       </View>
 
-      {/* ── Routine + journal/streak (left) | skin params (right) ── */}
+      {/* ── Routine (left) | skin params (right) ── */}
       <View style={styles.dashboardGrid}>
-      <View style={[styles.dashboardRow, isWideLayout && styles.dashboardRowWide]}>
-      <View style={[styles.dashboardLeftStack, isWideLayout && styles.dashboardRoutineWide]}>
+      <View style={styles.dashboardRow}>
+      <View style={styles.dashboardRoutineCol}>
       {(() => {
         const amTotal = data.amItems.length || 0;
         const pmTotal = data.pmItems.length || 0;
@@ -770,9 +838,20 @@ export default function DashboardScreen() {
         const pmComplete = pmTotal > 0 && pmDone >= pmTotal;
 
         return (
-          <View style={styles.routineMergedCard}>
+          <View
+            style={[
+              styles.routineMergedCard,
+              styles.routineMergedCardCompact,
+              styles.dashboardPairedCard,
+            ]}
+          >
             <View style={styles.routineMergedHeader}>
-              <Text style={styles.routineMergedTitle}>DAILY ROUTINE</Text>
+              <View style={styles.dashboardSectionHeaderLead}>
+                <View style={styles.dashboardSectionIcon}>
+                  <Ionicons name="list" size={14} color="#fff" />
+                </View>
+                <Text style={styles.dashboardSectionTitle}>DAILY ROUTINE</Text>
+              </View>
               <Text style={styles.routineMergedMeta}>
                 {completedSteps}/{totalSteps || 0} steps
               </Text>
@@ -788,6 +867,7 @@ export default function DashboardScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.routineMergedRow,
+                styles.routineMergedRowCompact,
                 pressed && styles.routineMergedRowPressed,
               ]}
               onPress={() =>
@@ -796,12 +876,12 @@ export default function DashboardScreen() {
                 )
               }
             >
-              <View style={styles.routineIconCircle}>
-                <Ionicons name="sunny" size={22} color="#F59E0B" />
+              <View style={[styles.routineIconCircle, styles.routineIconCircleCompact]}>
+                <Ionicons name="sunny" size={18} color="#F59E0B" />
               </View>
               <View style={styles.routineMergedCopy}>
-                <Text style={styles.routineMergedRowTitle}>Morning</Text>
-                <Text style={styles.routineMergedRowSub}>
+                <Text style={styles.routineMergedRowTitleCompact}>Morning</Text>
+                <Text style={styles.routineMergedRowSubCompact} numberOfLines={1}>
                   {amTotal > 0
                     ? amComplete
                       ? "Completed for today"
@@ -810,16 +890,16 @@ export default function DashboardScreen() {
                 </Text>
               </View>
               {amComplete ? (
-                <Ionicons name="checkmark-circle" size={22} color={GREEN_ACCENT} />
+                <Ionicons name="checkmark-circle" size={18} color={GREEN_ACCENT} />
               ) : (
                 <View style={styles.routineStepPillCompact}>
-                  <Text style={styles.routineStepText}>
+                  <Text style={styles.routineStepTextCompact}>
                     {amDone}/{amTotal || 0}
                   </Text>
                 </View>
               )}
-              <View style={styles.routineArrow}>
-                <Ionicons name="arrow-forward" size={14} color="#fff" />
+              <View style={styles.routineArrowCompact}>
+                <Ionicons name="arrow-forward" size={12} color="#fff" />
               </View>
             </Pressable>
 
@@ -828,6 +908,7 @@ export default function DashboardScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.routineMergedRow,
+                styles.routineMergedRowCompact,
                 pressed && styles.routineMergedRowPressed,
               ]}
               onPress={() =>
@@ -836,12 +917,12 @@ export default function DashboardScreen() {
                 )
               }
             >
-              <View style={styles.routineIconCircle}>
-                <Ionicons name="cloudy-night" size={22} color="#fff" />
+              <View style={[styles.routineIconCircle, styles.routineIconCircleCompact]}>
+                <Ionicons name="cloudy-night" size={18} color="#fff" />
               </View>
               <View style={styles.routineMergedCopy}>
-                <Text style={styles.routineMergedRowTitle}>Night</Text>
-                <Text style={styles.routineMergedRowSub}>
+                <Text style={styles.routineMergedRowTitleCompact}>Night</Text>
+                <Text style={styles.routineMergedRowSubCompact} numberOfLines={1}>
                   {pmTotal > 0
                     ? pmComplete
                       ? "Completed for today"
@@ -850,189 +931,85 @@ export default function DashboardScreen() {
                 </Text>
               </View>
               {pmComplete ? (
-                <Ionicons name="checkmark-circle" size={22} color={GREEN_ACCENT} />
+                <Ionicons name="checkmark-circle" size={18} color={GREEN_ACCENT} />
               ) : (
                 <View style={styles.routineStepPillCompact}>
-                  <Text style={styles.routineStepText}>
+                  <Text style={styles.routineStepTextCompact}>
                     {pmDone}/{pmTotal || 0}
                   </Text>
                 </View>
               )}
-              <View style={styles.routineArrow}>
-                <Ionicons name="arrow-forward" size={14} color="#fff" />
+              <View style={styles.routineArrowCompact}>
+                <Ionicons name="arrow-forward" size={12} color="#fff" />
               </View>
             </Pressable>
           </View>
         );
       })()}
 
-      <View
-        style={[
-          styles.dashboardJournalStreakRow,
-          isWideLayout && styles.dashboardJournalStreakRowWide,
-        ]}
-      >
-        <View style={isWideLayout ? styles.dashboardJournalStreakHalf : styles.dashboardFullWidth}>
-          <Text style={[styles.sectionTitle, { marginTop: 4 }]}>DAILY JOURNAL</Text>
-
-      <Pressable
-        style={styles.journalCard}
-        onPress={() =>
-          router.push(
-            `/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href
-          )
-        }
-      >
-        <View style={styles.journalCardInner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.journalCardLabel}>Sleep Duration</Text>
-            <Text style={styles.journalCardValue}>
-              {String(Math.floor(Number(sleep))).padStart(2, "0")}h{" "}
-              {String(Math.round((Number(sleep) % 1) * 60)).padStart(2, "0")}m
-            </Text>
-          </View>
-          <View style={[styles.journalCardIcon, { backgroundColor: "#16a34a" }]}>
-            <Ionicons name="bed" size={20} color="#fff" />
-          </View>
-        </View>
-        <Pressable
-          style={styles.journalEnterBtn}
-          onPress={() =>
-            router.push(
-              `/(drawer)/sleep-tracker?date=${encodeURIComponent(journalDate)}` as Href
-            )
-          }
-        >
-          <Text style={styles.journalEnterText}>Enter Data</Text>
-        </Pressable>
-      </Pressable>
-
-      <Pressable
-        style={styles.journalCard}
-        onPress={() =>
-          router.push(
-            `/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href
-          )
-        }
-      >
-        <View style={styles.journalCardInner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.journalCardLabel}>Hydration</Text>
-            <Text style={styles.journalCardValue}>
-              {formatWaterLiters(Number.parseInt(water, 10) || 0)} L
-            </Text>
-          </View>
-          <View style={[styles.journalCardIcon, { backgroundColor: "#3B82F6" }]}>
-            <Ionicons name="water" size={20} color="#fff" />
-          </View>
-        </View>
-        <Pressable
-          style={styles.journalEnterBtn}
-          onPress={() =>
-            router.push(
-              `/(drawer)/hydration-tracker?date=${encodeURIComponent(journalDate)}` as Href
-            )
-          }
-        >
-          <Text style={styles.journalEnterText}>Enter Data</Text>
-        </Pressable>
-      </Pressable>
-
-      <Pressable
-        style={styles.journalCard}
-        onPress={() =>
-          router.push(
-            `/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href
-          )
-        }
-      >
-        <View style={styles.journalCardInner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.journalCardLabel}>Stress Level (0-10)</Text>
-            <Text style={styles.journalCardValue}>{stress}</Text>
-          </View>
-          <View
-            style={[
-              styles.journalCardIcon,
-              { backgroundColor: Number(stress) > 6 ? "#DC2626" : "#F59E0B" },
-            ]}
-          >
-            <Ionicons
-              name={Number(stress) > 6 ? "sad" : "happy"}
-              size={20}
-              color="#fff"
-            />
-          </View>
-        </View>
-        <Pressable
-          style={styles.journalEnterBtn}
-          onPress={() =>
-            router.push(
-              `/(drawer)/stress-tracker?date=${encodeURIComponent(journalDate)}` as Href
-            )
-          }
-        >
-          <Text style={styles.journalEnterText}>Enter Data</Text>
-        </Pressable>
-      </Pressable>
-        </View>
-
-        <View
-          style={[
-            styles.streakCard,
-            isWideLayout ? styles.dashboardJournalStreakHalf : styles.dashboardFullWidth,
-          ]}
-        >
-          <Text style={styles.streakTitleNavy}>{data.streakCurrent} day streak</Text>
-          <Text style={styles.streakPersonalBest}>
-            Personal best: {data.streakLongest} days
-          </Text>
-          <View style={styles.streakWeekHeader}>
-            <Text style={styles.streakWeekLabel}>THIS WEEK</Text>
-            <Text style={styles.streakWeekLabel}>{weekDoneCount}/7 complete</Text>
-          </View>
-          <View style={styles.streakWeekTrack}>
-            <View
-              style={[
-                styles.streakWeekFill,
-                { width: `${Math.round((weekDoneCount / 7) * 100)}%` },
-              ]}
-            />
-          </View>
-          <View style={styles.streakDotsRow}>
-            {streakDays.map((d, i) => (
-              <View key={`s-${i}`} style={styles.streakDayCol}>
-                <View
-                  style={[
-                    styles.streakDot,
-                    d.done && styles.streakDotDone,
-                    d.isFuture && !d.done && styles.streakDotFuture,
-                  ]}
-                >
-                  {d.done ? (
-                    <Ionicons name="checkmark" size={14} color="#fff" />
-                  ) : (
-                    <Text style={styles.streakDotLetter}>{d.label.charAt(0)}</Text>
-                  )}
-                </View>
-                <Text style={styles.streakDayLabel}>{d.label}</Text>
-              </View>
-            ))}
-          </View>
-          {data.routinePlanReady ? (
-            <Text
-              style={[
-                styles.streakCompleteToday,
-                allRoutineDone ? { color: GREEN_ACCENT } : { color: NAVY },
-              ]}
-            >
-              {allRoutineDone ? "Done today" : "Complete today"}
-            </Text>
-          ) : null}
-        </View>
+        <DailyJournalMergedCard
+          compact
+          fillHeight
+          style={styles.dashboardPairedCard}
+          selectedYmd={journalDate}
+          initialSleepHours={Number(sleep) || 0}
+          initialWaterGlasses={Number.parseInt(water, 10) || 0}
+          initialStressLevel={Number.parseInt(stress, 10) || 5}
+          token={token}
+          onValuesChange={({ sleepHours, waterGlasses, stressLevel }) => {
+            setSleep(String(sleepHours));
+            setWater(String(waterGlasses));
+            setStress(String(stressLevel));
+          }}
+        />
       </View>
 
+      <View style={styles.dashboardSideCol}>
+        {latestScan ? (
+          <SkinParamMetricsCard
+            compact
+            fillHeight
+            style={styles.dashboardPairedCard}
+            analysis={latestScan.analysisResults}
+            onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
+          />
+        ) : (
+          <FirstScanCta
+            compact
+            style={styles.dashboardPairedCard}
+            message="Skin parameters appear after your first scan"
+          />
+        )}
+      </View>
+      </View>
+
+      <DashboardStreakCard
+        compact
+        streakCurrent={data.streakCurrent}
+        streakLongest={data.streakLongest}
+        weekDoneCount={weekDoneCount}
+        streakDays={streakDays}
+        allRoutineDone={allRoutineDone}
+        routinePlanReady={data.routinePlanReady ?? false}
+        style={styles.dashboardFullWidth}
+      />
+
       <DoctorFeedbackSection
+        section="feedback"
+        feedbackEntries={data.feedbackEntries ?? []}
+        archivedEntries={data.archivedFeedbackEntries ?? []}
+        legacyFeedback={data.doctorFeedback}
+        legacyVoiceNotes={data.doctorVoiceNotes ?? []}
+        legacyArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+        onboardingComplete={data.onboardingComplete}
+        token={token}
+        onPatchVoiceNote={patchVoiceNote}
+        voiceBusyId={voiceBusyId}
+        onRefresh={loadHome}
+      />
+
+      <DoctorFeedbackSection
+        section="voice"
         feedbackEntries={data.feedbackEntries ?? []}
         archivedEntries={data.archivedFeedbackEntries ?? []}
         legacyFeedback={data.doctorFeedback}
@@ -1045,48 +1022,11 @@ export default function DashboardScreen() {
         voiceBusyId={voiceBusyId}
         onRefresh={loadHome}
       />
-      </View>
 
-      {latestScan ? (
-        <View
-          style={[
-            styles.sectionCardSkinParams,
-            styles.sectionCardFlush,
-            isWideLayout && styles.dashboardParamsNarrow,
-            isWideLayout && styles.dashboardCellSelfStart,
-          ]}
-        >
-          <SkinParamMetricsCard
-            analysis={latestScan.analysisResults}
-            onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
-          />
-        </View>
-      ) : null}
       </View>
-      </View>
-
-      {/* ── Today's Focus ── */}
-      {data.hasQuestionnaire === false ? (
-        <Pressable
-          style={styles.focusLocked}
-          onPress={() => router.push("/onboarding/questionnaire" as Href)}
-        >
-          <Text style={styles.focusLockedTitle}>Today&apos;s focus is locked</Text>
-          <Text style={styles.focusLockedBody}>
-            Complete your questionnaire to unlock personalised daily guidance.
-          </Text>
-          <View style={styles.focusLockedCtaWrap}>
-            <Text style={styles.focusLockedCta}>Continue questionnaire</Text>
-          </View>
-        </Pressable>
-      ) : data.kaiInsightsEnabled !== false &&
-        data.todayFocus?.message &&
-        journalDate === todayStr ? (
-        <TodayFocusCard message={data.todayFocus.message} />
-      ) : null}
 
       {/* Skin parameters section hidden for now — uncomment to restore.
-      <View style={[styles.card, styles.skinParamsCard]}>
+      <View style={[styles.card, styles.skinParamsLegacySection]}>
         <View style={styles.skinParamsHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.h2}>Skin parameters</Text>
@@ -1183,19 +1123,20 @@ function RadarChart({
   metrics: { label: string; value: number }[];
   compact?: boolean;
 }) {
-  const radarSize = compact ? 168 : RADAR_SIZE_DEFAULT;
+  const radarSize = compact ? 176 : RADAR_SIZE_DEFAULT;
   const radarCenter = radarSize / 2;
-  const radarRadius = compact ? 58 : 90;
-  const labelOffset = compact ? 10 : RADAR_LABEL_OFFSET_DEFAULT;
+  const radarRadius = compact ? 68 : 90;
+  const labelOffset = compact ? 24 : RADAR_LABEL_OFFSET_DEFAULT;
   const radarOuter = radarSize + labelOffset * 2;
   const n = metrics.length;
   const angleSlice = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
 
-  function pointOnAxis(i: number, ratio: number) {
-    const angle = angleSlice * i - Math.PI / 2;
+  function pointOnAxis(i: number, ratio: number, radius = radarRadius) {
+    const angle = startAngle + i * angleSlice;
     return {
-      x: radarCenter + radarRadius * ratio * Math.cos(angle),
-      y: radarCenter + radarRadius * ratio * Math.sin(angle),
+      x: radarCenter + radius * ratio * Math.cos(angle),
+      y: radarCenter + radius * ratio * Math.sin(angle),
     };
   }
 
@@ -1258,25 +1199,34 @@ function RadarChart({
         </Svg>
       </View>
       {metrics.map((m, i) => {
-        const angle = angleSlice * i - Math.PI / 2;
-        const lx =
-          labelOffset +
-          radarCenter +
-          (radarRadius + labelOffset) * Math.cos(angle);
-        const ly =
-          labelOffset +
-          radarCenter +
-          (radarRadius + labelOffset) * Math.sin(angle);
-        const labelW = compact ? 64 : 88;
+        const angle = startAngle + i * angleSlice;
+        const cosVal = Math.cos(angle);
+        const sinVal = Math.sin(angle);
+        const labelDist = radarRadius + (compact ? 10 : 8);
+        const anchor = pointOnAxis(i, 1, labelDist);
+        const labelW = compact ? 72 : 88;
+        const labelH = compact ? 28 : 32;
+
+        let left = labelOffset + anchor.x;
+        let top = labelOffset + anchor.y;
+
+        if (cosVal > 0.3) left -= 0;
+        else if (cosVal < -0.3) left -= labelW;
+        else left -= labelW / 2;
+
+        if (sinVal > 0.5) top -= 0;
+        else if (sinVal < -0.5) top -= labelH;
+        else top -= labelH / 2;
+
         return (
           <View
             key={m.label}
             style={{
               position: "absolute",
-              left: lx - labelW / 2,
-              top: ly - (compact ? 12 : 16),
+              left,
+              top,
               width: labelW,
-              alignItems: "center",
+              alignItems: cosVal > 0.3 ? "flex-start" : cosVal < -0.3 ? "flex-end" : "center",
             }}
           >
             <Text
@@ -1317,19 +1267,25 @@ function SkinHealthMetricsCard({
   const metrics = useMemo(() => extractSkinHealthMetrics(analysis), [analysis]);
   return (
     <View style={[styles.skinHealthCard, compact && styles.skinHealthCardCompact, style]}>
-      <Text style={[styles.skinHealthTitle, compact && styles.skinHealthTitleCompact]}>
-        SKIN HEALTH METRICS
-      </Text>
+      <View style={styles.skinHealthHeader}>
+        <View style={[styles.skinHealthIconWrap, compact && styles.skinHealthIconWrapCompact]}>
+          <Ionicons name="pulse" size={compact ? 14 : 16} color="#fff" />
+        </View>
+        <Text style={[styles.skinHealthTitle, compact && styles.skinHealthTitleCompact]}>
+          SKIN HEALTH METRICS
+        </Text>
+      </View>
       <RadarChart metrics={metrics} compact={compact} />
     </View>
   );
 }
 
 function ParamRing({ value, color, size = 72 }: { value: number; color: string; size?: number }) {
-  const sw = 6;
+  const sw = size <= 48 ? 4 : 6;
   const r = (size - sw) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - value / 100);
+  const valueFontSize = size <= 44 ? 12 : size <= 48 ? 13 : 18;
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <Svg width={size} height={size}>
@@ -1341,36 +1297,103 @@ function ParamRing({ value, color, size = 72 }: { value: number; color: string; 
           strokeLinecap="round" rotation="-90" origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text style={{ position: "absolute", fontSize: 18, fontWeight: "800", color: "#18181b" }}>{value}</Text>
+      <Text
+        style={{
+          position: "absolute",
+          fontSize: valueFontSize,
+          fontWeight: "800",
+          color: "#18181b",
+        }}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
 
-function SkinParamMetricsCard({ analysis, onViewAll }: { analysis: unknown; onViewAll: () => void }) {
+function SkinParamMetricsCard({
+  analysis,
+  onViewAll,
+  compact = false,
+  fillHeight = false,
+  style,
+}: {
+  analysis: unknown;
+  onViewAll: () => void;
+  compact?: boolean;
+  fillHeight?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
   const topMetrics = useMemo(
-    () => extractSkinParamMetrics(analysis).slice(0, 4),
+    () => extractSkinParamMetrics(analysis).slice(0, 3),
     [analysis]
   );
+  const ringSize = compact ? 44 : 52;
 
   return (
-    <View>
-      <Text style={styles.skinHealthTitle}>SKIN PARAMETER METRICS</Text>
-      <View style={styles.paramMetricsGrid}>
-        {topMetrics.map((m) => (
-          <View key={m.label} style={styles.paramMetricCell}>
-            <ParamRing value={m.value} color={m.color} size={52} />
-            <Text style={styles.paramMetricLabel}>{m.label}</Text>
-            <Text style={[styles.paramMetricStatus, { color: m.color }]}>{m.status}</Text>
-            {m.detail ? (
-              <Text style={styles.paramMetricDetail} numberOfLines={2}>
-                {m.detail}
-              </Text>
-            ) : null}
-          </View>
-        ))}
+    <View
+      style={[
+        compact ? styles.routineMergedCard : styles.skinParamsCard,
+        compact && styles.skinParamsCardCompact,
+        compact && styles.skinParamsCardFlush,
+        fillHeight && styles.skinParamsCardFill,
+        style,
+      ]}
+    >
+      <View style={[styles.routineMergedHeader, compact && styles.skinParamsHeaderCompact]}>
+        <Text style={styles.dashboardSectionTitle}>SKIN PARAMETER</Text>
       </View>
-      <Pressable style={styles.viewAllParamsBtn} onPress={onViewAll}>
-        <Text style={styles.viewAllParamsText}>View all Parameters</Text>
+      {compact ? (
+        <View
+          style={[
+            styles.paramMetricsListColumn,
+            fillHeight && styles.paramMetricsListColumnFill,
+          ]}
+        >
+          {topMetrics.map((m) => (
+            <View
+              key={m.label}
+              style={[
+                styles.paramMetricListCell,
+                fillHeight && styles.paramMetricListCellFill,
+              ]}
+            >
+              <ParamRing value={m.value} color={m.color} size={ringSize} />
+              <Text style={styles.paramMetricListLabel} numberOfLines={2}>
+                {m.label}
+              </Text>
+              <Text style={[styles.paramMetricListStatus, { color: m.color }]}>
+                {m.status}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.paramMetricsGrid}>
+          {[0, 2].map((rowStart) => (
+            <View key={rowStart} style={styles.paramMetricsRow}>
+              {topMetrics.slice(rowStart, rowStart + 2).map((m) => (
+                <View key={m.label} style={styles.paramMetricCell}>
+                  <ParamRing value={m.value} color={m.color} size={ringSize} />
+                  <Text style={styles.paramMetricLabel} numberOfLines={2}>
+                    {m.label}
+                  </Text>
+                  <Text style={[styles.paramMetricStatus, { color: m.color }]}>
+                    {m.status}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      )}
+      <Pressable
+        style={[styles.viewAllParamsBtn, compact && styles.viewAllParamsBtnCompact]}
+        onPress={onViewAll}
+      >
+        <Text style={[styles.viewAllParamsText, compact && styles.viewAllParamsTextCompact]}>
+          View all Parameters
+        </Text>
       </Pressable>
     </View>
   );
@@ -1618,25 +1641,37 @@ function groupFeedbackEntries(entries: FeedbackEntry[]): DoctorFeedbackGroup[] {
   return order.map((k) => map.get(k)!);
 }
 
+function filterFeedbackEntriesForSection(
+  entries: FeedbackEntry[],
+  section: "feedback" | "voice"
+): FeedbackEntry[] {
+  if (section === "feedback") {
+    return entries.filter((e) => Boolean(e.feedbackText?.trim()));
+  }
+  return entries.filter((e) => Boolean(e.audioDataUri));
+}
+
 function DoctorFeedbackSection({
+  section,
   feedbackEntries,
   archivedEntries,
   legacyFeedback,
   legacyVoiceNotes,
   legacyArchivedVoiceNotes,
-  voiceNoteIsNew,
+  voiceNoteIsNew = false,
   onboardingComplete,
   token,
   onPatchVoiceNote,
   voiceBusyId,
   onRefresh,
 }: {
+  section: "feedback" | "voice";
   feedbackEntries: FeedbackEntry[];
   archivedEntries: FeedbackEntry[];
   legacyFeedback?: string;
   legacyVoiceNotes: Array<{ id: string; audioDataUri: string; createdAt: string; listened: boolean }>;
   legacyArchivedVoiceNotes: Array<{ id: string; audioDataUri: string; createdAt: string; listened: boolean }>;
-  voiceNoteIsNew: boolean;
+  voiceNoteIsNew?: boolean;
   onboardingComplete?: boolean;
   token: string | null;
   onPatchVoiceNote: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<boolean>;
@@ -1689,6 +1724,11 @@ function DoctorFeedbackSection({
     return combined;
   }, [feedbackEntries, legacyFeedback, legacyVoiceNotes]);
 
+  const sectionEntries = useMemo(
+    () => filterFeedbackEntriesForSection(entries, section),
+    [entries, section]
+  );
+
   const archived: FeedbackEntry[] = useMemo(() => {
     if (archivedEntries.length > 0) return archivedEntries;
     return legacyArchivedVoiceNotes.map((vn) => ({
@@ -1703,16 +1743,43 @@ function DoctorFeedbackSection({
     }));
   }, [archivedEntries, legacyArchivedVoiceNotes]);
 
-  const entryGroups = useMemo(() => groupFeedbackEntries(entries), [entries]);
-  const archivedGroups = useMemo(() => groupFeedbackEntries(archived), [archived]);
+  const sectionArchived = useMemo(
+    () => filterFeedbackEntriesForSection(archived, section),
+    [archived, section]
+  );
 
-  const hasEntries = entries.length > 0;
+  const entryGroups = useMemo(
+    () => groupFeedbackEntries(sectionEntries),
+    [sectionEntries]
+  );
+  const archivedGroups = useMemo(
+    () => groupFeedbackEntries(sectionArchived),
+    [sectionArchived]
+  );
+
+  const hasEntries = sectionEntries.length > 0;
+  const headerTitle = section === "feedback" ? "DOCTOR FEEDBACK" : "VOICE NOTES";
+  const emptyPlaceholder =
+    section === "feedback"
+      ? onboardingComplete === false
+        ? "Your doctor will send feedback after reviewing your baseline."
+        : "No feedback yet. When your doctor sends notes, they will appear here."
+      : "No voice notes yet. When your doctor sends audio notes, they will appear here.";
 
   return (
-    <View style={[fbStyles.container, { marginBottom: 32 }]}>
-      <View style={fbStyles.headerRow}>
-        <Text style={fbStyles.headerTitle}>DOCTOR FEEDBACK</Text>
-        {voiceNoteIsNew ? (
+    <View
+      style={[
+        fbStyles.container,
+        !hasEntries && fbStyles.containerEmpty,
+        styles.dashboardFullWidth,
+        { marginBottom: hasEntries ? 16 : 8 },
+      ]}
+    >
+      <View style={[fbStyles.headerRow, !hasEntries && fbStyles.headerRowEmpty]}>
+        <Text style={[fbStyles.headerTitle, !hasEntries && fbStyles.headerTitleCompact]}>
+          {headerTitle}
+        </Text>
+        {section === "voice" && voiceNoteIsNew ? (
           <View style={fbStyles.newBadge}>
             <Text style={fbStyles.newBadgeText}>New</Text>
           </View>
@@ -1724,6 +1791,7 @@ function DoctorFeedbackSection({
           {entryGroups.map((group) => (
             <DoctorFeedbackGroupBlock
               key={group.key}
+              section={section}
               group={group}
               token={token}
               onPatch={onPatchVoiceNote}
@@ -1731,22 +1799,16 @@ function DoctorFeedbackSection({
             />
           ))}
         </>
-      ) : onboardingComplete === false ? (
-        <Text style={fbStyles.placeholder}>
-          Your doctor will send feedback after reviewing your baseline.
-        </Text>
       ) : (
-        <Text style={fbStyles.placeholder}>
-          No feedback yet. When your doctor sends notes, they will appear here.
-        </Text>
+        <Text style={fbStyles.placeholder}>{emptyPlaceholder}</Text>
       )}
 
-      {archived.length > 0 ? (
+      {sectionArchived.length > 0 ? (
         <View style={{ marginTop: 14 }}>
           <Pressable onPress={() => setShowArchived((v) => !v)} style={fbStyles.archiveToggle}>
             <Ionicons name={showArchived ? "chevron-up" : "chevron-down"} size={16} color={NAVY} />
             <Text style={fbStyles.archiveToggleText}>
-              {showArchived ? "Hide" : "Show"} past notes ({archived.length})
+              {showArchived ? "Hide" : "Show"} past notes ({sectionArchived.length})
             </Text>
           </Pressable>
           {showArchived
@@ -1759,6 +1821,7 @@ function DoctorFeedbackSection({
                     <FeedbackEntryCard
                       key={entry.id}
                       entry={entry}
+                      section={section}
                       onPatch={onPatchVoiceNote}
                       busyId={voiceBusyId}
                       archived
@@ -1776,11 +1839,13 @@ function DoctorFeedbackSection({
 }
 
 function DoctorFeedbackGroupBlock({
+  section,
   group,
   token,
   onPatch,
   voiceBusyId,
 }: {
+  section: "feedback" | "voice";
   group: DoctorFeedbackGroup;
   token: string | null;
   onPatch: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<boolean>;
@@ -1846,47 +1911,52 @@ function DoctorFeedbackGroupBlock({
         <FeedbackEntryCard
           key={entry.id}
           entry={entry}
+          section={section}
           onPatch={onPatch}
           busyId={voiceBusyId}
           showDoctorHeader={!showGroupHeader}
         />
       ))}
-      <View style={fbStyles.replyRow}>
-        <TextInput
-          style={fbStyles.replyInput}
-          placeholder={
-            replyDoctorId ? `Reply to ${replyDoctorName}…` : "Write a reply..."
-          }
-          value={replyText}
-          onChangeText={(t) => {
-            setReplyText(t);
-            if (replyError) setReplyError(null);
-          }}
-          placeholderTextColor="#94a3b8"
-          editable={Boolean(replyDoctorId) && !replyBusy}
-        />
-        <Pressable
-          style={[
-            fbStyles.sendBtn,
-            { opacity: replyBusy || !replyText.trim() || !replyDoctorId ? 0.4 : 1 },
-          ]}
-          disabled={replyBusy || !replyText.trim() || !replyDoctorId}
-          onPress={() => void sendReply()}
-        >
-          <Ionicons name="send" size={18} color="#fff" />
-        </Pressable>
-      </View>
-      {replyError ? (
-        <Text style={fbStyles.replyError}>{replyError}</Text>
-      ) : replyDoctorId ? (
-        <Text style={fbStyles.replyHint}>
-          Sends to {replyDoctorName} only. We&apos;ll note which feedback you&apos;re asking about first.
-        </Text>
-      ) : (
-        <Text style={fbStyles.replyError}>
-          Could not find which doctor to reply to. Open Chat and message your doctor there.
-        </Text>
-      )}
+      {section === "feedback" ? (
+        <>
+          <View style={fbStyles.replyRow}>
+            <TextInput
+              style={fbStyles.replyInput}
+              placeholder={
+                replyDoctorId ? `Reply to ${replyDoctorName}…` : "Write a reply..."
+              }
+              value={replyText}
+              onChangeText={(t) => {
+                setReplyText(t);
+                if (replyError) setReplyError(null);
+              }}
+              placeholderTextColor="#94a3b8"
+              editable={Boolean(replyDoctorId) && !replyBusy}
+            />
+            <Pressable
+              style={[
+                fbStyles.sendBtn,
+                { opacity: replyBusy || !replyText.trim() || !replyDoctorId ? 0.4 : 1 },
+              ]}
+              disabled={replyBusy || !replyText.trim() || !replyDoctorId}
+              onPress={() => void sendReply()}
+            >
+              <Ionicons name="send" size={18} color="#fff" />
+            </Pressable>
+          </View>
+          {replyError ? (
+            <Text style={fbStyles.replyError}>{replyError}</Text>
+          ) : replyDoctorId ? (
+            <Text style={fbStyles.replyHint}>
+              Sends to {replyDoctorName} only. We&apos;ll note which feedback you&apos;re asking about first.
+            </Text>
+          ) : (
+            <Text style={fbStyles.replyError}>
+              Could not find which doctor to reply to. Open Chat and message your doctor there.
+            </Text>
+          )}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -1898,12 +1968,14 @@ function feedbackAckLabel(entry: FeedbackEntry, acknowledged: boolean): string {
 
 function FeedbackEntryCard({
   entry,
+  section,
   onPatch,
   busyId,
   archived,
   showDoctorHeader = true,
 }: {
   entry: FeedbackEntry;
+  section: "feedback" | "voice";
   onPatch: (id: string, body: { listened?: boolean; archived?: boolean }) => Promise<boolean>;
   busyId: string | null;
   archived?: boolean;
@@ -1957,11 +2029,11 @@ function FeedbackEntryCard({
         </Text>
       )}
 
-      {entry.feedbackText ? (
+      {section === "feedback" && entry.feedbackText ? (
         <Text style={fbStyles.feedbackText}>{entry.feedbackText}</Text>
       ) : null}
 
-      {entry.audioDataUri ? (
+      {section === "voice" && entry.audioDataUri ? (
         <View style={fbStyles.audioRow}>
           <DoctorVoiceNotePlayer uri={entry.audioDataUri} />
         </View>
@@ -2015,17 +2087,30 @@ const fbStyles = StyleSheet.create({
     borderColor: GLASS_BORDER,
     ...dashboardCardShadow,
   },
+  containerEmpty: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 14,
   },
+  headerRowEmpty: {
+    marginBottom: 4,
+  },
   headerTitle: {
     fontSize: 16,
     fontWeight: "900",
     color: NAVY,
     letterSpacing: 1,
+  },
+  headerTitleCompact: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.4,
   },
   newBadge: {
     backgroundColor: "#FEF3C7",
@@ -2035,11 +2120,10 @@ const fbStyles = StyleSheet.create({
   },
   newBadgeText: { fontSize: 11, fontWeight: "800", color: "#92400e" },
   placeholder: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#94a3b8",
-    textAlign: "center",
-    paddingVertical: 24,
-    lineHeight: 20,
+    textAlign: "left",
+    lineHeight: 17,
   },
   groupBlock: {
     marginBottom: 18,
@@ -2221,6 +2305,7 @@ const fbStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: DASHBOARD_BG },
   scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContentWide: { maxWidth: 1280, alignSelf: "center", width: "100%" },
   center: {
     flex: 1,
     justifyContent: "center",
@@ -2235,27 +2320,54 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
+  greetingActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sosBtn: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: DASHBOARD_URGENT,
+    borderRadius: 15,
+    opacity: 0.92,
+  },
+  sosBtnDisabled: { opacity: 0.5 },
   greetingText: { fontSize: 28, fontWeight: "800", color: "#18181b" },
   greetingSub: { fontSize: 15, color: "#6B7280", marginTop: 4 },
 
-  dateNavRow: {
+  dateCalendarRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 6,
     marginTop: 8,
-    paddingHorizontal: 2,
+    marginBottom: 6,
   },
   dateNavArrow: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER,
-    alignItems: "center", justifyContent: "center",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: GLASS,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
-  dateNavMonth: { fontSize: 12, fontWeight: "600", color: "#6B7280" },
-  dateStrip: { marginTop: 4, marginBottom: 8 },
-  dateStripContent: { gap: 6 },
+  dateChipsTrack: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    minWidth: 0,
+  },
   dateChip: {
-    width: 46,
+    flex: 1,
+    minWidth: 0,
     paddingVertical: 6,
+    paddingHorizontal: 2,
     borderRadius: 12,
     backgroundColor: GLASS,
     alignItems: "center",
@@ -2264,37 +2376,56 @@ const styles = StyleSheet.create({
   },
   dateChipToday: { backgroundColor: NAVY, borderColor: NAVY },
   dateChipIsToday: { borderColor: "rgba(76,175,80,0.5)", borderWidth: 1.5 },
-  dateChipLabel: { fontSize: 10, fontWeight: "600", color: "#6B7280", lineHeight: 12 },
-  dateChipLabelToday: { color: "#fff" },
-  dateChipDay: { fontSize: 15, fontWeight: "800", color: "#1A1A2E", marginTop: 2, lineHeight: 16 },
+  dateChipLabel: { fontSize: 9, fontWeight: "600", color: "#6B7280", lineHeight: 11 },
+  dateChipLabelToday: { color: "rgba(255,255,255,0.9)" },
+  dateChipDay: { fontSize: 13, fontWeight: "800", color: "#1A1A2E", marginTop: 2, lineHeight: 15 },
   dateChipDayToday: { color: "#fff" },
   dateChipDisabled: { opacity: 0.35 },
-  selectedDateLabel: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: -4,
-    marginBottom: 8,
-    textAlign: "center",
-    fontWeight: "600",
-  },
 
   topRow: { gap: 16, marginBottom: 16 },
   topRowWide: { flexDirection: "row", alignItems: "stretch" },
   topRowHalf: { flex: 1, minWidth: 0, marginBottom: 0 },
   dashboardFullWidth: { width: "100%", alignSelf: "stretch" },
-  dashboardGrid: { gap: 16, marginBottom: 16 },
-  dashboardRow: { gap: 16 },
-  dashboardRowWide: { flexDirection: "row", alignItems: "flex-start" },
-  dashboardCellHalf: { flex: 1, minWidth: 0, marginBottom: 0 },
-  dashboardLeftStack: { gap: 16 },
-  dashboardRoutineWide: { flex: 3, minWidth: 0, marginBottom: 0 },
-  dashboardParamsNarrow: { flex: 2, minWidth: 0, marginBottom: 0 },
-  dashboardCellSelfStart: { alignSelf: "flex-start" },
-  dashboardJournalStreakRow: { gap: 16 },
-  dashboardJournalStreakRowWide: { flexDirection: "row", alignItems: "flex-start" },
+  dashboardGrid: { gap: 10, marginBottom: 16 },
+  dashboardRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+  },
+  dashboardRoutineCol: { flex: 3, minWidth: 0, gap: 10 },
+  dashboardSideCol: { flex: 2, minWidth: 0 },
+  dashboardPairedCard: {
+    flex: 1,
+    minHeight: 0,
+  },
+  dashboardJournalStreakRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
   dashboardJournalStreakHalf: { flex: 1, minWidth: 0 },
-  dashboardJournalWide: { flex: 1.65, minWidth: 0 },
-  dashboardStreakNarrow: { flex: 1, minWidth: 0, marginBottom: 0 },
+  dashboardSectionHeaderLead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
+  },
+  dashboardSectionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dashboardSectionTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    color: NAVY,
+    flexShrink: 1,
+  },
 
   sectionCard: {
     backgroundColor: GLASS,
@@ -2339,25 +2470,34 @@ const styles = StyleSheet.create({
     backgroundColor: GLASS,
     borderRadius: 20,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 0,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
     ...dashboardCardShadow,
+  },
+  routineMergedCardCompact: {
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    paddingBottom: 16,
+    borderRadius: 16,
+    minHeight: 200,
+    justifyContent: "space-between",
   },
   routineMergedHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 10,
+    gap: 6,
   },
   routineMergedTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
-  routineMergedMeta: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
+  routineMergedMeta: { fontSize: 10, fontWeight: "600", color: "#6B7280" },
   routineProgressTrack: {
-    height: 6,
+    height: 4,
     borderRadius: 999,
     backgroundColor: DASHBOARD_BG,
     overflow: "hidden",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   routineProgressFill: {
     height: "100%",
@@ -2372,10 +2512,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
   },
+  routineMergedRowCompact: {
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    flex: 1,
+    justifyContent: "center",
+  },
   routineMergedRowPressed: { backgroundColor: "rgba(255,255,255,0.35)" },
   routineMergedCopy: { flex: 1, minWidth: 0 },
   routineMergedRowTitle: { fontSize: 16, fontWeight: "800", color: "#18181b" },
+  routineMergedRowTitleCompact: { fontSize: 13, fontWeight: "800", color: "#18181b" },
   routineMergedRowSub: { fontSize: 13, fontWeight: "500", color: "#6B7280", marginTop: 2 },
+  routineMergedRowSubCompact: { fontSize: 10, fontWeight: "500", color: "#6B7280", marginTop: 1 },
   routineMergedDivider: {
     height: 1,
     backgroundColor: GLASS_BORDER,
@@ -2384,10 +2533,11 @@ const styles = StyleSheet.create({
   },
   routineStepPillCompact: {
     backgroundColor: NAVY,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
   },
+  routineStepTextCompact: { color: "#fff", fontSize: 10, fontWeight: "700" },
   routineIconCircle: {
     width: 44,
     height: 44,
@@ -2396,10 +2546,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  routineIconCircleCompact: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
   routineArrow: {
     width: 28,
     height: 28,
     borderRadius: 8,
+    backgroundColor: "#334155",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routineArrowCompact: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     backgroundColor: "#334155",
     alignItems: "center",
     justifyContent: "center",
@@ -2555,45 +2718,143 @@ const styles = StyleSheet.create({
   skinHealthCard: {
     backgroundColor: GLASS,
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     marginBottom: 16,
-    alignItems: "center",
     borderWidth: 1,
     borderColor: GLASS_BORDER,
     ...dashboardCardShadow,
   },
   skinHealthCardCompact: {
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingTop: 12,
     paddingBottom: 8,
-    justifyContent: "flex-start",
+    overflow: "visible",
   },
-  skinHealthTitle: { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, color: "#18181b", marginBottom: 4 },
-  skinHealthTitleCompact: {
-    fontSize: 10,
-    letterSpacing: 0.3,
-    marginBottom: 0,
-    textAlign: "center",
-  },
-
-  paramMetricsGrid: {
+  skinHealthHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
     gap: 10,
-    marginTop: 12,
-    justifyContent: "space-between",
+    marginBottom: 4,
   },
-  paramMetricCell: {
-    width: "48%",
-    aspectRatio: 4 / 5,
-    maxHeight: 148,
-    backgroundColor: "#E8EFE6",
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+  skinHealthIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 0,
-    gap: 4,
+  },
+  skinHealthIconWrapCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+  },
+  skinHealthTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    color: NAVY,
+  },
+  skinHealthTitleCompact: {
+    fontSize: 12,
+    letterSpacing: 0.3,
+  },
+
+  skinParamsCard: {
+    backgroundColor: GLASS,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    ...dashboardCardShadow,
+  },
+  skinParamsCardFlush: {
+    marginTop: 0,
+  },
+  skinParamsCardCompact: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderRadius: 16,
+  },
+  skinParamsCardFill: {
+    justifyContent: "space-between",
+  },
+  skinParamsHeaderCompact: {
+    marginBottom: 6,
+    minHeight: 0,
+    justifyContent: "center",
+  },
+  skinParamsTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    color: NAVY,
+    marginBottom: 8,
+  },
+  paramMetricsGrid: {
+    gap: 8,
+  },
+  paramMetricsListColumn: {
+    gap: 6,
+  },
+  paramMetricsListColumnFill: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  paramMetricListCell: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5F7F5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E8EBE8",
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    gap: 3,
+  },
+  paramMetricListLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#18181b",
+    lineHeight: 13,
+    textAlign: "center",
+  },
+  paramMetricListStatus: {
+    fontSize: 10,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  paramMetricListCellFill: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  paramMetricsRow: {
+    flexDirection: "row",
+    gap: 5,
+  },
+  paramMetricCell: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 118,
+    backgroundColor: "#F5F7F5",
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E8EBE8",
+    gap: 3,
+  },
+  paramMetricCellCompact: {
+    minHeight: 96,
+    paddingVertical: 5,
+    paddingHorizontal: 2,
+    borderRadius: 10,
+    gap: 2,
   },
   paramMetricLabel: {
     fontSize: 12,
@@ -2601,7 +2862,12 @@ const styles = StyleSheet.create({
     color: "#18181b",
     textAlign: "center",
   },
+  paramMetricLabelCompact: {
+    fontSize: 8,
+    lineHeight: 10,
+  },
   paramMetricStatus: { fontSize: 13, fontWeight: "700" },
+  paramMetricStatusCompact: { fontSize: 10 },
   paramMetricDetail: {
     marginTop: 4,
     fontSize: 9,
@@ -2613,12 +2879,18 @@ const styles = StyleSheet.create({
 
   viewAllParamsBtn: {
     backgroundColor: NAVY,
-    borderRadius: 14,
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 10,
+  },
+  viewAllParamsBtnCompact: {
+    paddingVertical: 9,
+    marginTop: 8,
+    borderRadius: 10,
   },
   viewAllParamsText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  viewAllParamsTextCompact: { fontSize: 11 },
 
 
   journalMergedCard: {
@@ -2831,7 +3103,7 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: DASHBOARD_BG },
   chipText: { color: "#52525b", fontSize: 13 },
   chipTextOn: { color: NAVY, fontWeight: "600", fontSize: 13 },
-  skinParamsCard: { marginTop: 16 },
+  skinParamsLegacySection: { marginTop: 16 },
   skinParamsHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -2927,41 +3199,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#78350f",
     lineHeight: 20,
-  },
-  focusLocked: {
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "rgba(44, 62, 107, 0.22)",
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
-  },
-  focusLockedTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#18181b",
-    textAlign: "center",
-  },
-  focusLockedBody: {
-    marginTop: 6,
-    fontSize: 13,
-    color: "#64748b",
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  focusLockedCtaWrap: {
-    marginTop: 12,
-    alignSelf: "center",
-    backgroundColor: NAVY,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-  },
-  focusLockedCta: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#fff",
-    textAlign: "center",
   },
 });
