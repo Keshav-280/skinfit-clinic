@@ -1,8 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CapturePhotoGuideModal } from "@/components/capture/CapturePhotoGuideModal";
 import { bottomDockInset } from "@/lib/bottomDockInset";
 import { SKINFIT_GRADIENT, SKINFIT_THEME } from "@/lib/skinfitTheme";
 
@@ -45,6 +47,7 @@ export function CapturePrepScreen({
 }: Props) {
   const insets = useSafeAreaInsets();
   const dockInset = reserveBottomDock ? bottomDockInset() : 0;
+  const [photoGuideOpen, setPhotoGuideOpen] = useState(false);
 
   const openPrivacy = () => {
     if (!WEB_PORTAL_URL) return;
@@ -62,11 +65,24 @@ export function CapturePrepScreen({
           },
         ]}
       >
-        {onBack ? (
-          <Pressable onPress={onBack} style={styles.backBtn} hitSlop={12}>
-            <Ionicons name="chevron-back" size={26} color={NAVY} />
+        <View style={styles.topBar}>
+          {onBack ? (
+            <Pressable onPress={onBack} style={styles.topBarBtn} hitSlop={12}>
+              <Ionicons name="chevron-back" size={26} color={NAVY} />
+            </Pressable>
+          ) : (
+            <View style={styles.topBarBtn} />
+          )}
+          <Pressable
+            onPress={() => setPhotoGuideOpen(true)}
+            style={styles.topBarBtn}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Photo capture guide"
+          >
+            <Ionicons name="help-circle-outline" size={26} color={NAVY} />
           </Pressable>
-        ) : null}
+        </View>
 
         <View style={styles.content}>
           <View style={styles.hero}>
@@ -101,12 +117,14 @@ export function CapturePrepScreen({
               onPress={openPrivacy}
               disabled={!WEB_PORTAL_URL}
               accessibilityRole="link"
-              accessibilityLabel="Read our Privacy Policy"
+              accessibilityLabel="Your photos are secure. Read our Privacy Policy."
             >
               <Ionicons name="lock-closed-outline" size={14} color={MUTED} style={styles.lockIcon} />
               <Text style={styles.privacyText}>
                 Your photos are secure and private.{" "}
-                <Text style={styles.privacyLink}>Read our Privacy Policy.</Text>
+                {WEB_PORTAL_URL ? (
+                  <Text style={styles.privacyLink}>Read our Privacy Policy.</Text>
+                ) : null}
               </Text>
             </Pressable>
           ) : null}
@@ -126,6 +144,11 @@ export function CapturePrepScreen({
           ) : null}
         </View>
       </View>
+
+      <CapturePhotoGuideModal
+        visible={photoGuideOpen}
+        onClose={() => setPhotoGuideOpen(false)}
+      />
     </LinearGradient>
   );
 }
@@ -137,9 +160,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     justifyContent: "space-between",
   },
-  backBtn: {
-    width: 40,
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 4,
+  },
+  topBarBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   content: {
     flex: 1,
@@ -148,9 +179,9 @@ const styles = StyleSheet.create({
   hero: { gap: 10 },
   title: {
     fontSize: 36,
-    fontWeight: "800",
+    fontWeight: "600",
     color: NAVY,
-    letterSpacing: -1,
+    letterSpacing: -0.8,
     lineHeight: 42,
   },
   subtitle: {
@@ -161,8 +192,8 @@ const styles = StyleSheet.create({
     maxWidth: 310,
   },
   tips: {
-    marginTop: 24,
-    gap: 16,
+    marginTop: 28,
+    gap: 24,
   },
   tipRow: {
     flexDirection: "row",

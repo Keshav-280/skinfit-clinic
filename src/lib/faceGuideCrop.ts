@@ -8,11 +8,27 @@ export const FRONT_GUIDE_ELLIPSE = {
   ry: 52,
 } as const;
 
+/** Mobile dashed guide (30–60% fill band) — used for crop + overlay on native. */
+export const MOBILE_FRONT_GUIDE_ELLIPSE = {
+  cx: 50,
+  cy: 50,
+  rx: 32,
+  ry: 39,
+} as const;
+
+export type FaceGuideEllipse = {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+};
+
 const VIEWBOX_SIZE = 100;
 /** Square overlay height as a fraction of the 3:4 viewfinder (`meet` centering). */
 const OVERLAY_HEIGHT_FRACTION = 3 / 4;
 const OVERLAY_TOP_PAD = (1 - OVERLAY_HEIGHT_FRACTION) / 2;
 
+/** First (front) and last (smiling) — tight 3:4 crop around the face guide. */
 const FACE_GUIDE_CROP_STEPS = new Set<FaceScanCaptureId>(["centre", "smiling"]);
 
 export function shouldCropToFaceGuide(stepId: FaceScanCaptureId): boolean {
@@ -20,13 +36,15 @@ export function shouldCropToFaceGuide(stepId: FaceScanCaptureId): boolean {
 }
 
 /** Smallest 3:4 (w:h) rectangle that contains the front guide ellipse. */
-export function getFrontGuideCropRectViewBox(): {
+export function getFrontGuideCropRectViewBox(
+  ellipse: FaceGuideEllipse = FRONT_GUIDE_ELLIPSE
+): {
   x: number;
   y: number;
   w: number;
   h: number;
 } {
-  const { cx, cy, rx, ry } = FRONT_GUIDE_ELLIPSE;
+  const { cx, cy, rx, ry } = ellipse;
   const ellipseW = rx * 2;
   const ellipseH = ry * 2;
   const aspect = 3 / 4;
@@ -88,13 +106,105 @@ export function viewfinderNormRectToVideoSource(
 }
 
 function getZoomWindow(videoW: number, videoH: number, zoom: number) {
-  const sw = videoW / zoom;
-  const sh = videoH / zoom;
+  const z = zoom > 0 ? zoom : 1;
+  const sw = videoW / z;
+  const sh = videoH / z;
   return {
     sx: (videoW - sw) / 2,
     sy: (videoH - sh) / 2,
     sw,
     sh,
+  };
+}
+
+function enforcePortrait34Crop(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  boundsW: number,
+  boundsH: number,
+  mirror: boolean
+): { x: number; y: number; w: number; h: number } | null {
+  x = Math.max(0, x);
+  y = Math.max(0, y);
+  w = Math.min(w, boundsW - x);
+  h = Math.min(h, boundsH - y);
+  if (w <= 1 || h <= 1) return null;
+
+  const targetH = (w * 4) / 3;
+  if (Math.abs(targetH - h) > 0.5) {
+    if (targetH <= boundsH - y) {
+      h = targetH;
+    } else {
+      w = (h * 3) / 4;
+      if (mirror) {
+        x = boundsW - x - w;
+      } else {
+        x = Math.min(x, boundsW - w);
+      }
+    }
+  }
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    w: Math.max(1, Math.round(w)),
+    h: Math.max(1, Math.round(h)),
+  };
+}
+
+/** Crop rect in full source-image pixels (mobile still / sensor frame). */
+export function computeFaceGuideCropInSourcePixels(params: {
+  sourceW: number;
+  sourceH: number;
+  viewfinderW: number;
+  viewfinderH: number;
+  zoom?: number;
+  /** Pass true only when the source is still unmirrored (web canvas path). */
+  mirror?: boolean;
+  ellipse?: FaceGuideEllipse;
+}): { x: number; y: number; w: number; h: number } | null {
+  const {
+    sourceW,
+    sourceH,
+    viewfinderW,
+    viewfinderH,
+    zoom = 1,
+    mirror = false,
+    ellipse = FRONT_GUIDE_ELLIPSE,
+  } = params;
+  if (!sourceW || !sourceH || !viewfinderW || !viewfinderH) return null;
+
+  const viewBoxRect = getFrontGuideCropRectViewBox(ellipse);
+  const vfNorm = viewBoxRectToViewfinderNorm(viewBoxRect);
+  const videoRect = viewfinderNormRectToVideoSource(
+    vfNorm,
+    sourceW,
+    sourceH,
+    viewfinderW,
+    viewfinderH
+  );
+
+  const { sx, sy, sw, sh } = getZoomWindow(sourceW, sourceH, zoom);
+
+  let x = videoRect.x - sx;
+  let y = videoRect.y - sy;
+  let w = videoRect.w;
+  let h = videoRect.h;
+
+  if (mirror) {
+    x = sw - x - w;
+  }
+
+  const inWindow = enforcePortrait34Crop(x, y, w, h, sw, sh, mirror);
+  if (!inWindow) return null;
+
+  return {
+    x: inWindow.x + sx,
+    y: inWindow.y + sy,
+    w: inWindow.w,
+    h: inWindow.h,
   };
 }
 
@@ -107,70 +217,39 @@ export function computeFaceGuideCropOnCanvas(params: {
   viewfinderH: number;
   zoom: number;
   mirror: boolean;
+  ellipse?: FaceGuideEllipse;
 }): { x: number; y: number; w: number; h: number } | null {
-  const { videoW, videoH, canvasW, canvasH, viewfinderW, viewfinderH, zoom, mirror } =
+  const { videoW, videoH, canvasW, canvasH, viewfinderW, viewfinderH, zoom, mirror, ellipse } =
     params;
-  if (
-    !videoW ||
-    !videoH ||
-    !canvasW ||
-    !canvasH ||
-    !viewfinderW ||
-    !viewfinderH ||
-    zoom <= 0
-  ) {
+  if (!videoW || !videoH || !canvasW || !canvasH || !viewfinderW || !viewfinderH) {
     return null;
   }
 
-  const viewBoxRect = getFrontGuideCropRectViewBox();
-  const vfNorm = viewBoxRectToViewfinderNorm(viewBoxRect);
-  const videoRect = viewfinderNormRectToVideoSource(
-    vfNorm,
-    videoW,
-    videoH,
+  const sourceCrop = computeFaceGuideCropInSourcePixels({
+    sourceW: videoW,
+    sourceH: videoH,
     viewfinderW,
-    viewfinderH
-  );
+    viewfinderH,
+    zoom,
+    mirror: false,
+    ellipse,
+  });
+  if (!sourceCrop) return null;
 
   const { sx, sy, sw, sh } = getZoomWindow(videoW, videoH, zoom);
   const scaleX = canvasW / sw;
   const scaleY = canvasH / sh;
 
-  let x = (videoRect.x - sx) * scaleX;
-  let y = (videoRect.y - sy) * scaleY;
-  let w = videoRect.w * scaleX;
-  let h = videoRect.h * scaleY;
+  let x = (sourceCrop.x - sx) * scaleX;
+  let y = (sourceCrop.y - sy) * scaleY;
+  let w = sourceCrop.w * scaleX;
+  let h = sourceCrop.h * scaleY;
 
   if (mirror) {
     x = canvasW - x - w;
   }
 
-  x = Math.max(0, x);
-  y = Math.max(0, y);
-  w = Math.min(w, canvasW - x);
-  h = Math.min(h, canvasH - y);
-  if (w <= 1 || h <= 1) return null;
-
-  const targetH = (w * 4) / 3;
-  if (Math.abs(targetH - h) > 0.5) {
-    if (targetH <= canvasH - y) {
-      h = targetH;
-    } else {
-      w = (h * 3) / 4;
-      if (mirror) {
-        x = canvasW - x - w;
-      } else {
-        x = Math.min(x, canvasW - w);
-      }
-    }
-  }
-
-  return {
-    x: Math.round(x),
-    y: Math.round(y),
-    w: Math.max(1, Math.round(w)),
-    h: Math.max(1, Math.round(h)),
-  };
+  return enforcePortrait34Crop(x, y, w, h, canvasW, canvasH, mirror);
 }
 
 export function cropCanvasToFaceGuide(

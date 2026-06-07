@@ -29,7 +29,8 @@ import type {
   CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
 
-const TICK_MS = 850;
+/** Slower ticks reduce iOS preview hitch from concurrent takePictureAsync samples. */
+const TICK_MS = 1100;
 const EXPRESSION_TICK_MS = 500;
 
 type CameraRef = RefObject<CameraView | null>;
@@ -78,6 +79,7 @@ export function useMobileScanCaptureGuidance(
   const needsMp = needsMediapipeOnClient(captureCfg);
   const [landmarkDetectionEnabled, setLandmarkDetectionEnabled] = useState(false);
   const busyRef = useRef(false);
+  const mpMissStreakRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const previewStateRef = useRef<PreviewGuidanceState>({
     smoothedBox: null,
@@ -120,6 +122,7 @@ export function useMobileScanCaptureGuidance(
     setBboxKind("—");
     setLandmarkCount(0);
     setPreviewAspect("—");
+    mpMissStreakRef.current = 0;
     setModels(initialMobileModels(captureCfg, needsMp, landmarkDetectionEnabled));
   }, [stepId, needsMp, landmarkDetectionEnabled, captureCfg]);
 
@@ -155,19 +158,46 @@ export function useMobileScanCaptureGuidance(
         setBboxKind(meta.bboxKind);
         setLandmarkCount(meta.landmarkCount);
         setPreviewAspect(meta.previewAspect);
-        setModels((prev) => ({
+        setModels((prev) => {
+          let mediapipe = prev.mediapipe;
+          let mediapipeError = prev.mediapipeError;
+          if (!needsMp) {
+            mediapipe = "off";
+            mediapipeError = undefined;
+          } else if (!landmarkDetectionEnabled) {
+            mediapipe = "failed";
+            mediapipeError =
+              "FaceLandmarkDetection native module missing — rebuild dev client: cd mobile && npx expo run:ios --device (not Expo Go)";
+          } else if (!meta.landmarkPipelineActive) {
+            mediapipe = "off";
+            mediapipeError = undefined;
+          } else if ((meta.landmarkCount ?? 0) > 0) {
+            mpMissStreakRef.current = 0;
+            mediapipe = "ready";
+            mediapipeError = undefined;
+          } else if (
+            meta.bboxSource === "mp-fallback-server" ||
+            meta.bboxSource === "mp-fallback-skin"
+          ) {
+            mpMissStreakRef.current += 1;
+            mediapipe = "failed";
+            mediapipeError =
+              "No on-device landmarks — using fallback bbox (check model bundle / lighting)";
+          } else {
+            mpMissStreakRef.current += 1;
+            if (mpMissStreakRef.current >= 4) {
+              mediapipe = "failed";
+              mediapipeError =
+                "No landmarks — run: cd mobile && npm run mediapipe:verify-model && npx expo prebuild --clean";
+            } else {
+              mediapipe = "loading";
+              mediapipeError = undefined;
+            }
+          }
+          return {
           ...prev,
-          mediapipe: !needsMp
-            ? "off"
-            : !landmarkDetectionEnabled
-              ? "failed"
-            : meta.landmarkPipelineActive
-            ? state.faceLandmarks?.length
-              ? "ready"
-              : prev.mediapipe === "ready"
-                ? "ready"
-                : "loading"
-            : "off",
+          mediapipe,
+          mediapipeError,
           retinaface:
             prev.retinaface === "off"
               ? "off"
@@ -186,7 +216,8 @@ export function useMobileScanCaptureGuidance(
                     ? "ready"
                     : "idle"
                   : "off",
-        }));
+        };
+        });
       }
     } catch {
       /* preview sample failed — keep last guidance */

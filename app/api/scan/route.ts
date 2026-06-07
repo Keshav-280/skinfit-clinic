@@ -221,11 +221,9 @@ export async function POST(request: NextRequest) {
       File
     >;
 
-    const keys = ["centre", "left", "right", "eyes_closed", "smiling"] as const;
-
     for (let i = 0; i < multiRaw.length; i++) {
       const file = multiRaw[i];
-      const label = FACE_SCAN_CAPTURE_STEPS[i].id;
+      const stepId = FACE_SCAN_CAPTURE_STEPS[i].id;
       const rawBuf = Buffer.from(await file.arrayBuffer());
       const buf = await bufferToOrientedJpegBuffer(rawBuf);
       let previewDataUri: string | undefined;
@@ -235,14 +233,15 @@ export async function POST(request: NextRequest) {
         previewDataUri = undefined;
       }
       entries.push({
-        label,
+        label: stepId,
         dataUri: bufferToDataUri(buf, "image/jpeg"),
         ...(previewDataUri ? { previewDataUri } : {}),
       });
-      const k = keys[i];
-      filesForV2[k] = new File([new Uint8Array(buf)], file.name || `${k}.jpg`, {
-        type: "image/jpeg",
-      });
+      filesForV2[stepId] = new File(
+        [new Uint8Array(buf)],
+        file.name || `${stepId}.jpg`,
+        { type: "image/jpeg" }
+      );
     }
 
     const faceCaptureImages = entries;

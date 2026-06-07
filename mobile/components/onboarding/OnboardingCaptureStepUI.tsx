@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -11,6 +12,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CaptureExtraTipsModal } from "@/components/capture/CaptureExtraTipsModal";
+import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
@@ -20,25 +23,6 @@ const NAVY_DARK = SKINFIT_THEME.navyDark;
 const MUTED = "#6B7280";
 const ACCENT = "#E07088";
 const ACCENT_SOFT = "rgba(224, 112, 136, 0.22)";
-
-/** Portrait viewfinder sizes aligned with web capture shell (240×320 base, up to ~390×520). */
-const VIEWFINDER_BASE_W = 240;
-const VIEWFINDER_BASE_H = 320;
-const VIEWFINDER_MAX_W = 390;
-const VIEWFINDER_MAX_H = 520;
-
-function getViewfinderSize(screenWidth: number) {
-  const horizontalPadding = 44;
-  const availableW = screenWidth - horizontalPadding;
-  const scale = Math.min(
-    availableW / VIEWFINDER_BASE_W,
-    VIEWFINDER_MAX_W / VIEWFINDER_BASE_W,
-    VIEWFINDER_MAX_H / VIEWFINDER_BASE_H
-  );
-  const width = Math.round(Math.min(VIEWFINDER_BASE_W * scale, VIEWFINDER_MAX_W));
-  const height = Math.round(Math.min(width * (VIEWFINDER_BASE_H / VIEWFINDER_BASE_W), VIEWFINDER_MAX_H));
-  return { width, height };
-}
 
 type StepMeta = {
   id: FaceScanCaptureId;
@@ -71,6 +55,14 @@ type Props = {
   isLastStep: boolean;
   onPickFromLibrary?: () => void;
   cameraReady?: boolean;
+  /** Bug icon + capture debug overlay toggle (opt-in via env). */
+  showDevControls?: boolean;
+  /** Mute/unmute voice guide in the header (independent of debug). */
+  showVoiceToggle?: boolean;
+  /** Live framing/lighting hint below the viewfinder. */
+  showGuidanceBanner?: boolean;
+  /** Header ? button opens extra tips during live capture. */
+  showExtraTipsHelp?: boolean;
 };
 
 export function OnboardingCaptureStepUI({
@@ -97,10 +89,23 @@ export function OnboardingCaptureStepUI({
   isLastStep,
   onPickFromLibrary,
   cameraReady = true,
+  showDevControls = false,
+  showVoiceToggle = true,
+  showGuidanceBanner = true,
+  showExtraTipsHelp = true,
 }: Props) {
+  const [extraTipsOpen, setExtraTipsOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const progress = (stepIndex + 1) / totalSteps;
-  const viewfinderSize = getViewfinderSize(Dimensions.get("window").width);
+  const { width: screenW, height: screenH } = Dimensions.get("window");
+  const viewfinderSize = useMemo(
+    () =>
+      getCaptureViewfinderSize(insets.top + 8, Math.max(insets.bottom, 16), {
+        width: screenW,
+        height: screenH,
+      }),
+    [screenW, screenH, insets.top, insets.bottom]
+  );
 
   return (
     <View style={styles.root}>
@@ -121,7 +126,7 @@ export function OnboardingCaptureStepUI({
             <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
           </View>
           <View style={styles.topActions}>
-            {voiceAvailable ? (
+            {showVoiceToggle && voiceAvailable ? (
               <Pressable
                 onPress={onToggleVoice}
                 style={styles.iconBtn}
@@ -135,14 +140,27 @@ export function OnboardingCaptureStepUI({
                 />
               </Pressable>
             ) : null}
-            <Pressable
-              onPress={onToggleDebug}
-              style={[styles.iconBtn, showDebug && styles.iconBtnActive]}
-              hitSlop={8}
-              accessibilityLabel={showDebug ? "Hide debug panel" : "Show debug panel"}
-            >
-              <Ionicons name="bug-outline" size={19} color={showDebug ? "#FFFFFF" : NAVY} />
-            </Pressable>
+            {showDevControls ? (
+              <Pressable
+                onPress={onToggleDebug}
+                style={[styles.iconBtn, showDebug && styles.iconBtnActive]}
+                hitSlop={8}
+                accessibilityLabel={showDebug ? "Hide debug panel" : "Show debug panel"}
+              >
+                <Ionicons name="bug-outline" size={19} color={showDebug ? "#FFFFFF" : NAVY} />
+              </Pressable>
+            ) : null}
+            {showExtraTipsHelp && !reviewingCapture ? (
+              <Pressable
+                onPress={() => setExtraTipsOpen(true)}
+                style={styles.iconBtn}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Extra capture tips"
+              >
+                <Ionicons name="help-circle-outline" size={22} color={NAVY} />
+              </Pressable>
+            ) : null}
           </View>
         </View>
 
@@ -164,7 +182,7 @@ export function OnboardingCaptureStepUI({
           </View>
         </View>
 
-        {!reviewingCapture ? (
+        {!reviewingCapture && showGuidanceBanner ? (
           <View style={[styles.guidePill, guidanceReady && styles.guidePillReady]}>
             <Ionicons
               name={guidanceReady ? "checkmark-circle" : "information-circle-outline"}
@@ -254,6 +272,11 @@ export function OnboardingCaptureStepUI({
           </Pressable>
         ) : null}
       </View>
+
+      <CaptureExtraTipsModal
+        visible={extraTipsOpen}
+        onClose={() => setExtraTipsOpen(false)}
+      />
     </View>
   );
 }
@@ -262,21 +285,21 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
   screen: {
     flex: 1,
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 14,
   },
   backBtn: {
-    width: 32,
+    width: 28,
     alignItems: "flex-start",
   },
   progressTrack: {
     flex: 1,
-    height: 6,
+    height: 5,
     borderRadius: 999,
     backgroundColor: ACCENT_SOFT,
     overflow: "hidden",
@@ -290,7 +313,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    minWidth: 72,
+    minWidth: 40,
     justifyContent: "flex-end",
   },
   iconBtn: {
@@ -309,6 +332,7 @@ const styles = StyleSheet.create({
   },
   guidePill: {
     marginTop: 12,
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -331,45 +355,46 @@ const styles = StyleSheet.create({
     color: NAVY,
   },
   stepCount: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
     color: MUTED,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 30,
+    fontWeight: "700",
     color: NAVY,
-    letterSpacing: -0.6,
-    lineHeight: 32,
+    letterSpacing: -0.5,
+    lineHeight: 34,
   },
   subtitle: {
-    marginTop: 8,
+    marginTop: 6,
     fontSize: 15,
     lineHeight: 22,
     color: MUTED,
   },
   viewfinderWrap: {
-    marginTop: 18,
+    marginTop: 10,
     marginBottom: 4,
     alignItems: "center",
-    minHeight: VIEWFINDER_BASE_H,
+    justifyContent: "center",
+    width: "100%",
   },
   viewfinder: {
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: "hidden",
-    backgroundColor: "#111827",
+    backgroundColor: "#1F2937",
     position: "relative",
   },
   tipsCard: {
-    marginTop: 16,
-    gap: 8,
+    marginTop: 4,
+    gap: 6,
     flexShrink: 0,
-    minHeight: 72,
+    paddingBottom: 4,
   },
   tipsHeading: {
-    fontSize: 15,
-    fontWeight: "800",
+    fontSize: 16,
+    fontWeight: "700",
     color: ACCENT,
     marginBottom: 2,
   },
@@ -388,15 +413,16 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: 14,
-    lineHeight: 20,
-    color: MUTED,
+    lineHeight: 21,
+    color: "#4B5563",
     fontWeight: "500",
   },
   controls: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 8,
+    paddingTop: 10,
+    paddingHorizontal: 4,
   },
   thumbSlot: {
     width: 52,
@@ -419,10 +445,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   shutterOuter: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 4,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 5,
     borderColor: ACCENT,
     backgroundColor: "#FFFFFF",
     alignItems: "center",

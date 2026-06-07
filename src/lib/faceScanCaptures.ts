@@ -60,7 +60,7 @@ export const FACE_SCAN_CAPTURE_STEPS = [
     subtitle: "Close your eyes gently and relax your face.",
     tips: CAPTURE_STEP_TIPS.eyes_closed,
     instruction:
-      "Face forward again with eyes gently closed. Remove spectacles. AI checks eye closure.",
+      "Face forward again with eyes gently closed. Remove spectacles, then tap capture.",
   },
   {
     id: "smiling",

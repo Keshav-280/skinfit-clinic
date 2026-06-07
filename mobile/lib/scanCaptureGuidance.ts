@@ -68,23 +68,23 @@ const FACE_TARGET = {
 };
 
 /**
- * Mobile-only framing band — face should fill **70–90%** of the frame.
+ * Mobile-only framing band — face should fill **30–60%** of the frame.
  * (Web `src/lib/scanCaptureGuidance.ts` keeps its own 20–40% band; do not change it.)
  */
-export const IDEAL_FACE_FILL_MIN = 0.7;
-export const IDEAL_FACE_FILL_MAX = 0.9;
-/** ±3 pts hysteresis around the 70–90% band. */
+export const IDEAL_FACE_FILL_MIN = 0.3;
+export const IDEAL_FACE_FILL_MAX = 0.6;
+/** ±3 pts hysteresis around the 30–60% band. */
 const CAPTURE_FRAMING_TOLERANCE = 0.03;
 const IDEAL_FACE_FILL_AREA = (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 67% — "move closer". */
+  /** Below 27% — "move closer". */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At/above 70% — size OK (lower bound). */
+  /** At/above 30% — size OK (lower bound). */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 93% — "ease back". */
+  /** Above 63% — "ease back". */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At/below 90% — size OK (upper bound). */
+  /** At/below 60% — size OK (upper bound). */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
   centerEnterX: 0.2,
   centerExitX: 0.15,
@@ -92,7 +92,7 @@ export const CAPTURE_FRAMING_THRESHOLDS = {
   centerExitY: 0.17,
 } as const;
 
-/** Auto-zoom converges toward the center of the 70–90% band (80%). */
+/** Auto-zoom converges toward the center of the 30–60% band (45%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }

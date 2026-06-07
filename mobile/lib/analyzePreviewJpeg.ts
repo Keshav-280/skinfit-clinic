@@ -14,8 +14,9 @@ import {
 } from "@/lib/faceCaptureConfig";
 import { fetchFacePreviewInference } from "@/lib/fetchFacePreviewInference";
 import { detectFaceLandmarksForPreview } from "@/lib/detectFaceLandmarksForPreview";
+import { extractFaceLandmarkPoints } from "@/lib/nativeFaceLandmarkDetection";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
-import { facePortraitBoxFromLandmarks } from "../../src/lib/facePortraitBox";
+import { faceBoxFromLandmarkPoints } from "../../src/lib/facePortraitBox";
 import {
   analyzeFaceFraming,
   analyzeLightingFromRgba,
@@ -35,6 +36,19 @@ const PREVIEW_WIDTH = 240;
 const MOBILE_PREVIEW_SMOOTH_ALPHA = 0.32;
 /** Higher-res still for MediaPipe (eyes / smile need detail). */
 const LANDMARK_PREVIEW_WIDTH = 512;
+
+/** Bake EXIF orientation into pixels before resize / native detection (see normalizeScanImage.ts). */
+async function bakePreviewExifOrientation(uri: string): Promise<string> {
+  try {
+    const oriented = await ImageManipulator.manipulateAsync(uri, [], {
+      compress: 1,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    return oriented.uri ?? uri;
+  } catch {
+    return uri;
+  }
+}
 
 export type PreviewGuidanceState = {
   smoothedBox: NormalizedFaceBox | null;
@@ -70,15 +84,21 @@ export async function analyzePreviewImageUri(
 }> {
   const expressionStep = options ? needsExpressionCheck() : false;
   const captureCfg = getMobileFaceCaptureConfig();
-  const useServer =
-    usesServerFacePreview(captureCfg) ||
-    shouldTryServerPreviewOnClient(captureCfg) ||
-    Boolean(options?.authToken);
   const needsMp = needsMediapipeOnClient(captureCfg);
+  const landmarkPipelineActive =
+    Boolean(options?.landmarkDetectionEnabled) && needsMp;
+  /** When native MediaPipe runs on-device, do not let skin/server boxes override it. */
+  const useServer =
+    !landmarkPipelineActive &&
+    (usesServerFacePreview(captureCfg) ||
+      shouldTryServerPreviewOnClient(captureCfg) ||
+      Boolean(options?.authToken));
+
+  const orientedUri = await bakePreviewExifOrientation(uri);
 
   const [small, landmarkSized] = await Promise.all([
     ImageManipulator.manipulateAsync(
-      uri,
+      orientedUri,
       [{ resize: { width: PREVIEW_WIDTH } }],
       {
         compress: 0.55,
@@ -86,9 +106,9 @@ export async function analyzePreviewImageUri(
         base64: true,
       }
     ),
-    options?.landmarkDetectionEnabled && needsMp
+    landmarkPipelineActive
       ? ImageManipulator.manipulateAsync(
-          uri,
+          orientedUri,
           [{ resize: { width: LANDMARK_PREVIEW_WIDTH } }],
           {
             compress: 0.72,
@@ -133,8 +153,6 @@ export async function analyzePreviewImageUri(
   let bboxKind = "—";
   let blendCategories: { categoryName?: string; score: number }[] | undefined;
   let landmarkPoints: Array<{ x: number; y: number }> | undefined;
-  const landmarkPipelineActive =
-    Boolean(options?.landmarkDetectionEnabled) && needsMp;
 
   let serverPreview: Awaited<ReturnType<typeof fetchFacePreviewInference>> = null;
   if (useServer && options?.authToken) {
@@ -145,30 +163,49 @@ export async function analyzePreviewImageUri(
   const landmarkUri = landmarkSized?.uri ?? small.uri ?? uri;
   if (landmarkPipelineActive) {
     const mp = await detectFaceLandmarksForPreview(landmarkUri);
-    landmarkPoints = mp?.results?.[0]?.faceLandmarks?.[0];
+    landmarkPoints = extractFaceLandmarkPoints(mp) ?? undefined;
     if (landmarkPoints?.length) {
-      // Tight portrait box only — the all-landmarks fallback inflates fill %.
-      landmarkBox = facePortraitBoxFromLandmarks(landmarkPoints);
+      landmarkBox = faceBoxFromLandmarkPoints(landmarkPoints);
       if (landmarkBox) bboxKind = "portrait";
     }
     blendCategories = mp?.results?.[0]?.faceBlendshapes?.[0]?.categories;
   }
 
-  // On-device MediaPipe is calibrated for the 70–90% mobile band; server RetinaFace
-  // often reports a much larger box and was overriding landmarks while logged in.
+  // On-device MediaPipe targets the 30–60% mobile band; server RetinaFace often
+  // reports a much larger box — shrink fallbacks so fill % stays in range.
   if (landmarkBox) {
     rawBox = landmarkBox;
     bboxSource = "landmark";
-  } else {
+  } else if (!landmarkPipelineActive) {
     const skinBox = estimateFaceBoxFromSkin(data, width, height);
     if (skinBox) {
-      rawBox = skinBox;
+      rawBox = shrinkNormalizedFaceBox(skinBox, 0.8);
       bboxSource = "skin";
       bboxKind = "skin";
     } else if (serverPreview?.box && serverPreview.detectorAvailable) {
-      rawBox = shrinkNormalizedFaceBox(serverPreview.box, 0.82);
+      rawBox = shrinkNormalizedFaceBox(serverPreview.box, 0.74);
       bboxSource = "retinaface";
       bboxKind = "server";
+    }
+  } else {
+    if (!serverPreview && options?.authToken) {
+      const previewUri = landmarkSized?.uri ?? small.uri ?? uri;
+      serverPreview = await fetchFacePreviewInference(options.authToken, previewUri);
+    }
+    if (serverPreview?.box && serverPreview.detectorAvailable) {
+      rawBox = shrinkNormalizedFaceBox(serverPreview.box, 0.74);
+      bboxSource = "mp-fallback-server";
+      bboxKind = "server";
+    } else {
+      const skinBox = estimateFaceBoxFromSkin(data, width, height);
+      if (skinBox) {
+        rawBox = shrinkNormalizedFaceBox(skinBox, 0.8);
+        bboxSource = "mp-fallback-skin";
+        bboxKind = "skin";
+      } else {
+        bboxSource = "landmark-miss";
+        bboxKind = "none";
+      }
     }
   }
 
@@ -176,11 +213,10 @@ export async function analyzePreviewImageUri(
     rawBox = expandSquarePreviewBoxToPortraitFrame(rawBox);
   }
 
-  const smoothedBox = smoothFaceBox(
-    emptyState.smoothedBox,
-    rawBox,
-    MOBILE_PREVIEW_SMOOTH_ALPHA
-  );
+  const smoothedBox =
+    landmarkPipelineActive && !rawBox
+      ? null
+      : smoothFaceBox(emptyState.smoothedBox, rawBox, MOBILE_PREVIEW_SMOOTH_ALPHA);
   const hasFaceEstimate =
     Boolean(smoothedBox && smoothedBox.width >= 0.05 && smoothedBox.height >= 0.05);
   const framing = analyzeFaceFraming(smoothedBox, emptyState.framing);

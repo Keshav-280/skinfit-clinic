@@ -12,6 +12,7 @@ import {
   subWeeks,
 } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Href } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +28,7 @@ import {
 } from "react-native";
 
 import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { getApiBase } from "@/lib/apiBase";
@@ -46,10 +48,38 @@ import {
   WEEK_OPTS,
 } from "@/lib/schedulesCalendar";
 import {
+  archiveScheduleListItem,
+  loadScheduleListArchivedIds,
+  unarchiveScheduleListItem,
+  unarchiveScheduleListItems,
+} from "@/lib/scheduleListArchive";
+import { ScheduleClinicVisitsCard } from "@/components/schedules/ScheduleClinicVisitsCard";
+import { ScheduleMonthlyInsightCard } from "@/components/schedules/ScheduleMonthlyInsightCard";
+import { exportMonthlyInsightPdf } from "@/lib/monthlyInsightExport";
+import {
   VISIT_WINDOW_OPTIONS,
   visitWindowsToTimePreferences,
   type VisitWindowId,
 } from "@/lib/scheduleVisitWindows";
+
+type ScheduleVisitRow = {
+  id: string;
+  visitDate: string;
+  doctorName: string;
+};
+
+type MonthlyInsightPayload = {
+  locked: boolean;
+  nextInsightAt: string;
+  monthly: {
+    summaryTitle: string;
+    summaryBody: string;
+    highlights: string[];
+    risks: string[];
+    nextMonthFocus: string[];
+    kaiMonthAvgFromParams: number | null;
+  } | null;
+};
 
 type PendingScheduleRequestRow = {
   id: string;
@@ -108,6 +138,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 }
 
 export default function SchedulesScreen() {
+  const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [view, setView] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -129,6 +160,11 @@ export default function SchedulesScreen() {
   const [visitNotes, setVisitNotes] = useState("");
   const [selectedWindows, setSelectedWindows] = useState<VisitWindowId[]>([]);
   const [visitBusy, setVisitBusy] = useState(false);
+  const [archivedListIds, setArchivedListIds] = useState<Set<string>>(() => new Set());
+  const [showArchivedList, setShowArchivedList] = useState(false);
+  const [clinicVisits, setClinicVisits] = useState<ScheduleVisitRow[]>([]);
+  const [monthlyInsight, setMonthlyInsight] = useState<MonthlyInsightPayload | null>(null);
+  const [kaiInsightsEnabled, setKaiInsightsEnabled] = useState(true);
 
   const calendarCells = useMemo(
     () => buildCalendarCells(currentDate, view),
@@ -164,17 +200,35 @@ export default function SchedulesScreen() {
 
   const loadBootstrap = useCallback(async () => {
     if (!token) return;
-    const json = await apiJson<{
-      initialScheduleEvents?: ScheduleEventRow[];
-      initialTreatmentEvents?: ScheduleEventRow[];
-      initialAppointmentEvents?: ScheduleEventRow[];
-      pendingScheduleRequests?: PendingScheduleRequestRow[];
-      closedScheduleRequests?: PendingScheduleRequestRow[];
-    }>("/api/patient/schedules", token, { method: "GET" });
+    const [json, skin, monthly, home] = await Promise.all([
+      apiJson<{
+        initialScheduleEvents?: ScheduleEventRow[];
+        initialTreatmentEvents?: ScheduleEventRow[];
+        initialAppointmentEvents?: ScheduleEventRow[];
+        pendingScheduleRequests?: PendingScheduleRequestRow[];
+        closedScheduleRequests?: PendingScheduleRequestRow[];
+      }>("/api/patient/schedules", token, { method: "GET" }),
+      apiJson<{ visits?: ScheduleVisitRow[]; kaiInsightsEnabled?: boolean }>(
+        "/api/patient/skin-profile",
+        token,
+        { method: "GET" }
+      ).catch(() => null),
+      apiJson<MonthlyInsightPayload>("/api/patient/monthly-insight", token, {
+        method: "GET",
+      }).catch(() => null),
+      apiJson<{ kaiInsightsEnabled?: boolean }>("/api/patient/home", token, {
+        method: "GET",
+      }).catch(() => null),
+    ]);
     setTreatmentEvents(json.initialTreatmentEvents ?? []);
     setAppointmentEvents(json.initialAppointmentEvents ?? []);
     setPendingRequests(json.pendingScheduleRequests ?? []);
     setClosedRequests(json.closedScheduleRequests ?? []);
+    setClinicVisits(skin?.visits ?? []);
+    setMonthlyInsight(monthly);
+    setKaiInsightsEnabled(
+      skin?.kaiInsightsEnabled !== false && home?.kaiInsightsEnabled !== false
+    );
   }, [token]);
 
   const loadAll = useCallback(async () => {
@@ -208,6 +262,37 @@ export default function SchedulesScreen() {
         : eventsInWeek(mergedCalendarEvents, currentDate),
     [view, mergedCalendarEvents, currentDate]
   );
+
+  const visibleListEvents = useMemo(
+    () => listEventsCal.filter((event) => !archivedListIds.has(event.id)),
+    [listEventsCal, archivedListIds]
+  );
+
+  const archivedListEvents = useMemo(
+    () => listEventsCal.filter((event) => archivedListIds.has(event.id)),
+    [listEventsCal, archivedListIds]
+  );
+
+  const archivedListCount = archivedListEvents.length;
+
+  useEffect(() => {
+    void loadScheduleListArchivedIds().then(setArchivedListIds);
+  }, []);
+
+  const archiveListEvent = useCallback((eventId: string) => {
+    void archiveScheduleListItem(eventId).then(setArchivedListIds);
+  }, []);
+
+  const unarchiveListEvent = useCallback((eventId: string) => {
+    void unarchiveScheduleListItem(eventId).then(setArchivedListIds);
+  }, []);
+
+  const unarchiveAllListEvents = useCallback(() => {
+    void unarchiveScheduleListItems(archivedListEvents.map((event) => event.id)).then((next) => {
+      setArchivedListIds(next);
+      setShowArchivedList(false);
+    });
+  }, [archivedListEvents]);
   const featuredUpcoming = useMemo(
     () =>
       appointmentCalendarEvents.find(
@@ -313,6 +398,90 @@ export default function SchedulesScreen() {
   }, [reqCalMonth]);
 
   const cellMinH = view === "week" ? 128 : 72;
+
+  function renderListEventCard(event: ScheduleEventRow, opts?: { archived?: boolean }) {
+    const isArchivedView = opts?.archived === true;
+    const pending = event.id.startsWith("req:");
+    const cancelled = event.cancelled === true;
+    const done = event.completed;
+    const isAppt = isAppointmentCalendarEvent(event);
+    const whenStyle =
+      cancelled
+        ? styles.listWhenCancelled
+        : pending
+          ? styles.listWhenPending
+          : done
+            ? styles.listWhenDone
+            : styles.listWhenOpen;
+
+    return (
+      <View key={event.id} style={styles.listRow}>
+        <View style={styles.listRowTop}>
+          <Text style={[styles.listWhen, whenStyle, styles.listWhenFlex]}>
+            {formatScheduleWhen(
+              event.eventDateYmd,
+              event.eventTimeHm,
+              event.eventSlotEndTimeHm
+            )}
+          </Text>
+          {!isAppt &&
+          (event.eventKind === "pre_treatment" || event.eventKind === "post_treatment") ? (
+            <Text style={styles.listKindPill}>
+              {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
+            </Text>
+          ) : null}
+          <Pressable
+            onPress={() =>
+              isArchivedView ? unarchiveListEvent(event.id) : archiveListEvent(event.id)
+            }
+            style={styles.listArchiveBtn}
+            hitSlop={8}
+            accessibilityLabel={isArchivedView ? "Restore meeting to list" : "Archive meeting"}
+          >
+            <Ionicons
+              name={isArchivedView ? "archive-outline" : "archive"}
+              size={12}
+              color="#2B3A67"
+            />
+            <Text style={styles.listArchiveBtnText}>
+              {isArchivedView ? "Restore" : "Archive"}
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.listRowBody}>
+          <Text
+            style={[
+              styles.listTitle,
+              done && styles.listTitleDone,
+              cancelled && styles.listTitleCancelled,
+            ]}
+          >
+            {event.title}
+          </Text>
+          {isAppt && pending ? <Text style={styles.pendingPill}>Pending</Text> : null}
+          {isAppt && cancelled ? <Text style={styles.cancelledPill}>Cancelled</Text> : null}
+          {isAppt && !pending && !cancelled && !done ? (
+            <Text style={styles.confirmedPill}>Confirmed</Text>
+          ) : null}
+          {done ? <Text style={styles.completedPill}>Completed</Text> : null}
+        </View>
+        {isAppt && !pending && event.crmPatientMessage?.trim() ? (
+          <Text style={styles.listMeta}>Clinic note: {event.crmPatientMessage.trim()}</Text>
+        ) : null}
+        {isAppt && cancelled && event.cancellationReason?.trim() ? (
+          <Text style={styles.listMetaDanger}>
+            Reason: {event.cancellationReason.trim()}
+          </Text>
+        ) : null}
+        {isAppt && pending && (event.attachmentsCount ?? 0) > 0 ? (
+          <Text style={styles.listMeta}>
+            {event.attachmentsCount} photo
+            {event.attachmentsCount !== 1 ? "s" : ""} attached
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
 
   function renderCalendarGrid() {
     const weeks = chunkWeeks(calendarCells);
@@ -615,88 +784,38 @@ export default function SchedulesScreen() {
               ? "This month — visits, requests & care"
               : "This week — visits, requests & care"}
           </Text>
-          {listEventsCal.length === 0 ? (
+          {visibleListEvents.length === 0 ? (
             <Text style={styles.mutedCenter}>
-              {`Nothing scheduled in this ${view === "month" ? "month" : "week"}.`}
+              {listEventsCal.length > 0 && archivedListCount > 0
+                ? `All ${view === "month" ? "month" : "week"} items are archived.`
+                : `Nothing scheduled in this ${view === "month" ? "month" : "week"}.`}
             </Text>
           ) : (
-            listEventsCal.map((event) => {
-                const pending = event.id.startsWith("req:");
-                const cancelled = event.cancelled === true;
-                const done = event.completed;
-                const isAppt = isAppointmentCalendarEvent(event);
-                const whenStyle =
-                  cancelled
-                    ? styles.listWhenCancelled
-                    : pending
-                      ? styles.listWhenPending
-                      : done
-                        ? styles.listWhenDone
-                        : styles.listWhenOpen;
-                return (
-                  <View key={event.id} style={styles.listRow}>
-                    <View style={styles.listRowTop}>
-                      <Text style={[styles.listWhen, whenStyle]}>
-                        {formatScheduleWhen(
-                          event.eventDateYmd,
-                          event.eventTimeHm,
-                          event.eventSlotEndTimeHm
-                        )}
-                      </Text>
-                      {!isAppt &&
-                      (event.eventKind === "pre_treatment" ||
-                        event.eventKind === "post_treatment") ? (
-                        <Text style={styles.listKindPill}>
-                          {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <View style={styles.listRowBody}>
-                      <Text
-                        style={[
-                          styles.listTitle,
-                          done && styles.listTitleDone,
-                          cancelled && styles.listTitleCancelled,
-                        ]}
-                      >
-                        {event.title}
-                      </Text>
-                      {isAppt && pending ? (
-                        <Text style={styles.pendingPill}>Pending</Text>
-                      ) : null}
-                      {isAppt && cancelled ? (
-                        <Text style={styles.cancelledPill}>Cancelled</Text>
-                      ) : null}
-                      {isAppt &&
-                      !pending &&
-                      !cancelled &&
-                      !done ? (
-                        <Text style={styles.confirmedPill}>Confirmed</Text>
-                      ) : null}
-                      {done ? <Text style={styles.completedPill}>Completed</Text> : null}
-                    </View>
-                    {isAppt && !pending && event.crmPatientMessage?.trim() ? (
-                      <Text style={styles.listMeta}>
-                        Clinic note: {event.crmPatientMessage.trim()}
-                      </Text>
-                    ) : null}
-                    {isAppt &&
-                    cancelled &&
-                    event.cancellationReason?.trim() ? (
-                      <Text style={styles.listMetaDanger}>
-                        Reason: {event.cancellationReason.trim()}
-                      </Text>
-                    ) : null}
-                    {isAppt && pending && (event.attachmentsCount ?? 0) > 0 ? (
-                      <Text style={styles.listMeta}>
-                        {event.attachmentsCount} photo
-                        {event.attachmentsCount !== 1 ? "s" : ""} attached
-                      </Text>
-                    ) : null}
-                  </View>
-                );
-              })
+            visibleListEvents.map((event) => renderListEventCard(event))
           )}
+          {archivedListCount > 0 ? (
+            <View style={styles.archivedSection}>
+              <View style={styles.archivedToggleRow}>
+                <Pressable onPress={() => setShowArchivedList((open) => !open)} hitSlop={8}>
+                  <Text style={styles.archivedToggleText}>
+                    {showArchivedList
+                      ? "Hide archived"
+                      : `Show ${archivedListCount} archived`}
+                  </Text>
+                </Pressable>
+                {showArchivedList ? (
+                  <Pressable onPress={unarchiveAllListEvents} hitSlop={8}>
+                    <Text style={styles.archivedToggleText}>Restore all</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              {showArchivedList
+                ? archivedListEvents.map((event) =>
+                    renderListEventCard(event, { archived: true })
+                  )
+                : null}
+            </View>
+          ) : null}
         </View>
       </View>
     );
@@ -713,7 +832,7 @@ export default function SchedulesScreen() {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -812,6 +931,21 @@ export default function SchedulesScreen() {
         </View>
         <Ionicons name="chevron-forward" size={26} color="#fff" />
       </Pressable>
+
+      <View style={styles.manageStack}>
+        <ScheduleClinicVisitsCard
+          visits={clinicVisits}
+          onViewAll={() => router.push("/(drawer)/history/visits" as Href)}
+        />
+        {kaiInsightsEnabled && monthlyInsight ? (
+          <ScheduleMonthlyInsightCard
+            locked={monthlyInsight.locked}
+            nextInsightAt={monthlyInsight.nextInsightAt}
+            monthly={monthlyInsight.monthly}
+            onExportPdf={(monthly) => void exportMonthlyInsightPdf(monthly)}
+          />
+        ) : null}
+      </View>
 
       <Modal
         visible={visitRequestOpen}
@@ -1326,6 +1460,13 @@ const styles = StyleSheet.create({
   datePillDate: { color: "#fff", fontSize: 26, fontWeight: "700", marginTop: 2 },
   featureTime: { fontSize: 16, fontWeight: "700", color: "#2f2f2f" },
   featureLoc: { marginTop: 4, fontSize: 13, color: "#71717a" },
+  manageStack: {
+    width: "100%",
+    alignSelf: "stretch",
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 8,
+  },
   requestCard: {
     marginTop: 14,
     borderRadius: 20,
@@ -1334,7 +1475,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: "#272d77",
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -1359,7 +1500,8 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  listWhen: { fontSize: 12, fontWeight: "700", marginBottom: 4 },
+  listWhen: { fontSize: 12, fontWeight: "700" },
+  listWhenFlex: { flex: 1, minWidth: 0 },
   listWhenOpen: { color: "#2B3A67" },
   listWhenDone: { color: "#0369a1" },
   listWhenPending: { color: "#b45309" },
@@ -1368,9 +1510,45 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: 8,
     marginBottom: 4,
+  },
+  listArchiveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: "auto",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(43, 58, 103, 0.15)",
+    backgroundColor: "#f8fafc",
+  },
+  listArchiveBtnText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#2B3A67",
+  },
+  archivedSection: {
+    marginTop: 4,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e4e4e7",
+    gap: 8,
+  },
+  archivedToggleRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  archivedToggleText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#2B3A67",
+    textDecorationLine: "underline",
   },
   listRowBody: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   listTitle: { flex: 1, fontSize: 15, fontWeight: "600", color: "#18181b", minWidth: "60%" },

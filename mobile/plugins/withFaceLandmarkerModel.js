@@ -9,6 +9,16 @@ const {
 const MODEL_FILE = "face_landmarker.task";
 const MODEL_REL = `assets/models/${MODEL_FILE}`;
 
+function assertModelPresent(projectRoot) {
+  const src = path.join(projectRoot, MODEL_REL);
+  if (!fs.existsSync(src)) {
+    throw new Error(
+      `[withFaceLandmarkerModel] Missing ${MODEL_REL}. Run: cd mobile && npm run mediapipe:download-model`
+    );
+  }
+  return src;
+}
+
 const IOS_BLENDSHAPE_PATCH =
   "faceLandmarkerOptions.outputFaceBlendshapes = true";
 
@@ -42,7 +52,7 @@ function withFaceLandmarkerModel(config) {
     async (cfg) => {
       patchIosFaceLandmarkBlendshapes(cfg.modRequest.projectRoot);
       const root = cfg.modRequest.projectRoot;
-      const src = path.join(root, MODEL_REL);
+      const src = assertModelPresent(root);
       const projectName = IOSConfig.XcodeUtils.getProjectName(cfg.modRequest.projectRoot);
       const dest = path.join(cfg.modRequest.platformProjectRoot, projectName, MODEL_FILE);
       fs.copyFileSync(src, dest);
@@ -54,7 +64,7 @@ function withFaceLandmarkerModel(config) {
     "android",
     async (cfg) => {
       const root = cfg.modRequest.projectRoot;
-      const src = path.join(root, MODEL_REL);
+      const src = assertModelPresent(root);
       const destDir = path.join(cfg.modRequest.platformProjectRoot, "app/src/main/assets");
       fs.mkdirSync(destDir, { recursive: true });
       fs.copyFileSync(src, path.join(destDir, MODEL_FILE));

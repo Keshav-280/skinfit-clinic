@@ -31,6 +31,7 @@ import { DashboardStreakCard } from "@/components/dashboard/DashboardStreakCard"
 import { FirstScanCta } from "@/components/dashboard/FirstScanCta";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
 import { NotificationBell } from "@/components/NotificationBell";
+import { WeeklyInsightSection } from "@/components/dashboard/WeeklyInsightSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/audioSession";
@@ -42,6 +43,22 @@ import {
   kaiParamClarity,
   SKIN_HEALTH_PARAM_KEYS,
 } from "@/lib/skinAnalysis";
+import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
+import {
+  clearJournalSyncPatch,
+  peekJournalSyncPatch,
+  subscribeJournalUpdated,
+} from "@/lib/journalSync";
+import { normalizeRoutineSteps } from "@/lib/routine";
+import {
+  DASHBOARD_BG,
+  DASHBOARD_CARD_BG,
+  DASHBOARD_CARD_BORDER,
+  DASHBOARD_GREEN,
+  DASHBOARD_NAVY,
+  DASHBOARD_URGENT,
+  dashboardCardShadow,
+} from "@/lib/dashboardTheme";
 
 function kaiParamsFromAnalysis(analysis: unknown): { label: string; value: number }[] {
   return SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => ({
@@ -66,23 +83,6 @@ function formatScanChipLabel(
 function formatScanDetailLabel(scan: SkinScanItem): string {
   return `${format(new Date(scan.createdAt), "MMM d, yyyy 'at' h:mm a")} · Overall ${Math.round(scan.skinScore)}/100`;
 }
-import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
-import {
-  clearJournalSyncPatch,
-  peekJournalSyncPatch,
-  subscribeJournalUpdated,
-} from "@/lib/journalSync";
-import { normalizeRoutineSteps } from "@/lib/routine";
-
-import {
-  DASHBOARD_BG,
-  DASHBOARD_CARD_BG,
-  DASHBOARD_CARD_BORDER,
-  DASHBOARD_GREEN,
-  DASHBOARD_NAVY,
-  DASHBOARD_URGENT,
-  dashboardCardShadow,
-} from "@/lib/dashboardTheme";
 
 const NAVY = DASHBOARD_NAVY;
 const GLASS = DASHBOARD_CARD_BG;
@@ -219,6 +219,7 @@ export default function DashboardScreen() {
   const [sunExposure, setSunExposure] = useState<string>("low");
   const [cycleDay, setCycleDay] = useState("");
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
+  const [skinInsightReloadNonce, setSkinInsightReloadNonce] = useState(0);
   const [sosBusy, setSosBusy] = useState(false);
   const { markReady: markJournalReady, markNotReady: markJournalNotReady } =
     useDebouncedTrackerAutoSave(token);
@@ -282,6 +283,7 @@ export default function DashboardScreen() {
     };
     setData(nextData);
     setShowingCachedHome(false);
+    setSkinInsightReloadNonce((n) => n + 1);
     await setCached(cacheKey, nextData);
     setSelectedScanIdx(0);
     const am = normalizeRoutineSteps(
@@ -667,6 +669,16 @@ export default function DashboardScreen() {
     });
   }, [weekOffset, selectedDate, todayStr, journalDate]);
 
+  const weekMonthLabel = useMemo(() => {
+    const start = weekDays[0]?.date;
+    const end = weekDays[6]?.date;
+    if (!start || !end) return "";
+    const startMonth = format(start, "MMMM");
+    const endMonth = format(end, "MMMM");
+    if (startMonth === endMonth) return startMonth;
+    return `${format(start, "MMM")} – ${format(end, "MMM")}`;
+  }, [weekDays]);
+
   const amDone = useMemo(() => routine.am.filter(Boolean).length, [routine.am]);
   const pmDone = useMemo(() => routine.pm.filter(Boolean).length, [routine.pm]);
   const totalRoutineSteps = (data?.amItems.length ?? 0) + (data?.pmItems.length ?? 0);
@@ -798,6 +810,10 @@ export default function DashboardScreen() {
           <Ionicons name="chevron-forward" size={16} color={NAVY} />
         </Pressable>
       </View>
+
+      {weekMonthLabel ? (
+        <Text style={styles.weekMonthLabel}>{weekMonthLabel}</Text>
+      ) : null}
 
       {/* ── Top row: navy metrics + radar ── */}
       <View style={[styles.topRow, isWideLayout && styles.topRowWide]}>
@@ -1021,6 +1037,20 @@ export default function DashboardScreen() {
         onPatchVoiceNote={patchVoiceNote}
         voiceBusyId={voiceBusyId}
         onRefresh={loadHome}
+      />
+
+      <WeeklyInsightSection
+        style={styles.dashboardFullWidth}
+        reloadNonce={skinInsightReloadNonce}
+        home={
+          data
+            ? {
+                kaiSkinScore: data.kaiSkinScore,
+                weeklyDeltaScore: data.weeklyDeltaScore,
+                kaiInsightsEnabled: data.kaiInsightsEnabled,
+              }
+            : null
+        }
       />
 
       </View>
@@ -2381,6 +2411,17 @@ const styles = StyleSheet.create({
   dateChipDay: { fontSize: 13, fontWeight: "800", color: "#1A1A2E", marginTop: 2, lineHeight: 15 },
   dateChipDayToday: { color: "#fff" },
   dateChipDisabled: { opacity: 0.35 },
+  weekMonthLabel: {
+    width: "100%",
+    marginTop: 2,
+    marginBottom: 10,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#6B7280",
+    opacity: 0.55,
+    letterSpacing: 0.3,
+  },
 
   topRow: { gap: 16, marginBottom: 16 },
   topRowWide: { flexDirection: "row", alignItems: "stretch" },

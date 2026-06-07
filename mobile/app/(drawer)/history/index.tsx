@@ -1,12 +1,11 @@
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
-  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -36,23 +35,6 @@ type ScanRow = {
   aiSummary: string | null;
 };
 
-type VisitAttachment = {
-  fileName: string;
-  mimeType: string;
-  dataUri: string;
-};
-
-type VisitRow = {
-  id: string;
-  visitDateYmd: string;
-  doctorName: string;
-  notes: string;
-  attachments?: VisitAttachment[] | null;
-  purpose?: string | null;
-  treatments?: string | null;
-  responseRating?: string | null;
-};
-
 type ReportVoiceRow = {
   id: string;
   scanId: number;
@@ -72,7 +54,6 @@ type HistoryPayload = {
     primaryGoal: string | null;
   };
   scans: ScanRow[];
-  visitNotes: VisitRow[];
   reportVoiceNotes?: ReportVoiceRow[];
   reportVoiceNotesArchived?: ReportVoiceRow[];
 };
@@ -100,7 +81,6 @@ export default function HistoryListScreen() {
   const [error, setError] = useState<string | null>(null);
   const [voiceBusyId, setVoiceBusyId] = useState<string | null>(null);
   const [showArchivedReportAudio, setShowArchivedReportAudio] = useState(false);
-  const [activeTab, setActiveTab] = useState<"scans" | "visits">("scans");
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -159,10 +139,9 @@ export default function HistoryListScreen() {
       <View style={styles.loadingScreen}>
         <AnalysisMagicLoader
           title="Assembling your timeline"
-          subtitle="kAI is pulling your progress, visits, and care notes."
+          subtitle="kAI is pulling your progress and care notes."
           steps={[
             "Scan reports",
-            "Clinic visits",
             "Doctor notes",
             "Audio summaries",
           ]}
@@ -179,14 +158,9 @@ export default function HistoryListScreen() {
     );
   }
 
-  const patient = data?.patient;
   const scans = data?.scans ?? [];
-  const visits = data?.visitNotes ?? [];
   const reportVoices = data?.reportVoiceNotes ?? [];
   const reportVoicesArchived = data?.reportVoiceNotesArchived ?? [];
-
-  const showingScans = activeTab === "scans";
-  const showingVisits = activeTab === "visits";
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -201,20 +175,6 @@ export default function HistoryListScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>Treatment History</Text>
         <View style={{ width: 36 }} />
-      </View>
-      <View style={styles.tabRow}>
-        <Pressable
-          style={[styles.tabBtn, showingScans && styles.tabBtnActive]}
-          onPress={() => setActiveTab("scans")}
-        >
-          <Text style={[styles.tabBtnText, showingScans && styles.tabBtnTextActive]}>Scans</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tabBtn, showingVisits && styles.tabBtnActive]}
-          onPress={() => setActiveTab("visits")}
-        >
-          <Text style={[styles.tabBtnText, showingVisits && styles.tabBtnTextActive]}>Visits</Text>
-        </Pressable>
       </View>
     <ScrollView
       style={styles.scroll}
@@ -233,57 +193,55 @@ export default function HistoryListScreen() {
         />
       }
     >
-      {showingScans ? (
-        <>
       <Text style={styles.sectionTitle}>Progress tracker</Text>
       {scans.length === 0 ? (
         <Text style={styles.empty}>
           No scans yet. Complete your first AI scan to track progress.
         </Text>
       ) : (
-          <View style={styles.scanGrid}>
-            {scans.map((scan) => (
-              <View key={scan.id} style={[styles.scanCard, CARD]}>
-                <View style={styles.scanImageWrap}>
-                  <ReportContainImage
-                    imageUrl={scan.imageUrl}
-                    authToken={token}
-                    resizeMode="cover"
-                    style={styles.scanImage}
-                  />
-                  <View style={styles.scoreBadge}>
-                    <Text style={styles.scoreBadgeText}>{scan.overallScore}</Text>
-                  </View>
-                </View>
-                <View style={styles.scanBody}>
-                  <Text style={styles.scanName} numberOfLines={2}>
-                    {scan.scanName?.trim() || "Untitled scan"}
-                  </Text>
-                  <Text style={styles.scanDate}>
-                    {format(new Date(scan.createdAt), "MMM d, yyyy")}
-                  </Text>
-                  <Text style={styles.scanOverall}>Overall {scan.overallScore}/100</Text>
-                  <View style={styles.chips}>
-                    {analysisResultsToParams(scan.analysisResults).map((p) => (
-                      <View key={p.label} style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {p.label} {p.value}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.scanActions}>
-                    <Pressable
-                      style={styles.btnPrimary}
-                      onPress={() => router.push(`/(drawer)/history/${scan.id}`)}
-                    >
-                      <Text style={styles.btnPrimaryText}>View report</Text>
-                    </Pressable>
-                  </View>
+        <View style={styles.scanGrid}>
+          {scans.map((scan) => (
+            <View key={scan.id} style={[styles.scanCard, CARD]}>
+              <View style={styles.scanImageWrap}>
+                <ReportContainImage
+                  imageUrl={scan.imageUrl}
+                  authToken={token}
+                  resizeMode="cover"
+                  style={styles.scanImage}
+                />
+                <View style={styles.scoreBadge}>
+                  <Text style={styles.scoreBadgeText}>{scan.overallScore}</Text>
                 </View>
               </View>
-            ))}
-          </View>
+              <View style={styles.scanBody}>
+                <Text style={styles.scanName} numberOfLines={2}>
+                  {scan.scanName?.trim() || "Untitled scan"}
+                </Text>
+                <Text style={styles.scanDate}>
+                  {format(new Date(scan.createdAt), "MMM d, yyyy")}
+                </Text>
+                <Text style={styles.scanOverall}>Overall {scan.overallScore}/100</Text>
+                <View style={styles.chips}>
+                  {analysisResultsToParams(scan.analysisResults).map((p) => (
+                    <View key={p.label} style={styles.chip}>
+                      <Text style={styles.chipText}>
+                        {p.label} {p.value}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.scanActions}>
+                  <Pressable
+                    style={styles.btnPrimary}
+                    onPress={() => router.push(`/(drawer)/history/${scan.id}`)}
+                  >
+                    <Text style={styles.btnPrimaryText}>View report</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
       )}
 
       <View style={[styles.visitSection, CARD, { marginTop: 28 }]}>
@@ -361,76 +319,6 @@ export default function HistoryListScreen() {
           </>
         )}
       </View>
-        </>
-      ) : null}
-
-      {showingVisits ? (
-      <View style={[styles.visitSection, CARD, { marginTop: 16 }]}>
-        <Text style={styles.subsectionTitle}>Clinic notes</Text>
-        {visits.length === 0 ? (
-          <Text style={styles.empty}>No clinic notes yet.</Text>
-        ) : (
-          visits.map((visit) => (
-            <View key={visit.id} style={styles.visitCard}>
-              <View style={styles.visitHeader}>
-                <Text style={styles.visitDate}>
-                  {format(parseISO(`${visit.visitDateYmd}T12:00:00`), "MMM d, yyyy")}
-                </Text>
-                <Text style={styles.visitDoc}>{visit.doctorName}</Text>
-              </View>
-              {visit.purpose ? (
-                <Text style={styles.visitNotesBody}>Purpose: {visit.purpose}</Text>
-              ) : null}
-              {visit.treatments ? (
-                <Text style={[styles.visitNotesBody, { marginTop: 6 }]}>
-                  Treatments: {visit.treatments}
-                </Text>
-              ) : null}
-              <View style={[styles.visitNotesBox, { marginTop: 10 }]}>
-                <Text style={styles.visitNotesLabel}>Notes</Text>
-                <Text style={styles.visitNotesBody}>{visit.notes}</Text>
-                {visit.attachments && visit.attachments.length > 0 ? (
-                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: GLASS_BORDER }}>
-                    <Text style={styles.visitNotesLabel}>Documents</Text>
-                    {visit.attachments.map((att, idx) => (
-                      <Pressable
-                        key={`${visit.id}-att-${idx}`}
-                        onPress={() => {
-                          if (att.dataUri.startsWith("http")) {
-                            void Linking.openURL(att.dataUri);
-                          }
-                        }}
-                        style={{ marginTop: 6 }}
-                      >
-                        <Text style={styles.attachLink}>{att.fileName}</Text>
-                        <Text style={styles.attachMeta}>{att.mimeType}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-              {visit.responseRating ? (
-                <Text style={[styles.editLink, { marginTop: 10, color: "#0f766e" }]}>
-                  Response: {visit.responseRating}
-                </Text>
-              ) : null}
-              <Pressable
-                style={{ marginTop: 12 }}
-                onPress={() => router.push(`/(drawer)/history/visit/${visit.id}` as any)}
-              >
-                <Text style={styles.editLink}>View full visit details</Text>
-              </Pressable>
-            </View>
-          ))
-        )}
-        <Pressable
-          style={{ marginTop: visits.length > 0 ? 8 : 0 }}
-          onPress={() => router.push("/(drawer)/history/visits" as any)}
-        >
-          <Text style={styles.editLink}>All visits & notes</Text>
-        </Pressable>
-      </View>
-      ) : null}
     </ScrollView>
     </View>
   );
@@ -544,27 +432,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "800", color: "#18181b" },
-  tabRow: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  tabBtn: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.55)",
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  tabBtnActive: {
-    backgroundColor: NAVY,
-    borderColor: NAVY,
-  },
-  tabBtnText: { fontSize: 14, fontWeight: "700", color: NAVY },
-  tabBtnTextActive: { color: "#fff" },
   scroll: { flex: 1, backgroundColor: BG },
   content: { padding: 16, paddingBottom: 48 },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: BG },
@@ -740,67 +607,4 @@ const styles = StyleSheet.create({
   },
   visitDate: { fontSize: 14, fontWeight: "700", color: NAVY },
   visitDoc: { fontSize: 14, color: "#6B7280" },
-  visitNotesBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    backgroundColor: "rgba(255,255,255,0.7)",
-    padding: 14,
-  },
-  visitNotesLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-    color: "#6B7280",
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  visitNotesBody: { fontSize: 14, lineHeight: 22, color: "#374151" },
-  attachLink: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: NAVY,
-    textDecorationLine: "underline",
-  },
-  attachMeta: { fontSize: 12, color: "#6B7280", marginTop: 2 },
-  visitCardNew: {
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12,
-  },
-  visitCardFirst: {
-    backgroundColor: GLASS,
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-  },
-  visitCardRest: {
-    backgroundColor: "rgba(232,239,230,0.6)",
-  },
-  vcRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  vcTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  vcDate: { fontSize: 16, fontWeight: "700", color: "#18181b" },
-  latestPill: {
-    backgroundColor: `${GREEN_ACCENT}18`,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  latestText: { fontSize: 11, fontWeight: "700", color: GREEN_ACCENT },
-  vcTreatment: { fontSize: 14, color: "#6B7280", marginTop: 2 },
-  vcDoctor: { fontSize: 13, color: "#9CA3AF", marginTop: 1 },
-  vcRatingPill: {
-    alignSelf: "flex-start",
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  vcRatingText: { fontSize: 12, fontWeight: "700" },
 });

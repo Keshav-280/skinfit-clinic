@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ActivityIndicator,
@@ -15,6 +16,7 @@ import {
   ScanCaptureDebugOverlay,
   isCaptureDebugEnabled,
 } from "@/components/ScanCaptureDebugOverlay";
+import { CaptureFaceGuideOverlayNative } from "@/components/capture/CaptureFaceGuideOverlayNative";
 import { OnboardingCaptureStepUI } from "@/components/onboarding/OnboardingCaptureStepUI";
 import { useMobileScanCaptureGuidance } from "@/hooks/useMobileScanCaptureGuidance";
 import {
@@ -32,6 +34,8 @@ import {
   type CameraAdjustments,
 } from "@/lib/cameraCaptureAdjustments";
 import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
+import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
+import { cropScanPhotoToFaceGuide } from "@/lib/cropScanToFaceGuide";
 import { prepareCapturedScanPhotoUri } from "@/lib/normalizeScanImage";
 import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
@@ -76,14 +80,19 @@ export function FiveAngleCameraStep({
   const [shooting, setShooting] = useState(false);
   const [pendingUri, setPendingUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("front");
-  const [showDebug, setShowDebug] = useState(
-    () => variant === "onboarding" || variant === "dashboard" || isCaptureDebugEnabled()
-  );
+  const [showDebug, setShowDebug] = useState(() => isCaptureDebugEnabled());
   const [cameraAdjust, setCameraAdjust] = useState<CameraAdjustments>(
     DEFAULT_CAMERA_ADJUSTMENTS
   );
+  const captureDebug = isCaptureDebugEnabled();
   const voiceSpeechAvailable = isCaptureVoiceSpeechAvailable();
-  const [voiceEnabled, setVoiceEnabled] = useState(voiceSpeechAvailable);
+  const [voiceEnabled, setVoiceEnabled] = useState(() => voiceSpeechAvailable);
+
+  const insets = useSafeAreaInsets();
+  const viewfinderSize = useMemo(
+    () => getCaptureViewfinderSize(insets.top + 8, Math.max(insets.bottom, 16)),
+    [insets.top, insets.bottom]
+  );
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
@@ -127,6 +136,9 @@ export function FiveAngleCameraStep({
       });
       if (pic?.uri) {
         let uri = await prepareCapturedScanPhotoUri(pic.uri, facing);
+        uri = await cropScanPhotoToFaceGuide(uri, stepId, viewfinderSize, {
+          zoom: 1 + cameraAdjust.zoom,
+        });
         uri = await applyCaptureAdjustments(
           uri,
           cameraAdjust.brightness,
@@ -145,7 +157,17 @@ export function FiveAngleCameraStep({
     } finally {
       setShooting(false);
     }
-  }, [step, cameraReady, shooting, facing, cameraAdjust.brightness, cameraAdjust.exposure]);
+  }, [
+    step,
+    stepId,
+    cameraReady,
+    shooting,
+    facing,
+    viewfinderSize,
+    cameraAdjust.brightness,
+    cameraAdjust.exposure,
+    cameraAdjust.zoom,
+  ]);
 
   useEffect(() => {
     captureVoiceGuide.setEnabled(voiceEnabled && !reviewingCapture);
@@ -292,6 +314,9 @@ export function FiveAngleCameraStep({
       viewfinder={
         <View style={styles.onboardingViewfinder}>
           {cameraPreview}
+          {!reviewingCapture ? (
+            <CaptureFaceGuideOverlayNative stepId={stepId} />
+          ) : null}
           <ScanCaptureDebugOverlay
             guidance={guidance}
             captureZoom={cameraAdjust.zoom}
@@ -329,6 +354,9 @@ export function FiveAngleCameraStep({
       isLastStep={stepIndex + 1 >= totalSteps}
       onPickFromLibrary={onPickFromLibrary}
       cameraReady={cameraReady}
+      showGuidanceBanner
+      showVoiceToggle={voiceSpeechAvailable}
+      showDevControls={captureDebug}
     />
   );
 }

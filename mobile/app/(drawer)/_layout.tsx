@@ -246,7 +246,11 @@ export default function DrawerLayout() {
         />
         <Drawer.Screen
           name="schedules"
-          options={{ title: "Manage", drawerLabel: "Manage", headerStyle: { backgroundColor: "#F2F9F2" } }}
+          options={{
+            title: "Manage",
+            drawerLabel: "Manage",
+            headerShown: false,
+          }}
         />
         <Drawer.Screen
           name="history"

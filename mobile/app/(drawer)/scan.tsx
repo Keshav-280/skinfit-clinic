@@ -293,7 +293,6 @@ export default function ScanScreen() {
     <CapturePrepScreen
       onStart={() => setPhase("capture")}
       onBack={() => router.replace("/(drawer)" as Href)}
-      showPrivacy={false}
       reserveBottomDock
       onViewHistory={() => router.push("/(drawer)/history" as Href)}
     />

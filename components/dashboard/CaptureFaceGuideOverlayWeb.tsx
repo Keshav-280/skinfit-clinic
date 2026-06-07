@@ -11,11 +11,11 @@ function poseForStep(stepId: FaceScanCaptureId): GuidePose {
   return "front";
 }
 
-const DASH = "8 10";
+const DASH = "4 6";
 const STROKE = {
   fill: "none",
   stroke: "white",
-  strokeWidth: 3,
+  strokeWidth: 1.5,
   strokeDasharray: DASH,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,

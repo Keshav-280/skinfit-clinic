@@ -16,6 +16,8 @@ type Props = {
   nextInsightAt: string;
   monthly: MonthlyData | null;
   onExportPdf: (monthly: MonthlyData) => void;
+  /** Render body only (no outer profile card / title) — used on Manage schedule screen. */
+  embedded?: boolean;
 };
 
 const RISK_RED = "#DC2626";
@@ -55,14 +57,10 @@ export default function MonthlyReportCard({
   nextInsightAt,
   monthly,
   onExportPdf,
+  embedded = false,
 }: Props) {
-  return (
-    <View style={card.base}>
-      <Text style={s.title}>Monthly insight</Text>
-      <Text style={s.subtitle}>
-        {locked ? "1 month after your first scan" : currentMonthName()}
-      </Text>
-
+  const body = (
+    <>
       {locked ? (
         <View style={s.lockedWrap}>
           <View style={s.lockCircle}>
@@ -113,11 +111,28 @@ export default function MonthlyReportCard({
           </Pressable>
         </View>
       ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return <View style={s.embeddedBody}>{body}</View>;
+  }
+
+  return (
+    <View style={card.base}>
+      <Text style={s.title}>Monthly insight</Text>
+      <Text style={s.subtitle}>
+        {locked ? "1 month after your first scan" : currentMonthName()}
+      </Text>
+      {body}
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  embeddedBody: {
+    gap: 12,
+  },
   title: {
     fontSize: 17,
     fontWeight: "700",
