@@ -1,10 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { dailyLogs } from "@/src/db/schema";
-import {
-  getOnboardingAccessForUser,
-  userHasQuestionnaire,
-} from "@/src/lib/onboardingAccess";
+import { getOnboardingAccessForUser } from "@/src/lib/onboardingAccess";
+import { isQuestionnaireMilestoneComplete } from "@/src/lib/questionnaireCompletion";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 
 export type ProgressMilestoneId =
@@ -96,14 +94,13 @@ export async function hasDailyJournalTrackersComplete(
 export async function getPatientProgressSnapshot(
   userId: string
 ): Promise<PatientProgressSnapshot> {
-  const [access, clinicVisited, hasDailyJournal] = await Promise.all([
-    getOnboardingAccessForUser(userId),
-    isPatientClinicVisited(userId),
-    hasDailyJournalTrackersComplete(userId),
-  ]);
-
-  const hasQuestionnaire =
-    access.hasQuestionnaire || access.onboardingComplete;
+  const [access, clinicVisited, hasDailyJournal, hasQuestionnaire] =
+    await Promise.all([
+      getOnboardingAccessForUser(userId),
+      isPatientClinicVisited(userId),
+      hasDailyJournalTrackersComplete(userId),
+      isQuestionnaireMilestoneComplete(userId),
+    ]);
   const hasOnboardingScan =
     access.hasBaselineScan || access.baselineScanPending;
 
@@ -128,7 +125,7 @@ export async function getPatientProgressSnapshot(
     },
     {
       id: "daily_journal",
-      label: "Sleep, water & stress",
+      label: "Complete your first daily journal",
       done: hasDailyJournal,
       href: MILESTONE_HREFS.daily_journal,
     },

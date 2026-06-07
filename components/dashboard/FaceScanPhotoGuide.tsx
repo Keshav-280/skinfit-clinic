@@ -82,6 +82,7 @@ type Props = {
   onDontRemindChange: (checked: boolean) => void;
   onContinue: () => void;
   onBack?: () => void;
+  showDismissOption?: boolean;
 };
 
 function GuideFooter({
@@ -90,16 +91,20 @@ function GuideFooter({
   onDontRemindChange,
   onContinue,
   onBack,
+  showDismissOption = true,
 }: {
   continueLabel: string;
   dontRemind: boolean;
   onDontRemindChange: (checked: boolean) => void;
   onContinue: () => void;
   onBack?: () => void;
+  showDismissOption?: boolean;
 }) {
   return (
     <div className="space-y-4">
-      <ScanPhotoGuideDismissCheckbox checked={dontRemind} onChange={onDontRemindChange} />
+      {showDismissOption ? (
+        <ScanPhotoGuideDismissCheckbox checked={dontRemind} onChange={onDontRemindChange} />
+      ) : null}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
         {onBack ? (
           <button
@@ -131,6 +136,7 @@ export function FaceScanPhotoGuide({
   onDontRemindChange,
   onContinue,
   onBack,
+  showDismissOption = true,
 }: Props) {
   const mobileContinueLabel = mode === "review" ? "Got it" : "Start Scan";
   const desktopContinueLabel = mode === "review" ? "Got it" : "Continue";
@@ -182,6 +188,7 @@ export function FaceScanPhotoGuide({
             onDontRemindChange={onDontRemindChange}
             onContinue={onContinue}
             onBack={onBack}
+            showDismissOption={showDismissOption}
           />
         </div>
       </div>
@@ -294,6 +301,7 @@ export function FaceScanPhotoGuide({
             onDontRemindChange={onDontRemindChange}
             onContinue={onContinue}
             onBack={onBack}
+            showDismissOption={showDismissOption}
           />
         </div>
       </div>

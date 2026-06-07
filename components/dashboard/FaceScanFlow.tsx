@@ -528,6 +528,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     if (isOnboardingScan) setOnboardingGuideComplete(true);
   }, [isOnboardingScan]);
 
+  const handlePhotoGuideBack = useCallback(() => {
+    if (isOnboardingScan && !onboardingGuideComplete) {
+      router.push("/onboarding/kai-intro");
+      return;
+    }
+    closePhotoGuide();
+  }, [isOnboardingScan, onboardingGuideComplete, router, closePhotoGuide]);
+
   const completePhotoGuide = useCallback(() => {
     const intent = photoGuideIntent;
     setPhotoGuideOpen(false);
@@ -758,6 +766,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const onboardingPastGuide = !isOnboardingScan || onboardingGuideComplete;
   const showUploadChrome = !showPhotoGuide && onboardingPastGuide;
   const navy = SKINFIT_THEME.navy;
+  const onboardingSurface =
+    "border-[#2C3E6B]/10 bg-white/25 shadow-none backdrop-blur-sm";
+  const onboardingSurfaceHover =
+    "hover:border-[#2C3E6B]/18 hover:bg-white/35";
   return (
     <div
       className={`${
@@ -765,7 +777,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
           : variant === "dashboard"
             ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
-            : "mx-auto max-w-4xl space-y-6"
+            : "mx-auto w-full max-w-5xl space-y-5"
       }`}
     >
       {showPhotoGuide ? (
@@ -774,11 +786,12 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           dontRemind={skipPhotoGuide}
           onDontRemindChange={handleSkipPhotoGuideChange}
           onContinue={completePhotoGuide}
-          onBack={closePhotoGuide}
+          onBack={handlePhotoGuideBack}
+          showDismissOption={!isOnboardingScan}
         />
       ) : null}
 
-      {showUploadChrome && !(step === "upload" && cameraOpen) ? (
+      {showUploadChrome && !(step === "upload" && cameraOpen) && !isOnboardingScan ? (
       <motion.header
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -790,7 +803,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             Skin analysis
           </p>
           <h1 className="mt-1 text-3xl font-extrabold tracking-tight" style={{ color: navy }}>
-            {isOnboardingScan ? "kAI baseline photos" : "AI face scan"}
+            AI face scan
           </h1>
         </div>
       </motion.header>
@@ -977,8 +990,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 onDrop={handleDrop}
                 className={`flex min-h-[270px] flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors ${
                   isDragging
-                    ? "border-[#2C3E6B]/60 bg-[#E8EFE6]/85"
-                    : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
+                    ? "border-[#2C3E6B]/40 bg-white/40"
+                    : isOnboardingScan
+                      ? `border-[#2C3E6B]/12 ${onboardingSurface}`
+                      : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
                 }`}
               >
                 <input
@@ -1013,7 +1028,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 </div>
                 <label
                   htmlFor="scan-file-input"
-                  className="mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/75 px-5 py-3 text-sm font-extrabold text-[#2C3E6B] transition hover:bg-white"
+                  className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-extrabold text-[#2C3E6B] transition ${
+                    isOnboardingScan
+                      ? "border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50"
+                      : "border-white/70 bg-white/75 hover:bg-white"
+                  }`}
                 >
                   <ImagePlus className="h-4 w-4" />
                   Choose photos
@@ -1033,8 +1052,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                       key={captureStep.id}
                       className={`relative rounded-2xl border px-2 py-2 text-center transition-colors ${
                         filled
-                          ? "border-[#4CAF50] bg-[#E8F5E9]"
-                          : "cursor-pointer border-[#2C3E6B]/15 bg-white/60 hover:border-[#2C3E6B]/30 hover:bg-white/80"
+                          ? "border-[#4CAF50]/40 bg-[#E8F5E9]/80"
+                          : isOnboardingScan
+                            ? `cursor-pointer ${onboardingSurface} ${onboardingSurfaceHover}`
+                            : "cursor-pointer border-[#2C3E6B]/15 bg-white/60 hover:border-[#2C3E6B]/30 hover:bg-white/80"
                       }`}
                     >
                       {filled ? (
@@ -1086,15 +1107,21 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 })}
               </div>
               <div className="flex flex-row flex-wrap items-stretch gap-3">
-                <ScanPhotoGuideDismissCheckbox
-                  checked={skipPhotoGuide}
-                  onChange={handleSkipPhotoGuideChange}
-                  className="min-w-[min(100%,240px)] flex-1 bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
-                />
+                {!isOnboardingScan ? (
+                  <ScanPhotoGuideDismissCheckbox
+                    checked={skipPhotoGuide}
+                    onChange={handleSkipPhotoGuideChange}
+                    className="min-w-[min(100%,240px)] flex-1 bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
+                  />
+                ) : null}
                 <button
                   type="button"
                   onClick={openPhotoGuideReview}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white/60 px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-white/80 sm:px-6"
+                  className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-bold text-[#2C3E6B] transition sm:px-6 ${
+                    isOnboardingScan
+                      ? `w-full ${onboardingSurface} ${onboardingSurfaceHover}`
+                      : "border-[#2C3E6B]/25 bg-white/60 shadow-sm hover:border-[#2C3E6B]/40 hover:bg-white/80"
+                  }`}
                 >
                   <Sun className="h-4 w-4" aria-hidden />
                   View photo tips

@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 import { KaiTypingIntro } from "@/components/onboarding/KaiTypingIntro";
-import { ArrowRight, LogOut, Shield } from "lucide-react";
+import { ArrowRight, Shield } from "lucide-react";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -18,16 +17,8 @@ const BOUNDARIES = [
 ];
 
 export default function KaiIntroPage() {
-  const router = useRouter();
-
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
-  }
-
   return (
-    <div className="mx-auto w-full md:max-h-[85vh]">
+    <div className="mx-auto w-full">
       <KaiTypingIntro />
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -127,26 +118,11 @@ export default function KaiIntroPage() {
             </span>
           </Link>
           <Link
-            href="/dashboard"
+            href="/onboarding/questionnaire"
             className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
           >
-            Skip for now
+            Skip to questionnaire
           </Link>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.38, ease: easeOut }}
-        >
-          <button
-            type="button"
-            onClick={() => void handleLogout()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white/50 px-4 py-3 text-sm font-bold text-zinc-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-white/80"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            Sign out
-          </button>
         </motion.div>
 
       </div>

@@ -24,6 +24,7 @@ export type OnboardingQuestionnaireDraftV2 = {
   skinType?: string | null;
   referralSource?: string | null;
   referralOther?: string;
+  skippedSteps?: number[];
 };
 
 /** @deprecated v1 drafts are no longer loaded. */

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 import { OnboardingResumeGate } from "@/components/onboarding/OnboardingResumeGate";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
+import { getOnboardingAccessForUser } from "@/src/lib/onboardingAccess";
 
 export default async function OnboardingLayout({
   children,
@@ -14,7 +15,10 @@ export default async function OnboardingLayout({
     redirect("/login?next=/onboarding/kai-intro");
   }
   if (profile.onboardingComplete) {
-    redirect("/dashboard");
+    const access = await getOnboardingAccessForUser(profile.id);
+    if (access.hasBaselineScan || access.baselineScanPending) {
+      redirect("/dashboard");
+    }
   }
 
   return (

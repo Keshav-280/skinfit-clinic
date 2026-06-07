@@ -6,6 +6,7 @@ import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { finalizeOnboardingUser } from "@/src/lib/finalizeOnboardingUser";
 import { isReferralSourceId } from "@/src/lib/onboardingReferralSource";
 import { notifyStaffQuestionnaireRedFlags } from "@/src/lib/questionnaireDoctorAlerts";
+import { saveQuestionnaireCompletionMeta } from "@/src/lib/questionnaireCompletion";
 
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
 const CONCERNS = new Set(["acne", "pigmentation", "ageing", "hair", "general"]);
@@ -316,6 +317,13 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("[onboarding/questionnaire] doctor alert notify failed", e);
   }
+
+  const skippedSteps = Array.isArray(body.skippedSteps)
+    ? body.skippedSteps.filter(
+        (n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0
+      )
+    : [];
+  await saveQuestionnaireCompletionMeta(userId, skippedSteps);
 
   await finalizeOnboardingUser(userId);
 

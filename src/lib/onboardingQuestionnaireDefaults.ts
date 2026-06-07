@@ -95,7 +95,8 @@ export function applyOnboardingStepSkip(
 }
 
 export function buildOnboardingQuestionnairePayload(
-  state: OnboardingQuestionnaireFormState
+  state: OnboardingQuestionnaireFormState,
+  options?: { skippedSteps?: number[] }
 ) {
   const d = ONBOARDING_QUESTIONNAIRE_DEFAULTS;
   const age = parseOnboardingAge(state.ageInput) ?? d.age;
@@ -136,5 +137,6 @@ export function buildOnboardingQuestionnairePayload(
     skinType: state.skinType ?? d.skinType,
     referralSource,
     referralSourceOther: referralOther,
+    skippedSteps: options?.skippedSteps ?? [],
   };
 }

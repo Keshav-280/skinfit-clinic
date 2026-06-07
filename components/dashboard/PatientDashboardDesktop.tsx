@@ -17,8 +17,37 @@ import {
   Sparkles,
   ListChecks,
   Activity,
+  Camera,
   NotebookPen,
 } from "lucide-react";
+
+const ONBOARDING_FIRST_SCAN_HREF = "/onboarding/capture/photos";
+
+function FirstScanCta({
+  message,
+  className = "",
+}: {
+  message: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center gap-4 px-4 py-8 text-center ${className}`}
+    >
+      <p className="max-w-xs text-sm font-semibold leading-relaxed text-[#6B7280]">
+        {message}
+      </p>
+      <Link
+        href={ONBOARDING_FIRST_SCAN_HREF}
+        className="inline-flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_20px_-10px_rgba(44,62,107,0.45)] transition hover:bg-[#354A7A]"
+      >
+        <Camera className="h-4 w-4" aria-hidden />
+        Take your first scan
+        <ArrowRight className="h-4 w-4" aria-hidden />
+      </Link>
+    </div>
+  );
+}
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMergedCard";
@@ -600,9 +629,10 @@ export function PatientDashboardDesktop() {
               </div>
             </div>
           ) : (
-            <div className={`flex flex-col items-center justify-center ${DASHBOARD_SECTION_CARD}`}>
-              <p className="text-sm font-semibold text-[#6B7280]">Take a scan to see skin health metrics</p>
-            </div>
+            <FirstScanCta
+              message="Take a scan to see skin health metrics"
+              className={DASHBOARD_SECTION_CARD}
+            />
           )}
         </div>
 
@@ -746,13 +776,10 @@ export function PatientDashboardDesktop() {
             className="min-w-0 self-start"
           />
         ) : (
-          <div
-            className={`flex min-w-0 items-center justify-center self-start ${DASHBOARD_SECTION_CARD}`}
-          >
-            <p className="text-sm font-semibold text-[#6B7280]">
-              Skin parameters appear after your first scan
-            </p>
-          </div>
+          <FirstScanCta
+            message="Skin parameters appear after your first scan"
+            className={`min-w-0 self-start ${DASHBOARD_SECTION_CARD}`}
+          />
         )}
         </div>
 

@@ -127,10 +127,10 @@ function copyForConcern(
       trigTitle: "What do you think causes your hair loss?",
     },
     general: {
-      sevTitle: "How would you rate your overall skin health?",
-      sevA: "Minor concerns, maintenance",
-      sevB: "Several concerns, want to improve",
-      sevC: "Multiple ongoing concerns",
+      sevTitle: "What best describes your skin goals?",
+      sevA: "Concerned about maintaining skin health",
+      sevB: "Concerned about improving skin health",
+      sevC: "Various skin concerns",
       durTitle: "How long have you had these concerns?",
       trigTitle: "What affects your skin most?",
     },
@@ -164,6 +164,7 @@ export function OnboardingQuestionnaireForm() {
     null
   );
   const [referralOther, setReferralOther] = useState("");
+  const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
   const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
@@ -251,6 +252,13 @@ export function OnboardingQuestionnaireForm() {
         setReferralSource(d.referralSource as ReferralSourceId);
       }
       if (typeof d.referralOther === "string") setReferralOther(d.referralOther);
+      if (Array.isArray(d.skippedSteps)) {
+        setSkippedSteps(
+          d.skippedSteps.filter(
+            (n): n is number => typeof n === "number" && Number.isInteger(n)
+          )
+        );
+      }
     } catch {
       /* ignore */
     } finally {
@@ -282,6 +290,7 @@ export function OnboardingQuestionnaireForm() {
           skinType,
           referralSource,
           referralOther,
+          skippedSteps,
         };
         localStorage.setItem(
           ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
@@ -312,6 +321,7 @@ export function OnboardingQuestionnaireForm() {
     gender,
     referralSource,
     referralOther,
+    skippedSteps,
   ]);
 
   const toggleTrigger = (id: string) => {
@@ -426,7 +436,9 @@ export function OnboardingQuestionnaireForm() {
       const res = await fetch("/api/onboarding/questionnaire", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildOnboardingQuestionnairePayload(formState())),
+        body: JSON.stringify(
+          buildOnboardingQuestionnairePayload(formState(), { skippedSteps })
+        ),
       });
       const data = (await res.json().catch(() => ({}))) as {
         message?: string;
@@ -478,6 +490,9 @@ export function OnboardingQuestionnaireForm() {
   }
 
   function skip() {
+    setSkippedSteps((prev) =>
+      prev.includes(step) ? prev : [...prev, step]
+    );
     applySkipPatch(applyOnboardingStepSkip(step));
     next();
   }
