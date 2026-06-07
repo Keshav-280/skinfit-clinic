@@ -9,6 +9,7 @@ const QUESTION_TITLES: Record<string, string> = {
   PROFILE_01: "About you",
   REF_01: "How they heard about us",
   CONCERN_01: "Primary concern",
+  HEALTH_01: "Overall skin health",
   SEV_01: "Severity",
   DUR_01: "Duration",
   TRIG_01: "Triggers",
@@ -73,12 +74,16 @@ const GENERIC_VALUE_LABELS: Record<string, string> = {
   male: "Male",
   other: "Other",
   prefer_not_say: "Prefer not to say",
+  maintenance: "Maintenance",
+  need_improve: "Need to improve",
+  ongoing_concerns: "Ongoing concerns",
 };
 
 const DISPLAY_ORDER = [
   "PROFILE_01",
   "REF_01",
   "CONCERN_01",
+  "HEALTH_01",
   "SEV_01",
   "DUR_01",
   "TRIG_01",

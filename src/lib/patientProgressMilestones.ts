@@ -46,7 +46,7 @@ const STRESS_MOODS = new Set([
 const MILESTONE_HREFS: Record<ProgressMilestoneId, string | null> = {
   account: null,
   onboarding_scan: "/onboarding/capture/photos",
-  questionnaire: "/onboarding/questionnaire",
+  questionnaire: "/onboarding/questionnaire?entry=resume",
   daily_journal: "/dashboard",
   clinic_visit: "/dashboard/schedules",
 };

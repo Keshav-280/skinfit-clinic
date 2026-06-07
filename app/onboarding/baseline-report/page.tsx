@@ -38,7 +38,7 @@ export default function OnboardingBaselineReportPage() {
         <div className="flex flex-col gap-3 pt-1">
           <button
             type="button"
-            onClick={() => router.push("/onboarding/questionnaire")}
+            onClick={() => router.push("/onboarding/questionnaire?entry=resume")}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080]"
           >
             Continue to answer questions

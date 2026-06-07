@@ -29,7 +29,7 @@ function mobileMilestoneHref(id: ProgressMilestoneId): Href | null {
     case "onboarding_scan":
       return "/onboarding/capture-intro";
     case "questionnaire":
-      return "/onboarding/questionnaire";
+      return "/onboarding/questionnaire?entry=resume";
     case "daily_journal":
       return "/(drawer)";
     case "clinic_visit":
@@ -160,7 +160,7 @@ export default function PatientProgressTracker({
           .{" "}
           <Text
             style={s.hintLink}
-            onPress={() => router.push("/onboarding/questionnaire" as Href)}
+            onPress={() => router.push("/onboarding/questionnaire?entry=resume" as Href)}
           >
             Continue
           </Text>

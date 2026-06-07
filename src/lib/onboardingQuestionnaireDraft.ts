@@ -1,10 +1,18 @@
-import { normalizeOnboardingQuestionnaireStep } from "@/src/lib/onboardingQuestionnaireDefaults";
+import {
+  normalizeOnboardingQuestionnaireStep,
+  ONBOARDING_QUESTIONNAIRE_LAST_STEP,
+  reconcileSkippedSteps,
+  resolveOnboardingQuestionnaireEntryStep,
+  type OnboardingQuestionnaireFormState,
+  type OverallSkinHealth,
+  type QuestionnaireEntryMode,
+} from "@/src/lib/onboardingQuestionnaireDefaults";
 
 /** Web: localStorage. Native: AsyncStorage with same key. */
 export const ONBOARDING_QUESTIONNAIRE_DRAFT_KEY = "skinfit_onboarding_questionnaire_v1";
 
 /** Draft schema version (bump when step order or required fields change). */
-export const ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA = 3 as const;
+export const ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA = 4 as const;
 
 export type OnboardingQuestionnaireDraftV2 = {
   v: typeof ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA;
@@ -12,6 +20,7 @@ export type OnboardingQuestionnaireDraftV2 = {
   ageInput: string;
   gender: string | null;
   concern: string | null;
+  overallSkinHealth?: string | null;
   severity: string | null;
   duration: string | null;
   triggers: string[];
@@ -46,6 +55,11 @@ const VALID_CONCERNS = new Set([
   "general",
 ]);
 
+const VALID_OVERALL_SKIN_HEALTH = new Set([
+  "maintenance",
+  "need_improve",
+  "ongoing_concerns",
+]);
 const VALID_SEVERITY = new Set(["mild", "moderate", "severe"]);
 const VALID_DURATION = new Set(["recent", "ongoing", "chronic"]);
 const VALID_PRIOR_TX = new Set(["yes", "no"]);
@@ -62,24 +76,47 @@ const VALID_SKIN_TYPES = new Set([
   "Sensitive",
 ]);
 
+function migrateQuestionnaireDraftStep(step: number, fromVersion: number): number {
+  if (fromVersion >= 4) return step;
+  return step >= 2 ? step + 1 : step;
+}
+
+function migrateQuestionnaireSkippedSteps(
+  skippedSteps: number[],
+  fromVersion: number
+): number[] {
+  if (fromVersion >= 4) return skippedSteps;
+  return [...new Set(skippedSteps.map((step) => migrateQuestionnaireDraftStep(step, fromVersion)))].sort(
+    (a, b) => a - b
+  );
+}
+
 /** Validate and normalize a stored draft (localStorage or DB). */
 export function parseOnboardingQuestionnaireDraft(
   raw: unknown
 ): OnboardingQuestionnaireDraftV2 | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const d = raw as Record<string, unknown>;
-  if (d.v !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) return null;
-  if (typeof d.step !== "number" || d.step < 0 || d.step > 11) return null;
+  const version = d.v;
+  if (version !== 3 && version !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) return null;
+  if (typeof d.step !== "number" || d.step < 0) return null;
+  if (version === 3 && d.step > 11) return null;
+  if (version === ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA && d.step > ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
+    return null;
+  }
 
   const triggers = Array.isArray(d.triggers)
     ? d.triggers.filter((x): x is string => typeof x === "string")
     : [];
 
-  const skippedSteps = Array.isArray(d.skippedSteps)
-    ? d.skippedSteps.filter(
-        (n): n is number => typeof n === "number" && Number.isInteger(n)
-      )
-    : [];
+  const skippedSteps = migrateQuestionnaireSkippedSteps(
+    Array.isArray(d.skippedSteps)
+      ? d.skippedSteps.filter(
+          (n): n is number => typeof n === "number" && Number.isInteger(n)
+        )
+      : [],
+    version as number
+  );
 
   const gender =
     typeof d.gender === "string" && VALID_GENDERS.has(d.gender)
@@ -88,6 +125,11 @@ export function parseOnboardingQuestionnaireDraft(
   const concern =
     typeof d.concern === "string" && VALID_CONCERNS.has(d.concern)
       ? d.concern
+      : null;
+  const overallSkinHealth =
+    typeof d.overallSkinHealth === "string" &&
+    VALID_OVERALL_SKIN_HEALTH.has(d.overallSkinHealth)
+      ? d.overallSkinHealth
       : null;
   const severity =
     typeof d.severity === "string" && VALID_SEVERITY.has(d.severity)
@@ -120,10 +162,11 @@ export function parseOnboardingQuestionnaireDraft(
 
   return {
     v: ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA,
-    step: d.step,
+    step: migrateQuestionnaireDraftStep(d.step, version as number),
     ageInput: typeof d.ageInput === "string" ? d.ageInput : "",
     gender,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -188,6 +231,10 @@ export function mergeOnboardingQuestionnaireDrafts(
     ageInput: pickRicherString(local.ageInput, server.ageInput),
     gender: pickNullable(local.gender, server.gender),
     concern: pickNullable(local.concern, server.concern),
+    overallSkinHealth: pickNullable(
+      local.overallSkinHealth ?? null,
+      server.overallSkinHealth ?? null
+    ),
     severity: pickNullable(local.severity, server.severity),
     duration: pickNullable(local.duration, server.duration),
     triggers: pickTriggers(local.triggers, server.triggers),
@@ -237,6 +284,7 @@ export type OnboardingQuestionnaireDraftSetters = {
   setAgeInput: (value: string) => void;
   setGender: (value: string | null) => void;
   setConcern: (value: string | null) => void;
+  setOverallSkinHealth: (value: string | null) => void;
   setSeverity: (value: string | null) => void;
   setDuration: (value: string | null) => void;
   setTriggers: (value: string[]) => void;
@@ -254,20 +302,100 @@ export type OnboardingQuestionnaireDraftSetters = {
   setSkippedSteps: (value: number[]) => void;
 };
 
+export function onboardingDraftToFormState(
+  d: OnboardingQuestionnaireDraftV2
+): OnboardingQuestionnaireFormState {
+  return {
+    ageInput: d.ageInput,
+    gender: d.gender,
+    concern: d.concern,
+    overallSkinHealth:
+      d.overallSkinHealth === "maintenance" ||
+      d.overallSkinHealth === "need_improve" ||
+      d.overallSkinHealth === "ongoing_concerns"
+        ? (d.overallSkinHealth as OverallSkinHealth)
+        : null,
+    severity:
+      d.severity === "mild" || d.severity === "moderate" || d.severity === "severe"
+        ? d.severity
+        : null,
+    duration:
+      d.duration === "recent" || d.duration === "ongoing" || d.duration === "chronic"
+        ? d.duration
+        : null,
+    triggers: d.triggers,
+    priorTx: d.priorTx === "yes" || d.priorTx === "no" ? d.priorTx : null,
+    txText: d.txText,
+    txDur: d.txDur,
+    sensitivity:
+      d.sensitivity === "low" ||
+      d.sensitivity === "moderate" ||
+      d.sensitivity === "high"
+        ? d.sensitivity
+        : null,
+    sleep:
+      d.sleep === "under5" ||
+      d.sleep === "5to6" ||
+      d.sleep === "7to8" ||
+      d.sleep === "8plus"
+        ? d.sleep
+        : null,
+    water:
+      d.water === "under1l" ||
+      d.water === "1to1_5l" ||
+      d.water === "1_5to2l" ||
+      d.water === "2lplus"
+        ? d.water
+        : null,
+    diet:
+      d.diet === "vegetarian" ||
+      d.diet === "vegan" ||
+      d.diet === "nonveg" ||
+      d.diet === "mixed"
+        ? d.diet
+        : null,
+    sun:
+      d.sun === "minimal" ||
+      d.sun === "low" ||
+      d.sun === "moderate" ||
+      d.sun === "high"
+        ? d.sun
+        : null,
+    skinType: d.skinType ?? null,
+    referralSource:
+      typeof d.referralSource === "string"
+        ? (d.referralSource as OnboardingQuestionnaireFormState["referralSource"])
+        : null,
+    referralOther: d.referralOther ?? "",
+  };
+}
+
+export function resolveQuestionnaireDraftEntryStep(
+  d: OnboardingQuestionnaireDraftV2,
+  entry: QuestionnaireEntryMode | null
+): number {
+  const priorTx = d.priorTx === "yes" || d.priorTx === "no" ? d.priorTx : null;
+  const skippedSteps = reconcileSkippedSteps(d.skippedSteps ?? []);
+  const state = onboardingDraftToFormState({ ...d, skippedSteps });
+  return resolveOnboardingQuestionnaireEntryStep(state, skippedSteps, priorTx, entry);
+}
+
 /** Hydrate questionnaire form state from a saved draft. */
 export function applyOnboardingQuestionnaireDraft(
   d: OnboardingQuestionnaireDraftV2,
-  set: OnboardingQuestionnaireDraftSetters
+  set: OnboardingQuestionnaireDraftSetters,
+  entry?: QuestionnaireEntryMode | null
 ): void {
-  set.setStep(
-    normalizeOnboardingQuestionnaireStep(
-      d.step,
-      d.priorTx === "yes" || d.priorTx === "no" ? d.priorTx : null
-    )
-  );
+  const priorTx = d.priorTx === "yes" || d.priorTx === "no" ? d.priorTx : null;
+  const entryStep =
+    entry === "start" || entry === "resume"
+      ? resolveQuestionnaireDraftEntryStep(d, entry)
+      : normalizeOnboardingQuestionnaireStep(d.step, priorTx);
+  set.setStep(entryStep);
   set.setAgeInput(d.ageInput);
   set.setGender(d.gender);
   set.setConcern(d.concern);
+  set.setOverallSkinHealth(d.overallSkinHealth ?? null);
   set.setSeverity(d.severity);
   set.setDuration(d.duration);
   set.setTriggers(d.triggers);

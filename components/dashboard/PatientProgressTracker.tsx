@@ -148,7 +148,7 @@ export function PatientProgressTracker({
           </span>
           .{" "}
           <Link
-            href="/onboarding/questionnaire"
+            href="/onboarding/questionnaire?entry=resume"
             className="font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
           >
             Continue

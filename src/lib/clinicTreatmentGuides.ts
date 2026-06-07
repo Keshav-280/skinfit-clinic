@@ -47,11 +47,17 @@ export function resolveClinicTreatment(
   treatmentId: string,
   customTreatment?: ClinicTreatment | null
 ): ClinicTreatment | undefined {
+  const normalized = normalizeClinicTreatment(customTreatment);
   const builtIn = getBuiltInClinicTreatment(treatmentId);
-  if (builtIn) return builtIn;
-  if (customTreatment && customTreatment.id === treatmentId) {
-    return normalizeClinicTreatment(customTreatment) ?? undefined;
+
+  if (normalized && normalized.id === treatmentId) {
+    return {
+      ...normalized,
+      isBuiltIn: builtIn?.isBuiltIn ?? normalized.isBuiltIn,
+    };
   }
+
+  if (builtIn) return builtIn;
   return undefined;
 }
 

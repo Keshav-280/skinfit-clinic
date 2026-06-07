@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -19,6 +19,8 @@ import {
   buildOnboardingQuestionnairePayload,
   expandSkippedStepsForSkip,
   mergeOnboardingStepSkipPatches,
+  ONBOARDING_QUESTIONNAIRE_LAST_STEP,
+  OVERALL_SKIN_HEALTH_OPTIONS,
   prepareQuestionnaireBack,
   prepareQuestionnaireNext,
   reconcileSkippedSteps,
@@ -27,12 +29,14 @@ import {
   normalizeOnboardingQuestionnaireStep,
   questionnaireProgress,
   type BaselineDietType,
+  type OverallSkinHealth,
   type BaselineHydration,
   type BaselineSleep,
   type BaselineSunExposure,
   type ConcernDuration,
   type ConcernSeverity,
   type OnboardingQuestionnaireFormState,
+  type QuestionnaireEntryMode,
   type SkinSensitivity,
 } from "@/src/lib/onboardingQuestionnaireDefaults";
 import {
@@ -131,13 +135,22 @@ function copyForConcern(
   return map[c][q] ?? map.general[q];
 }
 
+function parseQuestionnaireEntryMode(value: string | null): QuestionnaireEntryMode {
+  return value === "start" ? "start" : "resume";
+}
+
 export function OnboardingQuestionnaireForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const entryMode = parseQuestionnaireEntryMode(searchParams.get("entry"));
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const [concern, setConcern] = useState<Concern | null>(null);
+  const [overallSkinHealth, setOverallSkinHealth] = useState<OverallSkinHealth | null>(
+    null
+  );
   const [severity, setSeverity] = useState<ConcernSeverity | null>(null);
   const [duration, setDuration] = useState<ConcernDuration | null>(null);
   const [triggers, setTriggers] = useState<string[]>([]);
@@ -166,6 +179,7 @@ export function OnboardingQuestionnaireForm() {
     ageInput,
     gender,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -187,6 +201,7 @@ export function OnboardingQuestionnaireForm() {
     ageInput,
     gender,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -220,6 +235,14 @@ export function OnboardingQuestionnaireForm() {
       setGender,
       setConcern: (value: string | null) =>
         setConcern(value && VALID_CONCERN.has(value) ? (value as Concern) : null),
+      setOverallSkinHealth: (value: string | null) =>
+        setOverallSkinHealth(
+          value === "maintenance" ||
+            value === "need_improve" ||
+            value === "ongoing_concerns"
+            ? value
+            : null
+        ),
       setSeverity: (value: string | null) =>
         setSeverity(
           value === "mild" || value === "moderate" || value === "severe"
@@ -307,6 +330,10 @@ export function OnboardingQuestionnaireForm() {
       ageInput: patch.ageInput ?? base.ageInput,
       gender: patch.gender !== undefined ? patch.gender : base.gender,
       concern: patch.concern !== undefined ? patch.concern : base.concern,
+      overallSkinHealth:
+        patch.overallSkinHealth !== undefined
+          ? patch.overallSkinHealth
+          : base.overallSkinHealth,
       severity: patch.severity !== undefined ? patch.severity : base.severity,
       duration: patch.duration !== undefined ? patch.duration : base.duration,
       triggers: patch.triggers ?? base.triggers,
@@ -389,7 +416,7 @@ export function OnboardingQuestionnaireForm() {
       const merged = mergeOnboardingQuestionnaireDrafts(localDraft, serverDraft);
       if (merged) {
         merged.skippedSteps = reconcileSkippedSteps(merged.skippedSteps ?? []);
-        applyOnboardingQuestionnaireDraft(merged, draftSetters());
+        applyOnboardingQuestionnaireDraft(merged, draftSetters(), entryMode);
         try {
           localStorage.setItem(
             ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
@@ -398,6 +425,8 @@ export function OnboardingQuestionnaireForm() {
         } catch {
           /* */
         }
+      } else if (entryMode === "start") {
+        setStep(0);
       }
 
       hydratingRef.current = false;
@@ -409,7 +438,7 @@ export function OnboardingQuestionnaireForm() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
+  }, [entryMode]);
 
   useEffect(() => {
     if (!draftReady || hydratingRef.current) return;
@@ -423,6 +452,7 @@ export function OnboardingQuestionnaireForm() {
     draftReady,
     step,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -459,25 +489,27 @@ export function OnboardingQuestionnaireForm() {
       case 1:
         return concern != null;
       case 2:
-        return severity != null;
+        return overallSkinHealth != null;
       case 3:
-        return duration != null;
+        return severity != null;
       case 4:
-        return triggers.length > 0;
+        return duration != null;
       case 5:
-        return priorTx != null;
+        return triggers.length > 0;
       case 6:
+        return priorTx != null;
+      case 7:
         if (priorTx !== "yes") return true;
         return txText.trim().length >= 10 && txDur.trim().length > 0;
-      case 7:
-        return sensitivity != null;
       case 8:
-        return sleep != null;
+        return sensitivity != null;
       case 9:
-        return water != null && diet != null && sun != null;
+        return sleep != null;
       case 10:
-        return skinType != null;
+        return water != null && diet != null && sun != null;
       case 11:
+        return skinType != null;
+      case 12:
         if (referralSource == null) return false;
         if (referralSource === "other") return referralOther.trim().length >= 3;
         return true;
@@ -489,6 +521,7 @@ export function OnboardingQuestionnaireForm() {
     ageInput,
     gender,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -512,6 +545,7 @@ export function OnboardingQuestionnaireForm() {
       ageInput,
       gender,
       concern,
+      overallSkinHealth,
       severity,
       duration,
       triggers,
@@ -533,6 +567,9 @@ export function OnboardingQuestionnaireForm() {
     if (patch.ageInput !== undefined) setAgeInput(patch.ageInput);
     if (patch.gender !== undefined) setGender(patch.gender);
     if (patch.concern !== undefined) setConcern(patch.concern as Concern);
+    if (patch.overallSkinHealth !== undefined) {
+      setOverallSkinHealth(patch.overallSkinHealth);
+    }
     if (patch.severity !== undefined) setSeverity(patch.severity);
     if (patch.duration !== undefined) setDuration(patch.duration);
     if (patch.triggers !== undefined) setTriggers(patch.triggers);
@@ -594,7 +631,7 @@ export function OnboardingQuestionnaireForm() {
   }
 
   function next() {
-    if (activeStep === 11) {
+    if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
       void submit();
       return;
     }
@@ -611,7 +648,7 @@ export function OnboardingQuestionnaireForm() {
   }
 
   function skip() {
-    if (activeStep === 11) {
+    if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
       void submit();
       return;
     }
@@ -755,6 +792,29 @@ export function OnboardingQuestionnaireForm() {
       {activeStep === 2 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
+            How would you rate your overall skin health?
+          </h2>
+          <div className="space-y-2">
+            {OVERALL_SKIN_HEALTH_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={chip(overallSkinHealth === opt.id)}
+                onClick={() => {
+                  setOverallSkinHealth(opt.id);
+                  saveAnswer({ overallSkinHealth: opt.id });
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {activeStep === 3 ? (
+        <>
+          <h2 className="text-lg font-bold text-zinc-900">
             {concern
               ? copyForConcern(concern, "sevTitle")
               : "How would you rate severity for your main concern?"}
@@ -783,7 +843,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 3 ? (
+      {activeStep === 4 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             {copyForConcern(concern, "durTitle")}
@@ -817,7 +877,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 4 ? (
+      {activeStep === 5 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             {copyForConcern(concern, "trigTitle")}
@@ -843,7 +903,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 5 ? (
+      {activeStep === 6 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             Have you tried treating this before?
@@ -877,7 +937,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 6 ? (
+      {activeStep === 7 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             What have you tried so far? For how long?
@@ -923,7 +983,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 7 ? (
+      {activeStep === 8 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             How would you describe your skin&apos;s sensitivity?
@@ -958,7 +1018,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 8 ? (
+      {activeStep === 9 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             How&apos;s your sleep most nights?
@@ -994,7 +1054,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 9 ? (
+      {activeStep === 10 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             Lifestyle snapshot
@@ -1073,7 +1133,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 10 ? (
+      {activeStep === 11 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             How would you describe your skin type?
@@ -1096,7 +1156,7 @@ export function OnboardingQuestionnaireForm() {
         </>
       ) : null}
 
-      {activeStep === 11 ? (
+      {activeStep === 12 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
             How did you hear about SkinFit Wellness?
@@ -1158,7 +1218,7 @@ export function OnboardingQuestionnaireForm() {
             disabled={!canNext || busy}
             className="flex-1 rounded-2xl bg-skinfit-navy py-3.5 text-center text-[15px] font-bold text-white shadow-md shadow-skinfit-navy/25 transition-colors hover:bg-skinfit-navy-mid disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {busy ? "Saving…" : activeStep === 11 ? "Save & continue" : "Continue"}
+            {busy ? "Saving…" : activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP ? "Save & continue" : "Continue"}
           </button>
         </div>
       </div>

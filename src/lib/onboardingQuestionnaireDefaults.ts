@@ -2,6 +2,18 @@ import { parseOnboardingAge } from "@/src/lib/onboardingAgeOptions";
 import type { ReferralSourceId } from "@/src/lib/onboardingReferralSource";
 
 export type ConcernSeverity = "mild" | "moderate" | "severe";
+export type OverallSkinHealth = "maintenance" | "need_improve" | "ongoing_concerns";
+
+export const OVERALL_SKIN_HEALTH_OPTIONS: ReadonlyArray<{
+  id: OverallSkinHealth;
+  label: string;
+}> = [
+  { id: "maintenance", label: "Maintenance" },
+  { id: "need_improve", label: "Need to improve" },
+  { id: "ongoing_concerns", label: "Ongoing concerns" },
+];
+
+export const ONBOARDING_QUESTIONNAIRE_LAST_STEP = 12;
 export type ConcernDuration = "recent" | "ongoing" | "chronic";
 export type SkinSensitivity = "low" | "moderate" | "high";
 export type BaselineSleep = "under5" | "5to6" | "7to8" | "8plus";
@@ -13,6 +25,7 @@ export const ONBOARDING_QUESTIONNAIRE_DEFAULTS = {
   age: 30,
   gender: "prefer_not_say",
   primaryConcern: "general",
+  overallSkinHealth: "maintenance" as OverallSkinHealth,
   concernSeverity: "mild",
   concernDuration: "ongoing",
   triggers: ["unsure"],
@@ -30,25 +43,25 @@ export const ONBOARDING_QUESTIONNAIRE_DEFAULTS = {
 } as const;
 
 export const QUESTIONNAIRE_STEPS_ALL = [
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 ] as const;
 
 /**
  * Parent step → dependent follow-ups that should be skipped together.
- * - 1: concern follow-ups (severity, duration, triggers)
- * - 5: treatment details (only when prior treatment = no / skipped)
+ * - 1: concern follow-ups (severity, duration, triggers) — not overall skin health (step 2)
+ * - 6: treatment details (only when prior treatment = no / skipped)
  */
 export const QUESTIONNAIRE_SKIP_CASCADE: Record<number, readonly number[]> = {
-  1: [2, 3, 4],
-  5: [6],
+  1: [3, 4, 5],
+  6: [7],
 };
 
-/** Active steps given current answers (step 6 only when prior treatment = yes). */
+/** Active steps given current answers (step 7 only when prior treatment = yes). */
 export function getActiveQuestionnaireSteps(
   priorTx: "yes" | "no" | null
 ): number[] {
   if (priorTx === "no") {
-    return [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11];
+    return [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
   }
   return [...QUESTIONNAIRE_STEPS_ALL];
 }
@@ -72,6 +85,77 @@ export function normalizeOnboardingQuestionnaireStep(
   return active[active.length - 1] ?? 0;
 }
 
+export function isOnboardingQuestionnaireStepComplete(
+  step: number,
+  state: OnboardingQuestionnaireFormState,
+  skippedSteps: number[]
+): boolean {
+  if (skippedSteps.includes(step)) return true;
+
+  switch (step) {
+    case 0:
+      return parseOnboardingAge(state.ageInput) != null && state.gender != null;
+    case 1:
+      return state.concern != null;
+    case 2:
+      return state.overallSkinHealth != null;
+    case 3:
+      return state.severity != null;
+    case 4:
+      return state.duration != null;
+    case 5:
+      return state.triggers.length > 0;
+    case 6:
+      return state.priorTx != null;
+    case 7:
+      if (state.priorTx !== "yes") return true;
+      return state.txText.trim().length >= 10 && state.txDur.trim().length > 0;
+    case 8:
+      return state.sensitivity != null;
+    case 9:
+      return state.sleep != null;
+    case 10:
+      return state.water != null && state.diet != null && state.sun != null;
+    case 11:
+      return state.skinType != null;
+    case 12:
+      if (state.referralSource == null) return false;
+      if (state.referralSource === "other") {
+        return state.referralOther.trim().length >= 3;
+      }
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** First unanswered step in the active flow (used when resuming from profile). */
+export function firstIncompleteOnboardingQuestionnaireStep(
+  state: OnboardingQuestionnaireFormState,
+  skippedSteps: number[],
+  priorTx: "yes" | "no" | null
+): number {
+  const active = getActiveQuestionnaireSteps(priorTx);
+  for (const step of active) {
+    if (!isOnboardingQuestionnaireStepComplete(step, state, skippedSteps)) {
+      return step;
+    }
+  }
+  return active[active.length - 1] ?? 0;
+}
+
+export type QuestionnaireEntryMode = "start" | "resume";
+
+export function resolveOnboardingQuestionnaireEntryStep(
+  state: OnboardingQuestionnaireFormState,
+  skippedSteps: number[],
+  priorTx: "yes" | "no" | null,
+  entry: QuestionnaireEntryMode | null
+): number {
+  if (entry === "start") return 0;
+  return firstIncompleteOnboardingQuestionnaireStep(state, skippedSteps, priorTx);
+}
+
 export function questionnaireProgress(
   step: number,
   priorTx: "yes" | "no" | null
@@ -89,9 +173,9 @@ export function nextOnboardingQuestionnaireStep(
   step: number,
   priorTx: "yes" | "no" | null
 ): number {
-  if (step >= 11) return 11;
+  if (step >= ONBOARDING_QUESTIONNAIRE_LAST_STEP) return ONBOARDING_QUESTIONNAIRE_LAST_STEP;
   const active = getActiveQuestionnaireSteps(priorTx);
-  return active.find((s) => s > step) ?? 11;
+  return active.find((s) => s > step) ?? ONBOARDING_QUESTIONNAIRE_LAST_STEP;
 }
 
 export function prevOnboardingQuestionnaireStep(
@@ -109,7 +193,7 @@ export function stepAfterQuestionnaireBlock(
   priorTx: "yes" | "no" | null
 ): number {
   const active = getActiveQuestionnaireSteps(priorTx);
-  return active.find((s) => s > lastStepInBlock) ?? active[active.length - 1] ?? 11;
+  return active.find((s) => s > lastStepInBlock) ?? active[active.length - 1] ?? ONBOARDING_QUESTIONNAIRE_LAST_STEP;
 }
 
 export function expandSkippedStepsForSkip(
@@ -168,24 +252,26 @@ export function clearOnboardingStepFields(
     case 1:
       return { concern: null };
     case 2:
-      return { severity: null };
+      return { overallSkinHealth: null };
     case 3:
-      return { duration: null };
+      return { severity: null };
     case 4:
-      return { triggers: [] };
+      return { duration: null };
     case 5:
-      return { priorTx: null, txText: "", txDur: "" };
+      return { triggers: [] };
     case 6:
-      return { txText: "", txDur: "" };
+      return { priorTx: null, txText: "", txDur: "" };
     case 7:
-      return { sensitivity: null };
+      return { txText: "", txDur: "" };
     case 8:
-      return { sleep: null };
+      return { sensitivity: null };
     case 9:
-      return { water: null, diet: null, sun: null };
+      return { sleep: null };
     case 10:
-      return { skinType: null };
+      return { water: null, diet: null, sun: null };
     case 11:
+      return { skinType: null };
+    case 12:
       return { referralSource: null, referralOther: "" };
     default:
       return {};
@@ -265,6 +351,7 @@ export type OnboardingQuestionnaireFormState = {
   ageInput: string;
   gender: string | null;
   concern: string | null;
+  overallSkinHealth: OverallSkinHealth | null;
   severity: ConcernSeverity | null;
   duration: ConcernDuration | null;
   triggers: string[];
@@ -292,31 +379,33 @@ export function applyOnboardingStepSkip(
     case 1:
       return { concern: d.primaryConcern };
     case 2:
-      return { severity: d.concernSeverity };
+      return { overallSkinHealth: d.overallSkinHealth };
     case 3:
-      return { duration: d.concernDuration };
+      return { severity: d.concernSeverity };
     case 4:
-      return { triggers: [...d.triggers] };
+      return { duration: d.concernDuration };
     case 5:
-      return { priorTx: d.priorTreatment, txText: "", txDur: "" };
+      return { triggers: [...d.triggers] };
     case 6:
+      return { priorTx: d.priorTreatment, txText: "", txDur: "" };
+    case 7:
       return {
         txText: d.treatmentHistoryText,
         txDur: d.treatmentHistoryDuration,
       };
-    case 7:
-      return { sensitivity: d.skinSensitivity };
     case 8:
-      return { sleep: d.baselineSleep };
+      return { sensitivity: d.skinSensitivity };
     case 9:
+      return { sleep: d.baselineSleep };
+    case 10:
       return {
         water: d.baselineHydration,
         diet: d.baselineDietType,
         sun: d.baselineSunExposure,
       };
-    case 10:
-      return { skinType: d.skinType };
     case 11:
+      return { skinType: d.skinType };
+    case 12:
       return {
         referralSource: d.referralSource,
         referralOther: d.referralSourceOther,
@@ -347,6 +436,7 @@ export function buildOnboardingQuestionnairePayload(
     age,
     gender: state.gender ?? d.gender,
     primaryConcern: state.concern ?? d.primaryConcern,
+    overallSkinHealth: state.overallSkinHealth ?? d.overallSkinHealth,
     concernSeverity: state.severity ?? d.concernSeverity,
     concernDuration: state.duration ?? d.concernDuration,
     triggers,

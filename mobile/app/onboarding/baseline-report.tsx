@@ -36,7 +36,7 @@ export default function BaselineReportScreen() {
     <CaptureDoneScreen
       mode="onboarding"
       reportPending={reportPending}
-      onPrimary={() => router.push("/onboarding/questionnaire" as Href)}
+      onPrimary={() => router.push("/onboarding/questionnaire?entry=resume" as Href)}
       onDashboard={() => void goDashboard()}
     />
   );

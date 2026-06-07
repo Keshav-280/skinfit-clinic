@@ -774,9 +774,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       className={`${
         cameraOpen
           ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
-          : variant === "dashboard"
-            ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
-            : "mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center space-y-5"
+          : step === "scanning"
+            ? "mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-4 py-8 md:px-8"
+            : variant === "dashboard"
+              ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
+              : "mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center space-y-5"
       }`}
     >
       {showPhotoGuide ? (
@@ -790,7 +792,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         />
       ) : null}
 
-      {showUploadChrome && !(step === "upload" && cameraOpen) && !isOnboardingScan ? (
+      {showUploadChrome && step !== "scanning" && !(step === "upload" && cameraOpen) && !isOnboardingScan ? (
       <motion.header
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1140,7 +1142,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
               {isOnboardingScan ? (
                 <Link
-                  href="/onboarding/questionnaire"
+                  href="/onboarding/questionnaire?entry=start"
                   className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
                 >
                   Continue to questionnaire
@@ -1300,48 +1302,34 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         <ScanQueuedConfirmation variant={variant} />
       )}
 
-      {step === "scanning" && primaryPreview && (
+      {step === "scanning" && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="mx-auto w-full max-w-3xl"
+          className="mx-auto flex w-full max-w-lg items-center justify-center"
         >
-          <div className="overflow-hidden rounded-[22px] border border-white/70 bg-white/35 backdrop-blur-sm">
-            <div className="flex min-h-[200px] flex-col sm:flex-row">
-              <div className="relative w-full shrink-0 sm:w-[42%]">
-                <div className="relative aspect-[4/3] h-full min-h-[180px] sm:aspect-auto sm:min-h-[220px]">
-                  <img
-                    src={primaryPreview}
-                    alt="Scanning"
-                    className="h-full w-full object-cover object-center grayscale-[30%]"
-                  />
-                  <div className="absolute inset-0 bg-[#2C3E6B]/10" aria-hidden />
-                </div>
-              </div>
-              <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-8 text-center sm:px-8">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#2C3E6B]/30 border-t-[#2C3E6B]"
-                >
-                  <Sparkles className="h-6 w-6 text-[#2C3E6B]" />
-                </motion.div>
-                <p className="text-lg font-bold text-[#2C3E6B]">Submitting your scan…</p>
-                <p className="mt-1 text-sm text-[#6B7280]">Just a moment</p>
-                <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden bg-[#2C3E6B]/10">
-                  <motion.div
-                    className="h-full w-1/3 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
-                    initial={{ x: "-100%" }}
-                    animate={{ x: ["-100%", "400%"] }}
-                    transition={{
-                      duration: 2.2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                </div>
-              </div>
+          <div className="relative w-full overflow-hidden rounded-[22px] border border-white/70 bg-white/35 px-8 py-16 text-center backdrop-blur-sm sm:px-12 sm:py-20">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-[#2C3E6B]/25 border-t-[#2C3E6B] sm:h-24 sm:w-24"
+            >
+              <Sparkles className="h-10 w-10 text-[#2C3E6B] sm:h-12 sm:w-12" />
+            </motion.div>
+            <p className="text-2xl font-bold text-[#2C3E6B] sm:text-3xl">Submitting your scan…</p>
+            <p className="mt-3 text-base text-[#6B7280] sm:text-lg">Just a moment</p>
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 overflow-hidden bg-[#2C3E6B]/10">
+              <motion.div
+                className="h-full w-1/3 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
+                initial={{ x: "-100%" }}
+                animate={{ x: ["-100%", "400%"] }}
+                transition={{
+                  duration: 2.2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
             </div>
           </div>
         </motion.div>

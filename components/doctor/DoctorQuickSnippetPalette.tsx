@@ -5,6 +5,7 @@ import { ChevronDown, Plus, X } from "lucide-react";
 import type { DoctorSnippetGroup } from "@/src/lib/doctorQuickSnippets";
 import { writeDoctorSnippetToDataTransfer } from "@/src/lib/doctorQuickSnippets";
 import { useDoctorCustomSnippets } from "@/components/doctor/useDoctorCustomSnippets";
+import { useDoctorSnippetGroups } from "@/components/doctor/useDoctorSnippetGroups";
 import { doctorFormInputSmClass } from "@/src/lib/doctorPortalTheme";
 import type { DoctorCustomSnippetScope } from "@/src/lib/doctorCustomSnippets";
 
@@ -55,6 +56,45 @@ function SnippetChip({
   );
 }
 
+function PhraseAddRow({
+  draft,
+  onDraftChange,
+  onSubmit,
+  placeholder = "Add phrase…",
+}: {
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onSubmit: () => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex gap-1.5">
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => onDraftChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onSubmit();
+          }
+        }}
+        placeholder={placeholder}
+        className={`${doctorFormInputSmClass} min-w-0 flex-1`}
+      />
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={!draft.trim()}
+        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#2C3E6B] px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-[#243456] disabled:opacity-40"
+      >
+        <Plus className="h-3 w-3" aria-hidden />
+        Add
+      </button>
+    </div>
+  );
+}
+
 export function DoctorQuickSnippetPalette({
   groups,
   onInsert,
@@ -64,15 +104,20 @@ export function DoctorQuickSnippetPalette({
   customPhraseScope = "routine",
 }: DoctorQuickSnippetPaletteProps) {
   const { items: customPhrases, add, remove } = useDoctorCustomSnippets(customPhraseScope);
+  const { groupItems, addToGroup, removeFromGroup } = useDoctorSnippetGroups(
+    customPhraseScope,
+    groups
+  );
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [savedDraft, setSavedDraft] = useState("");
+  const [groupDrafts, setGroupDrafts] = useState<Record<string, string>>({});
 
   const builtInCount = groups.reduce((n, g) => n + g.items.length, 0);
   const tabs = useMemo(() => {
     const builtIn = groups.map((g) => ({
       id: g.label,
       label: g.label,
-      items: [...g.items],
+      items: groupItems[g.label] ?? [...g.items],
       custom: false,
     }));
     if (allowCustomPhrases) {
@@ -84,7 +129,7 @@ export function DoctorQuickSnippetPalette({
       });
     }
     return builtIn;
-  }, [groups, allowCustomPhrases, customPhrases]);
+  }, [groups, allowCustomPhrases, customPhrases, groupItems]);
 
   const [activeTabId, setActiveTabId] = useState(tabs[0]?.id ?? "");
 
@@ -95,23 +140,36 @@ export function DoctorQuickSnippetPalette({
   }, [tabs, activeTabId]);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+  const activeGroupDraft = activeTab && !activeTab.custom ? groupDrafts[activeTab.id] ?? "" : "";
 
   if (builtInCount === 0 && (!allowCustomPhrases || customPhrases.length === 0)) {
     return null;
   }
 
   function submitCustomPhrase() {
-    const text = draft.trim();
+    const text = savedDraft.trim();
     if (!text) return;
     add(text);
-    setDraft("");
+    setSavedDraft("");
     setActiveTabId("__saved__");
     setOpen(true);
   }
 
+  function submitGroupPhrase() {
+    if (!activeTab || activeTab.custom) return;
+    const text = activeGroupDraft.trim();
+    if (!text) return;
+    addToGroup(activeTab.label, text);
+    setGroupDrafts((prev) => ({ ...prev, [activeTab.id]: "" }));
+    setOpen(true);
+  }
+
+  const visibleCount = tabs
+    .filter((t) => !t.custom)
+    .reduce((n, t) => n + t.items.length, 0);
   const summary =
-    builtInCount > 0
-      ? `${builtInCount} preset${builtInCount === 1 ? "" : "s"}`
+    visibleCount > 0
+      ? `${visibleCount} phrase${visibleCount === 1 ? "" : "s"}`
       : customPhrases.length > 0
         ? `${customPhrases.length} saved`
         : "Browse phrases";
@@ -185,36 +243,40 @@ export function DoctorQuickSnippetPalette({
                   Save phrases you use often — they appear here.
                 </p>
               )}
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      submitCustomPhrase();
-                    }
-                  }}
-                  placeholder="New phrase…"
-                  className={`${doctorFormInputSmClass} min-w-0 flex-1`}
-                />
-                <button
-                  type="button"
-                  onClick={submitCustomPhrase}
-                  disabled={!draft.trim()}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#2C3E6B] px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-[#243456] disabled:opacity-40"
-                >
-                  <Plus className="h-3 w-3" aria-hidden />
-                  Save
-                </button>
-              </div>
+              <PhraseAddRow
+                draft={savedDraft}
+                onDraftChange={setSavedDraft}
+                onSubmit={submitCustomPhrase}
+                placeholder="New phrase…"
+              />
             </div>
           ) : (
-            <div className="flex max-h-[5.5rem] flex-wrap content-start gap-1.5 overflow-y-auto pr-0.5">
-              {(activeTab?.items ?? []).map((item) => (
-                <SnippetChip key={`${activeTab?.id}-${item}`} item={item} onInsert={onInsert} />
-              ))}
+            <div className="space-y-2">
+              <div className="flex max-h-[5.5rem] flex-wrap content-start gap-1.5 overflow-y-auto pr-0.5">
+                {(activeTab?.items ?? []).length > 0 ? (
+                  (activeTab?.items ?? []).map((item) => (
+                    <SnippetChip
+                      key={`${activeTab?.id}-${item}`}
+                      item={item}
+                      onInsert={onInsert}
+                      onRemove={() => removeFromGroup(activeTab!.label, item)}
+                    />
+                  ))
+                ) : (
+                  <p className="px-1 py-2 text-[11px] text-[#2C3E6B]/45">
+                    No phrases in this list — add one below.
+                  </p>
+                )}
+              </div>
+              <PhraseAddRow
+                draft={activeGroupDraft}
+                onDraftChange={(value) => {
+                  if (!activeTab) return;
+                  setGroupDrafts((prev) => ({ ...prev, [activeTab.id]: value }));
+                }}
+                onSubmit={submitGroupPhrase}
+                placeholder="Add phrase to this list…"
+              />
             </div>
           )}
 

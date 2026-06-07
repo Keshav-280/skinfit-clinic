@@ -11,6 +11,11 @@ import { clearQuestionnaireDraft } from "@/src/lib/questionnaireDraft";
 
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
 const CONCERNS = new Set(["acne", "pigmentation", "ageing", "hair", "general"]);
+const OVERALL_SKIN_HEALTH = new Set([
+  "maintenance",
+  "need_improve",
+  "ongoing_concerns",
+]);
 const SEVERITY = new Set(["mild", "moderate", "severe"]);
 const DURATION = new Set(["recent", "ongoing", "chronic"]);
 const SENS = new Set(["low", "moderate", "high"]);
@@ -82,6 +87,18 @@ export async function POST(req: Request) {
   if (!CONCERNS.has(primaryConcern)) {
     return NextResponse.json(
       { error: "INVALID_CONCERN", message: "Invalid primary concern." },
+      { status: 400 }
+    );
+  }
+
+  const overallSkinHealth =
+    typeof body.overallSkinHealth === "string" ? body.overallSkinHealth : "";
+  if (!OVERALL_SKIN_HEALTH.has(overallSkinHealth)) {
+    return NextResponse.json(
+      {
+        error: "INVALID_OVERALL_SKIN_HEALTH",
+        message: "Please rate your overall skin health.",
+      },
       { status: 400 }
     );
   }
@@ -235,6 +252,7 @@ export async function POST(req: Request) {
       ...(referralSourceOther ? { other: referralSourceOther } : {}),
     },
     CONCERN_01: primaryConcern,
+    HEALTH_01: overallSkinHealth,
     SEV_01: concernSeverity,
     DUR_01: concernDuration,
     TRIG_01: triggers,

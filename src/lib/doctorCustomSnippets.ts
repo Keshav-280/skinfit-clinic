@@ -10,7 +10,18 @@ export type DoctorCustomSnippetScope =
   | "visit-pre"
   | "visit-post";
 
-type PhraseStore = Partial<Record<DoctorCustomSnippetScope, string[]>>;
+type GroupOverride = {
+  added: string[];
+  removed: string[];
+};
+
+type PhraseStore = Partial<Record<DoctorCustomSnippetScope, string[]>> & {
+  __groupOverrides?: Record<string, GroupOverride>;
+};
+
+function groupOverrideKey(scope: DoctorCustomSnippetScope, groupLabel: string): string {
+  return `${scope}::${groupLabel}`;
+}
 
 function normalizePhrase(text: string): string {
   return text.replace(/\s+/g, " ").trim().slice(0, MAX_PHRASE_LENGTH);
@@ -39,6 +50,25 @@ function readStore(): PhraseStore {
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         const store: PhraseStore = {};
         for (const [key, value] of Object.entries(parsed)) {
+          if (key === "__groupOverrides") {
+            if (value && typeof value === "object" && !Array.isArray(value)) {
+              const overrides: Record<string, GroupOverride> = {};
+              for (const [groupKey, groupValue] of Object.entries(value)) {
+                if (!groupValue || typeof groupValue !== "object" || Array.isArray(groupValue)) {
+                  continue;
+                }
+                const gv = groupValue as { added?: unknown; removed?: unknown };
+                overrides[groupKey] = {
+                  added: normalizeList(gv.added),
+                  removed: normalizeList(gv.removed),
+                };
+              }
+              if (Object.keys(overrides).length > 0) {
+                store.__groupOverrides = overrides;
+              }
+            }
+            continue;
+          }
           store[key as DoctorCustomSnippetScope] = normalizeList(value);
         }
         return store;
@@ -103,4 +133,118 @@ export function removeDoctorCustomSnippet(
   store[scope] = next;
   writeStore(store);
   return next;
+}
+
+function readGroupOverride(
+  store: PhraseStore,
+  scope: DoctorCustomSnippetScope,
+  groupLabel: string
+): GroupOverride {
+  const key = groupOverrideKey(scope, groupLabel);
+  const raw = store.__groupOverrides?.[key];
+  return {
+    added: normalizeList(raw?.added),
+    removed: normalizeList(raw?.removed),
+  };
+}
+
+function writeGroupOverride(
+  store: PhraseStore,
+  scope: DoctorCustomSnippetScope,
+  groupLabel: string,
+  override: GroupOverride
+): void {
+  const key = groupOverrideKey(scope, groupLabel);
+  if (!store.__groupOverrides) store.__groupOverrides = {};
+  const added = normalizeList(override.added);
+  const removed = normalizeList(override.removed);
+  if (added.length === 0 && removed.length === 0) {
+    delete store.__groupOverrides[key];
+    if (Object.keys(store.__groupOverrides).length === 0) {
+      delete store.__groupOverrides;
+    }
+    return;
+  }
+  store.__groupOverrides[key] = { added, removed };
+}
+
+export function resolveDoctorSnippetGroupItems(
+  scope: DoctorCustomSnippetScope,
+  groupLabel: string,
+  builtInItems: readonly string[]
+): string[] {
+  const store = readStore();
+  const { added, removed } = readGroupOverride(store, scope, groupLabel);
+  const removedSet = new Set(removed.map((p) => p.toLowerCase()));
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const item of builtInItems) {
+    const key = item.toLowerCase();
+    if (removedSet.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+
+  for (const item of added) {
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+
+  return out;
+}
+
+export function addDoctorSnippetToGroup(
+  scope: DoctorCustomSnippetScope,
+  groupLabel: string,
+  builtInItems: readonly string[],
+  text: string
+): string[] {
+  const phrase = normalizePhrase(text);
+  if (!phrase) return resolveDoctorSnippetGroupItems(scope, groupLabel, builtInItems);
+
+  const store = readStore();
+  const override = readGroupOverride(store, scope, groupLabel);
+  const phraseKey = phrase.toLowerCase();
+  const builtInMatch = builtInItems.find((p) => p.toLowerCase() === phraseKey);
+
+  if (builtInMatch) {
+    override.removed = override.removed.filter((p) => p.toLowerCase() !== phraseKey);
+    override.added = override.added.filter((p) => p.toLowerCase() !== phraseKey);
+  } else if (!override.added.some((p) => p.toLowerCase() === phraseKey)) {
+    override.added = [phrase, ...override.added].slice(0, MAX_CUSTOM_PHRASES);
+  }
+
+  writeGroupOverride(store, scope, groupLabel, override);
+  writeStore(store);
+  return resolveDoctorSnippetGroupItems(scope, groupLabel, builtInItems);
+}
+
+export function removeDoctorSnippetFromGroup(
+  scope: DoctorCustomSnippetScope,
+  groupLabel: string,
+  builtInItems: readonly string[],
+  text: string
+): string[] {
+  const target = normalizePhrase(text).toLowerCase();
+  if (!target) return resolveDoctorSnippetGroupItems(scope, groupLabel, builtInItems);
+
+  const store = readStore();
+  const override = readGroupOverride(store, scope, groupLabel);
+  const isBuiltIn = builtInItems.some((p) => p.toLowerCase() === target);
+
+  if (override.added.some((p) => p.toLowerCase() === target)) {
+    override.added = override.added.filter((p) => p.toLowerCase() !== target);
+  } else if (isBuiltIn) {
+    if (!override.removed.some((p) => p.toLowerCase() === target)) {
+      const original = builtInItems.find((p) => p.toLowerCase() === target) ?? text;
+      override.removed = [...override.removed, original];
+    }
+  }
+
+  writeGroupOverride(store, scope, groupLabel, override);
+  writeStore(store);
+  return resolveDoctorSnippetGroupItems(scope, groupLabel, builtInItems);
 }

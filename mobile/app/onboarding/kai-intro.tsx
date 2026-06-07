@@ -40,7 +40,7 @@ export default function KaiIntroScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Pressable
-          onPress={() => router.push("/onboarding/questionnaire" as Href)}
+          onPress={() => router.push("/onboarding/questionnaire?entry=start" as Href)}
           hitSlop={8}
           style={styles.skipLinkWrap}
         >

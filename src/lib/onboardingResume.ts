@@ -59,7 +59,7 @@ export async function getOnboardingResumeSnapshot(
   if (!baselineSubmitted) {
     continueUrl = "/onboarding/capture/photos";
   } else if (!questionnaireMilestoneComplete) {
-    continueUrl = "/onboarding/questionnaire";
+    continueUrl = "/onboarding/questionnaire?entry=resume";
   } else {
     continueUrl = "/dashboard";
   }

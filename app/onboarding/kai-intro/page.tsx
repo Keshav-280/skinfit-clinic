@@ -21,7 +21,7 @@ export default function KaiIntroPage() {
     <div className="mx-auto w-full">
       <div className="mb-3 flex justify-start md:mb-4">
         <Link
-          href="/onboarding/questionnaire"
+          href="/onboarding/questionnaire?entry=start"
           className="text-sm font-semibold text-[#2C3E6B]/80 underline-offset-2 transition hover:text-[#2C3E6B] hover:underline"
         >
           Skip to questionnaire

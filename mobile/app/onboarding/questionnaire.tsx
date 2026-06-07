@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,6 +30,8 @@ import {
   buildOnboardingQuestionnairePayload,
   expandSkippedStepsForSkip,
   mergeOnboardingStepSkipPatches,
+  ONBOARDING_QUESTIONNAIRE_LAST_STEP,
+  OVERALL_SKIN_HEALTH_OPTIONS,
   prepareQuestionnaireBack,
   prepareQuestionnaireNext,
   reconcileSkippedSteps,
@@ -44,6 +46,8 @@ import {
   type ConcernDuration,
   type ConcernSeverity,
   type OnboardingQuestionnaireFormState,
+  type OverallSkinHealth,
+  type QuestionnaireEntryMode,
   type SkinSensitivity,
 } from "../../../src/lib/onboardingQuestionnaireDefaults";
 import {
@@ -140,8 +144,15 @@ function copyForConcern(
   return map[c][q] ?? map.general[q];
 }
 
+function parseQuestionnaireEntryMode(value: string | string[] | undefined): QuestionnaireEntryMode {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "start" ? "start" : "resume";
+}
+
 export default function QuestionnaireScreen() {
   const router = useRouter();
+  const { entry: entryParam } = useLocalSearchParams<{ entry?: string }>();
+  const entryMode = parseQuestionnaireEntryMode(entryParam);
   const insets = useSafeAreaInsets();
   const { token, markOnboardingComplete, refreshUserFromProfile } = useAuth();
   const [step, setStep] = useState(0);
@@ -149,6 +160,9 @@ export default function QuestionnaireScreen() {
   const [err, setErr] = useState<string | null>(null);
 
   const [concern, setConcern] = useState<Concern | null>(null);
+  const [overallSkinHealth, setOverallSkinHealth] = useState<OverallSkinHealth | null>(
+    null
+  );
   const [severity, setSeverity] = useState<ConcernSeverity | null>(null);
   const [duration, setDuration] = useState<ConcernDuration | null>(null);
   const [triggers, setTriggers] = useState<string[]>([]);
@@ -177,6 +191,7 @@ export default function QuestionnaireScreen() {
     ageInput,
     gender,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -198,6 +213,7 @@ export default function QuestionnaireScreen() {
     ageInput,
     gender,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -231,6 +247,14 @@ export default function QuestionnaireScreen() {
       setGender,
       setConcern: (value: string | null) =>
         setConcern(value && VALID_CONCERN.has(value) ? (value as Concern) : null),
+      setOverallSkinHealth: (value: string | null) =>
+        setOverallSkinHealth(
+          value === "maintenance" ||
+            value === "need_improve" ||
+            value === "ongoing_concerns"
+            ? value
+            : null
+        ),
       setSeverity: (value: string | null) =>
         setSeverity(
           value === "mild" || value === "moderate" || value === "severe"
@@ -319,6 +343,10 @@ export default function QuestionnaireScreen() {
       ageInput: patch.ageInput ?? base.ageInput,
       gender: patch.gender !== undefined ? patch.gender : base.gender,
       concern: patch.concern !== undefined ? patch.concern : base.concern,
+      overallSkinHealth:
+        patch.overallSkinHealth !== undefined
+          ? patch.overallSkinHealth
+          : base.overallSkinHealth,
       severity: patch.severity !== undefined ? patch.severity : base.severity,
       duration: patch.duration !== undefined ? patch.duration : base.duration,
       triggers: patch.triggers ?? base.triggers,
@@ -395,13 +423,15 @@ export default function QuestionnaireScreen() {
       const merged = mergeOnboardingQuestionnaireDrafts(localDraft, serverDraft);
       if (merged) {
         merged.skippedSteps = reconcileSkippedSteps(merged.skippedSteps ?? []);
-        applyOnboardingQuestionnaireDraft(merged, draftSetters());
+        applyOnboardingQuestionnaireDraft(merged, draftSetters(), entryMode);
         await AsyncStorage.setItem(
           ONBOARDING_QUESTIONNAIRE_DRAFT_KEY,
           JSON.stringify(merged)
         ).catch(() => {
           /* */
         });
+      } else if (entryMode === "start") {
+        setStep(0);
       }
 
       if (!cancelled) {
@@ -414,7 +444,7 @@ export default function QuestionnaireScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, [token]);
+  }, [token, entryMode]);
 
   useEffect(() => {
     if (!draftReady || hydratingRef.current) return;
@@ -429,6 +459,7 @@ export default function QuestionnaireScreen() {
     token,
     step,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -465,25 +496,27 @@ export default function QuestionnaireScreen() {
       case 1:
         return concern != null;
       case 2:
-        return severity != null;
+        return overallSkinHealth != null;
       case 3:
-        return duration != null;
+        return severity != null;
       case 4:
-        return triggers.length > 0;
+        return duration != null;
       case 5:
-        return priorTx != null;
+        return triggers.length > 0;
       case 6:
+        return priorTx != null;
+      case 7:
         if (priorTx !== "yes") return true;
         return txText.trim().length >= 10 && txDur.trim().length > 0;
-      case 7:
-        return sensitivity != null;
       case 8:
-        return sleep != null;
+        return sensitivity != null;
       case 9:
-        return water != null && diet != null && sun != null;
+        return sleep != null;
       case 10:
-        return skinType != null;
+        return water != null && diet != null && sun != null;
       case 11:
+        return skinType != null;
+      case 12:
         if (referralSource == null) return false;
         if (referralSource === "other") return referralOther.trim().length >= 3;
         return true;
@@ -495,6 +528,7 @@ export default function QuestionnaireScreen() {
     ageInput,
     gender,
     concern,
+    overallSkinHealth,
     severity,
     duration,
     triggers,
@@ -518,6 +552,7 @@ export default function QuestionnaireScreen() {
       ageInput,
       gender,
       concern,
+      overallSkinHealth,
       severity,
       duration,
       triggers,
@@ -539,6 +574,9 @@ export default function QuestionnaireScreen() {
     if (patch.ageInput !== undefined) setAgeInput(patch.ageInput);
     if (patch.gender !== undefined) setGender(patch.gender);
     if (patch.concern !== undefined) setConcern(patch.concern as Concern);
+    if (patch.overallSkinHealth !== undefined) {
+      setOverallSkinHealth(patch.overallSkinHealth);
+    }
     if (patch.severity !== undefined) setSeverity(patch.severity);
     if (patch.duration !== undefined) setDuration(patch.duration);
     if (patch.triggers !== undefined) setTriggers(patch.triggers);
@@ -585,7 +623,7 @@ export default function QuestionnaireScreen() {
   }
 
   function next() {
-    if (activeStep === 11) {
+    if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
       void submit();
       return;
     }
@@ -602,7 +640,7 @@ export default function QuestionnaireScreen() {
   }
 
   function skip() {
-    if (activeStep === 11) {
+    if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
       void submit();
       return;
     }
@@ -714,6 +752,31 @@ export default function QuestionnaireScreen() {
 
       {activeStep === 2 ? (
         <>
+          <Text style={styles.q}>How would you rate your overall skin health?</Text>
+          {OVERALL_SKIN_HEALTH_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.id}
+              style={[styles.chip, overallSkinHealth === opt.id && styles.chipOn]}
+              onPress={() => {
+                setOverallSkinHealth(opt.id);
+                saveAnswer({ overallSkinHealth: opt.id });
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  overallSkinHealth === opt.id && styles.chipTextOn,
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+        </>
+      ) : null}
+
+      {activeStep === 3 ? (
+        <>
           <Text style={styles.q}>
             {concern
               ? copyForConcern(concern, "sevTitle")
@@ -740,7 +803,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 3 ? (
+      {activeStep === 4 ? (
         <>
           <Text style={styles.q}>{copyForConcern(concern, "durTitle")}</Text>
           {(
@@ -769,7 +832,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 4 ? (
+      {activeStep === 5 ? (
         <>
           <Text style={styles.q}>{copyForConcern(concern, "trigTitle")}</Text>
           <Text style={styles.sub}>Select all that apply.</Text>
@@ -792,7 +855,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 5 ? (
+      {activeStep === 6 ? (
         <>
           <Text style={styles.q}>Have you tried treating this before?</Text>
           {(
@@ -821,7 +884,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 6 ? (
+      {activeStep === 7 ? (
         <>
           <Text style={styles.q}>What have you tried so far? For how long?</Text>
           <TextInput
@@ -862,7 +925,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 7 ? (
+      {activeStep === 8 ? (
         <>
           <Text style={styles.q}>How would you describe your skin&apos;s sensitivity?</Text>
           {(
@@ -892,7 +955,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 8 ? (
+      {activeStep === 9 ? (
         <>
           <Text style={styles.q}>How&apos;s your sleep most nights?</Text>
           {(
@@ -923,7 +986,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 9 ? (
+      {activeStep === 10 ? (
         <>
           <Text style={styles.q}>Lifestyle snapshot</Text>
           <Text style={styles.sub}>Daily water intake</Text>
@@ -989,7 +1052,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 10 ? (
+      {activeStep === 11 ? (
         <>
           <Text style={styles.q}>How would you describe your skin type?</Text>
           {SKIN_TYPES.map((v) => (
@@ -1007,7 +1070,7 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep === 11 ? (
+      {activeStep === 12 ? (
         <>
           <Text style={styles.q}>How did you hear about SkinFit Wellness?</Text>
           <Text style={styles.sub}>This helps us understand what brought you here.</Text>
@@ -1062,7 +1125,7 @@ export default function QuestionnaireScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.btnText}>
-              {activeStep === 11 ? "Save & continue" : "Continue"}
+              {activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP ? "Save & continue" : "Continue"}
             </Text>
           )}
         </Pressable>

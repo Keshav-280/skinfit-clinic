@@ -259,7 +259,7 @@ export function ProfileForm({
         {!hasQuestionnaire ? (
           <p className="mt-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#E8EFE6]/50 px-3 py-2 text-xs font-medium text-[#2C3E6B]">
             Age, gender, skin type, and goals unlock after you complete the{" "}
-            <a href="/onboarding/questionnaire" className="font-bold underline">
+            <a href="/onboarding/questionnaire?entry=resume" className="font-bold underline">
               onboarding questionnaire
             </a>
             .

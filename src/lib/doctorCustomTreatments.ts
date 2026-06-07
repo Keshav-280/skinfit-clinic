@@ -76,3 +76,34 @@ export function removeDoctorCustomTreatment(id: string): ClinicTreatment[] {
   writeStore(next);
   return next;
 }
+
+export function updateDoctorCustomTreatment(
+  id: string,
+  input: {
+    name: string;
+    preCare: string[];
+    postCareDos: string[];
+    postCareDonts: string[];
+  }
+): ClinicTreatment[] {
+  const target = id.trim();
+  const name = input.name.replace(/\s+/g, " ").trim();
+  if (!target || !name) return readStore();
+
+  const store = readStore();
+  const next = store.map((t) =>
+    t.id === target
+      ? {
+          ...t,
+          name,
+          preCare: input.preCare.map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean),
+          postCareDos: input.postCareDos.map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean),
+          postCareDonts: input.postCareDonts
+            .map((s) => s.replace(/\s+/g, " ").trim())
+            .filter(Boolean),
+        }
+      : t
+  );
+  writeStore(next);
+  return next;
+}
