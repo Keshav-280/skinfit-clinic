@@ -49,7 +49,7 @@ function StepCircle({
     </span>
   );
 
-  if (!step.href) return circle;
+  if (!step.href || step.done) return circle;
 
   return (
     <Link
@@ -120,7 +120,7 @@ export function PatientProgressTracker({
                     <span className="flex-1" aria-hidden />
                   )}
                 </div>
-                {step.href ? (
+                {step.href && !done ? (
                   <Link
                     href={step.href}
                     className={`mt-1 max-w-[4.75rem] text-center text-[9px] font-semibold leading-tight hover:underline sm:text-[10px] ${labelClass}`}

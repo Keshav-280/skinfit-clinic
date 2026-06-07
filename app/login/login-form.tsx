@@ -9,6 +9,9 @@ import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
+const NAVY_PANEL =
+  "bg-gradient-to-br from-[#1a2544] via-[#2C3E6B] to-[#162038]";
+
 const LABEL = "mb-2 block text-sm font-semibold text-[#1E232C]";
 const INPUT =
   "w-full rounded-lg border border-transparent bg-[#F7F8F9] px-4 py-3.5 text-[15px] text-[#1E232C] outline-none transition placeholder:text-[#8391A1] focus:border-[#525FE1]/30 focus:ring-2 focus:ring-[#525FE1]/15";
@@ -234,11 +237,32 @@ export function LoginForm() {
   const isSignIn = mode === "signin";
 
   return (
-    <div className="flex min-h-screen bg-white text-[#1E232C]">
-      <div className="mx-auto flex w-full max-w-md flex-col justify-center px-6 py-12">
+    <div className="flex min-h-screen">
+      <div
+        className={`hidden min-h-screen flex-1 flex-col justify-center px-12 lg:flex ${NAVY_PANEL}`}
+      >
+        <div className="mx-auto max-w-md space-y-8">
+          <Image
+            src="/branding/skinfit-wellness-logo.svg"
+            alt="SkinFit Wellness"
+            width={560}
+            height={135}
+            priority
+            className="h-11 w-auto max-w-[15rem] brightness-0 invert"
+          />
+          <p className="text-lg leading-relaxed text-white/80">
+            {isSignIn
+              ? "Welcome back to your personalized skincare journey."
+              : "Create your account to access your private dashboard and AI skin insights."}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-12 text-[#1E232C]">
+        <div className="w-full max-w-md">
         {isSignIn ? (
           <div className="mb-8">
-            <div className="mb-6 flex justify-center lg:justify-start">
+            <div className="mb-6 flex justify-center lg:hidden">
               <Image
                 src="/branding/skinfit-wellness-logo.svg"
                 alt="SkinFit Wellness"
@@ -596,6 +620,7 @@ export function LoginForm() {
             Doctor portal
           </Link>
         </p>
+        </div>
       </div>
     </div>
   );

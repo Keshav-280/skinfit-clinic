@@ -8,11 +8,13 @@ import { type ReactNode, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
 import { ONBOARDING_QUESTIONNAIRE_DRAFT_KEY } from "@/lib/onboardingQuestionnaireDraft";
+import { isAllowedIncompleteOnboardingPath } from "@/src/lib/onboardingResumePaths";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type ResumeApi = {
   onboardingComplete?: boolean;
   hasQuestionnaire?: boolean;
+  questionnaireMilestoneComplete?: boolean;
   hasBaselineScan?: boolean;
   baselineScanPending?: boolean;
   baselineScanId?: number | null;
@@ -77,8 +79,29 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
         const hasBaseline = data.hasBaselineScan === true;
         const baselinePending = data.baselineScanPending === true;
         const baselineSubmitted = hasBaseline || baselinePending;
+        const questionnaireMilestoneComplete =
+          data.questionnaireMilestoneComplete === true;
         const baselineId =
           typeof data.baselineScanId === "number" ? data.baselineScanId : null;
+
+        if (
+          isAllowedIncompleteOnboardingPath(pathname, {
+            hasBaselineScan: hasBaseline,
+            baselineScanPending: baselinePending,
+            questionnaireMilestoneComplete,
+          })
+        ) {
+          if (
+            onBaseline &&
+            baselineId != null &&
+            scanIdParam !== String(baselineId)
+          ) {
+            router.replace(
+              `/onboarding/baseline-report?scanId=${baselineId}` as never
+            );
+          }
+          return;
+        }
 
         if (targetMatchesPathAndScan(pathname, scanIdParam, continueUrl)) {
           if (
@@ -112,7 +135,11 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (hasQ && (isWelcome || isKai || isQuest)) {
+        if (
+          hasQ &&
+          questionnaireMilestoneComplete &&
+          (isWelcome || isKai || isQuest)
+        ) {
           if (!targetMatchesPathAndScan(pathname, scanIdParam, continueUrl)) {
             if (isQuest) {
               void AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);

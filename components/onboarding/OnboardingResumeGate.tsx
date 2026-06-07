@@ -3,11 +3,13 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
+import { isAllowedIncompleteOnboardingPath } from "@/src/lib/onboardingResumePaths";
 import { ONBOARDING_QUESTIONNAIRE_DRAFT_KEY } from "@/src/lib/onboardingQuestionnaireDraft";
 
 type ResumeApi = {
   onboardingComplete?: boolean;
   hasQuestionnaire?: boolean;
+  questionnaireMilestoneComplete?: boolean;
   hasBaselineScan?: boolean;
   baselineScanPending?: boolean;
   baselineScanId?: number | null;
@@ -68,8 +70,27 @@ export function OnboardingResumeGate({
       const hasBaseline = data.hasBaselineScan === true;
       const baselinePending = data.baselineScanPending === true;
       const baselineSubmitted = hasBaseline || baselinePending;
+      const questionnaireMilestoneComplete =
+        data.questionnaireMilestoneComplete === true;
       const baselineId =
         typeof data.baselineScanId === "number" ? data.baselineScanId : null;
+
+      if (
+        isAllowedIncompleteOnboardingPath(pathname, {
+          hasBaselineScan: hasBaseline,
+          baselineScanPending: baselinePending,
+          questionnaireMilestoneComplete,
+        })
+      ) {
+        if (
+          onBaseline &&
+          baselineId != null &&
+          searchParams.get("scanId") !== String(baselineId)
+        ) {
+          router.replace(`/onboarding/baseline-report?scanId=${baselineId}`);
+        }
+        return;
+      }
 
       if (onboardingTargetMatches(pathname, searchParams, continueUrl)) {
         if (
@@ -101,7 +122,11 @@ export function OnboardingResumeGate({
         return;
       }
 
-      if (hasQ && (isWelcome || isKai || isQuest)) {
+      if (
+        hasQ &&
+        questionnaireMilestoneComplete &&
+        (isWelcome || isKai || isQuest)
+      ) {
         if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
           if (isQuest) {
             try {

@@ -5,10 +5,15 @@ import {
   getOnboardingAccessForUser,
   type BaselineOnboardingJobStatus,
 } from "@/src/lib/onboardingAccess";
+import { isQuestionnaireMilestoneComplete } from "@/src/lib/questionnaireCompletion";
+
 export type OnboardingResumeSnapshot = {
-  /** True when baseline + questionnaire milestones are both done. */
+  /** True when baseline scan + questionnaire milestone (no skipped steps) are done. */
   onboardingComplete: boolean;
+  /** Questionnaire POST saved (primary concern set). */
   hasQuestionnaire: boolean;
+  /** Matches profile progress tracker questionnaire step. */
+  questionnaireMilestoneComplete: boolean;
   hasBaselineScan: boolean;
   /** True while baseline scan job is queued or processing (photos already submitted). */
   baselineScanPending: boolean;
@@ -43,13 +48,17 @@ export async function getOnboardingResumeSnapshot(
     canAccessDashboard,
   } = access;
 
+  const questionnaireMilestoneComplete =
+    await isQuestionnaireMilestoneComplete(userId);
+
   const baselineSubmitted = hasBaselineScan || baselineScanPending;
-  const onboardingComplete = baselineSubmitted && questionnaireSubmitted;
+  const onboardingComplete =
+    baselineSubmitted && questionnaireMilestoneComplete;
 
   let continueUrl = "/onboarding/capture/photos";
   if (!baselineSubmitted) {
     continueUrl = "/onboarding/capture/photos";
-  } else if (!questionnaireSubmitted) {
+  } else if (!questionnaireMilestoneComplete) {
     continueUrl = "/onboarding/questionnaire";
   } else {
     continueUrl = "/dashboard";
@@ -57,8 +66,8 @@ export async function getOnboardingResumeSnapshot(
 
   return {
     onboardingComplete,
-    /** Questionnaire POST completed (primary concern saved), including skipped steps. */
     hasQuestionnaire: questionnaireSubmitted,
+    questionnaireMilestoneComplete,
     hasBaselineScan,
     baselineScanPending,
     baselineScanJobId,

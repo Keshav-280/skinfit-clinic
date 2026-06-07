@@ -14,9 +14,6 @@ export default async function OnboardingLayout({
   if (!profile) {
     redirect("/login?next=/onboarding/kai-intro");
   }
-  if (profile.onboardingComplete) {
-    redirect("/dashboard");
-  }
   const resume = await getOnboardingResumeSnapshot(profile.id);
   if (resume?.onboardingComplete) {
     redirect("/dashboard");

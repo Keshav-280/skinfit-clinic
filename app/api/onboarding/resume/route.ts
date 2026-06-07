@@ -16,6 +16,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     onboardingComplete: snap.onboardingComplete,
     hasQuestionnaire: snap.hasQuestionnaire,
+    questionnaireMilestoneComplete: snap.questionnaireMilestoneComplete,
     hasBaselineScan: snap.hasBaselineScan,
     baselineScanPending: snap.baselineScanPending,
     baselineScanJobId: snap.baselineScanJobId,
