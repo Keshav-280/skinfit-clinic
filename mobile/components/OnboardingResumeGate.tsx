@@ -65,10 +65,7 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
           method: "GET",
         });
         if (cancelled) return;
-        if (data.onboardingComplete) {
-          router.replace("/(drawer)" as never);
-          return;
-        }
+        const continueUrl = data.continueUrl ?? "/onboarding/capture/photos";
 
         const segs = segments(pathname);
         const isWelcome = segs.length === 1 && segs[0] === "onboarding";
@@ -80,12 +77,24 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
         const hasBaseline = data.hasBaselineScan === true;
         const baselinePending = data.baselineScanPending === true;
         const baselineSubmitted = hasBaseline || baselinePending;
-        const continueUrl = data.continueUrl ?? "/onboarding/capture";
         const baselineId =
           typeof data.baselineScanId === "number" ? data.baselineScanId : null;
 
-        if (!baselineSubmitted && isQuest) {
-          router.replace("/onboarding/capture" as never);
+        if (targetMatchesPathAndScan(pathname, scanIdParam, continueUrl)) {
+          if (
+            onBaseline &&
+            baselineId != null &&
+            scanIdParam !== String(baselineId)
+          ) {
+            router.replace(
+              `/onboarding/baseline-report?scanId=${baselineId}` as never
+            );
+          }
+          return;
+        }
+
+        if (continueUrl === "/dashboard") {
+          router.replace("/(drawer)" as never);
           return;
         }
 

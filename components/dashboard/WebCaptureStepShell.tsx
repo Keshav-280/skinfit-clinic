@@ -7,8 +7,6 @@ import {
   ChevronLeft,
   Info,
   CheckCircle2,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import type { CaptureGuidanceSnapshot } from "@/src/lib/scanCaptureGuidance";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
@@ -33,10 +31,8 @@ type Props = {
   reviewingCapture: boolean;
   guidance: CaptureGuidanceSnapshot | null;
   guidanceReady?: boolean;
-  voiceEnabled: boolean;
   showDebug: boolean;
   captureDebugUi: boolean;
-  onToggleVoice: () => void;
   onToggleDebug: () => void;
   onBack: () => void;
   controls: ReactNode;
@@ -81,10 +77,8 @@ export function WebCaptureStepShell({
   reviewingCapture,
   guidance,
   guidanceReady = false,
-  voiceEnabled,
   showDebug,
   captureDebugUi,
-  onToggleVoice,
   onToggleDebug,
   onBack,
   controls,
@@ -123,19 +117,6 @@ export function WebCaptureStepShell({
             {stepIndex + 1}/{totalSteps}
           </span>
           <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={onToggleVoice}
-              className={`flex h-8 w-8 items-center justify-center rounded-full border transition ${
-                voiceEnabled
-                  ? "border-[#2C3E6B]/15 bg-[#2C3E6B] text-white"
-                  : "border-[#2C3E6B]/10 bg-white text-[#2C3E6B]"
-              }`}
-              aria-pressed={voiceEnabled}
-              aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
-            >
-              {voiceEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-            </button>
             {captureDebugUi ? (
               <button
                 type="button"

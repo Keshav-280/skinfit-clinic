@@ -56,10 +56,7 @@ export function OnboardingResumeGate({
       const res = await fetch("/api/onboarding/resume", { credentials: "include" });
       if (!res.ok) return;
       const data = (await res.json()) as ResumeApi;
-      if (data.onboardingComplete) {
-        router.replace("/dashboard");
-        return;
-      }
+      const continueUrl = data.continueUrl ?? "/onboarding/capture/photos";
 
       const segs = segments(pathname);
       const isWelcome = segs.length === 1 && segs[0] === "onboarding";
@@ -71,9 +68,24 @@ export function OnboardingResumeGate({
       const hasBaseline = data.hasBaselineScan === true;
       const baselinePending = data.baselineScanPending === true;
       const baselineSubmitted = hasBaseline || baselinePending;
-      const continueUrl = data.continueUrl ?? "/onboarding/capture/photos";
       const baselineId =
         typeof data.baselineScanId === "number" ? data.baselineScanId : null;
+
+      if (onboardingTargetMatches(pathname, searchParams, continueUrl)) {
+        if (
+          onBaseline &&
+          baselineId != null &&
+          searchParams.get("scanId") !== String(baselineId)
+        ) {
+          router.replace(`/onboarding/baseline-report?scanId=${baselineId}`);
+        }
+        return;
+      }
+
+      if (continueUrl === "/dashboard") {
+        router.replace("/dashboard");
+        return;
+      }
 
       if (baselineSubmitted && onCaptureFlow) {
         if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
