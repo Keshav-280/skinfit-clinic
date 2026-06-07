@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 
 import {
+  computeFaceGuideCropOnViewfinderCanvas,
   getFrontGuideCropRectViewBox,
+  getFrontGuideCropViewfinderNorm,
   getVisibleVideoRect,
   viewBoxRectToViewfinderNorm,
+  viewfinderCaptureDimensions,
   viewfinderNormRectToVideoSource,
   viewfinderNormRectToVideoSourceWithZoom,
 } from "./faceGuideCrop";
@@ -105,5 +108,16 @@ const guideCrop = viewfinderNormRectToVideoSourceWithZoom(
 );
 const aspect = guideCrop.w / guideCrop.h;
 approx(aspect, 3 / 4, 0.01);
+
+const captureDims = viewfinderCaptureDimensions(viewfinderW, viewfinderH, 1280);
+approx(captureDims.w / captureDims.h, viewfinderW / viewfinderH, 0.001);
+assert.equal(captureDims.h, 1280);
+
+const guideVfNorm = getFrontGuideCropViewfinderNorm();
+const canvasCrop = computeFaceGuideCropOnViewfinderCanvas(captureDims.w, captureDims.h);
+assert.ok(canvasCrop);
+approx(canvasCrop!.w / canvasCrop!.h, 3 / 4, 0.01);
+approx(canvasCrop!.x / captureDims.w, guideVfNorm.x, 0.02);
+approx(canvasCrop!.y / captureDims.h, guideVfNorm.y, 0.02);
 
 console.log("faceGuideCrop.test.ts: all assertions passed");

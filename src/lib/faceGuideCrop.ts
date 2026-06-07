@@ -78,6 +78,57 @@ export function viewBoxRectToViewfinderNorm(rect: {
   };
 }
 
+/** Viewfinder-normalized 3:4 crop rect that inscribes the face-guide ellipse. */
+export function getFrontGuideCropViewfinderNorm(
+  ellipse: FaceGuideEllipse = FRONT_GUIDE_ELLIPSE
+): { x: number; y: number; w: number; h: number } {
+  return viewBoxRectToViewfinderNorm(getFrontGuideCropRectViewBox(ellipse));
+}
+
+/** Canvas/output size matching the on-screen viewfinder (avoids stretch on capture). */
+export function viewfinderCaptureDimensions(
+  viewfinderW: number,
+  viewfinderH: number,
+  maxLongEdge = 1280
+): { w: number; h: number } {
+  if (!viewfinderW || !viewfinderH) {
+    return { w: maxLongEdge, h: maxLongEdge };
+  }
+  if (viewfinderW >= viewfinderH) {
+    return {
+      w: maxLongEdge,
+      h: Math.round((maxLongEdge * viewfinderH) / viewfinderW),
+    };
+  }
+  return {
+    h: maxLongEdge,
+    w: Math.round((maxLongEdge * viewfinderW) / viewfinderH),
+  };
+}
+
+/**
+ * Crop on a capture canvas that exactly matches the viewfinder (post-mirror draw).
+ * Maps the inscribed 3:4 ellipse rect 1:1 from viewfinder coords — no video remapping.
+ */
+export function computeFaceGuideCropOnViewfinderCanvas(
+  canvasW: number,
+  canvasH: number,
+  ellipse: FaceGuideEllipse = FRONT_GUIDE_ELLIPSE
+): { x: number; y: number; w: number; h: number } | null {
+  if (!canvasW || !canvasH) return null;
+
+  const vfNorm = getFrontGuideCropViewfinderNorm(ellipse);
+  const x = Math.round(vfNorm.x * canvasW);
+  const y = Math.round(vfNorm.y * canvasH);
+  const w = Math.round(vfNorm.w * canvasW);
+  const h = Math.round(vfNorm.h * canvasH);
+
+  if (w <= 1 || h <= 1) return null;
+  if (x < 0 || y < 0 || x + w > canvasW || y + h > canvasH) return null;
+
+  return { x, y, w, h };
+}
+
 /** Map a viewfinder-normalized rect to uncropped source video pixels (`object-cover`). */
 export function viewfinderNormRectToVideoSource(
   rect: { x: number; y: number; w: number; h: number },
