@@ -216,7 +216,12 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {/* 1. Profile Header */}
+        {/* 1. Progress checkpoints */}
+        {homeData?.progress && !homeData.progress.allComplete ? (
+          <PatientProgressTracker {...homeData.progress} />
+        ) : null}
+
+        {/* 2. Profile header */}
         <ProfileHeaderCard
           name={name}
           age={age}
@@ -228,11 +233,8 @@ export default function ProfileScreen() {
           onPhotoPress={handlePhotoPress}
         />
 
+        {/* 3. Family card */}
         <FamilyWalletCard refreshing={refreshing} />
-
-        {homeData?.progress && !homeData.progress.allComplete ? (
-          <PatientProgressTracker {...homeData.progress} />
-        ) : null}
 
         {!hasRealScoreData ? (
           <View style={styles.emptyCard}>

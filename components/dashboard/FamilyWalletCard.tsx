@@ -189,11 +189,9 @@ export function FamilyWalletCard() {
             {formatCredits(data.balanceCredits)}
             <span className="ml-1.5 text-sm font-semibold text-[#64748B]">credits</span>
           </p>
-          <p className="mt-0.5 text-xs text-[#64748B]">
-            {data.isOwner
-              ? "Top up at the clinic · shared with family"
-              : `Shared · held by ${data.ownerName}`}
-          </p>
+          {!data.isOwner ? (
+            <p className="mt-0.5 text-xs text-[#64748B]">Held by {data.ownerName}</p>
+          ) : null}
         </div>
       </div>
 
@@ -280,7 +278,7 @@ export function FamilyWalletCard() {
                 }}
                 placeholder="family@email.com"
                 disabled={inviteBusy}
-                className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
+                className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2A44] placeholder:text-[#94A3B8] outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
               />
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
@@ -316,7 +314,7 @@ export function FamilyWalletCard() {
                     }
                     placeholder="6-digit code"
                     disabled={inviteBusy}
-                    className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
+                    className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2A44] placeholder:text-[#94A3B8] outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
                   />
                   <button
                     type="button"
