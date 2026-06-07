@@ -621,6 +621,11 @@ export function OnboardingQuestionnaireForm() {
     persistDraft(prevStep);
   }
 
+  function skipToDashboard() {
+    persistDraft();
+    router.replace("/dashboard");
+  }
+
   const chip = (active: boolean) =>
     `w-full rounded-2xl border px-4 py-3.5 text-left text-[15px] font-semibold transition-colors ${
       active
@@ -630,9 +635,19 @@ export function OnboardingQuestionnaireForm() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-bold text-skinfit-navy">
-        Step {displayStep} / {totalSteps}
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold text-skinfit-navy">
+          Step {displayStep} / {totalSteps}
+        </p>
+        <button
+          type="button"
+          onClick={skipToDashboard}
+          disabled={busy}
+          className="shrink-0 text-sm font-semibold text-[#2C3E6B]/80 underline-offset-2 transition hover:text-[#2C3E6B] hover:underline disabled:opacity-50"
+        >
+          Skip to dashboard
+        </button>
+      </div>
       {err ? (
         <div
           role="alert"

@@ -19,13 +19,22 @@ const BOUNDARIES = [
 export default function KaiIntroPage() {
   return (
     <div className="mx-auto w-full">
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-12 md:items-stretch md:gap-5">
-        {/* Hero — skin analysis banner */}
+      <div className="mb-3 flex justify-start md:mb-4">
+        <Link
+          href="/onboarding/questionnaire"
+          className="text-sm font-semibold text-[#2C3E6B]/80 underline-offset-2 transition hover:text-[#2C3E6B] hover:underline"
+        >
+          Skip to questionnaire
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-4 overflow-visible md:grid md:grid-cols-[8.4fr_3.6fr] md:items-stretch md:gap-5">
+        {/* Hero — skin analysis banner (+20% width vs prior 7/12; fixed height on desktop) */}
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: easeOut }}
-          className="relative min-h-[220px] w-full overflow-hidden rounded-2xl bg-zinc-950 shadow-[0_12px_32px_-12px_rgba(44,62,107,0.3)] md:col-span-7 md:min-h-0 md:aspect-[2/1]"
+          className="relative min-h-[220px] w-full overflow-hidden rounded-2xl bg-zinc-950 shadow-[0_12px_32px_-12px_rgba(44,62,107,0.3)] md:h-[280px] md:min-h-0"
         >
           <Image
             src="/images/kai-skin-analysis.png"
@@ -33,7 +42,7 @@ export default function KaiIntroPage() {
             fill
             className="object-cover opacity-90"
             priority
-            sizes="(max-width: 768px) 100vw, 55vw"
+            sizes="(max-width: 768px) 100vw, 70vw"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-900/20 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 z-10 p-5 text-white md:p-6">
@@ -54,7 +63,7 @@ export default function KaiIntroPage() {
         </motion.div>
 
         {/* kAI avatar + typing message */}
-        <div className="md:col-span-5 md:min-h-0">
+        <div className="w-full min-w-0 overflow-visible md:h-[280px] md:min-h-0">
           <KaiTypingIntro showHeader={false} variant="sidebar" />
         </div>
       </div>
@@ -148,12 +157,6 @@ export default function KaiIntroPage() {
               Start baseline scan
               <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
             </span>
-          </Link>
-          <Link
-            href="/onboarding/questionnaire"
-            className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
-          >
-            Skip to questionnaire
           </Link>
         </motion.div>
       </div>

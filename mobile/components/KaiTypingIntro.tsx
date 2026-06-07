@@ -118,11 +118,6 @@ export function KaiTypingIntro() {
         </View>
       </View>
 
-      <View style={styles.dots}>
-        {KAI_INTRO_LINES.map((_, i) => (
-          <View key={i} style={[styles.dot, i === lineIndex && styles.dotActive]} />
-        ))}
-      </View>
     </View>
   );
 }
@@ -231,21 +226,5 @@ const styles = StyleSheet.create({
   cursor: {
     color: NAVY,
     fontWeight: "400",
-  },
-  dots: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: 14,
-    justifyContent: "center",
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.25)",
-  },
-  dotActive: {
-    width: 20,
-    backgroundColor: "#7eb8ff",
   },
 });

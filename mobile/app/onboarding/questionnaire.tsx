@@ -612,6 +612,11 @@ export default function QuestionnaireScreen() {
     persistDraft(prevStep);
   }
 
+  function skipToDashboard() {
+    persistDraft();
+    router.replace("/(drawer)" as Href);
+  }
+
   return (
     <LinearGradient colors={[...SKINFIT_GRADIENT.patient]} style={styles.flex}>
     <ScrollView
@@ -621,9 +626,14 @@ export default function QuestionnaireScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.progress}>
-        Step {displayStep} / {totalSteps}
-      </Text>
+      <View style={styles.progressRow}>
+        <Text style={styles.progress}>
+          Step {displayStep} / {totalSteps}
+        </Text>
+        <Pressable onPress={skipToDashboard} disabled={busy} hitSlop={8}>
+          <Text style={styles.skipDashboardText}>Skip to dashboard</Text>
+        </Pressable>
+      </View>
       {err ? <Text style={styles.err}>{err}</Text> : null}
 
       {activeStep === 0 ? (
@@ -1036,13 +1046,23 @@ export default function QuestionnaireScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingHorizontal: 24, flexGrow: 1 },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 16,
+  },
   progress: {
     fontSize: 12,
     fontWeight: "700",
     color: NAVY,
-    marginBottom: 16,
-    textAlign: "center",
     letterSpacing: 0.5,
+  },
+  skipDashboardText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(44, 62, 107, 0.8)",
   },
   err: { color: "#DC2626", marginBottom: 8, fontSize: 13, fontWeight: "600" },
   q: { fontSize: 20, fontWeight: "800", color: "#1A1A2E", marginBottom: 14, letterSpacing: -0.3 },

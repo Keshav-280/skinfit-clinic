@@ -30,6 +30,8 @@ import { AM_ROUTINE_ITEMS, PM_ROUTINE_ITEMS } from "../lib/routine";
 
 const DEMO_PATIENT_EMAIL = DEMO_LOGIN_EMAIL;
 const DEMO_PATIENT_PASSWORD = "SkinFitDemo2024!";
+/** Fresh onboarding patient — no baseline/questionnaire data. */
+const SECOND_DEMO_PATIENT_EMAIL = "skinfit.patient2@gmail.com";
 /** Second clinic doctor — same demo password as primary doctor seed. */
 const ADDITIONAL_DOCTOR_EMAIL = "iamdalves@gmail.com";
 async function seed() {
@@ -123,6 +125,37 @@ async function seed() {
         },
       });
 
+    await db
+      .insert(users)
+      .values({
+        name: "Alex Patient",
+        email: SECOND_DEMO_PATIENT_EMAIL,
+        passwordHash: patientHash,
+        role: "patient",
+        age: 24,
+        gender: "female",
+        skinType: "Sensitive",
+        primaryGoal: "Even skin tone",
+        phoneCountryCode: "+91",
+        phone: "9123456780",
+        onboardingComplete: false,
+      })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: {
+          passwordHash: patientHash,
+          name: "Alex Patient",
+          role: "patient",
+          age: 24,
+          gender: "female",
+          skinType: "Sensitive",
+          primaryGoal: "Even skin tone",
+          phoneCountryCode: "+91",
+          phone: "9123456780",
+          onboardingComplete: false,
+        },
+      });
+
     const [patient] = await db
       .select()
       .from(users)
@@ -152,6 +185,7 @@ async function seed() {
     }
 
     console.log("✓ Demo patient:", patient.email);
+    console.log("✓ Second patient (fresh onboarding):", SECOND_DEMO_PATIENT_EMAIL);
     console.log("✓ Demo doctor:", doctor.email);
     console.log("✓ Additional doctor:", ADDITIONAL_DOCTOR_EMAIL);
 
@@ -413,8 +447,9 @@ async function seed() {
     }
 
     console.log("\n✅ Seeding completed successfully!");
-    console.log("\nPatient demo login (email only for now):");
-    console.log(`  Email: ${DEMO_PATIENT_EMAIL}`);
+    console.log("\nPatient demo logins (password: SkinFitDemo2024!):");
+    console.log(`  ${DEMO_PATIENT_EMAIL} — full dashboard demo data`);
+    console.log(`  ${SECOND_DEMO_PATIENT_EMAIL} — fresh onboarding (no scan/questionnaire)`);
   } catch (error) {
     console.error("❌ Error seeding database:", error);
     throw error;

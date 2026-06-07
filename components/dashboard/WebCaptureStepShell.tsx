@@ -7,6 +7,8 @@ import {
   ChevronLeft,
   Info,
   CheckCircle2,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import type { CaptureGuidanceSnapshot } from "@/src/lib/scanCaptureGuidance";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
@@ -31,8 +33,10 @@ type Props = {
   reviewingCapture: boolean;
   guidance: CaptureGuidanceSnapshot | null;
   guidanceReady?: boolean;
+  voiceEnabled: boolean;
   showDebug: boolean;
   captureDebugUi: boolean;
+  onToggleVoice: () => void;
   onToggleDebug: () => void;
   onBack: () => void;
   controls: ReactNode;
@@ -77,8 +81,10 @@ export function WebCaptureStepShell({
   reviewingCapture,
   guidance,
   guidanceReady = false,
+  voiceEnabled,
   showDebug,
   captureDebugUi,
+  onToggleVoice,
   onToggleDebug,
   onBack,
   controls,
@@ -117,6 +123,23 @@ export function WebCaptureStepShell({
             {stepIndex + 1}/{totalSteps}
           </span>
           <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onToggleVoice}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border transition ${
+                voiceEnabled
+                  ? "border-[#2C3E6B]/15 bg-[#2C3E6B] text-white"
+                  : "border-[#2C3E6B]/10 bg-white text-[#2C3E6B]"
+              }`}
+              aria-pressed={voiceEnabled}
+              aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
+            >
+              {voiceEnabled ? (
+                <Volume2 className="h-3.5 w-3.5" />
+              ) : (
+                <VolumeX className="h-3.5 w-3.5" />
+              )}
+            </button>
             {captureDebugUi ? (
               <button
                 type="button"
@@ -135,9 +158,9 @@ export function WebCaptureStepShell({
           </div>
         </div>
 
-        {/* 3 columns on large screens; stack on smaller viewports to avoid overlap */}
-        <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden sm:gap-3 lg:grid-cols-3 lg:gap-4">
-          <div className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-contain px-1 text-center lg:items-end lg:pr-2 lg:text-right">
+        {/* Side columns flex; center column auto-width so the feed never overlaps tips */}
+        <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden sm:gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 lg:gap-x-8">
+          <div className="relative z-10 flex min-h-0 min-w-0 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-contain px-1 text-center md:pr-2">
             {!reviewingCapture ? (
               <div
                 className={`flex w-full max-w-[280px] flex-col items-center gap-2.5 rounded-2xl border px-4 py-4 shadow-sm sm:max-w-xs sm:px-5 sm:py-5 ${
@@ -170,24 +193,24 @@ export function WebCaptureStepShell({
             </div>
           </div>
 
-          <div className="flex min-h-0 min-w-0 flex-col items-center gap-1 sm:gap-1.5">
-            <div className="w-full max-w-[min(100%,390px)] shrink-0 text-center">
+          <div className="relative z-0 flex min-h-0 min-w-0 flex-col items-center gap-1 sm:gap-1.5">
+            <div className="shrink-0 text-center">
               <h2 className="text-sm font-extrabold leading-tight sm:text-base lg:text-lg" style={{ color: NAVY }}>
                 {step.title}
               </h2>
-              <p className="line-clamp-2 text-[10px] leading-snug sm:text-xs" style={{ color: MUTED }}>
+              <p className="line-clamp-1 text-[10px] leading-snug sm:text-xs" style={{ color: MUTED }}>
                 {step.subtitle}
               </p>
             </div>
 
-            <div className="relative aspect-[3/4] w-full max-w-[min(100%,390px)] shrink-0 overflow-hidden rounded-xl bg-zinc-900 shadow-inner sm:rounded-2xl">
-              <div className="absolute inset-0">{viewfinder}</div>
+            <div className="relative h-[320px] w-[240px] shrink-0 overflow-hidden rounded-xl bg-zinc-900 shadow-inner sm:rounded-2xl md:h-[384px] md:w-[288px] lg:h-[440px] lg:w-[330px] xl:h-[520px] xl:w-[390px]">
+              {viewfinder}
             </div>
 
-            <div className="w-full max-w-[min(100%,390px)] shrink-0">{controls}</div>
+            <div className="w-full shrink-0">{controls}</div>
           </div>
 
-          <aside className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain pl-0.5 lg:pl-0">
+          <aside className="relative z-10 flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain pl-0.5 md:pl-2">
             {sidebar}
           </aside>
         </div>

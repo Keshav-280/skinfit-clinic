@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
@@ -65,37 +63,14 @@ export function OnboardingLayoutShell({
   const maxWidthClass = isKaiIntro ? "max-w-5xl" : "max-w-3xl";
 
   return (
-    <div data-onboarding-shell className={onboardingShellClass}>
-      {isKaiIntro ? (
-        <header className="sticky top-0 z-40 border-b border-[#2C3E6B]/10 bg-[#D6E4D0]/90 bg-gradient-to-b from-[#D6E4D0] to-[#E0EADA]/80 px-4 pb-3 pt-3 shadow-[0_4px_24px_-12px_rgba(44,62,107,0.12)] backdrop-blur-md md:px-8">
-          <div
-            className={`mx-auto flex ${maxWidthClass} items-center justify-end`}
-          >
-            <OnboardingSignOutLink />
-          </div>
-        </header>
-      ) : (
-        <header className="sticky top-0 z-40 border-b border-[#2C3E6B]/10 bg-[#E0EADA]/85 px-4 py-3 shadow-[0_4px_24px_-12px_rgba(44,62,107,0.1)] backdrop-blur-md">
-          <div className={`mx-auto flex ${maxWidthClass} items-center justify-between gap-3`}>
-            <Link
-              href="/onboarding/kai-intro"
-              className="inline-flex shrink-0 items-center"
-              aria-label="SkinFit Wellness — onboarding home"
-            >
-              <Image
-                src="/branding/skinfit-wellness-logo.svg"
-                alt="SkinFit Wellness"
-                width={560}
-                height={135}
-                className="h-8 w-auto max-w-[10.5rem] object-contain object-left sm:max-w-[11.5rem]"
-              />
-            </Link>
-            <OnboardingSignOutLink />
-          </div>
-        </header>
-      )}
+    <div data-onboarding-shell className={`relative ${onboardingShellClass}`}>
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-end pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="pointer-events-auto pr-3 pt-1 md:pr-5">
+          <OnboardingSignOutLink />
+        </div>
+      </div>
       <main
-        className={`mx-auto w-full ${maxWidthClass} px-4 pb-16 ${isKaiIntro ? "py-6 md:py-8" : "py-8"}`}
+        className={`mx-auto w-full ${maxWidthClass} px-4 pb-16 pt-3 pr-14 md:px-6 md:pt-4 md:pr-16`}
       >
         {children}
       </main>

@@ -51,8 +51,8 @@ export function KaiTypingIntro({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, ease: easeOut }}
-      className={`flex h-full flex-col rounded-[22px] border border-white/70 bg-white/40 shadow-[0_8px_30px_rgba(44,62,107,0.08)] backdrop-blur-sm ${
-        isSidebar ? "px-4 pb-4 pt-4 md:px-5 md:pb-5" : "px-5 pb-5 pt-6 md:px-6 md:pb-6"
+      className={`flex h-full w-full min-w-0 flex-col overflow-visible rounded-[22px] ${
+        isSidebar ? "px-3 pb-3 pt-3 md:pl-3 md:pr-0 md:pb-3 md:pt-2" : "px-5 pb-5 pt-6 md:px-6 md:pb-6"
       }`}
     >
       {showHeader ? (
@@ -75,14 +75,16 @@ export function KaiTypingIntro({
       ) : null}
 
       <div
-        className={`flex min-h-0 flex-1 ${
-          isSidebar ? "mt-2 flex-col items-center gap-3" : "mt-4 items-center gap-3 md:gap-4"
-        } ${!isSidebar ? "md:flex-row" : ""}`}
+        className={
+          isSidebar
+            ? "relative mt-0 min-h-0 w-full flex-1"
+            : "mt-4 flex min-h-0 flex-1 flex-col items-center gap-3 md:flex-row md:items-center md:gap-4"
+        }
       >
         <motion.div
           animate={{ y: [0, -5, 0] }}
           transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-          className="relative shrink-0"
+          className={isSidebar ? "relative z-20 shrink-0" : "relative shrink-0"}
         >
           <Image
             src="/images/kai-avatar.png"
@@ -91,68 +93,78 @@ export function KaiTypingIntro({
             height={291}
             className={
               isSidebar
-                ? "h-[min(28vh,180px)] w-auto object-contain md:h-[200px]"
+                ? "h-[min(44vh,260px)] w-auto object-contain sm:h-[255px] md:h-[268px]"
                 : "h-[min(32vh,220px)] w-auto object-contain md:h-[240px]"
             }
             priority
           />
         </motion.div>
 
-        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col justify-center">
-          <div className={`flex items-center ${isSidebar ? "flex-col sm:flex-row" : ""}`}>
-            {!isSidebar ? (
+        {isSidebar ? (
+          <div className="absolute top-0 z-10 left-[7.75rem] w-[calc(100%-7.75rem+1rem)] sm:left-[8rem] sm:w-[calc(100%-8rem+1.25rem)] md:left-[8.25rem] md:w-[calc(100%-8.25rem+1.5rem)]">
+            <div className="flex w-full items-start">
               <div
-                className="hidden h-0 w-0 shrink-0 border-y-[9px] border-r-[10px] border-y-transparent border-r-white/90 md:block"
+                className="mt-3 h-0 w-0 shrink-0 border-y-[7px] border-r-[9px] border-y-transparent border-r-white/70"
                 aria-hidden
               />
-            ) : (
-              <div
-                className="mb-1 hidden h-0 w-0 shrink-0 border-b-[10px] border-l-[9px] border-r-[9px] border-b-white/90 border-l-transparent border-r-transparent sm:mb-0 sm:mr-0 sm:block sm:border-b-[9px] sm:border-l-transparent sm:border-r-[10px] sm:border-t-transparent sm:border-b-transparent sm:border-r-white/90"
-                aria-hidden
-              />
-            )}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={lineIndex}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25 }}
-                className="w-full flex-1 rounded-2xl border border-white/80 bg-white/90 px-3.5 py-3 shadow-sm md:px-4 md:py-3.5"
-              >
-                <p
-                  className={`font-medium leading-relaxed text-[#374151] ${
-                    isSidebar
-                      ? "min-h-[5.5rem] text-[13px] md:min-h-[6rem] md:text-sm"
-                      : "min-h-[4.5rem] text-sm md:text-[15px]"
-                  }`}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={lineIndex}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full min-w-0 flex-1 rounded-2xl rounded-tl-md border border-white/75 bg-white/50 px-3.5 py-2.5 shadow-[0_6px_20px_rgba(44,62,107,0.08)] backdrop-blur-sm sm:py-3"
                 >
-                  {typed}
-                  <motion.span
-                    animate={{ opacity: [1, 0, 1] }}
-                    transition={{ duration: 0.9, repeat: Infinity }}
-                    className="ml-0.5 inline-block text-[#2C3E6B]"
-                    aria-hidden
-                  >
-                    |
-                  </motion.span>
-                </p>
-              </motion.div>
-            </AnimatePresence>
+                  <p className="text-[12px] font-medium leading-relaxed text-[#374151] sm:text-[13px] md:text-sm">
+                    {typed}
+                    <motion.span
+                      animate={{ opacity: [1, 0, 1] }}
+                      transition={{ duration: 0.9, repeat: Infinity }}
+                      className="ml-0.5 inline-block text-[#2C3E6B]"
+                      aria-hidden
+                    >
+                      |
+                    </motion.span>
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col justify-center">
+            <div className="flex items-start">
+              <div
+                className="hidden h-0 w-0 shrink-0 border-y-[7px] border-r-[9px] border-y-transparent border-r-white/70 md:block"
+                aria-hidden
+              />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={lineIndex}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full flex-1 rounded-2xl border border-white/75 bg-white/50 px-3.5 py-3 shadow-[0_6px_20px_rgba(44,62,107,0.08)] backdrop-blur-sm md:rounded-tl-md"
+                >
+                  <p className="min-h-[4.5rem] text-sm font-medium leading-relaxed text-[#374151] md:text-[15px]">
+                    {typed}
+                    <motion.span
+                      animate={{ opacity: [1, 0, 1] }}
+                      transition={{ duration: 0.9, repeat: Infinity }}
+                      className="ml-0.5 inline-block text-[#2C3E6B]"
+                      aria-hidden
+                    >
+                      |
+                    </motion.span>
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className={`mt-3 flex justify-center gap-1.5 ${isSidebar ? "md:mt-auto" : "mt-3.5"}`}>
-        {KAI_INTRO_LINES.map((_, i) => (
-          <span
-            key={i}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === lineIndex ? "w-5 bg-[#2C3E6B]" : "w-1.5 bg-[#2C3E6B]/20"
-            }`}
-          />
-        ))}
-      </div>
     </motion.section>
   );
 }
