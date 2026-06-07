@@ -119,9 +119,9 @@ function copyForConcern(
     },
     general: {
       sevTitle: "What best describes your skin goals?",
-      sevA: "Concerned about maintaining skin health",
-      sevB: "Concerned about improving skin health",
-      sevC: "Various skin concerns",
+      sevA: "Maintenance",
+      sevB: "Need to improve",
+      sevC: "Ongoing concerns",
       durTitle: "How long have you had these concerns?",
       trigTitle: "What affects your skin most?",
     },

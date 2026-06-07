@@ -1,8 +1,12 @@
 type OAuthLoginDividerProps = {
   variant?: "light" | "dark";
+  label?: string;
 };
 
-export function OAuthLoginDivider({ variant = "light" }: OAuthLoginDividerProps) {
+export function OAuthLoginDivider({
+  variant = "light",
+  label = "or",
+}: OAuthLoginDividerProps) {
   const isDark = variant === "dark";
 
   return (
@@ -14,15 +18,15 @@ export function OAuthLoginDivider({ variant = "light" }: OAuthLoginDividerProps)
           }`}
         />
       </div>
-      <div className="relative flex justify-center text-xs uppercase tracking-wide">
+      <div className="relative flex justify-center text-xs font-medium uppercase tracking-wide">
         <span
           className={`px-3 ${
             isDark
               ? "bg-[#2C3E6B] text-white/50"
-              : "bg-white text-slate-400"
+              : "bg-white text-[#8391A1]"
           }`}
         >
-          or
+          {label}
         </span>
       </div>
     </div>

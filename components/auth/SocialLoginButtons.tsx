@@ -51,6 +51,8 @@ function AppleIcon({ className }: { className?: string }) {
 type SocialLoginButtonsProps = {
   disabled?: boolean;
   variant?: "light" | "dark";
+  /** Sign-in mockup: icons without heavy boxes */
+  compact?: boolean;
 };
 
 function oauthHref(path: string, next: string | null): string {
@@ -63,14 +65,33 @@ function SocialIconButton({
   icon,
   label,
   variant,
+  compact,
 }: {
   href: string;
   disabled?: boolean;
   icon: ReactNode;
   label: string;
   variant: "light" | "dark";
+  compact?: boolean;
 }) {
   const isDark = variant === "dark";
+
+  if (compact && !isDark) {
+    return (
+      <a
+        href={disabled ? undefined : href}
+        aria-disabled={disabled}
+        aria-label={label}
+        title={label}
+        className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#1E232C] transition hover:bg-[#F7F8F9] focus:outline-none focus:ring-2 focus:ring-[#525FE1]/25 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+        onClick={(e) => {
+          if (disabled) e.preventDefault();
+        }}
+      >
+        {icon}
+      </a>
+    );
+  }
 
   return (
     <a
@@ -78,10 +99,14 @@ function SocialIconButton({
       aria-disabled={disabled}
       aria-label={label}
       title={label}
-      className={`inline-flex h-12 w-12 items-center justify-center rounded-xl border shadow-sm transition focus:outline-none focus:ring-2 aria-disabled:pointer-events-none aria-disabled:opacity-50 ${
+      className={`inline-flex items-center justify-center border shadow-sm transition focus:outline-none focus:ring-2 aria-disabled:pointer-events-none aria-disabled:opacity-50 ${
+        compact
+          ? "h-11 w-11 rounded-full"
+          : "h-14 w-14 rounded-xl"
+      } ${
         isDark
           ? "border-white/20 bg-white/10 text-white hover:border-white/30 hover:bg-white/15 focus:ring-[#E8EFE6]/25 focus:ring-offset-2 focus:ring-offset-[#2C3E6B]"
-          : "border-slate-200 bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/25 hover:bg-slate-50 focus:ring-[#2C3E6B]/20 focus:ring-offset-2"
+          : "border-slate-200 bg-white text-[#1E232C] hover:border-slate-300 hover:bg-[#F7F8F9] focus:ring-[#525FE1]/20 focus:ring-offset-2"
       }`}
       onClick={(e) => {
         if (disabled) e.preventDefault();
@@ -95,31 +120,39 @@ function SocialIconButton({
 export function SocialLoginButtons({
   disabled,
   variant = "light",
+  compact = false,
 }: SocialLoginButtonsProps) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
 
   return (
-    <div className="flex justify-center gap-3">
-      <SocialIconButton
-        href={oauthHref("/api/auth/oauth/google", next)}
-        disabled={disabled}
-        variant={variant}
-        icon={<GoogleIcon className="h-5 w-5 shrink-0" />}
-        label="Continue with Google"
-      />
+    <div className="flex justify-center gap-4">
       <SocialIconButton
         href={oauthHref("/api/auth/oauth/facebook", next)}
         disabled={disabled}
         variant={variant}
-        icon={<FacebookIcon className="h-5 w-5 shrink-0 text-[#1877F2]" />}
+        compact={compact}
+        icon={<FacebookIcon className="h-6 w-6 shrink-0 text-[#1877F2]" />}
         label="Continue with Facebook"
+      />
+      <SocialIconButton
+        href={oauthHref("/api/auth/oauth/google", next)}
+        disabled={disabled}
+        variant={variant}
+        compact={compact}
+        icon={<GoogleIcon className="h-6 w-6 shrink-0" />}
+        label="Continue with Google"
       />
       <SocialIconButton
         href={oauthHref("/api/auth/oauth/apple", next)}
         disabled={disabled}
         variant={variant}
-        icon={<AppleIcon className="h-[1.35rem] w-[1.35rem] shrink-0" />}
+        compact={compact}
+        icon={
+          <AppleIcon
+            className={`${compact ? "h-6 w-6" : "h-7 w-7"} shrink-0`}
+          />
+        }
         label="Continue with Apple"
       />
     </div>

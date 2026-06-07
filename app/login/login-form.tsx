@@ -4,23 +4,18 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
-const NAVY_PANEL =
-  "bg-gradient-to-br from-[#1a2544] via-[#2C3E6B] to-[#162038]";
-const LABEL = "mb-1.5 block text-sm font-medium text-white/80";
+const LABEL = "mb-2 block text-sm font-semibold text-[#1E232C]";
 const INPUT =
-  "w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white shadow-sm outline-none transition placeholder:text-white/50 focus:border-[#E8EFE6]/40 focus:ring-2 focus:ring-[#E8EFE6]/20";
+  "w-full rounded-lg border border-transparent bg-[#F7F8F9] px-4 py-3.5 text-[15px] text-[#1E232C] outline-none transition placeholder:text-[#8391A1] focus:border-[#525FE1]/30 focus:ring-2 focus:ring-[#525FE1]/15";
 const ERROR =
-  "rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200";
-const LINK = "font-medium text-[#E8EFE6] hover:text-white";
-const SUBMIT_BTN =
-  "flex w-full items-center justify-center rounded-full bg-[#E8EFE6] px-5 py-3 text-base font-medium text-[#2C3E6B] shadow-sm transition-colors hover:bg-[#DCE8D4] focus:outline-none focus:ring-2 focus:ring-[#E8EFE6] focus:ring-offset-2 focus:ring-offset-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-60";
+  "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800";
 const EYE_BTN =
-  "absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-white/60 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60";
+  "absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-[#8391A1] transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-60";
 
 type Mode = "signin" | "register";
 
@@ -236,63 +231,65 @@ export function LoginForm() {
     }
   }
 
-  return (
-    <div className="flex min-h-screen">
-      <div
-        className={`hidden min-h-screen flex-1 flex-col justify-center px-12 lg:flex ${NAVY_PANEL}`}
-      >
-        <div className="mx-auto max-w-md space-y-8">
-          <Image
-            src="/branding/skinfit-wellness-logo.svg"
-            alt="SkinFit Wellness"
-            width={560}
-            height={135}
-            priority
-            className="h-11 w-auto max-w-[15rem] brightness-0 invert"
-          />
-          <p className="text-lg leading-relaxed text-white/80">
-            {mode === "signin"
-              ? "Welcome back to your personalized skincare journey."
-              : "Create your account to access your private dashboard and AI skin insights."}
-          </p>
-        </div>
-      </div>
+  const isSignIn = mode === "signin";
 
-      <div
-        className={`flex min-h-screen flex-1 items-center justify-center px-6 py-12 ${NAVY_PANEL}`}
-      >
-        <div className="w-full max-w-md">
-          <div className="mb-6 flex justify-center lg:hidden">
-            <Image
-              src="/branding/skinfit-wellness-logo.svg"
-              alt="SkinFit Wellness"
-              width={560}
-              height={135}
-              priority
-              className="h-9 w-auto max-w-[12rem] brightness-0 invert"
-            />
-          </div>
-          <div className="mb-8 text-center lg:text-left">
-            <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
-              {mode === "signin" ? "Patient Sign In" : "Create your account"}
+  return (
+    <div className="flex min-h-screen bg-white text-[#1E232C]">
+      <div className="mx-auto flex w-full max-w-md flex-col justify-center px-6 py-12">
+        {isSignIn ? (
+          <div className="mb-8">
+            <div className="mb-6 flex justify-center lg:justify-start">
+              <Image
+                src="/branding/skinfit-wellness-logo.svg"
+                alt="SkinFit Wellness"
+                width={560}
+                height={135}
+                priority
+                className="h-9 w-auto max-w-[11rem]"
+              />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-[#1E232C]">
+              Welcome back!{" "}
+              <span aria-hidden className="inline-block">
+                👋
+              </span>
             </h1>
-            <p className="mt-2 text-sm text-white/60">
-              {mode === "signin"
-                ? "Private patient portal"
-                : "Join the private patient portal"}
+            <p className="mt-2 text-[15px] text-[#8391A1]">
+              Glad to see you, Again!
             </p>
           </div>
+        ) : (
+          <div className="mb-8">
+            <button
+              type="button"
+              onClick={() => switchMode("signin")}
+              className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#1E232C] shadow-sm transition hover:bg-[#F7F8F9]"
+              aria-label="Back to sign in"
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <h1 className="text-3xl font-bold tracking-tight text-[#1E232C]">
+              Hello! Register to get started
+            </h1>
+            <p className="mt-2 text-[15px] text-[#8391A1]">
+              Join the private patient portal
+            </p>
+          </div>
+        )}
 
-          {mode === "signin" ? (
-            <>
-              <SocialLoginButtons disabled={loading} variant="dark" />
-              <OAuthLoginDivider variant="dark" />
-              <form onSubmit={onSubmitSignIn} className="space-y-5">
-              {error && (
+        {isSignIn ? (
+          <>
+            <SocialLoginButtons disabled={loading} variant="light" compact />
+            <OAuthLoginDivider
+              variant="light"
+              label="OR LOG IN WITH"
+            />
+            <form onSubmit={onSubmitSignIn} className="space-y-5">
+              {error ? (
                 <div role="alert" className={ERROR}>
                   {error}
                 </div>
-              )}
+              ) : null}
 
               <div>
                 <label htmlFor="email" className={LABEL}>
@@ -312,14 +309,9 @@ export function LoginForm() {
               </div>
 
               <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label htmlFor="password" className={LABEL}>
-                    Password
-                  </label>
-                  <Link href="/forgot-password" className={`text-sm ${LINK}`}>
-                    Forgot password?
-                  </Link>
-                </div>
+                <label htmlFor="password" className={LABEL}>
+                  Password
+                </label>
                 <div className="relative">
                   <input
                     id="password"
@@ -330,7 +322,7 @@ export function LoginForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
                     className={`${INPUT} pr-11`}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                   />
                   <button
                     type="button"
@@ -346,27 +338,37 @@ export function LoginForm() {
                     )}
                   </button>
                 </div>
+                <div className="mt-2 text-right">
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm font-semibold text-[#525FE1] hover:underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
               </div>
 
-              <button type="submit" disabled={loading} className={SUBMIT_BTN}>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center rounded-full bg-[#525FE1] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#454ecc] focus:outline-none focus:ring-2 focus:ring-[#525FE1]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 {loading ? "Signing in…" : "Sign In"}
               </button>
             </form>
-            </>
-          ) : (
-            <>
-              <SocialLoginButtons disabled={loading} variant="dark" />
-              <OAuthLoginDivider variant="dark" />
-              <form onSubmit={onSubmitRegister} className="space-y-5">
-              {error && (
+          </>
+        ) : (
+          <>
+            <form onSubmit={onSubmitRegister} className="space-y-5">
+              {error ? (
                 <div role="alert" className={ERROR}>
                   {error}
                 </div>
-              )}
+              ) : null}
 
               <div>
                 <label htmlFor="name" className={LABEL}>
-                  Full name
+                  Username
                 </label>
                 <input
                   id="name"
@@ -406,7 +408,7 @@ export function LoginForm() {
                     type="button"
                     onClick={sendSignupOtp}
                     disabled={loading || sendOtpLoading || resendSeconds > 0}
-                    className="shrink-0 rounded-xl border border-[#E8EFE6]/30 bg-[#E8EFE6]/10 px-3 py-3 text-sm font-medium text-[#E8EFE6] transition hover:bg-[#E8EFE6]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="shrink-0 rounded-lg bg-[#F7F8F9] px-3 py-3 text-sm font-semibold text-[#525FE1] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {sendOtpLoading
                       ? "Sending…"
@@ -417,9 +419,9 @@ export function LoginForm() {
                           : "Send code"}
                   </button>
                 </div>
-                {otpHint && (
-                  <p className="mt-1.5 text-xs text-emerald-300">{otpHint}</p>
-                )}
+                {otpHint ? (
+                  <p className="mt-1.5 text-xs text-emerald-600">{otpHint}</p>
+                ) : null}
               </div>
 
               <div>
@@ -441,15 +443,11 @@ export function LoginForm() {
                   className={INPUT}
                   placeholder="6-digit code from email"
                 />
-                <p className="mt-1 text-xs text-white/50">
-                  We email a code to verify your address before creating your
-                  account.
-                </p>
               </div>
 
               <div>
                 <label htmlFor="reg-phone" className={LABEL}>
-                  Phone number <span className="text-red-300">*</span>
+                  Phone number <span className="text-red-500">*</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -461,7 +459,7 @@ export function LoginForm() {
                     value={phoneCountryCode}
                     onChange={(e) => setPhoneCountryCode(e.target.value)}
                     disabled={loading}
-                    className="w-[5.5rem] shrink-0 rounded-xl border border-white/20 bg-white/10 px-3 py-3 text-center text-white shadow-sm outline-none transition focus:border-[#E8EFE6]/40 focus:ring-2 focus:ring-[#E8EFE6]/20"
+                    className="w-[5.5rem] shrink-0 rounded-lg border border-transparent bg-[#F7F8F9] px-3 py-3.5 text-center text-[#1E232C] outline-none transition focus:border-[#525FE1]/30 focus:ring-2 focus:ring-[#525FE1]/15"
                     placeholder="+91"
                     aria-label="Country code"
                   />
@@ -479,9 +477,6 @@ export function LoginForm() {
                     placeholder="10-digit mobile"
                   />
                 </div>
-                <p className="mt-1 text-xs text-white/50">
-                  Defaults to +91. Enter at least 10 digits for your number.
-                </p>
               </div>
 
               <div>
@@ -498,7 +493,7 @@ export function LoginForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
                     className={`${INPUT} pr-11`}
-                    placeholder="At least 8 characters"
+                    placeholder="Enter your password"
                   />
                   <button
                     type="button"
@@ -530,7 +525,7 @@ export function LoginForm() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={loading}
                     className={`${INPUT} pr-11`}
-                    placeholder="Repeat password"
+                    placeholder="Confirm your password"
                   />
                   <button
                     type="button"
@@ -552,38 +547,55 @@ export function LoginForm() {
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className={SUBMIT_BTN}>
-                {loading ? "Creating account…" : "Create account"}
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center rounded-lg bg-[#1E232C] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#2a3038] focus:outline-none focus:ring-2 focus:ring-[#1E232C]/30 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Creating account…" : "Register"}
               </button>
             </form>
+
+            <OAuthLoginDivider variant="light" label="Or Register with" />
+            <SocialLoginButtons disabled={loading} variant="light" />
+          </>
+        )}
+
+        <p className="mt-8 text-center text-sm text-[#8391A1]">
+          {isSignIn ? (
+            <>
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("register")}
+                className="font-semibold text-[#525FE1] hover:underline"
+              >
+                Sign up
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("signin")}
+                className="font-semibold text-[#35B9B1] hover:underline"
+              >
+                Login Now
+              </button>
             </>
           )}
+        </p>
 
-          <p className="mt-8 text-center text-sm text-white/60">
-            {mode === "signin" ? (
-              <>
-                Don&apos;t have an account?{" "}
-                <button type="button" onClick={() => switchMode("register")} className={LINK}>
-                  Create an account
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <button type="button" onClick={() => switchMode("signin")} className={LINK}>
-                  Sign in
-                </button>
-              </>
-            )}
-          </p>
-
-          <p className="mt-4 text-center text-xs text-white/40">
-            Clinic staff?{" "}
-            <Link href="/doctor/login" className={LINK}>
-              Doctor portal
-            </Link>
-          </p>
-        </div>
+        <p className="mt-4 text-center text-xs text-[#8391A1]">
+          Clinic staff?{" "}
+          <Link
+            href="/doctor/login"
+            className="font-semibold text-[#35B9B1] hover:underline"
+          >
+            Doctor portal
+          </Link>
+        </p>
       </div>
     </div>
   );
