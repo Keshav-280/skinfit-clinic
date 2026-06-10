@@ -937,7 +937,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
         <div className="space-y-4 border-t border-slate-100 bg-slate-50/40 p-4">
           <section>
             <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
-              Section 1 — Hook
+              Section 1
             </p>
             <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <MetricTile
@@ -963,7 +963,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
-              Section 2 — Feel Understood
+              Section 2
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {tracker.section2.skinTypePills.map((p) => (
@@ -1082,7 +1082,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
-              Section 4 — This Week&apos;s Focus
+              Section 3
             </p>
             <ol className="mt-2 space-y-2">
               {tracker.section4.actions.map((a) => (

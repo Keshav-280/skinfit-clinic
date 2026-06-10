@@ -23,7 +23,10 @@ export const SCAN_REPORT_THEME = {
   cardBorder: "rgba(44, 62, 107, 0.12)",
 } as const;
 
-/** Weekly tracker sections (Section 1–4) — blue-only accents. */
+/** Resource picks hidden in tracker reports until curation is ready (web, PDF, mobile). */
+export const INCLUDE_TRACKER_RESOURCES_IN_REPORT = false;
+
+/** Weekly tracker sections (Section 1–3) — blue-only accents. */
 export const TRACKER_REPORT_THEME = {
   navy: SCAN_REPORT_THEME.navy,
   navyDark: SCAN_REPORT_THEME.navyDark,

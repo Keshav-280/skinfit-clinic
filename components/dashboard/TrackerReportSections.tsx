@@ -2,7 +2,10 @@
 
 import { motion } from "framer-motion";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { TRACKER_REPORT_THEME as R } from "@/src/lib/scanReportTheme";
+import {
+  INCLUDE_TRACKER_RESOURCES_IN_REPORT,
+  TRACKER_REPORT_THEME as R,
+} from "@/src/lib/scanReportTheme";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -72,7 +75,7 @@ export function TrackerReportSections({
     >
       <section className={sectionCard}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
-          Section 1 - Hook
+          Section 1
         </p>
         <p className={`mt-2 text-[1.95rem] font-medium leading-tight text-zinc-900 ${serifClassName}`}>
           {report.hookSentence}
@@ -108,7 +111,7 @@ export function TrackerReportSections({
 
       <section className={sectionCard}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
-          Section 2 - Feel Understood
+          Section 2 
         </p>
 
         <div className="mt-3">
@@ -169,29 +172,31 @@ export function TrackerReportSections({
         <p className="mt-3 text-sm leading-relaxed text-zinc-600">{report.predictionText}</p>
       </section>
 
-      <section className={sectionCard}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
-          Section 3 - Resource Centre
-        </p>
-        <div className="mt-3 space-y-2">
-          {report.resources.slice(0, 3).map((r) => (
-            <a
-              key={r.url}
-              href={r.url}
-              target="_blank"
-              rel="noreferrer"
-              className="group block rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/92 px-3.5 py-3 transition-all duration-200 hover:-translate-y-[1px] hover:border-[rgba(44,62,107,0.22)] hover:shadow-[0_10px_24px_-16px_rgba(44,62,107,0.35)]"
-            >
-              <p className="text-sm font-semibold text-[#2C3E6B] group-hover:text-[#1E3264]">{r.title}</p>
-              <p className="mt-0.5 text-xs text-zinc-500">{kindBadge(r.kind)} · personalized pick</p>
-            </a>
-          ))}
-        </div>
-      </section>
+      {INCLUDE_TRACKER_RESOURCES_IN_REPORT ? (
+        <section className={sectionCard}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
+            Section 3 - Resource Centre
+          </p>
+          <div className="mt-3 space-y-2">
+            {report.resources.slice(0, 3).map((r) => (
+              <a
+                key={r.url}
+                href={r.url}
+                target="_blank"
+                rel="noreferrer"
+                className="group block rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/92 px-3.5 py-3 transition-all duration-200 hover:-translate-y-[1px] hover:border-[rgba(44,62,107,0.22)] hover:shadow-[0_10px_24px_-16px_rgba(44,62,107,0.35)]"
+              >
+                <p className="text-sm font-semibold text-[#2C3E6B] group-hover:text-[#1E3264]">{r.title}</p>
+                <p className="mt-0.5 text-xs text-zinc-500">{kindBadge(r.kind)} · personalized pick</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className={sectionCard}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
-          Section 4 - This Week&apos;s Focus
+          Section 3
         </p>
         <ol className="mt-3 space-y-2.5">
           {report.focusActions.slice(0, 3).map((a) => (

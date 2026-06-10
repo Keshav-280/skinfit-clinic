@@ -1,7 +1,10 @@
 import { Linking, Platform, StyleSheet, Text, View } from "react-native";
 
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
+import {
+  INCLUDE_TRACKER_RESOURCES_IN_REPORT,
+  TRACKER_REPORT_THEME as R,
+} from "@/lib/scanReportTheme";
 
 function signed(n: number) {
   return `${n > 0 ? "+" : ""}${n}`;
@@ -53,7 +56,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
   return (
     <View style={styles.wrap}>
       <View style={styles.card}>
-        <Text style={styles.sectionKicker}>Section 1 — Hook</Text>
+        <Text style={styles.sectionKicker}>Section 1</Text>
         <Text style={[styles.hookTitle, { fontFamily: serifFamily }]}>{report.hookSentence}</Text>
         <View style={styles.statGrid}>
           <View style={styles.statCell}>
@@ -83,7 +86,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionKicker}>Section 2 — Feel understood</Text>
+        <Text style={styles.sectionKicker}>Section 2 </Text>
         <Text style={styles.blockTitle}>Your skin type</Text>
         <View style={styles.pillRow}>
           {report.skinPills.slice(0, 3).map((pill) => (
@@ -140,27 +143,29 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
         <Text style={styles.overviewPara}>{report.predictionText}</Text>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionKicker}>Section 3 — Resource centre</Text>
-        <View style={{ marginTop: 8, gap: 10 }}>
-          {report.resources.slice(0, 3).map((r) => (
-            <Text
-              key={r.url}
-              style={styles.resourceLink}
-              onPress={() => void Linking.openURL(r.url)}
-            >
-              {r.title}
-              {"\n"}
-              <Text style={styles.resourceMeta}>
-                {kindBadge(r.kind)} · personalized pick
+      {INCLUDE_TRACKER_RESOURCES_IN_REPORT ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionKicker}>Section 3 — Resource centre</Text>
+          <View style={{ marginTop: 8, gap: 10 }}>
+            {report.resources.slice(0, 3).map((r) => (
+              <Text
+                key={r.url}
+                style={styles.resourceLink}
+                onPress={() => void Linking.openURL(r.url)}
+              >
+                {r.title}
+                {"\n"}
+                <Text style={styles.resourceMeta}>
+                  {kindBadge(r.kind)} · personalized pick
+                </Text>
               </Text>
-            </Text>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={styles.card}>
-        <Text style={styles.sectionKicker}>Section 4 — This week&apos;s focus</Text>
+        <Text style={styles.sectionKicker}>Section 3</Text>
         <View style={{ marginTop: 10, gap: 10 }}>
           {report.focusActions.slice(0, 3).map((a) => (
             <View key={a.rank} style={styles.focusCard}>

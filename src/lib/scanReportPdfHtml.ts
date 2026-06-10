@@ -12,7 +12,11 @@ import {
   DOT_MARKER_LEGEND,
   WRINKLE_MASK_PANEL_LABEL,
 } from "./scanMaskLabels";
-import { SCAN_REPORT_THEME as T, TRACKER_REPORT_THEME as R } from "./scanReportTheme";
+import {
+  INCLUDE_TRACKER_RESOURCES_IN_REPORT,
+  SCAN_REPORT_THEME as T,
+  TRACKER_REPORT_THEME as R,
+} from "./scanReportTheme";
 import { scanReportPdfBackgroundCss } from "./scanReportPdfBackground";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
 
@@ -381,14 +385,22 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
       </li>`;
   }
 
-  let resourcesHtml = "";
-  for (const r of report.resources.slice(0, 3)) {
-    resourcesHtml += `
+  let resourcesSectionHtml = "";
+  if (INCLUDE_TRACKER_RESOURCES_IN_REPORT) {
+    let resourcesHtml = "";
+    for (const r of report.resources.slice(0, 3)) {
+      resourcesHtml += `
       <div class="tr-resource">
         <p class="tr-resource-title">${esc(r.title)}</p>
         <p class="tr-resource-meta">${esc(kindBadge(r.kind))} · personalized pick</p>
         <p class="tr-resource-url">${esc(r.url)}</p>
       </div>`;
+    }
+    resourcesSectionHtml = `
+      <section class="tr-card">
+        <p class="tr-kicker">Section 3 - Resource Centre</p>
+        ${resourcesHtml}
+      </section>`;
   }
 
   let focusHtml = "";
@@ -412,7 +424,7 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
   return `
     <div class="tracker-wrap avoid-break">
       <section class="tr-card">
-        <p class="tr-kicker">Section 1 - Hook</p>
+        <p class="tr-kicker">Section 1</p>
         <p class="tr-hook">${esc(report.hookSentence)}</p>
         <div class="tr-stats">
           <div class="tr-stat"><p class="tr-stat-k">kAI score</p><p class="tr-stat-v">${report.scores.kaiScore}</p></div>
@@ -423,7 +435,7 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
       </section>
 
       <section class="tr-card">
-        <p class="tr-kicker">Section 2 - Feel Understood</p>
+        <p class="tr-kicker">Section 2</p>
         <p class="tr-subhead">Your skin type</p>
         <div class="tr-pills">${pillsHtml}</div>
         <div class="tr-inset">
@@ -437,13 +449,10 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
         <p class="tr-prediction">${esc(report.predictionText)}</p>
       </section>
 
-      <section class="tr-card">
-        <p class="tr-kicker">Section 3 - Resource Centre</p>
-        ${resourcesHtml}
-      </section>
+      ${resourcesSectionHtml}
 
       <section class="tr-card">
-        <p class="tr-kicker">Section 4 - This Week's Focus</p>
+        <p class="tr-kicker">Section 3</p>
         <ol class="tr-focus-list">${focusHtml}</ol>
       </section>
     </div>`;

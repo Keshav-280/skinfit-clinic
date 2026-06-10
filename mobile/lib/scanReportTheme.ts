@@ -1,5 +1,7 @@
 /** Mirrors `src/lib/scanReportTheme.ts`. */
 
+export const INCLUDE_TRACKER_RESOURCES_IN_REPORT = false;
+
 export const SCAN_REPORT_THEME = {
   navy: "#2C3E6B",
   navyDark: "#1E3264",

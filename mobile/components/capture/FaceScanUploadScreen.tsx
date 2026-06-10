@@ -131,6 +131,22 @@ export function FaceScanUploadScreen({
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
+          {showScanHistoryLink ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.historyLink,
+                pressed && styles.historyLinkPressed,
+              ]}
+              onPress={() => router.push("/(drawer)/history" as Href)}
+              accessibilityRole="link"
+              accessibilityLabel="See scan history"
+            >
+              <Ionicons name="time-outline" size={18} color={NAVY} />
+              <Text style={styles.historyLinkText}>See scan history</Text>
+              <Ionicons name="chevron-forward" size={16} color={NAVY} />
+            </Pressable>
+          ) : null}
+
           <Pressable
             style={({ pressed }) => [styles.cameraCard, pressed && styles.cardPressed]}
             onPress={onStartCamera}
@@ -179,22 +195,6 @@ export function FaceScanUploadScreen({
               )}
             </Pressable>
           </View>
-
-          {showScanHistoryLink ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.historyLink,
-                pressed && styles.historyLinkPressed,
-              ]}
-              onPress={() => router.push("/(drawer)/history" as Href)}
-              accessibilityRole="link"
-              accessibilityLabel="See scan history"
-            >
-              <Ionicons name="time-outline" size={18} color={NAVY} />
-              <Text style={styles.historyLinkText}>See scan history</Text>
-              <Ionicons name="chevron-forward" size={16} color={NAVY} />
-            </Pressable>
-          ) : null}
 
           <Text style={styles.checklistLabel}>Capture checklist</Text>
           <ScrollView
