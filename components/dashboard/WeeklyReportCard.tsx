@@ -1,15 +1,25 @@
 "use client";
 
 import {
-  Check,
-  Hourglass,
+  Calendar,
+  CheckCircle2,
+  Flag,
+  LineChart,
   Lock,
-  Star,
+  Sparkles,
+  TrendingDown,
   TrendingUp,
+  Minus,
 } from "lucide-react";
 
 import { DASHBOARD_SECTION_CARD } from "@/components/dashboard/DashboardSectionHeader";
 import type { ObservationRow } from "@/src/lib/weeklyInsightModel";
+import {
+  friendlyObservationTitle,
+  parsePriorityAction,
+  softenPatientText,
+  trendSummary,
+} from "@/src/lib/weeklyInsightFormat";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 
 type Props = {
@@ -37,18 +47,18 @@ function formatInsightDate(iso: string): string {
   });
 }
 
-function sourceLabel(source: ObservationRow["source"]): string | null {
+function observationAccent(source: ObservationRow["source"]) {
   switch (source) {
     case "baseline_scan":
-      return "Baseline scan";
+      return { bg: "bg-indigo-50", border: "border-indigo-200", Icon: Flag };
     case "daily_logs":
-      return "Daily logs";
+      return { bg: "bg-emerald-50", border: "border-emerald-200", Icon: Calendar };
     case "scan_trend":
-      return "Scan trend";
+      return { bg: "bg-blue-50", border: "border-blue-200", Icon: LineChart };
     case "weekly_report":
-      return "Weekly report";
+      return { bg: "bg-violet-50", border: "border-violet-200", Icon: Sparkles };
     default:
-      return null;
+      return { bg: "bg-slate-50", border: "border-slate-200", Icon: Sparkles };
   }
 }
 
@@ -67,9 +77,10 @@ export function WeeklyReportCard({
   actionsUnavailable,
   className = "",
 }: Props) {
-  const deltaPositive = weeklyDelta >= 0;
-  const deltaColor = deltaPositive ? PATIENT_GREEN : "#dc2626";
-  const deltaText = deltaPositive ? `+${weeklyDelta}` : `${weeklyDelta}`;
+  const trend = trendSummary(weeklyDelta);
+  const parsedActions = priorityActions.map(parsePriorityAction);
+  const TrendIcon =
+    trend.tone === "up" ? TrendingUp : trend.tone === "down" ? TrendingDown : Minus;
 
   return (
     <section className={`${DASHBOARD_SECTION_CARD} ${className}`}>
@@ -95,94 +106,71 @@ export function WeeklyReportCard({
         </div>
       ) : (
         <>
-          {dataUsedSummary ? (
-            <p className="mt-2 text-[11px] leading-relaxed text-[#94a3b8]">{dataUsedSummary}</p>
-          ) : null}
-
-          <div className="mt-4 grid grid-cols-2 gap-2.5">
-            <div className="flex items-center gap-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dcfce7]">
-                <Star className="h-3.5 w-3.5 text-[#1B8A4A]" aria-hidden />
-              </div>
-              <div>
-                <p className="text-xs text-[#71717a]">Weekly Average</p>
-                <p className="text-lg font-bold text-[#1A1A2E]">
+          <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
+            <div>
+              <p className="text-xs text-[#94a3b8]">Your skin score</p>
+              <p className="mt-0.5 flex items-end gap-1">
+                <span className="text-[32px] font-extrabold leading-none text-[#2D3E6B]">
                   {kaiScore}
-                  <span className="text-[13px] font-normal text-[#71717a]">/100</span>
-                </p>
-              </div>
-            </div>
-
-            {showTrend ? (
-              <div className="flex items-center gap-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dcfce7]">
-                  <Check className="h-3.5 w-3.5 text-[#1B8A4A]" aria-hidden />
-                </div>
-                <div>
-                  <p className="text-xs text-[#71717a]">Consistency</p>
-                  <p className="text-lg font-bold text-[#1A1A2E]">{consistency}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e0e7ff]">
-                  <Hourglass className="h-3.5 w-3.5 text-[#2D3E6B]" aria-hidden />
-                </div>
-                <div>
-                  <p className="text-xs text-[#71717a]">Trend</p>
-                  <p className="text-[13px] font-semibold text-[#52525b]">After 2nd scan</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {showTrend ? (
-            <div className="mt-3 flex items-center gap-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dcfce7]">
-                <TrendingUp className="h-3.5 w-3.5 text-[#1B8A4A]" aria-hidden />
-              </div>
-              <p className="flex-1 text-sm text-[#1A1A2E]">Weekly Change</p>
-              <p className="text-base font-bold" style={{ color: deltaColor }}>
-                {deltaText}
+                </span>
+                <span className="mb-1 text-sm text-[#64748B]">/100</span>
               </p>
             </div>
+            <div className="text-right">
+              {showTrend ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-[#e2e8f0] bg-white px-2.5 py-1">
+                  <TrendIcon
+                    className="h-3.5 w-3.5"
+                    style={{ color: trend.tone === "down" ? "#dc2626" : PATIENT_GREEN }}
+                    aria-hidden
+                  />
+                  <span
+                    className="text-xs font-bold"
+                    style={{ color: trend.tone === "down" ? "#dc2626" : PATIENT_GREEN }}
+                  >
+                    {trend.label}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-[11px] font-semibold text-[#64748B]">Trend after 2nd scan</p>
+              )}
+              <p className="mt-1.5 text-xs text-[#64748B]">Habits: {consistency}</p>
+            </div>
+          </div>
+
+          {dataUsedSummary ? (
+            <p className="mt-2 text-[10px] leading-relaxed text-[#94a3b8]">{dataUsedSummary}</p>
           ) : null}
 
           <div className="my-4 h-px bg-[#e2e8f0]" />
 
           <div>
-            <h4 className="text-[15px] font-bold text-[#1A1A2E]">
-              Key Observations{" "}
-              <span className="text-[13px] font-normal text-[#64748B]">
-                ({observations.length} things to know)
-              </span>
-            </h4>
+            <h4 className="text-[15px] font-bold text-[#1A1A2E]">What we noticed</h4>
+            <p className="mt-0.5 text-xs text-[#64748B]">
+              Short highlights from your scans and logs
+            </p>
             {observations.length > 0 ? (
-              <ul className="mt-3 space-y-3">
+              <ul className="mt-3 space-y-2.5">
                 {observations.map((item, i) => {
-                  const tag = sourceLabel(item.source);
+                  const accent = observationAccent(item.source);
+                  const Icon = accent.Icon;
                   return (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#dcfce7] text-xs font-bold text-[#1B8A4A]">
-                        {i + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        {item.dateLabel || tag ? (
-                          <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                            {item.dateLabel ? (
-                              <span className="text-[11px] font-bold text-[#2D3E6B]">
-                                {item.dateLabel}
-                              </span>
-                            ) : null}
-                            {tag ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">
-                                {tag}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        <p className="text-sm leading-relaxed text-[#1A1A2E]">{item.text}</p>
+                    <li
+                      key={i}
+                      className={`rounded-xl border p-3 ${accent.bg} ${accent.border}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 text-[#2D3E6B]" aria-hidden />
+                        <span className="text-[13px] font-bold text-[#2D3E6B]">
+                          {friendlyObservationTitle(item.source)}
+                        </span>
                       </div>
+                      {item.dateLabel ? (
+                        <p className="mt-1 pl-6 text-[11px] text-[#64748B]">{item.dateLabel}</p>
+                      ) : null}
+                      <p className="mt-1 pl-6 text-sm leading-relaxed text-[#1A1A2E]">
+                        {softenPatientText(item.text)}
+                      </p>
                     </li>
                   );
                 })}
@@ -199,20 +187,42 @@ export function WeeklyReportCard({
           <div className="my-4 h-px bg-[#e2e8f0]" />
 
           <div>
-            <h4 className="text-[15px] font-bold text-[#1A1A2E]">
-              Priority Actions{" "}
-              <span className="text-[13px] font-normal text-[#64748B]">
-                ({priorityActions.length} things to do)
-              </span>
-            </h4>
-            {priorityActions.length > 0 ? (
-              <ul className="mt-3 space-y-3">
-                {priorityActions.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e0e7ff] text-xs font-bold text-[#2D3E6B]">
-                      {i + 1}
-                    </span>
-                    <p className="text-sm leading-relaxed text-[#1A1A2E]">{item}</p>
+            <h4 className="text-[15px] font-bold text-[#1A1A2E]">Your focus this week</h4>
+            <p className="mt-0.5 text-xs text-[#64748B]">Three simple steps — one at a time</p>
+            {parsedActions.length > 0 ? (
+              <ul className="mt-3 space-y-2.5">
+                {parsedActions.map((action, i) => (
+                  <li
+                    key={i}
+                    className="rounded-xl border border-[#e2e8f0] bg-white p-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e0e7ff] text-[11px] font-bold text-[#2D3E6B]">
+                        {i + 1}
+                      </span>
+                      <p className="text-sm font-bold text-[#2D3E6B]">{action.title}</p>
+                    </div>
+                    {action.do ? (
+                      <div className="mt-2 flex items-start gap-2 pl-7">
+                        <CheckCircle2
+                          className="mt-0.5 h-4 w-4 shrink-0 text-[#1B8A4A]"
+                          aria-hidden
+                        />
+                        <p className="text-sm leading-relaxed text-[#1A1A2E]">{action.do}</p>
+                      </div>
+                    ) : (
+                      <p className="mt-2 pl-7 text-sm leading-relaxed text-[#1A1A2E]">
+                        {softenPatientText(priorityActions[i] ?? "")}
+                      </p>
+                    )}
+                    {action.target ? (
+                      <div className="mt-2 ml-7 rounded-lg bg-[#f0fdf4] px-2.5 py-1.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-[#1B8A4A]">
+                          Goal
+                        </p>
+                        <p className="text-[13px] leading-snug text-[#1A1A2E]">{action.target}</p>
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

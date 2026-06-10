@@ -9,11 +9,18 @@ import {
   TEXT_LIGHT,
   BORDER_LIGHT,
 } from "@/components/profile/theme";
+import {
+  friendlyObservationTitle,
+  parsePriorityAction,
+  softenPatientText,
+  trendSummary,
+  type ObservationSource,
+} from "@/lib/weeklyInsightFormat";
 
 export type ObservationRow = {
   text: string;
   dateLabel?: string;
-  source?: "baseline_scan" | "daily_logs" | "scan_trend" | "weekly_report";
+  source?: ObservationSource;
 };
 
 type Props = {
@@ -23,12 +30,10 @@ type Props = {
   weeklyDelta: number;
   consistency: string;
   dateRange: string;
-  /** Trend (Weekly Change + Consistency) is only meaningful with ≥2 scans. */
   showTrend?: boolean;
   observations: ObservationRow[] | string[];
   dataUsedSummary?: string | null;
   priorityActions: string[];
-  /** Decoupled so a single failing section no longer blanks both. */
   observationsUnavailable?: boolean;
   actionsUnavailable?: boolean;
 };
@@ -42,23 +47,6 @@ function formatInsightDate(iso: string): string {
   });
 }
 
-function sourceLabel(
-  source: ObservationRow["source"]
-): string | null {
-  switch (source) {
-    case "baseline_scan":
-      return "Baseline scan";
-    case "daily_logs":
-      return "Daily logs";
-    case "scan_trend":
-      return "Scan trend";
-    case "weekly_report":
-      return "Weekly report";
-    default:
-      return null;
-  }
-}
-
 function normalizeObservations(
   observations: ObservationRow[] | string[]
 ): ObservationRow[] {
@@ -67,6 +55,21 @@ function normalizeObservations(
     return (observations as string[]).map((text) => ({ text }));
   }
   return observations as ObservationRow[];
+}
+
+function observationAccent(source?: ObservationSource) {
+  switch (source) {
+    case "baseline_scan":
+      return { bg: "#eef2ff", border: "#c7d2fe", icon: "flag-outline" as const };
+    case "daily_logs":
+      return { bg: "#ecfdf5", border: "#a7f3d0", icon: "calendar-outline" as const };
+    case "scan_trend":
+      return { bg: "#eff6ff", border: "#bfdbfe", icon: "analytics-outline" as const };
+    case "weekly_report":
+      return { bg: "#fdf4ff", border: "#e9d5ff", icon: "sparkles-outline" as const };
+    default:
+      return { bg: "#f8fafc", border: BORDER_LIGHT, icon: "bulb-outline" as const };
+  }
 }
 
 export default function WeeklyReportCard({
@@ -83,10 +86,9 @@ export default function WeeklyReportCard({
   observationsUnavailable,
   actionsUnavailable,
 }: Props) {
-  const deltaPositive = weeklyDelta >= 0;
-  const deltaColor = deltaPositive ? GREEN : "#dc2626";
-  const deltaText = deltaPositive ? `+${weeklyDelta}` : `${weeklyDelta}`;
   const rows = normalizeObservations(observations);
+  const trend = trendSummary(weeklyDelta);
+  const parsedActions = priorityActions.map(parsePriorityAction);
 
   return (
     <View style={card.base}>
@@ -110,125 +112,127 @@ export default function WeeklyReportCard({
         </View>
       ) : (
         <>
-      {dataUsedSummary ? (
-        <Text style={s.dataUsed}>{dataUsedSummary}</Text>
-      ) : null}
-
-      <View style={s.pillRow}>
-        <View style={s.pill}>
-          <View style={s.iconCircle}>
-            <Ionicons name="star" size={14} color={GREEN} />
-          </View>
-          <View>
-            <Text style={s.pillLabel}>Weekly Average</Text>
-            <Text style={s.pillValue}>
-              {kaiScore}
-              <Text style={s.pillUnit}>/100</Text>
-            </Text>
-          </View>
-        </View>
-
-        {showTrend ? (
-          <View style={s.pill}>
-            <View style={s.iconCircle}>
-              <Ionicons name="checkmark" size={14} color={GREEN} />
+          <View style={s.snapshot}>
+            <View style={s.snapshotMain}>
+              <Text style={s.snapshotLabel}>Your skin score</Text>
+              <View style={s.scoreRow}>
+                <Text style={s.scoreValue}>{kaiScore}</Text>
+                <Text style={s.scoreUnit}>/100</Text>
+              </View>
             </View>
-            <View>
-              <Text style={s.pillLabel}>Consistency</Text>
-              <Text style={s.pillValue}>{consistency}</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={s.pill}>
-            <View style={s.iconCircle}>
-              <Ionicons name="hourglass-outline" size={14} color={NAVY} />
-            </View>
-            <View>
-              <Text style={s.pillLabel}>Trend</Text>
-              <Text style={s.pillValueSmall}>After 2nd scan</Text>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {showTrend ? (
-        <View style={s.changeRow}>
-          <View style={s.iconCircle}>
-            <Ionicons name="trending-up" size={14} color={GREEN} />
-          </View>
-          <Text style={s.changeLabel}>Weekly Change</Text>
-          <Text style={[s.changeValue, { color: deltaColor }]}>{deltaText}</Text>
-        </View>
-      ) : null}
-
-      <View style={s.divider} />
-
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>
-          Key Observations{" "}
-          <Text style={s.sectionHint}>
-            ({rows.length} things to know)
-          </Text>
-        </Text>
-        {rows.length > 0 ? (
-          rows.map((item, i) => {
-            const tag = sourceLabel(item.source);
-            return (
-              <View key={i} style={s.listItem}>
-                <View style={[s.badge, { backgroundColor: "#dcfce7" }]}>
-                  <Text style={[s.badgeText, { color: GREEN }]}>{i + 1}</Text>
+            <View style={s.snapshotSide}>
+              {showTrend ? (
+                <View style={s.trendPill}>
+                  <Ionicons
+                    name={
+                      trend.tone === "up"
+                        ? "trending-up"
+                        : trend.tone === "down"
+                          ? "trending-down"
+                          : "remove-outline"
+                    }
+                    size={14}
+                    color={trend.tone === "down" ? "#dc2626" : GREEN}
+                  />
+                  <Text
+                    style={[
+                      s.trendText,
+                      trend.tone === "down" && { color: "#dc2626" },
+                    ]}
+                  >
+                    {trend.label}
+                  </Text>
                 </View>
-                <View style={s.listBody}>
-                  {item.dateLabel || tag ? (
-                    <View style={s.metaRow}>
-                      {item.dateLabel ? (
-                        <Text style={s.dateLabel}>{item.dateLabel}</Text>
-                      ) : null}
-                      {tag ? (
-                        <Text style={s.sourceTag}>{tag}</Text>
-                      ) : null}
+              ) : (
+                <Text style={s.trendPlaceholder}>Trend after 2nd scan</Text>
+              )}
+              <Text style={s.consistencyText}>Habits: {consistency}</Text>
+            </View>
+          </View>
+
+          {dataUsedSummary ? (
+            <Text style={s.dataUsed}>{dataUsedSummary}</Text>
+          ) : null}
+
+          <View style={s.divider} />
+
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>What we noticed</Text>
+            <Text style={s.sectionSub}>Short highlights from your scans and logs</Text>
+            {rows.length > 0 ? (
+              rows.map((item, i) => {
+                const accent = observationAccent(item.source);
+                const title = friendlyObservationTitle(item.source);
+                return (
+                  <View
+                    key={i}
+                    style={[
+                      s.observationCard,
+                      { backgroundColor: accent.bg, borderColor: accent.border },
+                    ]}
+                  >
+                    <View style={s.observationHeader}>
+                      <Ionicons name={accent.icon} size={16} color={NAVY} />
+                      <Text style={s.observationTitle}>{title}</Text>
+                    </View>
+                    {item.dateLabel ? (
+                      <Text style={s.observationMeta}>{item.dateLabel}</Text>
+                    ) : null}
+                    <Text style={s.observationBody}>
+                      {softenPatientText(item.text)}
+                    </Text>
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={s.emptyHint}>
+                {observationsUnavailable
+                  ? "Insights are temporarily unavailable. Pull to refresh in a moment."
+                  : "Generating observations… pull to refresh in a moment."}
+              </Text>
+            )}
+          </View>
+
+          <View style={s.divider} />
+
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Your focus this week</Text>
+            <Text style={s.sectionSub}>Three simple steps — one at a time</Text>
+            {parsedActions.length > 0 ? (
+              parsedActions.map((action, i) => (
+                <View key={i} style={s.actionCard}>
+                  <View style={s.actionHeader}>
+                    <View style={s.actionBadge}>
+                      <Text style={s.actionBadgeText}>{i + 1}</Text>
+                    </View>
+                    <Text style={s.actionTitle}>{action.title}</Text>
+                  </View>
+                  {action.do ? (
+                    <View style={s.actionDoRow}>
+                      <Ionicons name="checkmark-circle" size={16} color={GREEN} />
+                      <Text style={s.actionDoText}>{action.do}</Text>
+                    </View>
+                  ) : (
+                    <Text style={s.actionDoText}>
+                      {softenPatientText(priorityActions[i] ?? "")}
+                    </Text>
+                  )}
+                  {action.target ? (
+                    <View style={s.targetPill}>
+                      <Text style={s.targetLabel}>Goal</Text>
+                      <Text style={s.targetText}>{action.target}</Text>
                     </View>
                   ) : null}
-                  <Text style={s.listText}>{item.text}</Text>
                 </View>
-              </View>
-            );
-          })
-        ) : (
-          <Text style={s.emptyHint}>
-            {observationsUnavailable
-              ? "Insights are temporarily unavailable. Pull to refresh in a moment."
-              : "Generating observations… pull to refresh in a moment."}
-          </Text>
-        )}
-      </View>
-
-      <View style={s.divider} />
-
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>
-          Priority Actions{" "}
-          <Text style={s.sectionHint}>
-            ({priorityActions.length} things to do)
-          </Text>
-        </Text>
-        {priorityActions.length > 0 ? (
-          priorityActions.map((item, i) => (
-            <View key={i} style={s.listItem}>
-              <View style={[s.badge, { backgroundColor: "#e0e7ff" }]}>
-                <Text style={[s.badgeText, { color: NAVY }]}>{i + 1}</Text>
-              </View>
-              <Text style={s.listText}>{item}</Text>
-            </View>
-          ))
-        ) : (
-          <Text style={s.emptyHint}>
-            {actionsUnavailable
-              ? "Priority actions are temporarily unavailable. Pull to refresh in a moment."
-              : "Generating priority actions… pull to refresh."}
-          </Text>
-        )}
-      </View>
+              ))
+            ) : (
+              <Text style={s.emptyHint}>
+                {actionsUnavailable
+                  ? "Priority actions are temporarily unavailable. Pull to refresh in a moment."
+                  : "Generating priority actions… pull to refresh."}
+              </Text>
+            )}
+          </View>
         </>
       )}
     </View>
@@ -245,7 +249,7 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: TEXT_MUTED,
     marginTop: 2,
-    marginBottom: 4,
+    marginBottom: 12,
   },
   lockedWrap: {
     alignItems: "center",
@@ -279,71 +283,79 @@ const s = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 8,
   },
-  dataUsed: {
-    fontSize: 11,
-    color: TEXT_LIGHT,
-    marginTop: 6,
-    marginBottom: 12,
-    lineHeight: 16,
-  },
-  pillRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-  pill: {
-    flex: 1,
+  snapshot: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "space-between",
+    gap: 12,
     backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: BORDER_LIGHT,
+    padding: 14,
+    marginBottom: 8,
+  },
+  snapshotMain: {
+    flex: 1,
+  },
+  snapshotLabel: {
+    fontSize: 12,
+    color: TEXT_LIGHT,
+    marginBottom: 2,
+  },
+  scoreRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  scoreValue: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: NAVY,
+    lineHeight: 34,
+  },
+  scoreUnit: {
+    fontSize: 14,
+    color: TEXT_MUTED,
+    marginBottom: 4,
+  },
+  snapshotSide: {
+    alignItems: "flex-end",
+    gap: 6,
+    minWidth: 120,
+  },
+  trendPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#fff",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER_LIGHT,
   },
-  iconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#dcfce7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pillLabel: {
+  trendText: {
     fontSize: 12,
-    color: TEXT_LIGHT,
-    marginBottom: 1,
-  },
-  pillValue: {
-    fontSize: 18,
     fontWeight: "700",
-    color: TEXT_PRIMARY,
+    color: GREEN,
   },
-  pillValueSmall: {
-    fontSize: 13,
+  trendPlaceholder: {
+    fontSize: 11,
     fontWeight: "600",
     color: TEXT_MUTED,
+    textAlign: "right",
   },
-  pillUnit: {
-    fontSize: 13,
-    fontWeight: "400",
+  consistencyText: {
+    fontSize: 12,
     color: TEXT_MUTED,
+    fontWeight: "500",
   },
-  changeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-  changeLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: TEXT_PRIMARY,
-  },
-  changeValue: {
-    fontSize: 16,
-    fontWeight: "700",
+  dataUsed: {
+    fontSize: 10,
+    color: TEXT_LIGHT,
+    marginTop: 4,
+    lineHeight: 14,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -357,56 +369,103 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: TEXT_PRIMARY,
+  },
+  sectionSub: {
+    fontSize: 12,
+    color: TEXT_MUTED,
+    marginTop: -6,
     marginBottom: 2,
   },
-  sectionHint: {
-    fontWeight: "400",
-    color: TEXT_MUTED,
-    fontSize: 13,
-  },
-  listItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  listBody: {
-    flex: 1,
+  observationCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
     gap: 4,
   },
-  metaRow: {
+  observationHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
     alignItems: "center",
     gap: 6,
   },
-  dateLabel: {
+  observationTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: NAVY,
+  },
+  observationMeta: {
+    fontSize: 11,
+    color: TEXT_MUTED,
+    marginLeft: 22,
+  },
+  observationBody: {
+    fontSize: 14,
+    color: TEXT_PRIMARY,
+    lineHeight: 20,
+    marginLeft: 22,
+  },
+  actionCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: BORDER_LIGHT,
+    backgroundColor: "#fff",
+    padding: 12,
+    gap: 8,
+  },
+  actionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  actionBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#e0e7ff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionBadgeText: {
     fontSize: 11,
     fontWeight: "700",
     color: NAVY,
   },
-  sourceTag: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: TEXT_MUTED,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  badge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
-  },
-  badgeText: {
-    fontSize: 12,
+  actionTitle: {
+    flex: 1,
+    fontSize: 14,
     fontWeight: "700",
+    color: NAVY,
   },
-  listText: {
+  actionDoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingLeft: 30,
+  },
+  actionDoText: {
+    flex: 1,
     fontSize: 14,
     color: TEXT_PRIMARY,
     lineHeight: 20,
+  },
+  targetPill: {
+    marginLeft: 30,
+    backgroundColor: "#f0fdf4",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 2,
+  },
+  targetLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: GREEN,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  targetText: {
+    fontSize: 13,
+    color: TEXT_PRIMARY,
+    lineHeight: 18,
   },
   emptyHint: {
     fontSize: 13,
