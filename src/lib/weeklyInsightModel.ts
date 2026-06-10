@@ -1,13 +1,13 @@
+import {
+  weeklyInsightScheduleFromFirstScanYmd,
+  type WeeklyInsightScheduleSnapshot,
+} from "@/src/lib/weeklyInsightScheduleClient";
+
 export type ObservationRow = {
   text: string;
   dateLabel?: string;
   source?: "baseline_scan" | "daily_logs" | "scan_trend" | "weekly_report";
 };
-
-import {
-  weeklyInsightScheduleFromFirstScanYmd,
-  type WeeklyInsightScheduleSnapshot,
-} from "@/src/lib/patientInsightSchedule";
 
 export type SkinProfileForWeekly = {
   keyObservations?: {

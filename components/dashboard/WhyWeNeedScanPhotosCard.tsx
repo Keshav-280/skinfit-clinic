@@ -11,9 +11,9 @@ function FaceDiagram() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/images/face-outline-diagram.png"
+      src="/images/face-outline-diagram.png?v=2"
       alt=""
-      className="mx-auto h-[200px] w-auto sm:h-[240px]"
+      className="mx-auto h-[160px] w-[160px] rounded-2xl object-contain sm:h-[200px] sm:w-[200px]"
       aria-hidden
     />
   );

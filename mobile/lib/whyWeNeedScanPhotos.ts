@@ -3,7 +3,7 @@ const WEB_BASE =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "";
 
-export const FACE_OUTLINE_DIAGRAM_URL = `${WEB_BASE}/images/face-outline-diagram.png`;
+export const FACE_OUTLINE_DIAGRAM_URL = `${WEB_BASE}/images/face-outline-diagram.png?v=2`;
 
 export const WHY_WE_NEED_SCAN_PHOTOS = {
   title: "Why we need these photos?",
