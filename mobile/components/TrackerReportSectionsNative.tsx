@@ -1,5 +1,6 @@
 import { Platform, StyleSheet, Text, View } from "react-native";
 
+import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
 import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 
@@ -44,6 +45,9 @@ type Props = {
 export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
+  const focusActions = isOnboardingBaseline
+    ? ONBOARDING_BASELINE_FOCUS_ACTIONS
+    : report.focusActions;
 
   return (
     <View style={styles.wrap}>
@@ -146,7 +150,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
           </Text>
         ) : null}
         <View style={{ marginTop: 10, gap: 10 }}>
-          {report.focusActions.slice(0, 3).map((a) => (
+          {focusActions.slice(0, 3).map((a) => (
             <View key={a.rank} style={styles.focusCard}>
               <View style={styles.focusRank}>
                 <Text style={styles.focusRankText}>{a.rank}</Text>

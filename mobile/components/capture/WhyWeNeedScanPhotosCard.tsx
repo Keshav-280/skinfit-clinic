@@ -9,9 +9,8 @@ import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
 
-const FACE_W = 88;
-const FACE_H = 108;
-const FACE_SCALE = 1.4;
+const FACE_W = 92;
+const FACE_H = 124;
 
 function FaceDiagram() {
   return (
@@ -121,15 +120,12 @@ const styles = StyleSheet.create({
   faceDiagramClip: {
     width: FACE_W,
     height: FACE_H,
-    borderRadius: 14,
-    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
   faceDiagram: {
     width: FACE_W,
     height: FACE_H,
-    transform: [{ scale: FACE_SCALE }],
   },
   labelLeft: { alignItems: "flex-start" },
   labelRight: { alignItems: "flex-end" },

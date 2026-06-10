@@ -6,6 +6,7 @@ import {
   SCAN_FACE_FRAME_ASPECT_CSS,
   SCAN_MASK_FRAME_ASPECT_CSS,
 } from "./maskImageCrop";
+import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "./onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "./patientTrackerReport.types";
 import {
   ACNE_MASK_PANEL_LABEL,
@@ -404,8 +405,12 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
       </section>`;
   }
 
+  const focusActions = isOnboardingBaseline
+    ? ONBOARDING_BASELINE_FOCUS_ACTIONS
+    : report.focusActions;
+
   let focusHtml = "";
-  for (const a of report.focusActions.slice(0, 3)) {
+  for (const a of focusActions.slice(0, 3)) {
     let detailHtml = "";
     for (const part of parseFocusDetail(a.detail)) {
       detailHtml += `<p class="tr-focus-detail">${part.label ? `<strong>${esc(part.label)}</strong> ` : ""}${esc(part.body)}</p>`;

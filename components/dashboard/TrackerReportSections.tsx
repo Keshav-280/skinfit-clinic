@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import {
   INCLUDE_TRACKER_RESOURCES_IN_REPORT,
@@ -66,6 +67,9 @@ export function TrackerReportSections({
 }) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
+  const focusActions = isOnboardingBaseline
+    ? ONBOARDING_BASELINE_FOCUS_ACTIONS
+    : report.focusActions;
 
   return (
     <motion.div
@@ -206,7 +210,7 @@ export function TrackerReportSections({
           </p>
         ) : null}
         <ol className="mt-3 space-y-2.5">
-          {report.focusActions.slice(0, 3).map((a) => (
+          {focusActions.slice(0, 3).map((a) => (
             <li
               key={a.rank}
               className={`${insetCard}`}

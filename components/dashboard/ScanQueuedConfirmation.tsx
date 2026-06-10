@@ -42,20 +42,20 @@ export function ScanQueuedConfirmation({
             <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-[#4B5563]">
               {deliveryMessage}
             </p>
-            <div className="mx-auto mt-4 max-w-md">
+            <div className="mx-auto mt-5 w-full max-w-[240px]">
               {isOnboarding ? (
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="flex flex-col gap-2.5">
                   <Link
                     href="/onboarding/baseline-report"
                     onClick={onDone}
-                    className="rounded-xl bg-[#2C3E6B] py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080]"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#2C3E6B] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#3d5080]"
                   >
                     Continue
                   </Link>
                   <Link
                     href="/dashboard"
                     onClick={onDone}
-                    className="rounded-xl border border-[#2C3E6B]/20 bg-white py-3 text-sm font-semibold text-[#2C3E6B] transition-colors hover:bg-white/90"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#2C3E6B]/25 bg-white px-4 text-sm font-semibold text-[#2C3E6B] transition-colors hover:bg-[#f8fafc]"
                   >
                     Go to dashboard
                   </Link>

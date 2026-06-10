@@ -11,16 +11,16 @@ const CARD_BORDER = "rgba(44, 62, 107, 0.12)";
 function FaceDiagram() {
   return (
     <div
-      className="mx-auto flex h-[200px] w-[200px] shrink-0 items-center justify-center overflow-hidden rounded-2xl sm:h-[260px] sm:w-[260px] md:h-[300px] md:w-[300px]"
+      className="mx-auto flex h-[220px] w-[165px] shrink-0 items-center justify-center sm:h-[280px] sm:w-[210px] md:h-[320px] md:w-[240px]"
       aria-hidden
     >
-      <picture>
-        <source srcSet="/images/face-outline-diagram.webp?v=4" type="image/webp" />
+      <picture className="flex h-full w-full items-center justify-center">
+        <source srcSet="/images/face-outline-diagram.webp?v=5" type="image/webp" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/face-outline-diagram.png?v=4"
+          src="/images/face-outline-diagram.png?v=5"
           alt=""
-          className="h-full w-full scale-[1.9] object-contain"
+          className="max-h-full max-w-full object-contain"
           decoding="async"
           fetchPriority="high"
         />

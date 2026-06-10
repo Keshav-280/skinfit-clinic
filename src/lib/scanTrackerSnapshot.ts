@@ -4,6 +4,7 @@ import type { AppDatabase } from "@/src/db/database-types";
 import { scans } from "@/src/db/schema";
 import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
+import { withOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
 import { sanitizeTrackerResources } from "@/src/lib/trackerResourceLinks";
 
 function isMissingTrackerSnapshotColumn(error: unknown): boolean {
@@ -44,25 +45,38 @@ async function writeTrackerSnapshot(
  * Use frozen `scans.tracker_snapshot` when present.
  * Legacy scans: build once, persist, then serve from DB on later views.
  */
+function normalizeStoredTrackerReport(report: PatientTrackerReport): {
+  report: PatientTrackerReport;
+  focusActionsPatched: boolean;
+} {
+  const { focusActions, patched } = withOnboardingBaselineFocusActions(report);
+  return {
+    report: {
+      ...report,
+      focusActions,
+      resources: sanitizeTrackerResources(report.resources),
+    },
+    focusActionsPatched: patched,
+  };
+}
+
 export async function loadScanTrackerReport(
   userId: string,
   scanId: number,
   stored: PatientTrackerReport | null | undefined
 ): Promise<PatientTrackerReport | null> {
   if (stored) {
-    return {
-      ...stored,
-      resources: sanitizeTrackerResources(stored.resources),
-    };
+    const { report, focusActionsPatched } = normalizeStoredTrackerReport(stored);
+    if (focusActionsPatched) {
+      await writeTrackerSnapshot(userId, scanId, report);
+    }
+    return report;
   }
 
   try {
     const built = await buildPatientTrackerReport({ userId, scanId });
     if (!built.ok) return null;
-    const report = {
-      ...built.report,
-      resources: sanitizeTrackerResources(built.report.resources),
-    };
+    const { report } = normalizeStoredTrackerReport(built.report);
     await writeTrackerSnapshot(userId, scanId, report);
     return report;
   } catch (e) {
