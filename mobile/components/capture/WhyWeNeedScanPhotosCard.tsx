@@ -2,22 +2,22 @@ import type { ReactNode } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
 import {
-  FACE_OUTLINE_DIAGRAM_URL,
+  FACE_OUTLINE_DIAGRAM_IMAGE,
   WHY_WE_NEED_SCAN_PHOTOS,
 } from "@/lib/whyWeNeedScanPhotos";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
 
-const FACE_W = 100;
-const FACE_H = 120;
-const FACE_SCALE = 1.45;
+const FACE_W = 88;
+const FACE_H = 108;
+const FACE_SCALE = 1.4;
 
 function FaceDiagram() {
   return (
     <View style={styles.faceDiagramClip}>
       <Image
-        source={{ uri: FACE_OUTLINE_DIAGRAM_URL }}
+        source={FACE_OUTLINE_DIAGRAM_IMAGE}
         style={styles.faceDiagram}
         resizeMode="contain"
         accessibilityIgnoresInvertColors
@@ -29,14 +29,16 @@ function FaceDiagram() {
 function LabelBlock({
   title,
   description,
+  align,
 }: {
   title: string;
   description: string;
+  align: "left" | "right";
 }) {
   return (
-    <View style={styles.labelBlock}>
-      <Text style={styles.labelTitle}>{title}</Text>
-      <Text style={styles.labelDesc}>{description}</Text>
+    <View style={align === "right" ? styles.labelRight : styles.labelLeft}>
+      <Text style={[styles.labelTitle, align === "right" && styles.textRight]}>{title}</Text>
+      <Text style={[styles.labelDesc, align === "right" && styles.textRight]}>{description}</Text>
     </View>
   );
 }
@@ -53,28 +55,19 @@ export function WhyWeNeedScanPhotosCard({ footer }: Props) {
       <Text style={styles.title}>{title.toUpperCase()}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
 
-      <View style={styles.diagramSection}>
-        <View style={styles.faceRow}>
+      <View style={styles.diagramRow}>
+        <View style={styles.diagramSide}>
+          <LabelBlock {...left[0]} align="right" />
+          <LabelBlock {...left[1]} align="right" />
+        </View>
+
+        <View style={styles.faceCenter}>
           <FaceDiagram />
         </View>
 
-        <View style={styles.labelGrid}>
-          <View style={styles.labelRow}>
-            <View style={styles.labelCell}>
-              <LabelBlock {...left[0]} />
-            </View>
-            <View style={styles.labelCell}>
-              <LabelBlock {...right[0]} />
-            </View>
-          </View>
-          <View style={styles.labelRow}>
-            <View style={styles.labelCell}>
-              <LabelBlock {...left[1]} />
-            </View>
-            <View style={styles.labelCell}>
-              <LabelBlock {...right[1]} />
-            </View>
-          </View>
+        <View style={styles.diagramSide}>
+          <LabelBlock {...right[0]} align="left" />
+          <LabelBlock {...right[1]} align="left" />
         </View>
       </View>
 
@@ -106,11 +99,22 @@ const styles = StyleSheet.create({
     color: "#5C6478",
     textAlign: "center",
   },
-  diagramSection: {
+  diagramRow: {
     marginTop: 14,
-    gap: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  faceRow: {
+  diagramSide: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "space-between",
+    gap: 16,
+    minHeight: FACE_H,
+  },
+  faceCenter: {
+    width: FACE_W,
+    flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -127,30 +131,22 @@ const styles = StyleSheet.create({
     height: FACE_H,
     transform: [{ scale: FACE_SCALE }],
   },
-  labelGrid: {
-    gap: 12,
-  },
-  labelRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  labelCell: {
-    flex: 1,
-    minWidth: 0,
-  },
-  labelBlock: {
-    gap: 2,
-  },
+  labelLeft: { alignItems: "flex-start" },
+  labelRight: { alignItems: "flex-end" },
   labelTitle: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
     color: NAVY,
-    lineHeight: 15,
+    lineHeight: 14,
   },
   labelDesc: {
-    fontSize: 10,
-    lineHeight: 14,
+    marginTop: 2,
+    fontSize: 9,
+    lineHeight: 13,
     color: "#5C6478",
+  },
+  textRight: {
+    textAlign: "right",
   },
   footer: {
     marginTop: 16,

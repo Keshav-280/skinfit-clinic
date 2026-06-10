@@ -446,15 +446,7 @@ export function SkinScanReportBodyNative({
           )}
         </View>
 
-        {tracker ? (
-          <View style={styles.beigeFooter}>
-            <View style={styles.footerRule} />
-            <Text style={styles.resourceFooterTitle}>Resource centre</Text>
-            <Text style={styles.resourceFooterHint}>
-              Personalized links from your kAI tracker (same as on the website).
-            </Text>
-          </View>
-        ) : (
+        {!tracker ? (
           <LinearGradient colors={[T.navy, T.navyMid]} style={styles.tealSection}>
             <View style={styles.tealDivider} />
             <View style={styles.tealBar} />
@@ -470,7 +462,7 @@ export function SkinScanReportBodyNative({
             <Text style={styles.tealP}>{CAUSES_P1}</Text>
             <Text style={styles.tealP}>{CAUSES_P2}</Text>
           </LinearGradient>
-        )}
+        ) : null}
 
         <View style={styles.beigeFooter}>
           <View style={styles.footerRule} />
@@ -552,9 +544,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 22,
     overflow: "hidden",
-    backgroundColor: GLASS,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: GLASS_BORDER,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#2C3E6B",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+      },
+      android: { elevation: 4 },
+    }),
   },
   topFade: {
     position: "absolute",
@@ -873,22 +874,6 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(44,62,107,0.12)",
     marginBottom: 20,
-  },
-  resourceFooterTitle: {
-    textAlign: "center",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 2.8,
-    color: T.navy,
-    textTransform: "uppercase",
-  },
-  resourceFooterHint: {
-    textAlign: "center",
-    marginTop: 8,
-    fontSize: 12,
-    color: "#6B7280",
-    lineHeight: 18,
-    paddingHorizontal: 12,
   },
   knowSkin: {
     textAlign: "center",

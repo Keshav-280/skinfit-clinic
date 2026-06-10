@@ -1,9 +1,5 @@
-const WEB_BASE =
-  process.env.EXPO_PUBLIC_WEB_PORTAL_URL?.replace(/\/$/, "") ??
-  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "";
-
-export const FACE_OUTLINE_DIAGRAM_URL = `${WEB_BASE}/images/face-outline-diagram.png?v=3`;
+/** Bundled asset — avoids slow remote fetch of the web portal image. */
+export const FACE_OUTLINE_DIAGRAM_IMAGE = require("@/assets/images/face-outline-diagram.png");
 
 export const WHY_WE_NEED_SCAN_PHOTOS = {
   title: "Why we need these photos?",

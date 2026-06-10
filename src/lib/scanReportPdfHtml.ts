@@ -358,6 +358,7 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
 
 function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
   const { lastScanDelta, weekAverageDelta } = report.scores;
+  const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const weeklyDelta =
     typeof weekAverageDelta === "number"
       ? weekAverageDelta
@@ -452,7 +453,8 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
       ${resourcesSectionHtml}
 
       <section class="tr-card">
-        <p class="tr-kicker">Section 3</p>
+        <p class="tr-kicker">${isOnboardingBaseline ? "Getting started" : "Section 3"}</p>
+        ${isOnboardingBaseline ? `<p class="tr-onboarding-focus-intro">Follow these habits over the next week — your first scan is the starting point, not a comparison.</p>` : ""}
         <ol class="tr-focus-list">${focusHtml}</ol>
       </section>
     </div>`;
@@ -986,6 +988,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       box-shadow: 0 16px 36px -18px rgba(44,62,107,0.28), inset 0 1px 0 rgba(255,255,255,0.95);
     }
     .tr-kicker { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #3d5080; margin: 0; }
+    .tr-onboarding-focus-intro { font-size: 12px; line-height: 1.5; color: #52525b; margin: 8px 0 0; }
     .tr-hook { font-family: Georgia, 'Times New Roman', serif; font-size: 1.35rem; font-weight: 500; line-height: 1.2; color: #18181b; margin: 8px 0 0; }
     .tr-stats {
       display: flex;

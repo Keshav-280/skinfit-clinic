@@ -8,14 +8,14 @@ export const CAPTURE_STEP_TIPS = {
     "Relax your face",
   ],
   left: [
+    "Turn right to show your left side",
     "Keep your head level",
     "Don't tilt up or down",
-    "Show full side of your face",
   ],
   right: [
+    "Turn left to show your right side",
     "Keep your head level",
     "Don't tilt up or down",
-    "Show full side of your face",
   ],
   smiling: [
     "Smile naturally",
@@ -42,17 +42,18 @@ export const FACE_SCAN_CAPTURE_STEPS = [
   {
     id: "left",
     title: "Left Side Profile",
-    subtitle: "Turn your face to the left until your profile fits the outline.",
+    subtitle: "Turn your face to the right so your left side faces the camera.",
     tips: CAPTURE_STEP_TIPS.left,
     instruction:
-      "Turn your head ~30° to your left. Keep the same framing and rotate your face only. No spectacles.",
+      "Turn your head ~30° to your right so your left profile faces the camera. Keep the same framing and rotate your face only. No spectacles.",
   },
   {
     id: "right",
     title: "Right Side Profile",
-    subtitle: "Turn your face to the right until your profile fits the outline.",
+    subtitle: "Turn your face to the left so your right side faces the camera.",
     tips: CAPTURE_STEP_TIPS.right,
-    instruction: "Turn your head ~30° to your right. Same framing as the previous shot. No spectacles.",
+    instruction:
+      "Turn your head ~30° to your left so your right profile faces the camera. Same framing as the previous shot. No spectacles.",
   },
   {
     id: "eyes_closed",

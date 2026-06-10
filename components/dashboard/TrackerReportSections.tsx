@@ -65,6 +65,7 @@ export function TrackerReportSections({
   serifClassName: string;
 }) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
+  const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
 
   return (
     <motion.div
@@ -196,8 +197,14 @@ export function TrackerReportSections({
 
       <section className={sectionCard}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#3d5080]">
-          Section 3
+          {isOnboardingBaseline ? "Getting started" : "Section 3"}
         </p>
+        {isOnboardingBaseline ? (
+          <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+            Follow these habits over the next week — your first scan is the starting point, not a
+            comparison.
+          </p>
+        ) : null}
         <ol className="mt-3 space-y-2.5">
           {report.focusActions.slice(0, 3).map((a) => (
             <li

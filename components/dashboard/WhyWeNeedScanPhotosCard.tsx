@@ -14,12 +14,17 @@ function FaceDiagram() {
       className="mx-auto flex h-[200px] w-[200px] shrink-0 items-center justify-center overflow-hidden rounded-2xl sm:h-[260px] sm:w-[260px] md:h-[300px] md:w-[300px]"
       aria-hidden
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/images/face-outline-diagram.png?v=3"
-        alt=""
-        className="h-full w-full scale-[1.9] object-contain"
-      />
+      <picture>
+        <source srcSet="/images/face-outline-diagram.webp?v=4" type="image/webp" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/face-outline-diagram.png?v=4"
+          alt=""
+          className="h-full w-full scale-[1.9] object-contain"
+          decoding="async"
+          fetchPriority="high"
+        />
+      </picture>
     </div>
   );
 }

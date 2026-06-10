@@ -45,6 +45,28 @@ type ScanRow = {
   wrinkles: number;
 };
 
+/** First baseline scan — instructional habits only; no week-over-week comparisons. */
+const ONBOARDING_BASELINE_FOCUS_ACTIONS: PatientTrackerFocusAction[] = [
+  {
+    rank: 1,
+    title: "Build a simple AM & PM routine",
+    detail:
+      "Why: A steady routine gives kAI a clear baseline to learn what works for your skin.\nDo: Follow your clinic plan each morning and evening.\nTarget: Check off your routine on at least 5 days before your next scan.",
+  },
+  {
+    rank: 2,
+    title: "Hydrate through the day",
+    detail:
+      "Why: Regular hydration supports barrier health and how skin looks on camera.\nDo: Sip water across the day — aim for 6–8 glasses when you can.\nTarget: Log water in your wellness journal when you use the app.",
+  },
+  {
+    rank: 3,
+    title: "Repeat the same scan setup",
+    detail:
+      "Why: Matching light, distance, and angles keeps future scans easy to compare.\nDo: Use soft natural light, eye-level camera, and all five capture angles.\nTarget: Save this as your template for the next scan.",
+  },
+];
+
 function ymd(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -444,11 +466,14 @@ export async function buildRagPatientTrackerNarrative(input: {
     llmOut?.causes && llmOut.causes.length > 0 ? llmOut.causes : fallbackCauseLines
   );
 
-  const focusActions: PatientTrackerFocusAction[] = actions.map((a) => ({
-    rank: a.rank,
-    title: a.title,
-    detail: a.detail,
-  }));
+  const focusActions: PatientTrackerFocusAction[] =
+    scanContextKind === "onboarding_first_scan"
+      ? ONBOARDING_BASELINE_FOCUS_ACTIONS
+      : actions.map((a) => ({
+          rank: a.rank,
+          title: a.title,
+          detail: a.detail,
+        }));
 
   const resources = resourcesFromRag(
     article,

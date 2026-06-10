@@ -1,10 +1,7 @@
-import { Linking, Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import {
-  INCLUDE_TRACKER_RESOURCES_IN_REPORT,
-  TRACKER_REPORT_THEME as R,
-} from "@/lib/scanReportTheme";
+import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 
 function signed(n: number) {
   return `${n > 0 ? "+" : ""}${n}`;
@@ -27,12 +24,6 @@ function valueForBar(n: number | null) {
   return Math.min(100, Math.max(0, Math.round(n)));
 }
 
-function kindBadge(kind: "article" | "video" | "insight") {
-  if (kind === "article") return "Article";
-  if (kind === "video") return "Video";
-  return "kAI insight";
-}
-
 function parseFocusDetail(detail: string): Array<{ label: string; body: string }> {
   return detail
     .split(/\n+/)
@@ -52,6 +43,7 @@ type Props = {
 
 export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
+  const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
 
   return (
     <View style={styles.wrap}>
@@ -143,29 +135,16 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
         <Text style={styles.overviewPara}>{report.predictionText}</Text>
       </View>
 
-      {INCLUDE_TRACKER_RESOURCES_IN_REPORT ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionKicker}>Section 3 — Resource centre</Text>
-          <View style={{ marginTop: 8, gap: 10 }}>
-            {report.resources.slice(0, 3).map((r) => (
-              <Text
-                key={r.url}
-                style={styles.resourceLink}
-                onPress={() => void Linking.openURL(r.url)}
-              >
-                {r.title}
-                {"\n"}
-                <Text style={styles.resourceMeta}>
-                  {kindBadge(r.kind)} · personalized pick
-                </Text>
-              </Text>
-            ))}
-          </View>
-        </View>
-      ) : null}
-
       <View style={styles.card}>
-        <Text style={styles.sectionKicker}>Section 3</Text>
+        <Text style={styles.sectionKicker}>
+          {isOnboardingBaseline ? "Getting started" : "Section 3"}
+        </Text>
+        {isOnboardingBaseline ? (
+          <Text style={styles.onboardingFocusIntro}>
+            Follow these habits over the next week — your first scan is the starting point, not a
+            comparison.
+          </Text>
+        ) : null}
         <View style={{ marginTop: 10, gap: 10 }}>
           {report.focusActions.slice(0, 3).map((a) => (
             <View key={a.rank} style={styles.focusCard}>
@@ -189,19 +168,30 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
   );
 }
 
-const NAVY = "#2C3E6B";
-const GLASS = "rgba(255,255,255,0.55)";
-const GLASS_BORDER = "rgba(255,255,255,0.7)";
+const NAVY = R.navy;
+const CARD_BORDER = R.cardBorder;
+const CARD_BG = "#FFFFFF";
+
+const cardShadow = Platform.select({
+  ios: {
+    shadowColor: "#2C3E6B",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+  },
+  android: { elevation: 3 },
+});
 
 const styles = StyleSheet.create({
   wrap: { gap: 16, marginTop: 8 },
   card: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    backgroundColor: GLASS,
+    borderColor: CARD_BORDER,
+    backgroundColor: CARD_BG,
     paddingHorizontal: 18,
     paddingVertical: 18,
+    ...cardShadow,
   },
   sectionKicker: {
     fontSize: 10,
@@ -226,8 +216,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    backgroundColor: GLASS,
+    borderColor: CARD_BORDER,
+    backgroundColor: CARD_BG,
     paddingVertical: 12,
     paddingHorizontal: 8,
   },
@@ -260,8 +250,8 @@ const styles = StyleSheet.create({
   pill: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    backgroundColor: GLASS,
+    borderColor: CARD_BORDER,
+    backgroundColor: "rgba(248, 251, 255, 0.95)",
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
@@ -270,8 +260,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    backgroundColor: GLASS,
+    borderColor: CARD_BORDER,
+    backgroundColor: "rgba(248, 251, 255, 0.95)",
     padding: 14,
   },
   paramRow: {
@@ -325,30 +315,19 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: "#6B7280",
   },
-  resourceLink: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: NAVY,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    backgroundColor: GLASS,
-  },
-  resourceMeta: {
-    fontSize: 11,
-    fontWeight: "500",
+  onboardingFocusIntro: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 18,
     color: "#6B7280",
-    marginTop: 4,
   },
   focusCard: {
     flexDirection: "row",
     gap: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    backgroundColor: GLASS,
+    borderColor: CARD_BORDER,
+    backgroundColor: "rgba(248, 251, 255, 0.95)",
     padding: 12,
   },
   focusRank: {
