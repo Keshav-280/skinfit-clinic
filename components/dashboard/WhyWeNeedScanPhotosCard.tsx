@@ -14,7 +14,7 @@ function FaceDiagram() {
     <img
       src="/images/face-outline-diagram.png?v=3"
       alt=""
-      className="mx-auto h-[160px] w-[160px] rounded-2xl object-contain sm:h-[200px] sm:w-[200px]"
+      className="mx-auto h-[220px] w-[220px] rounded-2xl object-contain sm:h-[280px] sm:w-[280px] md:h-[300px] md:w-[300px]"
       aria-hidden
     />
   );
