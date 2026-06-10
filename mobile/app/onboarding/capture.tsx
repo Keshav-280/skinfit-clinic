@@ -96,6 +96,7 @@ export default function OnboardingCaptureScreen() {
         onStartCamera={() => setFlow("camera")}
         onBack={() => router.back()}
         title="Baseline photos"
+        showScanHistoryLink={false}
       />
     );
   }

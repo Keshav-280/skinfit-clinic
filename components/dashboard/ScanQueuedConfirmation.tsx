@@ -65,13 +65,22 @@ export function ScanQueuedConfirmation({
                   </Link>
                 </div>
               ) : (
-                <Link
-                  href="/dashboard"
-                  onClick={onDone}
-                  className="block rounded-xl bg-[#2C3E6B] py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080]"
-                >
-                  Back to dashboard
-                </Link>
+                <div className="flex flex-col items-center gap-3">
+                  <Link
+                    href="/dashboard/history"
+                    onClick={onDone}
+                    className="text-sm font-semibold text-[#2C3E6B] underline-offset-4 transition hover:underline"
+                  >
+                    View scan history
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    onClick={onDone}
+                    className="block w-full rounded-xl bg-[#2C3E6B] py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#3d5080]"
+                  >
+                    Back to dashboard
+                  </Link>
+                </div>
               )}
             </div>
           </div>

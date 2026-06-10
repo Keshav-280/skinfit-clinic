@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -40,6 +41,7 @@ type Props = {
   onBack: () => void;
   reserveBottomDock?: boolean;
   title?: string;
+  showScanHistoryLink?: boolean;
 };
 
 export function FaceScanUploadScreen({
@@ -50,7 +52,9 @@ export function FaceScanUploadScreen({
   onBack,
   reserveBottomDock = false,
   title = "Upload photos",
+  showScanHistoryLink = true,
 }: Props) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const dockInset = reserveBottomDock ? bottomDockInset() : 0;
   const [busy, setBusy] = useState(false);
@@ -175,6 +179,22 @@ export function FaceScanUploadScreen({
               )}
             </Pressable>
           </View>
+
+          {showScanHistoryLink ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.historyLink,
+                pressed && styles.historyLinkPressed,
+              ]}
+              onPress={() => router.push("/(drawer)/history" as Href)}
+              accessibilityRole="link"
+              accessibilityLabel="See scan history"
+            >
+              <Ionicons name="time-outline" size={18} color={NAVY} />
+              <Text style={styles.historyLinkText}>See scan history</Text>
+              <Ionicons name="chevron-forward" size={16} color={NAVY} />
+            </Pressable>
+          ) : null}
 
           <Text style={styles.checklistLabel}>Capture checklist</Text>
           <ScrollView
@@ -325,6 +345,25 @@ const styles = StyleSheet.create({
   cameraCtaText: {
     fontSize: 14,
     fontWeight: "800",
+    color: NAVY,
+  },
+  historyLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    alignSelf: "flex-end",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(44,62,107,0.15)",
+    backgroundColor: "rgba(255,255,255,0.55)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  historyLinkPressed: { opacity: 0.88 },
+  historyLinkText: {
+    fontSize: 14,
+    fontWeight: "600",
     color: NAVY,
   },
   uploadCard: {

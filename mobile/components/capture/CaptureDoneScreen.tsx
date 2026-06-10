@@ -38,7 +38,7 @@ export function CaptureDoneScreen(props: Props) {
     ? "Answer a few quick questions now, or head straight to the app."
     : "You can leave this screen — no need to wait here.";
 
-  const primaryLabel = isOnboarding ? "Answer a few questions" : "View scan history";
+  const primaryLabel = isOnboarding ? "Answer a few questions" : "Back to dashboard";
 
   return (
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -55,18 +55,30 @@ export function CaptureDoneScreen(props: Props) {
               <Text style={styles.title}>You&apos;re all set</Text>
               <Text style={styles.body}>{body}</Text>
               <Text style={styles.hint}>{hint}</Text>
+              {!isOnboarding ? (
+                <Pressable
+                  onPress={props.onPrimary}
+                  style={({ pressed }) => [pressed && styles.textLinkPressed]}
+                  accessibilityRole="link"
+                  accessibilityLabel="View scan history"
+                >
+                  <Text style={styles.historyLinkText}>View scan history</Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-                onPress={props.onPrimary}
+                onPress={isOnboarding ? props.onPrimary : props.onDashboard}
               >
                 <Text style={styles.btnText}>{primaryLabel}</Text>
               </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}
-                onPress={props.onDashboard}
-              >
-                <Text style={styles.btnOutlineText}>Go to dashboard</Text>
-              </Pressable>
+              {isOnboarding ? (
+                <Pressable
+                  style={({ pressed }) => [styles.btnOutline, pressed && styles.btnOutlinePressed]}
+                  onPress={props.onDashboard}
+                >
+                  <Text style={styles.btnOutlineText}>Go to dashboard</Text>
+                </Pressable>
+              ) : null}
             </>
           }
         />
@@ -117,8 +129,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 280,
   },
-  btn: {
+  historyLinkText: {
     marginTop: 16,
+    fontSize: 14,
+    fontWeight: "600",
+    color: NAVY,
+    textAlign: "center",
+  },
+  textLinkPressed: {
+    opacity: 0.75,
+  },
+  btn: {
+    marginTop: 12,
     width: "100%",
     maxWidth: 320,
     backgroundColor: NAVY,
