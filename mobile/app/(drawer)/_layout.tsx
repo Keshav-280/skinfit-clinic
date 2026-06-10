@@ -23,7 +23,6 @@ function iconForRoute(name: string, color: string, size: number) {
     history: "images",
     scan: "camera",
     schedules: "calendar",
-    treatments: "medkit",
     wellness: "heart",
     chat: "chatbubbles",
     profile: "person",
@@ -41,7 +40,6 @@ const DOCK_ITEMS: Array<{
   { key: "scan", href: "/scan" as Href, icon: "camera-outline", match: ["/scan"] },
   { key: "home", href: "/(drawer)" as Href, icon: "home-outline", match: ["/", "/index"] },
   { key: "schedules", href: "/schedules" as Href, icon: "calendar-outline", match: ["/schedules"] },
-  { key: "treatments", href: "/treatments" as Href, icon: "medkit-outline", match: ["/treatments"] },
   { key: "chat", href: "/chat" as Href, icon: "chatbubbles", match: ["/chat"] },
   { key: "profile", href: "/profile" as Href, icon: "person-circle-outline", match: ["/profile"] },
 ];
@@ -259,14 +257,6 @@ export default function DrawerLayout() {
           options={{
             title: "Treatment History",
             drawerLabel: "Treatment History",
-            headerShown: false,
-          }}
-        />
-        <Drawer.Screen
-          name="treatments"
-          options={{
-            title: "Clinic Treatments",
-            drawerLabel: "Clinic Treatments",
             headerShown: false,
           }}
         />

@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   card: {
-    width: 148,
+    width: 132,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.6)",
@@ -212,8 +212,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cardImageWrap: {
-    aspectRatio: 3 / 4,
-    backgroundColor: "#D6E4D0",
+    aspectRatio: 4 / 5,
+    backgroundColor: "#FFFFFF",
     position: "relative",
   },
   cardImage: {
@@ -281,10 +281,14 @@ const styles = StyleSheet.create({
     color: "#1F2A44",
   },
   summaryImageWrap: {
-    width: "100%",
-    aspectRatio: 16 / 9,
+    alignSelf: "center",
+    width: "72%",
+    maxWidth: 280,
+    aspectRatio: 3 / 4,
+    marginTop: 12,
+    borderRadius: 14,
+    overflow: "hidden",
     position: "relative",
-    backgroundColor: "#E8EDE4",
   },
   summaryImage: {
     ...StyleSheet.absoluteFillObject,

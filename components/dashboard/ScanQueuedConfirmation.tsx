@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bell, Sparkles } from "lucide-react";
+import { Bell } from "lucide-react";
 import Link from "next/link";
 import { WhyWeNeedScanPhotosCard } from "@/components/dashboard/WhyWeNeedScanPhotosCard";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
@@ -41,10 +41,6 @@ export function ScanQueuedConfirmation({
             <h3 className="mt-3 text-lg font-bold text-[#2C3E6B]">You&apos;re all set</h3>
             <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-[#4B5563]">
               {deliveryMessage}
-            </p>
-            <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-medium text-[#6B7280]">
-              <Sparkles className="h-3.5 w-3.5 text-[#2C3E6B]" aria-hidden />
-              You can leave this screen — no need to wait here.
             </p>
             <div className="mx-auto mt-4 max-w-md">
               {isOnboarding ? (

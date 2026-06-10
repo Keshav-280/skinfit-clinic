@@ -5,21 +5,21 @@ export const WHY_WE_NEED_SCAN_PHOTOS = {
   left: [
     {
       title: "Side Profiles",
-      description: "Helps analyze facial structure and contours",
+      description: "Facial structure and contours",
     },
     {
       title: "Front Profile",
-      description: "Helps assess overall facial symmetry",
+      description: "Overall facial symmetry",
     },
   ],
   right: [
     {
       title: "Smiling Photo",
-      description: "Helps evaluate smile lines and dynamics",
+      description: "Smile lines and dynamics",
     },
     {
       title: "Eyes Closed",
-      description: "Helps analyze skin and fine lines better",
+      description: "Skin and fine lines",
     },
   ],
 } as const;

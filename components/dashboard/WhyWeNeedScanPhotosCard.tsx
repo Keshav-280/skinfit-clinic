@@ -5,7 +5,8 @@ import { WHY_WE_NEED_SCAN_PHOTOS } from "@/src/lib/whyWeNeedScanPhotos";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
-const CARD_BG = "#F6F5F2";
+const CARD_BG = "#FFFFFF";
+const CARD_BORDER = "rgba(44, 62, 107, 0.12)";
 
 function FaceDiagram() {
   return (
@@ -33,7 +34,9 @@ function LabelBlock({
       <p className="text-xs font-extrabold leading-snug sm:text-sm" style={{ color: NAVY }}>
         {title}
       </p>
-      <p className="mt-0.5 text-[10px] leading-snug text-[#5C6478] sm:text-xs">{description}</p>
+      <p className="mt-0.5 text-[10px] leading-snug text-pretty text-[#5C6478] sm:text-xs">
+        {description}
+      </p>
     </div>
   );
 }
@@ -48,8 +51,8 @@ export function WhyWeNeedScanPhotosCard({ footer, className = "" }: Props) {
 
   return (
     <section
-      className={`overflow-hidden rounded-[22px] border border-[rgba(224,112,136,0.22)] shadow-sm ${className}`}
-      style={{ backgroundColor: CARD_BG }}
+      className={`overflow-hidden rounded-[22px] border shadow-sm ${className}`}
+      style={{ backgroundColor: CARD_BG, borderColor: CARD_BORDER }}
       aria-label="Scan complete"
     >
       <div className="px-4 py-5 sm:px-6 sm:py-6">
@@ -67,15 +70,15 @@ export function WhyWeNeedScanPhotosCard({ footer, className = "" }: Props) {
               {subtitle}
             </p>
 
-            <div className="mx-auto mt-6 grid max-w-xl grid-cols-[1fr_auto_1fr] items-center gap-x-3 sm:gap-x-5">
-              <div className="flex flex-col gap-5 sm:gap-6">
+            <div className="mx-auto mt-6 grid w-full max-w-2xl grid-cols-[minmax(6.5rem,1fr)_auto_minmax(6.5rem,1fr)] items-center gap-x-5 sm:max-w-3xl sm:grid-cols-[minmax(7.5rem,1fr)_auto_minmax(7.5rem,1fr)] sm:gap-x-8 md:gap-x-10">
+              <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
                 <LabelBlock {...left[0]} align="right" />
                 <LabelBlock {...left[1]} align="right" />
               </div>
               <div className="self-center">
                 <FaceDiagram />
               </div>
-              <div className="flex flex-col gap-5 sm:gap-6">
+              <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
                 <LabelBlock {...right[0]} align="left" />
                 <LabelBlock {...right[1]} align="left" />
               </div>
@@ -85,8 +88,8 @@ export function WhyWeNeedScanPhotosCard({ footer, className = "" }: Props) {
           {/* Divider and Right Column: Status / Footer */}
           {footer ? (
             <>
-              <div className="hidden md:block w-px self-stretch bg-[rgba(224,112,136,0.18)] my-2" />
-              <div className="block md:hidden border-t border-[rgba(224,112,136,0.18)] my-5" />
+              <div className="hidden md:block w-px self-stretch bg-[rgba(44,62,107,0.12)] my-2" />
+              <div className="block md:hidden border-t border-[rgba(44,62,107,0.12)] my-5" />
               
               <div className="flex-1 flex flex-col justify-center">
                 {footer}

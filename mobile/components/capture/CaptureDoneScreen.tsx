@@ -34,9 +34,7 @@ export function CaptureDoneScreen(props: Props) {
     ? "Your report will be delivered soon — we'll notify you when it's ready."
     : "Your report will show up in Treatment History soon.";
 
-  const hint = isOnboarding
-    ? "Answer a few quick questions now, or head straight to the app."
-    : "You can leave this screen — no need to wait here.";
+  const onboardingHint = "Answer a few quick questions now, or head straight to the app.";
 
   const primaryLabel = isOnboarding ? "Answer a few questions" : "Back to dashboard";
 
@@ -54,7 +52,7 @@ export function CaptureDoneScreen(props: Props) {
               </View>
               <Text style={styles.title}>You&apos;re all set</Text>
               <Text style={styles.body}>{body}</Text>
-              <Text style={styles.hint}>{hint}</Text>
+              {isOnboarding ? <Text style={styles.hint}>{onboardingHint}</Text> : null}
               {!isOnboarding ? (
                 <Pressable
                   onPress={props.onPrimary}
