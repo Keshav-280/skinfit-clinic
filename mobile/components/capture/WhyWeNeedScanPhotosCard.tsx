@@ -11,12 +11,14 @@ const NAVY = SKINFIT_THEME.navy;
 
 function FaceDiagram() {
   return (
-    <Image
-      source={{ uri: FACE_OUTLINE_DIAGRAM_URL }}
-      style={styles.faceDiagram}
-      resizeMode="contain"
-      accessibilityIgnoresInvertColors
-    />
+    <View style={styles.faceDiagramClip}>
+      <Image
+        source={{ uri: FACE_OUTLINE_DIAGRAM_URL }}
+        style={styles.faceDiagram}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+    </View>
   );
 }
 
@@ -97,24 +99,32 @@ const styles = StyleSheet.create({
   },
   diagramGrid: {
     marginTop: 12,
-    minHeight: 280,
+    minHeight: 300,
     position: "relative",
   },
   faceCenter: {
     position: "absolute",
     left: "50%",
     top: "50%",
-    marginLeft: -120,
-    marginTop: -120,
-    width: 240,
-    height: 240,
+    marginLeft: -130,
+    marginTop: -130,
+    width: 260,
+    height: 260,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  faceDiagramClip: {
+    width: 260,
+    height: 260,
+    borderRadius: 16,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
   faceDiagram: {
-    width: 240,
-    height: 240,
-    borderRadius: 16,
+    width: 260,
+    height: 260,
+    transform: [{ scale: 1.9 }],
   },
   labelTopLeft: {
     position: "absolute",

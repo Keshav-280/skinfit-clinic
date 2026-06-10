@@ -23,6 +23,8 @@ const NAVY_DARK = SKINFIT_THEME.navyDark;
 const MUTED = "#6B7280";
 const ACCENT = "#E07088";
 const ACCENT_SOFT = "rgba(224, 112, 136, 0.22)";
+const ACCENT_BORDER_READY = "rgba(224, 112, 136, 0.45)";
+const ACCENT_BG_READY = "rgba(224, 112, 136, 0.14)";
 
 type StepMeta = {
   id: FaceScanCaptureId;
@@ -187,7 +189,7 @@ export function OnboardingCaptureStepUI({
             <Ionicons
               name={guidanceReady ? "checkmark-circle" : "information-circle-outline"}
               size={18}
-              color={guidanceReady ? "#059669" : ACCENT}
+              color={ACCENT}
             />
             <Text style={styles.guideText} numberOfLines={2}>
               {guidanceMessage}
@@ -344,8 +346,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   guidePillReady: {
-    borderColor: "rgba(5, 150, 105, 0.35)",
-    backgroundColor: "rgba(236, 253, 245, 0.95)",
+    borderColor: ACCENT_BORDER_READY,
+    backgroundColor: ACCENT_BG_READY,
   },
   guideText: {
     flex: 1,

@@ -807,13 +807,24 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         transition={{ duration: 0.5 }}
         className="mx-auto max-w-4xl"
       >
-        <div className="text-center sm:text-left">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
-            Skin analysis
-          </p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight" style={{ color: navy }}>
-            AI face scan
-          </h1>
+        <div className="flex items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 text-left">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+              Skin analysis
+            </p>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight" style={{ color: navy }}>
+              AI face scan
+            </h1>
+          </div>
+          {step === "upload" && !cameraOpen ? (
+            <Link
+              href="/dashboard/history"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
+            >
+              <History className="h-4 w-4" aria-hidden />
+              See scan history
+            </Link>
+          ) : null}
         </div>
       </motion.header>
       ) : null}
@@ -961,18 +972,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           className="w-full"
         >
           <div className="space-y-5">
-            {!isOnboardingScan ? (
-              <div className="flex justify-end">
-                <Link
-                  href="/dashboard/history"
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80"
-                >
-                  <History className="h-4 w-4" aria-hidden />
-                  See scan history
-                </Link>
-              </div>
-            ) : null}
-
             <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
               <button
                 type="button"

@@ -10,13 +10,17 @@ const CARD_BORDER = "rgba(44, 62, 107, 0.12)";
 
 function FaceDiagram() {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/images/face-outline-diagram.png?v=3"
-      alt=""
-      className="mx-auto h-[220px] w-[220px] rounded-2xl object-contain sm:h-[280px] sm:w-[280px] md:h-[300px] md:w-[300px]"
+    <div
+      className="mx-auto flex h-[200px] w-[200px] shrink-0 items-center justify-center overflow-hidden rounded-2xl sm:h-[260px] sm:w-[260px] md:h-[300px] md:w-[300px]"
       aria-hidden
-    />
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/face-outline-diagram.png?v=3"
+        alt=""
+        className="h-full w-full scale-[1.9] object-contain"
+      />
+    </div>
   );
 }
 
@@ -70,7 +74,7 @@ export function WhyWeNeedScanPhotosCard({ footer, className = "" }: Props) {
               {subtitle}
             </p>
 
-            <div className="mx-auto mt-6 grid w-full max-w-2xl grid-cols-[minmax(6.5rem,1fr)_auto_minmax(6.5rem,1fr)] items-center gap-x-5 sm:max-w-3xl sm:grid-cols-[minmax(7.5rem,1fr)_auto_minmax(7.5rem,1fr)] sm:gap-x-8 md:gap-x-10">
+            <div className="mx-auto mt-6 grid w-full max-w-2xl grid-cols-[minmax(5.5rem,1fr)_auto_minmax(5.5rem,1fr)] items-center gap-x-3 sm:max-w-3xl sm:grid-cols-[minmax(6.5rem,1fr)_auto_minmax(6.5rem,1fr)] sm:gap-x-6 md:gap-x-8">
               <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
                 <LabelBlock {...left[0]} align="right" />
                 <LabelBlock {...left[1]} align="right" />
