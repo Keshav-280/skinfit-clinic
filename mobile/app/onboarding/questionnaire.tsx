@@ -600,20 +600,25 @@ export default function QuestionnaireScreen() {
     setBusy(true);
     setErr(null);
     try {
+      const effectiveSkipped = skippedOverride ?? skippedSteps;
       await apiJson("/api/onboarding/questionnaire", token, {
         method: "POST",
         body: JSON.stringify(
           buildOnboardingQuestionnairePayload(formState(), {
-            skippedSteps: skippedOverride ?? skippedSteps,
+            skippedSteps: effectiveSkipped,
           })
         ),
       });
-      await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
-      await apiJson("/api/onboarding/questionnaire/draft", token, {
-        method: "DELETE",
-      }).catch(() => {
-        /* */
-      });
+      // Keep the draft when questions were skipped so a later "finish survey"
+      // visit restores answers and lands on the first skipped question.
+      if (effectiveSkipped.length === 0) {
+        await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
+        await apiJson("/api/onboarding/questionnaire/draft", token, {
+          method: "DELETE",
+        }).catch(() => {
+          /* */
+        });
+      }
       // Refresh first, then apply optimistic flags last — a stale cached
       // profile must never overwrite "complete" or the drawer gate loops
       // back into onboarding forever.

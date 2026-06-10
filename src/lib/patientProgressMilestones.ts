@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { dailyLogs } from "@/src/db/schema";
 import { getOnboardingAccessForUser } from "@/src/lib/onboardingAccess";
-import { isQuestionnaireMilestoneComplete } from "@/src/lib/questionnaireCompletion";
+import { getQuestionnaireCompletionState } from "@/src/lib/questionnaireCompletion";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 
 export type ProgressMilestoneId =
@@ -29,6 +29,8 @@ export type PatientProgressSnapshot = {
   clinicVisitUnlocks: string[];
   /** Trackers still missing for the daily journal milestone, in suggested order. */
   journalPendingTrackers: JournalTrackerId[];
+  /** Questionnaire submitted but with skipped questions still unanswered. */
+  questionnaireSkippedCount: number;
 };
 
 export const QUESTIONNAIRE_UNLOCKED_FEATURES = [
@@ -115,13 +117,17 @@ const JOURNAL_TRACKER_HREFS: Record<JournalTrackerId, string> = {
 export async function getPatientProgressSnapshot(
   userId: string
 ): Promise<PatientProgressSnapshot> {
-  const [access, clinicVisited, journalPendingTrackers, hasQuestionnaire] =
+  const [access, clinicVisited, journalPendingTrackers, questionnaireState] =
     await Promise.all([
       getOnboardingAccessForUser(userId),
       isPatientClinicVisited(userId),
       getPendingJournalTrackers(userId),
-      isQuestionnaireMilestoneComplete(userId),
+      getQuestionnaireCompletionState(userId),
     ]);
+  const hasQuestionnaire = questionnaireState.submitted;
+  // Survey shows green only when every question is answered; submitted with
+  // skips keeps it tappable so the patient can finish the rest.
+  const questionnaireDone = questionnaireState.fullyComplete;
   const hasOnboardingScan =
     access.hasBaselineScan || access.baselineScanPending;
   const hasDailyJournal = journalPendingTrackers.length === 0;
@@ -145,7 +151,7 @@ export async function getPatientProgressSnapshot(
     {
       id: "questionnaire",
       label: "Questionnaire",
-      done: hasQuestionnaire,
+      done: questionnaireDone,
       href: hasOnboardingScan ? MILESTONE_HREFS.questionnaire : null,
     },
     {
@@ -174,5 +180,9 @@ export async function getPatientProgressSnapshot(
       : [...QUESTIONNAIRE_UNLOCKED_FEATURES],
     clinicVisitUnlocks: clinicVisited ? [] : [...CLINIC_VISIT_UNLOCKED_FEATURES],
     journalPendingTrackers,
+    questionnaireSkippedCount:
+      hasQuestionnaire && !questionnaireDone
+        ? questionnaireState.skippedSteps.length
+        : 0,
   };
 }

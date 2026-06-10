@@ -15,6 +15,7 @@ type ResumeApi = {
   onboardingComplete?: boolean;
   hasQuestionnaire?: boolean;
   questionnaireMilestoneComplete?: boolean;
+  questionnaireFullyComplete?: boolean;
   hasBaselineScan?: boolean;
   baselineScanPending?: boolean;
   baselineScanId?: number | null;
@@ -81,6 +82,9 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
         const baselineSubmitted = hasBaseline || baselinePending;
         const questionnaireMilestoneComplete =
           data.questionnaireMilestoneComplete === true;
+        // Legacy servers without the field: fall back to submitted.
+        const questionnaireFullyComplete =
+          data.questionnaireFullyComplete ?? questionnaireMilestoneComplete;
         const baselineId =
           typeof data.baselineScanId === "number" ? data.baselineScanId : null;
 
@@ -88,7 +92,9 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
           isAllowedIncompleteOnboardingPath(pathname, {
             hasBaselineScan: hasBaseline,
             baselineScanPending: baselinePending,
-            questionnaireMilestoneComplete,
+            // Submitted-with-skips keeps the questionnaire reachable from the
+            // profile tracker so skipped questions can still be answered.
+            questionnaireMilestoneComplete: questionnaireFullyComplete,
           })
         ) {
           if (
@@ -138,7 +144,7 @@ export function OnboardingResumeGate({ children }: { children: ReactNode }) {
         if (
           hasQ &&
           questionnaireMilestoneComplete &&
-          (isWelcome || isKai || isQuest)
+          (isWelcome || isKai || (isQuest && questionnaireFullyComplete))
         ) {
           if (!targetMatchesPathAndScan(pathname, scanIdParam, continueUrl)) {
             if (isQuest) {

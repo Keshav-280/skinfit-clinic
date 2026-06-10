@@ -348,7 +348,12 @@ export async function POST(req: Request) {
       )
     : [];
   await saveQuestionnaireCompletionMeta(userId, skippedSteps);
-  await clearQuestionnaireDraft(userId);
+  // Keep the draft when questions were skipped so the patient can come back
+  // from the profile tracker and land on the first skipped question with
+  // their previous answers intact.
+  if (skippedSteps.length === 0) {
+    await clearQuestionnaireDraft(userId);
+  }
 
   await finalizeOnboardingUser(userId);
 

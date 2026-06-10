@@ -55,6 +55,35 @@ export async function isQuestionnaireMilestoneComplete(
   return userHasQuestionnaire(user?.primaryConcern);
 }
 
+export type QuestionnaireCompletionState = {
+  /** At least one successful submit — unlocks features and dashboard. */
+  submitted: boolean;
+  /** Submitted with every question answered (no skips). Legacy submits count as full. */
+  fullyComplete: boolean;
+  skippedSteps: number[];
+};
+
+/** Submission + skip detail in one read (legacy submits without meta count as full). */
+export async function getQuestionnaireCompletionState(
+  userId: string
+): Promise<QuestionnaireCompletionState> {
+  const [submitted, meta] = await Promise.all([
+    isQuestionnaireMilestoneComplete(userId),
+    getQuestionnaireCompletionMeta(userId),
+  ]);
+  if (!submitted) {
+    return { submitted: false, fullyComplete: false, skippedSteps: [] };
+  }
+  if (!meta) {
+    return { submitted: true, fullyComplete: true, skippedSteps: [] };
+  }
+  return {
+    submitted: true,
+    fullyComplete: meta.fullyComplete,
+    skippedSteps: meta.skippedSteps,
+  };
+}
+
 export async function saveQuestionnaireCompletionMeta(
   userId: string,
   skippedSteps: number[]

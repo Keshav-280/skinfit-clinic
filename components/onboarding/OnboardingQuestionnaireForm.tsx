@@ -613,16 +613,20 @@ export function OnboardingQuestionnaireForm() {
         );
         return;
       }
-      try {
-        localStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
-      } catch {
-        /* */
+      // Keep the draft when questions were skipped so a later "finish survey"
+      // visit restores answers and lands on the first skipped question.
+      if ((skippedOverride ?? skippedSteps).length === 0) {
+        try {
+          localStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
+        } catch {
+          /* */
+        }
+        void fetch("/api/onboarding/questionnaire/draft", {
+          method: "DELETE",
+        }).catch(() => {
+          /* */
+        });
       }
-      void fetch("/api/onboarding/questionnaire/draft", {
-        method: "DELETE",
-      }).catch(() => {
-        /* */
-      });
       router.replace("/dashboard");
       router.refresh();
     } catch {

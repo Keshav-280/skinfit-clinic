@@ -99,8 +99,10 @@ export default function PatientProgressTracker({
   allComplete,
   questionnaireUnlocks,
   journalPendingTrackers,
+  questionnaireSkippedCount,
 }: Props) {
   const pendingJournal = journalPendingTrackers ?? [];
+  const skippedCount = questionnaireSkippedCount ?? 0;
   if (allComplete) return null;
 
   const activeIndex = milestones.findIndex((m) => !m.done);
@@ -182,6 +184,20 @@ export default function PatientProgressTracker({
             onPress={() => router.push("/onboarding/questionnaire?entry=resume" as Href)}
           >
             Continue
+          </Text>
+        </Text>
+      ) : skippedCount > 0 ? (
+        <Text style={s.hint}>
+          You skipped{" "}
+          <Text style={s.hintBold}>
+            {skippedCount} survey {skippedCount === 1 ? "question" : "questions"}
+          </Text>
+          .{" "}
+          <Text
+            style={s.hintLink}
+            onPress={() => router.push("/onboarding/questionnaire?entry=resume" as Href)}
+          >
+            Finish them
           </Text>
         </Text>
       ) : null}

@@ -136,7 +136,10 @@ export function firstIncompleteOnboardingQuestionnaireStep(
   priorTx: "yes" | "no" | null
 ): number {
   const active = getActiveQuestionnaireSteps(priorTx);
+  // Skipped steps come first: a resume should land on the earliest question
+  // the patient still owes an answer for, even if it has a default applied.
   for (const step of active) {
+    if (skippedSteps.includes(step)) return step;
     if (!isOnboardingQuestionnaireStepComplete(step, state, skippedSteps)) {
       return step;
     }

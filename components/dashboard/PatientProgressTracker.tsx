@@ -66,8 +66,10 @@ export function PatientProgressTracker({
   milestones,
   allComplete,
   questionnaireUnlocks,
+  questionnaireSkippedCount,
   className = "",
 }: Props) {
+  const skippedCount = questionnaireSkippedCount ?? 0;
   if (allComplete) return null;
 
   const activeIndex = milestones.findIndex((m) => !m.done);
@@ -152,6 +154,20 @@ export function PatientProgressTracker({
             className="font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
           >
             Continue
+          </Link>
+        </p>
+      ) : skippedCount > 0 ? (
+        <p className="mt-2 text-[10px] leading-snug text-[#6B7280] sm:text-[11px]">
+          You skipped{" "}
+          <span className="font-semibold text-[#2C3E6B]">
+            {skippedCount} survey {skippedCount === 1 ? "question" : "questions"}
+          </span>
+          .{" "}
+          <Link
+            href="/onboarding/questionnaire?entry=resume"
+            className="font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
+          >
+            Finish them
           </Link>
         </p>
       ) : null}

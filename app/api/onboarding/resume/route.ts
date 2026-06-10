@@ -17,6 +17,7 @@ export async function GET(req: Request) {
     onboardingComplete: snap.onboardingComplete,
     hasQuestionnaire: snap.hasQuestionnaire,
     questionnaireMilestoneComplete: snap.questionnaireMilestoneComplete,
+    questionnaireFullyComplete: snap.questionnaireFullyComplete,
     hasBaselineScan: snap.hasBaselineScan,
     baselineScanPending: snap.baselineScanPending,
     baselineScanJobId: snap.baselineScanJobId,
