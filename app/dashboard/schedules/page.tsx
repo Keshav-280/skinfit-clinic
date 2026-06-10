@@ -18,6 +18,7 @@ import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 import { getLatestPatientVisit } from "@/src/lib/patientVisit";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import SchedulesPageClient from "@/components/dashboard/SchedulesPageClient";
+import { patientHasPhoneOnFile } from "@/src/lib/ensurePatientPhoneForBooking";
 
 function appointmentTypeLabel(t: string): string {
   if (t === "consultation") return "Consultation";
@@ -58,7 +59,11 @@ export default async function SchedulesPage() {
   if (!userId) redirect("/login");
 
   const [digestRow] = await db
-    .select({ digest: users.scheduleCrmDigestAt })
+    .select({
+      digest: users.scheduleCrmDigestAt,
+      phone: users.phone,
+      phoneCountryCode: users.phoneCountryCode,
+    })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -316,6 +321,9 @@ export default async function SchedulesPage() {
         latestVisit={latestVisitForClient}
         assignedDoctor={assignedDoctor}
         showKaiInsights={isKaiInsightsEnabled()}
+        patientHasPhone={patientHasPhoneOnFile(digestRow?.phone)}
+        initialPhoneCountryCode={digestRow?.phoneCountryCode ?? "+91"}
+        initialPhone={digestRow?.phone ?? null}
       />
     </div>
   );

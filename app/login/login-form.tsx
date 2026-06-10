@@ -21,6 +21,7 @@ const EYE_BTN =
   "absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-[#8391A1] transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-60";
 
 type Mode = "signin" | "register";
+type SignInMethod = "password" | "otp";
 
 function postAuthDestination(
   next: string | null,
@@ -37,6 +38,7 @@ export function LoginForm() {
   const [mode, setMode] = useState<Mode>(() =>
     searchParams.get("mode") === "register" ? "register" : "signin"
   );
+  const [signInMethod, setSignInMethod] = useState<SignInMethod>("password");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -91,6 +93,7 @@ export function LoginForm() {
       setOtpSent(false);
       setOtpHint(null);
       setResendSeconds(0);
+      setSignInMethod("password");
       const qs = new URLSearchParams();
       if (next === "register") qs.set("mode", "register");
       const n = searchParams.get("next");
@@ -128,6 +131,110 @@ export function LoginForm() {
             (res.status >= 500
               ? `Server error (${res.status}). Check the terminal or hosting logs.`
               : "Something went wrong. Please try again.")
+        );
+        return;
+      }
+      router.push(
+        postAuthDestination(searchParams.get("next"), data.user?.onboardingComplete)
+      );
+      router.refresh();
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function resetSignInOtpState() {
+    setOtp("");
+    setOtpSent(false);
+    setOtpHint(null);
+    setResendSeconds(0);
+  }
+
+  async function sendLoginOtp() {
+    resetErrors();
+    setOtpHint(null);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Enter your email before requesting a sign-in code.");
+      return;
+    }
+    setSendOtpLoading(true);
+    try {
+      const res = await fetch("/api/auth/login/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        retryAfterSeconds?: number;
+        cooldownSeconds?: number;
+      };
+      if (!res.ok) {
+        setError(
+          typeof data.message === "string"
+            ? data.message
+            : "Could not send sign-in code."
+        );
+        if (typeof data.retryAfterSeconds === "number") {
+          setResendSeconds(data.retryAfterSeconds);
+        }
+        return;
+      }
+      setOtpSent(true);
+      setOtp("");
+      setOtpHint(
+        typeof data.message === "string"
+          ? data.message
+          : "Sign-in code sent. Check your inbox."
+      );
+      setResendSeconds(
+        typeof data.cooldownSeconds === "number" ? data.cooldownSeconds : 60
+      );
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setSendOtpLoading(false);
+    }
+  }
+
+  async function onSubmitSignInOtp(e: React.FormEvent) {
+    e.preventDefault();
+    resetErrors();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Enter your email.");
+      return;
+    }
+    if (!otpSent) {
+      setError("Send a sign-in code to your email first.");
+      return;
+    }
+    if (otp.trim().length < 6) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail, otp: otp.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+        user?: { onboardingComplete?: boolean };
+      };
+      if (!res.ok) {
+        setError(
+          typeof data.message === "string"
+            ? data.message
+            : typeof data.error === "string"
+              ? data.error.replace(/_/g, " ")
+              : "Could not sign in with that code."
         );
         return;
       }
@@ -308,7 +415,12 @@ export function LoginForm() {
               variant="light"
               label="OR LOG IN WITH"
             />
-            <form onSubmit={onSubmitSignIn} className="space-y-5">
+            <form
+              onSubmit={
+                signInMethod === "otp" ? onSubmitSignInOtp : onSubmitSignIn
+              }
+              className="space-y-5"
+            >
               {error ? (
                 <div role="alert" className={ERROR}>
                   {error}
@@ -319,65 +431,155 @@ export function LoginForm() {
                 <label htmlFor="email" className={LABEL}>
                   Email
                 </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                  className={INPUT}
-                  placeholder={DEMO_LOGIN_EMAIL}
-                />
+                {signInMethod === "otp" ? (
+                  <div className="flex gap-2">
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        resetSignInOtpState();
+                      }}
+                      disabled={loading || sendOtpLoading}
+                      className={`min-w-0 flex-1 ${INPUT}`}
+                      placeholder={DEMO_LOGIN_EMAIL}
+                    />
+                    <button
+                      type="button"
+                      onClick={sendLoginOtp}
+                      disabled={
+                        loading || sendOtpLoading || resendSeconds > 0
+                      }
+                      className="shrink-0 rounded-lg bg-[#F7F8F9] px-3 py-3 text-sm font-semibold text-[#525FE1] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {sendOtpLoading
+                        ? "Sending…"
+                        : resendSeconds > 0
+                          ? `${resendSeconds}s`
+                          : otpSent
+                            ? "Resend"
+                            : "Send code"}
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    className={INPUT}
+                    placeholder={DEMO_LOGIN_EMAIL}
+                  />
+                )}
+                {signInMethod === "otp" && otpHint ? (
+                  <p className="mt-1.5 text-xs text-emerald-600">{otpHint}</p>
+                ) : null}
               </div>
 
-              <div>
-                <label htmlFor="password" className={LABEL}>
-                  Password
-                </label>
-                <div className="relative">
+              {signInMethod === "otp" ? (
+                <div>
+                  <label htmlFor="signin-otp" className={LABEL}>
+                    Email sign-in code
+                  </label>
                   <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    id="signin-otp"
+                    name="otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
                     disabled={loading}
-                    className={`${INPUT} pr-11`}
-                    placeholder="Enter your password"
+                    className={INPUT}
+                    placeholder="6-digit code from email"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    disabled={loading}
-                    className={EYE_BTN}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" aria-hidden />
-                    ) : (
-                      <Eye className="h-4 w-4" aria-hidden />
-                    )}
-                  </button>
                 </div>
-                <div className="mt-2 text-right">
-                  <Link
-                    href="/forgot-password"
-                    className="text-sm font-semibold text-[#525FE1] hover:underline"
-                  >
-                    Forgot Password?
-                  </Link>
+              ) : (
+                <div>
+                  <label htmlFor="password" className={LABEL}>
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                      className={`${INPUT} pr-11`}
+                      placeholder="Enter your password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      disabled={loading}
+                      className={EYE_BTN}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" aria-hidden />
+                      ) : (
+                        <Eye className="h-4 w-4" aria-hidden />
+                      )}
+                    </button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetErrors();
+                        resetSignInOtpState();
+                        setSignInMethod("otp");
+                      }}
+                      className="text-sm font-semibold text-[#525FE1] hover:underline"
+                    >
+                      Send a code to your email instead
+                    </button>
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm font-semibold text-[#525FE1] hover:underline"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {signInMethod === "otp" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetErrors();
+                    resetSignInOtpState();
+                    setSignInMethod("password");
+                  }}
+                  className="text-sm font-semibold text-[#525FE1] hover:underline"
+                >
+                  Use password instead
+                </button>
+              ) : null}
 
               <button
                 type="submit"
                 disabled={loading}
                 className="flex w-full items-center justify-center rounded-full bg-[#525FE1] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#454ecc] focus:outline-none focus:ring-2 focus:ring-[#525FE1]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Signing in…" : "Sign In"}
+                {loading
+                  ? "Signing in…"
+                  : signInMethod === "otp"
+                    ? "Sign in with code"
+                    : "Sign In"}
               </button>
             </form>
           </>

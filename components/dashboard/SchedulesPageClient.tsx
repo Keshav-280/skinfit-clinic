@@ -29,6 +29,7 @@ import {
   Loader2,
   MessageCircle,
   Paperclip,
+  Phone,
   RefreshCw,
   Send,
   ShieldCheck,
@@ -36,7 +37,9 @@ import {
   User,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { validateNationalPhone } from "@/src/lib/auth/phone";
 import {
   LastTreatmentCard,
   type LastTreatmentVisit,
@@ -436,6 +439,9 @@ export default function SchedulesPageClient({
   latestVisit = null,
   assignedDoctor = null,
   showKaiInsights = false,
+  patientHasPhone: initialPatientHasPhone = true,
+  initialPhoneCountryCode = "+91",
+  initialPhone = null,
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
   initialAppointmentEvents: ScheduleEventRow[];
@@ -445,6 +451,9 @@ export default function SchedulesPageClient({
   latestVisit?: LastTreatmentVisit | null;
   assignedDoctor?: AssignedDoctorSummary | null;
   showKaiInsights?: boolean;
+  patientHasPhone?: boolean;
+  initialPhoneCountryCode?: string;
+  initialPhone?: string | null;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"month" | "week">("month");
@@ -474,6 +483,11 @@ export default function SchedulesPageClient({
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestFormUrl, setRequestFormUrl] = useState<string | null>(null);
   const [sheetRelayNotice, setSheetRelayNotice] = useState<string | null>(null);
+  const [patientHasPhone, setPatientHasPhone] = useState(initialPatientHasPhone);
+  const [bookingPhoneCountryCode, setBookingPhoneCountryCode] = useState(
+    initialPhoneCountryCode
+  );
+  const [bookingPhone, setBookingPhone] = useState(initialPhone ?? "");
 
   const [attachmentViewerRequestId, setAttachmentViewerRequestId] = useState<
     string | null
@@ -757,6 +771,13 @@ export default function SchedulesPageClient({
       setRequestError("Choose a preferred time window.");
       return;
     }
+    if (!patientHasPhone) {
+      const phoneCheck = validateNationalPhone(bookingPhone);
+      if (!phoneCheck.ok) {
+        setRequestError(phoneCheck.message);
+        return;
+      }
+    }
     const daysAffectedNum = requestDaysAffected.trim()
       ? Math.max(0, Math.min(3650, Number.parseInt(requestDaysAffected.trim(), 10) || 0))
       : null;
@@ -764,28 +785,49 @@ export default function SchedulesPageClient({
     setRequestSubmitting(true);
     setRequestFormUrl(null);
     try {
+      const payload: Record<string, unknown> = {
+        preferredDateYmd: requestYmd,
+        issue,
+        daysAffected: daysAffectedNum,
+        timePreferences: t,
+        attachments: requestAttachments,
+      };
+      if (!patientHasPhone) {
+        payload.phone = bookingPhone.trim();
+        payload.phoneCountryCode = bookingPhoneCountryCode.trim() || "+91";
+      }
       const res = await fetch("/api/patient/schedule-requests", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          preferredDateYmd: requestYmd,
-          issue,
-          daysAffected: daysAffectedNum,
-          timePreferences: t,
-          attachments: requestAttachments,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json().catch(() => ({}))) as {
         success?: boolean;
         error?: string;
+        message?: string;
         clinicAppointmentFormUrl?: string | null;
         sheetRelayOk?: boolean;
         sheetRelayMessage?: string | null;
         sheetRelayOmittedImages?: boolean;
       };
       if (!res.ok || !data.success) {
+        if (data.error === "PHONE_REQUIRED") {
+          throw new Error(
+            "Add your phone number below or in Profile before booking."
+          );
+        }
+        if (data.error === "INVALID_PHONE") {
+          throw new Error(
+            typeof data.message === "string"
+              ? data.message
+              : "Enter a valid phone number."
+          );
+        }
         throw new Error(data.error || "Request failed");
+      }
+      if (!patientHasPhone) {
+        setPatientHasPhone(true);
       }
       if (data.sheetRelayOk === false) {
         setRequestError(
@@ -1744,6 +1786,53 @@ export default function SchedulesPageClient({
                   </div>
                 ))}
               </div>
+
+              {!patientHasPhone ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex items-start gap-2">
+                    <Phone className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-amber-950">
+                        Phone number required
+                      </p>
+                      <p className="mt-0.5 text-xs leading-snug text-amber-900/90">
+                        The clinic needs your number to confirm visits. Enter it
+                        below or{" "}
+                        <Link
+                          href="/dashboard/profile"
+                          className="font-semibold text-amber-950 underline"
+                        >
+                          add it in Profile
+                        </Link>
+                        .
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <input
+                          type="text"
+                          inputMode="tel"
+                          autoComplete="tel-country-code"
+                          value={bookingPhoneCountryCode}
+                          onChange={(e) => setBookingPhoneCountryCode(e.target.value)}
+                          disabled={requestSubmitting}
+                          className="w-[5.5rem] shrink-0 rounded-lg border border-amber-200 bg-white px-3 py-2.5 text-center text-sm text-[#18181b] outline-none focus:border-[#2B3A67] focus:ring-2 focus:ring-[#2B3A67]/15"
+                          placeholder="+91"
+                          aria-label="Country code"
+                        />
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="tel-national"
+                          value={bookingPhone}
+                          onChange={(e) => setBookingPhone(e.target.value)}
+                          disabled={requestSubmitting}
+                          className="min-w-0 flex-1 rounded-lg border border-amber-200 bg-white px-3 py-2.5 text-sm text-[#18181b] outline-none focus:border-[#2B3A67] focus:ring-2 focus:ring-[#2B3A67]/15"
+                          placeholder="10-digit mobile"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <p className="mt-4 text-base font-bold text-[#18181b]">Choose new time</p>
               <div className="mt-3 flex flex-col gap-2">

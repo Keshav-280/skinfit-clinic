@@ -13,6 +13,7 @@ import { dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/date-only";
 import { clinicSheetAppointmentApiUrlFromEnv } from "@/src/lib/clinicSheetAppointmentApiUrl";
 import { postGoogleAppsScriptWebAppJson } from "@/src/lib/googleAppsScriptWebAppFetch";
 import { publicAppOriginFromRequest } from "@/src/lib/publicAppOrigin";
+import { ensurePatientPhoneForBooking } from "@/src/lib/ensurePatientPhoneForBooking";
 
 function formatPatientPhoneForCrm(
   countryCode: string | null | undefined,
@@ -135,6 +136,8 @@ export async function POST(req: Request) {
     timePreferences?: unknown;
     attachments?: unknown;
     doctorId?: unknown;
+    phone?: unknown;
+    phoneCountryCode?: unknown;
   };
 
   const preferredDateYmd =
@@ -189,6 +192,20 @@ export async function POST(req: Request) {
     .where(eq(users.id, userId))
     .limit(1);
 
+  const phoneResult = await ensurePatientPhoneForBooking({
+    userId,
+    existingPhone: patient?.phone,
+    existingCountryCode: patient?.phoneCountryCode,
+    bodyPhone: b.phone,
+    bodyPhoneCountryCode: b.phoneCountryCode,
+  });
+  if (!phoneResult.ok) {
+    return NextResponse.json(
+      { success: false, error: phoneResult.error, message: phoneResult.message },
+      { status: 400 }
+    );
+  }
+
   const preferredDate = dateOnlyFromYmd(preferredDateYmd);
 
   const [row] = await db
@@ -211,8 +228,8 @@ export async function POST(req: Request) {
 
   const patientName = patient?.name?.trim() || patient?.email || "Patient";
   const patientPhone = formatPatientPhoneForCrm(
-    patient?.phoneCountryCode,
-    patient?.phone
+    phoneResult.phoneCountryCode,
+    phoneResult.phone
   );
   const patientTimezone = patient?.timezone?.trim() || null;
   const attachmentFileNames = attachments.map((a) => a.fileName);

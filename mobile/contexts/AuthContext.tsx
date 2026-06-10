@@ -49,6 +49,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   ready: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithEmailOtp: (email: string, otp: string) => Promise<void>;
   signInWithOAuth: (provider: NativeOAuthProvider) => Promise<void>;
   signUp: (input: {
     name: string;
@@ -183,6 +184,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await applyAuthSession({ token: data.token, user: data.user });
   }, [applyAuthSession]);
+
+  const signInWithEmailOtp = useCallback(
+    async (email: string, otp: string) => {
+      let res: Response;
+      try {
+        res = await fetch(apiUrl("/api/auth/login/verify-otp"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Skinfit-Client": "native",
+          },
+          body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+        });
+      } catch {
+        throw new Error(networkFetchErrorMessage());
+      }
+
+      const text = await res.text().catch(() => "");
+      let data: {
+        ok?: boolean;
+        token?: string;
+        user?: AuthUser & { onboardingComplete?: boolean };
+        message?: string;
+        error?: string;
+      } = {};
+      try {
+        data = text ? (JSON.parse(text) as typeof data) : {};
+      } catch {
+        data = {};
+      }
+      if (!res.ok) {
+        throw new Error(
+          data.message ||
+            data.error ||
+            `Sign in failed (HTTP ${res.status}). Server may be unavailable.`
+        );
+      }
+      if (!data.token || !data.user) {
+        throw new Error("Server did not return a session token.");
+      }
+      await applyAuthSession({ token: data.token, user: data.user });
+    },
+    [applyAuthSession]
+  );
 
   const signInWithOAuth = useCallback(
     async (provider: NativeOAuthProvider) => {
@@ -492,6 +537,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       ready,
       signIn,
+      signInWithEmailOtp,
       signInWithOAuth,
       signUp,
       signOut,
@@ -505,6 +551,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       ready,
       signIn,
+      signInWithEmailOtp,
       signInWithOAuth,
       signUp,
       signOut,

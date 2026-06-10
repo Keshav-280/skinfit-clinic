@@ -7,6 +7,8 @@ import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import { slotDateAndHmToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
+import { ensurePatientPhoneForBooking } from "@/src/lib/ensurePatientPhoneForBooking";
+import { users } from "@/src/db/schema";
 
 export async function POST(req: Request) {
   const sessionUserId = await getSessionUserIdFromRequest(req);
@@ -27,6 +29,29 @@ export async function POST(req: Request) {
   const doctorSlotId = typeof b.doctorSlotId === "string" ? b.doctorSlotId : null;
   const issue = typeof b.issue === "string" ? b.issue.trim() : "";
   const why = typeof b.why === "string" ? b.why.trim() : null;
+
+  const [patientRow] = await db
+    .select({
+      phone: users.phone,
+      phoneCountryCode: users.phoneCountryCode,
+    })
+    .from(users)
+    .where(eq(users.id, sessionUserId))
+    .limit(1);
+
+  const phoneResult = await ensurePatientPhoneForBooking({
+    userId: sessionUserId,
+    existingPhone: patientRow?.phone,
+    existingCountryCode: patientRow?.phoneCountryCode,
+    bodyPhone: b.phone,
+    bodyPhoneCountryCode: b.phoneCountryCode,
+  });
+  if (!phoneResult.ok) {
+    return NextResponse.json(
+      { error: phoneResult.error, message: phoneResult.message },
+      { status: 400 }
+    );
+  }
 
   if (!doctorId || !doctorSlotId || !issue) {
     return NextResponse.json(

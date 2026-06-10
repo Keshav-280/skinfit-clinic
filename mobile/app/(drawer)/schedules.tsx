@@ -61,6 +61,8 @@ import {
   visitWindowsToTimePreferences,
   type VisitWindowId,
 } from "@/lib/scheduleVisitWindows";
+import { validateNationalPhone } from "../../src/lib/auth/phone";
+import { patientHasPhoneOnFile } from "../../src/lib/ensurePatientPhoneForBooking";
 
 type ScheduleVisitRow = {
   id: string;
@@ -160,6 +162,9 @@ export default function SchedulesScreen() {
   const [visitNotes, setVisitNotes] = useState("");
   const [selectedWindows, setSelectedWindows] = useState<VisitWindowId[]>([]);
   const [visitBusy, setVisitBusy] = useState(false);
+  const [patientHasPhone, setPatientHasPhone] = useState(true);
+  const [bookingPhoneCountryCode, setBookingPhoneCountryCode] = useState("+91");
+  const [bookingPhone, setBookingPhone] = useState("");
   const [archivedListIds, setArchivedListIds] = useState<Set<string>>(() => new Set());
   const [showArchivedList, setShowArchivedList] = useState(false);
   const [clinicVisits, setClinicVisits] = useState<ScheduleVisitRow[]>([]);
@@ -200,7 +205,7 @@ export default function SchedulesScreen() {
 
   const loadBootstrap = useCallback(async () => {
     if (!token) return;
-    const [json, skin, monthly, home] = await Promise.all([
+    const [json, skin, monthly, home, profile] = await Promise.all([
       apiJson<{
         initialScheduleEvents?: ScheduleEventRow[];
         initialTreatmentEvents?: ScheduleEventRow[];
@@ -219,6 +224,9 @@ export default function SchedulesScreen() {
       apiJson<{ kaiInsightsEnabled?: boolean }>("/api/patient/home", token, {
         method: "GET",
       }).catch(() => null),
+      apiJson<{
+        user?: { phone?: string | null; phoneCountryCode?: string | null };
+      }>("/api/user/profile", token, { method: "GET" }).catch(() => null),
     ]);
     setTreatmentEvents(json.initialTreatmentEvents ?? []);
     setAppointmentEvents(json.initialAppointmentEvents ?? []);
@@ -229,6 +237,11 @@ export default function SchedulesScreen() {
     setKaiInsightsEnabled(
       skin?.kaiInsightsEnabled !== false && home?.kaiInsightsEnabled !== false
     );
+    const phone = profile?.user?.phone ?? null;
+    const cc = profile?.user?.phoneCountryCode ?? "+91";
+    setPatientHasPhone(patientHasPhoneOnFile(phone));
+    setBookingPhoneCountryCode(cc);
+    setBookingPhone(phone ?? "");
   }, [token]);
 
   const loadAll = useCallback(async () => {
@@ -334,6 +347,13 @@ export default function SchedulesScreen() {
       Alert.alert("Request", "Choose a preferred time window.");
       return;
     }
+    if (!patientHasPhone) {
+      const phoneCheck = validateNationalPhone(bookingPhone);
+      if (!phoneCheck.ok) {
+        Alert.alert("Request", phoneCheck.message);
+        return;
+      }
+    }
     const daysAffectedNum = visitDaysAffected.trim()
       ? Math.max(0, Math.min(3650, Number.parseInt(visitDaysAffected.trim(), 10) || 0))
       : null;
@@ -351,11 +371,32 @@ export default function SchedulesScreen() {
           daysAffected: daysAffectedNum,
           timePreferences: t,
           attachments: [],
+          ...(!patientHasPhone
+            ? {
+                phone: bookingPhone.trim(),
+                phoneCountryCode: bookingPhoneCountryCode.trim() || "+91",
+              }
+            : {}),
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
       if (!res.ok || !data.success) {
+        if (data.error === "PHONE_REQUIRED") {
+          throw new Error(
+            data.message || "Add your phone number below or in Profile before booking."
+          );
+        }
+        if (data.error === "INVALID_PHONE") {
+          throw new Error(data.message || "Enter a valid phone number.");
+        }
         throw new Error(data.error || "Request failed.");
+      }
+      if (!patientHasPhone) {
+        setPatientHasPhone(true);
       }
       setVisitRequestOpen(false);
       setVisitRequestYmd(null);
@@ -1020,6 +1061,46 @@ export default function SchedulesScreen() {
                 </View>
               ))}
             </View>
+            {!patientHasPhone ? (
+              <View style={styles.phoneRequiredBox}>
+                <Ionicons name="call-outline" size={20} color="#92400e" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.phoneRequiredTitle}>Phone number required</Text>
+                  <Text style={styles.phoneRequiredBody}>
+                    The clinic needs your number to confirm visits. Enter it below or{" "}
+                    <Text
+                      style={styles.phoneProfileLink}
+                      onPress={() => {
+                        setVisitRequestOpen(false);
+                        router.push("/profile" as Href);
+                      }}
+                    >
+                      add it in Profile
+                    </Text>
+                    .
+                  </Text>
+                  <View style={styles.phoneRow}>
+                    <TextInput
+                      style={[styles.input, styles.phoneCcInput]}
+                      value={bookingPhoneCountryCode}
+                      onChangeText={setBookingPhoneCountryCode}
+                      placeholder="+91"
+                      keyboardType="phone-pad"
+                      editable={!visitBusy}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.phoneNationalInput]}
+                      value={bookingPhone}
+                      onChangeText={setBookingPhone}
+                      placeholder="10-digit mobile"
+                      keyboardType="phone-pad"
+                      editable={!visitBusy}
+                    />
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
             <Text style={styles.labelBig}>Choose new time</Text>
             <View style={styles.windowList}>
               {VISIT_WINDOW_OPTIONS.map((w) => {
@@ -1714,6 +1795,47 @@ const styles = StyleSheet.create({
   windowOptionOn: { backgroundColor: "#262b74", borderColor: "#262b74" },
   windowOptionText: { color: "#18181b", fontWeight: "600", fontSize: 15 },
   windowOptionOnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  phoneRequiredBox: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#fcd34d",
+    backgroundColor: "#fffbeb",
+    padding: 12,
+  },
+  phoneRequiredTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#78350f",
+  },
+  phoneRequiredBody: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#92400e",
+  },
+  phoneProfileLink: {
+    fontWeight: "700",
+    textDecorationLine: "underline",
+    color: "#78350f",
+  },
+  phoneRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+  },
+  phoneCcInput: {
+    width: 72,
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  phoneNationalInput: {
+    flex: 1,
+    minWidth: 0,
+  },
   noteBox: {
     marginTop: 16,
     borderRadius: 14,

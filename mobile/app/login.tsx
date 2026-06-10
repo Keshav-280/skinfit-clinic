@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Link, Redirect, router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "@/components/Themed";
 import { SocialAuthButtons } from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiBase } from "@/lib/apiBase";
 
 const PRIMARY = "#5B61E9";
 const PRIMARY_DARK = "#4A50D4";
@@ -28,12 +29,25 @@ const WEB_PORTAL_URL =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "";
 
+type SignInMethod = "password" | "otp";
+
 export default function LoginScreen() {
-  const { signIn, signInWithOAuth, token, ready } = useAuth();
+  const { signIn, signInWithEmailOtp, signInWithOAuth, token, ready } = useAuth();
+  const [signInMethod, setSignInMethod] = useState<SignInMethod>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendOtpLoading, setSendOtpLoading] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = setTimeout(() => setResendSeconds((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [resendSeconds]);
 
   if (!ready) {
     return (
@@ -47,10 +61,56 @@ export default function LoginScreen() {
     return <Redirect href="/(drawer)" />;
   }
 
+  async function sendLoginOtp() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      Alert.alert("Sign in", "Enter your email before requesting a code.");
+      return;
+    }
+    setSendOtpLoading(true);
+    try {
+      const res = await fetch(`${getApiBase()}/api/auth/login/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        retryAfterSeconds?: number;
+        cooldownSeconds?: number;
+      };
+      if (!res.ok) {
+        if (typeof data.retryAfterSeconds === "number") {
+          setResendSeconds(data.retryAfterSeconds);
+        }
+        throw new Error(data.message || "Could not send sign-in code.");
+      }
+      setOtpSent(true);
+      setOtp("");
+      setResendSeconds(
+        typeof data.cooldownSeconds === "number" ? data.cooldownSeconds : 60
+      );
+      Alert.alert("Sign in", data.message || "Code sent. Check your inbox.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      Alert.alert("Sign in", msg);
+    } finally {
+      setSendOtpLoading(false);
+    }
+  }
+
   async function onSubmit() {
     setLoading(true);
     try {
-      await signIn(email, password);
+      if (signInMethod === "otp") {
+        if (!otpSent) {
+          Alert.alert("Sign in", "Send a code to your email first.");
+          return;
+        }
+        await signInWithEmailOtp(email, otp);
+      } else {
+        await signIn(email, password);
+      }
       router.replace("/");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
@@ -83,50 +143,131 @@ export default function LoginScreen() {
 
           <View style={styles.inputWrap}>
             <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter email"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-
-          <View style={styles.inputWrap}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordRow}>
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                placeholder="Enter password"
-                placeholderTextColor="#9CA3AF"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <Pressable
-                style={styles.eyeBtn}
-                onPress={() => setShowPassword((v) => !v)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#9CA3AF"
+            {signInMethod === "otp" ? (
+              <View style={styles.emailOtpRow}>
+                <TextInput
+                  style={[styles.input, styles.emailOtpInput]}
+                  placeholder="Enter email"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={(v) => {
+                    setEmail(v);
+                    setOtpSent(false);
+                    setOtp("");
+                  }}
                 />
-              </Pressable>
-            </View>
+                <Pressable
+                  style={[
+                    styles.sendCodeBtn,
+                    (sendOtpLoading || resendSeconds > 0) && styles.sendCodeBtnDisabled,
+                  ]}
+                  onPress={() => void sendLoginOtp()}
+                  disabled={sendOtpLoading || resendSeconds > 0}
+                >
+                  <Text style={styles.sendCodeBtnText}>
+                    {sendOtpLoading
+                      ? "…"
+                      : resendSeconds > 0
+                        ? `${resendSeconds}s`
+                        : otpSent
+                          ? "Resend"
+                          : "Send code"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <TextInput
+                style={styles.input}
+                placeholder="Enter email"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+            )}
           </View>
 
-          <Link href="/forgot-password" asChild>
-            <Pressable style={styles.forgotRow} hitSlop={8}>
-              <Text style={styles.forgotLink}>Forgot password?</Text>
-            </Pressable>
-          </Link>
+          {signInMethod === "otp" ? (
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>Email sign-in code</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="6-digit code"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otp}
+                onChangeText={(v) => setOtp(v.replace(/\D/g, "").slice(0, 6))}
+              />
+            </View>
+          ) : (
+            <View style={styles.inputWrap}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.passwordRow}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="Enter password"
+                  placeholderTextColor="#9CA3AF"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <Pressable
+                  style={styles.eyeBtn}
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-outline" : "eye-off-outline"}
+                    size={20}
+                    color="#9CA3AF"
+                  />
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.forgotRow}>
+            {signInMethod === "password" ? (
+              <>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => {
+                    setSignInMethod("otp");
+                    setOtp("");
+                    setOtpSent(false);
+                    setResendSeconds(0);
+                  }}
+                >
+                  <Text style={styles.forgotLink}>Send a code to your email</Text>
+                </Pressable>
+                <Link href="/forgot-password" asChild>
+                  <Pressable hitSlop={8}>
+                    <Text style={styles.forgotLink}>Forgot password?</Text>
+                  </Pressable>
+                </Link>
+              </>
+            ) : (
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  setSignInMethod("password");
+                  setOtp("");
+                  setOtpSent(false);
+                  setResendSeconds(0);
+                }}
+              >
+                <Text style={styles.forgotLink}>Use password instead</Text>
+              </Pressable>
+            )}
+          </View>
 
           <Pressable
             style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
@@ -136,7 +277,9 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonLabel}>Sign In</Text>
+              <Text style={styles.buttonLabel}>
+                {signInMethod === "otp" ? "Sign in with code" : "Sign In"}
+              </Text>
             )}
           </Pressable>
 
@@ -260,8 +403,34 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
   },
+  emailOtpRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "stretch",
+  },
+  emailOtpInput: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sendCodeBtn: {
+    borderRadius: 14,
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 14,
+    justifyContent: "center",
+  },
+  sendCodeBtnDisabled: {
+    opacity: 0.6,
+  },
+  sendCodeBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: PRIMARY,
+  },
   forgotRow: {
-    alignItems: "flex-end",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 8,
     marginBottom: 24,
     marginTop: -4,
   },

@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
-import { CheckCircle2, Clock3, XCircle, FileText, Send } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock3,
+  FileText,
+  Phone,
+  Send,
+  XCircle,
+} from "lucide-react";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
+import { validateNationalPhone } from "@/src/lib/auth/phone";
+import { patientHasPhoneOnFile } from "@/src/lib/ensurePatientPhoneForBooking";
 
 type DoctorRow = { id: string; name: string; email: string };
 
@@ -48,6 +58,9 @@ export function DoctorCalendarPatientSection() {
   const [issue, setIssue] = useState("");
   const [why, setWhy] = useState("");
   const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [patientHasPhone, setPatientHasPhone] = useState(true);
+  const [bookingPhoneCountryCode, setBookingPhoneCountryCode] = useState("+91");
+  const [bookingPhone, setBookingPhone] = useState("");
 
   const range = useMemo(() => {
     const from = ymdToday();
@@ -84,14 +97,25 @@ export function DoctorCalendarPatientSection() {
     (async () => {
       setError(null);
       try {
-        const res = await fetch("/api/clinic/doctors", { credentials: "include" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !Array.isArray(data.doctors)) {
+        const [doctorsRes, profileRes] = await Promise.all([
+          fetch("/api/clinic/doctors", { credentials: "include" }),
+          fetch("/api/user/profile", { credentials: "include" }),
+        ]);
+        const data = await doctorsRes.json().catch(() => ({}));
+        if (!doctorsRes.ok || !Array.isArray(data.doctors)) {
           throw new Error(data.error || "Failed to load doctors");
         }
+        const profileData = (await profileRes.json().catch(() => ({}))) as {
+          user?: { phone?: string | null; phoneCountryCode?: string | null };
+        };
         if (!alive) return;
         setDoctors(data.doctors as DoctorRow[]);
         setDoctorId((prev) => prev ?? (data.doctors[0]?.id ?? null));
+        const phone = profileData.user?.phone ?? null;
+        const cc = profileData.user?.phoneCountryCode ?? "+91";
+        setPatientHasPhone(patientHasPhoneOnFile(phone));
+        setBookingPhoneCountryCode(cc);
+        setBookingPhone(phone ?? "");
       } catch (e) {
         if (!alive) return;
         setError(e instanceof Error ? e.message : "Failed to load doctors");
@@ -143,23 +167,49 @@ export function DoctorCalendarPatientSection() {
       setError("Please enter a short issue.");
       return;
     }
+    if (!patientHasPhone) {
+      const phoneCheck = validateNationalPhone(bookingPhone);
+      if (!phoneCheck.ok) {
+        setError(phoneCheck.message);
+        return;
+      }
+    }
     setRequestSubmitting(true);
     setError(null);
     try {
+      const payload: Record<string, unknown> = {
+        doctorId,
+        doctorSlotId: requestSlot.id,
+        issue: issue.trim(),
+        why: why.trim() ? why.trim() : undefined,
+      };
+      if (!patientHasPhone) {
+        payload.phone = bookingPhone.trim();
+        payload.phoneCountryCode = bookingPhoneCountryCode.trim() || "+91";
+      }
       const res = await fetch("/api/appointments/requests", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          doctorId,
-          doctorSlotId: requestSlot.id,
-          issue: issue.trim(),
-          why: why.trim() ? why.trim() : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const err = data.error as string | undefined;
+        if (err === "PHONE_REQUIRED") {
+          throw new Error(
+            typeof data.message === "string"
+              ? data.message
+              : "Add your phone number below or in Profile before booking."
+          );
+        }
+        if (err === "INVALID_PHONE") {
+          throw new Error(
+            typeof data.message === "string"
+              ? data.message
+              : "Enter a valid phone number."
+          );
+        }
         if (res.status === 409 && err === "SLOT_REQUEST_PENDING") {
           throw new Error(
             "Another patient already requested this slot. It will open again if the clinic declines."
@@ -172,6 +222,9 @@ export function DoctorCalendarPatientSection() {
       }
       if (!(data.request?.id || data.duplicated)) {
         throw new Error("Request failed");
+      }
+      if (!patientHasPhone) {
+        setPatientHasPhone(true);
       }
       setRequestModalOpen(false);
       setRequestSlot(null);
@@ -343,6 +396,50 @@ export function DoctorCalendarPatientSection() {
             </div>
 
             <div className="mt-4 space-y-3">
+              {!patientHasPhone ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex items-start gap-2">
+                    <Phone className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-amber-950">
+                        Phone number required
+                      </p>
+                      <p className="mt-0.5 text-xs leading-snug text-amber-900/90">
+                        Enter your number here or{" "}
+                        <Link
+                          href="/dashboard/profile"
+                          className="font-semibold text-amber-950 underline"
+                        >
+                          add it in Profile
+                        </Link>
+                        .
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <input
+                          type="text"
+                          inputMode="tel"
+                          value={bookingPhoneCountryCode}
+                          onChange={(e) => setBookingPhoneCountryCode(e.target.value)}
+                          disabled={requestSubmitting}
+                          className="w-[5.5rem] shrink-0 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-center text-sm text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                          placeholder="+91"
+                          aria-label="Country code"
+                        />
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          value={bookingPhone}
+                          onChange={(e) => setBookingPhone(e.target.value)}
+                          disabled={requestSubmitting}
+                          className="min-w-0 flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                          placeholder="10-digit mobile"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Issue (short)
