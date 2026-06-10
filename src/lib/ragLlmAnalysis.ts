@@ -83,6 +83,8 @@ export type LlmTrackerAnalysis = {
 };
 
 export async function analyzeTrackerReport(input: {
+  scanContextKind?: "onboarding_first_scan" | "same_week_followup" | "new_week_followup";
+  scanContextNote?: string;
   patient: {
     name: string;
     skinType: string | null;
@@ -112,9 +114,10 @@ export async function analyzeTrackerReport(input: {
   const system = `You are kAI, a dermatology-informed AI beauty counselor.
 You must ground claims in the evidence blocks when you cite clinical reasoning.
 Output ONLY a valid JSON object matching the specified schema. No preamble.
-Tone: warm, specific, non-medical-jargon. Never invent data.
-CAUSES MUST BE BALANCED: include BOTH what went well (wins) and what dragged (risks), not just one side — even when the week was mostly good. If a parameter held steady, explain WHY it held. If everything was positive, still call out one realistic risk or watch-out for next week.
-EMPATHY PARAGRAPH must acknowledge the mix (wins + drags) in plain language and end with a forward-looking sentence.`;
+Tone: warm, human, like a caring clinic coordinator. Short sentences. No em dashes or hyphen punctuation.
+Never invent data. Never shame the patient (avoid "no active efforts", "lack of routine", "failure to").
+CAUSES MUST BE BALANCED: include BOTH what went well (wins) and what dragged (risks), not just one side. If a parameter held steady, explain why in plain words. If everything was positive, one gentle watch-out for next week is enough.
+EMPATHY PARAGRAPH: at most 2 short sentences. Encouraging, specific to the data, forward looking. No clinical lecture.`;
 
   const user = `PATIENT CONTEXT
 Name: ${input.patient.name}
@@ -123,6 +126,9 @@ Primary concern: ${input.patient.primaryConcern ?? "unknown"}
 Sensitivity index: ${input.patient.sensitivityIndex ?? "n/a"}/10
 UV sensitivity: ${input.patient.uvSensitivity ?? "n/a"}
 Hormonal correlation: ${input.patient.hormonalCorrelation ?? "n/a"}
+
+SCAN CONTEXT
+${input.scanContextNote ?? "Standard weekly tracker report."}
 
 SCAN #${input.scanIndex} on ${input.scanDate}
 kAI score: ${input.kaiScore}
@@ -177,7 +183,7 @@ TASK
 Produce the weekly tracker report for this scan. Be concrete and tied to data above.
 - CAUSES: exactly 4 bullets, each tagged internally: at least 2 "wins" (what helped or what held steady) and at least 1 "drag" or risk (what hurt or what could regress). Use real numbers from the data.
   - Prefix each cause with either "Win:" or "Drag:" or "Watch:" so the UI can tag it.
-- EMPATHY: acknowledge mix of wins and drags, plain language, 2-3 sentences, forward-looking.
+- EMPATHY: max 2 short warm sentences. Plain language. Forward looking. No dashes as punctuation.
 - ACTION DETAILS: each action.detail must be EXACTLY 3 lines in this structure:
   Why: <1 sentence tied to this patient's numbers/signals>
   Do: <1 practical instruction with timing/frequency>
@@ -185,7 +191,7 @@ Produce the weekly tracker report for this scan. Be concrete and tied to data ab
 Return ONLY JSON with this exact shape:
 {
   "hookLine": "string (one human sentence naming what happened this week; earned, not generic)",
-  "empathyParagraph": "string (2-3 sentences; balanced tone that names wins AND risks)",
+  "empathyParagraph": "string (max 2 short sentences; warm, human, encouraging)",
   "causes": ["Win: <sentence with numbers>", "Win: <sentence>", "Drag: <sentence>", "Watch: <sentence>"],
   "actions": [
     {"rank": 1, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."},

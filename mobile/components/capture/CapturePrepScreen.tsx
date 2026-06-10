@@ -86,7 +86,7 @@ export function CapturePrepScreen({
           </Pressable>
         </View>
 
-        <View style={styles.content}>
+        <View style={styles.main}>
           <View style={styles.hero}>
             <Text style={styles.title}>
               Let&apos;s capture{"\n"}your best profile
@@ -110,9 +110,9 @@ export function CapturePrepScreen({
               </View>
             ))}
           </View>
-        </View>
 
-        <View style={styles.footer}>
+          <View style={styles.privacyGap} />
+
           {showPrivacy ? (
             <Pressable
               style={styles.privacyRow}
@@ -130,7 +130,9 @@ export function CapturePrepScreen({
               </Text>
             </Pressable>
           ) : null}
+        </View>
 
+        <View style={styles.footer}>
           <Pressable
             style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
             onPress={onStart}
@@ -170,7 +172,11 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     paddingHorizontal: 28,
-    justifyContent: "space-between",
+  },
+  main: {
+    flex: 1,
+    minHeight: 0,
+    overflow: "hidden",
   },
   topBar: {
     flexDirection: "row",
@@ -183,10 +189,6 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: "center",
     justifyContent: "center",
-  },
-  content: {
-    flex: 1,
-    justifyContent: "flex-start",
   },
   hero: { gap: 10 },
   title: {
@@ -204,8 +206,13 @@ const styles = StyleSheet.create({
     maxWidth: 310,
   },
   tips: {
-    marginTop: 28,
-    gap: 24,
+    marginTop: 24,
+    gap: 20,
+  },
+  privacyGap: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 32,
   },
   tipRow: {
     flexDirection: "row",
@@ -229,13 +236,17 @@ const styles = StyleSheet.create({
     color: NAVY,
     lineHeight: 24,
   },
-  footer: { gap: 18 },
+  footer: {
+    gap: 18,
+    paddingTop: 16,
+  },
   privacyRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "center",
     gap: 6,
     paddingHorizontal: 8,
+    marginBottom: 8,
   },
   lockIcon: { marginTop: 2 },
   privacyText: {

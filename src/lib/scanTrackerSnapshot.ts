@@ -5,6 +5,7 @@ import { scans } from "@/src/db/schema";
 import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { withOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
+import { normalizeTrackerReportNarrative } from "@/src/lib/trackerReportNarrative";
 import { sanitizeTrackerResources } from "@/src/lib/trackerResourceLinks";
 
 function isMissingTrackerSnapshotColumn(error: unknown): boolean {
@@ -47,16 +48,20 @@ async function writeTrackerSnapshot(
  */
 function normalizeStoredTrackerReport(report: PatientTrackerReport): {
   report: PatientTrackerReport;
-  focusActionsPatched: boolean;
+  patched: boolean;
 } {
-  const { focusActions, patched } = withOnboardingBaselineFocusActions(report);
+  const { focusActions, patched: focusActionsPatched } =
+    withOnboardingBaselineFocusActions(report);
+  const withFocus = {
+    ...report,
+    focusActions,
+    resources: sanitizeTrackerResources(report.resources),
+  };
+  const { report: normalized, patched: narrativePatched } =
+    normalizeTrackerReportNarrative(withFocus);
   return {
-    report: {
-      ...report,
-      focusActions,
-      resources: sanitizeTrackerResources(report.resources),
-    },
-    focusActionsPatched: patched,
+    report: normalized,
+    patched: focusActionsPatched || narrativePatched,
   };
 }
 
@@ -66,8 +71,8 @@ export async function loadScanTrackerReport(
   stored: PatientTrackerReport | null | undefined
 ): Promise<PatientTrackerReport | null> {
   if (stored) {
-    const { report, focusActionsPatched } = normalizeStoredTrackerReport(stored);
-    if (focusActionsPatched) {
+    const { report, patched } = normalizeStoredTrackerReport(stored);
+    if (patched) {
       await writeTrackerSnapshot(userId, scanId, report);
     }
     return report;

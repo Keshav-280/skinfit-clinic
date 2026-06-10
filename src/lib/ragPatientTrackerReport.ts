@@ -34,6 +34,11 @@ import type {
   PatientTrackerResource,
 } from "@/src/lib/patientTrackerReport.types";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
+import {
+  buildHookSentence,
+  buildPredictionText,
+  scanContextNoteForLlm,
+} from "@/src/lib/trackerReportNarrative";
 import { buildTrackerResources } from "@/src/lib/trackerResourceLinks";
 
 type ScanRow = {
@@ -53,12 +58,6 @@ function ymd(d: Date) {
 function clampPct(n: number) {
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(100, Math.round(n)));
-}
-
-function hookFallback(delta: number) {
-  if (delta >= 4) return "Your skin improved this week — your consistency is paying off.";
-  if (delta <= -4) return "Tough week — here is what likely drove the dip and what to fix first.";
-  return "Steady week — your trend is stable; focus on your highest-impact habit this week.";
 }
 
 function buildRetrievalQuery(params: {
@@ -319,17 +318,14 @@ export async function buildRagPatientTrackerNarrative(input: {
     loadRecentChatUpTo(userId, scanRow.createdAt),
   ]);
 
-  const scanContextNote =
-    scanContextKind === "onboarding_first_scan"
-      ? "This is the patient's FIRST baseline scan — explain starting map, not week-over-week drama."
-      : scanContextKind === "same_week_followup"
-        ? "Same calendar week repeat scan — emphasize capture consistency and short-cycle validation, not full week trend."
-        : "New calendar week follow-up — interpret as week-over-week progression.";
+  const scanContextNote = scanContextNoteForLlm(scanContextKind);
 
   let llmOut = null;
-  const llmOn = isLlmEnabled();
+  const llmOn = isLlmEnabled() && scanContextKind !== "onboarding_first_scan";
   if (llmOn) {
     llmOut = await analyzeTrackerReport({
+      scanContextKind,
+      scanContextNote,
       patient: {
         name: user?.name ?? "Patient",
         skinType: identityAtScan.skinType,
@@ -432,14 +428,17 @@ export async function buildRagPatientTrackerNarrative(input: {
           },
         ];
 
-  const hookSentence =
-    scanContextKind === "onboarding_first_scan"
-      ? "Baseline captured — kAI mapped your starting point across eight parameters using your profile and indexed clinical guidance."
-      : (llmOut?.hookLine ?? hookFallback(weeklyDelta));
+  const hookSentence = buildHookSentence(
+    scanContextKind,
+    llmOut?.hookLine,
+    weeklyDelta
+  );
 
-  const empathyParagraph =
-    llmOut?.empathyParagraph ??
-    "Your trend is still forming. Keep uploads weekly and AM/PM logs complete so kAI can tie behaviour to outcomes with evidence-backed confidence.";
+  const empathyParagraph = buildPredictionText(
+    scanContextKind,
+    llmOut?.empathyParagraph,
+    weeklyDelta
+  );
 
   const causes = mapCauses(
     llmOut?.causes && llmOut.causes.length > 0 ? llmOut.causes : fallbackCauseLines
@@ -462,7 +461,7 @@ export async function buildRagPatientTrackerNarrative(input: {
   );
 
   const insightText = `${insight.title}. ${insight.body}`;
-  const predictionText = `${empathyParagraph} ${scanContextNote}`.trim();
+  const predictionText = empathyParagraph;
 
   return {
     hookSentence,
