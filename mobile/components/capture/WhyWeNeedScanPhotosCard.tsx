@@ -9,6 +9,10 @@ import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
 
+const FACE_W = 100;
+const FACE_H = 120;
+const FACE_SCALE = 1.45;
+
 function FaceDiagram() {
   return (
     <View style={styles.faceDiagramClip}>
@@ -25,16 +29,14 @@ function FaceDiagram() {
 function LabelBlock({
   title,
   description,
-  align,
 }: {
   title: string;
   description: string;
-  align: "left" | "right";
 }) {
   return (
-    <View style={align === "right" ? styles.labelRight : styles.labelLeft}>
-      <Text style={[styles.labelTitle, align === "right" && styles.textRight]}>{title}</Text>
-      <Text style={[styles.labelDesc, align === "right" && styles.textRight]}>{description}</Text>
+    <View style={styles.labelBlock}>
+      <Text style={styles.labelTitle}>{title}</Text>
+      <Text style={styles.labelDesc}>{description}</Text>
     </View>
   );
 }
@@ -51,21 +53,28 @@ export function WhyWeNeedScanPhotosCard({ footer }: Props) {
       <Text style={styles.title}>{title.toUpperCase()}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
 
-      <View style={styles.diagramGrid}>
-        <View style={styles.labelTopLeft}>
-          <LabelBlock {...left[0]} align="right" />
-        </View>
-        <View style={styles.labelTopRight}>
-          <LabelBlock {...right[0]} align="left" />
-        </View>
-        <View style={styles.faceCenter}>
+      <View style={styles.diagramSection}>
+        <View style={styles.faceRow}>
           <FaceDiagram />
         </View>
-        <View style={styles.labelBottomLeft}>
-          <LabelBlock {...left[1]} align="right" />
-        </View>
-        <View style={styles.labelBottomRight}>
-          <LabelBlock {...right[1]} align="left" />
+
+        <View style={styles.labelGrid}>
+          <View style={styles.labelRow}>
+            <View style={styles.labelCell}>
+              <LabelBlock {...left[0]} />
+            </View>
+            <View style={styles.labelCell}>
+              <LabelBlock {...right[0]} />
+            </View>
+          </View>
+          <View style={styles.labelRow}>
+            <View style={styles.labelCell}>
+              <LabelBlock {...left[1]} />
+            </View>
+            <View style={styles.labelCell}>
+              <LabelBlock {...right[1]} />
+            </View>
+          </View>
         </View>
       </View>
 
@@ -97,74 +106,51 @@ const styles = StyleSheet.create({
     color: "#5C6478",
     textAlign: "center",
   },
-  diagramGrid: {
-    marginTop: 12,
-    minHeight: 300,
-    position: "relative",
+  diagramSection: {
+    marginTop: 14,
+    gap: 14,
   },
-  faceCenter: {
-    position: "absolute",
-    left: "50%",
-    top: "50%",
-    marginLeft: -130,
-    marginTop: -130,
-    width: 260,
-    height: 260,
+  faceRow: {
     alignItems: "center",
     justifyContent: "center",
   },
   faceDiagramClip: {
-    width: 260,
-    height: 260,
-    borderRadius: 16,
+    width: FACE_W,
+    height: FACE_H,
+    borderRadius: 14,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
   faceDiagram: {
-    width: 260,
-    height: 260,
-    transform: [{ scale: 1.9 }],
+    width: FACE_W,
+    height: FACE_H,
+    transform: [{ scale: FACE_SCALE }],
   },
-  labelTopLeft: {
-    position: "absolute",
-    left: 0,
-    top: 8,
-    width: "34%",
+  labelGrid: {
+    gap: 12,
   },
-  labelTopRight: {
-    position: "absolute",
-    right: 0,
-    top: 8,
-    width: "34%",
+  labelRow: {
+    flexDirection: "row",
+    gap: 12,
   },
-  labelBottomLeft: {
-    position: "absolute",
-    left: 0,
-    bottom: 8,
-    width: "34%",
+  labelCell: {
+    flex: 1,
+    minWidth: 0,
   },
-  labelBottomRight: {
-    position: "absolute",
-    right: 0,
-    bottom: 8,
-    width: "34%",
+  labelBlock: {
+    gap: 2,
   },
-  labelLeft: { alignItems: "flex-start" },
-  labelRight: { alignItems: "flex-end" },
   labelTitle: {
     fontSize: 11,
     fontWeight: "800",
     color: NAVY,
+    lineHeight: 15,
   },
   labelDesc: {
-    marginTop: 2,
     fontSize: 10,
     lineHeight: 14,
     color: "#5C6478",
-  },
-  textRight: {
-    textAlign: "right",
   },
   footer: {
     marginTop: 16,
