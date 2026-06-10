@@ -8,6 +8,11 @@ import { isReferralSourceId } from "@/src/lib/onboardingReferralSource";
 import { notifyStaffQuestionnaireRedFlags } from "@/src/lib/questionnaireDoctorAlerts";
 import { saveQuestionnaireCompletionMeta } from "@/src/lib/questionnaireCompletion";
 import { clearQuestionnaireDraft } from "@/src/lib/questionnaireDraft";
+import {
+  invalidateUserHomeCache,
+  invalidateUserInsightsCache,
+  invalidateUserProfileCache,
+} from "@/src/lib/infra";
 
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
 const CONCERNS = new Set(["acne", "pigmentation", "ageing", "hair", "general"]);
@@ -346,6 +351,14 @@ export async function POST(req: Request) {
   await clearQuestionnaireDraft(userId);
 
   await finalizeOnboardingUser(userId);
+
+  // Profile GET is cache-aside (5 min); stale onboarding flags after submit
+  // bounce mobile clients between dashboard and onboarding in a loop.
+  await Promise.all([
+    invalidateUserProfileCache(userId),
+    invalidateUserHomeCache(userId),
+    invalidateUserInsightsCache(userId),
+  ]).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

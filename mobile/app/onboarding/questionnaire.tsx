@@ -595,7 +595,7 @@ export default function QuestionnaireScreen() {
     if (patch.referralOther !== undefined) setReferralOther(patch.referralOther);
   }
 
-  async function submit() {
+  async function submit(skippedOverride?: number[]) {
     if (!token) return;
     setBusy(true);
     setErr(null);
@@ -603,7 +603,9 @@ export default function QuestionnaireScreen() {
       await apiJson("/api/onboarding/questionnaire", token, {
         method: "POST",
         body: JSON.stringify(
-          buildOnboardingQuestionnairePayload(formState(), { skippedSteps })
+          buildOnboardingQuestionnairePayload(formState(), {
+            skippedSteps: skippedOverride ?? skippedSteps,
+          })
         ),
       });
       await AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
@@ -612,8 +614,13 @@ export default function QuestionnaireScreen() {
       }).catch(() => {
         /* */
       });
+      // Refresh first, then apply optimistic flags last — a stale cached
+      // profile must never overwrite "complete" or the drawer gate loops
+      // back into onboarding forever.
+      if (token) {
+        await refreshUserFromProfile(token).catch(() => {});
+      }
       await markOnboardingComplete();
-      if (token) await refreshUserFromProfile(token);
       router.replace("/(drawer)" as Href);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not save questionnaire.");
@@ -641,7 +648,9 @@ export default function QuestionnaireScreen() {
 
   function skip() {
     if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
-      void submit();
+      const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
+      setSkippedSteps(nextSkipped);
+      void submit(nextSkipped);
       return;
     }
     const patch = mergeOnboardingStepSkipPatches(activeStep);

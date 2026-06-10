@@ -588,7 +588,7 @@ export function OnboardingQuestionnaireForm() {
     if (patch.referralOther !== undefined) setReferralOther(patch.referralOther);
   }
 
-  async function submit() {
+  async function submit(skippedOverride?: number[]) {
     setBusy(true);
     setErr(null);
     try {
@@ -596,7 +596,9 @@ export function OnboardingQuestionnaireForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          buildOnboardingQuestionnairePayload(formState(), { skippedSteps })
+          buildOnboardingQuestionnairePayload(formState(), {
+            skippedSteps: skippedOverride ?? skippedSteps,
+          })
         ),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -649,7 +651,9 @@ export function OnboardingQuestionnaireForm() {
 
   function skip() {
     if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
-      void submit();
+      const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
+      setSkippedSteps(nextSkipped);
+      void submit(nextSkipped);
       return;
     }
     const patch = mergeOnboardingStepSkipPatches(activeStep);

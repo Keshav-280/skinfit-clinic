@@ -98,7 +98,9 @@ export default function PatientProgressTracker({
         {milestones.map((step, index) => {
           const done = step.done;
           const active = !done && index === activeIndex;
-          const href = !done ? mobileMilestoneHref(step.id) : null;
+          // Server href is null when the step is locked (e.g. questionnaire
+          // before the scan) — mirror web gating, but use native routes.
+          const href = !done && step.href ? mobileMilestoneHref(step.id) : null;
           const labelStyle = done ? s.labelDone : active ? s.labelActive : s.labelPending;
           const label = MOBILE_SHORT_LABELS[step.id] ?? step.label;
           const prevDone = index > 0 ? milestones[index - 1]?.done : false;
