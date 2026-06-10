@@ -17,6 +17,7 @@ import { AgeDropdown } from "@/components/onboarding/AgeDropdown";
 import { SKINFIT_GRADIENT } from "@/lib/skinfitTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiJson } from "@/lib/api";
+import { setOnboardingDashboardSkip } from "@/lib/onboardingDashboardSkip";
 import {
   applyOnboardingQuestionnaireDraft,
   buildOnboardingQuestionnaireDraft,
@@ -154,7 +155,7 @@ export default function QuestionnaireScreen() {
   const { entry: entryParam } = useLocalSearchParams<{ entry?: string }>();
   const entryMode = parseQuestionnaireEntryMode(entryParam);
   const insets = useSafeAreaInsets();
-  const { token, markOnboardingComplete, refreshUserFromProfile } = useAuth();
+  const { token, user, markOnboardingComplete, refreshUserFromProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -695,6 +696,9 @@ export default function QuestionnaireScreen() {
 
   function skipToDashboard() {
     persistDraft();
+    // Remember the explicit choice so the drawer gate lets the user in even
+    // without a baseline scan (same as web's open /dashboard).
+    if (user?.id) void setOnboardingDashboardSkip(user.id);
     router.replace("/(drawer)" as Href);
   }
 

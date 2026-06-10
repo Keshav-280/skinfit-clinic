@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ScanJobReadyNotifier } from "@/components/ScanJobReadyNotifier";
 import { useAuth } from "@/contexts/AuthContext";
+import { getOnboardingDashboardSkip } from "@/lib/onboardingDashboardSkip";
 
 function iconForRoute(name: string, color: string, size: number) {
   const map: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -139,6 +140,23 @@ function DockRestoreButton({ onShow }: { onShow: () => void }) {
 export default function DrawerLayout() {
   const { ready, token, user } = useAuth();
   const pathname = usePathname();
+  // Explicit "Skip to dashboard" during onboarding — web allows the dashboard
+  // without a baseline scan, so mobile honors the same choice.
+  const [skippedOnboarding, setSkippedOnboarding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (!user?.id) {
+      setSkippedOnboarding(false);
+      return;
+    }
+    void getOnboardingDashboardSkip(user.id).then((v) => {
+      if (alive) setSkippedOnboarding(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
   const showGlobalDock = true;
   const [dockCollapsed, setDockCollapsed] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -170,7 +188,7 @@ export default function DrawerLayout() {
     };
   }, []);
 
-  if (!ready) {
+  if (!ready || skippedOnboarding == null) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
@@ -183,10 +201,11 @@ export default function DrawerLayout() {
   }
 
   const canAccess =
-    user?.canAccessDashboard ??
-    user?.baselineScanPending ??
-    user?.hasBaselineScan ??
-    user?.onboardingComplete !== false;
+    skippedOnboarding ||
+    (user?.canAccessDashboard ??
+      user?.baselineScanPending ??
+      user?.hasBaselineScan ??
+      user?.onboardingComplete !== false);
   if (!canAccess) {
     return <Redirect href={"/onboarding/kai-intro" as Href} />;
   }

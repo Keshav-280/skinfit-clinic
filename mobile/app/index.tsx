@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { getOnboardingDashboardSkip } from "@/lib/onboardingDashboardSkip";
 
 export default function Index() {
   const { ready, token, user, refreshUserFromProfile } = useAuth();
   const [syncing, setSyncing] = useState(false);
+  const [skippedOnboarding, setSkippedOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!ready || !token) return;
@@ -21,7 +23,21 @@ export default function Index() {
     };
   }, [ready, token, refreshUserFromProfile]);
 
-  if (!ready || (token && syncing)) {
+  useEffect(() => {
+    let alive = true;
+    if (!user?.id) {
+      setSkippedOnboarding(false);
+      return;
+    }
+    void getOnboardingDashboardSkip(user.id).then((v) => {
+      if (alive) setSkippedOnboarding(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
+
+  if (!ready || (token && (syncing || skippedOnboarding == null))) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
@@ -31,10 +47,11 @@ export default function Index() {
 
   if (token) {
     const canAccess =
-      user?.canAccessDashboard ??
-      user?.baselineScanPending ??
-      user?.hasBaselineScan ??
-      user?.onboardingComplete !== false;
+      skippedOnboarding ||
+      (user?.canAccessDashboard ??
+        user?.baselineScanPending ??
+        user?.hasBaselineScan ??
+        user?.onboardingComplete !== false);
     if (!canAccess) {
       return <Redirect href={"/onboarding/kai-intro" as Href} />;
     }
