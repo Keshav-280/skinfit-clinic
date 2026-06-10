@@ -19,12 +19,16 @@ export type ProgressMilestone = {
   href: string | null;
 };
 
+export type JournalTrackerId = "sleep" | "hydration" | "stress";
+
 export type PatientProgressSnapshot = {
   milestones: ProgressMilestone[];
   completedCount: number;
   allComplete: boolean;
   questionnaireUnlocks: string[];
   clinicVisitUnlocks: string[];
+  /** Trackers still missing for the daily journal milestone, in suggested order. */
+  journalPendingTrackers: JournalTrackerId[];
 };
 
 export const QUESTIONNAIRE_UNLOCKED_FEATURES = [
@@ -51,10 +55,10 @@ const MILESTONE_HREFS: Record<ProgressMilestoneId, string | null> = {
   clinic_visit: "/dashboard/schedules",
 };
 
-/** Daily journal = sleep, hydration, and stress trackers each logged at least once. */
-export async function hasDailyJournalTrackersComplete(
+/** Trackers still missing for the daily journal milestone (sleep, hydration, stress). */
+export async function getPendingJournalTrackers(
   userId: string
-): Promise<boolean> {
+): Promise<JournalTrackerId[]> {
   const rows = await db
     .select({
       sleepHours: dailyLogs.sleepHours,
@@ -88,21 +92,42 @@ export async function hasDailyJournalTrackersComplete(
     }
   }
 
-  return hasSleep && hasHydration && hasStress;
+  const pending: JournalTrackerId[] = [];
+  if (!hasSleep) pending.push("sleep");
+  if (!hasHydration) pending.push("hydration");
+  if (!hasStress) pending.push("stress");
+  return pending;
 }
+
+/** Daily journal = sleep, hydration, and stress trackers each logged at least once. */
+export async function hasDailyJournalTrackersComplete(
+  userId: string
+): Promise<boolean> {
+  return (await getPendingJournalTrackers(userId)).length === 0;
+}
+
+const JOURNAL_TRACKER_HREFS: Record<JournalTrackerId, string> = {
+  sleep: "/dashboard/sleep-tracker",
+  hydration: "/dashboard/hydration-tracker",
+  stress: "/dashboard/stress-tracker",
+};
 
 export async function getPatientProgressSnapshot(
   userId: string
 ): Promise<PatientProgressSnapshot> {
-  const [access, clinicVisited, hasDailyJournal, hasQuestionnaire] =
+  const [access, clinicVisited, journalPendingTrackers, hasQuestionnaire] =
     await Promise.all([
       getOnboardingAccessForUser(userId),
       isPatientClinicVisited(userId),
-      hasDailyJournalTrackersComplete(userId),
+      getPendingJournalTrackers(userId),
       isQuestionnaireMilestoneComplete(userId),
     ]);
   const hasOnboardingScan =
     access.hasBaselineScan || access.baselineScanPending;
+  const hasDailyJournal = journalPendingTrackers.length === 0;
+  const journalHref = hasDailyJournal
+    ? MILESTONE_HREFS.daily_journal
+    : JOURNAL_TRACKER_HREFS[journalPendingTrackers[0]!];
 
   const milestones: ProgressMilestone[] = [
     {
@@ -127,7 +152,7 @@ export async function getPatientProgressSnapshot(
       id: "daily_journal",
       label: "Complete your first daily journal",
       done: hasDailyJournal,
-      href: MILESTONE_HREFS.daily_journal,
+      href: journalHref,
     },
     {
       id: "clinic_visit",
@@ -148,5 +173,6 @@ export async function getPatientProgressSnapshot(
       ? []
       : [...QUESTIONNAIRE_UNLOCKED_FEATURES],
     clinicVisitUnlocks: clinicVisited ? [] : [...CLINIC_VISIT_UNLOCKED_FEATURES],
+    journalPendingTrackers,
   };
 }

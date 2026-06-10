@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { NAVY, TEXT_MUTED } from "@/components/profile/theme";
 import type {
+  JournalTrackerId,
   PatientProgressSnapshot,
   ProgressMilestone,
   ProgressMilestoneId,
@@ -22,7 +23,16 @@ const MOBILE_SHORT_LABELS: Record<ProgressMilestoneId, string> = {
   clinic_visit: "Clinic",
 };
 
-function mobileMilestoneHref(id: ProgressMilestoneId): Href | null {
+const JOURNAL_TRACKER_ROUTES: Record<JournalTrackerId, Href> = {
+  sleep: "/(drawer)/sleep-tracker" as Href,
+  hydration: "/(drawer)/hydration-tracker" as Href,
+  stress: "/(drawer)/stress-tracker" as Href,
+};
+
+function mobileMilestoneHref(
+  id: ProgressMilestoneId,
+  journalPendingTrackers: JournalTrackerId[]
+): Href | null {
   switch (id) {
     case "account":
       return null;
@@ -30,8 +40,10 @@ function mobileMilestoneHref(id: ProgressMilestoneId): Href | null {
       return "/onboarding/capture-intro";
     case "questionnaire":
       return "/onboarding/questionnaire?entry=resume";
-    case "daily_journal":
-      return "/(drawer)";
+    case "daily_journal": {
+      const pending = journalPendingTrackers[0];
+      return pending ? JOURNAL_TRACKER_ROUTES[pending] : ("/(drawer)" as Href);
+    }
     case "clinic_visit":
       return "/(drawer)/schedules";
     default:
@@ -86,7 +98,9 @@ export default function PatientProgressTracker({
   milestones,
   allComplete,
   questionnaireUnlocks,
+  journalPendingTrackers,
 }: Props) {
+  const pendingJournal = journalPendingTrackers ?? [];
   if (allComplete) return null;
 
   const activeIndex = milestones.findIndex((m) => !m.done);
@@ -100,7 +114,10 @@ export default function PatientProgressTracker({
           const active = !done && index === activeIndex;
           // Server href is null when the step is locked (e.g. questionnaire
           // before the scan) — mirror web gating, but use native routes.
-          const href = !done && step.href ? mobileMilestoneHref(step.id) : null;
+          const href =
+            !done && step.href
+              ? mobileMilestoneHref(step.id, pendingJournal)
+              : null;
           const labelStyle = done ? s.labelDone : active ? s.labelActive : s.labelPending;
           const label = MOBILE_SHORT_LABELS[step.id] ?? step.label;
           const prevDone = index > 0 ? milestones[index - 1]?.done : false;
