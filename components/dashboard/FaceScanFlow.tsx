@@ -551,10 +551,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setCaptureZoom(value);
   }, []);
 
-  const flipCamera = useCallback(() => {
-    void startCamera(facingMode === "user" ? "environment" : "user");
-  }, [facingMode, startCamera]);
-
   const captureFromCamera = useCallback(() => {
     const video = videoRef.current;
     if (!video || !streamRef.current || pendingCapture) return;
@@ -878,7 +874,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 reviewingCapture={reviewingCapture}
                 shutterDisabled={slotsComplete}
                 onShutter={captureFromCamera}
-                onFlip={flipCamera}
                 onRetake={retakePendingCapture}
                 onConfirm={confirmPendingCapture}
                 isLastStep={captureCount + 1 >= N_CAPTURES}

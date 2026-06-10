@@ -224,7 +224,6 @@ export function WebCaptureShutterControls({
   shooting,
   shutterDisabled,
   onShutter,
-  onFlip,
   onRetake,
   onConfirm,
   isLastStep,
@@ -233,7 +232,6 @@ export function WebCaptureShutterControls({
   shooting?: boolean;
   shutterDisabled?: boolean;
   onShutter: () => void;
-  onFlip: () => void;
   onRetake: () => void;
   onConfirm: () => void;
   isLastStep: boolean;
@@ -262,29 +260,16 @@ export function WebCaptureShutterControls({
   }
 
   return (
-    <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-      <button
-        type="button"
-        onClick={onShutter}
-        disabled={shutterDisabled || shooting}
-        className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] font-extrabold text-white shadow-md transition enabled:hover:opacity-95 disabled:opacity-45 sm:gap-1.5 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
-        style={{ backgroundColor: ACCENT }}
-        aria-label="Capture photo"
-      >
-        <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-        Capture
-      </button>
-      <button
-        type="button"
-        onClick={onFlip}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#2C3E6B]/12 bg-white text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5 sm:h-10 sm:w-10 sm:rounded-xl"
-        aria-label="Switch camera"
-      >
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-          <path d="M7 7h4l2-2h5v12h-5l-2-2H7V7z" strokeLinejoin="round" />
-          <path d="M5 9l-2 2 2 2M19 9l2 2-2 2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onShutter}
+      disabled={shutterDisabled || shooting}
+      className="flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-extrabold text-white shadow-md transition enabled:hover:opacity-95 disabled:opacity-45 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
+      style={{ backgroundColor: ACCENT }}
+      aria-label="Capture photo"
+    >
+      <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+      Capture
+    </button>
   );
 }
