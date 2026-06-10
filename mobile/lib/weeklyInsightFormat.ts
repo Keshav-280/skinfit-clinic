@@ -56,6 +56,15 @@ export function friendlyObservationTitle(source?: ObservationSource): string {
   }
 }
 
+export function formatInsightUnlockDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function trendSummary(delta: number): { label: string; tone: "up" | "down" | "flat" } {
   if (delta >= 3) return { label: "Improving", tone: "up" };
   if (delta <= -3) return { label: "Needs attention", tone: "down" };

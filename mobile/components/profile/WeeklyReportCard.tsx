@@ -10,6 +10,7 @@ import {
   BORDER_LIGHT,
 } from "@/components/profile/theme";
 import {
+  formatInsightUnlockDate,
   friendlyObservationTitle,
   parsePriorityAction,
   softenPatientText,
@@ -39,12 +40,7 @@ type Props = {
 };
 
 function formatInsightDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "7 days after your first scan";
-  return d.toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-  });
+  return formatInsightUnlockDate(iso) || "7 days after your first scan";
 }
 
 function normalizeObservations(
@@ -104,7 +100,9 @@ export default function WeeklyReportCard({
           </View>
           <Text style={s.lockedText}>Your first weekly summary unlocks around</Text>
           <Text style={s.lockedDate}>
-            {nextInsightAt ? formatInsightDate(nextInsightAt) : "your first week milestone"}
+            {nextInsightAt
+              ? formatInsightDate(nextInsightAt)
+              : "7 days after your first scan"}
           </Text>
           <Text style={s.lockedHint}>
             Keep scanning and logging daily — we&apos;ll build your week-one recap.

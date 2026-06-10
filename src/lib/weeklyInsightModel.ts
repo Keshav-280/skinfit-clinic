@@ -4,6 +4,11 @@ export type ObservationRow = {
   source?: "baseline_scan" | "daily_logs" | "scan_trend" | "weekly_report";
 };
 
+import {
+  weeklyInsightScheduleFromFirstScanYmd,
+  type WeeklyInsightScheduleSnapshot,
+} from "@/src/lib/patientInsightSchedule";
+
 export type SkinProfileForWeekly = {
   keyObservations?: {
     modeLabel: string;
@@ -23,16 +28,17 @@ export type SkinProfileForWeekly = {
   actionsUnavailable?: boolean;
   scanCount?: number;
   kaiInsightsEnabled?: boolean;
-  weeklyInsight?: {
-    locked: boolean;
-    nextInsightAt: string | null;
-  };
+  weeklyInsight?: WeeklyInsightScheduleSnapshot;
 };
 
 export type WeeklyHomeSnapshot = {
   kaiSkinScore: number;
   weeklyDeltaScore: number;
   kaiInsightsEnabled?: boolean;
+  /** Available immediately from `/api/patient/home` — do not wait for skin-profile LLM. */
+  weeklyInsight?: WeeklyInsightScheduleSnapshot;
+  /** Oldest scan in home payload — fallback to derive unlock date client-side. */
+  firstScanAt?: string | null;
 };
 
 export type WeeklyInsightViewModel = {
@@ -129,8 +135,20 @@ export function buildWeeklyInsightViewModel(
   const scanCount = skinExtra?.scanCount ?? (hasRealScoreData ? 1 : 0);
   const showTrend = hasRealScoreData && scanCount >= 2;
 
-  const weeklyLocked = skinExtra?.weeklyInsight?.locked ?? true;
-  const weeklyNextAt = skinExtra?.weeklyInsight?.nextInsightAt ?? null;
+  const skinWeekly = skinExtra?.weeklyInsight;
+  const homeWeekly = home?.weeklyInsight;
+  const firstScanYmd =
+    skinWeekly?.firstScanYmd ??
+    homeWeekly?.firstScanYmd ??
+    (home?.firstScanAt ? home.firstScanAt.slice(0, 10) : null);
+  const derivedWeekly = weeklyInsightScheduleFromFirstScanYmd(firstScanYmd);
+
+  const weeklyLocked =
+    skinWeekly?.locked ?? homeWeekly?.locked ?? derivedWeekly.locked;
+  const weeklyNextAt =
+    skinWeekly?.nextInsightAt ??
+    homeWeekly?.nextInsightAt ??
+    derivedWeekly.nextInsightAt;
 
   const hasWeeklyContent =
     kaiInsightsEnabled &&

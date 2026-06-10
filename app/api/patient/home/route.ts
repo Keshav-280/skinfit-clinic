@@ -22,6 +22,10 @@ import { getPatientProgressSnapshot } from "@/src/lib/patientProgressMilestones"
 import { cacheAside, CacheKeys } from "@/src/lib/infra";
 import { coerceRoutinePlanList } from "@/src/lib/routine";
 import { computeHomeWeeklyDeltaScore } from "@/src/lib/patientHomeWeeklyDelta";
+import {
+  computePatientInsightSchedule,
+  getPatientFirstScanAt,
+} from "@/src/lib/patientInsightSchedule";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -126,6 +130,7 @@ async function buildPatientHomePayload(
     recentLogs,
     streakLogs,
     doctorSection,
+    firstScanAt,
   ] = await Promise.all([
     db.query.skinScans.findMany({
       where: eq(skinScans.userId, userId),
@@ -182,7 +187,10 @@ async function buildPatientHomePayload(
         )
       ),
     getPatientDoctorSection(userId),
+    getPatientFirstScanAt(userId),
   ]);
+
+  const weeklyInsightSchedule = computePatientInsightSchedule(firstScanAt);
 
   const skinScanHistory = skinScanRows.map((r) => ({
     id: r.id,
@@ -307,6 +315,12 @@ async function buildPatientHomePayload(
     routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
     routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",
     kaiInsightsEnabled: isKaiInsightsEnabled(),
+    weeklyInsight: {
+      locked: weeklyInsightSchedule.weeklyLocked,
+      nextInsightAt: weeklyInsightSchedule.nextWeeklyInsightAt,
+      firstScanYmd: weeklyInsightSchedule.firstScanYmd,
+    },
+    firstScanAt: firstScanAt?.toISOString() ?? null,
     userName: userRow.name ?? "Patient",
     feedbackEntries,
     archivedFeedbackEntries,

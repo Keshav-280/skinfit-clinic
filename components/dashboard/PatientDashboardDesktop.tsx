@@ -135,6 +135,12 @@ type HomeData = {
   homeDateYmd?: string;
   userName?: string;
   kaiInsightsEnabled?: boolean;
+  weeklyInsight?: {
+    locked: boolean;
+    nextInsightAt: string | null;
+    firstScanYmd: string | null;
+  };
+  firstScanAt?: string | null;
 };
 
 /* ─── Radar Chart ─── */
@@ -717,6 +723,11 @@ export function PatientDashboardDesktop() {
                 kaiSkinScore: data.kaiSkinScore,
                 weeklyDeltaScore: data.weeklyDeltaScore,
                 kaiInsightsEnabled: data.kaiInsightsEnabled,
+                weeklyInsight: data.weeklyInsight,
+                firstScanAt:
+                  data.firstScanAt ??
+                  data.skinScanHistory[data.skinScanHistory.length - 1]?.createdAt ??
+                  null,
               }}
             />
           </div>

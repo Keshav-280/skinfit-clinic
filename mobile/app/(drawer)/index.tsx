@@ -156,6 +156,12 @@ type HomeData = {
   routineAmReminderHm?: string;
   routinePmReminderHm?: string;
   kaiInsightsEnabled?: boolean;
+  weeklyInsight?: {
+    locked: boolean;
+    nextInsightAt: string | null;
+    firstScanYmd: string | null;
+  };
+  firstScanAt?: string | null;
   feedbackEntries?: Array<{
     id: string;
     feedbackText: string | null;
@@ -1048,6 +1054,11 @@ export default function DashboardScreen() {
                 kaiSkinScore: data.kaiSkinScore,
                 weeklyDeltaScore: data.weeklyDeltaScore,
                 kaiInsightsEnabled: data.kaiInsightsEnabled,
+                weeklyInsight: data.weeklyInsight,
+                firstScanAt:
+                  data.firstScanAt ??
+                  data.skinScanHistory[data.skinScanHistory.length - 1]?.createdAt ??
+                  null,
               }
             : null
         }

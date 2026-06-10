@@ -15,6 +15,7 @@ import {
 import { DASHBOARD_SECTION_CARD } from "@/components/dashboard/DashboardSectionHeader";
 import type { ObservationRow } from "@/src/lib/weeklyInsightModel";
 import {
+  formatInsightUnlockDate,
   friendlyObservationTitle,
   parsePriorityAction,
   softenPatientText,
@@ -39,12 +40,7 @@ type Props = {
 };
 
 function formatInsightDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "7 days after your first scan";
-  return d.toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-  });
+  return formatInsightUnlockDate(iso) || "7 days after your first scan";
 }
 
 function observationAccent(source: ObservationRow["source"]) {
@@ -98,7 +94,9 @@ export function WeeklyReportCard({
             Your first weekly summary unlocks around
           </p>
           <p className="mt-1 text-[15px] font-bold text-[#2D3E6B]">
-            {nextInsightAt ? formatInsightDate(nextInsightAt) : "your first week milestone"}
+            {nextInsightAt
+              ? formatInsightDate(nextInsightAt)
+              : "7 days after your first scan"}
           </p>
           <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-[#64748B]">
             Keep scanning and logging daily — we&apos;ll build your week-one recap.
