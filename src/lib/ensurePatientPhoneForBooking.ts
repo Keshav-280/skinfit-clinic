@@ -53,7 +53,6 @@ export async function ensurePatientPhoneForBooking(input: {
       .set({
         phone,
         phoneCountryCode,
-        updatedAt: new Date(),
       })
       .where(eq(users.id, input.userId));
     await invalidateUserProfileCache(input.userId);
