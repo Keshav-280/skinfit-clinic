@@ -18,7 +18,6 @@ import {
 import {
   buildOnboardingQuestionnairePayload,
   expandSkippedStepsForSkip,
-  mergeOnboardingStepSkipPatches,
   ONBOARDING_QUESTIONNAIRE_LAST_STEP,
   OVERALL_SKIN_HEALTH_OPTIONS,
   prepareQuestionnaireBack,
@@ -660,19 +659,15 @@ export function OnboardingQuestionnaireForm() {
       void submit(nextSkipped);
       return;
     }
-    const patch = mergeOnboardingStepSkipPatches(activeStep);
     const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
     setSkippedSteps(nextSkipped);
-    applySkipPatch(patch);
-    const effectivePriorTx =
-      patch.priorTx === "yes" || patch.priorTx === "no" ? patch.priorTx : priorTx;
     const nextStep = nextOnboardingQuestionnaireStepAfterSkip(
       activeStep,
-      effectivePriorTx,
-      patch
+      priorTx,
+      {}
     );
     setStep(nextStep);
-    persistDraft(nextStep, patch, nextSkipped);
+    persistDraft(nextStep, {}, nextSkipped);
   }
 
   function back() {
@@ -713,14 +708,16 @@ export function OnboardingQuestionnaireForm() {
         <p className="text-xs font-bold text-skinfit-navy">
           Step {displayStep} / {totalSteps}
         </p>
-        <button
-          type="button"
-          onClick={skipToDashboard}
-          disabled={busy}
-          className="shrink-0 text-sm font-semibold text-[#2C3E6B]/80 underline-offset-2 transition hover:text-[#2C3E6B] hover:underline disabled:opacity-50"
-        >
-          Skip to dashboard
-        </button>
+        {activeStep === 0 ? (
+          <button
+            type="button"
+            onClick={skipToDashboard}
+            disabled={busy}
+            className="shrink-0 text-sm font-semibold text-[#2C3E6B]/80 underline-offset-2 transition hover:text-[#2C3E6B] hover:underline disabled:opacity-50"
+          >
+            Skip to dashboard
+          </button>
+        ) : null}
       </div>
       {err ? (
         <div

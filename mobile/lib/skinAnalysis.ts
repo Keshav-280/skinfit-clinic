@@ -96,7 +96,7 @@ export type SkinParamMetricRow = SkinParamRow & {
 
 function classifyParam(v: number): { color: string; status: string } {
   if (v >= 75) return { color: "#16a34a", status: "Mild" };
-  if (v >= 50) return { color: "#F59E0B", status: "Moderate" };
+  if (v >= 40) return { color: "#F59E0B", status: "Moderate" };
   return { color: "#DC2626", status: "Needs Care" };
 }
 

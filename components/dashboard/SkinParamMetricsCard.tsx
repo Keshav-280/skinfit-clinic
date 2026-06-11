@@ -71,6 +71,6 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
 
 export function classifySkinParamMetric(v: number) {
   if (v >= 75) return { color: PATIENT_GREEN, sublabel: "Mild" };
-  if (v >= 50) return { color: "#F59E0B", sublabel: "Moderate" };
+  if (v >= 40) return { color: "#F59E0B", sublabel: "Moderate" };
   return { color: "#DC2626", sublabel: "Needs Care" };
 }

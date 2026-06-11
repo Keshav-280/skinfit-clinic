@@ -30,7 +30,6 @@ import { parseOnboardingAge } from "../../../src/lib/onboardingAgeOptions";
 import {
   buildOnboardingQuestionnairePayload,
   expandSkippedStepsForSkip,
-  mergeOnboardingStepSkipPatches,
   ONBOARDING_QUESTIONNAIRE_LAST_STEP,
   OVERALL_SKIN_HEALTH_OPTIONS,
   prepareQuestionnaireBack,
@@ -659,19 +658,15 @@ export default function QuestionnaireScreen() {
       void submit(nextSkipped);
       return;
     }
-    const patch = mergeOnboardingStepSkipPatches(activeStep);
     const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
     setSkippedSteps(nextSkipped);
-    applySkipPatch(patch);
-    const effectivePriorTx =
-      patch.priorTx === "yes" || patch.priorTx === "no" ? patch.priorTx : priorTx;
     const nextStep = nextOnboardingQuestionnaireStepAfterSkip(
       activeStep,
-      effectivePriorTx,
-      patch
+      priorTx,
+      {}
     );
     setStep(nextStep);
-    persistDraft(nextStep, patch, nextSkipped);
+    persistDraft(nextStep, {}, nextSkipped);
   }
 
   function back() {
@@ -715,9 +710,11 @@ export default function QuestionnaireScreen() {
         <Text style={styles.progress}>
           Step {displayStep} / {totalSteps}
         </Text>
-        <Pressable onPress={skipToDashboard} disabled={busy} hitSlop={8}>
-          <Text style={styles.skipDashboardText}>Skip to dashboard</Text>
-        </Pressable>
+        {activeStep === 0 ? (
+          <Pressable onPress={skipToDashboard} disabled={busy} hitSlop={8}>
+            <Text style={styles.skipDashboardText}>Skip to dashboard</Text>
+          </Pressable>
+        ) : null}
       </View>
       {err ? <Text style={styles.err}>{err}</Text> : null}
 

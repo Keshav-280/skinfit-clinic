@@ -40,7 +40,7 @@ function extractAllParams(scanHistory: { analysisResults: unknown; createdAt: st
 
 function statusInfo(value: number) {
   if (value >= 75) return { label: "Mild", color: "#16a34a", bg: "bg-green-100", text: "text-green-700" };
-  if (value >= 50) return { label: "Moderate", color: "#d97706", bg: "bg-amber-100", text: "text-amber-700" };
+  if (value >= 40) return { label: "Moderate", color: "#d97706", bg: "bg-amber-100", text: "text-amber-700" };
   return { label: "Needs Care", color: "#dc2626", bg: "bg-red-100", text: "text-red-700" };
 }
 
