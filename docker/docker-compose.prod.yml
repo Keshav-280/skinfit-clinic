@@ -27,8 +27,8 @@ services:
       - "443:443"
     volumes:
       - ../nginx/conf.d:/etc/nginx/conf.d:ro
-      # Uncomment after certbot (see nginx/README.md):
-      # - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Host certs from certbot (required when skinfit-ssl.conf is enabled)
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - web
     # Optional: run 2+ app replicas — nginx load-balances via Docker DNS (see nginx/README.md)
