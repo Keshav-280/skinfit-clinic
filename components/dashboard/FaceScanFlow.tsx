@@ -554,6 +554,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const captureFromCamera = useCallback(() => {
     const video = videoRef.current;
     if (!video || !streamRef.current || pendingCapture) return;
+    if (!guidance?.readyToCapture) return;
     if (cameraStepIndex >= N_CAPTURES) return;
     const w = video.videoWidth;
     const h = video.videoHeight;
@@ -646,7 +647,16 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       "image/jpeg",
       0.82
     );
-  }, [captureZoom, brightness, contrast, facingMode, pendingCapture, clearPendingCapture, cameraStepIndex]);
+  }, [
+    captureZoom,
+    brightness,
+    contrast,
+    facingMode,
+    pendingCapture,
+    clearPendingCapture,
+    cameraStepIndex,
+    guidance?.readyToCapture,
+  ]);
 
   const confirmPendingCapture = useCallback(() => {
     if (!pendingCapture) return;
@@ -883,7 +893,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             controls={
               <WebCaptureShutterControls
                 reviewingCapture={reviewingCapture}
-                shutterDisabled={slotsComplete}
+                shutterDisabled={slotsComplete || !guidance?.readyToCapture}
                 onShutter={captureFromCamera}
                 onRetake={retakePendingCapture}
                 onConfirm={confirmPendingCapture}

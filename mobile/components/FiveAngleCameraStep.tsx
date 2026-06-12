@@ -128,6 +128,7 @@ export function FiveAngleCameraStep({
   const takeShot = useCallback(async () => {
     if (!step) return;
     if (!cameraRef.current || !cameraReady || shooting) return;
+    if (!guidance?.readyToCapture) return;
     setShooting(true);
     try {
       const pic = await lockedTakePictureAsync(cameraRef.current, {
@@ -167,6 +168,7 @@ export function FiveAngleCameraStep({
     cameraAdjust.brightness,
     cameraAdjust.exposure,
     cameraAdjust.zoom,
+    guidance?.readyToCapture,
   ]);
 
   useEffect(() => {
@@ -249,7 +251,9 @@ export function FiveAngleCameraStep({
     );
   }
 
-  const isDisabled = busy || shooting || !cameraReady || reviewingCapture;
+  const guidanceReady = guidance?.readyToCapture ?? false;
+  const isDisabled =
+    busy || shooting || !cameraReady || reviewingCapture || !guidanceReady;
   const previewOverlay = previewOverlayOpacity(
     cameraAdjust.brightness,
     cameraAdjust.exposure
