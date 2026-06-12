@@ -440,7 +440,7 @@ export function buildScanPayloadFromCentreAndSmiling(
   const wrinkleMaskDataUri = cleanMaskDataUri(smiling.wrinkleMaskDataUri);
 
   /** Stored on scan row: clinical merge + smiling wrinkle diagnostics from API. */
-  const modelFeatureScoresForStorage: Record<string, number | null> = {
+  const modelFeatureScoresForStorage: ModelFeatureScores = {
     ...mergedMfs,
     ...(wrDiag.wrinkle_cls_severity !== undefined
       ? { wrinkle_cls_severity: wrDiag.wrinkle_cls_severity }
