@@ -11,6 +11,15 @@ import type {
   KaiParamInferenceRow,
 } from "@/src/lib/faceAnalysisInferenceV2";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import {
+  ageAdjustedSaggingClarity,
+  applyCompositeSaggingVolume,
+  saggingVolumeCompositeExtras,
+} from "@/src/lib/saggingVolumeComposite";
+
+export type ScanPayloadOptions = {
+  patientAge?: number | null;
+};
 
 export type ModelFeatureScores = {
   active_acne?: number | null;
@@ -22,6 +31,8 @@ export type ModelFeatureScores = {
   wrinkle_seg_severity?: number | null;
   wrinkle_mask_severity?: number | null;
   sagging_volume?: number | null;
+  /** Raw ISGD chubby/double-chin contour before composite blend (1–5). */
+  sagging_contour_severity?: number | null;
   under_eye?: number | null;
   hair_health?: number | null;
   pigmentation_model?: number | null;
@@ -46,6 +57,7 @@ export function parseModelFeatureScores(
     skin_quality: num(raw.skin_quality) ?? null,
     wrinkle_severity: num(raw.wrinkle_severity) ?? null,
     sagging_volume: num(raw.sagging_volume) ?? null,
+    sagging_contour_severity: num(raw.sagging_contour_severity) ?? null,
     under_eye: num(raw.under_eye) ?? null,
     hair_health: num(raw.hair_health) ?? null,
     pigmentation_model:
@@ -74,7 +86,10 @@ export function clinicalScoresFromModel(
 }
 
 /** Eight dashboard dimensions (0–100) derived only from model severities. */
-export function modelEightClarityScores(mfs: ModelFeatureScores): {
+export function modelEightClarityScores(
+  mfs: ModelFeatureScores,
+  patientAge?: number | null
+): {
   activeAcne?: number;
   acneScar?: number;
   skinQuality?: number;
@@ -86,12 +101,16 @@ export function modelEightClarityScores(mfs: ModelFeatureScores): {
 } {
   const c = (s: number | null | undefined) =>
     typeof s === "number" ? severityToClarity(s) : undefined;
+  const sagging =
+    typeof mfs.sagging_volume === "number"
+      ? ageAdjustedSaggingClarity(mfs.sagging_volume, patientAge)
+      : undefined;
   return {
     activeAcne: c(mfs.active_acne),
     acneScar: c(mfs.acne_scars ?? undefined),
     skinQuality: c(mfs.skin_quality),
     wrinkles: c(mfs.wrinkle_severity),
-    saggingVolume: c(mfs.sagging_volume),
+    saggingVolume: sagging,
     underEye: c(mfs.under_eye),
     hairHealth: c(mfs.hair_health),
     pigmentation:
@@ -119,7 +138,8 @@ function aiRow(value: number, extras?: Record<string, unknown>): KaiRow {
 export function enrichKaiParamsFromModel(
   params: Record<string, KaiParamInferenceRow>,
   mfs: ModelFeatureScores,
-  wrExtras?: { dynamic_wrinkle_proxy?: number; static_wrinkle_proxy?: number }
+  wrExtras?: { dynamic_wrinkle_proxy?: number; static_wrinkle_proxy?: number },
+  patientAge?: number | null
 ): Record<string, KaiParamInferenceRow> {
   const out = { ...params };
   const set = (key: string, row: KaiRow) => {
@@ -135,7 +155,7 @@ export function enrichKaiParamsFromModel(
       : undefined;
   const sagging =
     typeof mfs.sagging_volume === "number"
-      ? severityToClarity(mfs.sagging_volume)
+      ? ageAdjustedSaggingClarity(mfs.sagging_volume, patientAge)
       : undefined;
   const skinQ =
     typeof mfs.skin_quality === "number" ? severityToClarity(mfs.skin_quality) : undefined;
@@ -211,7 +231,8 @@ function isPlaceholderSeverity(s: number | null | undefined): boolean {
 
 /** kAI param rows from raw 1–5 severities (same mapping as Python `/analyze`). */
 export function buildKaiParamsFromModelSeverities(
-  mfs: ModelFeatureScores
+  mfs: ModelFeatureScores,
+  patientAge?: number | null
 ): Record<string, KaiParamInferenceRow> {
   const acne100 =
     typeof mfs.active_acne === "number" ? severityToClarity(mfs.active_acne) : 70;
@@ -222,7 +243,9 @@ export function buildKaiParamsFromModelSeverities(
   const skinQ100 =
     typeof mfs.skin_quality === "number" ? severityToClarity(mfs.skin_quality) : 70;
   const sagging100 =
-    typeof mfs.sagging_volume === "number" ? severityToClarity(mfs.sagging_volume) : 70;
+    typeof mfs.sagging_volume === "number"
+      ? ageAdjustedSaggingClarity(mfs.sagging_volume, patientAge)
+      : 70;
   const underEye100 =
     typeof mfs.under_eye === "number" ? severityToClarity(mfs.under_eye) : 70;
   const hair100 =
@@ -261,7 +284,11 @@ export function buildKaiParamsFromModelSeverities(
   setAi("active_acne", acne100, acneExtras);
   setAi("wrinkles", wrinkles100, wrExtras);
   setAi("elasticity", sagging100);
-  setAi("sagging_volume", sagging100);
+  setAi(
+    "sagging_volume",
+    sagging100,
+    saggingVolumeCompositeExtras(mfs, patientAge)
+  );
   setAi("skin_quality", skinQ100);
   setAi("hydration", skinQ100);
   setAi("sebum", skinQ100);
@@ -343,12 +370,14 @@ function cleanMaskDataUri(uri: string | undefined): string | undefined {
  */
 export function buildScanPayloadFromCentreAndSmiling(
   centre: FaceAnalysisInferenceResult,
-  smiling: FaceAnalysisInferenceResult
+  smiling: FaceAnalysisInferenceResult,
+  opts?: ScanPayloadOptions
 ): ScanInferencePayload {
+  const patientAge = opts?.patientAge;
   const centreMfs = parseModelFeatureScores(centre.modelFeatureScores);
   const smileMfs = parseModelFeatureScores(smiling.modelFeatureScores);
 
-  const mergedMfs: ModelFeatureScores = {
+  const mergedMfs = applyCompositeSaggingVolume({
     active_acne: centreMfs.active_acne,
     acne_scars: centreMfs.acne_scars ?? smileMfs.acne_scars,
     skin_quality: centreMfs.skin_quality,
@@ -357,9 +386,9 @@ export function buildScanPayloadFromCentreAndSmiling(
     under_eye: centreMfs.under_eye,
     hair_health: centreMfs.hair_health,
     pigmentation_model: centreMfs.pigmentation_model,
-  };
+  });
 
-  const params = buildKaiParamsFromModelSeverities(mergedMfs);
+  const params = buildKaiParamsFromModelSeverities(mergedMfs, patientAge);
   const wrDiag = pickWrinkleDiagnostics(smiling.modelFeatureScores);
   if (params.wrinkles?.source === "ai") {
     params.wrinkles = {
@@ -391,7 +420,7 @@ export function buildScanPayloadFromCentreAndSmiling(
     };
   }
 
-  const legacyMetrics = buildLegacyMetricsFromModel(mergedMfs, 0);
+  const legacyMetrics = buildLegacyMetricsFromModel(mergedMfs, 0, patientAge);
   const overallKaiScore = Math.round(
     (legacyMetrics.acne +
       legacyMetrics.wrinkles +
@@ -436,17 +465,21 @@ export function buildScanPayloadFromCentreAndSmiling(
     ),
     acneMaskDataUri,
     wrinkleMaskDataUri,
-    modelEight: modelEightClarityScores(mergedMfs),
+    modelEight: modelEightClarityScores(mergedMfs, patientAge),
   };
 }
 
 /** Single-image `/analyze` (notebook-style, all params from one photo). */
 export function buildScanPayloadFromAnalyzeV1(
-  inf: FaceAnalysisInferenceResult
+  inf: FaceAnalysisInferenceResult,
+  opts?: ScanPayloadOptions
 ): ScanInferencePayload {
-  const mfs = parseModelFeatureScores(inf.modelFeatureScores);
+  const patientAge = opts?.patientAge;
+  const mfs = applyCompositeSaggingVolume(
+    parseModelFeatureScores(inf.modelFeatureScores)
+  );
   const clinical_scores = clinicalScoresFromModel(mfs);
-  const params = buildKaiParamsFromModelSeverities(mfs);
+  const params = buildKaiParamsFromModelSeverities(mfs, patientAge);
   const overallKaiScore = inf.metrics.overall_score;
 
   return {
@@ -459,20 +492,32 @@ export function buildScanPayloadFromAnalyzeV1(
     overlayDataUri: inf.overlayDataUri,
     wrinkleMaskDataUri: inf.wrinkleMaskDataUri,
     acneMaskDataUri: inf.acneMaskDataUri,
-    modelEight: modelEightClarityScores(mfs),
+    modelEight: modelEightClarityScores(mfs, patientAge),
   };
 }
 
 /** Pass through `/analyze_v2` params unchanged (already 0–100 from Python). */
 export function buildScanPayloadFromAnalyzeV2(
-  inf: FaceAnalysisInferenceV2Result
+  inf: FaceAnalysisInferenceV2Result,
+  opts?: ScanPayloadOptions
 ): ScanInferencePayload {
-  const mfs = parseModelFeatureScores(inf.modelFeatureScores);
+  const patientAge = opts?.patientAge;
+  const mfs = applyCompositeSaggingVolume(
+    parseModelFeatureScores(inf.modelFeatureScores)
+  );
   const clinical_scores = clinicalScoresFromModel(mfs);
+  const saggingRefresh = buildKaiParamsFromModelSeverities(mfs, patientAge);
+  const params = { ...inf.params };
+  if (saggingRefresh.sagging_volume) {
+    params.sagging_volume = saggingRefresh.sagging_volume;
+  }
+  if (saggingRefresh.elasticity) {
+    params.elasticity = saggingRefresh.elasticity;
+  }
 
   return {
     overallKaiScore: inf.overallKaiScore,
-    params: inf.params,
+    params,
     legacyMetrics: inf.legacyMetrics,
     modelFeatureScores: mfs,
     clinical_scores,
@@ -481,13 +526,40 @@ export function buildScanPayloadFromAnalyzeV2(
     wrinkleMaskDataUri: inf.wrinkleMaskDataUri,
     acneMaskDataUri: inf.acneMaskDataUri,
     spatialOutputs: inf.spatialOutputs,
-    modelEight: modelEightClarityScores(mfs),
+    modelEight: modelEightClarityScores(mfs, patientAge),
+  };
+}
+
+/** Re-apply age-adjusted sagging clarity when patient age was not known at inference time. */
+export function applyPatientAgeToScanPayload(
+  payload: ScanInferencePayload,
+  patientAge?: number | null
+): ScanInferencePayload {
+  if (patientAge == null || !Number.isFinite(patientAge)) return payload;
+  const mfs = parseModelFeatureScores(
+    payload.modelFeatureScores as Record<string, number | null>
+  );
+  const params = buildKaiParamsFromModelSeverities(mfs, patientAge);
+  const mergedParams = { ...payload.params };
+  if (params.sagging_volume) mergedParams.sagging_volume = params.sagging_volume;
+  if (params.elasticity) mergedParams.elasticity = params.elasticity;
+  if (params.uniformity) mergedParams.uniformity = params.uniformity;
+  return {
+    ...payload,
+    params: mergedParams,
+    legacyMetrics: buildLegacyMetricsFromModel(
+      mfs,
+      payload.overallKaiScore,
+      patientAge
+    ),
+    modelEight: modelEightClarityScores(mfs, patientAge),
   };
 }
 
 export function buildLegacyMetricsFromModel(
   mfs: ModelFeatureScores,
-  overallKaiScore: number
+  overallKaiScore: number,
+  patientAge?: number | null
 ): {
   acne: number;
   wrinkles: number;
@@ -496,7 +568,7 @@ export function buildLegacyMetricsFromModel(
   texture: number;
   overall_score: number;
 } {
-  const eight = modelEightClarityScores(mfs);
+  const eight = modelEightClarityScores(mfs, patientAge);
   const acne = eight.activeAcne ?? 70;
   const wrinkles = eight.wrinkles ?? 70;
   const hydration = eight.skinQuality ?? 70;

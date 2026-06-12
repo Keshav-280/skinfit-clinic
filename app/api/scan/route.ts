@@ -247,6 +247,27 @@ export async function POST(request: NextRequest) {
     const faceCaptureImages = entries;
     const imageDataUri = entries[0].dataUri;
 
+    const userId = await getSessionUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Sign in to save a skin scan." },
+        { status: 401 }
+      );
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { id: true, name: true, age: true },
+    });
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 400 }
+      );
+    }
+
+    const scanOpts = { patientAge: user.age ?? null };
+
     const inferenceBase = process.env.FACE_ANALYSIS_SERVICE_URL?.trim();
     const inferenceSecret = getFaceAnalysisServiceSecret();
     const allowDummyInferenceFallback =
@@ -304,11 +325,13 @@ export async function POST(request: NextRequest) {
         let merged;
         if (useV2) {
           merged = buildScanPayloadFromAnalyzeV2(
-            await runFaceAnalysisServiceV2(filesForV2, inferenceOpts)
+            await runFaceAnalysisServiceV2(filesForV2, inferenceOpts),
+            scanOpts
           );
         } else if (singleImageMode) {
           merged = buildScanPayloadFromAnalyzeV1(
-            await runFaceAnalysisService(filesForV2.centre, inferenceOpts)
+            await runFaceAnalysisService(filesForV2.centre, inferenceOpts),
+            scanOpts
           );
         } else if (legacyAnalyze) {
           const dual = await runFaceAnalysisCentreSmiling(
@@ -318,7 +341,8 @@ export async function POST(request: NextRequest) {
           );
           merged = buildScanPayloadFromCentreAndSmiling(
             dual.centre,
-            dual.smiling
+            dual.smiling,
+            scanOpts
           );
         } else {
           const dualScan = await runFaceAnalysisDualScan(
@@ -326,7 +350,7 @@ export async function POST(request: NextRequest) {
             filesForV2.smiling,
             inferenceOpts
           );
-          merged = buildScanPayloadFromAnalyzeV1(dualScan);
+          merged = buildScanPayloadFromAnalyzeV1(dualScan, scanOpts);
           if (process.env.NODE_ENV === "development") {
             console.info("[scan] dual-scan (test_local pipeline)", {
               acneMask: Boolean(dualScan.acneMaskDataUri),
@@ -449,29 +473,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const userId = await getSessionUserIdFromRequest(request);
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Sign in to save a skin scan." },
-        { status: 401 }
-      );
-    }
-
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, name: true },
-    });
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "User not found" },
-        { status: 400 }
-      );
-    }
-
     const mfsParsed = parseModelFeatureScores(
       modelFeatureScores as Record<string, number | null>
     );
-    const modelEight = modelEightClarityScores(mfsParsed);
+    const modelEight = modelEightClarityScores(mfsParsed, scanOpts.patientAge);
 
     const analysisResults = {
       acne: metrics.acne,

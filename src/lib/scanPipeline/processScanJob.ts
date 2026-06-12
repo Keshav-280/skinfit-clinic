@@ -96,14 +96,23 @@ export async function processScanJob(
     timeoutMs: inferenceTimeoutMs,
   };
 
+  const [patientRow] = await database
+    .select({ age: users.age })
+    .from(users)
+    .where(eq(users.id, payload.userId))
+    .limit(1);
+  const scanOpts = { patientAge: patientRow?.age ?? null };
+
   let merged;
   if (useV2) {
     merged = buildScanPayloadFromAnalyzeV2(
-      await runFaceAnalysisServiceV2(filesForV2, inferenceOpts)
+      await runFaceAnalysisServiceV2(filesForV2, inferenceOpts),
+      scanOpts
     );
   } else if (singleImageMode) {
     merged = buildScanPayloadFromAnalyzeV1(
-      await runFaceAnalysisService(filesForV2.centre, inferenceOpts)
+      await runFaceAnalysisService(filesForV2.centre, inferenceOpts),
+      scanOpts
     );
   } else if (legacyAnalyze) {
     const dual = await runFaceAnalysisCentreSmiling(
@@ -111,14 +120,18 @@ export async function processScanJob(
       filesForV2.smiling,
       inferenceOpts
     );
-    merged = buildScanPayloadFromCentreAndSmiling(dual.centre, dual.smiling);
+    merged = buildScanPayloadFromCentreAndSmiling(
+      dual.centre,
+      dual.smiling,
+      scanOpts
+    );
   } else {
     const dualScan = await runFaceAnalysisDualScan(
       filesForV2.centre,
       filesForV2.smiling,
       inferenceOpts
     );
-    merged = buildScanPayloadFromAnalyzeV1(dualScan);
+    merged = buildScanPayloadFromAnalyzeV1(dualScan, scanOpts);
   }
 
   const storage = getStorage();
@@ -204,7 +217,7 @@ export async function processScanJob(
   if (!user) throw new Error("User not found");
 
   const mfsParsed = parseModelFeatureScores(modelFeatureScores);
-  const modelEight = modelEightClarityScores(mfsParsed);
+  const modelEight = modelEightClarityScores(mfsParsed, scanOpts.patientAge);
   const analysisResults = {
     acne: metrics.acne,
     wrinkles: metrics.wrinkles,

@@ -12,6 +12,12 @@ services:
 
   ml-inference:
     ports: !reset []
+    # One replica on the prod VM — ML loads large models; never scale this service.
+    container_name: skinfit-ml-inference
+
+  ml-worker:
+    # One replica — scan jobs run sequentially (worker concurrency is already 1).
+    container_name: skinfit-ml-worker
 
   nginx:
     image: nginx:1.27-alpine
