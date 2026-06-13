@@ -250,6 +250,7 @@ export default function AnnotatorPage() {
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
   const [isImportingFolder, setIsImportingFolder] = useState(false);
+  const [isDeletingAllImages, setIsDeletingAllImages] = useState(false);
   const [lastPersistMessage, setLastPersistMessage] = useState<string>("");
 
   React.useEffect(() => {
@@ -578,6 +579,43 @@ export default function AnnotatorPage() {
     }
   }, []);
 
+  const deleteAllImages = useCallback(async () => {
+    if (images.length === 0) return;
+    const ok = window.confirm(
+      "Delete all annotator images from storage and the database? Saved annotations and labels will be cleared too."
+    );
+    if (!ok) return;
+
+    try {
+      setIsDeletingAllImages(true);
+      const res = await fetch("/api/annotator/images", { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+
+      await fetch("/api/annotator/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          perImageByCategory: {},
+          annotations: [],
+          currentIndex: 0,
+        }),
+      });
+
+      setImages([]);
+      setImageMeta([]);
+      setCurrentIndex(0);
+      setPerImageByCategory({});
+      setAnnotationHistory({ snapshots: [[]], index: 0 });
+      setImageZoom(1);
+      setLastPersistMessage("Deleted all images");
+    } catch (err) {
+      console.error("Failed to delete all images", err);
+      setLastPersistMessage("Failed to delete all images");
+    } finally {
+      setIsDeletingAllImages(false);
+    }
+  }, [images.length]);
+
   const exportAnnotationsJson = useCallback(() => {
     if (images.length === 0) return;
 
@@ -736,6 +774,18 @@ export default function AnnotatorPage() {
             title="Bulk import from root/images_face and save to database"
           >
             {isImportingFolder ? "Importing..." : "Import images_face"}
+          </button>
+          <button
+            type="button"
+            onClick={deleteAllImages}
+            disabled={images.length === 0 || isDeletingAllImages || isHydrating}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950/40"
+            title="Remove all images from storage and the database"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {isDeletingAllImages ? "Deleting..." : "Delete all images"}
+            </span>
           </button>
         </div>
       </nav>
