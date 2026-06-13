@@ -18,7 +18,7 @@ export const annotatorImages = pgTable("annotator_images", {
 	id: serial().primaryKey().notNull(),
 	fileName: varchar("file_name", { length: 255 }).notNull(),
 	mimeType: varchar("mime_type", { length: 100 }).notNull(),
-	dataUri: text("data_uri").notNull(),
+	dataUri: text("data_uri"),
 	sortOrder: integer("sort_order").notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [

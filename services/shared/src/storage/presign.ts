@@ -42,7 +42,8 @@ export async function createPresignedUpload(
   };
 }
 
-const STORAGE_KEY_PREFIX = /^(scans|audio|masks|reports|attachments)\//;
+const STORAGE_KEY_PREFIX =
+  /^(scans|audio|masks|reports|attachments|annotator)\//;
 
 export function assertSafeStoragePath(path: string): void {
   const normalized = path.replace(/^\/+/, "");

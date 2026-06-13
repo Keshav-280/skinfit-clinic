@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { asc, desc, inArray } from "drizzle-orm";
 import { db } from "@/src/db";
 import { annotatorImages } from "@/src/db/schema";
+import { resolveAnnotatorImageSrc } from "@/src/lib/annotatorStorage";
+import { getStorage } from "@/src/lib/infra";
 
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
@@ -13,6 +15,39 @@ function inferMimeType(fileName: string): string {
   if (ext === ".png") return "image/png";
   if (ext === ".webp") return "image/webp";
   return "image/jpeg";
+}
+
+function toClientImage(row: {
+  id: number;
+  fileName: string;
+  mimeType: string;
+  fileUrl: string | null;
+  dataUri: string | null;
+  sortOrder: number;
+}) {
+  return {
+    id: row.id,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    sortOrder: row.sortOrder,
+    imageUrl: resolveAnnotatorImageSrc(row.fileUrl, row.dataUri) || null,
+    fileUrl: row.fileUrl,
+    dataUri: row.dataUri,
+  };
+}
+
+async function selectAllImages() {
+  return db
+    .select({
+      id: annotatorImages.id,
+      fileName: annotatorImages.fileName,
+      mimeType: annotatorImages.mimeType,
+      fileUrl: annotatorImages.fileUrl,
+      dataUri: annotatorImages.dataUri,
+      sortOrder: annotatorImages.sortOrder,
+    })
+    .from(annotatorImages)
+    .orderBy(asc(annotatorImages.sortOrder), asc(annotatorImages.id));
 }
 
 export async function POST() {
@@ -61,17 +96,13 @@ export async function POST() {
   const pending = imageNames.filter((name) => !existingNames.has(name));
 
   if (pending.length === 0) {
-    const all = await db
-      .select({
-        id: annotatorImages.id,
-        fileName: annotatorImages.fileName,
-        mimeType: annotatorImages.mimeType,
-        dataUri: annotatorImages.dataUri,
-        sortOrder: annotatorImages.sortOrder,
-      })
-      .from(annotatorImages)
-      .orderBy(asc(annotatorImages.sortOrder), asc(annotatorImages.id));
-    return NextResponse.json({ success: true, importedCount: 0, skippedCount: imageNames.length, images: all });
+    const all = await selectAllImages();
+    return NextResponse.json({
+      success: true,
+      importedCount: 0,
+      skippedCount: imageNames.length,
+      images: all.map(toClientImage),
+    });
   }
 
   const last = await db
@@ -81,10 +112,11 @@ export async function POST() {
     .limit(1);
   let nextSortOrder = (last[0]?.sortOrder ?? -1) + 1;
 
+  const storage = getStorage();
   const inserts: Array<{
     fileName: string;
     mimeType: string;
-    dataUri: string;
+    fileUrl: string;
     sortOrder: number;
   }> = [];
 
@@ -92,32 +124,22 @@ export async function POST() {
     const abs = path.join(folderPath, fileName);
     const buf = await fs.readFile(abs);
     const mimeType = inferMimeType(fileName);
-    const base64 = buf.toString("base64");
+    const uploaded = await storage.upload("annotator", fileName, buf, mimeType);
     inserts.push({
       fileName,
       mimeType,
-      dataUri: `data:${mimeType};base64,${base64}`,
+      fileUrl: uploaded.path,
       sortOrder: nextSortOrder++,
     });
   }
 
   await db.insert(annotatorImages).values(inserts);
 
-  const all = await db
-    .select({
-      id: annotatorImages.id,
-      fileName: annotatorImages.fileName,
-      mimeType: annotatorImages.mimeType,
-      dataUri: annotatorImages.dataUri,
-      sortOrder: annotatorImages.sortOrder,
-    })
-    .from(annotatorImages)
-    .orderBy(asc(annotatorImages.sortOrder), asc(annotatorImages.id));
-
+  const all = await selectAllImages();
   return NextResponse.json({
     success: true,
     importedCount: inserts.length,
     skippedCount: imageNames.length - inserts.length,
-    images: all,
+    images: all.map(toClientImage),
   });
 }

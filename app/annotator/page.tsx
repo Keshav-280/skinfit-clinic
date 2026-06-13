@@ -143,9 +143,15 @@ type PersistedImage = {
   id: number;
   fileName: string;
   mimeType: string;
-  dataUri: string;
+  imageUrl: string | null;
+  /** Legacy rows only */
+  dataUri?: string | null;
   sortOrder: number;
 };
+
+function persistedImageSrc(img: PersistedImage): string {
+  return img.imageUrl || img.dataUri || "";
+}
 
 let annotationIdCounter = 0;
 
@@ -290,7 +296,7 @@ export default function AnnotatorPage() {
           }
         }
 
-        setImages(activeImages.map((img) => img.dataUri));
+        setImages(activeImages.map((img) => persistedImageSrc(img)));
         setImageMeta(activeImages.map((img) => ({ name: img.fileName })));
 
         const persistedState = stateJson.state;
@@ -522,32 +528,21 @@ export default function AnnotatorPage() {
     const files = e.target.files;
     if (!files?.length) return;
     const list = Array.from(files);
-    const imagePayload = await Promise.all(
-      list.map(async (f) => {
-        const dataUri = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result ?? ""));
-          reader.onerror = reject;
-          reader.readAsDataURL(f);
-        });
-        return {
-          fileName: f.name,
-          mimeType: f.type || "image/jpeg",
-          dataUri,
-        };
-      })
-    );
+
+    const form = new FormData();
+    for (const f of list) {
+      form.append("files", f);
+    }
 
     try {
       const res = await fetch("/api/annotator/images", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: imagePayload }),
+        body: form,
       });
       if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
       const json = await res.json();
       const created = (json.images ?? []) as PersistedImage[];
-      setImages((prev) => [...prev, ...created.map((img) => img.dataUri)]);
+      setImages((prev) => [...prev, ...created.map((img) => persistedImageSrc(img))]);
       setImageMeta((prev) => [...prev, ...created.map((img) => ({ name: img.fileName }))]);
       setCurrentIndex(0);
       setLastPersistMessage(`Uploaded ${created.length} image(s)`);
@@ -569,7 +564,7 @@ export default function AnnotatorPage() {
         return;
       }
       const all = (json.images ?? []) as PersistedImage[];
-      setImages(all.map((img) => img.dataUri));
+      setImages(all.map((img) => persistedImageSrc(img)));
       setImageMeta(all.map((img) => ({ name: img.fileName })));
       setCurrentIndex(0);
       setLastPersistMessage(

@@ -11,6 +11,7 @@ const ALLOWED_KINDS: StorageObjectKind[] = [
   "masks",
   "reports",
   "attachments",
+  "annotator",
 ];
 
 /**

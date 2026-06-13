@@ -650,7 +650,7 @@ export const scheduleEvents = pgTable("schedule_events", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Clinical annotator image library (stored as data URIs for persistence). */
+/** Clinical annotator image library (R2/local paths in file_url; legacy data_uri rows). */
 export const annotatorImages = pgTable(
   "annotator_images",
   {

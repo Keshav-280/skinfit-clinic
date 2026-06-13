@@ -7,6 +7,7 @@ export const KIND_DIRS: Record<StorageObjectKind, string> = {
   masks: "masks",
   reports: "reports",
   attachments: "attachments",
+  annotator: "annotator",
 };
 
 export function safeFileName(name: string): string {

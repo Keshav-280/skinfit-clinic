@@ -27,4 +27,5 @@ export type StorageObjectKind =
   | "audio"
   | "masks"
   | "reports"
-  | "attachments";
+  | "attachments"
+  | "annotator";
