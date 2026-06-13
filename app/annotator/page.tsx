@@ -61,6 +61,20 @@ const CLINICAL_TAXONOMY: Record<Category, string[]> = {
 
 type CategoryEntry = { spec: string; score: number };
 
+/** UI letter grades; stored/exported severity stays 1–5 (A = 5, E = 1). */
+const SEVERITY_GRADE_OPTIONS = [
+  { grade: "A", score: 5 },
+  { grade: "B", score: 4 },
+  { grade: "C", score: 3 },
+  { grade: "D", score: 2 },
+  { grade: "E", score: 1 },
+] as const;
+
+function severityToGrade(score: number): string {
+  const s = Math.max(1, Math.min(5, Math.round(score)));
+  return SEVERITY_GRADE_OPTIONS.find((o) => o.score === s)?.grade ?? "E";
+}
+
 function defaultEntry(cat: Category): CategoryEntry {
   const specs = CLINICAL_TAXONOMY[cat];
   return { spec: specs[0] ?? "", score: 1 };
@@ -851,7 +865,7 @@ export default function AnnotatorPage() {
                           fontWeight="bold"
                           style={{ pointerEvents: "none" }}
                         >
-                          {ann.spec} - {ann.severity}
+                          {ann.spec} — {severityToGrade(ann.severity)}
                         </text>
                       </g>
                     ))}
@@ -1024,26 +1038,26 @@ export default function AnnotatorPage() {
 
           <div className="mb-6">
             <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-500">
-              Severity score (1–5) · {activeCategory}
+              Severity grade (A–E) · {activeCategory}
             </label>
             <p className="mb-2 text-[11px] text-slate-500 dark:text-zinc-500">
-              Applies to this category on the current image (all eight have a score; drawable ones also use it on new
-              strokes).
+              A = 5, E = 1. Applies to this category on the current image (all eight have a grade; drawable ones also
+              use it on new strokes).
             </p>
             <div className="flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5].map((n) => (
+              {SEVERITY_GRADE_OPTIONS.map(({ grade, score }) => (
                 <button
-                  key={n}
+                  key={grade}
                   type="button"
                   disabled={images.length === 0}
-                  onClick={() => setCategoryScore(currentIndex, activeCategory, n)}
+                  onClick={() => setCategoryScore(currentIndex, activeCategory, score)}
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 ${
-                    activeScore === n
+                    activeScore === score
                       ? "bg-amber-500 text-zinc-950"
                       : "bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                   }`}
                 >
-                  {n}
+                  {grade}
                 </button>
               ))}
             </div>
@@ -1066,7 +1080,7 @@ export default function AnnotatorPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-900 dark:text-white">
-                        {ann.spec} - {ann.severity}
+                        {ann.spec} — {severityToGrade(ann.severity)}
                       </p>
                       <p className="truncate text-[10px] text-slate-500 dark:text-zinc-500">
                         {ann.category} ({ann.type})
@@ -1192,20 +1206,20 @@ export default function AnnotatorPage() {
                 >
                   ← Back
                 </button>
-                {[1, 2, 3, 4, 5].map((n) => (
+                {SEVERITY_GRADE_OPTIONS.map(({ grade, score }) => (
                   <button
-                    key={n}
+                    key={grade}
                     type="button"
                     className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-teal-500/20 hover:text-teal-600 dark:text-zinc-300 dark:hover:text-teal-400"
                     onClick={() => {
                       const cat = contextMenu.tempCategory as Category;
                       setActiveCategory(cat);
                       setCategorySpec(currentIndex, cat, contextMenu.tempSpec!);
-                      setCategoryScore(currentIndex, cat, n);
+                      setCategoryScore(currentIndex, cat, score);
                       setContextMenu(null);
                     }}
                   >
-                    Severity {n}
+                    Grade {grade}
                   </button>
                 ))}
               </div>
@@ -1243,7 +1257,7 @@ export default function AnnotatorPage() {
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">2. Categories:</span>{" "}
                 <strong>Score + specification + draw</strong> lists the four you can annotate on the image.{" "}
-                <strong>Score only</strong> lists the other four (severity 1–5 only).
+                <strong>Score only</strong> lists the other four (severity grades A–E; A = 5, E = 1).
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">3. Drawing:</span>{" "}
