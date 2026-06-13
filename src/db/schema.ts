@@ -675,7 +675,7 @@ export const annotatorState = pgTable(
     id: serial("id").primaryKey(),
     scope: varchar("scope", { length: 64 }).notNull().default("default"),
     perImageByCategory: jsonb("per_image_by_category").$type<
-      Record<string, Record<string, { spec?: string; score?: number }>>
+      Record<string, Record<string, { spec?: string; grade?: string; score?: number }>>
     >(),
     annotations: jsonb("annotations").$type<
       Array<{
@@ -683,7 +683,7 @@ export const annotatorState = pgTable(
         imageIndex: number;
         category: string;
         spec: string;
-        severity: number;
+        severity: string;
         color: string;
         type: "path" | "line";
         points: Array<{ x: number; y: number }>;
