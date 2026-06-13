@@ -22,16 +22,19 @@ import {
   Redo2,
   Download,
 } from "lucide-react";
+import {
+  SEVERITY_GRADE_OPTIONS,
+  type SeverityGrade,
+  normalizeSeverityGrade,
+} from "@/src/lib/annotatorSeverityGrade";
 
 const ALL_CATEGORIES = [
   "Active Acne",
   "Acne Scars",
-  "Skin Quality",
   "Pigmentation",
   "Wrinkles",
   "Sagging & Volume",
   "Under-Eye",
-  "Hair Health",
 ] as const;
 
 type Category = (typeof ALL_CATEGORIES)[number];
@@ -51,33 +54,58 @@ const SCORE_ONLY_CATEGORIES: Category[] = ALL_CATEGORIES.filter(
 const CLINICAL_TAXONOMY: Record<Category, string[]> = {
   "Active Acne": ["Comedones (Black/Whiteheads)", "Papules / Pustules", "Nodules / Cysts", "Inflammation (Erythema)"],
   "Acne Scars": ["Ice-pick", "Boxcar", "Rolling"],
-  "Skin Quality": ["Pore Density & Size", "Oiliness", "Dryness / Flaking"],
   Pigmentation: ["Melasma", "Post-Acne Marks (PIH/PIE)", "Sun Spots"],
   Wrinkles: ["Forehead & Glabella", "Crow's Feet", "Nasolabial & Marionette"],
   "Sagging & Volume": ["Tear Trough", "Midface Flattening", "Jowl & Jawline"],
   "Under-Eye": ["Puffiness (Fluid/Fat)", "Dark Circles (Pigmented/Vascular)"],
-  "Hair Health": ["Hairline Recession", "Miniaturization", "Overall Density"],
 };
 
-type CategoryEntry = { spec: string; score: number };
-
-/** UI letter grades; stored/exported severity stays 1–5 (A = 5, E = 1). */
-const SEVERITY_GRADE_OPTIONS = [
-  { grade: "A", score: 5 },
-  { grade: "B", score: 4 },
-  { grade: "C", score: 3 },
-  { grade: "D", score: 2 },
-  { grade: "E", score: 1 },
-] as const;
-
-function severityToGrade(score: number): string {
-  const s = Math.max(1, Math.min(5, Math.round(score)));
-  return SEVERITY_GRADE_OPTIONS.find((o) => o.score === s)?.grade ?? "E";
-}
+type CategoryEntry = { spec: string; grade: SeverityGrade };
 
 function defaultEntry(cat: Category): CategoryEntry {
   const specs = CLINICAL_TAXONOMY[cat];
-  return { spec: specs[0] ?? "", score: 1 };
+  return { spec: specs[0] ?? "", grade: "A" };
+}
+
+function normalizeCategoryEntry(raw: {
+  spec?: string;
+  grade?: unknown;
+  score?: unknown;
+}): CategoryEntry {
+  return {
+    spec: typeof raw.spec === "string" ? raw.spec : "",
+    grade: normalizeSeverityGrade(raw.grade ?? raw.score, "A"),
+  };
+}
+
+function migratePerImageByCategory(
+  raw: Record<number, Partial<Record<Category, Partial<CategoryEntry & { score?: number }>>>>
+): Record<number, Partial<Record<Category, Partial<CategoryEntry>>>> {
+  const out: Record<number, Partial<Record<Category, Partial<CategoryEntry>>>> = {};
+  for (const [idx, patch] of Object.entries(raw)) {
+    const imageIndex = Number(idx);
+    if (!Number.isFinite(imageIndex) || !patch) continue;
+    const migrated: Partial<Record<Category, Partial<CategoryEntry>>> = {};
+    for (const c of ALL_CATEGORIES) {
+      const entry = patch[c];
+      if (entry) migrated[c] = normalizeCategoryEntry(entry);
+    }
+    out[imageIndex] = migrated;
+  }
+  return out;
+}
+
+function migrateAnnotations(raw: unknown): Annotation[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a) => a && typeof a === "object")
+    .map((a) => {
+      const ann = a as Annotation & { severity: unknown };
+      return {
+        ...ann,
+        severity: normalizeSeverityGrade(ann.severity, "A"),
+      };
+    });
 }
 
 function fullDefaults(): Record<Category, CategoryEntry> {
@@ -94,12 +122,10 @@ const ZOOM_STEP = 0.25;
 const CATEGORY_COLORS: Record<Category, string> = {
   "Active Acne": "rgb(239, 68, 68)",
   "Acne Scars": "rgb(185, 28, 28)",
-  "Skin Quality": "rgb(34, 197, 94)",
   Pigmentation: "rgb(59, 130, 246)",
   Wrinkles: "rgb(168, 85, 247)",
   "Sagging & Volume": "rgb(236, 72, 153)",
   "Under-Eye": "rgb(14, 165, 233)",
-  "Hair Health": "rgb(245, 158, 11)",
 };
 
 interface Annotation {
@@ -107,7 +133,7 @@ interface Annotation {
   imageIndex: number;
   category: string;
   spec: string;
-  severity: number;
+  severity: SeverityGrade;
   color: string;
   type: "path" | "line";
   points: { x: number; y: number }[];
@@ -269,10 +295,14 @@ export default function AnnotatorPage() {
 
         const persistedState = stateJson.state;
         if (persistedState) {
-          setPerImageByCategory((persistedState.perImageByCategory ?? {}) as typeof perImageByCategory);
-          const persistedAnnotations = Array.isArray(persistedState.annotations)
-            ? (persistedState.annotations as Annotation[])
-            : [];
+          setPerImageByCategory(
+            migratePerImageByCategory(
+              (persistedState.perImageByCategory ?? {}) as Parameters<
+                typeof migratePerImageByCategory
+              >[0]
+            )
+          );
+          const persistedAnnotations = migrateAnnotations(persistedState.annotations);
           setAnnotationHistory({ snapshots: [cloneAnnotations(persistedAnnotations)], index: 0 });
           const maxCounter = persistedAnnotations.reduce((acc, ann) => {
             const idNum = Number.parseInt(String(ann.id).replace("ann-", ""), 10);
@@ -352,7 +382,7 @@ export default function AnnotatorPage() {
     const patch = perImageByCategory[currentIndex] ?? {};
     const out = { ...base };
     for (const c of ALL_CATEGORIES) {
-      if (patch[c]) out[c] = { ...base[c], ...patch[c] };
+      if (patch[c]) out[c] = { ...base[c], ...normalizeCategoryEntry(patch[c]!) };
     }
     return out;
   }, [perImageByCategory, currentIndex]);
@@ -368,13 +398,13 @@ export default function AnnotatorPage() {
     });
   }, []);
 
-  const setCategoryScore = useCallback((imageIndex: number, cat: Category, score: number) => {
+  const setCategoryGrade = useCallback((imageIndex: number, cat: Category, grade: SeverityGrade) => {
     setPerImageByCategory((prev) => {
       const cur = prev[imageIndex] ?? {};
       const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
       return {
         ...prev,
-        [imageIndex]: { ...cur, [cat]: { ...prevEntry, score } },
+        [imageIndex]: { ...cur, [cat]: { ...prevEntry, grade } },
       };
     });
   }, []);
@@ -439,7 +469,7 @@ export default function AnnotatorPage() {
       setCurrentStrokePoints([]);
       return;
     }
-    const { spec, score } = categoryState[activeCategory];
+    const { spec, grade } = categoryState[activeCategory];
     if (activeTool === "path" && currentStrokePoints.length >= 3) {
       const color = CATEGORY_COLORS[activeCategory] ?? "rgb(156, 163, 175)";
       commitAnnotations((prev) => [
@@ -449,7 +479,7 @@ export default function AnnotatorPage() {
           imageIndex: currentIndex,
           category: activeCategory,
           spec,
-          severity: score,
+          severity: grade,
           color,
           type: "path",
           points: [...currentStrokePoints],
@@ -464,7 +494,7 @@ export default function AnnotatorPage() {
           imageIndex: currentIndex,
           category: activeCategory,
           spec,
-          severity: score,
+          severity: grade,
           color,
           type: "line",
           points: [...currentStrokePoints],
@@ -562,7 +592,7 @@ export default function AnnotatorPage() {
       const patch = perImageByCategory[i] ?? {};
       const merged = { ...base };
       for (const c of ALL_CATEGORIES) {
-        if (patch[c]) merged[c] = { ...base[c], ...patch[c] };
+        if (patch[c]) merged[c] = normalizeCategoryEntry({ ...base[c], ...patch[c] });
       }
       labelsByImageIndex[String(i)] = merged;
     }
@@ -572,7 +602,7 @@ export default function AnnotatorPage() {
       app: "skinnfit-clinical-annotator",
       exportedAt: new Date().toISOString(),
       note:
-        "Images are not embedded. Keep your original files and match them to `images[].fileName` and `images[].index`. Annotation points are normalized 0–1 relative to image width/height.",
+        "Images are not embedded. Keep your original files and match them to `images[].fileName` and `images[].index`. Annotation points are normalized 0–1 relative to image width/height. Severity is stored as letter grades A–E (A = least severe, E = most severe) in labelsByImageIndex[].grade and annotations[].severity.",
       imageCount: images.length,
       images: images.map((_, i) => ({
         index: i,
@@ -615,7 +645,7 @@ export default function AnnotatorPage() {
   const currentAnnotations = annotations.filter((a) => a.imageIndex === currentIndex);
   const activeSpecs = CLINICAL_TAXONOMY[activeCategory];
   const activeIsDrawable = DRAWABLE_CATEGORIES.includes(activeCategory);
-  const { spec: activeSpec, score: activeScore } = categoryState[activeCategory];
+  const { spec: activeSpec, grade: activeGrade } = categoryState[activeCategory];
 
   const displaySize = React.useMemo(() => {
     if (!imgNatural) return null;
@@ -865,7 +895,7 @@ export default function AnnotatorPage() {
                           fontWeight="bold"
                           style={{ pointerEvents: "none" }}
                         >
-                          {ann.spec} — {severityToGrade(ann.severity)}
+                          {ann.spec} — {ann.severity}
                         </text>
                       </g>
                     ))}
@@ -1041,18 +1071,18 @@ export default function AnnotatorPage() {
               Severity grade (A–E) · {activeCategory}
             </label>
             <p className="mb-2 text-[11px] text-slate-500 dark:text-zinc-500">
-              A = 5, E = 1. Applies to this category on the current image (all eight have a grade; drawable ones also
+              A = least severe (1), E = most severe (5). Applies to this category on the current image (all six have a grade; drawable ones also
               use it on new strokes).
             </p>
             <div className="flex flex-wrap gap-2">
-              {SEVERITY_GRADE_OPTIONS.map(({ grade, score }) => (
+              {SEVERITY_GRADE_OPTIONS.map(({ grade }) => (
                 <button
                   key={grade}
                   type="button"
                   disabled={images.length === 0}
-                  onClick={() => setCategoryScore(currentIndex, activeCategory, score)}
+                  onClick={() => setCategoryGrade(currentIndex, activeCategory, grade)}
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 ${
-                    activeScore === score
+                    activeGrade === grade
                       ? "bg-amber-500 text-zinc-950"
                       : "bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                   }`}
@@ -1080,7 +1110,7 @@ export default function AnnotatorPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-900 dark:text-white">
-                        {ann.spec} — {severityToGrade(ann.severity)}
+                        {ann.spec} — {ann.severity}
                       </p>
                       <p className="truncate text-[10px] text-slate-500 dark:text-zinc-500">
                         {ann.category} ({ann.type})
@@ -1206,7 +1236,7 @@ export default function AnnotatorPage() {
                 >
                   ← Back
                 </button>
-                {SEVERITY_GRADE_OPTIONS.map(({ grade, score }) => (
+                {SEVERITY_GRADE_OPTIONS.map(({ grade }) => (
                   <button
                     key={grade}
                     type="button"
@@ -1215,7 +1245,7 @@ export default function AnnotatorPage() {
                       const cat = contextMenu.tempCategory as Category;
                       setActiveCategory(cat);
                       setCategorySpec(currentIndex, cat, contextMenu.tempSpec!);
-                      setCategoryScore(currentIndex, cat, score);
+                      setCategoryGrade(currentIndex, cat, grade);
                       setContextMenu(null);
                     }}
                   >
@@ -1257,7 +1287,7 @@ export default function AnnotatorPage() {
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">2. Categories:</span>{" "}
                 <strong>Score + specification + draw</strong> lists the four you can annotate on the image.{" "}
-                <strong>Score only</strong> lists the other four (severity grades A–E; A = 5, E = 1).
+                <strong>Score only</strong> lists the other two (severity grades A–E; A = least severe, E = most severe).
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">3. Drawing:</span>{" "}

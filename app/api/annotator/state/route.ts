@@ -9,13 +9,16 @@ type AnnotationShape = {
   imageIndex: number;
   category: string;
   spec: string;
-  severity: number;
+  severity: string;
   color: string;
   type: "path" | "line";
   points: Array<{ x: number; y: number }>;
 };
 
-type PerImageByCategoryShape = Record<string, Record<string, { spec?: string; score?: number }>>;
+type PerImageByCategoryShape = Record<
+  string,
+  Record<string, { spec?: string; grade?: string; score?: number }>
+>;
 
 export async function GET() {
   const [row] = await db
