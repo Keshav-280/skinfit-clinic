@@ -23,7 +23,7 @@ import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/
 import { getCached, setCached } from "@/lib/apiCache";
 import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
-import { patientClarityToGrade } from "../../../../src/lib/clarityGrade";
+import { patientScoreView } from "../../../../src/lib/clarityGrade";
 import { ReportContainImage } from "@/components/ReportContainImage";
 
 type ScanRow = {
@@ -57,6 +57,7 @@ type HistoryPayload = {
   scans: ScanRow[];
   reportVoiceNotes?: ReportVoiceRow[];
   reportVoiceNotesArchived?: ReportVoiceRow[];
+  scoresUnlocked?: boolean;
 };
 
 const NAVY = "#2C3E6B";
@@ -160,6 +161,8 @@ export default function HistoryListScreen() {
   }
 
   const scans = data?.scans ?? [];
+  const scoresUnlocked = data?.scoresUnlocked ?? false;
+  const scoreLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
   const reportVoices = data?.reportVoiceNotes ?? [];
   const reportVoicesArchived = data?.reportVoiceNotesArchived ?? [];
 
@@ -211,7 +214,7 @@ export default function HistoryListScreen() {
                   style={styles.scanImage}
                 />
                 <View style={styles.scoreBadge}>
-                  <Text style={styles.scoreBadgeText}>{patientClarityToGrade(scan.overallScore)}</Text>
+                  <Text style={styles.scoreBadgeText}>{scoreLabel(scan.overallScore)}</Text>
                 </View>
               </View>
               <View style={styles.scanBody}>
@@ -221,7 +224,7 @@ export default function HistoryListScreen() {
                 <Text style={styles.scanDate}>
                   {format(new Date(scan.createdAt), "MMM d, yyyy")}
                 </Text>
-                <Text style={styles.scanOverall}>Overall {patientClarityToGrade(scan.overallScore)}</Text>
+                <Text style={styles.scanOverall}>Overall {scoreLabel(scan.overallScore)}</Text>
                 <View style={styles.chips}>
                   {analysisResultsToParams(scan.analysisResults).map((p) => (
                     <View key={p.label} style={styles.chip}>

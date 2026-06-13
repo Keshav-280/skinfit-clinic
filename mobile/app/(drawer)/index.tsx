@@ -30,6 +30,7 @@ import { DailyJournalMergedCard } from "@/components/dashboard/DailyJournalMerge
 import { DashboardStreakCard } from "@/components/dashboard/DashboardStreakCard";
 import { FirstScanCta } from "@/components/dashboard/FirstScanCta";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
+import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 import { NotificationBell } from "@/components/NotificationBell";
 import { WeeklyInsightSection } from "@/components/dashboard/WeeklyInsightSection";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,7 +44,7 @@ import {
   kaiParamClarity,
   SKIN_HEALTH_PARAM_KEYS,
 } from "@/lib/skinAnalysis";
-import { patientClarityToGrade, patientDisplayClarity } from "../../../src/lib/clarityGrade";
+import { patientClarityToGrade, patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from "../../../src/lib/clarityGrade";
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import {
   clearJournalSyncPatch,
@@ -163,6 +164,7 @@ type HomeData = {
     firstScanYmd: string | null;
   };
   firstScanAt?: string | null;
+  scoresUnlocked?: boolean;
   feedbackEntries?: Array<{
     id: string;
     feedbackText: string | null;
@@ -522,6 +524,7 @@ export default function DashboardScreen() {
     : latestScan
       ? Math.min(100, Math.max(0, Math.round(latestScan.skinScore)))
       : 40;
+  const scoresUnlocked = data?.scoresUnlocked ?? false;
 
   async function persistRoutine(nextAm: boolean[], nextPm: boolean[]) {
     if (!token) return;
@@ -830,12 +833,14 @@ export default function DashboardScreen() {
           weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
           latestScanAt={latestScan?.createdAt ?? null}
           consistencyScore={data.lifestyleAlignmentScore}
+          scoresUnlocked={scoresUnlocked}
           style={isWideLayout ? styles.topRowHalf : undefined}
         />
         {latestScan ? (
           <SkinHealthMetricsCard
             analysis={latestScan.analysisResults}
             compact
+            scoresUnlocked={scoresUnlocked}
             style={[isWideLayout && styles.topRowHalf, styles.skinHealthCardInRow]}
           />
         ) : (
@@ -845,6 +850,10 @@ export default function DashboardScreen() {
           />
         )}
       </View>
+
+      {!scoresUnlocked ? (
+        <ClinicScoreUnlockCta compact style={styles.dashboardFullWidth} />
+      ) : null}
 
       {/* ── Routine (left) | skin params (right) ── */}
       <View style={styles.dashboardGrid}>
@@ -994,6 +1003,7 @@ export default function DashboardScreen() {
             fillHeight
             style={styles.dashboardPairedCard}
             analysis={latestScan.analysisResults}
+            scoresUnlocked={scoresUnlocked}
             onViewAll={() => router.push("/(drawer)/all-skin-params" as Href)}
           />
         ) : (
@@ -1060,6 +1070,7 @@ export default function DashboardScreen() {
                   data.firstScanAt ??
                   data.skinScanHistory[data.skinScanHistory.length - 1]?.createdAt ??
                   null,
+                scoresUnlocked,
               }
             : null
         }
@@ -1161,9 +1172,11 @@ const RADAR_LABEL_OFFSET_DEFAULT = 30;
 function RadarChart({
   metrics,
   compact = false,
+  scoresUnlocked = false,
 }: {
   metrics: { label: string; value: number }[];
   compact?: boolean;
+  scoresUnlocked?: boolean;
 }) {
   const radarSize = compact ? 176 : RADAR_SIZE_DEFAULT;
   const radarCenter = radarSize / 2;
@@ -1288,7 +1301,7 @@ function RadarChart({
                 fontWeight: "800",
               }}
             >
-              {patientClarityToGrade(m.value)}
+              {patientScoreView(m.value, scoresUnlocked).label}
             </Text>
           </View>
         );
@@ -1300,10 +1313,12 @@ function RadarChart({
 function SkinHealthMetricsCard({
   analysis,
   compact = false,
+  scoresUnlocked = false,
   style,
 }: {
   analysis: unknown;
   compact?: boolean;
+  scoresUnlocked?: boolean;
   style?: object;
 }) {
   const metrics = useMemo(() => extractSkinHealthMetrics(analysis), [analysis]);
@@ -1317,18 +1332,28 @@ function SkinHealthMetricsCard({
           SKIN HEALTH METRICS
         </Text>
       </View>
-      <RadarChart metrics={metrics} compact={compact} />
+      <RadarChart metrics={metrics} compact={compact} scoresUnlocked={scoresUnlocked} />
     </View>
   );
 }
 
-function ParamRing({ value, color, size = 72 }: { value: number; color: string; size?: number }) {
+function ParamRing({
+  value,
+  color,
+  size = 72,
+  scoresUnlocked = false,
+}: {
+  value: number;
+  color: string;
+  size?: number;
+  scoresUnlocked?: boolean;
+}) {
   const display = patientDisplayClarity(value);
   const sw = size <= 48 ? 4 : 6;
   const r = (size - sw) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - display / 100);
-  const grade = patientClarityToGrade(value);
+  const gaugeLabel = patientParamGaugeLabel(value, scoresUnlocked);
   const valueFontSize = size <= 44 ? 12 : size <= 48 ? 13 : 18;
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
@@ -1349,7 +1374,7 @@ function ParamRing({ value, color, size = 72 }: { value: number; color: string; 
           color: "#18181b",
         }}
       >
-        {grade}
+        {gaugeLabel}
       </Text>
     </View>
   );
@@ -1360,12 +1385,14 @@ function SkinParamMetricsCard({
   onViewAll,
   compact = false,
   fillHeight = false,
+  scoresUnlocked = false,
   style,
 }: {
   analysis: unknown;
   onViewAll: () => void;
   compact?: boolean;
   fillHeight?: boolean;
+  scoresUnlocked?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const topMetrics = useMemo(
@@ -1402,7 +1429,7 @@ function SkinParamMetricsCard({
                 fillHeight && styles.paramMetricListCellFill,
               ]}
             >
-              <ParamRing value={m.value} color={m.color} size={ringSize} />
+              <ParamRing value={m.value} color={m.color} size={ringSize} scoresUnlocked={scoresUnlocked} />
               <Text style={styles.paramMetricListLabel} numberOfLines={2}>
                 {m.label}
               </Text>
@@ -1418,7 +1445,7 @@ function SkinParamMetricsCard({
             <View key={rowStart} style={styles.paramMetricsRow}>
               {topMetrics.slice(rowStart, rowStart + 2).map((m) => (
                 <View key={m.label} style={styles.paramMetricCell}>
-                  <ParamRing value={m.value} color={m.color} size={ringSize} />
+                  <ParamRing value={m.value} color={m.color} size={ringSize} scoresUnlocked={scoresUnlocked} />
                   <Text style={styles.paramMetricLabel} numberOfLines={2}>
                     {m.label}
                   </Text>

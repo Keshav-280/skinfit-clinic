@@ -1,9 +1,9 @@
+/** Patient-facing kAI parameter keys (6 dimensions). File name kept for import stability. */
+
 export type RagKaiParamKey =
   | "active_acne"
   | "sagging_volume"
-  | "hair_health"
   | "wrinkles"
-  | "skin_quality"
   | "acne_scar"
   | "under_eye"
   | "pigmentation";
@@ -11,9 +11,7 @@ export type RagKaiParamKey =
 export const RAG_KAI_PARAM_KEYS: RagKaiParamKey[] = [
   "active_acne",
   "sagging_volume",
-  "hair_health",
   "wrinkles",
-  "skin_quality",
   "acne_scar",
   "under_eye",
   "pigmentation",
@@ -22,24 +20,20 @@ export const RAG_KAI_PARAM_KEYS: RagKaiParamKey[] = [
 export const RAG_KAI_PARAM_LABELS: Record<RagKaiParamKey, string> = {
   active_acne: "Active Acne",
   sagging_volume: "Sagging & Volume",
-  hair_health: "Hair Health",
   wrinkles: "Wrinkles",
-  skin_quality: "Skin Quality",
   acne_scar: "Acne Scar",
   under_eye: "Under Eye",
   pigmentation: "Pigmentation",
 };
 
-/** Weights sum to 100 for a simple weighted kAI score. */
+/** Weights sum to 100 for weighted kAI score. */
 export const RAG_KAI_PARAM_WEIGHTS: Record<RagKaiParamKey, number> = {
-  active_acne: 16,
-  sagging_volume: 12,
-  hair_health: 10,
-  wrinkles: 14,
-  skin_quality: 14,
-  acne_scar: 12,
-  under_eye: 10,
-  pigmentation: 12,
+  active_acne: 20,
+  sagging_volume: 15,
+  wrinkles: 18,
+  acne_scar: 15,
+  under_eye: 12,
+  pigmentation: 20,
 };
 
 function clamp0to100(v: number) {

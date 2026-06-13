@@ -22,8 +22,10 @@ import { analysisResultsToParams } from "@/lib/skinAnalysis";
 import {
   patientClarityToGrade,
   patientDisplayClarity,
+  patientScoreView,
   PATIENT_DISPLAY_SCORE_MAX,
 } from "../../../src/lib/clarityGrade";
+import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -33,9 +35,7 @@ const GLASS_BORDER = "rgba(255,255,255,0.7)";
 const PARAM_COLORS: Record<string, string> = {
   "Active Acne": "#BBF7D0",
   "Sagging & Volume": "#BAE6FD",
-  "Hair Health": "#E9D5FF",
   Wrinkles: "#DDD6FE",
-  "Skin Quality": "#A7F3D0",
   "Acne Scar": "#FECACA",
   "Under Eye": "#FDE68A",
   Pigmentation: "#C4B5FD",
@@ -50,6 +50,7 @@ type ScanItem = {
 
 type HomeData = {
   skinScanHistory: ScanItem[];
+  scoresUnlocked?: boolean;
 };
 
 function MiniSparkline({
@@ -125,12 +126,14 @@ export default function AllSkinParamsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [scans, setScans] = useState<ScanItem[]>([]);
+  const [scoresUnlocked, setScoresUnlocked] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!token) return;
     try {
       const json = await apiJson<HomeData>("/api/patient/home", token, { method: "GET" });
       setScans(json.skinScanHistory ?? []);
+      setScoresUnlocked(Boolean(json.scoresUnlocked));
     } catch { /* ignore */ }
     finally { setLoading(false); }
   }, [token]);
@@ -223,6 +226,8 @@ export default function AllSkinParamsScreen() {
           </View>
         </View>
 
+        {!scoresUnlocked ? <ClinicScoreUnlockCta compact style={{ marginBottom: 12 }} /> : null}
+
         {params.length === 0 ? (
           <View style={s.emptyCard}>
             <Ionicons name="analytics-outline" size={40} color="#9CA3AF" />
@@ -246,7 +251,7 @@ export default function AllSkinParamsScreen() {
                       </Text>
                     ) : null}
                     <View style={s.paramScoreRow}>
-                      <Text style={s.paramValue}>{patientClarityToGrade(p.value)}</Text>
+                      <Text style={s.paramValue}>{patientScoreView(p.value, scoresUnlocked).label}</Text>
                       <View style={s.paramChange}>
                         {trend.icon === "stable" ? null : (
                           <Ionicons

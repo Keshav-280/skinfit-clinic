@@ -16,6 +16,7 @@ import {
   applyCompositeSaggingVolume,
   saggingVolumeCompositeExtras,
 } from "@/src/lib/saggingVolumeComposite";
+import { computeRagKaiScore } from "@/src/lib/ragEightParams";
 
 export type ScanPayloadOptions = {
   patientAge?: number | null;
@@ -83,6 +84,22 @@ export function clinicalScoresFromModel(
   else if (typeof mfs.pigmentation_model === "number")
     out.pigmentation_model = mfs.pigmentation_model;
   return out;
+}
+
+/** Weighted kAI overall from the six patient-facing dimensions. */
+function overallKaiFromModelClarity(
+  eight: ReturnType<typeof modelEightClarityScores>
+): number {
+  return (
+    computeRagKaiScore({
+      active_acne: eight.activeAcne,
+      sagging_volume: eight.saggingVolume,
+      wrinkles: eight.wrinkles,
+      acne_scar: eight.acneScar,
+      under_eye: eight.underEye,
+      pigmentation: eight.pigmentation,
+    }) ?? 70
+  );
 }
 
 /** Eight dashboard dimensions (0–100) derived only from model severities. */
@@ -421,13 +438,8 @@ export function buildScanPayloadFromCentreAndSmiling(
   }
 
   const legacyMetrics = buildLegacyMetricsFromModel(mergedMfs, 0, patientAge);
-  const overallKaiScore = Math.round(
-    (legacyMetrics.acne +
-      legacyMetrics.wrinkles +
-      legacyMetrics.pigmentation +
-      legacyMetrics.hydration +
-      legacyMetrics.texture) /
-      5
+  const overallKaiScore = overallKaiFromModelClarity(
+    modelEightClarityScores(mergedMfs, patientAge)
   );
   legacyMetrics.overall_score = overallKaiScore;
 
@@ -571,14 +583,9 @@ export function buildLegacyMetricsFromModel(
   const eight = modelEightClarityScores(mfs, patientAge);
   const acne = eight.activeAcne ?? 70;
   const wrinkles = eight.wrinkles ?? 70;
-  const hydration = eight.skinQuality ?? 70;
+  const hydration = eight.underEye ?? 70;
   const pigmentation = eight.pigmentation ?? 72;
-  const texture = Math.round(
-    ((eight.saggingVolume ?? hydration) +
-      (eight.underEye ?? hydration) +
-      (eight.hairHealth ?? hydration)) /
-      3
-  );
+  const texture = eight.acneScar ?? 70;
   return {
     acne,
     wrinkles,

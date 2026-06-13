@@ -19,6 +19,7 @@ import {
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
 import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 import { getPatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
+import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import { cacheAside, CacheKeys } from "@/src/lib/infra";
 import { coerceRoutinePlanList } from "@/src/lib/routine";
 import { computeHomeWeeklyDeltaScore } from "@/src/lib/patientHomeWeeklyDelta";
@@ -264,7 +265,10 @@ async function buildPatientHomePayload(
   );
 
   const onboardingComplete = userRow.onboardingComplete;
-  const progress = await getPatientProgressSnapshot(userId);
+  const [progress, scoresUnlocked] = await Promise.all([
+    getPatientProgressSnapshot(userId),
+    isPatientClinicVisited(userId),
+  ]);
   const hasQuestionnaire =
     progress.milestones.find((m) => m.id === "questionnaire")?.done ?? false;
 
@@ -311,6 +315,7 @@ async function buildPatientHomePayload(
     cycleTrackingEnabled: userRow.cycleTrackingEnabled ?? false,
     onboardingComplete,
     hasQuestionnaire,
+    scoresUnlocked,
     progress,
     routineAmReminderHm: userRow.routineAmReminderHm ?? "08:30",
     routinePmReminderHm: userRow.routinePmReminderHm ?? "22:00",

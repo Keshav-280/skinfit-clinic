@@ -23,11 +23,13 @@ import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
 import { WRINKLE_MASK_PANEL_LABEL, ACNE_MASK_PANEL_LABEL } from "@/src/lib/scanMaskLabels";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
-import { patientClarityToGrade, patientDisplayClarity } from "@/src/lib/clarityGrade";
+import { patientClarityToGrade, patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from "@/src/lib/clarityGrade";
+import { ClinicScoreUnlockCta } from "./ClinicScoreUnlockCta";
 import {
   SCAN_REPORT_PDF_BG,
   SCAN_REPORT_PDF_PAGE_BG,
 } from "@/src/lib/scanReportPdfBackground";
+import { ScanReportClinicPromoNote } from "./ScanReportClinicPromoNote";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -48,11 +50,9 @@ const CLINICAL_ROWS: {
 }[] = [
   { key: "active_acne", label: "Active acne" },
   { key: "acne_scars", label: "Acne scars" },
-  { key: "skin_quality", label: "Skin quality" },
   { key: "wrinkle_severity", label: "Wrinkles" },
   { key: "sagging_volume", label: "Sagging & volume" },
   { key: "under_eye", label: "Under-eye" },
-  { key: "hair_health", label: "Hair health" },
   { key: "pigmentation_model", label: "Pigmentation" },
 ];
 
@@ -61,11 +61,9 @@ const EIGHT_CLINICAL_DONUT_STYLE: Partial<
 > = {
   active_acne: { fill: T.navyDark, track: "rgba(30, 50, 100, 0.2)" },
   acne_scars: { fill: T.navy, track: T.accentTrack },
-  skin_quality: { fill: T.accent, track: T.accentTrack },
   wrinkle_severity: { fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
   sagging_volume: { fill: "#4A6FA5", track: "rgba(74, 111, 165, 0.2)" },
   under_eye: { fill: T.navyLight, track: "rgba(91, 123, 168, 0.18)" },
-  hair_health: { fill: "#6B8FC4", track: "rgba(107, 143, 196, 0.2)" },
   pigmentation_model: { fill: "#5B7BA8", track: "rgba(91, 123, 168, 0.2)" },
 };
 
@@ -247,6 +245,8 @@ export interface SkinScanReportBodyProps {
    * Omit on the client to load `/api/patient/tracker` when `scanId` is set.
    */
   serverTracker?: PatientTrackerReport | null;
+  /** When false (default), patient sees grade ranges until clinic visit unlocks exact scores. */
+  scoresUnlocked?: boolean;
 }
 
 export function SkinScanReportBody({
@@ -271,6 +271,7 @@ export function SkinScanReportBody({
   scanId,
   defaultShareEmail = null,
   serverTracker,
+  scoresUnlocked = false,
 }: SkinScanReportBodyProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -319,7 +320,9 @@ export function SkinScanReportBody({
   const showTracker = tracker != null;
 
   const overall = clamp(metrics.overall_score);
-  const overallGrade = patientClarityToGrade(overall);
+  const overallView = patientScoreView(overall, scoresUnlocked);
+  const paramLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
+  const gaugeCenter = (raw: number) => patientParamGaugeLabel(raw, scoresUnlocked);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const wrinkleUrl = wrinkleMaskUrl?.trim() || "";
   const acneUrl = acneMaskUrl?.trim() || "";
@@ -329,7 +332,9 @@ export function SkinScanReportBody({
     (regions.length > 0 && imageUrl?.trim());
   const heroIntro =
     aiSummary?.trim() ||
-    `Your latest scan shows an overall grade of ${overallGrade}. Detailed parameter grades and photo markers are below.`;
+    (scoresUnlocked
+      ? `Your latest scan shows an overall score of ${overallView.label}. Detailed parameters and photo markers are below.`
+      : `Your latest scan is in the ${overallView.label} range. Visit the clinic for a free analysis to unlock your exact score.`);
 
   const resolvedPhotos = useMemo(() => {
     if (faceCaptureGallery && faceCaptureGallery.length > 0) {
@@ -589,6 +594,8 @@ export function SkinScanReportBody({
         </div>
       ) : null}
 
+      <ScanReportClinicPromoNote className="relative z-[1] mb-5 mt-12 sm:mt-14" />
+
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -672,6 +679,11 @@ export function SkinScanReportBody({
       />
 
       <div className="relative px-5 pb-10 pt-9 sm:px-9 sm:pb-12">
+        {!scoresUnlocked ? (
+          <div className="mx-auto mb-6 max-w-xl">
+            <ClinicScoreUnlockCta compact />
+          </div>
+        ) : null}
         <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2C3E6B]/70">
           {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
         </p>
@@ -802,6 +814,7 @@ export function SkinScanReportBody({
           <TrackerReportSections
             report={tracker}
             serifClassName={serif.className}
+            scoresUnlocked={scoresUnlocked}
           />
         ) : (
           <>
@@ -813,11 +826,11 @@ export function SkinScanReportBody({
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                 {eightClinicalDonuts
-                  ? "FaceAnalyzer v13 — eight parameters (grades A–E · A is best)"
+                  ? "FaceAnalyzer v13 — six parameters (grades A–E · A is best)"
                   : "AI model summary (grades A–E · A is best)"}
               </p>
               {eightClinicalDonuts ? (
-                <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:gap-2.5 md:mx-auto md:max-w-[640px] md:grid-cols-4 md:gap-3">
+                <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:gap-2.5 md:mx-auto md:max-w-[540px] md:grid-cols-3 md:gap-3">
                   {eightClinicalDonuts.map((row) => (
                     <div
                       key={row.key}
@@ -837,7 +850,7 @@ export function SkinScanReportBody({
                           />
                         </div>
                         <span className="text-lg font-bold tabular-nums text-zinc-800 sm:text-xl">
-                          {patientClarityToGrade(row.clarity)}
+                          {paramLabel(row.clarity)}
                         </span>
                       </div>
                     </div>
@@ -903,7 +916,7 @@ export function SkinScanReportBody({
                         </div>
                       </div>
                       <span className="w-7 shrink-0 text-right text-lg font-bold tabular-nums tracking-tight text-zinc-800 sm:w-9 sm:text-xl">
-                        {patientClarityToGrade(row.value)}
+                        {paramLabel(row.value)}
                       </span>
                     </div>
                   </div>
@@ -946,7 +959,7 @@ export function SkinScanReportBody({
                     }
                     if (typeof v !== "number") return null;
                     const clarity = severityToClarityPercent(v);
-                    const grade = patientClarityToGrade(clarity);
+                    const labelText = paramLabel(clarity);
                     return (
                       <div
                         key={key}
@@ -955,7 +968,7 @@ export function SkinScanReportBody({
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[11px] font-semibold text-zinc-800">{label}</span>
                           <span className="text-xl font-bold tabular-nums text-zinc-900">
-                            {grade}
+                            {labelText}
                           </span>
                         </div>
                         {clarityBar(clarity)}
@@ -982,7 +995,7 @@ export function SkinScanReportBody({
                       className={`${serif.className} mt-1 max-w-full text-[2.25rem] font-medium leading-none tracking-[-0.03em] sm:text-[2.75rem] md:text-[3.25rem]`}
                       style={{ color: T.peach }}
                     >
-                      {overallGrade}
+                      {overallView.label}
                     </p>
                     <p className="mt-2 text-[12px] font-medium text-zinc-500">
                       Last scan: {lastScanLabel}

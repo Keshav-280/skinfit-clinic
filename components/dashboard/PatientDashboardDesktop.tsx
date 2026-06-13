@@ -54,6 +54,7 @@ import {
   classifySkinParamMetric,
   patientClarityToGrade,
   patientDisplayClarity,
+  patientScoreView,
 } from "@/src/lib/clarityGrade";
 import { SkinParamMetricsCard } from "@/components/dashboard/SkinParamMetricsCard";
 import {
@@ -62,6 +63,7 @@ import {
 } from "@/components/dashboard/DashboardSectionHeader";
 import { WeeklyInsightSection } from "@/components/dashboard/WeeklyInsightSection";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
+import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 import {
   PATIENT_GREEN,
   PATIENT_NAVY,
@@ -131,6 +133,7 @@ type HomeData = {
   archivedFeedbackEntries?: FeedbackEntry[];
   onboardingComplete: boolean;
   hasQuestionnaire: boolean;
+  scoresUnlocked?: boolean;
   progress?: PatientProgressSnapshot;
   routineAmReminderHm: string;
   routinePmReminderHm: string;
@@ -149,9 +152,11 @@ type HomeData = {
 function RadarChart({
   data,
   size = 260,
+  scoresUnlocked = false,
 }: {
   data: { label: string; value: number }[];
   size?: number;
+  scoresUnlocked?: boolean;
 }) {
   const chartSize = size;
   const center = chartSize / 2;
@@ -218,7 +223,7 @@ function RadarChart({
           >
             <p className={`font-medium text-slate-500 ${chartSize < 220 ? "text-[10px]" : "text-xs"}`}>{d.label}</p>
             <p className={`font-bold text-slate-800 ${chartSize < 220 ? "text-xs" : "text-sm"}`}>
-              {patientClarityToGrade(d.value)}
+              {patientScoreView(d.value, scoresUnlocked).label}
             </p>
           </div>
         );
@@ -399,6 +404,8 @@ export function PatientDashboardDesktop() {
     return analysisResultsToParams(data.skinScanHistory[0].analysisResults);
   }, [data]);
 
+  const scoresUnlocked = data?.scoresUnlocked ?? false;
+
   const skinParams = useMemo(() => {
     if (!data || data.skinScanHistory.length === 0) return [];
     return analysisResultsToParams(data.skinScanHistory[0].analysisResults).map((p) => ({
@@ -560,6 +567,7 @@ export function PatientDashboardDesktop() {
             weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
             latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
             consistencyScore={data.lifestyleAlignmentScore}
+            scoresUnlocked={scoresUnlocked}
           />
 
           {data.skinScanHistory.length > 0 ? (
@@ -571,7 +579,7 @@ export function PatientDashboardDesktop() {
                 className="mb-1"
               />
               <div className="flex flex-1 items-center justify-center py-2">
-                <RadarChart data={radarData} size={190} />
+                <RadarChart data={radarData} size={190} scoresUnlocked={scoresUnlocked} />
               </div>
             </div>
           ) : (
@@ -581,6 +589,8 @@ export function PatientDashboardDesktop() {
             />
           )}
         </div>
+
+        {!scoresUnlocked ? <ClinicScoreUnlockCta /> : null}
 
         {/* Routine + journal/streak (left 60%) | skin params (right 40%) */}
         <div className="grid gap-4 md:grid-cols-12 md:items-start">
@@ -720,6 +730,7 @@ export function PatientDashboardDesktop() {
             <SkinParamMetricsCard
               metrics={skinParams}
               viewAllHref="/dashboard/skin-params"
+              scoresUnlocked={scoresUnlocked}
               className="min-w-0"
             />
             <WeeklyInsightSection
@@ -734,6 +745,7 @@ export function PatientDashboardDesktop() {
                   data.firstScanAt ??
                   data.skinScanHistory[data.skinScanHistory.length - 1]?.createdAt ??
                   null,
+                scoresUnlocked,
               }}
             />
           </div>

@@ -15,6 +15,7 @@ import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
+import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 
 function hasMissingTrackerSnapshotColumn(error: unknown): boolean {
@@ -116,6 +117,7 @@ export async function GET(
         row.id,
         storedSnapshot ?? null
       );
+      const scoresUnlocked = await isPatientClinicVisited(userId);
 
       const regions = parseScanRegions(row.annotations);
       const clinical_scores = parseClinicalScores(scores);
@@ -166,6 +168,7 @@ export async function GET(
         ...(spatialOutputs ? { spatialOutputs } : {}),
         ...(kaiParams ? { kaiParams } : {}),
         trackerReport,
+        scoresUnlocked,
       };
     }
   ).catch((err: unknown) => {

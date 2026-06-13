@@ -320,7 +320,7 @@ export async function analyzeMonthly(input: {
 }): Promise<LlmMonthlyAnalysis | null> {
   const system = `You are kAI. Write a clear monthly progress note grounded in data.
 No hype, no generic text. Speak directly to the patient. Return ONLY JSON.
-The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 8 parameter scores across all scans in the month, then applying the same weighted kAI formula. Cite this number when summarizing how the month went. Per-scan trajectory is supporting context only.
+The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Cite this number when summarizing how the month went. Per-scan trajectory is supporting context only.
 Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) — tell them to reboot that habit next month — and cite partial checklist completion percentages when blended routine intensity is weak.`;
 
   const user = `PATIENT

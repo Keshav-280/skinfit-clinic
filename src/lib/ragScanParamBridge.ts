@@ -19,7 +19,7 @@ function num(v: unknown): number | null {
 }
 
 /**
- * Build RAG eight-parameter 0–100 scores for one scan.
+ * Build RAG six-parameter 0–100 scores for one scan.
  * Uses `parameter_scores` rows when they already use RAG keys (demo seeds);
  * otherwise derives from `scans.scores.modelFeatureScores` and legacy scan columns.
  */
@@ -56,11 +56,9 @@ export function mergeRagParamValuesFromScan(input: {
   };
 
   fillSeverity("active_acne", "active_acne");
-  fillSeverity("skin_quality", "skin_quality");
   fillSeverity("wrinkles", "wrinkle_severity");
   fillSeverity("sagging_volume", "sagging_volume");
   fillSeverity("under_eye", "under_eye");
-  fillSeverity("hair_health", "hair_health");
 
   if (out.pigmentation == null) {
     const pm = mfs?.pigmentation_model;

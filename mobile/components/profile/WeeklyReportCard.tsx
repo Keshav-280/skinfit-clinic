@@ -17,7 +17,7 @@ import {
   trendSummary,
   type ObservationSource,
 } from "@/lib/weeklyInsightFormat";
-import { patientClarityToGrade } from "../../src/lib/clarityGrade";
+import { patientKaiScoreView } from "../../src/lib/clarityGrade";
 
 export type ObservationRow = {
   text: string;
@@ -38,6 +38,7 @@ type Props = {
   priorityActions: string[];
   observationsUnavailable?: boolean;
   actionsUnavailable?: boolean;
+  scoresUnlocked?: boolean;
 };
 
 function formatInsightDate(iso: string): string {
@@ -82,9 +83,11 @@ export default function WeeklyReportCard({
   priorityActions,
   observationsUnavailable,
   actionsUnavailable,
+  scoresUnlocked = false,
 }: Props) {
   const rows = normalizeObservations(observations);
   const trend = trendSummary(weeklyDelta);
+  const kaiView = patientKaiScoreView(kaiScore, scoresUnlocked);
   const parsedActions = priorityActions.map(parsePriorityAction);
 
   return (
@@ -115,7 +118,9 @@ export default function WeeklyReportCard({
             <View style={s.snapshotMain}>
               <Text style={s.snapshotLabel}>Your skin grade</Text>
               <View style={s.scoreRow}>
-                <Text style={s.scoreValue}>{patientClarityToGrade(kaiScore)}</Text>
+                <Text style={s.scoreValue}>
+                  {kaiView.showLock ? kaiView.kaiSecondary : kaiView.kaiPrimary}
+                </Text>
               </View>
             </View>
             <View style={s.snapshotSide}>

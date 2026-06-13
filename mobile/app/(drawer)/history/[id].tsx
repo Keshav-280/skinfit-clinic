@@ -54,6 +54,7 @@ type ScanDetail = {
   spatialOutputs?: ScanSpatialOutputs;
   /** Frozen at scan time in `scans.tracker_snapshot` — no LLM on reload. */
   trackerReport?: PatientTrackerReport | null;
+  scoresUnlocked?: boolean;
 };
 
 /** Always open the list — `router.back()` is wrong when this screen was opened from Scan (or elsewhere). */
@@ -213,6 +214,7 @@ export default function ScanDetailScreen() {
         aiSummary={row.aiSummary}
         scanDate={new Date(row.scanDateIso)}
         tracker={tracker}
+        scoresUnlocked={row.scoresUnlocked ?? false}
       />
     </View>
   );

@@ -3,7 +3,12 @@
 import Link from "next/link";
 
 import { CircularGauge } from "@/components/dashboard/CircularGauge";
-import { classifySkinParamMetric } from "@/src/lib/clarityGrade";
+import {
+  classifySkinParamMetric,
+  gradeRangeLabel,
+  patientParamGaugeLabel,
+  type ClarityGrade,
+} from "@/src/lib/clarityGrade";
 
 const SKIN_PARAM_INNER_CELL =
   "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[14px] border border-[#E8EBE8] bg-[#F5F7F5] px-2 py-3";
@@ -14,16 +19,22 @@ export type SkinParamMetric = {
   displayScore: number;
   color: string;
   sublabel: string;
-  grade: string;
+  grade: ClarityGrade;
 };
 
 type Props = {
   metrics: SkinParamMetric[];
   viewAllHref: string;
+  scoresUnlocked?: boolean;
   className?: string;
 };
 
-export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: Props) {
+export function SkinParamMetricsCard({
+  metrics,
+  viewAllHref,
+  scoresUnlocked = false,
+  className = "",
+}: Props) {
   return (
     <div
       className={`w-full self-start rounded-[20px] border border-[#E5E7EB] bg-white p-4 md:p-5 ${className}`}
@@ -42,22 +53,17 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
               color={p.color}
               size={76}
               strokeWidth={5.5}
-              displayValue={p.grade}
+              displayValue={patientParamGaugeLabel(p.value, scoresUnlocked)}
               valueClassName="text-[22px] sm:text-[24px] text-[#18181b]"
             />
             <p className="text-center text-[15px] font-extrabold leading-tight text-[#18181b] sm:text-[16px]">
               {p.label}
             </p>
             <p
-              className={`text-[13px] font-extrabold sm:text-[14px] ${
-                p.sublabel === "Needs Care"
-                  ? "text-red-500"
-                  : p.sublabel === "Moderate"
-                    ? "text-amber-500"
-                    : "text-[#4CAF50]"
-              }`}
+              className="text-[13px] font-extrabold sm:text-[14px]"
+              style={{ color: p.color }}
             >
-              {p.sublabel}
+              {scoresUnlocked ? p.sublabel : `${p.grade} · ${gradeRangeLabel(p.grade)}`}
             </p>
           </div>
         ))}

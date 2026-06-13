@@ -30,8 +30,10 @@ import {
   WRINKLE_MASK_PANEL_LABEL,
 } from "@/lib/scanMaskLabels";
 import { publicFileDisplayUrl } from "../../src/lib/publicFileUrl";
-import { patientClarityToGrade, patientDisplayClarity } from "../../src/lib/clarityGrade";
+import { patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from "../../src/lib/clarityGrade";
+import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
+import { SCAN_REPORT_CLINIC_PROMO as clinicPromo } from "../../src/lib/scanReportClinicPromo";
 
 const GLASS = "rgba(255,255,255,0.92)";
 const GLASS_BORDER = T.cardBorder;
@@ -59,13 +61,10 @@ export type ReportMetricsNative = {
   texture: number;
   clinical_scores?: {
     active_acne?: number;
-    skin_quality?: number;
+    acne_scars?: number;
     wrinkle_severity?: number;
-    wrinkle_cls_severity?: number;
-    wrinkle_seg_severity?: number;
     sagging_volume?: number;
     under_eye?: number;
-    hair_health?: number;
     pigmentation_model?: number | null;
   };
 };
@@ -75,14 +74,11 @@ const CLINICAL_ROWS: {
   label: string;
 }[] = [
   { key: "active_acne", label: "Active acne" },
-  { key: "skin_quality", label: "Skin quality" },
-  { key: "wrinkle_severity", label: "Wrinkles (combined 1–5)" },
-  { key: "wrinkle_cls_severity", label: "Wrinkles — cls head" },
-  { key: "wrinkle_seg_severity", label: "Wrinkles — seg head" },
+  { key: "acne_scars", label: "Acne scars" },
+  { key: "wrinkle_severity", label: "Wrinkles" },
   { key: "sagging_volume", label: "Sagging & volume" },
   { key: "under_eye", label: "Under-eye" },
-  { key: "hair_health", label: "Hair health" },
-  { key: "pigmentation_model", label: "Pigmentation (model)" },
+  { key: "pigmentation_model", label: "Pigmentation" },
 ];
 
 type Props = {
@@ -103,6 +99,7 @@ type Props = {
   aiSummary: string | null;
   scanDate: Date;
   tracker: PatientTrackerReport | null;
+  scoresUnlocked?: boolean;
 };
 
 function clamp(n: number) {
@@ -149,6 +146,7 @@ export function SkinScanReportBodyNative({
   aiSummary,
   scanDate,
   tracker,
+  scoresUnlocked = false,
 }: Props) {
   const router = useRouter();
   const displayTitle = displayScanTitle(scanTitle);
@@ -196,11 +194,14 @@ export function SkinScanReportBodyNative({
     };
   }, [imageUrl, authToken, showDotMarkersOnly]);
   const overall = clamp(metrics.overall_score);
-  const overallGrade = patientClarityToGrade(overall);
+  const overallView = patientScoreView(overall, scoresUnlocked);
+  const paramLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const heroIntro =
     aiSummary?.trim() ||
-    `Your latest scan shows an overall grade of ${overallGrade}. Detailed parameter grades and photo markers are below.`;
+    (scoresUnlocked
+      ? `Your latest scan shows an overall score of ${overallView.label}. Detailed parameters and photo markers are below.`
+      : `Your latest scan is in the ${overallView.label} range. Visit the clinic for a free analysis to unlock your exact score.`);
 
   const serif = Platform.select({
     ios: "Georgia",
@@ -224,6 +225,26 @@ export function SkinScanReportBodyNative({
     >
       <Text style={styles.pageTitle}>AI scan report</Text>
       {displayTitle ? <Text style={styles.pageSubtitle}>{displayTitle}</Text> : null}
+
+      <View style={styles.promoCard} accessibilityRole="text">
+        <Text style={styles.promoKicker}>{clinicPromo.kicker}</Text>
+        <Text style={styles.promoTitle}>{clinicPromo.title}</Text>
+        <Text style={styles.promoIntro}>{clinicPromo.intro}</Text>
+        <View style={styles.promoItem}>
+          <View style={styles.promoIcon}>
+            <Text style={styles.promoIconGlyph}>◉</Text>
+          </View>
+          <Text style={styles.promoBody}>{clinicPromo.facialScan}</Text>
+        </View>
+        <View style={styles.promoItem}>
+          <View style={styles.promoIcon}>
+            <Text style={styles.promoIconGlyph}>✦</Text>
+          </View>
+          <Text style={styles.promoBody}>{clinicPromo.hairScan}</Text>
+        </View>
+      </View>
+
+      {!scoresUnlocked ? <ClinicScoreUnlockCta compact style={{ marginBottom: 12 }} /> : null}
 
       <View style={styles.reportCard}>
         <LinearGradient
@@ -351,7 +372,7 @@ export function SkinScanReportBodyNative({
           <Text style={styles.bodyText}>{heroIntro}</Text>
 
           {tracker ? (
-            <TrackerReportSectionsNative report={tracker} serifFamily={serif ?? "serif"} />
+            <TrackerReportSectionsNative report={tracker} serifFamily={serif ?? "serif"} scoresUnlocked={scoresUnlocked} />
           ) : (
             <>
               <View style={styles.metricsCol}>
@@ -384,7 +405,7 @@ export function SkinScanReportBodyNative({
                         stroke={5}
                         color={row.fill}
                         trackColor={row.track}
-                        displayValue={patientClarityToGrade(row.value)}
+                        displayValue={patientParamGaugeLabel(row.value, scoresUnlocked)}
                       />
                     </View>
                   </View>
@@ -418,7 +439,7 @@ export function SkinScanReportBodyNative({
                           <View style={styles.clinicalTop}>
                             <Text style={styles.clinicalLabel}>{label}</Text>
                             <Text style={styles.clinicalNum}>
-                              {patientClarityToGrade(clarity)}
+                              {paramLabel(clarity)}
                             </Text>
                           </View>
                           <View style={styles.clinicalTrack}>
@@ -438,7 +459,7 @@ export function SkinScanReportBodyNative({
 
               <View style={styles.scoreFloat}>
                 <Text style={styles.scoreKicker}>YOUR SKIN HEALTH</Text>
-                <Text style={[styles.scoreBig, { fontFamily: serif }]}>{overallGrade}</Text>
+                <Text style={[styles.scoreBig, { fontFamily: serif }]}>{overallView.label}</Text>
                 <Text style={styles.scoreSub}>Last scan: {lastScanLabel}</Text>
                 <View style={styles.scoreDonutWrap}>
                   <ReportDonut
@@ -447,7 +468,7 @@ export function SkinScanReportBodyNative({
                     stroke={9}
                     color={T.peach}
                     trackColor={T.peachLight}
-                    displayValue={overallGrade}
+                    displayValue={patientParamGaugeLabel(overall, scoresUnlocked)}
                   />
                 </View>
               </View>
@@ -547,6 +568,70 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 6,
     paddingHorizontal: 24,
+  },
+  promoCard: {
+    marginHorizontal: 12,
+    marginTop: 12,
+    borderRadius: 20,
+    backgroundColor: GLASS,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#2C3E6B",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 14,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  promoKicker: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2.2,
+    color: "rgba(44, 62, 107, 0.7)",
+    textTransform: "uppercase",
+  },
+  promoTitle: {
+    marginTop: 8,
+    fontSize: 17,
+    fontWeight: "700",
+    color: T.navyDark,
+    lineHeight: 22,
+  },
+  promoIntro: {
+    marginTop: 10,
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#52525b",
+  },
+  promoItem: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 14,
+  },
+  promoIcon: {
+    marginTop: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    backgroundColor: T.accentLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  promoIconGlyph: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: T.navy,
+  },
+  promoBody: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#3f3f46",
   },
   reportCard: {
     marginHorizontal: 12,

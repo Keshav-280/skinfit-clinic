@@ -31,6 +31,7 @@ export interface ScanReportPageClientProps {
   autoDownload?: boolean;
   autoCloseAfterDownload?: boolean;
   serverTracker?: PatientTrackerReport | null;
+  scoresUnlocked?: boolean;
 }
 
 export function ScanReportPageClient({
@@ -52,6 +53,7 @@ export function ScanReportPageClient({
   autoDownload = false,
   autoCloseAfterDownload = false,
   serverTracker,
+  scoresUnlocked = false,
 }: ScanReportPageClientProps) {
   const router = useRouter();
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -168,6 +170,7 @@ export function ScanReportPageClient({
           scanDate={scanDate}
           autoDownload={autoDownload}
           autoCloseAfterDownload={autoCloseAfterDownload}
+          scoresUnlocked={scoresUnlocked}
         />
       </div>
     </div>

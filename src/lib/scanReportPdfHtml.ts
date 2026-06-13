@@ -79,11 +79,9 @@ export type ScanReportPdfPayload = {
 const CLINICAL_ROWS: { key: ClinicalKey; label: string }[] = [
   { key: "active_acne", label: "Active acne" },
   { key: "acne_scars", label: "Acne scars" },
-  { key: "skin_quality", label: "Skin quality" },
   { key: "wrinkle_severity", label: "Wrinkles" },
   { key: "sagging_volume", label: "Sagging & volume" },
   { key: "under_eye", label: "Under-eye" },
-  { key: "hair_health", label: "Hair health" },
   { key: "pigmentation_model", label: "Pigmentation" },
 ];
 
@@ -92,11 +90,9 @@ const EIGHT_CLINICAL_DONUT_STYLE: Partial<
 > = {
   active_acne: { fill: T.navyDark, track: "rgba(30, 50, 100, 0.2)" },
   acne_scars: { fill: T.navy, track: T.accentTrack },
-  skin_quality: { fill: T.accent, track: T.accentTrack },
   wrinkle_severity: { fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
   sagging_volume: { fill: "#4A6FA5", track: "rgba(74, 111, 165, 0.2)" },
   under_eye: { fill: T.navyLight, track: "rgba(91, 123, 168, 0.18)" },
-  hair_health: { fill: "#6B8FC4", track: "rgba(107, 143, 196, 0.2)" },
   pigmentation_model: { fill: "#5B7BA8", track: "rgba(91, 123, 168, 0.2)" },
 };
 
@@ -366,7 +362,7 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
         : null;
 
   let paramRowsHtml = "";
-  for (const row of report.paramRows.slice(0, 8)) {
+  for (const row of report.paramRows) {
     paramRowsHtml += `
       <div class="tr-param-row">
         <span class="tr-param-label">${esc(row.label)}</span>
@@ -474,7 +470,7 @@ function buildLegacyMetricsHtml(
 
   let metricsBlock = "";
   if (eightClinicalDonuts) {
-    metricsBlock += `<p class="metrics-kicker">FaceAnalyzer v13 — eight parameters (grades A–E · A is best)</p>`;
+    metricsBlock += `<p class="metrics-kicker">FaceAnalyzer v13 — six parameters (grades A–E · A is best)</p>`;
     metricsBlock += `<div class="eight-grid">`;
     for (const row of eightClinicalDonuts) {
       metricsBlock += `
@@ -511,7 +507,7 @@ function buildLegacyMetricsHtml(
   let clinicalHtml = "";
   if (cs && !eightClinicalDonuts) {
     clinicalHtml = `<div class="clinical-block avoid-break">
-      <p class="clinical-k">FaceAnalyzer v13 — eight clinical axes (grades A–E)</p>
+      <p class="clinical-k">FaceAnalyzer v13 — six clinical axes (grades A–E)</p>
       <div class="clinical-grid">`;
     for (const { key, label } of CLINICAL_ROWS) {
       const v = cs[key];

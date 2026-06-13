@@ -39,6 +39,7 @@ export type WeeklyHomeSnapshot = {
   weeklyInsight?: WeeklyInsightScheduleSnapshot;
   /** Oldest scan in home payload — fallback to derive unlock date client-side. */
   firstScanAt?: string | null;
+  scoresUnlocked?: boolean;
 };
 
 export type WeeklyInsightViewModel = {

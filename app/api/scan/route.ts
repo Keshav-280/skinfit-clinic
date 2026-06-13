@@ -39,6 +39,7 @@ import {
   invalidateUserInsightsCache,
   invalidateUserScanDerivedCaches,
 } from "../../../src/lib/infra";
+import { computeRagKaiScore } from "../../../src/lib/ragEightParams";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -73,7 +74,8 @@ function generateClinicalFeatureScores() {
     sagging_volume: randomSeverity15(),
     under_eye: randomSeverity15(),
     hair_health: randomSeverity15(),
-    pigmentation_model: null as number | null,
+    acne_scars: randomSeverity15(),
+    pigmentation_model: randomSeverity15(),
   };
 }
 
@@ -124,7 +126,18 @@ function buildDummyKaiV2() {
   const wr100 = severityToClarity(mfs.wrinkle_severity);
   const el100 = severityToClarity(mfs.sagging_volume);
   const sq100 = severityToClarity(mfs.skin_quality);
-  const overall = Math.round((acne100 + wr100 + el100 + sq100) / 4);
+  const scar100 = severityToClarity(mfs.acne_scars);
+  const underEye100 = severityToClarity(mfs.under_eye);
+  const pig100 = severityToClarity(mfs.pigmentation_model);
+  const overall =
+    computeRagKaiScore({
+      active_acne: acne100,
+      sagging_volume: el100,
+      wrinkles: wr100,
+      acne_scar: scar100,
+      under_eye: underEye100,
+      pigmentation: pig100,
+    }) ?? Math.round((acne100 + wr100 + el100 + scar100 + underEye100 + pig100) / 6);
   const params = {
     acne_pimples: { value: acne100, source: "ai" as const, severity_flag: false },
     wrinkles: {
@@ -145,20 +158,15 @@ function buildDummyKaiV2() {
     tone_evenness: { value: null, source: "pending" as const, severity_flag: false },
     uv_damage: { value: null, source: "pending" as const, severity_flag: false },
   };
-  const texture100 = Math.round(
-    (severityToClarity(mfs.sagging_volume) +
-      severityToClarity(mfs.under_eye) +
-      severityToClarity(mfs.hair_health)) /
-      3
-  );
+  const texture100 = scar100;
   return {
     overallKaiScore: overall,
     params,
     legacyMetrics: {
       acne: acne100,
       wrinkles: wr100,
-      pigmentation: 72,
-      hydration: sq100,
+      pigmentation: pig100,
+      hydration: underEye100,
       texture: texture100,
       overall_score: overall,
     },
@@ -169,6 +177,7 @@ function buildDummyKaiV2() {
       sagging_volume: mfs.sagging_volume,
       under_eye: mfs.under_eye,
       hair_health: mfs.hair_health,
+      acne_scars: mfs.acne_scars,
       pigmentation_model: mfs.pigmentation_model,
     },
     detected_regions: generateDetectedRegions(),

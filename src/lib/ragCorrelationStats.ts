@@ -275,13 +275,13 @@ export function correlateBehaviorToDelta(
   }
 
   // ---- Parameter-specific nuances ----
-  if (paramKey === "skin_quality" && behavior.avgWaterGlasses >= 7) {
+  if (paramKey === "pigmentation" && behavior.avgWaterGlasses >= 7) {
     wins.push(
-      `${behavior.avgWaterGlasses} glasses/day hydration tends to improve skin quality`
+      `${behavior.avgWaterGlasses} glasses/day hydration tends to support even tone`
     );
   }
-  if (paramKey === "hair_health" && behavior.avgSleepHours < 6) {
-    drags.push("low sleep tends to slow hair-health recovery");
+  if (paramKey === "under_eye" && behavior.avgSleepHours < 6) {
+    drags.push("low sleep tends to deepen under-eye changes");
   }
   if (paramKey === "acne_scar" && behavior.fullRoutineDays >= 5) {
     wins.push("consistent routine is exactly what acne-scar fading needs");

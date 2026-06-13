@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { patientClarityToGrade } from "@/src/lib/clarityGrade";
+import { patientKaiScoreView, patientScoreView } from "@/src/lib/clarityGrade";
 import {
   INCLUDE_TRACKER_RESOURCES_IN_REPORT,
   TRACKER_REPORT_THEME as R,
@@ -62,10 +62,14 @@ function causeDotClass(impact: "high" | "medium" | "low") {
 export function TrackerReportSections({
   report,
   serifClassName,
+  scoresUnlocked = false,
 }: {
   report: PatientTrackerReport;
   serifClassName: string;
+  scoresUnlocked?: boolean;
 }) {
+  const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
+  const paramLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
   const { lastScanDelta, weekAverageDelta } = report.scores;
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
@@ -90,7 +94,7 @@ export function TrackerReportSections({
           <div className={statCell}>
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">kAI grade</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
-              {patientClarityToGrade(report.scores.kaiScore)}
+              {kaiView.showLock ? kaiView.kaiSecondary : kaiView.kaiPrimary}
             </p>
           </div>
           <div className={statCell}>
@@ -137,7 +141,7 @@ export function TrackerReportSections({
         <div className={`mt-4 ${insetCard}`}>
           <p className="text-sm font-semibold text-zinc-900">This week&apos;s overview</p>
           <div className="mt-2.5 space-y-2.5">
-            {report.paramRows.slice(0, 8).map((row) => (
+            {report.paramRows.map((row) => (
               <div key={row.key} className="grid grid-cols-[minmax(0,1fr)_120px_46px_30px] items-center gap-2 text-xs">
                 <span className="font-medium text-zinc-700">{row.label}</span>
                 <div className="h-2 overflow-hidden rounded-full bg-[rgba(44,62,107,0.12)]">
@@ -147,7 +151,7 @@ export function TrackerReportSections({
                   />
                 </div>
                 <span className="text-right font-semibold tabular-nums text-[#2C3E6B]">
-                  {typeof row.value === "number" ? patientClarityToGrade(row.value) : "-"}
+                  {typeof row.value === "number" ? paramLabel(row.value) : "-"}
                 </span>
                 <span
                   className={`text-right tabular-nums ${

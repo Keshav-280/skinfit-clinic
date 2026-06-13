@@ -12,6 +12,7 @@ import { HistoryView } from "../../../components/dashboard/HistoryView";
 import { getSessionUserId } from "../../../src/lib/auth/get-session";
 import { ymdFromDateOnly } from "../../../src/lib/date-only";
 import { displayUserPhone } from "../../../src/lib/auth/phone";
+import { isPatientClinicVisited } from "../../../src/lib/patientClinicVisit";
 import { patientScanImagePath } from "../../../src/lib/patientScanImagePath";
 
 export default async function HistoryPage() {
@@ -42,7 +43,7 @@ export default async function HistoryPage() {
     primaryGoal: user.primaryGoal,
   };
 
-  const [scansList, visitsList, reportVoiceRows] = await Promise.all([
+  const [scansList, visitsList, reportVoiceRows, scoresUnlocked] = await Promise.all([
     db.query.scans.findMany({
       where: eq(scans.userId, user.id),
       columns: {
@@ -95,6 +96,7 @@ export default async function HistoryPage() {
         )
       )
       .orderBy(desc(doctorFeedbackVoiceNotes.createdAt)),
+    isPatientClinicVisited(userId),
   ]);
 
   const scanRecords = scansList.map((s) => {
@@ -164,6 +166,7 @@ export default async function HistoryPage() {
       reportVoiceNotes={reportVoiceNotes}
       reportVoiceNotesArchived={reportVoiceNotesArchived}
       patient={patient}
+      scoresUnlocked={scoresUnlocked}
     />
   );
 }

@@ -18,7 +18,7 @@ import {
 } from "@/src/lib/patientVisit";
 import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
-import { patientClarityToGrade } from "@/src/lib/clarityGrade";
+import { patientScoreView } from "@/src/lib/clarityGrade";
 import {
   patientGlassShell,
   patientInnerCard,
@@ -75,6 +75,7 @@ interface HistoryViewProps {
   reportVoiceNotes: ReportVoiceNoteRecord[];
   reportVoiceNotesArchived?: ReportVoiceNoteRecord[];
   patient: PatientInfo;
+  scoresUnlocked?: boolean;
 }
 
 function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
@@ -216,7 +217,9 @@ export function HistoryView({
   reportVoiceNotes,
   reportVoiceNotesArchived = [],
   patient,
+  scoresUnlocked = false,
 }: HistoryViewProps) {
+  const scoreLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
   const router = useRouter();
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -324,7 +327,7 @@ export function HistoryView({
                     fetchPriority="low"
                   />
                   <div className="absolute right-2 top-2 rounded-lg bg-[#2C3E6B] px-2.5 py-1 text-lg font-bold text-white shadow-sm">
-                    {patientClarityToGrade(scan.overallScore)}
+                    {scoreLabel(scan.overallScore)}
                   </div>
                 </div>
                 <div className="border-t border-white/50 px-4 py-3">
@@ -335,7 +338,7 @@ export function HistoryView({
                     {format(new Date(scan.createdAt), "MMM d, yyyy · h:mm a")}
                   </p>
                   <p className="mt-1 text-lg font-bold text-[#2C3E6B]">
-                    Overall {patientClarityToGrade(scan.overallScore)}
+                    Overall {scoreLabel(scan.overallScore)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {(
@@ -349,7 +352,7 @@ export function HistoryView({
                       ] as const
                     ).map(([label, val]) => (
                       <span key={label} className={patientScoreChip}>
-                        {label} {patientClarityToGrade(val)}
+                        {label} {scoreLabel(val)}
                       </span>
                     ))}
                   </div>

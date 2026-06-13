@@ -10,11 +10,15 @@ import {
 } from "@/src/lib/ragEightParams";
 import {
   classifySkinParamMetric,
+  gradeRangeLabel,
   patientClarityToGrade,
   patientDisplayClarity,
+  patientParamGaugeLabel,
+  patientScoreView,
   PATIENT_DISPLAY_SCORE_MAX,
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
+import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 
 interface SkinParam {
   name: string;
@@ -67,7 +71,15 @@ const STROKE_WIDTH = 7;
 const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function ProgressRing({ value, color, grade }: { value: number; color: string; grade: string }) {
+function ProgressRing({
+  value,
+  color,
+  displayLabel,
+}: {
+  value: number;
+  color: string;
+  displayLabel: string;
+}) {
   const offset = CIRCUMFERENCE - (value / 100) * CIRCUMFERENCE;
   return (
     <div className="relative flex items-center justify-center" style={{ width: RING_SIZE, height: RING_SIZE }}>
@@ -75,7 +87,7 @@ function ProgressRing({ value, color, grade }: { value: number; color: string; g
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS} fill="none" stroke="#e5e7eb" strokeWidth={STROKE_WIDTH} />
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS} fill="none" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" strokeDasharray={CIRCUMFERENCE} strokeDashoffset={offset} className="transition-all duration-700 ease-out" />
       </svg>
-      <span className="absolute text-lg font-bold text-[#2C3E6B]">{grade}</span>
+      <span className="absolute text-lg font-bold text-[#2C3E6B]">{displayLabel}</span>
     </div>
   );
 }
@@ -96,10 +108,12 @@ function MiniLineChart({
   data,
   color,
   paramName,
+  scoresUnlocked = false,
 }: {
   data: { value: number; date: string }[];
   color: string;
   paramName: string;
+  scoresUnlocked?: boolean;
 }) {
   const chartW = 200;
   const chartH = 44;
@@ -124,10 +138,12 @@ function MiniLineChart({
   const maxV = PATIENT_DISPLAY_SCORE_MAX;
   const range = maxV - minV;
 
+  const pointLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
+
   const points = displayValues.map((v, i) => {
     const x = padX + (i / (displayValues.length - 1)) * innerW;
     const y = padY + innerH - ((v - minV) / range) * innerH;
-    return { x, y, grade: patientClarityToGrade(rawValues[i]) };
+    return { x, y, label: pointLabel(rawValues[i]) };
   });
 
   const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
@@ -137,14 +153,14 @@ function MiniLineChart({
   if (data.length === 0) {
     caption = "No scans yet";
   } else if (data.length === 1) {
-    caption = `${points[0].grade} · ${data[0].date}`;
+    caption = `${points[0].label} · ${data[0].date}`;
   } else {
-    const firstG = points[0].grade;
-    const lastG = points[points.length - 1].grade;
+    const firstL = points[0].label;
+    const lastL = points[points.length - 1].label;
     caption =
-      firstG === lastG
-        ? `${firstG} · ${data[0].date} → ${data[data.length - 1].date}`
-        : `${firstG} → ${lastG} · ${data[0].date} → ${data[data.length - 1].date}`;
+      firstL === lastL
+        ? `${firstL} · ${data[0].date} → ${data[data.length - 1].date}`
+        : `${firstL} → ${lastL} · ${data[0].date} → ${data[data.length - 1].date}`;
   }
 
   return (
@@ -194,14 +210,21 @@ function MiniLineChart({
   );
 }
 
-function TrendIndicator({ history }: { history: { value: number }[] }) {
+function TrendIndicator({
+  history,
+  scoresUnlocked,
+}: {
+  history: { value: number }[];
+  scoresUnlocked: boolean;
+}) {
+  const label = (v: number) => patientScoreView(v, scoresUnlocked).label;
   if (history.length === 0) {
     return <span className="text-[11px] font-medium text-[#6B7280]">—</span>;
   }
   if (history.length === 1) {
     return (
       <span className="text-[11px] font-semibold text-[#2C3E6B]">
-        {patientClarityToGrade(history[0].value)}
+        {label(history[0].value)}
       </span>
     );
   }
@@ -209,6 +232,8 @@ function TrendIndicator({ history }: { history: { value: number }[] }) {
   const prev = history[history.length - 2].value;
   const latestGrade = patientClarityToGrade(latest);
   const prevGrade = patientClarityToGrade(prev);
+  const latestLabel = label(latest);
+  const prevLabel = label(prev);
 
   if (latestGrade !== prevGrade) {
     const improved =
@@ -220,7 +245,7 @@ function TrendIndicator({ history }: { history: { value: number }[] }) {
         }`}
       >
         {improved ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-        {prevGrade} → {latestGrade}
+        {prevLabel} → {latestLabel}
       </span>
     );
   }
@@ -228,26 +253,37 @@ function TrendIndicator({ history }: { history: { value: number }[] }) {
   return (
     <span className="flex items-center gap-0.5 text-[11px] font-semibold text-[#6B7280]">
       <Minus className="h-3 w-3" />
-      Stable ({latestGrade})
+      Stable ({latestLabel})
     </span>
   );
 }
 
-function ParamCard({ param }: { param: SkinParam }) {
+function ParamCard({
+  param,
+  scoresUnlocked,
+}: {
+  param: SkinParam;
+  scoresUnlocked: boolean;
+}) {
   const { label, color, bg, text, grade, displayScore } = statusInfo(param.value);
+  const rangeHint = `${grade} · ${gradeRangeLabel(grade)}`;
 
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/60 bg-white/35 p-4 backdrop-blur-sm">
       <div className="w-full">
-        <MiniLineChart data={param.history} color={color} paramName={param.name} />
+        <MiniLineChart data={param.history} color={color} paramName={param.name} scoresUnlocked={scoresUnlocked} />
       </div>
       <span className="text-sm font-semibold text-[#2C3E6B]">{param.name}</span>
-      <ProgressRing value={displayScore} color={color} grade={grade} />
+      <ProgressRing
+        value={displayScore}
+        color={color}
+        displayLabel={patientParamGaugeLabel(param.value, scoresUnlocked)}
+      />
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${bg} ${text}`}>
-          {label}
+          {scoresUnlocked ? label : rangeHint}
         </span>
-        <TrendIndicator history={param.history} />
+        <TrendIndicator history={param.history} scoresUnlocked={scoresUnlocked} />
       </div>
     </div>
   );
@@ -257,6 +293,7 @@ export default function SkinParamsPage() {
   const [loading, setLoading] = useState(true);
   const [parameters, setParameters] = useState<SkinParam[]>([]);
   const [lastScanDate, setLastScanDate] = useState<string | null>(null);
+  const [scoresUnlocked, setScoresUnlocked] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -264,6 +301,7 @@ export default function SkinParamsPage() {
         const res = await fetch("/api/patient/home", { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json();
+        setScoresUnlocked(Boolean(data.scoresUnlocked));
         const history = data.skinScanHistory as { analysisResults: unknown; createdAt: string }[] | undefined;
         if (history && history.length > 0) {
           setParameters(extractAllParams(history));
@@ -314,10 +352,12 @@ export default function SkinParamsPage() {
         <h1 className="text-xl font-bold text-[#2C3E6B]">Skin Parameters</h1>
       </div>
 
+      {!scoresUnlocked ? <ClinicScoreUnlockCta className="mb-6" compact /> : null}
+
       {/* Parameter grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {parameters.map((param) => (
-          <ParamCard key={param.name} param={param} />
+          <ParamCard key={param.name} param={param} scoresUnlocked={scoresUnlocked} />
         ))}
       </div>
 

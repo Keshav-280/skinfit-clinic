@@ -23,9 +23,7 @@ export type SkinAnalysisResults = {
 export const DEFAULT_SKIN_PARAMS = [
   { label: "Active Acne", value: 72 },
   { label: "Sagging & Volume", value: 70 },
-  { label: "Hair Health", value: 74 },
   { label: "Wrinkles", value: 68 },
-  { label: "Skin Quality", value: 76 },
   { label: "Acne Scar", value: 66 },
   { label: "Under Eye", value: 69 },
   { label: "Pigmentation", value: 71 },
@@ -48,18 +46,11 @@ function kaiParamValue(kaiParams: unknown, key: string): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
 
-/** Average of available values; falls back to `undefined` if none. */
-function avgDefined(...vals: (number | undefined)[]): number | undefined {
-  const xs = vals.filter((v): v is number => v != null);
-  if (xs.length === 0) return undefined;
-  return Math.round(xs.reduce((s, x) => s + x, 0) / xs.length);
-}
-
 function firstDefined(...vals: (number | undefined)[]): number | undefined {
   return vals.find((v) => typeof v === "number");
 }
 
-/** Build the 8-parameter dashboard rows from `skin_scans.analysis_results`. */
+/** Build the 6-parameter dashboard rows from `skin_scans.analysis_results`. */
 export function analysisResultsToParams(
   analysis: unknown
 ): { label: string; value: number }[] {
@@ -82,23 +73,16 @@ export function analysisResultsToParams(
 
   const acne = readNum(a, "acne");
   const wrinkles = readNum(a, "wrinkles");
-  const texture = readNum(a, "texture");
   const pigmentation = readNum(a, "pigmentation");
-  const hydration = readNum(a, "hydration");
   const activeAcneTop = readNum(a, "activeAcne") ?? sevClarity("active_acne");
   const saggingTop = readNum(a, "saggingVolume") ?? sevClarity("sagging_volume");
-  const hairHealthTop = readNum(a, "hairHealth") ?? sevClarity("hair_health");
-  const skinQualityTop = readNum(a, "skinQuality") ?? sevClarity("skin_quality");
   const acneScarTop = readNum(a, "acneScar") ?? sevClarity("acne_scars");
   const underEyeTop = readNum(a, "underEye") ?? sevClarity("under_eye");
 
-  // Legacy / analyze_v2 keys (both snake_case and older aliases)
   const acneK = kaiParamValue(kaiParams, "acne_pimples");
   const activeAcneK = kaiParamValue(kaiParams, "active_acne");
   const saggingK = kaiParamValue(kaiParams, "sagging_volume");
-  const hairHealthK = kaiParamValue(kaiParams, "hair_health");
   const wrinklesK = kaiParamValue(kaiParams, "wrinkles");
-  const skinQualityK = kaiParamValue(kaiParams, "skin_quality");
   const acneScarK = firstDefined(
     kaiParamValue(kaiParams, "acne_scar"),
     kaiParamValue(kaiParams, "acne_scars")
@@ -114,7 +98,6 @@ export function analysisResultsToParams(
       ? undefined
       : sevClarity("pigmentation_model"));
   const fallback = (i: number) => DEFAULT_SKIN_PARAMS[i]?.value ?? 70;
-  const skinQualityLegacy = avgDefined(texture, hydration);
 
   return [
     {
@@ -126,28 +109,20 @@ export function analysisResultsToParams(
       value: clamp100(firstDefined(saggingK, saggingTop) ?? fallback(1)),
     },
     {
-      label: "Hair Health",
-      value: clamp100(firstDefined(hairHealthK, hairHealthTop) ?? fallback(2)),
-    },
-    {
       label: "Wrinkles",
-      value: clamp100(firstDefined(wrinklesK, wrinkles) ?? fallback(3)),
-    },
-    {
-      label: "Skin Quality",
-      value: clamp100(firstDefined(skinQualityK, skinQualityTop, skinQualityLegacy) ?? fallback(4)),
+      value: clamp100(firstDefined(wrinklesK, wrinkles) ?? fallback(2)),
     },
     {
       label: "Acne Scar",
-      value: clamp100(firstDefined(acneScarK, acneScarTop) ?? fallback(5)),
+      value: clamp100(firstDefined(acneScarK, acneScarTop) ?? fallback(3)),
     },
     {
       label: "Under Eye",
-      value: clamp100(firstDefined(underEyeK, underEyeTop) ?? fallback(6)),
+      value: clamp100(firstDefined(underEyeK, underEyeTop) ?? fallback(4)),
     },
     {
       label: "Pigmentation",
-      value: clamp100(firstDefined(pigmentationK, pigmentation) ?? fallback(7)),
+      value: clamp100(firstDefined(pigmentationK, pigmentation) ?? fallback(5)),
     },
   ];
 }

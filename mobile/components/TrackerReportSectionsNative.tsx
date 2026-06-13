@@ -2,7 +2,7 @@ import { Platform, StyleSheet, Text, View } from "react-native";
 
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import { patientClarityToGrade } from "../../src/lib/clarityGrade";
+import { patientKaiScoreView, patientScoreView } from "../../src/lib/clarityGrade";
 import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 
 function signed(n: number) {
@@ -41,10 +41,17 @@ function parseFocusDetail(detail: string): Array<{ label: string; body: string }
 type Props = {
   report: PatientTrackerReport;
   serifFamily: string;
+  scoresUnlocked?: boolean;
 };
 
-export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
+export function TrackerReportSectionsNative({
+  report,
+  serifFamily,
+  scoresUnlocked = false,
+}: Props) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
+  const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
+  const paramLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
@@ -58,7 +65,9 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
         <View style={styles.statGrid}>
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>kAI grade</Text>
-            <Text style={styles.statValue}>{patientClarityToGrade(report.scores.kaiScore)}</Text>
+            <Text style={styles.statValue}>
+              {kaiView.showLock ? kaiView.kaiSecondary : kaiView.kaiPrimary}
+            </Text>
           </View>
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>Weekly delta</Text>
@@ -96,7 +105,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
         <View style={styles.insetBox}>
           <Text style={styles.blockTitle}>This week&apos;s overview</Text>
           <View style={{ marginTop: 10, gap: 10 }}>
-            {report.paramRows.slice(0, 8).map((row) => (
+            {report.paramRows.map((row) => (
               <View key={row.key} style={styles.paramRow}>
                 <Text style={styles.paramLabel} numberOfLines={2}>
                   {row.label}
@@ -107,7 +116,7 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
                   />
                 </View>
                 <Text style={styles.paramNum}>
-                  {typeof row.value === "number" ? patientClarityToGrade(row.value) : "-"}
+                  {typeof row.value === "number" ? paramLabel(row.value) : "-"}
                 </Text>
                 <Text
                   style={[

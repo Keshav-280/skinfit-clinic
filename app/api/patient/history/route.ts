@@ -12,6 +12,7 @@ import { displayUserPhone } from "@/src/lib/auth/phone";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
+import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
   if (!userId) {
@@ -198,7 +199,8 @@ export async function GET(request: Request) {
       reportVoiceNotesArchived,
     };
 
-    return basePayload;
+    const scoresUnlocked = await isPatientClinicVisited(userId);
+    return { ...basePayload, scoresUnlocked };
   }).catch((err: unknown) => {
     if (err instanceof Error && err.message === "NOT_FOUND") return null;
     throw err;

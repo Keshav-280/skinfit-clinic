@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../../../../src/db";
 import { scans, users } from "../../../../../src/db/schema";
 import { getSessionUserId } from "../../../../../src/lib/auth/get-session";
+import { isPatientClinicVisited } from "../../../../../src/lib/patientClinicVisit";
 import { parseScanRegions } from "../../../../../src/lib/parseScanAnnotations";
 import {
   parseClinicalScores,
@@ -102,11 +103,12 @@ export default async function ScanReportPage({
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 
-  const [user, row] = await Promise.all([
+  const [user, row, scoresUnlocked] = await Promise.all([
     db.query.users.findFirst({
       where: eq(users.id, userId),
     }),
     loadScanRow(userId, id),
+    isPatientClinicVisited(userId),
   ]);
 
   if (!user) notFound();
@@ -162,6 +164,7 @@ export default async function ScanReportPage({
       autoDownload={autoDownload}
       autoCloseAfterDownload={autoCloseAfterDownload}
       serverTracker={serverTracker}
+      scoresUnlocked={scoresUnlocked}
     />
   );
 }

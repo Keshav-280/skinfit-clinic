@@ -54,16 +54,15 @@ export function patientClarityToGrade(rawScore: number): ClarityGrade {
   return clarityToGrade(patientDisplayClarity(rawScore));
 }
 
+/** Ring / chart color by letter grade (patient UI). */
 export function gradeColor(grade: ClarityGrade): string {
   switch (grade) {
     case "A":
-      return "#4CAF50";
     case "B":
-      return "#84CC16";
+      return "#4CAF50";
     case "C":
       return "#F59E0B";
     case "D":
-      return "#F97316";
     case "E":
       return "#DC2626";
   }
@@ -111,4 +110,94 @@ export function gradeRangeLabel(grade: ClarityGrade): string {
   const band = CLARITY_GRADE_BANDS.find((b) => b.grade === grade);
   if (!band) return grade;
   return `${band.min}–${band.max}`;
+}
+
+/** Patient CTA when exact scores are locked (home scans before clinic analysis). */
+export const CLINIC_SCORE_UNLOCK = {
+  title: "Unlock your exact scores",
+  message:
+    "Get a free skin analysis at the clinic to unlock your exact kAI score and full results.",
+  actionLabel: "Book free analysis",
+  schedulesHref: "/dashboard/schedules",
+  mobileSchedulesHref: "/(drawer)/schedules",
+} as const;
+
+/**
+ * Unlock rule: `users.clinicVisitedAt` is set when clinic staff marks a visit
+ * (free in-clinic skin analysis). Same flag unlocks doctor chat.
+ */
+export function patientGradeWithRange(rawScore: number): string {
+  const grade = patientClarityToGrade(rawScore);
+  return `${grade} (${gradeRangeLabel(grade)})`;
+}
+
+export type PatientScoreView = {
+  grade: ClarityGrade;
+  displayScore: number;
+  color: string;
+  sublabel: string;
+  /** Primary label — exact calibrated score when unlocked, grade+range when locked. */
+  label: string;
+  rangeLabel: string;
+  locked: boolean;
+};
+
+export function patientScoreView(
+  rawScore: number,
+  scoresUnlocked: boolean
+): PatientScoreView {
+  const displayScore = patientDisplayClarity(rawScore);
+  const grade = clarityToGrade(displayScore);
+  const rangeLabel = gradeRangeLabel(grade);
+  const locked = !scoresUnlocked;
+  return {
+    grade,
+    displayScore,
+    color: gradeColor(grade),
+    sublabel: gradeSublabel(grade),
+    label: scoresUnlocked ? String(displayScore) : patientGradeWithRange(rawScore),
+    rangeLabel,
+    locked,
+  };
+}
+
+export type PatientKaiScoreView = PatientScoreView & {
+  kaiPrimary: string;
+  kaiSecondary: string;
+  gaugeDisplayValue: string;
+  showLock: boolean;
+};
+
+/** kAI card / donut — exact number when unlocked; lock + grade range when locked. */
+export function patientKaiScoreView(
+  rawScore: number,
+  scoresUnlocked: boolean
+): PatientKaiScoreView {
+  const base = patientScoreView(rawScore, scoresUnlocked);
+  if (scoresUnlocked) {
+    return {
+      ...base,
+      kaiPrimary: base.label,
+      kaiSecondary: base.sublabel,
+      gaugeDisplayValue: base.label,
+      showLock: false,
+    };
+  }
+  return {
+    ...base,
+    kaiPrimary: "—",
+    kaiSecondary: `${base.grade} · ${base.rangeLabel}`,
+    gaugeDisplayValue: base.grade,
+    showLock: true,
+  };
+}
+
+/** Ring center text for param gauges. */
+export function patientParamGaugeLabel(
+  rawScore: number,
+  scoresUnlocked: boolean
+): string {
+  return scoresUnlocked
+    ? String(patientDisplayClarity(rawScore))
+    : patientClarityToGrade(rawScore);
 }

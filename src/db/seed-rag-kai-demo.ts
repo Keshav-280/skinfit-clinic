@@ -20,7 +20,7 @@ import {
   visitNotes,
   weeklyReports,
 } from "@/src/db/schema";
-import { RAG_KAI_PARAM_KEYS, type RagKaiParamKey } from "@/src/lib/ragEightParams";
+import { RAG_KAI_PARAM_KEYS, type RagKaiParamKey, computeRagKaiScore } from "@/src/lib/ragEightParams";
 
 /** 5 steps each side — matches seeded checklist granularity. */
 const STEP_N = 5;
@@ -179,8 +179,8 @@ export async function seedRagKaiDemoData() {
   const totalScans = scanDaysAgoDescending.length;
 
   const slumpPenalty: Record<number, Partial<Record<RagKaiParamKey, number>>> = {
-    5: { pigmentation: -13, active_acne: -12, skin_quality: -10, wrinkles: -5 },
-    6: { active_acne: -10, skin_quality: -7 },
+    5: { pigmentation: -13, active_acne: -12, wrinkles: -5 },
+    6: { active_acne: -10, pigmentation: -7 },
     14: { pigmentation: -11, wrinkles: -6 },
     15: { active_acne: -11, sagging_volume: -5 },
     16: { active_acne: -8 },
@@ -213,15 +213,14 @@ export async function seedRagKaiDemoData() {
     const byParam: Record<string, number> = {
       active_acne: clamp(center - 8 + noise - 3 + (slump.active_acne ?? 0)),
       sagging_volume: clamp(center - 5 + noise + (slump.sagging_volume ?? 0)),
-      hair_health: clamp(center - 6 + noise + (slump.hair_health ?? 0)),
       wrinkles: clamp(center - 11 + noise + (slump.wrinkles ?? 0)),
-      skin_quality: clamp(center - 3 + noise + (slump.skin_quality ?? 0)),
       acne_scar: clamp(center - 13 + noise + (slump.acne_scar ?? 0)),
       under_eye: clamp(center - 8 + noise + (slump.under_eye ?? 0)),
       pigmentation: clamp(center - 4 + noise + (slump.pigmentation ?? 0)),
     };
     const overall = clamp(
-      RAG_KAI_PARAM_KEYS.reduce((s, k) => s + byParam[k], 0) / RAG_KAI_PARAM_KEYS.length
+      computeRagKaiScore(byParam) ??
+        RAG_KAI_PARAM_KEYS.reduce((s, k) => s + byParam[k], 0) / RAG_KAI_PARAM_KEYS.length
     );
     const [scan] = await db
       .insert(scans)
@@ -232,7 +231,7 @@ export async function seedRagKaiDemoData() {
         acne: byParam.active_acne,
         pigmentation: byParam.pigmentation,
         wrinkles: byParam.wrinkles,
-        hydration: byParam.skin_quality,
+        hydration: byParam.wrinkles,
         texture: byParam.acne_scar,
         aiSummary: "Synthetic demo scan for kAI RAG testing",
         createdAt,

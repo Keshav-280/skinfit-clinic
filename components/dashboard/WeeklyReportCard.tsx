@@ -22,7 +22,7 @@ import {
   trendSummary,
 } from "@/src/lib/weeklyInsightFormat";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
-import { patientClarityToGrade } from "@/src/lib/clarityGrade";
+import { patientKaiScoreView } from "@/src/lib/clarityGrade";
 
 type Props = {
   locked?: boolean;
@@ -37,6 +37,7 @@ type Props = {
   priorityActions: string[];
   observationsUnavailable?: boolean;
   actionsUnavailable?: boolean;
+  scoresUnlocked?: boolean;
   className?: string;
 };
 
@@ -72,9 +73,11 @@ export function WeeklyReportCard({
   priorityActions,
   observationsUnavailable,
   actionsUnavailable,
+  scoresUnlocked = false,
   className = "",
 }: Props) {
   const trend = trendSummary(weeklyDelta);
+  const kaiView = patientKaiScoreView(kaiScore, scoresUnlocked);
   const parsedActions = priorityActions.map(parsePriorityAction);
   const TrendIcon =
     trend.tone === "up" ? TrendingUp : trend.tone === "down" ? TrendingDown : Minus;
@@ -110,7 +113,7 @@ export function WeeklyReportCard({
               <p className="text-xs text-[#94a3b8]">Your skin grade</p>
               <p className="mt-0.5 flex items-end gap-1">
                 <span className="text-[32px] font-extrabold leading-none text-[#2D3E6B]">
-                  {patientClarityToGrade(kaiScore)}
+                  {kaiView.showLock ? kaiView.kaiSecondary : kaiView.kaiPrimary}
                 </span>
               </p>
             </div>

@@ -369,7 +369,7 @@ async function buildMonthlyForCalendarMonth(
     monthlyLlm?.summaryTitle ?? "kAI monthly progress";
   const summaryBody =
     monthlyLlm?.summaryBody ??
-    `Month kAI from mean parameters: ${kaiMonthAvgFromParams ?? "—"} (weighted score after averaging each of 8 parameters across scans this month). Per-scan kAI series: ${scoreTrend.join(" → ")}.`;
+    `Month kAI from mean parameters: ${kaiMonthAvgFromParams ?? "—"} (weighted score after averaging each of 6 parameters across scans this month). Per-scan kAI series: ${scoreTrend.join(" → ")}.`;
   const highlights =
     monthlyLlm?.highlights && monthlyLlm.highlights.length > 0
       ? monthlyLlm.highlights
@@ -1174,16 +1174,9 @@ export async function generateRagKaiOutput(input: {
     });
 
   // -------- Trend lines --------
-  const trendLines: Record<RagKaiParamKey, number[]> = {
-    active_acne: [],
-    sagging_volume: [],
-    hair_health: [],
-    wrinkles: [],
-    skin_quality: [],
-    acne_scar: [],
-    under_eye: [],
-    pigmentation: [],
-  };
+  const trendLines: Record<RagKaiParamKey, number[]> = Object.fromEntries(
+    RAG_KAI_PARAM_KEYS.map((k) => [k, [] as number[]])
+  ) as Record<RagKaiParamKey, number[]>;
   for (const s of scansWithParams) {
     for (const k of RAG_KAI_PARAM_KEYS) {
       const v = s.paramValues[k];

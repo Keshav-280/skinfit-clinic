@@ -684,9 +684,8 @@ export function DashboardView({
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-zinc-900">Skin Parameter Analysis</h2>
             <p className="max-w-2xl text-xs leading-relaxed text-zinc-500">
-              The AI tracker analyzes 8 kAI parameters (Active Acne, Sagging &amp; Volume, Hair
-              Health, Wrinkles, Skin Quality, Acne Scar, Under Eye, Pigmentation). Higher is
-              better.
+              The AI tracker analyzes 6 kAI parameters (Active Acne, Sagging &amp; Volume,
+              Wrinkles, Acne Scar, Under Eye, Pigmentation). Higher is better.
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
