@@ -52,8 +52,10 @@ import { DashboardStreakCard } from "@/components/dashboard/DashboardStreakCard"
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
 import {
   classifySkinParamMetric,
-  SkinParamMetricsCard,
-} from "@/components/dashboard/SkinParamMetricsCard";
+  patientClarityToGrade,
+  patientDisplayClarity,
+} from "@/src/lib/clarityGrade";
+import { SkinParamMetricsCard } from "@/components/dashboard/SkinParamMetricsCard";
 import {
   DASHBOARD_SECTION_CARD,
   DashboardSectionHeader,
@@ -170,7 +172,9 @@ function RadarChart({
     return data.map((_, i) => getPoint(i, r)).map((p) => `${p.x},${p.y}`).join(" ");
   });
 
-  const dataPoints = data.map((d, i) => getPoint(i, (d.value / 100) * maxRadius));
+  const dataPoints = data.map((d, i) =>
+    getPoint(i, (patientDisplayClarity(d.value) / 100) * maxRadius)
+  );
   const dataPath = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
@@ -213,7 +217,9 @@ function RadarChart({
             }}
           >
             <p className={`font-medium text-slate-500 ${chartSize < 220 ? "text-[10px]" : "text-xs"}`}>{d.label}</p>
-            <p className={`font-bold text-slate-800 ${chartSize < 220 ? "text-xs" : "text-sm"}`}>{d.value}%</p>
+            <p className={`font-bold text-slate-800 ${chartSize < 220 ? "text-xs" : "text-sm"}`}>
+              {patientClarityToGrade(d.value)}
+            </p>
           </div>
         );
       })}

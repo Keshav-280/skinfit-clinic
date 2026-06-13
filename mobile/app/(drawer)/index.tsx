@@ -1188,7 +1188,7 @@ function RadarChart({
   });
 
   const dataPoints = metrics
-    .map((m, i) => pointOnAxis(i, m.value / 100))
+    .map((m, i) => pointOnAxis(i, patientDisplayClarity(m.value) / 100))
     .map((p) => `${p.x},${p.y}`)
     .join(" ");
 
@@ -1235,7 +1235,7 @@ function RadarChart({
             strokeWidth={2}
           />
           {metrics.map((m, i) => {
-            const p = pointOnAxis(i, m.value / 100);
+            const p = pointOnAxis(i, patientDisplayClarity(m.value) / 100);
             return <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={compact ? 3 : 4} fill={GREEN_ACCENT} />;
           })}
         </Svg>

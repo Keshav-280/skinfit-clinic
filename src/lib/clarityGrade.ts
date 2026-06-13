@@ -17,8 +17,8 @@ export const CLARITY_GRADE_BANDS: ReadonlyArray<{
   { grade: "E", min: 0, max: 19 },
 ] as const;
 
-/** Gamma–exponential saturation: raw high scores asymptote near ~80. */
-const PATIENT_DISPLAY_CAP = 80;
+/** Upper bound of patient display clarity (gamma saturation cap). */
+export const PATIENT_DISPLAY_SCORE_MAX = 80;
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
 
@@ -34,7 +34,7 @@ function clampClarity(score: number): number {
 export function patientDisplayClarity(rawScore: number): number {
   const x = Math.min(100, Math.max(0, rawScore)) / 100;
   const saturated =
-    PATIENT_DISPLAY_CAP *
+    PATIENT_DISPLAY_SCORE_MAX *
     (1 - Math.exp(-PATIENT_DISPLAY_LAMBDA * Math.pow(x, PATIENT_DISPLAY_GAMMA)));
   return clampClarity(saturated);
 }

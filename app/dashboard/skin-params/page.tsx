@@ -8,7 +8,13 @@ import {
   RAG_KAI_PARAM_KEYS,
   RAG_KAI_PARAM_LABELS,
 } from "@/src/lib/ragEightParams";
-import { classifySkinParamMetric } from "@/src/lib/clarityGrade";
+import {
+  classifySkinParamMetric,
+  patientClarityToGrade,
+  patientDisplayClarity,
+  PATIENT_DISPLAY_SCORE_MAX,
+  type ClarityGrade,
+} from "@/src/lib/clarityGrade";
 
 interface SkinParam {
   name: string;
@@ -78,7 +84,14 @@ function slugForChartId(name: string) {
   return name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() || "param";
 }
 
-/** Sparkline: always draws — single scan = flat segment at that score; no scans = baseline at 0. */
+/** Grade band thresholds on the calibrated 0–80 display scale. */
+const GRADE_BAND_LINES: { grade: ClarityGrade; at: number }[] = [
+  { grade: "B", at: 60 },
+  { grade: "C", at: 40 },
+  { grade: "D", at: 20 },
+];
+
+/** Sparkline uses calibrated display scores on a fixed 0–80 axis (grade-aware variation). */
 function MiniLineChart({
   data,
   color,
@@ -96,24 +109,25 @@ function MiniLineChart({
   const innerH = chartH - padY * 2;
   const gradId = `skin-spark-grad-${slugForChartId(paramName)}`;
 
-  let values: number[];
+  let rawValues: number[];
   if (data.length === 0) {
-    values = [0, 0];
+    rawValues = [0, 0];
   } else if (data.length === 1) {
     const v = data[0].value;
-    values = [v, v];
+    rawValues = [v, v];
   } else {
-    values = data.map((d) => d.value);
+    rawValues = data.map((d) => d.value);
   }
 
-  const minV = Math.min(0, ...values);
-  const maxV = Math.max(100, ...values);
-  const range = maxV - minV || 1;
+  const displayValues = rawValues.map((v) => patientDisplayClarity(v));
+  const minV = 0;
+  const maxV = PATIENT_DISPLAY_SCORE_MAX;
+  const range = maxV - minV;
 
-  const points = values.map((v, i) => {
-    const x = padX + (i / (values.length - 1)) * innerW;
+  const points = displayValues.map((v, i) => {
+    const x = padX + (i / (displayValues.length - 1)) * innerW;
     const y = padY + innerH - ((v - minV) / range) * innerH;
-    return { x, y };
+    return { x, y, grade: patientClarityToGrade(rawValues[i]) };
   });
 
   const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
@@ -121,11 +135,16 @@ function MiniLineChart({
 
   let caption: string;
   if (data.length === 0) {
-    caption = "No scans yet — trend from 0";
+    caption = "No scans yet";
   } else if (data.length === 1) {
-    caption = `First reading · ${data[0].date}`;
+    caption = `${points[0].grade} · ${data[0].date}`;
   } else {
-    caption = `${data[0].date} → ${data[data.length - 1].date}`;
+    const firstG = points[0].grade;
+    const lastG = points[points.length - 1].grade;
+    caption =
+      firstG === lastG
+        ? `${firstG} · ${data[0].date} → ${data[data.length - 1].date}`
+        : `${firstG} → ${lastG} · ${data[0].date} → ${data[data.length - 1].date}`;
   }
 
   return (
@@ -137,16 +156,22 @@ function MiniLineChart({
             <stop offset="100%" stopColor={color} stopOpacity="0.03" />
           </linearGradient>
         </defs>
-        {/* subtle 0 / 100 reference */}
-        <line
-          x1={padX}
-          y1={padY + innerH}
-          x2={padX + innerW}
-          y2={padY + innerH}
-          stroke="#e5e7eb"
-          strokeWidth="1"
-          strokeDasharray="3 3"
-        />
+        {GRADE_BAND_LINES.map(({ grade, at }) => {
+          const y = padY + innerH - (at / range) * innerH;
+          return (
+            <g key={grade}>
+              <line
+                x1={padX}
+                y1={y}
+                x2={padX + innerW}
+                y2={y}
+                stroke="#e5e7eb"
+                strokeWidth="1"
+                strokeDasharray="2 3"
+              />
+            </g>
+          );
+        })}
         <path d={areaD} fill={`url(#${gradId})`} />
         <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {data.length === 0 ? null : data.length === 1 ? (
@@ -174,14 +199,38 @@ function TrendIndicator({ history }: { history: { value: number }[] }) {
     return <span className="text-[11px] font-medium text-[#6B7280]">—</span>;
   }
   if (history.length === 1) {
-    return <span className="text-[11px] font-medium text-[#6B7280]">First scan</span>;
+    return (
+      <span className="text-[11px] font-semibold text-[#2C3E6B]">
+        {patientClarityToGrade(history[0].value)}
+      </span>
+    );
   }
   const latest = history[history.length - 1].value;
   const prev = history[history.length - 2].value;
-  const diff = latest - prev;
-  if (diff > 2) return <span className="flex items-center gap-0.5 text-[11px] font-semibold text-green-600"><TrendingUp className="h-3 w-3" />+{diff}</span>;
-  if (diff < -2) return <span className="flex items-center gap-0.5 text-[11px] font-semibold text-red-500"><TrendingDown className="h-3 w-3" />{diff}</span>;
-  return <span className="flex items-center gap-0.5 text-[11px] font-semibold text-[#6B7280]"><Minus className="h-3 w-3" />Stable</span>;
+  const latestGrade = patientClarityToGrade(latest);
+  const prevGrade = patientClarityToGrade(prev);
+
+  if (latestGrade !== prevGrade) {
+    const improved =
+      "ABCDE".indexOf(latestGrade) < "ABCDE".indexOf(prevGrade);
+    return (
+      <span
+        className={`flex items-center gap-0.5 text-[11px] font-semibold ${
+          improved ? "text-green-600" : "text-red-500"
+        }`}
+      >
+        {improved ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+        {prevGrade} → {latestGrade}
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-0.5 text-[11px] font-semibold text-[#6B7280]">
+      <Minus className="h-3 w-3" />
+      Stable ({latestGrade})
+    </span>
+  );
 }
 
 function ParamCard({ param }: { param: SkinParam }) {

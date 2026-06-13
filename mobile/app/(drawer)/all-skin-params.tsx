@@ -19,7 +19,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
 import { goToDashboard } from "@/lib/dashboardNavigation";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
-import { patientClarityToGrade } from "../../../src/lib/clarityGrade";
+import {
+  patientClarityToGrade,
+  patientDisplayClarity,
+  PATIENT_DISPLAY_SCORE_MAX,
+} from "../../../src/lib/clarityGrade";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -48,21 +52,30 @@ type HomeData = {
   skinScanHistory: ScanItem[];
 };
 
-function MiniSparkline({ points, color, width = 100, height = 40 }: { points: number[]; color: string; width?: number; height?: number }) {
+function MiniSparkline({
+  points,
+  color,
+  width = 100,
+  height = 40,
+}: {
+  points: number[];
+  color: string;
+  width?: number;
+  height?: number;
+}) {
   if (points.length < 2) {
     return <View style={{ width, height, backgroundColor: `${color}20`, borderRadius: 8 }} />;
   }
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const range = max - min || 1;
+  const displayPoints = points.map((p) => patientDisplayClarity(p));
   const padY = 4;
   const usableH = height - padY * 2;
-  const stepX = width / (points.length - 1);
+  const stepX = width / (displayPoints.length - 1);
+  const range = PATIENT_DISPLAY_SCORE_MAX;
 
-  const d = points
+  const d = displayPoints
     .map((p, i) => {
       const x = i * stepX;
-      const y = padY + usableH - ((p - min) / range) * usableH;
+      const y = padY + usableH - (p / range) * usableH;
       return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(" ");
@@ -76,10 +89,30 @@ function MiniSparkline({ points, color, width = 100, height = 40 }: { points: nu
   );
 }
 
+function gradeTrendLabel(
+  latestRaw: number,
+  prevRaw: number | null
+): { text: string; color: string; icon: "up" | "down" | "stable" } {
+  const latestGrade = patientClarityToGrade(latestRaw);
+  if (prevRaw == null) {
+    return { text: latestGrade, color: NAVY, icon: "stable" };
+  }
+  const prevGrade = patientClarityToGrade(prevRaw);
+  if (latestGrade !== prevGrade) {
+    const improved = "ABCDE".indexOf(latestGrade) < "ABCDE".indexOf(prevGrade);
+    return {
+      text: `${prevGrade} → ${latestGrade}`,
+      color: improved ? GREEN : "#DC2626",
+      icon: improved ? "up" : "down",
+    };
+  }
+  return { text: `Stable (${latestGrade})`, color: "#6B7280", icon: "stable" };
+}
+
 type ParamTrend = {
   label: string;
   value: number;
-  change: number;
+  prevValue: number | null;
   color: string;
   sparkline: number[];
   detail?: string;
@@ -110,9 +143,11 @@ export default function AllSkinParamsScreen() {
     const latest = scans[0];
     const currentParams = analysisResultsToParams(latest.analysisResults);
 
-    const prev = scans.length > 1 ? scans[scans.length - 1] : null;
+    const prevScan = scans.length > 1 ? scans[1] : null;
     const prevMap = new Map(
-      prev ? analysisResultsToParams(prev.analysisResults).map((p) => [p.label, p.value]) : []
+      prevScan
+        ? analysisResultsToParams(prevScan.analysisResults).map((p) => [p.label, p.value])
+        : []
     );
 
     const scansByLabel = new Map<string, number[]>();
@@ -129,7 +164,7 @@ export default function AllSkinParamsScreen() {
     return currentParams.map((p) => ({
       label: p.label,
       value: p.value,
-      change: prevMap.has(p.label) ? p.value - (prevMap.get(p.label) ?? p.value) : 0,
+      prevValue: prevMap.has(p.label) ? (prevMap.get(p.label) ?? null) : null,
       color: PARAM_COLORS[p.label] ?? "#BBF7D0",
       sparkline: scansByLabel.get(p.label) ?? [p.value],
     }));
@@ -195,9 +230,9 @@ export default function AllSkinParamsScreen() {
           </View>
         ) : (
           params.map((p) => {
-            const isUp = p.change >= 0;
-            const trendColor = isUp ? GREEN : "#DC2626";
-            const sparkColor = isUp ? GREEN : "#DC2626";
+            const trend = gradeTrendLabel(p.value, p.prevValue);
+            const sparkColor =
+              trend.icon === "up" ? GREEN : trend.icon === "down" ? "#DC2626" : "#6B7280";
 
             return (
               <View key={p.label} style={s.paramCard}>
@@ -212,18 +247,18 @@ export default function AllSkinParamsScreen() {
                     ) : null}
                     <View style={s.paramScoreRow}>
                       <Text style={s.paramValue}>{patientClarityToGrade(p.value)}</Text>
-                      {p.change !== 0 && (
-                        <View style={s.paramChange}>
+                      <View style={s.paramChange}>
+                        {trend.icon === "stable" ? null : (
                           <Ionicons
-                            name={isUp ? "caret-up" : "caret-down"}
+                            name={trend.icon === "up" ? "caret-up" : "caret-down"}
                             size={14}
-                            color={trendColor}
+                            color={trend.color}
                           />
-                          <Text style={[s.paramChangeText, { color: trendColor }]}>
-                            {Math.abs(p.change)}
-                          </Text>
-                        </View>
-                      )}
+                        )}
+                        <Text style={[s.paramChangeText, { color: trend.color, fontSize: 13 }]}>
+                          {trend.text}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -250,7 +285,7 @@ export default function AllSkinParamsScreen() {
         <View style={s.infoCard}>
           <Ionicons name="information-circle" size={20} color={NAVY} />
           <Text style={s.infoText}>
-            Scores are calculated using AI analysis and updated weekly as per your skin tracker data.
+            Grades reflect calibrated skin clarity from your scans and update as you track progress.
           </Text>
         </View>
       </ScrollView>
