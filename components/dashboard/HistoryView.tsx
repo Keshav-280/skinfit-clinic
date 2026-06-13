@@ -18,6 +18,7 @@ import {
 } from "@/src/lib/patientVisit";
 import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
+import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 import {
   patientGlassShell,
   patientInnerCard,
@@ -323,7 +324,7 @@ export function HistoryView({
                     fetchPriority="low"
                   />
                   <div className="absolute right-2 top-2 rounded-lg bg-[#2C3E6B] px-2.5 py-1 text-lg font-bold text-white shadow-sm">
-                    {scan.overallScore}
+                    {patientClarityToGrade(scan.overallScore)}
                   </div>
                 </div>
                 <div className="border-t border-white/50 px-4 py-3">
@@ -334,7 +335,7 @@ export function HistoryView({
                     {format(new Date(scan.createdAt), "MMM d, yyyy · h:mm a")}
                   </p>
                   <p className="mt-1 text-lg font-bold text-[#2C3E6B]">
-                    Overall {scan.overallScore}/100
+                    Overall {patientClarityToGrade(scan.overallScore)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {(
@@ -348,7 +349,7 @@ export function HistoryView({
                       ] as const
                     ).map(([label, val]) => (
                       <span key={label} className={patientScoreChip}>
-                        {label} {val}
+                        {label} {patientClarityToGrade(val)}
                       </span>
                     ))}
                   </div>

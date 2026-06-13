@@ -30,6 +30,7 @@ import {
   WRINKLE_MASK_PANEL_LABEL,
 } from "@/lib/scanMaskLabels";
 import { publicFileDisplayUrl } from "../../src/lib/publicFileUrl";
+import { patientClarityToGrade, patientDisplayClarity } from "../../src/lib/clarityGrade";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
 
 const GLASS = "rgba(255,255,255,0.92)";
@@ -126,9 +127,9 @@ function displayScanTitle(raw: string | null): string | null {
   return stripped || null;
 }
 
-function clinicalBarWidth(score: number): DimensionValue {
-  const pct = Math.min(100, Math.max(0, ((score - 1) / 4) * 100));
-  return `${Math.round(pct)}%`;
+function severityToClarityPercent(s: number) {
+  const x = Math.max(1, Math.min(5, s));
+  return clamp(100 - ((x - 1) / 4) * 100);
 }
 
 export function SkinScanReportBodyNative({
@@ -195,10 +196,11 @@ export function SkinScanReportBodyNative({
     };
   }, [imageUrl, authToken, showDotMarkersOnly]);
   const overall = clamp(metrics.overall_score);
+  const overallGrade = patientClarityToGrade(overall);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const heroIntro =
     aiSummary?.trim() ||
-    `Your latest scan shows an overall score of ${overall}% on our 0–100 scale (higher is better). Detailed scores and photo markers are below.`;
+    `Your latest scan shows an overall grade of ${overallGrade}. Detailed parameter grades and photo markers are below.`;
 
   const serif = Platform.select({
     ios: "Georgia",
@@ -377,13 +379,13 @@ export function SkinScanReportBodyNative({
                     <Text style={styles.metricLabel}>{row.label}</Text>
                     <View style={styles.metricRight}>
                       <ReportDonut
-                        percent={row.value}
+                        percent={patientDisplayClarity(row.value)}
                         size={54}
                         stroke={5}
                         color={row.fill}
                         trackColor={row.track}
+                        displayValue={patientClarityToGrade(row.value)}
                       />
-                      <Text style={styles.metricPct}>{clamp(row.value)}%</Text>
                     </View>
                   </View>
                 ))}
@@ -391,9 +393,9 @@ export function SkinScanReportBodyNative({
 
               {metrics.clinical_scores ? (
                 <View style={styles.clinicalSection}>
-                  <Text style={styles.clinicalKicker}>Model scores (1–5)</Text>
+                  <Text style={styles.clinicalKicker}>Model parameters (grades A–E)</Text>
                   <Text style={styles.clinicalHint}>
-                    Severity-style outputs from the analysis engine (higher = more concern).
+                    Letter grades from the analysis engine (A is best).
                   </Text>
                   <View style={styles.clinicalGrid}>
                     {CLINICAL_ROWS.map(({ key, label }) => {
@@ -410,15 +412,21 @@ export function SkinScanReportBodyNative({
                         }
                       }
                       if (typeof v !== "number") return null;
+                      const clarity = severityToClarityPercent(v);
                       return (
                         <View key={key} style={styles.clinicalCard}>
                           <View style={styles.clinicalTop}>
                             <Text style={styles.clinicalLabel}>{label}</Text>
-                            <Text style={styles.clinicalNum}>{v.toFixed(1)}</Text>
+                            <Text style={styles.clinicalNum}>
+                              {patientClarityToGrade(clarity)}
+                            </Text>
                           </View>
                           <View style={styles.clinicalTrack}>
                             <View
-                              style={[styles.clinicalFill, { width: clinicalBarWidth(v) }]}
+                              style={[
+                                styles.clinicalFill,
+                                { width: `${patientDisplayClarity(clarity)}%` },
+                              ]}
                             />
                           </View>
                         </View>
@@ -430,15 +438,16 @@ export function SkinScanReportBodyNative({
 
               <View style={styles.scoreFloat}>
                 <Text style={styles.scoreKicker}>YOUR SKIN HEALTH</Text>
-                <Text style={[styles.scoreBig, { fontFamily: serif }]}>{overall}%</Text>
+                <Text style={[styles.scoreBig, { fontFamily: serif }]}>{overallGrade}</Text>
                 <Text style={styles.scoreSub}>Last scan: {lastScanLabel}</Text>
                 <View style={styles.scoreDonutWrap}>
                   <ReportDonut
-                    percent={overall}
+                    percent={patientDisplayClarity(overall)}
                     size={104}
                     stroke={9}
                     color={T.peach}
                     trackColor={T.peachLight}
+                    displayValue={overallGrade}
                   />
                 </View>
               </View>

@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
 import { goToDashboard } from "@/lib/dashboardNavigation";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
+import { patientClarityToGrade } from "../../../src/lib/clarityGrade";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -210,7 +211,7 @@ export default function AllSkinParamsScreen() {
                       </Text>
                     ) : null}
                     <View style={s.paramScoreRow}>
-                      <Text style={s.paramValue}>{p.value}</Text>
+                      <Text style={s.paramValue}>{patientClarityToGrade(p.value)}</Text>
                       {p.change !== 0 && (
                         <View style={s.paramChange}>
                           <Ionicons

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { normalizeRoutineSteps } from "@/src/lib/routine";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
+import { patientClarityToGrade, patientDisplayClarity } from "@/src/lib/clarityGrade";
 import { DashboardSectionCountdown } from "./DashboardDayQuest";
 import { DashboardJournal } from "./DashboardJournal";
 import {
@@ -143,7 +144,8 @@ function DonutGauge({
 }
 
 function ParamCell({ label, value, deltaFromPrev, prevWeekAvg }: SkinParam) {
-  const v = Math.min(100, Math.max(0, Math.round(value)));
+  const display = patientDisplayClarity(value);
+  const grade = patientClarityToGrade(value);
   const delta =
     typeof deltaFromPrev === "number" && Number.isFinite(deltaFromPrev)
       ? Math.round(deltaFromPrev)
@@ -168,7 +170,7 @@ function ParamCell({ label, value, deltaFromPrev, prevWeekAvg }: SkinParam) {
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <span className="text-sm font-semibold text-zinc-800">{label}</span>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium tabular-nums text-zinc-600">{v}/100</span>
+          <span className="text-xs font-medium tabular-nums text-zinc-600">{grade}</span>
           <span className={`text-xs font-semibold tabular-nums ${deltaTone}`}>
             {delta == null ? "Δ —" : `Δ ${delta > 0 ? "+" : ""}${delta}`}
           </span>
@@ -180,13 +182,13 @@ function ParamCell({ label, value, deltaFromPrev, prevWeekAvg }: SkinParam) {
       >
         <div
           className="h-full rounded-full transition-[width] duration-500"
-          style={{ width: `${v}%`, backgroundColor: TEAL }}
+          style={{ width: `${display}%`, backgroundColor: TEAL }}
         />
       </div>
       <p className="mt-1.5 text-[11px] text-zinc-500">
         Prev week avg:{" "}
         <span className="font-semibold tabular-nums text-zinc-700">
-          {weekAvg == null ? "—" : `${weekAvg}/100`}
+          {weekAvg == null ? "—" : patientClarityToGrade(weekAvg)}
         </span>
       </p>
     </div>
@@ -506,7 +508,11 @@ export function DashboardView({
           Dashboard
         </h1>
         <div className="flex flex-wrap items-start justify-center gap-8 md:gap-12">
-          <DonutGauge percent={kaiScore} label="kAI Skin Score" />
+          <DonutGauge
+            percent={patientDisplayClarity(kaiScore)}
+            label="kAI Skin Score"
+            valueOverride={patientClarityToGrade(kaiScore)}
+          />
           <DonutGauge
             percent={Math.min(100, Math.max(0, 50 + weeklyDelta))}
             label="Weekly Progress Delta"

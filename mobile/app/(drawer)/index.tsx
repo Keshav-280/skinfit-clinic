@@ -43,6 +43,7 @@ import {
   kaiParamClarity,
   SKIN_HEALTH_PARAM_KEYS,
 } from "@/lib/skinAnalysis";
+import { patientClarityToGrade, patientDisplayClarity } from "../../../src/lib/clarityGrade";
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import {
   clearJournalSyncPatch,
@@ -77,11 +78,11 @@ function formatScanChipLabel(
     isSameDay(new Date(s.createdAt), d)
   ).length;
   const timePart = sameDay > 1 ? ` · ${format(d, "h:mm a")}` : "";
-  return `${datePart}${timePart} · ${Math.round(scan.skinScore)}`;
+  return `${datePart}${timePart} · ${patientClarityToGrade(Math.round(scan.skinScore))}`;
 }
 
 function formatScanDetailLabel(scan: SkinScanItem): string {
-  return `${format(new Date(scan.createdAt), "MMM d, yyyy 'at' h:mm a")} · Overall ${Math.round(scan.skinScore)}/100`;
+  return `${format(new Date(scan.createdAt), "MMM d, yyyy 'at' h:mm a")} · Overall ${patientClarityToGrade(Math.round(scan.skinScore))}`;
 }
 
 const NAVY = DASHBOARD_NAVY;
@@ -1116,7 +1117,7 @@ export default function DashboardScreen() {
                   {p.label}
                 </Text>
                 <View style={styles.paramScoreRow}>
-                  <Text style={styles.paramNum}>{Math.round(p.value)}/100</Text>
+                  <Text style={styles.paramNum}>{patientClarityToGrade(Math.round(p.value))}</Text>
                   <Text
                     style={[
                       styles.paramDelta,
@@ -1141,7 +1142,7 @@ export default function DashboardScreen() {
               <Text style={styles.paramWeekAvg}>
                 Prev week avg{" "}
                 <Text style={styles.paramWeekAvgVal}>
-                  {p.prevWeekAvg == null ? "—" : `${p.prevWeekAvg}/100`}
+                  {p.prevWeekAvg == null ? "—" : patientClarityToGrade(p.prevWeekAvg)}
                 </Text>
               </Text>
             </View>
@@ -1287,7 +1288,7 @@ function RadarChart({
                 fontWeight: "800",
               }}
             >
-              {m.value}%
+              {patientClarityToGrade(m.value)}
             </Text>
           </View>
         );
@@ -1322,10 +1323,12 @@ function SkinHealthMetricsCard({
 }
 
 function ParamRing({ value, color, size = 72 }: { value: number; color: string; size?: number }) {
+  const display = patientDisplayClarity(value);
   const sw = size <= 48 ? 4 : 6;
   const r = (size - sw) / 2;
   const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - value / 100);
+  const offset = circ * (1 - display / 100);
+  const grade = patientClarityToGrade(value);
   const valueFontSize = size <= 44 ? 12 : size <= 48 ? 13 : 18;
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
@@ -1346,7 +1349,7 @@ function ParamRing({ value, color, size = 72 }: { value: number; color: string; 
           color: "#18181b",
         }}
       >
-        {value}
+        {grade}
       </Text>
     </View>
   );

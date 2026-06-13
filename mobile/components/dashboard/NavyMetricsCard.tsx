@@ -2,6 +2,8 @@ import { format } from "date-fns";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
+import { patientClarityToGrade } from "../../src/lib/clarityGrade";
+
 import {
   DASHBOARD_GREEN,
   DASHBOARD_NAVY,
@@ -90,7 +92,7 @@ export function NavyMetricsCard({
         <View style={styles.leftCol}>
           <View style={styles.subCard}>
             <Text style={styles.subLabel}>kAI Skin Score</Text>
-            <Text style={styles.subValue}>{kaiSkinScore}</Text>
+            <Text style={styles.subValue}>{patientClarityToGrade(kaiSkinScore)}</Text>
             <Text style={styles.subMeta}>
               {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
             </Text>

@@ -1,5 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 
+import { patientClarityToGrade, patientDisplayClarity } from "./clarityGrade";
+
 import {
   legacyMaskTitleCropPercents,
   shouldCropLegacyMaskTitle,
@@ -122,10 +124,6 @@ function regionMarkerColor(issue: string): string {
   return "#6b7280";
 }
 
-function clinicalBarPct(score: number): number {
-  return Math.min(100, Math.max(0, ((score - 1) / 4) * 100));
-}
-
 function donutSvg(
   percent: number,
   size: number,
@@ -154,7 +152,7 @@ function deltaClass(n: number) {
 
 function valueForBar(n: number | null) {
   if (typeof n !== "number") return 0;
-  return Math.min(100, Math.max(0, Math.round(n)));
+  return patientDisplayClarity(n);
 }
 
 function kindBadge(kind: "article" | "video" | "insight") {
@@ -373,7 +371,7 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
       <div class="tr-param-row">
         <span class="tr-param-label">${esc(row.label)}</span>
         <div class="tr-param-bar"><div class="tr-param-fill" style="width:${valueForBar(row.value)}%"></div></div>
-        <span class="tr-param-val">${row.value ?? "-"}</span>
+        <span class="tr-param-val">${typeof row.value === "number" ? patientClarityToGrade(row.value) : "-"}</span>
         <span class="tr-param-delta ${typeof row.delta === "number" ? deltaClass(row.delta) : "tr-delta-flat"}">${typeof row.delta === "number" ? signed(row.delta) : "-"}</span>
       </div>`;
   }
@@ -433,7 +431,7 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
         <p class="tr-kicker">Section 1</p>
         <p class="tr-hook">${esc(report.hookSentence)}</p>
         <div class="tr-stats">
-          <div class="tr-stat"><p class="tr-stat-k">kAI score</p><p class="tr-stat-v">${report.scores.kaiScore}</p></div>
+          <div class="tr-stat"><p class="tr-stat-k">kAI grade</p><p class="tr-stat-v">${patientClarityToGrade(report.scores.kaiScore)}</p></div>
           <div class="tr-stat"><p class="tr-stat-k">Weekly delta</p><p class="tr-stat-v ${weeklyDelta !== null ? deltaClass(weeklyDelta) : "tr-delta-flat"}">${weeklyDelta !== null ? signed(weeklyDelta) : "-"}</p></div>
           <div class="tr-stat"><p class="tr-stat-k">Consistency</p><p class="tr-stat-v">${report.scores.consistencyScore}%</p></div>
         </div>
@@ -465,20 +463,24 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
     </div>`;
 }
 
-function buildLegacyMetricsHtml(p: ScanReportPdfPayload, overall: number, lastScanLabel: string): string {
+function buildLegacyMetricsHtml(
+  p: ScanReportPdfPayload,
+  overall: number,
+  overallGrade: string,
+  lastScanLabel: string
+): string {
   const cs = p.metrics.clinical_scores;
   const eightClinicalDonuts = cs ? buildEightClinicalDonuts(cs) : null;
 
   let metricsBlock = "";
   if (eightClinicalDonuts) {
-    metricsBlock += `<p class="metrics-kicker">FaceAnalyzer v13 — eight parameters (0–100 · higher is better)</p>`;
+    metricsBlock += `<p class="metrics-kicker">FaceAnalyzer v13 — eight parameters (grades A–E · A is best)</p>`;
     metricsBlock += `<div class="eight-grid">`;
     for (const row of eightClinicalDonuts) {
       metricsBlock += `
         <div class="eight-cell">
           <div class="eight-label">${esc(row.label)}</div>
-          <div class="eight-row">${donutSvg(row.clarity, 36, 4, row.fill, row.track)}<span class="eight-pct">${clamp(row.clarity)}%</span></div>
-          <div class="eight-sev">Severity ${row.severity.toFixed(1)}/5</div>
+          <div class="eight-row">${donutSvg(patientDisplayClarity(row.clarity), 36, 4, row.fill, row.track)}<span class="eight-pct">${patientClarityToGrade(row.clarity)}</span></div>
         </div>`;
     }
     metricsBlock += `</div>`;
@@ -494,13 +496,13 @@ function buildLegacyMetricsHtml(p: ScanReportPdfPayload, overall: number, lastSc
       { label: "Texture", value: p.metrics.texture ?? p.metrics.hydration, fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
       { label: "Overall", value: p.metrics.overall_score, fill: T.peach, track: T.peachTrack },
     ];
-    metricsBlock += `<p class="metrics-kicker">AI model summary (0–100 · higher is better)</p>`;
+    metricsBlock += `<p class="metrics-kicker">AI model summary (grades A–E · A is best)</p>`;
     metricsBlock += `<div class="six-grid">`;
     for (const m of sixDonuts) {
       metricsBlock += `
         <div class="six-cell">
           <div class="six-label">${esc(m.label)}</div>
-          <div class="six-row">${donutSvg(m.value, 40, 4.5, m.fill, m.track)}<span class="six-pct">${clamp(m.value)}%</span></div>
+          <div class="six-row">${donutSvg(patientDisplayClarity(m.value), 40, 4.5, m.fill, m.track)}<span class="six-pct">${patientClarityToGrade(m.value)}</span></div>
         </div>`;
     }
     metricsBlock += `</div>`;
@@ -509,7 +511,7 @@ function buildLegacyMetricsHtml(p: ScanReportPdfPayload, overall: number, lastSc
   let clinicalHtml = "";
   if (cs && !eightClinicalDonuts) {
     clinicalHtml = `<div class="clinical-block avoid-break">
-      <p class="clinical-k">FaceAnalyzer v13 — eight clinical axes (1–5)</p>
+      <p class="clinical-k">FaceAnalyzer v13 — eight clinical axes (grades A–E)</p>
       <div class="clinical-grid">`;
     for (const { key, label } of CLINICAL_ROWS) {
       const v = cs[key];
@@ -521,8 +523,9 @@ function buildLegacyMetricsHtml(p: ScanReportPdfPayload, overall: number, lastSc
         }
       }
       if (typeof v !== "number") continue;
-      const pct = clinicalBarPct(v);
-      clinicalHtml += `<div class="clinical-card"><div class="clinical-top"><span class="clinical-lbl">${esc(label)}</span><span class="clinical-val">${v.toFixed(1)}</span></div><div class="cbar"><div class="cbar-fill" style="width:${pct}%"></div></div></div>`;
+      const clarity = severityToClarityPercent(v);
+      const pct = patientDisplayClarity(clarity);
+      clinicalHtml += `<div class="clinical-card"><div class="clinical-top"><span class="clinical-lbl">${esc(label)}</span><span class="clinical-val">${patientClarityToGrade(clarity)}</span></div><div class="cbar"><div class="cbar-fill" style="width:${pct}%"></div></div></div>`;
     }
     clinicalHtml += `</div></div>`;
   }
@@ -540,11 +543,11 @@ function buildLegacyMetricsHtml(p: ScanReportPdfPayload, overall: number, lastSc
         <div class="skin-row">
           <div class="skin-col-text">
             <div class="skin-lbl">Your Skin Health</div>
-            <div class="skin-big">${overall}%</div>
+            <div class="skin-big">${overallGrade}</div>
             <div class="skin-sub">Last scan: ${esc(lastScanLabel)}</div>
           </div>
           <div class="skin-col-donut">
-            <div class="donut-ring">${donutSvg(overall, 104, 9, T.peach, T.peachLight)}</div>
+            <div class="donut-ring">${donutSvg(patientDisplayClarity(overall), 104, 9, T.peach, T.peachLight)}</div>
           </div>
         </div>
       </div>
@@ -575,9 +578,10 @@ function buildLegacyMetricsHtml(p: ScanReportPdfPayload, overall: number, lastSc
 export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   const photos = p.photos;
   const overall = clamp(p.metrics.overall_score);
+  const overallGrade = patientClarityToGrade(overall);
   const heroIntro =
     p.aiSummary?.trim() ||
-    `Your latest scan shows an overall score of ${overall}% on our 0–100 scale (higher is better). Detailed scores and photo markers are below.`;
+    `Your latest scan shows an overall grade of ${overallGrade}. Detailed parameter grades and photo markers are below.`;
   const displayTitle = (() => {
     const raw = p.scanTitle?.trim() ?? "";
     if (!raw) return "";
@@ -595,7 +599,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   const tracker = p.tracker ?? null;
   const metricsHtml = tracker
     ? buildTrackerSectionsHtml(tracker)
-    : buildLegacyMetricsHtml(p, overall, lastScanLabel);
+    : buildLegacyMetricsHtml(p, overall, overallGrade, lastScanLabel);
   const pdfScale = estimatePdfScale(p);
   const clinicPhone = "+91 98765 43210";
   const clinicEmail = "hello@skinfit.clinic";

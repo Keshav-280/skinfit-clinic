@@ -5,6 +5,7 @@ import { db } from "../../../src/db";
 import { scans, skinScans, users } from "../../../src/db/schema";
 import { getSessionUserIdFromRequest } from "../../../src/lib/auth/get-session";
 import { buildDummyAiSummary } from "../../../src/lib/dummyScanSummary";
+import { patientClarityToGrade } from "../../../src/lib/clarityGrade";
 import { getFaceAnalysisServiceSecret } from "../../../src/lib/faceAnalysisEnv";
 import {
   runFaceAnalysisDualScan,
@@ -447,20 +448,20 @@ export async function POST(request: NextRequest) {
                 "You are an empathetic, professional dermatological AI assistant.",
                 "Write exactly ONE short sentence summarizing skin health and one gentle, non-medical lifestyle tip.",
                 "",
-                "PRIMARY numbers are the six patient scores below (0–100). For every one of them, HIGHER is BETTER (100 = best).",
+                "Patient-facing output must use letter grades A–E only (A is best). Never include raw numbers, percentages, or /100.",
                 "You only have this single snapshot — no prior week, no deltas. Never imply something got worse, slipped, or declined over time.",
-                "If you mention an area to refine, it must be justified by it being among the **lowest** of those six scores vs the others — frame it as a *relative* gap versus their own stronger metrics (e.g. hydration), not as an acute problem.",
-                "If a score is mid-range or strong (e.g. mid-50s+), do not talk about it as if it were a major concern.",
+                "If you mention an area to refine, it must be justified by it being among the **lowest** grades vs the others — frame it as a *relative* gap versus stronger areas (e.g. hydration), not as an acute problem.",
+                "If a grade is mid-range or strong (B or A), do not talk about it as if it were a major concern.",
                 "",
-                "Secondary block: clinical 1–5 features use the OPPOSITE rule (higher = more severe). Use them only for subtle wording if they align with the 0–100 story. If they seem to conflict with the 0–100 scores, ignore the 1–5 block for your sentence.",
+                "Internal context uses 0–100 scores mapped to grades and optional 1–5 clinical severities (higher = worse on 1–5). Use grades in your sentence; ignore conflicting 1–5 hints if they disagree with the grade story.",
                 "No clinical jargon, no diagnosis.",
               ].join("\n"),
             },
             {
               role: "user",
               content: [
-                `0–100 scores (higher is better) — use these for the main message: acne ${metrics.acne}, pigmentation ${metrics.pigmentation}, wrinkles ${metrics.wrinkles}, hydration ${metrics.hydration}, texture ${metrics.texture}, overall ${metrics.overall_score}.`,
-                `Optional context — 1–5 severity style (higher is worse); must not contradict the 0–100 line: active acne ${modelFeatureScores.active_acne}, skin quality ${modelFeatureScores.skin_quality}, wrinkle severity ${modelFeatureScores.wrinkle_severity}, sagging/volume ${modelFeatureScores.sagging_volume}, under-eye ${modelFeatureScores.under_eye}, hair ${modelFeatureScores.hair_health}.`,
+                `Letter grades (A is best) — use these in your reply: acne ${patientClarityToGrade(metrics.acne)}, pigmentation ${patientClarityToGrade(metrics.pigmentation)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, hydration ${patientClarityToGrade(metrics.hydration)}, texture ${patientClarityToGrade(metrics.texture)}, overall ${patientClarityToGrade(metrics.overall_score)}.`,
+                `Optional internal context — 1–5 severity (higher is worse); do not quote numbers to the patient: active acne ${modelFeatureScores.active_acne}, skin quality ${modelFeatureScores.skin_quality}, wrinkle severity ${modelFeatureScores.wrinkle_severity}, sagging/volume ${modelFeatureScores.sagging_volume}, under-eye ${modelFeatureScores.under_eye}, hair ${modelFeatureScores.hair_health}.`,
               ].join("\n"),
             },
           ],

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
+import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 import {
   INCLUDE_TRACKER_RESOURCES_IN_REPORT,
   TRACKER_REPORT_THEME as R,
@@ -87,9 +88,9 @@ export function TrackerReportSections({
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2.5">
           <div className={statCell}>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">kAI score</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">kAI grade</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
-              {report.scores.kaiScore}
+              {patientClarityToGrade(report.scores.kaiScore)}
             </p>
           </div>
           <div className={statCell}>
@@ -146,7 +147,7 @@ export function TrackerReportSections({
                   />
                 </div>
                 <span className="text-right font-semibold tabular-nums text-[#2C3E6B]">
-                  {row.value ?? "-"}
+                  {typeof row.value === "number" ? patientClarityToGrade(row.value) : "-"}
                 </span>
                 <span
                   className={`text-right tabular-nums ${

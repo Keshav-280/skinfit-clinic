@@ -7,6 +7,8 @@ type CircularGaugeProps = {
   color: string;
   trackColor?: string;
   valueClassName?: string;
+  /** When set, shown in the ring instead of the numeric score (arc still uses `value`). */
+  displayValue?: string;
 };
 
 export function CircularGauge({
@@ -16,12 +18,19 @@ export function CircularGauge({
   color,
   trackColor = "#E5E7EB",
   valueClassName = "text-[#18181b]",
+  displayValue,
 }: CircularGaugeProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - Math.min(value, 100) / 100);
   const valueFontSize =
-    size >= 60 ? "text-lg" : size >= 52 ? "text-base" : "text-sm";
+    displayValue && displayValue.length > 1
+      ? "text-base"
+      : size >= 60
+        ? "text-lg"
+        : size >= 52
+          ? "text-base"
+          : "text-sm";
 
   return (
     <div
@@ -57,7 +66,7 @@ export function CircularGauge({
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <span className={`${valueFontSize} font-extrabold leading-none ${valueClassName}`}>
-          {Math.round(value)}
+          {displayValue ?? Math.round(value)}
         </span>
       </div>
     </div>

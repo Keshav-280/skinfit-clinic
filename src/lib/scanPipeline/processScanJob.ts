@@ -5,6 +5,7 @@ import type { NodePgAppDatabase } from "@/src/db/database-types";
 
 export type ScanJobDatabase = NodePgAppDatabase;
 import { buildDummyAiSummary } from "@/src/lib/dummyScanSummary";
+import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 import { getFaceAnalysisServiceSecret } from "@/src/lib/faceAnalysisEnv";
 import {
   runFaceAnalysisDualScan,
@@ -182,7 +183,11 @@ export async function processScanJob(
         messages: [
           {
             role: "user",
-            content: `Summarize skin scores in one sentence: acne ${metrics.acne}, wrinkles ${metrics.wrinkles}, hydration ${metrics.hydration}.`,
+            content: [
+              "Write one short patient-facing sentence using letter grades only (A–E, A is best).",
+              "Do not include raw numbers, percentages, or /100.",
+              `Grades: overall ${patientClarityToGrade(metrics.overall_score)}, acne ${patientClarityToGrade(metrics.acne)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, hydration ${patientClarityToGrade(metrics.hydration)}.`,
+            ].join(" "),
           },
         ],
         max_tokens: 80,

@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 
+import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 
 const NAVY_TRACK = "rgba(255,255,255,0.22)";
@@ -101,7 +102,7 @@ export function NavyMetricsCard({
           <div className="flex flex-col justify-center rounded-[16px] bg-[#E8EFE6] px-3 py-2 text-center h-[120px]">
             <p className="text-[11px] font-bold leading-snug text-[#2D3E6B]">kAI Skin Score</p>
             <p className="mt-0.5 text-[2rem] font-extrabold leading-none text-[#1E5E3A]">
-              {kaiSkinScore}
+              {patientClarityToGrade(kaiSkinScore)}
             </p>
             <p className="mt-0.5 text-[10px] font-medium leading-none text-[#6B7280]">
               {latestScanAt

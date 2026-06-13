@@ -1,6 +1,9 @@
 /** Mirrors web `src/lib/skinScanAnalysis.ts` for dashboard params. */
 
 import {
+  classifySkinParamMetric,
+} from "../../src/lib/clarityGrade";
+import {
   formatAcneHeadDetail,
   formatWrinkleHeadDetail,
   parseSpatialOutputsFromAnalysis,
@@ -92,12 +95,12 @@ export function extractSkinHealthMetrics(
 export type SkinParamMetricRow = SkinParamRow & {
   color: string;
   status: string;
+  grade: string;
 };
 
-function classifyParam(v: number): { color: string; status: string } {
-  if (v >= 75) return { color: "#16a34a", status: "Mild" };
-  if (v >= 40) return { color: "#F59E0B", status: "Moderate" };
-  return { color: "#DC2626", status: "Needs Care" };
+function classifyParam(v: number): { color: string; status: string; grade: string } {
+  const { color, sublabel, grade } = classifySkinParamMetric(v);
+  return { color, status: sublabel, grade };
 }
 
 /** Ring grid on home — 8 parameters matching the patient report. */

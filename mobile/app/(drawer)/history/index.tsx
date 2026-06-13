@@ -23,6 +23,7 @@ import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/
 import { getCached, setCached } from "@/lib/apiCache";
 import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
+import { patientClarityToGrade } from "../../../../src/lib/clarityGrade";
 import { ReportContainImage } from "@/components/ReportContainImage";
 
 type ScanRow = {
@@ -210,7 +211,7 @@ export default function HistoryListScreen() {
                   style={styles.scanImage}
                 />
                 <View style={styles.scoreBadge}>
-                  <Text style={styles.scoreBadgeText}>{scan.overallScore}</Text>
+                  <Text style={styles.scoreBadgeText}>{patientClarityToGrade(scan.overallScore)}</Text>
                 </View>
               </View>
               <View style={styles.scanBody}>
@@ -220,7 +221,7 @@ export default function HistoryListScreen() {
                 <Text style={styles.scanDate}>
                   {format(new Date(scan.createdAt), "MMM d, yyyy")}
                 </Text>
-                <Text style={styles.scanOverall}>Overall {scan.overallScore}/100</Text>
+                <Text style={styles.scanOverall}>Overall {patientClarityToGrade(scan.overallScore)}</Text>
                 <View style={styles.chips}>
                   {analysisResultsToParams(scan.analysisResults).map((p) => (
                     <View key={p.label} style={styles.chip}>

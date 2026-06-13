@@ -2,6 +2,7 @@ import { Platform, StyleSheet, Text, View } from "react-native";
 
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
+import { patientClarityToGrade } from "../../src/lib/clarityGrade";
 import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 
 function signed(n: number) {
@@ -56,8 +57,8 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
         <Text style={[styles.hookTitle, { fontFamily: serifFamily }]}>{report.hookSentence}</Text>
         <View style={styles.statGrid}>
           <View style={styles.statCell}>
-            <Text style={styles.statLabel}>kAI score</Text>
-            <Text style={styles.statValue}>{report.scores.kaiScore}</Text>
+            <Text style={styles.statLabel}>kAI grade</Text>
+            <Text style={styles.statValue}>{patientClarityToGrade(report.scores.kaiScore)}</Text>
           </View>
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>Weekly delta</Text>
@@ -105,7 +106,9 @@ export function TrackerReportSectionsNative({ report, serifFamily }: Props) {
                     style={[styles.paramBarFill, { width: `${valueForBar(row.value)}%` }]}
                   />
                 </View>
-                <Text style={styles.paramNum}>{row.value ?? "-"}</Text>
+                <Text style={styles.paramNum}>
+                  {typeof row.value === "number" ? patientClarityToGrade(row.value) : "-"}
+                </Text>
                 <Text
                   style={[
                     styles.paramDelta,

@@ -16,8 +16,9 @@ export type ParsedPriorityAction = {
 export function softenPatientText(text: string): string {
   return text
     .replace(/\s*\(\d{1,3}(?:\/100)?\)/g, "")
-    .replace(/\bkAI score of \d+(?:\/100)?/gi, "your skin score")
-    .replace(/\bscore of \d+(?:\/100)?/gi, "your score")
+    .replace(/\bkAI score of \d+(?:\/100)?/gi, "your skin grade")
+    .replace(/\bscore of \d+(?:\/100)?/gi, "your grade")
+    .replace(/\boverall (?:skin )?(?:score|grade) (?:is )?[A-E]\b/gi, "overall grade")
     .replace(/\baveraging (\d+(?:\.\d+)?)\/10/gi, "around $1 out of 10")
     .replace(/\s{2,}/g, " ")
     .trim();

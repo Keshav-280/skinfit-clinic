@@ -8,6 +8,7 @@ import {
   RAG_KAI_PARAM_KEYS,
   RAG_KAI_PARAM_LABELS,
 } from "@/src/lib/ragEightParams";
+import { classifySkinParamMetric } from "@/src/lib/clarityGrade";
 
 interface SkinParam {
   name: string;
@@ -39,9 +40,20 @@ function extractAllParams(scanHistory: { analysisResults: unknown; createdAt: st
 }
 
 function statusInfo(value: number) {
-  if (value >= 75) return { label: "Mild", color: "#16a34a", bg: "bg-green-100", text: "text-green-700" };
-  if (value >= 40) return { label: "Moderate", color: "#d97706", bg: "bg-amber-100", text: "text-amber-700" };
-  return { label: "Needs Care", color: "#dc2626", bg: "bg-red-100", text: "text-red-700" };
+  const { color, sublabel, grade, displayScore } = classifySkinParamMetric(value);
+  const bg =
+    grade === "A" || grade === "B"
+      ? "bg-green-100"
+      : grade === "C"
+        ? "bg-amber-100"
+        : "bg-red-100";
+  const text =
+    grade === "A" || grade === "B"
+      ? "text-green-700"
+      : grade === "C"
+        ? "text-amber-700"
+        : "text-red-700";
+  return { label: sublabel, color, bg, text, grade, displayScore };
 }
 
 const RING_SIZE = 80;
@@ -49,7 +61,7 @@ const STROKE_WIDTH = 7;
 const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function ProgressRing({ value, color }: { value: number; color: string }) {
+function ProgressRing({ value, color, grade }: { value: number; color: string; grade: string }) {
   const offset = CIRCUMFERENCE - (value / 100) * CIRCUMFERENCE;
   return (
     <div className="relative flex items-center justify-center" style={{ width: RING_SIZE, height: RING_SIZE }}>
@@ -57,7 +69,7 @@ function ProgressRing({ value, color }: { value: number; color: string }) {
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS} fill="none" stroke="#e5e7eb" strokeWidth={STROKE_WIDTH} />
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS} fill="none" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" strokeDasharray={CIRCUMFERENCE} strokeDashoffset={offset} className="transition-all duration-700 ease-out" />
       </svg>
-      <span className="absolute text-lg font-bold text-[#2C3E6B]">{value}</span>
+      <span className="absolute text-lg font-bold text-[#2C3E6B]">{grade}</span>
     </div>
   );
 }
@@ -173,7 +185,7 @@ function TrendIndicator({ history }: { history: { value: number }[] }) {
 }
 
 function ParamCard({ param }: { param: SkinParam }) {
-  const { label, color, bg, text } = statusInfo(param.value);
+  const { label, color, bg, text, grade, displayScore } = statusInfo(param.value);
 
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/60 bg-white/35 p-4 backdrop-blur-sm">
@@ -181,7 +193,7 @@ function ParamCard({ param }: { param: SkinParam }) {
         <MiniLineChart data={param.history} color={color} paramName={param.name} />
       </div>
       <span className="text-sm font-semibold text-[#2C3E6B]">{param.name}</span>
-      <ProgressRing value={param.value} color={color} />
+      <ProgressRing value={displayScore} color={color} grade={grade} />
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${bg} ${text}`}>
           {label}

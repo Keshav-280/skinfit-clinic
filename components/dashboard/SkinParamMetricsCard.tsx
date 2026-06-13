@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { CircularGauge } from "@/components/dashboard/CircularGauge";
-import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
+import { classifySkinParamMetric } from "@/src/lib/clarityGrade";
 
 const SKIN_PARAM_INNER_CELL =
   "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[14px] border border-[#E8EBE8] bg-[#F5F7F5] px-2 py-3";
@@ -11,8 +11,10 @@ const SKIN_PARAM_INNER_CELL =
 export type SkinParamMetric = {
   label: string;
   value: number;
+  displayScore: number;
   color: string;
   sublabel: string;
+  grade: string;
 };
 
 type Props = {
@@ -36,10 +38,11 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
             className={SKIN_PARAM_INNER_CELL}
           >
             <CircularGauge
-              value={p.value}
+              value={p.displayScore}
               color={p.color}
               size={76}
               strokeWidth={5.5}
+              displayValue={p.grade}
               valueClassName="text-[22px] sm:text-[24px] text-[#18181b]"
             />
             <p className="text-center text-[15px] font-extrabold leading-tight text-[#18181b] sm:text-[16px]">
@@ -69,8 +72,4 @@ export function SkinParamMetricsCard({ metrics, viewAllHref, className = "" }: P
   );
 }
 
-export function classifySkinParamMetric(v: number) {
-  if (v >= 75) return { color: PATIENT_GREEN, sublabel: "Mild" };
-  if (v >= 40) return { color: "#F59E0B", sublabel: "Moderate" };
-  return { color: "#DC2626", sublabel: "Needs Care" };
-}
+export { classifySkinParamMetric } from "@/src/lib/clarityGrade";

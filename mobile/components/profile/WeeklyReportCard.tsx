@@ -17,6 +17,7 @@ import {
   trendSummary,
   type ObservationSource,
 } from "@/lib/weeklyInsightFormat";
+import { patientClarityToGrade } from "../../src/lib/clarityGrade";
 
 export type ObservationRow = {
   text: string;
@@ -112,10 +113,9 @@ export default function WeeklyReportCard({
         <>
           <View style={s.snapshot}>
             <View style={s.snapshotMain}>
-              <Text style={s.snapshotLabel}>Your skin score</Text>
+              <Text style={s.snapshotLabel}>Your skin grade</Text>
               <View style={s.scoreRow}>
-                <Text style={s.scoreValue}>{kaiScore}</Text>
-                <Text style={s.scoreUnit}>/100</Text>
+                <Text style={s.scoreValue}>{patientClarityToGrade(kaiScore)}</Text>
               </View>
             </View>
             <View style={s.snapshotSide}>

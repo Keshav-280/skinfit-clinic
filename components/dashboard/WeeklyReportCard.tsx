@@ -22,6 +22,7 @@ import {
   trendSummary,
 } from "@/src/lib/weeklyInsightFormat";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
+import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 
 type Props = {
   locked?: boolean;
@@ -106,12 +107,11 @@ export function WeeklyReportCard({
         <>
           <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
             <div>
-              <p className="text-xs text-[#94a3b8]">Your skin score</p>
+              <p className="text-xs text-[#94a3b8]">Your skin grade</p>
               <p className="mt-0.5 flex items-end gap-1">
                 <span className="text-[32px] font-extrabold leading-none text-[#2D3E6B]">
-                  {kaiScore}
+                  {patientClarityToGrade(kaiScore)}
                 </span>
-                <span className="mb-1 text-sm text-[#64748B]">/100</span>
               </p>
             </div>
             <div className="text-right">

@@ -23,6 +23,7 @@ import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
 import { WRINKLE_MASK_PANEL_LABEL, ACNE_MASK_PANEL_LABEL } from "@/src/lib/scanMaskLabels";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
+import { patientClarityToGrade, patientDisplayClarity } from "@/src/lib/clarityGrade";
 import {
   SCAN_REPORT_PDF_BG,
   SCAN_REPORT_PDF_PAGE_BG,
@@ -84,6 +85,18 @@ function regionMarkerColor(issue: string): string {
 
 function clinicalBar(score: number) {
   const pct = Math.min(100, Math.max(0, ((score - 1) / 4) * 100));
+  return (
+    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-200/90">
+      <div
+        className="h-full rounded-full transition-[width] duration-700"
+        style={{ backgroundColor: T.navy, width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+function clarityBar(clarity: number) {
+  const pct = Math.min(100, Math.max(0, clarity));
   return (
     <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-200/90">
       <div
@@ -306,6 +319,7 @@ export function SkinScanReportBody({
   const showTracker = tracker != null;
 
   const overall = clamp(metrics.overall_score);
+  const overallGrade = patientClarityToGrade(overall);
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const wrinkleUrl = wrinkleMaskUrl?.trim() || "";
   const acneUrl = acneMaskUrl?.trim() || "";
@@ -315,7 +329,7 @@ export function SkinScanReportBody({
     (regions.length > 0 && imageUrl?.trim());
   const heroIntro =
     aiSummary?.trim() ||
-    `Your latest scan shows an overall score of ${overall}% on our 0–100 scale (higher is better). Detailed scores and photo markers are below.`;
+    `Your latest scan shows an overall grade of ${overallGrade}. Detailed parameter grades and photo markers are below.`;
 
   const resolvedPhotos = useMemo(() => {
     if (faceCaptureGallery && faceCaptureGallery.length > 0) {
@@ -799,8 +813,8 @@ export function SkinScanReportBody({
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                 {eightClinicalDonuts
-                  ? "FaceAnalyzer v13 — eight parameters (0–100 · higher is better)"
-                  : "AI model summary (0–100 · higher is better)"}
+                  ? "FaceAnalyzer v13 — eight parameters (grades A–E · A is best)"
+                  : "AI model summary (grades A–E · A is best)"}
               </p>
               {eightClinicalDonuts ? (
                 <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:gap-2.5 md:mx-auto md:max-w-[640px] md:grid-cols-4 md:gap-3">
@@ -815,20 +829,17 @@ export function SkinScanReportBody({
                       <div className="flex items-center gap-1">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center">
                           <Donut
-                            percent={row.clarity}
+                            percent={patientDisplayClarity(row.clarity)}
                             size={36}
                             stroke={4}
                             color={row.fill}
                             track={row.track}
                           />
                         </div>
-                        <span className="text-[10px] font-semibold tabular-nums text-zinc-800 sm:text-[11px]">
-                          {clamp(row.clarity)}%
+                        <span className="text-lg font-bold tabular-nums text-zinc-800 sm:text-xl">
+                          {patientClarityToGrade(row.clarity)}
                         </span>
                       </div>
-                      <span className="text-[9px] tabular-nums text-zinc-500">
-                        Severity {row.severity.toFixed(1)}/5
-                      </span>
                     </div>
                   ))}
                 </div>
@@ -883,7 +894,7 @@ export function SkinScanReportBody({
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center sm:h-10 sm:w-10">
                         <div className="origin-center scale-[0.82] sm:scale-100">
                           <Donut
-                            percent={row.value}
+                            percent={patientDisplayClarity(row.value)}
                             size={40}
                             stroke={4.5}
                             color={row.fill}
@@ -891,8 +902,8 @@ export function SkinScanReportBody({
                           />
                         </div>
                       </div>
-                      <span className="w-7 shrink-0 text-right text-[9px] font-semibold tabular-nums tracking-tight text-zinc-800 sm:w-9 sm:text-[11px] md:w-10 md:text-[12px]">
-                        {clamp(row.value)}%
+                      <span className="w-7 shrink-0 text-right text-lg font-bold tabular-nums tracking-tight text-zinc-800 sm:w-9 sm:text-xl">
+                        {patientClarityToGrade(row.value)}
                       </span>
                     </div>
                   </div>
@@ -915,7 +926,7 @@ export function SkinScanReportBody({
                 className="mx-auto mt-8 w-full max-w-xl break-inside-avoid"
               >
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  FaceAnalyzer v13 — eight clinical axes (1–5)
+                  FaceAnalyzer v13 — eight clinical axes (grades A–E)
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {CLINICAL_ROWS.map(({ key, label }) => {
@@ -934,6 +945,8 @@ export function SkinScanReportBody({
                       );
                     }
                     if (typeof v !== "number") return null;
+                    const clarity = severityToClarityPercent(v);
+                    const grade = patientClarityToGrade(clarity);
                     return (
                       <div
                         key={key}
@@ -941,11 +954,11 @@ export function SkinScanReportBody({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[11px] font-semibold text-zinc-800">{label}</span>
-                          <span className="text-[12px] font-semibold tabular-nums text-zinc-900">
-                            {v.toFixed(1)}
+                          <span className="text-xl font-bold tabular-nums text-zinc-900">
+                            {grade}
                           </span>
                         </div>
-                        {clinicalBar(v)}
+                        {clarityBar(clarity)}
                       </div>
                     );
                   })}
@@ -969,7 +982,7 @@ export function SkinScanReportBody({
                       className={`${serif.className} mt-1 max-w-full text-[2.25rem] font-medium leading-none tracking-[-0.03em] sm:text-[2.75rem] md:text-[3.25rem]`}
                       style={{ color: T.peach }}
                     >
-                      {overall}%
+                      {overallGrade}
                     </p>
                     <p className="mt-2 text-[12px] font-medium text-zinc-500">
                       Last scan: {lastScanLabel}
@@ -984,7 +997,7 @@ export function SkinScanReportBody({
                       <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center sm:h-auto sm:w-auto">
                         <div className="origin-center scale-[0.85] sm:scale-100">
                           <Donut
-                            percent={overall}
+                            percent={patientDisplayClarity(overall)}
                             size={104}
                             stroke={9}
                             color={T.peach}
