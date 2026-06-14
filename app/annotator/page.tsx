@@ -191,6 +191,7 @@ function pointsToPolylinePoints(points: { x: number; y: number }[]): string {
 export default function AnnotatorPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const thumbStripRef = useRef<HTMLDivElement>(null);
   const lastScrollTime = useRef(Date.now());
 
   const [images, setImages] = useState<string[]>([]);
@@ -266,6 +267,13 @@ export default function AnnotatorPage() {
   React.useEffect(() => {
     setImgNatural(null);
   }, [currentIndex, images]);
+
+  React.useEffect(() => {
+    const el = thumbStripRef.current?.querySelector(
+      `[data-thumb-index="${currentIndex}"]`
+    );
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [currentIndex]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -423,6 +431,31 @@ export default function AnnotatorPage() {
   const goNext = useCallback(() => {
     setCurrentIndex((i) => (i < images.length - 1 ? i + 1 : 0));
   }, [images.length]);
+
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (images.length === 0) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [images.length, goPrev, goNext]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -688,6 +721,58 @@ export default function AnnotatorPage() {
     };
   }, [imgNatural, imageZoom]);
 
+  const imagesWithWork = React.useMemo(() => {
+    const set = new Set<number>();
+    for (const ann of annotations) set.add(ann.imageIndex);
+    for (const idx of Object.keys(perImageByCategory)) {
+      const n = Number(idx);
+      if (Number.isFinite(n) && Object.keys(perImageByCategory[n] ?? {}).length > 0) {
+        set.add(n);
+      }
+    }
+    return set;
+  }, [annotations, perImageByCategory]);
+
+  const renderThumbnailButtons = (compact = false) =>
+    images.map((src, i) => {
+      const isActive = i === currentIndex;
+      const hasWork = imagesWithWork.has(i);
+      const label = imageMeta[i]?.name ?? `Image ${i + 1}`;
+      return (
+        <button
+          key={`thumb-${i}-${src.slice(0, 24)}`}
+          type="button"
+          data-thumb-index={i}
+          onClick={() => setCurrentIndex(i)}
+          title={label}
+          className={`group relative shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+            compact ? "h-14 w-14" : "aspect-[3/4] w-full"
+          } ${
+            isActive
+              ? "border-teal-500 ring-2 ring-teal-500/40"
+              : "border-slate-300 hover:border-teal-400 dark:border-zinc-600 dark:hover:border-teal-500"
+          }`}
+        >
+          <img
+            src={src}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+          <span
+            className={`absolute bottom-0 left-0 right-0 bg-black/65 px-1 py-0.5 text-center font-mono text-[10px] font-semibold text-white ${
+              compact ? "text-[9px]" : ""
+            }`}
+          >
+            {i + 1}
+          </span>
+          {hasWork ? (
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-teal-400 ring-1 ring-black/40" />
+          ) : null}
+        </button>
+      );
+    });
+
   return (
     <div className="flex h-screen flex-col bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
       {/* Top Nav */}
@@ -796,8 +881,23 @@ export default function AnnotatorPage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(160px,42vh)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[1fr_minmax(320px,22rem)] lg:grid-rows-1">
-        {/* Left Canvas — scrollable, no clipping; zoom keeps full image visible */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(160px,42vh)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[5.75rem_1fr_minmax(320px,22rem)] lg:grid-rows-1">
+        {/* Thumbnail strip — desktop */}
+        {images.length > 0 ? (
+          <aside className="hidden min-h-0 flex-col border-r border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:flex">
+            <div className="shrink-0 border-b border-slate-200 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-zinc-800 dark:text-zinc-400">
+              {images.length} imgs
+            </div>
+            <div
+              ref={thumbStripRef}
+              className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2"
+            >
+              {renderThumbnailButtons()}
+            </div>
+          </aside>
+        ) : null}
+
+        {/* Canvas */}
         <div className="relative flex min-h-0 flex-col items-center overflow-auto bg-slate-100 p-4 dark:bg-zinc-950 lg:p-6">
           {images.length === 0 ? (
             <div className="flex flex-col items-center gap-4 text-slate-500 dark:text-zinc-500">
@@ -815,6 +915,10 @@ export default function AnnotatorPage() {
             </div>
           ) : (
             <>
+              <div className="mb-3 flex w-full gap-2 overflow-x-auto pb-1 lg:hidden">
+                {renderThumbnailButtons(true)}
+              </div>
+
               <div className="sticky top-0 z-30 mb-3 flex w-full max-w-md flex-wrap items-center justify-center gap-1.5 self-center rounded-xl border-2 border-slate-400 bg-white px-3 py-2.5 shadow-md ring-1 ring-slate-900/10 dark:border-zinc-500 dark:bg-zinc-800 dark:ring-white/10">
                 <button
                   type="button"
@@ -979,9 +1083,42 @@ export default function AnnotatorPage() {
                   <ChevronRight className="h-6 w-6" />
                 </button>
               </div>
-              <p className="mt-4 shrink-0 text-sm text-slate-500 dark:text-zinc-500">
-                Image {currentIndex + 1} of {images.length}
-              </p>
+              <div className="mt-4 flex shrink-0 flex-wrap items-center justify-center gap-2 text-sm text-slate-500 dark:text-zinc-500">
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-200 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                >
+                  Prev
+                </button>
+                <span>
+                  Image{" "}
+                  <input
+                    type="number"
+                    min={1}
+                    max={images.length}
+                    value={currentIndex + 1}
+                    onChange={(e) => {
+                      const n = Number.parseInt(e.target.value, 10);
+                      if (!Number.isFinite(n)) return;
+                      setCurrentIndex(Math.max(0, Math.min(images.length - 1, n - 1)));
+                    }}
+                    className="w-14 rounded border border-slate-300 bg-white px-1 py-0.5 text-center text-sm font-semibold text-slate-800 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                    aria-label="Jump to image number"
+                  />{" "}
+                  of {images.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-200 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                >
+                  Next
+                </button>
+                <span className="hidden text-xs text-slate-400 dark:text-zinc-500 sm:inline">
+                  · ← → keys · click thumbnails
+                </span>
+              </div>
             </>
           )}
         </div>

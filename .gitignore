@@ -21,6 +21,7 @@
 /build
 
 # local object storage + ML weights
+/images_face/
 /uploads/
 /models/checkpoints/
 /models/*.pth
