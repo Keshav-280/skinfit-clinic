@@ -9,6 +9,12 @@ import {
   parseDoctorPatientDetailSections,
 } from "@/src/lib/doctorPatientDetailApi";
 import { notifyPatientClinicVisitScoresUnlocked } from "@/src/lib/clinicVisitNotify";
+import {
+  invalidateUserHomeCache,
+  invalidateUserInsightsCache,
+  invalidateUserScanDerivedCaches,
+  invalidateUserProfileCache,
+} from "@/src/lib/infra";
 
 export async function GET(
   req: Request,
@@ -83,9 +89,25 @@ export async function PATCH(
       .set({ clinicVisitedAt: body.clinicVisited ? new Date() : null })
       .where(and(eq(users.id, patientId), eq(users.role, "patient")));
 
+    if (body.clinicVisited) {
+      // Clinic visit unlock state affects patient-facing resolvers/UI.
+      // Invalidate cached patient home + scan-derived payloads so `scoresUnlocked`
+      // reflects the latest `users.clinicVisitedAt`.
+      await Promise.all([
+        invalidateUserProfileCache(patientId),
+        invalidateUserHomeCache(patientId),
+        invalidateUserInsightsCache(patientId),
+        invalidateUserScanDerivedCaches(patientId),
+      ]);
+    }
+
     if (body.clinicVisited && !wasVisited) {
       void notifyPatientClinicVisitScoresUnlocked(patientId, staffId).catch((e) => {
-        console.error("[doctor/patients PATCH] scores unlock notify failed", patientId, e);
+        console.error(
+          "[doctor/patients PATCH] scores unlock notify failed",
+          patientId,
+          e
+        );
       });
     }
   }

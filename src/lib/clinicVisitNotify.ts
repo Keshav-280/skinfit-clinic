@@ -1,7 +1,4 @@
-import { db } from "@/src/db";
-import { chatMessages } from "@/src/db/schema";
-import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
-import { ensureDoctorPatientChatThread } from "@/src/lib/doctorPatientCare";
+import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import { notifyPatientScoresUnlocked } from "@/src/lib/expoPush";
 
 export const SCORES_UNLOCKED_PATIENT_MESSAGE =
@@ -10,14 +7,16 @@ export const SCORES_UNLOCKED_PATIENT_MESSAGE =
 /** In-app doctor chat + Expo push when clinic marks the patient visited. */
 export async function notifyPatientClinicVisitScoresUnlocked(
   patientId: string,
-  staffId: string
+  _staffId: string
 ): Promise<void> {
-  const threadId = await ensureDoctorPatientChatThread(patientId, staffId);
-  await db.insert(chatMessages).values({
-    threadId,
-    sender: "doctor",
+  // IMPORTANT: this is a clinic/support notification, not a doctor-origin message.
+  await sendClinicSupportMessage({
+    patientId,
+    assistantId: "support",
     text: SCORES_UNLOCKED_PATIENT_MESSAGE,
+    notificationType: "doctor.reply",
+    // keep sender neutral; no doctor attribution for this unlock event
+    doctorId: null,
   });
-  await notifyChatThreadUpdated(threadId);
   void notifyPatientScoresUnlocked(patientId);
 }
