@@ -200,3 +200,20 @@ export function patientParamGaugeLabel(
     ? String(patientDisplayClarity(rawScore))
     : patientClarityToGrade(rawScore);
 }
+
+/** Sparkline Y-axis — exact calibrated score when unlocked; grade band steps when locked. */
+const GRADE_CHART_Y: Record<ClarityGrade, number> = {
+  A: 80,
+  B: 60,
+  C: 40,
+  D: 20,
+  E: 0,
+};
+
+export function patientChartDisplayValue(
+  rawScore: number,
+  scoresUnlocked: boolean
+): number {
+  if (scoresUnlocked) return patientDisplayClarity(rawScore);
+  return GRADE_CHART_Y[patientClarityToGrade(rawScore)];
+}

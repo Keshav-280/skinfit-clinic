@@ -1,12 +1,12 @@
 "use client";
 
 import { format } from "date-fns";
-import { Lock } from "lucide-react";
+import { ArrowDown, ArrowUp, Lock, Minus } from "lucide-react";
 import { useState } from "react";
 
 import { ClinicScoreUnlockModal } from "@/components/dashboard/ClinicScoreUnlockModal";
 import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "@/src/lib/clarityGrade";
-import { PATIENT_GREEN, lockedWeeklyProgressLabel } from "@/src/lib/patientDashboardTheme";
+import { PATIENT_GREEN, lockedWeeklyTrendAria, weeklyTrendDirection } from "@/src/lib/patientDashboardTheme";
 
 const NAVY_TRACK = "rgba(255,255,255,0.22)";
 const SALMON = "#FCA5A5";
@@ -100,11 +100,10 @@ export function NavyMetricsCard({
   const kai = patientKaiScoreView(kaiSkinScore, scoresUnlocked);
   const progressLocked = !scoresUnlocked;
   const lockedKaiAriaLabel = `${CLINIC_SCORE_UNLOCK.title}. ${CLINIC_SCORE_UNLOCK.message}`;
-  const progressLabel = progressLocked
-    ? lockedWeeklyProgressLabel(weeklyDeltaScore)
-    : `${weeklyDeltaScore >= 0 ? "+" : ""}${weeklyDeltaScore}`;
   const progressTone =
     weeklyDeltaScore > 0 ? "up" : weeklyDeltaScore < 0 ? "down" : "flat";
+  const progressDir = weeklyTrendDirection(weeklyDeltaScore);
+  const progressAria = lockedWeeklyTrendAria(weeklyDeltaScore);
 
   return (
     <div
@@ -158,19 +157,30 @@ export function NavyMetricsCard({
           )}
           <div className="flex flex-col justify-center rounded-[16px] bg-[#E8EFE6] px-3 py-2 text-center h-[120px]">
             <p className="text-[11px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
-            <p
-              className={`mt-0.5 font-extrabold leading-none ${
-                progressLocked ? "text-[1.15rem] leading-snug" : "text-[2rem]"
-              } ${
-                progressTone === "down"
-                  ? "text-[#EF4444]"
-                  : progressTone === "up"
-                    ? "text-[#1E5E3A]"
-                    : "text-[#6B7280]"
-              }`}
-            >
-              {progressLabel}
-            </p>
+            {progressLocked ? (
+              <div className="mt-1 flex justify-center" aria-label={progressAria}>
+                {progressDir === "up" ? (
+                  <ArrowUp className="h-8 w-8 text-[#1E5E3A]" strokeWidth={2.75} aria-hidden />
+                ) : progressDir === "down" ? (
+                  <ArrowDown className="h-8 w-8 text-[#EF4444]" strokeWidth={2.75} aria-hidden />
+                ) : (
+                  <Minus className="h-8 w-8 text-[#6B7280]" strokeWidth={2.75} aria-hidden />
+                )}
+              </div>
+            ) : (
+              <p
+                className={`mt-0.5 text-[2rem] font-extrabold leading-none tabular-nums ${
+                  progressTone === "down"
+                    ? "text-[#EF4444]"
+                    : progressTone === "up"
+                      ? "text-[#1E5E3A]"
+                      : "text-[#6B7280]"
+                }`}
+              >
+                {weeklyDeltaScore >= 0 ? "+" : ""}
+                {weeklyDeltaScore}
+              </p>
+            )}
             {!progressLocked ? (
               <p className="mt-0.5 text-[10px] font-medium leading-none text-[#6B7280]">
                 vs last week

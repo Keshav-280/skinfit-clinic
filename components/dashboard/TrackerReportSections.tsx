@@ -161,7 +161,7 @@ export function TrackerReportSections({
               <WeeklyDeltaDisplay
                 delta={weeklyDelta}
                 scoresUnlocked={scoresUnlocked}
-                className="text-lg"
+                className="h-5 w-5"
               />
             </div>
           </div>

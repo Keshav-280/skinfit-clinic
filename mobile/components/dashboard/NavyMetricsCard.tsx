@@ -12,7 +12,7 @@ import {
   DASHBOARD_NAVY,
   dashboardNavyCardShadow,
 } from "@/lib/dashboardTheme";
-import { lockedWeeklyProgressLabel } from "../../../src/lib/patientDashboardTheme";
+import { lockedWeeklyTrendAria, weeklyTrendDirection } from "../../../src/lib/patientDashboardTheme";
 
 const SUB_CARD_BG = "#E8EFE6";
 const VALUE_GREEN = "#1E5E3A";
@@ -95,11 +95,8 @@ export function NavyMetricsCard({
   const kai = patientKaiScoreView(kaiSkinScore, scoresUnlocked);
   const progressLocked = !scoresUnlocked;
   const lockedKaiAriaLabel = `${CLINIC_SCORE_UNLOCK.title}. ${CLINIC_SCORE_UNLOCK.message}`;
-  const progressLabel = progressLocked
-    ? lockedWeeklyProgressLabel(weeklyDeltaScore)
-    : `${weeklyDeltaScore >= 0 ? "+" : ""}${Math.round(weeklyDeltaScore)}`;
-  const progressTone =
-    weeklyDeltaScore > 0 ? "up" : weeklyDeltaScore < 0 ? "down" : "flat";
+  const progressDir = weeklyTrendDirection(weeklyDeltaScore);
+  const progressAria = lockedWeeklyTrendAria(weeklyDeltaScore);
 
   return (
     <View style={[styles.card, style]}>
@@ -134,18 +131,31 @@ export function NavyMetricsCard({
           )}
           <View style={styles.subCard}>
             <Text style={styles.subLabel}>Weekly Progress</Text>
-            <Text
-              style={[
-                progressLocked ? styles.subValueLocked : styles.subValue,
-                progressTone === "down"
-                  ? { color: NEGATIVE_RED }
-                  : progressTone === "up"
-                    ? { color: VALUE_GREEN }
-                    : { color: MUTED },
-              ]}
-            >
-              {progressLabel}
-            </Text>
+            {progressLocked ? (
+              <View style={styles.progressIconWrap} accessibilityLabel={progressAria}>
+                {progressDir === "up" ? (
+                  <Ionicons name="arrow-up" size={30} color={VALUE_GREEN} />
+                ) : progressDir === "down" ? (
+                  <Ionicons name="arrow-down" size={30} color={NEGATIVE_RED} />
+                ) : (
+                  <Ionicons name="remove" size={30} color={MUTED} />
+                )}
+              </View>
+            ) : (
+              <Text
+                style={[
+                  styles.subValue,
+                  progressDir === "down"
+                    ? { color: NEGATIVE_RED }
+                    : progressDir === "up"
+                      ? { color: VALUE_GREEN }
+                      : { color: MUTED },
+                ]}
+              >
+                {weeklyDeltaScore >= 0 ? "+" : ""}
+                {Math.round(weeklyDeltaScore)}
+              </Text>
+            )}
             {!progressLocked ? <Text style={styles.subMeta}>vs last week</Text> : null}
           </View>
         </View>
@@ -222,12 +232,10 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     zIndex: 1,
   },
-  subValueLocked: {
+  progressIconWrap: {
     marginTop: 4,
-    fontSize: 18,
-    fontWeight: "800",
-    textAlign: "center",
-    lineHeight: 22,
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 1,
   },
   subMeta: {

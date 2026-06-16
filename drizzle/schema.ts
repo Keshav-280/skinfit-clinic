@@ -448,6 +448,7 @@ export const users = pgTable("users", {
 	routinePlanPmItems: jsonb("routine_plan_pm_items"),
 	routinePlanClinicianLocked: boolean("routine_plan_clinician_locked").default(false).notNull(),
 	primaryConcern: varchar("primary_concern", { length: 64 }),
+	concerns: jsonb(),
 	concernSeverity: varchar("concern_severity", { length: 32 }),
 	concernDuration: varchar("concern_duration", { length: 32 }),
 	triggers: jsonb(),

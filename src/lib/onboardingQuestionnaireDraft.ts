@@ -53,14 +53,6 @@ const VALID_GENDERS = new Set([
   "prefer_not_say",
 ]);
 
-const VALID_CONCERNS = new Set([
-  "acne",
-  "pigmentation",
-  "ageing",
-  "hair",
-  "general",
-]);
-
 const VALID_OVERALL_SKIN_HEALTH = new Set([
   "maintenance",
   "need_improve",

@@ -57,11 +57,16 @@ export const patientStatTile =
 export const patientScoreChip =
   "rounded-md bg-[#F2F9F2] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#2D3E6B]";
 
-/** Patient-facing weekly trend when exact scores are locked. */
+/** Locked weekly trend glyph (↑ / ↓ / —). */
+export function lockedWeeklyProgressSymbol(weeklyDeltaScore: number): string {
+  if (weeklyDeltaScore > 0) return "↑";
+  if (weeklyDeltaScore < 0) return "↓";
+  return "—";
+}
+
+/** @deprecated Prefer icons via weeklyTrendDirection; kept for string fallbacks. */
 export function lockedWeeklyProgressLabel(weeklyDeltaScore: number): string {
-  if (weeklyDeltaScore > 0) return "Up";
-  if (weeklyDeltaScore < 0) return "Down";
-  return "No change";
+  return lockedWeeklyProgressSymbol(weeklyDeltaScore);
 }
 
 export type WeeklyTrendDirection = "up" | "down" | "flat" | "none";

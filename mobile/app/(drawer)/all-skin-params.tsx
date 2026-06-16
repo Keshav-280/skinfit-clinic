@@ -20,8 +20,8 @@ import { apiJson } from "@/lib/api";
 import { goToDashboard } from "@/lib/dashboardNavigation";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
 import {
+  patientChartDisplayValue,
   patientClarityToGrade,
-  patientDisplayClarity,
   patientScoreView,
   PATIENT_DISPLAY_SCORE_MAX,
 } from "../../../src/lib/clarityGrade";
@@ -56,18 +56,20 @@ type HomeData = {
 function MiniSparkline({
   points,
   color,
+  scoresUnlocked = false,
   width = 100,
   height = 40,
 }: {
   points: number[];
   color: string;
+  scoresUnlocked?: boolean;
   width?: number;
   height?: number;
 }) {
   if (points.length < 2) {
     return <View style={{ width, height, backgroundColor: `${color}20`, borderRadius: 8 }} />;
   }
-  const displayPoints = points.map((p) => patientDisplayClarity(p));
+  const displayPoints = points.map((p) => patientChartDisplayValue(p, scoresUnlocked));
   const padY = 4;
   const usableH = height - padY * 2;
   const stepX = width / (displayPoints.length - 1);
@@ -268,7 +270,7 @@ export default function AllSkinParamsScreen() {
                   </View>
                 </View>
                 <View style={s.paramRight}>
-                  <MiniSparkline points={p.sparkline} color={sparkColor} />
+                  <MiniSparkline points={p.sparkline} color={sparkColor} scoresUnlocked={scoresUnlocked} />
                   {dateRangeText ? (
                     <View style={s.sparkDateRow}>
                       <Text style={s.sparkDate}>{format(new Date(scans[scans.length - 1].createdAt), "do")}</Text>

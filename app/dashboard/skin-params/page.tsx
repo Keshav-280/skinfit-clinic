@@ -11,7 +11,7 @@ import {
 import {
   classifySkinParamMetric,
   patientClarityToGrade,
-  patientDisplayClarity,
+  patientChartDisplayValue,
   patientParamGaugeLabel,
   patientScoreView,
   PATIENT_DISPLAY_SCORE_MAX,
@@ -132,12 +132,13 @@ function MiniLineChart({
     rawValues = data.map((d) => d.value);
   }
 
-  const displayValues = rawValues.map((v) => patientDisplayClarity(v));
+  const displayValues = rawValues.map((v) => patientChartDisplayValue(v, scoresUnlocked));
   const minV = 0;
   const maxV = PATIENT_DISPLAY_SCORE_MAX;
   const range = maxV - minV;
 
-  const pointLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
+  const pointLabel = (raw: number) =>
+    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
 
   const points = displayValues.map((v, i) => {
     const x = padX + (i / (displayValues.length - 1)) * innerW;
