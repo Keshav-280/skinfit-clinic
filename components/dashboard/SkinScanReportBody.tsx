@@ -510,6 +510,9 @@ export function SkinScanReportBody({
 
   return (
     <div className={`relative w-full max-w-3xl ${className}`}>
+      {!scoresUnlocked && !promoDismissed ? (
+        <ScanReportClinicPromoOverlay onDismiss={dismissClinicPromo} />
+      ) : null}
       <div className="absolute right-3 top-3 z-30 flex flex-col items-end gap-2">
         <div className="flex items-center gap-2">
         <button
@@ -1108,9 +1111,6 @@ export function SkinScanReportBody({
         </div>
       </div>
     </motion.div>
-      {!scoresUnlocked && !promoDismissed ? (
-        <ScanReportClinicPromoOverlay onDismiss={dismissClinicPromo} />
-      ) : null}
     </div>
     </div>
   );

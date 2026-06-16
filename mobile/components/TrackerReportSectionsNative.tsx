@@ -10,6 +10,11 @@ import {
 } from "../../src/lib/patientDashboardTheme";
 import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 import { filterPatientVisibleParamRows } from "../../src/lib/patientVisibleParams";
+import { ParamScoreBarNative } from "@/components/ParamScoreBarNative";
+import {
+  sanitizeTrackerCausesForLockedPatient,
+  sanitizeTrackerNarrativeForLockedPatient,
+} from "../../src/lib/patientTrackerLockedCopy";
 
 function deltaColor(n: number) {
   if (n > 0) return R.deltaUp;
@@ -21,11 +26,6 @@ function causeDotColor(impact: "high" | "medium" | "low") {
   if (impact === "high") return R.causeHigh;
   if (impact === "medium") return R.causeMed;
   return R.causeLow;
-}
-
-function valueForBar(n: number | null) {
-  if (typeof n !== "number") return 0;
-  return Math.min(100, Math.max(0, Math.round(n)));
 }
 
 function parseFocusDetail(detail: string): Array<{ label: string; body: string }> {
@@ -117,6 +117,15 @@ export function TrackerReportSectionsNative({
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
     : report.focusActions;
   const visibleParamRows = filterPatientVisibleParamRows(report.paramRows);
+  const displayCauses = scoresUnlocked
+    ? report.causes
+    : sanitizeTrackerCausesForLockedPatient(report.causes);
+  const displayPrediction = scoresUnlocked
+    ? report.predictionText
+    : sanitizeTrackerNarrativeForLockedPatient(report.predictionText);
+  const displayInsight = scoresUnlocked
+    ? report.insightText
+    : sanitizeTrackerNarrativeForLockedPatient(report.insightText);
 
   return (
     <View style={styles.wrap}>
@@ -147,7 +156,7 @@ export function TrackerReportSectionsNative({
             <Text style={styles.statValue}>{report.scores.consistencyScore}%</Text>
           </View>
         </View>
-        <Text style={styles.comparisonHint}>{report.insightText}</Text>
+        <Text style={styles.comparisonHint}>{displayInsight}</Text>
       </View>
 
       <View style={styles.card}>
@@ -169,11 +178,10 @@ export function TrackerReportSectionsNative({
                 <Text style={styles.paramLabel} numberOfLines={2}>
                   {row.label}
                 </Text>
-                <View style={styles.paramBarTrack}>
-                  <View
-                    style={[styles.paramBarFill, { width: `${valueForBar(row.value)}%` }]}
-                  />
-                </View>
+                <ParamScoreBarNative
+                  value={typeof row.value === "number" ? row.value : null}
+                  scoresUnlocked={scoresUnlocked}
+                />
                 <Text style={styles.paramNum}>
                   {typeof row.value === "number" ? paramLabel(row.value) : "-"}
                 </Text>
@@ -191,7 +199,7 @@ export function TrackerReportSectionsNative({
         <View style={[styles.insetBox, { marginTop: 14 }]}>
           <Text style={styles.blockTitle}>Why your skin behaves this way</Text>
           <View style={{ marginTop: 10, gap: 10 }}>
-            {report.causes.slice(0, 3).map((cause, idx) => (
+            {displayCauses.slice(0, 3).map((cause, idx) => (
               <View key={`${cause.text}-${idx}`} style={styles.causeRow}>
                 <View
                   style={[
@@ -205,7 +213,7 @@ export function TrackerReportSectionsNative({
           </View>
         </View>
 
-        <Text style={styles.overviewPara}>{report.predictionText}</Text>
+        <Text style={styles.overviewPara}>{displayPrediction}</Text>
       </View>
 
       <View style={styles.card}>
@@ -354,18 +362,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: "#374151",
-  },
-  paramBarTrack: {
-    width: 72,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(44,62,107,0.12)",
-    overflow: "hidden",
-  },
-  paramBarFill: {
-    height: "100%",
-    borderRadius: 999,
-    backgroundColor: "#3d5080",
   },
   paramNum: {
     width: 28,

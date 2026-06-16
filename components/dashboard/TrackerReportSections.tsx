@@ -14,6 +14,11 @@ import {
   TRACKER_REPORT_THEME as R,
 } from "@/src/lib/scanReportTheme";
 import { filterPatientVisibleParamRows } from "@/src/lib/patientVisibleParams";
+import { ParamScoreBar } from "@/components/dashboard/ParamScoreBar";
+import {
+  sanitizeTrackerCausesForLockedPatient,
+  sanitizeTrackerNarrativeForLockedPatient,
+} from "@/src/lib/patientTrackerLockedCopy";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -30,11 +35,6 @@ function deltaClass(n: number) {
   if (n > 0) return "text-[#2C3E6B]";
   if (n < 0) return "text-[#5B7BA8]";
   return "text-zinc-500";
-}
-
-function valueForBar(n: number | null) {
-  if (typeof n !== "number") return 0;
-  return Math.min(100, Math.max(0, Math.round(n)));
 }
 
 function kindBadge(kind: "article" | "video" | "insight") {
@@ -133,6 +133,15 @@ export function TrackerReportSections({
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
     : report.focusActions;
   const visibleParamRows = filterPatientVisibleParamRows(report.paramRows);
+  const displayCauses = scoresUnlocked
+    ? report.causes
+    : sanitizeTrackerCausesForLockedPatient(report.causes);
+  const displayPrediction = scoresUnlocked
+    ? report.predictionText
+    : sanitizeTrackerNarrativeForLockedPatient(report.predictionText);
+  const displayInsight = scoresUnlocked
+    ? report.insightText
+    : sanitizeTrackerNarrativeForLockedPatient(report.insightText);
 
   return (
     <motion.div
@@ -172,7 +181,7 @@ export function TrackerReportSections({
             </p>
           </div>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-zinc-600">{report.insightText}</p>
+        <p className="mt-3 text-xs leading-relaxed text-zinc-600">{displayInsight}</p>
       </section>
 
       <section className={sectionCard}>
@@ -200,12 +209,10 @@ export function TrackerReportSections({
             {visibleParamRows.map((row) => (
               <div key={row.key} className="grid grid-cols-[minmax(0,1fr)_120px_46px_30px] items-center gap-2 text-xs">
                 <span className="font-medium text-zinc-700">{row.label}</span>
-                <div className="h-2 overflow-hidden rounded-full bg-[rgba(44,62,107,0.12)]">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#2C3E6B]"
-                    style={{ width: `${valueForBar(row.value)}%` }}
-                  />
-                </div>
+                <ParamScoreBar
+                  value={typeof row.value === "number" ? row.value : null}
+                  scoresUnlocked={scoresUnlocked}
+                />
                 <span className="text-right font-semibold tabular-nums text-[#2C3E6B]">
                   {typeof row.value === "number" ? paramLabel(row.value) : "-"}
                 </span>
@@ -220,7 +227,7 @@ export function TrackerReportSections({
         <div className={`mt-4 ${insetCard}`}>
           <p className="text-sm font-semibold text-zinc-900">Why your skin behaves this way</p>
           <ul className="mt-2 space-y-2">
-            {report.causes.slice(0, 3).map((cause, idx) => (
+            {displayCauses.slice(0, 3).map((cause, idx) => (
               <li key={`${cause.text}-${idx}`} className="flex items-start gap-2 text-sm text-zinc-700">
                 <span
                   className={`mt-[6px] h-1.5 w-1.5 rounded-full ${causeDotClass(cause.impact)}`}
@@ -231,7 +238,7 @@ export function TrackerReportSections({
           </ul>
         </div>
 
-        <p className="mt-3 text-sm leading-relaxed text-zinc-600">{report.predictionText}</p>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-600">{displayPrediction}</p>
       </section>
 
       {INCLUDE_TRACKER_RESOURCES_IN_REPORT ? (

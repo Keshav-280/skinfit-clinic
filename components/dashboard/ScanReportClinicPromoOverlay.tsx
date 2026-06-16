@@ -19,7 +19,7 @@ export function ScanReportClinicPromoOverlay({ onDismiss, className = "" }: Prop
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.28, ease: easeOut }}
-      className={`absolute inset-0 z-40 flex items-center justify-center p-4 sm:p-6 ${className}`}
+      className={`fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto p-4 pt-16 sm:p-6 sm:pt-20 ${className}`}
       data-pdf-screen-only
       role="dialog"
       aria-modal="true"

@@ -5,6 +5,15 @@
 
 export type ClarityGrade = "A" | "B" | "C" | "D" | "E";
 
+/** Worst → best — used for locked checkpoint bars (E … A). */
+export const CLARITY_GRADES_ASCENDING: readonly ClarityGrade[] = [
+  "E",
+  "D",
+  "C",
+  "B",
+  "A",
+] as const;
+
 export const CLARITY_GRADE_BANDS: ReadonlyArray<{
   grade: ClarityGrade;
   min: number;
@@ -114,10 +123,10 @@ export function gradeRangeLabel(grade: ClarityGrade): string {
 
 /** Patient CTA when exact scores are locked (home scans before clinic analysis). */
 export const CLINIC_SCORE_UNLOCK = {
-  title: "Unlock your exact scores",
+  title: "Your full results unlock at the clinic",
   message:
-    "Free clinic analysis within 7 days of your scan — unlocks your exact kAI score and full results.",
-  actionLabel: "Book free analysis",
+    "Your scan includes a free skin check within 7 days. After your visit, we'll show your exact kAI score and complete report here.",
+  actionLabel: "Book my free visit",
   schedulesHref: "/dashboard/schedules",
   mobileSchedulesHref: "/(drawer)/schedules",
 } as const;
