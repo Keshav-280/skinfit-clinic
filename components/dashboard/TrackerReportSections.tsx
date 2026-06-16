@@ -1,13 +1,19 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { patientKaiScoreView, patientScoreView } from "@/src/lib/clarityGrade";
+import { patientKaiScoreView, patientClarityToGrade, patientScoreView } from "@/src/lib/clarityGrade";
+import {
+  lockedWeeklyTrendAria,
+  weeklyTrendDirection,
+} from "@/src/lib/patientDashboardTheme";
 import {
   INCLUDE_TRACKER_RESOURCES_IN_REPORT,
   TRACKER_REPORT_THEME as R,
 } from "@/src/lib/scanReportTheme";
+import { filterPatientVisibleParamRows } from "@/src/lib/patientVisibleParams";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -19,10 +25,6 @@ const insetCard =
 
 const statCell =
   "rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]";
-
-function signed(n: number) {
-  return `${n > 0 ? "+" : ""}${n}`;
-}
 
 function deltaClass(n: number) {
   if (n > 0) return "text-[#2C3E6B]";
@@ -59,6 +61,54 @@ function causeDotClass(impact: "high" | "medium" | "low") {
   return "bg-[#5B7BA8]";
 }
 
+function WeeklyDeltaDisplay({
+  delta,
+  scoresUnlocked,
+  className = "",
+}: {
+  delta: number | null;
+  scoresUnlocked: boolean;
+  className?: string;
+}) {
+  if (delta === null) {
+    return <span className={`text-zinc-400 ${className}`}>-</span>;
+  }
+  if (scoresUnlocked) {
+    return (
+      <span className={`tabular-nums ${deltaClass(delta)} ${className}`}>
+        {`${delta > 0 ? "+" : ""}${delta}`}
+      </span>
+    );
+  }
+  const dir = weeklyTrendDirection(delta);
+  const aria = lockedWeeklyTrendAria(delta);
+  if (dir === "up") {
+    return (
+      <ArrowUp
+        className={`inline h-4 w-4 text-[#2C3E6B] ${className}`}
+        strokeWidth={2.5}
+        aria-label={aria}
+      />
+    );
+  }
+  if (dir === "down") {
+    return (
+      <ArrowDown
+        className={`inline h-4 w-4 text-[#5B7BA8] ${className}`}
+        strokeWidth={2.5}
+        aria-label={aria}
+      />
+    );
+  }
+  return (
+    <Minus
+      className={`inline h-4 w-4 text-zinc-500 ${className}`}
+      strokeWidth={2.5}
+      aria-label={aria}
+    />
+  );
+}
+
 export function TrackerReportSections({
   report,
   serifClassName,
@@ -69,12 +119,20 @@ export function TrackerReportSections({
   scoresUnlocked?: boolean;
 }) {
   const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
-  const paramLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
+  const paramLabel = (raw: number) =>
+    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
   const { lastScanDelta, weekAverageDelta } = report.scores;
+  const weeklyDelta =
+    typeof weekAverageDelta === "number"
+      ? weekAverageDelta
+      : typeof lastScanDelta === "number"
+        ? lastScanDelta
+        : null;
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
     : report.focusActions;
+  const visibleParamRows = filterPatientVisibleParamRows(report.paramRows);
 
   return (
     <motion.div
@@ -94,20 +152,18 @@ export function TrackerReportSections({
           <div className={statCell}>
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">kAI grade</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
-              {kaiView.showLock ? kaiView.kaiSecondary : kaiView.kaiPrimary}
+              {scoresUnlocked ? kaiView.kaiPrimary : patientClarityToGrade(report.scores.kaiScore)}
             </p>
           </div>
           <div className={statCell}>
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">Weekly delta</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums">
-              {typeof weekAverageDelta === "number" ? (
-                <span className={deltaClass(weekAverageDelta)}>{signed(weekAverageDelta)}</span>
-              ) : typeof lastScanDelta === "number" ? (
-                <span className={deltaClass(lastScanDelta)}>{signed(lastScanDelta)}</span>
-              ) : (
-                <span className="text-zinc-500">-</span>
-              )}
-            </p>
+            <div className="mt-1 flex justify-center">
+              <WeeklyDeltaDisplay
+                delta={weeklyDelta}
+                scoresUnlocked={scoresUnlocked}
+                className="text-lg"
+              />
+            </div>
           </div>
           <div className={statCell}>
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">Consistency</p>
@@ -141,7 +197,7 @@ export function TrackerReportSections({
         <div className={`mt-4 ${insetCard}`}>
           <p className="text-sm font-semibold text-zinc-900">This week&apos;s overview</p>
           <div className="mt-2.5 space-y-2.5">
-            {report.paramRows.map((row) => (
+            {visibleParamRows.map((row) => (
               <div key={row.key} className="grid grid-cols-[minmax(0,1fr)_120px_46px_30px] items-center gap-2 text-xs">
                 <span className="font-medium text-zinc-700">{row.label}</span>
                 <div className="h-2 overflow-hidden rounded-full bg-[rgba(44,62,107,0.12)]">
@@ -153,12 +209,8 @@ export function TrackerReportSections({
                 <span className="text-right font-semibold tabular-nums text-[#2C3E6B]">
                   {typeof row.value === "number" ? paramLabel(row.value) : "-"}
                 </span>
-                <span
-                  className={`text-right tabular-nums ${
-                    typeof row.delta === "number" ? deltaClass(row.delta) : "text-zinc-400"
-                  }`}
-                >
-                  {typeof row.delta === "number" ? signed(row.delta) : "-"}
+                <span className="flex justify-end">
+                  <WeeklyDeltaDisplay delta={row.delta} scoresUnlocked={scoresUnlocked} />
                 </span>
               </div>
             ))}

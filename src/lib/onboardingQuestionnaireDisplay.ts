@@ -8,7 +8,7 @@ import {
 const QUESTION_TITLES: Record<string, string> = {
   PROFILE_01: "About you",
   REF_01: "How they heard about us",
-  CONCERN_01: "Primary concern",
+  CONCERN_01: "Skin concerns",
   HEALTH_01: "Overall skin health",
   SEV_01: "Severity",
   DUR_01: "Duration",
@@ -206,6 +206,18 @@ export function formatOnboardingAnswer(
         : "";
     const parts = [text, dur].filter(Boolean);
     return { title, kind: "text", body: parts.join(" · ") || "—", tags: [] };
+  }
+
+  if (questionId === "CONCERN_01" && Array.isArray(answer)) {
+    const tags = answer
+      .filter((x): x is string => typeof x === "string")
+      .map((id) => CONCERN_LABELS[id] ?? labelValue(id, questionId));
+    return {
+      title,
+      kind: "tags",
+      body: tags.length ? "" : "—",
+      tags,
+    };
   }
 
   if (questionId === "TRIG_01" && Array.isArray(answer)) {

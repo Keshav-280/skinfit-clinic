@@ -23,7 +23,7 @@ import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/
 import { getCached, setCached } from "@/lib/apiCache";
 import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { analysisResultsToParams } from "@/lib/skinAnalysis";
-import { patientScoreView } from "../../../../src/lib/clarityGrade";
+import { patientClarityToGrade, patientScoreView } from "../../../../src/lib/clarityGrade";
 import { ReportContainImage } from "@/components/ReportContainImage";
 
 type ScanRow = {
@@ -162,7 +162,8 @@ export default function HistoryListScreen() {
 
   const scans = data?.scans ?? [];
   const scoresUnlocked = data?.scoresUnlocked ?? false;
-  const scoreLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
+  const scoreLabel = (raw: number) =>
+    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
   const reportVoices = data?.reportVoiceNotes ?? [];
   const reportVoicesArchived = data?.reportVoiceNotesArchived ?? [];
 
@@ -229,7 +230,7 @@ export default function HistoryListScreen() {
                   {analysisResultsToParams(scan.analysisResults).map((p) => (
                     <View key={p.label} style={styles.chip}>
                       <Text style={styles.chipText}>
-                        {p.label} {p.value}
+                        {p.label} {scoreLabel(p.value)}
                       </Text>
                     </View>
                   ))}

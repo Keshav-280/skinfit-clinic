@@ -140,6 +140,8 @@ export const users = pgTable("users", {
     .notNull()
     .default(false),
   primaryConcern: varchar("primary_concern", { length: 64 }),
+  /** All selected onboarding concerns (first item mirrors primary_concern for legacy reads). */
+  concerns: jsonb("concerns").$type<string[]>(),
   concernSeverity: varchar("concern_severity", { length: 32 }),
   concernDuration: varchar("concern_duration", { length: 32 }),
   triggers: jsonb("triggers").$type<string[]>(),

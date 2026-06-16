@@ -1,18 +1,18 @@
 import { format } from "date-fns";
-import { StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 
-import {
-  CLINIC_SCORE_UNLOCK,
-  patientKaiScoreView,
-} from "../../src/lib/clarityGrade";
+import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "../../src/lib/clarityGrade";
+import { showClinicScoreUnlockPrompt } from "@/lib/showClinicScoreUnlockPrompt";
 
 import {
   DASHBOARD_GREEN,
   DASHBOARD_NAVY,
   dashboardNavyCardShadow,
 } from "@/lib/dashboardTheme";
+import { lockedWeeklyProgressLabel } from "../../../src/lib/patientDashboardTheme";
 
 const SUB_CARD_BG = "#E8EFE6";
 const VALUE_GREEN = "#1E5E3A";
@@ -90,46 +90,63 @@ export function NavyMetricsCard({
   scoresUnlocked = false,
   style,
 }: NavyMetricsCardProps) {
+  const router = useRouter();
   const v = Math.min(100, Math.max(0, Math.round(consistencyScore)));
   const kai = patientKaiScoreView(kaiSkinScore, scoresUnlocked);
+  const progressLocked = !scoresUnlocked;
+  const lockedKaiAriaLabel = `${CLINIC_SCORE_UNLOCK.title}. ${CLINIC_SCORE_UNLOCK.message}`;
+  const progressLabel = progressLocked
+    ? lockedWeeklyProgressLabel(weeklyDeltaScore)
+    : `${weeklyDeltaScore >= 0 ? "+" : ""}${Math.round(weeklyDeltaScore)}`;
+  const progressTone =
+    weeklyDeltaScore > 0 ? "up" : weeklyDeltaScore < 0 ? "down" : "flat";
 
   return (
     <View style={[styles.card, style]}>
       <View style={styles.row}>
         <View style={styles.leftCol}>
-          <View style={styles.subCard}>
-            {kai.showLock ? <View style={styles.lockOverlay} /> : null}
-            <Text style={styles.subLabel}>kAI Skin Score</Text>
-            {kai.showLock ? (
+          {kai.showLock ? (
+            <Pressable
+              style={({ pressed }) => [styles.subCard, pressed && styles.subCardPressed]}
+              onPress={() => showClinicScoreUnlockPrompt(router)}
+              accessibilityRole="button"
+              accessibilityLabel={lockedKaiAriaLabel}
+            >
+              <View style={styles.lockOverlay} />
+              <Text style={styles.subLabel}>kAI Skin Score</Text>
               <View style={styles.lockRow}>
-                <Ionicons name="lock-closed" size={24} color="rgba(44,62,107,0.75)" />
-                <Text style={styles.lockedPrimary}>{kai.kaiPrimary}</Text>
+                <Ionicons name="lock-closed" size={18} color="rgba(44,62,107,0.55)" />
+                <Text style={styles.subValue}>{kai.gaugeDisplayValue}</Text>
               </View>
-            ) : (
-              <Text style={styles.subValue}>{kai.kaiPrimary}</Text>
-            )}
-            <Text style={styles.subMeta}>{kai.kaiSecondary}</Text>
-            <Text style={styles.subMeta}>
-              {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
-            </Text>
-            {kai.showLock ? (
-              <Text style={styles.lockHint} numberOfLines={3}>
-                {CLINIC_SCORE_UNLOCK.message}
+              <Text style={styles.subMeta}>
+                {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
               </Text>
-            ) : null}
-          </View>
+            </Pressable>
+          ) : (
+            <View style={styles.subCard}>
+              <Text style={styles.subLabel}>kAI Skin Score</Text>
+              <Text style={styles.subValue}>{kai.kaiPrimary}</Text>
+              <Text style={styles.subMeta}>{kai.kaiSecondary}</Text>
+              <Text style={styles.subMeta}>
+                {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
+              </Text>
+            </View>
+          )}
           <View style={styles.subCard}>
             <Text style={styles.subLabel}>Weekly Progress</Text>
             <Text
               style={[
-                styles.subValue,
-                weeklyDeltaScore < 0 ? { color: NEGATIVE_RED } : null,
+                progressLocked ? styles.subValueLocked : styles.subValue,
+                progressTone === "down"
+                  ? { color: NEGATIVE_RED }
+                  : progressTone === "up"
+                    ? { color: VALUE_GREEN }
+                    : { color: MUTED },
               ]}
             >
-              {weeklyDeltaScore >= 0 ? "+" : ""}
-              {Math.round(weeklyDeltaScore)}
+              {progressLabel}
             </Text>
-            <Text style={styles.subMeta}>vs last week</Text>
+            {!progressLocked ? <Text style={styles.subMeta}>vs last week</Text> : null}
           </View>
         </View>
 
@@ -173,6 +190,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+  subCardPressed: {
+    backgroundColor: "#dfe9dc",
+  },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(232,239,230,0.55)",
@@ -187,16 +207,11 @@ const styles = StyleSheet.create({
   },
   lockRow: {
     marginTop: 2,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     zIndex: 1,
-  },
-  lockedPrimary: {
-    marginTop: 2,
-    fontSize: 22,
-    fontWeight: "800",
-    color: "rgba(44,62,107,0.8)",
-    textAlign: "center",
-    lineHeight: 24,
   },
   subValue: {
     marginTop: 2,
@@ -207,20 +222,19 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     zIndex: 1,
   },
+  subValueLocked: {
+    marginTop: 4,
+    fontSize: 18,
+    fontWeight: "800",
+    textAlign: "center",
+    lineHeight: 22,
+    zIndex: 1,
+  },
   subMeta: {
     marginTop: 2,
     fontSize: 9,
     fontWeight: "500",
     color: MUTED,
-    textAlign: "center",
-    lineHeight: 11,
-    zIndex: 1,
-  },
-  lockHint: {
-    marginTop: 4,
-    fontSize: 8,
-    fontWeight: "600",
-    color: "rgba(44,62,107,0.7)",
     textAlign: "center",
     lineHeight: 11,
     zIndex: 1,

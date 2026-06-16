@@ -5,7 +5,6 @@ import Link from "next/link";
 import { CircularGauge } from "@/components/dashboard/CircularGauge";
 import {
   classifySkinParamMetric,
-  gradeRangeLabel,
   patientParamGaugeLabel,
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
@@ -63,7 +62,7 @@ export function SkinParamMetricsCard({
               className="text-[13px] font-extrabold sm:text-[14px]"
               style={{ color: p.color }}
             >
-              {scoresUnlocked ? p.sublabel : `${p.grade} · ${gradeRangeLabel(p.grade)}`}
+              {scoresUnlocked ? p.sublabel : p.grade}
             </p>
           </div>
         ))}

@@ -119,7 +119,7 @@ export default function WeeklyReportCard({
               <Text style={s.snapshotLabel}>Your skin grade</Text>
               <View style={s.scoreRow}>
                 <Text style={s.scoreValue}>
-                  {kaiView.showLock ? kaiView.kaiSecondary : kaiView.kaiPrimary}
+                  {kaiView.kaiPrimary}
                 </Text>
               </View>
             </View>

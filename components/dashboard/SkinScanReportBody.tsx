@@ -30,6 +30,7 @@ import {
   SCAN_REPORT_PDF_PAGE_BG,
 } from "@/src/lib/scanReportPdfBackground";
 import { ScanReportClinicPromoNote } from "./ScanReportClinicPromoNote";
+import { PATIENT_CLINICAL_DISPLAY_ROWS } from "@/src/lib/patientVisibleParams";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
@@ -44,17 +45,10 @@ const FACE_CAPTURE_FRAME =
 const FACE_CAPTURE_FRAME_SINGLE =
   "relative mx-auto aspect-[3/4] w-full max-w-[200px] overflow-hidden rounded-2xl bg-zinc-200/80 ring-1 ring-[rgba(0,0,0,0.12)] sm:max-w-[240px]";
 
-const CLINICAL_ROWS: {
+const CLINICAL_ROWS = PATIENT_CLINICAL_DISPLAY_ROWS as {
   key: keyof ClinicalScores;
   label: string;
-}[] = [
-  { key: "active_acne", label: "Active acne" },
-  { key: "acne_scars", label: "Acne scars" },
-  { key: "wrinkle_severity", label: "Wrinkles" },
-  { key: "sagging_volume", label: "Sagging & volume" },
-  { key: "under_eye", label: "Under-eye" },
-  { key: "pigmentation_model", label: "Pigmentation" },
-];
+}[];
 
 const EIGHT_CLINICAL_DONUT_STYLE: Partial<
   Record<keyof ClinicalScores, { fill: string; track: string }>
@@ -245,7 +239,7 @@ export interface SkinScanReportBodyProps {
    * Omit on the client to load `/api/patient/tracker` when `scanId` is set.
    */
   serverTracker?: PatientTrackerReport | null;
-  /** When false (default), patient sees grade ranges until clinic visit unlocks exact scores. */
+  /** When false (default), patient sees letter grades until clinic visit unlocks exact scores. */
   scoresUnlocked?: boolean;
 }
 
@@ -334,7 +328,7 @@ export function SkinScanReportBody({
     aiSummary?.trim() ||
     (scoresUnlocked
       ? `Your latest scan shows an overall score of ${overallView.label}. Detailed parameters and photo markers are below.`
-      : `Your latest scan is in the ${overallView.label} range. Visit the clinic for a free analysis to unlock your exact score.`);
+      : `Your latest scan shows an overall grade of ${overallView.label}. Visit the clinic for a free analysis to unlock your exact score.`);
 
   const resolvedPhotos = useMemo(() => {
     if (faceCaptureGallery && faceCaptureGallery.length > 0) {
@@ -680,7 +674,7 @@ export function SkinScanReportBody({
 
       <div className="relative px-5 pb-10 pt-9 sm:px-9 sm:pb-12">
         {!scoresUnlocked ? (
-          <div className="mx-auto mb-6 max-w-xl">
+          <div className="mx-auto mb-6 max-w-xl" data-pdf-screen-only>
             <ClinicScoreUnlockCta compact />
           </div>
         ) : null}

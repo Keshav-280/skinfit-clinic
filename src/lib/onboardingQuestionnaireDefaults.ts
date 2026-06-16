@@ -1,4 +1,9 @@
 import { parseOnboardingAge } from "@/src/lib/onboardingAgeOptions";
+import {
+  normalizeOnboardingConcerns,
+  primaryOnboardingConcern,
+  type OnboardingConcernId,
+} from "@/src/lib/onboardingConcerns";
 import type { ReferralSourceId } from "@/src/lib/onboardingReferralSource";
 
 export type ConcernSeverity = "mild" | "moderate" | "severe";
@@ -96,7 +101,7 @@ export function isOnboardingQuestionnaireStepComplete(
     case 0:
       return parseOnboardingAge(state.ageInput) != null && state.gender != null;
     case 1:
-      return state.concern != null;
+      return state.concerns.length > 0;
     case 2:
       return state.overallSkinHealth != null;
     case 3:
@@ -253,7 +258,7 @@ export function clearOnboardingStepFields(
     case 0:
       return { ageInput: "", gender: null };
     case 1:
-      return { concern: null };
+      return { concerns: [] };
     case 2:
       return { overallSkinHealth: null };
     case 3:
@@ -353,7 +358,7 @@ export function nextOnboardingQuestionnaireStepAfterSkip(
 export type OnboardingQuestionnaireFormState = {
   ageInput: string;
   gender: string | null;
-  concern: string | null;
+  concerns: OnboardingConcernId[];
   overallSkinHealth: OverallSkinHealth | null;
   severity: ConcernSeverity | null;
   duration: ConcernDuration | null;
@@ -380,7 +385,7 @@ export function applyOnboardingStepSkip(
     case 0:
       return { ageInput: String(d.age), gender: d.gender };
     case 1:
-      return { concern: d.primaryConcern };
+      return { concerns: [d.primaryConcern] };
     case 2:
       return { overallSkinHealth: d.overallSkinHealth };
     case 3:
@@ -435,10 +440,17 @@ export function buildOnboardingQuestionnairePayload(
         : d.referralSourceOther
       : undefined;
 
+  const concerns =
+    state.concerns.length > 0
+      ? state.concerns
+      : normalizeOnboardingConcerns(null, d.primaryConcern);
+  const primaryConcern = primaryOnboardingConcern(concerns);
+
   return {
     age,
     gender: state.gender ?? d.gender,
-    primaryConcern: state.concern ?? d.primaryConcern,
+    primaryConcerns: concerns,
+    primaryConcern,
     overallSkinHealth: state.overallSkinHealth ?? d.overallSkinHealth,
     concernSeverity: state.severity ?? d.concernSeverity,
     concernDuration: state.duration ?? d.concernDuration,

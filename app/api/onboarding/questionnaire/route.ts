@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { questionnaireAnswers, skinDnaCards, users } from "@/src/db/schema";
+import {
+  formatOnboardingConcernLabels,
+  normalizeOnboardingConcerns,
+  primaryOnboardingConcern,
+} from "@/src/lib/onboardingConcerns";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { finalizeOnboardingUser } from "@/src/lib/finalizeOnboardingUser";
 import { isReferralSourceId } from "@/src/lib/onboardingReferralSource";
@@ -15,7 +20,6 @@ import {
 } from "@/src/lib/infra";
 
 const ALLOWED_GENDERS = new Set(["female", "male", "other", "prefer_not_say"]);
-const CONCERNS = new Set(["acne", "pigmentation", "ageing", "hair", "general"]);
 const OVERALL_SKIN_HEALTH = new Set([
   "maintenance",
   "need_improve",
@@ -87,14 +91,20 @@ export async function POST(req: Request) {
     );
   }
 
-  const primaryConcern =
-    typeof body.primaryConcern === "string" ? body.primaryConcern : "";
-  if (!CONCERNS.has(primaryConcern)) {
+  const primaryConcerns = normalizeOnboardingConcerns(
+    body.primaryConcerns,
+    typeof body.primaryConcern === "string" ? body.primaryConcern : null
+  );
+  if (primaryConcerns.length < 1) {
     return NextResponse.json(
-      { error: "INVALID_CONCERN", message: "Invalid primary concern." },
+      {
+        error: "INVALID_CONCERN",
+        message: "Select at least one skin concern.",
+      },
       { status: 400 }
     );
   }
+  const primaryConcern = primaryOnboardingConcern(primaryConcerns);
 
   const overallSkinHealth =
     typeof body.overallSkinHealth === "string" ? body.overallSkinHealth : "";
@@ -219,14 +229,7 @@ export async function POST(req: Request) {
     referralSourceOther = other;
   }
 
-  const primaryGoalLabel =
-    {
-      acne: "Acne & breakouts",
-      pigmentation: "Pigmentation & dark spots",
-      ageing: "Ageing & wrinkles",
-      hair: "Hair loss & scalp",
-      general: "General skin health",
-    }[primaryConcern] ?? primaryConcern;
+  const primaryGoalLabel = formatOnboardingConcernLabels(primaryConcerns);
 
   await db
     .update(users)
@@ -234,6 +237,7 @@ export async function POST(req: Request) {
       age,
       gender: genderRaw,
       primaryConcern,
+      concerns: primaryConcerns,
       concernSeverity,
       concernDuration,
       triggers,
@@ -256,7 +260,7 @@ export async function POST(req: Request) {
       source: referralSourceRaw,
       ...(referralSourceOther ? { other: referralSourceOther } : {}),
     },
-    CONCERN_01: primaryConcern,
+    CONCERN_01: primaryConcerns,
     HEALTH_01: overallSkinHealth,
     SEV_01: concernSeverity,
     DUR_01: concernDuration,

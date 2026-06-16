@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { subDays } from "date-fns";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
@@ -43,7 +43,12 @@ export async function GET(req: Request) {
     if (sosFilter) conditions.push(sosFilter);
   }
   if (concern) {
-    conditions.push(eq(users.primaryConcern, concern));
+    conditions.push(
+      or(
+        eq(users.primaryConcern, concern),
+        sql`${users.concerns} @> ${JSON.stringify([concern])}::jsonb`
+      )!
+    );
   }
   if (q.length > 0) {
     const pattern = `%${q}%`;

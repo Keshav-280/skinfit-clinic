@@ -1,13 +1,15 @@
 import { Platform, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import { patientKaiScoreView, patientScoreView } from "../../src/lib/clarityGrade";
+import { patientKaiScoreView, patientClarityToGrade, patientScoreView } from "../../src/lib/clarityGrade";
+import {
+  lockedWeeklyTrendAria,
+  weeklyTrendDirection,
+} from "../../src/lib/patientDashboardTheme";
 import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
-
-function signed(n: number) {
-  return `${n > 0 ? "+" : ""}${n}`;
-}
+import { filterPatientVisibleParamRows } from "../../src/lib/patientVisibleParams";
 
 function deltaColor(n: number) {
   if (n > 0) return R.deltaUp;
@@ -38,6 +40,57 @@ function parseFocusDetail(detail: string): Array<{ label: string; body: string }
     });
 }
 
+function WeeklyDeltaDisplay({
+  delta,
+  scoresUnlocked,
+  size = 14,
+}: {
+  delta: number | null;
+  scoresUnlocked: boolean;
+  size?: number;
+}) {
+  if (delta === null) {
+    return <Text style={{ color: "#a1a1aa", fontSize: size, fontWeight: "700" }}>-</Text>;
+  }
+  if (scoresUnlocked) {
+    return (
+      <Text style={{ color: deltaColor(delta), fontSize: size, fontWeight: "700" }}>
+        {`${delta > 0 ? "+" : ""}${delta}`}
+      </Text>
+    );
+  }
+  const dir = weeklyTrendDirection(delta);
+  const aria = lockedWeeklyTrendAria(delta);
+  if (dir === "up") {
+    return (
+      <Ionicons
+        name="arrow-up"
+        size={size}
+        color={R.deltaUp}
+        accessibilityLabel={aria}
+      />
+    );
+  }
+  if (dir === "down") {
+    return (
+      <Ionicons
+        name="arrow-down"
+        size={size}
+        color={R.deltaDown}
+        accessibilityLabel={aria}
+      />
+    );
+  }
+  return (
+    <Ionicons
+      name="remove"
+      size={size}
+      color="#71717a"
+      accessibilityLabel={aria}
+    />
+  );
+}
+
 type Props = {
   report: PatientTrackerReport;
   serifFamily: string;
@@ -50,12 +103,20 @@ export function TrackerReportSectionsNative({
   scoresUnlocked = false,
 }: Props) {
   const { lastScanDelta, weekAverageDelta } = report.scores;
+  const weeklyDelta =
+    typeof weekAverageDelta === "number"
+      ? weekAverageDelta
+      : typeof lastScanDelta === "number"
+        ? lastScanDelta
+        : null;
   const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
-  const paramLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
+  const paramLabel = (raw: number) =>
+    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
     : report.focusActions;
+  const visibleParamRows = filterPatientVisibleParamRows(report.paramRows);
 
   return (
     <View style={styles.wrap}>
@@ -66,22 +127,20 @@ export function TrackerReportSectionsNative({
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>kAI grade</Text>
             <Text style={styles.statValue}>
-              {kaiView.showLock ? kaiView.kaiSecondary : kaiView.kaiPrimary}
+              {scoresUnlocked
+                ? kaiView.kaiPrimary
+                : patientClarityToGrade(report.scores.kaiScore)}
             </Text>
           </View>
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>Weekly delta</Text>
-            <Text style={styles.statValue}>
-              {typeof weekAverageDelta === "number" ? (
-                <Text style={{ color: deltaColor(weekAverageDelta) }}>
-                  {signed(weekAverageDelta)}
-                </Text>
-              ) : typeof lastScanDelta === "number" ? (
-                <Text style={{ color: deltaColor(lastScanDelta) }}>{signed(lastScanDelta)}</Text>
-              ) : (
-                <Text style={{ color: "#71717a" }}>-</Text>
-              )}
-            </Text>
+            <View style={styles.statValueRow}>
+              <WeeklyDeltaDisplay
+                delta={weeklyDelta}
+                scoresUnlocked={scoresUnlocked}
+                size={18}
+              />
+            </View>
           </View>
           <View style={styles.statCell}>
             <Text style={styles.statLabel}>Consistency</Text>
@@ -105,7 +164,7 @@ export function TrackerReportSectionsNative({
         <View style={styles.insetBox}>
           <Text style={styles.blockTitle}>This week&apos;s overview</Text>
           <View style={{ marginTop: 10, gap: 10 }}>
-            {report.paramRows.map((row) => (
+            {visibleParamRows.map((row) => (
               <View key={row.key} style={styles.paramRow}>
                 <Text style={styles.paramLabel} numberOfLines={2}>
                   {row.label}
@@ -118,14 +177,12 @@ export function TrackerReportSectionsNative({
                 <Text style={styles.paramNum}>
                   {typeof row.value === "number" ? paramLabel(row.value) : "-"}
                 </Text>
-                <Text
-                  style={[
-                    styles.paramDelta,
-                    typeof row.delta === "number" ? { color: deltaColor(row.delta) } : { color: "#a1a1aa" },
-                  ]}
-                >
-                  {typeof row.delta === "number" ? signed(row.delta) : "-"}
-                </Text>
+                <View style={styles.paramDeltaWrap}>
+                  <WeeklyDeltaDisplay
+                    delta={typeof row.delta === "number" ? row.delta : null}
+                    scoresUnlocked={scoresUnlocked}
+                  />
+                </View>
               </View>
             ))}
           </View>
@@ -250,6 +307,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#18181b",
   },
+  statValueRow: {
+    marginTop: 6,
+    minHeight: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   comparisonHint: {
     marginTop: 12,
     fontSize: 12,
@@ -311,11 +374,10 @@ const styles = StyleSheet.create({
     color: NAVY,
     textAlign: "right",
   },
-  paramDelta: {
+  paramDeltaWrap: {
     width: 36,
-    fontSize: 11,
-    fontWeight: "700",
-    textAlign: "right",
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
   causeRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   causeDot: {

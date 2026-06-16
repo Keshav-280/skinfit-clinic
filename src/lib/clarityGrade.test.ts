@@ -70,11 +70,11 @@ describe("classifySkinParamMetric", () => {
 });
 
 describe("patientScoreView", () => {
-  it("shows grade range when locked", () => {
+  it("shows letter grade when locked", () => {
     const locked = patientScoreView(72, false);
     expect(locked.locked).toBe(true);
     expect(locked.label).toBe(patientGradeWithRange(72));
-    expect(locked.label).toMatch(/^\w+ \(\d+–\d+\)$/);
+    expect(locked.label).toBe("B");
   });
 
   it("shows exact calibrated score when unlocked", () => {
@@ -85,11 +85,11 @@ describe("patientScoreView", () => {
 });
 
 describe("patientKaiScoreView", () => {
-  it("locks kAI with grade range hint", () => {
+  it("locks kAI with letter grade hint", () => {
     const locked = patientKaiScoreView(72, false);
     expect(locked.showLock).toBe(true);
-    expect(locked.kaiPrimary).toBe("—");
-    expect(locked.kaiSecondary).toContain("·");
+    expect(locked.kaiPrimary).toBe("B");
+    expect(locked.kaiSecondary).toBe("");
   });
 
   it("shows exact score when unlocked", () => {

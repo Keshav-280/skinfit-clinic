@@ -116,7 +116,7 @@ export function gradeRangeLabel(grade: ClarityGrade): string {
 export const CLINIC_SCORE_UNLOCK = {
   title: "Unlock your exact scores",
   message:
-    "Get a free skin analysis at the clinic to unlock your exact kAI score and full results.",
+    "Free clinic analysis within 7 days of your scan — unlocks your exact kAI score and full results.",
   actionLabel: "Book free analysis",
   schedulesHref: "/dashboard/schedules",
   mobileSchedulesHref: "/(drawer)/schedules",
@@ -127,8 +127,7 @@ export const CLINIC_SCORE_UNLOCK = {
  * (free in-clinic skin analysis). Same flag unlocks doctor chat.
  */
 export function patientGradeWithRange(rawScore: number): string {
-  const grade = patientClarityToGrade(rawScore);
-  return `${grade} (${gradeRangeLabel(grade)})`;
+  return patientClarityToGrade(rawScore);
 }
 
 export type PatientScoreView = {
@@ -136,7 +135,7 @@ export type PatientScoreView = {
   displayScore: number;
   color: string;
   sublabel: string;
-  /** Primary label — exact calibrated score when unlocked, grade+range when locked. */
+  /** Primary label — exact calibrated score when unlocked, letter grade when locked. */
   label: string;
   rangeLabel: string;
   locked: boolean;
@@ -168,7 +167,7 @@ export type PatientKaiScoreView = PatientScoreView & {
   showLock: boolean;
 };
 
-/** kAI card / donut — exact number when unlocked; lock + grade range when locked. */
+/** kAI card / donut — exact number when unlocked; lock + letter grade when locked. */
 export function patientKaiScoreView(
   rawScore: number,
   scoresUnlocked: boolean
@@ -185,8 +184,8 @@ export function patientKaiScoreView(
   }
   return {
     ...base,
-    kaiPrimary: "—",
-    kaiSecondary: `${base.grade} · ${base.rangeLabel}`,
+    kaiPrimary: base.grade,
+    kaiSecondary: "",
     gaugeDisplayValue: base.grade,
     showLock: true,
   };

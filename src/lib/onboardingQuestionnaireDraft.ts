@@ -1,4 +1,8 @@
 import {
+  normalizeOnboardingConcerns,
+  type OnboardingConcernId,
+} from "@/src/lib/onboardingConcerns";
+import {
   normalizeOnboardingQuestionnaireStep,
   ONBOARDING_QUESTIONNAIRE_LAST_STEP,
   reconcileSkippedSteps,
@@ -12,14 +16,16 @@ import {
 export const ONBOARDING_QUESTIONNAIRE_DRAFT_KEY = "skinfit_onboarding_questionnaire_v1";
 
 /** Draft schema version (bump when step order or required fields change). */
-export const ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA = 4 as const;
+export const ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA = 5 as const;
 
 export type OnboardingQuestionnaireDraftV2 = {
   v: typeof ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA;
   step: number;
   ageInput: string;
   gender: string | null;
-  concern: string | null;
+  /** @deprecated v4 single-select; migrated to concerns */
+  concern?: string | null;
+  concerns: OnboardingConcernId[];
   overallSkinHealth?: string | null;
   severity: string | null;
   duration: string | null;
@@ -91,6 +97,23 @@ function migrateQuestionnaireSkippedSteps(
   );
 }
 
+function migrateQuestionnaireDraftConcerns(
+  d: Record<string, unknown>
+): OnboardingConcernId[] {
+  if (Array.isArray(d.concerns)) {
+    return normalizeOnboardingConcerns(d.concerns);
+  }
+  const legacy =
+    typeof d.concern === "string" ? d.concern : null;
+  return normalizeOnboardingConcerns(null, legacy);
+}
+
+function pickConcerns(a: OnboardingConcernId[], b: OnboardingConcernId[]): OnboardingConcernId[] {
+  if (a.length === 0) return b;
+  if (b.length === 0) return a;
+  return a.length >= b.length ? a : b;
+}
+
 /** Validate and normalize a stored draft (localStorage or DB). */
 export function parseOnboardingQuestionnaireDraft(
   raw: unknown
@@ -98,7 +121,9 @@ export function parseOnboardingQuestionnaireDraft(
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const d = raw as Record<string, unknown>;
   const version = d.v;
-  if (version !== 3 && version !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) return null;
+  if (version !== 3 && version !== 4 && version !== ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA) {
+    return null;
+  }
   if (typeof d.step !== "number" || d.step < 0) return null;
   if (version === 3 && d.step > 11) return null;
   if (version === ONBOARDING_QUESTIONNAIRE_DRAFT_SCHEMA && d.step > ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
@@ -122,10 +147,7 @@ export function parseOnboardingQuestionnaireDraft(
     typeof d.gender === "string" && VALID_GENDERS.has(d.gender)
       ? d.gender
       : null;
-  const concern =
-    typeof d.concern === "string" && VALID_CONCERNS.has(d.concern)
-      ? d.concern
-      : null;
+  const concerns = migrateQuestionnaireDraftConcerns(d);
   const overallSkinHealth =
     typeof d.overallSkinHealth === "string" &&
     VALID_OVERALL_SKIN_HEALTH.has(d.overallSkinHealth)
@@ -165,7 +187,7 @@ export function parseOnboardingQuestionnaireDraft(
     step: migrateQuestionnaireDraftStep(d.step, version as number),
     ageInput: typeof d.ageInput === "string" ? d.ageInput : "",
     gender,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -230,7 +252,7 @@ export function mergeOnboardingQuestionnaireDrafts(
     step: preferLocal ? local.step : server.step,
     ageInput: pickRicherString(local.ageInput, server.ageInput),
     gender: pickNullable(local.gender, server.gender),
-    concern: pickNullable(local.concern, server.concern),
+    concerns: pickConcerns(local.concerns, server.concerns),
     overallSkinHealth: pickNullable(
       local.overallSkinHealth ?? null,
       server.overallSkinHealth ?? null
@@ -283,7 +305,7 @@ export type OnboardingQuestionnaireDraftSetters = {
   setStep: (step: number) => void;
   setAgeInput: (value: string) => void;
   setGender: (value: string | null) => void;
-  setConcern: (value: string | null) => void;
+  setConcerns: (value: OnboardingConcernId[]) => void;
   setOverallSkinHealth: (value: string | null) => void;
   setSeverity: (value: string | null) => void;
   setDuration: (value: string | null) => void;
@@ -308,7 +330,7 @@ export function onboardingDraftToFormState(
   return {
     ageInput: d.ageInput,
     gender: d.gender,
-    concern: d.concern,
+    concerns: d.concerns,
     overallSkinHealth:
       d.overallSkinHealth === "maintenance" ||
       d.overallSkinHealth === "need_improve" ||
@@ -394,7 +416,7 @@ export function applyOnboardingQuestionnaireDraft(
   set.setStep(entryStep);
   set.setAgeInput(d.ageInput);
   set.setGender(d.gender);
-  set.setConcern(d.concern);
+  set.setConcerns(d.concerns);
   set.setOverallSkinHealth(d.overallSkinHealth ?? null);
   set.setSeverity(d.severity);
   set.setDuration(d.duration);

@@ -56,3 +56,36 @@ export const patientStatTile =
 
 export const patientScoreChip =
   "rounded-md bg-[#F2F9F2] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#2D3E6B]";
+
+/** Patient-facing weekly trend when exact scores are locked. */
+export function lockedWeeklyProgressLabel(weeklyDeltaScore: number): string {
+  if (weeklyDeltaScore > 0) return "Up";
+  if (weeklyDeltaScore < 0) return "Down";
+  return "No change";
+}
+
+export type WeeklyTrendDirection = "up" | "down" | "flat" | "none";
+
+export function weeklyTrendDirection(delta: number | null): WeeklyTrendDirection {
+  if (delta === null || !Number.isFinite(delta)) return "none";
+  if (delta > 0) return "up";
+  if (delta < 0) return "down";
+  return "flat";
+}
+
+export function lockedWeeklyTrendAria(delta: number | null): string {
+  const dir = weeklyTrendDirection(delta);
+  if (dir === "up") return "Trending up";
+  if (dir === "down") return "Trending down";
+  if (dir === "flat") return "No change";
+  return "Not available";
+}
+
+export function patientWeeklyDeltaLabel(
+  delta: number | null,
+  scoresUnlocked: boolean
+): string {
+  if (delta === null) return "-";
+  if (!scoresUnlocked) return lockedWeeklyProgressLabel(delta);
+  return `${delta > 0 ? "+" : ""}${delta}`;
+}

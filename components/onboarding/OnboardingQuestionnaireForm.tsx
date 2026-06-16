@@ -50,23 +50,12 @@ const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "prefer_not_say", label: "Prefer not to say" },
 ];
 
-type Concern = "acne" | "pigmentation" | "ageing" | "hair" | "general";
-
-const VALID_CONCERN = new Set<string>([
-  "acne",
-  "pigmentation",
-  "ageing",
-  "hair",
-  "general",
-]);
-
-const CONCERNS: { id: Concern; label: string }[] = [
-  { id: "acne", label: "Acne & breakouts" },
-  { id: "pigmentation", label: "Pigmentation & dark spots" },
-  { id: "ageing", label: "Ageing & wrinkles" },
-  { id: "hair", label: "Hair loss & scalp" },
-  { id: "general", label: "General skin health" },
-];
+import {
+  ONBOARDING_CONCERN_IDS,
+  ONBOARDING_CONCERN_LABELS,
+  primaryOnboardingConcern,
+  type OnboardingConcernId,
+} from "@/src/lib/onboardingConcerns";
 
 const TRIGGERS: { id: string; label: string }[] = [
   { id: "hormonal", label: "Hormonal (cycle, PCOS, pregnancy)" },
@@ -85,10 +74,10 @@ const SKIN_TYPES = [
 ] as const;
 
 function copyForConcern(
-  concern: Concern | null,
+  concerns: readonly OnboardingConcernId[],
   q: "sevTitle" | "sevA" | "sevB" | "sevC" | "durTitle" | "trigTitle"
 ) {
-  const map: Record<Concern, Record<string, string>> = {
+  const map: Record<OnboardingConcernId, Record<string, string>> = {
     acne: {
       sevTitle: "How bad are your breakouts?",
       sevA: "A few pimples occasionally",
@@ -130,7 +119,7 @@ function copyForConcern(
       trigTitle: "What affects your skin most?",
     },
   };
-  const c = concern ?? "general";
+  const c = primaryOnboardingConcern(concerns);
   return map[c][q] ?? map.general[q];
 }
 
@@ -146,7 +135,7 @@ export function OnboardingQuestionnaireForm() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const [concern, setConcern] = useState<Concern | null>(null);
+  const [concerns, setConcerns] = useState<OnboardingConcernId[]>([]);
   const [overallSkinHealth, setOverallSkinHealth] = useState<OverallSkinHealth | null>(
     null
   );
@@ -177,7 +166,7 @@ export function OnboardingQuestionnaireForm() {
     step,
     ageInput,
     gender,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -199,7 +188,7 @@ export function OnboardingQuestionnaireForm() {
     step,
     ageInput,
     gender,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -232,8 +221,7 @@ export function OnboardingQuestionnaireForm() {
       setStep,
       setAgeInput,
       setGender,
-      setConcern: (value: string | null) =>
-        setConcern(value && VALID_CONCERN.has(value) ? (value as Concern) : null),
+      setConcerns: (value: OnboardingConcernId[]) => setConcerns(value),
       setOverallSkinHealth: (value: string | null) =>
         setOverallSkinHealth(
           value === "maintenance" ||
@@ -328,7 +316,7 @@ export function OnboardingQuestionnaireForm() {
       step: stepOverride ?? patch.step ?? base.step,
       ageInput: patch.ageInput ?? base.ageInput,
       gender: patch.gender !== undefined ? patch.gender : base.gender,
-      concern: patch.concern !== undefined ? patch.concern : base.concern,
+      concerns: patch.concerns ?? base.concerns,
       overallSkinHealth:
         patch.overallSkinHealth !== undefined
           ? patch.overallSkinHealth
@@ -450,7 +438,7 @@ export function OnboardingQuestionnaireForm() {
   }, [
     draftReady,
     step,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -471,6 +459,16 @@ export function OnboardingQuestionnaireForm() {
     skippedSteps,
   ]);
 
+  const toggleConcern = (id: OnboardingConcernId) => {
+    setConcerns((current) => {
+      const next = current.includes(id)
+        ? current.filter((x) => x !== id)
+        : [...current, id];
+      saveAnswer({ concerns: next });
+      return next;
+    });
+  };
+
   const toggleTrigger = (id: string) => {
     setTriggers((t) => {
       const next = t.includes(id) ? t.filter((x) => x !== id) : [...t, id];
@@ -486,7 +484,7 @@ export function OnboardingQuestionnaireForm() {
       case 0:
         return parseOnboardingAge(ageInput) != null && gender != null;
       case 1:
-        return concern != null;
+        return concerns.length > 0;
       case 2:
         return overallSkinHealth != null;
       case 3:
@@ -519,7 +517,7 @@ export function OnboardingQuestionnaireForm() {
     activeStep,
     ageInput,
     gender,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -543,7 +541,7 @@ export function OnboardingQuestionnaireForm() {
     return {
       ageInput,
       gender,
-      concern,
+      concerns,
       overallSkinHealth,
       severity,
       duration,
@@ -565,7 +563,7 @@ export function OnboardingQuestionnaireForm() {
   function applySkipPatch(patch: Partial<OnboardingQuestionnaireFormState>) {
     if (patch.ageInput !== undefined) setAgeInput(patch.ageInput);
     if (patch.gender !== undefined) setGender(patch.gender);
-    if (patch.concern !== undefined) setConcern(patch.concern as Concern);
+    if (patch.concerns !== undefined) setConcerns(patch.concerns);
     if (patch.overallSkinHealth !== undefined) {
       setOverallSkinHealth(patch.overallSkinHealth);
     }
@@ -776,18 +774,16 @@ export function OnboardingQuestionnaireForm() {
           <h2 className="text-lg font-bold text-zinc-900">
             What brings you to SkinFit today?
           </h2>
+          <p className="text-sm text-zinc-600">Select all that apply.</p>
           <div className="space-y-2">
-            {CONCERNS.map((c) => (
+            {ONBOARDING_CONCERN_IDS.map((id) => (
               <button
-                key={c.id}
+                key={id}
                 type="button"
-                className={chip(concern === c.id)}
-                onClick={() => {
-                  setConcern(c.id);
-                  saveAnswer({ concern: c.id });
-                }}
+                className={chip(concerns.includes(id))}
+                onClick={() => toggleConcern(id)}
               >
-                {c.label}
+                {ONBOARDING_CONCERN_LABELS[id]}
               </button>
             ))}
           </div>
@@ -820,16 +816,16 @@ export function OnboardingQuestionnaireForm() {
       {activeStep === 3 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
-            {concern
-              ? copyForConcern(concern, "sevTitle")
+            {concerns.length > 0
+              ? copyForConcern(concerns, "sevTitle")
               : "How would you rate severity for your main concern?"}
           </h2>
           <div className="space-y-2">
             {(
               [
-                ["mild", copyForConcern(concern ?? "general", "sevA")],
-                ["moderate", copyForConcern(concern ?? "general", "sevB")],
-                ["severe", copyForConcern(concern ?? "general", "sevC")],
+                ["mild", copyForConcern(concerns, "sevA")],
+                ["moderate", copyForConcern(concerns, "sevB")],
+                ["severe", copyForConcern(concerns, "sevC")],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -851,7 +847,7 @@ export function OnboardingQuestionnaireForm() {
       {activeStep === 4 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
-            {copyForConcern(concern, "durTitle")}
+            {copyForConcern(concerns, "durTitle")}
           </h2>
           <div className="space-y-2">
             {(
@@ -885,7 +881,7 @@ export function OnboardingQuestionnaireForm() {
       {activeStep === 5 ? (
         <>
           <h2 className="text-lg font-bold text-zinc-900">
-            {copyForConcern(concern, "trigTitle")}
+            {copyForConcern(concerns, "trigTitle")}
           </h2>
           <p className="text-sm text-zinc-500">Select all that apply.</p>
           <div className="space-y-2">

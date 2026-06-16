@@ -1,39 +1,58 @@
-/** Patient-facing kAI parameter keys (6 dimensions). File name kept for import stability. */
+import {
+  filterPatientVisibleKaiKeys,
+  PATIENT_HIDDEN_KAI_PARAM_KEYS,
+} from "@/src/lib/patientVisibleParams";
 
+/** Full kAI parameter catalog (inference + storage). */
 export type RagKaiParamKey =
   | "active_acne"
   | "sagging_volume"
+  | "hair_health"
   | "wrinkles"
+  | "skin_quality"
   | "acne_scar"
   | "under_eye"
   | "pigmentation";
 
-export const RAG_KAI_PARAM_KEYS: RagKaiParamKey[] = [
+export const RAG_KAI_ALL_PARAM_KEYS: RagKaiParamKey[] = [
   "active_acne",
   "sagging_volume",
+  "hair_health",
   "wrinkles",
+  "skin_quality",
   "acne_scar",
   "under_eye",
   "pigmentation",
 ];
 
+/** Patient-facing kAI keys — excludes {@link PATIENT_HIDDEN_KAI_PARAM_KEYS}. */
+export const RAG_KAI_PARAM_KEYS: RagKaiParamKey[] = filterPatientVisibleKaiKeys(
+  RAG_KAI_ALL_PARAM_KEYS
+);
+
+export { PATIENT_HIDDEN_KAI_PARAM_KEYS };
+
 export const RAG_KAI_PARAM_LABELS: Record<RagKaiParamKey, string> = {
   active_acne: "Active Acne",
   sagging_volume: "Sagging & Volume",
+  hair_health: "Hair Health",
   wrinkles: "Wrinkles",
+  skin_quality: "Skin Quality",
   acne_scar: "Acne Scar",
   under_eye: "Under Eye",
   pigmentation: "Pigmentation",
 };
 
-/** Weights sum to 100 for weighted kAI score. */
+/** Weights sum to 100 for weighted kAI score (all dimensions; patient score uses visible keys only). */
 export const RAG_KAI_PARAM_WEIGHTS: Record<RagKaiParamKey, number> = {
-  active_acne: 20,
-  sagging_volume: 15,
-  wrinkles: 18,
-  acne_scar: 15,
-  under_eye: 12,
-  pigmentation: 20,
+  active_acne: 16,
+  sagging_volume: 12,
+  hair_health: 10,
+  wrinkles: 14,
+  skin_quality: 14,
+  acne_scar: 12,
+  under_eye: 10,
+  pigmentation: 12,
 };
 
 function clamp0to100(v: number) {
@@ -41,6 +60,7 @@ function clamp0to100(v: number) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
+/** Weighted kAI score from visible patient parameters only. */
 export function computeRagKaiScore(
   scores: Partial<Record<RagKaiParamKey, number | null | undefined>>
 ) {
@@ -58,5 +78,5 @@ export function computeRagKaiScore(
 }
 
 export function isRagKaiParamKey(s: string): s is RagKaiParamKey {
-  return (RAG_KAI_PARAM_KEYS as string[]).includes(s);
+  return (RAG_KAI_ALL_PARAM_KEYS as string[]).includes(s);
 }

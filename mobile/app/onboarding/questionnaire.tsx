@@ -62,27 +62,16 @@ const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "prefer_not_say", label: "Prefer not to say" },
 ];
 
-type Concern = "acne" | "pigmentation" | "ageing" | "hair" | "general";
-
-const VALID_CONCERN = new Set<string>([
-  "acne",
-  "pigmentation",
-  "ageing",
-  "hair",
-  "general",
-]);
+import {
+  ONBOARDING_CONCERN_IDS,
+  ONBOARDING_CONCERN_LABELS,
+  primaryOnboardingConcern,
+  type OnboardingConcernId,
+} from "../../../src/lib/onboardingConcerns";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
 const NAVY_LIGHT = "#E2E8F0";
-
-const CONCERNS: { id: Concern; label: string }[] = [
-  { id: "acne", label: "Acne & breakouts" },
-  { id: "pigmentation", label: "Pigmentation & dark spots" },
-  { id: "ageing", label: "Ageing & wrinkles" },
-  { id: "hair", label: "Hair loss & scalp" },
-  { id: "general", label: "General skin health" },
-];
 
 const TRIGGERS: { id: string; label: string }[] = [
   { id: "hormonal", label: "Hormonal (cycle, PCOS, pregnancy)" },
@@ -95,10 +84,10 @@ const TRIGGERS: { id: string; label: string }[] = [
 const SKIN_TYPES = ["Dry", "Oily", "Combination", "Normal", "Sensitive"] as const;
 
 function copyForConcern(
-  concern: Concern | null,
+  concerns: readonly OnboardingConcernId[],
   q: "sevTitle" | "sevA" | "sevB" | "sevC" | "durTitle" | "trigTitle"
 ) {
-  const map: Record<Concern, Record<string, string>> = {
+  const map: Record<OnboardingConcernId, Record<string, string>> = {
     acne: {
       sevTitle: "How bad are your breakouts?",
       sevA: "A few pimples occasionally",
@@ -140,7 +129,7 @@ function copyForConcern(
       trigTitle: "What affects your skin most?",
     },
   };
-  const c = concern ?? "general";
+  const c = primaryOnboardingConcern(concerns);
   return map[c][q] ?? map.general[q];
 }
 
@@ -159,7 +148,7 @@ export default function QuestionnaireScreen() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const [concern, setConcern] = useState<Concern | null>(null);
+  const [concerns, setConcerns] = useState<OnboardingConcernId[]>([]);
   const [overallSkinHealth, setOverallSkinHealth] = useState<OverallSkinHealth | null>(
     null
   );
@@ -190,7 +179,7 @@ export default function QuestionnaireScreen() {
     step,
     ageInput,
     gender,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -212,7 +201,7 @@ export default function QuestionnaireScreen() {
     step,
     ageInput,
     gender,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -245,8 +234,7 @@ export default function QuestionnaireScreen() {
       setStep,
       setAgeInput,
       setGender,
-      setConcern: (value: string | null) =>
-        setConcern(value && VALID_CONCERN.has(value) ? (value as Concern) : null),
+      setConcerns: (value: OnboardingConcernId[]) => setConcerns(value),
       setOverallSkinHealth: (value: string | null) =>
         setOverallSkinHealth(
           value === "maintenance" ||
@@ -342,7 +330,7 @@ export default function QuestionnaireScreen() {
       step: stepOverride ?? patch.step ?? base.step,
       ageInput: patch.ageInput ?? base.ageInput,
       gender: patch.gender !== undefined ? patch.gender : base.gender,
-      concern: patch.concern !== undefined ? patch.concern : base.concern,
+      concerns: patch.concerns ?? base.concerns,
       overallSkinHealth:
         patch.overallSkinHealth !== undefined
           ? patch.overallSkinHealth
@@ -458,7 +446,7 @@ export default function QuestionnaireScreen() {
     draftReady,
     token,
     step,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -479,6 +467,16 @@ export default function QuestionnaireScreen() {
     skippedSteps,
   ]);
 
+  const toggleConcern = (id: OnboardingConcernId) => {
+    setConcerns((current) => {
+      const next = current.includes(id)
+        ? current.filter((x) => x !== id)
+        : [...current, id];
+      saveAnswer({ concerns: next });
+      return next;
+    });
+  };
+
   const toggleTrigger = (id: string) => {
     setTriggers((t) => {
       const next = t.includes(id) ? t.filter((x) => x !== id) : [...t, id];
@@ -494,7 +492,7 @@ export default function QuestionnaireScreen() {
       case 0:
         return parseOnboardingAge(ageInput) != null && gender != null;
       case 1:
-        return concern != null;
+        return concerns.length > 0;
       case 2:
         return overallSkinHealth != null;
       case 3:
@@ -527,7 +525,7 @@ export default function QuestionnaireScreen() {
     activeStep,
     ageInput,
     gender,
-    concern,
+    concerns,
     overallSkinHealth,
     severity,
     duration,
@@ -551,7 +549,7 @@ export default function QuestionnaireScreen() {
     return {
       ageInput,
       gender,
-      concern,
+      concerns,
       overallSkinHealth,
       severity,
       duration,
@@ -573,7 +571,7 @@ export default function QuestionnaireScreen() {
   function applySkipPatch(patch: Partial<OnboardingQuestionnaireFormState>) {
     if (patch.ageInput !== undefined) setAgeInput(patch.ageInput);
     if (patch.gender !== undefined) setGender(patch.gender);
-    if (patch.concern !== undefined) setConcern(patch.concern as Concern);
+    if (patch.concerns !== undefined) setConcerns(patch.concerns);
     if (patch.overallSkinHealth !== undefined) {
       setOverallSkinHealth(patch.overallSkinHealth);
     }
@@ -750,16 +748,16 @@ export default function QuestionnaireScreen() {
       {activeStep === 1 ? (
         <>
           <Text style={styles.q}>What brings you to SkinFit today?</Text>
-          {CONCERNS.map((c) => (
+          <Text style={styles.hint}>Select all that apply.</Text>
+          {ONBOARDING_CONCERN_IDS.map((id) => (
             <Pressable
-              key={c.id}
-              style={[styles.chip, concern === c.id && styles.chipOn]}
-              onPress={() => {
-                setConcern(c.id);
-                saveAnswer({ concern: c.id });
-              }}
+              key={id}
+              style={[styles.chip, concerns.includes(id) && styles.chipOn]}
+              onPress={() => toggleConcern(id)}
             >
-              <Text style={[styles.chipText, concern === c.id && styles.chipTextOn]}>{c.label}</Text>
+              <Text style={[styles.chipText, concerns.includes(id) && styles.chipTextOn]}>
+                {ONBOARDING_CONCERN_LABELS[id]}
+              </Text>
             </Pressable>
           ))}
         </>
@@ -793,15 +791,15 @@ export default function QuestionnaireScreen() {
       {activeStep === 3 ? (
         <>
           <Text style={styles.q}>
-            {concern
-              ? copyForConcern(concern, "sevTitle")
+            {concerns.length > 0
+              ? copyForConcern(concerns, "sevTitle")
               : "How would you rate severity for your main concern?"}
           </Text>
           {(
             [
-              ["mild", copyForConcern(concern ?? "general", "sevA")],
-              ["moderate", copyForConcern(concern ?? "general", "sevB")],
-              ["severe", copyForConcern(concern ?? "general", "sevC")],
+              ["mild", copyForConcern(concerns, "sevA")],
+              ["moderate", copyForConcern(concerns, "sevB")],
+              ["severe", copyForConcern(concerns, "sevC")],
             ] as const
           ).map(([id, label]) => (
             <Pressable
@@ -820,7 +818,7 @@ export default function QuestionnaireScreen() {
 
       {activeStep === 4 ? (
         <>
-          <Text style={styles.q}>{copyForConcern(concern, "durTitle")}</Text>
+          <Text style={styles.q}>{copyForConcern(concerns, "durTitle")}</Text>
           {(
             [
               ["recent", "Recent — under 3 months"],
@@ -849,7 +847,7 @@ export default function QuestionnaireScreen() {
 
       {activeStep === 5 ? (
         <>
-          <Text style={styles.q}>{copyForConcern(concern, "trigTitle")}</Text>
+          <Text style={styles.q}>{copyForConcern(concerns, "trigTitle")}</Text>
           <Text style={styles.sub}>Select all that apply.</Text>
           {TRIGGERS.map((t) => (
             <Pressable

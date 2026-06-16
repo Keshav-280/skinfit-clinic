@@ -1,5 +1,5 @@
 import {
-  RAG_KAI_PARAM_KEYS,
+  RAG_KAI_ALL_PARAM_KEYS,
   type RagKaiParamKey,
 } from "@/src/lib/ragEightParams";
 
@@ -32,7 +32,7 @@ export function mergeRagParamValuesFromScan(input: {
 }): Partial<Record<RagKaiParamKey, number>> {
   const out: Partial<Record<RagKaiParamKey, number>> = {};
 
-  for (const key of RAG_KAI_PARAM_KEYS) {
+  for (const key of RAG_KAI_ALL_PARAM_KEYS) {
     const v = input.dbByKey[key];
     if (typeof v === "number" && Number.isFinite(v)) {
       out[key] = clampPct(v);
@@ -59,6 +59,8 @@ export function mergeRagParamValuesFromScan(input: {
   fillSeverity("wrinkles", "wrinkle_severity");
   fillSeverity("sagging_volume", "sagging_volume");
   fillSeverity("under_eye", "under_eye");
+  fillSeverity("hair_health", "hair_health");
+  fillSeverity("skin_quality", "skin_quality");
 
   if (out.pigmentation == null) {
     const pm = mfs?.pigmentation_model;

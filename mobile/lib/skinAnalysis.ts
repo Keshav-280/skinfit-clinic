@@ -22,7 +22,7 @@ export type SkinParamRow = {
   detail?: string;
 };
 
-/** Same 6 kAI keys as patient report (`ragEightParams`). */
+/** Same visible kAI keys as patient report (`ragEightParams` / `patientVisibleParams`). */
 export const SKIN_HEALTH_PARAM_KEYS = RAG_KAI_PARAM_KEYS.map((key) => ({
   key,
   label: RAG_KAI_PARAM_LABELS[key],

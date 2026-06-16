@@ -34,6 +34,7 @@ import { patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from 
 import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
 import { SCAN_REPORT_CLINIC_PROMO as clinicPromo } from "../../src/lib/scanReportClinicPromo";
+import { PATIENT_CLINICAL_DISPLAY_ROWS } from "../../src/lib/patientVisibleParams";
 
 const GLASS = "rgba(255,255,255,0.92)";
 const GLASS_BORDER = T.cardBorder;
@@ -69,17 +70,10 @@ export type ReportMetricsNative = {
   };
 };
 
-const CLINICAL_ROWS: {
+const CLINICAL_ROWS = PATIENT_CLINICAL_DISPLAY_ROWS as {
   key: keyof NonNullable<ReportMetricsNative["clinical_scores"]>;
   label: string;
-}[] = [
-  { key: "active_acne", label: "Active acne" },
-  { key: "acne_scars", label: "Acne scars" },
-  { key: "wrinkle_severity", label: "Wrinkles" },
-  { key: "sagging_volume", label: "Sagging & volume" },
-  { key: "under_eye", label: "Under-eye" },
-  { key: "pigmentation_model", label: "Pigmentation" },
-];
+}[];
 
 type Props = {
   userName: string;
@@ -201,7 +195,7 @@ export function SkinScanReportBodyNative({
     aiSummary?.trim() ||
     (scoresUnlocked
       ? `Your latest scan shows an overall score of ${overallView.label}. Detailed parameters and photo markers are below.`
-      : `Your latest scan is in the ${overallView.label} range. Visit the clinic for a free analysis to unlock your exact score.`);
+      : `Your latest scan shows an overall grade of ${overallView.label}. Visit the clinic for a free analysis to unlock your exact score.`);
 
   const serif = Platform.select({
     ios: "Georgia",

@@ -22,6 +22,10 @@ import {
 } from "./scanReportTheme";
 import { scanReportPdfBackgroundCss } from "./scanReportPdfBackground";
 import type { ScanSpatialOutputs } from "./spatialOutputs";
+import {
+  filterPatientVisibleParamRows,
+  PATIENT_CLINICAL_DISPLAY_ROWS,
+} from "./patientVisibleParams";
 
 const CAUSES_P1 =
   "Environmental factors such as UV exposure, seasonal dryness, and urban pollution can accentuate texture irregularities and uneven tone. A consistent barrier-focused routine helps mitigate these stressors.";
@@ -76,14 +80,7 @@ export type ScanReportPdfPayload = {
   tracker?: PatientTrackerReport | null;
 };
 
-const CLINICAL_ROWS: { key: ClinicalKey; label: string }[] = [
-  { key: "active_acne", label: "Active acne" },
-  { key: "acne_scars", label: "Acne scars" },
-  { key: "wrinkle_severity", label: "Wrinkles" },
-  { key: "sagging_volume", label: "Sagging & volume" },
-  { key: "under_eye", label: "Under-eye" },
-  { key: "pigmentation_model", label: "Pigmentation" },
-];
+const CLINICAL_ROWS = PATIENT_CLINICAL_DISPLAY_ROWS as { key: ClinicalKey; label: string }[];
 
 const EIGHT_CLINICAL_DONUT_STYLE: Partial<
   Record<ClinicalKey, { fill: string; track: string }>
@@ -362,7 +359,7 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
         : null;
 
   let paramRowsHtml = "";
-  for (const row of report.paramRows) {
+  for (const row of filterPatientVisibleParamRows(report.paramRows)) {
     paramRowsHtml += `
       <div class="tr-param-row">
         <span class="tr-param-label">${esc(row.label)}</span>

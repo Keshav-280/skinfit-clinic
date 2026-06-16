@@ -10,7 +10,6 @@ import {
 } from "@/src/lib/ragEightParams";
 import {
   classifySkinParamMetric,
-  gradeRangeLabel,
   patientClarityToGrade,
   patientDisplayClarity,
   patientParamGaugeLabel,
@@ -266,7 +265,7 @@ function ParamCard({
   scoresUnlocked: boolean;
 }) {
   const { label, color, bg, text, grade, displayScore } = statusInfo(param.value);
-  const rangeHint = `${grade} · ${gradeRangeLabel(grade)}`;
+  const gradeHint = grade;
 
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/60 bg-white/35 p-4 backdrop-blur-sm">
@@ -281,7 +280,7 @@ function ParamCard({
       />
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${bg} ${text}`}>
-          {scoresUnlocked ? label : rangeHint}
+          {scoresUnlocked ? label : gradeHint}
         </span>
         <TrendIndicator history={param.history} scoresUnlocked={scoresUnlocked} />
       </div>

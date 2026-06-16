@@ -1,3 +1,5 @@
+import { filterPatientVisibleParamRows } from "@/src/lib/patientVisibleParams";
+
 /** Stored in `skin_scans.analysis_results` JSON — higher = better for each metric. */
 export type SkinAnalysisResults = {
   acne?: number;
@@ -99,7 +101,7 @@ export function analysisResultsToParams(
       : sevClarity("pigmentation_model"));
   const fallback = (i: number) => DEFAULT_SKIN_PARAMS[i]?.value ?? 70;
 
-  return [
+  return filterPatientVisibleParamRows([
     {
       label: "Active Acne",
       value: clamp100(firstDefined(activeAcneK, acneK, activeAcneTop, acne) ?? fallback(0)),
@@ -124,5 +126,5 @@ export function analysisResultsToParams(
       label: "Pigmentation",
       value: clamp100(firstDefined(pigmentationK, pigmentation) ?? fallback(5)),
     },
-  ];
+  ]);
 }
