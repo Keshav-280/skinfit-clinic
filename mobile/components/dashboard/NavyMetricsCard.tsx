@@ -1,11 +1,11 @@
 import { format } from "date-fns";
-import { useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 
 import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "../../src/lib/clarityGrade";
-import { showClinicScoreUnlockPrompt } from "@/lib/showClinicScoreUnlockPrompt";
+import { ClinicScoreUnlockModal } from "@/components/dashboard/ClinicScoreUnlockModal";
 
 import {
   DASHBOARD_GREEN,
@@ -90,7 +90,7 @@ export function NavyMetricsCard({
   scoresUnlocked = false,
   style,
 }: NavyMetricsCardProps) {
-  const router = useRouter();
+  const [unlockOpen, setUnlockOpen] = useState(false);
   const v = Math.min(100, Math.max(0, Math.round(consistencyScore)));
   const kai = patientKaiScoreView(kaiSkinScore, scoresUnlocked);
   const progressLocked = !scoresUnlocked;
@@ -105,7 +105,7 @@ export function NavyMetricsCard({
           {kai.showLock ? (
             <Pressable
               style={({ pressed }) => [styles.subCard, pressed && styles.subCardPressed]}
-              onPress={() => showClinicScoreUnlockPrompt(router)}
+              onPress={() => setUnlockOpen(true)}
               accessibilityRole="button"
               accessibilityLabel={lockedKaiAriaLabel}
             >
@@ -168,6 +168,7 @@ export function NavyMetricsCard({
           <Text style={styles.statusLabel}>{consistencyLabel(v)}</Text>
         </View>
       </View>
+      <ClinicScoreUnlockModal visible={unlockOpen} onClose={() => setUnlockOpen(false)} />
     </View>
   );
 }

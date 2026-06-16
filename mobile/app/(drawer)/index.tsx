@@ -1434,7 +1434,7 @@ function SkinParamMetricsCard({
                 {m.label}
               </Text>
               <Text style={[styles.paramMetricListStatus, { color: m.color }]}>
-                {m.status}
+                {scoresUnlocked ? m.status : m.grade}
               </Text>
             </View>
           ))}
@@ -1450,7 +1450,7 @@ function SkinParamMetricsCard({
                     {m.label}
                   </Text>
                   <Text style={[styles.paramMetricStatus, { color: m.color }]}>
-                    {m.status}
+                    {scoresUnlocked ? m.status : m.grade}
                   </Text>
                 </View>
               ))}

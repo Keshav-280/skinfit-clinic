@@ -215,6 +215,7 @@ export default function ScanDetailScreen() {
         scanDate={new Date(row.scanDateIso)}
         tracker={tracker}
         scoresUnlocked={row.scoresUnlocked ?? false}
+        scanId={row.scanId}
       />
     </View>
   );

@@ -96,6 +96,15 @@ export function configureNotificationBehavior() {
         return;
       }
       if (t === "scores_unlocked") {
+        void (async () => {
+          const keys = await AsyncStorage.getAllKeys();
+          const stale = keys.filter((k) => k.startsWith("home:"));
+          if (stale.length > 0) {
+            await AsyncStorage.multiRemove(stale);
+          }
+        })().catch(() => {
+          /* ignore cache invalidation failures */
+        });
         router.push("/(drawer)" as Href);
         return;
       }

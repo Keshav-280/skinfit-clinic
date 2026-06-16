@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { DimensionValue } from "react-native";
 import {
   ActivityIndicator,
@@ -15,6 +15,7 @@ import {
   Text,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ReportContainImage } from "@/components/ReportContainImage";
 import { ReportDonut } from "@/components/ReportDonut";
@@ -94,6 +95,7 @@ type Props = {
   scanDate: Date;
   tracker: PatientTrackerReport | null;
   scoresUnlocked?: boolean;
+  scanId?: number;
 };
 
 function clamp(n: number) {
@@ -141,6 +143,7 @@ export function SkinScanReportBodyNative({
   scanDate,
   tracker,
   scoresUnlocked = false,
+  scanId,
 }: Props) {
   const router = useRouter();
   const displayTitle = displayScanTitle(scanTitle);
@@ -161,6 +164,30 @@ export function SkinScanReportBodyNative({
     { label: string; imageUrl: string } | null
   >(null);
   const [promoDismissed, setPromoDismissed] = useState(false);
+  const [promoHydrated, setPromoHydrated] = useState(false);
+
+  const dismissClinicPromo = useCallback(() => {
+    setPromoDismissed(true);
+    if (typeof scanId === "number" && scanId > 0) {
+      void AsyncStorage.setItem(`skinfit-scan-clinic-promo-dismissed-${scanId}`, "1");
+    }
+  }, [scanId]);
+
+  useEffect(() => {
+    if (typeof scanId !== "number" || scanId < 1) {
+      setPromoHydrated(true);
+      return;
+    }
+    let cancelled = false;
+    void AsyncStorage.getItem(`skinfit-scan-clinic-promo-dismissed-${scanId}`).then((value) => {
+      if (cancelled) return;
+      if (value === "1") setPromoDismissed(true);
+      setPromoHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [scanId]);
 
   useEffect(() => {
     const path = imageUrl?.trim();
@@ -222,8 +249,8 @@ export function SkinScanReportBodyNative({
       {displayTitle ? <Text style={styles.pageSubtitle}>{displayTitle}</Text> : null}
 
       <ScanReportClinicPromoOverlayNative
-        visible={!scoresUnlocked && !promoDismissed}
-        onDismiss={() => setPromoDismissed(true)}
+        visible={promoHydrated && !scoresUnlocked && !promoDismissed}
+        onDismiss={dismissClinicPromo}
       />
 
       <View style={styles.reportCard}>
