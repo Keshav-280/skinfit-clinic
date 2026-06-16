@@ -5,6 +5,7 @@ import {
   notifyPatientScanReportFailed,
   notifyPatientScanReportReady,
   notifyPatientScheduleAppointment,
+  notifyPatientScoresUnlocked,
   notifyPatientWeeklyInsight,
 } from "@/src/lib/expoPush";
 
@@ -76,6 +77,10 @@ export async function dispatchNotificationPush(
     }
     case "monthly.insight": {
       await notifyPatientMonthlyInsight(event.userId);
+      return;
+    }
+    case "scores.unlocked": {
+      await notifyPatientScoresUnlocked(event.userId);
       return;
     }
     default:

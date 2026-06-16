@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -1013,6 +1013,7 @@ const OVERVIEW_SUBTABS: Array<{
 ];
 
 export function DoctorPatientDetailClient({ patientId }: { patientId: string }) {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [chatPortalReady, setChatPortalReady] = useState(false);
@@ -1400,6 +1401,18 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     setGeneralFeedbackDirty(false);
     setOpenScanReportId(null);
   }, [patientId]);
+
+  useEffect(() => {
+    const raw = searchParams.get("scanId") ?? searchParams.get("scan");
+    if (!raw || !/^\d+$/.test(raw)) return;
+    const scanId = parseInt(raw, 10);
+    if (!Number.isFinite(scanId) || scanId < 1) return;
+    setActiveTab("overview");
+    setOverviewSubTab("scans");
+    setScansSectionExpanded(true);
+    void loadSection("scans");
+    setOpenScanReportId(scanId);
+  }, [searchParams, patientId, loadSection]);
 
   const patient = data?.patient;
   const calendarTodayYmd = data?.calendarTodayYmd;

@@ -176,6 +176,10 @@ export const users = pgTable("users", {
    * When patient last opened Schedules (clears “new CRM note” bell for confirmed visits).
    */
   scheduleCrmDigestAt: timestamp("schedule_crm_digest_at", { withTimezone: true }),
+  /** Doctor portal: last time staff cleared the patient-scan inbox bell. */
+  doctorPortalScansInboxSeenAt: timestamp("doctor_portal_scans_inbox_seen_at", {
+    withTimezone: true,
+  }),
   profilePhotoUrl: text("profile_photo_url"),
   /** Set by doctor portal when marking a patient as "Visited". */
   clinicVisitedAt: timestamp("clinic_visited_at", { withTimezone: true }),

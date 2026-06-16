@@ -8,6 +8,7 @@ import {
   loadDoctorPatientRecord,
   parseDoctorPatientDetailSections,
 } from "@/src/lib/doctorPatientDetailApi";
+import { notifyPatientClinicVisitScoresUnlocked } from "@/src/lib/clinicVisitNotify";
 
 export async function GET(
   req: Request,
@@ -69,10 +70,24 @@ export async function PATCH(
   }
 
   if (typeof body.clinicVisited === "boolean") {
+    const [before] = await db
+      .select({ clinicVisitedAt: users.clinicVisitedAt })
+      .from(users)
+      .where(and(eq(users.id, patientId), eq(users.role, "patient")))
+      .limit(1);
+
+    const wasVisited = before?.clinicVisitedAt != null;
+
     await db
       .update(users)
       .set({ clinicVisitedAt: body.clinicVisited ? new Date() : null })
       .where(and(eq(users.id, patientId), eq(users.role, "patient")));
+
+    if (body.clinicVisited && !wasVisited) {
+      void notifyPatientClinicVisitScoresUnlocked(patientId, staffId).catch((e) => {
+        console.error("[doctor/patients PATCH] scores unlock notify failed", patientId, e);
+      });
+    }
   }
 
   return NextResponse.json({ ok: true });

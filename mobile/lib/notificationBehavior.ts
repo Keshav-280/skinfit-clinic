@@ -34,7 +34,8 @@ export function configureNotificationBehavior() {
         t === "doctor_voice_note" ||
         t === "routine_plan_updated" ||
         t === "scan_report_ready" ||
-        t === "schedule_appointment"
+        t === "schedule_appointment" ||
+        t === "scores_unlocked"
       ) {
         notifyInboxUnreadChanged();
       }
@@ -92,6 +93,10 @@ export function configureNotificationBehavior() {
       }
       if (t === "schedule_appointment") {
         router.push("/(drawer)/schedules" as Href);
+        return;
+      }
+      if (t === "scores_unlocked") {
+        router.push("/(drawer)" as Href);
         return;
       }
       if (t === "weekly_insight" || t === "monthly_insight") {

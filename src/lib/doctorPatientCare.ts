@@ -117,6 +117,15 @@ export async function listPatientIdsForDoctor(doctorId: string): Promise<string[
   return rows.map((r) => r.patientId);
 }
 
+/** Staff accounts linked to a patient via doctor_patient_care (isolation boundary). */
+export async function listDoctorIdsForPatient(patientId: string): Promise<string[]> {
+  const rows = await db
+    .select({ doctorId: doctorPatientCare.doctorId })
+    .from(doctorPatientCare)
+    .where(eq(doctorPatientCare.patientId, patientId));
+  return rows.map((r) => r.doctorId);
+}
+
 export async function getDoctorPatientCareRow(
   doctorId: string,
   patientId: string

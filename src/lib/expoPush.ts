@@ -146,6 +146,26 @@ export async function notifyPatientScheduleAppointment(
   });
 }
 
+/** Patient push when clinic visit unlocks exact kAI scores and full reports. */
+export async function notifyPatientScoresUnlocked(
+  patientUserId: string
+): Promise<void> {
+  const [row] = await db
+    .select({ token: users.expoPushToken })
+    .from(users)
+    .where(eq(users.id, patientUserId))
+    .limit(1);
+  const token = row?.token?.trim();
+  if (!token) return;
+
+  await sendExpoPushNotification({
+    expoPushToken: token,
+    title: "SkinnFit — scores unlocked",
+    body: "Your exact kAI score and full scan details are now available. Open SkinnFit to view them.",
+    data: { type: "scores_unlocked" },
+  });
+}
+
 /** Patient push when an async scan job finishes and the report is saved. */
 export async function notifyPatientScanReportReady(
   patientUserId: string,

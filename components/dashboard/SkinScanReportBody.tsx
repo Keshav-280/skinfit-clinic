@@ -29,7 +29,7 @@ import {
   SCAN_REPORT_PDF_BG,
   SCAN_REPORT_PDF_PAGE_BG,
 } from "@/src/lib/scanReportPdfBackground";
-import { ScanReportClinicPromoNote } from "./ScanReportClinicPromoNote";
+import { ScanReportClinicPromoOverlay } from "./ScanReportClinicPromoOverlay";
 import { PATIENT_CLINICAL_DISPLAY_ROWS } from "@/src/lib/patientVisibleParams";
 
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
@@ -279,6 +279,20 @@ export function SkinScanReportBody({
     PatientTrackerReport | null | undefined
   >(undefined);
   const [trackerLoading, setTrackerLoading] = useState(false);
+  const clinicPromoStorageKey =
+    typeof scanId === "number" && scanId > 0
+      ? `skinfit-scan-clinic-promo-dismissed-${scanId}`
+      : null;
+  const [promoDismissed, setPromoDismissed] = useState(() => {
+    if (typeof window === "undefined" || !clinicPromoStorageKey) return false;
+    return sessionStorage.getItem(clinicPromoStorageKey) === "1";
+  });
+  const dismissClinicPromo = useCallback(() => {
+    setPromoDismissed(true);
+    if (clinicPromoStorageKey) {
+      sessionStorage.setItem(clinicPromoStorageKey, "1");
+    }
+  }, [clinicPromoStorageKey]);
 
   useEffect(() => {
     if (serverTracker !== undefined) return;
@@ -588,8 +602,7 @@ export function SkinScanReportBody({
         </div>
       ) : null}
 
-      <ScanReportClinicPromoNote className="relative z-[1] mb-5 mt-12 sm:mt-14" />
-
+    <div className="relative mt-12 w-full overflow-hidden rounded-[22px] sm:mt-14">
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1095,6 +1108,10 @@ export function SkinScanReportBody({
         </div>
       </div>
     </motion.div>
+      {!scoresUnlocked && !promoDismissed ? (
+        <ScanReportClinicPromoOverlay onDismiss={dismissClinicPromo} />
+      ) : null}
+    </div>
     </div>
   );
 }

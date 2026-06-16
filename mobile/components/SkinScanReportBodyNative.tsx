@@ -32,8 +32,8 @@ import {
 import { publicFileDisplayUrl } from "../../src/lib/publicFileUrl";
 import { patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from "../../src/lib/clarityGrade";
 import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
+import { ScanReportClinicPromoOverlayNative } from "@/components/ScanReportClinicPromoOverlayNative";
 import { SCAN_REPORT_THEME as T } from "@/lib/scanReportTheme";
-import { SCAN_REPORT_CLINIC_PROMO as clinicPromo } from "../../src/lib/scanReportClinicPromo";
 import { PATIENT_CLINICAL_DISPLAY_ROWS } from "../../src/lib/patientVisibleParams";
 
 const GLASS = "rgba(255,255,255,0.92)";
@@ -160,6 +160,7 @@ export function SkinScanReportBodyNative({
   const [fullscreenPhoto, setFullscreenPhoto] = useState<
     { label: string; imageUrl: string } | null
   >(null);
+  const [promoDismissed, setPromoDismissed] = useState(false);
 
   useEffect(() => {
     const path = imageUrl?.trim();
@@ -220,25 +221,10 @@ export function SkinScanReportBodyNative({
       <Text style={styles.pageTitle}>AI scan report</Text>
       {displayTitle ? <Text style={styles.pageSubtitle}>{displayTitle}</Text> : null}
 
-      <View style={styles.promoCard} accessibilityRole="text">
-        <Text style={styles.promoKicker}>{clinicPromo.kicker}</Text>
-        <Text style={styles.promoTitle}>{clinicPromo.title}</Text>
-        <Text style={styles.promoIntro}>{clinicPromo.intro}</Text>
-        <View style={styles.promoItem}>
-          <View style={styles.promoIcon}>
-            <Text style={styles.promoIconGlyph}>◉</Text>
-          </View>
-          <Text style={styles.promoBody}>{clinicPromo.facialScan}</Text>
-        </View>
-        <View style={styles.promoItem}>
-          <View style={styles.promoIcon}>
-            <Text style={styles.promoIconGlyph}>✦</Text>
-          </View>
-          <Text style={styles.promoBody}>{clinicPromo.hairScan}</Text>
-        </View>
-      </View>
-
-      {!scoresUnlocked ? <ClinicScoreUnlockCta compact style={{ marginBottom: 12 }} /> : null}
+      <ScanReportClinicPromoOverlayNative
+        visible={!scoresUnlocked && !promoDismissed}
+        onDismiss={() => setPromoDismissed(true)}
+      />
 
       <View style={styles.reportCard}>
         <LinearGradient
@@ -248,6 +234,9 @@ export function SkinScanReportBodyNative({
         />
 
         <View style={styles.inner}>
+          {!scoresUnlocked ? (
+            <ClinicScoreUnlockCta compact style={{ marginBottom: 16 }} />
+          ) : null}
           {resolvedPhotos.length > 0 ? (
             <View style={styles.captureSection}>
               <Text style={styles.captureKicker}>
@@ -562,70 +551,6 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 6,
     paddingHorizontal: 24,
-  },
-  promoCard: {
-    marginHorizontal: 12,
-    marginTop: 12,
-    borderRadius: 20,
-    backgroundColor: GLASS,
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#2C3E6B",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.08,
-        shadowRadius: 14,
-      },
-      android: { elevation: 2 },
-    }),
-  },
-  promoKicker: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2.2,
-    color: "rgba(44, 62, 107, 0.7)",
-    textTransform: "uppercase",
-  },
-  promoTitle: {
-    marginTop: 8,
-    fontSize: 17,
-    fontWeight: "700",
-    color: T.navyDark,
-    lineHeight: 22,
-  },
-  promoIntro: {
-    marginTop: 10,
-    fontSize: 13,
-    lineHeight: 20,
-    color: "#52525b",
-  },
-  promoItem: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 14,
-  },
-  promoIcon: {
-    marginTop: 2,
-    width: 32,
-    height: 32,
-    borderRadius: 12,
-    backgroundColor: T.accentLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  promoIconGlyph: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: T.navy,
-  },
-  promoBody: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 20,
-    color: "#3f3f46",
   },
   reportCard: {
     marginHorizontal: 12,

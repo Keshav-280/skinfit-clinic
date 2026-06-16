@@ -470,6 +470,7 @@ export const users = pgTable("users", {
 	doctorFeedbackUpdatedAt: timestamp("doctor_feedback_updated_at", { withTimezone: true, mode: 'string' }),
 	doctorFeedbackScanVoiceViewedAt: timestamp("doctor_feedback_scan_voice_viewed_at", { withTimezone: true, mode: 'string' }),
 	scheduleCrmDigestAt: timestamp("schedule_crm_digest_at", { withTimezone: true, mode: 'string' }),
+	doctorPortalScansInboxSeenAt: timestamp("doctor_portal_scans_inbox_seen_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	profilePhotoUrl: text("profile_photo_url"),
 	clinicVisitedAt: timestamp("clinic_visited_at", { withTimezone: true, mode: 'string' }),

@@ -5,6 +5,7 @@ import { UserRound, Users } from "lucide-react";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
 import { DoctorAppointmentsBell } from "@/components/doctor/DoctorAppointmentsBell";
 import { DoctorPatientChatBell } from "@/components/doctor/DoctorPatientChatBell";
+import { DoctorScanBell } from "@/components/doctor/DoctorScanBell";
 import { DoctorSosBell } from "@/components/doctor/DoctorSosBell";
 import { DoctorPortalBrandLogo } from "@/components/doctor/DoctorPortalBrandLogo";
 import { DoctorPortalSidebar } from "@/components/doctor/DoctorPortalSidebar";
@@ -72,6 +73,7 @@ export default async function DoctorPortalLayout({
 
           <div className="flex shrink-0 items-center gap-1">
             <DoctorAppointmentsBell />
+            <DoctorScanBell />
             <DoctorPatientChatBell />
             <DoctorSosBell />
             <GlobalRefreshButton compact />

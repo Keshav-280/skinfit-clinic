@@ -20,6 +20,7 @@ import {
 } from "../../../src/lib/insertParameterScores";
 import { persistScanTrackerSnapshot } from "../../../src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "../../../src/lib/doctorPatientCare";
+import { notifyDoctorsPatientScanCompleted } from "../../../src/lib/scanDoctorAlerts";
 import { readWebFormData } from "../../../src/lib/webRequestFormData";
 import {
   buildPreviewJpegDataUri,
@@ -596,6 +597,15 @@ export async function POST(request: NextRequest) {
       invalidateUserScanDerivedCaches(user.id),
       invalidateUserInsightsCache(user.id),
     ]);
+
+    if (inserted?.id != null) {
+      void notifyDoctorsPatientScanCompleted({
+        patientId: user.id,
+        patientName: user.name?.trim() || "Patient",
+        scanId: inserted.id,
+        scanName: scanName.trim() || null,
+      });
+    }
 
     return NextResponse.json({
       success: true,

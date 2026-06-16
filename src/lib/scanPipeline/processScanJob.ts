@@ -39,6 +39,7 @@ import {
 import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
+import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
 
 async function pathToFile(relativePath: string, name: string): Promise<File> {
@@ -315,6 +316,15 @@ export async function processScanJob(
     jobId,
     scanName: payload.scanName ?? null,
   });
+
+  if (inserted?.id != null) {
+    void notifyDoctorsPatientScanCompleted({
+      patientId: user.id,
+      patientName: user.name?.trim() || "Patient",
+      scanId: inserted.id,
+      scanName: payload.scanName ?? null,
+    });
+  }
 
   await Promise.all([
     invalidateUserHomeCache(payload.userId),

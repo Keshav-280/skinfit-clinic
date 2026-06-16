@@ -7,7 +7,8 @@ export type NotificationEventType =
   | "appointment.reminder"
   | "routine.reminder"
   | "weekly.insight"
-  | "monthly.insight";
+  | "monthly.insight"
+  | "scores.unlocked";
 
 export type NotificationEvent = {
   type: NotificationEventType;
