@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiJson } from "@/lib/api";
 import { goToDashboard } from "@/lib/dashboardNavigation";
-import { normalizeRoutineSteps } from "@/lib/routine";
+import { normalizeRoutineSteps, parseRoutineStepItem, routineStepSubtitle } from "@/lib/routine";
 
 const NAVY = "#2C3E6B";
 const GREEN = "#16a34a";
@@ -209,19 +209,34 @@ export default function MorningRoutineScreen() {
 
       {data.amItems.map((item, i) => {
         const checked = steps[i] ?? false;
-        const parts = item.split("|").map((s: string) => s.trim());
-        const stepName = parts[0] || item;
-        const productName = parts[1] || "";
-        const dosage = parts[2] || "";
+        const parsed = parseRoutineStepItem(item);
+        const subtitle = routineStepSubtitle(parsed);
         return (
-          <Pressable key={`am-${i}`} style={styles.stepCard} onPress={() => toggleStep(i)} disabled={saving}>
+          <Pressable
+            key={`am-${i}-${parsed.step}`}
+            style={[styles.stepCard, checked && styles.stepCardDone]}
+            onPress={() => toggleStep(i)}
+            disabled={saving}
+          >
             <View style={[styles.stepNum, { backgroundColor: checked ? GREEN : NAVY }]}>
-              {checked ? <Ionicons name="checkmark" size={14} color="#fff" /> : <Text style={styles.stepNumText}>{i + 1}</Text>}
+              {checked ? (
+                <Ionicons name="checkmark" size={14} color="#fff" />
+              ) : (
+                <Text style={styles.stepNumText}>{i + 1}</Text>
+              )}
             </View>
             <View style={styles.stepInfo}>
-              <Text style={[styles.stepName, checked && styles.stepNameDone]}>{stepName}</Text>
-              {productName ? <Text style={styles.stepProduct}>{productName}</Text> : null}
-              {dosage ? <Text style={styles.stepDosage}>{dosage}</Text> : null}
+              <Text style={[styles.stepName, checked && styles.stepNameDone]} numberOfLines={2}>
+                {parsed.step}
+              </Text>
+              {subtitle ? (
+                <Text style={styles.stepProduct} numberOfLines={2}>
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
+            <View style={[styles.stepCheck, checked && styles.stepCheckOn]}>
+              {checked ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
             </View>
           </Pressable>
         );
@@ -297,25 +312,48 @@ const styles = StyleSheet.create({
   markAllText: { fontSize: 14, fontWeight: "700", color: GREEN },
 
   stepCard: {
-    backgroundColor: GLASS,
+    backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: GLASS_BORDER,
+    borderColor: "#E5E7EB",
+    shadowColor: "#2C3E6B",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  stepCardDone: {
+    backgroundColor: "#f0fdf4",
+    borderColor: "rgba(22,163,74,0.25)",
   },
   stepNum: {
-    width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center",
+    width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
   },
   stepNumText: { color: "#fff", fontSize: 13, fontWeight: "800" },
-  stepInfo: { flex: 1 },
-  stepName: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
+  stepInfo: { flex: 1, minWidth: 0 },
+  stepName: { fontSize: 15, fontWeight: "700", color: "#1A1A2E", lineHeight: 20 },
   stepNameDone: { textDecorationLine: "line-through", color: "#9CA3AF" },
-  stepProduct: { fontSize: 13, color: "#6B7280", marginTop: 2 },
-  stepDosage: { fontSize: 12, color: "#9CA3AF", marginTop: 1 },
+  stepProduct: { fontSize: 12, color: "#6B7280", marginTop: 3, lineHeight: 17 },
+  stepCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#d4d4d8",
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepCheckOn: {
+    borderColor: GREEN,
+    backgroundColor: GREEN,
+  },
 
   whyCard: {
     backgroundColor: GLASS,

@@ -96,9 +96,10 @@ export function NavyMetricsCard({
   className = "",
 }: NavyMetricsCardProps) {
   const [unlockOpen, setUnlockOpen] = useState(false);
+  const hasScan = Boolean(latestScanAt?.trim());
   const v = Math.min(100, Math.max(0, Math.round(consistencyScore)));
-  const kai = patientKaiScoreView(kaiSkinScore, scoresUnlocked);
-  const progressLocked = !scoresUnlocked;
+  const kai = hasScan ? patientKaiScoreView(kaiSkinScore, scoresUnlocked) : null;
+  const progressLocked = hasScan && !scoresUnlocked;
   const lockedKaiAriaLabel = `${CLINIC_SCORE_UNLOCK.title}. ${CLINIC_SCORE_UNLOCK.message}`;
   const progressTone =
     weeklyDeltaScore > 0 ? "up" : weeklyDeltaScore < 0 ? "down" : "flat";
@@ -111,7 +112,19 @@ export function NavyMetricsCard({
     >
       <div className="grid h-full min-h-0 grid-cols-12 items-center gap-4">
         <div className="col-span-5 flex h-full flex-col justify-center gap-4">
-          {kai.showLock ? (
+          {!hasScan ? (
+            <div className="relative flex h-[120px] flex-col justify-center overflow-hidden rounded-[16px] bg-[#E8EFE6] px-3 py-2 text-center">
+              <p className="text-[11px] font-bold leading-snug text-[#2D3E6B]">
+                kAI Skin Score
+              </p>
+              <p className="mt-2 text-sm font-semibold leading-snug text-[#6B7280]">
+                No scan yet
+              </p>
+              <p className="mt-1 text-[10px] font-medium leading-snug text-[#6B7280]/90">
+                Complete your first AI scan to see your score
+              </p>
+            </div>
+          ) : kai?.showLock ? (
             <button
               type="button"
               onClick={() => setUnlockOpen(true)}
@@ -128,7 +141,7 @@ export function NavyMetricsCard({
               <div className="relative z-[1] mt-1 flex items-center justify-center gap-1.5">
                 <Lock className="h-5 w-5 text-[#2C3E6B]/55" strokeWidth={2.25} aria-hidden />
                 <p className="text-[2rem] font-extrabold leading-none text-[#1E5E3A]">
-                  {kai.gaugeDisplayValue}
+                  {kai?.gaugeDisplayValue}
                 </p>
               </div>
               <p className="relative z-[1] mt-0.5 text-[10px] font-medium leading-none text-[#6B7280]">
@@ -143,10 +156,10 @@ export function NavyMetricsCard({
                 kAI Skin Score
               </p>
               <p className="relative z-[1] mt-0.5 text-[2rem] font-extrabold leading-none text-[#1E5E3A]">
-                {kai.kaiPrimary}
+                {kai?.kaiPrimary}
               </p>
               <p className="relative z-[1] mt-0.5 text-[10px] font-semibold leading-snug text-[#6B7280]">
-                {kai.kaiSecondary}
+                {kai?.kaiSecondary}
               </p>
               <p className="relative z-[1] mt-0.5 text-[10px] font-medium leading-none text-[#6B7280]">
                 {latestScanAt
@@ -157,7 +170,9 @@ export function NavyMetricsCard({
           )}
           <div className="flex flex-col justify-center rounded-[16px] bg-[#E8EFE6] px-3 py-2 text-center h-[120px]">
             <p className="text-[11px] font-bold leading-snug text-[#2D3E6B]">Weekly Progress</p>
-            {progressLocked ? (
+            {!hasScan ? (
+              <p className="mt-2 text-sm font-semibold text-[#6B7280]">—</p>
+            ) : progressLocked ? (
               <div className="mt-1 flex justify-center" aria-label={progressAria}>
                 {progressDir === "up" ? (
                   <ArrowUp className="h-8 w-8 text-[#1E5E3A]" strokeWidth={2.75} aria-hidden />
@@ -181,7 +196,7 @@ export function NavyMetricsCard({
                 {weeklyDeltaScore}
               </p>
             )}
-            {!progressLocked ? (
+            {!hasScan ? null : !progressLocked ? (
               <p className="mt-0.5 text-[10px] font-medium leading-none text-[#6B7280]">
                 vs last week
               </p>

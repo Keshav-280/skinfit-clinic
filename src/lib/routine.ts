@@ -107,6 +107,35 @@ export function normalizeRoutineSteps(
   return Array.from({ length: len }, (_, i) => Boolean(raw[i]));
 }
 
+/** Doctor plan rows: `Step | Product | Dosage` (pipe-separated). */
+export type ParsedRoutineStep = {
+  step: string;
+  product: string;
+  dosage: string;
+};
+
+export function parseRoutineStepItem(raw: string): ParsedRoutineStep {
+  const parts = raw
+    .split("|")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (parts.length === 0) {
+    const t = raw.trim();
+    return { step: t || "Routine step", product: "", dosage: "" };
+  }
+  return {
+    step: parts[0]!,
+    product: parts[1] ?? "",
+    dosage: parts[2] ?? "",
+  };
+}
+
+/** Secondary line under step title — product and dosage when present. */
+export function routineStepSubtitle(parsed: ParsedRoutineStep): string | null {
+  const bits = [parsed.product, parsed.dosage].filter(Boolean);
+  return bits.length > 0 ? bits.join(" · ") : null;
+}
+
 /** Fraction of AM + PM routine steps checked (0–1). */
 export function routineStepsProgress(am: boolean[], pm: boolean[]): number {
   const n = am.length + pm.length;

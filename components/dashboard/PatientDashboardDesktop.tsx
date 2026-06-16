@@ -54,6 +54,7 @@ import {
   classifySkinParamMetric,
   patientClarityToGrade,
   patientDisplayClarity,
+  patientChartDisplayValue,
   patientScoreView,
 } from "@/src/lib/clarityGrade";
 import { SkinParamMetricsCard } from "@/components/dashboard/SkinParamMetricsCard";
@@ -178,7 +179,7 @@ function RadarChart({
   });
 
   const dataPoints = data.map((d, i) =>
-    getPoint(i, (patientDisplayClarity(d.value) / 100) * maxRadius)
+    getPoint(i, (patientChartDisplayValue(d.value, scoresUnlocked) / 100) * maxRadius)
   );
   const dataPath = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
 

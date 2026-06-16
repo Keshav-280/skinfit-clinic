@@ -44,7 +44,7 @@ import {
   kaiParamClarity,
   SKIN_HEALTH_PARAM_KEYS,
 } from "@/lib/skinAnalysis";
-import { patientClarityToGrade, patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from "../../../src/lib/clarityGrade";
+import { patientClarityToGrade, patientChartDisplayValue, patientParamGaugeLabel, patientScoreView } from "../../../src/lib/clarityGrade";
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
 import {
   clearJournalSyncPatch,
@@ -523,7 +523,7 @@ export default function DashboardScreen() {
     ? Math.min(100, Math.max(0, Math.round(data.kaiSkinScore)))
     : latestScan
       ? Math.min(100, Math.max(0, Math.round(latestScan.skinScore)))
-      : 40;
+      : 0;
   const scoresUnlocked = data?.scoresUnlocked ?? false;
 
   async function persistRoutine(nextAm: boolean[], nextPm: boolean[]) {
@@ -1200,8 +1200,10 @@ function RadarChart({
     return metrics.map((_, i) => pointOnAxis(i, ratio)).map((p) => `${p.x},${p.y}`).join(" ");
   });
 
+  const chartValue = (raw: number) => patientChartDisplayValue(raw, scoresUnlocked);
+
   const dataPoints = metrics
-    .map((m, i) => pointOnAxis(i, patientDisplayClarity(m.value) / 100))
+    .map((m, i) => pointOnAxis(i, chartValue(m.value) / 100))
     .map((p) => `${p.x},${p.y}`)
     .join(" ");
 
@@ -1248,7 +1250,7 @@ function RadarChart({
             strokeWidth={2}
           />
           {metrics.map((m, i) => {
-            const p = pointOnAxis(i, patientDisplayClarity(m.value) / 100);
+            const p = pointOnAxis(i, chartValue(m.value) / 100);
             return <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={compact ? 3 : 4} fill={GREEN_ACCENT} />;
           })}
         </Svg>
@@ -1348,7 +1350,7 @@ function ParamRing({
   size?: number;
   scoresUnlocked?: boolean;
 }) {
-  const display = patientDisplayClarity(value);
+  const display = patientChartDisplayValue(value, scoresUnlocked);
   const sw = size <= 48 ? 4 : 6;
   const r = (size - sw) / 2;
   const circ = 2 * Math.PI * r;

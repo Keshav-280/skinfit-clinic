@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CircularGauge } from "@/components/dashboard/CircularGauge";
 import {
   classifySkinParamMetric,
+  patientChartDisplayValue,
   patientParamGaugeLabel,
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
@@ -48,7 +49,7 @@ export function SkinParamMetricsCard({
             className={SKIN_PARAM_INNER_CELL}
           >
             <CircularGauge
-              value={p.displayScore}
+              value={patientChartDisplayValue(p.value, scoresUnlocked)}
               color={p.color}
               size={76}
               strokeWidth={5.5}

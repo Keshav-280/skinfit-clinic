@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, CloudMoon, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, CloudMoon, Loader2 } from "lucide-react";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
+import { RoutineStepList } from "@/components/dashboard/RoutineStepList";
+import { normalizeRoutineSteps } from "@/src/lib/routine";
 
 type HomeResponse = {
   amItems: string[];
@@ -13,48 +15,6 @@ type HomeResponse = {
     routinePmSteps?: boolean[] | null;
   } | null;
 };
-
-function ProgressRing({
-  completed,
-  total,
-}: {
-  completed: number;
-  total: number;
-}) {
-  const radius = 40;
-  const stroke = 6;
-  const circumference = 2 * Math.PI * radius;
-  const progress = total === 0 ? 0 : (completed / total) * circumference;
-
-  return (
-    <div className="relative flex items-center justify-center">
-      <svg width={100} height={100} className="-rotate-90">
-        <circle
-          cx={50}
-          cy={50}
-          r={radius}
-          fill="none"
-          className="stroke-slate-200"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx={50}
-          cy={50}
-          r={radius}
-          fill="none"
-          className="stroke-green-500 transition-all duration-500 ease-out"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference - progress}
-        />
-      </svg>
-      <span className="absolute text-sm font-bold text-[#2C3E6B]">
-        {completed}/{total}
-      </span>
-    </div>
-  );
-}
 
 export default function NightRoutinePage() {
   const journalDate = useJournalTrackerDate();
@@ -67,14 +27,14 @@ export default function NightRoutinePage() {
     fetch(`/api/patient/home?date=${encodeURIComponent(journalDate)}`, { credentials: "include" })
       .then((r) => r.json())
       .then((data: HomeResponse) => {
-        setPmItems(data.pmItems ?? []);
+        const pm = data.pmItems ?? [];
+        setPmItems(pm);
         const amLen = data.amItems?.length ?? 0;
-        const pmLen = data.pmItems?.length ?? 0;
         setChecked(
-          data.todayLog?.routinePmSteps ?? new Array(pmLen).fill(false),
+          normalizeRoutineSteps(data.todayLog?.routinePmSteps, pm.length, undefined)
         );
         setAmSteps(
-          data.todayLog?.routineAmSteps ?? new Array(amLen).fill(false),
+          normalizeRoutineSteps(data.todayLog?.routineAmSteps, amLen, undefined)
         );
       })
       .finally(() => setLoading(false));
@@ -107,7 +67,11 @@ export default function NightRoutinePage() {
     [save],
   );
 
-  const completedCount = checked.filter(Boolean).length;
+  const markAll = useCallback(() => {
+    const next = pmItems.map(() => true);
+    setChecked(next);
+    save(next);
+  }, [pmItems, save]);
 
   if (loading) {
     return (
@@ -135,8 +99,7 @@ export default function NightRoutinePage() {
   }
 
   return (
-    <section className="mx-auto flex max-w-md flex-col gap-6 pb-10">
-      {/* Header */}
+    <section className="mx-auto flex max-w-md flex-col gap-5 pb-10">
       <header className="flex items-center gap-3 pt-2">
         <Link
           href="/dashboard"
@@ -153,60 +116,14 @@ export default function NightRoutinePage() {
         </div>
       </header>
 
-      {/* Motivational Quote */}
-      <div className="rounded-2xl border border-white/60 bg-white/35 px-5 py-4 text-center backdrop-blur-sm">
-        <p className="text-sm font-medium italic text-slate-500">
-          &ldquo;Your night routine is tomorrow&rsquo;s glow.&rdquo;
-        </p>
-      </div>
-
-      {/* Progress Ring */}
-      <div className="flex flex-col items-center gap-1 rounded-2xl border border-white/60 bg-white/35 py-5 backdrop-blur-sm">
-        <ProgressRing completed={completedCount} total={pmItems.length} />
-        <p className="mt-1 text-xs font-medium text-slate-400">
-          {completedCount === pmItems.length
-            ? "All done! Sweet dreams."
-            : `${pmItems.length - completedCount} steps remaining`}
-        </p>
-      </div>
-
-      {/* Step Cards */}
-      <ul className="flex flex-col gap-3">
-        {pmItems.map((step, i) => {
-          const done = checked[i];
-
-          return (
-            <li key={step}>
-              <button
-                type="button"
-                onClick={() => toggle(i)}
-                className="flex w-full items-center gap-4 rounded-2xl border border-white/60 bg-white/35 px-4 py-3.5 backdrop-blur-sm transition-transform active:scale-[0.98]"
-              >
-                <span
-                  className={`text-sm font-medium transition-colors ${
-                    done
-                      ? "text-slate-400 line-through"
-                      : "text-[#2C3E6B]"
-                  }`}
-                >
-                  {step}
-                </span>
-
-                <span
-                  className={`ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    done
-                      ? "border-green-500 bg-green-500 text-white"
-                      : "border-slate-300 bg-white/50"
-                  }`}
-                  aria-hidden="true"
-                >
-                  {done && <Check className="h-4 w-4" />}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <RoutineStepList
+        items={pmItems}
+        checked={checked}
+        onToggle={toggle}
+        onMarkAll={markAll}
+        variant="night"
+        quote="Your night routine is tomorrow's glow."
+      />
     </section>
   );
 }

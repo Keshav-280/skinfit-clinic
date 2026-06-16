@@ -91,9 +91,10 @@ export function NavyMetricsCard({
   style,
 }: NavyMetricsCardProps) {
   const [unlockOpen, setUnlockOpen] = useState(false);
+  const hasScan = Boolean(latestScanAt?.trim());
   const v = Math.min(100, Math.max(0, Math.round(consistencyScore)));
-  const kai = patientKaiScoreView(kaiSkinScore, scoresUnlocked);
-  const progressLocked = !scoresUnlocked;
+  const kai = hasScan ? patientKaiScoreView(kaiSkinScore, scoresUnlocked) : null;
+  const progressLocked = hasScan && !scoresUnlocked;
   const lockedKaiAriaLabel = `${CLINIC_SCORE_UNLOCK.title}. ${CLINIC_SCORE_UNLOCK.message}`;
   const progressDir = weeklyTrendDirection(weeklyDeltaScore);
   const progressAria = lockedWeeklyTrendAria(weeklyDeltaScore);
@@ -102,7 +103,15 @@ export function NavyMetricsCard({
     <View style={[styles.card, style]}>
       <View style={styles.row}>
         <View style={styles.leftCol}>
-          {kai.showLock ? (
+          {!hasScan ? (
+            <View style={styles.subCard}>
+              <Text style={styles.subLabel}>kAI Skin Score</Text>
+              <Text style={styles.emptyPrimary}>No scan yet</Text>
+              <Text style={styles.emptyMeta}>
+                Complete your first AI scan to see your score
+              </Text>
+            </View>
+          ) : kai?.showLock ? (
             <Pressable
               style={({ pressed }) => [styles.subCard, pressed && styles.subCardPressed]}
               onPress={() => setUnlockOpen(true)}
@@ -116,22 +125,24 @@ export function NavyMetricsCard({
                 <Text style={styles.subValue}>{kai.gaugeDisplayValue}</Text>
               </View>
               <Text style={styles.subMeta}>
-                {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
+                {`Updated ${format(new Date(latestScanAt!), "MMM d")}`}
               </Text>
             </Pressable>
           ) : (
             <View style={styles.subCard}>
               <Text style={styles.subLabel}>kAI Skin Score</Text>
-              <Text style={styles.subValue}>{kai.kaiPrimary}</Text>
-              <Text style={styles.subMeta}>{kai.kaiSecondary}</Text>
+              <Text style={styles.subValue}>{kai?.kaiPrimary}</Text>
+              <Text style={styles.subMeta}>{kai?.kaiSecondary}</Text>
               <Text style={styles.subMeta}>
-                {latestScanAt ? `Updated ${format(new Date(latestScanAt), "MMM d")}` : "No scans yet"}
+                {`Updated ${format(new Date(latestScanAt!), "MMM d")}`}
               </Text>
             </View>
           )}
           <View style={styles.subCard}>
             <Text style={styles.subLabel}>Weekly Progress</Text>
-            {progressLocked ? (
+            {!hasScan ? (
+              <Text style={styles.emptyProgress}>—</Text>
+            ) : progressLocked ? (
               <View style={styles.progressIconWrap} accessibilityLabel={progressAria}>
                 {progressDir === "up" ? (
                   <Ionicons name="arrow-up" size={30} color={VALUE_GREEN} />
@@ -156,7 +167,9 @@ export function NavyMetricsCard({
                 {Math.round(weeklyDeltaScore)}
               </Text>
             )}
-            {!progressLocked ? <Text style={styles.subMeta}>vs last week</Text> : null}
+            {!hasScan ? null : !progressLocked ? (
+              <Text style={styles.subMeta}>vs last week</Text>
+            ) : null}
           </View>
         </View>
 
@@ -246,6 +259,33 @@ const styles = StyleSheet.create({
     color: MUTED,
     textAlign: "center",
     lineHeight: 11,
+    zIndex: 1,
+  },
+  emptyPrimary: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: "700",
+    color: MUTED,
+    textAlign: "center",
+    lineHeight: 18,
+    zIndex: 1,
+  },
+  emptyMeta: {
+    marginTop: 4,
+    fontSize: 9,
+    fontWeight: "500",
+    color: MUTED,
+    textAlign: "center",
+    lineHeight: 12,
+    paddingHorizontal: 4,
+    zIndex: 1,
+  },
+  emptyProgress: {
+    marginTop: 6,
+    fontSize: 24,
+    fontWeight: "700",
+    color: MUTED,
+    textAlign: "center",
     zIndex: 1,
   },
   rightCol: {
