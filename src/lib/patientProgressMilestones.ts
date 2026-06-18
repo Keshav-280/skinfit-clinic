@@ -3,6 +3,7 @@ import { db } from "@/src/db";
 import { dailyLogs } from "@/src/db/schema";
 import { getOnboardingAccessForUser } from "@/src/lib/onboardingAccess";
 import { getQuestionnaireCompletionState } from "@/src/lib/questionnaireCompletion";
+import { countOutstandingSkippedQuestions } from "@/src/lib/onboardingQuestionnaireDefaults";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 
 export type ProgressMilestoneId =
@@ -182,7 +183,7 @@ export async function getPatientProgressSnapshot(
     journalPendingTrackers,
     questionnaireSkippedCount:
       hasQuestionnaire && !questionnaireDone
-        ? questionnaireState.skippedSteps.length
+        ? countOutstandingSkippedQuestions(questionnaireState.skippedSteps)
         : 0,
   };
 }

@@ -15,7 +15,11 @@ export default async function OnboardingLayout({
     redirect("/login?next=/onboarding/kai-intro");
   }
   const resume = await getOnboardingResumeSnapshot(profile.id);
-  if (resume?.onboardingComplete) {
+  // Only hard-redirect once everything (baseline + every questionnaire answer)
+  // is done. Submitted-with-skips must stay reachable so patients can return
+  // from the profile tracker and finish their remaining questions; the client
+  // OnboardingResumeGate then routes non-questionnaire paths appropriately.
+  if (resume?.onboardingFullyComplete) {
     redirect("/dashboard");
   }
 

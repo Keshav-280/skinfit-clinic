@@ -8,8 +8,13 @@ import {
 import { getQuestionnaireCompletionState } from "@/src/lib/questionnaireCompletion";
 
 export type OnboardingResumeSnapshot = {
-  /** True when baseline scan + questionnaire milestone (no skipped steps) are done. */
+  /** True when baseline scan + questionnaire milestone (submitted) are done. */
   onboardingComplete: boolean;
+  /**
+   * True only when baseline + questionnaire are fully answered (no skipped steps).
+   * Used to decide when onboarding routes may hard-redirect to the dashboard.
+   */
+  onboardingFullyComplete: boolean;
   /** Questionnaire POST saved (primary concern set). */
   hasQuestionnaire: boolean;
   /** Matches profile progress tracker questionnaire step. */
@@ -57,11 +62,15 @@ export async function getOnboardingResumeSnapshot(
   const baselineSubmitted = hasBaselineScan || baselineScanPending;
   const onboardingComplete =
     baselineSubmitted && questionnaireMilestoneComplete;
+  const onboardingFullyComplete =
+    baselineSubmitted && questionnaireFullyComplete;
 
   let continueUrl = "/onboarding/capture/photos";
   if (!baselineSubmitted) {
     continueUrl = "/onboarding/capture/photos";
-  } else if (!questionnaireMilestoneComplete) {
+  } else if (!questionnaireFullyComplete) {
+    // Not started, or submitted with skips → keep sending the patient back to
+    // the questionnaire so they can finish the remaining questions.
     continueUrl = "/onboarding/questionnaire?entry=resume";
   } else {
     continueUrl = "/dashboard";
@@ -69,6 +78,7 @@ export async function getOnboardingResumeSnapshot(
 
   return {
     onboardingComplete,
+    onboardingFullyComplete,
     hasQuestionnaire: questionnaireSubmitted,
     questionnaireMilestoneComplete,
     questionnaireFullyComplete,

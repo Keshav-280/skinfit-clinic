@@ -216,6 +216,29 @@ export function expandSkippedStepsForSkip(
   return [...result].sort((a, b) => a - b);
 }
 
+/**
+ * Patient-facing count of skipped questions still to finish.
+ *
+ * A skipped parent step (e.g. concerns) cascades to its dependents (severity,
+ * duration, triggers). Those dependents are not independently answerable, so
+ * they should NOT be counted as separate "remaining questions" — otherwise one
+ * skip action inflates the count (e.g. skipping concerns shows "4 questions").
+ * We count each skipped step once, minus dependents whose parent was also skipped.
+ */
+export function countOutstandingSkippedQuestions(
+  skippedSteps: number[]
+): number {
+  const skipped = new Set(skippedSteps);
+  const coveredByParent = new Set<number>();
+  for (const [parent, dependents] of Object.entries(QUESTIONNAIRE_SKIP_CASCADE)) {
+    if (!skipped.has(Number(parent))) continue;
+    for (const dependent of dependents) {
+      if (skipped.has(dependent)) coveredByParent.add(dependent);
+    }
+  }
+  return [...skipped].filter((s) => !coveredByParent.has(s)).length;
+}
+
 /** Ensure saved drafts include cascaded skips for any skipped parent step. */
 export function reconcileSkippedSteps(skippedSteps: number[]): number[] {
   const result = new Set(skippedSteps);

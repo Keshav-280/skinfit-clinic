@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import { patientKaiScoreView, patientClarityToGrade, patientScoreView } from "../../src/lib/clarityGrade";
+import { patientKaiScoreView } from "../../src/lib/clarityGrade";
 import {
   lockedWeeklyTrendAria,
   weeklyTrendDirection,
@@ -110,8 +110,6 @@ export function TrackerReportSectionsNative({
         ? lastScanDelta
         : null;
   const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
-  const paramLabel = (raw: number) =>
-    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
@@ -182,9 +180,6 @@ export function TrackerReportSectionsNative({
                   value={typeof row.value === "number" ? row.value : null}
                   scoresUnlocked={scoresUnlocked}
                 />
-                <Text style={styles.paramNum}>
-                  {typeof row.value === "number" ? paramLabel(row.value) : "-"}
-                </Text>
                 <View style={styles.paramDeltaWrap}>
                   <WeeklyDeltaDisplay
                     delta={typeof row.delta === "number" ? row.delta : null}
@@ -362,13 +357,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: "#374151",
-  },
-  paramNum: {
-    width: 28,
-    fontSize: 11,
-    fontWeight: "700",
-    color: NAVY,
-    textAlign: "right",
   },
   paramDeltaWrap: {
     width: 36,

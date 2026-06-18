@@ -10,7 +10,7 @@ import {
   isFaceIdentityVerificationEnabled,
 } from "@/src/lib/faceIdentityInference";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
-import { getStorage } from "@/src/lib/infra";
+import { getStorage, logger } from "@/src/lib/infra";
 
 export const FACE_IDENTITY_ERROR_CODES = {
   MISMATCH: "FACE_IDENTITY_MISMATCH",
@@ -244,7 +244,14 @@ export async function enforceScanFaceIdentity(args: {
   centreImagePath?: string;
   centreImageJpeg?: Buffer;
 }): Promise<ScanFaceIdentityGateResult> {
+  const logBase = { userId: args.userId, scanName: args.scanName };
+  logger.info("face_identity_check_start", logBase);
+
   if (!isFaceIdentityVerificationEnabled()) {
+    logger.info("face_identity_skipped", {
+      ...logBase,
+      reason: "FACE_IDENTITY_VERIFICATION disabled",
+    });
     return { ok: true, action: "skipped" };
   }
 
@@ -256,6 +263,10 @@ export async function enforceScanFaceIdentity(args: {
         embedding: backfilled.embedding,
         imagePath: backfilled.imagePath,
       };
+      logger.info("face_identity_reference_backfilled", {
+        ...logBase,
+        imagePath: backfilled.imagePath,
+      });
     }
   }
 
@@ -269,6 +280,10 @@ export async function enforceScanFaceIdentity(args: {
     priorScanCount > 0;
 
   if (!reference.embedding?.length && !establishingBaseline && !legacyBootstrap) {
+    logger.warn("face_identity_blocked", {
+      ...logBase,
+      code: FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED,
+    });
     return {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED,
@@ -279,7 +294,11 @@ export async function enforceScanFaceIdentity(args: {
   let jpeg: Buffer;
   try {
     jpeg = await readCentreImageBuffer(args);
-  } catch {
+  } catch (err) {
+    logger.error("face_identity_image_read_failed", {
+      ...logBase,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE,
@@ -290,7 +309,11 @@ export async function enforceScanFaceIdentity(args: {
   let extracted: Awaited<ReturnType<typeof extractFaceEmbedding>>;
   try {
     extracted = await extractFaceEmbedding(jpeg);
-  } catch {
+  } catch (err) {
+    logger.error("face_identity_embed_error", {
+      ...logBase,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE,
@@ -302,6 +325,12 @@ export async function enforceScanFaceIdentity(args: {
     const code = extracted.faceDetected
       ? FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE
       : FACE_IDENTITY_ERROR_CODES.NOT_DETECTED;
+    logger.warn("face_identity_blocked", {
+      ...logBase,
+      code,
+      reason: extracted.error,
+      faceDetected: extracted.faceDetected,
+    });
     return {
       ok: false,
       code,
@@ -315,10 +344,11 @@ export async function enforceScanFaceIdentity(args: {
       embedding: extracted.embedding,
       imagePath: centrePath || "onboarding-centre-inline",
     });
-    return {
-      ok: true,
-      action: establishingBaseline ? "reference_set" : "legacy_reference_set",
-    };
+    const action = establishingBaseline
+      ? "reference_set"
+      : "legacy_reference_set";
+    logger.info("face_identity_reference_set", { ...logBase, action });
+    return { ok: true, action };
   }
 
   const similarity = cosineSimilarity(
@@ -327,6 +357,12 @@ export async function enforceScanFaceIdentity(args: {
   );
   const threshold = faceIdentityMatchThreshold();
   if (similarity < threshold) {
+    logger.warn("face_identity_blocked", {
+      ...logBase,
+      code: FACE_IDENTITY_ERROR_CODES.MISMATCH,
+      similarity: Number(similarity.toFixed(4)),
+      threshold,
+    });
     return {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.MISMATCH,
@@ -335,6 +371,11 @@ export async function enforceScanFaceIdentity(args: {
     };
   }
 
+  logger.info("face_identity_verified", {
+    ...logBase,
+    similarity: Number(similarity.toFixed(4)),
+    threshold,
+  });
   return { ok: true, action: "verified", similarity };
 }
 

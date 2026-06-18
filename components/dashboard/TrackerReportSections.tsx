@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { patientKaiScoreView, patientClarityToGrade, patientScoreView } from "@/src/lib/clarityGrade";
+import { patientKaiScoreView } from "@/src/lib/clarityGrade";
 import {
   lockedWeeklyTrendAria,
   weeklyTrendDirection,
@@ -119,8 +119,6 @@ export function TrackerReportSections({
   scoresUnlocked?: boolean;
 }) {
   const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
-  const paramLabel = (raw: number) =>
-    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
   const { lastScanDelta, weekAverageDelta } = report.scores;
   const weeklyDelta =
     typeof weekAverageDelta === "number"
@@ -207,15 +205,12 @@ export function TrackerReportSections({
           <p className="text-sm font-semibold text-zinc-900">This week&apos;s overview</p>
           <div className="mt-2.5 space-y-2.5">
             {visibleParamRows.map((row) => (
-              <div key={row.key} className="grid grid-cols-[minmax(0,1fr)_120px_46px_30px] items-center gap-2 text-xs">
+              <div key={row.key} className="grid grid-cols-[minmax(0,1fr)_120px_30px] items-center gap-2 text-xs">
                 <span className="font-medium text-zinc-700">{row.label}</span>
                 <ParamScoreBar
                   value={typeof row.value === "number" ? row.value : null}
                   scoresUnlocked={scoresUnlocked}
                 />
-                <span className="text-right font-semibold tabular-nums text-[#2C3E6B]">
-                  {typeof row.value === "number" ? paramLabel(row.value) : "-"}
-                </span>
                 <span className="flex justify-end">
                   <WeeklyDeltaDisplay delta={row.delta} scoresUnlocked={scoresUnlocked} />
                 </span>
