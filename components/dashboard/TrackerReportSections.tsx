@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { patientKaiScoreView } from "@/src/lib/clarityGrade";
+import { patientKaiScoreView, patientClarityToGrade } from "@/src/lib/clarityGrade";
 import {
   lockedWeeklyTrendAria,
   weeklyTrendDirection,

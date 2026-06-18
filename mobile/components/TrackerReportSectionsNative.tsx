@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
-import { patientKaiScoreView } from "../../src/lib/clarityGrade";
+import { patientKaiScoreView, patientClarityToGrade } from "../../src/lib/clarityGrade";
 import {
   lockedWeeklyTrendAria,
   weeklyTrendDirection,
