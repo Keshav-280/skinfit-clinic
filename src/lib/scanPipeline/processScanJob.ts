@@ -41,6 +41,10 @@ import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
+import {
+  enforceScanFaceIdentity,
+  FACE_IDENTITY_ERROR_CODES,
+} from "@/src/lib/scanFaceIdentityGate";
 
 async function pathToFile(relativePath: string, name: string): Promise<File> {
   const storage = getStorage();
@@ -76,6 +80,24 @@ export async function processScanJob(
     const rel = payload.imagePaths[k];
     if (!rel) throw new Error(`Missing image path for ${k}`);
     filesForV2[k] = await pathToFile(rel, `${k}.jpg`);
+  }
+
+  const identity = await enforceScanFaceIdentity({
+    userId: payload.userId,
+    scanName: payload.scanName,
+    centreImagePath: payload.imagePaths.centre,
+  });
+  if (!identity.ok) {
+    const errText = `${identity.code}: ${identity.message}`;
+    await database
+      .update(scanJobs)
+      .set({
+        status: "failed",
+        errorText: errText,
+        updatedAt: new Date(),
+      })
+      .where(eq(scanJobs.id, jobId));
+    throw new Error(errText);
   }
 
   const useV2 =

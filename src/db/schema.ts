@@ -126,6 +126,10 @@ export const users = pgTable("users", {
   /** kAI onboarding: false until questionnaire + baseline scan complete. Existing users default true. */
   onboardingComplete: boolean("onboarding_complete").notNull().default(true),
   onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
+  /** InsightFace embedding (512-d) from onboarding centre photo — identity gate for later scans. */
+  faceReferenceEmbedding: jsonb("face_reference_embedding").$type<number[] | null>(),
+  faceReferenceImagePath: text("face_reference_image_path"),
+  faceReferenceSetAt: timestamp("face_reference_set_at", { withTimezone: true }),
   /**
    * AM/PM routine step labels — set by clinic after onboarding. Null until configured;
    * patients see an empty checklist until both sides have at least one step.

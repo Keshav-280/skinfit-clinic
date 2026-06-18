@@ -41,6 +41,10 @@ import {
   invalidateUserScanDerivedCaches,
 } from "../../../src/lib/infra";
 import { computeRagKaiScore } from "../../../src/lib/ragEightParams";
+import {
+  enforceScanFaceIdentity,
+  FACE_IDENTITY_ERROR_CODES,
+} from "../../../src/lib/scanFaceIdentityGate";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -205,6 +209,14 @@ export async function POST(request: NextRequest) {
     const formData = await readWebFormData(request);
     const scanName = (formData.get("scanName") as string) || "Untitled Scan";
 
+    const userId = await getSessionUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Sign in to save a skin scan." },
+        { status: 401 }
+      );
+    }
+
     const multiRaw = formData
       .getAll("images")
       .filter((x): x is File => x instanceof File && x.size > 0);
@@ -255,16 +267,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const faceCaptureImages = entries;
-    const imageDataUri = entries[0].dataUri;
-
-    const userId = await getSessionUserIdFromRequest(request);
-    if (!userId) {
+    const identity = await enforceScanFaceIdentity({
+      userId,
+      scanName,
+      centreImageJpeg: Buffer.from(await filesForV2.centre.arrayBuffer()),
+    });
+    if (!identity.ok) {
+      const status =
+        identity.code === FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE
+          ? 503
+          : 403;
       return NextResponse.json(
-        { success: false, error: "Sign in to save a skin scan." },
-        { status: 401 }
+        {
+          success: false,
+          error: identity.code,
+          message: identity.message,
+        },
+        { status }
       );
     }
+
+    const faceCaptureImages = entries;
+    const imageDataUri = entries[0].dataUri;
 
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),

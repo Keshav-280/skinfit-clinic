@@ -17,6 +17,11 @@ import {
   SCAN_ANALYSIS_QUEUE_JOB_OPTS,
 } from "@/src/lib/infra";
 import type { ScanJobPayload } from "@/src/lib/infra";
+import {
+  cleanupUploadedScanImages,
+  enforceScanFaceIdentity,
+  FACE_IDENTITY_ERROR_CODES,
+} from "@/src/lib/scanFaceIdentityGate";
 
 /**
  * Async scan submission — uploads (multipart or pre-signed R2 paths), enqueues BullMQ.
@@ -75,6 +80,21 @@ export async function POST(request: NextRequest) {
       logger.error("scan_upload_failed", { userId, error: String(err) });
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
+  }
+
+  const identity = await enforceScanFaceIdentity({
+    userId,
+    scanName,
+    centreImagePath: imagePaths.centre,
+  });
+  if (!identity.ok) {
+    await cleanupUploadedScanImages(imagePaths);
+    const status =
+      identity.code === FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE ? 503 : 403;
+    return NextResponse.json(
+      { error: identity.code, message: identity.message },
+      { status }
+    );
   }
 
   const primaryImageUrl = faceCaptureImages[0]?.imageUrl ?? "";

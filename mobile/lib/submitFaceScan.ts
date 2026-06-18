@@ -22,8 +22,14 @@ export async function submitFaceScan(
   }
 
   if (submitRes.status !== 503 && !submitRes.ok && submitRes.status !== 202) {
-    const err = (await submitRes.json().catch(() => ({}))) as { error?: string };
-    return { mode: "error", message: err.error || "Could not queue scan." };
+    const err = (await submitRes.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    return {
+      mode: "error",
+      message: err.message || err.error || "Could not queue scan.",
+    };
   }
 
   const res = await apiFetch("/api/scan", token, { method: "POST", body: form });
