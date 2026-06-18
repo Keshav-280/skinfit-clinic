@@ -23,8 +23,19 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV MPLCONFIGDIR=/app/.matplotlib
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-pip \
+    libgl1 libglib2.0-0 libxcb1 \
+  && python3 -m venv /opt/identity-venv \
+  && rm -rf /var/lib/apt/lists/*
+COPY apps/ml-worker/python/requirements-identity.txt /tmp/requirements-identity.txt
+COPY apps/ml-worker/python/face_identity_infer.py /app/apps/ml-worker/python/face_identity_infer.py
+RUN /opt/identity-venv/bin/pip install --no-cache-dir -r /tmp/requirements-identity.txt \
+  && /opt/identity-venv/bin/python3 -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider']).prepare(ctx_id=-1)"
+ENV CAPTURE_PREVIEW_PYTHON=/opt/identity-venv/bin/python3
 RUN groupadd -r skinfit && useradd -r -g skinfit -d /home/skinfit skinfit \
-  && mkdir -p /home/skinfit/.config /app/.matplotlib /uploads \
+  && mkdir -p /home/skinfit/.config /home/skinfit/.insightface /app/.matplotlib /uploads \
   && chown -R skinfit:skinfit /home/skinfit /app/.matplotlib /uploads
 ENV HOME=/home/skinfit
 COPY --from=builder /app/public ./public
