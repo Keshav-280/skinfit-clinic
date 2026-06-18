@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
@@ -25,7 +25,7 @@ export type FaceIdentityErrorCode =
 export type ScanFaceIdentityGateResult =
   | {
       ok: true;
-      action: "reference_set" | "verified" | "skipped";
+      action: "reference_set" | "legacy_reference_set" | "verified" | "skipped";
       similarity?: number;
     }
   | {
@@ -45,6 +45,98 @@ const USER_MESSAGES: Record<FaceIdentityErrorCode, string> = {
   [FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED]:
     "Complete your onboarding baseline scan first before taking another scan.",
 };
+
+function bufferFromDataUri(dataUri: string): Buffer | null {
+  const m = /^data:([^;]+);base64,(.+)$/i.exec(dataUri.trim());
+  if (!m) return null;
+  try {
+    return Buffer.from(m[2]!, "base64");
+  } catch {
+    return null;
+  }
+}
+
+function centreCaptureFromScan(row: {
+  imageUrl: string | null;
+  faceCaptureImages: unknown;
+}): FaceCaptureRef | null {
+  const captures = (row.faceCaptureImages ?? []) as FaceCaptureRef[];
+  return (
+    captures.find((c) => c.label === "centre") ??
+    captures.find((c) => c.label === "center") ??
+    (row.imageUrl
+      ? { label: "centre", imageUrl: row.imageUrl }
+      : captures[0] ?? null)
+  );
+}
+
+async function readCentreImageFromCapture(
+  capture: FaceCaptureRef
+): Promise<Buffer | null> {
+  if (capture.dataUri) {
+    return bufferFromDataUri(capture.dataUri);
+  }
+  const url = capture.imageUrl ?? capture.previewUrl ?? "";
+  if (!url) return null;
+
+  const path = storagePathFromFileUrl(url);
+  if (path) {
+    try {
+      return await getStorage().read(path);
+    } catch {
+      return null;
+    }
+  }
+
+  if (url.startsWith("scans/") || url.startsWith("masks/")) {
+    try {
+      return await getStorage().read(url);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function countUserScans(userId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(scans)
+    .where(eq(scans.userId, userId));
+  return row?.count ?? 0;
+}
+
+async function findReferenceScanRow(userId: string) {
+  const [baseline] = await db
+    .select({
+      imageUrl: scans.imageUrl,
+      faceCaptureImages: scans.faceCaptureImages,
+    })
+    .from(scans)
+    .where(
+      and(
+        eq(scans.userId, userId),
+        eq(scans.scanName, BASELINE_ONBOARDING_SCAN_NAME)
+      )
+    )
+    .orderBy(asc(scans.createdAt))
+    .limit(1);
+
+  if (baseline) return baseline;
+
+  const [first] = await db
+    .select({
+      imageUrl: scans.imageUrl,
+      faceCaptureImages: scans.faceCaptureImages,
+    })
+    .from(scans)
+    .where(eq(scans.userId, userId))
+    .orderBy(asc(scans.createdAt))
+    .limit(1);
+
+  return first ?? null;
+}
 
 function isBaselineOnboardingScan(scanName: string): boolean {
   return scanName.trim() === BASELINE_ONBOARDING_SCAN_NAME;
@@ -116,39 +208,30 @@ async function saveUserFaceReference(args: {
 async function backfillReferenceFromFirstScan(
   userId: string
 ): Promise<{ embedding: number[]; imagePath: string } | null> {
-  const [first] = await db
-    .select({
-      imageUrl: scans.imageUrl,
-      faceCaptureImages: scans.faceCaptureImages,
-    })
-    .from(scans)
-    .where(eq(scans.userId, userId))
-    .orderBy(asc(scans.createdAt))
-    .limit(1);
+  const scanRow = await findReferenceScanRow(userId);
+  if (!scanRow) return null;
 
-  if (!first) return null;
+  const centre = centreCaptureFromScan(scanRow);
+  if (!centre) return null;
 
-  const captures = (first.faceCaptureImages ?? []) as FaceCaptureRef[];
-  const centre =
-    captures.find((c) => c.label === "centre") ??
-    captures.find((c) => c.label === "center");
-  const centreUrl = centre?.imageUrl ?? first.imageUrl;
-  if (!centreUrl || typeof centreUrl !== "string") return null;
+  const jpeg = await readCentreImageFromCapture(centre);
+  if (!jpeg?.length) return null;
 
-  const path = storagePathFromFileUrl(centreUrl);
-  if (!path) return null;
-
-  const jpeg = await getStorage().read(path);
   const extracted = await extractFaceEmbedding(jpeg);
   if (!extracted.ok) return null;
+
+  const imagePath =
+    storagePathFromFileUrl(centre.imageUrl ?? "") ??
+    (centre.imageUrl?.startsWith("scans/") ? centre.imageUrl : null) ??
+    "legacy-backfill-centre";
 
   await saveUserFaceReference({
     userId,
     embedding: extracted.embedding,
-    imagePath: path,
+    imagePath,
   });
 
-  return { embedding: extracted.embedding, imagePath: path };
+  return { embedding: extracted.embedding, imagePath };
 }
 
 /**
@@ -177,10 +260,15 @@ export async function enforceScanFaceIdentity(args: {
   }
 
   const centrePath = args.centreImagePath ?? "";
+  const priorScanCount = await countUserScans(args.userId);
   const establishingBaseline =
     !reference.embedding?.length && isBaselineOnboardingScan(args.scanName);
+  const legacyBootstrap =
+    !reference.embedding?.length &&
+    !establishingBaseline &&
+    priorScanCount > 0;
 
-  if (!reference.embedding?.length && !establishingBaseline) {
+  if (!reference.embedding?.length && !establishingBaseline && !legacyBootstrap) {
     return {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED,
@@ -221,13 +309,16 @@ export async function enforceScanFaceIdentity(args: {
     };
   }
 
-  if (establishingBaseline) {
+  if (establishingBaseline || legacyBootstrap) {
     await saveUserFaceReference({
       userId: args.userId,
       embedding: extracted.embedding,
       imagePath: centrePath || "onboarding-centre-inline",
     });
-    return { ok: true, action: "reference_set" };
+    return {
+      ok: true,
+      action: establishingBaseline ? "reference_set" : "legacy_reference_set",
+    };
   }
 
   const similarity = cosineSimilarity(
