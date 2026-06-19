@@ -1,3 +1,5 @@
+import "server-only";
+
 import { count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
@@ -24,64 +26,12 @@ import {
   isRagMonthlyPayloadV1,
   type MonthlyRagCronPayloadV1,
 } from "@/src/lib/ragCronMonthlyPayload";
+import {
+  parseMonthlyReportDisplay,
+  type PatientMonthlyInsightSnapshot,
+} from "@/src/lib/patientInsightDisplay";
 
-export type MonthlyReportDisplay = {
-  kind: "rag" | "placeholder" | "unknown";
-  scans: number | null;
-  loggedDays: number | null;
-  kaiMonthAvg: number | null;
-  summaryTitle: string | null;
-  summaryBody: string | null;
-  highlights: string[];
-  risks: string[];
-  nextMonthFocus: string[];
-};
-
-export function parseMonthlyReportDisplay(payload: unknown): MonthlyReportDisplay {
-  const empty: MonthlyReportDisplay = {
-    kind: "unknown",
-    scans: null,
-    loggedDays: null,
-    kaiMonthAvg: null,
-    summaryTitle: null,
-    summaryBody: null,
-    highlights: [],
-    risks: [],
-    nextMonthFocus: [],
-  };
-
-  if (isRagMonthlyPayloadV1(payload)) {
-    const m = payload.monthly;
-    return {
-      kind: "rag",
-      scans: payload.totals?.scans ?? null,
-      loggedDays: payload.totals?.loggedDaysApprox ?? null,
-      kaiMonthAvg:
-        typeof m.kaiMonthAvgFromParams === "number" ? m.kaiMonthAvgFromParams : null,
-      summaryTitle: m.summaryTitle?.trim() || null,
-      summaryBody: m.summaryBody?.trim() || null,
-      highlights: (m.highlights ?? []).filter(Boolean),
-      risks: (m.risks ?? []).filter(Boolean),
-      nextMonthFocus: (m.nextMonthFocus ?? []).filter(Boolean),
-    };
-  }
-
-  if (payload && typeof payload === "object") {
-    const note = (payload as Record<string, unknown>).note;
-    if (typeof note === "string" && /placeholder/i.test(note)) {
-      return { ...empty, kind: "placeholder" };
-    }
-  }
-
-  return empty;
-}
-
-export type PatientMonthlyInsightSnapshot = {
-  locked: boolean;
-  nextInsightAt: string | null;
-  latestMonthStart: string | null;
-  monthly: MonthlyReportDisplay | null;
-};
+export type { PatientMonthlyInsightSnapshot, MonthlyReportDisplay } from "@/src/lib/patientInsightDisplay";
 
 /** Same monthly insight the patient `/api/patient/monthly-insight` serves (without cache). */
 export async function loadPatientMonthlyInsightSnapshot(

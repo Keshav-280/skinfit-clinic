@@ -20,7 +20,7 @@ import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallCloc
 import {
   loadPatientMonthlyInsightSnapshot,
   loadPatientWeeklyInsightViewModel,
-} from "@/src/lib/patientInsightParity";
+} from "@/src/lib/patientInsightParity.server";
 
 export const DOCTOR_PATIENT_DETAIL_SECTIONS = [
   "profile",

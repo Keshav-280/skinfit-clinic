@@ -88,8 +88,8 @@ import {
   MonthlyInsightView,
   monthlySnapshotToViewData,
 } from "@/components/dashboard/MonthlyInsightView";
-import { parseMonthlyReportDisplay } from "@/src/lib/patientInsightParity";
-import type { PatientMonthlyInsightSnapshot } from "@/src/lib/patientInsightParity";
+import { parseMonthlyReportDisplay } from "@/src/lib/patientInsightDisplay";
+import type { PatientMonthlyInsightSnapshot } from "@/src/lib/patientInsightDisplay";
 import type { WeeklyInsightViewModel } from "@/src/lib/weeklyInsightModel";
 import { DoctorSnippetTextarea } from "@/components/doctor/DoctorSnippetTextarea";
 import {

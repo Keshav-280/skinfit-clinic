@@ -3,7 +3,7 @@
 import { BookOpen, Download, Lock } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
 import { downloadMonthlyKaiReportPdf } from "@/src/lib/ragMonthlyReportPdf";
-import type { PatientMonthlyInsightSnapshot } from "@/src/lib/patientInsightParity";
+import type { PatientMonthlyInsightSnapshot } from "@/src/lib/patientInsightDisplay";
 import {
   patientInnerCard,
   patientKicker,

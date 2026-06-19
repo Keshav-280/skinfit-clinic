@@ -183,7 +183,7 @@ export async function buildDoctorScanReportPayload(
       ? doctorScanMaskPath(patientId, row.id, "acne", { preview: true })
       : null,
     maskExportVersion,
-    spatialOutputs,
+    spatialOutputs: spatialOutputs ?? null,
     scanDateIso: row.createdAt.toISOString(),
     trackerReport,
     scoreEdit: buildDoctorScoreEditMeta(row.scores),
