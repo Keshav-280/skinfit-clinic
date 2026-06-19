@@ -8,21 +8,12 @@ import { assertDoctorPatientAccess } from "@/src/lib/doctorPatientCare";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { invalidateUserHomeCache, invalidateUserInsightsCache, invalidateUserScanDerivedCaches } from "@/src/lib/infra";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
-import { resolveScanDisplayScores, type DoctorOverrides } from "@/src/lib/resolveScanDisplayScores";
+import { resolveScanDisplayScores, type DoctorOverrides, DOCTOR_EDITABLE_MFS_KEYS } from "@/src/lib/resolveScanDisplayScores";
 
-const ALLOWED_MFS_KEYS = [
-  "active_acne",
-  "acne_scars",
-  "wrinkle_severity",
-  "sagging_volume",
-  "under_eye",
-  "pigmentation_model",
-] as const;
-
-type AllowedMfsKey = (typeof ALLOWED_MFS_KEYS)[number];
+type AllowedMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
 
 function isAllowedMfsKey(k: string): k is AllowedMfsKey {
-  return (ALLOWED_MFS_KEYS as readonly string[]).includes(k);
+  return (DOCTOR_EDITABLE_MFS_KEYS as readonly string[]).includes(k);
 }
 
 function clampSeverity1to5(n: number): number {

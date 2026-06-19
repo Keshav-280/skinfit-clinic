@@ -9,53 +9,11 @@ import {
 import { SCAN_MASK_FRAME_ASPECT_CSS } from "@/src/lib/maskImageCrop";
 import {
   DoctorInlineLoader,
-  doctorPatientPageRowClass,
 } from "@/components/doctor/DoctorUiPrimitives";
+import { DoctorScanScoreEditor } from "@/components/doctor/DoctorScanScoreEditor";
+import { TrackerReportSections } from "@/components/dashboard/TrackerReportSections";
 
 const reportCache = new Map<string, DoctorScanReportPayload>();
-
-const CLINICAL_PARAM_ROWS: Array<{
-  key:
-    | "active_acne"
-    | "acne_scars"
-    | "skin_quality"
-    | "wrinkle_severity"
-    | "sagging_volume"
-    | "under_eye"
-    | "hair_health"
-    | "pigmentation_model";
-  label: string;
-}> = [
-  { key: "active_acne", label: "Active acne" },
-  { key: "acne_scars", label: "Acne scars" },
-  { key: "skin_quality", label: "Skin quality" },
-  { key: "wrinkle_severity", label: "Wrinkles" },
-  { key: "sagging_volume", label: "Sagging & volume" },
-  { key: "under_eye", label: "Under-eye" },
-  { key: "hair_health", label: "Hair health" },
-  { key: "pigmentation_model", label: "Pigmentation" },
-];
-
-function clampPct(n: number): number {
-  return Math.max(0, Math.min(100, Math.round(n)));
-}
-
-/** Converts model severity 1-5 to clarity 0-100 (higher is better). */
-function severityToClarityPercent(severity: number): number {
-  const x = Math.max(1, Math.min(5, severity));
-  return clampPct(100 - ((x - 1) / 4) * 100);
-}
-
-function scoreText(v: number | null | undefined): string {
-  return typeof v === "number" && Number.isFinite(v) ? `${clampPct(v)}` : "—";
-}
-
-function summaryTone(overall: number): string {
-  if (overall >= 85) return "Strong overall skin health signal.";
-  if (overall >= 70) return "Good baseline with room to improve consistency.";
-  if (overall >= 55) return "Moderate skin stress; focus on routine stability.";
-  return "High skin stress pattern; prioritize guided correction.";
-}
 
 function cacheKey(patientId: string, scanId: number) {
   return `${patientId}:${scanId}`;
@@ -144,17 +102,27 @@ export function DoctorScanReportPanel({
   patientId,
   scanId,
   onLoadingChange,
+  onScoresUpdated,
 }: {
   patientId: string;
   scanId: number;
   onLoadingChange?: (loading: boolean) => void;
+  onScoresUpdated?: () => void;
 }) {
   const key = cacheKey(patientId, scanId);
   const cached = reportCache.get(key);
   const [report, setReport] = useState<DoctorScanReportPayload | null>(cached ?? null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(!cached);
+  const [reloadToken, setReloadToken] = useState(0);
   const fetchedRef = useRef<string | null>(cached ? key : null);
+
+  const reloadReport = () => {
+    reportCache.delete(key);
+    fetchedRef.current = null;
+    setReloadToken((n) => n + 1);
+    onScoresUpdated?.();
+  };
 
   useEffect(() => {
     if (fetchedRef.current === key && reportCache.has(key)) {
@@ -200,7 +168,7 @@ export function DoctorScanReportPanel({
     return () => {
       cancelled = true;
     };
-  }, [patientId, scanId, key]);
+  }, [patientId, scanId, key, reloadToken]);
 
   useEffect(() => {
     onLoadingChange?.(loading);
@@ -223,47 +191,6 @@ export function DoctorScanReportPanel({
   }
 
   const tracker = report.trackerReport;
-  const clinical = report.metrics.clinical_scores;
-  const eightParamsFromClinical = CLINICAL_PARAM_ROWS.map((row) => {
-    const raw = clinical?.[row.key];
-    const value =
-      typeof raw === "number" && Number.isFinite(raw)
-        ? severityToClarityPercent(raw)
-        : row.key === "pigmentation_model" && typeof report.metrics.pigmentation === "number"
-          ? clampPct(report.metrics.pigmentation)
-          : null;
-    return { label: row.label, value };
-  });
-  const eightParams =
-    tracker?.paramRows?.length
-      ? tracker.paramRows.map((p) => ({
-          label: p.label,
-          value: typeof p.value === "number" ? clampPct(p.value) : null,
-        }))
-      : eightParamsFromClinical;
-
-  const hookLines = tracker
-    ? [tracker.hookSentence, tracker.insightText, tracker.predictionText].filter(
-        (s) => s.trim().length > 0
-      )
-    : (() => {
-        const scoredParams = eightParamsFromClinical.filter(
-          (p): p is { label: string; value: number } => typeof p.value === "number"
-        );
-        const strongest = [...scoredParams].sort((a, b) => b.value - a.value)[0];
-        const weakest = [...scoredParams].sort((a, b) => a.value - b.value)[0];
-        const overall = clampPct(report.metrics.overall_score);
-        return [
-          `Overall ${overall}/100. ${summaryTone(overall)}`,
-          strongest
-            ? `Best: ${strongest.label} (${strongest.value}).`
-            : "Best area: not enough data.",
-          weakest
-            ? `Focus: ${weakest.label} (${weakest.value}).`
-            : "Focus area: not enough data.",
-        ];
-      })();
-
   const metaBits = [
     report.skinType?.trim(),
     report.userName?.trim(),
@@ -284,6 +211,13 @@ export function DoctorScanReportPanel({
           {!tracker ? " · scores only (no saved tracker)" : null}
         </p>
       ) : null}
+
+      <DoctorScanScoreEditor
+        patientId={patientId}
+        scanId={scanId}
+        report={report}
+        onSaved={reloadReport}
+      />
 
       <ReportSection title="Face captures">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
@@ -333,83 +267,21 @@ export function DoctorScanReportPanel({
         </ReportSection>
       ) : null}
 
-      {hookLines.length > 0 ? (
-        <ReportSection title="Insights">
-          <ul className="space-y-2 text-sm leading-relaxed text-[#2C3E6B]/85">
-            {hookLines.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+      {tracker ? (
+        <div className="rounded-xl border border-[#2C3E6B]/10 bg-white p-2 sm:p-3">
+          <p className="mb-2 text-[11px] font-medium text-[#2C3E6B]/50">
+            Same AI report sections the patient sees after clinic unlock
+          </p>
+          <TrackerReportSections report={tracker} serifClassName="" scoresUnlocked />
+        </div>
+      ) : (
+        <ReportSection title="Report">
+          <p className="text-sm leading-relaxed text-[#2C3E6B]/70">
+            No saved tracker snapshot for this scan. The patient may see legacy fallback
+            content until a tracker is generated.
+          </p>
         </ReportSection>
-      ) : null}
-
-      <ReportSection title="Parameters">
-        <dl className="grid gap-1.5 sm:grid-cols-2">
-          {eightParams.map((p) => (
-            <div
-              key={p.label}
-              className={`${doctorPatientPageRowClass} flex items-center justify-between gap-2 py-2`}
-            >
-              <dt className="text-xs text-[#2C3E6B]/70">{p.label}</dt>
-              <dd className="text-sm font-bold tabular-nums text-[#2C3E6B]">
-                {scoreText(p.value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </ReportSection>
-
-      {tracker && tracker.causes.length > 0 ? (
-        <ReportSection title="Likely causes">
-          <ul className="space-y-1.5 text-sm text-[#2C3E6B]/85">
-            {tracker.causes.map((c) => (
-              <li key={c.text} className="leading-relaxed">
-                {c.text}
-                <span className="text-[11px] text-[#2C3E6B]/45"> · {c.impact}</span>
-              </li>
-            ))}
-          </ul>
-        </ReportSection>
-      ) : null}
-
-      {tracker && tracker.focusActions.length > 0 ? (
-        <ReportSection title="Focus">
-          <ol className="space-y-2 text-sm text-[#2C3E6B]/85">
-            {tracker.focusActions.map((a) => (
-              <li key={a.rank} className="leading-relaxed">
-                <span className="font-semibold text-[#2C3E6B]">
-                  {a.rank}. {a.title}
-                </span>
-                {a.detail?.trim() ? (
-                  <p className="mt-0.5 text-xs text-[#2C3E6B]/65">{a.detail}</p>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </ReportSection>
-      ) : null}
-
-      {tracker && tracker.resources.length > 0 ? (
-        <ReportSection title="Resources">
-          <ul className="space-y-2 text-sm">
-            {tracker.resources.map((r) => (
-              <li key={`${r.title}-${r.url}`}>
-                <p className="font-medium text-[#2C3E6B]">{r.title}</p>
-                {r.url ? (
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-[#2C3E6B]/70 underline hover:text-[#2C3E6B]"
-                  >
-                    Open link
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </ReportSection>
-      ) : null}
+      )}
     </div>
   );
 }

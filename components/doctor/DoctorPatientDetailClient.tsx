@@ -24,6 +24,7 @@ import {
   Image,
   Check,
   ListChecks,
+  Loader2,
   Mail,
   MessageSquare,
   Mic,
@@ -82,6 +83,14 @@ import {
 import { DoctorClinicTreatmentsPanel } from "@/components/doctor/DoctorClinicTreatmentsPanel";
 import { DoctorRoutinePlanEditor } from "@/components/doctor/DoctorRoutinePlanEditor";
 import { DoctorScanReportPanel } from "@/components/doctor/DoctorScanReportPanel";
+import { WeeklyReportCard } from "@/components/dashboard/WeeklyReportCard";
+import {
+  MonthlyInsightView,
+  monthlySnapshotToViewData,
+} from "@/components/dashboard/MonthlyInsightView";
+import { parseMonthlyReportDisplay } from "@/src/lib/patientInsightParity";
+import type { PatientMonthlyInsightSnapshot } from "@/src/lib/patientInsightParity";
+import type { WeeklyInsightViewModel } from "@/src/lib/weeklyInsightModel";
 import { DoctorSnippetTextarea } from "@/components/doctor/DoctorSnippetTextarea";
 import {
   DOCTOR_FEEDBACK_SNIPPETS,
@@ -337,6 +346,10 @@ type DetailJson = {
     payloadJson: Record<string, unknown> | null;
     createdAt: string;
   }>;
+  /** Same weekly card the patient app shows today. */
+  patientWeeklyInsight?: WeeklyInsightViewModel;
+  /** Same monthly insight snapshot the patient API serves. */
+  patientMonthlyInsight?: PatientMonthlyInsightSnapshot;
   appointments?: Array<{
     id: string;
     dateTime: string;
@@ -562,28 +575,8 @@ function pickTextList(rec: Record<string, unknown> | null, keys: string[]): stri
   return [];
 }
 
-function summarizeMonthlyPayload(payload: Record<string, unknown> | null): {
-  scans: number | null;
-  loggedDays: number | null;
-  summary: string | null;
-  risks: string[];
-  actions: string[];
-  wins: string[];
-} {
-  const totals = asRecord(payload?.totals);
-  const monthly = asRecord(payload?.monthly);
-  const scans = typeof totals?.scans === "number" ? totals.scans : null;
-  const loggedDays = typeof totals?.loggedDaysApprox === "number" ? totals.loggedDaysApprox : null;
-  const summary =
-    toDisplayText(monthly?.clinicalSummary) ??
-    toDisplayText(monthly?.summary) ??
-    toDisplayText(monthly?.narrative) ??
-    toDisplayText(monthly?.overview) ??
-    null;
-  const risks = pickTextList(monthly, ["risks", "riskFlags", "concerns"]);
-  const actions = pickTextList(monthly, ["actions", "recommendations", "focusActions", "nextSteps"]);
-  const wins = pickTextList(monthly, ["wins", "strengths", "improvements"]);
-  return { scans, loggedDays, summary, risks, actions, wins };
+function summarizeMonthlyPayload(payload: Record<string, unknown> | null) {
+  return parseMonthlyReportDisplay(payload);
 }
 
 /** Split list entries that were stored as one newline- or sentence-blob string. */
@@ -3635,7 +3628,11 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         </div>
                       </div>
                       <div className="border-t border-[#2C3E6B]/8 px-3 pb-3 pt-1">
-                        <DoctorScanReportPanel patientId={patientId} scanId={s.id} />
+                        <DoctorScanReportPanel
+                          patientId={patientId}
+                          scanId={s.id}
+                          onScoresUpdated={loadScans}
+                        />
                       </div>
                     </>
                   ) : (
@@ -3704,151 +3701,172 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         )}
       </section>
 
-      <section className={`${doctorPatientPageCardClass} p-4`}>
-        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Weekly</h2>
-        {sectionBusy("reports") && data.weeklyReports === undefined ? (
-          <DoctorInlineLoader label="Loading…" compact />
-        ) : (data.weeklyReports ?? []).length === 0 ? (
-          <p className={`${doctorEmptyStateClass} px-4 py-6`}>None yet.</p>
+      <div className="space-y-8">
+        {sectionBusy("reports") && data.patientWeeklyInsight === undefined ? (
+          <section
+            className="flex items-center gap-3 rounded-[22px] bg-gradient-to-b from-indigo-50/80 to-white px-5 py-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)] sm:px-6"
+            style={{ border: "1px solid #e0e7ff" }}
+            aria-busy="true"
+          >
+            <Loader2 className="h-6 w-6 shrink-0 animate-spin text-indigo-600" />
+            <p className="text-sm text-zinc-700">Loading weekly insight…</p>
+          </section>
+        ) : data.patientWeeklyInsight ? (
+          <WeeklyReportCard {...data.patientWeeklyInsight.card} scoresUnlocked />
         ) : (
-          <ul className="space-y-2 text-sm">
-            {(data.weeklyReports ?? []).map((w) => (
-              <li key={w.id} className={`${doctorPatientPagePanelClass} px-3 py-3`}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-[#2C3E6B]">
-                    {w.weekStartYmd}
-                    {w.kaiScore != null ? (
-                      <span className="ml-2 font-bold tabular-nums">{w.kaiScore}</span>
-                    ) : null}
-                    {w.weeklyDelta != null ? (
-                      <span className="ml-1 text-xs font-medium text-[#2C3E6B]/55">
-                        Δ{w.weeklyDelta}
-                      </span>
-                    ) : null}
-                  </p>
-                  {renderReportDeleteButton(
-                    "weekly",
-                    w.id,
-                    `weekly report for ${w.weekStartYmd}`
-                  )}
-                </div>
-                {w.narrativeText?.trim() ? (
-                  <p className="mt-2 text-sm leading-relaxed text-[#2C3E6B]/85">
-                    {w.narrativeText.trim()}
-                  </p>
-                ) : null}
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
-                    JSON
-                  </summary>
-                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[#F6F4EB]/80 p-2 text-[10px] text-[#2C3E6B]/70">
-                    {JSON.stringify(
-                      {
-                        consistencyScore: w.consistencyScore,
-                        causesJson: w.causesJson,
-                        focusActionsJson: w.focusActionsJson,
-                        resourcesJson: w.resourcesJson,
-                      },
-                      null,
-                      2
-                    )}
-                  </pre>
-                </details>
-              </li>
-            ))}
-          </ul>
+          <p className="rounded-[22px] border border-[#e2e8f0] bg-[#f8fafc] px-5 py-6 text-sm text-[#64748B]">
+            No weekly insight yet.
+          </p>
         )}
-      </section>
 
-      <section className={`${doctorPatientPageCardClass} p-4`}>
-        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Monthly</h2>
-        {sectionBusy("reports") && data.monthlyReports === undefined ? (
-          <DoctorInlineLoader label="Loading…" compact />
-        ) : (data.monthlyReports ?? []).length === 0 ? (
-          <p className={`${doctorEmptyStateClass} px-4 py-6`}>None yet.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {(data.monthlyReports ?? []).map((m) => {
-              const summary = summarizeMonthlyPayload(m.payloadJson);
-              return (
-                <li key={m.id} className={`${doctorPatientPagePanelClass} px-3 py-3`}>
+        {(data.weeklyReports ?? []).length > 0 ? (
+          <details className={`${doctorPatientPageCardClass} p-4`}>
+            <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
+              Internal cron archive ({(data.weeklyReports ?? []).length})
+            </summary>
+            <p className="mt-2 text-[11px] leading-relaxed text-[#2C3E6B]/45">
+              These database rows are not shown to patients.
+            </p>
+            <ul className="mt-2 space-y-2 text-sm">
+              {(data.weeklyReports ?? []).map((w) => (
+                <li key={w.id} className={`${doctorPatientPagePanelClass} px-3 py-2`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-[#2C3E6B]">{m.monthStartYmd}</p>
-                      <p className="text-[11px] text-[#2C3E6B]/50">
-                        {new Date(m.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
+                    <p className="text-xs font-semibold text-[#2C3E6B]">
+                      {w.weekStartYmd}
+                      {w.kaiScore != null ? (
+                        <span className="ml-2 font-bold tabular-nums">{w.kaiScore}</span>
+                      ) : null}
+                      {w.weeklyDelta != null ? (
+                        <span className="ml-1 font-medium text-[#2C3E6B]/55">
+                          Δ{w.weeklyDelta}
+                        </span>
+                      ) : null}
+                    </p>
                     {renderReportDeleteButton(
-                      "monthly",
-                      m.id,
-                      `monthly report for ${m.monthStartYmd}`
+                      "weekly",
+                      w.id,
+                      `weekly report for ${w.weekStartYmd}`
                     )}
                   </div>
-
-                  <div className="mt-2 grid grid-cols-3 gap-1.5">
-                    <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
-                      <p className="text-[10px] font-medium text-[#2C3E6B]/50">Scans</p>
-                      <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
-                        {summary.scans ?? "—"}
-                      </p>
-                    </div>
-                    <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
-                      <p className="text-[10px] font-medium text-[#2C3E6B]/50">Days</p>
-                      <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
-                        {summary.loggedDays ?? "—"}
-                      </p>
-                    </div>
-                    <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
-                      <p className="text-[10px] font-medium text-[#2C3E6B]/50">Summary</p>
-                      <p className="text-sm font-bold text-[#2C3E6B]">
-                        {summary.summary ? "Yes" : "—"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {summary.summary ? (
-                    <p className="mt-2 text-sm leading-relaxed text-[#2C3E6B]/85">
-                      {summary.summary}
-                    </p>
-                  ) : null}
-
-                  {(summary.risks.length > 0 ||
-                    summary.actions.length > 0 ||
-                    summary.wins.length > 0) ? (
-                    <div className="mt-3 space-y-2">
-                      <MonthlyReportPointList
-                        title="Risks"
-                        items={summary.risks}
-                        listKey={`${m.id}-risk`}
-                      />
-                      <MonthlyReportPointList
-                        title="Actions"
-                        items={summary.actions}
-                        listKey={`${m.id}-action`}
-                      />
-                      <MonthlyReportPointList
-                        title="Wins"
-                        items={summary.wins}
-                        listKey={`${m.id}-win`}
-                      />
-                    </div>
-                  ) : null}
-
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
-                      JSON
-                    </summary>
-                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[#F6F4EB]/80 p-2 text-[10px] text-[#2C3E6B]/70">
-                      {JSON.stringify(m.payloadJson, null, 2)}
-                    </pre>
-                  </details>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+
+        {sectionBusy("reports") && data.patientMonthlyInsight === undefined ? (
+          <section
+            className="flex items-center gap-3 rounded-[22px] bg-gradient-to-b from-indigo-50/80 to-white px-5 py-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)] sm:px-6"
+            style={{ border: "1px solid #e0e7ff" }}
+            aria-busy="true"
+          >
+            <Loader2 className="h-6 w-6 shrink-0 animate-spin text-indigo-600" />
+            <p className="text-sm text-zinc-700">Loading monthly insight…</p>
+          </section>
+        ) : data.patientMonthlyInsight ? (
+          <MonthlyInsightView
+            data={monthlySnapshotToViewData(data.patientMonthlyInsight)}
+            showPdfButton={false}
+          />
+        ) : (
+          <p className="rounded-[22px] border border-[#e2e8f0] bg-[#f8fafc] px-5 py-6 text-sm text-[#64748B]">
+            No monthly insight yet.
+          </p>
         )}
-      </section>
+
+        {(data.monthlyReports ?? []).length > 0 ? (
+          <details className={`${doctorPatientPageCardClass} p-4`} open={(data.monthlyReports ?? []).length <= 3}>
+            <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
+              Stored monthly reports ({(data.monthlyReports ?? []).length})
+            </summary>
+            <ul className="mt-2 space-y-2 text-sm">
+              {(data.monthlyReports ?? []).map((m) => {
+                const summary = summarizeMonthlyPayload(m.payloadJson);
+                return (
+                  <li key={m.id} className={`${doctorPatientPagePanelClass} px-3 py-3`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-[#2C3E6B]">{m.monthStartYmd}</p>
+                        <p className="text-[11px] text-[#2C3E6B]/50">
+                          {new Date(m.createdAt).toLocaleDateString()}
+                          {summary.kind === "placeholder"
+                            ? " · cron placeholder (patient sees locked)"
+                            : summary.kind === "rag"
+                              ? " · full RAG report"
+                              : null}
+                        </p>
+                      </div>
+                      {renderReportDeleteButton(
+                        "monthly",
+                        m.id,
+                        `monthly report for ${m.monthStartYmd}`
+                      )}
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-3 gap-1.5">
+                      <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
+                        <p className="text-[10px] font-medium text-[#2C3E6B]/50">Scans</p>
+                        <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
+                          {summary.scans ?? "—"}
+                        </p>
+                      </div>
+                      <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
+                        <p className="text-[10px] font-medium text-[#2C3E6B]/50">Days</p>
+                        <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
+                          {summary.loggedDays ?? "—"}
+                        </p>
+                      </div>
+                      <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
+                        <p className="text-[10px] font-medium text-[#2C3E6B]/50">Month kAI</p>
+                        <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
+                          {summary.kaiMonthAvg ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {summary.summaryTitle ? (
+                      <p className="mt-2 text-xs font-semibold text-[#2C3E6B]">
+                        {summary.summaryTitle}
+                      </p>
+                    ) : null}
+                    {summary.summaryBody ? (
+                      <p className="mt-1 text-sm leading-relaxed text-[#2C3E6B]/85">
+                        {summary.summaryBody}
+                      </p>
+                    ) : summary.kind === "placeholder" ? (
+                      <p className="mt-2 text-sm italic text-[#2C3E6B]/55">
+                        Cron placeholder — not shown to patients.
+                      </p>
+                    ) : null}
+
+                    {(summary.risks.length > 0 ||
+                      summary.nextMonthFocus.length > 0 ||
+                      summary.highlights.length > 0) ? (
+                      <div className="mt-3 space-y-2">
+                        <MonthlyReportPointList
+                          title="Highlights"
+                          items={summary.highlights}
+                          listKey={`${m.id}-highlights`}
+                        />
+                        <MonthlyReportPointList
+                          title="Risks"
+                          items={summary.risks}
+                          listKey={`${m.id}-risk`}
+                        />
+                        <MonthlyReportPointList
+                          title="Next focus"
+                          items={summary.nextMonthFocus}
+                          listKey={`${m.id}-focus`}
+                        />
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </details>
+        ) : null}
+      </div>
       </div>
       )}
 

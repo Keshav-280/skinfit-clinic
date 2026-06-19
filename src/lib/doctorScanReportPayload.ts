@@ -4,13 +4,18 @@ import { scans, users } from "@/src/db/schema";
 import type { ReportMetrics, ReportRegion } from "@/components/dashboard/scanReportTypes";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
-import { parseScanAcneMaskDataUri, parseScanWrinkleMaskDataUri } from "@/src/lib/parseClinicalScores";
+import { parseScanAcneMaskDataUri, parseScanOverlayDataUri, parseScanWrinkleMaskDataUri, parseMaskExportVersion } from "@/src/lib/parseClinicalScores";
 import type { FaceCaptureRef } from "@/src/lib/resolveScanImageUrl";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
 import { parseClinicalScores } from "@/src/lib/parseClinicalScores";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
+import {
+  buildDoctorScoreEditMeta,
+  type DoctorScoreEditMeta,
+} from "@/src/lib/resolveScanDisplayScores";
 
 type FaceCaptureEntry = {
   label: string;
@@ -59,10 +64,13 @@ export type DoctorScanReportPayload = {
   annotatedImageUrl: string | null;
   wrinkleMaskUrl: string | null;
   acneMaskUrl: string | null;
+  maskExportVersion: number | null;
   spatialOutputs: ScanSpatialOutputs | null;
   scanDateIso: string;
   /** Saved at scan time in `scans.tracker_snapshot` — same content as patient AI report. */
   trackerReport: PatientTrackerReport | null;
+  /** AI baseline + override flag for doctor score editing UI. */
+  scoreEdit: DoctorScoreEditMeta;
 };
 
 function doctorScanImagePath(
@@ -126,6 +134,9 @@ export async function buildDoctorScanReportPayload(
   const clinical_scores = parseClinicalScores(row.scores);
   const wrinkleMaskStored = parseScanWrinkleMaskDataUri(row.scores);
   const acneMaskStored = parseScanAcneMaskDataUri(row.scores);
+  const annotatedImageStored = parseScanOverlayDataUri(row.scores);
+  const maskExportVersion = parseMaskExportVersion(row.scores) ?? null;
+  const spatialOutputs = parseScanSpatialOutputs(row.scores);
 
   const faceCaptureImages = row.faceCaptureImages as FaceCaptureRef[] | null | undefined;
   const builtGallery = buildFaceCaptureGallery(row.id, faceCaptureImages);
@@ -164,16 +175,18 @@ export async function buildDoctorScanReportPayload(
       ...(clinical_scores ? { clinical_scores } : {}),
     },
     aiSummary: row.aiSummary,
-    annotatedImageUrl: null,
+    annotatedImageUrl: annotatedImageStored ?? null,
     wrinkleMaskUrl: wrinkleMaskStored
       ? doctorScanMaskPath(patientId, row.id, "wrinkle", { preview: true })
       : null,
     acneMaskUrl: acneMaskStored
       ? doctorScanMaskPath(patientId, row.id, "acne", { preview: true })
       : null,
-    spatialOutputs: null,
+    maskExportVersion,
+    spatialOutputs,
     scanDateIso: row.createdAt.toISOString(),
     trackerReport,
+    scoreEdit: buildDoctorScoreEditMeta(row.scores),
   };
 }
 

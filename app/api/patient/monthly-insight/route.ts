@@ -9,13 +9,7 @@ import {
   computePatientInsightSchedule,
   getPatientFirstScanAt,
 } from "@/src/lib/patientInsightSchedule";
-import type { MonthlyRagCronPayloadV1 } from "@/src/lib/ragCronMonthlyPayload";
-
-function isRagPayloadV1(v: unknown): v is MonthlyRagCronPayloadV1 {
-  if (!v || typeof v !== "object") return false;
-  const x = v as Record<string, unknown>;
-  return x.kind === "rag_monthly_v1" && !!x.monthly;
-}
+import { isRagMonthlyPayloadV1 } from "@/src/lib/ragCronMonthlyPayload";
 
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
@@ -59,7 +53,7 @@ export async function GET(request: Request) {
       row = latestRow ?? null;
     }
 
-    const ragPayload = isRagPayloadV1(row?.payloadJson) ? row.payloadJson : null;
+    const ragPayload = isRagMonthlyPayloadV1(row?.payloadJson) ? row.payloadJson : null;
     const hasDueReport =
       schedule.dueMonthlyPeriodStart != null &&
       row != null &&

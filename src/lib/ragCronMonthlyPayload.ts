@@ -27,3 +27,9 @@ export function buildMonthlyRagCronPayload(
     llm: pkg.llm,
   };
 }
+
+export function isRagMonthlyPayloadV1(v: unknown): v is MonthlyRagCronPayloadV1 {
+  if (!v || typeof v !== "object") return false;
+  const x = v as Record<string, unknown>;
+  return x.kind === "rag_monthly_v1" && !!x.monthly;
+}

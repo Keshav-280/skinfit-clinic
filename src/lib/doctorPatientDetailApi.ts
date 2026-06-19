@@ -17,6 +17,10 @@ import {
 } from "@/src/db/schema";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
+import {
+  loadPatientMonthlyInsightSnapshot,
+  loadPatientWeeklyInsightViewModel,
+} from "@/src/lib/patientInsightParity";
 
 export const DOCTOR_PATIENT_DETAIL_SECTIONS = [
   "profile",
@@ -472,7 +476,8 @@ export async function loadDoctorPatientDetailSections(
   }
 
   if (want("reports")) {
-    const [legacySkinRows, weeklyRows, monthlyRows] = await Promise.all([
+    const [legacySkinRows, weeklyRows, monthlyRows, patientWeeklyInsight, patientMonthlyInsight] =
+      await Promise.all([
       db.query.skinScans.findMany({
         where: eq(skinScans.userId, patientId),
         orderBy: [desc(skinScans.createdAt)],
@@ -494,6 +499,8 @@ export async function loadDoctorPatientDetailSections(
         orderBy: [desc(monthlyReports.monthStart)],
         limit: 12,
       }),
+      loadPatientWeeklyInsightViewModel(patientId),
+      loadPatientMonthlyInsightSnapshot(patientId),
     ]);
 
     payload.legacySkinScans = legacySkinRows.map((r) => ({
@@ -520,6 +527,8 @@ export async function loadDoctorPatientDetailSections(
       payloadJson: m.payloadJson,
       createdAt: m.createdAt.toISOString(),
     }));
+    payload.patientWeeklyInsight = patientWeeklyInsight;
+    payload.patientMonthlyInsight = patientMonthlyInsight;
   }
 
   return payload;

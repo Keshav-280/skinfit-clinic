@@ -7,6 +7,18 @@ import {
 } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 
+/** Model feature keys doctors may override via the portal (severity 1–5). */
+export const DOCTOR_EDITABLE_MFS_KEYS = [
+  "active_acne",
+  "acne_scars",
+  "wrinkle_severity",
+  "sagging_volume",
+  "under_eye",
+  "pigmentation_model",
+] as const;
+
+export type DoctorEditableMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
+
 export type DoctorOverrides = {
   /**
    * Doctor-entered kAI score (0–100 clarity scale).
@@ -31,7 +43,7 @@ function severityToClarityPercent(severity: number): number {
   return clampInt(100 - ((x - 1) / 4) * 100, 0, 100);
 }
 
-function getDoctorOverrides(scoresJson: unknown): DoctorOverrides | null {
+export function getDoctorOverrides(scoresJson: unknown): DoctorOverrides | null {
   if (!scoresJson || typeof scoresJson !== "object") return null;
   const root = scoresJson as Record<string, unknown>;
   const raw = root.doctorOverrides;
@@ -164,6 +176,60 @@ export function resolveScanDisplayScores(input: {
     },
     effectiveScoresJson,
     resolvedRagParamValues,
+  };
+}
+
+function stripDoctorOverrides(scoresJson: unknown): unknown {
+  if (!scoresJson || typeof scoresJson !== "object") return scoresJson;
+  const copy = { ...(scoresJson as Record<string, unknown>) };
+  delete copy.doctorOverrides;
+  return copy;
+}
+
+export type DoctorScoreEditMeta = {
+  hasOverrides: boolean;
+  /** AI-computed values before any doctor overrides. */
+  aiBase: {
+    kaiScore: number;
+    modelFeatureScores: Partial<Record<DoctorEditableMfsKey, number>>;
+  };
+};
+
+export function buildDoctorScoreEditMeta(scoresJson: unknown): DoctorScoreEditMeta {
+  const doctorOverrides = getDoctorOverrides(scoresJson);
+  const hasOverrides =
+    doctorOverrides != null &&
+    (typeof doctorOverrides.kaiScore === "number" ||
+      (doctorOverrides.modelFeatureScores != null &&
+        Object.values(doctorOverrides.modelFeatureScores).some(
+          (v) => typeof v === "number" && Number.isFinite(v)
+        )));
+
+  const aiResolved = resolveScanDisplayScores({
+    scoresJson: stripDoctorOverrides(scoresJson),
+    baseMetricsColumns: {
+      overallScore: 0,
+      acne: 0,
+      wrinkles: 0,
+      pigmentation: 0,
+    },
+  });
+
+  const clinical = aiResolved.metrics.clinical_scores;
+  const modelFeatureScores: Partial<Record<DoctorEditableMfsKey, number>> = {};
+  for (const key of DOCTOR_EDITABLE_MFS_KEYS) {
+    const v = clinical?.[key];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      modelFeatureScores[key] = v;
+    }
+  }
+
+  return {
+    hasOverrides,
+    aiBase: {
+      kaiScore: aiResolved.metrics.overall_score,
+      modelFeatureScores,
+    },
   };
 }
 
