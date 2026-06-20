@@ -5,6 +5,7 @@ import { annotatorImages } from "@/src/db/schema";
 import { resolveAnnotatorImageSrc } from "@/src/lib/annotatorStorage";
 import { assertSafeStoragePath, getStorage } from "@/src/lib/infra";
 import { requireAnnotatorAuth } from "@/src/lib/auth/require-annotator-auth";
+import { clearAllAnnotatorWork } from "@/src/lib/annotatorParallelService";
 
 const MAX_BYTES = 12 * 1024 * 1024;
 
@@ -201,6 +202,7 @@ export async function DELETE(req: Request) {
     const paths = rows.map((r) => r.fileUrl).filter((p): p is string => Boolean(p?.trim()));
     await deleteStoragePaths(paths);
     await db.delete(annotatorImages);
+    await clearAllAnnotatorWork();
     return NextResponse.json({ success: true, deleted: "all" });
   }
 

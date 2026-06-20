@@ -708,6 +708,25 @@ export const annotatorState = pgTable(
   })
 );
 
+/** Image index ranges for parallel annotation (one row per annotator). */
+export const annotatorAssignments = pgTable(
+  "annotator_assignments",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startIndex: integer("start_index").notNull(),
+    endIndex: integer("end_index").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    rangeIdx: index("annotator_assignments_range_idx").on(
+      table.startIndex,
+      table.endIndex
+    ),
+  })
+);
+
 // Relations: users <-> scans (one-to-many)
 export const usersRelations = relations(users, ({ many }) => ({
   scans: many(scans),

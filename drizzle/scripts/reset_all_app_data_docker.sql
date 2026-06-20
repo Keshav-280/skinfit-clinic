@@ -33,6 +33,7 @@ DELETE FROM skin_scans;
 DELETE FROM scans;
 
 DELETE FROM doctor_profile_images;
+DELETE FROM annotator_assignments;
 DELETE FROM annotator_images;
 DELETE FROM annotator_state;
 
