@@ -700,30 +700,47 @@ export const annotatorState = pgTable(
       }>
     >(),
     currentIndex: integer("current_index").notNull().default(0),
+    /** userId -> sparse imageIndex -> category labels */
+    perUserLabels: jsonb("per_user_labels")
+      .$type<Record<string, Record<string, Record<string, { spec?: string; grade?: string }>>>>()
+      .notNull()
+      .default({}),
+    /** userId -> shape list */
+    perUserShapes: jsonb("per_user_shapes")
+      .$type<
+        Record<
+          string,
+          Array<{
+            id: string;
+            imageIndex: number;
+            category: string;
+            spec: string;
+            severity: string;
+            color: string;
+            type: "path" | "line";
+            points: Array<{ x: number; y: number }>;
+          }>
+        >
+      >()
+      .notNull()
+      .default({}),
+    /** imageIndex -> lock holder */
+    imageLocks: jsonb("image_locks")
+      .$type<
+        Record<
+          string,
+          { userId: string; userName: string; expiresAt: string }
+        >
+      >()
+      .notNull()
+      .default({}),
+    /** userId -> ISO last sync */
+    userSyncAt: jsonb("user_sync_at").$type<Record<string, string>>().notNull().default({}),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     scopeUidx: uniqueIndex("annotator_state_scope_uidx").on(table.scope),
-  })
-);
-
-/** Image index ranges for parallel annotation (one row per annotator). */
-export const annotatorAssignments = pgTable(
-  "annotator_assignments",
-  {
-    userId: uuid("user_id")
-      .primaryKey()
-      .references(() => users.id, { onDelete: "cascade" }),
-    startIndex: integer("start_index").notNull(),
-    endIndex: integer("end_index").notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    rangeIdx: index("annotator_assignments_range_idx").on(
-      table.startIndex,
-      table.endIndex
-    ),
   })
 );
 

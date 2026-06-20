@@ -21,18 +21,17 @@ import {
   Undo2,
   Redo2,
   Download,
-  Users,
 } from "lucide-react";
-import {
-  reconcileAnnotationsForImageSet,
-  type AnnotatorShape,
-} from "@/src/lib/annotatorAnnotations";
-import { imageIndexInAssignment } from "@/src/lib/annotatorAssignments";
 import {
   SEVERITY_GRADE_OPTIONS,
   type SeverityGrade,
   normalizeSeverityGrade,
+  severityGradeToScore,
 } from "@/src/lib/annotatorSeverityGrade";
+import {
+  reconcileAnnotationsForImageSet,
+  type AnnotatorShape,
+} from "@/src/lib/annotatorAnnotations";
 
 const ALL_CATEGORIES = [
   "Active Acne",
@@ -69,16 +68,6 @@ const CLINICAL_TAXONOMY: Record<Category, string[]> = {
 type CategoryEntry = { spec: string; grade: SeverityGrade };
 
 type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
-
-type ParallelAssignment = { startIndex: number; endIndex: number };
-
-type ParallelTeamMember = {
-  userId: string;
-  userName: string | null;
-  userEmail: string | null;
-  startIndex: number;
-  endIndex: number;
-};
 
 function defaultEntry(cat: Category): CategoryEntry {
   const specs = CLINICAL_TAXONOMY[cat];
@@ -165,7 +154,17 @@ const CATEGORY_COLORS: Record<Category, string> = {
   "Under-Eye": "rgb(14, 165, 233)",
 };
 
-interface Annotation extends AnnotatorShape {}
+interface Annotation extends AnnotatorShape {
+  userId?: string;
+}
+
+type AnnotatorImageLock = {
+  userId: string;
+  userName: string;
+  expiresAt: string;
+};
+
+type SessionUser = { id: string; name: string };
 
 type PersistedImage = {
   id: number;
@@ -182,6 +181,24 @@ function persistedImageSrc(img: PersistedImage): string {
 }
 
 let annotationIdCounter = 0;
+
+function nextAnnotationId(userId: string): string {
+  return `ann-${userId.slice(0, 8)}-${++annotationIdCounter}`;
+}
+
+function sparsePerImagePayload(
+  perImageByCategory: Record<number, Partial<Record<Category, Partial<CategoryEntry>>>>,
+  touched: Set<number>
+): Record<string, Partial<Record<Category, Partial<CategoryEntry>>>> {
+  const out: Record<string, Partial<Record<Category, Partial<CategoryEntry>>>> = {};
+  for (const idx of touched) {
+    const patch = perImageByCategory[idx];
+    if (patch && Object.keys(patch).length > 0) {
+      out[String(idx)] = patch;
+    }
+  }
+  return out;
+}
 
 function cloneAnnotations(list: Annotation[]): Annotation[] {
   return list.map((a) => ({
@@ -285,14 +302,14 @@ export default function AnnotatorPage() {
   const [imageDimensions, setImageDimensions] = useState<
     Record<number, { width: number; height: number }>
   >({});
-  const [parallelConfigured, setParallelConfigured] = useState(false);
-  const [myAssignment, setMyAssignment] = useState<ParallelAssignment | null>(null);
-  const [parallelTeam, setParallelTeam] = useState<ParallelTeamMember[]>([]);
-  const [showParallelSetup, setShowParallelSetup] = useState(false);
-  const [parallelEmailsInput, setParallelEmailsInput] = useState("");
-  const [isRebalancing, setIsRebalancing] = useState(false);
   const saveDirtyRef = useRef(false);
   const lastPersistedRef = useRef<string | null>(null);
+  const touchedImagesRef = useRef<Set<number>>(new Set());
+  const prevImageIndexRef = useRef<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const [imageLocks, setImageLocks] = useState<Record<string, AnnotatorImageLock>>({});
+  const [peerAnnotations, setPeerAnnotations] = useState<Annotation[]>([]);
+  const [collabMessage, setCollabMessage] = useState<string>("");
 
   React.useEffect(() => {
     const dim = imageDimensions[currentIndex];
@@ -310,7 +327,7 @@ export default function AnnotatorPage() {
       lastPersistedRef.current = null;
       return;
     }
-    const snap = JSON.stringify({ perImageByCategory, annotations, currentIndex });
+    const snap = JSON.stringify({ perImageByCategory, annotations });
     if (lastPersistedRef.current === null) {
       lastPersistedRef.current = snap;
       return;
@@ -319,7 +336,7 @@ export default function AnnotatorPage() {
       saveDirtyRef.current = true;
       setSaveStatus((s) => (s === "saving" ? s : "dirty"));
     }
-  }, [isHydrating, perImageByCategory, annotations, currentIndex]);
+  }, [isHydrating, perImageByCategory, annotations]);
 
   React.useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -385,6 +402,17 @@ export default function AnnotatorPage() {
 
         const persistedState = stateJson.state;
         if (persistedState) {
+          if (persistedState.currentUser) {
+            setCurrentUser(persistedState.currentUser as SessionUser);
+          }
+          if (persistedState.imageLocks) {
+            setImageLocks(persistedState.imageLocks as Record<string, AnnotatorImageLock>);
+          }
+          if (persistedState.peerAnnotations) {
+            setPeerAnnotations(
+              migrateAnnotations(persistedState.peerAnnotations) as Annotation[]
+            );
+          }
           setPerImageByCategory(
             migratePerImageByCategory(
               (persistedState.perImageByCategory ?? {}) as Parameters<
@@ -402,34 +430,14 @@ export default function AnnotatorPage() {
             index: 0,
           });
           const maxCounter = persistedAnnotations.reduce((acc, ann) => {
-            const idNum = Number.parseInt(String(ann.id).replace("ann-", ""), 10);
+            const match = String(ann.id).match(/-(\d+)$/);
+            const idNum = match ? Number.parseInt(match[1], 10) : Number.NaN;
             return Number.isFinite(idNum) ? Math.max(acc, idNum) : acc;
           }, 0);
           annotationIdCounter = Math.max(annotationIdCounter, maxCounter);
-          setCurrentIndex(
-            Math.max(
-              0,
-              Math.min(
-                (persistedState.currentIndex as number) ?? 0,
-                Math.max(0, activeImages.length - 1)
-              )
-            )
-          );
+          setCurrentIndex(0);
         } else {
           setCurrentIndex(0);
-        }
-
-        const parallel = stateJson.parallel as
-          | {
-              configured?: boolean;
-              assignment?: ParallelAssignment | null;
-              team?: ParallelTeamMember[];
-            }
-          | undefined;
-        if (parallel) {
-          setParallelConfigured(Boolean(parallel.configured));
-          setMyAssignment(parallel.assignment ?? null);
-          setParallelTeam(parallel.team ?? []);
         }
       } catch (err) {
         console.error("Failed to hydrate annotator data", err);
@@ -448,8 +456,97 @@ export default function AnnotatorPage() {
     };
   }, []);
 
+  const markImageTouched = useCallback((imageIndex: number) => {
+    touchedImagesRef.current.add(imageIndex);
+  }, []);
+
+  const canEditCurrentImage = React.useMemo(() => {
+    if (!currentUser) return true;
+    const lock = imageLocks[String(currentIndex)];
+    return !lock || lock.userId === currentUser.id;
+  }, [currentUser, imageLocks, currentIndex]);
+
   React.useEffect(() => {
-    if (isHydrating || !saveDirtyRef.current) return;
+    if (isHydrating || !currentUser || images.length === 0) return;
+
+    const prev = prevImageIndexRef.current;
+    if (prev !== null && prev !== currentIndex) {
+      void fetch(`/api/annotator/locks?imageIndex=${prev}`, { method: "DELETE" });
+    }
+    prevImageIndexRef.current = currentIndex;
+
+    let cancelled = false;
+    const acquire = async () => {
+      const res = await fetch("/api/annotator/locks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageIndex: currentIndex, action: "acquire" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (cancelled) return;
+      if (json.imageLocks) setImageLocks(json.imageLocks);
+      if (res.status === 409 && json.lock) {
+        setCollabMessage(`View only — ${json.lock.userName} is annotating this image`);
+      } else {
+        setCollabMessage("");
+      }
+    };
+    void acquire();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentIndex, currentUser, images.length, isHydrating]);
+
+  React.useEffect(() => {
+    if (!canEditCurrentImage || !currentUser) return;
+    const timer = window.setInterval(() => {
+      void fetch("/api/annotator/locks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageIndex: currentIndex, action: "heartbeat" }),
+      })
+        .then((r) => r.json())
+        .then((json) => {
+          if (json.imageLocks) setImageLocks(json.imageLocks);
+        })
+        .catch(() => undefined);
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [canEditCurrentImage, currentIndex, currentUser]);
+
+  React.useEffect(() => {
+    if (isHydrating || !currentUser) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const res = await fetch("/api/annotator/state", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json.state?.imageLocks) setImageLocks(json.state.imageLocks);
+        if (json.state?.peerAnnotations) {
+          setPeerAnnotations(migrateAnnotations(json.state.peerAnnotations) as Annotation[]);
+        }
+      } catch {
+        /* ignore poll errors */
+      }
+    }, 6_000);
+    return () => window.clearInterval(timer);
+  }, [isHydrating, currentUser]);
+
+  React.useEffect(() => {
+    const release = () => {
+      if (prevImageIndexRef.current === null) return;
+      void fetch(`/api/annotator/locks?imageIndex=${prevImageIndexRef.current}`, {
+        method: "DELETE",
+        keepalive: true,
+      });
+    };
+    window.addEventListener("pagehide", release);
+    return () => window.removeEventListener("pagehide", release);
+  }, []);
+
+  React.useEffect(() => {
+    if (isHydrating || !saveDirtyRef.current || !canEditCurrentImage) return;
     const timer = window.setTimeout(async () => {
       setSaveStatus("saving");
       try {
@@ -457,13 +554,17 @@ export default function AnnotatorPage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            perImageByCategory,
+            perImageByCategory: sparsePerImagePayload(
+              perImageByCategory,
+              touchedImagesRef.current
+            ),
             annotations,
-            currentIndex,
           }),
         });
         if (!res.ok) throw new Error(`Save failed: ${res.status}`);
-        const snap = JSON.stringify({ perImageByCategory, annotations, currentIndex });
+        const json = await res.json().catch(() => ({}));
+        if (json.imageLocks) setImageLocks(json.imageLocks);
+        const snap = JSON.stringify({ perImageByCategory, annotations });
         lastPersistedRef.current = snap;
         saveDirtyRef.current = false;
         setSaveStatus("saved");
@@ -475,7 +576,7 @@ export default function AnnotatorPage() {
       }
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [isHydrating, perImageByCategory, annotations, currentIndex]);
+  }, [isHydrating, perImageByCategory, annotations, canEditCurrentImage]);
 
   React.useEffect(() => {
     const el = canvasRef.current;
@@ -497,11 +598,6 @@ export default function AnnotatorPage() {
     window.addEventListener("click", handleClick);
     return () => window.removeEventListener("click", handleClick);
   }, []);
-
-  const canEditImageIndex = useCallback(
-    (imageIndex: number) => imageIndexInAssignment(imageIndex, myAssignment),
-    [myAssignment]
-  );
 
   const categoryState = React.useMemo(() => {
     const base = fullDefaults();
@@ -536,7 +632,8 @@ export default function AnnotatorPage() {
 
   const setCategorySpec = useCallback(
     (imageIndex: number, cat: Category, spec: string) => {
-      if (!canEditImageIndex(imageIndex)) return;
+      if (imageIndex === currentIndex && !canEditCurrentImage) return;
+      markImageTouched(imageIndex);
       setPerImageByCategory((prev) => {
         const cur = prev[imageIndex] ?? {};
         const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
@@ -547,12 +644,13 @@ export default function AnnotatorPage() {
       });
       syncShapesForCategory(imageIndex, cat, { spec });
     },
-    [syncShapesForCategory, canEditImageIndex]
+    [syncShapesForCategory, currentIndex, canEditCurrentImage, markImageTouched]
   );
 
   const setCategoryGrade = useCallback(
     (imageIndex: number, cat: Category, grade: SeverityGrade) => {
-      if (!canEditImageIndex(imageIndex)) return;
+      if (imageIndex === currentIndex && !canEditCurrentImage) return;
+      markImageTouched(imageIndex);
       setPerImageByCategory((prev) => {
         const cur = prev[imageIndex] ?? {};
         const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
@@ -563,65 +661,8 @@ export default function AnnotatorPage() {
       });
       syncShapesForCategory(imageIndex, cat, { grade });
     },
-    [syncShapesForCategory, canEditImageIndex]
+    [syncShapesForCategory, currentIndex, canEditCurrentImage, markImageTouched]
   );
-
-  const refreshParallelFromServer = useCallback(async () => {
-    const stateRes = await fetch("/api/annotator/state", { cache: "no-store" });
-    const stateJson = await stateRes.json();
-    const parallel = stateJson.parallel as
-      | {
-          configured?: boolean;
-          assignment?: ParallelAssignment | null;
-          team?: ParallelTeamMember[];
-        }
-      | undefined;
-    if (parallel) {
-      setParallelConfigured(Boolean(parallel.configured));
-      setMyAssignment(parallel.assignment ?? null);
-      setParallelTeam(parallel.team ?? []);
-    }
-  }, []);
-
-  const rebalanceParallelWork = useCallback(async () => {
-    const emails = parallelEmailsInput
-      .split(/[\s,;]+/)
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    if (emails.length < 2) {
-      window.alert("Enter at least 2 annotator emails (comma-separated).");
-      return;
-    }
-    const ok = window.confirm(
-      `Split ${images.length} images evenly across ${emails.length} annotators?\n\n${emails.join("\n")}\n\nExisting per-user work in each range is kept.`
-    );
-    if (!ok) return;
-
-    setIsRebalancing(true);
-    try {
-      const res = await fetch("/api/annotator/assignments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emails }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.message || json.error || `Split failed (${res.status})`);
-      }
-      await refreshParallelFromServer();
-      setShowParallelSetup(false);
-      setLastPersistMessage(
-        `Parallel: ${json.imageCount ?? images.length} images → ${json.assignments?.length ?? emails.length} annotators`
-      );
-    } catch (err) {
-      console.error("Parallel rebalance failed", err);
-      window.alert(
-        err instanceof Error ? err.message : "Could not set up parallel work."
-      );
-    } finally {
-      setIsRebalancing(false);
-    }
-  }, [images.length, parallelEmailsInput, refreshParallelFromServer]);
 
   const goPrev = useCallback(() => {
     setCurrentIndex((i) => (i > 0 ? i - 1 : images.length - 1));
@@ -677,7 +718,7 @@ export default function AnnotatorPage() {
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (images.length === 0 || !imageReady || !canEditImageIndex(currentIndex)) return;
+      if (images.length === 0 || !imageReady || !canEditCurrentImage) return;
       const pt = getNormalizedPoint(e, canvasRef.current);
       if (!pt) return;
 
@@ -688,7 +729,7 @@ export default function AnnotatorPage() {
       }
       // Eraser: handled by shape onClick
     },
-    [images.length, activeTool, activeCategory, imageReady, currentIndex, canEditImageIndex]
+    [images.length, activeTool, activeCategory, imageReady, canEditCurrentImage]
   );
 
   const handleMouseMove = useCallback(
@@ -702,19 +743,20 @@ export default function AnnotatorPage() {
   );
 
   const handleMouseUp = useCallback(() => {
-    if (!isDrawing) return;
+    if (!isDrawing || !canEditCurrentImage || !currentUser) return;
     if (!DRAWABLE_CATEGORIES.includes(activeCategory)) {
       setIsDrawing(false);
       setCurrentStrokePoints([]);
       return;
     }
     const { spec, grade } = categoryState[activeCategory];
+    markImageTouched(currentIndex);
     if (activeTool === "path" && currentStrokePoints.length >= 3) {
       const color = CATEGORY_COLORS[activeCategory] ?? "rgb(156, 163, 175)";
       commitAnnotations((prev) => [
         ...prev,
         {
-          id: `ann-${++annotationIdCounter}`,
+          id: nextAnnotationId(currentUser.id),
           imageIndex: currentIndex,
           category: activeCategory,
           spec,
@@ -729,7 +771,7 @@ export default function AnnotatorPage() {
       commitAnnotations((prev) => [
         ...prev,
         {
-          id: `ann-${++annotationIdCounter}`,
+          id: nextAnnotationId(currentUser.id),
           imageIndex: currentIndex,
           category: activeCategory,
           spec,
@@ -750,6 +792,9 @@ export default function AnnotatorPage() {
     activeCategory,
     categoryState,
     commitAnnotations,
+    canEditCurrentImage,
+    currentUser,
+    markImageTouched,
   ]);
 
   React.useEffect(() => {
@@ -815,11 +860,7 @@ export default function AnnotatorPage() {
       await fetch("/api/annotator/state", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          perImageByCategory: {},
-          annotations: [],
-          currentIndex: 0,
-        }),
+        body: JSON.stringify({ clearAll: true }),
       });
 
       setImages([]);
@@ -828,13 +869,13 @@ export default function AnnotatorPage() {
       setCurrentIndex(0);
       setPerImageByCategory({});
       setAnnotationHistory({ snapshots: [[]], index: 0 });
+      setPeerAnnotations([]);
+      setImageLocks({});
+      touchedImagesRef.current = new Set();
       setImageZoom(1);
       saveDirtyRef.current = false;
       lastPersistedRef.current = null;
       setSaveStatus("saved");
-      setParallelConfigured(false);
-      setMyAssignment(null);
-      setParallelTeam([]);
       setLastPersistMessage("Deleted all images");
     } catch (err) {
       console.error("Failed to delete all images", err);
@@ -847,45 +888,93 @@ export default function AnnotatorPage() {
   const exportAnnotationsJson = useCallback(async () => {
     if (images.length === 0) return;
 
+    let mergedLabels: Record<string, Record<string, CategoryEntry>> = {};
+    let mergedAnnotations: Annotation[] = [...annotations];
     try {
-      const res = await fetch("/api/annotator/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDimensions }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || `Export failed (${res.status})`);
+      const res = await fetch("/api/annotator/state?merged=1", { cache: "no-store" });
+      if (res.ok) {
+        const json = await res.json();
+        mergedLabels = (json.state?.perImageByCategory ?? {}) as Record<
+          string,
+          Record<string, CategoryEntry>
+        >;
+        const remote = migrateAnnotations(json.state?.annotations ?? []);
+        const mineIds = new Set(annotations.map((a) => a.id));
+        mergedAnnotations = [
+          ...annotations,
+          ...remote.filter((a) => !mineIds.has(a.id)),
+        ];
       }
-      const payload = json.export;
-      const blob = new Blob([JSON.stringify(payload, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      a.href = url;
-      a.download = `skinnfit-annotations-${stamp}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      setLastPersistMessage(
-        parallelConfigured
-          ? "Exported merged JSON from all annotators"
-          : "Exported JSON"
-      );
-    } catch (err) {
-      console.error("Export failed", err);
-      setLastPersistMessage("Export failed");
+    } catch {
+      /* fall back to local only */
     }
-  }, [images.length, imageDimensions, parallelConfigured]);
+
+    const labelsByImageIndex: Record<
+      string,
+      Record<Category, CategoryEntry & { score: number }>
+    > = {};
+    for (let i = 0; i < images.length; i++) {
+      const base = fullDefaults();
+      const patch = mergedLabels[String(i)] ?? perImageByCategory[i] ?? {};
+      const merged = { ...base };
+      for (const c of ALL_CATEGORIES) {
+        const entry = patch[c];
+        if (entry) merged[c] = normalizeCategoryEntry({ ...base[c], ...entry });
+      }
+      labelsByImageIndex[String(i)] = Object.fromEntries(
+        ALL_CATEGORIES.map((c) => [
+          c,
+          {
+            spec: merged[c].spec,
+            grade: merged[c].grade,
+            score: severityGradeToScore(merged[c].grade),
+          },
+        ])
+      ) as Record<Category, CategoryEntry & { score: number }>;
+    }
+
+    const exportAnnotations = cloneAnnotations(mergedAnnotations).map((ann) => ({
+      ...ann,
+      score: severityGradeToScore(ann.severity),
+    }));
+
+    const payload = {
+      schemaVersion: 2,
+      app: "skinnfit-clinical-annotator",
+      exportedAt: new Date().toISOString(),
+      note:
+        "Images are not embedded. Match `images[].fileName` to files on disk. Points are normalized 0–1 vs image width/height. `grade` is A–E (A=least severe); `score` is numeric 1–5 for eval pipelines. Merged export includes all collaborators' shapes and labels.",
+      imageCount: images.length,
+      images: images.map((_, i) => ({
+        index: i,
+        fileName: imageMeta[i]?.name ?? `image-${i + 1}`,
+        imageWidth: imageDimensions[i]?.width ?? null,
+        imageHeight: imageDimensions[i]?.height ?? null,
+      })),
+      labelsByImageIndex,
+      annotations: exportAnnotations,
+    };
+
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    a.href = url;
+    a.download = `skinnfit-annotations-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [images, imageMeta, perImageByCategory, annotations, imageDimensions]);
 
   const deleteAnnotation = useCallback(
     (id: string) => {
+      if (!canEditCurrentImage) return;
+      markImageTouched(currentIndex);
       commitAnnotations((prev) => prev.filter((a) => a.id !== id));
     },
-    [commitAnnotations]
+    [commitAnnotations, canEditCurrentImage, currentIndex, markImageTouched]
   );
 
   const handleShapeClick = useCallback(
@@ -898,10 +987,11 @@ export default function AnnotatorPage() {
     [activeTool, deleteAnnotation]
   );
 
-  const currentAnnotations = annotations.filter((a) => a.imageIndex === currentIndex);
+  const myCurrentAnnotations = annotations.filter((a) => a.imageIndex === currentIndex);
+  const peerCurrentAnnotations = peerAnnotations.filter((a) => a.imageIndex === currentIndex);
+  const currentAnnotations = [...myCurrentAnnotations, ...peerCurrentAnnotations];
   const activeSpecs = CLINICAL_TAXONOMY[activeCategory];
   const activeIsDrawable = DRAWABLE_CATEGORIES.includes(activeCategory);
-  const canEditCurrentImage = canEditImageIndex(currentIndex);
   const canDrawOnImage = imageReady && images.length > 0 && canEditCurrentImage;
   const { spec: activeSpec, grade: activeGrade } = categoryState[activeCategory];
 
@@ -916,6 +1006,7 @@ export default function AnnotatorPage() {
   const imagesWithWork = React.useMemo(() => {
     const set = new Set<number>();
     for (const ann of annotations) set.add(ann.imageIndex);
+    for (const ann of peerAnnotations) set.add(ann.imageIndex);
     for (const idx of Object.keys(perImageByCategory)) {
       const n = Number(idx);
       if (Number.isFinite(n) && Object.keys(perImageByCategory[n] ?? {}).length > 0) {
@@ -923,13 +1014,25 @@ export default function AnnotatorPage() {
       }
     }
     return set;
-  }, [annotations, perImageByCategory]);
+  }, [annotations, peerAnnotations, perImageByCategory]);
+
+  const activeLockCount = React.useMemo(
+    () => Object.keys(imageLocks).length,
+    [imageLocks]
+  );
+
+  const myAnnotationIds = React.useMemo(
+    () => new Set(myCurrentAnnotations.map((a) => a.id)),
+    [myCurrentAnnotations]
+  );
 
   const renderThumbnailButtons = (compact = false) =>
     images.map((src, i) => {
       const isActive = i === currentIndex;
       const hasWork = imagesWithWork.has(i);
-      const isEditable = canEditImageIndex(i);
+      const lock = imageLocks[String(i)];
+      const lockedByOther = Boolean(lock && currentUser && lock.userId !== currentUser.id);
+      const lockedByMe = Boolean(lock && currentUser && lock.userId === currentUser.id);
       const label = imageMeta[i]?.name ?? `Image ${i + 1}`;
       return (
         <button
@@ -938,16 +1041,18 @@ export default function AnnotatorPage() {
           data-thumb-index={i}
           onClick={() => setCurrentIndex(i)}
           title={
-            isEditable ? label : `${label} (view only — assigned to another annotator)`
+            lockedByOther
+              ? `${label} — ${lock!.userName} is annotating`
+              : lockedByMe
+                ? `${label} — you are annotating`
+                : label
           }
           className={`group relative shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
             compact ? "h-14 w-14" : "aspect-[3/4] w-full"
           } ${
             isActive
               ? "border-teal-500 ring-2 ring-teal-500/40"
-              : isEditable
-                ? "border-slate-300 hover:border-teal-400 dark:border-zinc-600 dark:hover:border-teal-500"
-                : "border-slate-200 opacity-55 dark:border-zinc-700"
+              : "border-slate-300 hover:border-teal-400 dark:border-zinc-600 dark:hover:border-teal-500"
           }`}
         >
           <img
@@ -966,9 +1071,14 @@ export default function AnnotatorPage() {
           {hasWork ? (
             <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-teal-400 ring-1 ring-black/40" />
           ) : null}
-          {!isEditable ? (
-            <span className="absolute left-1 top-1 rounded bg-black/70 px-1 text-[8px] font-bold uppercase text-amber-200">
-              view
+          {lockedByOther ? (
+            <span className="absolute left-1 top-1 rounded bg-amber-500/90 px-1 text-[8px] font-bold text-black">
+              BUSY
+            </span>
+          ) : null}
+          {lockedByMe ? (
+            <span className="absolute left-1 top-1 rounded bg-teal-500/90 px-1 text-[8px] font-bold text-black">
+              YOU
             </span>
           ) : null}
         </button>
@@ -1037,17 +1147,7 @@ export default function AnnotatorPage() {
           />
           <button
             type="button"
-            onClick={() => setShowParallelSetup(true)}
-            disabled={images.length === 0 || isHydrating}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
-            title="Split images across 2–4 annotators for parallel work"
-          >
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Parallel</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => void exportAnnotationsJson()}
+            onClick={exportAnnotationsJson}
             disabled={images.length === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
             title="Download all labels and shapes as JSON (images not included — keep your files)"
@@ -1102,22 +1202,19 @@ export default function AnnotatorPage() {
             {!imageReady && images.length > 0 ? (
               <span className="text-amber-600 dark:text-amber-400">Loading image…</span>
             ) : null}
-            {parallelConfigured && myAssignment ? (
-              <span className="font-medium text-teal-700 dark:text-teal-300">
-                · Your images: {myAssignment.startIndex + 1}–{myAssignment.endIndex + 1} of{" "}
-                {images.length}
-              </span>
-            ) : null}
-            {!parallelConfigured && !isHydrating && images.length > 0 ? (
-              <span className="text-amber-600 dark:text-amber-400">
-                · Parallel not configured — use Parallel before multi-device work
-              </span>
-            ) : null}
-            {!canEditCurrentImage && images.length > 0 ? (
-              <span className="text-amber-600 dark:text-amber-400">· View only (not your range)</span>
-            ) : null}
             {lastPersistMessage ? (
               <span className="text-slate-500 dark:text-zinc-500">· {lastPersistMessage}</span>
+            ) : null}
+            {currentUser ? (
+              <span className="text-slate-500 dark:text-zinc-500">
+                · {currentUser.name}
+                {activeLockCount > 0 ? ` · ${activeLockCount} active` : ""}
+              </span>
+            ) : null}
+            {collabMessage ? (
+              <span className="font-medium text-amber-600 dark:text-amber-400">· {collabMessage}</span>
+            ) : canEditCurrentImage && currentUser ? (
+              <span className="text-teal-600 dark:text-teal-400">· You can edit this image</span>
             ) : null}
           </span>
         )}
@@ -1260,23 +1357,30 @@ export default function AnnotatorPage() {
                     style={{ pointerEvents: activeTool === "eraser" ? "auto" : "none" }}
                   >
                     {/* Rendered annotations */}
-                    {currentAnnotations.map((ann) => (
+                    {currentAnnotations.map((ann) => {
+                      const isMine = myAnnotationIds.has(ann.id);
+                      return (
                       <g
                         key={ann.id}
                         style={{
-                          cursor: activeTool === "eraser" ? "pointer" : "default",
-                          pointerEvents: "painted",
+                          cursor: isMine && activeTool === "eraser" ? "pointer" : "default",
+                          pointerEvents: isMine ? "painted" : "none",
+                          opacity: isMine ? 1 : 0.5,
                         }}
-                        onClick={(e) => handleShapeClick(e as unknown as React.MouseEvent, ann.id)}
+                        onClick={(e) => {
+                          if (!isMine) return;
+                          handleShapeClick(e as unknown as React.MouseEvent, ann.id);
+                        }}
                       >
                         {ann.type === "path" ? (
                           <path
                             d={pointsToPathD(ann.points, true)}
                             fill={ann.color}
-                            fillOpacity={0.25}
+                            fillOpacity={isMine ? 0.25 : 0.12}
                             stroke={ann.color}
                             strokeWidth={0.005}
-                            className={activeTool === "eraser" ? "hover:opacity-80" : ""}
+                            strokeDasharray={isMine ? undefined : "0.012 0.008"}
+                            className={isMine && activeTool === "eraser" ? "hover:opacity-80" : ""}
                           />
                         ) : (
                           <polyline
@@ -1284,7 +1388,8 @@ export default function AnnotatorPage() {
                             fill="none"
                             stroke={ann.color}
                             strokeWidth={0.005}
-                            className={activeTool === "eraser" ? "hover:opacity-80" : ""}
+                            strokeDasharray={isMine ? undefined : "0.012 0.008"}
+                            className={isMine && activeTool === "eraser" ? "hover:opacity-80" : ""}
                           />
                         )}
                         <text
@@ -1298,7 +1403,8 @@ export default function AnnotatorPage() {
                           {ann.spec} — {ann.severity}
                         </text>
                       </g>
-                    ))}
+                    );
+                    })}
 
                     {/* Drawing preview */}
                     {isDrawing && currentStrokePoints.length >= 2 && (
@@ -1533,12 +1639,16 @@ export default function AnnotatorPage() {
             <div className="max-h-48 space-y-2 overflow-y-auto">
               {currentAnnotations.length === 0 ? (
                 <p className="py-4 text-center text-xs text-slate-500 dark:text-zinc-500">
-                  {canDrawOnImage
-                    ? "Use Path or Line on a drawable category to draw on the image"
-                    : "Wait for the image to finish loading before drawing"}
+                  {!canEditCurrentImage
+                    ? collabMessage || "View only on this image — pick another or wait"
+                    : canDrawOnImage
+                      ? "Use Path or Line on a drawable category to draw on the image"
+                      : "Wait for the image to finish loading before drawing"}
                 </p>
               ) : (
-                currentAnnotations.map((ann) => (
+                currentAnnotations.map((ann) => {
+                  const isMine = myAnnotationIds.has(ann.id);
+                  return (
                   <div
                     key={ann.id}
                     className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800/50"
@@ -1546,11 +1656,13 @@ export default function AnnotatorPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-900 dark:text-white">
                         {ann.spec} — {ann.severity}
+                        {!isMine ? " (peer)" : ""}
                       </p>
                       <p className="truncate text-[10px] text-slate-500 dark:text-zinc-500">
                         {ann.category} ({ann.type})
                       </p>
                     </div>
+                    {isMine ? (
                     <button
                       type="button"
                       onClick={() => deleteAnnotation(ann.id)}
@@ -1558,8 +1670,10 @@ export default function AnnotatorPage() {
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+                    ) : null}
                   </div>
-                ))
+                );
+                })
               )}
             </div>
           </div>
@@ -1692,75 +1806,6 @@ export default function AnnotatorPage() {
           </div>
         </div>
       )}
-
-      {/* Parallel work setup */}
-      {showParallelSetup ? (
-        <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={() => setShowParallelSetup(false)}
-        >
-          <div
-            className="relative w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setShowParallelSetup(false)}
-              className="absolute right-4 top-4 rounded p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <h2 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">
-              Parallel annotation (3–4 devices)
-            </h2>
-            <p className="mb-4 text-sm text-slate-600 dark:text-zinc-400">
-              Each annotator logs in with their own account. Enter their emails below to split{" "}
-              <strong>{images.length}</strong> images into equal ranges. Each person only edits their
-              range; saves no longer overwrite each other.
-            </p>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Annotator emails (comma-separated)
-            </label>
-            <textarea
-              value={parallelEmailsInput}
-              onChange={(e) => setParallelEmailsInput(e.target.value)}
-              rows={4}
-              placeholder="alice@clinic.com, bob@clinic.com, carol@clinic.com"
-              className="mb-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-            />
-            {parallelTeam.length > 0 ? (
-              <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-zinc-700 dark:bg-zinc-950">
-                <p className="mb-2 font-semibold text-slate-700 dark:text-zinc-300">Current split</p>
-                <ul className="space-y-1">
-                  {parallelTeam.map((m) => (
-                    <li key={m.userId} className="text-slate-600 dark:text-zinc-400">
-                      {(m.userEmail || m.userName || m.userId).slice(0, 40)}: images{" "}
-                      {m.startIndex + 1}–{m.endIndex + 1}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={isRebalancing}
-                onClick={() => void rebalanceParallelWork()}
-                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-teal-400 disabled:opacity-50"
-              >
-                {isRebalancing ? "Splitting…" : "Split images evenly"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowParallelSetup(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-zinc-600"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {/* Tutorial Modal */}
       {showTutorial && (
