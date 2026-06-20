@@ -1362,7 +1362,7 @@ export default function AnnotatorPage() {
                         style={{
                           cursor: isMine && activeTool === "eraser" ? "pointer" : "default",
                           pointerEvents: isMine ? "painted" : "none",
-                          opacity: isMine ? 1 : 0.8,
+                          opacity: 1,
                         }}
                         onClick={(e) => {
                           if (!isMine) return;
@@ -1373,7 +1373,7 @@ export default function AnnotatorPage() {
                           <path
                             d={pointsToPathD(ann.points, true)}
                             fill={ann.color}
-                            fillOpacity={isMine ? 0.25 : 0.12}
+                            fillOpacity={1}
                             stroke={ann.color}
                             strokeWidth={0.005}
                             strokeDasharray={isMine ? undefined : "0.012 0.008"}
