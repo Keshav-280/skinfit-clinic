@@ -1385,7 +1385,7 @@ export default function AnnotatorPage() {
                           <path
                             d={pointsToPathD(ann.points, true)}
                             fill={ann.color}
-                            fillOpacity={1}
+                            fillOpacity={0.3}
                             stroke={ann.color}
                             strokeWidth={0.005}
                             strokeDasharray={isMine ? undefined : "0.012 0.008"}
