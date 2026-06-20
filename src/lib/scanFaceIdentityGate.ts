@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
+import { db } from "@/src/db/client";
 import { scans, users } from "@/src/db/schema";
 import type { FaceCaptureRef } from "@/src/lib/resolveScanImageUrl";
 import {
