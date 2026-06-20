@@ -29,3 +29,8 @@ export function normalizeSeverityGrade(
   if (typeof v === "number" && Number.isFinite(v)) return numericToSeverityGrade(v);
   return fallback;
 }
+
+/** Letter grade → numeric severity 1–5 (A=1 … E=5) for export / eval. */
+export function severityGradeToScore(grade: SeverityGrade): number {
+  return SEVERITY_GRADE_OPTIONS.find((o) => o.grade === grade)?.score ?? 1;
+}

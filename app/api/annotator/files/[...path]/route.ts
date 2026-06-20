@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStorage } from "@/src/lib/infra";
+import { requireAnnotatorAuth } from "@/src/lib/auth/require-annotator-auth";
 
 const MIME: Record<string, string> = {
   jpg: "image/jpeg",
@@ -13,9 +14,12 @@ const MIME: Record<string, string> = {
  * Serves annotator library images from R2 or local storage (no session required).
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: { params: Promise<{ path: string[] }> }
 ) {
+  const auth = await requireAnnotatorAuth(request);
+  if (auth) return auth;
+
   const { path: segments } = await ctx.params;
   const rel = segments.map(decodeURIComponent).join("/");
   if (rel.includes("..") || rel.startsWith("/") || !rel.startsWith("annotator/")) {

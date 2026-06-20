@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { annotatorState } from "@/src/db/schema";
+import { requireAnnotatorAuth } from "@/src/lib/auth/require-annotator-auth";
 
 const DEFAULT_SCOPE = "default";
 type AnnotationShape = {
@@ -20,7 +21,9 @@ type PerImageByCategoryShape = Record<
   Record<string, { spec?: string; grade?: string; score?: number }>
 >;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAnnotatorAuth(req);
+  if (auth) return auth;
   const [row] = await db
     .select({
       id: annotatorState.id,
@@ -41,6 +44,9 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  const auth = await requireAnnotatorAuth(req);
+  if (auth) return auth;
+
   const body = (await req.json().catch(() => null)) as
     | {
         perImageByCategory?: PerImageByCategoryShape;

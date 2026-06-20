@@ -26,7 +26,12 @@ import {
   SEVERITY_GRADE_OPTIONS,
   type SeverityGrade,
   normalizeSeverityGrade,
+  severityGradeToScore,
 } from "@/src/lib/annotatorSeverityGrade";
+import {
+  reconcileAnnotationsForImageSet,
+  type AnnotatorShape,
+} from "@/src/lib/annotatorAnnotations";
 
 const ALL_CATEGORIES = [
   "Active Acne",
@@ -61,6 +66,8 @@ const CLINICAL_TAXONOMY: Record<Category, string[]> = {
 };
 
 type CategoryEntry = { spec: string; grade: SeverityGrade };
+
+type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
 function defaultEntry(cat: Category): CategoryEntry {
   const specs = CLINICAL_TAXONOMY[cat];
@@ -101,11 +108,25 @@ function migrateAnnotations(raw: unknown): Annotation[] {
     .filter((a) => a && typeof a === "object")
     .map((a) => {
       const ann = a as Annotation & { severity: unknown };
+      const points = Array.isArray(ann.points)
+        ? ann.points.filter(
+            (p) =>
+              p &&
+              typeof p === "object" &&
+              typeof p.x === "number" &&
+              typeof p.y === "number" &&
+              Number.isFinite(p.x) &&
+              Number.isFinite(p.y)
+          )
+        : [];
       return {
         ...ann,
+        type: ann.type === "line" ? "line" : "path",
+        points,
         severity: normalizeSeverityGrade(ann.severity, "A"),
       };
-    });
+    })
+    .filter((ann) => ann.points.length >= (ann.type === "line" ? 2 : 3));
 }
 
 function fullDefaults(): Record<Category, CategoryEntry> {
@@ -128,16 +149,7 @@ const CATEGORY_COLORS: Record<Category, string> = {
   "Under-Eye": "rgb(14, 165, 233)",
 };
 
-interface Annotation {
-  id: string;
-  imageIndex: number;
-  category: string;
-  spec: string;
-  severity: SeverityGrade;
-  color: string;
-  type: "path" | "line";
-  points: { x: number; y: number }[];
-}
+interface Annotation extends AnnotatorShape {}
 
 type PersistedImage = {
   id: number;
@@ -250,9 +262,53 @@ export default function AnnotatorPage() {
   const [imageZoom, setImageZoom] = useState(1);
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
-  const [isImportingFolder, setIsImportingFolder] = useState(false);
   const [isDeletingAllImages, setIsDeletingAllImages] = useState(false);
   const [lastPersistMessage, setLastPersistMessage] = useState<string>("");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [imageReady, setImageReady] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<
+    Record<number, { width: number; height: number }>
+  >({});
+  const saveDirtyRef = useRef(false);
+  const lastPersistedRef = useRef<string | null>(null);
+
+  React.useEffect(() => {
+    const dim = imageDimensions[currentIndex];
+    if (dim) {
+      setImgNatural({ w: dim.width, h: dim.height });
+      setImageReady(true);
+    } else {
+      setImgNatural(null);
+      setImageReady(false);
+    }
+  }, [currentIndex, images, imageDimensions]);
+
+  React.useEffect(() => {
+    if (isHydrating) {
+      lastPersistedRef.current = null;
+      return;
+    }
+    const snap = JSON.stringify({ perImageByCategory, annotations, currentIndex });
+    if (lastPersistedRef.current === null) {
+      lastPersistedRef.current = snap;
+      return;
+    }
+    if (lastPersistedRef.current !== snap) {
+      saveDirtyRef.current = true;
+      setSaveStatus((s) => (s === "saving" ? s : "dirty"));
+    }
+  }, [isHydrating, perImageByCategory, annotations, currentIndex]);
+
+  React.useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveDirtyRef.current || saveStatus === "saving") {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [saveStatus]);
 
   React.useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -263,10 +319,6 @@ export default function AnnotatorPage() {
       setActiveTool("eraser");
     }
   }, [activeCategory, activeTool]);
-
-  React.useEffect(() => {
-    setImgNatural(null);
-  }, [currentIndex, images]);
 
   React.useEffect(() => {
     const el = thumbStripRef.current?.querySelector(
@@ -305,8 +357,9 @@ export default function AnnotatorPage() {
           }
         }
 
+        const nextMeta = activeImages.map((img) => ({ name: img.fileName }));
         setImages(activeImages.map((img) => persistedImageSrc(img)));
-        setImageMeta(activeImages.map((img) => ({ name: img.fileName })));
+        setImageMeta(nextMeta);
 
         const persistedState = stateJson.state;
         if (persistedState) {
@@ -317,8 +370,15 @@ export default function AnnotatorPage() {
               >[0]
             )
           );
-          const persistedAnnotations = migrateAnnotations(persistedState.annotations);
-          setAnnotationHistory({ snapshots: [cloneAnnotations(persistedAnnotations)], index: 0 });
+          const persistedAnnotations = reconcileAnnotationsForImageSet(
+            migrateAnnotations(persistedState.annotations),
+            [],
+            nextMeta
+          );
+          setAnnotationHistory({
+            snapshots: [cloneAnnotations(persistedAnnotations)],
+            index: 0,
+          });
           const maxCounter = persistedAnnotations.reduce((acc, ann) => {
             const idNum = Number.parseInt(String(ann.id).replace("ann-", ""), 10);
             return Number.isFinite(idNum) ? Math.max(acc, idNum) : acc;
@@ -339,7 +399,12 @@ export default function AnnotatorPage() {
       } catch (err) {
         console.error("Failed to hydrate annotator data", err);
       } finally {
-        if (isMounted) setIsHydrating(false);
+        if (isMounted) {
+          setIsHydrating(false);
+          saveDirtyRef.current = false;
+          lastPersistedRef.current = null;
+          setSaveStatus("saved");
+        }
       }
     };
     void loadInitialData();
@@ -349,8 +414,9 @@ export default function AnnotatorPage() {
   }, []);
 
   React.useEffect(() => {
-    if (isHydrating) return;
+    if (isHydrating || !saveDirtyRef.current) return;
     const timer = window.setTimeout(async () => {
+      setSaveStatus("saving");
       try {
         const res = await fetch("/api/annotator/state", {
           method: "PUT",
@@ -362,10 +428,15 @@ export default function AnnotatorPage() {
           }),
         });
         if (!res.ok) throw new Error(`Save failed: ${res.status}`);
+        const snap = JSON.stringify({ perImageByCategory, annotations, currentIndex });
+        lastPersistedRef.current = snap;
+        saveDirtyRef.current = false;
+        setSaveStatus("saved");
         setLastPersistMessage(`Saved ${new Date().toLocaleTimeString()}`);
       } catch (err) {
         console.error("Failed to save annotator state", err);
-        setLastPersistMessage("Save failed");
+        setSaveStatus("error");
+        setLastPersistMessage("Save failed — retry by making a small edit");
       }
     }, 600);
     return () => window.clearTimeout(timer);
@@ -402,27 +473,56 @@ export default function AnnotatorPage() {
     return out;
   }, [perImageByCategory, currentIndex]);
 
-  const setCategorySpec = useCallback((imageIndex: number, cat: Category, spec: string) => {
-    setPerImageByCategory((prev) => {
-      const cur = prev[imageIndex] ?? {};
-      const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
-      return {
-        ...prev,
-        [imageIndex]: { ...cur, [cat]: { ...prevEntry, spec } },
-      };
-    });
-  }, []);
+  const syncShapesForCategory = useCallback(
+    (
+      imageIndex: number,
+      cat: Category,
+      patch: { spec?: string; grade?: SeverityGrade }
+    ) => {
+      if (patch.spec === undefined && patch.grade === undefined) return;
+      commitAnnotations((prev) =>
+        prev.map((ann) => {
+          if (ann.imageIndex !== imageIndex || ann.category !== cat) return ann;
+          return {
+            ...ann,
+            ...(patch.spec !== undefined ? { spec: patch.spec } : {}),
+            ...(patch.grade !== undefined ? { severity: patch.grade } : {}),
+          };
+        })
+      );
+    },
+    [commitAnnotations]
+  );
 
-  const setCategoryGrade = useCallback((imageIndex: number, cat: Category, grade: SeverityGrade) => {
-    setPerImageByCategory((prev) => {
-      const cur = prev[imageIndex] ?? {};
-      const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
-      return {
-        ...prev,
-        [imageIndex]: { ...cur, [cat]: { ...prevEntry, grade } },
-      };
-    });
-  }, []);
+  const setCategorySpec = useCallback(
+    (imageIndex: number, cat: Category, spec: string) => {
+      setPerImageByCategory((prev) => {
+        const cur = prev[imageIndex] ?? {};
+        const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
+        return {
+          ...prev,
+          [imageIndex]: { ...cur, [cat]: { ...prevEntry, spec } },
+        };
+      });
+      syncShapesForCategory(imageIndex, cat, { spec });
+    },
+    [syncShapesForCategory]
+  );
+
+  const setCategoryGrade = useCallback(
+    (imageIndex: number, cat: Category, grade: SeverityGrade) => {
+      setPerImageByCategory((prev) => {
+        const cur = prev[imageIndex] ?? {};
+        const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
+        return {
+          ...prev,
+          [imageIndex]: { ...cur, [cat]: { ...prevEntry, grade } },
+        };
+      });
+      syncShapesForCategory(imageIndex, cat, { grade });
+    },
+    [syncShapesForCategory]
+  );
 
   const goPrev = useCallback(() => {
     setCurrentIndex((i) => (i > 0 ? i - 1 : images.length - 1));
@@ -478,7 +578,7 @@ export default function AnnotatorPage() {
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (images.length === 0) return;
+      if (images.length === 0 || !imageReady) return;
       const pt = getNormalizedPoint(e, canvasRef.current);
       if (!pt) return;
 
@@ -489,7 +589,7 @@ export default function AnnotatorPage() {
       }
       // Eraser: handled by shape onClick
     },
-    [images.length, activeTool, activeCategory]
+    [images.length, activeTool, activeCategory, imageReady]
   );
 
   const handleMouseMove = useCallback(
@@ -576,9 +676,23 @@ export default function AnnotatorPage() {
       if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
       const json = await res.json();
       const created = (json.images ?? []) as PersistedImage[];
-      setImages((prev) => [...prev, ...created.map((img) => persistedImageSrc(img))]);
-      setImageMeta((prev) => [...prev, ...created.map((img) => ({ name: img.fileName }))]);
-      setCurrentIndex(0);
+      const addedMeta = created.map((img) => ({ name: img.fileName }));
+      const addedSrc = created.map((img) => persistedImageSrc(img));
+      setImages((prev) => [...prev, ...addedSrc]);
+      setImageMeta((prev) => {
+        const nextMeta = [...prev, ...addedMeta];
+        setAnnotationHistory((ah) => {
+          const reconciled = reconcileAnnotationsForImageSet(
+            ah.snapshots[ah.index],
+            prev,
+            nextMeta
+          );
+          const snapshots = ah.snapshots.slice(0, ah.index + 1);
+          snapshots.push(cloneAnnotations(reconciled));
+          return { snapshots, index: snapshots.length - 1 };
+        });
+        return nextMeta;
+      });
       setLastPersistMessage(`Uploaded ${created.length} image(s)`);
     } catch (err) {
       console.error("Failed to upload images", err);
@@ -586,31 +700,6 @@ export default function AnnotatorPage() {
     }
     e.target.value = "";
   };
-
-  const importFromFolder = useCallback(async () => {
-    try {
-      setIsImportingFolder(true);
-      const res = await fetch("/api/annotator/import-from-folder", { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) {
-        const msg = json?.message || json?.error || "Import failed";
-        setLastPersistMessage(msg);
-        return;
-      }
-      const all = (json.images ?? []) as PersistedImage[];
-      setImages(all.map((img) => persistedImageSrc(img)));
-      setImageMeta(all.map((img) => ({ name: img.fileName })));
-      setCurrentIndex(0);
-      setLastPersistMessage(
-        `Imported ${json.importedCount ?? 0}, skipped ${json.skippedCount ?? 0}`
-      );
-    } catch (err) {
-      console.error("Failed to import images from folder", err);
-      setLastPersistMessage("Folder import failed");
-    } finally {
-      setIsImportingFolder(false);
-    }
-  }, []);
 
   const deleteAllImages = useCallback(async () => {
     if (images.length === 0) return;
@@ -636,10 +725,14 @@ export default function AnnotatorPage() {
 
       setImages([]);
       setImageMeta([]);
+      setImageDimensions({});
       setCurrentIndex(0);
       setPerImageByCategory({});
       setAnnotationHistory({ snapshots: [[]], index: 0 });
       setImageZoom(1);
+      saveDirtyRef.current = false;
+      lastPersistedRef.current = null;
+      setSaveStatus("saved");
       setLastPersistMessage("Deleted all images");
     } catch (err) {
       console.error("Failed to delete all images", err);
@@ -652,7 +745,10 @@ export default function AnnotatorPage() {
   const exportAnnotationsJson = useCallback(() => {
     if (images.length === 0) return;
 
-    const labelsByImageIndex: Record<string, Record<Category, CategoryEntry>> = {};
+    const labelsByImageIndex: Record<
+      string,
+      Record<Category, CategoryEntry & { score: number }>
+    > = {};
     for (let i = 0; i < images.length; i++) {
       const base = fullDefaults();
       const patch = perImageByCategory[i] ?? {};
@@ -660,22 +756,38 @@ export default function AnnotatorPage() {
       for (const c of ALL_CATEGORIES) {
         if (patch[c]) merged[c] = normalizeCategoryEntry({ ...base[c], ...patch[c] });
       }
-      labelsByImageIndex[String(i)] = merged;
+      labelsByImageIndex[String(i)] = Object.fromEntries(
+        ALL_CATEGORIES.map((c) => [
+          c,
+          {
+            spec: merged[c].spec,
+            grade: merged[c].grade,
+            score: severityGradeToScore(merged[c].grade),
+          },
+        ])
+      ) as Record<Category, CategoryEntry & { score: number }>;
     }
 
+    const exportAnnotations = cloneAnnotations(annotations).map((ann) => ({
+      ...ann,
+      score: severityGradeToScore(ann.severity),
+    }));
+
     const payload = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       app: "skinnfit-clinical-annotator",
       exportedAt: new Date().toISOString(),
       note:
-        "Images are not embedded. Keep your original files and match them to `images[].fileName` and `images[].index`. Annotation points are normalized 0–1 relative to image width/height. Severity is stored as letter grades A–E (A = least severe, E = most severe) in labelsByImageIndex[].grade and annotations[].severity.",
+        "Images are not embedded. Match `images[].fileName` to files on disk. Points are normalized 0–1 vs image width/height. `grade` is A–E (A=least severe); `score` is numeric 1–5 for eval pipelines.",
       imageCount: images.length,
       images: images.map((_, i) => ({
         index: i,
         fileName: imageMeta[i]?.name ?? `image-${i + 1}`,
+        imageWidth: imageDimensions[i]?.width ?? null,
+        imageHeight: imageDimensions[i]?.height ?? null,
       })),
       labelsByImageIndex,
-      annotations: cloneAnnotations(annotations),
+      annotations: exportAnnotations,
     };
 
     const json = JSON.stringify(payload, null, 2);
@@ -689,7 +801,7 @@ export default function AnnotatorPage() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-  }, [images, imageMeta, perImageByCategory, annotations]);
+  }, [images, imageMeta, perImageByCategory, annotations, imageDimensions]);
 
   const deleteAnnotation = useCallback(
     (id: string) => {
@@ -711,6 +823,7 @@ export default function AnnotatorPage() {
   const currentAnnotations = annotations.filter((a) => a.imageIndex === currentIndex);
   const activeSpecs = CLINICAL_TAXONOMY[activeCategory];
   const activeIsDrawable = DRAWABLE_CATEGORIES.includes(activeCategory);
+  const canDrawOnImage = imageReady && images.length > 0;
   const { spec: activeSpec, grade: activeGrade } = categoryState[activeCategory];
 
   const displaySize = React.useMemo(() => {
@@ -853,15 +966,6 @@ export default function AnnotatorPage() {
           </button>
           <button
             type="button"
-            onClick={importFromFolder}
-            disabled={isImportingFolder}
-            className="inline-flex items-center gap-2 rounded-lg border border-teal-500 px-3 py-2 text-sm font-medium text-teal-700 transition-colors hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-teal-300 dark:hover:bg-teal-950/40"
-            title="Bulk import from root/images_face and save to database"
-          >
-            {isImportingFolder ? "Importing..." : "Import images_face"}
-          </button>
-          <button
-            type="button"
             onClick={deleteAllImages}
             disabled={images.length === 0 || isDeletingAllImages || isHydrating}
             className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950/40"
@@ -875,9 +979,35 @@ export default function AnnotatorPage() {
         </div>
       </nav>
       <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-6 py-1.5 text-xs text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        {isHydrating
-          ? lastPersistMessage || "Loading saved annotator data..."
-          : lastPersistMessage || "All data is persisted to database."}
+        {isHydrating ? (
+          lastPersistMessage || "Loading saved annotator data..."
+        ) : (
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span
+              className={
+                saveStatus === "error"
+                  ? "font-medium text-red-600 dark:text-red-400"
+                  : saveStatus === "dirty"
+                    ? "font-medium text-amber-600 dark:text-amber-400"
+                    : saveStatus === "saving"
+                      ? "font-medium text-teal-600 dark:text-teal-400"
+                      : "text-slate-600 dark:text-zinc-400"
+              }
+            >
+              {saveStatus === "saving" && "Saving…"}
+              {saveStatus === "dirty" && "Unsaved changes…"}
+              {saveStatus === "saved" && "All changes saved"}
+              {saveStatus === "error" && "Save failed"}
+              {saveStatus === "idle" && "Ready"}
+            </span>
+            {!imageReady && images.length > 0 ? (
+              <span className="text-amber-600 dark:text-amber-400">Loading image…</span>
+            ) : null}
+            {lastPersistMessage ? (
+              <span className="text-slate-500 dark:text-zinc-500">· {lastPersistMessage}</span>
+            ) : null}
+          </span>
+        )}
       </div>
 
       {/* Main Content */}
@@ -993,6 +1123,14 @@ export default function AnnotatorPage() {
                     onLoad={(e) => {
                       const t = e.currentTarget;
                       setImgNatural({ w: t.naturalWidth, h: t.naturalHeight });
+                      setImageDimensions((prev) => ({
+                        ...prev,
+                        [currentIndex]: {
+                          width: t.naturalWidth,
+                          height: t.naturalHeight,
+                        },
+                      }));
+                      setImageReady(true);
                     }}
                     className={
                       displaySize
@@ -1134,7 +1272,7 @@ export default function AnnotatorPage() {
             <button
               type="button"
               onClick={() => setActiveTool("path")}
-              disabled={images.length === 0 || !activeIsDrawable}
+              disabled={images.length === 0 || !activeIsDrawable || !canDrawOnImage}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                 activeTool === "path"
                   ? "bg-teal-500 text-zinc-950"
@@ -1147,7 +1285,7 @@ export default function AnnotatorPage() {
             <button
               type="button"
               onClick={() => setActiveTool("line")}
-              disabled={images.length === 0 || !activeIsDrawable}
+              disabled={images.length === 0 || !activeIsDrawable || !canDrawOnImage}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                 activeTool === "line"
                   ? "bg-teal-500 text-zinc-950"
@@ -1282,7 +1420,9 @@ export default function AnnotatorPage() {
             <div className="max-h-48 space-y-2 overflow-y-auto">
               {currentAnnotations.length === 0 ? (
                 <p className="py-4 text-center text-xs text-slate-500 dark:text-zinc-500">
-                  Use Path or Line on a drawable category to draw on the image
+                  {canDrawOnImage
+                    ? "Use Path or Line on a drawable category to draw on the image"
+                    : "Wait for the image to finish loading before drawing"}
                 </p>
               ) : (
                 currentAnnotations.map((ann) => (

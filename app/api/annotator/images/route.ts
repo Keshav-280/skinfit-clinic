@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { annotatorImages } from "@/src/db/schema";
 import { resolveAnnotatorImageSrc } from "@/src/lib/annotatorStorage";
 import { assertSafeStoragePath, getStorage } from "@/src/lib/infra";
+import { requireAnnotatorAuth } from "@/src/lib/auth/require-annotator-auth";
 
 const MAX_BYTES = 12 * 1024 * 1024;
 
@@ -54,7 +55,9 @@ async function deleteStoragePaths(paths: string[]) {
   await Promise.all(paths.map((p) => storage.delete(p)));
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAnnotatorAuth(req);
+  if (auth) return auth;
   const rows = await selectAllImages();
   return NextResponse.json({
     success: true,
@@ -63,6 +66,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAnnotatorAuth(req);
+  if (auth) return auth;
+
   const contentType = req.headers.get("content-type") ?? "";
 
   if (contentType.includes("multipart/form-data")) {
@@ -182,6 +188,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const auth = await requireAnnotatorAuth(req);
+  if (auth) return auth;
+
   const url = new URL(req.url);
   const idRaw = url.searchParams.get("id");
 

@@ -7,6 +7,7 @@ import { db } from "@/src/db";
 import { annotatorImages } from "@/src/db/schema";
 import { resolveAnnotatorImageSrc } from "@/src/lib/annotatorStorage";
 import { getStorage } from "@/src/lib/infra";
+import { requireAnnotatorAuth } from "@/src/lib/auth/require-annotator-auth";
 
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
@@ -50,7 +51,10 @@ async function selectAllImages() {
     .orderBy(asc(annotatorImages.sortOrder), asc(annotatorImages.id));
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  const auth = await requireAnnotatorAuth(req);
+  if (auth) return auth;
+
   const candidateFolders = [
     path.join(process.cwd(), "images_face"),
     path.join(process.cwd(), "..", "images_face"),
