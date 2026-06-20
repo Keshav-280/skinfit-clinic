@@ -1,7 +1,8 @@
 import type { AnnotatorShape } from "@/src/lib/annotatorAnnotations";
 
 export const ANNOTATOR_SCOPE = "default";
-export const ANNOTATOR_LOCK_TTL_MS = 90_000;
+export const ANNOTATOR_LOCK_TTL_MS = 30_000;
+export const ANNOTATOR_LOCK_HEARTBEAT_MS = 10_000;
 
 export type AnnotatorImageLock = {
   userId: string;

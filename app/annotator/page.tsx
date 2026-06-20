@@ -32,6 +32,7 @@ import {
   reconcileAnnotationsForImageSet,
   type AnnotatorShape,
 } from "@/src/lib/annotatorAnnotations";
+import { ANNOTATOR_LOCK_HEARTBEAT_MS } from "@/src/lib/annotatorCollaboration";
 
 const ALL_CATEGORIES = [
   "Active Acne",
@@ -70,8 +71,18 @@ type CategoryEntry = { spec: string; grade: SeverityGrade };
 type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
 function defaultEntry(cat: Category): CategoryEntry {
+  if (DRAWABLE_CATEGORIES.includes(cat)) {
+    return { spec: "", grade: "A" };
+  }
   const specs = CLINICAL_TAXONOMY[cat];
   return { spec: specs[0] ?? "", grade: "A" };
+}
+
+function annotationDisplayLabel(ann: Annotation): string {
+  if (DRAWABLE_CATEGORIES.includes(ann.category as Category)) {
+    return `${ann.category} — ${ann.severity}`;
+  }
+  return ann.spec ? `${ann.spec} — ${ann.severity}` : ann.severity;
 }
 
 function normalizeCategoryEntry(raw: {
@@ -511,7 +522,7 @@ export default function AnnotatorPage() {
           if (json.imageLocks) setImageLocks(json.imageLocks);
         })
         .catch(() => undefined);
-    }, 30_000);
+    }, ANNOTATOR_LOCK_HEARTBEAT_MS);
     return () => window.clearInterval(timer);
   }, [canEditCurrentImage, currentIndex, currentUser]);
 
@@ -619,32 +630,19 @@ export default function AnnotatorPage() {
       commitAnnotations((prev) =>
         prev.map((ann) => {
           if (ann.imageIndex !== imageIndex || ann.category !== cat) return ann;
-          return {
-            ...ann,
-            ...(patch.spec !== undefined ? { spec: patch.spec } : {}),
-            ...(patch.grade !== undefined ? { severity: patch.grade } : {}),
-          };
+          const next = { ...ann };
+          if (patch.grade !== undefined) next.severity = patch.grade;
+          if (
+            patch.spec !== undefined &&
+            !DRAWABLE_CATEGORIES.includes(cat)
+          ) {
+            next.spec = patch.spec;
+          }
+          return next;
         })
       );
     },
     [commitAnnotations]
-  );
-
-  const setCategorySpec = useCallback(
-    (imageIndex: number, cat: Category, spec: string) => {
-      if (imageIndex === currentIndex && !canEditCurrentImage) return;
-      markImageTouched(imageIndex);
-      setPerImageByCategory((prev) => {
-        const cur = prev[imageIndex] ?? {};
-        const prevEntry = { ...defaultEntry(cat), ...cur[cat] };
-        return {
-          ...prev,
-          [imageIndex]: { ...cur, [cat]: { ...prevEntry, spec } },
-        };
-      });
-      syncShapesForCategory(imageIndex, cat, { spec });
-    },
-    [syncShapesForCategory, currentIndex, canEditCurrentImage, markImageTouched]
   );
 
   const setCategoryGrade = useCallback(
@@ -749,7 +747,7 @@ export default function AnnotatorPage() {
       setCurrentStrokePoints([]);
       return;
     }
-    const { spec, grade } = categoryState[activeCategory];
+    const { grade } = categoryState[activeCategory];
     markImageTouched(currentIndex);
     if (activeTool === "path" && currentStrokePoints.length >= 3) {
       const color = CATEGORY_COLORS[activeCategory] ?? "rgb(156, 163, 175)";
@@ -759,7 +757,7 @@ export default function AnnotatorPage() {
           id: nextAnnotationId(currentUser.id),
           imageIndex: currentIndex,
           category: activeCategory,
-          spec,
+          spec: "",
           severity: grade,
           color,
           type: "path",
@@ -774,7 +772,7 @@ export default function AnnotatorPage() {
           id: nextAnnotationId(currentUser.id),
           imageIndex: currentIndex,
           category: activeCategory,
-          spec,
+          spec: "",
           severity: grade,
           color,
           type: "line",
@@ -990,10 +988,9 @@ export default function AnnotatorPage() {
   const myCurrentAnnotations = annotations.filter((a) => a.imageIndex === currentIndex);
   const peerCurrentAnnotations = peerAnnotations.filter((a) => a.imageIndex === currentIndex);
   const currentAnnotations = [...myCurrentAnnotations, ...peerCurrentAnnotations];
-  const activeSpecs = CLINICAL_TAXONOMY[activeCategory];
   const activeIsDrawable = DRAWABLE_CATEGORIES.includes(activeCategory);
   const canDrawOnImage = imageReady && images.length > 0 && canEditCurrentImage;
-  const { spec: activeSpec, grade: activeGrade } = categoryState[activeCategory];
+  const { grade: activeGrade } = categoryState[activeCategory];
 
   const displaySize = React.useMemo(() => {
     if (!imgNatural) return null;
@@ -1166,9 +1163,9 @@ export default function AnnotatorPage() {
           <button
             type="button"
             onClick={deleteAllImages}
-            disabled={images.length === 0 || isDeletingAllImages || isHydrating}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950/40"
-            title="Remove all images from storage and the database"
+            disabled
+            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 transition-colors opacity-40 cursor-not-allowed dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-400"
+            title="Delete all is temporarily disabled"
           >
             <Trash2 className="h-4 w-4" />
             <span className="hidden sm:inline">
@@ -1365,7 +1362,7 @@ export default function AnnotatorPage() {
                         style={{
                           cursor: isMine && activeTool === "eraser" ? "pointer" : "default",
                           pointerEvents: isMine ? "painted" : "none",
-                          opacity: isMine ? 1 : 0.5,
+                          opacity: isMine ? 1 : 0.8,
                         }}
                         onClick={(e) => {
                           if (!isMine) return;
@@ -1400,7 +1397,7 @@ export default function AnnotatorPage() {
                           fontWeight="bold"
                           style={{ pointerEvents: "none" }}
                         >
-                          {ann.spec} — {ann.severity}
+                          {annotationDisplayLabel(ann)}
                         </text>
                       </g>
                     );
@@ -1532,7 +1529,7 @@ export default function AnnotatorPage() {
           <div className="mb-4 space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-                Score + specification + draw
+                Draw + grade
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 {DRAWABLE_CATEGORIES.map((cat) => (
@@ -1575,33 +1572,14 @@ export default function AnnotatorPage() {
           </div>
 
           {activeIsDrawable ? (
-            <div className="mb-4">
-              <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-500">
-                Specification
-              </label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {activeSpecs.map((spec) => (
-                  <button
-                    key={spec}
-                    type="button"
-                    disabled={images.length === 0 || !canEditCurrentImage}
-                    onClick={() => setCategorySpec(currentIndex, activeCategory, spec)}
-                    className={`rounded-lg px-2 py-1.5 text-left text-[11px] font-medium leading-snug transition-colors disabled:opacity-40 ${
-                      activeSpec === spec
-                        ? "bg-teal-500/80 text-white"
-                        : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    }`}
-                  >
-                    {spec}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400">
+              Pick a grade below, then use <strong className="text-slate-800 dark:text-zinc-200">Path</strong> or{" "}
+              <strong className="text-slate-800 dark:text-zinc-200">Line</strong> to mark regions on the image.
+            </p>
           ) : (
             <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400">
               <strong className="text-slate-800 dark:text-zinc-200">Score only</strong> — set severity below. Use{" "}
-              <span className="text-teal-700 dark:text-teal-400">Score + specification + draw</span> to pick a spec
-              and paint regions.
+              <span className="text-teal-700 dark:text-teal-400">Draw + grade</span> categories to paint regions on the image.
             </p>
           )}
 
@@ -1610,8 +1588,7 @@ export default function AnnotatorPage() {
               Severity grade (A–E) · {activeCategory}
             </label>
             <p className="mb-2 text-[11px] text-slate-500 dark:text-zinc-500">
-              A = least severe (1), E = most severe (5). Applies to this category on the current image (all six have a grade; drawable ones also
-              use it on new strokes).
+              A = least severe (1), E = most severe (5). Applies to this category on the current image.
             </p>
             <div className="flex flex-wrap gap-2">
               {SEVERITY_GRADE_OPTIONS.map(({ grade }) => (
@@ -1655,7 +1632,7 @@ export default function AnnotatorPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-900 dark:text-white">
-                        {ann.spec} — {ann.severity}
+                        {annotationDisplayLabel(ann)}
                         {!isMine ? " (peer)" : ""}
                       </p>
                       <p className="truncate text-[10px] text-slate-500 dark:text-zinc-500">
@@ -1734,7 +1711,7 @@ export default function AnnotatorPage() {
                     className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-teal-500/20 hover:text-teal-600 dark:text-zinc-300 dark:hover:text-teal-400"
                     onClick={() =>
                       setContextMenu((prev) =>
-                        prev ? { ...prev, step: "spec", tempCategory: cat } : null
+                        prev ? { ...prev, step: "severity", tempCategory: cat } : null
                       )
                     }
                   >
@@ -1743,7 +1720,7 @@ export default function AnnotatorPage() {
                 ))}
               </div>
             )}
-            {contextMenu.step === "spec" && contextMenu.tempCategory && (
+            {contextMenu.step === "severity" && contextMenu.tempCategory && (
               <div className="py-1">
                 <button
                   type="button"
@@ -1751,35 +1728,6 @@ export default function AnnotatorPage() {
                   onClick={() =>
                     setContextMenu((prev) =>
                       prev ? { ...prev, step: "category", tempCategory: undefined } : null
-                    )
-                  }
-                >
-                  ← Back
-                </button>
-                {(CLINICAL_TAXONOMY[contextMenu.tempCategory as Category] ?? []).map((spec: string) => (
-                  <button
-                    key={spec}
-                    type="button"
-                    className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-teal-500/20 hover:text-teal-600 dark:text-zinc-300 dark:hover:text-teal-400"
-                    onClick={() =>
-                      setContextMenu((prev) =>
-                        prev ? { ...prev, step: "severity", tempSpec: spec } : null
-                      )
-                    }
-                  >
-                    {spec}
-                  </button>
-                ))}
-              </div>
-            )}
-            {contextMenu.step === "severity" && contextMenu.tempCategory && contextMenu.tempSpec && (
-              <div className="py-1">
-                <button
-                  type="button"
-                  className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-400"
-                  onClick={() =>
-                    setContextMenu((prev) =>
-                      prev ? { ...prev, step: "spec", tempSpec: undefined } : null
                     )
                   }
                 >
@@ -1793,7 +1741,6 @@ export default function AnnotatorPage() {
                     onClick={() => {
                       const cat = contextMenu.tempCategory as Category;
                       setActiveCategory(cat);
-                      setCategorySpec(currentIndex, cat, contextMenu.tempSpec!);
                       setCategoryGrade(currentIndex, cat, grade);
                       setContextMenu(null);
                     }}
@@ -1835,17 +1782,17 @@ export default function AnnotatorPage() {
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">2. Categories:</span>{" "}
-                <strong>Score + specification + draw</strong> lists the four you can annotate on the image.{" "}
+                <strong>Draw + grade</strong> lists the four you can annotate on the image (grade + regions only).{" "}
                 <strong>Score only</strong> lists the other two (severity grades A–E; A = least severe, E = most severe).
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">3. Drawing:</span>{" "}
-                Path and Line work only when a drawable category is selected; new strokes use that category&apos;s spec
-                and severity.
+                Path and Line work only when a drawable category is selected; new strokes use that category&apos;s
+                grade.
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">4. Context menu:</span>{" "}
-                Right-click the image to jump through drawable category, specification, and score.
+                Right-click the image to pick a drawable category and grade.
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">5. Undo / redo:</span>{" "}
@@ -1853,7 +1800,7 @@ export default function AnnotatorPage() {
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">6. Save / download:</span>{" "}
-                Use <strong>Export JSON</strong> in the top bar. It downloads scores and specs for every image index,
+                Use <strong>Export JSON</strong> in the top bar. It downloads grades and scores for every image index,
                 all drawn shapes (coordinates 0–1 vs image size), and original file names from upload. Pixel images are
                 not inside the file — keep those files on disk and match by name/index.
               </li>
