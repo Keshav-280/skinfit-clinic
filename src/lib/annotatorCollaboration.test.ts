@@ -31,6 +31,27 @@ describe("annotatorCollaboration", () => {
     assert.equal(peerShapes(store, "user-a").length, 1);
   });
 
+  it("does not clear existing shapes when an empty list arrives without allowEmpty", () => {
+    let store = parseCollaborationStore(null);
+    store = applyUserSync(store, "user-a", {
+      annotations: [{ id: "a1", imageIndex: 0, category: "Active Acne", spec: "", severity: "A", color: "red", type: "path", points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }] }],
+    });
+    assert.equal(store.perUserShapes["user-a"]?.length, 1);
+
+    // Stray empty save (e.g. bad load) must not wipe saved shapes.
+    store = applyUserSync(store, "user-a", { annotations: [] });
+    assert.equal(store.perUserShapes["user-a"]?.length, 1);
+  });
+
+  it("clears shapes on empty list only when allowEmptyAnnotations is set", () => {
+    let store = parseCollaborationStore(null);
+    store = applyUserSync(store, "user-a", {
+      annotations: [{ id: "a1", imageIndex: 0, category: "Active Acne", spec: "", severity: "A", color: "red", type: "path", points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }] }],
+    });
+    store = applyUserSync(store, "user-a", { annotations: [], allowEmptyAnnotations: true });
+    assert.equal(store.perUserShapes["user-a"]?.length, 0);
+  });
+
   it("blocks lock when another user holds it", () => {
     const store = parseCollaborationStore(null);
     const first = acquireImageLock(store, 3, { id: "u1", name: "Alice" });

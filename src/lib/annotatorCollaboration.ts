@@ -240,12 +240,21 @@ export function applyUserSync(
   payload: {
     perImageByCategory?: Record<string, Record<string, AnnotatorLabelEntry>>;
     annotations?: AnnotatorShape[];
+    /** Allow clearing this user's shapes to empty. Without it, an empty array
+     * never overwrites existing non-empty shapes (guards against bad loads /
+     * stale tabs silently wiping saved annotations). */
+    allowEmptyAnnotations?: boolean;
   },
   syncedAt = new Date().toISOString()
 ): AnnotatorCollaborationStore {
   const next = { ...store };
   if (payload.annotations) {
-    next.perUserShapes = { ...next.perUserShapes, [userId]: payload.annotations };
+    const incoming = payload.annotations;
+    const existing = next.perUserShapes[userId] ?? [];
+    const wouldClearNonEmpty = incoming.length === 0 && existing.length > 0;
+    if (!wouldClearNonEmpty || payload.allowEmptyAnnotations) {
+      next.perUserShapes = { ...next.perUserShapes, [userId]: incoming };
+    }
   }
   if (payload.perImageByCategory) {
     next.perUserLabels = {

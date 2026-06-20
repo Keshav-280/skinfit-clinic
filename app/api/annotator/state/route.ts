@@ -137,6 +137,7 @@ export async function PUT(req: Request) {
     | {
         perImageByCategory?: PerImageByCategoryShape;
         annotations?: AnnotationShape[];
+        allowEmptyAnnotations?: boolean;
         clearAll?: boolean;
       }
     | null;
@@ -160,6 +161,7 @@ export async function PUT(req: Request) {
   store = applyUserSync(store, profile.id, {
     perImageByCategory: body.perImageByCategory,
     annotations: body.annotations as Parameters<typeof applyUserSync>[2]["annotations"],
+    allowEmptyAnnotations: body.allowEmptyAnnotations === true,
   });
 
   await persistCollaborationStore(store);

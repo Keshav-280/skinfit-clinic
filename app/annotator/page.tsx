@@ -279,6 +279,7 @@ export default function AnnotatorPage() {
   }, []);
 
   const undoAnnotation = useCallback(() => {
+    intentionalShapeRemovalRef.current = true;
     setAnnotationHistory((ah) => ({
       ...ah,
       index: Math.max(0, ah.index - 1),
@@ -286,6 +287,7 @@ export default function AnnotatorPage() {
   }, []);
 
   const redoAnnotation = useCallback(() => {
+    intentionalShapeRemovalRef.current = true;
     setAnnotationHistory((ah) => ({
       ...ah,
       index: Math.min(ah.snapshots.length - 1, ah.index + 1),
@@ -316,6 +318,11 @@ export default function AnnotatorPage() {
   const saveDirtyRef = useRef(false);
   const lastPersistedRef = useRef<string | null>(null);
   const touchedImagesRef = useRef<Set<number>>(new Set());
+  // True once the user intentionally removes shapes (delete/eraser/undo), which
+  // is the only case where saving an empty shape list is allowed to overwrite
+  // non-empty server data. A bad hydration leaves this false, so a stray empty
+  // autosave can never silently wipe saved annotations.
+  const intentionalShapeRemovalRef = useRef(false);
   const prevImageIndexRef = useRef<number | null>(null);
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [imageLocks, setImageLocks] = useState<Record<string, AnnotatorImageLock>>({});
@@ -570,6 +577,10 @@ export default function AnnotatorPage() {
               touchedImagesRef.current
             ),
             annotations,
+            // Only permit overwriting saved shapes with an empty list when the
+            // emptiness is the result of an explicit removal this session.
+            allowEmptyAnnotations:
+              annotations.length === 0 && intentionalShapeRemovalRef.current,
           }),
         });
         if (!res.ok) throw new Error(`Save failed: ${res.status}`);
@@ -970,6 +981,7 @@ export default function AnnotatorPage() {
     (id: string) => {
       if (!canEditCurrentImage) return;
       markImageTouched(currentIndex);
+      intentionalShapeRemovalRef.current = true;
       commitAnnotations((prev) => prev.filter((a) => a.id !== id));
     },
     [commitAnnotations, canEditCurrentImage, currentIndex, markImageTouched]
