@@ -106,7 +106,7 @@ function migrateAnnotations(raw: unknown): Annotation[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((a) => a && typeof a === "object")
-    .map((a) => {
+    .map((a): Annotation => {
       const ann = a as Annotation & { severity: unknown };
       const points = Array.isArray(ann.points)
         ? ann.points.filter(
@@ -119,11 +119,16 @@ function migrateAnnotations(raw: unknown): Annotation[] {
               Number.isFinite(p.y)
           )
         : [];
+      const type: Annotation["type"] = ann.type === "line" ? "line" : "path";
       return {
-        ...ann,
-        type: ann.type === "line" ? "line" : "path",
-        points,
+        id: ann.id,
+        imageIndex: ann.imageIndex,
+        category: ann.category,
+        spec: ann.spec,
         severity: normalizeSeverityGrade(ann.severity, "A"),
+        color: ann.color,
+        type,
+        points,
       };
     })
     .filter((ann) => ann.points.length >= (ann.type === "line" ? 2 : 3));
