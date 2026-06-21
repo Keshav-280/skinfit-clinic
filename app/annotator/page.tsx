@@ -308,7 +308,6 @@ export default function AnnotatorPage() {
   const [imageZoom, setImageZoom] = useState(1);
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
-  const [isDeletingAllImages, setIsDeletingAllImages] = useState(false);
   const [lastPersistMessage, setLastPersistMessage] = useState<string>("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [imageReady, setImageReady] = useState(false);
@@ -854,46 +853,6 @@ export default function AnnotatorPage() {
     e.target.value = "";
   };
 
-  const deleteAllImages = useCallback(async () => {
-    if (images.length === 0) return;
-    const ok = window.confirm(
-      "Delete all annotator images from storage and the database? Saved annotations and labels will be cleared too."
-    );
-    if (!ok) return;
-
-    try {
-      setIsDeletingAllImages(true);
-      const res = await fetch("/api/annotator/images", { method: "DELETE" });
-      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-
-      await fetch("/api/annotator/state", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clearAll: true }),
-      });
-
-      setImages([]);
-      setImageMeta([]);
-      setImageDimensions({});
-      setCurrentIndex(0);
-      setPerImageByCategory({});
-      setAnnotationHistory({ snapshots: [[]], index: 0 });
-      setPeerAnnotations([]);
-      setImageLocks({});
-      touchedImagesRef.current = new Set();
-      setImageZoom(1);
-      saveDirtyRef.current = false;
-      lastPersistedRef.current = null;
-      setSaveStatus("saved");
-      setLastPersistMessage("Deleted all images");
-    } catch (err) {
-      console.error("Failed to delete all images", err);
-      setLastPersistMessage("Failed to delete all images");
-    } finally {
-      setIsDeletingAllImages(false);
-    }
-  }, [images.length]);
-
   const exportAnnotationsJson = useCallback(async () => {
     if (images.length === 0) return;
 
@@ -1171,26 +1130,6 @@ export default function AnnotatorPage() {
           >
             <Upload className="h-4 w-4" />
             Upload Images
-          </button>
-          <button
-            type="button"
-            onClick={deleteAllImages}
-            disabled={images.length === 0 || isDeletingAllImages || isHydrating}
-            className={`inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950/40 ${
-              images.length === 0 || isDeletingAllImages || isHydrating
-                ? "cursor-not-allowed opacity-40"
-                : ""
-            }`}
-            title={
-              images.length === 0
-                ? "No images to delete"
-                : "Delete all images from storage and clear saved annotations"
-            }
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="hidden sm:inline">
-              {isDeletingAllImages ? "Deleting..." : "Delete all images"}
-            </span>
           </button>
         </div>
       </nav>
