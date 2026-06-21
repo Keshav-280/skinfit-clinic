@@ -2,10 +2,23 @@
  * Submit a five-angle face scan — prefers async queue, falls back to legacy sync API.
  */
 
+import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
+
 export type FaceScanSubmitResult =
   | { mode: "queued"; jobId: string }
   | { mode: "completed"; scanId: number }
-  | { mode: "error"; message: string; status: number };
+  | {
+      mode: "error";
+      message: string;
+      status: number;
+      identityChecks?: FaceIdentityImageCheck[];
+    };
+
+type ScanErrorJson = {
+  error?: string;
+  message?: string;
+  identityChecks?: FaceIdentityImageCheck[];
+};
 
 export async function submitFaceScan(
   formData: FormData,
@@ -26,10 +39,7 @@ export async function submitFaceScan(
 
   // Async mode on server: do not fall back to legacy /api/scan (returns 410).
   if (submitRes.status !== 503) {
-    const errJson = (await submitRes.json().catch(() => ({}))) as {
-      error?: string;
-      message?: string;
-    };
+    const errJson = (await submitRes.json().catch(() => ({}))) as ScanErrorJson;
     return {
       mode: "error",
       message:
@@ -37,6 +47,7 @@ export async function submitFaceScan(
         errJson.error ||
         `Could not queue scan (${submitRes.status}).`,
       status: submitRes.status,
+      identityChecks: errJson.identityChecks,
     };
   }
 
@@ -45,9 +56,8 @@ export async function submitFaceScan(
     body: formData,
     credentials: "include",
   });
-  const json = (await res.json()) as {
+  const json = (await res.json()) as ScanErrorJson & {
     success?: boolean;
-    error?: string;
     data?: { id?: number };
   };
 
@@ -55,6 +65,7 @@ export async function submitFaceScan(
     return {
       mode: "error",
       message:
+        json.message ||
         json.error ||
         (res.status === 401
           ? "Sign in to save your scan."
@@ -62,6 +73,7 @@ export async function submitFaceScan(
             ? "Scan is processing in the background. Check History shortly."
             : "Scan failed. Try again."),
       status: res.status,
+      identityChecks: json.identityChecks,
     };
   }
 

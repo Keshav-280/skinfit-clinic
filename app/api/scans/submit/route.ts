@@ -18,6 +18,7 @@ import {
 } from "@/src/lib/infra";
 import type { ScanJobPayload } from "@/src/lib/infra";
 import {
+  buildFaceIdentityInputsFromPaths,
   cleanupUploadedScanImages,
   enforceScanFaceIdentity,
   FACE_IDENTITY_ERROR_CODES,
@@ -85,14 +86,18 @@ export async function POST(request: NextRequest) {
   const identity = await enforceScanFaceIdentity({
     userId,
     scanName,
-    centreImagePath: imagePaths.centre,
+    images: buildFaceIdentityInputsFromPaths(imagePaths),
   });
   if (!identity.ok) {
     await cleanupUploadedScanImages(imagePaths);
     const status =
       identity.code === FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE ? 503 : 403;
     return NextResponse.json(
-      { error: identity.code, message: identity.message },
+      {
+        error: identity.code,
+        message: identity.message,
+        identityChecks: identity.imageChecks,
+      },
       { status }
     );
   }

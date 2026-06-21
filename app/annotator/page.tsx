@@ -1175,9 +1175,17 @@ export default function AnnotatorPage() {
           <button
             type="button"
             onClick={deleteAllImages}
-            disabled
-            className="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 transition-colors opacity-40 cursor-not-allowed dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-400"
-            title="Delete all is temporarily disabled"
+            disabled={images.length === 0 || isDeletingAllImages || isHydrating}
+            className={`inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950/40 ${
+              images.length === 0 || isDeletingAllImages || isHydrating
+                ? "cursor-not-allowed opacity-40"
+                : ""
+            }`}
+            title={
+              images.length === 0
+                ? "No images to delete"
+                : "Delete all images from storage and clear saved annotations"
+            }
           >
             <Trash2 className="h-4 w-4" />
             <span className="hidden sm:inline">

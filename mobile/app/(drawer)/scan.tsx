@@ -34,7 +34,7 @@ import {
   removePendingScanJob,
   subscribeScanJobNotifications,
 } from "@/lib/scanJobNotifications";
-import { submitFaceScan } from "@/lib/submitFaceScan";
+import { submitFaceScan, formatFaceScanIdentityError } from "@/lib/submitFaceScan";
 
 const SCAN_STATUS_POLL_MS = 3_000;
 const N = FACE_SCAN_CAPTURE_STEPS.length;
@@ -192,7 +192,9 @@ export default function ScanScreen() {
 
       const outcome = await submitFaceScan(token, form);
       if (outcome.mode === "error") {
-        throw new Error(outcome.message);
+        throw new Error(
+          formatFaceScanIdentityError(outcome.message, outcome.identityChecks)
+        );
       }
       if (outcome.mode === "queued") {
         await addPendingScanJob(outcome.jobId, name);

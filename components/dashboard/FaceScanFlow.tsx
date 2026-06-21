@@ -43,9 +43,11 @@ import {
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 import { FaceScanPhotoGuide } from "@/components/dashboard/FaceScanPhotoGuide";
+import { FaceIdentityCheckResults } from "@/components/onboarding/FaceIdentityCheckResults";
 import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
 import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
 import { submitFaceScan } from "@/src/lib/submitFaceScan";
+import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
 import { ScanPhotoGuideDismissCheckbox } from "@/components/dashboard/ScanPhotoGuideDismissCheckbox";
 import {
   clearScanPhotoGuideDismissed,
@@ -242,6 +244,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [identityChecks, setIdentityChecks] = useState<
+    FaceIdentityImageCheck[] | null
+  >(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [captureZoom, setCaptureZoom] = useState<number>(CAPTURE_ZOOM_DEFAULT);
   const [brightness, setBrightness] = useState<number>(ADJUST_DEFAULT);
@@ -712,6 +717,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setScanResults(null);
     setUploadError(null);
     setScanError(null);
+    setIdentityChecks(null);
     setPhotoGuideOpen(false);
     setPhotoGuideIntent("camera");
     setSkipPhotoGuide(isScanPhotoGuideDismissed());
@@ -744,6 +750,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     const finalScanName = resolveScanName(scanName);
     setStep("scanning");
     setScanError(null);
+    setIdentityChecks(null);
     try {
       const formData = new FormData();
       formData.append("scanName", finalScanName);
@@ -760,6 +767,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
       if (outcome.mode === "error") {
         setScanError(outcome.message);
+        setIdentityChecks(outcome.identityChecks ?? null);
         setStep("naming");
         return;
       }
@@ -1295,12 +1303,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             </div>
           </div>
           {scanError ? (
-            <p
-              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-900"
-              role="alert"
-            >
-              {scanError}
-            </p>
+            <div className="space-y-3" role="alert">
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-900">
+                {scanError}
+              </p>
+              {identityChecks?.length ? (
+                <FaceIdentityCheckResults checks={identityChecks} />
+              ) : null}
+            </div>
           ) : null}
           <div className="rounded-[22px] border border-white/70 bg-white/35 p-6 backdrop-blur-sm">
             <label htmlFor="scan-name" className="mb-3 block text-sm font-medium text-[#2C3E6B]">

@@ -29,14 +29,12 @@ import {
 import { parseOnboardingAge } from "../../../src/lib/onboardingAgeOptions";
 import {
   buildOnboardingQuestionnairePayload,
-  expandSkippedStepsForSkip,
   ONBOARDING_QUESTIONNAIRE_LAST_STEP,
   OVERALL_SKIN_HEALTH_OPTIONS,
   prepareQuestionnaireBack,
   prepareQuestionnaireNext,
   reconcileSkippedSteps,
   removeSkippedStepsForAnswer,
-  nextOnboardingQuestionnaireStepAfterSkip,
   normalizeOnboardingQuestionnaireStep,
   questionnaireProgress,
   type BaselineDietType,
@@ -649,24 +647,6 @@ export default function QuestionnaireScreen() {
     persistDraft(nextStep, {}, nextSkipped);
   }
 
-  function skip() {
-    if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
-      const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
-      setSkippedSteps(nextSkipped);
-      void submit(nextSkipped);
-      return;
-    }
-    const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
-    setSkippedSteps(nextSkipped);
-    const nextStep = nextOnboardingQuestionnaireStepAfterSkip(
-      activeStep,
-      priorTx,
-      {}
-    );
-    setStep(nextStep);
-    persistDraft(nextStep, {}, nextSkipped);
-  }
-
   function back() {
     if (activeStep <= 0) {
       router.back();
@@ -687,7 +667,7 @@ export default function QuestionnaireScreen() {
     persistDraft(prevStep, clearPatch, nextSkipped);
   }
 
-  function skipToDashboard() {
+  function leaveForDashboard() {
     persistDraft();
     // Remember the explicit choice so the drawer gate lets the user in even
     // without a baseline scan (same as web's open /dashboard).
@@ -709,7 +689,7 @@ export default function QuestionnaireScreen() {
           Step {displayStep} / {totalSteps}
         </Text>
         {activeStep === 0 ? (
-          <Pressable onPress={skipToDashboard} disabled={busy} hitSlop={8}>
+          <Pressable onPress={leaveForDashboard} disabled={busy} hitSlop={8}>
             <Text style={styles.skipDashboardText}>Skip to dashboard</Text>
           </Pressable>
         ) : null}
@@ -1121,9 +1101,11 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      <Pressable style={styles.skipBtn} onPress={skip} disabled={busy}>
-        <Text style={styles.skipBtnText}>Skip this question</Text>
-      </Pressable>
+      {activeStep > 0 ? (
+        <Pressable style={styles.skipBtn} onPress={leaveForDashboard} disabled={busy}>
+          <Text style={styles.skipBtnText}>Answer later</Text>
+        </Pressable>
+      ) : null}
 
       <View style={styles.row}>
         <Pressable style={styles.btnGhost} onPress={back} disabled={busy}>

@@ -42,6 +42,7 @@ import {
 } from "../../../src/lib/infra";
 import { computeRagKaiScore } from "../../../src/lib/ragEightParams";
 import {
+  buildFaceIdentityInputsFromJpegs,
   enforceScanFaceIdentity,
   FACE_IDENTITY_ERROR_CODES,
 } from "../../../src/lib/scanFaceIdentityGate";
@@ -267,10 +268,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const imageJpegs: Partial<Record<string, Buffer>> = {};
+    for (const step of FACE_SCAN_CAPTURE_STEPS) {
+      imageJpegs[step.id] = Buffer.from(
+        await filesForV2[step.id].arrayBuffer()
+      );
+    }
     const identity = await enforceScanFaceIdentity({
       userId,
       scanName,
-      centreImageJpeg: Buffer.from(await filesForV2.centre.arrayBuffer()),
+      images: buildFaceIdentityInputsFromJpegs(imageJpegs),
     });
     if (!identity.ok) {
       const status =
@@ -282,6 +289,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: identity.code,
           message: identity.message,
+          identityChecks: identity.imageChecks,
         },
         { status }
       );

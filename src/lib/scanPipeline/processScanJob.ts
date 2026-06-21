@@ -41,9 +41,10 @@ import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
+import { formatFaceIdentityCheckSummary } from "@/src/lib/faceIdentityCheckDisplay";
 import {
+  buildFaceIdentityInputsFromPaths,
   enforceScanFaceIdentity,
-  FACE_IDENTITY_ERROR_CODES,
 } from "@/src/lib/scanFaceIdentityGate";
 
 async function pathToFile(relativePath: string, name: string): Promise<File> {
@@ -85,10 +86,14 @@ export async function processScanJob(
   const identity = await enforceScanFaceIdentity({
     userId: payload.userId,
     scanName: payload.scanName,
-    centreImagePath: payload.imagePaths.centre,
+    images: buildFaceIdentityInputsFromPaths(payload.imagePaths),
   });
   if (!identity.ok) {
-    const errText = `${identity.code}: ${identity.message}`;
+    const checkSummary =
+      identity.imageChecks?.length ?
+        `\n${formatFaceIdentityCheckSummary(identity.imageChecks)}`
+      : "";
+    const errText = `${identity.code}: ${identity.message}${checkSummary}`;
     await database
       .update(scanJobs)
       .set({

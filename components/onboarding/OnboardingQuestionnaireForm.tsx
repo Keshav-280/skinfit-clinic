@@ -17,14 +17,12 @@ import {
 } from "@/src/lib/onboardingAgeOptions";
 import {
   buildOnboardingQuestionnairePayload,
-  expandSkippedStepsForSkip,
   ONBOARDING_QUESTIONNAIRE_LAST_STEP,
   OVERALL_SKIN_HEALTH_OPTIONS,
   prepareQuestionnaireBack,
   prepareQuestionnaireNext,
   reconcileSkippedSteps,
   removeSkippedStepsForAnswer,
-  nextOnboardingQuestionnaireStepAfterSkip,
   normalizeOnboardingQuestionnaireStep,
   questionnaireProgress,
   type BaselineDietType,
@@ -650,24 +648,6 @@ export function OnboardingQuestionnaireForm() {
     persistDraft(nextStep, {}, nextSkipped);
   }
 
-  function skip() {
-    if (activeStep === ONBOARDING_QUESTIONNAIRE_LAST_STEP) {
-      const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
-      setSkippedSteps(nextSkipped);
-      void submit(nextSkipped);
-      return;
-    }
-    const nextSkipped = expandSkippedStepsForSkip(activeStep, skippedSteps);
-    setSkippedSteps(nextSkipped);
-    const nextStep = nextOnboardingQuestionnaireStepAfterSkip(
-      activeStep,
-      priorTx,
-      {}
-    );
-    setStep(nextStep);
-    persistDraft(nextStep, {}, nextSkipped);
-  }
-
   function back() {
     if (activeStep <= 0) {
       router.back();
@@ -688,7 +668,7 @@ export function OnboardingQuestionnaireForm() {
     persistDraft(prevStep, clearPatch, nextSkipped);
   }
 
-  function skipToDashboard() {
+  function leaveForDashboard() {
     persistDraft();
     router.replace("/dashboard");
   }
@@ -709,7 +689,7 @@ export function OnboardingQuestionnaireForm() {
         {activeStep === 0 ? (
           <button
             type="button"
-            onClick={skipToDashboard}
+            onClick={leaveForDashboard}
             disabled={busy}
             className="shrink-0 text-sm font-semibold text-[#2C3E6B]/80 underline-offset-2 transition hover:text-[#2C3E6B] hover:underline disabled:opacity-50"
           >
@@ -1196,14 +1176,16 @@ export function OnboardingQuestionnaireForm() {
       ) : null}
 
       <div className="pt-4">
-        <button
-          type="button"
-          onClick={skip}
-          disabled={busy}
-          className="mb-3 w-full py-2 text-center text-sm font-semibold text-zinc-500 transition-colors hover:text-skinfit-navy disabled:opacity-50"
-        >
-          Skip this question
-        </button>
+        {activeStep > 0 ? (
+          <button
+            type="button"
+            onClick={leaveForDashboard}
+            disabled={busy}
+            className="mb-3 w-full py-2 text-center text-sm font-semibold text-zinc-500 transition-colors hover:text-skinfit-navy disabled:opacity-50"
+          >
+            Answer later
+          </button>
+        ) : null}
         <div className="flex gap-3">
           <button
             type="button"

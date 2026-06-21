@@ -18,7 +18,7 @@ import {
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
 import { pickSingleFaceScanImage } from "@/lib/pickFaceScanImages";
 import { addPendingScanJob } from "@/lib/scanJobNotifications";
-import { submitFaceScan } from "@/lib/submitFaceScan";
+import { submitFaceScan, formatFaceScanIdentityError } from "@/lib/submitFaceScan";
 
 const N = FACE_SCAN_CAPTURE_STEPS.length;
 
@@ -68,7 +68,9 @@ export default function OnboardingCaptureScreen() {
       }
       const outcome = await submitFaceScan(token, form);
       if (outcome.mode === "error") {
-        throw new Error(outcome.message);
+        throw new Error(
+          formatFaceScanIdentityError(outcome.message, outcome.identityChecks)
+        );
       }
       if (outcome.mode === "queued") {
         await addPendingScanJob(outcome.jobId, "kAI baseline — onboarding");

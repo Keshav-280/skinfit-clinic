@@ -42,7 +42,41 @@ export function faceIdentityMatchThreshold(): number {
     process.env.FACE_IDENTITY_MATCH_THRESHOLD?.trim() || "0.42"
   );
   if (!Number.isFinite(parsed)) return 0.42;
-  return Math.max(0.2, Math.min(0.95, parsed));
+  return clampFaceIdentityThreshold(parsed);
+}
+
+function clampFaceIdentityThreshold(value: number): number {
+  return Math.max(0.2, Math.min(0.95, value));
+}
+
+/** Lower bar for side profiles, eyes closed, and smiling (harder to match a front reference). */
+export function faceIdentityProfileMatchThreshold(): number {
+  const raw = process.env.FACE_IDENTITY_PROFILE_MATCH_THRESHOLD?.trim();
+  if (raw) {
+    const parsed = Number.parseFloat(raw);
+    if (Number.isFinite(parsed)) return clampFaceIdentityThreshold(parsed);
+  }
+  return clampFaceIdentityThreshold(
+    Math.max(0.28, faceIdentityMatchThreshold() - 0.1)
+  );
+}
+
+const FACE_IDENTITY_PROFILE_LABELS = new Set([
+  "left",
+  "right",
+  "eyes_closed",
+  "smiling",
+]);
+
+/** Match threshold for a capture step id (front uses the stricter default). */
+export function faceIdentityMatchThresholdForLabel(label: string): number {
+  if (label === "centre" || label === "center") {
+    return faceIdentityMatchThreshold();
+  }
+  if (FACE_IDENTITY_PROFILE_LABELS.has(label)) {
+    return faceIdentityProfileMatchThreshold();
+  }
+  return faceIdentityMatchThreshold();
 }
 
 export async function extractFaceEmbedding(

@@ -2,11 +2,14 @@ import { and, asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import { scans, users } from "@/src/db/schema";
+import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 import type { FaceCaptureRef } from "@/src/lib/resolveScanImageUrl";
 import {
   cosineSimilarity,
   extractFaceEmbedding,
   faceIdentityMatchThreshold,
+  faceIdentityMatchThresholdForLabel,
+  faceIdentityProfileMatchThreshold,
   isFaceIdentityVerificationEnabled,
 } from "@/src/lib/faceIdentityInference";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
@@ -22,24 +25,42 @@ export const FACE_IDENTITY_ERROR_CODES = {
 export type FaceIdentityErrorCode =
   (typeof FACE_IDENTITY_ERROR_CODES)[keyof typeof FACE_IDENTITY_ERROR_CODES];
 
+export type FaceIdentityImageInput = {
+  label: string;
+  path?: string;
+  jpeg?: Buffer;
+};
+
+export type FaceIdentityImageCheck = {
+  label: string;
+  title: string;
+  matched: boolean;
+  faceDetected: boolean;
+  similarity?: number;
+  /** Minimum cosine similarity required for this angle. */
+  threshold?: number;
+};
+
 export type ScanFaceIdentityGateResult =
   | {
       ok: true;
       action: "reference_set" | "legacy_reference_set" | "verified" | "skipped";
       similarity?: number;
+      imageChecks?: FaceIdentityImageCheck[];
     }
   | {
       ok: false;
       code: FaceIdentityErrorCode;
       message: string;
       similarity?: number;
+      imageChecks?: FaceIdentityImageCheck[];
     };
 
 const USER_MESSAGES: Record<FaceIdentityErrorCode, string> = {
   [FACE_IDENTITY_ERROR_CODES.MISMATCH]:
-    "This scan doesn't match the person who completed onboarding. Please use your own account, or contact support if you need to reset your baseline.",
+    "This scan doesn't match the person who completed onboarding. Every photo must pass — retake any marked below as no match.",
   [FACE_IDENTITY_ERROR_CODES.NOT_DETECTED]:
-    "We couldn't detect a clear face in your front photo. Retake the centre shot with your face centered and well lit.",
+    "We couldn't detect a clear face in any of your photos. Retake with your face centered and well lit.",
   [FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE]:
     "Face verification is temporarily unavailable. Please try again in a few minutes.",
   [FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED]:
@@ -160,16 +181,52 @@ function storagePathFromFileUrl(url: string): string | null {
   return null;
 }
 
-async function readCentreImageBuffer(args: {
+function titleForCaptureLabel(label: string): string {
+  return (
+    FACE_SCAN_CAPTURE_STEPS.find((step) => step.id === label)?.title ?? label
+  );
+}
+
+export function buildFaceIdentityInputsFromPaths(
+  imagePaths: Record<string, string>
+): FaceIdentityImageInput[] {
+  return FACE_SCAN_CAPTURE_STEPS.map((step) => ({
+    label: step.id,
+    path: imagePaths[step.id],
+  })).filter((input) => Boolean(input.path));
+}
+
+export function buildFaceIdentityInputsFromJpegs(
+  jpegs: Partial<Record<string, Buffer>>
+): FaceIdentityImageInput[] {
+  return FACE_SCAN_CAPTURE_STEPS.map((step) => ({
+    label: step.id,
+    jpeg: jpegs[step.id],
+  })).filter((input) => input.jpeg?.length);
+}
+
+function resolveFaceIdentityImages(args: {
   centreImagePath?: string;
   centreImageJpeg?: Buffer;
-}): Promise<Buffer> {
-  if (args.centreImageJpeg?.length) return args.centreImageJpeg;
-  if (!args.centreImagePath) {
-    throw new Error("centre_image_missing");
+  images?: FaceIdentityImageInput[];
+}): FaceIdentityImageInput[] {
+  if (args.images?.length) return args.images;
+  if (args.centreImageJpeg?.length || args.centreImagePath) {
+    return [
+      {
+        label: "centre",
+        path: args.centreImagePath,
+        jpeg: args.centreImageJpeg,
+      },
+    ];
   }
-  const storage = getStorage();
-  return storage.read(args.centreImagePath);
+  return [];
+}
+
+async function readImageBuffer(input: FaceIdentityImageInput): Promise<Buffer> {
+  if (input.jpeg?.length) return input.jpeg;
+  if (!input.path) throw new Error("image_missing");
+  return getStorage().read(input.path);
 }
 
 async function loadUserFaceReference(userId: string): Promise<{
@@ -234,15 +291,97 @@ async function backfillReferenceFromFirstScan(
   return { embedding: extracted.embedding, imagePath };
 }
 
+async function verifyImagesAgainstReference(
+  referenceEmbedding: number[],
+  images: FaceIdentityImageInput[]
+): Promise<{
+  imageChecks: FaceIdentityImageCheck[];
+  worstSimilarity: number;
+  allMatch: boolean;
+  anyFaceDetected: boolean;
+}> {
+  const imageChecks: FaceIdentityImageCheck[] = [];
+  let worstSimilarity = 1;
+  let anyFaceDetected = false;
+
+  for (const image of images) {
+    const title = titleForCaptureLabel(image.label);
+    const threshold = faceIdentityMatchThresholdForLabel(image.label);
+    let jpeg: Buffer;
+    try {
+      jpeg = await readImageBuffer(image);
+    } catch {
+      imageChecks.push({
+        label: image.label,
+        title,
+        matched: false,
+        faceDetected: false,
+        threshold,
+      });
+      continue;
+    }
+
+    let extracted: Awaited<ReturnType<typeof extractFaceEmbedding>>;
+    try {
+      extracted = await extractFaceEmbedding(jpeg);
+    } catch {
+      imageChecks.push({
+        label: image.label,
+        title,
+        matched: false,
+        faceDetected: false,
+        threshold,
+      });
+      continue;
+    }
+
+    if (!extracted.ok) {
+      imageChecks.push({
+        label: image.label,
+        title,
+        matched: false,
+        faceDetected: extracted.faceDetected,
+        threshold,
+      });
+      if (extracted.faceDetected) anyFaceDetected = true;
+      continue;
+    }
+
+    anyFaceDetected = true;
+    const similarity = cosineSimilarity(referenceEmbedding, extracted.embedding);
+    if (similarity < worstSimilarity) worstSimilarity = similarity;
+    const matched = similarity >= threshold;
+    imageChecks.push({
+      label: image.label,
+      title,
+      matched,
+      faceDetected: true,
+      similarity: Number(similarity.toFixed(4)),
+      threshold,
+    });
+  }
+
+  const allMatch =
+    imageChecks.length > 0 && imageChecks.every((check) => check.matched);
+
+  return {
+    imageChecks,
+    worstSimilarity: imageChecks.length > 0 ? worstSimilarity : -1,
+    allMatch,
+    anyFaceDetected,
+  };
+}
+
 /**
- * Verify the centre photo against the user's onboarding face reference.
- * Sets the reference on the first onboarding baseline when none exists.
+ * Verify all five capture angles against the onboarding face reference.
+ * Sets the reference from the front photo on the first onboarding baseline.
  */
 export async function enforceScanFaceIdentity(args: {
   userId: string;
   scanName: string;
   centreImagePath?: string;
   centreImageJpeg?: Buffer;
+  images?: FaceIdentityImageInput[];
 }): Promise<ScanFaceIdentityGateResult> {
   const logBase = { userId: args.userId, scanName: args.scanName };
   logger.info("face_identity_check_start", logBase);
@@ -254,6 +393,10 @@ export async function enforceScanFaceIdentity(args: {
     });
     return { ok: true, action: "skipped" };
   }
+
+  const imagesToCheck = resolveFaceIdentityImages(args);
+  const referenceImage =
+    imagesToCheck.find((image) => image.label === "centre") ?? imagesToCheck[0];
 
   let reference = await loadUserFaceReference(args.userId);
   if (!reference.embedding?.length) {
@@ -270,7 +413,8 @@ export async function enforceScanFaceIdentity(args: {
     }
   }
 
-  const centrePath = args.centreImagePath ?? "";
+  const centrePath =
+    referenceImage?.path ?? args.centreImagePath ?? "";
   const priorScanCount = await countUserScans(args.userId);
   const establishingBaseline =
     !reference.embedding?.length && isBaselineOnboardingScan(args.scanName);
@@ -291,9 +435,21 @@ export async function enforceScanFaceIdentity(args: {
     };
   }
 
-  let jpeg: Buffer;
+  if (!referenceImage) {
+    logger.error("face_identity_image_read_failed", {
+      ...logBase,
+      error: "no_images_provided",
+    });
+    return {
+      ok: false,
+      code: FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE,
+      message: USER_MESSAGES[FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE],
+    };
+  }
+
+  let referenceJpeg: Buffer;
   try {
-    jpeg = await readCentreImageBuffer(args);
+    referenceJpeg = await readImageBuffer(referenceImage);
   } catch (err) {
     logger.error("face_identity_image_read_failed", {
       ...logBase,
@@ -308,7 +464,7 @@ export async function enforceScanFaceIdentity(args: {
 
   let extracted: Awaited<ReturnType<typeof extractFaceEmbedding>>;
   try {
-    extracted = await extractFaceEmbedding(jpeg);
+    extracted = await extractFaceEmbedding(referenceJpeg);
   } catch (err) {
     logger.error("face_identity_embed_error", {
       ...logBase,
@@ -351,32 +507,60 @@ export async function enforceScanFaceIdentity(args: {
     return { ok: true, action };
   }
 
-  const similarity = cosineSimilarity(
+  const verification = await verifyImagesAgainstReference(
     reference.embedding!,
-    extracted.embedding
+    imagesToCheck
   );
-  const threshold = faceIdentityMatchThreshold();
-  if (similarity < threshold) {
+
+  if (!verification.anyFaceDetected) {
+    logger.warn("face_identity_blocked", {
+      ...logBase,
+      code: FACE_IDENTITY_ERROR_CODES.NOT_DETECTED,
+      imageCount: imagesToCheck.length,
+    });
+    return {
+      ok: false,
+      code: FACE_IDENTITY_ERROR_CODES.NOT_DETECTED,
+      message: USER_MESSAGES[FACE_IDENTITY_ERROR_CODES.NOT_DETECTED],
+      imageChecks: verification.imageChecks,
+    };
+  }
+
+  if (!verification.allMatch) {
+    const failedLabels = verification.imageChecks
+      .filter((check) => !check.matched)
+      .map((check) => check.label);
     logger.warn("face_identity_blocked", {
       ...logBase,
       code: FACE_IDENTITY_ERROR_CODES.MISMATCH,
-      similarity: Number(similarity.toFixed(4)),
-      threshold,
+      worstSimilarity: Number(verification.worstSimilarity.toFixed(4)),
+      frontThreshold: faceIdentityMatchThreshold(),
+      profileThreshold: faceIdentityProfileMatchThreshold(),
+      failedLabels,
+      imageCount: imagesToCheck.length,
     });
     return {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.MISMATCH,
       message: USER_MESSAGES[FACE_IDENTITY_ERROR_CODES.MISMATCH],
-      similarity,
+      similarity: verification.worstSimilarity,
+      imageChecks: verification.imageChecks,
     };
   }
 
   logger.info("face_identity_verified", {
     ...logBase,
-    similarity: Number(similarity.toFixed(4)),
-    threshold,
+    worstSimilarity: Number(verification.worstSimilarity.toFixed(4)),
+    frontThreshold: faceIdentityMatchThreshold(),
+    profileThreshold: faceIdentityProfileMatchThreshold(),
+    imageCount: imagesToCheck.length,
   });
-  return { ok: true, action: "verified", similarity };
+  return {
+    ok: true,
+    action: "verified",
+    similarity: verification.worstSimilarity,
+    imageChecks: verification.imageChecks,
+  };
 }
 
 export async function cleanupUploadedScanImages(
