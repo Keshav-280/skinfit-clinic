@@ -1,8 +1,18 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const PDFJS_TRACE = [
+  "./node_modules/pdfjs-dist/package.json",
+  "./node_modules/pdfjs-dist/legacy/build/pdf.mjs",
+  "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+  "./node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/api/skinfit-report-generator": PDFJS_TRACE,
+  },
   serverExternalPackages: [
     "@mediapipe/tasks-vision",
     "bullmq",

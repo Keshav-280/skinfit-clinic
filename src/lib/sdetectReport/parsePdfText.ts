@@ -1,4 +1,5 @@
 import type { SdetectMetric, SdetectPatient, SdetectReportData } from "./types";
+import { loadPdfJsServer } from "./pdfJsServer";
 
 const RADAR_LABELS = [
   "Superficial pigment",
@@ -123,7 +124,7 @@ function parseAdvice(text: string): string[] {
 }
 
 async function extractPdfText(pdfBuffer: Buffer): Promise<string> {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdfjs = await loadPdfJsServer();
   const doc = await pdfjs.getDocument({
     data: new Uint8Array(pdfBuffer),
     useSystemFonts: true,

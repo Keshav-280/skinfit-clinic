@@ -110,6 +110,78 @@ export function drawRadarChart(
   }
 }
 
+export function drawLineChart(
+  doc: jsPDF,
+  title: string,
+  metrics: SdetectMetric[],
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
+  doc.text(title, x, y);
+
+  if (!metrics.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    doc.text("No data available.", x + 10, y + 28);
+    return;
+  }
+
+  const chartTop = y + 14;
+  const chartHeight = height - 36;
+  const chartWidth = width - 20;
+  const left = x + 10;
+  const bottom = chartTop + chartHeight;
+
+  doc.setDrawColor(...SKINFIT_REPORT_THEME.grid);
+  doc.setLineWidth(0.5);
+  for (const tick of [0, 20, 40, 60, 80, 100]) {
+    const ty = bottom - (tick / 100) * chartHeight;
+    doc.line(left, ty, left + chartWidth, ty);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    doc.text(String(tick), left - 12, ty + 2, { align: "right" });
+  }
+
+  const slot = chartWidth / metrics.length;
+  const points = metrics.map((metric, i) => {
+    const px = left + slot * i + slot / 2;
+    const score = Math.min(100, Math.max(0, metric.score));
+    const py = bottom - (score / 100) * chartHeight;
+    return { metric, px, py, score };
+  });
+
+  doc.setDrawColor(...SKINFIT_REPORT_THEME.navy);
+  doc.setLineWidth(1.4);
+  for (let i = 1; i < points.length; i++) {
+    doc.line(points[i - 1].px, points[i - 1].py, points[i].px, points[i].py);
+  }
+
+  for (const point of points) {
+    doc.setFillColor(...SKINFIT_REPORT_THEME.peach);
+    doc.setDrawColor(...SKINFIT_REPORT_THEME.navy);
+    doc.setLineWidth(1);
+    doc.circle(point.px, point.py, 3.2, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
+    doc.text(String(point.score), point.px, point.py - 7, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    const label = doc.splitTextToSize(point.metric.label, slot * 0.95);
+    doc.text(label, point.px, bottom + 8, { align: "center" });
+  }
+}
+
 export function drawBarChart(
   doc: jsPDF,
   title: string,
