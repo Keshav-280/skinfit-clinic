@@ -145,6 +145,10 @@ function drawMetricCell(
   }
 }
 
+function stripLeadingNumber(text: string): string {
+  return text.replace(/^\d+\.\s*/, "").trim();
+}
+
 async function drawPageOne(
   doc: jsPDF,
   data: SdetectReportData,
@@ -343,7 +347,8 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   for (const [idx, advice] of data.skincareAdvice.entries()) {
-    for (const line of wrap(doc, `${idx + 1}. ${advice}`, maxW)) {
+    const item = `${idx + 1}. ${stripLeadingNumber(advice)}`;
+    for (const line of wrap(doc, item, maxW)) {
       if (y > pageH - 48) {
         doc.addPage();
         paintPageBackground(doc);
