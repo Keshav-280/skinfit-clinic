@@ -164,15 +164,25 @@ async function drawPageOne(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
-  const col1 = leftX + 14;
-  const col2 = leftX + leftW * 0.38;
-  const col3 = leftX + leftW * 0.62;
-  doc.text(`Name: ${data.patient.name}`, col1, rowY);
-  doc.text(`Gender: ${data.patient.gender}`, col2, rowY);
-  doc.text(`Age: ${data.patient.age}`, col3, rowY);
-  doc.text(`Phone: ${data.patient.phone}`, col1, rowY + 14);
-  doc.text(`Report date: ${data.patient.reportDate}`, col2, rowY + 14);
-  doc.text(`Scans: ${data.patient.scanFrequency}`, col3, rowY + 14);
+  const pad = 14;
+  const colW = (leftW - pad * 2) / 3;
+  const cols = [0, 1, 2].map((i) => leftX + pad + colW * i);
+
+  const fitPatientText = (text: string, col: number, row: number) => {
+    const maxW = colW - 6;
+    let line = text;
+    while (line.length > 1 && doc.getTextWidth(line) > maxW) {
+      line = `${line.slice(0, -2)}…`;
+    }
+    doc.text(line, cols[col], rowY + row * 14);
+  };
+
+  fitPatientText(`Name: ${data.patient.name}`, 0, 0);
+  fitPatientText(`Gender: ${data.patient.gender}`, 1, 0);
+  fitPatientText(`Age: ${data.patient.age}`, 2, 0);
+  fitPatientText(`Phone: ${data.patient.phone}`, 0, 1);
+  fitPatientText(`Date: ${data.patient.reportDate}`, 1, 1);
+  fitPatientText(`Scans: ${data.patient.scanFrequency}`, 2, 1);
 
   // ── Summary + QR ──
   const summaryY = contentTop + patientH + 12;
