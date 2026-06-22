@@ -54,8 +54,13 @@ export default function SkinfitReportGeneratorPage() {
       const a = document.createElement("a");
       a.href = url;
       a.download = downloadName.endsWith(".pdf") ? downloadName : `${downloadName}.pdf`;
+      a.rel = "noopener";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      // Revoke after the browser has had a chance to start the download;
+      // revoking synchronously can cancel it in some browsers.
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -69,7 +74,16 @@ export default function SkinfitReportGeneratorPage() {
         <h1 className="text-2xl font-semibold text-[#242a5f]">SkinFit report generator</h1>
 
         <div
-          className="mt-6 rounded-xl border border-dashed border-[#242a5f]/25 bg-[#F8F9FC] p-6 text-center"
+          role="button"
+          tabIndex={0}
+          className="mt-6 cursor-pointer rounded-xl border border-dashed border-[#242a5f]/25 bg-[#F8F9FC] p-6 text-center transition hover:border-[#242a5f]/50 hover:bg-white"
+          onClick={() => inputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -92,8 +106,11 @@ export default function SkinfitReportGeneratorPage() {
           </p>
           <button
             type="button"
-            className="mt-3 rounded-lg border border-[#242a5f]/20 px-4 py-2 text-sm font-medium text-[#242a5f] hover:bg-white"
-            onClick={() => inputRef.current?.click()}
+            className="mt-3 rounded-lg border border-[#242a5f]/20 bg-white px-4 py-2 text-sm font-medium text-[#242a5f] hover:bg-[#F8F9FC]"
+            onClick={(e) => {
+              e.stopPropagation();
+              inputRef.current?.click();
+            }}
           >
             Choose PDF
           </button>
