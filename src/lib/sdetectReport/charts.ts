@@ -124,6 +124,14 @@ export function drawBarChart(
   doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
   doc.text(title, x, y);
 
+  if (!metrics.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    doc.text("No data available.", x + 10, y + 28);
+    return;
+  }
+
   const chartTop = y + 14;
   const chartHeight = height - 36;
   const chartWidth = width - 20;

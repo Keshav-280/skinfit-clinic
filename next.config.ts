@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
     "@mediapipe/tasks-vision",
     "bullmq",
     "ioredis",
+    "pdfjs-dist",
+    "sharp",
+    "jspdf",
   ],
   images: {
     remotePatterns: [

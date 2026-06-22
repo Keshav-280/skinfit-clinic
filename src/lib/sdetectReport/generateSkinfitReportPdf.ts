@@ -9,11 +9,18 @@ let logoCache: string | null = null;
 
 async function loadLogoDataUrl(): Promise<string> {
   if (logoCache) return logoCache;
+  const pngPath = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.png");
   const svgPath = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.svg");
-  const svg = await readFile(svgPath);
-  const png = await sharp(svg).resize({ width: 320 }).png().toBuffer();
-  logoCache = `data:image/png;base64,${png.toString("base64")}`;
-  return logoCache;
+  try {
+    const svg = await readFile(svgPath);
+    const png = await sharp(svg).resize({ width: 320 }).png().toBuffer();
+    logoCache = `data:image/png;base64,${png.toString("base64")}`;
+    return logoCache;
+  } catch {
+    const png = await readFile(pngPath);
+    logoCache = `data:image/png;base64,${png.toString("base64")}`;
+    return logoCache;
+  }
 }
 
 async function imageDataUrl(buffer: Buffer): Promise<string> {

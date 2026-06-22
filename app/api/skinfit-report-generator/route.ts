@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
+    console.error("[skinfit-report-generator]", err);
     const message = err instanceof Error ? err.message : "Report generation failed";
     return Response.json({ error: message }, { status: 500 });
   }

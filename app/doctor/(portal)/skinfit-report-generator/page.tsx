@@ -38,8 +38,13 @@ export default function SkinfitReportGeneratorPage() {
         throw new Error("Please sign in to the doctor portal first.");
       }
       if (!res.ok) {
-        const j = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(j?.error ?? `Generation failed (${res.status})`);
+        const contentType = res.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const j = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(j?.error ?? `Generation failed (${res.status})`);
+        }
+        const text = (await res.text().catch(() => "")).trim();
+        throw new Error(text || `Generation failed (${res.status})`);
       }
       const blob = await res.blob();
       const downloadName =
@@ -62,11 +67,6 @@ export default function SkinfitReportGeneratorPage() {
     <div className="mx-auto max-w-xl px-4 py-8 sm:px-6">
       <div className="rounded-2xl border border-white/40 bg-white/80 p-8 shadow-sm backdrop-blur-sm">
         <h1 className="text-2xl font-semibold text-[#242a5f]">SkinFit report generator</h1>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-          Upload a Bitmoji / sdetect skin analyzer PDF. Scores and narrative are extracted,
-          the QR is decoded for face captures, charts are rebuilt, and a branded SkinFit PDF
-          is downloaded. Nothing is stored on the server.
-        </p>
 
         <div
           className="mt-6 rounded-xl border border-dashed border-[#242a5f]/25 bg-[#F8F9FC] p-6 text-center"

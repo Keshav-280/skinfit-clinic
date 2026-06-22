@@ -1,4 +1,3 @@
-import { PDFParse } from "pdf-parse";
 import type { SdetectMetric, SdetectPatient, SdetectReportData } from "./types";
 
 const RADAR_LABELS = [
@@ -123,13 +122,30 @@ function parseAdvice(text: string): string[] {
   return items;
 }
 
+async function extractPdfText(pdfBuffer: Buffer): Promise<string> {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(pdfBuffer),
+    useSystemFonts: true,
+  }).promise;
+
+  const parts: string[] = [];
+  for (let pageNum = 1; pageNum <= doc.numPages; pageNum += 1) {
+    const page = await doc.getPage(pageNum);
+    const content = await page.getTextContent();
+    const line = content.items
+      .map((item) => ("str" in item && typeof item.str === "string" ? item.str : ""))
+      .join(" ");
+    parts.push(line);
+  }
+  await doc.destroy();
+  return parts.join("\n");
+}
+
 export async function parseSdetectPdfText(
   pdfBuffer: Buffer
 ): Promise<Omit<SdetectReportData, "faceImages" | "sourceReportUrl" | "reportSn">> {
-  const parser = new PDFParse({ data: pdfBuffer });
-  const parsed = await parser.getText();
-  await parser.destroy();
-  const text = parsed.text ?? "";
+  const text = await extractPdfText(pdfBuffer);
 
   const issueAnalysis = parseSection(text, "Issue analysis", "Skincare advice")
     .replace(/\s+/g, " ")
