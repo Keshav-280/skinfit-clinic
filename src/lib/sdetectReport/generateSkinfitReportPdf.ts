@@ -47,9 +47,29 @@ async function loadHeaderLogo(): Promise<LogoAsset> {
   return logoCache;
 }
 
-async function imageDataUrl(buffer: Buffer): Promise<string> {
+async function imageDataUrl(
+  buffer: Buffer
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  const meta = await sharp(buffer).metadata();
   const jpg = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
-  return `data:image/jpeg;base64,${jpg.toString("base64")}`;
+  return {
+    dataUrl: `data:image/jpeg;base64,${jpg.toString("base64")}`,
+    width: meta.width ?? 1,
+    height: meta.height ?? 1,
+  };
+}
+
+/** object-fit: contain — scale to fit box, return centered offsets. */
+function fitContain(
+  srcW: number,
+  srcH: number,
+  maxW: number,
+  maxH: number
+): { w: number; h: number; offsetX: number; offsetY: number } {
+  const scale = Math.min(maxW / srcW, maxH / srcH);
+  const w = srcW * scale;
+  const h = srcH * scale;
+  return { w, h, offsetX: (maxW - w) / 2, offsetY: (maxH - h) / 2 };
 }
 
 function wrap(doc: jsPDF, text: string, maxWidth: number): string[] {
@@ -270,11 +290,14 @@ async function drawPageOne(
     for (let i = 0; i < labels.length; i++) {
       const [key, label] = labels[i];
       const slotX = leftX + pad + i * (slotW + imgGap);
-      const dataUrl = await imageDataUrl(data.faceImages[key]);
+      const { dataUrl, width, height } = await imageDataUrl(data.faceImages[key]);
+      const innerX = slotX + 4;
+      const innerY = imgAreaY + 4;
+      const fit = fitContain(width, height, imgW, imgH);
       doc.setFillColor(...SKINFIT_REPORT_THEME.pageBg);
       doc.setDrawColor(...SKINFIT_REPORT_THEME.grid);
       doc.roundedRect(slotX, imgAreaY, slotW, imgH + 14, 4, 4, "FD");
-      doc.addImage(dataUrl, "JPEG", slotX + 4, imgAreaY + 4, imgW, imgH);
+      doc.addImage(dataUrl, "JPEG", innerX + fit.offsetX, innerY + fit.offsetY, fit.w, fit.h);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.5);
       doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
