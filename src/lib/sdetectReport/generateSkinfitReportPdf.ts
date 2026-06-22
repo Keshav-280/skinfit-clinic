@@ -6,34 +6,43 @@ import { drawLineChart, drawRadarChart, SKINFIT_REPORT_THEME } from "./charts";
 import { reportQrDataUrl } from "./qrCode";
 import type { SdetectReportData } from "./types";
 
-type LogoAsset = { dataUrl: string; width: number; height: number };
+type LogoAsset = { dataUrl: string; displayW: number; displayH: number };
 
 let logoCache: LogoAsset | null = null;
 
-/** Doctor-portal PNG on light header — navy SVG on navy bar was invisible. */
+const LOGO_DISPLAY_H = 36;
+/** Embed ~4× display size so jsPDF scales down crisply. */
+const LOGO_RASTER_H = LOGO_DISPLAY_H * 4;
+
+/** Vector SVG on light header — rasterized at high DPI for sharp PDF output. */
 async function loadHeaderLogo(): Promise<LogoAsset> {
   if (logoCache) return logoCache;
 
-  const doctorPng = path.join(process.cwd(), "public/branding/skinfit-doctor-logo.png");
+  const svgPath = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.svg");
   const wellnessPng = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.png");
 
-  let buffer: Buffer;
+  let raster: Buffer;
   try {
-    buffer = await readFile(doctorPng);
+    raster = await sharp(svgPath)
+      .resize({ height: LOGO_RASTER_H })
+      .png({ compressionLevel: 6 })
+      .toBuffer();
   } catch {
-    buffer = await readFile(wellnessPng);
+    const buffer = await readFile(wellnessPng);
+    raster = await sharp(buffer)
+      .resize({ height: LOGO_RASTER_H, kernel: sharp.kernel.lanczos3 })
+      .png({ compressionLevel: 6 })
+      .toBuffer();
   }
 
-  const meta = await sharp(buffer).metadata();
-  const targetH = 32;
-  const aspect = (meta.width ?? 248) / (meta.height ?? 54);
-  const targetW = Math.round(targetH * aspect);
-  const png = await sharp(buffer).resize({ width: targetW, height: targetH }).png().toBuffer();
+  const meta = await sharp(raster).metadata();
+  const aspect = (meta.width ?? 248) / (meta.height ?? LOGO_RASTER_H);
+  const displayW = Math.round(LOGO_DISPLAY_H * aspect);
 
   logoCache = {
-    dataUrl: `data:image/png;base64,${png.toString("base64")}`,
-    width: targetW,
-    height: targetH,
+    dataUrl: `data:image/png;base64,${raster.toString("base64")}`,
+    displayW,
+    displayH: LOGO_DISPLAY_H,
   };
   return logoCache;
 }
@@ -84,8 +93,7 @@ function drawHeader(
   doc.setLineWidth(2);
   doc.line(0, headerH, w, headerH);
 
-  const logoW = (logo.width / logo.height) * 30;
-  doc.addImage(logo.dataUrl, "PNG", 24, 13, logoW, 30);
+  doc.addImage(logo.dataUrl, "PNG", 24, 10, logo.displayW, logo.displayH);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
