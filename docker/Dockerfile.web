@@ -30,10 +30,14 @@ RUN apt-get update \
   && python3 -m venv /opt/identity-venv \
   && rm -rf /var/lib/apt/lists/*
 COPY apps/ml-worker/python/requirements-identity.txt /tmp/requirements-identity.txt
+COPY scripts/requirements-sdetect-qr.txt /tmp/requirements-sdetect-qr.txt
 COPY apps/ml-worker/python/face_identity_infer.py /app/apps/ml-worker/python/face_identity_infer.py
+COPY scripts/sdetect_decode_pdf_qr.py /app/scripts/sdetect_decode_pdf_qr.py
 RUN /opt/identity-venv/bin/pip install --no-cache-dir -r /tmp/requirements-identity.txt \
+  && /opt/identity-venv/bin/pip install --no-cache-dir -r /tmp/requirements-sdetect-qr.txt \
   && /opt/identity-venv/bin/python3 -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider']).prepare(ctx_id=-1)"
 ENV CAPTURE_PREVIEW_PYTHON=/opt/identity-venv/bin/python3
+ENV SDETECT_QR_PYTHON=/opt/identity-venv/bin/python3
 RUN groupadd -r skinfit && useradd -r -g skinfit -d /home/skinfit skinfit \
   && mkdir -p /home/skinfit/.config /home/skinfit/.insightface /app/.matplotlib /uploads \
   && chown -R skinfit:skinfit /home/skinfit /app/.matplotlib /uploads

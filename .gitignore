@@ -65,6 +65,11 @@ mobile/GoogleService-Info.plist
 # vercel
 .vercel
 
+# local-only dev tools (never deploy)
+/local-tools/
+/local-tools/scrape_sdetect_faces.py
+/local-tools/sdetect_faces/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
