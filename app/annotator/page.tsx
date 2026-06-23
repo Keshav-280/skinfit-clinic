@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Upload,
@@ -56,6 +57,60 @@ const DRAWABLE_CATEGORIES: Category[] = [
 const SCORE_ONLY_CATEGORIES: Category[] = ALL_CATEGORIES.filter(
   (c) => !DRAWABLE_CATEGORIES.includes(c)
 );
+
+const CATEGORY_ICONS: Record<Category, string> = {
+  "Active Acne": "/annotator/categories/active-acne.jpeg",
+  "Acne Scars": "/annotator/categories/acne-scars.jpeg",
+  Pigmentation: "/annotator/categories/pigmentation.jpeg",
+  "Under-Eye": "/annotator/categories/under-eye.jpeg",
+  Wrinkles: "/annotator/categories/wrinkles.jpeg",
+  "Sagging & Volume": "/annotator/categories/sagging-volume.jpeg",
+};
+
+function CategoryPickerButton({
+  category,
+  isActive,
+  onClick,
+}: {
+  category: Category;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={category}
+      aria-pressed={isActive}
+      className={`flex min-h-[7.5rem] flex-col items-stretch gap-1.5 rounded-xl p-2 transition-all ${
+        isActive
+          ? "bg-teal-500 ring-2 ring-teal-300 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900"
+          : "bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+      }`}
+    >
+      <div
+        className={`relative aspect-[4/3] w-full overflow-hidden rounded-lg ${
+          isActive ? "" : "opacity-90"
+        }`}
+      >
+        <Image
+          src={CATEGORY_ICONS[category]}
+          alt=""
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 45vw, 160px"
+        />
+      </div>
+      <span
+        className={`text-center text-[9px] font-medium leading-tight ${
+          isActive ? "text-zinc-950" : "text-slate-600 dark:text-zinc-400"
+        }`}
+      >
+        {category}
+      </span>
+    </button>
+  );
+}
 
 const CLINICAL_TAXONOMY: Record<Category, string[]> = {
   "Active Acne": ["Comedones (Black/Whiteheads)", "Papules / Pustules", "Nodules / Cysts", "Inflammation (Erythema)"],
@@ -1177,7 +1232,7 @@ export default function AnnotatorPage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(160px,42vh)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[5.75rem_1fr_minmax(320px,22rem)] lg:grid-rows-1">
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(160px,42vh)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[5.75rem_1fr_minmax(360px,26rem)] lg:grid-rows-1">
         {/* Thumbnail strip — desktop */}
         {images.length > 0 ? (
           <aside className="hidden min-h-0 flex-col border-r border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:flex">
@@ -1487,44 +1542,36 @@ export default function AnnotatorPage() {
 
           <div className="mb-4 space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-                Draw + grade
-              </label>
-              <div className="grid grid-cols-2 gap-1.5">
+              <p className="sr-only">Draw and grade — tap a picture to mark regions on the image</p>
+              <div
+                className="mb-2 h-1 rounded-full bg-teal-500/80"
+                aria-hidden="true"
+              />
+              <div className="grid grid-cols-2 gap-2.5">
                 {DRAWABLE_CATEGORIES.map((cat) => (
-                  <button
+                  <CategoryPickerButton
                     key={cat}
-                    type="button"
+                    category={cat}
+                    isActive={activeCategory === cat}
                     onClick={() => setActiveCategory(cat)}
-                    className={`rounded-lg px-2 py-1.5 text-left text-[11px] font-medium leading-snug transition-colors ${
-                      activeCategory === cat
-                        ? "bg-teal-500 text-zinc-950"
-                        : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    }`}
-                  >
-                    {cat}
-                  </button>
+                  />
                 ))}
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-500">
-                Score only
-              </label>
-              <div className="grid grid-cols-2 gap-1.5">
+              <p className="sr-only">Score only — tap a picture to set severity without drawing</p>
+              <div
+                className="mb-2 h-1 rounded-full bg-slate-400/60 dark:bg-zinc-600"
+                aria-hidden="true"
+              />
+              <div className="grid grid-cols-2 gap-2.5">
                 {SCORE_ONLY_CATEGORIES.map((cat) => (
-                  <button
+                  <CategoryPickerButton
                     key={cat}
-                    type="button"
+                    category={cat}
+                    isActive={activeCategory === cat}
                     onClick={() => setActiveCategory(cat)}
-                    className={`rounded-lg px-2 py-1.5 text-left text-[11px] font-medium leading-snug transition-colors ${
-                      activeCategory === cat
-                        ? "bg-teal-500 text-zinc-950"
-                        : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    }`}
-                  >
-                    {cat}
-                  </button>
+                  />
                 ))}
               </div>
             </div>
