@@ -7,6 +7,11 @@ import { getSessionSecret } from "@/src/lib/auth/session-secret";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Public help images (stored in public/annotator/categories/)
+  if (pathname.startsWith("/annotator/categories/")) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const secret = getSessionSecret();
 

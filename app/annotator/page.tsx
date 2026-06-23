@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Upload,
@@ -82,27 +81,26 @@ function CategoryPickerButton({
       onClick={onClick}
       aria-label={category}
       aria-pressed={isActive}
-      className={`flex min-h-[7.5rem] flex-col items-stretch gap-1.5 rounded-xl p-2 transition-all ${
+      className={`flex h-[7.75rem] w-full flex-col overflow-hidden rounded-xl p-2 transition-colors ${
         isActive
-          ? "bg-teal-500 ring-2 ring-teal-300 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900"
+          ? "bg-teal-500 ring-2 ring-inset ring-teal-200"
           : "bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700"
       }`}
     >
-      <div
-        className={`relative aspect-[4/3] w-full overflow-hidden rounded-lg ${
-          isActive ? "" : "opacity-90"
-        }`}
-      >
-        <Image
+      <div className="h-[5.25rem] w-full shrink-0 overflow-hidden rounded-lg bg-zinc-900/30">
+        {/* Static public assets — plain img avoids optimizer/layout issues */}
+        <img
           src={CATEGORY_ICONS[category]}
           alt=""
-          fill
-          className="object-cover"
-          sizes="(max-width: 1024px) 45vw, 160px"
+          width={160}
+          height={120}
+          className="h-full w-full object-cover object-center"
+          loading="lazy"
+          decoding="async"
         />
       </div>
       <span
-        className={`text-center text-[9px] font-medium leading-tight ${
+        className={`mt-1 flex flex-1 items-center justify-center text-center text-[9px] font-medium leading-tight ${
           isActive ? "text-zinc-950" : "text-slate-600 dark:text-zinc-400"
         }`}
       >
@@ -1547,7 +1545,7 @@ export default function AnnotatorPage() {
                 className="mb-2 h-1 rounded-full bg-teal-500/80"
                 aria-hidden="true"
               />
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5 auto-rows-[7.75rem]">
                 {DRAWABLE_CATEGORIES.map((cat) => (
                   <CategoryPickerButton
                     key={cat}
@@ -1564,7 +1562,7 @@ export default function AnnotatorPage() {
                 className="mb-2 h-1 rounded-full bg-slate-400/60 dark:bg-zinc-600"
                 aria-hidden="true"
               />
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5 auto-rows-[7.75rem]">
                 {SCORE_ONLY_CATEGORIES.map((cat) => (
                   <CategoryPickerButton
                     key={cat}
