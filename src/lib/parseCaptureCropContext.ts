@@ -1,7 +1,8 @@
 import type { CaptureCropContext } from "@/src/lib/cropScanImageForMl";
+import type { WebFormData } from "@/src/lib/webRequestFormData";
 
 export function parseCaptureCropContext(
-  formData: FormData
+  formData: WebFormData
 ): CaptureCropContext | undefined {
   const sourceRaw = formData.get("captureSource");
   const source =
