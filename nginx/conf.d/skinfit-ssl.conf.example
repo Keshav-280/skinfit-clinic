@@ -6,12 +6,21 @@
 # Uses Docker embedded DNS (127.0.0.11) so nginx starts even when `web` is
 # still booting — static upstream blocks fail with "host not found in upstream".
 
-# Public HTTP → HTTPS (browser traffic)
+# Public HTTP → HTTPS (browser traffic). /healthz stays on HTTP for Docker/LB probes.
 server {
   listen 80;
   listen [::]:80;
   server_name YOUR_DOMAIN;
-  return 301 https://$host$request_uri;
+
+  location = /healthz {
+    access_log off;
+    return 200 "ok\n";
+    add_header Content-Type text/plain;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
 }
 
 server {

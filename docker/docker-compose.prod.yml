@@ -45,7 +45,8 @@ services:
     # Optional: run 2+ app replicas — nginx load-balances via Docker DNS (see nginx/README.md)
     # Start with: docker compose ... up -d --scale web=2
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      # Requires port-80 /healthz without HTTPS redirect (skinfit-ssl.conf).
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz 2>/dev/null | grep -q '^ok'"]
       interval: 30s
       timeout: 5s
       retries: 3
