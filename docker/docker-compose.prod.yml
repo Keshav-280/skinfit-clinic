@@ -4,24 +4,35 @@
 # Adds nginx on :80 (and :443 if you enable SSL mounts). Prefer closing public :3000 in the EC2 security group.
 
 services:
+  postgres:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
   web:
+    restart: unless-stopped
     # !reset clears base compose `ports: 3000:3000` (empty [] alone does not)
     ports: !reset []
     expose:
       - "3000"
 
   ml-inference:
+    restart: unless-stopped
     ports: !reset []
     # One replica on the prod VM — ML loads large models; never scale this service.
     container_name: skinfit-ml-inference
 
   ml-worker:
+    restart: unless-stopped
     # One replica — scan jobs run sequentially (worker concurrency is already 1).
     container_name: skinfit-ml-worker
 
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "80:80"
       - "443:443"
