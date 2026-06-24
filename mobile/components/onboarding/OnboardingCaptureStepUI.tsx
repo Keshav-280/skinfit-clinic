@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CaptureExtraTipsModal } from "@/components/capture/CaptureExtraTipsModal";
+import { isCaptureDebugTapEnabled } from "@/components/ScanCaptureDebugOverlay";
 import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
@@ -182,6 +183,9 @@ export function OnboardingCaptureStepUI({
           >
             {viewfinder}
           </View>
+          {reviewingCapture && isCaptureDebugTapEnabled() ? (
+            <Text style={styles.debugHint}>Tap photo for debug</Text>
+          ) : null}
         </View>
 
         {!reviewingCapture && showGuidanceBanner ? (
@@ -381,6 +385,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
+  },
+  debugHint: {
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6B7280",
+    letterSpacing: 0.2,
   },
   viewfinder: {
     borderRadius: 18,

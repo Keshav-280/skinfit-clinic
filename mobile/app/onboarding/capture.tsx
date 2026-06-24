@@ -18,7 +18,7 @@ import {
 } from "@/lib/faceScanSlotCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
 import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
-import { appendCaptureCropContext } from "../../src/lib/parseCaptureCropContext";
+import { appendCaptureCropContext } from "@/lib/parseCaptureCropContext";
 import { pickSingleFaceScanImage } from "@/lib/pickFaceScanImages";
 import { addPendingScanJob } from "@/lib/scanJobNotifications";
 import { submitFaceScan, formatFaceScanIdentityError } from "@/lib/submitFaceScan";

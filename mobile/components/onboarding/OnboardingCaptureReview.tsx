@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +12,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { CapturePhotoDebugModal } from "@/components/capture/CapturePhotoDebugModal";
+import { isCaptureDebugTapEnabled } from "@/components/ScanCaptureDebugOverlay";
 
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
@@ -36,17 +40,19 @@ function PhotoTile({
   uri,
   label,
   onPress,
+  debugTap,
 }: {
   uri: string;
   label: string;
   onPress: () => void;
+  debugTap?: boolean;
 }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Retake ${label}`}
+      accessibilityLabel={debugTap ? `Debug ${label}` : `Retake ${label}`}
     >
       <Image source={{ uri }} style={styles.tileImage} resizeMode="cover" />
       <View style={styles.checkBadge}>
@@ -68,6 +74,20 @@ export function OnboardingCaptureReview({
   scanNamePlaceholder,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const debugTap = isCaptureDebugTapEnabled();
+  const [debugPhoto, setDebugPhoto] = useState<{
+    uri: string;
+    label: string;
+    index: number;
+  } | null>(null);
+
+  function handleTilePress(index: number, uri: string, label: string) {
+    if (debugTap) {
+      setDebugPhoto({ uri, label, index });
+      return;
+    }
+    onRetakeIndex(index);
+  }
 
   function promptRetakeAny() {
     Alert.alert(
@@ -122,7 +142,10 @@ export function OnboardingCaptureReview({
                 key={FACE_SCAN_CAPTURE_STEPS[i].id}
                 uri={uri}
                 label={FACE_SCAN_CAPTURE_STEPS[i].title}
-                onPress={() => onRetakeIndex(i)}
+                debugTap={debugTap}
+                onPress={() =>
+                  handleTilePress(i, uri, FACE_SCAN_CAPTURE_STEPS[i].title)
+                }
               />
             ))}
           </View>
@@ -134,7 +157,14 @@ export function OnboardingCaptureReview({
                   key={FACE_SCAN_CAPTURE_STEPS[index].id}
                   uri={uri}
                   label={FACE_SCAN_CAPTURE_STEPS[index].title}
-                  onPress={() => onRetakeIndex(index)}
+                  debugTap={debugTap}
+                  onPress={() =>
+                    handleTilePress(
+                      index,
+                      uri,
+                      FACE_SCAN_CAPTURE_STEPS[index].title
+                    )
+                  }
                 />
               );
             })}
@@ -185,6 +215,22 @@ export function OnboardingCaptureReview({
           </Text>
         </Pressable>
       </ScrollView>
+
+      <CapturePhotoDebugModal
+        visible={debugPhoto != null}
+        uri={debugPhoto?.uri ?? ""}
+        label={debugPhoto?.label ?? ""}
+        onClose={() => setDebugPhoto(null)}
+        onRetake={
+          debugPhoto
+            ? () => {
+                const index = debugPhoto.index;
+                setDebugPhoto(null);
+                onRetakeIndex(index);
+              }
+            : undefined
+        }
+      />
     </View>
   );
 }

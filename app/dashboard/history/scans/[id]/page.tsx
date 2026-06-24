@@ -6,12 +6,12 @@ import { getSessionUserId } from "../../../../../src/lib/auth/get-session";
 import { isPatientClinicVisited } from "../../../../../src/lib/patientClinicVisit";
 import { parseScanRegions } from "../../../../../src/lib/parseScanAnnotations";
 import {
-  parseClinicalScores,
   parseScanAcneMaskDataUri,
   parseScanOverlayDataUri,
   parseScanWrinkleMaskDataUri,
   parseMaskExportVersion,
 } from "../../../../../src/lib/parseClinicalScores";
+import { scanDisplayMetricsFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
 import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { buildFaceCaptureGallery } from "../../../../../src/lib/faceCaptureGallery";
@@ -123,7 +123,6 @@ export default async function ScanReportPage({
   const serverTracker = await loadScanTrackerReport(userId, row.id, trackerSnapshot);
 
   const regions = parseScanRegions(row.annotations);
-  const clinical_scores = parseClinicalScores(scores);
   const annotatedImageUrl = parseScanOverlayDataUri(scores);
   const wrinkleMaskUrl = parseScanWrinkleMaskDataUri(scores);
   const acneMaskUrl = parseScanAcneMaskDataUri(scores);
@@ -145,15 +144,15 @@ export default async function ScanReportPage({
       imageUrl={patientScanImagePath(row.id)}
       faceCaptureGallery={faceCaptureGallery}
       regions={regions}
-      metrics={{
+      metrics={scanDisplayMetricsFromRow({
+        overallScore: row.overallScore,
         acne: row.acne,
-        hydration: row.hydration,
         wrinkles: row.wrinkles,
-        overall_score: row.overallScore,
         pigmentation: row.pigmentation,
+        hydration: row.hydration,
         texture: row.texture,
-        ...(clinical_scores ? { clinical_scores } : {}),
-      }}
+        scores,
+      })}
       aiSummary={row.aiSummary}
       annotatedImageUrl={annotatedImageUrl ?? null}
       wrinkleMaskUrl={wrinkleMaskUrl ?? null}

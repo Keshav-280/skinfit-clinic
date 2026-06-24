@@ -7,13 +7,13 @@ import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
 import { parseScanAcneMaskDataUri, parseScanOverlayDataUri, parseScanWrinkleMaskDataUri, parseMaskExportVersion } from "@/src/lib/parseClinicalScores";
 import type { FaceCaptureRef } from "@/src/lib/resolveScanImageUrl";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
-import { parseClinicalScores } from "@/src/lib/parseClinicalScores";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import {
   buildDoctorScoreEditMeta,
+  scanDisplayMetricsFromRow,
   type DoctorScoreEditMeta,
 } from "@/src/lib/resolveScanDisplayScores";
 
@@ -131,7 +131,6 @@ export async function buildDoctorScanReportPayload(
   }
 
   const regions = parseScanRegions(row.annotations);
-  const clinical_scores = parseClinicalScores(row.scores);
   const wrinkleMaskStored = parseScanWrinkleMaskDataUri(row.scores);
   const acneMaskStored = parseScanAcneMaskDataUri(row.scores);
   const annotatedImageStored = parseScanOverlayDataUri(row.scores);
@@ -165,15 +164,7 @@ export async function buildDoctorScanReportPayload(
     imageUrl: doctorScanImagePath(patientId, row.id, { preview: true }),
     faceCaptureGallery,
     regions,
-    metrics: {
-      acne: row.acne,
-      hydration: row.hydration,
-      wrinkles: row.wrinkles,
-      overall_score: row.overallScore,
-      pigmentation: row.pigmentation,
-      texture: row.texture,
-      ...(clinical_scores ? { clinical_scores } : {}),
-    },
+    metrics: scanDisplayMetricsFromRow(row),
     aiSummary: row.aiSummary,
     annotatedImageUrl: annotatedImageStored ?? null,
     wrinkleMaskUrl: wrinkleMaskStored

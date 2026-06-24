@@ -176,6 +176,8 @@ export async function PATCH(
       acne: resolved.metrics.acne,
       wrinkles: resolved.metrics.wrinkles,
       pigmentation: resolved.metrics.pigmentation,
+      hydration: resolved.metrics.hydration,
+      texture: resolved.metrics.texture,
     })
     .where(and(eq(scans.id, scanId), eq(scans.userId, patientId)));
 

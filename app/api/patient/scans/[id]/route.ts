@@ -5,11 +5,11 @@ import { scans, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
 import {
-  parseClinicalScores,
   parseScanAcneMaskDataUri,
   parseScanOverlayDataUri,
   parseScanWrinkleMaskDataUri,
 } from "@/src/lib/parseClinicalScores";
+import { scanDisplayMetricsFromRow } from "@/src/lib/resolveScanDisplayScores";
 import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
@@ -120,7 +120,6 @@ export async function GET(
       const scoresUnlocked = await isPatientClinicVisited(userId);
 
       const regions = parseScanRegions(row.annotations);
-      const clinical_scores = parseClinicalScores(scores);
       const annotatedImageUrl = parseScanOverlayDataUri(scores);
       const wrinkleMaskRef = parseScanWrinkleMaskDataUri(scores);
       const acneMaskRef = parseScanAcneMaskDataUri(scores);
@@ -151,15 +150,15 @@ export async function GET(
         imageUrl: patientScanImagePath(row.id),
         faceCaptureGallery,
         regions,
-        metrics: {
+        metrics: scanDisplayMetricsFromRow({
+          overallScore: row.overallScore,
           acne: row.acne,
-          hydration: row.hydration,
           wrinkles: row.wrinkles,
-          overall_score: row.overallScore,
           pigmentation: row.pigmentation,
+          hydration: row.hydration,
           texture: row.texture,
-          ...(clinical_scores ? { clinical_scores } : {}),
-        },
+          scores,
+        }),
         aiSummary: row.aiSummary,
         scanDateIso: row.createdAt.toISOString(),
         ...(annotatedImageUrl ? { annotatedImageUrl } : {}),

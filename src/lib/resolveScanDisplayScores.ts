@@ -197,13 +197,6 @@ export type DoctorScoreEditMeta = {
 
 export function buildDoctorScoreEditMeta(scoresJson: unknown): DoctorScoreEditMeta {
   const doctorOverrides = getDoctorOverrides(scoresJson);
-  const hasOverrides =
-    doctorOverrides != null &&
-    (typeof doctorOverrides.kaiScore === "number" ||
-      (doctorOverrides.modelFeatureScores != null &&
-        Object.values(doctorOverrides.modelFeatureScores).some(
-          (v) => typeof v === "number" && Number.isFinite(v)
-        )));
 
   const aiResolved = resolveScanDisplayScores({
     scoresJson: stripDoctorOverrides(scoresJson),
@@ -224,12 +217,62 @@ export function buildDoctorScoreEditMeta(scoresJson: unknown): DoctorScoreEditMe
     }
   }
 
+  const aiBase = {
+    kaiScore: aiResolved.metrics.overall_score,
+    modelFeatureScores,
+  };
+
+  let hasOverrides = false;
+  if (doctorOverrides) {
+    if (
+      typeof doctorOverrides.kaiScore === "number" &&
+      doctorOverrides.kaiScore !== aiBase.kaiScore
+    ) {
+      hasOverrides = true;
+    }
+    const mfs = doctorOverrides.modelFeatureScores;
+    if (mfs && !hasOverrides) {
+      for (const key of DOCTOR_EDITABLE_MFS_KEYS) {
+        const o = mfs[key];
+        const ai = aiBase.modelFeatureScores[key];
+        if (typeof o === "number" && typeof ai === "number" && o !== ai) {
+          hasOverrides = true;
+          break;
+        }
+        if (typeof o === "number" && ai === undefined) {
+          hasOverrides = true;
+          break;
+        }
+      }
+    }
+  }
+
   return {
     hasOverrides,
-    aiBase: {
-      kaiScore: aiResolved.metrics.overall_score,
-      modelFeatureScores,
-    },
+    aiBase,
   };
+}
+
+/** Effective patient/doctor metrics with `doctorOverrides` merged into clinical scores. */
+export function scanDisplayMetricsFromRow(row: {
+  overallScore: number;
+  acne: number;
+  wrinkles: number;
+  pigmentation: number;
+  hydration: number;
+  texture: number;
+  scores: unknown;
+}): ResolvedScanDisplayScores["metrics"] {
+  return resolveScanDisplayScores({
+    scoresJson: row.scores,
+    baseMetricsColumns: {
+      overallScore: row.overallScore,
+      acne: row.acne,
+      wrinkles: row.wrinkles,
+      pigmentation: row.pigmentation,
+      hydration: row.hydration,
+      texture: row.texture,
+    },
+  }).metrics;
 }
 

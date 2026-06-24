@@ -64,6 +64,24 @@ function buildFormState(report: DoctorScanReportPayload) {
   };
 }
 
+function formatDoctorScoreSaveError(code: string | undefined): string {
+  switch (code) {
+    case "UNAUTHORIZED":
+      return "Session expired — sign in again.";
+    case "NOT_FOUND":
+      return "Scan not found for this patient.";
+    case "kaiScore_REQUIRED":
+      return "Enter a kAI score (0–100) before saving.";
+    case "INVALID_SEVERITY_VALUE":
+      return "One of the severity values is invalid.";
+    case "INVALID_JSON":
+    case "INVALID_BODY":
+      return "Invalid save request — refresh and try again.";
+    default:
+      return code?.trim() ? code.replace(/_/g, " ") : "Could not save scores.";
+  }
+}
+
 export function DoctorScanScoreEditor({
   patientId,
   scanId,
@@ -102,7 +120,7 @@ export function DoctorScanScoreEditor({
     );
     const j = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
-      throw new Error(j.error ?? "SAVE_FAILED");
+      throw new Error(formatDoctorScoreSaveError(j.error));
     }
   }
 

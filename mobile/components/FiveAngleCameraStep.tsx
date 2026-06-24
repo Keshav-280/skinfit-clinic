@@ -14,6 +14,7 @@ import {
 import {
   ScanCaptureDebugOverlay,
   isCaptureDebugEnabled,
+  isCaptureDebugTapEnabled,
 } from "@/components/ScanCaptureDebugOverlay";
 import { CaptureFaceGuideOverlayNative } from "@/components/capture/CaptureFaceGuideOverlayNative";
 import { OnboardingCaptureStepUI } from "@/components/onboarding/OnboardingCaptureStepUI";
@@ -279,12 +280,25 @@ export function FiveAngleCameraStep({
         />
       ) : null}
       {pendingUri ? (
-        <Image
-          source={{ uri: pendingUri }}
+        <Pressable
           style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          accessibilityLabel={`Captured ${step?.title ?? "photo"}`}
-        />
+          onPress={() => {
+            if (isCaptureDebugTapEnabled()) setShowDebug((v) => !v);
+          }}
+          disabled={!isCaptureDebugTapEnabled()}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isCaptureDebugTapEnabled()
+              ? "Toggle capture debug"
+              : `Captured ${step?.title ?? "photo"}`
+          }
+        >
+          <Image
+            source={{ uri: pendingUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        </Pressable>
       ) : null}
       {!reviewingCapture && !cameraReady ? (
         <View style={styles.cameraLoading}>
@@ -316,7 +330,7 @@ export function FiveAngleCameraStep({
             mpNativeAvailable={mpNativeAvailable}
             landmarkCount={landmarkCount}
             insetTop={8}
-            visible={showDebug && !reviewingCapture}
+            visible={showDebug}
             extra={{
               step: `${stepIndex + 1}/${totalSteps}`,
               bbox: bboxSource,
@@ -347,7 +361,7 @@ export function FiveAngleCameraStep({
       cameraReady={cameraReady}
       showGuidanceBanner
       showVoiceToggle={voiceSpeechAvailable}
-      showDevControls={captureDebug}
+      showDevControls={__DEV__ || captureDebug}
     />
   );
 }

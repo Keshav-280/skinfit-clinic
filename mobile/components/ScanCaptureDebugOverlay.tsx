@@ -33,7 +33,12 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Opt-in only in dev — set EXPO_PUBLIC_CAPTURE_DEBUG=1 (or SCAN_DEBUG_PREVIEW=1). */
+/** Dev builds: tap captured/review photos to open debug UI. */
+export function isCaptureDebugTapEnabled(): boolean {
+  return __DEV__;
+}
+
+/** Opt-in via env — also enables bug icon in capture header. */
 export function isCaptureDebugEnabled(): boolean {
   if (!__DEV__) return false;
   const previewFlag = process.env.EXPO_PUBLIC_SCAN_DEBUG_PREVIEW?.trim();

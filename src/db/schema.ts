@@ -328,6 +328,11 @@ export const scans = pgTable("scans", {
       wrinkles: Record<string, unknown>;
       acne: Record<string, unknown>;
     };
+    /** Doctor portal score overrides (severity 1–5 + kAI 0–100). */
+    doctorOverrides?: {
+      kaiScore?: number;
+      modelFeatureScores?: Record<string, number | null>;
+    };
   }>(),
   /** Bounding-box annotations from Roboflow (optional) */
   annotations: jsonb("annotations").$type<unknown[]>(),
