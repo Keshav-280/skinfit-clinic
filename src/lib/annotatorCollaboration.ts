@@ -266,6 +266,24 @@ export function applyUserSync(
   return next;
 }
 
+/** Remove one shape from a collaborator's bucket (annotator admin action). */
+export function deleteShapeFromUser(
+  store: AnnotatorCollaborationStore,
+  ownerUserId: string,
+  shapeId: string,
+  syncedAt = new Date().toISOString()
+): AnnotatorCollaborationStore {
+  const shapes = store.perUserShapes[ownerUserId];
+  if (!shapes?.length) return store;
+  const filtered = shapes.filter((s) => s.id !== shapeId);
+  if (filtered.length === shapes.length) return store;
+  return {
+    ...store,
+    perUserShapes: { ...store.perUserShapes, [ownerUserId]: filtered },
+    userSyncAt: { ...store.userSyncAt, [ownerUserId]: syncedAt },
+  };
+}
+
 export function clearCollaborationStore(): AnnotatorCollaborationStore {
   return emptyStore();
 }

@@ -4,9 +4,11 @@ import {
   acquireImageLock,
   applyUserSync,
   mergedLabelsForExport,
+  deleteShapeFromUser,
   parseCollaborationStore,
   peerShapes,
 } from "./annotatorCollaboration";
+import { isAnnotatorAdminEmail } from "./annotatorAdmins";
 
 describe("annotatorCollaboration", () => {
   it("migrates legacy monolithic state", () => {
@@ -71,5 +73,51 @@ describe("annotatorCollaboration", () => {
     store = { ...store, userSyncAt: { ...store.userSyncAt, u2: "2025-01-01T00:00:00.000Z" } };
     const merged = mergedLabelsForExport(store);
     assert.equal(merged["0"]?.["Active Acne"]?.grade, "D");
+  });
+
+  it("deletes a shape from another user's bucket", () => {
+    let store = parseCollaborationStore(null);
+    store = applyUserSync(store, "user-a", {
+      annotations: [
+        {
+          id: "a1",
+          imageIndex: 0,
+          category: "Active Acne",
+          spec: "",
+          severity: "A",
+          color: "red",
+          type: "path",
+          points: [
+            { x: 0, y: 0 },
+            { x: 1, y: 0 },
+            { x: 1, y: 1 },
+          ],
+        },
+        {
+          id: "a2",
+          imageIndex: 0,
+          category: "Pigmentation",
+          spec: "",
+          severity: "B",
+          color: "blue",
+          type: "line",
+          points: [
+            { x: 0, y: 0 },
+            { x: 1, y: 1 },
+          ],
+        },
+      ],
+    });
+    store = deleteShapeFromUser(store, "user-a", "a1");
+    assert.equal(store.perUserShapes["user-a"]?.length, 1);
+    assert.equal(store.perUserShapes["user-a"]?.[0]?.id, "a2");
+  });
+});
+
+describe("annotatorAdmins", () => {
+  it("recognises configured admin emails case-insensitively", () => {
+    assert.equal(isAnnotatorAdminEmail("prabhu@ambaforlife.org"), true);
+    assert.equal(isAnnotatorAdminEmail("  Prabhu@AmbaForLife.org "), true);
+    assert.equal(isAnnotatorAdminEmail("not-an-admin@example.com"), false);
   });
 });

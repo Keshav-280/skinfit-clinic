@@ -9,6 +9,7 @@ import {
   allShapesMerged,
   applyUserSync,
   clearCollaborationStore,
+  deleteShapeFromUser,
   labelsForUser,
   mergedLabelsForExport,
   parseCollaborationStore,
@@ -17,6 +18,7 @@ import {
   shapesForUser,
   storeToDbColumns,
 } from "@/src/lib/annotatorCollaboration";
+import { isAnnotatorAdminEmail } from "@/src/lib/annotatorAdmins";
 
 type AnnotationShape = {
   id: string;
@@ -92,6 +94,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const isAnnotatorAdmin = isAnnotatorAdminEmail(profile.email);
+
   const url = new URL(req.url);
   const merged = url.searchParams.get("merged") === "1";
 
@@ -118,7 +122,11 @@ export async function GET(req: Request) {
       annotations: shapesForUser(store, profile.id),
       imageLocks: store.imageLocks,
       peerAnnotations: peerShapes(store, profile.id),
-      currentUser: { id: profile.id, name: profile.name },
+      currentUser: {
+        id: profile.id,
+        name: profile.name,
+        isAnnotatorAdmin,
+      },
       updatedAt: row?.updatedAt ?? null,
     },
   });
@@ -139,6 +147,7 @@ export async function PUT(req: Request) {
         annotations?: AnnotationShape[];
         allowEmptyAnnotations?: boolean;
         clearAll?: boolean;
+        deletePeerShape?: { shapeId: string; ownerUserId: string };
       }
     | null;
 
@@ -147,6 +156,9 @@ export async function PUT(req: Request) {
   }
 
   if (body.clearAll) {
+    if (!isAnnotatorAdminEmail(profile.email)) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
     await persistCollaborationStore(clearCollaborationStore());
     return NextResponse.json({ success: true });
   }
@@ -157,6 +169,29 @@ export async function PUT(req: Request) {
     ...store,
     imageLocks: pruneExpiredLocks(store.imageLocks),
   };
+
+  if (body.deletePeerShape) {
+    if (!isAnnotatorAdminEmail(profile.email)) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+    const { shapeId, ownerUserId } = body.deletePeerShape;
+    if (
+      typeof shapeId !== "string" ||
+      !shapeId ||
+      typeof ownerUserId !== "string" ||
+      !ownerUserId ||
+      ownerUserId === profile.id
+    ) {
+      return NextResponse.json({ error: "INVALID_DELETE_PEER_SHAPE" }, { status: 400 });
+    }
+    store = deleteShapeFromUser(store, ownerUserId, shapeId);
+    await persistCollaborationStore(store);
+    return NextResponse.json({
+      success: true,
+      imageLocks: store.imageLocks,
+      peerAnnotations: peerShapes(store, profile.id),
+    });
+  }
 
   store = applyUserSync(store, profile.id, {
     perImageByCategory: body.perImageByCategory,

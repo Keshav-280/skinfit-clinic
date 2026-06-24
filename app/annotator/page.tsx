@@ -193,6 +193,7 @@ function migrateAnnotations(raw: unknown): Annotation[] {
         color: ann.color,
         type,
         points,
+        userId: typeof ann.userId === "string" ? ann.userId : undefined,
       };
     })
     .filter((ann) => ann.points.length >= (ann.type === "line" ? 2 : 3));
@@ -228,7 +229,17 @@ type AnnotatorImageLock = {
   expiresAt: string;
 };
 
-type SessionUser = { id: string; name: string };
+type SessionUser = { id: string; name: string; isAnnotatorAdmin?: boolean };
+
+function AnnotatorAdminBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 ring-1 ring-amber-500/30 dark:text-amber-300 ${className}`}
+    >
+      Admin
+    </span>
+  );
+}
 
 type PersistedImage = {
   id: number;
@@ -532,9 +543,12 @@ export default function AnnotatorPage() {
 
   const canEditCurrentImage = React.useMemo(() => {
     if (!currentUser) return true;
+    if (currentUser.isAnnotatorAdmin) return true;
     const lock = imageLocks[String(currentIndex)];
     return !lock || lock.userId === currentUser.id;
   }, [currentUser, imageLocks, currentIndex]);
+
+  const isAnnotatorAdmin = currentUser?.isAnnotatorAdmin === true;
 
   React.useEffect(() => {
     if (isHydrating || !currentUser || images.length === 0) return;
@@ -555,7 +569,7 @@ export default function AnnotatorPage() {
       const json = await res.json().catch(() => ({}));
       if (cancelled) return;
       if (json.imageLocks) setImageLocks(json.imageLocks);
-      if (res.status === 409 && json.lock) {
+      if (res.status === 409 && json.lock && !currentUser?.isAnnotatorAdmin) {
         setCollabMessage(`View only — ${json.lock.userName} is annotating this image`);
       } else {
         setCollabMessage("");
@@ -990,23 +1004,80 @@ export default function AnnotatorPage() {
   }, [images, imageMeta, perImageByCategory, annotations, imageDimensions]);
 
   const deleteAnnotation = useCallback(
-    (id: string) => {
+    (id: string, ownerUserId?: string) => {
       if (!canEditCurrentImage) return;
+
+      const isPeerDelete =
+        isAnnotatorAdmin &&
+        ownerUserId &&
+        currentUser &&
+        ownerUserId !== currentUser.id;
+
+      if (isPeerDelete) {
+        setPeerAnnotations((prev) => prev.filter((a) => a.id !== id));
+        void (async () => {
+          try {
+            const res = await fetch("/api/annotator/state", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                deletePeerShape: { shapeId: id, ownerUserId },
+              }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(String(json.error ?? res.status));
+            if (json.peerAnnotations) {
+              setPeerAnnotations(migrateAnnotations(json.peerAnnotations) as Annotation[]);
+            }
+            setLastPersistMessage(`Deleted peer annotation · ${new Date().toLocaleTimeString()}`);
+          } catch (err) {
+            console.error("Failed to delete peer annotation", err);
+            setLastPersistMessage("Failed to delete peer annotation — refresh to resync");
+            const stateRes = await fetch("/api/annotator/state", { cache: "no-store" });
+            const stateJson = await stateRes.json().catch(() => ({}));
+            if (stateJson.state?.peerAnnotations) {
+              setPeerAnnotations(
+                migrateAnnotations(stateJson.state.peerAnnotations) as Annotation[]
+              );
+            }
+          }
+        })();
+        return;
+      }
+
       markImageTouched(currentIndex);
       intentionalShapeRemovalRef.current = true;
       commitAnnotations((prev) => prev.filter((a) => a.id !== id));
     },
-    [commitAnnotations, canEditCurrentImage, currentIndex, markImageTouched]
+    [
+      commitAnnotations,
+      canEditCurrentImage,
+      currentIndex,
+      markImageTouched,
+      isAnnotatorAdmin,
+      currentUser,
+    ]
+  );
+
+  const canModifyAnnotation = useCallback(
+    (ann: Annotation) => {
+      if (!currentUser) return true;
+      if (ann.userId && ann.userId !== currentUser.id) {
+        return isAnnotatorAdmin;
+      }
+      return true;
+    },
+    [currentUser, isAnnotatorAdmin]
   );
 
   const handleShapeClick = useCallback(
-    (e: React.MouseEvent, id: string) => {
+    (e: React.MouseEvent, ann: Annotation) => {
       e.stopPropagation();
-      if (activeTool === "eraser") {
-        deleteAnnotation(id);
+      if (activeTool === "eraser" && canModifyAnnotation(ann)) {
+        deleteAnnotation(ann.id, ann.userId);
       }
     },
-    [activeTool, deleteAnnotation]
+    [activeTool, deleteAnnotation, canModifyAnnotation]
   );
 
   const myCurrentAnnotations = annotations.filter((a) => a.imageIndex === currentIndex);
@@ -1040,11 +1111,6 @@ export default function AnnotatorPage() {
   const activeLockCount = React.useMemo(
     () => Object.keys(imageLocks).length,
     [imageLocks]
-  );
-
-  const myAnnotationIds = React.useMemo(
-    () => new Set(myCurrentAnnotations.map((a) => a.id)),
-    [myCurrentAnnotations]
   );
 
   const renderThumbnailButtons = (compact = false) =>
@@ -1120,6 +1186,7 @@ export default function AnnotatorPage() {
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">
             Skinnfit Clinical Annotator
           </h1>
+          {isAnnotatorAdmin ? <AnnotatorAdminBadge /> : null}
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="mr-1 flex items-center gap-1 border-r border-slate-200 pr-2 dark:border-zinc-700 sm:mr-2 sm:pr-3">
@@ -1215,13 +1282,18 @@ export default function AnnotatorPage() {
               <span className="text-slate-500 dark:text-zinc-500">· {lastPersistMessage}</span>
             ) : null}
             {currentUser ? (
-              <span className="text-slate-500 dark:text-zinc-500">
+              <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-zinc-500">
                 · {currentUser.name}
+                {currentUser.isAnnotatorAdmin ? <AnnotatorAdminBadge /> : null}
                 {activeLockCount > 0 ? ` · ${activeLockCount} active` : ""}
               </span>
             ) : null}
-            {collabMessage ? (
+            {collabMessage && !isAnnotatorAdmin ? (
               <span className="font-medium text-amber-600 dark:text-amber-400">· {collabMessage}</span>
+            ) : isAnnotatorAdmin && collabMessage ? (
+              <span className="text-slate-500 dark:text-zinc-500">
+                · {collabMessage.replace("View only — ", "")} (admin override)
+              </span>
             ) : canEditCurrentImage && currentUser ? (
               <span className="text-teal-600 dark:text-teal-400">· You can edit this image</span>
             ) : null}
@@ -1367,18 +1439,19 @@ export default function AnnotatorPage() {
                   >
                     {/* Rendered annotations */}
                     {currentAnnotations.map((ann) => {
-                      const isMine = myAnnotationIds.has(ann.id);
+                      const editable = canModifyAnnotation(ann);
+                      const isPeer = Boolean(ann.userId && currentUser && ann.userId !== currentUser.id);
                       return (
                       <g
                         key={ann.id}
                         style={{
-                          cursor: isMine && activeTool === "eraser" ? "pointer" : "default",
-                          pointerEvents: isMine ? "painted" : "none",
+                          cursor: editable && activeTool === "eraser" ? "pointer" : "default",
+                          pointerEvents: editable ? "painted" : "none",
                           opacity: 1,
                         }}
                         onClick={(e) => {
-                          if (!isMine) return;
-                          handleShapeClick(e as unknown as React.MouseEvent, ann.id);
+                          if (!editable) return;
+                          handleShapeClick(e as unknown as React.MouseEvent, ann);
                         }}
                       >
                         {ann.type === "path" ? (
@@ -1388,8 +1461,8 @@ export default function AnnotatorPage() {
                             fillOpacity={0.3}
                             stroke={ann.color}
                             strokeWidth={0.005}
-                            strokeDasharray={isMine ? undefined : "0.012 0.008"}
-                            className={isMine && activeTool === "eraser" ? "hover:opacity-80" : ""}
+                            strokeDasharray={isPeer ? "0.012 0.008" : undefined}
+                            className={editable && activeTool === "eraser" ? "hover:opacity-80" : ""}
                           />
                         ) : (
                           <polyline
@@ -1397,8 +1470,8 @@ export default function AnnotatorPage() {
                             fill="none"
                             stroke={ann.color}
                             strokeWidth={0.005}
-                            strokeDasharray={isMine ? undefined : "0.012 0.008"}
-                            className={isMine && activeTool === "eraser" ? "hover:opacity-80" : ""}
+                            strokeDasharray={isPeer ? "0.012 0.008" : undefined}
+                            className={editable && activeTool === "eraser" ? "hover:opacity-80" : ""}
                           />
                         )}
                         <text
@@ -1628,7 +1701,8 @@ export default function AnnotatorPage() {
                 </p>
               ) : (
                 currentAnnotations.map((ann) => {
-                  const isMine = myAnnotationIds.has(ann.id);
+                  const editable = canModifyAnnotation(ann);
+                  const isPeer = Boolean(ann.userId && currentUser && ann.userId !== currentUser.id);
                   return (
                   <div
                     key={ann.id}
@@ -1637,17 +1711,18 @@ export default function AnnotatorPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-900 dark:text-white">
                         {annotationDisplayLabel(ann)}
-                        {!isMine ? " (peer)" : ""}
+                        {isPeer ? " (peer)" : ""}
                       </p>
                       <p className="truncate text-[10px] text-slate-500 dark:text-zinc-500">
                         {ann.category} ({ann.type})
                       </p>
                     </div>
-                    {isMine ? (
+                    {editable ? (
                     <button
                       type="button"
-                      onClick={() => deleteAnnotation(ann.id)}
+                      onClick={() => deleteAnnotation(ann.id, ann.userId)}
                       className="shrink-0 rounded p-1 text-slate-500 transition-colors hover:bg-red-500/20 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400"
+                      title={isPeer ? "Delete peer annotation (admin)" : "Delete annotation"}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
