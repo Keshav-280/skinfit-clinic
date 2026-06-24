@@ -46,6 +46,8 @@ import {
   enforceScanFaceIdentity,
   FACE_IDENTITY_ERROR_CODES,
 } from "../../../src/lib/scanFaceIdentityGate";
+import { fileForMlInference } from "../../../src/lib/cropScanImageForMl";
+import { parseCaptureCropContext } from "../../../src/lib/parseCaptureCropContext";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -292,6 +294,15 @@ export async function POST(request: NextRequest) {
           identityChecks: identity.imageChecks,
         },
         { status }
+      );
+    }
+
+    const captureCropContext = parseCaptureCropContext(formData);
+    for (const step of FACE_SCAN_CAPTURE_STEPS) {
+      filesForV2[step.id] = await fileForMlInference(
+        filesForV2[step.id],
+        step.id,
+        captureCropContext
       );
     }
 

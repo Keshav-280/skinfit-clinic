@@ -2,6 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter, type Href } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CaptureDoneScreen } from "@/components/capture/CaptureDoneScreen";
 import { CapturePrepScreen } from "@/components/capture/CapturePrepScreen";
@@ -26,6 +27,8 @@ import {
   type FaceScanSlotUris,
 } from "@/lib/faceScanSlotCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
+import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
+import { appendCaptureCropContext } from "../../src/lib/parseCaptureCropContext";
 import { pickSingleFaceScanImage } from "@/lib/pickFaceScanImages";
 import {
   addPendingScanJob,
@@ -44,6 +47,7 @@ type Phase = "intro" | "upload" | "capture" | "review" | "done";
 export default function ScanScreen() {
   const { token } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>("intro");
   const [slots, setSlots] = useState<FaceScanSlotUris>(() => emptyFaceScanSlots());
   const [scanName, setScanName] = useState("");
@@ -189,6 +193,15 @@ export default function ScanScreen() {
           type: "image/jpeg",
         } as unknown as Blob);
       }
+      const viewfinder = getCaptureViewfinderSize(
+        insets.top + 8,
+        Math.max(insets.bottom, 16)
+      );
+      appendCaptureCropContext(form, {
+        source: "mobile",
+        viewfinderW: viewfinder.width,
+        viewfinderH: viewfinder.height,
+      });
 
       const outcome = await submitFaceScan(token, form);
       if (outcome.mode === "error") {

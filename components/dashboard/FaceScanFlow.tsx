@@ -55,8 +55,6 @@ import {
   setScanPhotoGuideDismissed,
 } from "@/src/lib/scanPhotoGuideDismissed";
 import {
-  computeFaceGuideCropOnViewfinderCanvas,
-  cropCanvasToFaceGuide,
   getVisibleVideoRect,
   shouldCropToFaceGuide,
   viewfinderCaptureDimensions,
@@ -625,16 +623,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
     ctx.restore();
 
-    let outputCanvas: HTMLCanvasElement = canvas;
-    if (cropToGuide) {
-      const crop = computeFaceGuideCropOnViewfinderCanvas(tw, th);
-      if (crop) {
-        const cropped = cropCanvasToFaceGuide(canvas, crop);
-        if (cropped) outputCanvas = cropped;
-      }
-    }
-
-    outputCanvas.toBlob(
+    canvas.toBlob(
       (blob) => {
         if (!blob) return;
         if (cameraStepIndex >= N_CAPTURES) return;
@@ -754,6 +743,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     try {
       const formData = new FormData();
       formData.append("scanName", finalScanName);
+      formData.append("captureSource", "web");
       slotCaptures.forEach((c) => {
         if (c) formData.append("images", c.file);
       });

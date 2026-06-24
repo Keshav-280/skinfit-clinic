@@ -15,6 +15,12 @@ export type ScanJobPayload = {
   imagePaths: Record<string, string>;
   faceCaptureImages: ScanCaptureImageRef[];
   primaryImageUrl: string;
+  /** Viewfinder metadata for server-side ML crop (identity uses full uploads). */
+  captureCropContext?: {
+    source: "mobile" | "web";
+    viewfinderW?: number;
+    viewfinderH?: number;
+  };
 };
 
 export type ScanJobResult = {

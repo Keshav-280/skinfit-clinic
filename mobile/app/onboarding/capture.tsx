@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useState } from "react";
 import { Alert } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FaceScanUploadScreen } from "@/components/capture/FaceScanUploadScreen";
 import { FiveAngleCameraStep } from "@/components/FiveAngleCameraStep";
@@ -16,6 +17,8 @@ import {
   type FaceScanSlotUris,
 } from "@/lib/faceScanSlotCaptures";
 import { normalizeScanImageUri } from "@/lib/normalizeScanImage";
+import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
+import { appendCaptureCropContext } from "../../src/lib/parseCaptureCropContext";
 import { pickSingleFaceScanImage } from "@/lib/pickFaceScanImages";
 import { addPendingScanJob } from "@/lib/scanJobNotifications";
 import { submitFaceScan, formatFaceScanIdentityError } from "@/lib/submitFaceScan";
@@ -28,6 +31,7 @@ export default function OnboardingCaptureScreen() {
   const router = useRouter();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const { token, markBaselineSubmitted } = useAuth();
+  const insets = useSafeAreaInsets();
   const [slots, setSlots] = useState<FaceScanSlotUris>(() => emptyFaceScanSlots());
   const [busy, setBusy] = useState(false);
   const [flow, setFlow] = useState<Flow>(mode === "camera" ? "camera" : "upload");
@@ -66,6 +70,15 @@ export default function OnboardingCaptureScreen() {
           type: "image/jpeg",
         } as unknown as Blob);
       }
+      const viewfinder = getCaptureViewfinderSize(
+        insets.top + 8,
+        Math.max(insets.bottom, 16)
+      );
+      appendCaptureCropContext(form, {
+        source: "mobile",
+        viewfinderW: viewfinder.width,
+        viewfinderH: viewfinder.height,
+      });
       const outcome = await submitFaceScan(token, form);
       if (outcome.mode === "error") {
         throw new Error(

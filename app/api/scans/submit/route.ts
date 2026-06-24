@@ -9,6 +9,7 @@ import {
   buildScanImagesFromPaths,
   parseImagePathsField,
 } from "@/src/lib/scanSubmitPayload";
+import { parseCaptureCropContext } from "@/src/lib/parseCaptureCropContext";
 import {
   getScanAnalysisQueue,
   setJobStatus,
@@ -83,6 +84,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const captureCropContext = parseCaptureCropContext(formData);
+
   const identity = await enforceScanFaceIdentity({
     userId,
     scanName,
@@ -109,6 +112,7 @@ export async function POST(request: NextRequest) {
     imagePaths,
     faceCaptureImages,
     primaryImageUrl,
+    captureCropContext,
   };
 
   const [jobRow] = await db

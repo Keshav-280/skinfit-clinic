@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   ActivityIndicator,
@@ -34,8 +33,6 @@ import {
   type CameraAdjustments,
 } from "@/lib/cameraCaptureAdjustments";
 import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
-import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
-import { cropScanPhotoToFaceGuide } from "@/lib/cropScanToFaceGuide";
 import { prepareCapturedScanPhotoUri } from "@/lib/normalizeScanImage";
 import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
 
@@ -88,12 +85,6 @@ export function FiveAngleCameraStep({
   const voiceSpeechAvailable = isCaptureVoiceSpeechAvailable();
   const [voiceEnabled, setVoiceEnabled] = useState(() => voiceSpeechAvailable);
 
-  const insets = useSafeAreaInsets();
-  const viewfinderSize = useMemo(
-    () => getCaptureViewfinderSize(insets.top + 8, Math.max(insets.bottom, 16)),
-    [insets.top, insets.bottom]
-  );
-
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
   // Eye-closure / expression detection is disabled on mobile — never gate or nag.
@@ -137,9 +128,6 @@ export function FiveAngleCameraStep({
       });
       if (pic?.uri) {
         let uri = await prepareCapturedScanPhotoUri(pic.uri, facing);
-        uri = await cropScanPhotoToFaceGuide(uri, stepId, viewfinderSize, {
-          zoom: 1 + cameraAdjust.zoom,
-        });
         uri = await applyCaptureAdjustments(
           uri,
           cameraAdjust.brightness,
@@ -164,7 +152,6 @@ export function FiveAngleCameraStep({
     cameraReady,
     shooting,
     facing,
-    viewfinderSize,
     cameraAdjust.brightness,
     cameraAdjust.exposure,
     cameraAdjust.zoom,

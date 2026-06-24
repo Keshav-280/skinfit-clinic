@@ -41,16 +41,24 @@ import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
+import { cropJpegBufferForMlStep } from "@/src/lib/cropScanImageForMl";
 import { formatFaceIdentityCheckSummary } from "@/src/lib/faceIdentityCheckDisplay";
 import {
   buildFaceIdentityInputsFromPaths,
   enforceScanFaceIdentity,
 } from "@/src/lib/scanFaceIdentityGate";
 
-async function pathToFile(relativePath: string, name: string): Promise<File> {
+async function pathToMlFile(
+  relativePath: string,
+  stepId: "centre" | "left" | "right" | "eyes_closed" | "smiling",
+  captureCropContext: ScanJobPayload["captureCropContext"]
+): Promise<File> {
   const storage = getStorage();
   const buf = await storage.read(relativePath);
-  return new File([new Uint8Array(buf)], name, { type: "image/jpeg" });
+  const cropped = await cropJpegBufferForMlStep(buf, stepId, captureCropContext);
+  return new File([new Uint8Array(cropped)], `${stepId}.jpg`, {
+    type: "image/jpeg",
+  });
 }
 
 export async function processScanJob(
@@ -80,7 +88,7 @@ export async function processScanJob(
   for (const k of keys) {
     const rel = payload.imagePaths[k];
     if (!rel) throw new Error(`Missing image path for ${k}`);
-    filesForV2[k] = await pathToFile(rel, `${k}.jpg`);
+    filesForV2[k] = await pathToMlFile(rel, k, payload.captureCropContext);
   }
 
   const identity = await enforceScanFaceIdentity({
