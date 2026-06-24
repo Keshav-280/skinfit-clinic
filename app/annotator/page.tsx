@@ -282,6 +282,40 @@ function cloneAnnotations(list: Annotation[]): Annotation[] {
   }));
 }
 
+/** Keep unsaved local drawings while dropping shapes removed on the server (admin delete). */
+function reconcileLocalAnnotationsWithServer(
+  local: Annotation[],
+  server: Annotation[],
+  prevServerIds: Set<string>
+): Annotation[] {
+  const serverIds = new Set(server.map((a) => a.id));
+  const removedOnServer = new Set([...prevServerIds].filter((id) => !serverIds.has(id)));
+  const serverById = new Map(server.map((a) => [a.id, a]));
+  const localOnly = local.filter((a) => !prevServerIds.has(a.id));
+
+  const merged: Annotation[] = server.map((a) => ({ ...a }));
+  const seen = new Set(serverIds);
+
+  for (const ann of local) {
+    if (removedOnServer.has(ann.id) || seen.has(ann.id)) continue;
+    merged.push(ann);
+    seen.add(ann.id);
+  }
+
+  for (const ann of localOnly) {
+    if (removedOnServer.has(ann.id) || seen.has(ann.id)) continue;
+    merged.push(ann);
+    seen.add(ann.id);
+  }
+
+  for (let i = 0; i < merged.length; i++) {
+    const fromServer = serverById.get(merged[i]!.id);
+    if (fromServer) merged[i] = { ...fromServer };
+  }
+
+  return merged;
+}
+
 function getNormalizedPoint(
   e: React.MouseEvent,
   el: HTMLDivElement | null
@@ -387,6 +421,8 @@ export default function AnnotatorPage() {
   // autosave can never silently wipe saved annotations.
   const intentionalShapeRemovalRef = useRef(false);
   const prevImageIndexRef = useRef<number | null>(null);
+  const lastServerUserSyncAtRef = useRef<string | null>(null);
+  const shapesAtLastServerSyncRef = useRef<Set<string>>(new Set());
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [imageLocks, setImageLocks] = useState<Record<string, AnnotatorImageLock>>({});
   const [peerAnnotations, setPeerAnnotations] = useState<Annotation[]>([]);
@@ -510,6 +546,13 @@ export default function AnnotatorPage() {
             snapshots: [cloneAnnotations(persistedAnnotations)],
             index: 0,
           });
+          shapesAtLastServerSyncRef.current = new Set(
+            persistedAnnotations.map((ann) => ann.id)
+          );
+          lastServerUserSyncAtRef.current =
+            typeof persistedState.userSyncedAt === "string"
+              ? persistedState.userSyncedAt
+              : null;
           const maxCounter = persistedAnnotations.reduce((acc, ann) => {
             const match = String(ann.id).match(/-(\d+)$/);
             const idNum = match ? Number.parseInt(match[1], 10) : Number.NaN;
@@ -610,6 +653,45 @@ export default function AnnotatorPage() {
         if (json.state?.peerAnnotations) {
           setPeerAnnotations(migrateAnnotations(json.state.peerAnnotations) as Annotation[]);
         }
+
+        const serverSyncAt =
+          typeof json.state?.userSyncedAt === "string" ? json.state.userSyncedAt : null;
+        const serverAnnotations = migrateAnnotations(json.state?.annotations ?? []);
+
+        if (
+          serverSyncAt &&
+          serverSyncAt !== lastServerUserSyncAtRef.current
+        ) {
+          const prevServerIds = shapesAtLastServerSyncRef.current;
+          const serverIds = new Set(serverAnnotations.map((a) => a.id));
+          const removedOnServer = [...prevServerIds].filter((id) => !serverIds.has(id));
+
+          if (removedOnServer.length > 0) {
+            setAnnotationHistory((ah) => {
+              const cur = ah.snapshots[ah.index] ?? [];
+              const next = reconcileLocalAnnotationsWithServer(
+                cur,
+                serverAnnotations,
+                prevServerIds
+              );
+              if (next.length !== cur.length) {
+                intentionalShapeRemovalRef.current = true;
+              }
+              return {
+                snapshots: [...ah.snapshots.slice(0, ah.index + 1), cloneAnnotations(next)],
+                index: ah.index + 1,
+              };
+            });
+          } else if (!saveDirtyRef.current) {
+            setAnnotationHistory({
+              snapshots: [cloneAnnotations(serverAnnotations)],
+              index: 0,
+            });
+          }
+
+          shapesAtLastServerSyncRef.current = serverIds;
+          lastServerUserSyncAtRef.current = serverSyncAt;
+        }
       } catch {
         /* ignore poll errors */
       }
@@ -643,6 +725,7 @@ export default function AnnotatorPage() {
               touchedImagesRef.current
             ),
             annotations,
+            clientSyncedAt: lastServerUserSyncAtRef.current ?? undefined,
             // Only permit overwriting saved shapes with an empty list when the
             // emptiness is the result of an explicit removal this session.
             allowEmptyAnnotations:
@@ -652,6 +735,10 @@ export default function AnnotatorPage() {
         if (!res.ok) throw new Error(`Save failed: ${res.status}`);
         const json = await res.json().catch(() => ({}));
         if (json.imageLocks) setImageLocks(json.imageLocks);
+        if (typeof json.userSyncedAt === "string") {
+          lastServerUserSyncAtRef.current = json.userSyncedAt;
+        }
+        shapesAtLastServerSyncRef.current = new Set(annotations.map((a) => a.id));
         const snap = JSON.stringify({ perImageByCategory, annotations });
         lastPersistedRef.current = snap;
         saveDirtyRef.current = false;

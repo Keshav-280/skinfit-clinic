@@ -736,6 +736,11 @@ export const annotatorState = pgTable(
       .default({}),
     /** userId -> ISO last sync */
     userSyncAt: jsonb("user_sync_at").$type<Record<string, string>>().notNull().default({}),
+    /** userId -> shape ids removed remotely (admin delete); blocks stale client restore */
+    shapeTombstones: jsonb("shape_tombstones")
+      .$type<Record<string, string[]>>()
+      .notNull()
+      .default({}),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

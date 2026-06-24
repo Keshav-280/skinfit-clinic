@@ -47,6 +47,7 @@ async function loadCollaborationRow() {
       perUserShapes: annotatorState.perUserShapes,
       imageLocks: annotatorState.imageLocks,
       userSyncAt: annotatorState.userSyncAt,
+      shapeTombstones: annotatorState.shapeTombstones,
       updatedAt: annotatorState.updatedAt,
     })
     .from(annotatorState)
@@ -127,6 +128,7 @@ export async function GET(req: Request) {
         name: profile.name,
         isAnnotatorAdmin,
       },
+      userSyncedAt: store.userSyncAt[profile.id] ?? null,
       updatedAt: row?.updatedAt ?? null,
     },
   });
@@ -148,6 +150,7 @@ export async function PUT(req: Request) {
         allowEmptyAnnotations?: boolean;
         clearAll?: boolean;
         deletePeerShape?: { shapeId: string; ownerUserId: string };
+        clientSyncedAt?: string;
       }
     | null;
 
@@ -197,6 +200,8 @@ export async function PUT(req: Request) {
     perImageByCategory: body.perImageByCategory,
     annotations: body.annotations as Parameters<typeof applyUserSync>[2]["annotations"],
     allowEmptyAnnotations: body.allowEmptyAnnotations === true,
+    clientSyncedAt:
+      typeof body.clientSyncedAt === "string" ? body.clientSyncedAt : undefined,
   });
 
   await persistCollaborationStore(store);
@@ -204,5 +209,6 @@ export async function PUT(req: Request) {
   return NextResponse.json({
     success: true,
     imageLocks: store.imageLocks,
+    userSyncedAt: store.userSyncAt[profile.id] ?? null,
   });
 }

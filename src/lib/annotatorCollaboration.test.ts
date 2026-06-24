@@ -5,8 +5,10 @@ import {
   applyUserSync,
   mergedLabelsForExport,
   deleteShapeFromUser,
+  mergeShapesWhenServerNewer,
   parseCollaborationStore,
   peerShapes,
+  tombstoneSetForUser,
 } from "./annotatorCollaboration";
 import { isAnnotatorAdminEmail } from "./annotatorAdmins";
 
@@ -109,6 +111,110 @@ describe("annotatorCollaboration", () => {
       ],
     });
     store = deleteShapeFromUser(store, "user-a", "a1");
+    assert.equal(store.perUserShapes["user-a"]?.length, 1);
+    assert.equal(store.perUserShapes["user-a"]?.[0]?.id, "a2");
+  });
+
+  it("blocks stale client restore after admin delete via tombstones", () => {
+    let store = parseCollaborationStore(null);
+    store = applyUserSync(store, "user-a", {
+      annotations: [
+        {
+          id: "a1",
+          imageIndex: 0,
+          category: "Active Acne",
+          spec: "",
+          severity: "A",
+          color: "red",
+          type: "path",
+          points: [
+            { x: 0, y: 0 },
+            { x: 1, y: 0 },
+            { x: 1, y: 1 },
+          ],
+        },
+      ],
+    });
+    store = { ...store, userSyncAt: { ...store.userSyncAt, "user-a": "2025-06-01T00:00:00.000Z" } };
+
+    store = deleteShapeFromUser(store, "user-a", "a1", "2025-06-02T00:00:00.000Z");
+    assert.equal(store.perUserShapes["user-a"]?.length, 0);
+    assert.equal(tombstoneSetForUser(store, "user-a").has("a1"), true);
+
+    // Stale tab tries to restore a1 on autosave
+    store = applyUserSync(
+      store,
+      "user-a",
+      {
+        annotations: [
+          {
+            id: "a1",
+            imageIndex: 0,
+            category: "Active Acne",
+            spec: "",
+            severity: "A",
+            color: "red",
+            type: "path",
+            points: [
+              { x: 0, y: 0 },
+              { x: 1, y: 0 },
+              { x: 1, y: 1 },
+            ],
+          },
+        ],
+        clientSyncedAt: "2025-06-01T00:00:00.000Z",
+      },
+      "2025-06-02T00:00:01.000Z"
+    );
+    assert.equal(store.perUserShapes["user-a"]?.length, 0);
+  });
+
+  it("allows new shapes after admin delete when client sync is stale", () => {
+    let store = parseCollaborationStore(null);
+    store = applyUserSync(store, "user-a", {
+      annotations: [
+        {
+          id: "a1",
+          imageIndex: 0,
+          category: "Active Acne",
+          spec: "",
+          severity: "A",
+          color: "red",
+          type: "path",
+          points: [
+            { x: 0, y: 0 },
+            { x: 1, y: 0 },
+            { x: 1, y: 1 },
+          ],
+        },
+      ],
+    });
+    store = { ...store, userSyncAt: { ...store.userSyncAt, "user-a": "2025-06-01T00:00:00.000Z" } };
+    store = deleteShapeFromUser(store, "user-a", "a1", "2025-06-02T00:00:00.000Z");
+
+    store = applyUserSync(
+      store,
+      "user-a",
+      {
+        annotations: [
+          {
+            id: "a2",
+            imageIndex: 0,
+            category: "Pigmentation",
+            spec: "",
+            severity: "B",
+            color: "blue",
+            type: "line",
+            points: [
+              { x: 0, y: 0 },
+              { x: 1, y: 1 },
+            ],
+          },
+        ],
+        clientSyncedAt: "2025-06-01T00:00:00.000Z",
+      },
+      "2025-06-02T00:00:05.000Z"
+    );
     assert.equal(store.perUserShapes["user-a"]?.length, 1);
     assert.equal(store.perUserShapes["user-a"]?.[0]?.id, "a2");
   });

@@ -25,6 +25,7 @@ export type AnnotatorCollaborationRow = {
   perUserShapes?: Record<string, AnnotatorShape[]> | null;
   imageLocks?: Record<string, AnnotatorImageLock> | null;
   userSyncAt?: Record<string, string> | null;
+  shapeTombstones?: Record<string, string[]> | null;
   currentIndex?: number;
   updatedAt?: Date;
 };
@@ -34,6 +35,7 @@ export type AnnotatorCollaborationStore = {
   perUserShapes: Record<string, AnnotatorShape[]>;
   imageLocks: Record<string, AnnotatorImageLock>;
   userSyncAt: Record<string, string>;
+  shapeTombstones: Record<string, string[]>;
 };
 
 function emptyStore(): AnnotatorCollaborationStore {
@@ -42,6 +44,7 @@ function emptyStore(): AnnotatorCollaborationStore {
     perUserShapes: {},
     imageLocks: {},
     userSyncAt: {},
+    shapeTombstones: {},
   };
 }
 
@@ -60,6 +63,9 @@ export function parseCollaborationStore(row: AnnotatorCollaborationRow | null | 
   }
   if (row.userSyncAt && typeof row.userSyncAt === "object") {
     store.userSyncAt = { ...row.userSyncAt };
+  }
+  if (row.shapeTombstones && typeof row.shapeTombstones === "object") {
+    store.shapeTombstones = { ...row.shapeTombstones };
   }
 
   const hasCollaborativeData =
@@ -234,6 +240,51 @@ export function heartbeatImageLock(
   };
 }
 
+export function tombstoneSetForUser(
+  store: AnnotatorCollaborationStore,
+  userId: string
+): Set<string> {
+  return new Set(store.shapeTombstones[userId] ?? []);
+}
+
+export function addShapeTombstone(
+  store: AnnotatorCollaborationStore,
+  userId: string,
+  shapeId: string
+): AnnotatorCollaborationStore {
+  const existing = store.shapeTombstones[userId] ?? [];
+  if (existing.includes(shapeId)) return store;
+  return {
+    ...store,
+    shapeTombstones: {
+      ...store.shapeTombstones,
+      [userId]: [...existing, shapeId],
+    },
+  };
+}
+
+function filterTombstonedShapes(
+  store: AnnotatorCollaborationStore,
+  userId: string,
+  shapes: AnnotatorShape[]
+): AnnotatorShape[] {
+  const tombstones = tombstoneSetForUser(store, userId);
+  if (tombstones.size === 0) return shapes;
+  return shapes.filter((s) => !tombstones.has(s.id));
+}
+
+/** Merge client shapes when server was updated after the client's last sync (e.g. admin delete). */
+export function mergeShapesWhenServerNewer(
+  server: AnnotatorShape[],
+  incoming: AnnotatorShape[]
+): AnnotatorShape[] {
+  const byId = new Map(server.map((s) => [s.id, s]));
+  for (const shape of incoming) {
+    byId.set(shape.id, shape);
+  }
+  return [...byId.values()];
+}
+
 export function applyUserSync(
   store: AnnotatorCollaborationStore,
   userId: string,
@@ -244,16 +295,34 @@ export function applyUserSync(
      * never overwrites existing non-empty shapes (guards against bad loads /
      * stale tabs silently wiping saved annotations). */
     allowEmptyAnnotations?: boolean;
+    /** Client's last known server sync time for this user (ISO). */
+    clientSyncedAt?: string;
   },
   syncedAt = new Date().toISOString()
 ): AnnotatorCollaborationStore {
   const next = { ...store };
   if (payload.annotations) {
-    const incoming = payload.annotations;
     const existing = next.perUserShapes[userId] ?? [];
-    const wouldClearNonEmpty = incoming.length === 0 && existing.length > 0;
-    if (!wouldClearNonEmpty || payload.allowEmptyAnnotations) {
-      next.perUserShapes = { ...next.perUserShapes, [userId]: incoming };
+    let incoming = filterTombstonedShapes(next, userId, payload.annotations);
+
+    const clientTs = payload.clientSyncedAt ? Date.parse(payload.clientSyncedAt) : Number.NaN;
+    const serverTs = Date.parse(next.userSyncAt[userId] ?? "") || 0;
+    const serverNewer =
+      typeof payload.clientSyncedAt === "string" &&
+      Number.isFinite(clientTs) &&
+      serverTs > clientTs;
+
+    if (serverNewer) {
+      incoming = filterTombstonedShapes(next, userId, incoming);
+      next.perUserShapes = {
+        ...next.perUserShapes,
+        [userId]: mergeShapesWhenServerNewer(existing, incoming),
+      };
+    } else {
+      const wouldClearNonEmpty = incoming.length === 0 && existing.length > 0;
+      if (!wouldClearNonEmpty || payload.allowEmptyAnnotations) {
+        next.perUserShapes = { ...next.perUserShapes, [userId]: incoming };
+      }
     }
   }
   if (payload.perImageByCategory) {
@@ -277,11 +346,16 @@ export function deleteShapeFromUser(
   if (!shapes?.length) return store;
   const filtered = shapes.filter((s) => s.id !== shapeId);
   if (filtered.length === shapes.length) return store;
-  return {
-    ...store,
-    perUserShapes: { ...store.perUserShapes, [ownerUserId]: filtered },
-    userSyncAt: { ...store.userSyncAt, [ownerUserId]: syncedAt },
-  };
+  const withTombstone = addShapeTombstone(
+    {
+      ...store,
+      perUserShapes: { ...store.perUserShapes, [ownerUserId]: filtered },
+      userSyncAt: { ...store.userSyncAt, [ownerUserId]: syncedAt },
+    },
+    ownerUserId,
+    shapeId
+  );
+  return withTombstone;
 }
 
 export function clearCollaborationStore(): AnnotatorCollaborationStore {
@@ -294,6 +368,7 @@ export function storeToDbColumns(store: AnnotatorCollaborationStore) {
     perUserShapes: store.perUserShapes,
     imageLocks: store.imageLocks,
     userSyncAt: store.userSyncAt,
+    shapeTombstones: store.shapeTombstones,
     updatedAt: new Date(),
   };
 }
