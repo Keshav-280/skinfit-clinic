@@ -17,7 +17,7 @@ import {
   trendSummary,
   type ObservationSource,
 } from "@/lib/weeklyInsightFormat";
-import { patientKaiScoreView } from "../../src/lib/clarityGrade";
+import { patientKaiScoreView } from "../../../src/lib/clarityGrade";
 
 export type ObservationRow = {
   text: string;

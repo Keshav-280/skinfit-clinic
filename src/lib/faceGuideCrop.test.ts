@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 
 import {
   computeFaceGuideCropOnViewfinderCanvas,
+  FACE_GUIDE_CROP_PAD,
   getFrontGuideCropRectViewBox,
   getFrontGuideCropViewfinderNorm,
   getVisibleVideoRect,
+  shouldCropToFaceGuide,
   viewBoxRectToViewfinderNorm,
   viewfinderCaptureDimensions,
   viewfinderNormRectToVideoSource,
@@ -117,7 +119,12 @@ const guideVfNorm = getFrontGuideCropViewfinderNorm();
 const canvasCrop = computeFaceGuideCropOnViewfinderCanvas(captureDims.w, captureDims.h);
 assert.ok(canvasCrop);
 approx(canvasCrop!.w / canvasCrop!.h, 3 / 4, 0.01);
-approx(canvasCrop!.x / captureDims.w, guideVfNorm.x, 0.02);
-approx(canvasCrop!.y / captureDims.h, guideVfNorm.y, 0.02);
+assert.ok(canvasCrop!.w >= guideVfNorm.w * captureDims.w * 0.98, "padded crop should be wider than tight guide");
+assert.ok(canvasCrop!.h >= guideVfNorm.h * captureDims.h * 0.98, "padded crop should be taller than tight guide");
+
+assert.equal(shouldCropToFaceGuide("centre"), true);
+assert.equal(shouldCropToFaceGuide("smiling"), true);
+assert.equal(shouldCropToFaceGuide("left"), false);
+assert.ok(FACE_GUIDE_CROP_PAD > 1);
 
 console.log("faceGuideCrop.test.ts: all assertions passed");

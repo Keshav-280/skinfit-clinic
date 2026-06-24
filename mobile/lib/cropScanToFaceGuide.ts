@@ -9,7 +9,7 @@ import {
 
 export type ViewfinderSize = { width: number; height: number };
 
-/** Crop front-facing steps to the 3:4 rect around the dashed ellipse (not the full sensor still). */
+/** Crop front-facing steps to a padded 3:4 rect around the dashed ellipse (not the full sensor still). */
 export async function cropScanPhotoToFaceGuide(
   uri: string,
   stepId: FaceScanCaptureId,

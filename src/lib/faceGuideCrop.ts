@@ -28,11 +28,67 @@ const VIEWBOX_SIZE = 100;
 const OVERLAY_HEIGHT_FRACTION = 3 / 4;
 const OVERLAY_TOP_PAD = (1 - OVERLAY_HEIGHT_FRACTION) / 2;
 
-/** First (front) and last (smiling) — tight 3:4 crop around the face guide. */
+/**
+ * Centre + smiling: crop to 3:4 around the face guide before upload (tighter for the skin model).
+ * {@link FACE_GUIDE_CROP_PAD} expands the box so InsightFace still sees forehead/chin margin.
+ */
 const FACE_GUIDE_CROP_STEPS = new Set<FaceScanCaptureId>(["centre", "smiling"]);
+
+/** Expand the inscribed 3:4 crop (~40% larger) — tight crop alone caused `no_face_detected`. */
+export const FACE_GUIDE_CROP_PAD = 1.4;
 
 export function shouldCropToFaceGuide(stepId: FaceScanCaptureId): boolean {
   return FACE_GUIDE_CROP_STEPS.has(stepId);
+}
+
+function expandRectCentered(
+  rect: { x: number; y: number; w: number; h: number },
+  pad: number,
+  boundsW: number,
+  boundsH: number
+): { x: number; y: number; w: number; h: number } {
+  if (pad <= 1 || boundsW <= 0 || boundsH <= 0) return rect;
+
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  let w = rect.w * pad;
+  let h = rect.h * pad;
+
+  // Keep portrait 3:4
+  const targetH = (w * 4) / 3;
+  if (Math.abs(targetH - h) > 0.5) {
+    if (targetH <= boundsH) h = targetH;
+    else {
+      h = boundsH;
+      w = (h * 3) / 4;
+    }
+  }
+
+  let x = cx - w / 2;
+  let y = cy - h / 2;
+
+  if (w > boundsW) {
+    w = boundsW;
+    h = (w * 4) / 3;
+    x = cx - w / 2;
+    y = cy - h / 2;
+  }
+  if (h > boundsH) {
+    h = boundsH;
+    w = (h * 3) / 4;
+    x = cx - w / 2;
+    y = cy - h / 2;
+  }
+
+  x = Math.max(0, Math.min(x, boundsW - w));
+  y = Math.max(0, Math.min(y, boundsH - h));
+
+  return {
+    x,
+    y,
+    w: Math.max(1, w),
+    h: Math.max(1, h),
+  };
 }
 
 /** Smallest 3:4 (w:h) rectangle that contains the front guide ellipse. */
@@ -118,10 +174,21 @@ export function computeFaceGuideCropOnViewfinderCanvas(
   if (!canvasW || !canvasH) return null;
 
   const vfNorm = getFrontGuideCropViewfinderNorm(ellipse);
-  const x = Math.round(vfNorm.x * canvasW);
-  const y = Math.round(vfNorm.y * canvasH);
-  const w = Math.round(vfNorm.w * canvasW);
-  const h = Math.round(vfNorm.h * canvasH);
+  let x = Math.round(vfNorm.x * canvasW);
+  let y = Math.round(vfNorm.y * canvasH);
+  let w = Math.round(vfNorm.w * canvasW);
+  let h = Math.round(vfNorm.h * canvasH);
+
+  ({ x, y, w, h } = expandRectCentered(
+    { x, y, w, h },
+    FACE_GUIDE_CROP_PAD,
+    canvasW,
+    canvasH
+  ));
+  x = Math.round(x);
+  y = Math.round(y);
+  w = Math.round(w);
+  h = Math.round(h);
 
   if (w <= 1 || h <= 1) return null;
   if (x < 0 || y < 0 || x + w > canvasW || y + h > canvasH) return null;
@@ -270,14 +337,21 @@ export function computeFaceGuideCropInSourcePixels(params: {
     zoom
   );
 
-  const y = videoRect.y;
-  const w = videoRect.w;
-  const h = videoRect.h;
+  let y = videoRect.y;
+  let w = videoRect.w;
+  let h = videoRect.h;
   let x = videoRect.x;
 
   if (mirror) {
     x = sourceW - x - w;
   }
+
+  ({ x, y, w, h } = expandRectCentered(
+    { x, y, w, h },
+    FACE_GUIDE_CROP_PAD,
+    sourceW,
+    sourceH
+  ));
 
   return enforcePortrait34Crop(x, y, w, h, sourceW, sourceH, mirror);
 }

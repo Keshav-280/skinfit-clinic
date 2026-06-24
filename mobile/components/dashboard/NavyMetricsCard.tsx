@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 
-import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "../../src/lib/clarityGrade";
+import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "../../../src/lib/clarityGrade";
 import { ClinicScoreUnlockModal } from "@/components/dashboard/ClinicScoreUnlockModal";
 
 import {

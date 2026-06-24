@@ -61,8 +61,10 @@ import {
   visitWindowsToTimePreferences,
   type VisitWindowId,
 } from "@/lib/scheduleVisitWindows";
-import { validateNationalPhone } from "../../src/lib/auth/phone";
-import { patientHasPhoneOnFile } from "../../src/lib/ensurePatientPhoneForBooking";
+import {
+  patientHasPhoneOnFile,
+  validateNationalPhone,
+} from "@/lib/patientPhone";
 
 type ScheduleVisitRow = {
   id: string;

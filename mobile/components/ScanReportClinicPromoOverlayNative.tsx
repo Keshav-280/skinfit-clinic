@@ -65,11 +65,10 @@ export function ScanReportClinicPromoOverlayNative({ visible, onDismiss }: Props
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    justifyContent: "flex-start",
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 56 : 40,
-    paddingBottom: 20,
+    paddingVertical: 20,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,

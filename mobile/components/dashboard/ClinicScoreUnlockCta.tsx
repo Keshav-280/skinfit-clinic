@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CLINIC_SCORE_UNLOCK } from "../../../src/lib/clarityGrade";
+import { dashboardCardShadow } from "@/lib/dashboardTheme";
 
 const NAVY = "#2C3E6B";
 
@@ -15,91 +17,110 @@ export function ClinicScoreUnlockCta({ compact = false, style }: Props) {
   const router = useRouter();
 
   return (
-    <View style={[styles.card, compact && styles.cardCompact, style]}>
-      <View style={styles.row}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="lock-closed" size={16} color={NAVY} />
-        </View>
-        <View style={styles.copy}>
-          <Text style={styles.title}>{CLINIC_SCORE_UNLOCK.title}</Text>
-          <Text style={[styles.message, compact && styles.messageCompact]}>
-            {CLINIC_SCORE_UNLOCK.message}
+    <View style={[styles.shell, compact && styles.shellCompact, style]}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.98)", "#F8FBFF", "#E8EFF8"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.card, compact && styles.cardCompact]}
+      >
+        <View style={styles.header}>
+          <View style={styles.iconWrap}>
+            <Ionicons name="lock-closed" size={compact ? 15 : 17} color={NAVY} />
+          </View>
+          <Text style={[styles.title, compact && styles.titleCompact]}>
+            {CLINIC_SCORE_UNLOCK.title}
           </Text>
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={() =>
-              router.push(CLINIC_SCORE_UNLOCK.mobileSchedulesHref as Href)
-            }
-          >
-            <Ionicons name="calendar-outline" size={14} color="#fff" />
-            <Text style={styles.btnText}>{CLINIC_SCORE_UNLOCK.actionLabel}</Text>
-          </Pressable>
         </View>
-      </View>
+
+        <Text style={[styles.message, compact && styles.messageCompact]}>
+          {CLINIC_SCORE_UNLOCK.message}
+        </Text>
+
+        <Pressable
+          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+          onPress={() =>
+            router.push(CLINIC_SCORE_UNLOCK.mobileSchedulesHref as Href)
+          }
+        >
+          <Ionicons name="calendar-outline" size={15} color="#fff" />
+          <Text style={styles.btnText}>{CLINIC_SCORE_UNLOCK.actionLabel}</Text>
+        </Pressable>
+      </LinearGradient>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  shell: {
     borderRadius: 18,
+    marginBottom: 16,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(44,62,107,0.14)",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    ...dashboardCardShadow,
+  },
+  shellCompact: {
+    marginBottom: 12,
+  },
+  card: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   cardCompact: {
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
-  row: {
+  header: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
+    alignItems: "center",
+    gap: 10,
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "rgba(44,62,107,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
-  copy: {
-    flex: 1,
-    minWidth: 0,
-  },
   title: {
-    fontSize: 14,
+    flex: 1,
+    fontSize: 15,
     fontWeight: "800",
     color: NAVY,
+    lineHeight: 20,
+  },
+  titleCompact: {
+    fontSize: 14,
+    lineHeight: 19,
   },
   message: {
-    marginTop: 4,
+    marginTop: 10,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 20,
     color: "#3d5080",
   },
   messageCompact: {
+    marginTop: 8,
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 18,
   },
   btn: {
-    marginTop: 10,
+    marginTop: 14,
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
-    borderRadius: 12,
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
     backgroundColor: NAVY,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   btnPressed: {
-    opacity: 0.88,
+    opacity: 0.9,
   },
   btnText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
     color: "#fff",
   },
