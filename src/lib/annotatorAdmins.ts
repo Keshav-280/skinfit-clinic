@@ -2,6 +2,7 @@
 const ANNOTATOR_ADMIN_EMAILS = new Set(
   [
     "prabhu@ambaforlife.org",
+    "prabhu.m@ambaforlife.org",
     "ajaydey1946@gmail.com",
     "iamdalves@gmail.com",
     "soujanya.c@ambaforlife.org",

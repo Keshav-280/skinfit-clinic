@@ -117,6 +117,8 @@ describe("annotatorCollaboration", () => {
 describe("annotatorAdmins", () => {
   it("recognises configured admin emails case-insensitively", () => {
     assert.equal(isAnnotatorAdminEmail("prabhu@ambaforlife.org"), true);
+    assert.equal(isAnnotatorAdminEmail("prabhu.m@ambaforlife.org"), true);
+    assert.equal(isAnnotatorAdminEmail("soujanya.c@ambaforlife.org"), true);
     assert.equal(isAnnotatorAdminEmail("  Prabhu@AmbaForLife.org "), true);
     assert.equal(isAnnotatorAdminEmail("not-an-admin@example.com"), false);
   });
