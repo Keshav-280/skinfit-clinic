@@ -258,6 +258,16 @@ function persistedImageSrc(img: PersistedImage): string {
   return img.imageUrl || img.dataUri || "";
 }
 
+/**
+ * Small WebP variant for the thumbnail strip. Only API-served files support
+ * resize; data URIs (base64) are returned as-is.
+ */
+function thumbnailSrc(src: string, width = 200): string {
+  if (!src.startsWith("/api/annotator/files/")) return src;
+  const sep = src.includes("?") ? "&" : "?";
+  return `${src}${sep}w=${width}`;
+}
+
 let annotationIdCounter = 0;
 
 function nextAnnotationId(userId: string): string {
@@ -1406,9 +1416,10 @@ export default function AnnotatorPage() {
           }`}
         >
           <img
-            src={src}
+            src={thumbnailSrc(src, compact ? 120 : 220)}
             alt=""
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover"
           />
           <span
