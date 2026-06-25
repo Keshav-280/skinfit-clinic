@@ -208,7 +208,7 @@ function peerSyncAtForUser(
 
 /** Merged annotator grades for admin review — labels + sync only, no shape JSON transfer. */
 async function loadMergedLabelsForAdmin() {
-  const [labelsRow] = await db.execute<{
+  const labelsResult = await db.execute<{
     per_user_labels: Record<
       string,
       Record<string, Record<string, { spec?: string; grade?: string; score?: number }>>
@@ -220,6 +220,7 @@ async function loadMergedLabelsForAdmin() {
     WHERE scope = ${ANNOTATOR_SCOPE}
     LIMIT 1
   `);
+  const labelsRow = labelsResult.rows[0];
 
   const indicesResult = await db.execute<{ user_id: string; image_index: number }>(sql`
     SELECT u.key AS user_id, (shape->>'imageIndex')::int AS image_index
