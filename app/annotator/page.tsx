@@ -376,6 +376,10 @@ export default function AnnotatorPage() {
   const [perImageByCategory, setPerImageByCategory] = useState<
     Record<number, Partial<Record<Category, Partial<CategoryEntry>>>>
   >({});
+  /** Annotators' merged grades — admin review only (same logic as export). */
+  const [mergedPerImageByCategory, setMergedPerImageByCategory] = useState<
+    Record<number, Partial<Record<Category, Partial<CategoryEntry>>>>
+  >({});
   const [annotationHistory, setAnnotationHistory] = useState<{
     snapshots: Annotation[][];
     index: number;
@@ -540,6 +544,15 @@ export default function AnnotatorPage() {
           >[0]
         )
       );
+      if (persistedState.mergedPerImageByCategory) {
+        setMergedPerImageByCategory(
+          migratePerImageByCategory(
+            persistedState.mergedPerImageByCategory as Parameters<
+              typeof migratePerImageByCategory
+            >[0]
+          )
+        );
+      }
       if (!includeAnnotations) return;
 
       const persistedAnnotations = reconcileAnnotationsForImageSet(
@@ -653,7 +666,25 @@ export default function AnnotatorPage() {
     return !lock || lock.userId === currentUser.id;
   }, [currentUser, imageLocks, currentIndex]);
 
-  const isAnnotatorAdmin = currentUser?.isAnnotatorAdmin === true;
+  const refreshMergedLabelsForAdmin = useCallback(async () => {
+    if (!currentUser?.isAnnotatorAdmin) return;
+    try {
+      const res = await fetch("/api/annotator/state?hydrate=1", { cache: "no-store" });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.state?.mergedPerImageByCategory) {
+        setMergedPerImageByCategory(
+          migratePerImageByCategory(
+            json.state.mergedPerImageByCategory as Parameters<
+              typeof migratePerImageByCategory
+            >[0]
+          )
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [currentUser?.isAnnotatorAdmin]);
 
   React.useEffect(() => {
     currentIndexRef.current = currentIndex;
@@ -822,6 +853,15 @@ export default function AnnotatorPage() {
                 migrateAnnotations(fullJson.state.peerAnnotations) as Annotation[]
               );
             }
+            if (fullJson.state?.mergedPerImageByCategory) {
+              setMergedPerImageByCategory(
+                migratePerImageByCategory(
+                  fullJson.state.mergedPerImageByCategory as Parameters<
+                    typeof migratePerImageByCategory
+                  >[0]
+                )
+              );
+            }
             if (Array.isArray(fullJson.state?.peerImageIndices)) {
               setPeerImageIndices(
                 new Set(
@@ -862,6 +902,9 @@ export default function AnnotatorPage() {
             lastPeerSyncSnapshotRef.current = JSON.stringify(
               peerJson.state?.peerSyncAt ?? json.state?.peerSyncAt ?? {}
             );
+            if (currentUser?.isAnnotatorAdmin) {
+              void refreshMergedLabelsForAdmin();
+            }
           }
         }
       } catch {
@@ -869,7 +912,7 @@ export default function AnnotatorPage() {
       }
     }, ANNOTATOR_STATE_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [isHydrating, currentUser, perImageByCategory]);
+  }, [isHydrating, currentUser, perImageByCategory, refreshMergedLabelsForAdmin]);
 
   React.useEffect(() => {
     const release = () => {
@@ -949,15 +992,19 @@ export default function AnnotatorPage() {
     return () => window.removeEventListener("click", handleClick);
   }, []);
 
+  const isAnnotatorAdmin = currentUser?.isAnnotatorAdmin === true;
+
   const categoryState = React.useMemo(() => {
     const base = fullDefaults();
-    const patch = perImageByCategory[currentIndex] ?? {};
+    const mergedPatch = isAnnotatorAdmin ? (mergedPerImageByCategory[currentIndex] ?? {}) : {};
+    const ownPatch = perImageByCategory[currentIndex] ?? {};
+    const patch = isAnnotatorAdmin ? { ...mergedPatch, ...ownPatch } : ownPatch;
     const out = { ...base };
     for (const c of ALL_CATEGORIES) {
       if (patch[c]) out[c] = { ...base[c], ...normalizeCategoryEntry(patch[c]!) };
     }
     return out;
-  }, [perImageByCategory, currentIndex]);
+  }, [perImageByCategory, mergedPerImageByCategory, currentIndex, isAnnotatorAdmin]);
 
   const syncShapesForCategory = useCallback(
     (
@@ -1943,23 +1990,38 @@ export default function AnnotatorPage() {
             <p className="mb-2 text-[11px] text-slate-500 dark:text-zinc-500">
               A = least severe (1), E = most severe (5). Applies to this category on the current image.
             </p>
+            {isAnnotatorAdmin ? (
+              <p className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-800 dark:text-amber-200">
+                Admin view: showing annotators&apos; merged grades and scores. Your edits override on
+                this image.
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
-              {SEVERITY_GRADE_OPTIONS.map(({ grade }) => (
+              {SEVERITY_GRADE_OPTIONS.map(({ grade, score }) => (
                 <button
                   key={grade}
                   type="button"
                   disabled={images.length === 0 || !canEditCurrentImage}
                   onClick={() => setCategoryGrade(currentIndex, activeCategory, grade)}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 ${
+                  title={`Grade ${grade} (score ${score})`}
+                  className={`flex h-10 min-w-10 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 text-sm font-semibold transition-colors disabled:opacity-40 ${
                     activeGrade === grade
                       ? "bg-amber-500 text-zinc-950"
                       : "bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                   }`}
                 >
-                  {grade}
+                  <span>{grade}</span>
+                  {isAnnotatorAdmin ? (
+                    <span className="text-[9px] font-medium leading-none opacity-80">{score}</span>
+                  ) : null}
                 </button>
               ))}
             </div>
+            {isAnnotatorAdmin ? (
+              <p className="mt-2 text-[11px] font-medium text-slate-600 dark:text-zinc-400">
+                Current: {activeGrade} (score {severityGradeToScore(activeGrade)})
+              </p>
+            ) : null}
           </div>
 
           <div className="mt-auto border-t border-slate-200 pt-4 dark:border-zinc-800">
@@ -1988,6 +2050,7 @@ export default function AnnotatorPage() {
                       <p className="truncate text-xs font-medium text-slate-900 dark:text-white">
                         {annotationDisplayLabel(ann)}
                         {isPeer ? " (peer)" : ""}
+                        {isAnnotatorAdmin ? ` · ${severityGradeToScore(ann.severity)}` : ""}
                       </p>
                       <p className="truncate text-[10px] text-slate-500 dark:text-zinc-500">
                         {ann.category} ({ann.type})

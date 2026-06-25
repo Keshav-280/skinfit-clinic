@@ -12,6 +12,7 @@ import {
   deleteShapeFromUser,
   labelsForUser,
   mergedLabelsForExport,
+  mergedLabelsFromCollaborationData,
   parseCollaborationStore,
   peerShapesForImage,
   peerImageIndices,
@@ -205,6 +206,48 @@ function peerSyncAtForUser(
   return out;
 }
 
+/** Merged annotator grades for admin review — labels + sync only, no shape JSON transfer. */
+async function loadMergedLabelsForAdmin() {
+  const [labelsRow] = await db.execute<{
+    per_user_labels: Record<
+      string,
+      Record<string, Record<string, { spec?: string; grade?: string; score?: number }>>
+    > | null;
+    user_sync_at: Record<string, string> | null;
+  }>(sql`
+    SELECT per_user_labels, user_sync_at
+    FROM annotator_state
+    WHERE scope = ${ANNOTATOR_SCOPE}
+    LIMIT 1
+  `);
+
+  const indicesResult = await db.execute<{ user_id: string; image_index: number }>(sql`
+    SELECT u.key AS user_id, (shape->>'imageIndex')::int AS image_index
+    FROM annotator_state s,
+         jsonb_each(s.per_user_shapes) AS u(key, shapes),
+         jsonb_array_elements(u.shapes) AS shape
+    WHERE s.scope = ${ANNOTATOR_SCOPE}
+      AND (shape->>'imageIndex') ~ '^[0-9]+$'
+  `);
+
+  const shapeIndicesByUser = new Map<string, Set<string>>();
+  for (const row of indicesResult.rows ?? []) {
+    if (!row.user_id || !Number.isFinite(row.image_index)) continue;
+    let set = shapeIndicesByUser.get(row.user_id);
+    if (!set) {
+      set = new Set();
+      shapeIndicesByUser.set(row.user_id, set);
+    }
+    set.add(String(row.image_index));
+  }
+
+  return mergedLabelsFromCollaborationData(
+    labelsRow?.per_user_labels ?? {},
+    labelsRow?.user_sync_at ?? {},
+    (userId, imageKey) => shapeIndicesByUser.get(userId)?.has(imageKey) ?? false
+  );
+}
+
 async function persistCollaborationStore(
   store: ReturnType<typeof parseCollaborationStore>
 ) {
@@ -320,10 +363,14 @@ export async function GET(req: Request) {
     );
     const userSyncAt =
       row?.user_sync_at && typeof row.user_sync_at === "object" ? row.user_sync_at : {};
+    const mergedPerImageByCategory = isAnnotatorAdmin
+      ? await loadMergedLabelsForAdmin()
+      : undefined;
     return NextResponse.json({
       success: true,
       state: {
         perImageByCategory: row?.user_labels ?? {},
+        ...(mergedPerImageByCategory ? { mergedPerImageByCategory } : {}),
         annotations: [],
         imageLocks,
         peerAnnotations: [],
@@ -431,10 +478,15 @@ export async function GET(req: Request) {
     peerIndices = indices;
   }
 
+  const mergedPerImageByCategory = isAnnotatorAdmin
+    ? await loadMergedLabelsForAdmin()
+    : undefined;
+
   return NextResponse.json({
     success: true,
     state: {
       perImageByCategory: labelsForUser(userStore, profile.id),
+      ...(mergedPerImageByCategory ? { mergedPerImageByCategory } : {}),
       annotations: shapesForUser(userStore, profile.id),
       imageLocks,
       peerAnnotations,

@@ -173,12 +173,14 @@ export function allShapesMerged(
   return out;
 }
 
-/** Pick one label set per image for export (user with latest sync who touched that image). */
-export function mergedLabelsForExport(
-  store: AnnotatorCollaborationStore
+/** Pick one label set per image (user with latest sync who touched that image). */
+export function mergedLabelsFromCollaborationData(
+  perUserLabels: AnnotatorCollaborationStore["perUserLabels"],
+  userSyncAt: AnnotatorCollaborationStore["userSyncAt"],
+  userHasShapeOnImage: (userId: string, imageKey: string) => boolean
 ): Record<string, Record<string, AnnotatorLabelEntry>> {
   const imageIndices = new Set<string>();
-  for (const labels of Object.values(store.perUserLabels)) {
+  for (const labels of Object.values(perUserLabels)) {
     for (const idx of Object.keys(labels)) imageIndices.add(idx);
   }
 
@@ -186,12 +188,10 @@ export function mergedLabelsForExport(
   for (const imageKey of imageIndices) {
     let bestUser: string | null = null;
     let bestTs = 0;
-    for (const [userId, labels] of Object.entries(store.perUserLabels)) {
+    for (const [userId, labels] of Object.entries(perUserLabels)) {
       if (!labels[imageKey]) continue;
-      const ts = Date.parse(store.userSyncAt[userId] ?? "") || 0;
-      const hasShapes = (store.perUserShapes[userId] ?? []).some(
-        (s) => String(s.imageIndex) === imageKey
-      );
+      const ts = Date.parse(userSyncAt[userId] ?? "") || 0;
+      const hasShapes = userHasShapeOnImage(userId, imageKey);
       const score = ts + (hasShapes ? 1 : 0);
       if (score >= bestTs) {
         bestTs = score;
@@ -199,10 +199,22 @@ export function mergedLabelsForExport(
       }
     }
     if (bestUser) {
-      out[imageKey] = { ...store.perUserLabels[bestUser]![imageKey] };
+      out[imageKey] = { ...perUserLabels[bestUser]![imageKey] };
     }
   }
   return out;
+}
+
+/** Pick one label set per image for export (user with latest sync who touched that image). */
+export function mergedLabelsForExport(
+  store: AnnotatorCollaborationStore
+): Record<string, Record<string, AnnotatorLabelEntry>> {
+  return mergedLabelsFromCollaborationData(
+    store.perUserLabels,
+    store.userSyncAt,
+    (userId, imageKey) =>
+      (store.perUserShapes[userId] ?? []).some((s) => String(s.imageIndex) === imageKey)
+  );
 }
 
 export function acquireImageLock(
