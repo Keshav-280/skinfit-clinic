@@ -86,6 +86,47 @@ async function loadCollaborationPeersRow() {
   return row ?? null;
 }
 
+type PeerShapeSqlRow = {
+  user_id: string;
+  shape: AnnotatorShape;
+};
+
+/** Peer shapes for one image — filtered in Postgres, never loads the full per_user_shapes blob into Node. */
+async function loadPeerShapesForImageFromDb(userId: string, imageIndex: number) {
+  const result = await db.execute<PeerShapeSqlRow>(sql`
+    SELECT
+      u.key AS user_id,
+      shape AS shape
+    FROM annotator_state s,
+         jsonb_each(s.per_user_shapes) AS u(key, shapes),
+         jsonb_array_elements(u.shapes) AS shape
+    WHERE s.scope = ${ANNOTATOR_SCOPE}
+      AND u.key <> ${userId}
+      AND (shape->>'imageIndex')::int = ${imageIndex}
+  `);
+  return (result.rows ?? []).map((row) => ({
+    ...row.shape,
+    userId: row.user_id,
+  }));
+}
+
+/** Distinct peer image indices — DB-side scan, no multi-MB json transfer to Node. */
+async function loadPeerImageIndicesFromDb(userId: string): Promise<number[]> {
+  const result = await db.execute<{ image_index: number }>(sql`
+    SELECT DISTINCT (shape->>'imageIndex')::int AS image_index
+    FROM annotator_state s,
+         jsonb_each(s.per_user_shapes) AS u(key, shapes),
+         jsonb_array_elements(u.shapes) AS shape
+    WHERE s.scope = ${ANNOTATOR_SCOPE}
+      AND u.key <> ${userId}
+      AND (shape->>'imageIndex') ~ '^[0-9]+$'
+    ORDER BY image_index
+  `);
+  return (result.rows ?? [])
+    .map((row) => row.image_index)
+    .filter((n) => Number.isFinite(n));
+}
+
 type UserSliceRow = {
   image_locks: Record<string, { userId: string; userName: string; expiresAt: string }> | null;
   user_sync_at: Record<string, string> | null;
@@ -299,6 +340,24 @@ export async function GET(req: Request) {
   }
 
   if (peersOnly) {
+    const indicesOnly = url.searchParams.get("peerIndices") === "1";
+
+    if (indicesOnly) {
+      const syncRow = await loadCollaborationSyncRow();
+      const userSyncAt =
+        syncRow?.userSyncAt && typeof syncRow.userSyncAt === "object"
+          ? syncRow.userSyncAt
+          : {};
+      return NextResponse.json({
+        success: true,
+        state: {
+          peerAnnotations: [],
+          peerImageIndices: await loadPeerImageIndicesFromDb(profile.id),
+          peerSyncAt: peerSyncAtForUser(userSyncAt, profile.id),
+        },
+      });
+    }
+
     // Stale tabs without imageIndex: instant empty response, no DB shape load.
     if (imageIndexParam === null) {
       const row = await loadCollaborationSyncRow();
@@ -319,16 +378,20 @@ export async function GET(req: Request) {
     const rateKey = `${profile.id}:peers`;
     if (!allowAnnotatorHeavyGet(rateKey, 30)) return heavyGetDenied(req);
 
-    const row = await loadCollaborationPeersRow();
-    let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
-    store = { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) };
-    const peerAnnotations = peerShapesForImage(store, profile.id, imageIndexParam);
+    const syncRow = await loadCollaborationSyncRow();
+    const userSyncAt =
+      syncRow?.userSyncAt && typeof syncRow.userSyncAt === "object"
+        ? syncRow.userSyncAt
+        : {};
+    const peerAnnotations = await loadPeerShapesForImageFromDb(
+      profile.id,
+      imageIndexParam
+    );
     return NextResponse.json({
       success: true,
       state: {
         peerAnnotations,
-        peerImageIndices: peerImageIndices(store, profile.id),
-        peerSyncAt: peerSyncAtForUser(store.userSyncAt, profile.id),
+        peerSyncAt: peerSyncAtForUser(userSyncAt, profile.id),
       },
     });
   }
@@ -360,12 +423,12 @@ export async function GET(req: Request) {
     const rateKey = `${profile.id}:state`;
     if (!allowAnnotatorHeavyGet(rateKey, 30)) return heavyGetDenied(req);
 
-    const peersRow = await loadCollaborationPeersRow();
-    const peerStore = parseCollaborationStore(
-      peersRow as Parameters<typeof parseCollaborationStore>[0]
-    );
-    peerAnnotations = peerShapesForImage(peerStore, profile.id, imageIndexParam);
-    peerIndices = peerImageIndices(peerStore, profile.id);
+    const [peers, indices] = await Promise.all([
+      loadPeerShapesForImageFromDb(profile.id, imageIndexParam),
+      loadPeerImageIndicesFromDb(profile.id),
+    ]);
+    peerAnnotations = peers;
+    peerIndices = indices;
   }
 
   return NextResponse.json({

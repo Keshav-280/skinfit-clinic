@@ -595,6 +595,19 @@ export default function AnnotatorPage() {
         lastPersistedRef.current = null;
         setSaveStatus("saved");
 
+        // Thumbnail hints: load peer image indices once (not on every image switch).
+        void fetch("/api/annotator/state?peers=1&peerIndices=1", { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
+            if (!isMounted || !json?.state?.peerImageIndices) return;
+            setPeerImageIndices(
+              new Set(
+                (json.state.peerImageIndices as number[]).filter((n) => Number.isFinite(n))
+              )
+            );
+          })
+          .catch(() => undefined);
+
         const shapesRes = await fetch("/api/annotator/state", { cache: "no-store" });
         if (!isMounted) return;
         const shapesJson = await shapesRes.json().catch(() => ({}));
