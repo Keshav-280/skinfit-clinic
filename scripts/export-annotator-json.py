@@ -140,7 +140,7 @@ def main() -> None:
         sys.exit(1)
 
     images_rows = psql_json(
-        "SELECT coalesce(json_agg(row_to_json(t) ORDER BY sort_order, id), '[]'::json) FROM ("
+        "SELECT coalesce(json_agg(row_to_json(t)), '[]'::json) FROM ("
         " SELECT file_name AS \"fileName\", sort_order AS \"sortOrder\", id "
         " FROM annotator_images ORDER BY sort_order, id"
         ") t;"
