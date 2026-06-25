@@ -6,6 +6,7 @@ const ANNOTATOR_ADMIN_EMAILS = new Set(
     "ajaydey1946@gmail.com",
     "iamdalves@gmail.com",
     "soujanya.c@ambaforlife.org",
+    "shushma.p@ambaforlife.org",
   ].map((e) => e.toLowerCase())
 );
 
