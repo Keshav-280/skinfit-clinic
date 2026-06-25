@@ -14,6 +14,8 @@ import {
   mergedLabelsForExport,
   parseCollaborationStore,
   peerShapes,
+  peerShapesForImage,
+  peerImageIndices,
   pruneExpiredLocks,
   shapesForUser,
   storeToDbColumns,
@@ -54,6 +56,45 @@ async function loadCollaborationRow() {
     .where(eq(annotatorState.scope, ANNOTATOR_SCOPE))
     .limit(1);
   return row ?? null;
+}
+
+/** Lightweight row for background polls — avoids loading ~80MB of shape JSON. */
+async function loadCollaborationSyncRow() {
+  const [row] = await db
+    .select({
+      imageLocks: annotatorState.imageLocks,
+      userSyncAt: annotatorState.userSyncAt,
+      updatedAt: annotatorState.updatedAt,
+    })
+    .from(annotatorState)
+    .where(eq(annotatorState.scope, ANNOTATOR_SCOPE))
+    .limit(1);
+  return row ?? null;
+}
+
+async function loadCollaborationPeersRow() {
+  const [row] = await db
+    .select({
+      perUserShapes: annotatorState.perUserShapes,
+      shapeTombstones: annotatorState.shapeTombstones,
+      userSyncAt: annotatorState.userSyncAt,
+    })
+    .from(annotatorState)
+    .where(eq(annotatorState.scope, ANNOTATOR_SCOPE))
+    .limit(1);
+  return row ?? null;
+}
+
+function peerSyncAtForUser(
+  userSyncAt: Record<string, string> | null | undefined,
+  userId: string
+): Record<string, string> {
+  if (!userSyncAt || typeof userSyncAt !== "object") return {};
+  const out: Record<string, string> = {};
+  for (const [id, ts] of Object.entries(userSyncAt)) {
+    if (id !== userId && typeof ts === "string" && ts) out[id] = ts;
+  }
+  return out;
 }
 
 async function persistCollaborationStore(
@@ -99,6 +140,50 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const merged = url.searchParams.get("merged") === "1";
+  const syncOnly = url.searchParams.get("sync") === "1";
+  const peersOnly = url.searchParams.get("peers") === "1";
+  const imageIndexRaw = url.searchParams.get("imageIndex");
+  const imageIndexParam =
+    imageIndexRaw !== null && Number.isFinite(Number.parseInt(imageIndexRaw, 10))
+      ? Number.parseInt(imageIndexRaw, 10)
+      : null;
+
+  if (syncOnly) {
+    const row = await loadCollaborationSyncRow();
+    const userSyncAt =
+      row?.userSyncAt && typeof row.userSyncAt === "object" ? row.userSyncAt : {};
+    const imageLocks = pruneExpiredLocks(
+      row?.imageLocks && typeof row.imageLocks === "object" ? row.imageLocks : {}
+    );
+    return NextResponse.json({
+      success: true,
+      state: {
+        imageLocks,
+        userSyncedAt: userSyncAt[profile.id] ?? null,
+        updatedAt: row?.updatedAt ?? null,
+        peerSyncAt: peerSyncAtForUser(userSyncAt, profile.id),
+      },
+    });
+  }
+
+  if (peersOnly) {
+    const row = await loadCollaborationPeersRow();
+    let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
+    store = { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) };
+    // Scope to one image when imageIndex is given — keeps the payload tiny.
+    const peerAnnotations =
+      imageIndexParam !== null
+        ? peerShapesForImage(store, profile.id, imageIndexParam)
+        : peerShapes(store, profile.id);
+    return NextResponse.json({
+      success: true,
+      state: {
+        peerAnnotations,
+        peerImageIndices: peerImageIndices(store, profile.id),
+        peerSyncAt: peerSyncAtForUser(store.userSyncAt, profile.id),
+      },
+    });
+  }
 
   const row = await loadCollaborationRow();
   let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
@@ -116,13 +201,19 @@ export async function GET(req: Request) {
     });
   }
 
+  // Default state load: only return peers for the requested image (or none on first paint).
+  // Full peer history is never shipped here anymore — that was the ~12MB poll killer.
+  const peerAnnotations =
+    imageIndexParam !== null ? peerShapesForImage(store, profile.id, imageIndexParam) : [];
+
   return NextResponse.json({
     success: true,
     state: {
       perImageByCategory: labelsForUser(store, profile.id),
       annotations: shapesForUser(store, profile.id),
       imageLocks: store.imageLocks,
-      peerAnnotations: peerShapes(store, profile.id),
+      peerAnnotations,
+      peerImageIndices: peerImageIndices(store, profile.id),
       currentUser: {
         id: profile.id,
         name: profile.name,
@@ -150,6 +241,7 @@ export async function PUT(req: Request) {
         allowEmptyAnnotations?: boolean;
         clearAll?: boolean;
         deletePeerShape?: { shapeId: string; ownerUserId: string };
+        imageIndex?: number;
         clientSyncedAt?: string;
       }
     | null;
@@ -189,10 +281,15 @@ export async function PUT(req: Request) {
     }
     store = deleteShapeFromUser(store, ownerUserId, shapeId);
     await persistCollaborationStore(store);
+    const peerAnnotations =
+      typeof body.imageIndex === "number"
+        ? peerShapesForImage(store, profile.id, body.imageIndex)
+        : peerShapes(store, profile.id);
     return NextResponse.json({
       success: true,
       imageLocks: store.imageLocks,
-      peerAnnotations: peerShapes(store, profile.id),
+      peerAnnotations,
+      peerImageIndices: peerImageIndices(store, profile.id),
     });
   }
 

@@ -41,10 +41,12 @@ describe("annotatorCollaboration", () => {
       annotations: [{ id: "a1", imageIndex: 0, category: "Active Acne", spec: "", severity: "A", color: "red", type: "path", points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }] }],
     });
     assert.equal(store.perUserShapes["user-a"]?.length, 1);
+    const syncBefore = store.userSyncAt["user-a"];
 
-    // Stray empty save (e.g. bad load) must not wipe saved shapes.
-    store = applyUserSync(store, "user-a", { annotations: [] });
+    // Stray empty save (e.g. bad load) must not wipe saved shapes or bump sync time.
+    store = applyUserSync(store, "user-a", { annotations: [] }, "2099-01-01T00:00:00.000Z");
     assert.equal(store.perUserShapes["user-a"]?.length, 1);
+    assert.equal(store.userSyncAt["user-a"], syncBefore);
   });
 
   it("clears shapes on empty list only when allowEmptyAnnotations is set", () => {

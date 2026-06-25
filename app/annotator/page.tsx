@@ -34,6 +34,9 @@ import {
 } from "@/src/lib/annotatorAnnotations";
 import { ANNOTATOR_LOCK_HEARTBEAT_MS } from "@/src/lib/annotatorCollaboration";
 
+/** Background sync poll — lightweight ?sync=1 avoids downloading multi-MB shape JSON. */
+const ANNOTATOR_STATE_POLL_MS = 15_000;
+
 const ALL_CATEGORIES = [
   "Active Acne",
   "Acne Scars",
@@ -261,6 +264,12 @@ function nextAnnotationId(userId: string): string {
   return `ann-${userId.slice(0, 8)}-${++annotationIdCounter}`;
 }
 
+function parseAnnotatorSyncTs(iso: string | null | undefined): number {
+  if (!iso) return 0;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : 0;
+}
+
 function sparsePerImagePayload(
   perImageByCategory: Record<number, Partial<Record<Category, Partial<CategoryEntry>>>>,
   touched: Set<number>
@@ -413,6 +422,7 @@ export default function AnnotatorPage() {
     Record<number, { width: number; height: number }>
   >({});
   const saveDirtyRef = useRef(false);
+  const saveInFlightRef = useRef(false);
   const lastPersistedRef = useRef<string | null>(null);
   const touchedImagesRef = useRef<Set<number>>(new Set());
   // True once the user intentionally removes shapes (delete/eraser/undo), which
@@ -422,10 +432,13 @@ export default function AnnotatorPage() {
   const intentionalShapeRemovalRef = useRef(false);
   const prevImageIndexRef = useRef<number | null>(null);
   const lastServerUserSyncAtRef = useRef<string | null>(null);
+  const lastPeerSyncSnapshotRef = useRef<string>("");
+  const currentIndexRef = useRef(0);
   const shapesAtLastServerSyncRef = useRef<Set<string>>(new Set());
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [imageLocks, setImageLocks] = useState<Record<string, AnnotatorImageLock>>({});
   const [peerAnnotations, setPeerAnnotations] = useState<Annotation[]>([]);
+  const [peerImageIndices, setPeerImageIndices] = useState<Set<number>>(new Set());
   const [collabMessage, setCollabMessage] = useState<string>("");
 
   React.useEffect(() => {
@@ -489,7 +502,8 @@ export default function AnnotatorPage() {
       try {
         const [imagesRes, stateRes] = await Promise.all([
           fetch("/api/annotator/images", { cache: "no-store" }),
-          fetch("/api/annotator/state", { cache: "no-store" }),
+          // Only load peers for the first image on hydrate (avoids shipping all peer history).
+          fetch("/api/annotator/state?imageIndex=0", { cache: "no-store" }),
         ]);
         const imagesJson = await imagesRes.json();
         const stateJson = await stateRes.json();
@@ -528,6 +542,15 @@ export default function AnnotatorPage() {
           if (persistedState.peerAnnotations) {
             setPeerAnnotations(
               migrateAnnotations(persistedState.peerAnnotations) as Annotation[]
+            );
+          }
+          if (Array.isArray(persistedState.peerImageIndices)) {
+            setPeerImageIndices(
+              new Set(
+                (persistedState.peerImageIndices as number[]).filter((n) =>
+                  Number.isFinite(n)
+                )
+              )
             );
           }
           setPerImageByCategory(
@@ -594,6 +617,10 @@ export default function AnnotatorPage() {
   const isAnnotatorAdmin = currentUser?.isAnnotatorAdmin === true;
 
   React.useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  React.useEffect(() => {
     if (isHydrating || !currentUser || images.length === 0) return;
 
     const prev = prevImageIndexRef.current;
@@ -625,6 +652,36 @@ export default function AnnotatorPage() {
     };
   }, [currentIndex, currentUser, images.length, isHydrating]);
 
+  // Load peer shapes for the image you're viewing (lightweight, per-image instead of full history).
+  React.useEffect(() => {
+    if (isHydrating || !currentUser) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/annotator/state?peers=1&imageIndex=${currentIndex}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok || cancelled) return;
+        const json = await res.json();
+        if (cancelled) return;
+        if (json.state?.peerAnnotations) {
+          setPeerAnnotations(migrateAnnotations(json.state.peerAnnotations) as Annotation[]);
+        }
+        if (Array.isArray(json.state?.peerImageIndices)) {
+          setPeerImageIndices(
+            new Set((json.state.peerImageIndices as number[]).filter((n) => Number.isFinite(n)))
+          );
+        }
+      } catch {
+        /* keep existing peer view on error */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentIndex, currentUser, isHydrating]);
+
   React.useEffect(() => {
     if (!canEditCurrentImage || !currentUser) return;
     const timer = window.setInterval(() => {
@@ -644,60 +701,136 @@ export default function AnnotatorPage() {
 
   React.useEffect(() => {
     if (isHydrating || !currentUser) return;
+
+    const applyServerAnnotations = (
+      serverAnnotations: Annotation[],
+      serverSyncAt: string
+    ) => {
+      const prevServerIds = shapesAtLastServerSyncRef.current;
+      const serverIds = new Set(serverAnnotations.map((a) => a.id));
+      const removedOnServer = [...prevServerIds].filter((id) => !serverIds.has(id));
+
+      if (removedOnServer.length > 0) {
+        setAnnotationHistory((ah) => {
+          const cur = ah.snapshots[ah.index] ?? [];
+          const next = reconcileLocalAnnotationsWithServer(
+            cur,
+            serverAnnotations,
+            prevServerIds
+          );
+          if (next.length !== cur.length) {
+            intentionalShapeRemovalRef.current = true;
+          }
+          return {
+            snapshots: [...ah.snapshots.slice(0, ah.index + 1), cloneAnnotations(next)],
+            index: ah.index + 1,
+          };
+        });
+      } else if (!saveDirtyRef.current && !saveInFlightRef.current) {
+        const nextAnnotations = cloneAnnotations(serverAnnotations);
+        setAnnotationHistory({
+          snapshots: [nextAnnotations],
+          index: 0,
+        });
+        lastPersistedRef.current = JSON.stringify({
+          perImageByCategory,
+          annotations: nextAnnotations,
+        });
+      }
+
+      shapesAtLastServerSyncRef.current = serverIds;
+      lastServerUserSyncAtRef.current = serverSyncAt;
+    };
+
     const timer = window.setInterval(async () => {
+      // Never apply a poll while local edits are pending or a save is in flight —
+      // stale responses were overwriting freshly saved annotations.
+      if (saveDirtyRef.current || saveInFlightRef.current) return;
       try {
-        const res = await fetch("/api/annotator/state", { cache: "no-store" });
+        const res = await fetch("/api/annotator/state?sync=1", { cache: "no-store" });
         if (!res.ok) return;
+        if (saveDirtyRef.current || saveInFlightRef.current) return;
         const json = await res.json();
         if (json.state?.imageLocks) setImageLocks(json.state.imageLocks);
-        if (json.state?.peerAnnotations) {
-          setPeerAnnotations(migrateAnnotations(json.state.peerAnnotations) as Annotation[]);
-        }
 
         const serverSyncAt =
           typeof json.state?.userSyncedAt === "string" ? json.state.userSyncedAt : null;
-        const serverAnnotations = migrateAnnotations(json.state?.annotations ?? []);
+        const serverTs = parseAnnotatorSyncTs(serverSyncAt);
+        const localTs = parseAnnotatorSyncTs(lastServerUserSyncAtRef.current);
 
-        if (
-          serverSyncAt &&
-          serverSyncAt !== lastServerUserSyncAtRef.current
-        ) {
-          const prevServerIds = shapesAtLastServerSyncRef.current;
-          const serverIds = new Set(serverAnnotations.map((a) => a.id));
-          const removedOnServer = [...prevServerIds].filter((id) => !serverIds.has(id));
+        const peerSnapshot = JSON.stringify(json.state?.peerSyncAt ?? {});
+        const peersChanged = peerSnapshot !== lastPeerSyncSnapshotRef.current;
 
-          if (removedOnServer.length > 0) {
-            setAnnotationHistory((ah) => {
-              const cur = ah.snapshots[ah.index] ?? [];
-              const next = reconcileLocalAnnotationsWithServer(
-                cur,
-                serverAnnotations,
-                prevServerIds
+        const imgIdx = currentIndexRef.current;
+
+        if (serverSyncAt && serverTs > localTs) {
+          // My own state changed on the server (e.g. my save landed, or admin edit).
+          // Fetch my shapes + only the current image's peers — never full peer history.
+          const fullRes = await fetch(
+            `/api/annotator/state?imageIndex=${imgIdx}`,
+            { cache: "no-store" }
+          );
+          if (fullRes.ok && !saveDirtyRef.current && !saveInFlightRef.current) {
+            const fullJson = await fullRes.json();
+            const fullSyncAt =
+              typeof fullJson.state?.userSyncedAt === "string"
+                ? fullJson.state.userSyncedAt
+                : serverSyncAt;
+            const serverAnnotations = migrateAnnotations(fullJson.state?.annotations ?? []);
+            applyServerAnnotations(serverAnnotations, fullSyncAt);
+            if (fullJson.state?.peerAnnotations) {
+              setPeerAnnotations(
+                migrateAnnotations(fullJson.state.peerAnnotations) as Annotation[]
               );
-              if (next.length !== cur.length) {
-                intentionalShapeRemovalRef.current = true;
-              }
-              return {
-                snapshots: [...ah.snapshots.slice(0, ah.index + 1), cloneAnnotations(next)],
-                index: ah.index + 1,
-              };
-            });
-          } else if (!saveDirtyRef.current) {
-            setAnnotationHistory({
-              snapshots: [cloneAnnotations(serverAnnotations)],
-              index: 0,
-            });
+            }
+            if (Array.isArray(fullJson.state?.peerImageIndices)) {
+              setPeerImageIndices(
+                new Set(
+                  (fullJson.state.peerImageIndices as number[]).filter((n) =>
+                    Number.isFinite(n)
+                  )
+                )
+              );
+            }
+            lastPeerSyncSnapshotRef.current = JSON.stringify(
+              fullJson.state?.peerSyncAt ?? json.state?.peerSyncAt ?? {}
+            );
+            return;
           }
+        }
 
-          shapesAtLastServerSyncRef.current = serverIds;
-          lastServerUserSyncAtRef.current = serverSyncAt;
+        if (peersChanged && !saveDirtyRef.current && !saveInFlightRef.current) {
+          const peerRes = await fetch(
+            `/api/annotator/state?peers=1&imageIndex=${imgIdx}`,
+            { cache: "no-store" }
+          );
+          if (peerRes.ok) {
+            const peerJson = await peerRes.json();
+            if (peerJson.state?.peerAnnotations) {
+              setPeerAnnotations(
+                migrateAnnotations(peerJson.state.peerAnnotations) as Annotation[]
+              );
+            }
+            if (Array.isArray(peerJson.state?.peerImageIndices)) {
+              setPeerImageIndices(
+                new Set(
+                  (peerJson.state.peerImageIndices as number[]).filter((n) =>
+                    Number.isFinite(n)
+                  )
+                )
+              );
+            }
+            lastPeerSyncSnapshotRef.current = JSON.stringify(
+              peerJson.state?.peerSyncAt ?? json.state?.peerSyncAt ?? {}
+            );
+          }
         }
       } catch {
         /* ignore poll errors */
       }
-    }, 6_000);
+    }, ANNOTATOR_STATE_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [isHydrating, currentUser]);
+  }, [isHydrating, currentUser, perImageByCategory]);
 
   React.useEffect(() => {
     const release = () => {
@@ -715,6 +848,7 @@ export default function AnnotatorPage() {
     if (isHydrating || !saveDirtyRef.current || !canEditCurrentImage) return;
     const timer = window.setTimeout(async () => {
       setSaveStatus("saving");
+      saveInFlightRef.current = true;
       try {
         const res = await fetch("/api/annotator/state", {
           method: "PUT",
@@ -748,6 +882,8 @@ export default function AnnotatorPage() {
         console.error("Failed to save annotator state", err);
         setSaveStatus("error");
         setLastPersistMessage("Save failed — retry by making a small edit");
+      } finally {
+        saveInFlightRef.current = false;
       }
     }, 600);
     return () => window.clearTimeout(timer);
@@ -1109,6 +1245,7 @@ export default function AnnotatorPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 deletePeerShape: { shapeId: id, ownerUserId },
+                imageIndex: currentIndex,
               }),
             });
             const json = await res.json().catch(() => ({}));
@@ -1116,11 +1253,19 @@ export default function AnnotatorPage() {
             if (json.peerAnnotations) {
               setPeerAnnotations(migrateAnnotations(json.peerAnnotations) as Annotation[]);
             }
+            if (Array.isArray(json.peerImageIndices)) {
+              setPeerImageIndices(
+                new Set((json.peerImageIndices as number[]).filter((n) => Number.isFinite(n)))
+              );
+            }
             setLastPersistMessage(`Deleted peer annotation · ${new Date().toLocaleTimeString()}`);
           } catch (err) {
             console.error("Failed to delete peer annotation", err);
             setLastPersistMessage("Failed to delete peer annotation — refresh to resync");
-            const stateRes = await fetch("/api/annotator/state", { cache: "no-store" });
+            const stateRes = await fetch(
+              `/api/annotator/state?peers=1&imageIndex=${currentIndex}`,
+              { cache: "no-store" }
+            );
             const stateJson = await stateRes.json().catch(() => ({}));
             if (stateJson.state?.peerAnnotations) {
               setPeerAnnotations(
@@ -1186,6 +1331,8 @@ export default function AnnotatorPage() {
     const set = new Set<number>();
     for (const ann of annotations) set.add(ann.imageIndex);
     for (const ann of peerAnnotations) set.add(ann.imageIndex);
+    // Peer work on images we haven't opened (small index list from the server).
+    for (const idx of peerImageIndices) set.add(idx);
     for (const idx of Object.keys(perImageByCategory)) {
       const n = Number(idx);
       if (Number.isFinite(n) && Object.keys(perImageByCategory[n] ?? {}).length > 0) {
@@ -1193,7 +1340,7 @@ export default function AnnotatorPage() {
       }
     }
     return set;
-  }, [annotations, peerAnnotations, perImageByCategory]);
+  }, [annotations, peerAnnotations, peerImageIndices, perImageByCategory]);
 
   const activeLockCount = React.useMemo(
     () => Object.keys(imageLocks).length,

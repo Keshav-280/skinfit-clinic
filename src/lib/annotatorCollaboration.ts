@@ -132,6 +132,35 @@ export function peerShapes(
   return out;
 }
 
+/** Peer shapes for a single image only — keeps poll payloads tiny (avoids ~12MB full history). */
+export function peerShapesForImage(
+  store: AnnotatorCollaborationStore,
+  userId: string,
+  imageIndex: number
+): Array<AnnotatorShape & { userId: string }> {
+  const out: Array<AnnotatorShape & { userId: string }> = [];
+  for (const [uid, shapes] of Object.entries(store.perUserShapes)) {
+    if (uid === userId) continue;
+    for (const shape of shapes) {
+      if (shape.imageIndex === imageIndex) out.push({ ...shape, userId: uid });
+    }
+  }
+  return out;
+}
+
+/** Image indices that any peer has shapes on — small number list for thumbnail "has work" hints. */
+export function peerImageIndices(
+  store: AnnotatorCollaborationStore,
+  userId: string
+): number[] {
+  const set = new Set<number>();
+  for (const [uid, shapes] of Object.entries(store.perUserShapes)) {
+    if (uid === userId) continue;
+    for (const shape of shapes) set.add(shape.imageIndex);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
 export function allShapesMerged(
   store: AnnotatorCollaborationStore
 ): Array<AnnotatorShape & { userId: string }> {
@@ -301,6 +330,8 @@ export function applyUserSync(
   syncedAt = new Date().toISOString()
 ): AnnotatorCollaborationStore {
   const next = { ...store };
+  let didWrite = false;
+
   if (payload.annotations) {
     const existing = next.perUserShapes[userId] ?? [];
     let incoming = filterTombstonedShapes(next, userId, payload.annotations);
@@ -318,10 +349,12 @@ export function applyUserSync(
         ...next.perUserShapes,
         [userId]: mergeShapesWhenServerNewer(existing, incoming),
       };
+      didWrite = true;
     } else {
       const wouldClearNonEmpty = incoming.length === 0 && existing.length > 0;
       if (!wouldClearNonEmpty || payload.allowEmptyAnnotations) {
         next.perUserShapes = { ...next.perUserShapes, [userId]: incoming };
+        didWrite = true;
       }
     }
   }
@@ -330,8 +363,13 @@ export function applyUserSync(
       ...next.perUserLabels,
       [userId]: mergeSparseUserLabels(next.perUserLabels[userId], payload.perImageByCategory),
     };
+    didWrite = true;
   }
-  next.userSyncAt = { ...next.userSyncAt, [userId]: syncedAt };
+  // Only bump sync time when data actually changed — otherwise polls see a newer
+  // timestamp with stale shapes and overwrite the client's saved annotations.
+  if (didWrite) {
+    next.userSyncAt = { ...next.userSyncAt, [userId]: syncedAt };
+  }
   return next;
 }
 
