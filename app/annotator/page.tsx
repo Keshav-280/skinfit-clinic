@@ -415,6 +415,7 @@ export default function AnnotatorPage() {
   const [imageZoom, setImageZoom] = useState(1);
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
+  const [isLoadingAnnotations, setIsLoadingAnnotations] = useState(true);
   const [lastPersistMessage, setLastPersistMessage] = useState<string>("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [imageReady, setImageReady] = useState(false);
@@ -453,7 +454,7 @@ export default function AnnotatorPage() {
   }, [currentIndex, images, imageDimensions]);
 
   React.useEffect(() => {
-    if (isHydrating) {
+    if (isHydrating || isLoadingAnnotations) {
       lastPersistedRef.current = null;
       return;
     }
@@ -466,7 +467,7 @@ export default function AnnotatorPage() {
       saveDirtyRef.current = true;
       setSaveStatus((s) => (s === "saving" ? s : "dirty"));
     }
-  }, [isHydrating, perImageByCategory, annotations]);
+  }, [isHydrating, isLoadingAnnotations, perImageByCategory, annotations]);
 
   React.useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -498,21 +499,73 @@ export default function AnnotatorPage() {
 
   React.useEffect(() => {
     let isMounted = true;
+
+    const applyPersistedState = (
+      persistedState: Record<string, unknown>,
+      nextMeta: { name: string }[],
+      includeAnnotations: boolean
+    ) => {
+      if (persistedState.currentUser) {
+        setCurrentUser(persistedState.currentUser as SessionUser);
+      }
+      if (persistedState.imageLocks) {
+        setImageLocks(persistedState.imageLocks as Record<string, AnnotatorImageLock>);
+      }
+      if (persistedState.peerAnnotations) {
+        setPeerAnnotations(
+          migrateAnnotations(persistedState.peerAnnotations) as Annotation[]
+        );
+      }
+      if (Array.isArray(persistedState.peerImageIndices)) {
+        setPeerImageIndices(
+          new Set(
+            (persistedState.peerImageIndices as number[]).filter((n) => Number.isFinite(n))
+          )
+        );
+      }
+      setPerImageByCategory(
+        migratePerImageByCategory(
+          (persistedState.perImageByCategory ?? {}) as Parameters<
+            typeof migratePerImageByCategory
+          >[0]
+        )
+      );
+      if (!includeAnnotations) return;
+
+      const persistedAnnotations = reconcileAnnotationsForImageSet(
+        migrateAnnotations(persistedState.annotations),
+        [],
+        nextMeta
+      );
+      setAnnotationHistory({
+        snapshots: [cloneAnnotations(persistedAnnotations)],
+        index: 0,
+      });
+      shapesAtLastServerSyncRef.current = new Set(persistedAnnotations.map((ann) => ann.id));
+      lastServerUserSyncAtRef.current =
+        typeof persistedState.userSyncedAt === "string" ? persistedState.userSyncedAt : null;
+      const maxCounter = persistedAnnotations.reduce((acc, ann) => {
+        const match = String(ann.id).match(/-(\d+)$/);
+        const idNum = match ? Number.parseInt(match[1], 10) : Number.NaN;
+        return Number.isFinite(idNum) ? Math.max(acc, idNum) : acc;
+      }, 0);
+      annotationIdCounter = Math.max(annotationIdCounter, maxCounter);
+    };
+
     const loadInitialData = async () => {
       try {
-        const [imagesRes, stateRes] = await Promise.all([
+        // Fast path: image list + labels/locks only (no multi-MB shape JSON).
+        const [imagesRes, hydrateRes] = await Promise.all([
           fetch("/api/annotator/images", { cache: "no-store" }),
-          // Only load peers for the first image on hydrate (avoids shipping all peer history).
-          fetch("/api/annotator/state?imageIndex=0", { cache: "no-store" }),
+          fetch("/api/annotator/state?hydrate=1", { cache: "no-store" }),
         ]);
         const imagesJson = await imagesRes.json();
-        const stateJson = await stateRes.json();
+        const hydrateJson = await hydrateRes.json();
         if (!isMounted) return;
 
         const persistedImages = (imagesJson.images ?? []) as PersistedImage[];
         let activeImages = persistedImages;
 
-        // If DB is empty, auto-import from images_face so non-technical users can start immediately.
         if (activeImages.length === 0) {
           setLastPersistMessage("Importing images from images_face...");
           const importRes = await fetch("/api/annotator/import-from-folder", { method: "POST" });
@@ -530,67 +583,30 @@ export default function AnnotatorPage() {
         const nextMeta = activeImages.map((img) => ({ name: img.fileName }));
         setImages(activeImages.map((img) => persistedImageSrc(img)));
         setImageMeta(nextMeta);
+        setCurrentIndex(0);
 
-        const persistedState = stateJson.state;
-        if (persistedState) {
-          if (persistedState.currentUser) {
-            setCurrentUser(persistedState.currentUser as SessionUser);
-          }
-          if (persistedState.imageLocks) {
-            setImageLocks(persistedState.imageLocks as Record<string, AnnotatorImageLock>);
-          }
-          if (persistedState.peerAnnotations) {
-            setPeerAnnotations(
-              migrateAnnotations(persistedState.peerAnnotations) as Annotation[]
-            );
-          }
-          if (Array.isArray(persistedState.peerImageIndices)) {
-            setPeerImageIndices(
-              new Set(
-                (persistedState.peerImageIndices as number[]).filter((n) =>
-                  Number.isFinite(n)
-                )
-              )
-            );
-          }
-          setPerImageByCategory(
-            migratePerImageByCategory(
-              (persistedState.perImageByCategory ?? {}) as Parameters<
-                typeof migratePerImageByCategory
-              >[0]
-            )
-          );
-          const persistedAnnotations = reconcileAnnotationsForImageSet(
-            migrateAnnotations(persistedState.annotations),
-            [],
-            nextMeta
-          );
-          setAnnotationHistory({
-            snapshots: [cloneAnnotations(persistedAnnotations)],
-            index: 0,
-          });
-          shapesAtLastServerSyncRef.current = new Set(
-            persistedAnnotations.map((ann) => ann.id)
-          );
-          lastServerUserSyncAtRef.current =
-            typeof persistedState.userSyncedAt === "string"
-              ? persistedState.userSyncedAt
-              : null;
-          const maxCounter = persistedAnnotations.reduce((acc, ann) => {
-            const match = String(ann.id).match(/-(\d+)$/);
-            const idNum = match ? Number.parseInt(match[1], 10) : Number.NaN;
-            return Number.isFinite(idNum) ? Math.max(acc, idNum) : acc;
-          }, 0);
-          annotationIdCounter = Math.max(annotationIdCounter, maxCounter);
-          setCurrentIndex(0);
-        } else {
-          setCurrentIndex(0);
+        if (hydrateJson.state) {
+          applyPersistedState(hydrateJson.state, nextMeta, false);
+        }
+
+        // Show UI immediately — annotations load in background.
+        setIsHydrating(false);
+        saveDirtyRef.current = false;
+        lastPersistedRef.current = null;
+        setSaveStatus("saved");
+
+        const shapesRes = await fetch("/api/annotator/state", { cache: "no-store" });
+        if (!isMounted) return;
+        const shapesJson = await shapesRes.json().catch(() => ({}));
+        if (shapesJson.state) {
+          applyPersistedState(shapesJson.state, nextMeta, true);
         }
       } catch (err) {
         console.error("Failed to hydrate annotator data", err);
       } finally {
         if (isMounted) {
           setIsHydrating(false);
+          setIsLoadingAnnotations(false);
           saveDirtyRef.current = false;
           lastPersistedRef.current = null;
           setSaveStatus("saved");
@@ -845,7 +861,7 @@ export default function AnnotatorPage() {
   }, []);
 
   React.useEffect(() => {
-    if (isHydrating || !saveDirtyRef.current || !canEditCurrentImage) return;
+    if (isHydrating || isLoadingAnnotations || !saveDirtyRef.current || !canEditCurrentImage) return;
     const timer = window.setTimeout(async () => {
       setSaveStatus("saving");
       saveInFlightRef.current = true;
@@ -887,7 +903,7 @@ export default function AnnotatorPage() {
       }
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [isHydrating, perImageByCategory, annotations, canEditCurrentImage]);
+  }, [isHydrating, isLoadingAnnotations, perImageByCategory, annotations, canEditCurrentImage]);
 
   React.useEffect(() => {
     const el = canvasRef.current;
@@ -1489,7 +1505,9 @@ export default function AnnotatorPage() {
       </nav>
       <div className="shrink-0 border-b border-slate-200 bg-slate-50 px-6 py-1.5 text-xs text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
         {isHydrating ? (
-          lastPersistMessage || "Loading saved annotator data..."
+          lastPersistMessage || "Loading annotator…"
+        ) : isLoadingAnnotations ? (
+          "Loading your annotations…"
         ) : (
           <span className="inline-flex flex-wrap items-center gap-2">
             <span

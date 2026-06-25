@@ -95,6 +95,13 @@ type UserSliceRow = {
   user_tombstones: string[] | null;
 };
 
+type UserLabelsSliceRow = {
+  image_locks: Record<string, { userId: string; userName: string; expiresAt: string }> | null;
+  user_sync_at: Record<string, string> | null;
+  updated_at: Date | null;
+  user_labels: Record<string, Record<string, { spec?: string; grade?: string }>> | null;
+};
+
 /** Read only one user's slice — avoids loading the full ~80MB perUserShapes blob. */
 async function loadCollaborationUserRow(userId: string) {
   const result = await db.execute<UserSliceRow>(sql`
@@ -105,6 +112,21 @@ async function loadCollaborationUserRow(userId: string) {
       per_user_labels->${userId} AS user_labels,
       per_user_shapes->${userId} AS user_shapes,
       shape_tombstones->${userId} AS user_tombstones
+    FROM annotator_state
+    WHERE scope = ${ANNOTATOR_SCOPE}
+    LIMIT 1
+  `);
+  return result.rows[0] ?? null;
+}
+
+/** Labels + locks only — fast first paint (no shape JSON). */
+async function loadCollaborationUserLabelsRow(userId: string) {
+  const result = await db.execute<UserLabelsSliceRow>(sql`
+    SELECT
+      image_locks,
+      user_sync_at,
+      updated_at,
+      per_user_labels->${userId} AS user_labels
     FROM annotator_state
     WHERE scope = ${ANNOTATOR_SCOPE}
     LIMIT 1
@@ -187,6 +209,7 @@ export async function GET(req: Request) {
   const merged = url.searchParams.get("merged") === "1";
   const syncOnly = url.searchParams.get("sync") === "1";
   const peersOnly = url.searchParams.get("peers") === "1";
+  const hydrateOnly = url.searchParams.get("hydrate") === "1";
   const imageIndexRaw = url.searchParams.get("imageIndex");
   const imageIndexParam =
     imageIndexRaw !== null && Number.isFinite(Number.parseInt(imageIndexRaw, 10))
@@ -207,6 +230,32 @@ export async function GET(req: Request) {
         userSyncedAt: userSyncAt[profile.id] ?? null,
         updatedAt: row?.updatedAt ?? null,
         peerSyncAt: peerSyncAtForUser(userSyncAt, profile.id),
+      },
+    });
+  }
+
+  if (hydrateOnly) {
+    const row = await loadCollaborationUserLabelsRow(profile.id);
+    const imageLocks = pruneExpiredLocks(
+      row?.image_locks && typeof row.image_locks === "object" ? row.image_locks : {}
+    );
+    const userSyncAt =
+      row?.user_sync_at && typeof row.user_sync_at === "object" ? row.user_sync_at : {};
+    return NextResponse.json({
+      success: true,
+      state: {
+        perImageByCategory: row?.user_labels ?? {},
+        annotations: [],
+        imageLocks,
+        peerAnnotations: [],
+        peerImageIndices: [],
+        currentUser: {
+          id: profile.id,
+          name: profile.name,
+          isAnnotatorAdmin,
+        },
+        userSyncedAt: userSyncAt[profile.id] ?? null,
+        updatedAt: row?.updated_at ?? null,
       },
     });
   }
