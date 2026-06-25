@@ -13,7 +13,6 @@ import {
   labelsForUser,
   mergedLabelsForExport,
   parseCollaborationStore,
-  peerShapes,
   peerShapesForImage,
   peerImageIndices,
   pruneExpiredLocks,
@@ -170,11 +169,11 @@ export async function GET(req: Request) {
     const row = await loadCollaborationPeersRow();
     let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
     store = { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) };
-    // Scope to one image when imageIndex is given — keeps the payload tiny.
+    // Require imageIndex — stale clients without it get empty peers, not ~12MB history.
     const peerAnnotations =
       imageIndexParam !== null
         ? peerShapesForImage(store, profile.id, imageIndexParam)
-        : peerShapes(store, profile.id);
+        : [];
     return NextResponse.json({
       success: true,
       state: {
@@ -284,7 +283,7 @@ export async function PUT(req: Request) {
     const peerAnnotations =
       typeof body.imageIndex === "number"
         ? peerShapesForImage(store, profile.id, body.imageIndex)
-        : peerShapes(store, profile.id);
+        : [];
     return NextResponse.json({
       success: true,
       imageLocks: store.imageLocks,
