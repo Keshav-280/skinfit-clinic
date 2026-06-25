@@ -194,6 +194,44 @@ async function persistCollaborationStore(
   }
 }
 
+/**
+ * Persist ONLY one user's slice via a jsonb_set upsert.
+ *
+ * The previous save path loaded the full ~5MB row into Node, parsed it (blocking
+ * the single event loop — the OOM stack traces were inside V8's JSON parser),
+ * mutated one user's slice, then serialized and wrote the whole row back. That
+ * was a top crash driver AND a lost-update race: two users saving concurrently
+ * each wrote a full row, so the second writer clobbered the first user's slice
+ * with its own stale copy. Writing only `ARRAY[userId]` keys means concurrent
+ * saves touch disjoint jsonb paths and can no longer overwrite each other.
+ */
+async function persistUserSlice(
+  userId: string,
+  store: ReturnType<typeof parseCollaborationStore>
+) {
+  const shapes = JSON.stringify(store.perUserShapes[userId] ?? []);
+  const labels = JSON.stringify(store.perUserLabels[userId] ?? {});
+  const syncAt = JSON.stringify(store.userSyncAt[userId] ?? null);
+  const tombstones = JSON.stringify(store.shapeTombstones[userId] ?? []);
+
+  await db.execute(sql`
+    INSERT INTO annotator_state (scope, per_user_shapes, per_user_labels, user_sync_at, shape_tombstones)
+    VALUES (
+      ${ANNOTATOR_SCOPE},
+      jsonb_build_object(${userId}::text, ${shapes}::jsonb),
+      jsonb_build_object(${userId}::text, ${labels}::jsonb),
+      jsonb_build_object(${userId}::text, ${syncAt}::jsonb),
+      jsonb_build_object(${userId}::text, ${tombstones}::jsonb)
+    )
+    ON CONFLICT (scope) DO UPDATE SET
+      per_user_shapes = jsonb_set(coalesce(annotator_state.per_user_shapes, '{}'::jsonb), ARRAY[${userId}]::text[], ${shapes}::jsonb, true),
+      per_user_labels = jsonb_set(coalesce(annotator_state.per_user_labels, '{}'::jsonb), ARRAY[${userId}]::text[], ${labels}::jsonb, true),
+      user_sync_at = jsonb_set(coalesce(annotator_state.user_sync_at, '{}'::jsonb), ARRAY[${userId}]::text[], ${syncAt}::jsonb, true),
+      shape_tombstones = jsonb_set(coalesce(annotator_state.shape_tombstones, '{}'::jsonb), ARRAY[${userId}]::text[], ${tombstones}::jsonb, true),
+      updated_at = now()
+  `);
+}
+
 export async function GET(req: Request) {
   const auth = await requireAnnotatorAuth(req);
   if (auth) return auth;
@@ -382,14 +420,10 @@ export async function PUT(req: Request) {
     return NextResponse.json({ success: true });
   }
 
-  const row = await loadCollaborationRow();
-  let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
-  store = {
-    ...store,
-    imageLocks: pruneExpiredLocks(store.imageLocks),
-  };
-
   if (body.deletePeerShape) {
+    // Admin-only, rare: full-row read is acceptable here (needs the peer's
+    // shapes + all peers' indices for the response), but the WRITE is scoped to
+    // the owner's key so it can't clobber a concurrent save by another user.
     if (!isAnnotatorAdminEmail(profile.email)) {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
@@ -403,8 +437,11 @@ export async function PUT(req: Request) {
     ) {
       return NextResponse.json({ error: "INVALID_DELETE_PEER_SHAPE" }, { status: 400 });
     }
+    const row = await loadCollaborationRow();
+    let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
+    store = { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) };
     store = deleteShapeFromUser(store, ownerUserId, shapeId);
-    await persistCollaborationStore(store);
+    await persistUserSlice(ownerUserId, store);
     const peerAnnotations =
       typeof body.imageIndex === "number"
         ? peerShapesForImage(store, profile.id, body.imageIndex)
@@ -417,6 +454,9 @@ export async function PUT(req: Request) {
     });
   }
 
+  // Hot save path: read + write ONLY this user's slice (no full-row load/parse).
+  const userRow = await loadCollaborationUserRow(profile.id);
+  let store = storeFromUserSlice(userRow, profile.id);
   store = applyUserSync(store, profile.id, {
     perImageByCategory: body.perImageByCategory,
     annotations: body.annotations as Parameters<typeof applyUserSync>[2]["annotations"],
@@ -425,11 +465,17 @@ export async function PUT(req: Request) {
       typeof body.clientSyncedAt === "string" ? body.clientSyncedAt : undefined,
   });
 
-  await persistCollaborationStore(store);
+  await persistUserSlice(profile.id, store);
+
+  const imageLocks = pruneExpiredLocks(
+    userRow?.image_locks && typeof userRow.image_locks === "object"
+      ? userRow.image_locks
+      : {}
+  );
 
   return NextResponse.json({
     success: true,
-    imageLocks: store.imageLocks,
+    imageLocks,
     userSyncedAt: store.userSyncAt[profile.id] ?? null,
   });
 }
