@@ -12,6 +12,9 @@ services:
 
   web:
     restart: unless-stopped
+    environment:
+      # Annotator state JSON can be large; default Node heap (~2GB) OOMs under concurrent load.
+      NODE_OPTIONS: "--max-old-space-size=3584"
     # !reset clears base compose `ports: 3000:3000` (empty [] alone does not)
     ports: !reset []
     expose:
