@@ -8,47 +8,62 @@ import {
   ANNOTATOR_SCOPE,
   acquireImageLock,
   heartbeatImageLock,
-  parseCollaborationStore,
   pruneExpiredLocks,
   releaseImageLock,
-  storeToDbColumns,
+  type AnnotatorCollaborationStore,
+  type AnnotatorImageLock,
 } from "@/src/lib/annotatorCollaboration";
 
-async function loadAndPruneStore() {
+type LocksMap = Record<string, AnnotatorImageLock>;
+
+/**
+ * Locks live in the same row as annotation shapes, but lock traffic is by far the
+ * hottest path (acquire on every image switch, heartbeat every 10s/user, release
+ * on leave). Reading/writing the full row would pull and rewrite the multi-MB
+ * `per_user_shapes` blob on every one of those calls — the dominant cause of CPU
+ * pinning, 504s and OOM under load. These helpers touch ONLY the `image_locks`
+ * column, which also removes the lost-update race where a lock write would clobber
+ * a concurrent shape save.
+ */
+async function loadLocks(): Promise<{ rowId: number | null; imageLocks: LocksMap }> {
   const [row] = await db
-    .select({
-      id: annotatorState.id,
-      perImageByCategory: annotatorState.perImageByCategory,
-      annotations: annotatorState.annotations,
-      perUserLabels: annotatorState.perUserLabels,
-      perUserShapes: annotatorState.perUserShapes,
-      imageLocks: annotatorState.imageLocks,
-      userSyncAt: annotatorState.userSyncAt,
-    })
+    .select({ id: annotatorState.id, imageLocks: annotatorState.imageLocks })
     .from(annotatorState)
     .where(eq(annotatorState.scope, ANNOTATOR_SCOPE))
     .limit(1);
-
-  const store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
-  return {
-    rowId: row?.id ?? null,
-    store: { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) },
-  };
+  const locks =
+    row?.imageLocks && typeof row.imageLocks === "object"
+      ? (row.imageLocks as LocksMap)
+      : {};
+  return { rowId: row?.id ?? null, imageLocks: pruneExpiredLocks(locks) };
 }
 
-async function saveStore(rowId: number | null, store: ReturnType<typeof parseCollaborationStore>) {
-  const data = storeToDbColumns(store);
+async function saveLocks(rowId: number | null, imageLocks: LocksMap) {
   if (rowId) {
-    await db.update(annotatorState).set(data).where(eq(annotatorState.id, rowId));
-  } else {
-    await db.insert(annotatorState).values({
-      scope: ANNOTATOR_SCOPE,
-      perImageByCategory: {},
-      annotations: [],
-      currentIndex: 0,
-      ...data,
-    });
+    await db
+      .update(annotatorState)
+      .set({ imageLocks, updatedAt: new Date() })
+      .where(eq(annotatorState.id, rowId));
+    return;
   }
+  await db.insert(annotatorState).values({
+    scope: ANNOTATOR_SCOPE,
+    perImageByCategory: {},
+    annotations: [],
+    currentIndex: 0,
+    imageLocks,
+  });
+}
+
+/** Lock helpers only read/write `imageLocks`; the rest of the store can be empty. */
+function lockStore(imageLocks: LocksMap): AnnotatorCollaborationStore {
+  return {
+    perUserLabels: {},
+    perUserShapes: {},
+    imageLocks,
+    userSyncAt: {},
+    shapeTombstones: {},
+  };
 }
 
 /** Acquire or refresh exclusive edit lock on an image index. */
@@ -68,11 +83,12 @@ export async function POST(req: Request) {
   const imageIndex = Math.max(0, Math.floor(body?.imageIndex ?? 0));
   const action = body?.action === "heartbeat" ? "heartbeat" : "acquire";
 
-  const { rowId, store } = await loadAndPruneStore();
+  const { rowId, imageLocks } = await loadLocks();
+  const store = lockStore(imageLocks);
 
   if (action === "heartbeat") {
     const next = heartbeatImageLock(store, imageIndex, profile.id);
-    await saveStore(rowId, next);
+    await saveLocks(rowId, next.imageLocks);
     const lock = next.imageLocks[String(imageIndex)] ?? null;
     return NextResponse.json({
       success: Boolean(lock && lock.userId === profile.id),
@@ -98,7 +114,7 @@ export async function POST(req: Request) {
     );
   }
 
-  await saveStore(rowId, next);
+  await saveLocks(rowId, next.imageLocks);
   return NextResponse.json({
     success: true,
     lock,
@@ -119,9 +135,9 @@ export async function DELETE(req: Request) {
   const url = new URL(req.url);
   const imageIndex = Math.max(0, Math.floor(Number(url.searchParams.get("imageIndex") ?? 0)));
 
-  const { rowId, store } = await loadAndPruneStore();
-  const next = releaseImageLock(store, imageIndex, profile.id);
-  await saveStore(rowId, next);
+  const { rowId, imageLocks } = await loadLocks();
+  const next = releaseImageLock(lockStore(imageLocks), imageIndex, profile.id);
+  await saveLocks(rowId, next.imageLocks);
 
   return NextResponse.json({
     success: true,

@@ -20,7 +20,7 @@ import {
   storeToDbColumns,
 } from "@/src/lib/annotatorCollaboration";
 import { isAnnotatorAdminEmail } from "@/src/lib/annotatorAdmins";
-import { allowAnnotatorHeavyGet, annotatorClientIp } from "@/src/lib/annotatorRateLimit";
+import { allowAnnotatorHeavyGet } from "@/src/lib/annotatorRateLimit";
 import type { AnnotatorShape } from "@/src/lib/annotatorAnnotations";
 
 type AnnotationShape = {
@@ -276,8 +276,10 @@ export async function GET(req: Request) {
       });
     }
 
-    const rateKey = `${annotatorClientIp(req)}:peers`;
-    if (!allowAnnotatorHeavyGet(rateKey, 12)) return heavyGetDenied(req);
+    // Key by user (not IP): all annotators share one office IP, so IP-keying
+    // made colleagues throttle each other into 429 storms.
+    const rateKey = `${profile.id}:peers`;
+    if (!allowAnnotatorHeavyGet(rateKey, 30)) return heavyGetDenied(req);
 
     const row = await loadCollaborationPeersRow();
     let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
@@ -317,8 +319,8 @@ export async function GET(req: Request) {
   let peerIndices: number[] = [];
 
   if (imageIndexParam !== null) {
-    const rateKey = `${annotatorClientIp(req)}:state`;
-    if (!allowAnnotatorHeavyGet(rateKey, 12)) return heavyGetDenied(req);
+    const rateKey = `${profile.id}:state`;
+    if (!allowAnnotatorHeavyGet(rateKey, 30)) return heavyGetDenied(req);
 
     const peersRow = await loadCollaborationPeersRow();
     const peerStore = parseCollaborationStore(

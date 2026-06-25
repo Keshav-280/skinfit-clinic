@@ -12,9 +12,14 @@ services:
 
   web:
     restart: unless-stopped
+    # Hard cap so a memory spike kills+restarts ONLY this container instead of
+    # OOM-freezing the whole VM (which took SSH/ping down twice). Keep the Node
+    # heap comfortably under the cgroup limit to leave room for non-heap memory.
+    mem_limit: 5g
+    mem_reservation: 2g
     environment:
       # Annotator state JSON can be large; default Node heap (~2GB) OOMs under concurrent load.
-      NODE_OPTIONS: "--max-old-space-size=3584"
+      NODE_OPTIONS: "--max-old-space-size=3072"
     # !reset clears base compose `ports: 3000:3000` (empty [] alone does not)
     ports: !reset []
     expose:
