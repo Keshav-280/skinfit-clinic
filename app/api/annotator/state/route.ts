@@ -21,6 +21,7 @@ import {
 } from "@/src/lib/annotatorCollaboration";
 import { isAnnotatorAdminEmail } from "@/src/lib/annotatorAdmins";
 import { allowAnnotatorHeavyGet, annotatorClientIp } from "@/src/lib/annotatorRateLimit";
+import type { AnnotatorShape } from "@/src/lib/annotatorAnnotations";
 
 type AnnotationShape = {
   id: string;
@@ -90,7 +91,7 @@ type UserSliceRow = {
   user_sync_at: Record<string, string> | null;
   updated_at: Date | null;
   user_labels: Record<string, Record<string, { spec?: string; grade?: string }>> | null;
-  user_shapes: AnnotationShape[] | null;
+  user_shapes: AnnotatorShape[] | null;
   user_tombstones: string[] | null;
 };
 
