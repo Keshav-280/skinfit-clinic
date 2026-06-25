@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { annotatorState } from "@/src/db/schema";
 import { requireAnnotatorAuth } from "@/src/lib/auth/require-annotator-auth";
@@ -20,6 +20,7 @@ import {
   storeToDbColumns,
 } from "@/src/lib/annotatorCollaboration";
 import { isAnnotatorAdminEmail } from "@/src/lib/annotatorAdmins";
+import { allowAnnotatorHeavyGet, annotatorClientIp } from "@/src/lib/annotatorRateLimit";
 
 type AnnotationShape = {
   id: string;
@@ -82,6 +83,50 @@ async function loadCollaborationPeersRow() {
     .where(eq(annotatorState.scope, ANNOTATOR_SCOPE))
     .limit(1);
   return row ?? null;
+}
+
+type UserSliceRow = {
+  image_locks: Record<string, { userId: string; userName: string; expiresAt: string }> | null;
+  user_sync_at: Record<string, string> | null;
+  updated_at: Date | null;
+  user_labels: Record<string, Record<string, { spec?: string; grade?: string }>> | null;
+  user_shapes: AnnotationShape[] | null;
+  user_tombstones: string[] | null;
+};
+
+/** Read only one user's slice — avoids loading the full ~80MB perUserShapes blob. */
+async function loadCollaborationUserRow(userId: string) {
+  const result = await db.execute<UserSliceRow>(sql`
+    SELECT
+      image_locks,
+      user_sync_at,
+      updated_at,
+      per_user_labels->${userId} AS user_labels,
+      per_user_shapes->${userId} AS user_shapes,
+      shape_tombstones->${userId} AS user_tombstones
+    FROM annotator_state
+    WHERE scope = ${ANNOTATOR_SCOPE}
+    LIMIT 1
+  `);
+  return result.rows[0] ?? null;
+}
+
+function storeFromUserSlice(row: UserSliceRow | null, userId: string) {
+  return parseCollaborationStore({
+    perUserLabels: row?.user_labels ? { [userId]: row.user_labels } : {},
+    perUserShapes: row?.user_shapes ? { [userId]: row.user_shapes } : {},
+    imageLocks: row?.image_locks ?? {},
+    userSyncAt: row?.user_sync_at ?? {},
+    shapeTombstones: row?.user_tombstones ? { [userId]: row.user_tombstones } : {},
+    updatedAt: row?.updated_at ?? undefined,
+  });
+}
+
+function heavyGetDenied(req: Request) {
+  return NextResponse.json(
+    { error: "RATE_LIMITED", retryAfterSec: 5 },
+    { status: 429, headers: { "Retry-After": "5", "Cache-Control": "no-store" } }
+  );
 }
 
 function peerSyncAtForUser(
@@ -166,14 +211,28 @@ export async function GET(req: Request) {
   }
 
   if (peersOnly) {
+    // Stale tabs without imageIndex: instant empty response, no DB shape load.
+    if (imageIndexParam === null) {
+      const row = await loadCollaborationSyncRow();
+      const userSyncAt =
+        row?.userSyncAt && typeof row.userSyncAt === "object" ? row.userSyncAt : {};
+      return NextResponse.json({
+        success: true,
+        state: {
+          peerAnnotations: [],
+          peerImageIndices: [],
+          peerSyncAt: peerSyncAtForUser(userSyncAt, profile.id),
+        },
+      });
+    }
+
+    const rateKey = `${annotatorClientIp(req)}:peers`;
+    if (!allowAnnotatorHeavyGet(rateKey, 12)) return heavyGetDenied(req);
+
     const row = await loadCollaborationPeersRow();
     let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
     store = { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) };
-    // Require imageIndex — stale clients without it get empty peers, not ~12MB history.
-    const peerAnnotations =
-      imageIndexParam !== null
-        ? peerShapesForImage(store, profile.id, imageIndexParam)
-        : [];
+    const peerAnnotations = peerShapesForImage(store, profile.id, imageIndexParam);
     return NextResponse.json({
       success: true,
       state: {
@@ -184,11 +243,10 @@ export async function GET(req: Request) {
     });
   }
 
-  const row = await loadCollaborationRow();
-  let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
-  store = { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) };
-
   if (merged) {
+    const row = await loadCollaborationRow();
+    let store = parseCollaborationStore(row as Parameters<typeof parseCollaborationStore>[0]);
+    store = { ...store, imageLocks: pruneExpiredLocks(store.imageLocks) };
     return NextResponse.json({
       success: true,
       state: {
@@ -200,26 +258,41 @@ export async function GET(req: Request) {
     });
   }
 
-  // Default state load: only return peers for the requested image (or none on first paint).
-  // Full peer history is never shipped here anymore — that was the ~12MB poll killer.
-  const peerAnnotations =
-    imageIndexParam !== null ? peerShapesForImage(store, profile.id, imageIndexParam) : [];
+  // Default GET: user slice only (cheap). Peers loaded only when imageIndex is set.
+  const userRow = await loadCollaborationUserRow(profile.id);
+  const userStore = storeFromUserSlice(userRow, profile.id);
+  const imageLocks = pruneExpiredLocks(userStore.imageLocks);
+
+  let peerAnnotations: ReturnType<typeof peerShapesForImage> = [];
+  let peerIndices: number[] = [];
+
+  if (imageIndexParam !== null) {
+    const rateKey = `${annotatorClientIp(req)}:state`;
+    if (!allowAnnotatorHeavyGet(rateKey, 12)) return heavyGetDenied(req);
+
+    const peersRow = await loadCollaborationPeersRow();
+    const peerStore = parseCollaborationStore(
+      peersRow as Parameters<typeof parseCollaborationStore>[0]
+    );
+    peerAnnotations = peerShapesForImage(peerStore, profile.id, imageIndexParam);
+    peerIndices = peerImageIndices(peerStore, profile.id);
+  }
 
   return NextResponse.json({
     success: true,
     state: {
-      perImageByCategory: labelsForUser(store, profile.id),
-      annotations: shapesForUser(store, profile.id),
-      imageLocks: store.imageLocks,
+      perImageByCategory: labelsForUser(userStore, profile.id),
+      annotations: shapesForUser(userStore, profile.id),
+      imageLocks,
       peerAnnotations,
-      peerImageIndices: peerImageIndices(store, profile.id),
+      peerImageIndices: peerIndices,
       currentUser: {
         id: profile.id,
         name: profile.name,
         isAnnotatorAdmin,
       },
-      userSyncedAt: store.userSyncAt[profile.id] ?? null,
-      updatedAt: row?.updatedAt ?? null,
+      userSyncedAt: userStore.userSyncAt[profile.id] ?? null,
+      updatedAt: userRow?.updated_at ?? null,
     },
   });
 }
