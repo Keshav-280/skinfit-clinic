@@ -14,6 +14,10 @@ import {
 } from "@/src/lib/faceAnalysisInference";
 import { runFaceAnalysisServiceV2 } from "@/src/lib/faceAnalysisInferenceV2";
 import {
+  runAcneDetector,
+  applyAcneDetectorToScanPayload,
+} from "@/src/lib/acneDetectorInference";
+import {
   inferenceParamsToRows,
   insertParameterScoresForScan,
 } from "@/src/lib/insertParameterScores";
@@ -169,6 +173,37 @@ export async function processScanJob(
       inferenceOpts
     );
     merged = buildScanPayloadFromAnalyzeV1(dualScan, scanOpts);
+  }
+
+  // Replace ONLY the acne score + acne annotated image with the dedicated
+  // YOLO acne detector (services/acne-detector-v1). Everything else stays from
+  // the DINOv2 model. Soft-fail: if the detector is down, keep DINO acne.
+  const acneDetectorBase = process.env.ACNE_DETECTOR_SERVICE_URL?.trim();
+  const acneDetectorDisabled =
+    process.env.ACNE_DETECTOR_DISABLED === "1" ||
+    process.env.ACNE_DETECTOR_DISABLED === "true";
+  if (acneDetectorBase && !acneDetectorDisabled) {
+    try {
+      const acneResult = await runAcneDetector(filesForV2.centre, {
+        baseUrl: acneDetectorBase,
+        apiKey: inferenceSecret,
+        timeoutMs: inferenceTimeoutMs,
+      });
+      merged = applyAcneDetectorToScanPayload(merged, acneResult);
+      logger.info("acne_detector_applied", {
+        jobId,
+        userId: payload.userId,
+        grade: acneResult.grade.final_grade,
+        score: acneResult.grade.score,
+        lesions: acneResult.grade.f1?.active_lesion_count ?? null,
+      });
+    } catch (err) {
+      logger.warn("acne_detector_skipped", {
+        jobId,
+        error: err instanceof Error ? err.message : String(err),
+        hint: "scan continues with DINO acne score/mask",
+      });
+    }
   }
 
   const storage = getStorage();

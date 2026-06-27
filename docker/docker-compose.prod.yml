@@ -31,6 +31,11 @@ services:
     # One replica on the prod VM — ML loads large models; never scale this service.
     container_name: skinfit-ml-inference
 
+  acne-detector:
+    restart: unless-stopped
+    ports: !reset []
+    container_name: skinfit-acne-detector
+
   ml-worker:
     restart: unless-stopped
     # One replica — scan jobs run sequentially (worker concurrency is already 1).

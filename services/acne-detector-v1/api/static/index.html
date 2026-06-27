@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Active Acne Analysis · Skinfit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f4f0;
+      --bg2: #eeeae3;
+      --card: #ffffff;
+      --ink: #1a1a1a;
+      --ink2: #4a4a4a;
+      --muted: #7a7570;
+      --line: #e5e0d8;
+      --sage: #5c7c6a;
+      --sage-light: #e8f0eb;
+      --sage-dark: #3d5347;
+      --accent: #5c7c6a;
+      --shadow: 0 4px 24px rgba(26,26,26,.06);
+      --shadow-lg: 0 12px 48px rgba(26,26,26,.1);
+      --radius: 16px;
+      --grade-a: #2d9d6f;
+      --grade-b: #6aab4e;
+      --grade-c: #d4a017;
+      --grade-d: #e07b39;
+      --grade-e: #c94c4c;
+      --comedone: #e85d4c;
+      --papule: #4caf50;
+      --pustule: #ab47bc;
+      --nodule: #3949ab;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(92,124,106,.12), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(212,160,23,.08), transparent),
+        var(--bg);
+    }
+
+    .shell { max-width: 1440px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+    .hero-text {
+      text-align: center; max-width: 560px; margin: 0 auto 2rem;
+    }
+    .hero-text h2 {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      font-weight: 400; letter-spacing: -.02em; line-height: 1.2;
+      margin-bottom: .5rem;
+    }
+    .hero-text p { color: var(--muted); font-size: .95rem; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    /* upload */
+    .upload-card { padding: 1.25rem; }
+    .upload-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .drop {
+      display: block;
+      border: 1.5px dashed var(--line);
+      border-radius: 14px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      background: #faf9f7;
+    }
+    .drop:hover, .drop.over {
+      border-color: var(--sage);
+      background: var(--sage-light);
+    }
+    #file {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+    .drop-icon {
+      width: 48px; height: 48px; margin: 0 auto .85rem;
+      border-radius: 12px; background: var(--card);
+      border: 1px solid var(--line);
+      display: grid; place-items: center;
+    }
+    .drop-icon svg { width: 22px; height: 22px; stroke: var(--sage); }
+    .drop strong { display: block; font-size: .9rem; margin-bottom: .25rem; }
+    .drop small { color: var(--muted); font-size: .78rem; }
+
+    .preview-grid {
+      display: none;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .5rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .preview-grid.show { display: grid; }
+    .thumb {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--line);
+      cursor: pointer;
+      aspect-ratio: 1;
+      background: var(--bg2);
+      transition: border-color .15s;
+    }
+    .thumb:hover { border-color: var(--sage); }
+    .thumb.active { border-color: var(--sage-dark); box-shadow: 0 0 0 1px var(--sage-dark); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb .badge {
+      position: absolute; bottom: 4px; left: 4px;
+      font-size: .65rem; font-weight: 700;
+      padding: .15rem .4rem; border-radius: 6px;
+      background: rgba(255,255,255,.92); color: var(--ink);
+      line-height: 1.2;
+    }
+    .thumb .badge.pending { color: var(--muted); font-weight: 500; }
+    .thumb .badge.err { background: #fef2f2; color: #b91c1c; }
+    .thumb .rm {
+      position: absolute; top: 4px; right: 4px;
+      width: 20px; height: 20px; border: none; border-radius: 6px;
+      background: rgba(0,0,0,.55); color: #fff;
+      font-size: .85rem; line-height: 1; cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .thumb .rm:hover { background: rgba(0,0,0,.75); }
+    .thumb .spin {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,.65);
+      display: grid; place-items: center;
+    }
+    .thumb .spin::after {
+      content: ""; width: 22px; height: 22px;
+      border: 2px solid var(--line); border-top-color: var(--sage);
+      border-radius: 50%; animation: spin .9s linear infinite;
+    }
+    .upload-hint {
+      font-size: .72rem; color: var(--muted); text-align: center;
+    }
+
+    .btn-run {
+      width: 100%;
+      padding: .85rem 1rem;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--sage), var(--sage-dark));
+      color: #fff;
+      font-family: inherit;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      box-shadow: 0 4px 14px rgba(92,124,106,.25);
+      flex-shrink: 0;
+    }
+    .btn-run:hover:not(:disabled) { opacity: .95; transform: translateY(-1px); }
+    .btn-run:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+
+    .steps { display: none; }
+
+    /* loading */
+    .loading {
+      display: none; padding: 3rem 2rem; text-align: center;
+    }
+    .loading.show { display: block; }
+    .loader-ring {
+      width: 52px; height: 52px; margin: 0 auto 1.25rem;
+      border: 3px solid var(--line); border-top-color: var(--sage);
+      border-radius: 50%; animation: spin .9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading h3 { font-size: 1rem; margin-bottom: .35rem; }
+    .loading p { color: var(--muted); font-size: .85rem; }
+    .loading .timer { margin-top: .75rem; font-size: .8rem; color: var(--sage); font-variant-numeric: tabular-nums; }
+
+    .error {
+      display: none; margin-top: 1rem; padding: .85rem 1rem;
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
+      color: #b91c1c; font-size: .85rem;
+    }
+    .error.show { display: block; }
+
+    /* results */
+    #results { display: none; }
+    #results.show { display: block; }
+
+    .grade-row {
+      margin-bottom: 1.25rem;
+    }
+
+    .grade-banner {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 1.25rem; align-items: center;
+      padding: 1.25rem 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    @media (max-width: 700px) {
+      .grade-banner { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+    }
+
+    .grade-ring {
+      width: 88px; height: 88px; border-radius: 50%;
+      display: grid; place-items: center; position: relative;
+      background: conic-gradient(var(--gc) calc(var(--pct) * 1%), var(--bg2) 0);
+    }
+    .grade-ring::after {
+      content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--card);
+    }
+    .grade-ring .inner { position: relative; z-index: 1; text-align: center; }
+    .grade-ring .letter { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--gc); }
+    .grade-ring .num { font-size: .7rem; color: var(--muted); margin-top: 2px; }
+
+    .grade-copy h3 {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 1.25rem; font-weight: 400; margin-bottom: .25rem;
+    }
+    .grade-copy .sub { font-size: .75rem; color: var(--muted); margin-bottom: .35rem; }
+    .grade-copy .formula { font-size: .82rem; color: var(--muted); font-family: ui-monospace, monospace; }
+    .grade-copy .warn {
+      margin-top: .5rem; font-size: .8rem; color: #b45309;
+      background: #fffbeb; border: 1px solid #fde68a;
+      display: inline-block; padding: .3rem .65rem; border-radius: 8px;
+    }
+
+    .score-pill {
+      text-align: right;
+    }
+    .score-pill .big { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .score-pill .lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+    .factors {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (max-width: 700px) { .factors { grid-template-columns: 1fr; } }
+
+    .factor {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 1.1rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .factor .head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: .65rem;
+    }
+    .factor .name { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    .factor .weight { font-size: .68rem; color: var(--muted); }
+    .factor .grade-letter { font-size: 1.75rem; font-weight: 700; }
+    .factor .detail { font-size: .82rem; color: var(--ink2); margin-top: .15rem; }
+    .bar-track {
+      height: 5px; background: var(--bg2); border-radius: 99px;
+      margin-top: .75rem; overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+
+    .main-grid {
+      display: grid; grid-template-columns: 1fr; gap: 1.25rem;
+    }
+
+    .img-panel { overflow: hidden; }
+    .img-panel .head {
+      padding: .9rem 1.25rem; border-bottom: 1px solid var(--line);
+      font-weight: 600; font-size: .85rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .img-panel .body {
+      padding: .75rem; background: #111;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .canvas-wrap {
+      width: 100%;
+      display: flex; justify-content: center; align-items: center;
+      overflow: auto;
+    }
+    #annotated-canvas {
+      display: block;
+      border-radius: 8px;
+      /* display size set in JS to preserve aspect ratio */
+    }
+    .viz-controls {
+      display: none;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      padding: .85rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      background: #faf9f7;
+    }
+    .viz-controls.show { display: flex; }
+    .slider-row {
+      flex: 1 1 200px;
+      min-width: 180px;
+    }
+    .slider-row label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: .78rem; font-weight: 600; color: var(--ink2);
+      margin-bottom: .4rem;
+    }
+    .slider-row label span { font-weight: 500; color: var(--sage-dark); font-variant-numeric: tabular-nums; }
+    .slider-row input[type="range"] {
+      width: 100%; height: 6px; accent-color: var(--sage);
+      cursor: pointer;
+    }
+    .label-mode-row {
+      flex: 1 1 100%;
+    }
+    .label-mode-row > span {
+      display: block;
+      font-size: .78rem; font-weight: 600; color: var(--ink2);
+      margin-bottom: .45rem;
+    }
+    .label-modes {
+      display: flex; flex-wrap: wrap; gap: .35rem;
+    }
+    .label-modes button {
+      font-family: inherit;
+      font-size: .72rem; font-weight: 500;
+      padding: .4rem .65rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--ink2);
+      cursor: pointer;
+      transition: .15s border-color, .15s background, .15s color;
+    }
+    .label-modes button:hover { border-color: var(--sage); color: var(--sage-dark); }
+    .label-modes button.active {
+      background: var(--sage-light);
+      border-color: var(--sage);
+      color: var(--sage-dark);
+      font-weight: 600;
+    }
+    .class-filter-row {
+      flex: 1 1 100%;
+    }
+    .class-filter-row > span {
+      display: block;
+      font-size: .78rem; font-weight: 600; color: var(--ink2);
+      margin-bottom: .45rem;
+    }
+    .class-filters {
+      display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
+    }
+    .class-filters button {
+      font-family: inherit;
+      font-size: .72rem; font-weight: 500;
+      padding: .4rem .65rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--ink2);
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: .35rem;
+      transition: .15s border-color, .15s background, .15s opacity;
+    }
+    .class-filters button i {
+      width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+    }
+    .class-filters button:not(.active) { opacity: .45; }
+    .class-filters button.active {
+      opacity: 1;
+      border-color: var(--sage);
+      background: var(--sage-light);
+      font-weight: 600;
+    }
+    .class-filters button.all-btn {
+      font-weight: 600;
+      color: var(--sage-dark);
+    }
+
+    .bottom-row {
+      display: grid; grid-template-columns: minmax(0, 640px); gap: 1.25rem;
+    }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: .5rem;
+      padding: .75rem 1rem; border-top: 1px solid var(--line);
+      background: var(--card);
+    }
+    .leg {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .72rem; color: var(--ink2);
+      padding: .25rem .55rem; border-radius: 6px; background: var(--bg);
+    }
+    .leg i { width: 8px; height: 8px; border-radius: 2px; }
+
+    .det-panel .head { padding: .9rem 1.25rem; border-bottom: 1px solid var(--line); font-weight: 600; font-size: .85rem; }
+    .det-panel .body { padding: .75rem 1rem 1rem; max-height: 560px; overflow-y: auto; }
+
+    .det-item {
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: .75rem; align-items: center;
+      padding: .7rem .75rem; border-radius: 12px;
+      border: 1px solid var(--line); margin-bottom: .5rem;
+      background: #faf9f7; transition: .15s background;
+    }
+    .det-item:hover { background: var(--sage-light); }
+    .det-item.det-nodule { border-color: #fca5a5; background: #fff5f5; }
+    .det-item.det-nodule:hover { background: #fee2e2; }
+    .det-idx {
+      width: 26px; height: 26px; border-radius: 8px;
+      background: var(--card); border: 1px solid var(--line);
+      display: grid; place-items: center; font-size: .72rem; font-weight: 600; color: var(--muted);
+    }
+    .det-name { font-size: .82rem; font-weight: 600; }
+    .det-sub { font-size: .72rem; color: var(--muted); }
+    .det-conf { text-align: right; }
+    .det-conf strong { font-size: .85rem; }
+    .det-conf .mini-bar {
+      width: 64px; height: 4px; background: var(--line); border-radius: 99px;
+      margin-top: 4px; margin-left: auto; overflow: hidden;
+    }
+    .det-conf .mini-bar span { display: block; height: 100%; border-radius: 99px; }
+
+    .counts-row {
+      display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .75rem;
+    }
+    .count-chip {
+      font-size: .72rem; padding: .3rem .6rem; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--card);
+    }
+    .count-chip b { color: var(--sage-dark); }
+
+    .meta-foot {
+      margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--line);
+      font-size: .72rem; color: var(--muted); line-height: 1.6;
+    }
+
+    .fade-in { animation: fadeUp .45s ease both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .empty-state {
+      padding: 3rem 1.5rem; text-align: center; color: var(--muted);
+    }
+    .empty-state svg { width: 40px; height: 40px; stroke: var(--line); margin-bottom: .75rem; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero-text">
+      <h2>Acne grading</h2>
+      <p>Upload one or more face photos to get grades and results.</p>
+    </div>
+
+    <div class="layout">
+      <aside>
+        <div class="card upload-card">
+          <div class="upload-stack">
+            <input type="file" id="file" accept="image/png,image/jpeg,image/webp" multiple />
+            <div class="drop" id="dropzone" role="button" tabindex="0">
+              <div class="drop-icon">
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              </div>
+              <strong>Add photos</strong>
+              <small>PNG or JPG · select multiple</small>
+            </div>
+            <div class="preview-grid" id="preview-grid"></div>
+            <p class="upload-hint" id="upload-hint" style="display:none"></p>
+            <button type="button" class="btn-run" id="analyze-btn" disabled>Analyze</button>
+            <div class="error" id="error"></div>
+          </div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="loading card" id="loading">
+          <div class="loader-ring"></div>
+          <h3>Analyzing…</h3>
+          <p id="loading-detail">This may take up to a minute per image.</p>
+          <div class="timer" id="timer">0s</div>
+        </div>
+
+        <div id="results">
+          <div class="grade-row fade-in">
+            <div class="grade-banner" id="grade-banner"></div>
+          </div>
+          <div class="factors fade-in" id="factors" style="animation-delay:.05s"></div>
+          <div class="main-grid fade-in" style="animation-delay:.1s">
+            <div class="card img-panel">
+              <div class="head">
+                <span>Results</span>
+                <span style="font-weight:400;color:var(--muted);font-size:.75rem" id="img-meta"></span>
+              </div>
+              <div class="viz-controls" id="viz-controls">
+                <div class="slider-row">
+                  <label>Min confidence <span id="conf-val">30%</span></label>
+                  <input type="range" id="conf-slider" min="0" max="100" value="30" step="1" />
+                </div>
+                <div class="slider-row">
+                  <label>Box opacity <span id="opacity-val">75%</span></label>
+                  <input type="range" id="opacity-slider" min="5" max="100" value="75" step="1" />
+                </div>
+                <div class="label-mode-row">
+                  <span>Box labels</span>
+                  <div class="label-modes" id="label-modes">
+                    <button type="button" data-mode="box">Box only</button>
+                    <button type="button" data-mode="box-name">Box + name</button>
+                    <button type="button" data-mode="box-score">Box + score</button>
+                    <button type="button" data-mode="box-both" class="active">Box + both</button>
+                  </div>
+                </div>
+                <div class="class-filter-row">
+                  <span>Show classes</span>
+                  <div class="class-filters" id="class-filters">
+                    <button type="button" class="all-btn active" data-class-all>All</button>
+                    <button type="button" data-class="blackheads+whiteheads" class="active"><i style="background:#e85d4c"></i>blackheads+whiteheads</button>
+                    <button type="button" data-class="papules" class="active"><i style="background:#4caf50"></i>papules</button>
+                    <button type="button" data-class="pustules" class="active"><i style="background:#ab47bc"></i>pustules</button>
+                    <button type="button" data-class="nodules" class="active"><i style="background:#d32f2f"></i>nodules</button>
+                  </div>
+                </div>
+              </div>
+              <div class="body">
+                <div class="canvas-wrap">
+                  <canvas id="annotated-canvas"></canvas>
+                </div>
+              </div>
+              <div class="legend" id="legend"></div>
+            </div>
+            <div class="bottom-row">
+              <div class="card det-panel">
+                <div class="head">Findings <span id="det-count" style="font-weight:400;color:var(--muted)"></span></div>
+                <div class="body">
+                  <div class="counts-row" id="counts"></div>
+                  <div id="det-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card empty-state" id="empty">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"/></svg>
+          <p>Add photos to begin</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const fileInput = $("file");
+    const analyzeBtn = $("analyze-btn");
+    const dropzone = $("dropzone");
+    const loading = $("loading");
+    const errorEl = $("error");
+    const results = $("results");
+    const empty = $("empty");
+    let images = [];
+    let activeId = null;
+    let timerIv = null;
+    let vizState = { data: null, img: null, imageId: null };
+
+    function updateAnalyzeBtn() {
+      const n = images.length;
+      const pending = images.filter((i) => !i.result).length;
+      analyzeBtn.disabled = n === 0 || images.some((i) => i.status === "loading");
+      if (n === 0) analyzeBtn.textContent = "Analyze";
+      else if (n === 1) analyzeBtn.textContent = pending === 0 && images[0].result ? "Re-analyze" : "Analyze";
+      else analyzeBtn.textContent = pending === 0 ? `Re-analyze all (${n})` : `Analyze all (${pending})`;
+    }
+
+    function renderThumbGrid() {
+      const grid = $("preview-grid");
+      if (!images.length) {
+        grid.classList.remove("show");
+        $("upload-hint").style.display = "none";
+        return;
+      }
+      grid.classList.add("show");
+      grid.innerHTML = images.map((item) => {
+        const grade = item.result?.grade?.final_grade;
+        let badge = '<span class="badge pending">Pending</span>';
+        if (item.status === "loading") badge = "";
+        else if (item.status === "error") badge = '<span class="badge err">Failed</span>';
+        else if (grade) badge = `<span class="badge" style="color:${GRADE[grade] || "inherit"}">${grade}</span>`;
+        return `<div class="thumb${item.id === activeId ? " active" : ""}" data-id="${item.id}">
+          <img src="${item.url}" alt="" />
+          ${badge}
+          ${item.status === "loading" ? '<div class="spin"></div>' : ""}
+          <button type="button" class="rm" data-rm="${item.id}" aria-label="Remove">×</button>
+        </div>`;
+      }).join("");
+
+      const done = images.filter((i) => i.result).length;
+      const hint = $("upload-hint");
+      hint.style.display = "block";
+      hint.textContent = images.length === 1
+        ? "Click thumbnail to view results"
+        : `${images.length} photos · ${done} analyzed · click to switch`;
+      updateAnalyzeBtn();
+    }
+
+    function addFiles(fileList) {
+      const added = [];
+      for (const file of fileList) {
+        if (!file.type.startsWith("image/")) continue;
+        const dup = images.some((i) => i.name === file.name && i.file.size === file.size);
+        if (dup) continue;
+        added.push({
+          id: crypto.randomUUID(),
+          file,
+          url: URL.createObjectURL(file),
+          name: file.name,
+          result: null,
+          status: "pending",
+          error: null,
+        });
+      }
+      if (!added.length) return;
+      images.push(...added);
+      if (!activeId) activeId = added[0].id;
+      renderThumbGrid();
+      selectImage(activeId);
+    }
+
+    function removeImage(id) {
+      const idx = images.findIndex((i) => i.id === id);
+      if (idx === -1) return;
+      URL.revokeObjectURL(images[idx].url);
+      images.splice(idx, 1);
+      if (activeId === id) activeId = images[0]?.id || null;
+      renderThumbGrid();
+      if (activeId) selectImage(activeId);
+      else {
+        results.classList.remove("show");
+        empty.style.display = "block";
+        vizState = { data: null, img: null, imageId: null };
+      }
+    }
+
+    async function selectImage(id) {
+      activeId = id;
+      renderThumbGrid();
+      const item = images.find((i) => i.id === id);
+      if (!item) return;
+      $("img-meta").textContent = item.name;
+      if (item.result) {
+        empty.style.display = "none";
+        results.classList.add("show");
+        await render(item.result, item.url, item.id);
+      } else {
+        results.classList.remove("show");
+        empty.style.display = item.status === "loading" ? "none" : "block";
+        vizState = { data: null, img: null, imageId: null };
+      }
+    }
+
+    $("preview-grid").addEventListener("click", (e) => {
+      const rm = e.target.closest("[data-rm]");
+      if (rm) { e.stopPropagation(); removeImage(rm.dataset.rm); return; }
+      const thumb = e.target.closest(".thumb[data-id]");
+      if (thumb) selectImage(thumb.dataset.id);
+    });
+
+    async function analyzeOne(item) {
+      const fd = new FormData();
+      fd.append("file", item.file);
+      const res = await fetch(API_BASE + "/analyze", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || res.statusText);
+      return data;
+    }
+
+    const GRADE = { A: "#2d9d6f", B: "#6aab4e", C: "#d4a017", D: "#e07b39", E: "#c94c4c" };
+    const CLASS = {
+      blackheads: "#e85d4c",
+      whiteheads: "#e85d4c",
+      "blackheads+whiteheads": "#e85d4c",
+      papules: "#4caf50",
+      pustules: "#ab47bc",
+      nodules: "#d32f2f",
+    };
+    const API_BASE = location.pathname.startsWith("/acne-detector-v1") ? "/acne-detector-v1" : "";
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    function hexToRgba(hex, a) {
+      const n = parseInt(hex.slice(1), 16);
+      return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+    }
+
+    function detColor(d) {
+      return CLASS[d.display_class] || CLASS[d.class] || "#888888";
+    }
+
+    function renderDetList(dets) {
+      $("det-count").textContent = dets.length ? `(${dets.length})` : "";
+      $("det-list").innerHTML = dets.length ? dets.map((d, i) => {
+        const c = detColor(d);
+        const isNodule = d.class === "nodules" || d.display_class === "nodules";
+        const pct = (d.confidence * 100).toFixed(0);
+        return `<div class="det-item${isNodule ? " det-nodule" : ""}">
+          <div class="det-idx">${i + 1}</div>
+          <div>
+            <div class="det-name">${d.display_class || d.class}</div>
+            <div class="det-sub">${Math.round(d.size_px[0])}×${Math.round(d.size_px[1])} px</div>
+          </div>
+          <div class="det-conf">
+            <strong>${pct}%</strong>
+            <div class="mini-bar"><span style="width:${pct}%;background:${c}"></span></div>
+          </div>
+        </div>`;
+      }).join("") : '<p style="color:var(--muted);font-size:.85rem;padding:.5rem">No lesions at this confidence</p>';
+    }
+
+    function fitCanvasDisplay(canvas) {
+      const wrap = canvas.parentElement;
+      const maxW = wrap.clientWidth || window.innerWidth - 48;
+      const maxH = Math.min(window.innerHeight * 0.78, 900);
+      const nw = canvas.width;
+      const nh = canvas.height;
+      const scale = Math.min(maxW / nw, maxH / nh, 1);
+      canvas.style.width = Math.round(nw * scale) + "px";
+      canvas.style.height = Math.round(nh * scale) + "px";
+    }
+
+    const DET_SEV = {
+      blackheads: 1, whiteheads: 1, "blackheads+whiteheads": 1,
+      papules: 2, pustules: 3, nodules: 4,
+    };
+
+    function detSev(d) {
+      return DET_SEV[d.display_class] || DET_SEV[d.class] || 0;
+    }
+
+    function bboxIoU(a, b) {
+      const [ax1, ay1, ax2, ay2] = a.bbox;
+      const [bx1, by1, bx2, by2] = b.bbox;
+      const ix1 = Math.max(ax1, bx1), iy1 = Math.max(ay1, by1);
+      const ix2 = Math.min(ax2, bx2), iy2 = Math.min(ay2, by2);
+      const inter = Math.max(0, ix2 - ix1) * Math.max(0, iy2 - iy1);
+      if (!inter) return 0;
+      const ua = (ax2 - ax1) * (ay2 - ay1) + (bx2 - bx1) * (by2 - by1) - inter;
+      return inter / (ua + 1e-6);
+    }
+
+    /** Group detections that sit on the same spot (e.g. papule + nodule). */
+    function clusterByOverlap(dets, iouMin = 0.45) {
+      const clusters = [];
+      const used = new Set();
+      for (const d of dets) {
+        if (used.has(d)) continue;
+        const cluster = [d];
+        used.add(d);
+        for (const o of dets) {
+          if (used.has(o)) continue;
+          if (cluster.some((c) => bboxIoU(c, o) >= iouMin)) {
+            cluster.push(o);
+            used.add(o);
+          }
+        }
+        clusters.push(cluster);
+      }
+      return clusters;
+    }
+
+    function clusterLabel(cluster, mode) {
+      if (mode === "box") return "";
+      const bySev = [...cluster].sort((a, b) => detSev(b) - detSev(a));
+      const primary = bySev[0];
+      const name = primary.display_class || primary.class;
+      const score = `${(primary.confidence * 100).toFixed(0)}%`;
+      const others = [...new Set(cluster.map((d) => d.display_class || d.class))].filter((n) => n !== name);
+      if (mode === "box-name") {
+        return others.length ? `${name} (+${others.join(", ")})` : name;
+      }
+      if (mode === "box-score") return score;
+      return others.length ? `${name} ${score} (+${others.join(", ")})` : `${name} ${score}`;
+    }
+
+    function sortForDraw(dets) {
+      return [...dets].sort((a, b) => detSev(a) - detSev(b) || a.confidence - b.confidence);
+    }
+
+    function drawBox(ctx, d, lineW, opacity, fontSize, labelMode, labelText, labelOffset) {
+      const [x1, y1, x2, y2] = d.bbox;
+      const w = x2 - x1;
+      const h = y2 - y1;
+      const isNodule = d.class === "nodules" || d.display_class === "nodules";
+      const color = isNodule ? "#d32f2f" : detColor(d);
+      const strokeW = isNodule ? lineW * 2.5 : lineW;
+
+      ctx.globalAlpha = opacity * (isNodule ? 0.35 : 0.25);
+      ctx.fillStyle = color;
+      ctx.fillRect(x1, y1, w, h);
+
+      ctx.globalAlpha = opacity;
+      if (isNodule) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = strokeW + 3;
+        ctx.strokeRect(x1, y1, w, h);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = strokeW;
+      ctx.setLineDash(isNodule ? [strokeW * 2, strokeW] : []);
+      ctx.strokeRect(x1, y1, w, h);
+      ctx.setLineDash([]);
+
+      if (labelText) {
+        const tw = ctx.measureText(labelText).width;
+        const lh = fontSize + 6;
+        const ly = Math.max(0, y1 - lh - labelOffset);
+        ctx.fillStyle = hexToRgba(isNodule ? "#b71c1c" : color, Math.min(1, opacity + 0.15));
+        ctx.fillRect(x1, ly, tw + 8, lh);
+        ctx.globalAlpha = Math.min(1, opacity + 0.25);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(labelText, x1 + 4, ly + fontSize + 2);
+      }
+    }
+
+    function detLabelText(d, mode) {
+      const name = d.display_class || d.class;
+      const score = `${(d.confidence * 100).toFixed(0)}%`;
+      if (mode === "box-name") return name;
+      if (mode === "box-score") return score;
+      if (mode === "box-both") return `${name} ${score}`;
+      return "";
+    }
+
+    function detFilterGroup(d) {
+      const name = d.display_class || d.class;
+      if (name === "blackheads" || name === "whiteheads") return "blackheads+whiteheads";
+      return name;
+    }
+
+    function getEnabledClasses() {
+      return new Set(
+        [...document.querySelectorAll("#class-filters button[data-class].active")].map((b) => b.dataset.class)
+      );
+    }
+
+    function syncClassAllBtn() {
+      const allBtn = document.querySelector("#class-filters button[data-class-all]");
+      const classBtns = [...document.querySelectorAll("#class-filters button[data-class]")];
+      if (!allBtn) return;
+      allBtn.classList.toggle("active", classBtns.every((b) => b.classList.contains("active")));
+    }
+
+    function applyClassFilter(dets) {
+      const enabled = getEnabledClasses();
+      return dets.filter((d) => enabled.has(detFilterGroup(d)));
+    }
+
+    function resetClassFilters() {
+      document.querySelectorAll("#class-filters button[data-class]").forEach((b) => b.classList.add("active"));
+      syncClassAllBtn();
+    }
+
+    function getLabelMode() {
+      return document.querySelector("#label-modes button.active")?.dataset.mode || "box-both";
+    }
+
+    function drawAnnotated() {
+      const { data, img, imageId } = vizState;
+      if (!data || !img || imageId !== activeId) return;
+
+      const confMin = parseFloat($("conf-slider").value) / 100;
+      const opacity = parseFloat($("opacity-slider").value) / 100;
+      const labelMode = getLabelMode();
+      $("conf-val").textContent = Math.round(confMin * 100) + "%";
+      $("opacity-val").textContent = Math.round(opacity * 100) + "%";
+
+      const canvas = $("annotated-canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+
+      const lineW = Math.max(2, Math.min(img.naturalWidth, img.naturalHeight) / 400);
+      const fontSize = Math.max(12, Math.min(img.naturalWidth, img.naturalHeight) / 55);
+      ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+
+      const dets = applyClassFilter(
+        (data.detections?.active || [])
+          .filter((d) => d.confidence >= confMin)
+      ).sort((a, b) => b.confidence - a.confidence);
+
+      const clusters = clusterByOverlap(dets);
+      let labelBand = 0;
+      for (const cluster of clusters) {
+        const drawOrder = sortForDraw(cluster);
+        const label = clusterLabel(cluster, labelMode);
+        for (let i = 0; i < drawOrder.length; i++) {
+          const d = drawOrder[i];
+          const isLast = i === drawOrder.length - 1;
+          drawBox(ctx, d, lineW, opacity, fontSize, labelMode, isLast ? label : "", labelBand);
+        }
+        labelBand += label ? fontSize + 8 : 0;
+      }
+
+      ctx.globalAlpha = 1;
+      fitCanvasDisplay(canvas);
+      renderDetList(dets);
+      updateGradeUI(dets, confMin);
+    }
+
+    window.addEventListener("resize", () => {
+      const canvas = $("annotated-canvas");
+      if (canvas.width) fitCanvasDisplay(canvas);
+    });
+
+    $("conf-slider").addEventListener("input", drawAnnotated);
+    $("opacity-slider").addEventListener("input", drawAnnotated);
+    $("label-modes").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-mode]");
+      if (!btn) return;
+      document.querySelectorAll("#label-modes button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      drawAnnotated();
+    });
+
+    $("class-filters").addEventListener("click", (e) => {
+      const allBtn = e.target.closest("button[data-class-all]");
+      if (allBtn) {
+        document.querySelectorAll("#class-filters button[data-class]").forEach((b) => b.classList.add("active"));
+        allBtn.classList.add("active");
+        drawAnnotated();
+        return;
+      }
+      const btn = e.target.closest("button[data-class]");
+      if (!btn) return;
+      const active = document.querySelectorAll("#class-filters button[data-class].active");
+      if (btn.classList.contains("active") && active.length === 1) return;
+      btn.classList.toggle("active");
+      syncClassAllBtn();
+      drawAnnotated();
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files?.length) addFiles(fileInput.files);
+      fileInput.value = "";
+    });
+
+    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+    });
+
+    dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("over"); });
+    dropzone.addEventListener("dragleave", () => dropzone.classList.remove("over"));
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("over");
+      if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    });
+
+    analyzeBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!images.length) return;
+
+      const targets = images.some((i) => !i.result) ? images.filter((i) => !i.result) : [...images];
+
+      errorEl.classList.remove("show");
+      loading.classList.add("show");
+      analyzeBtn.disabled = true;
+
+      let sec = 0;
+      $("timer").textContent = "0s";
+      timerIv = setInterval(() => { sec++; $("timer").textContent = sec + "s"; }, 1000);
+
+      let firstShown = false;
+      try {
+        for (let i = 0; i < targets.length; i++) {
+          const item = targets[i];
+          item.status = "loading";
+          item.error = null;
+          renderThumbGrid();
+          $("loading-detail").textContent = targets.length > 1
+            ? `Image ${i + 1} of ${targets.length}: ${item.name}`
+            : `Analyzing ${item.name}`;
+
+          try {
+            item.result = await analyzeOne(item);
+            item.status = "done";
+          } catch (err) {
+            item.status = "error";
+            item.error = err.message || String(err);
+            item.result = null;
+          }
+          renderThumbGrid();
+
+          if (!firstShown && item.result) {
+            activeId = item.id;
+            await selectImage(item.id);
+            firstShown = true;
+          } else if (activeId === item.id && item.result) {
+            await selectImage(item.id);
+          }
+        }
+        if (!firstShown) {
+          errorEl.textContent = "All images failed to analyze.";
+          errorEl.classList.add("show");
+          empty.style.display = "block";
+        }
+      } finally {
+        clearInterval(timerIv);
+        loading.classList.remove("show");
+        $("loading-detail").textContent = "This may take up to a minute per image.";
+        updateAnalyzeBtn();
+      }
+    });
+
+    function barColor(letter) { return GRADE[letter] || "#5c7c6a"; }
+    function numToPct(n) { return Math.min(100, ((n - 1) / 4) * 100); }
+
+    function renderGradeBanner(el, { letter, score, title, weightsLabel, formula, noduleCap, confNote }) {
+      const col = GRADE[letter] || "#5c7c6a";
+      const pct = numToPct(score);
+      el.innerHTML = `
+        <div class="grade-ring" style="--gc:${col};--pct:${pct}">
+          <div class="inner">
+            <div class="letter">${letter}</div>
+            <div class="num">grade</div>
+          </div>
+        </div>
+        <div class="grade-copy">
+          <h3>${title}</h3>
+          <div class="sub">Weights ${weightsLabel}${confNote ? ` · ${confNote}` : ""}</div>
+          <div class="formula">${formula}</div>
+          ${noduleCap ? '<div class="warn">Nodule visible at this confidence — grade capped at D</div>' : ""}
+        </div>
+        <div class="score-pill">
+          <div class="lbl">Score</div>
+          <div class="big" style="color:${col}">${score}</div>
+        </div>`;
+    }
+
+    const F2_SEV = {
+      "blackheads+whiteheads": 2,
+      papules: 3,
+      pustules: 4,
+      nodules: 5,
+    };
+    const NUM_GRADE = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
+
+    function gradeF1(n) {
+      if (n === 0) return { letter: "A", numeric: 1 };
+      if (n <= 2) return { letter: "B", numeric: 2 };
+      if (n <= 9) return { letter: "C", numeric: 3 };
+      if (n <= 20) return { letter: "D", numeric: 4 };
+      return { letter: "E", numeric: 5 };
+    }
+
+    function gradeF3(pct) {
+      if (pct <= 0) return { letter: "A", numeric: 1 };
+      if (pct < 5) return { letter: "B", numeric: 2 };
+      if (pct <= 15) return { letter: "C", numeric: 3 };
+      if (pct <= 30) return { letter: "D", numeric: 4 };
+      return { letter: "E", numeric: 5 };
+    }
+
+    function normalizeByClass(dets) {
+      const out = {};
+      let comedonal = 0;
+      for (const d of dets) {
+        const name = d.class;
+        if (name === "dark spot") continue;
+        if (name === "blackheads" || name === "whiteheads") comedonal++;
+        else out[name] = (out[name] || 0) + 1;
+      }
+      if (comedonal > 0) out["blackheads+whiteheads"] = comedonal;
+      return out;
+    }
+
+    function gradeF2(byClass) {
+      const keys = Object.keys(byClass).filter((k) => byClass[k] > 0);
+      if (!keys.length) return { letter: "A", numeric: 1, worst_type: "none" };
+      let worst = keys[0];
+      let worstNum = F2_SEV[worst] || 2;
+      for (const k of keys) {
+        const n = F2_SEV[k] || 2;
+        if (n > worstNum) { worst = k; worstNum = n; }
+      }
+      return { letter: NUM_GRADE[worstNum], numeric: worstNum, worst_type: worst };
+    }
+
+    function bboxArea(d) {
+      const [x1, y1, x2, y2] = d.bbox;
+      return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    }
+
+    function toLetter(score) {
+      if (score <= 1.5) return "A";
+      if (score <= 2.5) return "B";
+      if (score <= 3.5) return "C";
+      if (score <= 4.5) return "D";
+      return "E";
+    }
+
+    function hasNodule(dets) {
+      return dets.some((d) => d.class === "nodules" || d.display_class === "nodules");
+    }
+
+    function weightedResult(f1n, f2n, f3n, w1, w2, w3, nodulePresent) {
+      let raw = w1 * f1n + w2 * f2n + w3 * f3n;
+      const rawScore = Math.round(raw * 100) / 100;
+      let score = rawScore;
+      let capped = false;
+      if (nodulePresent && score < 4.0) {
+        score = 4.0;
+        capped = true;
+      }
+      const w1s = Math.round(w1 * 100);
+      const w2s = Math.round(w2 * 100);
+      const w3s = Math.round(w3 * 100);
+      const expr = `0.${String(w1s).padStart(2, "0")}×${f1n} + 0.${String(w2s).padStart(2, "0")}×${f2n} + 0.${String(w3s).padStart(2, "0")}×${f3n} = ${rawScore}`;
+      return {
+        final_grade: toLetter(score),
+        score,
+        rawScore,
+        capped,
+        formula: capped ? `${expr} → capped at D` : expr,
+      };
+    }
+
+    function computeGradeFromDets(dets, faceMaskPx) {
+      const byClass = normalizeByClass(dets);
+      const activeN = dets.length;
+      const lesionArea = dets.reduce((s, d) => s + bboxArea(d), 0);
+      const areaPct = faceMaskPx > 0 ? Math.min(100, (lesionArea / faceMaskPx) * 100) : 0;
+      const nodulePresent = hasNodule(dets);
+
+      const f1 = gradeF1(activeN);
+      const f2 = gradeF2(byClass);
+      const f3 = gradeF3(areaPct);
+      const doctor = weightedResult(f1.numeric, f2.numeric, f3.numeric, 0.40, 0.35, 0.25, nodulePresent);
+
+      return {
+        final_grade: doctor.final_grade,
+        score: doctor.score,
+        formula: doctor.formula,
+        nodule_cap_applied: doctor.capped,
+        f1: { letter: f1.letter, numeric: f1.numeric, active_lesion_count: activeN },
+        f2: { letter: f2.letter, numeric: f2.numeric, worst_type: f2.worst_type },
+        f3: { letter: f3.letter, numeric: f3.numeric, area_percent: Math.round(areaPct * 10) / 10 },
+        counts: byClass,
+      };
+    }
+
+    function updateGradeUI(dets, confMin) {
+      const faceMaskPx = vizState.data?.meta?.face_mask_px || vizState.data?.grade?.face_mask_px || 0;
+      const g = computeGradeFromDets(dets, faceMaskPx);
+      const confPct = Math.round(confMin * 100);
+      const confNote = confPct > 0 ? `≥${confPct}% confidence` : null;
+
+      renderGradeBanner($("grade-banner"), {
+        letter: g.final_grade,
+        score: g.score,
+        title: "Doctor grade",
+        weightsLabel: "40 · 35 · 25",
+        formula: g.formula,
+        noduleCap: g.nodule_cap_applied,
+        confNote,
+      });
+
+      const factors = [
+        { key: "f1", label: "Lesion count", w: "40%", bar: g.f1.numeric },
+        { key: "f2", label: "Severity", w: "35%", bar: g.f2.numeric },
+        { key: "f3", label: "Area affected", w: "25%", bar: g.f3.numeric },
+      ];
+      const subs = {
+        f1: `${g.f1.active_lesion_count} active lesions`,
+        f2: g.f2.worst_type,
+        f3: `${g.f3.area_percent}% of face skin`,
+      };
+
+      $("factors").innerHTML = factors.map((f) => {
+        const gl = g[f.key].letter;
+        const c = barColor(gl);
+        return `<div class="factor">
+          <div class="head"><span class="name">${f.label}</span><span class="weight">${f.w}</span></div>
+          <div class="grade-letter" style="color:${c}">${gl}</div>
+          <div class="detail">${subs[f.key]}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${numToPct(f.bar)}%;background:${c}"></div></div>
+        </div>`;
+      }).join("");
+
+      $("counts").innerHTML = Object.entries(g.counts)
+        .map(([k, v]) => `<span class="count-chip">${k}: <b>${v}</b></span>`).join("") ||
+        '<span class="count-chip" style="color:var(--muted)">No lesions at this confidence</span>';
+    }
+
+    async function render(data, imageUrl, imageId) {
+      vizState.data = data;
+      vizState.imageId = imageId;
+      vizState.img = await loadImage(imageUrl);
+
+      $("conf-slider").value = 30;
+      $("opacity-slider").value = 75;
+      resetClassFilters();
+      $("viz-controls").classList.add("show");
+
+      drawAnnotated();
+    }
+  </script>
+</body>
+</html>

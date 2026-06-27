@@ -1,0 +1,28 @@
+# AcneDet v1 — YOLO-based acne detection + grading (tiled inference + MediaPipe face mask)
+# Runs on port 8000 internally.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY services/acne-detector-v1/api/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+COPY services/acne-detector-v1/api /app/api
+
+# Bake the YOLO weights into the image so the service is self-contained on ECS
+# (no EFS dependency). Tracked via Git LFS at models/acne-detector/best.pt.
+# Local/compose can still override WEIGHTS_PATH to a mounted /models path.
+COPY models/acne-detector/best.pt /app/models/best.pt
+
+ENV WEIGHTS_PATH=/app/models/best.pt
+ENV CONF=0.2
+ENV GRID=4,4
+ENV IMGSZ=896
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

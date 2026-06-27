@@ -52,6 +52,7 @@ services:
       # NEXT_PUBLIC_APP_URL / AUTH_URL: set only in ../.env or ../.env.local (not here — overrides env_file).
       PUBLIC_UPLOAD_BASE_URL: ${PUBLIC_UPLOAD_BASE_URL:-http://localhost:3000/api/files}
       FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
+      ACNE_DETECTOR_SERVICE_URL: http://acne-detector:8000
     volumes:
       - uploads:/uploads
     depends_on:
@@ -72,12 +73,14 @@ services:
       LOCAL_REDIS_URL: redis://redis:6379
       LOCAL_STORAGE_ROOT: /uploads
       FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
+      ACNE_DETECTOR_SERVICE_URL: http://acne-detector:8000
     volumes:
       - uploads:/uploads
     depends_on:
       - redis
       - postgres
       - ml-inference
+      - acne-detector
 
   ml-inference:
     build:
@@ -94,6 +97,23 @@ services:
     volumes:
       - ../models:/models:ro
       - ${FACE_ANALYSIS_REPO:-/Users/sagnikdey/Desktop/face_analysis_tool}:/app/face_analysis:ro
+
+  acne-detector:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.acne-detector
+    env_file:
+      - ../.env
+      - ../.env.local
+    ports:
+      - "8000:8000"
+    environment:
+      WEIGHTS_PATH: /models/acne-detector/best.pt
+      CONF: "0.2"
+      GRID: "4,4"
+      IMGSZ: "896"
+    volumes:
+      - ../models:/models:ro
 
 volumes:
   pgdata:
