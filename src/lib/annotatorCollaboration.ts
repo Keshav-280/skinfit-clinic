@@ -173,7 +173,13 @@ export function allShapesMerged(
   return out;
 }
 
-/** Pick one label set per image (user with latest sync who touched that image). */
+/**
+ * Merge labels per-category across all users for each image.
+ * For each (image, category) pair, pick the value from the user with the latest
+ * sync timestamp (with a tiny tiebreaker for users who have drawn shapes on that image).
+ * This ensures that when an admin overrides one category, the other categories
+ * retain the grades set by other annotators rather than falling back to defaults.
+ */
 export function mergedLabelsFromCollaborationData(
   perUserLabels: AnnotatorCollaborationStore["perUserLabels"],
   userSyncAt: AnnotatorCollaborationStore["userSyncAt"],
@@ -186,20 +192,38 @@ export function mergedLabelsFromCollaborationData(
 
   const out: Record<string, Record<string, AnnotatorLabelEntry>> = {};
   for (const imageKey of imageIndices) {
-    let bestUser: string | null = null;
-    let bestTs = 0;
-    for (const [userId, labels] of Object.entries(perUserLabels)) {
+    const mergedCategories: Record<string, AnnotatorLabelEntry> = {};
+
+    // Collect all categories that any user has graded on this image
+    const allCategories = new Set<string>();
+    for (const labels of Object.values(perUserLabels)) {
       if (!labels[imageKey]) continue;
-      const ts = Date.parse(userSyncAt[userId] ?? "") || 0;
-      const hasShapes = userHasShapeOnImage(userId, imageKey);
-      const score = ts + (hasShapes ? 1 : 0);
-      if (score >= bestTs) {
-        bestTs = score;
-        bestUser = userId;
+      for (const cat of Object.keys(labels[imageKey])) {
+        allCategories.add(cat);
       }
     }
-    if (bestUser) {
-      out[imageKey] = { ...perUserLabels[bestUser]![imageKey] };
+
+    // For each category, pick the entry from the user with the latest sync
+    for (const cat of allCategories) {
+      let bestUser: string | null = null;
+      let bestTs = 0;
+      for (const [userId, labels] of Object.entries(perUserLabels)) {
+        if (!labels[imageKey]?.[cat]) continue;
+        const ts = Date.parse(userSyncAt[userId] ?? "") || 0;
+        const hasShapes = userHasShapeOnImage(userId, imageKey);
+        const score = ts + (hasShapes ? 1 : 0);
+        if (score >= bestTs) {
+          bestTs = score;
+          bestUser = userId;
+        }
+      }
+      if (bestUser) {
+        mergedCategories[cat] = { ...perUserLabels[bestUser]![imageKey]![cat]! };
+      }
+    }
+
+    if (Object.keys(mergedCategories).length > 0) {
+      out[imageKey] = mergedCategories;
     }
   }
   return out;
