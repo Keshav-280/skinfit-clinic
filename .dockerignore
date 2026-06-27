@@ -14,6 +14,9 @@ mobile/
 # Ignore books documentation
 books/
 
+# Ignore face_analysis_tool repo (mounted read-only into ml-inference at runtime)
+face_analysis_tool/
+
 # Ignore local ML weights (mounted via volume at runtime), EXCEPT the acne
 # detector model which is baked into the acne-detector image.
 models/*
