@@ -14,7 +14,7 @@ import numpy as np
 # ── defaults (override via env in main.py) ──────────────────────────
 GRID = tuple(int(x) for x in os.getenv("GRID", "4,4").split(","))
 OVERLAP = float(os.getenv("OVERLAP", "0.25"))
-CONF = float(os.getenv("CONF", "0"))
+CONF = float(os.getenv("CONF", "0.05"))
 IMGSZ = int(os.getenv("IMGSZ", "896"))
 MERGE_IOU = float(os.getenv("MERGE_IOU", "0.45"))
 MIN_FACE_OVERLAP = float(os.getenv("MIN_FACE_OVERLAP", "0.35"))

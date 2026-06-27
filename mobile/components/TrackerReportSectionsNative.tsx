@@ -121,9 +121,6 @@ export function TrackerReportSectionsNative({
   const displayPrediction = scoresUnlocked
     ? report.predictionText
     : sanitizeTrackerNarrativeForLockedPatient(report.predictionText);
-  const displayInsight = scoresUnlocked
-    ? report.insightText
-    : sanitizeTrackerNarrativeForLockedPatient(report.insightText);
 
   return (
     <View style={styles.wrap}>
@@ -154,7 +151,6 @@ export function TrackerReportSectionsNative({
             <Text style={styles.statValue}>{report.scores.consistencyScore}%</Text>
           </View>
         </View>
-        <Text style={styles.comparisonHint}>{displayInsight}</Text>
       </View>
 
       <View style={styles.card}>
@@ -315,12 +311,6 @@ const styles = StyleSheet.create({
     minHeight: 20,
     alignItems: "center",
     justifyContent: "center",
-  },
-  comparisonHint: {
-    marginTop: 12,
-    fontSize: 12,
-    lineHeight: 18,
-    color: "#6B7280",
   },
   blockTitle: {
     marginTop: 4,

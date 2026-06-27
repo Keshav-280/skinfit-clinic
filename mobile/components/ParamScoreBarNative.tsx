@@ -59,10 +59,19 @@ export function ParamScoreBarNative({
     typeof value === "number"
       ? valueForBar(patientChartDisplayValue(value, true))
       : 0;
+  const displayScore =
+    typeof value === "number"
+      ? Math.round(patientChartDisplayValue(value, true))
+      : null;
 
   return (
-    <View style={[styles.barTrack, { width }]}>
-      <View style={[styles.barFill, { width: `${pct}%` }]} />
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, width }}>
+      <View style={[styles.barTrack, { flex: 1 }]}>
+        <View style={[styles.barFill, { width: `${pct}%` }]} />
+      </View>
+      <Text style={styles.scoreText}>
+        {displayScore !== null ? String(displayScore) : "–"}
+      </Text>
     </View>
   );
 }
@@ -106,5 +115,12 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 4,
     backgroundColor: NAVY,
+  },
+  scoreText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: NAVY,
+    minWidth: 20,
+    textAlign: "right",
   },
 });

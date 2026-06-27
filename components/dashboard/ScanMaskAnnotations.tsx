@@ -58,7 +58,7 @@ function MaskPanel({
           className={
             cropLegacyTitle
               ? undefined
-              : "h-full w-full object-contain object-center"
+              : "h-full w-full object-cover object-center"
           }
           style={cropLegacyTitle ? legacyMaskTitleCropStyle() : undefined}
         />

@@ -137,9 +137,7 @@ export function TrackerReportSections({
   const displayPrediction = scoresUnlocked
     ? report.predictionText
     : sanitizeTrackerNarrativeForLockedPatient(report.predictionText);
-  const displayInsight = scoresUnlocked
-    ? report.insightText
-    : sanitizeTrackerNarrativeForLockedPatient(report.insightText);
+
 
   return (
     <motion.div
@@ -179,7 +177,6 @@ export function TrackerReportSections({
             </p>
           </div>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-zinc-600">{displayInsight}</p>
       </section>
 
       <section className={sectionCard}>

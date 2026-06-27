@@ -48,19 +48,21 @@ export function ParamScoreBar({ value, scoresUnlocked, className = "" }: Props) 
     );
   }
 
-  const width =
-    typeof value === "number"
-      ? valueForBar(patientChartDisplayValue(value, true))
-      : 0;
+  const displayScore =
+    typeof value === "number" ? patientChartDisplayValue(value, true) : null;
+  const width = displayScore !== null ? valueForBar(displayScore) : 0;
 
   return (
-    <div
-      className={`h-2 w-full max-w-[120px] overflow-hidden rounded-full bg-[rgba(44,62,107,0.12)] ${className}`}
-    >
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#2C3E6B]"
-        style={{ width: `${width}%` }}
-      />
+    <div className={`flex items-center gap-2 ${className}`}>
+      <div className="h-2 w-full max-w-[90px] overflow-hidden rounded-full bg-[rgba(44,62,107,0.12)]">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#2C3E6B]"
+          style={{ width: `${width}%` }}
+        />
+      </div>
+      <span className="min-w-[20px] text-right text-[11px] font-semibold tabular-nums text-[#2C3E6B]">
+        {displayScore !== null ? Math.round(displayScore) : "–"}
+      </span>
     </div>
   );
 }
