@@ -25,11 +25,8 @@ export function isAllowedIncompleteOnboardingPath(
   ) {
     return true;
   }
-  if (
-    baselineSubmitted &&
-    !snapshot.questionnaireMilestoneComplete &&
-    onQuestionnaire
-  ) {
+  // Allow questionnaire access regardless of scan status
+  if (!snapshot.questionnaireMilestoneComplete && onQuestionnaire) {
     return true;
   }
   if (baselineSubmitted && onBaseline) return true;

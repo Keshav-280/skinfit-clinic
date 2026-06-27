@@ -144,16 +144,16 @@ export async function getPatientProgressSnapshot(
       href: MILESTONE_HREFS.account,
     },
     {
+      id: "questionnaire",
+      label: "Questionnaire",
+      done: questionnaireDone,
+      href: questionnaireDone ? null : MILESTONE_HREFS.questionnaire,
+    },
+    {
       id: "onboarding_scan",
       label: "Onboarding scan",
       done: hasOnboardingScan,
       href: MILESTONE_HREFS.onboarding_scan,
-    },
-    {
-      id: "questionnaire",
-      label: "Questionnaire",
-      done: questionnaireDone,
-      href: hasOnboardingScan ? MILESTONE_HREFS.questionnaire : null,
     },
     {
       id: "daily_journal",

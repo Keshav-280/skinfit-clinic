@@ -669,7 +669,18 @@ export function OnboardingQuestionnaireForm() {
   }
 
   function leaveForDashboard() {
-    persistDraft();
+    // User chose to skip from the first question — clear any saved draft so
+    // returning to the questionnaire shows a clean slate with no pre-selected options.
+    try {
+      localStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
+    } catch {
+      /* */
+    }
+    void fetch("/api/onboarding/questionnaire/draft", {
+      method: "DELETE",
+    }).catch(() => {
+      /* */
+    });
     router.replace("/dashboard");
   }
 
@@ -1176,16 +1187,6 @@ export function OnboardingQuestionnaireForm() {
       ) : null}
 
       <div className="pt-4">
-        {activeStep > 0 ? (
-          <button
-            type="button"
-            onClick={leaveForDashboard}
-            disabled={busy}
-            className="mb-3 w-full py-2 text-center text-sm font-semibold text-zinc-500 transition-colors hover:text-skinfit-navy disabled:opacity-50"
-          >
-            Answer later
-          </button>
-        ) : null}
         <div className="flex gap-3">
           <button
             type="button"

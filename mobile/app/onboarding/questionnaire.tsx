@@ -668,7 +668,16 @@ export default function QuestionnaireScreen() {
   }
 
   function leaveForDashboard() {
-    persistDraft();
+    // User chose to skip from the first question — clear any saved draft so
+    // returning to the questionnaire shows a clean slate with no pre-selected options.
+    void AsyncStorage.removeItem(ONBOARDING_QUESTIONNAIRE_DRAFT_KEY);
+    if (token) {
+      void apiJson("/api/onboarding/questionnaire/draft", token, {
+        method: "DELETE",
+      }).catch(() => {
+        /* */
+      });
+    }
     // Remember the explicit choice so the drawer gate lets the user in even
     // without a baseline scan (same as web's open /dashboard).
     if (user?.id) void setOnboardingDashboardSkip(user.id);
@@ -1101,12 +1110,6 @@ export default function QuestionnaireScreen() {
         </>
       ) : null}
 
-      {activeStep > 0 ? (
-        <Pressable style={styles.skipBtn} onPress={leaveForDashboard} disabled={busy}>
-          <Text style={styles.skipBtnText}>Answer later</Text>
-        </Pressable>
-      ) : null}
-
       <View style={styles.row}>
         <Pressable style={styles.btnGhost} onPress={back} disabled={busy}>
           <Text style={styles.btnGhostText}>Back</Text>
@@ -1195,16 +1198,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     marginBottom: 12,
     color: "#1A1A2E",
-  },
-  skipBtn: {
-    marginTop: 24,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  skipBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#71717a",
   },
   row: { flexDirection: "row", gap: 12, marginTop: 12 },
   btn: {
