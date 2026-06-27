@@ -1,7 +1,14 @@
 import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
 
 export function formatFaceIdentityCheckLine(check: FaceIdentityImageCheck): string {
-  if (!check.faceDetected) return `${check.title}: No face detected`;
+  if (!check.faceDetected) {
+    const reason = check.error ? ` [${check.error}]` : "";
+    const size =
+      typeof check.bytes === "number"
+        ? ` (${(check.bytes / 1024).toFixed(0)} KB)`
+        : "";
+    return `${check.title}: No face detected${reason}${size}`;
+  }
   const score =
     typeof check.similarity === "number"
       ? ` (${Math.round(check.similarity * 100)}%${

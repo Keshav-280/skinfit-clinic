@@ -39,6 +39,10 @@ export type FaceIdentityImageCheck = {
   similarity?: number;
   /** Minimum cosine similarity required for this angle. */
   threshold?: number;
+  /** Debug: raw failure reason from the face embedding service. */
+  error?: string;
+  /** Debug: size of the JPEG buffer fed to the detector (bytes). */
+  bytes?: number;
 };
 
 export type ScanFaceIdentityGateResult =
@@ -310,13 +314,14 @@ async function verifyImagesAgainstReference(
     let jpeg: Buffer;
     try {
       jpeg = await readImageBuffer(image);
-    } catch {
+    } catch (err) {
       imageChecks.push({
         label: image.label,
         title,
         matched: false,
         faceDetected: false,
         threshold,
+        error: `read_failed: ${err instanceof Error ? err.message : String(err)}`,
       });
       continue;
     }
@@ -324,13 +329,15 @@ async function verifyImagesAgainstReference(
     let extracted: Awaited<ReturnType<typeof extractFaceEmbedding>>;
     try {
       extracted = await extractFaceEmbedding(jpeg);
-    } catch {
+    } catch (err) {
       imageChecks.push({
         label: image.label,
         title,
         matched: false,
         faceDetected: false,
         threshold,
+        bytes: jpeg.length,
+        error: `embed_threw: ${err instanceof Error ? err.message : String(err)}`,
       });
       continue;
     }
@@ -342,6 +349,8 @@ async function verifyImagesAgainstReference(
         matched: false,
         faceDetected: extracted.faceDetected,
         threshold,
+        bytes: jpeg.length,
+        error: extracted.error,
       });
       if (extracted.faceDetected) anyFaceDetected = true;
       continue;
@@ -358,6 +367,7 @@ async function verifyImagesAgainstReference(
       faceDetected: true,
       similarity: Number(similarity.toFixed(4)),
       threshold,
+      bytes: jpeg.length,
     });
   }
 
@@ -459,6 +469,15 @@ export async function enforceScanFaceIdentity(args: {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE,
       message: USER_MESSAGES[FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE],
+      imageChecks: [
+        {
+          label: referenceImage.label,
+          title: titleForCaptureLabel(referenceImage.label),
+          matched: false,
+          faceDetected: false,
+          error: `read_failed: ${err instanceof Error ? err.message : String(err)}`,
+        },
+      ],
     };
   }
 
@@ -474,6 +493,16 @@ export async function enforceScanFaceIdentity(args: {
       ok: false,
       code: FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE,
       message: USER_MESSAGES[FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE],
+      imageChecks: [
+        {
+          label: referenceImage.label,
+          title: titleForCaptureLabel(referenceImage.label),
+          matched: false,
+          faceDetected: false,
+          bytes: referenceJpeg.length,
+          error: `embed_threw: ${err instanceof Error ? err.message : String(err)}`,
+        },
+      ],
     };
   }
 
@@ -491,6 +520,16 @@ export async function enforceScanFaceIdentity(args: {
       ok: false,
       code,
       message: USER_MESSAGES[code],
+      imageChecks: [
+        {
+          label: referenceImage.label,
+          title: titleForCaptureLabel(referenceImage.label),
+          matched: false,
+          faceDetected: extracted.faceDetected,
+          bytes: referenceJpeg.length,
+          error: extracted.error,
+        },
+      ],
     };
   }
 
