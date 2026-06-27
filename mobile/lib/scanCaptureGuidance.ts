@@ -68,31 +68,37 @@ const FACE_TARGET = {
 };
 
 /**
- * Mobile-only framing band — face should fill **30–60%** of the frame.
- * (Web `src/lib/scanCaptureGuidance.ts` keeps its own 20–40% band; do not change it.)
+ * Unified framing band — face should fill **35–55%** of the frame.
+ * Matches web `src/lib/scanCaptureGuidance.ts` for cross-device consistency.
+ *
+ * Calculated from the mobile face guide ellipse (cx=50%, cy=50%, rx=32%, ry=39%):
+ *   Ellipse bounding rect = (2×0.32) × (2×0.39) = 0.4992
+ *   Face portrait box fills ~70–100% of this on the smaller mobile guide.
+ *   35–55% of the full frame keeps the face nicely inscribed in the ellipse.
  */
-export const IDEAL_FACE_FILL_MIN = 0.3;
-export const IDEAL_FACE_FILL_MAX = 0.6;
-/** ±3 pts hysteresis around the 30–60% band. */
+export const IDEAL_FACE_FILL_MIN = 0.35;
+export const IDEAL_FACE_FILL_MAX = 0.55;
+/** ±3 pts hysteresis around the 35–55% band. */
 const CAPTURE_FRAMING_TOLERANCE = 0.03;
 const IDEAL_FACE_FILL_AREA = (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 27% — "move closer". */
+  /** Below 32% — "move closer". */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At/above 30% — size OK (lower bound). */
+  /** At/above 35% — size OK (lower bound). */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 63% — "ease back". */
+  /** Above 58% — "ease back". */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At/below 60% — size OK (upper bound). */
+  /** At/below 55% — size OK (upper bound). */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
-  centerEnterX: 0.2,
-  centerExitX: 0.15,
-  centerEnterY: 0.22,
-  centerExitY: 0.17,
+  /** Tighter centering to keep face within the ellipse guide. */
+  centerEnterX: 0.15,
+  centerExitX: 0.10,
+  centerEnterY: 0.18,
+  centerExitY: 0.12,
 } as const;
 
-/** Auto-zoom converges toward the center of the 30–60% band (45%). */
+/** Auto-zoom converges toward the center of the 35–55% band (45%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }
@@ -267,16 +273,16 @@ export function analyzeLightingFromRgba(
   let quality: LightingQuality = "good";
   let message = "Lighting looks good";
 
-  if (mean < 72 || darkRatio > 0.35) {
+  if (mean < 85 || darkRatio > 0.28) {
     quality = "too_dark";
     message = "Too dark — face a window or turn on soft front light";
-  } else if (mean > 195 || brightRatio > 0.22) {
+  } else if (mean > 185 || brightRatio > 0.18) {
     quality = "too_bright";
     message = "Too bright — step back from direct sun or harsh lamp";
-  } else if (sideDelta > 42) {
+  } else if (sideDelta > 30) {
     quality = "uneven";
     message = "Uneven light — rotate so both sides of your face are lit";
-  } else if (std < 22) {
+  } else if (std < 25) {
     quality = "low_contrast";
     message = "Flat lighting — add a soft light in front of you";
   }
@@ -284,11 +290,11 @@ export function analyzeLightingFromRgba(
   const score = clamp(
     Math.round(
       100 -
-        Math.abs(mean - 128) * 0.35 -
-        darkRatio * 80 -
-        brightRatio * 80 -
-        sideDelta * 0.6 -
-        Math.max(0, 28 - std) * 1.2
+        Math.abs(mean - 128) * 0.4 -
+        darkRatio * 90 -
+        brightRatio * 90 -
+        sideDelta * 0.8 -
+        Math.max(0, 30 - std) * 1.5
     ),
     0,
     100
@@ -482,9 +488,9 @@ export function buildCaptureGuidance(
       )
     : null;
   const lightingOk =
-    lighting.quality === "good" || lighting.score >= 55;
+    lighting.quality === "good" || lighting.score >= 60;
   const faceOk = framing.quality === "good";
-  const readyToCapture = lightingOk && (!showFaceCheck || faceOk);
+  const readyToCapture = lightingOk && faceOk;
 
   return {
     lighting: lighting.quality,

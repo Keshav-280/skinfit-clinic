@@ -44,7 +44,7 @@ import {
   imageDataToJpegBlob,
 } from "@/src/lib/fetchFacePreviewInference";
 
-const TICK_MS = 220;
+const TICK_MS = 150;
 /** Hold the last seen landmarks for this long if MediaPipe drops a frame. */
 const LANDMARK_HOLD_MS = 1400;
 const PREVIEW_W = 320;

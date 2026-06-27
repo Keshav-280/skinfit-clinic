@@ -49,7 +49,7 @@ export function ScanCaptureGuidanceBanner({
   }
 
   const lightingOk =
-    guidance.lighting === "good" || guidance.lightingScore >= 55;
+    guidance.lighting === "good" || guidance.lightingScore >= 60;
   const faceOk = guidance.face === "good";
 
   return (

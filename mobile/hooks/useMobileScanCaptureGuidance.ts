@@ -29,9 +29,9 @@ import type {
   CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
 
-/** Slower ticks reduce iOS preview hitch from concurrent takePictureAsync samples. */
-const TICK_MS = 1100;
-const EXPRESSION_TICK_MS = 500;
+/** Faster ticks for responsive guidance — reduced from 1100ms. */
+const TICK_MS = 450;
+const EXPRESSION_TICK_MS = 350;
 
 type CameraRef = RefObject<CameraView | null>;
 
@@ -133,7 +133,7 @@ export function useMobileScanCaptureGuidance(
     busyRef.current = true;
     try {
       const pic = await lockedTakePictureAsync(cam, {
-        quality: expressionStep ? 0.55 : 0.38,
+        quality: expressionStep ? 0.45 : 0.25,
         skipProcessing: true,
         shutterSound: false,
       });

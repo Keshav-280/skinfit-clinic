@@ -315,7 +315,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       return;
     }
     const lightingOk =
-      guidance.lighting === "good" || guidance.lightingScore >= 55;
+      guidance.lighting === "good" || guidance.lightingScore >= 60;
     if (!lightingOk) {
       captureVoiceGuide.speak(guidance.lightingMessage, "lighting");
       return;

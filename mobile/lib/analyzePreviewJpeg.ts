@@ -31,11 +31,11 @@ import {
   type StableFramingState,
 } from "@/lib/scanCaptureGuidance";
 
-const PREVIEW_WIDTH = 240;
-/** Faster bbox/area tracking on device preview ticks. */
-const MOBILE_PREVIEW_SMOOTH_ALPHA = 0.32;
-/** Higher-res still for MediaPipe (eyes / smile need detail). */
-const LANDMARK_PREVIEW_WIDTH = 512;
+const PREVIEW_WIDTH = 180;
+/** Faster bbox smoothing for snappier guidance — matches web FACE_BOX_SMOOTH_ALPHA (0.35). */
+const MOBILE_PREVIEW_SMOOTH_ALPHA = 0.35;
+/** Reduced from 512 to speed up mobile landmark inference per tick. */
+const LANDMARK_PREVIEW_WIDTH = 400;
 
 /** Bake EXIF orientation into pixels before resize / native detection (see normalizeScanImage.ts). */
 async function bakePreviewExifOrientation(uri: string): Promise<string> {

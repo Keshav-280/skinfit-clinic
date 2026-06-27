@@ -8,12 +8,12 @@ export const FRONT_GUIDE_ELLIPSE = {
   ry: 52,
 } as const;
 
-/** Mobile dashed guide (30–60% fill band) — used for crop + overlay on native. */
+/** Mobile dashed guide — now matches web proportions (rx=42, ry=52) for consistent framing. */
 export const MOBILE_FRONT_GUIDE_ELLIPSE = {
   cx: 50,
   cy: 50,
-  rx: 32,
-  ry: 39,
+  rx: 42,
+  ry: 52,
 } as const;
 
 export type FaceGuideEllipse = {

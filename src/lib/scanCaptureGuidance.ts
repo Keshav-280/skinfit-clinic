@@ -85,30 +85,39 @@ const FACE_TARGET = {
 
 /**
  * Ideal face bbox area as fraction of full frame (portrait box ∩ frame).
- * Target band: **20–40%** with **±2%** hysteresis outside that band.
+ *
+ * Calculated from the face guide ellipse (cx=50%, cy=50%, rx=42%, ry=52%):
+ *   Ellipse bounding rect area = (2×0.42) × (2×0.52) = 0.8736
+ *   A face portrait box (hairline→chin, cheek-to-cheek) typically fills ~50–70%
+ *   of the ellipse bounding rect. So ideal face fill ≈ 0.8736 × 0.55 to 0.8736 × 0.72.
+ *   That gives a band of ~0.35–0.55.
+ *
+ * Target band: **35–55%** with **±3%** hysteresis.
+ * This ensures the face fills the guide ellipse on both web and mobile consistently.
  */
-export const IDEAL_FACE_FILL_MIN = 0.2;
-export const IDEAL_FACE_FILL_MAX = 0.4;
-/** ±2 percentage points — enter/exit "move closer" / "ease back" outside 20–40%. */
-export const CAPTURE_FRAMING_TOLERANCE = 0.02;
+export const IDEAL_FACE_FILL_MIN = 0.35;
+export const IDEAL_FACE_FILL_MAX = 0.55;
+/** ±3 percentage points — enter/exit "move closer" / "ease back" outside 35–55%. */
+export const CAPTURE_FRAMING_TOLERANCE = 0.03;
 /** Center of ideal band — auto-zoom converges here. */
 export const IDEAL_FACE_FILL_AREA =
   (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
-/** Hysteresis — too-small / too-large bands around the 20–40% ideal band. */
+/** Hysteresis — too-small / too-large bands around the 35–55% ideal band. */
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 18% — enter "move closer" */
+  /** Below 32% — enter "move closer" */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At or above 20% — exit "too small" / framing size OK (lower bound) */
+  /** At or above 35% — exit "too small" / framing size OK (lower bound) */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 42% — enter "ease back" */
+  /** Above 58% — enter "ease back" */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At or below 40% — exit "too large" (upper bound of good band) */
+  /** At or below 55% — exit "too large" (upper bound of good band) */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
-  centerEnterX: 0.2,
-  centerExitX: 0.15,
-  centerEnterY: 0.22,
-  centerExitY: 0.17,
+  /** Centering: tighter tolerance so face stays within the ellipse guide. */
+  centerEnterX: 0.15,
+  centerExitX: 0.10,
+  centerEnterY: 0.18,
+  centerExitY: 0.12,
 } as const;
 
 const TOO_SMALL_ENTER = CAPTURE_FRAMING_THRESHOLDS.tooSmallEnter;
@@ -120,7 +129,7 @@ const CENTER_EXIT_X = CAPTURE_FRAMING_THRESHOLDS.centerExitX;
 const CENTER_ENTER_Y = CAPTURE_FRAMING_THRESHOLDS.centerEnterY;
 const CENTER_EXIT_Y = CAPTURE_FRAMING_THRESHOLDS.centerExitY;
 
-/** Auto-zoom converges toward center of the 20–40% ideal band (30%). */
+/** Auto-zoom converges toward center of the 35–55% ideal band (45%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }
@@ -128,16 +137,31 @@ export function captureAutoZoomTargetFill(): number {
 export const CAPTURE_ZOOM_AUTO = {
   min: 1,
   max: 3,
-  /** Start wider; auto-zoom adjusts in and out toward ~30% face area. */
+  /** Start wider; auto-zoom adjusts in and out toward ~45% face area. */
   default: 1.05,
   targetFill: captureAutoZoomTargetFill(),
 } as const;
 
-/** How long to accumulate frames before updating guidance / auto-zoom (ms). */
-export const CAPTURE_GUIDANCE_SETTLE_MS = 2000;
+/**
+ * How long to accumulate frames before updating guidance / auto-zoom (ms).
+ * Reduced from 2000ms to 600ms for snappier guidance transitions across all devices.
+ * The EMA smoothing on face bbox already prevents jitter, so a shorter publish window
+ * gives users faster feedback without flickering.
+ */
+export const CAPTURE_GUIDANCE_SETTLE_MS = 600;
 
-/** EMA for portrait bbox (lower = steadier bbox; area uses instant fill only). */
-export const FACE_BOX_SMOOTH_ALPHA = 0.14;
+/**
+ * Minimum lighting score required for `readyToCapture`.
+ * Stricter than before (was 55) — for dermatological analysis the model needs
+ * even illumination with enough detail visibility.
+ */
+export const LIGHTING_SCORE_READY_THRESHOLD = 60;
+
+/**
+ * EMA for portrait bbox — higher alpha = faster response to movement.
+ * Increased from 0.14 to 0.35 so guidance reacts within 1–2 frames on both web and mobile.
+ */
+export const FACE_BOX_SMOOTH_ALPHA = 0.35;
 /** Reject sudden bbox area jumps (skin fallback vs landmarks). */
 const FACE_BOX_OUTLIER_RATIO_LO = 0.72;
 const FACE_BOX_OUTLIER_RATIO_HI = 1.38;
@@ -266,16 +290,16 @@ export function analyzeLightingFromRgba(
   let quality: LightingQuality = "good";
   let message = "Lighting looks good";
 
-  if (mean < 72 || darkRatio > 0.35) {
+  if (mean < 85 || darkRatio > 0.28) {
     quality = "too_dark";
     message = "Too dark — face a window or turn on soft front light";
-  } else if (mean > 195 || brightRatio > 0.22) {
+  } else if (mean > 185 || brightRatio > 0.18) {
     quality = "too_bright";
     message = "Too bright — step back from direct sun or harsh lamp";
-  } else if (sideDelta > 42) {
+  } else if (sideDelta > 30) {
     quality = "uneven";
     message = "Uneven light — rotate so both sides of your face are lit";
-  } else if (std < 22) {
+  } else if (std < 25) {
     quality = "low_contrast";
     message = "Flat lighting — add a soft light source in front of you";
   }
@@ -283,11 +307,11 @@ export function analyzeLightingFromRgba(
   const score = clamp(
     Math.round(
       100 -
-        Math.abs(mean - 128) * 0.35 -
-        darkRatio * 80 -
-        brightRatio * 80 -
-        sideDelta * 0.6 -
-        Math.max(0, 28 - std) * 1.2
+        Math.abs(mean - 128) * 0.4 -
+        darkRatio * 90 -
+        brightRatio * 90 -
+        sideDelta * 0.8 -
+        Math.max(0, 30 - std) * 1.5
     ),
     0,
     100
@@ -533,7 +557,8 @@ export function smoothTowardZoom(current: number, target: number, factor = 0.5):
 export function buildCaptureGuidance(
   lighting: ReturnType<typeof analyzeLightingFromRgba>,
   framing: ReturnType<typeof analyzeFaceFraming>,
-  currentZoom: number
+  currentZoom: number,
+  opts?: { showFaceCheck?: boolean }
 ): CaptureGuidanceSnapshot {
   const suggestedZoom = suggestCaptureZoom(
     currentZoom,
@@ -541,7 +566,7 @@ export function buildCaptureGuidance(
     framing.quality
   );
   const lightingOk =
-    lighting.quality === "good" || lighting.score >= 55;
+    lighting.quality === "good" || lighting.score >= LIGHTING_SCORE_READY_THRESHOLD;
   const faceOk = framing.quality === "good";
   const readyToCapture = lightingOk && faceOk;
 

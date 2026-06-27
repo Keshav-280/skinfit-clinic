@@ -45,7 +45,7 @@ function humanGuidanceMessage(
   expressionStep: boolean
 ): string {
   if (!g) return "Getting the camera ready…";
-  if (g.lighting !== "good" && g.lightingScore < 55) return g.lightingMessage;
+  if (g.lighting !== "good" && g.lightingScore < 60) return g.lightingMessage;
   if (g.face !== "good") return g.faceMessage;
   if (expressionStep && g.expressionOk !== true && g.expressionMessage) {
     return g.expressionMessage;
