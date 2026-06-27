@@ -171,7 +171,7 @@ export async function analyzePreviewImageUri(
     blendCategories = mp?.results?.[0]?.faceBlendshapes?.[0]?.categories;
   }
 
-  // On-device MediaPipe targets the 30–60% mobile band; server RetinaFace often
+  // On-device MediaPipe targets the 18–32% fill band; server RetinaFace often
   // reports a much larger box — shrink fallbacks so fill % stays in range.
   if (landmarkBox) {
     rawBox = landmarkBox;
