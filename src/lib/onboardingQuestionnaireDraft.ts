@@ -3,6 +3,7 @@ import {
   type OnboardingConcernId,
 } from "@/src/lib/onboardingConcerns";
 import {
+  clearOnboardingStepFields,
   normalizeOnboardingQuestionnaireStep,
   ONBOARDING_QUESTIONNAIRE_LAST_STEP,
   reconcileSkippedSteps,
@@ -401,6 +402,7 @@ export function applyOnboardingQuestionnaireDraft(
   entry?: QuestionnaireEntryMode | null
 ): void {
   const priorTx = d.priorTx === "yes" || d.priorTx === "no" ? d.priorTx : null;
+  const skippedSteps = reconcileSkippedSteps(d.skippedSteps ?? []);
   const entryStep =
     entry === "start" || entry === "resume"
       ? resolveQuestionnaireDraftEntryStep(d, entry)
@@ -424,7 +426,33 @@ export function applyOnboardingQuestionnaireDraft(
   set.setSkinType(d.skinType ?? null);
   set.setReferralSource(d.referralSource ?? null);
   set.setReferralOther(d.referralOther ?? "");
-  set.setSkippedSteps(d.skippedSteps ?? []);
+  set.setSkippedSteps(skippedSteps);
+
+  // When resuming, clear fields for any steps still marked as skipped so the
+  // user sees a blank slate instead of pre-filled defaults from the prior skip.
+  if (entry === "resume" && skippedSteps.length > 0) {
+    for (const step of skippedSteps) {
+      const patch = clearOnboardingStepFields(step);
+      if (patch.ageInput !== undefined) set.setAgeInput(patch.ageInput);
+      if (patch.gender !== undefined) set.setGender(patch.gender);
+      if (patch.concerns !== undefined) set.setConcerns(patch.concerns);
+      if (patch.overallSkinHealth !== undefined) set.setOverallSkinHealth(patch.overallSkinHealth);
+      if (patch.severity !== undefined) set.setSeverity(patch.severity);
+      if (patch.duration !== undefined) set.setDuration(patch.duration);
+      if (patch.triggers !== undefined) set.setTriggers(patch.triggers);
+      if (patch.priorTx !== undefined) set.setPriorTx(patch.priorTx);
+      if (patch.txText !== undefined) set.setTxText(patch.txText);
+      if (patch.txDur !== undefined) set.setTxDur(patch.txDur);
+      if (patch.sensitivity !== undefined) set.setSensitivity(patch.sensitivity);
+      if (patch.sleep !== undefined) set.setSleep(patch.sleep);
+      if (patch.water !== undefined) set.setWater(patch.water);
+      if (patch.diet !== undefined) set.setDiet(patch.diet);
+      if (patch.sun !== undefined) set.setSun(patch.sun);
+      if (patch.skinType !== undefined) set.setSkinType(patch.skinType);
+      if (patch.referralSource !== undefined) set.setReferralSource(patch.referralSource);
+      if (patch.referralOther !== undefined) set.setReferralOther(patch.referralOther);
+    }
+  }
 }
 
 /** @deprecated Loaded only for migration; v1 drafts are discarded. */
