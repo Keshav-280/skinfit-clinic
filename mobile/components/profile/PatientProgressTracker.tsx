@@ -114,8 +114,8 @@ export default function PatientProgressTracker({
         {milestones.map((step, index) => {
           const done = step.done;
           const active = !done && index === activeIndex;
-          // Server href is null when the step is locked (e.g. questionnaire
-          // before the scan) — mirror web gating, but use native routes.
+          // Server href is null when a step has no destination (account) or is
+          // already done. Incomplete steps map to their native route.
           const href =
             !done && step.href
               ? mobileMilestoneHref(step.id, pendingJournal)

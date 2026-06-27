@@ -195,29 +195,8 @@ export function prevOnboardingQuestionnaireStep(
   return [...active].reverse().find((s) => s < step) ?? 0;
 }
 
-/** First active step after a block of steps (used after skip cascades). */
-export function stepAfterQuestionnaireBlock(
-  lastStepInBlock: number,
-  priorTx: "yes" | "no" | null
-): number {
-  const active = getActiveQuestionnaireSteps(priorTx);
-  return active.find((s) => s > lastStepInBlock) ?? active[active.length - 1] ?? ONBOARDING_QUESTIONNAIRE_LAST_STEP;
-}
-
-export function expandSkippedStepsForSkip(
-  step: number,
-  skippedSteps: number[]
-): number[] {
-  const result = new Set(skippedSteps);
-  result.add(step);
-  for (const dependent of QUESTIONNAIRE_SKIP_CASCADE[step] ?? []) {
-    result.add(dependent);
-  }
-  return [...result].sort((a, b) => a - b);
-}
-
 /**
- * Patient-facing count of skipped questions still to finish.
+ * Patient-facing count of skipped questions still to finish (legacy data).
  *
  * A skipped parent step (e.g. concerns) cascades to its dependents (severity,
  * duration, triggers). Those dependents are not independently answerable, so
@@ -349,35 +328,6 @@ export function prepareQuestionnaireBack(
   };
 }
 
-/** Apply skip defaults for a step and any cascaded dependents. */
-export function mergeOnboardingStepSkipPatches(
-  step: number
-): Partial<OnboardingQuestionnaireFormState> {
-  const steps = [step, ...(QUESTIONNAIRE_SKIP_CASCADE[step] ?? [])];
-  let patch: Partial<OnboardingQuestionnaireFormState> = {};
-  for (const s of steps) {
-    patch = { ...patch, ...applyOnboardingStepSkip(s) };
-  }
-  return patch;
-}
-
-export function nextOnboardingQuestionnaireStepAfterSkip(
-  step: number,
-  priorTx: "yes" | "no" | null,
-  patch: Partial<OnboardingQuestionnaireFormState>
-): number {
-  const effectivePriorTx =
-    patch.priorTx === "yes" || patch.priorTx === "no" ? patch.priorTx : priorTx;
-  const cascade = QUESTIONNAIRE_SKIP_CASCADE[step];
-  if (cascade?.length) {
-    return stepAfterQuestionnaireBlock(
-      cascade[cascade.length - 1],
-      effectivePriorTx
-    );
-  }
-  return nextOnboardingQuestionnaireStep(step, effectivePriorTx);
-}
-
 export type OnboardingQuestionnaireFormState = {
   ageInput: string;
   gender: string | null;
@@ -398,53 +348,6 @@ export type OnboardingQuestionnaireFormState = {
   referralSource: ReferralSourceId | null;
   referralOther: string;
 };
-
-/** Defaults applied when the patient taps Skip on a step. */
-export function applyOnboardingStepSkip(
-  step: number
-): Partial<OnboardingQuestionnaireFormState> {
-  const d = ONBOARDING_QUESTIONNAIRE_DEFAULTS;
-  switch (step) {
-    case 0:
-      return { ageInput: String(d.age), gender: d.gender };
-    case 1:
-      return { concerns: [d.primaryConcern] };
-    case 2:
-      return { overallSkinHealth: d.overallSkinHealth };
-    case 3:
-      return { severity: d.concernSeverity };
-    case 4:
-      return { duration: d.concernDuration };
-    case 5:
-      return { triggers: [...d.triggers] };
-    case 6:
-      return { priorTx: d.priorTreatment, txText: "", txDur: "" };
-    case 7:
-      return {
-        txText: d.treatmentHistoryText,
-        txDur: d.treatmentHistoryDuration,
-      };
-    case 8:
-      return { sensitivity: d.skinSensitivity };
-    case 9:
-      return { sleep: d.baselineSleep };
-    case 10:
-      return {
-        water: d.baselineHydration,
-        diet: d.baselineDietType,
-        sun: d.baselineSunExposure,
-      };
-    case 11:
-      return { skinType: d.skinType };
-    case 12:
-      return {
-        referralSource: d.referralSource,
-        referralOther: d.referralSourceOther,
-      };
-    default:
-      return {};
-  }
-}
 
 export function buildOnboardingQuestionnairePayload(
   state: OnboardingQuestionnaireFormState,
