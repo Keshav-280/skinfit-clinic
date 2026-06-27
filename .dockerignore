@@ -14,8 +14,12 @@ mobile/
 # Ignore books documentation
 books/
 
-# Ignore local ML weights (mounted via volume at runtime)
-models/
+# Ignore local ML weights (mounted via volume at runtime), EXCEPT the acne
+# detector model which is baked into the acne-detector image.
+models/*
+!models/acne-detector
+models/acne-detector/*
+!models/acne-detector/best.pt
 
 # Ignore local uploaded files and media caches
 **/uploads
