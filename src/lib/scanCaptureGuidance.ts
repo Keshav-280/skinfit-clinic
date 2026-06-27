@@ -250,17 +250,23 @@ export function analyzeLightingFromRgba(
   let rightSum = 0;
   let leftN = 0;
   let rightN = 0;
+  let satSum = 0;
   const midX = (x0 + x1) >> 1;
 
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
       const i = (y * width + x) * 4;
-      const L = luma(data[i], data[i + 1], data[i + 2]);
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const L = luma(r, g, b);
       sum += L;
       sumSq += L * L;
       n++;
       if (L < 45) dark++;
       if (L > 210) bright++;
+      // Per-pixel chroma (max−min) — covered cameras are near-grayscale.
+      satSum += Math.max(r, g, b) - Math.min(r, g, b);
       if (x < midX) {
         leftSum += L;
         leftN++;
@@ -280,6 +286,7 @@ export function analyzeLightingFromRgba(
     };
   }
 
+  const meanSat = satSum / n;
   const mean = sum / n;
   const variance = sumSq / n - mean * mean;
   const std = Math.sqrt(Math.max(0, variance));
@@ -292,9 +299,16 @@ export function analyzeLightingFromRgba(
   let quality: LightingQuality = "good";
   let message = "Lighting looks good";
 
-  if (mean < 85 || darkRatio > 0.28) {
+  // Covered lens / near-black: very low brightness OR a flat near-grayscale frame
+  // (webcam auto-gain often brightens a covered lens to gray noise — catch that too).
+  const coveredOrDark =
+    mean < 90 ||
+    darkRatio > 0.25 ||
+    (meanSat < 10 && mean < 125);
+
+  if (coveredOrDark) {
     quality = "too_dark";
-    message = "Too dark — face a window or turn on soft front light";
+    message = "Too dark — uncover the camera and face a window or soft light";
   } else if (mean > 185 || brightRatio > 0.18) {
     quality = "too_bright";
     message = "Too bright — step back from direct sun or harsh lamp";
@@ -306,7 +320,7 @@ export function analyzeLightingFromRgba(
     message = "Flat lighting — add a soft light source in front of you";
   }
 
-  const score = clamp(
+  const rawScore = clamp(
     Math.round(
       100 -
         Math.abs(mean - 128) * 0.4 -
@@ -318,6 +332,10 @@ export function analyzeLightingFromRgba(
     0,
     100
   );
+
+  // Never let the numeric score override an explicit bad-quality verdict
+  // (otherwise a gray covered frame could score >60 and read as "ready").
+  const score = quality === "good" ? rawScore : Math.min(rawScore, 40);
 
   return { quality, score, message, meanLuma: mean };
 }

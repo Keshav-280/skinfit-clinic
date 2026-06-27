@@ -166,6 +166,7 @@ export function useWebScanCaptureGuidance(
   const [bboxSource, setBboxSource] = useState<string>("—");
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const smoothedBoxRef = useRef<NormalizedFaceBox | null>(null);
+  const faceMissRef = useRef(0);
   const smoothedLandmarksRef = useRef<NormalizedLandmark[] | null>(null);
   const lastLandmarkAtRef = useRef<number>(0);
   const framingStateRef = useRef<StableFramingState | null>(null);
@@ -449,7 +450,19 @@ export function useWebScanCaptureGuidance(
         setFaceLandmarks(null);
       }
 
-      smoothedBoxRef.current = smoothFaceBox(smoothedBoxRef.current, faceBox);
+      // Drop the stale face box after a few empty frames (e.g. camera covered or
+      // user stepped away) so framing honestly reports "no face" instead of
+      // holding the last good box and falsely staying "ready".
+      const MAX_FACE_MISSES = 3;
+      if (faceBox) {
+        faceMissRef.current = 0;
+        smoothedBoxRef.current = smoothFaceBox(smoothedBoxRef.current, faceBox);
+      } else {
+        faceMissRef.current += 1;
+        if (faceMissRef.current >= MAX_FACE_MISSES) {
+          smoothedBoxRef.current = null;
+        }
+      }
       setFaceTracked(
         Boolean(
           smoothedLandmarksRef.current?.length ||
@@ -557,6 +570,7 @@ export function useWebScanCaptureGuidance(
       setFaceTracked(false);
       smoothedBoxRef.current = null;
       smoothedLandmarksRef.current = null;
+      faceMissRef.current = 0;
       lastLandmarkAtRef.current = 0;
       framingStateRef.current = null;
       expressionOkRef.current = null;
