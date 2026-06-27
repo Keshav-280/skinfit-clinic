@@ -68,37 +68,36 @@ const FACE_TARGET = {
 };
 
 /**
- * Unified framing band — face should fill **35–55%** of the frame.
+ * Unified framing band — face should fill **18–32%** of the frame.
  * Matches web `src/lib/scanCaptureGuidance.ts` for cross-device consistency.
  *
- * Calculated from the mobile face guide ellipse (cx=50%, cy=50%, rx=32%, ry=39%):
- *   Ellipse bounding rect = (2×0.32) × (2×0.39) = 0.4992
- *   Face portrait box fills ~70–100% of this on the smaller mobile guide.
- *   35–55% of the full frame keeps the face nicely inscribed in the ellipse.
+ * The whole face must sit INSIDE the guide ellipse with margin (hairline, cheeks,
+ * chin all visible). A face fill of ~18–32% keeps the head comfortably inside the
+ * ellipse; higher than this crops the forehead/chin.
  */
-export const IDEAL_FACE_FILL_MIN = 0.35;
-export const IDEAL_FACE_FILL_MAX = 0.55;
-/** ±3 pts hysteresis around the 35–55% band. */
+export const IDEAL_FACE_FILL_MIN = 0.18;
+export const IDEAL_FACE_FILL_MAX = 0.32;
+/** ±3 pts hysteresis around the 18–32% band. */
 const CAPTURE_FRAMING_TOLERANCE = 0.03;
 const IDEAL_FACE_FILL_AREA = (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 32% — "move closer". */
+  /** Below 15% — "move closer". */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At/above 35% — size OK (lower bound). */
+  /** At/above 18% — size OK (lower bound). */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 58% — "ease back". */
+  /** Above 35% — "ease back". */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At/below 55% — size OK (upper bound). */
+  /** At/below 32% — size OK (upper bound). */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
-  /** Tighter centering to keep face within the ellipse guide. */
+  /** Keep face within the ellipse guide. */
   centerEnterX: 0.15,
   centerExitX: 0.10,
   centerEnterY: 0.18,
   centerExitY: 0.12,
 } as const;
 
-/** Auto-zoom converges toward the center of the 35–55% band (45%). */
+/** Auto-zoom converges toward the center of the 18–32% band (25%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }

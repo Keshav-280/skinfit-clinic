@@ -86,34 +86,35 @@ const FACE_TARGET = {
 /**
  * Ideal face bbox area as fraction of full frame (portrait box ∩ frame).
  *
- * Calculated from the face guide ellipse (cx=50%, cy=50%, rx=42%, ry=52%):
- *   Ellipse bounding rect area = (2×0.42) × (2×0.52) = 0.8736
- *   A face portrait box (hairline→chin, cheek-to-cheek) typically fills ~50–70%
- *   of the ellipse bounding rect. So ideal face fill ≈ 0.8736 × 0.55 to 0.8736 × 0.72.
- *   That gives a band of ~0.35–0.55.
+ * The whole face must sit INSIDE the guide ellipse (cx=50%, cy=50%, rx=42%, ry=52%)
+ * with margin — hairline, both cheeks and chin all visible, not clipped.
  *
- * Target band: **35–55%** with **±3%** hysteresis.
- * This ensures the face fills the guide ellipse on both web and mobile consistently.
+ * The face portrait box (hairline→chin, cheek-to-cheek) should be clearly smaller
+ * than the frame so it fits within the ellipse. Empirically a face fill of
+ * ~18–32% places the whole head inside the ellipse with comfortable margin.
+ * Higher than this and the face gets cropped at the forehead/chin.
+ *
+ * Target band: **18–32%** with **±3%** hysteresis. Auto-zoom converges to ~25%.
  */
-export const IDEAL_FACE_FILL_MIN = 0.35;
-export const IDEAL_FACE_FILL_MAX = 0.55;
-/** ±3 percentage points — enter/exit "move closer" / "ease back" outside 35–55%. */
+export const IDEAL_FACE_FILL_MIN = 0.18;
+export const IDEAL_FACE_FILL_MAX = 0.32;
+/** ±3 percentage points — enter/exit "move closer" / "ease back" outside 18–32%. */
 export const CAPTURE_FRAMING_TOLERANCE = 0.03;
 /** Center of ideal band — auto-zoom converges here. */
 export const IDEAL_FACE_FILL_AREA =
   (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
-/** Hysteresis — too-small / too-large bands around the 35–55% ideal band. */
+/** Hysteresis — too-small / too-large bands around the 18–32% ideal band. */
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 32% — enter "move closer" */
+  /** Below 15% — enter "move closer" */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At or above 35% — exit "too small" / framing size OK (lower bound) */
+  /** At or above 18% — exit "too small" / framing size OK (lower bound) */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 58% — enter "ease back" */
+  /** Above 35% — enter "ease back" */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At or below 55% — exit "too large" (upper bound of good band) */
+  /** At or below 32% — exit "too large" (upper bound of good band) */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
-  /** Centering: tighter tolerance so face stays within the ellipse guide. */
+  /** Centering: keep face within the ellipse guide. */
   centerEnterX: 0.15,
   centerExitX: 0.10,
   centerEnterY: 0.18,
@@ -129,16 +130,17 @@ const CENTER_EXIT_X = CAPTURE_FRAMING_THRESHOLDS.centerExitX;
 const CENTER_ENTER_Y = CAPTURE_FRAMING_THRESHOLDS.centerEnterY;
 const CENTER_EXIT_Y = CAPTURE_FRAMING_THRESHOLDS.centerExitY;
 
-/** Auto-zoom converges toward center of the 35–55% ideal band (45%). */
+/** Auto-zoom converges toward center of the 18–32% ideal band (25%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }
 
 export const CAPTURE_ZOOM_AUTO = {
   min: 1,
-  max: 3,
-  /** Start wider; auto-zoom adjusts in and out toward ~45% face area. */
-  default: 1.05,
+  /** Cap zoom so auto-zoom can't crop the forehead/chin out of the ellipse. */
+  max: 1.6,
+  /** Start at full frame; auto-zoom nudges toward ~25% face area. */
+  default: 1,
   targetFill: captureAutoZoomTargetFill(),
 } as const;
 
