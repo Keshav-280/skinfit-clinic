@@ -9,8 +9,11 @@
  * (higher = worse) plus a base64 JPEG with per-lesion boxes drawn on the face.
  */
 
-import { severityToClarity, type ScanInferencePayload } from "@/src/lib/modelClinicalMetrics";
-import { computeRagKaiScore } from "@/src/lib/ragEightParams";
+import {
+  canonicalizeScanInferencePayload,
+  severityToClarity,
+  type ScanInferencePayload,
+} from "@/src/lib/modelClinicalMetrics";
 
 export type AcneDetectorGrade = {
   final_grade: string; // A–E
@@ -183,20 +186,9 @@ export function applyAcneDetectorToScanPayload(
       : [];
 
   const modelEight = { ...payload.modelEight, activeAcne: clarity };
-  const overallKaiScore =
-    computeRagKaiScore({
-      active_acne: clarity,
-      sagging_volume: modelEight.saggingVolume,
-      wrinkles: modelEight.wrinkles,
-      acne_scar: modelEight.acneScar,
-      under_eye: modelEight.underEye,
-      pigmentation: modelEight.pigmentation,
-    }) ?? payload.overallKaiScore;
-
-  return {
+  return canonicalizeScanInferencePayload({
     ...payload,
-    overallKaiScore,
-    legacyMetrics: { ...payload.legacyMetrics, acne: clarity, overall_score: overallKaiScore },
+    legacyMetrics: { ...payload.legacyMetrics, acne: clarity },
     clinical_scores: { ...payload.clinical_scores, active_acne: severity },
     modelFeatureScores: {
       ...payload.modelFeatureScores,
@@ -207,5 +199,5 @@ export function applyAcneDetectorToScanPayload(
     detected_regions: [...acneRegions, ...nonAcneRegions],
     // Replace the acne mask panel with the detector's annotated image.
     ...(annotated ? { acneMaskDataUri: annotated } : {}),
-  };
+  });
 }

@@ -365,6 +365,60 @@ export type ScanInferencePayload = {
   modelEight: ReturnType<typeof modelEightClarityScores>;
 };
 
+function kaiParamNumber(
+  params: Record<string, KaiParamInferenceRow>,
+  key: string
+): number | undefined {
+  const v = params[key]?.value;
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+
+export function canonicalKaiScoreFromPayload(
+  payload: ScanInferencePayload
+): number {
+  return (
+    computeRagKaiScore({
+      active_acne:
+        kaiParamNumber(payload.params, "active_acne") ??
+        payload.modelEight.activeAcne ??
+        payload.legacyMetrics.acne,
+      sagging_volume:
+        kaiParamNumber(payload.params, "sagging_volume") ??
+        payload.modelEight.saggingVolume,
+      wrinkles:
+        kaiParamNumber(payload.params, "wrinkles") ??
+        payload.modelEight.wrinkles ??
+        payload.legacyMetrics.wrinkles,
+      acne_scar:
+        kaiParamNumber(payload.params, "acne_scars") ??
+        payload.modelEight.acneScar ??
+        payload.legacyMetrics.texture,
+      under_eye:
+        kaiParamNumber(payload.params, "under_eye") ??
+        payload.modelEight.underEye ??
+        payload.legacyMetrics.hydration,
+      pigmentation:
+        kaiParamNumber(payload.params, "pigmentation") ??
+        payload.modelEight.pigmentation ??
+        payload.legacyMetrics.pigmentation,
+    }) ?? payload.overallKaiScore
+  );
+}
+
+export function canonicalizeScanInferencePayload(
+  payload: ScanInferencePayload
+): ScanInferencePayload {
+  const overallKaiScore = canonicalKaiScoreFromPayload(payload);
+  return {
+    ...payload,
+    overallKaiScore,
+    legacyMetrics: {
+      ...payload.legacyMetrics,
+      overall_score: overallKaiScore,
+    },
+  };
+}
+
 function mergeDetectedRegionsForDualPose(
   centre: FaceAnalysisInferenceResult["detected_regions"],
   smiling: FaceAnalysisInferenceResult["detected_regions"]
@@ -465,7 +519,7 @@ export function buildScanPayloadFromCentreAndSmiling(
       : {}),
   };
 
-  return {
+  return canonicalizeScanInferencePayload({
     overallKaiScore,
     params,
     legacyMetrics,
@@ -478,7 +532,7 @@ export function buildScanPayloadFromCentreAndSmiling(
     acneMaskDataUri,
     wrinkleMaskDataUri,
     modelEight: modelEightClarityScores(mergedMfs, patientAge),
-  };
+  });
 }
 
 /** Single-image `/analyze` (notebook-style, all params from one photo). */
@@ -494,7 +548,7 @@ export function buildScanPayloadFromAnalyzeV1(
   const params = buildKaiParamsFromModelSeverities(mfs, patientAge);
   const overallKaiScore = inf.metrics.overall_score;
 
-  return {
+  return canonicalizeScanInferencePayload({
     overallKaiScore,
     params,
     legacyMetrics: inf.metrics,
@@ -505,7 +559,7 @@ export function buildScanPayloadFromAnalyzeV1(
     wrinkleMaskDataUri: inf.wrinkleMaskDataUri,
     acneMaskDataUri: inf.acneMaskDataUri,
     modelEight: modelEightClarityScores(mfs, patientAge),
-  };
+  });
 }
 
 /** Pass through `/analyze_v2` params unchanged (already 0–100 from Python). */
@@ -527,7 +581,7 @@ export function buildScanPayloadFromAnalyzeV2(
     params.elasticity = saggingRefresh.elasticity;
   }
 
-  return {
+  return canonicalizeScanInferencePayload({
     overallKaiScore: inf.overallKaiScore,
     params,
     legacyMetrics: inf.legacyMetrics,
@@ -539,7 +593,7 @@ export function buildScanPayloadFromAnalyzeV2(
     acneMaskDataUri: inf.acneMaskDataUri,
     spatialOutputs: inf.spatialOutputs,
     modelEight: modelEightClarityScores(mfs, patientAge),
-  };
+  });
 }
 
 /** Re-apply age-adjusted sagging clarity when patient age was not known at inference time. */
@@ -556,7 +610,7 @@ export function applyPatientAgeToScanPayload(
   if (params.sagging_volume) mergedParams.sagging_volume = params.sagging_volume;
   if (params.elasticity) mergedParams.elasticity = params.elasticity;
   if (params.uniformity) mergedParams.uniformity = params.uniformity;
-  return {
+  return canonicalizeScanInferencePayload({
     ...payload,
     params: mergedParams,
     legacyMetrics: buildLegacyMetricsFromModel(
@@ -565,7 +619,7 @@ export function applyPatientAgeToScanPayload(
       patientAge
     ),
     modelEight: modelEightClarityScores(mfs, patientAge),
-  };
+  });
 }
 
 export function buildLegacyMetricsFromModel(

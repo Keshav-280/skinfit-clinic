@@ -6,6 +6,7 @@ import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
 import {
   computePatientTrackerScoreBundle,
   mergeTrackerReportWithScoreBundle,
+  trackerScoreFieldsChanged,
 } from "@/src/lib/patientTrackerScoreBundle";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { withOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
@@ -105,12 +106,14 @@ export async function loadScanTrackerReport(
       const needsScoreRepair =
         (stored.scoreFormatVersion ?? 0) < TRACKER_SCORE_FORMAT_VERSION;
 
-      if (needsScoreRepair) {
-        const repaired = await refreshTrackerScoresFromDb(userId, scanId, stored);
-        if (repaired) {
+      const repaired = await refreshTrackerScoresFromDb(userId, scanId, stored);
+      if (repaired) {
+        const shouldPersist =
+          needsScoreRepair || trackerScoreFieldsChanged(stored, repaired);
+        if (shouldPersist) {
           await writeTrackerSnapshot(userId, scanId, repaired);
-          return repaired;
         }
+        return repaired;
       }
 
       const { report, patched } = normalizeStoredTrackerReport(stored);

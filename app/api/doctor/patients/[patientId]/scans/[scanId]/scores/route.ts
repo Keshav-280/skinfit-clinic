@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db";
@@ -66,6 +66,7 @@ export async function PATCH(
       columns: {
         id: true,
         userId: true,
+        imageUrl: true,
         overallScore: true,
         acne: true,
         wrinkles: true,
@@ -193,17 +194,47 @@ export async function PATCH(
     invalidateUserInsightsCache(patientId),
   ]);
 
-  // Legacy `skin_scans` table: update the latest row so fallback scoring matches.
+  // Legacy `skin_scans` table: keep fallback/home scoring aligned with `scans`.
   try {
-    const latestSkin = await db.query.skinScans.findFirst({
-      where: eq(skinScans.userId, patientId),
-      orderBy: (t) => t.createdAt,
-    });
-    if (latestSkin?.id != null) {
+    const matchingSkin = scanRow.imageUrl
+      ? await db.query.skinScans.findFirst({
+          where: and(
+            eq(skinScans.userId, patientId),
+            eq(skinScans.originalImageUrl, scanRow.imageUrl)
+          ),
+          orderBy: [desc(skinScans.createdAt)],
+        })
+      : null;
+    const fallbackLatestSkin =
+      matchingSkin ??
+      (await db.query.skinScans.findFirst({
+        where: eq(skinScans.userId, patientId),
+        orderBy: [desc(skinScans.createdAt)],
+      }));
+
+    if (fallbackLatestSkin?.id != null) {
+      const analysisResults =
+        fallbackLatestSkin.analysisResults &&
+        typeof fallbackLatestSkin.analysisResults === "object"
+          ? { ...(fallbackLatestSkin.analysisResults as Record<string, unknown>) }
+          : {};
       await db
         .update(skinScans)
-        .set({ skinScore: resolved.metrics.overall_score })
-        .where(eq(skinScans.id, latestSkin.id));
+        .set({
+          skinScore: resolved.metrics.overall_score,
+          analysisResults: {
+            ...analysisResults,
+            ...nextScoresJson,
+            overallScore: resolved.metrics.overall_score,
+            kaiOverallScore: resolved.metrics.overall_score,
+            acne: resolved.metrics.acne,
+            wrinkles: resolved.metrics.wrinkles,
+            pigmentation: resolved.metrics.pigmentation,
+            hydration: resolved.metrics.hydration,
+            texture: resolved.metrics.texture,
+          },
+        })
+        .where(eq(skinScans.id, fallbackLatestSkin.id));
     }
   } catch (e) {
     console.warn("[doctor-scores] skin_scans sync failed", e);
@@ -211,4 +242,3 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
-
