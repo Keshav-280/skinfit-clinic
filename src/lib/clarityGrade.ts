@@ -186,7 +186,7 @@ export function patientKaiScoreView(
     return {
       ...base,
       kaiPrimary: base.label,
-      kaiSecondary: base.sublabel,
+      kaiSecondary: "",
       gaugeDisplayValue: base.label,
       showLock: false,
     };
