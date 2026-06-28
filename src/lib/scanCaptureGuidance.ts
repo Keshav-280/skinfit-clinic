@@ -451,9 +451,13 @@ function classifyFraming(
   faceFill: number,
   offX: number,
   offY: number,
-  prev: FaceFramingQuality | null
+  prev: FaceFramingQuality | null,
+  isSideProfile = false
 ): FaceFramingQuality {
   const p = prev ?? "no_face";
+
+  const minEnter = isSideProfile ? 0.06 : TOO_SMALL_ENTER;
+  const minExit = isSideProfile ? 0.08 : TOO_SMALL_EXIT;
 
   if (p === "too_large") {
     if (faceFill >= TOO_LARGE_EXIT) return "too_large";
@@ -462,8 +466,8 @@ function classifyFraming(
   }
 
   if (p === "too_small") {
-    if (faceFill <= TOO_SMALL_EXIT) return "too_small";
-  } else if (faceFill < TOO_SMALL_ENTER) {
+    if (faceFill <= minExit) return "too_small";
+  } else if (faceFill < minEnter) {
     return "too_small";
   }
 
@@ -508,7 +512,8 @@ export function averageFaceBoxes(
 
 export function analyzeFaceFraming(
   box: NormalizedFaceBox | null,
-  prev?: StableFramingState | null
+  prev?: StableFramingState | null,
+  isSideProfile = false
 ): {
   quality: FaceFramingQuality;
   message: string;
@@ -543,7 +548,8 @@ export function analyzeFaceFraming(
     faceFill,
     offX,
     offY,
-    prev?.quality ?? null
+    prev?.quality ?? null,
+    isSideProfile
   );
 
   return {

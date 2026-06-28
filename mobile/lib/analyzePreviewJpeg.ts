@@ -219,7 +219,8 @@ export async function analyzePreviewImageUri(
       : smoothFaceBox(emptyState.smoothedBox, rawBox, MOBILE_PREVIEW_SMOOTH_ALPHA);
   const hasFaceEstimate =
     Boolean(smoothedBox && smoothedBox.width >= 0.05 && smoothedBox.height >= 0.05);
-  const framing = analyzeFaceFraming(smoothedBox, emptyState.framing);
+  const isSide = options?.stepId === "left" || options?.stepId === "right";
+  const framing = analyzeFaceFraming(smoothedBox, emptyState.framing, isSide);
   const nextState: PreviewGuidanceState = {
     smoothedBox,
     framing: { quality: framing.quality, faceFill: framing.faceFill },

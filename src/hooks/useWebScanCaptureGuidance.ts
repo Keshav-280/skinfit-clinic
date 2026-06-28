@@ -541,7 +541,8 @@ export function useWebScanCaptureGuidance(
         const lastLighting =
           frameSamplesRef.current[frameSamplesRef.current.length - 1]?.lighting ??
           lighting;
-        const framing = analyzeFaceFraming(avgBox, framingStateRef.current);
+        const isSide = stepId === "left" || stepId === "right";
+        const framing = analyzeFaceFraming(avgBox, framingStateRef.current, isSide);
         framingStateRef.current = {
           quality: framing.quality,
           faceFill: framing.faceFill,
