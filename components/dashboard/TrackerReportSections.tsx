@@ -14,11 +14,12 @@ import {
   TRACKER_REPORT_THEME as R,
 } from "@/src/lib/scanReportTheme";
 import { filterPatientVisibleParamRows } from "@/src/lib/patientVisibleParams";
-import { ParamScoreBar } from "@/components/dashboard/ParamScoreBar";
 import {
-  sanitizeTrackerCausesForLockedPatient,
-  sanitizeTrackerNarrativeForLockedPatient,
-} from "@/src/lib/patientTrackerLockedCopy";
+  trackerParamRowDisplayDelta,
+  trackerWeeklyDeltaDisplay,
+} from "@/src/lib/trackerDisplayDelta";
+import { ParamScoreBar } from "@/components/dashboard/ParamScoreBar";
+import { presentTrackerReportNarrative } from "@/src/lib/patientTrackerLockedCopy";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -118,25 +119,16 @@ export function TrackerReportSections({
   serifClassName: string;
   scoresUnlocked?: boolean;
 }) {
+  const presented = presentTrackerReportNarrative(report, scoresUnlocked);
   const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
-  const { lastScanDelta, weekAverageDelta } = report.scores;
-  const weeklyDelta =
-    typeof weekAverageDelta === "number"
-      ? weekAverageDelta
-      : typeof lastScanDelta === "number"
-        ? lastScanDelta
-        : null;
+  const weeklyDelta = trackerWeeklyDeltaDisplay(report);
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
-    : report.focusActions;
+    : presented.focusActions;
   const visibleParamRows = filterPatientVisibleParamRows(report.paramRows);
-  const displayCauses = scoresUnlocked
-    ? report.causes
-    : sanitizeTrackerCausesForLockedPatient(report.causes);
-  const displayPrediction = scoresUnlocked
-    ? report.predictionText
-    : sanitizeTrackerNarrativeForLockedPatient(report.predictionText);
+  const displayCauses = presented.causes;
+  const displayPrediction = presented.predictionText;
 
 
   return (
@@ -151,17 +143,19 @@ export function TrackerReportSections({
           Section 1
         </p>
         <p className={`mt-2 text-[1.95rem] font-medium leading-tight text-zinc-900 ${serifClassName}`}>
-          {report.hookSentence}
+          {presented.hookSentence}
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2.5">
           <div className={statCell}>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">kAI grade</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">
+              {scoresUnlocked ? "kAI score" : "kAI grade"}
+            </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
               {scoresUnlocked ? kaiView.kaiPrimary : patientClarityToGrade(report.scores.kaiScore)}
             </p>
           </div>
           <div className={statCell}>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">Weekly delta</p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">Since last scan</p>
             <div className="mt-1 flex justify-center">
               <WeeklyDeltaDisplay
                 delta={weeklyDelta}
@@ -209,7 +203,10 @@ export function TrackerReportSections({
                   scoresUnlocked={scoresUnlocked}
                 />
                 <span className="flex justify-end">
-                  <WeeklyDeltaDisplay delta={row.delta} scoresUnlocked={scoresUnlocked} />
+                  <WeeklyDeltaDisplay
+                    delta={trackerParamRowDisplayDelta(report, row)}
+                    scoresUnlocked={scoresUnlocked}
+                  />
                 </span>
               </div>
             ))}

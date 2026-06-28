@@ -30,8 +30,8 @@ import {
   SCAN_REPORT_PDF_PAGE_BG,
 } from "@/src/lib/scanReportPdfBackground";
 import { ScanReportClinicPromoOverlay } from "./ScanReportClinicPromoOverlay";
+import { formatAiSummary } from "@/src/lib/dummyScanSummary";
 import { PATIENT_CLINICAL_DISPLAY_ROWS } from "@/src/lib/patientVisibleParams";
-
 export type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 
 const serif = Cormorant_Garamond({
@@ -338,8 +338,17 @@ export function SkinScanReportBody({
     wrinkleUrl.length > 0 ||
     acneUrl.length > 0 ||
     (regions.length > 0 && imageUrl?.trim());
+  const formattedSummary = formatAiSummary(aiSummary, {
+    acne: metrics.acne ?? 0,
+    pigmentation: metrics.pigmentation ?? 0,
+    wrinkles: metrics.wrinkles ?? 0,
+    hydration: metrics.hydration ?? 0,
+    texture: metrics.texture ?? 0,
+    overall_score: metrics.overall_score ?? 0,
+  }, scoresUnlocked);
+
   const heroIntro =
-    aiSummary?.trim() ||
+    formattedSummary ||
     (scoresUnlocked
       ? `Your latest scan shows an overall score of ${overallView.label}. Detailed parameters and photo markers are below.`
       : `Your latest scan shows an overall grade of ${overallView.label}. Visit the clinic for a free analysis to unlock your exact score.`);

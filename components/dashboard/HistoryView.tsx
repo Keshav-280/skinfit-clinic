@@ -36,13 +36,7 @@ export interface ScanRecord {
   scanName: string | null;
   imageUrl: string;
   overallScore: number;
-  acne: number;
-  pigmentation: number;
-  wrinkles: number;
-  hydration: number;
-  texture: number;
-  /** Same formula as `skin_scans` / dashboard (not a DB column on `scans`). */
-  eczema: number;
+  params: Array<{ label: string; value: number }>;
   createdAt: Date | string;
   aiSummary: string | null;
 }
@@ -342,18 +336,9 @@ export function HistoryView({
                     Overall {scoreLabel(scan.overallScore)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {(
-                      [
-                        ["Acne", scan.acne],
-                        ["Wrinkle", scan.wrinkles],
-                        ["Pores", scan.texture],
-                        ["Pigment.", scan.pigmentation],
-                        ["Hydration", scan.hydration],
-                        ["Eczema", scan.eczema],
-                      ] as const
-                    ).map(([label, val]) => (
-                      <span key={label} className={patientScoreChip}>
-                        {label} {scoreLabel(val)}
+                    {scan.params.map((p) => (
+                      <span key={p.label} className={patientScoreChip}>
+                        {p.label === "Active Acne" ? "Acne" : p.label === "Pigmentation" ? "Pigment." : p.label} {scoreLabel(p.value)}
                       </span>
                     ))}
                   </div>

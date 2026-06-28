@@ -14,17 +14,19 @@ import {
 import { dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/date-only";
 import { localYmdAndHm, normalizeIanaTimeZone } from "@/src/lib/timeZoneWallClock";
 import {
-  computeRagKaiScore,
   RAG_KAI_PARAM_KEYS,
   RAG_KAI_PARAM_LABELS,
   type RagKaiParamKey,
 } from "@/src/lib/ragEightParams";
 import {
+  kaiScoreFromScanRow,
+  ragParamValuesFromScanRow,
+} from "@/src/lib/resolveScanDisplayScores";
+import {
   correlateBehaviorToDelta,
   summarizeBehavior,
   type BehaviorSnapshot,
 } from "@/src/lib/ragCorrelationStats";
-import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
 
 export type ProfileObservationSource =
@@ -88,6 +90,24 @@ function fmtRange(startYmd: string, endYmd: string): string {
   return `${fmtDay(startYmd)} – ${fmtDay(endYmd)}`;
 }
 
+function scanRowForResolution(scan: {
+  scores: unknown;
+  overallScore: number | null;
+  acne: number | null;
+  pigmentation: number | null;
+  wrinkles: number | null;
+}) {
+  return {
+    scores: scan.scores,
+    overallScore: scan.overallScore ?? 0,
+    acne: scan.acne ?? 0,
+    wrinkles: scan.wrinkles ?? 0,
+    pigmentation: scan.pigmentation ?? 0,
+    hydration: 0,
+    texture: 0,
+  };
+}
+
 function scanToSummary(
   scan: {
     id: number;
@@ -102,13 +122,7 @@ function scanToSummary(
   },
   prevVals: Record<string, number | undefined>
 ): ProfileScanSummary {
-  const vals = mergeRagParamValuesFromScan({
-    dbByKey: {},
-    scoresJson: scan.scores,
-    pigmentationColumn: scan.pigmentation ?? 0,
-    acneColumn: scan.acne ?? 0,
-    wrinklesColumn: scan.wrinkles ?? 0,
-  });
+  const vals = ragParamValuesFromScanRow(scanRowForResolution(scan));
   const params = RAG_KAI_PARAM_KEYS.map((key) => {
     const v0 = vals[key];
     const v1 = prevVals[key];
@@ -125,7 +139,7 @@ function scanToSummary(
     id: scan.id,
     dateYmd: ymdFromDateOnly(scan.createdAt),
     scanName: scan.scanName,
-    kaiScore: computeRagKaiScore(vals) ?? scan.overallScore,
+    kaiScore: kaiScoreFromScanRow(scanRowForResolution(scan)),
     params,
     aiSummary: scan.aiSummary,
   };
@@ -300,13 +314,7 @@ export async function gatherProfileInsightContext(
   let prevVals: Record<string, number | undefined> = {};
   for (const s of allScans) {
     summaries.push(scanToSummary(s, prevVals));
-    const vals = mergeRagParamValuesFromScan({
-      dbByKey: {},
-      scoresJson: s.scores,
-      pigmentationColumn: s.pigmentation ?? 0,
-      acneColumn: s.acne ?? 0,
-      wrinklesColumn: s.wrinkles ?? 0,
-    });
+    const vals = ragParamValuesFromScanRow(scanRowForResolution(s));
     prevVals = Object.fromEntries(
       RAG_KAI_PARAM_KEYS.map((k) => [k, vals[k]])
     ) as Record<string, number | undefined>;
@@ -342,13 +350,7 @@ export async function gatherProfileInsightContext(
       id: s.id,
       createdAt: s.createdAt,
       overallScore: s.overallScore ?? 0,
-      paramValues: mergeRagParamValuesFromScan({
-        dbByKey: {},
-        scoresJson: s.scores,
-        pigmentationColumn: s.pigmentation ?? 0,
-        acneColumn: s.acne ?? 0,
-        wrinklesColumn: s.wrinkles ?? 0,
-      }),
+      paramValues: ragParamValuesFromScanRow(scanRowForResolution(s)),
     })),
     logs,
   });

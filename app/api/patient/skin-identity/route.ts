@@ -5,7 +5,7 @@ import { dailyLogs, parameterScores, scans, skinDnaCards, users } from "@/src/db
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
-import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
+import { ragParamValuesFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
 
 type ChangedField =
@@ -84,13 +84,16 @@ export async function GET(request: Request) {
       id: s.id,
       createdAt: s.createdAt,
       overallScore: s.overallScore,
-      paramValues: mergeRagParamValuesFromScan({
-        dbByKey: dbParamsByScan.get(s.id) ?? {},
-        scoresJson: s.scores,
-        pigmentationColumn: s.pigmentation,
-        acneColumn: s.acne,
-        wrinklesColumn: s.wrinkles,
-      }),
+      paramValues: ragParamValuesFromScanRow(
+        {
+          scores: s.scores,
+          overallScore: s.overallScore,
+          acne: s.acne,
+          wrinkles: s.wrinkles,
+          pigmentation: s.pigmentation,
+        },
+        dbParamsByScan.get(s.id) ?? {}
+      ),
     }));
 
     const logs = await db

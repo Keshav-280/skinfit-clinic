@@ -1,4 +1,5 @@
 import { filterPatientVisibleParamRows } from "@/src/lib/patientVisibleParams";
+import { resolveScanDisplayScores } from "./resolveScanDisplayScores";
 
 /** Stored in `skin_scans.analysis_results` JSON — higher = better for each metric. */
 export type SkinAnalysisResults = {
@@ -61,70 +62,45 @@ export function analysisResultsToParams(
       ? (analysis as Record<string, unknown>)
       : {};
 
-  const kaiParams = a.kaiParams;
-  const mfs =
-    a.modelFeatureScores && typeof a.modelFeatureScores === "object"
-      ? (a.modelFeatureScores as Record<string, unknown>)
-      : null;
-  const sevClarity = (key: string) => {
-    const v = mfs?.[key];
-    if (typeof v !== "number" || !Number.isFinite(v)) return undefined;
-    const s = Math.max(1, Math.min(5, v));
-    return Math.round(100 - ((s - 1) / 4) * 100);
-  };
+  const resolved = resolveScanDisplayScores({
+    scoresJson: a,
+    baseMetricsColumns: {
+      overallScore: readNum(a, "overallScore") ?? 0,
+      acne: readNum(a, "acne") ?? 0,
+      wrinkles: readNum(a, "wrinkles") ?? 0,
+      pigmentation: readNum(a, "pigmentation") ?? 0,
+      hydration: readNum(a, "hydration") ?? 0,
+      texture: readNum(a, "texture") ?? 0,
+    },
+  });
 
-  const acne = readNum(a, "acne");
-  const wrinkles = readNum(a, "wrinkles");
-  const pigmentation = readNum(a, "pigmentation");
-  const activeAcneTop = readNum(a, "activeAcne") ?? sevClarity("active_acne");
-  const saggingTop = readNum(a, "saggingVolume") ?? sevClarity("sagging_volume");
-  const acneScarTop = readNum(a, "acneScar") ?? sevClarity("acne_scars");
-  const underEyeTop = readNum(a, "underEye") ?? sevClarity("under_eye");
-
-  const acneK = kaiParamValue(kaiParams, "acne_pimples");
-  const activeAcneK = kaiParamValue(kaiParams, "active_acne");
-  const saggingK = kaiParamValue(kaiParams, "sagging_volume");
-  const wrinklesK = kaiParamValue(kaiParams, "wrinkles");
-  const acneScarK = firstDefined(
-    kaiParamValue(kaiParams, "acne_scar"),
-    kaiParamValue(kaiParams, "acne_scars")
-  );
-  const underEyeK = firstDefined(
-    kaiParamValue(kaiParams, "under_eye"),
-    kaiParamValue(kaiParams, "underEye")
-  );
-  const pigmentationK =
-    kaiParamValue(kaiParams, "pigmentation") ??
-    readNum(a, "pigmentation") ??
-    (mfs?.pigmentation_model === null
-      ? undefined
-      : sevClarity("pigmentation_model"));
+  const params = resolved.resolvedRagParamValues;
   const fallback = (i: number) => DEFAULT_SKIN_PARAMS[i]?.value ?? 70;
 
   return filterPatientVisibleParamRows([
     {
       label: "Active Acne",
-      value: clamp100(firstDefined(activeAcneK, acneK, activeAcneTop, acne) ?? fallback(0)),
+      value: clamp100(params.active_acne ?? fallback(0)),
     },
     {
       label: "Sagging & Volume",
-      value: clamp100(firstDefined(saggingK, saggingTop) ?? fallback(1)),
+      value: clamp100(params.sagging_volume ?? fallback(1)),
     },
     {
       label: "Wrinkles",
-      value: clamp100(firstDefined(wrinklesK, wrinkles) ?? fallback(2)),
+      value: clamp100(params.wrinkles ?? fallback(2)),
     },
     {
       label: "Acne Scar",
-      value: clamp100(firstDefined(acneScarK, acneScarTop) ?? fallback(3)),
+      value: clamp100(params.acne_scar ?? fallback(3)),
     },
     {
       label: "Under Eye",
-      value: clamp100(firstDefined(underEyeK, underEyeTop) ?? fallback(4)),
+      value: clamp100(params.under_eye ?? fallback(4)),
     },
     {
       label: "Pigmentation",
-      value: clamp100(firstDefined(pigmentationK, pigmentation) ?? fallback(5)),
+      value: clamp100(params.pigmentation ?? fallback(5)),
     },
   ]);
 }

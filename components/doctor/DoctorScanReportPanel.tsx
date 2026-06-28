@@ -6,12 +6,17 @@ import {
   ACNE_MASK_PANEL_LABEL,
   WRINKLE_MASK_PANEL_LABEL,
 } from "@/src/lib/scanMaskLabels";
-import { SCAN_MASK_FRAME_ASPECT_CSS } from "@/src/lib/maskImageCrop";
+import {
+  SCAN_MASK_FRAME_ASPECT_CSS,
+  shouldCropLegacyMaskTitle,
+  legacyMaskTitleCropStyle,
+} from "@/src/lib/maskImageCrop";
 import {
   DoctorInlineLoader,
 } from "@/components/doctor/DoctorUiPrimitives";
 import { DoctorScanScoreEditor } from "@/components/doctor/DoctorScanScoreEditor";
 import { TrackerReportSections } from "@/components/dashboard/TrackerReportSections";
+import { formatAiSummary } from "@/src/lib/dummyScanSummary";
 
 const reportCache = new Map<string, DoctorScanReportPayload>();
 
@@ -72,22 +77,30 @@ function DoctorScanMaskImage({
   src,
   alt,
   caption,
+  maskExportVersion,
 }: {
   src: string;
   alt: string;
   caption: string;
+  maskExportVersion?: number | null;
 }) {
+  const cropLegacyTitle = shouldCropLegacyMaskTitle(src, maskExportVersion);
   return (
     <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
-        style={{ aspectRatio: SCAN_MASK_FRAME_ASPECT_CSS }}
+        style={{ aspectRatio: cropLegacyTitle ? "1 / 1" : "3 / 4" }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}
-          className="h-full w-full object-contain object-center"
+          className={
+            cropLegacyTitle
+              ? "h-full w-full object-contain object-center"
+              : "h-full w-full object-cover object-center"
+          }
+          style={cropLegacyTitle ? legacyMaskTitleCropStyle() : undefined}
           loading="lazy"
         />
       </div>
@@ -246,6 +259,7 @@ export function DoctorScanReportPanel({
                 src={wrinkleMask}
                 alt="Wrinkle mask overlay"
                 caption={WRINKLE_MASK_PANEL_LABEL}
+                maskExportVersion={report.maskExportVersion}
               />
             ) : null}
             {acneMask ? (
@@ -253,6 +267,7 @@ export function DoctorScanReportPanel({
                 src={acneMask}
                 alt="Acne mask overlay"
                 caption={ACNE_MASK_PANEL_LABEL}
+                maskExportVersion={report.maskExportVersion}
               />
             ) : null}
           </div>
@@ -262,7 +277,14 @@ export function DoctorScanReportPanel({
       {report.aiSummary?.trim() ? (
         <ReportSection title="Summary">
           <p className="text-sm leading-relaxed text-[#2C3E6B]/85">
-            {report.aiSummary.trim()}
+            {formatAiSummary(report.aiSummary, {
+              acne: report.metrics.acne ?? 0,
+              pigmentation: report.metrics.pigmentation ?? 0,
+              wrinkles: report.metrics.wrinkles ?? 0,
+              hydration: report.metrics.hydration ?? 0,
+              texture: report.metrics.texture ?? 0,
+              overall_score: report.metrics.overall_score ?? 0,
+            }, true).trim()}
           </p>
         </ReportSection>
       ) : null}

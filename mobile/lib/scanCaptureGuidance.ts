@@ -68,16 +68,16 @@ const FACE_TARGET = {
 };
 
 /**
- * Unified framing band — face should fill **18–32%** of the frame.
+ * Unified framing band — face should fill **12–42%** of the frame.
  * Matches web `src/lib/scanCaptureGuidance.ts` for cross-device consistency.
  *
  * The whole face must sit INSIDE the guide ellipse with margin (hairline, cheeks,
- * chin all visible). A face fill of ~18–32% keeps the head comfortably inside the
- * ellipse; higher than this crops the forehead/chin.
+ * chin all visible). A face fill of ~12–42% keeps the head comfortably inside the
+ * ellipse without forcing the user uncomfortably close or far.
  */
-export const IDEAL_FACE_FILL_MIN = 0.18;
-export const IDEAL_FACE_FILL_MAX = 0.32;
-/** ±3 pts hysteresis around the 18–32% band. */
+export const IDEAL_FACE_FILL_MIN = 0.12;
+export const IDEAL_FACE_FILL_MAX = 0.42;
+/** ±3 pts hysteresis around the 12–42% band (widened so framing is easier). */
 const CAPTURE_FRAMING_TOLERANCE = 0.03;
 const IDEAL_FACE_FILL_AREA = (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 

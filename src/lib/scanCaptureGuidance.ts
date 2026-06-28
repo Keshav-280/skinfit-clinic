@@ -94,11 +94,13 @@ const FACE_TARGET = {
  * ~18–32% places the whole head inside the ellipse with comfortable margin.
  * Higher than this and the face gets cropped at the forehead/chin.
  *
- * Target band: **18–32%** with **±3%** hysteresis. Auto-zoom converges to ~25%.
+ * Target band: **12–42%** with **±3%** hysteresis. Auto-zoom converges to ~27%.
+ * Widened from 18–32% so the user does not have to move uncomfortably close
+ * (or back) to land in the "good" band.
  */
-export const IDEAL_FACE_FILL_MIN = 0.18;
-export const IDEAL_FACE_FILL_MAX = 0.32;
-/** ±3 percentage points — enter/exit "move closer" / "ease back" outside 18–32%. */
+export const IDEAL_FACE_FILL_MIN = 0.12;
+export const IDEAL_FACE_FILL_MAX = 0.42;
+/** ±3 percentage points — enter/exit "move closer" / "ease back" outside the band. */
 export const CAPTURE_FRAMING_TOLERANCE = 0.03;
 /** Center of ideal band — auto-zoom converges here. */
 export const IDEAL_FACE_FILL_AREA =
@@ -137,9 +139,9 @@ export function captureAutoZoomTargetFill(): number {
 
 export const CAPTURE_ZOOM_AUTO = {
   min: 1,
-  /** Cap zoom so auto-zoom can't crop the forehead/chin out of the ellipse. */
-  max: 1.6,
-  /** Start at full frame; auto-zoom nudges toward ~25% face area. */
+  /** Manual zoom headroom — let the user crop in closer when they want to. */
+  max: 3,
+  /** Start at full frame; auto-zoom nudges toward the ideal face area. */
   default: 1,
   targetFill: captureAutoZoomTargetFill(),
 } as const;

@@ -131,12 +131,14 @@ export function resolveScanDisplayScores(input: {
   const clinical_scores = parseClinicalScores(effectiveScoresJson);
 
   // Compute resolved RAG parameter values (0–100 clarity scale).
-  const resolvedRagParamValues = mergeRagParamValuesFromScan({
-    dbByKey: {},
-    scoresJson: effectiveScoresJson,
-    pigmentationColumn: input.baseMetricsColumns.pigmentation,
-    acneColumn: input.baseMetricsColumns.acne,
-    wrinklesColumn: input.baseMetricsColumns.wrinkles,
+  const resolvedRagParamValues = ragParamValuesFromScanRow({
+    overallScore: input.baseMetricsColumns.overallScore,
+    acne: input.baseMetricsColumns.acne,
+    wrinkles: input.baseMetricsColumns.wrinkles,
+    pigmentation: input.baseMetricsColumns.pigmentation,
+    hydration: input.baseMetricsColumns.hydration ?? 0,
+    texture: input.baseMetricsColumns.texture ?? 0,
+    scores: input.scoresJson,
   });
 
   const computedKai =
@@ -251,6 +253,41 @@ export function buildDoctorScoreEditMeta(scoresJson: unknown): DoctorScoreEditMe
     hasOverrides,
     aiBase,
   };
+}
+
+/** Minimal scan row shape for unified kAI / RAG param resolution. */
+export type ScanRowForScoreResolution = ScanBaseMetricsColumns & {
+  scores: unknown;
+};
+
+/** RAG 0–100 param values (acne detector, doctor overrides, clinical_scores). */
+export function ragParamValuesFromScanRow(
+  row: ScanRowForScoreResolution,
+  dbByKey: Record<string, number | null | undefined> = {}
+): ResolvedScanDisplayScores["resolvedRagParamValues"] {
+  const { effectiveScoresJson } = resolveEffectiveScoresJson(row.scores);
+  return mergeRagParamValuesFromScan({
+    dbByKey,
+    scoresJson: effectiveScoresJson,
+    pigmentationColumn: row.pigmentation,
+    acneColumn: row.acne,
+    wrinklesColumn: row.wrinkles,
+  });
+}
+
+/** Weighted kAI score with doctor override when present. */
+export function kaiScoreFromScanRow(row: ScanRowForScoreResolution): number {
+  return resolveScanDisplayScores({
+    scoresJson: row.scores,
+    baseMetricsColumns: {
+      overallScore: row.overallScore,
+      acne: row.acne,
+      wrinkles: row.wrinkles,
+      pigmentation: row.pigmentation,
+      hydration: row.hydration ?? 0,
+      texture: row.texture ?? 0,
+    },
+  }).metrics.overall_score;
 }
 
 /** Effective patient/doctor metrics with `doctorOverrides` merged into clinical scores. */

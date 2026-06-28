@@ -15,7 +15,6 @@ import {
   visitNotes,
 } from "@/src/db/schema";
 import {
-  computeRagKaiScore,
   RAG_KAI_PARAM_KEYS,
   RAG_KAI_PARAM_LABELS,
   type RagKaiParamKey,
@@ -26,7 +25,10 @@ import {
 } from "@/src/lib/ragCorrelationStats";
 import { analyzeTrackerReport, isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 import { productionTextbookRetrieve } from "@/src/lib/ragRetrieve";
-import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
+import {
+  kaiScoreFromScanRow,
+  ragParamValuesFromScanRow,
+} from "@/src/lib/resolveScanDisplayScores";
 import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
 import type {
   PatientTrackerCause,
@@ -49,6 +51,8 @@ type ScanRow = {
   pigmentation: number;
   acne: number;
   wrinkles: number;
+  hydration?: number;
+  texture?: number;
 };
 
 function ymd(d: Date) {
@@ -192,6 +196,8 @@ export async function buildRagPatientTrackerNarrative(input: {
       pigmentation: scans.pigmentation,
       acne: scans.acne,
       wrinkles: scans.wrinkles,
+      hydration: scans.hydration,
+      texture: scans.texture,
     })
     .from(scans)
     .where(eq(scans.userId, userId))
@@ -201,31 +207,11 @@ export async function buildRagPatientTrackerNarrative(input: {
     id: s.id,
     createdAt: s.createdAt,
     overallScore: s.overallScore,
-    paramValues: mergeRagParamValuesFromScan({
-      dbByKey: {},
-      scoresJson: s.scores,
-      pigmentationColumn: s.pigmentation,
-      acneColumn: s.acne,
-      wrinklesColumn: s.wrinkles,
-    }),
+    paramValues: ragParamValuesFromScanRow(s),
   }));
 
-  const currentVals = mergeRagParamValuesFromScan({
-    dbByKey: {},
-    scoresJson: scanRow.scores,
-    pigmentationColumn: scanRow.pigmentation,
-    acneColumn: scanRow.acne,
-    wrinklesColumn: scanRow.wrinkles,
-  });
-  const prevVals = prevScan
-    ? mergeRagParamValuesFromScan({
-        dbByKey: {},
-        scoresJson: prevScan.scores,
-        pigmentationColumn: prevScan.pigmentation,
-        acneColumn: prevScan.acne,
-        wrinklesColumn: prevScan.wrinkles,
-      })
-    : {};
+  const currentVals = ragParamValuesFromScanRow(scanRow);
+  const prevVals = prevScan ? ragParamValuesFromScanRow(prevScan) : {};
 
   const params = RAG_KAI_PARAM_KEYS.map((key) => {
     const v0 = currentVals[key];
@@ -240,10 +226,8 @@ export async function buildRagPatientTrackerNarrative(input: {
     };
   });
 
-  const kaiNow = computeRagKaiScore(currentVals) ?? scanRow.overallScore;
-  const kaiPrev = prevScan
-    ? computeRagKaiScore(prevVals) ?? prevScan.overallScore
-    : kaiNow;
+  const kaiNow = kaiScoreFromScanRow(scanRow);
+  const kaiPrev = prevScan ? kaiScoreFromScanRow(prevScan) : kaiNow;
   const weeklyDelta = Math.round(kaiNow - kaiPrev);
 
   const cutoff7 = new Date(scanRow.createdAt);

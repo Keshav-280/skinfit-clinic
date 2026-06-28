@@ -10,7 +10,7 @@ import {
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { userHasQuestionnaire } from "@/src/lib/onboardingAccess";
 import { RAG_KAI_PARAM_KEYS, RAG_KAI_PARAM_LABELS } from "@/src/lib/ragEightParams";
-import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
+import { ragParamValuesFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 import {
   gatherProfileInsightContext,
   averageKaiScoreInWindow,
@@ -189,12 +189,12 @@ export async function GET(request: Request) {
   > = {};
   const byScan = recentScans.map((scan) => ({
     id: scan.id,
-    values: mergeRagParamValuesFromScan({
-      dbByKey: {},
-      scoresJson: scan.scores,
-      pigmentationColumn: scan.pigmentation,
-      acneColumn: scan.acne,
-      wrinklesColumn: scan.wrinkles,
+    values: ragParamValuesFromScanRow({
+      scores: scan.scores,
+      overallScore: scan.overallScore,
+      acne: scan.acne,
+      wrinkles: scan.wrinkles,
+      pigmentation: scan.pigmentation,
     }),
   }));
   for (const key of RAG_KAI_PARAM_KEYS) {

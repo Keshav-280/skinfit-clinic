@@ -152,6 +152,15 @@ export function useWebScanCaptureGuidance(
   previewFilter = "brightness(100%) contrast(100%)"
 ) {
   const [guidance, setGuidance] = useState<CaptureGuidanceSnapshot | null>(null);
+  /**
+   * Keep the latest brightness/contrast filter in a ref so adjusting the sliders
+   * does NOT change `tick`'s identity and tear down / restart the guidance loop
+   * (which made lighting + framing feedback flicker while the user dragged a slider).
+   */
+  const previewFilterRef = useRef(previewFilter);
+  useEffect(() => {
+    previewFilterRef.current = previewFilter;
+  }, [previewFilter]);
   const [faceLandmarks, setFaceLandmarks] = useState<NormalizedLandmark[] | null>(
     null
   );
@@ -297,7 +306,7 @@ export function useWebScanCaptureGuidance(
         PREVIEW_W,
         PREVIEW_H,
         currentZoom,
-        previewFilter
+        previewFilterRef.current
       );
       if (!imageData) return;
 
@@ -558,7 +567,6 @@ export function useWebScanCaptureGuidance(
     needsExpressionModel,
     models.mediapipe,
     models.blazeFace,
-    previewFilter,
   ]);
 
   useEffect(() => {

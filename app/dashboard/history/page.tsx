@@ -14,6 +14,7 @@ import { ymdFromDateOnly } from "../../../src/lib/date-only";
 import { displayUserPhone } from "../../../src/lib/auth/phone";
 import { isPatientClinicVisited } from "../../../src/lib/patientClinicVisit";
 import { patientScanImagePath } from "../../../src/lib/patientScanImagePath";
+import { analysisResultsToParams } from "../../../src/lib/skinScanAnalysis";
 
 export default async function HistoryPage() {
   const userId = await getSessionUserId();
@@ -57,6 +58,7 @@ export default async function HistoryPage() {
         texture: true,
         createdAt: true,
         aiSummary: true,
+        scores: true,
       },
       orderBy: [desc(scans.createdAt)],
     }),
@@ -100,21 +102,13 @@ export default async function HistoryPage() {
   ]);
 
   const scanRecords = scansList.map((s) => {
-    const eczema = Math.min(
-      100,
-      Math.max(0, Math.round((s.hydration + s.acne + s.texture) / 3))
-    );
+    const params = analysisResultsToParams(s.scores);
     return {
       id: s.id,
       scanName: s.scanName,
       imageUrl: patientScanImagePath(s.id, { preview: true, thumbnail: true }),
       overallScore: s.overallScore,
-      acne: s.acne,
-      pigmentation: s.pigmentation,
-      wrinkles: s.wrinkles,
-      hydration: s.hydration,
-      texture: s.texture,
-      eczema,
+      params,
       createdAt: s.createdAt,
       aiSummary: s.aiSummary ?? null,
     };

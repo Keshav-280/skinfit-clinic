@@ -39,10 +39,9 @@ import { configurePlaybackAudioMode, primeAudioSessionForPlayback } from "@/lib/
 import { resolvePlayableAudioUri } from "@/lib/resolvePlayableAudioUri";
 import { getCached, setCached } from "@/lib/apiCache";
 import {
+  analysisResultsToParams,
   extractSkinHealthMetrics,
   extractSkinParamMetrics,
-  kaiParamClarity,
-  SKIN_HEALTH_PARAM_KEYS,
 } from "@/lib/skinAnalysis";
 import { patientClarityToGrade, patientChartDisplayValue, patientParamGaugeLabel, patientScoreView } from "../../../src/lib/clarityGrade";
 import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave";
@@ -63,10 +62,7 @@ import {
 } from "@/lib/dashboardTheme";
 
 function kaiParamsFromAnalysis(analysis: unknown): { label: string; value: number }[] {
-  return SKIN_HEALTH_PARAM_KEYS.map(({ key, label }) => ({
-    label,
-    value: kaiParamClarity(analysis, key, 0),
-  }));
+  return analysisResultsToParams(analysis);
 }
 
 function formatScanChipLabel(

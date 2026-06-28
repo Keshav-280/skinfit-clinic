@@ -18,6 +18,30 @@ function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+function getEffectiveScoresJson(scoresJson: unknown): unknown {
+  if (!scoresJson || typeof scoresJson !== "object") return scoresJson;
+  const root = scoresJson as Record<string, unknown>;
+  const rawOverrides = root.doctorOverrides;
+  if (!rawOverrides || typeof rawOverrides !== "object") return scoresJson;
+
+  const overrides = rawOverrides as { modelFeatureScores?: Record<string, unknown> };
+  const overridesMfs = overrides.modelFeatureScores;
+  if (!overridesMfs || typeof overridesMfs !== "object") return scoresJson;
+
+  const baseMfs =
+    root.modelFeatureScores && typeof root.modelFeatureScores === "object"
+      ? (root.modelFeatureScores as Record<string, unknown>)
+      : {};
+
+  return {
+    ...root,
+    modelFeatureScores: {
+      ...baseMfs,
+      ...overridesMfs,
+    },
+  };
+}
+
 /**
  * Build RAG six-parameter 0–100 scores for one scan.
  * Uses `parameter_scores` rows when they already use RAG keys (demo seeds);
@@ -39,9 +63,10 @@ export function mergeRagParamValuesFromScan(input: {
     }
   }
 
+  const effectiveScoresJson = getEffectiveScoresJson(input.scoresJson);
   const root =
-    input.scoresJson && typeof input.scoresJson === "object"
-      ? (input.scoresJson as Record<string, unknown>)
+    effectiveScoresJson && typeof effectiveScoresJson === "object"
+      ? (effectiveScoresJson as Record<string, unknown>)
       : null;
   const mfs =
     root?.modelFeatureScores &&

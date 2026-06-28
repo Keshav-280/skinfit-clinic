@@ -10,6 +10,11 @@ import {
 } from "./maskImageCrop";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "./onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "./patientTrackerReport.types";
+import { presentTrackerReportNarrative } from "./patientTrackerLockedCopy";
+import {
+  trackerParamRowDisplayDelta,
+  trackerWeeklyDeltaDisplay,
+} from "./trackerDisplayDelta";
 import {
   ACNE_MASK_PANEL_LABEL,
   DOT_MARKER_LEGEND,
@@ -78,6 +83,8 @@ export type ScanReportPdfPayload = {
   spatialOutputs?: ScanSpatialOutputs;
   regions: Array<{ issue: string; coordinates: { x: number; y: number } }>;
   tracker?: PatientTrackerReport | null;
+  /** When false (default), AI prose hides exact scores/deltas. */
+  scoresUnlocked?: boolean;
 };
 
 const CLINICAL_ROWS = PATIENT_CLINICAL_DISPLAY_ROWS as { key: ClinicalKey; label: string }[];
@@ -282,7 +289,7 @@ function maskPanelHtml(
   const imgClass = legacy ? "mask-panel-img mask-panel-img-legacy" : "mask-panel-img";
   return `
     <figure class="mask-panel">
-      <div class="mask-panel-frame">
+      <div class="mask-panel-frame" style="aspect-ratio: ${legacy ? '1 / 1' : '3 / 4'};">
         <img class="${imgClass}" src=${JSON.stringify(src)} alt=${JSON.stringify(alt)}${imgStyle}${fallbackAttr} />
       </div>
       <figcaption>${esc(caption)}</figcaption>
@@ -348,24 +355,23 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
   return html;
 }
 
-function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
-  const { lastScanDelta, weekAverageDelta } = report.scores;
+function buildTrackerSectionsHtml(
+  rawReport: PatientTrackerReport,
+  scoresUnlocked: boolean
+): string {
+  const report = presentTrackerReportNarrative(rawReport, scoresUnlocked);
+  const weeklyDelta = trackerWeeklyDeltaDisplay(report);
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
-  const weeklyDelta =
-    typeof weekAverageDelta === "number"
-      ? weekAverageDelta
-      : typeof lastScanDelta === "number"
-        ? lastScanDelta
-        : null;
 
   let paramRowsHtml = "";
   for (const row of filterPatientVisibleParamRows(report.paramRows)) {
+    const rowDelta = trackerParamRowDisplayDelta(report, row);
     paramRowsHtml += `
       <div class="tr-param-row">
         <span class="tr-param-label">${esc(row.label)}</span>
         <div class="tr-param-bar"><div class="tr-param-fill" style="width:${valueForBar(row.value)}%"></div></div>
         <span class="tr-param-val">${typeof row.value === "number" ? patientClarityToGrade(row.value) : "-"}</span>
-        <span class="tr-param-delta ${typeof row.delta === "number" ? deltaClass(row.delta) : "tr-delta-flat"}">${typeof row.delta === "number" ? signed(row.delta) : "-"}</span>
+        <span class="tr-param-delta ${typeof rowDelta === "number" ? deltaClass(rowDelta) : "tr-delta-flat"}">${typeof rowDelta === "number" ? signed(rowDelta) : "-"}</span>
       </div>`;
   }
 
@@ -425,7 +431,7 @@ function buildTrackerSectionsHtml(report: PatientTrackerReport): string {
         <p class="tr-hook">${esc(report.hookSentence)}</p>
         <div class="tr-stats">
           <div class="tr-stat"><p class="tr-stat-k">kAI grade</p><p class="tr-stat-v">${patientClarityToGrade(report.scores.kaiScore)}</p></div>
-          <div class="tr-stat"><p class="tr-stat-k">Weekly delta</p><p class="tr-stat-v ${weeklyDelta !== null ? deltaClass(weeklyDelta) : "tr-delta-flat"}">${weeklyDelta !== null ? signed(weeklyDelta) : "-"}</p></div>
+          <div class="tr-stat"><p class="tr-stat-k">Since last scan</p><p class="tr-stat-v ${weeklyDelta !== null ? deltaClass(weeklyDelta) : "tr-delta-flat"}">${weeklyDelta !== null ? signed(weeklyDelta) : "-"}</p></div>
           <div class="tr-stat"><p class="tr-stat-k">Consistency</p><p class="tr-stat-v">${report.scores.consistencyScore}%</p></div>
         </div>
         <p class="tr-insight">${esc(report.insightText)}</p>
@@ -591,7 +597,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
   const masksHtml = buildMaskAnnotationsHtml(p);
   const tracker = p.tracker ?? null;
   const metricsHtml = tracker
-    ? buildTrackerSectionsHtml(tracker)
+    ? buildTrackerSectionsHtml(tracker, p.scoresUnlocked ?? false)
     : buildLegacyMetricsHtml(p, overall, overallGrade, lastScanLabel);
   const pdfScale = estimatePdfScale(p);
   const clinicPhone = "+91 98765 43210";

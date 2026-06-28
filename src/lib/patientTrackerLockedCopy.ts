@@ -3,8 +3,12 @@
  * numeric scores/deltas so UI shows qualitative language only.
  */
 
-import type { PatientTrackerCause } from "@/src/lib/patientTrackerReport.types";
-import { humanizeReportLine } from "@/src/lib/trackerReportNarrative";
+import type {
+  PatientTrackerCause,
+  PatientTrackerFocusAction,
+  PatientTrackerReport,
+} from "./patientTrackerReport.types";
+import { humanizeReportLine } from "./trackerReportNarrative";
 
 type CauseTone = "win" | "drag" | "watch" | "neutral";
 
@@ -181,4 +185,115 @@ export function sanitizeTrackerCausesForLockedPatient(
     ...c,
     text: sanitizeTrackerCauseForLockedPatient(c.text),
   }));
+}
+
+/** Strip exact scores/deltas from a focus action's Why/Do/Target detail. */
+function sanitizeFocusActionDetailForLockedPatient(detail: string): string {
+  return detail
+    .split(/\n+/)
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return "";
+      const m = trimmed.match(/^(Why|Do|Target):\s*(.*)$/i);
+      if (!m) return collapseWhitespace(sanitizeNumericLeaks(trimmed, "neutral"));
+      const label = m[1]!;
+      let body = sanitizeNumericLeaks(m[2] ?? "", "neutral");
+      body = body
+        .replace(/\b(?:reach|hit|get to|climb to|move to)\s+\d{1,3}\b/gi, "improve")
+        .replace(/\bby next (?:scan|week)\b/gi, "by your next scan");
+      body = collapseWhitespace(body);
+      if (!body || body.length < 4) {
+        body =
+          label.toLowerCase() === "target"
+            ? "Aim for steady improvement by your next scan."
+            : "Keep this habit consistent.";
+      }
+      return `${label}: ${body}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function sanitizeFocusActionsForLockedPatient(
+  actions: PatientTrackerFocusAction[]
+): PatientTrackerFocusAction[] {
+  return actions.map((a) => ({
+    ...a,
+    detail: sanitizeFocusActionDetailForLockedPatient(a.detail),
+  }));
+}
+
+/**
+ * Remove letter-grade language (A–E) from AI prose. Unlocked patients see exact
+ * numbers, locked patients see qualitative words — neither should read like
+ * "you're a solid B". Conservative patterns to avoid hitting "vitamin C" etc.
+ */
+export function stripLetterGradeLanguage(text: string): string {
+  let s = text ?? "";
+  s = s.replace(
+    /\b(?:a |an )?(?:solid|strong|healthy|comfortable|great|good)\s+[A-E]\b/g,
+    "in good shape"
+  );
+  s = s.replace(/\bgrade[ds]?\s+[A-E]\b/gi, "this level");
+  s = s.replace(/\b[A-E][-–]\s*grade\b/gi, "this level");
+  s = s.replace(
+    /\b(?:sitting at|rated|scored|came in at|landed at)\s+(?:a |an )?[A-E]\b/gi,
+    "steady"
+  );
+  s = s.replace(
+    /\b(?:a |an )\s?[A-E]\b(?=\s+(?:overall|this week|range|skin|on your))/g,
+    "well-balanced"
+  );
+  return collapseWhitespace(s);
+}
+
+/**
+ * Single source of truth for what AI prose a patient sees in the tracker report.
+ * - Locked (not visited): strip exact scores/deltas → qualitative copy.
+ * - Always: strip letter-grade language (unlocked shows numbers, not grades).
+ */
+export function presentTrackerReportNarrative(
+  report: PatientTrackerReport,
+  scoresUnlocked: boolean
+): PatientTrackerReport {
+  const hookSentence = stripLetterGradeLanguage(
+    scoresUnlocked
+      ? report.hookSentence
+      : sanitizeTrackerNarrativeForLockedPatient(report.hookSentence)
+  );
+  const insightText = stripLetterGradeLanguage(
+    scoresUnlocked
+      ? report.insightText
+      : sanitizeTrackerNarrativeForLockedPatient(report.insightText)
+  );
+  const predictionText = stripLetterGradeLanguage(
+    scoresUnlocked
+      ? report.predictionText
+      : sanitizeTrackerNarrativeForLockedPatient(report.predictionText)
+  );
+  const causes: PatientTrackerCause[] = (
+    scoresUnlocked
+      ? report.causes
+      : sanitizeTrackerCausesForLockedPatient(report.causes)
+  ).map((c: PatientTrackerCause) => ({
+    ...c,
+    text: stripLetterGradeLanguage(c.text),
+  }));
+  const focusActions: PatientTrackerFocusAction[] = (
+    scoresUnlocked
+      ? report.focusActions
+      : sanitizeFocusActionsForLockedPatient(report.focusActions)
+  ).map((a: PatientTrackerFocusAction) => ({
+    ...a,
+    detail: stripLetterGradeLanguage(a.detail),
+  }));
+
+  return {
+    ...report,
+    hookSentence,
+    insightText,
+    predictionText,
+    causes,
+    focusActions,
+  };
 }

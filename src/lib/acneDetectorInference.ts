@@ -10,6 +10,7 @@
  */
 
 import { severityToClarity, type ScanInferencePayload } from "@/src/lib/modelClinicalMetrics";
+import { computeRagKaiScore } from "@/src/lib/ragEightParams";
 
 export type AcneDetectorGrade = {
   final_grade: string; // A–E
@@ -181,15 +182,27 @@ export function applyAcneDetectorToScanPayload(
         }))
       : [];
 
+  const modelEight = { ...payload.modelEight, activeAcne: clarity };
+  const overallKaiScore =
+    computeRagKaiScore({
+      active_acne: clarity,
+      sagging_volume: modelEight.saggingVolume,
+      wrinkles: modelEight.wrinkles,
+      acne_scar: modelEight.acneScar,
+      under_eye: modelEight.underEye,
+      pigmentation: modelEight.pigmentation,
+    }) ?? payload.overallKaiScore;
+
   return {
     ...payload,
-    legacyMetrics: { ...payload.legacyMetrics, acne: clarity },
+    overallKaiScore,
+    legacyMetrics: { ...payload.legacyMetrics, acne: clarity, overall_score: overallKaiScore },
     clinical_scores: { ...payload.clinical_scores, active_acne: severity },
     modelFeatureScores: {
       ...payload.modelFeatureScores,
       active_acne: severity,
     },
-    modelEight: { ...payload.modelEight, activeAcne: clarity },
+    modelEight,
     params,
     detected_regions: [...acneRegions, ...nonAcneRegions],
     // Replace the acne mask panel with the detector's annotated image.

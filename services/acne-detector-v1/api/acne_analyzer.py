@@ -14,7 +14,7 @@ import numpy as np
 # ── defaults (override via env in main.py) ──────────────────────────
 GRID = tuple(int(x) for x in os.getenv("GRID", "4,4").split(","))
 OVERLAP = float(os.getenv("OVERLAP", "0.25"))
-CONF = float(os.getenv("CONF", "0.05"))
+CONF = float(os.getenv("CONF", "0.3"))
 IMGSZ = int(os.getenv("IMGSZ", "896"))
 MERGE_IOU = float(os.getenv("MERGE_IOU", "0.45"))
 MIN_FACE_OVERLAP = float(os.getenv("MIN_FACE_OVERLAP", "0.35"))
@@ -321,13 +321,9 @@ def render_annotated_jpeg_base64(bgr: np.ndarray, dets_active: list[Det], max_si
 
     vis = bgr.copy()
     for d in dets_active:
-        color = det_color_bgr(d.name)
+        color = (0, 0, 255) # Pure red in BGR
         x1, y1, x2, y2 = int(d.x1), int(d.y1), int(d.x2), int(d.y2)
-        cv2.rectangle(vis, (x1, y1), (x2, y2), color, max(2, int(min(vis.shape[:2]) / 400)))
-        label = f"{d.name} {d.conf:.2f}"
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
-        cv2.rectangle(vis, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
-        cv2.putText(vis, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
+        cv2.rectangle(vis, (x1, y1), (x2, y2), color, 1) # Thinner boxes (thickness 1)
 
     h, w = vis.shape[:2]
     if max(h, w) > max_side:

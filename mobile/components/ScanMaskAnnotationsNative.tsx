@@ -27,7 +27,7 @@ function MaskPanel({
   const cropLegacyTitle = shouldCropLegacyMaskTitle(uri, maskExportVersion);
   return (
     <View style={styles.item}>
-      <View style={styles.imageClip}>
+      <View style={[styles.imageClip, { aspectRatio: cropLegacyTitle ? 1 : 3 / 4 }]}>
         <ReportContainImage
           imageUrl={uri}
           fallbackImageUrl={fallbackUri}

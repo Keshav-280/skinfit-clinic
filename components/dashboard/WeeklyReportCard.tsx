@@ -110,7 +110,9 @@ export function WeeklyReportCard({
         <>
           <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
             <div>
-              <p className="text-xs text-[#94a3b8]">Your skin grade</p>
+              <p className="text-xs text-[#94a3b8]">
+                {scoresUnlocked ? "Your skin score" : "Your skin grade"}
+              </p>
               <p className="mt-0.5 flex items-end gap-1">
                 <span className="text-[32px] font-extrabold leading-none text-[#2D3E6B]">
                   {kaiView.kaiPrimary}

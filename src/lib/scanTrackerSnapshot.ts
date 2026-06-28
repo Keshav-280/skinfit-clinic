@@ -3,6 +3,11 @@ import { db as defaultDb } from "@/src/db/client";
 import type { AppDatabase } from "@/src/db/database-types";
 import { scans } from "@/src/db/schema";
 import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
+import {
+  computePatientTrackerScoreBundle,
+  mergeTrackerReportWithScoreBundle,
+  trackerScoreFieldsChanged,
+} from "@/src/lib/patientTrackerScoreBundle";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { withOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
 import { normalizeTrackerReportNarrative } from "@/src/lib/trackerReportNarrative";
@@ -17,7 +22,7 @@ function isMissingTrackerSnapshotColumn(error: unknown): boolean {
   );
 }
 
-type TrackerDb = any;
+type TrackerDb = AppDatabase;
 
 async function writeTrackerSnapshot(
   userId: string,
@@ -65,22 +70,57 @@ function normalizeStoredTrackerReport(report: PatientTrackerReport): {
   };
 }
 
+async function refreshTrackerScoresFromDb(
+  userId: string,
+  scanId: number,
+  stored: PatientTrackerReport
+): Promise<PatientTrackerReport | null> {
+  const scoreResult = await computePatientTrackerScoreBundle({ userId, scanId });
+  if (!scoreResult.ok) return null;
+  const merged = mergeTrackerReportWithScoreBundle(stored, scoreResult.bundle);
+  const { report } = normalizeStoredTrackerReport(merged);
+  return report;
+}
+
 export async function loadScanTrackerReport(
   userId: string,
   scanId: number,
   stored: PatientTrackerReport | null | undefined
 ): Promise<PatientTrackerReport | null> {
+  // Fast path: refresh scores/deltas; rebuild narrative when scores changed.
   if (stored) {
-    const { report, patched } = normalizeStoredTrackerReport(stored);
-    if (patched) {
-      await writeTrackerSnapshot(userId, scanId, report);
+    try {
+      const refreshed = await refreshTrackerScoresFromDb(userId, scanId, stored);
+      if (refreshed) {
+        if (trackerScoreFieldsChanged(stored, refreshed)) {
+          const built = await buildPatientTrackerReport({ userId, scanId });
+          if (built.ok) {
+            const { report } = normalizeStoredTrackerReport(built.report);
+            await writeTrackerSnapshot(userId, scanId, report);
+            return report;
+          }
+          await writeTrackerSnapshot(userId, scanId, refreshed);
+        }
+        return refreshed;
+      }
+      const { report } = normalizeStoredTrackerReport(stored);
+      return report;
+    } catch (e) {
+      console.error(
+        "[loadScanTrackerReport] score refresh failed, using stored fallback",
+        { userId, scanId, e }
+      );
+      const { report } = normalizeStoredTrackerReport(stored);
+      return report;
     }
-    return report;
   }
 
+  // No snapshot yet — full build (includes RAG + LLM narrative).
   try {
     const built = await buildPatientTrackerReport({ userId, scanId });
-    if (!built.ok) return null;
+    if (!built.ok) {
+      return null;
+    }
     const { report } = normalizeStoredTrackerReport(built.report);
     await writeTrackerSnapshot(userId, scanId, report);
     return report;
@@ -98,5 +138,6 @@ export async function persistScanTrackerSnapshot(
 ): Promise<boolean> {
   const built = await buildPatientTrackerReport({ userId, scanId });
   if (!built.ok) return false;
-  return writeTrackerSnapshot(userId, scanId, built.report, database);
+  const { report } = normalizeStoredTrackerReport(built.report);
+  return writeTrackerSnapshot(userId, scanId, report, database);
 }

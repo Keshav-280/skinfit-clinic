@@ -28,6 +28,7 @@ export type PatientScanDetailForPdf = {
   acneMaskDataUri?: string;
   spatialOutputs?: ScanSpatialOutputs;
   trackerReport?: PatientTrackerReport | null;
+  scoresUnlocked?: boolean;
 };
 
 export async function buildScanReportPdfPayload(
@@ -106,5 +107,6 @@ export async function buildScanReportPdfPayload(
     spatialOutputs: detail.spatialOutputs,
     regions: detail.regions ?? [],
     tracker,
+    scoresUnlocked: detail.scoresUnlocked ?? false,
   };
 }

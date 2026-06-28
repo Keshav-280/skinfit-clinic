@@ -2,11 +2,14 @@
 
 import type { ReactNode } from "react";
 import {
+  AlertCircle,
   Bug,
   Camera,
   ChevronLeft,
   Info,
   CheckCircle2,
+  Move,
+  Sun,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -43,13 +46,97 @@ type Props = {
   sidebar: ReactNode;
 };
 
-function guidanceMessage(guidance: CaptureGuidanceSnapshot | null): string {
-  if (!guidance) return "Checking lighting and face position…";
-  if (guidance.readyToCapture) return "Ready — tap Capture when you're set.";
-  if (guidance.face !== "good") return guidance.faceMessage;
-  if (guidance.lighting !== "good") return guidance.lightingMessage;
-  if (guidance.expressionMessage) return guidance.expressionMessage;
-  return "Match the outline.";
+/**
+ * Two independent guidance rows — light and distance/framing — so fixing one
+ * never hides or "interrupts" the other. Each shows its own pass/warn state.
+ */
+function GuidanceStatusBoxes({
+  guidance,
+}: {
+  guidance: CaptureGuidanceSnapshot | null;
+}) {
+  if (!guidance) {
+    return (
+      <div className="flex w-full max-w-[280px] flex-col items-center gap-2 rounded-2xl border border-[rgba(224,112,136,0.35)] bg-white px-4 py-4 shadow-sm sm:max-w-xs">
+        <Info className="h-6 w-6 shrink-0" style={{ color: ACCENT }} aria-hidden />
+        <p className="text-sm font-bold leading-snug sm:text-base" style={{ color: NAVY }}>
+          Checking lighting and distance…
+        </p>
+      </div>
+    );
+  }
+
+  const lightingOk = guidance.lighting === "good" || guidance.lightingScore >= 60;
+  const faceOk = guidance.face === "good";
+
+  return (
+    <div className="flex w-full max-w-[280px] flex-col gap-2 sm:max-w-xs">
+      <GuidanceRow
+        ok={lightingOk}
+        icon={<Sun className="h-4 w-4 shrink-0" style={{ color: NAVY }} aria-hidden />}
+        label="Light"
+        message={lightingOk ? "Lighting looks good" : guidance.lightingMessage}
+      />
+      <GuidanceRow
+        ok={faceOk}
+        icon={<Move className="h-4 w-4 shrink-0" style={{ color: NAVY }} aria-hidden />}
+        label="Distance"
+        message={faceOk ? "Nicely framed" : guidance.faceMessage}
+      />
+      {guidance.expressionMessage ? (
+        <GuidanceRow
+          ok={guidance.expressionOk === true}
+          icon={<Info className="h-4 w-4 shrink-0" style={{ color: NAVY }} aria-hidden />}
+          label="Pose"
+          message={guidance.expressionMessage}
+        />
+      ) : null}
+      {guidance.readyToCapture ? (
+        <p className="text-center text-xs font-semibold text-emerald-700">
+          Ready — tap Capture when you're set.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function GuidanceRow({
+  ok,
+  icon,
+  label,
+  message,
+}: {
+  ok: boolean;
+  icon: ReactNode;
+  label: string;
+  message: string;
+}) {
+  return (
+    <div
+      className={`flex items-start gap-2 rounded-2xl border px-3.5 py-3 shadow-sm ${
+        ok
+          ? "border-[rgba(16,185,129,0.35)] bg-[rgba(16,185,129,0.08)]"
+          : "border-[rgba(224,112,136,0.4)] bg-white"
+      }`}
+    >
+      {ok ? (
+        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+      ) : (
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" aria-hidden />
+      )}
+      <div className="min-w-0 text-left">
+        <p
+          className="text-[10px] font-extrabold uppercase tracking-[0.14em]"
+          style={{ color: ok ? "#059669" : ACCENT }}
+        >
+          {label}
+        </p>
+        <p className="text-sm font-semibold leading-snug" style={{ color: NAVY }}>
+          {message}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function StepTipsList({ tips }: { tips: readonly string[] }) {
@@ -80,7 +167,6 @@ export function WebCaptureStepShell({
   viewfinder,
   reviewingCapture,
   guidance,
-  guidanceReady = false,
   voiceEnabled,
   showDebug,
   captureDebugUi,
@@ -91,9 +177,6 @@ export function WebCaptureStepShell({
   sidebar,
 }: Props) {
   const progress = ((stepIndex + 1) / totalSteps) * 100;
-  const message = reviewingCapture
-    ? "Review this photo. Use it or retake."
-    : guidanceMessage(guidance);
 
   return (
     <div
@@ -162,23 +245,15 @@ export function WebCaptureStepShell({
         <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden sm:gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 lg:gap-x-8">
           <div className="relative z-10 flex min-h-0 min-w-0 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-contain px-1 text-center md:pr-2">
             {!reviewingCapture ? (
-              <div
-                className={`flex w-full max-w-[280px] flex-col items-center gap-2.5 rounded-2xl border px-4 py-4 shadow-sm sm:max-w-xs sm:px-5 sm:py-5 ${
-                  guidanceReady
-                    ? "border-[rgba(224,112,136,0.45)] bg-[rgba(224,112,136,0.14)]"
-                    : "border-[rgba(224,112,136,0.35)] bg-white"
-                }`}
-              >
-                {guidanceReady ? (
-                  <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600 sm:h-7 sm:w-7" aria-hidden />
-                ) : (
-                  <Info className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" style={{ color: ACCENT }} aria-hidden />
-                )}
+              <GuidanceStatusBoxes guidance={guidance} />
+            ) : (
+              <div className="flex w-full max-w-[280px] flex-col items-center gap-2.5 rounded-2xl border border-[rgba(224,112,136,0.35)] bg-white px-4 py-4 shadow-sm sm:max-w-xs sm:px-5 sm:py-5">
+                <Info className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" style={{ color: ACCENT }} aria-hidden />
                 <p className="text-sm font-bold leading-snug sm:text-base" style={{ color: NAVY }}>
-                  {message}
+                  Review this photo. Use it or retake.
                 </p>
               </div>
-            ) : null}
+            )}
 
             <div className="w-full max-w-[280px] sm:max-w-xs">
               <p

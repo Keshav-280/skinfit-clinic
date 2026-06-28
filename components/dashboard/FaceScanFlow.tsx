@@ -595,8 +595,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     // Match mirrored selfie preview: flip horizontally for front camera only.
     const mirror = facingMode === "user";
     ctx.save();
-    // Bake the same brightness/contrast the user sees in the preview.
-    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
     if (mirror) {
       ctx.translate(tw, 0);
       ctx.scale(-1, 1);
@@ -622,6 +620,29 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, tw, th);
     ctx.restore();
+
+    // Bake the same brightness/contrast the user sees in the preview. Done with a
+    // pixel pass (not ctx.filter) because Safari ignores ctx.filter on 2D canvas,
+    // which left the saved photo unadjusted even though the preview looked right.
+    if (brightness !== ADJUST_DEFAULT || contrast !== ADJUST_DEFAULT) {
+      try {
+        const img = ctx.getImageData(0, 0, tw, th);
+        const px = img.data;
+        const b = brightness / 100;
+        const c = contrast / 100;
+        for (let i = 0; i < px.length; i += 4) {
+          for (let ch = 0; ch < 3; ch++) {
+            // CSS filter order: brightness first, then contrast.
+            const bright = px[i + ch] * b;
+            const adjusted = (bright - 128) * c + 128;
+            px[i + ch] = adjusted < 0 ? 0 : adjusted > 255 ? 255 : adjusted;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+      } catch {
+        // getImageData can throw on a tainted canvas; keep the unadjusted capture.
+      }
+    }
 
     canvas.toBlob(
       (blob) => {

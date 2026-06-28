@@ -10,11 +10,12 @@ import {
 } from "../../src/lib/patientDashboardTheme";
 import { TRACKER_REPORT_THEME as R } from "@/lib/scanReportTheme";
 import { filterPatientVisibleParamRows } from "../../src/lib/patientVisibleParams";
-import { ParamScoreBarNative } from "@/components/ParamScoreBarNative";
 import {
-  sanitizeTrackerCausesForLockedPatient,
-  sanitizeTrackerNarrativeForLockedPatient,
-} from "../../src/lib/patientTrackerLockedCopy";
+  trackerParamRowDisplayDelta,
+  trackerWeeklyDeltaDisplay,
+} from "../../src/lib/trackerDisplayDelta";
+import { ParamScoreBarNative } from "@/components/ParamScoreBarNative";
+import { presentTrackerReportNarrative } from "../../src/lib/patientTrackerLockedCopy";
 
 function deltaColor(n: number) {
   if (n > 0) return R.deltaUp;
@@ -102,34 +103,27 @@ export function TrackerReportSectionsNative({
   serifFamily,
   scoresUnlocked = false,
 }: Props) {
-  const { lastScanDelta, weekAverageDelta } = report.scores;
-  const weeklyDelta =
-    typeof weekAverageDelta === "number"
-      ? weekAverageDelta
-      : typeof lastScanDelta === "number"
-        ? lastScanDelta
-        : null;
+  const presented = presentTrackerReportNarrative(report, scoresUnlocked);
+  const weeklyDelta = trackerWeeklyDeltaDisplay(report);
   const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
     ? ONBOARDING_BASELINE_FOCUS_ACTIONS
-    : report.focusActions;
+    : presented.focusActions;
   const visibleParamRows = filterPatientVisibleParamRows(report.paramRows);
-  const displayCauses = scoresUnlocked
-    ? report.causes
-    : sanitizeTrackerCausesForLockedPatient(report.causes);
-  const displayPrediction = scoresUnlocked
-    ? report.predictionText
-    : sanitizeTrackerNarrativeForLockedPatient(report.predictionText);
+  const displayCauses = presented.causes;
+  const displayPrediction = presented.predictionText;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.card}>
         <Text style={styles.sectionKicker}>Section 1</Text>
-        <Text style={[styles.hookTitle, { fontFamily: serifFamily }]}>{report.hookSentence}</Text>
+        <Text style={[styles.hookTitle, { fontFamily: serifFamily }]}>{presented.hookSentence}</Text>
         <View style={styles.statGrid}>
           <View style={styles.statCell}>
-            <Text style={styles.statLabel}>kAI grade</Text>
+            <Text style={styles.statLabel}>
+              {scoresUnlocked ? "kAI score" : "kAI grade"}
+            </Text>
             <Text style={styles.statValue}>
               {scoresUnlocked
                 ? kaiView.kaiPrimary
@@ -137,7 +131,7 @@ export function TrackerReportSectionsNative({
             </Text>
           </View>
           <View style={styles.statCell}>
-            <Text style={styles.statLabel}>Weekly delta</Text>
+            <Text style={styles.statLabel}>Since last scan</Text>
             <View style={styles.statValueRow}>
               <WeeklyDeltaDisplay
                 delta={weeklyDelta}
@@ -178,7 +172,7 @@ export function TrackerReportSectionsNative({
                 />
                 <View style={styles.paramDeltaWrap}>
                   <WeeklyDeltaDisplay
-                    delta={typeof row.delta === "number" ? row.delta : null}
+                    delta={trackerParamRowDisplayDelta(report, row)}
                     scoresUnlocked={scoresUnlocked}
                   />
                 </View>

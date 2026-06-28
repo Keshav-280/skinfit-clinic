@@ -12,6 +12,10 @@ import {
   runFaceAnalysisCentreSmiling,
   runFaceAnalysisService,
 } from "../../../src/lib/faceAnalysisInference";
+import {
+  runAcneDetector,
+  applyAcneDetectorToScanPayload,
+} from "../../../src/lib/acneDetectorInference";
 import { runFaceAnalysisServiceV2 } from "../../../src/lib/faceAnalysisInferenceV2";
 import { FACE_SCAN_CAPTURE_STEPS } from "../../../src/lib/faceScanCaptures";
 import {
@@ -414,6 +418,26 @@ export async function POST(request: NextRequest) {
             });
           }
         }
+
+        const acneDetectorBase = process.env.ACNE_DETECTOR_SERVICE_URL?.trim();
+        const acneDetectorDisabled =
+          process.env.ACNE_DETECTOR_DISABLED === "1" ||
+          process.env.ACNE_DETECTOR_DISABLED === "true";
+        if (acneDetectorBase && !acneDetectorDisabled) {
+          try {
+            const acneResult = await runAcneDetector(filesForV2.centre, {
+              baseUrl: acneDetectorBase,
+              apiKey: inferenceSecret,
+              timeoutMs: inferenceTimeoutMs,
+            });
+            merged = applyAcneDetectorToScanPayload(merged, acneResult);
+          } catch (err) {
+            console.warn("[scan] acne detector skipped — using ML acne score", {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+
         overallKaiScore = merged.overallKaiScore;
         v2params = merged.params as Record<string, unknown>;
         modelFeatureScores = merged.modelFeatureScores as Record<

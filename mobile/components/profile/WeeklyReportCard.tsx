@@ -116,7 +116,9 @@ export default function WeeklyReportCard({
         <>
           <View style={s.snapshot}>
             <View style={s.snapshotMain}>
-              <Text style={s.snapshotLabel}>Your skin grade</Text>
+              <Text style={s.snapshotLabel}>
+                {scoresUnlocked ? "Your skin score" : "Your skin grade"}
+              </Text>
               <View style={s.scoreRow}>
                 <Text style={s.scoreValue}>
                   {kaiView.kaiPrimary}

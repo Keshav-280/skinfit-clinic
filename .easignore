@@ -1,0 +1,26 @@
+# Monorepo folders to ignore (strictly at the root level)
+/node_modules/
+/.next/
+/uploads/
+/models/
+/books/
+/images_pari_faces/
+/local-tools/
+/infra/
+/docker/
+/app/
+/apps/
+/services/
+/public/
+/nginx/
+/scripts/
+/drizzle/
+/docs/
+/exports/
+
+# Mobile specific folders to ignore
+mobile/node_modules/
+mobile/ios/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
