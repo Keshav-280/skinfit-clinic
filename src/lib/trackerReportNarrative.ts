@@ -62,7 +62,7 @@ export function fallbackPredictionText(
 ): string {
   if (kind === "onboarding_first_scan") return ONBOARDING_PREDICTION;
   if (kind === "same_week_followup") {
-    return "Quick recheck done. Same light and angles next time keeps your trend easy to read.";
+    return "Steady progress. Small daily habits add up more than perfect weeks.";
   }
   if (weeklyDelta >= 4) {
     return "A good week overall. Keep the habits that felt easy and repeat them.";

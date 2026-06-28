@@ -527,7 +527,7 @@ export async function POST(request: NextRequest) {
                 "",
                 "Patient-facing output must use letter grades A–E only (A is best). Never include raw numbers, percentages, or /100.",
                 "You only have this single snapshot — no prior week, no deltas. Never imply something got worse, slipped, or declined over time.",
-                "If you mention an area to refine, it must be justified by it being among the **lowest** grades vs the others — frame it as a *relative* gap versus stronger areas (e.g. hydration), not as an acute problem.",
+                "If you mention an area to refine, it must be justified by it being among the **lowest** grades vs the others — frame it as a *relative* gap versus stronger areas (e.g. under-eye area), not as an acute problem.",
                 "If a grade is mid-range or strong (B or A), do not talk about it as if it were a major concern.",
                 "",
                 "Internal context uses 0–100 scores mapped to grades and optional 1–5 clinical severities (higher = worse on 1–5). Use grades in your sentence; ignore conflicting 1–5 hints if they disagree with the grade story.",
@@ -537,7 +537,7 @@ export async function POST(request: NextRequest) {
             {
               role: "user",
               content: [
-                `Letter grades (A is best) — use these in your reply: acne ${patientClarityToGrade(metrics.acne)}, pigmentation ${patientClarityToGrade(metrics.pigmentation)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, hydration ${patientClarityToGrade(metrics.hydration)}, texture ${patientClarityToGrade(metrics.texture)}, overall ${patientClarityToGrade(metrics.overall_score)}.`,
+                `Letter grades (A is best) — use these in your reply: acne ${patientClarityToGrade(metrics.acne)}, pigmentation ${patientClarityToGrade(metrics.pigmentation)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, under-eye area ${patientClarityToGrade(metrics.hydration)}, acne scars ${patientClarityToGrade(metrics.texture)}, overall ${patientClarityToGrade(metrics.overall_score)}.`,
                 `Optional internal context — 1–5 severity (higher is worse); do not quote numbers to the patient: active acne ${modelFeatureScores.active_acne}, skin quality ${modelFeatureScores.skin_quality}, wrinkle severity ${modelFeatureScores.wrinkle_severity}, sagging/volume ${modelFeatureScores.sagging_volume}, under-eye ${modelFeatureScores.under_eye}, hair ${modelFeatureScores.hair_health}.`,
               ].join("\n"),
             },
