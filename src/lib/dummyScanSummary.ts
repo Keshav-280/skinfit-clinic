@@ -42,6 +42,17 @@ export function formatAiSummary(
   if (!text) return "";
   let formatted = text;
 
+  // Replace legacy terms with aligned table labels for past scan compatibility
+  formatted = formatted
+    .replace(/\bhydration\b/g, "under-eye area")
+    .replace(/\bHydration\b/g, "Under-eye area")
+    .replace(/\bmoisture\b/g, "under-eye area")
+    .replace(/\bMoisture\b/g, "Under-eye area")
+    .replace(/\btexture\b/g, "acne scars")
+    .replace(/\bTexture\b/g, "Acne scars")
+    .replace(/\bskin smoothness\b/g, "acne scars")
+    .replace(/\bSkin smoothness\b/g, "Acne scars");
+
   // Calibrate the metrics using patientDisplayClarity for UI consistency (caps at 80)
   const calibratedMetrics = {
     acne: patientDisplayClarity(metrics.acne),
