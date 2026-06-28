@@ -78,13 +78,16 @@ function DoctorScanMaskImage({
   alt,
   caption,
   maskExportVersion,
+  stretch = false,
 }: {
   src: string;
   alt: string;
   caption: string;
   maskExportVersion?: number | null;
+  stretch?: boolean;
 }) {
   const cropLegacyTitle = shouldCropLegacyMaskTitle(src, maskExportVersion);
+  const fitClass = stretch ? "object-fill" : cropLegacyTitle ? "object-contain" : "object-cover";
   return (
     <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
       <div
@@ -96,11 +99,15 @@ function DoctorScanMaskImage({
           src={src}
           alt={alt}
           className={
-            cropLegacyTitle
+            cropLegacyTitle && !stretch
               ? "h-full w-full object-contain object-center"
-              : "h-full w-full object-cover object-center"
+              : `h-full w-full ${fitClass} object-center`
           }
-          style={cropLegacyTitle ? legacyMaskTitleCropStyle() : undefined}
+          style={
+            cropLegacyTitle
+              ? { ...legacyMaskTitleCropStyle(), objectFit: stretch ? "fill" : "cover" }
+              : undefined
+          }
           loading="lazy"
         />
       </div>
@@ -260,6 +267,7 @@ export function DoctorScanReportPanel({
                 alt="Wrinkle mask overlay"
                 caption={WRINKLE_MASK_PANEL_LABEL}
                 maskExportVersion={report.maskExportVersion}
+                stretch
               />
             ) : null}
             {acneMask ? (

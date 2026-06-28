@@ -17,12 +17,14 @@ function MaskPanel({
   caption,
   authToken,
   maskExportVersion,
+  stretch = false,
 }: {
   uri: string;
   fallbackUri?: string;
   caption: string;
   authToken?: string | null;
   maskExportVersion?: number | null;
+  stretch?: boolean;
 }) {
   const cropLegacyTitle = shouldCropLegacyMaskTitle(uri, maskExportVersion);
   return (
@@ -32,7 +34,7 @@ function MaskPanel({
           imageUrl={uri}
           fallbackImageUrl={fallbackUri}
           authToken={authToken}
-          resizeMode="cover"
+          resizeMode={stretch ? "stretch" : "cover"}
           style={StyleSheet.absoluteFillObject}
           imageStyle={cropLegacyTitle ? legacyMaskTitleCropImageStyle() : undefined}
         />
@@ -74,6 +76,7 @@ export function ScanMaskAnnotationsNative({
           caption={wrinkleLabel}
           authToken={authToken}
           maskExportVersion={maskExportVersion}
+          stretch
         />
       ) : null}
       {acne ? (

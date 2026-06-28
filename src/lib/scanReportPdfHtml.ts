@@ -274,19 +274,27 @@ function maskPanelHtml(
   alt: string,
   caption: string,
   fallback?: string,
-  maskExportVersion?: number | null
+  maskExportVersion?: number | null,
+  stretch = false
 ): string {
   const fallbackAttr = fallback
     ? ` onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src=${JSON.stringify(fallback)}}"`
     : "";
   const legacy = shouldCropLegacyMaskTitle(src, maskExportVersion);
+  const objectFit = stretch ? "fill" : legacy ? "cover" : "contain";
   const imgStyle = legacy
     ? (() => {
         const { heightPct, topPct } = legacyMaskTitleCropPercents();
-        return ` style="height:${heightPct}%;top:${topPct}%;object-fit:cover;object-position:center;"`;
+        return ` style="height:${heightPct}%;top:${topPct}%;object-fit:${objectFit};object-position:center;"`;
       })()
-    : "";
-  const imgClass = legacy ? "mask-panel-img mask-panel-img-legacy" : "mask-panel-img";
+    : stretch
+      ? ` style="object-fit:fill;object-position:center;"`
+      : "";
+  const imgClass = legacy
+    ? "mask-panel-img mask-panel-img-legacy"
+    : stretch
+      ? "mask-panel-img mask-panel-img-stretch"
+      : "mask-panel-img";
   return `
     <figure class="mask-panel">
       <div class="mask-panel-frame" style="aspect-ratio: ${legacy ? '1 / 1' : '3 / 4'};">
@@ -315,7 +323,8 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
         "Wrinkle mask overlay",
         p.wrinklePoseLabel ?? WRINKLE_MASK_PANEL_LABEL,
         p.wrinkleFallbackDataUri,
-        p.maskExportVersion
+        p.maskExportVersion,
+        true
       );
     }
     if (acMask) {
@@ -799,6 +808,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       inset: auto;
       left: 0;
       width: 100%;
+    }
+    .mask-panel-img-stretch {
+      object-fit: fill;
     }
     .mask-panel figcaption {
       margin-top: 8px;

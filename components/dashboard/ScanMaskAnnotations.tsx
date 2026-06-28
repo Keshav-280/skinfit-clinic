@@ -27,16 +27,20 @@ function MaskPanel({
   caption,
   fallbackSrc,
   maskExportVersion,
+  stretch = false,
 }: {
   src: string;
   alt: string;
   caption: string;
   fallbackSrc?: string;
   maskExportVersion?: number | null;
+  /** Fill the frame (distort if needed) — wrinkle mask only. */
+  stretch?: boolean;
 }) {
   const displaySrc = publicFileDisplayUrl(src) ?? src;
   const fallback = fallbackSrc ? publicFileDisplayUrl(fallbackSrc) ?? fallbackSrc : "";
   const cropLegacyTitle = shouldCropLegacyMaskTitle(displaySrc, maskExportVersion);
+  const fitClass = stretch ? "object-fill" : "object-cover";
   return (
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
@@ -58,9 +62,13 @@ function MaskPanel({
           className={
             cropLegacyTitle
               ? undefined
-              : "h-full w-full object-cover object-center"
+              : `h-full w-full ${fitClass} object-center`
           }
-          style={cropLegacyTitle ? legacyMaskTitleCropStyle() : undefined}
+          style={
+            cropLegacyTitle
+              ? { ...legacyMaskTitleCropStyle(), objectFit: stretch ? "fill" : "cover" }
+              : undefined
+          }
         />
       </div>
       <figcaption className="border-t border-zinc-100 px-3 py-2 text-center text-xs font-medium text-zinc-600">
@@ -116,6 +124,7 @@ export function ScanMaskAnnotations({
               caption={wrinklePoseLabel}
               fallbackSrc={wrinkleFallbackUrl}
               maskExportVersion={maskExportVersion}
+              stretch
             />
           ) : null}
           {acne ? (

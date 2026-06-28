@@ -23,7 +23,7 @@ type Props = {
   maxWidth?: number;
   style?: ImageStyle;
   imageStyle?: ImageStyle;
-  resizeMode?: "contain" | "cover";
+  resizeMode?: "contain" | "cover" | "stretch";
 };
 
 /**
@@ -131,7 +131,7 @@ export function ReportContainImage({
     ? { uri: resolvedUri }
     : source ?? null;
 
-  const fillParent = resizeMode === "cover";
+  const fillParent = resizeMode === "cover" || resizeMode === "stretch";
 
   if (loading) {
     return (

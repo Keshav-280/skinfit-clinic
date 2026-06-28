@@ -4,7 +4,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
   && rm -rf /var/lib/apt/lists/*
 COPY apps/ml-worker/python/requirements-worker.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+# CPU-only torch first — default pip pulls ~2GB+ CUDA wheels and fills small VM disks.
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+  && pip install --no-cache-dir -r /tmp/requirements.txt
 ENV PYTHONPATH=/app/face_analysis
 COPY apps/ml-worker/python/backbone_offline.py /app/patches/backbone_offline.py
 COPY apps/ml-worker/python/patches/face_analyzer.py /app/patches/face_analyzer.py
