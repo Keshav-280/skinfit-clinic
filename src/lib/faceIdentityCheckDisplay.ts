@@ -1,24 +1,12 @@
 import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
 
+/** User-facing line per photo — no similarity percentages or debug details. */
 export function formatFaceIdentityCheckLine(check: FaceIdentityImageCheck): string {
   if (!check.faceDetected) {
-    const reason = check.error ? ` [${check.error}]` : "";
-    const size =
-      typeof check.bytes === "number"
-        ? ` (${(check.bytes / 1024).toFixed(0)} KB)`
-        : "";
-    return `${check.title}: No face detected${reason}${size}`;
+    return `${check.title}: Face not clear — retake this photo`;
   }
-  const score =
-    typeof check.similarity === "number"
-      ? ` (${Math.round(check.similarity * 100)}%${
-          typeof check.threshold === "number"
-            ? ` · need ${Math.round(check.threshold * 100)}%`
-            : ""
-        })`
-      : "";
-  if (check.matched) return `${check.title}: Match${score}`;
-  return `${check.title}: No match${score}`;
+  if (check.matched) return `${check.title}: OK`;
+  return `${check.title}: Does not match — retake`;
 }
 
 export function formatFaceIdentityCheckSummary(

@@ -24,9 +24,10 @@ import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
 import { needsExpressionCheck } from "@/lib/captureExpression";
 import { isNativeFaceLandmarkAvailable } from "@/lib/nativeFaceLandmarkDetection";
 import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
-import type {
-  CaptureAssistModels,
-  CaptureGuidanceSnapshot,
+import {
+  CAPTURE_STEP_WARMUP_MS,
+  type CaptureAssistModels,
+  type CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
 
 /** Faster ticks for responsive guidance — reduced from 1100ms. */
@@ -88,9 +89,30 @@ export function useMobileScanCaptureGuidance(
     faceLandmarks: null,
   });
   const expressionOkRef = useRef<boolean | null>(null);
+  const warmupUntilRef = useRef(0);
+  const wasInWarmupRef = useRef(false);
   const [models, setModels] = useState<CaptureAssistModels>(() =>
     initialMobileModels(captureCfg, needsMp, false)
   );
+
+  const beginStepWarmup = useCallback(() => {
+    warmupUntilRef.current = Date.now() + CAPTURE_STEP_WARMUP_MS;
+    wasInWarmupRef.current = true;
+    setGuidance(null);
+    setFaceLandmarks(null);
+    previewStateRef.current = {
+      smoothedBox: null,
+      framing: null,
+      expressionCalibration: { openEarBaseline: null },
+      faceLandmarks: null,
+    };
+    expressionOkRef.current = null;
+    mpMissStreakRef.current = 0;
+    setBboxSource("—");
+    setBboxKind("—");
+    setLandmarkCount(0);
+    setPreviewAspect("—");
+  }, []);
 
   const expressionStep = needsExpressionCheck();
   const needsExpressionModel = expressionStep && needsMp;
@@ -109,22 +131,9 @@ export function useMobileScanCaptureGuidance(
   }, [needsMp]);
 
   useEffect(() => {
-    expressionOkRef.current = null;
-    previewStateRef.current = {
-      smoothedBox: null,
-      framing: null,
-      expressionCalibration: { openEarBaseline: null },
-      faceLandmarks: null,
-    };
-    setGuidance(null);
-    setFaceLandmarks(null);
-    setBboxSource("—");
-    setBboxKind("—");
-    setLandmarkCount(0);
-    setPreviewAspect("—");
-    mpMissStreakRef.current = 0;
+    beginStepWarmup();
     setModels(initialMobileModels(captureCfg, needsMp, landmarkDetectionEnabled));
-  }, [stepId, needsMp, landmarkDetectionEnabled, captureCfg]);
+  }, [stepId, needsMp, landmarkDetectionEnabled, captureCfg, beginStepWarmup]);
 
   const tick = useCallback(async () => {
     const cam = cameraRef.current;
@@ -152,7 +161,23 @@ export function useMobileScanCaptureGuidance(
       );
       previewStateRef.current = state;
       setFaceLandmarks(state.faceLandmarks);
-      if (next) setGuidance(next);
+
+      const now = Date.now();
+      const inWarmup = now < warmupUntilRef.current;
+      if (wasInWarmupRef.current && !inWarmup) {
+        wasInWarmupRef.current = false;
+        previewStateRef.current = {
+          smoothedBox: null,
+          framing: null,
+          expressionCalibration: { openEarBaseline: null },
+          faceLandmarks: null,
+        };
+        setFaceLandmarks(null);
+      } else if (inWarmup) {
+        wasInWarmupRef.current = true;
+      }
+
+      if (!inWarmup && next) setGuidance(next);
       if (meta) {
         setBboxSource(meta.bboxSource);
         setBboxKind(meta.bboxKind);
@@ -273,6 +298,14 @@ export function useMobileScanCaptureGuidance(
     void tick();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid extra ticks on every zoom change
   }, [enabled, cameraReady, paused, stepId]);
+
+  const prevPausedRef = useRef(paused);
+  useEffect(() => {
+    if (!paused && prevPausedRef.current) {
+      beginStepWarmup();
+    }
+    prevPausedRef.current = paused;
+  }, [paused, beginStepWarmup]);
 
   const faceCheckLive = Boolean(guidance?.showFaceCheck ?? guidance?.faceFill != null);
   const faceTracked = Boolean(faceLandmarks?.length);

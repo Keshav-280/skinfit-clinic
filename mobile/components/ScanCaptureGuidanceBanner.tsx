@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import type { CaptureAssistModels, CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
+import { CAPTURE_GUIDANCE_WARMUP_MESSAGE } from "@/lib/scanCaptureGuidance";
 
 type Props = {
   guidance: CaptureGuidanceSnapshot | null;
@@ -33,7 +34,7 @@ export function ScanCaptureGuidanceBanner({
       <View style={styles.wrap}>
         <View style={styles.loadingRow}>
           <ActivityIndicator size="small" color="#fff" />
-          <Text style={styles.loadingText}>Checking lighting & face…</Text>
+          <Text style={styles.loadingText}>{CAPTURE_GUIDANCE_WARMUP_MESSAGE}</Text>
         </View>
       </View>
     );

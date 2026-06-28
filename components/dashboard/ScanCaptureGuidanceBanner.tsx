@@ -5,6 +5,7 @@ import type {
   CaptureAssistModels,
   CaptureGuidanceSnapshot,
 } from "@/src/lib/scanCaptureGuidance";
+import { CAPTURE_GUIDANCE_WARMUP_MESSAGE } from "@/src/lib/scanCaptureGuidance";
 
 type Props = {
   guidance: CaptureGuidanceSnapshot | null;
@@ -43,7 +44,7 @@ export function ScanCaptureGuidanceBanner({
   if (!guidance) {
     return (
       <p className={`text-center text-[#6B7280] ${textSize}`}>
-        Checking lighting & face…
+        {CAPTURE_GUIDANCE_WARMUP_MESSAGE}
       </p>
     );
   }

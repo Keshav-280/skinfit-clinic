@@ -4,7 +4,9 @@
 
 export type { CaptureAssistModels } from "../../src/lib/scanCaptureGuidance";
 
-import {
+export {
+  CAPTURE_GUIDANCE_WARMUP_MESSAGE,
+  CAPTURE_STEP_WARMUP_MS,
   FACE_BOX_SMOOTH_ALPHA,
   smoothFaceBox,
 } from "../../src/lib/scanCaptureGuidance";
@@ -177,8 +179,6 @@ export type StableFramingState = {
   quality: FaceFramingQuality;
   faceFill: number | null;
 };
-
-export { smoothFaceBox, FACE_BOX_SMOOTH_ALPHA };
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));

@@ -7,7 +7,6 @@ import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import { assertDoctorPatientAccess } from "@/src/lib/doctorPatientCare";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { invalidateUserHomeCache, invalidateUserInsightsCache, invalidateUserScanDerivedCaches } from "@/src/lib/infra";
-import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import { resolveScanDisplayScores, type DoctorOverrides, DOCTOR_EDITABLE_MFS_KEYS } from "@/src/lib/resolveScanDisplayScores";
 
 type AllowedMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
@@ -209,13 +208,6 @@ export async function PATCH(
   } catch (e) {
     console.warn("[doctor-scores] skin_scans sync failed", e);
   }
-
-  void sendClinicSupportMessage({
-    patientId,
-    assistantId: "support",
-    text: "Your doctor updated your scan scores. Your kAI score and report have been refreshed.",
-    notificationType: "doctor.reply",
-  }).catch((e) => console.warn("[doctor-scores] notify failed", e));
 
   return NextResponse.json({ ok: true });
 }

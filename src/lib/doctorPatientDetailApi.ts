@@ -21,6 +21,7 @@ import {
   loadPatientMonthlyInsightSnapshot,
   loadPatientWeeklyInsightViewModel,
 } from "@/src/lib/patientInsightParity.server";
+import { scanDisplayMetricsFromRow } from "@/src/lib/resolveScanDisplayScores";
 
 export const DOCTOR_PATIENT_DETAIL_SECTIONS = [
   "profile",
@@ -259,19 +260,31 @@ export async function loadDoctorPatientDetailSections(
 
     const pidEnc = encodeURIComponent(patientId);
     payload.scans = scanRowsRaw.map((s) => {
+      const metrics = scanDisplayMetricsFromRow({
+        overallScore: s.overallScore,
+        acne: s.acne,
+        wrinkles: s.wrinkles,
+        pigmentation: s.pigmentation,
+        hydration: s.hydration,
+        texture: s.texture,
+        scores: s.scores,
+      });
       const eczema = Math.min(
         100,
-        Math.max(0, Math.round((s.hydration + s.acne + s.texture) / 3))
+        Math.max(
+          0,
+          Math.round((metrics.hydration + metrics.acne + metrics.texture) / 3)
+        )
       );
       return {
         id: s.id,
         scanName: s.scanName,
-        overallScore: s.overallScore,
-        acne: s.acne,
-        pigmentation: s.pigmentation,
-        wrinkles: s.wrinkles,
-        hydration: s.hydration,
-        texture: s.texture,
+        overallScore: metrics.overall_score,
+        acne: metrics.acne,
+        pigmentation: metrics.pigmentation,
+        wrinkles: metrics.wrinkles,
+        hydration: metrics.hydration,
+        texture: metrics.texture,
         eczema,
         aiSummary: s.aiSummary,
         scores: s.scores,

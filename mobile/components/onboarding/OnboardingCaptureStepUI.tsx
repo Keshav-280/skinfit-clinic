@@ -16,6 +16,10 @@ import { CaptureExtraTipsModal } from "@/components/capture/CaptureExtraTipsModa
 import { isCaptureDebugTapEnabled } from "@/components/ScanCaptureDebugOverlay";
 import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
+import {
+  CAPTURE_GUIDANCE_WARMUP_MESSAGE,
+  type CaptureGuidanceSnapshot,
+} from "@/lib/scanCaptureGuidance";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const BG = "#F6F5F2";
@@ -64,6 +68,8 @@ type Props = {
   showVoiceToggle?: boolean;
   /** Live framing/lighting hint below the viewfinder. */
   showGuidanceBanner?: boolean;
+  /** Split light + distance rows (matches web WebCaptureStepShell). */
+  guidance?: CaptureGuidanceSnapshot | null;
   /** Header ? button opens extra tips during live capture. */
   showExtraTipsHelp?: boolean;
 };
@@ -95,6 +101,7 @@ export function OnboardingCaptureStepUI({
   showDevControls = false,
   showVoiceToggle = true,
   showGuidanceBanner = true,
+  guidance,
   showExtraTipsHelp = true,
 }: Props) {
   const [extraTipsOpen, setExtraTipsOpen] = useState(false);
@@ -189,16 +196,20 @@ export function OnboardingCaptureStepUI({
         </View>
 
         {!reviewingCapture && showGuidanceBanner ? (
-          <View style={[styles.guidePill, guidanceReady && styles.guidePillReady]}>
-            <Ionicons
-              name={guidanceReady ? "checkmark-circle" : "information-circle-outline"}
-              size={18}
-              color={ACCENT}
-            />
-            <Text style={styles.guideText} numberOfLines={2}>
-              {guidanceMessage}
-            </Text>
-          </View>
+          guidance !== undefined ? (
+            <CaptureGuidanceStatusBoxes guidance={guidance} ready={guidanceReady} />
+          ) : (
+            <View style={[styles.guidePill, guidanceReady && styles.guidePillReady]}>
+              <Ionicons
+                name={guidanceReady ? "checkmark-circle" : "information-circle-outline"}
+                size={18}
+                color={ACCENT}
+              />
+              <Text style={styles.guideText} numberOfLines={2}>
+                {guidanceMessage}
+              </Text>
+            </View>
+          )
         ) : null}
 
         <View style={styles.tipsCard}>
@@ -287,6 +298,73 @@ export function OnboardingCaptureStepUI({
   );
 }
 
+function CaptureGuidanceStatusBoxes({
+  guidance,
+  ready,
+}: {
+  guidance: CaptureGuidanceSnapshot | null;
+  ready: boolean;
+}) {
+  if (!guidance) {
+    return (
+      <View style={styles.guideWarmup}>
+        <Ionicons name="information-circle-outline" size={20} color={ACCENT} />
+        <Text style={styles.guideWarmupText}>{CAPTURE_GUIDANCE_WARMUP_MESSAGE}</Text>
+      </View>
+    );
+  }
+
+  const lightingOk = guidance.lighting === "good" || guidance.lightingScore >= 60;
+  const faceOk = guidance.face === "good";
+
+  return (
+    <View style={styles.guideSplitWrap}>
+      <GuidanceStatusRow
+        ok={lightingOk}
+        label="Light"
+        message={lightingOk ? "Lighting looks good" : guidance.lightingMessage}
+        icon="sunny-outline"
+      />
+      <GuidanceStatusRow
+        ok={faceOk}
+        label="Distance"
+        message={faceOk ? "Nicely framed" : guidance.faceMessage}
+        icon="move-outline"
+      />
+      {ready ? (
+        <Text style={styles.guideReadyHint}>Ready — tap Capture when you're set.</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function GuidanceStatusRow({
+  ok,
+  label,
+  message,
+  icon,
+}: {
+  ok: boolean;
+  label: string;
+  message: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}) {
+  return (
+    <View style={[styles.guideRow, ok ? styles.guideRowOk : styles.guideRowWarn]}>
+      <Ionicons
+        name={ok ? "checkmark-circle" : "alert-circle-outline"}
+        size={18}
+        color={ok ? "#059669" : "#f59e0b"}
+      />
+      <View style={styles.guideRowBody}>
+        <Text style={[styles.guideRowLabel, ok && styles.guideRowLabelOk]}>{label}</Text>
+        <Text style={styles.guideRowMessage}>{message}</Text>
+      </View>
+      <Ionicons name={icon} size={16} color={NAVY} style={styles.guideRowIcon} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
   screen: {
@@ -359,6 +437,78 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 19,
     color: NAVY,
+  },
+  guideWarmup: {
+    marginTop: 12,
+    minHeight: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(224, 112, 136, 0.35)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  guideWarmupText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 19,
+    color: NAVY,
+  },
+  guideSplitWrap: {
+    marginTop: 12,
+    gap: 8,
+  },
+  guideRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  guideRowOk: {
+    borderColor: "rgba(16,185,129,0.35)",
+    backgroundColor: "rgba(16,185,129,0.08)",
+  },
+  guideRowWarn: {
+    borderColor: "rgba(224, 112, 136, 0.4)",
+  },
+  guideRowBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  guideRowLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: ACCENT,
+  },
+  guideRowLabelOk: {
+    color: "#059669",
+  },
+  guideRowMessage: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 19,
+    color: NAVY,
+  },
+  guideRowIcon: {
+    marginTop: 2,
+    opacity: 0.85,
+  },
+  guideReadyHint: {
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#059669",
   },
   stepCount: {
     fontSize: 14,

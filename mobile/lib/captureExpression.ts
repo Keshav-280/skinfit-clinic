@@ -4,14 +4,8 @@ import type { FaceBlendshapeCategory } from "@/lib/nativeFaceLandmarkDetection";
 
 export type { ExpressionCalibration } from "../../src/lib/captureExpression";
 
-/**
- * Eye-closure (and any expression) detection is intentionally DISABLED on the
- * phone app. On-device MediaPipe is usually unavailable and the server blink
- * classifier produced noisy "Gently close both eyes" nagging that annoyed users
- * without ever blocking capture. The "eyes closed" capture step still exists —
- * we just don't run live detection or guidance for it on mobile.
- */
-export function needsExpressionCheck(): boolean {
+/** Re-export shared policy: expression / eye-closure detection is off everywhere. */
+export function needsExpressionCheck(_stepId?: FaceScanCaptureId): boolean {
   return false;
 }
 
@@ -44,6 +38,7 @@ export function applyCaptureExpression(
   return {
     ...next,
     showExpressionCheck:
+      needsExpressionCheck(stepId) &&
       expressionPipelineActive &&
       stepId === "eyes_closed",
   };

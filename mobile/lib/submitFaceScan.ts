@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import { formatFaceIdentityCheckSummary } from "../../src/lib/faceIdentityCheckDisplay";
+import { formatFaceIdentityCheckLine } from "../../src/lib/faceIdentityCheckDisplay";
 import type { FaceIdentityImageCheck } from "../../src/lib/scanFaceIdentityGate";
 
 export type FaceScanSubmitResult =
@@ -63,6 +63,8 @@ export function formatFaceScanIdentityError(
   message: string,
   identityChecks?: FaceIdentityImageCheck[]
 ): string {
-  if (!identityChecks?.length) return message;
-  return `${message}\n\n${formatFaceIdentityCheckSummary(identityChecks)}`;
+  const retakes = identityChecks?.filter((check) => !check.matched) ?? [];
+  if (retakes.length === 0) return message;
+  const lines = retakes.map(formatFaceIdentityCheckLine).join("\n");
+  return `${message}\n\n${lines}`;
 }

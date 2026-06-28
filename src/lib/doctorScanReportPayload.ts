@@ -177,7 +177,14 @@ export async function buildDoctorScanReportPayload(
     spatialOutputs: spatialOutputs ?? null,
     scanDateIso: row.createdAt.toISOString(),
     trackerReport,
-    scoreEdit: buildDoctorScoreEditMeta(row.scores),
+    scoreEdit: buildDoctorScoreEditMeta(row.scores, {
+      overallScore: row.overallScore,
+      acne: row.acne,
+      wrinkles: row.wrinkles,
+      pigmentation: row.pigmentation,
+      hydration: row.hydration,
+      texture: row.texture,
+    }),
   };
 }
 

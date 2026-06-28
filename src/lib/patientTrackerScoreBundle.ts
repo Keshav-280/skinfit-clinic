@@ -9,8 +9,8 @@ import {
 } from "@/src/db/schema";
 import {
   dateOnlyFromYmd,
-  localCalendarYmd,
   parseYmdToDateOnly,
+  ymdFromDateOnly,
 } from "@/src/lib/date-only";
 import { deriveKaiOnboardingClinical } from "@/src/lib/kaiOnboardingClinical";
 import {
@@ -187,13 +187,19 @@ export async function computePatientTrackerScoreBundle(input: {
 
   const anchor =
     (input.dateParam ? parseYmdToDateOnly(input.dateParam) : null) ??
-    dateOnlyFromYmd(localCalendarYmd());
+    dateOnlyFromYmd(ymdFromDateOnly(scanRow.createdAt));
   const weekCut = subDays(anchor, 7);
 
   const logs = await db
     .select()
     .from(dailyLogs)
-    .where(and(eq(dailyLogs.userId, userId), gte(dailyLogs.date, weekCut)));
+    .where(
+      and(
+        eq(dailyLogs.userId, userId),
+        gte(dailyLogs.date, weekCut),
+        lte(dailyLogs.date, anchor)
+      )
+    );
 
   let amPmDays = 0;
   for (const l of logs) {

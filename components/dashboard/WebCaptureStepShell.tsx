@@ -13,7 +13,10 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import type { CaptureGuidanceSnapshot } from "@/src/lib/scanCaptureGuidance";
+import {
+  CAPTURE_GUIDANCE_WARMUP_MESSAGE,
+  type CaptureGuidanceSnapshot,
+} from "@/src/lib/scanCaptureGuidance";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
@@ -60,7 +63,7 @@ function GuidanceStatusBoxes({
       <div className="flex w-full max-w-[280px] flex-col items-center gap-2 rounded-2xl border border-[rgba(224,112,136,0.35)] bg-white px-4 py-4 shadow-sm sm:max-w-xs">
         <Info className="h-6 w-6 shrink-0" style={{ color: ACCENT }} aria-hidden />
         <p className="text-sm font-bold leading-snug sm:text-base" style={{ color: NAVY }}>
-          Checking lighting and distance…
+          {CAPTURE_GUIDANCE_WARMUP_MESSAGE}
         </p>
       </div>
     );

@@ -62,13 +62,13 @@ export type ScanFaceIdentityGateResult =
 
 const USER_MESSAGES: Record<FaceIdentityErrorCode, string> = {
   [FACE_IDENTITY_ERROR_CODES.MISMATCH]:
-    "This scan doesn't match the person who completed onboarding. Every photo must pass — retake any marked below as no match.",
+    "This photo doesn't look like the same person as your profile photo. Please retake your photos.",
   [FACE_IDENTITY_ERROR_CODES.NOT_DETECTED]:
-    "We couldn't detect a clear face in any of your photos. Retake with your face centered and well lit.",
+    "We couldn't see your face clearly. Please retake with your face centered and well lit.",
   [FACE_IDENTITY_ERROR_CODES.SERVICE_UNAVAILABLE]:
-    "Face verification is temporarily unavailable. Please try again in a few minutes.",
+    "We couldn't verify your photo right now. Please try again in a few minutes.",
   [FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED]:
-    "Complete your onboarding baseline scan first before taking another scan.",
+    "Please complete your profile photo scan first.",
 };
 
 function bufferFromDataUri(dataUri: string): Buffer | null {

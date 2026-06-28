@@ -12,8 +12,13 @@ export type ExpressionCalibration = {
   openEarBaseline: number | null;
 };
 
-export function needsExpressionCheck(stepId: FaceScanCaptureId): boolean {
-  return stepId === "eyes_closed";
+/**
+ * Live eye-closure detection is disabled on web and mobile. The "eyes closed"
+ * capture step still exists — users close their eyes manually; we do not run
+ * blendshape/classifier checks or block capture on expression.
+ */
+export function needsExpressionCheck(_stepId: FaceScanCaptureId): boolean {
+  return false;
 }
 
 function blendScore(

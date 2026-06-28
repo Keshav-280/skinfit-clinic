@@ -6,12 +6,15 @@ import { buildPatientTrackerReport } from "@/src/lib/patientTrackerReport";
 import {
   computePatientTrackerScoreBundle,
   mergeTrackerReportWithScoreBundle,
-  trackerScoreFieldsChanged,
 } from "@/src/lib/patientTrackerScoreBundle";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { withOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
+import { invalidateUserScanDerivedCaches } from "@/src/lib/infra";
 import { normalizeTrackerReportNarrative } from "@/src/lib/trackerReportNarrative";
 import { sanitizeTrackerResources } from "@/src/lib/trackerResourceLinks";
+
+/** Bump when score/delta resolution logic changes — triggers one-time repair on load. */
+export const TRACKER_SCORE_FORMAT_VERSION = 2;
 
 function isMissingTrackerSnapshotColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };
@@ -35,6 +38,7 @@ async function writeTrackerSnapshot(
       .update(scans)
       .set({ trackerSnapshot: report })
       .where(and(eq(scans.id, scanId), eq(scans.userId, userId)));
+    void invalidateUserScanDerivedCaches(userId);
     return true;
   } catch (e) {
     if (isMissingTrackerSnapshotColumn(e)) {
@@ -70,6 +74,13 @@ function normalizeStoredTrackerReport(report: PatientTrackerReport): {
   };
 }
 
+function withScoreFormatVersion(report: PatientTrackerReport): PatientTrackerReport {
+  return {
+    ...report,
+    scoreFormatVersion: TRACKER_SCORE_FORMAT_VERSION,
+  };
+}
+
 async function refreshTrackerScoresFromDb(
   userId: string,
   scanId: number,
@@ -78,7 +89,9 @@ async function refreshTrackerScoresFromDb(
   const scoreResult = await computePatientTrackerScoreBundle({ userId, scanId });
   if (!scoreResult.ok) return null;
   const merged = mergeTrackerReportWithScoreBundle(stored, scoreResult.bundle);
-  const { report } = normalizeStoredTrackerReport(merged);
+  const { report } = normalizeStoredTrackerReport(
+    withScoreFormatVersion(merged)
+  );
   return report;
 }
 
@@ -87,27 +100,27 @@ export async function loadScanTrackerReport(
   scanId: number,
   stored: PatientTrackerReport | null | undefined
 ): Promise<PatientTrackerReport | null> {
-  // Fast path: refresh scores/deltas; rebuild narrative when scores changed.
   if (stored) {
     try {
-      const refreshed = await refreshTrackerScoresFromDb(userId, scanId, stored);
-      if (refreshed) {
-        if (trackerScoreFieldsChanged(stored, refreshed)) {
-          const built = await buildPatientTrackerReport({ userId, scanId });
-          if (built.ok) {
-            const { report } = normalizeStoredTrackerReport(built.report);
-            await writeTrackerSnapshot(userId, scanId, report);
-            return report;
-          }
-          await writeTrackerSnapshot(userId, scanId, refreshed);
+      const needsScoreRepair =
+        (stored.scoreFormatVersion ?? 0) < TRACKER_SCORE_FORMAT_VERSION;
+
+      if (needsScoreRepair) {
+        const repaired = await refreshTrackerScoresFromDb(userId, scanId, stored);
+        if (repaired) {
+          await writeTrackerSnapshot(userId, scanId, repaired);
+          return repaired;
         }
-        return refreshed;
       }
-      const { report } = normalizeStoredTrackerReport(stored);
+
+      const { report, patched } = normalizeStoredTrackerReport(stored);
+      if (patched) {
+        await writeTrackerSnapshot(userId, scanId, report);
+      }
       return report;
     } catch (e) {
       console.error(
-        "[loadScanTrackerReport] score refresh failed, using stored fallback",
+        "[loadScanTrackerReport] stored snapshot failed, using fallback",
         { userId, scanId, e }
       );
       const { report } = normalizeStoredTrackerReport(stored);
@@ -121,7 +134,9 @@ export async function loadScanTrackerReport(
     if (!built.ok) {
       return null;
     }
-    const { report } = normalizeStoredTrackerReport(built.report);
+    const { report } = normalizeStoredTrackerReport(
+      withScoreFormatVersion(built.report)
+    );
     await writeTrackerSnapshot(userId, scanId, report);
     return report;
   } catch (e) {
@@ -138,6 +153,8 @@ export async function persistScanTrackerSnapshot(
 ): Promise<boolean> {
   const built = await buildPatientTrackerReport({ userId, scanId });
   if (!built.ok) return false;
-  const { report } = normalizeStoredTrackerReport(built.report);
+  const { report } = normalizeStoredTrackerReport(
+    withScoreFormatVersion(built.report)
+  );
   return writeTrackerSnapshot(userId, scanId, report, database);
 }

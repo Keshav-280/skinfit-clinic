@@ -7,6 +7,7 @@ import {
   averageFaceBoxes,
   buildCaptureGuidance,
   CAPTURE_GUIDANCE_SETTLE_MS,
+  CAPTURE_STEP_WARMUP_MS,
   detectFaceBoxNormalized,
   estimateFaceBoxFromSkin,
   faceBoxFromLandmarkPoints,
@@ -195,6 +196,25 @@ export function useWebScanCaptureGuidance(
     }>
   >([]);
   const lastGuidancePublishRef = useRef(0);
+  const warmupUntilRef = useRef(0);
+  const wasInWarmupRef = useRef(false);
+
+  const beginStepWarmup = useCallback(() => {
+    warmupUntilRef.current = Date.now() + CAPTURE_STEP_WARMUP_MS;
+    wasInWarmupRef.current = true;
+    setGuidance(null);
+    setFaceLandmarks(null);
+    setFaceTracked(false);
+    smoothedBoxRef.current = null;
+    smoothedLandmarksRef.current = null;
+    faceMissRef.current = 0;
+    lastLandmarkAtRef.current = 0;
+    framingStateRef.current = null;
+    frameSamplesRef.current = [];
+    lastGuidancePublishRef.current = 0;
+    expressionOkRef.current = null;
+    expressionCalibrationRef.current = { openEarBaseline: null };
+  }, []);
 
   const resetLandmarkerSession = useCallback(() => {
     landmarkerRef.current = null;
@@ -493,6 +513,18 @@ export function useWebScanCaptureGuidance(
         now - lastGuidancePublishRef.current >= CAPTURE_GUIDANCE_SETTLE_MS;
 
       if (publishNow) {
+        const inWarmup = now < warmupUntilRef.current;
+        if (wasInWarmupRef.current && !inWarmup) {
+          wasInWarmupRef.current = false;
+          frameSamplesRef.current = [];
+          lastGuidancePublishRef.current = 0;
+        } else if (inWarmup) {
+          wasInWarmupRef.current = true;
+        }
+        if (inWarmup) {
+          return;
+        }
+
         lastGuidancePublishRef.current = now;
         const avgBox = averageFaceBoxes(
           frameSamplesRef.current.map((s) => s.faceBox)
@@ -595,11 +627,16 @@ export function useWebScanCaptureGuidance(
   }, [enabled, tick]);
 
   useEffect(() => {
-    expressionOkRef.current = null;
-    expressionCalibrationRef.current = { openEarBaseline: null };
-    frameSamplesRef.current = [];
-    lastGuidancePublishRef.current = 0;
-  }, [stepId]);
+    beginStepWarmup();
+  }, [stepId, beginStepWarmup]);
+
+  const prevEnabledRef = useRef(enabled);
+  useEffect(() => {
+    if (enabled && !prevEnabledRef.current) {
+      beginStepWarmup();
+    }
+    prevEnabledRef.current = enabled;
+  }, [enabled, beginStepWarmup]);
 
   const faceDetectionAvailable =
     models.faceDetector === "ready" ||

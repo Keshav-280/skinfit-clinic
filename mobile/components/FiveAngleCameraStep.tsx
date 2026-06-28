@@ -35,7 +35,10 @@ import {
 } from "@/lib/cameraCaptureAdjustments";
 import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
 import { prepareCapturedScanPhotoUri } from "@/lib/normalizeScanImage";
-import type { CaptureGuidanceSnapshot } from "@/lib/scanCaptureGuidance";
+import {
+  CAPTURE_GUIDANCE_WARMUP_MESSAGE,
+  type CaptureGuidanceSnapshot,
+} from "@/lib/scanCaptureGuidance";
 
 const NAVY = "#2C3E6B";
 
@@ -44,7 +47,7 @@ function humanGuidanceMessage(
   g: CaptureGuidanceSnapshot | null,
   expressionStep: boolean
 ): string {
-  if (!g) return "Getting the camera ready…";
+  if (!g) return CAPTURE_GUIDANCE_WARMUP_MESSAGE;
   if (g.lighting !== "good" && g.lightingScore < 60) return g.lightingMessage;
   if (g.face !== "good") return g.faceMessage;
   if (expressionStep && g.expressionOk !== true && g.expressionMessage) {
@@ -344,6 +347,7 @@ export function FiveAngleCameraStep({
       reviewingCapture={reviewingCapture}
       shooting={shooting}
       shutterDisabled={isDisabled}
+      guidance={guidance}
       guidanceMessage={humanGuidanceMessage(guidance, expressionStep)}
       guidanceReady={guidance?.readyToCapture ?? false}
       voiceEnabled={voiceEnabled}

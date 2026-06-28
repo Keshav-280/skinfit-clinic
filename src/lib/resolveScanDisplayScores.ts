@@ -37,11 +37,6 @@ function clampInt(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, Math.round(n)));
 }
 
-/** Converts clinical 1–5 severity to clarity 0–100 (higher is better). */
-function severityToClarityPercent(severity: number): number {
-  const x = clampInt(severity, 1, 5);
-  return clampInt(100 - ((x - 1) / 4) * 100, 0, 100);
-}
 
 export function getDoctorOverrides(scoresJson: unknown): DoctorOverrides | null {
   if (!scoresJson || typeof scoresJson !== "object") return null;
@@ -146,25 +141,31 @@ export function resolveScanDisplayScores(input: {
       Record<(typeof RAG_KAI_PARAM_KEYS)[number], number | null | undefined>
     >) ?? input.baseMetricsColumns.overallScore;
 
+  const storedKai =
+    effectiveScoresJson &&
+    typeof effectiveScoresJson === "object" &&
+    typeof (effectiveScoresJson as Record<string, unknown>).overallKaiScore ===
+      "number"
+      ? clampInt(
+          (effectiveScoresJson as Record<string, unknown>).overallKaiScore as number,
+          0,
+          100
+        )
+      : null;
+
   const resolvedKaiScore =
     typeof doctorOverrides?.kaiScore === "number" && Number.isFinite(doctorOverrides.kaiScore)
       ? clampInt(doctorOverrides.kaiScore, 0, 100)
-      : computedKai;
+      : storedKai ?? computedKai;
 
   const resolvedAcne =
-    clinical_scores && typeof clinical_scores.active_acne === "number"
-      ? severityToClarityPercent(clinical_scores.active_acne)
-      : input.baseMetricsColumns.acne;
+    resolvedRagParamValues.active_acne ?? input.baseMetricsColumns.acne;
 
   const resolvedWrinkles =
-    clinical_scores && typeof clinical_scores.wrinkle_severity === "number"
-      ? severityToClarityPercent(clinical_scores.wrinkle_severity)
-      : input.baseMetricsColumns.wrinkles;
+    resolvedRagParamValues.wrinkles ?? input.baseMetricsColumns.wrinkles;
 
   const resolvedPigmentation =
-    clinical_scores && typeof clinical_scores.pigmentation_model === "number"
-      ? severityToClarityPercent(clinical_scores.pigmentation_model)
-      : input.baseMetricsColumns.pigmentation;
+    resolvedRagParamValues.pigmentation ?? input.baseMetricsColumns.pigmentation;
 
   return {
     metrics: {
@@ -197,12 +198,15 @@ export type DoctorScoreEditMeta = {
   };
 };
 
-export function buildDoctorScoreEditMeta(scoresJson: unknown): DoctorScoreEditMeta {
+export function buildDoctorScoreEditMeta(
+  scoresJson: unknown,
+  baseMetricsColumns?: ScanBaseMetricsColumns
+): DoctorScoreEditMeta {
   const doctorOverrides = getDoctorOverrides(scoresJson);
 
   const aiResolved = resolveScanDisplayScores({
     scoresJson: stripDoctorOverrides(scoresJson),
-    baseMetricsColumns: {
+    baseMetricsColumns: baseMetricsColumns ?? {
       overallScore: 0,
       acne: 0,
       wrinkles: 0,
@@ -277,6 +281,26 @@ export function ragParamValuesFromScanRow(
 
 /** Weighted kAI score with doctor override when present. */
 export function kaiScoreFromScanRow(row: ScanRowForScoreResolution): number {
+  const { effectiveScoresJson, doctorOverrides } = resolveEffectiveScoresJson(
+    row.scores
+  );
+  if (
+    typeof doctorOverrides?.kaiScore === "number" &&
+    Number.isFinite(doctorOverrides.kaiScore)
+  ) {
+    return clampInt(doctorOverrides.kaiScore, 0, 100);
+  }
+
+  const root =
+    effectiveScoresJson && typeof effectiveScoresJson === "object"
+      ? (effectiveScoresJson as Record<string, unknown>)
+      : null;
+  const storedKai =
+    typeof root?.overallKaiScore === "number" && Number.isFinite(root.overallKaiScore)
+      ? clampInt(root.overallKaiScore, 0, 100)
+      : null;
+  if (storedKai != null) return storedKai;
+
   return resolveScanDisplayScores({
     scoresJson: row.scores,
     baseMetricsColumns: {

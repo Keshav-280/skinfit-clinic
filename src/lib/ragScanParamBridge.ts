@@ -42,10 +42,21 @@ function getEffectiveScoresJson(scoresJson: unknown): unknown {
   };
 }
 
+function kaiParamClarity(kaiParams: unknown, paramKey: string): number | null {
+  if (!kaiParams || typeof kaiParams !== "object") return null;
+  const row = (kaiParams as Record<string, unknown>)[paramKey];
+  if (!row || typeof row !== "object") return null;
+  return num((row as { value?: unknown }).value);
+}
+
 /**
  * Build RAG six-parameter 0–100 scores for one scan.
- * Uses `parameter_scores` rows when they already use RAG keys (demo seeds);
- * otherwise derives from `scans.scores.modelFeatureScores` and legacy scan columns.
+ *
+ * Priority (highest first):
+ * 1. `parameter_scores` rows (demo seeds)
+ * 2. Denormalized `scans.acne` / `wrinkles` / `pigmentation` columns (acne detector + pipeline)
+ * 3. `scores.kaiParams.*.value` clarity rows from inference
+ * 4. `modelFeatureScores` 1–5 severities (legacy ML only — must not override columns)
  */
 export function mergeRagParamValuesFromScan(input: {
   dbByKey: Record<string, number | null | undefined>;
@@ -73,6 +84,51 @@ export function mergeRagParamValuesFromScan(input: {
     typeof root.modelFeatureScores === "object"
       ? (root.modelFeatureScores as Record<string, unknown>)
       : null;
+  const kaiParams = root?.kaiParams;
+
+  const doctorOverrideSeverity = (mfsKey: string): number | null => {
+    const rawOv = root?.doctorOverrides;
+    if (!rawOv || typeof rawOv !== "object") return null;
+    const mfsOv = (rawOv as { modelFeatureScores?: Record<string, unknown> })
+      .modelFeatureScores;
+    if (!mfsOv || typeof mfsOv !== "object" || !(mfsKey in mfsOv)) return null;
+    return num(mfs?.[mfsKey]);
+  };
+
+  const setIfMissing = (key: RagKaiParamKey, value: number | null) => {
+    if (out[key] != null || value == null) return;
+    out[key] = clampPct(value);
+  };
+
+  const setFromDoctorOverride = (key: RagKaiParamKey, mfsKey: string) => {
+    if (out[key] != null) return;
+    const s = doctorOverrideSeverity(mfsKey);
+    if (s != null) out[key] = severityToClarity(s);
+  };
+
+  setFromDoctorOverride("active_acne", "active_acne");
+  setFromDoctorOverride("wrinkles", "wrinkle_severity");
+  setFromDoctorOverride("pigmentation", "pigmentation_model");
+  setFromDoctorOverride("acne_scar", "acne_scars");
+  setFromDoctorOverride("sagging_volume", "sagging_volume");
+  setFromDoctorOverride("under_eye", "under_eye");
+
+  // Canonical clarity columns — written at scan time; beat stale modelFeatureScores.
+  setIfMissing("active_acne", input.acneColumn > 0 ? input.acneColumn : null);
+  setIfMissing("wrinkles", input.wrinklesColumn > 0 ? input.wrinklesColumn : null);
+  setIfMissing(
+    "pigmentation",
+    input.pigmentationColumn > 0 ? input.pigmentationColumn : null
+  );
+
+  setIfMissing("active_acne", kaiParamClarity(kaiParams, "active_acne"));
+  setIfMissing("wrinkles", kaiParamClarity(kaiParams, "wrinkles"));
+  setIfMissing("sagging_volume", kaiParamClarity(kaiParams, "sagging_volume"));
+  setIfMissing("under_eye", kaiParamClarity(kaiParams, "under_eye"));
+  setIfMissing("acne_scar", kaiParamClarity(kaiParams, "acne_scars"));
+  setIfMissing("pigmentation", kaiParamClarity(kaiParams, "pigmentation"));
+  setIfMissing("skin_quality", kaiParamClarity(kaiParams, "skin_quality"));
+  setIfMissing("hair_health", kaiParamClarity(kaiParams, "hair_health"));
 
   const fillSeverity = (key: RagKaiParamKey, mfsKey: string) => {
     if (out[key] != null) return;
@@ -91,7 +147,7 @@ export function mergeRagParamValuesFromScan(input: {
     const pm = mfs?.pigmentation_model;
     if (typeof pm === "number" && Number.isFinite(pm)) {
       out.pigmentation = severityToClarity(pm);
-    } else {
+    } else if (input.pigmentationColumn > 0) {
       out.pigmentation = clampPct(input.pigmentationColumn);
     }
   }
@@ -101,16 +157,15 @@ export function mergeRagParamValuesFromScan(input: {
     if (typeof v === "number" && Number.isFinite(v)) {
       out.acne_scar = clampPct(v);
     } else {
-      // Fallback: derive from modelFeatureScores.acne_scars (severity 1–5 → clarity 0–100)
       const s = num(mfs?.["acne_scars"]);
       if (s != null) out.acne_scar = severityToClarity(s);
     }
   }
 
-  if (out.active_acne == null) {
+  if (out.active_acne == null && input.acneColumn > 0) {
     out.active_acne = clampPct(input.acneColumn);
   }
-  if (out.wrinkles == null) {
+  if (out.wrinkles == null && input.wrinklesColumn > 0) {
     out.wrinkles = clampPct(input.wrinklesColumn);
   }
 

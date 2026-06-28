@@ -72,4 +72,9 @@ export type PatientTrackerReport = {
   };
   /** Questionnaire-derived flags/notes for kAI report (chronic, sensitivity, triggers, sleep). */
   onboardingClinical?: KaiOnboardingClinical | null;
+  /**
+   * Bumped when score/delta resolution changes. Snapshots below current version
+   * get a one-time score repair on load (no LLM); then served from DB as-is.
+   */
+  scoreFormatVersion?: number;
 };
