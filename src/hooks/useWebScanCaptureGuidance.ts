@@ -152,6 +152,11 @@ export function useWebScanCaptureGuidance(
   /** Match preview/capture brightness & contrast so guidance reflects adjusted image. */
   previewFilter = "brightness(100%) contrast(100%)"
 ) {
+  const stepStartRef = useRef<number>(0);
+  useEffect(() => {
+    stepStartRef.current = Date.now();
+  }, [stepId]);
+
   const [guidance, setGuidance] = useState<CaptureGuidanceSnapshot | null>(null);
   /**
    * Keep the latest brightness/contrast filter in a ref so adjusting the sliders
@@ -542,6 +547,20 @@ export function useWebScanCaptureGuidance(
           faceFill: framing.faceFill,
         };
         let next = buildCaptureGuidance(lastLighting, framing, currentZoom);
+
+        const lightingOk = lastLighting.quality === "good";
+        const faceOk = framing.quality === "good";
+
+        const elapsedSinceStepStart = now - stepStartRef.current;
+        if (elapsedSinceStepStart > 4000) {
+          next.readyToCapture = true;
+          if (!lightingOk) {
+            next.lightingMessage = next.lightingMessage.replace(" (tap Capture anyway)", "") + " (tap Capture anyway)";
+          }
+          if (!faceOk) {
+            next.faceMessage = next.faceMessage.replace(" (tap Capture anyway)", "") + " (tap Capture anyway)";
+          }
+        }
 
         const useClassifier =
           FACE_CAPTURE_CONFIG.expression === "classifier" &&

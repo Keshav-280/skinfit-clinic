@@ -49,16 +49,23 @@ const NAVY = "#2C3E6B";
 /** One short, human guidance line shown during live capture (also spoken by the voice guide). */
 function humanGuidanceMessage(
   g: CaptureGuidanceSnapshot | null,
-  expressionStep: boolean
+  expressionStep: boolean,
+  elapsed: number
 ): string {
   if (!g) return CAPTURE_GUIDANCE_WARMUP_MESSAGE;
-  if (g.lighting !== "good" && g.lightingScore < 60) return g.lightingMessage;
-  if (g.face !== "good") return g.faceMessage;
-  if (expressionStep && g.expressionOk !== true && g.expressionMessage) {
-    return g.expressionMessage;
+  let msg = "Hold still…";
+  if (g.lighting !== "good" && g.lightingScore < 60) msg = g.lightingMessage;
+  else if (g.face !== "good") msg = g.faceMessage;
+  else if (expressionStep && g.expressionOk !== true && g.expressionMessage) {
+    msg = g.expressionMessage;
+  } else if (g.readyToCapture) {
+    msg = "Perfect — hold still and tap capture";
   }
-  if (g.readyToCapture) return "Perfect — hold still and tap capture";
-  return "Hold still…";
+
+  if (elapsed > 4000 && !g.readyToCapture) {
+    return msg + " (tap capture anyway)";
+  }
+  return msg;
 }
 type Props = {
   stepIndex: number;
@@ -94,6 +101,9 @@ export function FiveAngleCameraStep({
   const [voiceEnabled, setVoiceEnabled] = useState(() => voiceSpeechAvailable);
   const [voiceVolume, setVoiceVolume] = useState(0.42);
 
+  const stepStartRef = useRef<number>(0);
+  const [elapsed, setElapsed] = useState(0);
+
   useEffect(() => {
     void loadStoredCaptureVoiceVolume().then(setVoiceVolume);
   }, []);
@@ -102,6 +112,15 @@ export function FiveAngleCameraStep({
     captureVoiceGuide.setVolume(voiceVolume);
     void storeCaptureVoiceVolume(voiceVolume);
   }, [voiceVolume]);
+
+  useEffect(() => {
+    stepStartRef.current = Date.now();
+    setElapsed(0);
+    const t = setInterval(() => {
+      setElapsed(Date.now() - stepStartRef.current);
+    }, 500);
+    return () => clearInterval(t);
+  }, [stepIndex]);
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
@@ -240,7 +259,7 @@ export function FiveAngleCameraStep({
     );
   }
 
-  const guidanceReady = guidance?.readyToCapture ?? false;
+  const guidanceReady = (guidance?.readyToCapture ?? false) || elapsed > 4000;
   const isDisabled =
     busy || shooting || !cameraReady || reviewingCapture || !guidanceReady;
   const previewOverlay = previewOverlayOpacity(
@@ -346,8 +365,8 @@ export function FiveAngleCameraStep({
       shooting={shooting}
       shutterDisabled={isDisabled}
       guidance={guidance}
-      guidanceMessage={humanGuidanceMessage(guidance, expressionStep)}
-      guidanceReady={guidance?.readyToCapture ?? false}
+      guidanceMessage={humanGuidanceMessage(guidance, expressionStep, elapsed)}
+      guidanceReady={guidanceReady}
       voiceEnabled={voiceEnabled}
       voiceVolume={voiceVolume}
       onVoiceVolumeChange={setVoiceVolume}
