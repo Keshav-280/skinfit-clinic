@@ -9,6 +9,7 @@ import type {
 } from "@/src/lib/ragCorrelationStats";
 import { buildNarrativeSignalPack } from "@/src/lib/ragCorrelationStats";
 import type { TextbookChunk } from "@/src/lib/ragTextbookIndex";
+import { patientDisplayClarity } from "@/src/lib/clarityGrade";
 
 let cachedClient: OpenAI | null = null;
 
@@ -42,7 +43,7 @@ function paramsLine(
 ) {
   return params
     .map((p) => {
-      const v = p.value == null ? "—" : String(p.value);
+      const v = p.value == null ? "—" : String(patientDisplayClarity(p.value));
       const d = p.delta == null ? "—" : p.delta >= 0 ? `+${p.delta}` : String(p.delta);
       return `${RAG_KAI_PARAM_LABELS[p.key]}=${v} (Δ${d})`;
     })
@@ -116,7 +117,7 @@ You must ground claims in the evidence blocks when you cite clinical reasoning.
 Output ONLY a valid JSON object matching the specified schema. No preamble.
 Tone: warm, human, like a caring clinic coordinator. Short sentences. No em dashes or hyphen punctuation.
 Never invent data. Never shame the patient (avoid "no active efforts", "lack of routine", "failure to").
-SCORES: refer to skin only with the numeric 0-100 scores/deltas provided, or plain descriptive words. NEVER use letter grades (A, B, C, D, E) to describe the skin or a parameter (no "a solid B", no "grade C"). The app converts numbers to grades for locked patients itself.
+SCORES: refer to skin only with the capped patient-display scores/deltas provided, or plain descriptive words. NEVER use letter grades (A, B, C, D, E) to describe the skin or a parameter (no "a solid B", no "grade C"). The app converts numbers to grades for locked patients itself.
 CAUSES MUST BE BALANCED: include BOTH what went well (wins) and what dragged (risks), not just one side. If a parameter held steady, explain why in plain words. If everything was positive, one gentle watch-out for next week is enough.
 EMPATHY PARAGRAPH: at most 2 short sentences. Encouraging, specific to the data, forward looking. No clinical lecture.`;
 
@@ -132,7 +133,7 @@ SCAN CONTEXT
 ${input.scanContextNote ?? "Standard weekly tracker report."}
 
 SCAN #${input.scanIndex} on ${input.scanDate}
-kAI score: ${input.kaiScore}
+kAI score: ${patientDisplayClarity(input.kaiScore)}
 Weekly delta: ${input.weeklyDelta >= 0 ? "+" : ""}${input.weeklyDelta}
 Consistency: ${input.consistencyPct}%
 Parameters: ${paramsLine(input.params)}
@@ -321,15 +322,15 @@ export async function analyzeMonthly(input: {
 }): Promise<LlmMonthlyAnalysis | null> {
   const system = `You are kAI. Write a clear monthly progress note grounded in data.
 No hype, no generic text. Speak directly to the patient. Return ONLY JSON.
-The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Cite this number when summarizing how the month went. Per-scan trajectory is supporting context only.
+The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. The prompt shows capped patient-display scores only. Cite this number when summarizing how the month went. Per-scan trajectory is supporting context only.
 Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) — tell them to reboot that habit next month — and cite partial checklist completion percentages when blended routine intensity is weak.`;
 
   const user = `PATIENT
 ${input.patient.name} · Skin: ${input.patient.skinType ?? "unknown"} · Concern: ${input.patient.primaryConcern ?? "unknown"}
 
 MONTH STARTING ${input.monthStart}
-HEADLINE MONTH kAI (mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${input.kaiMonthAvgFromParams ?? "n/a"}
-Per-scan kAI series in this month (${input.scoreTrend.length} pts): ${input.scoreTrend.join(" → ")}
+HEADLINE MONTH kAI (mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${input.kaiMonthAvgFromParams == null ? "n/a" : patientDisplayClarity(input.kaiMonthAvgFromParams)}
+Per-scan kAI series in this month (${input.scoreTrend.length} pts): ${input.scoreTrend.map(patientDisplayClarity).join(" → ")}
 
 LATEST PARAMETERS
 ${paramsLine(input.latestParams)}
@@ -374,7 +375,7 @@ Return JSON: { "action": "..." }`;
   const user = `Patient context:
 - Total scans completed: ${input.scanCount}
 - Primary concern: ${input.primaryConcern ?? "not set"}
-- Current weakest parameter: ${input.weakestArea ?? "unknown"} (score: ${input.weakestScore ?? "N/A"}/100)
+- Current weakest parameter: ${input.weakestArea ?? "unknown"} (score: ${input.weakestScore == null ? "N/A" : patientDisplayClarity(input.weakestScore)}/100)
 - Weekly change in weakest area: ${input.weeklyDelta != null ? (input.weeklyDelta >= 0 ? `+${input.weeklyDelta}` : String(input.weeklyDelta)) : "N/A"}
 
 Existing actions (do NOT repeat these):

@@ -29,6 +29,7 @@ import {
   kaiScoreFromScanRow,
   ragParamValuesFromScanRow,
 } from "@/src/lib/resolveScanDisplayScores";
+import { patientDisplayClarity } from "@/src/lib/clarityGrade";
 import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
 import type {
   PatientTrackerCause,
@@ -62,6 +63,14 @@ function ymd(d: Date) {
 function clampPct(n: number) {
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function patientDisplayDelta(
+  current: number | null,
+  previous: number | null
+): number | null {
+  if (typeof current !== "number" || typeof previous !== "number") return null;
+  return patientDisplayClarity(current) - patientDisplayClarity(previous);
 }
 
 function buildRetrievalQuery(params: {
@@ -229,6 +238,7 @@ export async function buildRagPatientTrackerNarrative(input: {
   const kaiNow = kaiScoreFromScanRow(scanRow);
   const kaiPrev = prevScan ? kaiScoreFromScanRow(prevScan) : kaiNow;
   const weeklyDelta = Math.round(kaiNow - kaiPrev);
+  const weeklyDeltaForLlm = patientDisplayDelta(kaiNow, kaiPrev) ?? 0;
 
   const cutoff7 = new Date(scanRow.createdAt);
   cutoff7.setDate(cutoff7.getDate() - 7);
@@ -321,12 +331,15 @@ export async function buildRagPatientTrackerNarrative(input: {
       scanDate: ymd(scanRow.createdAt),
       scanIndex,
       kaiScore: kaiNow,
-      weeklyDelta,
+      weeklyDelta: weeklyDeltaForLlm,
       consistencyPct: consistency,
       params: params.map((p) => ({
         key: p.key as RagKaiParamKey,
         value: p.value,
-        delta: p.delta,
+        delta: patientDisplayDelta(
+          p.value,
+          prevVals[p.key as RagKaiParamKey] ?? null
+        ),
       })),
       behavior,
       correlations,
