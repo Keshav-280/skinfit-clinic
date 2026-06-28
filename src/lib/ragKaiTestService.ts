@@ -37,6 +37,10 @@ import {
   type DerivedSkinIdentity,
 } from "@/src/lib/ragSkinIdentityDerive";
 import { buildTrackerResources } from "@/src/lib/trackerResourceLinks";
+import {
+  patientDisplayClarity,
+  patientClarityToGrade,
+} from "@/src/lib/clarityGrade";
 
 type ParamRow = {
   key: RagKaiParamKey;
@@ -196,12 +200,14 @@ function buildParamsForScan(
   return RAG_KAI_PARAM_KEYS.map((key) => {
     const v0 = current.paramValues[key];
     const v1 = prior?.paramValues[key];
+    const displayVal = typeof v0 === "number" ? patientDisplayClarity(v0) : null;
+    const priorDisplayVal = typeof v1 === "number" ? patientDisplayClarity(v1) : null;
     return {
       key,
-      value: typeof v0 === "number" ? v0 : null,
+      value: displayVal,
       delta:
-        typeof v0 === "number" && typeof v1 === "number"
-          ? Math.round(v0 - v1)
+        displayVal != null && priorDisplayVal != null
+          ? Math.round(displayVal - priorDisplayVal)
           : null,
     };
   });
@@ -248,7 +254,7 @@ type CalendarMonthlyCtx = {
   scansWithParams: ScanWithParams[];
   logs: Array<typeof dailyLogs.$inferSelect>;
   scanReports: ScanReport[];
-  user: { name: string; email: string };
+  user: { name: string; email: string; clinicVisitedAt?: Date | null };
   skinIdentity: SkinIdentityCard;
   skinIdentityTimeline: SkinIdentityTimeline;
   llmEnabled: boolean;
@@ -340,6 +346,9 @@ async function buildMonthlyForCalendarMonth(
     monthScans.length > 0 ? monthScans : [latestScan];
   const paramMeansPartial = meanParamScoresAcrossScans(scansForMonthAvg);
   const kaiMonthAvgFromParams = computeRagKaiScore(paramMeansPartial);
+  const displayKaiMonthAvgFromParams =
+    kaiMonthAvgFromParams != null ? patientDisplayClarity(kaiMonthAvgFromParams) : null;
+  const displayScoreTrend = scoreTrend.map(patientDisplayClarity);
 
   let monthlyLlm = null;
   if (llmEnabled) {
@@ -350,8 +359,8 @@ async function buildMonthlyForCalendarMonth(
         primaryConcern: skinIdentity.primaryConcern,
       },
       monthStart: startStr,
-      scoreTrend,
-      kaiMonthAvgFromParams,
+      scoreTrend: displayScoreTrend,
+      kaiMonthAvgFromParams: displayKaiMonthAvgFromParams,
       scansAveragedForMonthKai: scansForMonthAvg.length,
       latestParams: latestParams.map((p) => ({
         key: p.key,
@@ -360,6 +369,7 @@ async function buildMonthlyForCalendarMonth(
       })),
       behavior: monthBehavior,
       evidence: monthlyEvidence,
+      scoresUnlocked: user.clinicVisitedAt != null,
     });
     if (monthlyLlm) monthlyLlmTally.ok = true;
   }
@@ -369,12 +379,12 @@ async function buildMonthlyForCalendarMonth(
     monthlyLlm?.summaryTitle ?? "kAI monthly progress";
   const summaryBody =
     monthlyLlm?.summaryBody ??
-    `Month kAI from mean parameters: ${kaiMonthAvgFromParams ?? "—"} (weighted score after averaging each of 6 parameters across scans this month). Per-scan kAI series: ${scoreTrend.join(" → ")}.`;
+    `Month kAI from mean parameters: ${displayKaiMonthAvgFromParams ?? "—"} (weighted score after averaging each of 6 parameters across scans this month). Per-scan kAI series: ${displayScoreTrend.join(" → ")}.`;
   const highlights =
     monthlyLlm?.highlights && monthlyLlm.highlights.length > 0
       ? monthlyLlm.highlights
       : [
-          `Month kAI (mean parameters): ${kaiMonthAvgFromParams ?? "—"} · last scan kAI in month: ${scoreTrend[scoreTrend.length - 1] ?? "—"}`,
+          `Month kAI (mean parameters): ${displayKaiMonthAvgFromParams ?? "—"} · last scan kAI in month: ${displayScoreTrend[displayScoreTrend.length - 1] ?? "—"}`,
           `Full-routine days: ${monthBehavior.fullRoutineDays}/${windowDays} (${periodLabel})`,
           `Avg sleep ${monthBehavior.avgSleepHours}h · high-UV ${monthBehavior.highSunDays}d`,
         ];
@@ -589,6 +599,7 @@ export async function generateRagKaiOutput(input: {
       skinType: true,
       primaryConcern: true,
       baselineSunExposure: true,
+      clinicVisitedAt: true,
     },
   });
   if (!user) return null;
@@ -752,7 +763,9 @@ export async function generateRagKaiOutput(input: {
     const kaiPrev = prior
       ? computeRagKaiScore(prior.paramValues) ?? prior.overallScore
       : kaiNow;
-    const weeklyDelta = Math.round(kaiNow - kaiPrev);
+    const displayKaiNow = patientDisplayClarity(kaiNow);
+    const displayKaiPrev = patientDisplayClarity(kaiPrev);
+    const displayWeeklyDelta = Math.round(displayKaiNow - displayKaiPrev);
 
     const cutoff7 = new Date(current.createdAt);
     cutoff7.setDate(cutoff7.getDate() - 7);
@@ -820,8 +833,8 @@ export async function generateRagKaiOutput(input: {
         },
         scanDate: ymd(current.createdAt),
         scanIndex: i + 1,
-        kaiScore: kaiNow,
-        weeklyDelta,
+        kaiScore: displayKaiNow,
+        weeklyDelta: displayWeeklyDelta,
         consistencyPct: consistency,
         params: params.map((p) => ({
           key: p.key,
@@ -833,6 +846,7 @@ export async function generateRagKaiOutput(input: {
         evidence,
         visitNotesSummary: summarizeVisitNotes(visits),
         recentChatSummary: summarizeChat(chatMsgs),
+        scoresUnlocked: user.clinicVisitedAt != null,
       });
       if (llmOut) llmStats.scansAnalyzed += 1;
     }
@@ -897,9 +911,9 @@ export async function generateRagKaiOutput(input: {
 
     const tracker: WeeklyReportContract = {
       section1: {
-        hookLine: llmOut?.hookLine ?? hookFallback(weeklyDelta),
-        kaiScore: kaiNow,
-        weeklyDelta,
+        hookLine: llmOut?.hookLine ?? hookFallback(displayWeeklyDelta),
+        kaiScore: displayKaiNow,
+        weeklyDelta: displayWeeklyDelta,
         consistencyScore: consistency,
       },
       section2: {

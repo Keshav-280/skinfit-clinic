@@ -9,7 +9,11 @@ import type {
 } from "@/src/lib/ragCorrelationStats";
 import { buildNarrativeSignalPack } from "@/src/lib/ragCorrelationStats";
 import type { TextbookChunk } from "@/src/lib/ragTextbookIndex";
-import { patientDisplayClarity } from "@/src/lib/clarityGrade";
+import {
+  patientDisplayClarity,
+  clarityToGrade,
+  patientClarityToGrade,
+} from "@/src/lib/clarityGrade";
 
 let cachedClient: OpenAI | null = null;
 
@@ -39,13 +43,17 @@ function chunkLines(chunks: Array<{ chunk: TextbookChunk; score: number }>) {
 }
 
 function paramsLine(
-  params: Array<{ key: RagKaiParamKey; value: number | null; delta: number | null }>
+  params: Array<{ key: RagKaiParamKey; value: number | null; delta: number | null }>,
+  scoresUnlocked: boolean
 ) {
   return params
     .map((p) => {
-      const v = p.value == null ? "—" : String(patientDisplayClarity(p.value));
+      const displayVal = p.value;
+      const grade = displayVal == null ? "—" : clarityToGrade(displayVal);
+      const v = displayVal == null ? "—" : scoresUnlocked ? String(displayVal) : `grade ${grade}`;
       const d = p.delta == null ? "—" : p.delta >= 0 ? `+${p.delta}` : String(p.delta);
-      return `${RAG_KAI_PARAM_LABELS[p.key]}=${v} (Δ${d})`;
+      const deltaStr = scoresUnlocked ? `Δ${d}` : `change from last scan`;
+      return `${RAG_KAI_PARAM_LABELS[p.key]}=${v} (${deltaStr})`;
     })
     .join(" · ");
 }
@@ -109,6 +117,7 @@ export async function analyzeTrackerReport(input: {
   evidence: Array<{ chunk: TextbookChunk; score: number }>;
   visitNotesSummary: string | null;
   recentChatSummary: string | null;
+  scoresUnlocked: boolean;
 }): Promise<LlmTrackerAnalysis | null> {
   const signalPack = buildNarrativeSignalPack(input.correlations, input.behavior);
 
@@ -117,7 +126,11 @@ You must ground claims in the evidence blocks when you cite clinical reasoning.
 Output ONLY a valid JSON object matching the specified schema. No preamble.
 Tone: warm, human, like a caring clinic coordinator. Short sentences. No em dashes or hyphen punctuation.
 Never invent data. Never shame the patient (avoid "no active efforts", "lack of routine", "failure to").
-SCORES: refer to skin only with the capped patient-display scores/deltas provided, or plain descriptive words. NEVER use letter grades (A, B, C, D, E) to describe the skin or a parameter (no "a solid B", no "grade C"). The app converts numbers to grades for locked patients itself.
+${
+  !input.scoresUnlocked
+    ? `IMPORTANT: The patient's exact scores are currently locked/hidden. They ONLY see letter grades (A, B, C, D, E) on their screen. You MUST NEVER output any exact score numbers (e.g. 72, +5, etc.). Always describe their parameters and changes using letter grades (e.g., "Active Acne is grade B", "overall grade is C", "improved by one grade band").`
+    : `SCORES: refer to skin only with the capped patient-display scores/deltas provided. You can refer to both exact score numbers and letter grades (e.g., "Active Acne is 72 (grade B)").`
+}
 CAUSES MUST BE BALANCED: include BOTH what went well (wins) and what dragged (risks), not just one side. If a parameter held steady, explain why in plain words. If everything was positive, one gentle watch-out for next week is enough.
 EMPATHY PARAGRAPH: at most 2 short sentences. Encouraging, specific to the data, forward looking. No clinical lecture.`;
 
@@ -133,10 +146,10 @@ SCAN CONTEXT
 ${input.scanContextNote ?? "Standard weekly tracker report."}
 
 SCAN #${input.scanIndex} on ${input.scanDate}
-kAI score: ${patientDisplayClarity(input.kaiScore)}
-Weekly delta: ${input.weeklyDelta >= 0 ? "+" : ""}${input.weeklyDelta}
+kAI score: ${input.scoresUnlocked ? patientDisplayClarity(input.kaiScore) : `grade ${patientClarityToGrade(input.kaiScore)}`}
+Weekly delta: ${input.scoresUnlocked ? `${input.weeklyDelta >= 0 ? "+" : ""}${input.weeklyDelta}` : "change from last scan"}
 Consistency: ${input.consistencyPct}%
-Parameters: ${paramsLine(input.params)}
+Parameters: ${paramsLine(input.params, input.scoresUnlocked)}
 
 BEHAVIOR SNAPSHOT (past ${input.behavior.windowDays} days)
 Full routine days: ${input.behavior.fullRoutineDays}/${input.behavior.windowDays}
@@ -319,21 +332,27 @@ export async function analyzeMonthly(input: {
   }>;
   behavior: BehaviorSnapshot;
   evidence: Array<{ chunk: TextbookChunk; score: number }>;
+  scoresUnlocked: boolean;
 }): Promise<LlmMonthlyAnalysis | null> {
   const system = `You are kAI. Write a clear monthly progress note grounded in data.
 No hype, no generic text. Speak directly to the patient. Return ONLY JSON.
-The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. The prompt shows capped patient-display scores only. Cite this number when summarizing how the month went. Per-scan trajectory is supporting context only.
+The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Per-scan trajectory is supporting context only.
+${
+  !input.scoresUnlocked
+    ? `IMPORTANT: The patient's exact scores are currently locked/hidden. They ONLY see letter grades (A, B, C, D, E) on their screen. You MUST NEVER output any exact score numbers (e.g. 72, +5, etc.). Always describe their parameters and changes using letter grades (e.g., "Active Acne is grade B", "monthly average grade is C").`
+    : `The patient's exact scores are unlocked. You can refer to both exact score numbers and letter grades (e.g., "Active Acne is 72 (grade B)").`
+}
 Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) — tell them to reboot that habit next month — and cite partial checklist completion percentages when blended routine intensity is weak.`;
 
   const user = `PATIENT
 ${input.patient.name} · Skin: ${input.patient.skinType ?? "unknown"} · Concern: ${input.patient.primaryConcern ?? "unknown"}
 
 MONTH STARTING ${input.monthStart}
-HEADLINE MONTH kAI (mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${input.kaiMonthAvgFromParams == null ? "n/a" : patientDisplayClarity(input.kaiMonthAvgFromParams)}
-Per-scan kAI series in this month (${input.scoreTrend.length} pts): ${input.scoreTrend.map(patientDisplayClarity).join(" → ")}
+HEADLINE MONTH kAI (mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${input.kaiMonthAvgFromParams == null ? "n/a" : input.scoresUnlocked ? patientDisplayClarity(input.kaiMonthAvgFromParams) : `grade ${patientClarityToGrade(input.kaiMonthAvgFromParams)}`}
+Per-scan kAI series in this month (${input.scoreTrend.length} pts): ${input.scoreTrend.map((s) => input.scoresUnlocked ? patientDisplayClarity(s) : patientClarityToGrade(s)).join(" → ")}
 
 LATEST PARAMETERS
-${paramsLine(input.latestParams)}
+${paramsLine(input.latestParams, input.scoresUnlocked)}
 
 BEHAVIOR (past ${input.behavior.windowDays} calendar days counted in this month report)
 Full AM+PM: ${input.behavior.fullRoutineDays}/${input.behavior.windowDays} | granular blend ~${input.behavior.routineWeightedConsistencyPct}% (avg AM checklist ${input.behavior.avgAmRoutineStepPct}% · avg PM checklist ${input.behavior.avgPmRoutineStepPct}%)

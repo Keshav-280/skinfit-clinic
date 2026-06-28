@@ -189,6 +189,7 @@ export async function buildRagPatientTrackerNarrative(input: {
         skinType: true,
         primaryConcern: true,
         baselineSunExposure: true,
+        clinicVisitedAt: true,
       },
     }),
     db.query.skinDnaCards.findFirst({
@@ -347,6 +348,7 @@ export async function buildRagPatientTrackerNarrative(input: {
       evidence,
       visitNotesSummary: summarizeVisitNotes(visits),
       recentChatSummary: summarizeChat(chatMsgs),
+      scoresUnlocked: user?.clinicVisitedAt != null,
     });
   }
 
