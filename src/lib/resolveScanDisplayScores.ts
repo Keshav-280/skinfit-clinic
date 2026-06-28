@@ -30,6 +30,10 @@ export type DoctorOverrides = {
    * (e.g. `active_acne`, `acne_scars`, `wrinkle_severity`, ...).
    */
   modelFeatureScores?: Record<string, number | null | undefined> | null;
+  /**
+   * Doctor-entered direct 0–100 clarity scores for the six patient-facing parameters.
+   */
+  parameterScores?: Record<string, number | null | undefined> | null;
 };
 
 function clampInt(n: number, min: number, max: number) {
@@ -173,8 +177,8 @@ export function resolveScanDisplayScores(input: {
       acne: resolvedAcne,
       wrinkles: resolvedWrinkles,
       pigmentation: resolvedPigmentation,
-      hydration: input.baseMetricsColumns.hydration ?? 0,
-      texture: input.baseMetricsColumns.texture ?? 0,
+      hydration: resolvedRagParamValues.under_eye ?? input.baseMetricsColumns.hydration ?? 0,
+      texture: resolvedRagParamValues.acne_scar ?? input.baseMetricsColumns.texture ?? 0,
       ...(clinical_scores ? { clinical_scores } : {}),
     },
     effectiveScoresJson,
@@ -195,7 +199,9 @@ export type DoctorScoreEditMeta = {
   aiBase: {
     kaiScore: number;
     modelFeatureScores: Partial<Record<DoctorEditableMfsKey, number>>;
+    parameterScores: Record<string, number>;
   };
+  doctorOverrides: DoctorOverrides | null;
 };
 
 export function buildDoctorScoreEditMeta(
@@ -211,6 +217,8 @@ export function buildDoctorScoreEditMeta(
       acne: 0,
       wrinkles: 0,
       pigmentation: 0,
+      hydration: 0,
+      texture: 0,
     },
   });
 
@@ -223,9 +231,15 @@ export function buildDoctorScoreEditMeta(
     }
   }
 
+  const parameterScores: Record<string, number> = {};
+  for (const key of RAG_KAI_PARAM_KEYS) {
+    parameterScores[key] = aiResolved.resolvedRagParamValues[key] ?? 70;
+  }
+
   const aiBase = {
     kaiScore: aiResolved.metrics.overall_score,
     modelFeatureScores,
+    parameterScores,
   };
 
   let hasOverrides = false;
@@ -251,11 +265,23 @@ export function buildDoctorScoreEditMeta(
         }
       }
     }
+    const params = doctorOverrides.parameterScores;
+    if (params && !hasOverrides) {
+      for (const key of RAG_KAI_PARAM_KEYS) {
+        const o = params[key];
+        const ai = aiBase.parameterScores[key];
+        if (typeof o === "number" && o !== ai) {
+          hasOverrides = true;
+          break;
+        }
+      }
+    }
   }
 
   return {
     hasOverrides,
     aiBase,
+    doctorOverrides,
   };
 }
 

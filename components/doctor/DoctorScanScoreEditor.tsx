@@ -5,10 +5,6 @@ import { RotateCcw, Save } from "lucide-react";
 import type { DoctorScanReportPayload } from "@/src/lib/doctorScanReportPayload";
 import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 import {
-  DOCTOR_EDITABLE_MFS_KEYS,
-  type DoctorEditableMfsKey,
-} from "@/src/lib/resolveScanDisplayScores";
-import {
   doctorPatientPageFormInputClass,
   doctorPatientPageNavyBtnGhostClass,
   doctorPatientPageNavyBtnPrimaryClass,
@@ -16,51 +12,53 @@ import {
   doctorPatientPageRowClass,
 } from "@/components/doctor/DoctorUiPrimitives";
 
-const PARAM_LABELS: Record<DoctorEditableMfsKey, string> = {
-  active_acne: "Active acne",
-  acne_scars: "Acne scars",
-  wrinkle_severity: "Wrinkles",
-  sagging_volume: "Sagging & volume",
-  under_eye: "Under-eye",
-  pigmentation_model: "Pigmentation",
+const PARAM_KEYS = [
+  "active_acne",
+  "sagging_volume",
+  "wrinkles",
+  "acne_scar",
+  "under_eye",
+  "pigmentation",
+] as const;
+
+export type EditableParamKey = (typeof PARAM_KEYS)[number];
+
+const PARAM_LABELS: Record<EditableParamKey, string> = {
+  active_acne: "Active Acne",
+  sagging_volume: "Sagging & Volume",
+  wrinkles: "Wrinkles",
+  acne_scar: "Acne Scar",
+  under_eye: "Under Eye",
+  pigmentation: "Pigmentation",
 };
 
 function clampPct(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-function clampSeverity(n: number): number {
-  return Math.max(1, Math.min(5, Math.round(n)));
-}
-
-/** Converts model severity 1-5 to clarity 0-100 (higher is better). */
-function severityToClarityPercent(severity: number): number {
-  return clampPct(100 - ((clampSeverity(severity) - 1) / 4) * 100);
-}
-
-function initialSeverity(
+function initialParamScore(
   report: DoctorScanReportPayload,
-  key: DoctorEditableMfsKey
+  key: EditableParamKey
 ): number {
-  const fromClinical = report.metrics.clinical_scores?.[key];
-  if (typeof fromClinical === "number" && Number.isFinite(fromClinical)) {
-    return clampSeverity(fromClinical);
+  const fromOverrides = report.scoreEdit.doctorOverrides?.parameterScores?.[key];
+  if (typeof fromOverrides === "number" && Number.isFinite(fromOverrides)) {
+    return clampPct(fromOverrides);
   }
-  const fromAi = report.scoreEdit.aiBase.modelFeatureScores[key];
+  const fromAi = report.scoreEdit.aiBase.parameterScores?.[key];
   if (typeof fromAi === "number" && Number.isFinite(fromAi)) {
-    return clampSeverity(fromAi);
+    return clampPct(fromAi);
   }
-  return 3;
+  return 70;
 }
 
 function buildFormState(report: DoctorScanReportPayload) {
-  const modelFeatureScores = {} as Record<DoctorEditableMfsKey, number>;
-  for (const key of DOCTOR_EDITABLE_MFS_KEYS) {
-    modelFeatureScores[key] = initialSeverity(report, key);
+  const parameterScores = {} as Record<EditableParamKey, number>;
+  for (const key of PARAM_KEYS) {
+    parameterScores[key] = initialParamScore(report, key);
   }
   return {
     kaiScore: clampPct(report.metrics.overall_score),
-    modelFeatureScores,
+    parameterScores,
   };
 }
 
@@ -74,6 +72,8 @@ function formatDoctorScoreSaveError(code: string | undefined): string {
       return "Enter a kAI score (0–100) before saving.";
     case "INVALID_SEVERITY_VALUE":
       return "One of the severity values is invalid.";
+    case "INVALID_PARAM_SCORE_VALUE":
+      return "One of the parameter score values is invalid.";
     case "INVALID_JSON":
     case "INVALID_BODY":
       return "Invalid save request — refresh and try again.";
@@ -131,7 +131,7 @@ export function DoctorScanScoreEditor({
     try {
       await patchScores({
         kaiScore: form.kaiScore,
-        modelFeatureScores: form.modelFeatureScores,
+        parameterScores: form.parameterScores,
       });
       setFlash("Scores saved. Patient notified via clinic support chat.");
       onSaved();
@@ -209,10 +209,9 @@ export function DoctorScanScoreEditor({
       </div>
 
       <dl className="grid gap-2 sm:grid-cols-2">
-        {DOCTOR_EDITABLE_MFS_KEYS.map((key) => {
-          const severity = form.modelFeatureScores[key];
-          const clarity = severityToClarityPercent(severity);
-          const aiSeverity = report.scoreEdit.aiBase.modelFeatureScores[key];
+        {PARAM_KEYS.map((key) => {
+          const score = form.parameterScores[key];
+          const aiScore = report.scoreEdit.aiBase.parameterScores?.[key];
           return (
             <div
               key={key}
@@ -220,36 +219,31 @@ export function DoctorScanScoreEditor({
             >
               <dt className="min-w-0 flex-1">
                 <p className="text-xs text-[#2C3E6B]/70">{PARAM_LABELS[key]}</p>
-                {typeof aiSeverity === "number" ? (
+                {typeof aiScore === "number" ? (
                   <p className="text-[10px] text-[#2C3E6B]/45">
-                    AI: severity {aiSeverity} ({severityToClarityPercent(aiSeverity)})
+                    AI baseline: {aiScore}
                   </p>
                 ) : null}
               </dt>
               <dd className="flex shrink-0 items-center gap-2">
-                <select
-                  value={severity}
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={score}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
-                      modelFeatureScores: {
-                        ...prev.modelFeatureScores,
-                        [key]: clampSeverity(Number(e.target.value)),
+                      parameterScores: {
+                        ...prev.parameterScores,
+                        [key]: clampPct(Number(e.target.value)),
                       },
                     }))
                   }
-                  className={`${doctorPatientPageFormInputClass} w-16 tabular-nums`}
-                  aria-label={`${PARAM_LABELS[key]} severity`}
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                <span className="w-10 text-right text-sm font-bold tabular-nums text-[#2C3E6B]">
-                  {clarity}
-                </span>
+                  className={`${doctorPatientPageFormInputClass} w-20 tabular-nums`}
+                  aria-label={`${PARAM_LABELS[key]} score`}
+                />
               </dd>
             </div>
           );

@@ -95,6 +95,15 @@ export function mergeRagParamValuesFromScan(input: {
     return num(mfs?.[mfsKey]);
   };
 
+  const doctorOverrideParamScore = (key: RagKaiParamKey): number | null => {
+    const rawOv = root?.doctorOverrides;
+    if (!rawOv || typeof rawOv !== "object") return null;
+    const paramOv = (rawOv as { parameterScores?: Record<string, unknown> })
+      .parameterScores;
+    if (!paramOv || typeof paramOv !== "object" || !(key in paramOv)) return null;
+    return num(paramOv[key]);
+  };
+
   const setIfMissing = (key: RagKaiParamKey, value: number | null) => {
     if (out[key] != null || value == null) return;
     out[key] = clampPct(value);
@@ -102,6 +111,11 @@ export function mergeRagParamValuesFromScan(input: {
 
   const setFromDoctorOverride = (key: RagKaiParamKey, mfsKey: string) => {
     if (out[key] != null) return;
+    const p = doctorOverrideParamScore(key);
+    if (p != null) {
+      out[key] = p;
+      return;
+    }
     const s = doctorOverrideSeverity(mfsKey);
     if (s != null) out[key] = severityToClarity(s);
   };

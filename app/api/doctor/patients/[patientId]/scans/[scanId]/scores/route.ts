@@ -8,6 +8,7 @@ import { assertDoctorPatientAccess } from "@/src/lib/doctorPatientCare";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { invalidateUserHomeCache, invalidateUserInsightsCache, invalidateUserScanDerivedCaches } from "@/src/lib/infra";
 import { resolveScanDisplayScores, type DoctorOverrides, DOCTOR_EDITABLE_MFS_KEYS } from "@/src/lib/resolveScanDisplayScores";
+import { RAG_KAI_PARAM_KEYS } from "@/src/lib/ragEightParams";
 
 type AllowedMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
 
@@ -56,6 +57,7 @@ export async function PATCH(
     reset?: boolean;
     kaiScore?: unknown;
     modelFeatureScores?: unknown;
+    parameterScores?: unknown;
   };
 
   const reset = b.reset === true;
@@ -131,12 +133,35 @@ export async function PATCH(
       }
     }
 
+    const nextParamScoresFromPatch: Record<string, number | null> = {};
+    if (b.parameterScores && typeof b.parameterScores === "object") {
+      const p = b.parameterScores as Record<string, unknown>;
+      for (const [k, v] of Object.entries(p)) {
+        if (!(RAG_KAI_PARAM_KEYS as readonly string[]).includes(k)) continue;
+        if (v === null) {
+          nextParamScoresFromPatch[k] = null;
+          continue;
+        }
+        if (typeof v !== "number" || !Number.isFinite(v)) {
+          return NextResponse.json(
+            { error: "INVALID_PARAM_SCORE_VALUE", key: k },
+            { status: 400 }
+          );
+        }
+        nextParamScoresFromPatch[k] = Math.max(0, Math.min(100, Math.round(v)));
+      }
+    }
+
     nextDoctorOverrides = {
       ...safeExistingOverrides,
       kaiScore: nextKaiScore,
       modelFeatureScores: {
         ...(safeExistingOverrides.modelFeatureScores ?? {}),
         ...nextMfsFromPatch,
+      },
+      parameterScores: {
+        ...(safeExistingOverrides.parameterScores ?? {}),
+        ...nextParamScoresFromPatch,
       },
     };
   }
