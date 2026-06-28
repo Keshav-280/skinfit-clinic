@@ -8,6 +8,7 @@ import {
   weeklyReports,
 } from "@/src/db/schema";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
+import { patientDisplayClarity } from "@/src/lib/clarityGrade";
 import { buildMonthlyRagCronPayload } from "@/src/lib/ragCronMonthlyPayload";
 import { generateRagKaiOutput } from "@/src/lib/ragKaiTestService";
 import { publishNotification } from "@/src/lib/infra";
@@ -76,7 +77,9 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
     const latest = recent[0];
     const prev = recent[1];
     const delta =
-      prev != null ? latest.overallScore - prev.overallScore : 0;
+      prev != null
+        ? patientDisplayClarity(latest.overallScore) - patientDisplayClarity(prev.overallScore)
+        : 0;
 
     await db.insert(weeklyReports).values({
       userId: p.id,

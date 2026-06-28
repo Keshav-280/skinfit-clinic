@@ -1,6 +1,6 @@
 /** Placeholder “AI” copy until a real model is wired. Higher metric = healthier skin. */
 
-import { patientClarityToGrade } from "./clarityGrade";
+import { patientClarityToGrade, patientDisplayClarity } from "./clarityGrade";
 
 export type DummyScanMetrics = {
   acne: number;
@@ -42,6 +42,16 @@ export function formatAiSummary(
   if (!text) return "";
   let formatted = text;
 
+  // Calibrate the metrics using patientDisplayClarity for UI consistency (caps at 80)
+  const calibratedMetrics = {
+    acne: patientDisplayClarity(metrics.acne),
+    pigmentation: patientDisplayClarity(metrics.pigmentation),
+    wrinkles: patientDisplayClarity(metrics.wrinkles),
+    hydration: patientDisplayClarity(metrics.hydration),
+    texture: patientDisplayClarity(metrics.texture),
+    overall_score: patientDisplayClarity(metrics.overall_score),
+  };
+
   if (scoresUnlocked) {
     // 1. Replace grade -> score, grades -> scores (case-insensitive)
     formatted = formatted
@@ -54,37 +64,50 @@ export function formatAiSummary(
     const paramMappings = [
       {
         keys: ["hydration", "moisture"],
-        score: metrics.hydration,
+        score: calibratedMetrics.hydration,
       },
       {
         keys: ["texture", "skin smoothness"],
-        score: metrics.texture,
+        score: calibratedMetrics.texture,
       },
       {
         keys: ["pigmentation", "tone", "spots"],
-        score: metrics.pigmentation,
+        score: calibratedMetrics.pigmentation,
       },
       {
         keys: ["wrinkle", "wrinkles", "fine-line", "fine line", "smoothness"],
-        score: metrics.wrinkles,
+        score: calibratedMetrics.wrinkles,
       },
       {
         keys: ["acne", "blemish", "blemishes", "breakout", "breakouts", "acne clarity", "clarity"],
-        score: metrics.acne,
+        score: calibratedMetrics.acne,
       },
       {
         keys: ["overall", "overall health", "overall skin", "overall score"],
-        score: metrics.overall_score,
+        score: calibratedMetrics.overall_score,
       },
     ];
 
     for (const mapping of paramMappings) {
       const escapedKeys = mapping.keys.map((k) => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")).join("|");
-      const regexStr = `\\b(${escapedKeys})\\b(?:\\s+(?:is|of|score|clarity|health|smoothness|level|levels|profile|at|rate|rated)){0,3}\\s*[:\\-—–~]?\\s*\\(?\\b([A-E])[+-]?\\b\\)?`;
+      
+      // Parameter name BEFORE grade letter, e.g. "hydration is A", "wrinkle grade B"
+      const regexStr = `\\b(${escapedKeys})\\b(?:\\s+(?:is|of|score|grade|grades|clarity|health|smoothness|level|levels|profile|at|rate|rated)){0,3}\\s*[:\\-—–~]?\\s*\\(?\\b([A-E])[+-]?\\b\\)?`;
       const regex = new RegExp(regexStr, "gi");
 
       formatted = formatted.replace(regex, (match, paramName, gradeLetter) => {
         const gradeIndex = match.lastIndexOf(gradeLetter);
+        const prefix = match.substring(0, gradeIndex);
+        const suffix = match.substring(gradeIndex + gradeLetter.length);
+        return `${prefix}${mapping.score}${suffix}`;
+      });
+
+      // Grade letter BEFORE parameter name, e.g. "B overall", "B in wrinkles", "B wrinkles"
+      const prefixRegexStr = `\\b([A-E])[+-]?\\b(?:\\s+(?:in|of|is|at|for|overall|score|grade|grades)){0,3}\\s*\\b(${escapedKeys})\\b`;
+      const prefixRegex = new RegExp(prefixRegexStr, "gi");
+
+      formatted = formatted.replace(prefixRegex, (match, gradeLetter, paramName) => {
+        const gradeIndex = match.indexOf(gradeLetter);
         const prefix = match.substring(0, gradeIndex);
         const suffix = match.substring(gradeIndex + gradeLetter.length);
         return `${prefix}${mapping.score}${suffix}`;
@@ -96,7 +119,7 @@ export function formatAiSummary(
       const gradeIndex = match.lastIndexOf(gradeLetter);
       const matchedPrefix = match.substring(0, gradeIndex);
       const suffix = match.substring(gradeIndex + gradeLetter.length);
-      return `${matchedPrefix}${metrics.overall_score}${suffix}`;
+      return `${matchedPrefix}${calibratedMetrics.overall_score}${suffix}`;
     });
 
   } else {

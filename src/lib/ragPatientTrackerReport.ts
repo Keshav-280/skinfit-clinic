@@ -230,14 +230,15 @@ export async function buildRagPatientTrackerNarrative(input: {
       value: typeof v0 === "number" ? v0 : null,
       delta:
         typeof v0 === "number" && typeof v1 === "number"
-          ? Math.round(v0 - v1)
+          ? Math.round(patientDisplayClarity(v0) - patientDisplayClarity(v1))
           : null,
     };
   });
 
   const kaiNow = kaiScoreFromScanRow(scanRow);
   const kaiPrev = prevScan ? kaiScoreFromScanRow(prevScan) : kaiNow;
-  const weeklyDelta = Math.round(kaiNow - kaiPrev);
+  const weeklyDelta =
+    prevScan == null ? 0 : Math.round(patientDisplayClarity(kaiNow) - patientDisplayClarity(kaiPrev));
   const weeklyDeltaForLlm = patientDisplayDelta(kaiNow, kaiPrev) ?? 0;
 
   const cutoff7 = new Date(scanRow.createdAt);
