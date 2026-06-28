@@ -17,6 +17,10 @@ import {
   CAPTURE_GUIDANCE_WARMUP_MESSAGE,
   type CaptureGuidanceSnapshot,
 } from "@/src/lib/scanCaptureGuidance";
+import {
+  CAPTURE_VOICE_VOLUME_MAX,
+  CAPTURE_VOICE_VOLUME_MIN,
+} from "@/src/lib/captureVoiceHint";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
@@ -40,6 +44,8 @@ type Props = {
   guidance: CaptureGuidanceSnapshot | null;
   guidanceReady?: boolean;
   voiceEnabled: boolean;
+  voiceVolume: number;
+  onVoiceVolumeChange: (value: number) => void;
   showDebug: boolean;
   captureDebugUi: boolean;
   onToggleVoice: () => void;
@@ -171,6 +177,8 @@ export function WebCaptureStepShell({
   reviewingCapture,
   guidance,
   voiceEnabled,
+  voiceVolume,
+  onVoiceVolumeChange,
   showDebug,
   captureDebugUi,
   onToggleVoice,
@@ -226,6 +234,25 @@ export function WebCaptureStepShell({
                 <VolumeX className="h-3.5 w-3.5" />
               )}
             </button>
+            {voiceEnabled ? (
+              <label className="hidden min-w-[88px] max-w-[120px] items-center gap-1.5 sm:flex">
+                <span className="sr-only">Voice guide volume</span>
+                <VolumeX className="h-3 w-3 shrink-0 text-[#6B7280]" aria-hidden />
+                <input
+                  type="range"
+                  min={CAPTURE_VOICE_VOLUME_MIN}
+                  max={CAPTURE_VOICE_VOLUME_MAX}
+                  step={0.04}
+                  value={voiceVolume}
+                  onChange={(e) =>
+                    onVoiceVolumeChange(parseFloat(e.target.value))
+                  }
+                  className="h-1 min-w-0 flex-1 accent-[#2C3E6B]"
+                  aria-label="Voice guide volume"
+                />
+                <Volume2 className="h-3 w-3 shrink-0 text-[#6B7280]" aria-hidden />
+              </label>
+            ) : null}
             {captureDebugUi ? (
               <button
                 type="button"
@@ -243,6 +270,23 @@ export function WebCaptureStepShell({
             ) : null}
           </div>
         </div>
+        {voiceEnabled ? (
+          <label className="mt-1.5 flex w-full items-center gap-2 px-1 sm:hidden">
+            <span className="sr-only">Voice guide volume</span>
+            <VolumeX className="h-3.5 w-3.5 shrink-0 text-[#6B7280]" aria-hidden />
+            <input
+              type="range"
+              min={CAPTURE_VOICE_VOLUME_MIN}
+              max={CAPTURE_VOICE_VOLUME_MAX}
+              step={0.04}
+              value={voiceVolume}
+              onChange={(e) => onVoiceVolumeChange(parseFloat(e.target.value))}
+              className="h-1 min-w-0 flex-1 accent-[#2C3E6B]"
+              aria-label="Voice guide volume"
+            />
+            <Volume2 className="h-3.5 w-3.5 shrink-0 text-[#6B7280]" aria-hidden />
+          </label>
+        ) : null}
 
         {/* Side columns flex; center column auto-width so the feed never overlaps tips */}
         <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden sm:gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 lg:gap-x-8">

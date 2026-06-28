@@ -29,9 +29,13 @@ import {
 } from "@/components/dashboard/ScanCaptureDebugOverlay";
 import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
 import {
-  CAPTURE_READY_VOICE_HINT,
   captureVoiceGuide,
 } from "@/src/lib/captureVoiceGuide";
+import {
+  loadStoredCaptureVoiceVolume,
+  resolveCaptureVoiceHint,
+  storeCaptureVoiceVolume,
+} from "@/src/lib/captureVoiceHint";
 import { CAPTURE_ZOOM_AUTO } from "@/src/lib/scanCaptureGuidance";
 import {
   FACE_SCAN_CAPTURE_STEPS,
@@ -269,6 +273,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     );
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceVolume, setVoiceVolume] = useState(() =>
+    loadStoredCaptureVoiceVolume()
+  );
   const captureDebugUi = isCaptureDebugEnabled();
   const [showDebug, setShowDebug] = useState(false);
 
@@ -289,6 +296,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   }, []);
 
   useEffect(() => {
+    captureVoiceGuide.setVolume(voiceVolume);
+    storeCaptureVoiceVolume(voiceVolume);
+  }, [voiceVolume]);
+
+  useEffect(() => {
     captureVoiceGuide.setEnabled(voiceEnabled && cameraOpen);
     if (!voiceEnabled || !cameraOpen) captureVoiceGuide.reset();
     return () => {
@@ -302,27 +314,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   useEffect(() => {
     if (!voiceEnabled || !cameraOpen || reviewingCapture || !guidance) return;
-    if (guidance.face === "no_face") {
-      captureVoiceGuide.speak(guidance.faceMessage, "critical");
-      return;
-    }
-    if (guidance.face !== "good") {
-      captureVoiceGuide.speak(guidance.faceMessage, "framing");
-      return;
-    }
-    if (guidance.expressionMessage && guidance.expressionOk === false) {
-      captureVoiceGuide.speak(guidance.expressionMessage, "expression");
-      return;
-    }
-    const lightingOk =
-      guidance.lighting === "good" || guidance.lightingScore >= 60;
-    if (!lightingOk) {
-      captureVoiceGuide.speak(guidance.lightingMessage, "lighting");
-      return;
-    }
-    if (guidance.readyToCapture) {
-      captureVoiceGuide.speak(CAPTURE_READY_VOICE_HINT, "ready");
-    }
+    const hint = resolveCaptureVoiceHint(guidance);
+    if (!hint) return;
+    captureVoiceGuide.speak(hint.text, hint.priority, hint.key);
   }, [voiceEnabled, cameraOpen, reviewingCapture, guidance]);
 
   const handleSkipPhotoGuideChange = useCallback((checked: boolean) => {
@@ -873,6 +867,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             guidance={guidance}
             guidanceReady={guidance?.readyToCapture ?? false}
             voiceEnabled={voiceEnabled}
+            voiceVolume={voiceVolume}
+            onVoiceVolumeChange={setVoiceVolume}
             showDebug={showDebug}
             captureDebugUi={captureDebugUi}
             onToggleVoice={() => setVoiceEnabled((v) => !v)}

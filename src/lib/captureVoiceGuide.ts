@@ -26,17 +26,21 @@ const PRIORITY_RANK: Record<VoicePriority, number> = {
 
 export const CAPTURE_READY_VOICE_HINT = "You can take the picture now.";
 
-const COOLDOWN_MS = 4500;
-const MIN_GAP_MS = 1100;
+const COOLDOWN_MS = 5500;
+const MIN_GAP_MS = 2200;
+const CATEGORY_LOCK_MS = 3200;
 
-type Entry = { text: string; spokenAt: number };
+type Entry = { text: string; spokenAt: number; key: string };
 
 export class CaptureVoiceGuide {
   private enabled = false;
   private lastByText = new Map<string, Entry>();
   private lastSpokenAt = 0;
   private currentPriority: VoicePriority | null = null;
+  private lastHintKey: string | null = null;
+  private lastHintKeyAt = 0;
   private voice: SpeechSynthesisVoice | null = null;
+  private volume = 0.42;
 
   static isSupported(): boolean {
     return (
@@ -60,29 +64,63 @@ export class CaptureVoiceGuide {
     return this.enabled;
   }
 
+  setVolume(level: number) {
+    this.volume = Math.max(0, Math.min(1, level));
+  }
+
+  getVolume() {
+    return this.volume;
+  }
+
   reset() {
     this.lastByText.clear();
     this.lastSpokenAt = 0;
     this.currentPriority = null;
+    this.lastHintKey = null;
+    this.lastHintKeyAt = 0;
     if (CaptureVoiceGuide.isSupported()) {
       window.speechSynthesis.cancel();
     }
   }
 
   /** Speak `text` if it passes cooldown/priority gates. */
-  speak(text: string, priority: VoicePriority = "info"): boolean {
+  speak(
+    text: string,
+    priority: VoicePriority = "info",
+    hintKey?: string
+  ): boolean {
     if (!this.enabled) return false;
     if (!CaptureVoiceGuide.isSupported()) return false;
     const trimmed = text.trim();
     if (!trimmed) return false;
 
     const now = Date.now();
+    const stableKey = hintKey ?? trimmed;
+
+    if (
+      this.lastHintKey &&
+      this.lastHintKey !== stableKey &&
+      now - this.lastHintKeyAt < CATEGORY_LOCK_MS &&
+      priority !== "critical"
+    ) {
+      return false;
+    }
+
+    if (
+      typeof window !== "undefined" &&
+      window.speechSynthesis.speaking &&
+      priority !== "critical"
+    ) {
+      const curRank = this.currentPriority
+        ? PRIORITY_RANK[this.currentPriority]
+        : Infinity;
+      if (PRIORITY_RANK[priority] >= curRank) return false;
+    }
 
     const prev = this.lastByText.get(trimmed);
     if (prev && now - prev.spokenAt < COOLDOWN_MS) return false;
 
     if (now - this.lastSpokenAt < MIN_GAP_MS) {
-      // allow only strict upgrades (lower numeric rank = higher priority)
       const curRank = this.currentPriority
         ? PRIORITY_RANK[this.currentPriority]
         : Infinity;
@@ -90,17 +128,19 @@ export class CaptureVoiceGuide {
     }
 
     const utt = new SpeechSynthesisUtterance(trimmed);
-    utt.rate = 1.05;
+    utt.rate = 0.98;
     utt.pitch = 1;
-    utt.volume = 1;
+    utt.volume = this.volume;
     if (this.voice) utt.voice = this.voice;
 
     try {
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utt);
       this.lastSpokenAt = now;
-      this.lastByText.set(trimmed, { text: trimmed, spokenAt: now });
+      this.lastByText.set(trimmed, { text: trimmed, spokenAt: now, key: stableKey });
       this.currentPriority = priority;
+      this.lastHintKey = stableKey;
+      this.lastHintKeyAt = now;
       return true;
     } catch {
       return false;

@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   Image,
+  LayoutChangeEvent,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -20,6 +22,10 @@ import {
   CAPTURE_GUIDANCE_WARMUP_MESSAGE,
   type CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
+import {
+  CAPTURE_VOICE_VOLUME_MAX,
+  CAPTURE_VOICE_VOLUME_MIN,
+} from "@/lib/captureVoiceVolume";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const BG = "#F6F5F2";
@@ -38,6 +44,98 @@ type StepMeta = {
   tips: readonly string[];
 };
 
+function VoiceVolumeSlider({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const trackWidth = useRef(0);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  function computeValue(x: number) {
+    const w = trackWidth.current;
+    if (w <= 0) return value;
+    const ratio = Math.max(0, Math.min(1, x / w));
+    const next =
+      CAPTURE_VOICE_VOLUME_MIN +
+      ratio * (CAPTURE_VOICE_VOLUME_MAX - CAPTURE_VOICE_VOLUME_MIN);
+    return Math.round(next * 100) / 100;
+  }
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (e) => {
+          onChangeRef.current(computeValue(e.nativeEvent.locationX));
+        },
+        onPanResponderMove: (e) => {
+          onChangeRef.current(computeValue(e.nativeEvent.locationX));
+        },
+      }),
+    []
+  );
+
+  const span = CAPTURE_VOICE_VOLUME_MAX - CAPTURE_VOICE_VOLUME_MIN;
+  const ratio = span > 0 ? (value - CAPTURE_VOICE_VOLUME_MIN) / span : 0;
+
+  return (
+    <View style={voiceVolumeStyles.row}>
+      <Ionicons name="volume-mute" size={16} color={MUTED} />
+      <View
+        style={voiceVolumeStyles.track}
+        onLayout={(e: LayoutChangeEvent) => {
+          trackWidth.current = e.nativeEvent.layout.width;
+        }}
+        {...panResponder.panHandlers}
+      >
+        <View style={voiceVolumeStyles.trackFill} />
+        <View
+          style={[voiceVolumeStyles.thumb, { left: `${ratio * 100}%` }]}
+          pointerEvents="none"
+        />
+      </View>
+      <Ionicons name="volume-high" size={16} color={MUTED} />
+    </View>
+  );
+}
+
+const voiceVolumeStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  track: {
+    flex: 1,
+    height: 28,
+    justifyContent: "center",
+  },
+  trackFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(44, 62, 107, 0.18)",
+  },
+  thumb: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -8,
+    marginLeft: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: NAVY,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+});
+
 type Props = {
   step: StepMeta;
   stepIndex: number;
@@ -50,6 +148,8 @@ type Props = {
   guidanceMessage: string;
   guidanceReady?: boolean;
   voiceEnabled: boolean;
+  voiceVolume: number;
+  onVoiceVolumeChange: (value: number) => void;
   voiceAvailable: boolean;
   onToggleVoice: () => void;
   showDebug: boolean;
@@ -86,6 +186,8 @@ export function OnboardingCaptureStepUI({
   guidanceMessage,
   guidanceReady = false,
   voiceEnabled,
+  voiceVolume,
+  onVoiceVolumeChange,
   voiceAvailable,
   onToggleVoice,
   showDebug,
@@ -173,6 +275,13 @@ export function OnboardingCaptureStepUI({
             ) : null}
           </View>
         </View>
+
+        {showVoiceToggle && voiceAvailable && voiceEnabled ? (
+          <VoiceVolumeSlider
+            value={voiceVolume}
+            onChange={onVoiceVolumeChange}
+          />
+        ) : null}
 
         <Text style={styles.stepCount}>
           {stepIndex + 1} of {totalSteps}

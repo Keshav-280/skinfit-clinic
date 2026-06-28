@@ -20,10 +20,14 @@ import { CaptureFaceGuideOverlayNative } from "@/components/capture/CaptureFaceG
 import { OnboardingCaptureStepUI } from "@/components/onboarding/OnboardingCaptureStepUI";
 import { useMobileScanCaptureGuidance } from "@/hooks/useMobileScanCaptureGuidance";
 import {
-  CAPTURE_READY_VOICE_HINT,
   captureVoiceGuide,
   isCaptureVoiceSpeechAvailable,
 } from "@/lib/captureVoiceGuide";
+import { resolveCaptureVoiceHint } from "@/lib/captureVoiceHint";
+import {
+  loadStoredCaptureVoiceVolume,
+  storeCaptureVoiceVolume,
+} from "@/lib/captureVoiceVolume";
 import { configurePlaybackAudioMode, startAudioPrimingLoop, stopAudioPrimingLoop } from "@/lib/audioSession";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 import { SKINFIT_GRADIENT } from "@/lib/skinfitTheme";
@@ -88,6 +92,16 @@ export function FiveAngleCameraStep({
   const captureDebug = isCaptureDebugEnabled();
   const voiceSpeechAvailable = isCaptureVoiceSpeechAvailable();
   const [voiceEnabled, setVoiceEnabled] = useState(() => voiceSpeechAvailable);
+  const [voiceVolume, setVoiceVolume] = useState(0.42);
+
+  useEffect(() => {
+    void loadStoredCaptureVoiceVolume().then(setVoiceVolume);
+  }, []);
+
+  useEffect(() => {
+    captureVoiceGuide.setVolume(voiceVolume);
+    void storeCaptureVoiceVolume(voiceVolume);
+  }, [voiceVolume]);
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
@@ -178,25 +192,9 @@ export function FiveAngleCameraStep({
 
   useEffect(() => {
     if (!voiceEnabled || reviewingCapture || !guidance) return;
-    if (guidance.face === "no_face") {
-      captureVoiceGuide.speak(guidance.faceMessage, "critical");
-      return;
-    }
-    if (guidance.face !== "good") {
-      captureVoiceGuide.speak(guidance.faceMessage, "framing");
-      return;
-    }
-    if (guidance.expressionMessage && guidance.expressionOk === false) {
-      captureVoiceGuide.speak(guidance.expressionMessage, "expression");
-      return;
-    }
-    if (guidance.lighting !== "good") {
-      captureVoiceGuide.speak(guidance.lightingMessage, "lighting");
-      return;
-    }
-    if (guidance.readyToCapture) {
-      captureVoiceGuide.speak(CAPTURE_READY_VOICE_HINT, "ready");
-    }
+    const hint = resolveCaptureVoiceHint(guidance);
+    if (!hint) return;
+    captureVoiceGuide.speak(hint.text, hint.priority, hint.key);
   }, [voiceEnabled, reviewingCapture, guidance]);
 
   useEffect(() => {
@@ -351,6 +349,8 @@ export function FiveAngleCameraStep({
       guidanceMessage={humanGuidanceMessage(guidance, expressionStep)}
       guidanceReady={guidance?.readyToCapture ?? false}
       voiceEnabled={voiceEnabled}
+      voiceVolume={voiceVolume}
+      onVoiceVolumeChange={setVoiceVolume}
       voiceAvailable={voiceSpeechAvailable}
       onToggleVoice={() => setVoiceEnabled((v) => !v)}
       showDebug={showDebug}

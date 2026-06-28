@@ -23,10 +23,11 @@ const PRIORITY_RANK: Record<VoicePriority, number> = {
 /** Spoken when framing, lighting, and expression checks pass. */
 export const CAPTURE_READY_VOICE_HINT = "You can take the picture now.";
 
-const COOLDOWN_MS = 4500;
-const MIN_GAP_MS = 1100;
+const COOLDOWN_MS = 5500;
+const MIN_GAP_MS = 2200;
+const CATEGORY_LOCK_MS = 3200;
 
-type Entry = { text: string; spokenAt: number };
+type Entry = { text: string; spokenAt: number; key: string };
 
 type SpeechModule = typeof import("expo-speech");
 
@@ -69,6 +70,9 @@ export class CaptureVoiceGuide {
   private lastByText = new Map<string, Entry>();
   private lastSpokenAt = 0;
   private currentPriority: VoicePriority | null = null;
+  private lastHintKey: string | null = null;
+  private lastHintKeyAt = 0;
+  private volume = 0.42;
 
   static isSupported(): boolean {
     return speechNativeAvailable;
@@ -88,10 +92,20 @@ export class CaptureVoiceGuide {
     return this.enabled;
   }
 
+  setVolume(level: number) {
+    this.volume = Math.max(0, Math.min(1, level));
+  }
+
+  getVolume() {
+    return this.volume;
+  }
+
   reset() {
     this.lastByText.clear();
     this.lastSpokenAt = 0;
     this.currentPriority = null;
+    this.lastHintKey = null;
+    this.lastHintKeyAt = 0;
     void this.stopSpeech();
   }
 
@@ -104,12 +118,27 @@ export class CaptureVoiceGuide {
     }
   }
 
-  speak(text: string, priority: VoicePriority = "info"): boolean {
+  speak(
+    text: string,
+    priority: VoicePriority = "info",
+    hintKey?: string
+  ): boolean {
     if (!this.enabled || !speechNativeAvailable) return false;
     const trimmed = text.trim();
     if (!trimmed) return false;
 
     const now = Date.now();
+    const stableKey = hintKey ?? trimmed;
+
+    if (
+      this.lastHintKey &&
+      this.lastHintKey !== stableKey &&
+      now - this.lastHintKeyAt < CATEGORY_LOCK_MS &&
+      priority !== "critical"
+    ) {
+      return false;
+    }
+
     const prev = this.lastByText.get(trimmed);
     if (prev && now - prev.spokenAt < COOLDOWN_MS) return false;
 
@@ -128,9 +157,10 @@ export class CaptureVoiceGuide {
       try {
         Speech.stop();
         const speechOpts: Parameters<typeof Speech.speak>[1] = {
-          rate: 1.05,
+          rate: 0.98,
           pitch: 1,
           language: "en-US",
+          volume: this.volume,
         };
         // iOS: let the system manage speech audio separately from the camera session.
         if (Platform.OS === "ios") {
@@ -139,8 +169,10 @@ export class CaptureVoiceGuide {
         }
         Speech.speak(trimmed, speechOpts);
         this.lastSpokenAt = now;
-        this.lastByText.set(trimmed, { text: trimmed, spokenAt: now });
+        this.lastByText.set(trimmed, { text: trimmed, spokenAt: now, key: stableKey });
         this.currentPriority = priority;
+        this.lastHintKey = stableKey;
+        this.lastHintKeyAt = now;
       } catch {
         /* native module missing at runtime */
       }
