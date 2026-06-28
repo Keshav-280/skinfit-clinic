@@ -15,6 +15,15 @@ export function resolveCaptureVoiceHint(
 ): CaptureVoiceHint | null {
   if (!guidance) return null;
 
+  if (
+    guidance.faceMessage === "Checking camera feed…" ||
+    guidance.lightingMessage === "Checking camera feed…" ||
+    guidance.faceMessage === "Checking camera feed..." ||
+    guidance.lightingMessage === "Checking camera feed..."
+  ) {
+    return null;
+  }
+
   const lightingOk =
     guidance.lighting === "good" || guidance.lightingScore >= 60;
   const faceOk = guidance.face === "good";

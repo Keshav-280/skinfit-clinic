@@ -198,6 +198,8 @@ export function useWebScanCaptureGuidance(
   const lastGuidancePublishRef = useRef(0);
   const warmupUntilRef = useRef(0);
   const wasInWarmupRef = useRef(false);
+  const warningSwitchingUntilRef = useRef<number>(0);
+  const prevPublishedGuidanceRef = useRef<CaptureGuidanceSnapshot | null>(null);
 
   const beginStepWarmup = useCallback(() => {
     warmupUntilRef.current = Date.now() + CAPTURE_STEP_WARMUP_MS;
@@ -214,6 +216,8 @@ export function useWebScanCaptureGuidance(
     lastGuidancePublishRef.current = 0;
     expressionOkRef.current = null;
     expressionCalibrationRef.current = { openEarBaseline: null };
+    warningSwitchingUntilRef.current = 0;
+    prevPublishedGuidanceRef.current = null;
   }, []);
 
   const resetLandmarkerSession = useCallback(() => {
@@ -586,6 +590,38 @@ export function useWebScanCaptureGuidance(
           );
         }
 
+        const prev = prevPublishedGuidanceRef.current;
+        const isWarningTypeChanged = Boolean(
+          prev &&
+            !prev.readyToCapture &&
+            !next.readyToCapture &&
+            (prev.face !== next.face || prev.lighting !== next.lighting)
+        );
+
+        if (isWarningTypeChanged) {
+          if (warningSwitchingUntilRef.current === 0) {
+            warningSwitchingUntilRef.current = now + 1200; // 1.2s delay to settle
+          }
+        } else if (next.readyToCapture) {
+          warningSwitchingUntilRef.current = 0;
+        }
+
+        if (warningSwitchingUntilRef.current > 0) {
+          if (now < warningSwitchingUntilRef.current) {
+            // Override message to "Checking camera feed…" and do not speak it
+            next = {
+              ...next,
+              faceMessage: "Checking camera feed…",
+              lightingMessage: "Checking camera feed…",
+              readyToCapture: false,
+            };
+          } else {
+            // Settle time has passed, publish actual new warning
+            warningSwitchingUntilRef.current = 0;
+          }
+        }
+
+        prevPublishedGuidanceRef.current = next;
         setGuidance(next);
       }
     } finally {

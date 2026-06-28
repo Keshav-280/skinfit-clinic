@@ -91,6 +91,8 @@ export function useMobileScanCaptureGuidance(
   const expressionOkRef = useRef<boolean | null>(null);
   const warmupUntilRef = useRef(0);
   const wasInWarmupRef = useRef(false);
+  const warningSwitchingUntilRef = useRef<number>(0);
+  const prevPublishedGuidanceRef = useRef<CaptureGuidanceSnapshot | null>(null);
   const [models, setModels] = useState<CaptureAssistModels>(() =>
     initialMobileModels(captureCfg, needsMp, false)
   );
@@ -112,6 +114,8 @@ export function useMobileScanCaptureGuidance(
     setBboxKind("—");
     setLandmarkCount(0);
     setPreviewAspect("—");
+    warningSwitchingUntilRef.current = 0;
+    prevPublishedGuidanceRef.current = null;
   }, []);
 
   const expressionStep = needsExpressionCheck();
@@ -177,7 +181,42 @@ export function useMobileScanCaptureGuidance(
         wasInWarmupRef.current = true;
       }
 
-      if (!inWarmup && next) setGuidance(next);
+      if (!inWarmup && next) {
+        let finalGuidance = next;
+        const prev = prevPublishedGuidanceRef.current;
+        const isWarningTypeChanged = Boolean(
+          prev &&
+            !prev.readyToCapture &&
+            !finalGuidance.readyToCapture &&
+            (prev.face !== finalGuidance.face || prev.lighting !== finalGuidance.lighting)
+        );
+
+        if (isWarningTypeChanged) {
+          if (warningSwitchingUntilRef.current === 0) {
+            warningSwitchingUntilRef.current = now + 1200; // 1.2s delay to settle
+          }
+        } else if (finalGuidance.readyToCapture) {
+          warningSwitchingUntilRef.current = 0;
+        }
+
+        if (warningSwitchingUntilRef.current > 0) {
+          if (now < warningSwitchingUntilRef.current) {
+            // Override message to "Checking camera feed…" and do not speak it
+            finalGuidance = {
+              ...finalGuidance,
+              faceMessage: "Checking camera feed…",
+              lightingMessage: "Checking camera feed…",
+              readyToCapture: false,
+            };
+          } else {
+            // Settle time has passed, publish actual new warning
+            warningSwitchingUntilRef.current = 0;
+          }
+        }
+
+        prevPublishedGuidanceRef.current = finalGuidance;
+        setGuidance(finalGuidance);
+      }
       if (meta) {
         setBboxSource(meta.bboxSource);
         setBboxKind(meta.bboxKind);

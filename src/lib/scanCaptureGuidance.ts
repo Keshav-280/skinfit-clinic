@@ -158,7 +158,7 @@ export const CAPTURE_GUIDANCE_SETTLE_MS = 600;
  * After switching capture steps (or returning from capture review), hold guidance
  * at "checking" so the first unstable face-box frames don't flash "ease back" etc.
  */
-export const CAPTURE_STEP_WARMUP_MS = 900;
+export const CAPTURE_STEP_WARMUP_MS = 2400;
 
 /** Shown while guidance is suppressed after a step change or returning from review. */
 export const CAPTURE_GUIDANCE_WARMUP_MESSAGE =
