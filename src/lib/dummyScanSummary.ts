@@ -18,18 +18,18 @@ function randomInt(min: number, max: number) {
 export function buildDummyAiSummary(m: DummyScanMetrics): string {
   const overall = patientClarityToGrade(m.overall_score);
   const acne = patientClarityToGrade(m.acne);
-  const hydration = patientClarityToGrade(m.hydration);
+  const underEye = patientClarityToGrade(m.hydration);
   const wrinkles = patientClarityToGrade(m.wrinkles);
-  const texture = patientClarityToGrade(m.texture);
+  const acneScar = patientClarityToGrade(m.texture);
   const pigmentation = patientClarityToGrade(m.pigmentation);
   const templates = [
-    `Today's overall skin grade is ${overall} — your hydration (${hydration}) and texture (${texture}) are helping keep things balanced; stay consistent with SPF and gentle cleansing.`,
+    `Today's overall skin grade is ${overall} — your under-eye area (${underEye}) and acne scars (${acneScar}) are helping keep things balanced; stay consistent with SPF and gentle cleansing.`,
     `We're seeing an overall grade of ${overall}. Acne clarity is ${acne} and fine-line smoothness is ${wrinkles}; a steady routine usually nudges these grades up over time.`,
-    `Grade check: ${overall} overall. Pigmentation is ${pigmentation} and moisture is ${hydration} — prioritize barrier care and sun protection this week.`,
-    `Your snapshot shows overall grade ${overall} with texture at ${texture} and wrinkles at ${wrinkles}. Nothing alarming for a home check-in; keep sleep and water steady.`,
-    `Overall ${overall}: acne ${acne}, hydration ${hydration}. Small day-to-day swings are normal — log how your skin feels alongside these grades.`,
-    `Reading of ${overall} today, with texture ${texture} and pigmentation ${pigmentation}. Consider lighter actives if anything feels tight or irritated.`,
-    `Nice baseline: ${overall} overall. Hydration ${hydration} and wrinkle grade ${wrinkles} suggest your skin is responding; repeat this scan in a week to track the trend.`,
+    `Grade check: ${overall} overall. Pigmentation is ${pigmentation} and under-eye area is ${underEye} — prioritize barrier care and sun protection this week.`,
+    `Your snapshot shows overall grade ${overall} with acne scars at ${acneScar} and wrinkles at ${wrinkles}. Nothing alarming for a home check-in; keep sleep and water steady.`,
+    `Overall ${overall}: acne ${acne}, under-eye ${underEye}. Small day-to-day swings are normal — log how your skin feels alongside these grades.`,
+    `Reading of ${overall} today, with acne scars ${acneScar} and pigmentation ${pigmentation}. Consider lighter actives if anything feels tight or irritated.`,
+    `Nice baseline: ${overall} overall. Under-eye ${underEye} and wrinkle grade ${wrinkles} suggest your skin is responding; repeat this scan in a week to track the trend.`,
   ];
   return templates[randomInt(0, templates.length - 1)];
 }
@@ -63,11 +63,11 @@ export function formatAiSummary(
     // 2. We define parameter-specific replacements to avoid replacing the letter "A" as an article.
     const paramMappings = [
       {
-        keys: ["hydration", "moisture"],
+        keys: ["hydration", "moisture", "under-eye", "under eye", "under-eye area", "under-eye smoothness"],
         score: calibratedMetrics.hydration,
       },
       {
-        keys: ["texture", "skin smoothness"],
+        keys: ["texture", "skin smoothness", "acne scars", "acne scar", "acne-scar"],
         score: calibratedMetrics.texture,
       },
       {
