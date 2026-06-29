@@ -54,7 +54,10 @@ export function clarityRawTrendPhrase(from: number, to: number): string {
   return "held steady";
 }
 
-function protectNonScoreTokens(text: string): { text: string; restore: () => string } {
+function protectNonScoreTokens(text: string): {
+  text: string;
+  restore: (s: string) => string;
+} {
   const protectedMatches: string[] = [];
   const protectRegex =
     /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}\b|\b\d+\s+(?:day|week|month|year|hour|glass|visit|scan)[s]?\b|\b\d{1,2}\/10\b/gi;
