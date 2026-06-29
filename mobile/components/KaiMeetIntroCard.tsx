@@ -12,6 +12,11 @@ import {
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import {
+  KAI_INTRO_LINES,
+  KAI_LINE_PAUSE_MS,
+  KAI_TYPING_MS_PER_CHAR,
+} from "../../src/lib/kaiIntroScript";
+import {
   KAI_MEET_CARD,
   meetCardHaloDots,
 } from "../../src/lib/kaiMeetIntroCardVisual";
@@ -56,7 +61,12 @@ export function KaiMeetIntroCard() {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
 
+  const [lineIndex, setLineIndex] = useState(0);
+  const [typed, setTyped] = useState("");
   const [floatY] = useState(() => new Animated.Value(0));
+  const [cursorOpacity] = useState(() => new Animated.Value(1));
+
+  const line = KAI_INTRO_LINES[lineIndex] ?? KAI_INTRO_LINES[0];
 
   const cardMinHeight = isWide ? KAI_MEET_CARD.minHeightWide : KAI_MEET_CARD.minHeightPhone;
   const avatarHeight = isWide
@@ -86,6 +96,43 @@ export function KaiMeetIntroCard() {
     return () => loop.stop();
   }, [floatY]);
 
+  useEffect(() => {
+    const blink = Animated.loop(
+      Animated.sequence([
+        Animated.timing(cursorOpacity, {
+          toValue: 0.15,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cursorOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    blink.start();
+    return () => blink.stop();
+  }, [cursorOpacity]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTyped("");
+  }, [lineIndex]);
+
+  useEffect(() => {
+    if (typed.length >= line.length) {
+      const pause = setTimeout(() => {
+        setLineIndex((i) => (i + 1) % KAI_INTRO_LINES.length);
+      }, KAI_LINE_PAUSE_MS);
+      return () => clearTimeout(pause);
+    }
+    const timer = setTimeout(() => {
+      setTyped(line.slice(0, typed.length + 1));
+    }, KAI_TYPING_MS_PER_CHAR);
+    return () => clearTimeout(timer);
+  }, [typed, line]);
+
   return (
     <View style={[styles.card, { minHeight: cardMinHeight }]}>
       <LinearGradient
@@ -106,12 +153,15 @@ export function KaiMeetIntroCard() {
       <View style={[styles.inner, isWide && styles.innerWide, { minHeight: cardMinHeight }]}>
         <View style={[styles.copyCol, isWide && styles.copyColWide]}>
           <Text style={styles.meet}>Meet</Text>
-          <Text style={[styles.kaiTitle, isWide && styles.kaiTitleWide]}>kAi</Text>
+          <Text style={[styles.kaiTitle, isWide && styles.kaiTitleWide]}>kAI</Text>
           <Text style={styles.kicker}>YOUR SKIN COMPANION</Text>
 
           <View style={styles.descWrap}>
             <Text style={styles.descText}>
-              Take the same guided photos each time, so your skin changes are easier to follow.
+              {typed}
+              <Animated.Text style={[styles.cursor, { opacity: cursorOpacity }]}>
+                |
+              </Animated.Text>
             </Text>
           </View>
         </View>
@@ -149,7 +199,7 @@ export function KaiMeetIntroCard() {
                   source={require("../assets/images/kai-avatar.png")}
                   style={{ width: avatarWidth, height: avatarHeight }}
                   resizeMode="contain"
-                  accessibilityLabel="kAi, your SkinFit AI skin companion"
+                  accessibilityLabel="kAI, your SkinFit AI skin companion"
                 />
               </View>
             </Animated.View>
@@ -224,12 +274,15 @@ const styles = StyleSheet.create({
   },
   descWrap: {
     marginTop: 24,
-    minHeight: 76,
+    minHeight: 88,
   },
   descText: {
     fontSize: 15,
     lineHeight: 22,
     fontWeight: "600",
+    color: KAI_MEET_CARD.text.desc,
+  },
+  cursor: {
     color: KAI_MEET_CARD.text.desc,
   },
   avatarCol: {
