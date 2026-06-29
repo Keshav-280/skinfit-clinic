@@ -32,7 +32,8 @@ const WEB_PORTAL_URL =
 type SignInMethod = "password" | "otp";
 
 export default function LoginScreen() {
-  const { signIn, signInWithEmailOtp, signInWithOAuth, token, ready } = useAuth();
+  const { signIn, signInWithEmailOtp, signInWithOAuth, token, ready } =
+    useAuth();
   const [signInMethod, setSignInMethod] = useState<SignInMethod>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,14 +46,21 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (resendSeconds <= 0) return;
-    const timer = setTimeout(() => setResendSeconds((s) => Math.max(0, s - 1)), 1000);
+    const timer = setTimeout(
+      () => setResendSeconds((s) => Math.max(0, s - 1)),
+      1000,
+    );
     return () => clearTimeout(timer);
   }, [resendSeconds]);
 
   if (!ready) {
     return (
       <View style={[styles.flex, styles.screen]}>
-        <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 48 }} />
+        <ActivityIndicator
+          size="large"
+          color={PRIMARY}
+          style={{ marginTop: 48 }}
+        />
       </View>
     );
   }
@@ -88,7 +96,7 @@ export default function LoginScreen() {
       setOtpSent(true);
       setOtp("");
       setResendSeconds(
-        typeof data.cooldownSeconds === "number" ? data.cooldownSeconds : 60
+        typeof data.cooldownSeconds === "number" ? data.cooldownSeconds : 60,
       );
       Alert.alert("Sign in", data.message || "Code sent. Check your inbox.");
     } catch (e) {
@@ -129,7 +137,10 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.flex, styles.screen]} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.flex, styles.screen]}
+      edges={["top", "bottom"]}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
@@ -162,7 +173,8 @@ export default function LoginScreen() {
                 <Pressable
                   style={[
                     styles.sendCodeBtn,
-                    (sendOtpLoading || resendSeconds > 0) && styles.sendCodeBtnDisabled,
+                    (sendOtpLoading || resendSeconds > 0) &&
+                      styles.sendCodeBtnDisabled,
                   ]}
                   onPress={() => void sendLoginOtp()}
                   disabled={sendOtpLoading || resendSeconds > 0}
@@ -222,7 +234,9 @@ export default function LoginScreen() {
                   onPress={() => setShowPassword((v) => !v)}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                  accessibilityLabel={
+                    showPassword ? "Hide password" : "Show password"
+                  }
                 >
                   <Ionicons
                     name={showPassword ? "eye-outline" : "eye-off-outline"}
@@ -246,7 +260,9 @@ export default function LoginScreen() {
                     setResendSeconds(0);
                   }}
                 >
-                  <Text style={styles.forgotLink}>Send a code to your email</Text>
+                  <Text style={styles.forgotLink}>
+                    Send a code to your email
+                  </Text>
                 </Pressable>
                 <Link href="/forgot-password" asChild>
                   <Pressable hitSlop={8}>
@@ -270,7 +286,10 @@ export default function LoginScreen() {
           </View>
 
           <Pressable
-            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+            ]}
             onPress={onSubmit}
             disabled={loading}
           >
@@ -288,21 +307,15 @@ export default function LoginScreen() {
           <SocialAuthButtons
             loading={loading}
             divider="none"
-            showFacebook
             alwaysShowApple
-            onFacebook={() =>
-              Alert.alert(
-                "Facebook sign-in",
-                "Facebook sign-in is not available in the app yet. Use Google, Apple, or email instead."
-              )
-            }
             onGoogle={async () => {
               setLoading(true);
               try {
                 await signInWithOAuth("google");
                 router.replace("/");
               } catch (e) {
-                const msg = e instanceof Error ? e.message : "Something went wrong.";
+                const msg =
+                  e instanceof Error ? e.message : "Something went wrong.";
                 Alert.alert("Google sign in", msg);
               } finally {
                 setLoading(false);
@@ -314,7 +327,8 @@ export default function LoginScreen() {
                 await signInWithOAuth("apple");
                 router.replace("/");
               } catch (e) {
-                const msg = e instanceof Error ? e.message : "Something went wrong.";
+                const msg =
+                  e instanceof Error ? e.message : "Something went wrong.";
                 Alert.alert("Apple sign in", msg);
               } finally {
                 setLoading(false);
@@ -325,11 +339,17 @@ export default function LoginScreen() {
           <View style={styles.staffRow}>
             <Text style={styles.staffText}>
               Clinic staff?{" "}
-              <Text style={styles.staffLink} onPress={() => openWebPath("/doctor/login")}>
+              <Text
+                style={styles.staffLink}
+                onPress={() => openWebPath("/doctor/login")}
+              >
                 Doctor portal
               </Text>
               {" · "}Need help?{" "}
-              <Text style={styles.staffLink} onPress={() => openWebPath("/contact")}>
+              <Text
+                style={styles.staffLink}
+                onPress={() => openWebPath("/contact")}
+              >
                 Contact us
               </Text>
             </Text>

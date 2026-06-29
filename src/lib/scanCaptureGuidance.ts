@@ -211,7 +211,7 @@ export function smoothFaceBox(
   const prevArea = prev.width * prev.height;
   const nextArea = next.width * next.height;
   const ratio = nextArea / Math.max(prevArea, 1e-4);
-  let useAlpha = alpha;
+  const useAlpha = alpha;
   if (ratio < FACE_BOX_OUTLIER_RATIO_LO || ratio > FACE_BOX_OUTLIER_RATIO_HI) {
     /** Snap on detector jumps (e.g. after step change or skin → landmark). */
     return next;

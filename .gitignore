@@ -80,3 +80,10 @@ next-env.d.ts
 *.pdf
 *.html
 
+# local temporary files and datasets
+/images_pari_faces/
+/exports/
+/tmp/
+mobile/build_log.txt
+
+

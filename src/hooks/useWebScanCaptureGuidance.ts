@@ -61,12 +61,7 @@ if (typeof window !== "undefined" && MEDIAPIPE_ACTIVE) {
   installMediapipeConsoleFilter();
 }
 
-type CaptureStepId =
-  | "centre"
-  | "left"
-  | "right"
-  | "eyes_closed"
-  | "smiling";
+type CaptureStepId = "centre" | "left" | "right" | "eyes_closed" | "smiling";
 
 type BlendshapeCategory = {
   categoryName?: string;
@@ -122,7 +117,7 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerLike> {
     return await vision.FaceLandmarker.createFromOptions(fileset, opts);
   } catch {
     const fileset2 = await vision.FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
     );
     return await vision.FaceLandmarker.createFromOptions(fileset2, {
       ...opts,
@@ -133,7 +128,7 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerLike> {
 
 function canvasFromImageData(
   imageData: ImageData,
-  reuse: HTMLCanvasElement | null
+  reuse: HTMLCanvasElement | null,
 ): HTMLCanvasElement | null {
   const canvas = reuse ?? document.createElement("canvas");
   canvas.width = imageData.width;
@@ -150,14 +145,17 @@ export function useWebScanCaptureGuidance(
   currentZoom: number,
   stepId: CaptureStepId,
   /** Match preview/capture brightness & contrast so guidance reflects adjusted image. */
-  previewFilter = "brightness(100%) contrast(100%)"
+  previewFilter = "brightness(100%) contrast(100%)",
+  authToken?: string | null,
 ) {
   const stepStartRef = useRef<number>(0);
   useEffect(() => {
     stepStartRef.current = Date.now();
   }, [stepId]);
 
-  const [guidance, setGuidance] = useState<CaptureGuidanceSnapshot | null>(null);
+  const [guidance, setGuidance] = useState<CaptureGuidanceSnapshot | null>(
+    null,
+  );
   /**
    * Keep the latest brightness/contrast filter in a ref so adjusting the sliders
    * does NOT change `tick`'s identity and tear down / restart the guidance loop
@@ -167,9 +165,9 @@ export function useWebScanCaptureGuidance(
   useEffect(() => {
     previewFilterRef.current = previewFilter;
   }, [previewFilter]);
-  const [faceLandmarks, setFaceLandmarks] = useState<NormalizedLandmark[] | null>(
-    null
-  );
+  const [faceLandmarks, setFaceLandmarks] = useState<
+    NormalizedLandmark[] | null
+  >(null);
   const [faceTracked, setFaceTracked] = useState(false);
   const [models, setModels] = useState<CaptureAssistModels>(initialModels);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -192,6 +190,10 @@ export function useWebScanCaptureGuidance(
   const previewAbortRef = useRef<AbortController | null>(null);
   const previewBusyRef = useRef(false);
   const lastPreviewAtRef = useRef(0);
+  const authTokenRef = useRef(authToken);
+  useEffect(() => {
+    authTokenRef.current = authToken;
+  }, [authToken]);
   const PREVIEW_MIN_INTERVAL_MS = 750;
   const frameSamplesRef = useRef<
     Array<{
@@ -248,23 +250,39 @@ export function useWebScanCaptureGuidance(
     }
     if (!enabled) {
       resetLandmarkerSession();
-      setModels((m) => ({ ...m, mediapipe: "idle", mediapipeError: undefined }));
+      setModels((m) => ({
+        ...m,
+        mediapipe: "idle",
+        mediapipeError: undefined,
+      }));
       return;
     }
 
     if (landmarkerRef.current) {
-      setModels((m) => ({ ...m, mediapipe: "ready", mediapipeError: undefined }));
+      setModels((m) => ({
+        ...m,
+        mediapipe: "ready",
+        mediapipeError: undefined,
+      }));
       return;
     }
     if (loadingLandmarkerRef.current) return;
 
     loadingLandmarkerRef.current = true;
-    setModels((m) => ({ ...m, mediapipe: "loading", mediapipeError: undefined }));
+    setModels((m) => ({
+      ...m,
+      mediapipe: "loading",
+      mediapipeError: undefined,
+    }));
 
     void (async () => {
       try {
         landmarkerRef.current = await createFaceLandmarker();
-        setModels((m) => ({ ...m, mediapipe: "ready", mediapipeError: undefined }));
+        setModels((m) => ({
+          ...m,
+          mediapipe: "ready",
+          mediapipeError: undefined,
+        }));
       } catch (e) {
         resetLandmarkerSession();
         setModels((m) => ({
@@ -335,17 +353,20 @@ export function useWebScanCaptureGuidance(
         PREVIEW_W,
         PREVIEW_H,
         currentZoom,
-        previewFilterRef.current
+        previewFilterRef.current,
       );
       if (!imageData) return;
 
       const lighting = analyzeLightingFromRgba(
         imageData.data,
         imageData.width,
-        imageData.height
+        imageData.height,
       );
 
-      const frameCanvas = canvasFromImageData(imageData, frameCanvasRef.current);
+      const frameCanvas = canvasFromImageData(
+        imageData,
+        frameCanvasRef.current,
+      );
       if (frameCanvas) frameCanvasRef.current = frameCanvas;
 
       const mpReady = models.mediapipe === "ready";
@@ -367,7 +388,9 @@ export function useWebScanCaptureGuidance(
         setModels((m) => ({
           ...m,
           retinaface:
-            FACE_CAPTURE_CONFIG.detector === "retinaface" ? "loading" : m.retinaface,
+            FACE_CAPTURE_CONFIG.detector === "retinaface"
+              ? "loading"
+              : m.retinaface,
         }));
         try {
           const blob = await imageDataToJpegBlob(imageData);
@@ -375,6 +398,7 @@ export function useWebScanCaptureGuidance(
             previewAbortRef.current?.abort();
             previewAbortRef.current = new AbortController();
             serverPreview = await fetchFacePreviewInference(blob, {
+              authToken: authTokenRef.current,
               signal: previewAbortRef.current.signal,
             });
           }
@@ -384,14 +408,26 @@ export function useWebScanCaptureGuidance(
           previewBusyRef.current = false;
         }
 
-        if (FACE_CAPTURE_CONFIG.detector === "retinaface" || serverPreview?.detectorAvailable) {
-          const rfOk = Boolean(serverPreview?.detectorAvailable && serverPreview.box);
+        if (
+          FACE_CAPTURE_CONFIG.detector === "retinaface" ||
+          serverPreview?.detectorAvailable
+        ) {
+          const rfOk = Boolean(
+            serverPreview?.detectorAvailable && serverPreview.box,
+          );
           setModels((m) => ({
             ...m,
-            retinaface: rfOk ? "ready" : serverPreview ? "failed" : m.retinaface,
+            retinaface: rfOk
+              ? "ready"
+              : serverPreview
+                ? "failed"
+                : m.retinaface,
             retinafaceError: rfOk
               ? undefined
-              : (serverPreview?.warning ?? "RetinaFace unavailable").slice(0, 120),
+              : (serverPreview?.warning ?? "RetinaFace unavailable").slice(
+                  0,
+                  120,
+                ),
           }));
         }
         if (FACE_CAPTURE_CONFIG.expression === "classifier") {
@@ -419,7 +455,10 @@ export function useWebScanCaptureGuidance(
         } catch (e) {
           landmarkerRes = null;
           if (typeof window !== "undefined") {
-            console.debug("[scan] FaceLandmarker.detect skipped:", truncateErr(e));
+            console.debug(
+              "[scan] FaceLandmarker.detect skipped:",
+              truncateErr(e),
+            );
           }
         }
       }
@@ -433,7 +472,7 @@ export function useWebScanCaptureGuidance(
           const blazeBox = faceBoxFromBlazeDetections(
             blazeRes.detections,
             frameCanvas.width,
-            frameCanvas.height
+            frameCanvas.height,
           );
           if (blazeBox) {
             faceBox = blazeBox;
@@ -451,7 +490,7 @@ export function useWebScanCaptureGuidance(
         faceBox = await detectFaceBoxNormalized(
           frameCanvas,
           imageData.width,
-          imageData.height
+          imageData.height,
         );
         if (faceBox) source = "browser";
       }
@@ -460,7 +499,7 @@ export function useWebScanCaptureGuidance(
         faceBox = estimateFaceBoxFromSkin(
           imageData.data,
           imageData.width,
-          imageData.height
+          imageData.height,
         );
         if (faceBox) source = "skin";
       }
@@ -473,7 +512,7 @@ export function useWebScanCaptureGuidance(
         const smoothed = smoothLandmarks(
           smoothedLandmarksRef.current,
           mpOutline,
-          0.5
+          0.5,
         );
         smoothedLandmarksRef.current = smoothed;
         lastLandmarkAtRef.current = now;
@@ -504,8 +543,8 @@ export function useWebScanCaptureGuidance(
       setFaceTracked(
         Boolean(
           smoothedLandmarksRef.current?.length ||
-            isUsableFaceBox(smoothedBoxRef.current)
-        )
+          isUsableFaceBox(smoothedBoxRef.current),
+        ),
       );
 
       frameSamplesRef.current.push({
@@ -536,13 +575,17 @@ export function useWebScanCaptureGuidance(
 
         lastGuidancePublishRef.current = now;
         const avgBox = averageFaceBoxes(
-          frameSamplesRef.current.map((s) => s.faceBox)
+          frameSamplesRef.current.map((s) => s.faceBox),
         );
         const lastLighting =
-          frameSamplesRef.current[frameSamplesRef.current.length - 1]?.lighting ??
-          lighting;
+          frameSamplesRef.current[frameSamplesRef.current.length - 1]
+            ?.lighting ?? lighting;
         const isSide = stepId === "left" || stepId === "right";
-        const framing = analyzeFaceFraming(avgBox, framingStateRef.current, isSide);
+        const framing = analyzeFaceFraming(
+          avgBox,
+          framingStateRef.current,
+          isSide,
+        );
         framingStateRef.current = {
           quality: framing.quality,
           faceFill: framing.faceFill,
@@ -551,7 +594,9 @@ export function useWebScanCaptureGuidance(
 
         const useClassifier =
           FACE_CAPTURE_CONFIG.expression === "classifier" &&
-          Boolean(serverPreview?.expressionAvailable && serverPreview.expression);
+          Boolean(
+            serverPreview?.expressionAvailable && serverPreview.expression,
+          );
 
         const expressionPipelineActive = useClassifier
           ? true
@@ -567,7 +612,7 @@ export function useWebScanCaptureGuidance(
             stepId,
             serverPreview!.expression,
             expressionOkRef,
-            expressionPipelineActive
+            expressionPipelineActive,
           );
         } else if (
           needsExpressionModel &&
@@ -582,8 +627,7 @@ export function useWebScanCaptureGuidance(
           next.expressionMessage = "Loading expression model…";
         } else if (needsExpressionModel) {
           const shapes = latestMp?.faceBlendshapes?.[0]?.categories as
-            | BlendshapeCategory[]
-            | undefined;
+            BlendshapeCategory[] | undefined;
           const landmarks = latestMp?.faceLandmarks?.[0];
           next = applyCaptureExpression(
             next,
@@ -592,7 +636,7 @@ export function useWebScanCaptureGuidance(
             expressionOkRef,
             landmarks,
             expressionPipelineActive,
-            expressionCalibrationRef.current
+            expressionCalibrationRef.current,
           );
         }
 
@@ -606,9 +650,9 @@ export function useWebScanCaptureGuidance(
         const prev = prevPublishedGuidanceRef.current;
         const isWarningTypeChanged = Boolean(
           prev &&
-            !prev.readyToCapture &&
-            !next.readyToCapture &&
-            (prev.face !== next.face || prev.lighting !== next.lighting)
+          !prev.readyToCapture &&
+          !next.readyToCapture &&
+          (prev.face !== next.face || prev.lighting !== next.lighting),
         );
 
         if (isWarningTypeChanged) {

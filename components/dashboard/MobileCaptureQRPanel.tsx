@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import QRCode from "qrcode";
-import { ArrowLeft, RefreshCw, Smartphone, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  RefreshCw,
+  Smartphone,
+  CheckCircle,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MobileCaptureQRPanelProps {
@@ -11,28 +18,43 @@ interface MobileCaptureQRPanelProps {
   isOnboardingScan?: boolean;
 }
 
-export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = false }: MobileCaptureQRPanelProps) {
+export function MobileCaptureQRPanel({
+  onBack,
+  onComplete,
+  isOnboardingScan = false,
+}: MobileCaptureQRPanelProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sessionUrl, setSessionUrl] = useState<string>("");
   const [sessionId, setSessionId] = useState<string>("");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
-  const [status, setStatus] = useState<"pending" | "complete" | "expired">("pending");
+  const [status, setStatus] = useState<"pending" | "complete" | "expired">(
+    "pending",
+  );
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const onCompleteRef = useRef(onComplete);
 
-  const fetchSession = async () => {
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  const fetchSession = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       setStatus("pending");
-      
+
       const res = await fetch("/api/mobile-capture/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variant: isOnboardingScan ? "onboarding" : "dashboard",
+        }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to create session. Please check your authentication.");
+        throw new Error(
+          "Failed to create session. Please check your authentication.",
+        );
       }
 
       const data = await res.json();
@@ -40,7 +62,6 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
         throw new Error(data.error || "Failed to create session.");
       }
 
-      setSessionUrl(data.url);
       setSessionId(data.sessionId);
 
       // Generate QR Code data URL
@@ -56,10 +77,12 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
       setLoading(false);
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to load session QR code.");
+      setError(
+        err instanceof Error ? err.message : "Failed to load session QR code.",
+      );
       setLoading(false);
     }
-  };
+  }, [isOnboardingScan]);
 
   useEffect(() => {
     void fetchSession();
@@ -67,7 +90,7 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
-  }, []);
+  }, [fetchSession]);
 
   // Poll status when sessionId changes
   useEffect(() => {
@@ -77,17 +100,19 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
 
     pollTimerRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/mobile-capture/status?sessionId=${sessionId}`);
+        const res = await fetch(
+          `/api/mobile-capture/status?sessionId=${sessionId}`,
+        );
         if (!res.ok) return;
         const data = await res.json();
-        
+
         if (data.success) {
           if (data.status === "complete") {
             setStatus("complete");
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             // Wait 1.5s for success animation to play, then trigger completion
             setTimeout(() => {
-              onComplete(data.scanId);
+              onCompleteRef.current(data.scanId);
             }, 1500);
           } else if (data.status === "expired") {
             setStatus("expired");
@@ -120,7 +145,8 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
           Scan with your phone
         </h2>
         <p className="mt-2 text-sm text-[#64748B]">
-          Use your phone's default camera app to scan the QR code and complete the guided face capture.
+          Use your phone camera app to scan the QR code and complete the guided
+          face capture.
         </p>
       </div>
 
@@ -135,7 +161,9 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
               className="flex flex-col items-center gap-3"
             >
               <Loader2 className="h-10 w-10 animate-spin text-[#2C3E6B]" />
-              <p className="text-sm font-medium text-[#64748B]">Generating secure link...</p>
+              <p className="text-sm font-medium text-[#64748B]">
+                Generating secure link...
+              </p>
             </motion.div>
           )}
 
@@ -148,7 +176,9 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
               className="flex flex-col items-center p-4 text-center"
             >
               <AlertTriangle className="h-10 w-10 text-rose-500" />
-              <p className="mt-3 text-sm font-semibold text-rose-950">{error}</p>
+              <p className="mt-3 text-sm font-semibold text-rose-950">
+                {error}
+              </p>
               <button
                 onClick={fetchSession}
                 className="mt-4 flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#344a82]"
@@ -170,10 +200,14 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
               {qrCodeUrl && (
                 <div className="relative rounded-2xl bg-white p-3 shadow-inner ring-1 ring-[#2C3E6B]/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrCodeUrl} alt="Scan to capture photos" className="h-[240px] w-[240px]" />
+                  <img
+                    src={qrCodeUrl}
+                    alt="Scan to capture photos"
+                    className="h-[240px] w-[240px]"
+                  />
                 </div>
               )}
-              
+
               <div className="mt-4 flex items-center gap-2 rounded-full bg-[#EBF2FE] px-3.5 py-1 text-xs font-bold text-[#2C3E6B]">
                 <Smartphone className="h-3.5 w-3.5 animate-pulse" />
                 Waiting for phone camera...
@@ -189,7 +223,9 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
               className="flex flex-col items-center text-center"
             >
               <CheckCircle className="h-16 w-16 text-emerald-500 animate-bounce" />
-              <h3 className="mt-4 text-lg font-bold text-emerald-950">Photos Received!</h3>
+              <h3 className="mt-4 text-lg font-bold text-emerald-950">
+                Photos Received!
+              </h3>
               <p className="mt-2 text-sm text-emerald-800">
                 Processing your face scan now. Hang tight.
               </p>
@@ -204,7 +240,9 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
               className="flex flex-col items-center text-center"
             >
               <AlertTriangle className="h-12 w-12 text-amber-500" />
-              <h3 className="mt-4 text-base font-bold text-slate-800">QR Code Expired</h3>
+              <h3 className="mt-4 text-base font-bold text-slate-800">
+                QR Code Expired
+              </h3>
               <p className="mt-2 text-xs text-slate-500">
                 For security, QR codes expire after 15 minutes.
               </p>
@@ -222,7 +260,8 @@ export function MobileCaptureQRPanel({ onBack, onComplete, isOnboardingScan = fa
 
       <div className="mt-6 border-t border-slate-100 pt-4 text-center">
         <p className="text-xs text-slate-400">
-          Secure end-to-end transfer. The phone session expires automatically after 15 minutes.
+          Secure end-to-end transfer. The phone session expires automatically
+          after 15 minutes.
         </p>
       </div>
     </div>

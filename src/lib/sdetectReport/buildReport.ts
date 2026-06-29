@@ -41,8 +41,8 @@ export async function buildSdetectReportFromPdf(
   const params = qrUrl ? parseReportUrlParams(qrUrl) : null;
 
   let faceImages: SdetectReportData["faceImages"] = null;
-  let sourceReportUrl = qrUrl;
-  let reportSn: string | null = params?.reportSn ?? null;
+  const sourceReportUrl = qrUrl;
+  const reportSn: string | null = params?.reportSn ?? null;
 
   let classification = parsed.classification;
   let moisture = parsed.moisture;

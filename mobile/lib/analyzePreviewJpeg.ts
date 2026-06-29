@@ -228,7 +228,7 @@ export async function analyzePreviewImageUri(
     faceLandmarks: landmarkPoints?.length ? landmarkPoints : null,
   };
 
-  let guidance = buildCaptureGuidance(lighting, framing, currentZoom, {
+  const guidance = buildCaptureGuidance(lighting, framing, currentZoom, {
     showFaceCheck: needsMp || hasFaceEstimate,
   });
 

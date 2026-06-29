@@ -3,7 +3,12 @@ import OpenAI from "openai";
 import { eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { db } from "@/src/db";
-import { scans, skinScans, users, mobileCaptureSessions } from "@/src/db/schema";
+import {
+  scans,
+  skinScans,
+  users,
+  mobileCaptureSessions,
+} from "@/src/db/schema";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 import { buildDummyAiSummary } from "@/src/lib/dummyScanSummary";
 import { patientClarityToGrade } from "@/src/lib/clarityGrade";
@@ -106,7 +111,8 @@ function generateDetectedRegions(): Array<{
     { issue: "Texture", x: 38, y: 48 },
   ];
   const pick = randomInt(5, 7);
-  const out: Array<{ issue: string; coordinates: { x: number; y: number } }> = [];
+  const out: Array<{ issue: string; coordinates: { x: number; y: number } }> =
+    [];
   const shuffled = [...templates].sort(() => Math.random() - 0.5);
   for (let i = 0; i < pick && i < shuffled.length; i++) {
     const t = shuffled[i];
@@ -149,9 +155,14 @@ function buildDummyKaiV2() {
       acne_scar: scar100,
       under_eye: underEye100,
       pigmentation: pig100,
-    }) ?? Math.round((acne100 + wr100 + el100 + scar100 + underEye100 + pig100) / 6);
+    }) ??
+    Math.round((acne100 + wr100 + el100 + scar100 + underEye100 + pig100) / 6);
   const params = {
-    acne_pimples: { value: acne100, source: "ai" as const, severity_flag: false },
+    acne_pimples: {
+      value: acne100,
+      source: "ai" as const,
+      severity_flag: false,
+    },
     wrinkles: {
       value: wr100,
       source: "ai" as const,
@@ -160,15 +171,39 @@ function buildDummyKaiV2() {
     },
     elasticity: { value: el100, source: "ai" as const, severity_flag: false },
     skin_quality: { value: sq100, source: "ai" as const, severity_flag: false },
-    acne_scars: { value: null, source: "pending" as const, severity_flag: false },
+    acne_scars: {
+      value: null,
+      source: "pending" as const,
+      severity_flag: false,
+    },
     pores: { value: null, source: "pending" as const, severity_flag: false },
-    pigmentation: { value: null, source: "pending" as const, severity_flag: false },
-    uniformity: { value: null, source: "pending" as const, severity_flag: false },
+    pigmentation: {
+      value: null,
+      source: "pending" as const,
+      severity_flag: false,
+    },
+    uniformity: {
+      value: null,
+      source: "pending" as const,
+      severity_flag: false,
+    },
     sebum: { value: null, source: "pending" as const, severity_flag: false },
-    hydration: { value: null, source: "pending" as const, severity_flag: false },
+    hydration: {
+      value: null,
+      source: "pending" as const,
+      severity_flag: false,
+    },
     redness: { value: null, source: "pending" as const, severity_flag: false },
-    tone_evenness: { value: null, source: "pending" as const, severity_flag: false },
-    uv_damage: { value: null, source: "pending" as const, severity_flag: false },
+    tone_evenness: {
+      value: null,
+      source: "pending" as const,
+      severity_flag: false,
+    },
+    uv_damage: {
+      value: null,
+      source: "pending" as const,
+      severity_flag: false,
+    },
   };
   const texture100 = scar100;
   return {
@@ -203,7 +238,7 @@ export async function POST(request: NextRequest) {
     if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json(
         { success: false, error: "Authentication required." },
-        { status: 401 }
+        { status: 401 },
       );
     }
     const token = authHeader.slice(7).trim();
@@ -211,26 +246,31 @@ export async function POST(request: NextRequest) {
     if (!token || !secret) {
       return NextResponse.json(
         { success: false, error: "Server authentication error." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     let userId: string;
     try {
       const key = new TextEncoder().encode(secret);
-      const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
+      const { payload } = await jwtVerify(token, key, {
+        algorithms: ["HS256"],
+      });
+      if (payload.purpose !== "mobile-capture") {
+        throw new Error("Invalid token purpose");
+      }
       userId = payload.sub || "";
     } catch {
       return NextResponse.json(
         { success: false, error: "Invalid or expired token." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "User ID not found in token." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -241,7 +281,7 @@ export async function POST(request: NextRequest) {
     if (!sessionId) {
       return NextResponse.json(
         { success: false, error: "Missing sessionId parameter." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -254,14 +294,14 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json(
         { success: false, error: "Mobile capture session not found." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (session.status !== "pending") {
       return NextResponse.json(
         { success: false, error: `Session is already ${session.status}.` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -272,14 +312,14 @@ export async function POST(request: NextRequest) {
         .where(eq(mobileCaptureSessions.id, sessionId));
       return NextResponse.json(
         { success: false, error: "Session has expired." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (session.userId !== userId) {
       return NextResponse.json(
         { success: false, error: "Session does not belong to this user." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -293,7 +333,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: `Provide exactly ${FACE_SCAN_CAPTURE_STEPS.length} face images in order (${FACE_SCAN_CAPTURE_STEPS.map((s) => s.id).join(", ")}).`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -329,14 +369,14 @@ export async function POST(request: NextRequest) {
       filesForV2[stepId] = new File(
         [new Uint8Array(buf)],
         file.name || `${stepId}.jpg`,
-        { type: "image/jpeg" }
+        { type: "image/jpeg" },
       );
     }
 
     const imageJpegs: Partial<Record<string, Buffer>> = {};
     for (const step of FACE_SCAN_CAPTURE_STEPS) {
       imageJpegs[step.id] = Buffer.from(
-        await filesForV2[step.id].arrayBuffer()
+        await filesForV2[step.id].arrayBuffer(),
       );
     }
     const identity = await enforceScanFaceIdentity({
@@ -356,7 +396,7 @@ export async function POST(request: NextRequest) {
           message: identity.message,
           identityChecks: identity.imageChecks,
         },
-        { status }
+        { status },
       );
     }
 
@@ -365,7 +405,7 @@ export async function POST(request: NextRequest) {
       filesForV2[step.id] = await fileForMlInference(
         filesForV2[step.id],
         step.id,
-        captureCropContext
+        captureCropContext,
       );
     }
 
@@ -379,7 +419,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { success: false, error: "User not found" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -437,29 +477,29 @@ export async function POST(request: NextRequest) {
         if (useV2) {
           merged = buildScanPayloadFromAnalyzeV2(
             await runFaceAnalysisServiceV2(filesForV2, inferenceOpts),
-            scanOpts
+            scanOpts,
           );
         } else if (singleImageMode) {
           merged = buildScanPayloadFromAnalyzeV1(
             await runFaceAnalysisService(filesForV2.centre, inferenceOpts),
-            scanOpts
+            scanOpts,
           );
         } else if (legacyAnalyze) {
           const dual = await runFaceAnalysisCentreSmiling(
             filesForV2.centre,
             filesForV2.smiling,
-            inferenceOpts
+            inferenceOpts,
           );
           merged = buildScanPayloadFromCentreAndSmiling(
             dual.centre,
             dual.smiling,
-            scanOpts
+            scanOpts,
           );
         } else {
           const dualScan = await runFaceAnalysisDualScan(
             filesForV2.centre,
             filesForV2.smiling,
-            inferenceOpts
+            inferenceOpts,
           );
           merged = buildScanPayloadFromAnalyzeV1(dualScan, scanOpts);
           if (process.env.NODE_ENV === "development") {
@@ -509,7 +549,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error(
           useV2 ? "Face analysis v2 error:" : "Face analysis error:",
-          err
+          err,
         );
         if (!allowDummyInferenceFallback) {
           const msg =
@@ -519,9 +559,11 @@ export async function POST(request: NextRequest) {
               success: false,
               error:
                 "Skin analysis service is unavailable. Try again shortly or contact support.",
-              ...(process.env.NODE_ENV === "development" ? { detail: msg } : {}),
+              ...(process.env.NODE_ENV === "development"
+                ? { detail: msg }
+                : {}),
             },
-            { status: 503 }
+            { status: 503 },
           );
         }
         await new Promise((resolve) => setTimeout(resolve, 2500));
@@ -530,7 +572,7 @@ export async function POST(request: NextRequest) {
         v2params = dummy.params;
         modelFeatureScores = dummy.modelFeatureScores;
         const dmfs = parseModelFeatureScores(
-          dummy.modelFeatureScores as Record<string, number | null>
+          dummy.modelFeatureScores as Record<string, number | null>,
         );
         metrics = {
           ...buildLegacyMetricsFromModel(dmfs, dummy.overallKaiScore),
@@ -545,7 +587,7 @@ export async function POST(request: NextRequest) {
       v2params = dummy.params;
       modelFeatureScores = dummy.modelFeatureScores;
       const dmfs = parseModelFeatureScores(
-        dummy.modelFeatureScores as Record<string, number | null>
+        dummy.modelFeatureScores as Record<string, number | null>,
       );
       metrics = {
         ...buildLegacyMetricsFromModel(dmfs, dummy.overallKaiScore),
@@ -558,10 +600,8 @@ export async function POST(request: NextRequest) {
       100,
       Math.max(
         0,
-        Math.round(
-          (metrics.hydration + metrics.acne + metrics.texture) / 3
-        )
-      )
+        Math.round((metrics.hydration + metrics.acne + metrics.texture) / 3),
+      ),
     );
 
     let aiSummary = buildDummyAiSummary(metrics);
@@ -605,7 +645,7 @@ export async function POST(request: NextRequest) {
     }
 
     const mfsParsed = parseModelFeatureScores(
-      modelFeatureScores as Record<string, number | null>
+      modelFeatureScores as Record<string, number | null>,
     );
     const modelEight = modelEightClarityScores(mfsParsed, scanOpts.patientAge);
 
@@ -684,7 +724,7 @@ export async function POST(request: NextRequest) {
             severity_flag?: boolean;
             extras?: unknown;
           }
-        >
+        >,
       );
       await insertParameterScoresForScan(db, inserted.id, paramRows);
     }
@@ -695,7 +735,7 @@ export async function POST(request: NextRequest) {
         if (!saved) {
           console.warn(
             "[scan] tracker snapshot not saved — report will backfill on first view",
-            { scanId: inserted.id, userId: user.id }
+            { scanId: inserted.id, userId: user.id },
           );
         }
       } catch (snapshotErr) {
@@ -754,8 +794,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Scan API error:", error);
-    const msg =
-      error instanceof Error ? error.message : "Scan failed";
+    const msg = error instanceof Error ? error.message : "Scan failed";
     const dev = process.env.NODE_ENV === "development";
     return NextResponse.json(
       {
@@ -765,7 +804,7 @@ export async function POST(request: NextRequest) {
           : "Could not save this scan. Try smaller photos or contact support if it continues.",
         ...(dev ? { detail: String(error) } : {}),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -225,7 +225,7 @@ export async function prepareVisitNoteAttachmentFile(
     if (type === "text/plain" || lower.endsWith(".txt")) {
       const text = await file.text();
       const prefix = "data:text/plain;charset=utf-8,";
-      let body = encodeURIComponent(text);
+      const body = encodeURIComponent(text);
       let dataUri = prefix + body;
       if (dataUri.length > maxUriLen) {
         let cut = text.length;

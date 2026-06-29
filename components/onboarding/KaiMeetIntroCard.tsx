@@ -58,7 +58,6 @@ export function KaiMeetIntroCard() {
   const line = KAI_INTRO_LINES[lineIndex] ?? KAI_INTRO_LINES[0];
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTyped("");
   }, [lineIndex]);
 
@@ -83,9 +82,9 @@ export function KaiMeetIntroCard() {
       className="relative overflow-hidden rounded-[20px] shadow-[0_20px_48px_-16px_rgba(44,62,107,0.5)]"
       style={{
         background: `
-          radial-gradient(circle 280px at 74% 50%, ${KAI_MEET_CARD.gradient.glow} 0%, transparent 100%),
-          radial-gradient(ellipse 120% 100% at 18% 80%, rgba(255,255,255,0.12) 0%, transparent 45%),
-          linear-gradient(135deg, ${KAI_MEET_CARD.gradient.mid} 0%, ${KAI_MEET_CARD.gradient.edge} 50%, ${KAI_MEET_CARD.gradient.deep} 100%)
+          radial-gradient(circle 360px at 76% 48%, ${KAI_MEET_CARD.gradient.glow} 0%, rgba(218,232,255,0.18) 42%, transparent 72%),
+          radial-gradient(ellipse 120% 100% at 18% 80%, rgba(255,255,255,0.14) 0%, transparent 45%),
+          linear-gradient(135deg, ${KAI_MEET_CARD.gradient.mid} 0%, ${KAI_MEET_CARD.gradient.edge} 54%, ${KAI_MEET_CARD.gradient.deep} 100%)
         `,
       }}
     >
@@ -136,18 +135,28 @@ export function KaiMeetIntroCard() {
           <div className="flex h-full w-full items-end justify-center pb-1 md:pb-2">
             <motion.div
               animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+              transition={{
+                duration: 4.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
               className="relative inline-block -translate-x-4 md:-translate-x-8"
             >
-              <div className="pointer-events-none absolute bottom-[20%] left-1/2 aspect-square w-[108%] -translate-x-1/2">
-                <DotFieldSvg dots={HALO_DOTS} className="h-full w-full" glow preserveAspectRatio="xMidYMid meet" />
+              <div className="pointer-events-none absolute bottom-[12%] left-1/2 aspect-square w-[156%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(235,244,255,0.34)_0%,rgba(155,190,255,0.14)_38%,transparent_68%)] blur-[1px]" />
+              <div className="pointer-events-none absolute bottom-[10%] left-1/2 aspect-square w-[158%] -translate-x-1/2">
+                <DotFieldSvg
+                  dots={HALO_DOTS}
+                  className="h-full w-full drop-shadow-[0_0_5px_rgba(214,235,255,0.65)]"
+                  glow
+                  preserveAspectRatio="xMidYMid meet"
+                />
               </div>
               <Image
                 src="/images/kai-avatar.png"
                 alt="kAI — your SkinFit AI skin companion"
                 width={200}
                 height={441}
-                className="relative z-10 block h-[min(55vw,220px)] w-auto object-contain object-bottom sm:h-[260px] md:h-[440px] lg:h-[460px]"
+                className="relative z-10 block h-[min(58vw,230px)] w-auto object-contain object-bottom sm:h-[270px] md:h-[440px] lg:h-[470px]"
                 priority
               />
             </motion.div>

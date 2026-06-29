@@ -16,7 +16,7 @@ import {
   X,
   History,
   Smartphone,
-  Laptop,
+  ArrowRight,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
 import { CaptureFaceGuideOverlayWeb } from "@/components/dashboard/CaptureFaceGuideOverlayWeb";
@@ -30,9 +30,7 @@ import {
   isCaptureDebugEnabled,
 } from "@/components/dashboard/ScanCaptureDebugOverlay";
 import { useWebScanCaptureGuidance } from "@/src/hooks/useWebScanCaptureGuidance";
-import {
-  captureVoiceGuide,
-} from "@/src/lib/captureVoiceGuide";
+import { captureVoiceGuide } from "@/src/lib/captureVoiceGuide";
 import {
   loadStoredCaptureVoiceVolume,
   resolveCaptureVoiceHint,
@@ -67,7 +65,14 @@ import {
   viewfinderCaptureDimensions,
 } from "@/src/lib/faceGuideCrop";
 
-type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "queued" | "results" | "phone-qr";
+type ScanStep =
+  | "upload"
+  | "confirm"
+  | "naming"
+  | "scanning"
+  | "queued"
+  | "results"
+  | "phone-qr";
 
 interface ClinicalScores {
   active_acne?: number;
@@ -228,6 +233,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const searchParams = useSearchParams();
   const sessionIdParam = searchParams.get("s");
   const tokenParam = searchParams.get("t");
+  const isMobileHandoff = Boolean(sessionIdParam && tokenParam);
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
   const [isMobileDevice, setIsMobileDevice] = useState(false);
@@ -236,28 +242,34 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     if (typeof window !== "undefined") {
       const isMobile =
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
+          navigator.userAgent,
         ) || navigator.maxTouchPoints > 0;
       setIsMobileDevice(isMobile);
     }
   }, []);
 
   const [photoGuideOpen, setPhotoGuideOpen] = useState(
-    () => variant === "onboarding"
+    () => variant === "onboarding",
   );
   const [onboardingGuideComplete, setOnboardingGuideComplete] = useState(false);
   const [photoGuideIntent, setPhotoGuideIntent] = useState<"camera" | "review">(
-    () => (variant === "onboarding" ? "review" : "camera")
+    () => (variant === "onboarding" ? "review" : "camera"),
   );
   const [skipPhotoGuide, setSkipPhotoGuide] = useState(false);
-  const [slotCaptures, setSlotCaptures] = useState<SlotCaptures>(emptySlotCaptures);
+  const [slotCaptures, setSlotCaptures] =
+    useState<SlotCaptures>(emptySlotCaptures);
   const [cameraStepIndex, setCameraStepIndex] = useState(0);
-  const [uploadTargetIndex, setUploadTargetIndex] = useState<number | null>(null);
+  const [uploadTargetIndex, setUploadTargetIndex] = useState<number | null>(
+    null,
+  );
   const slotUploadInputRef = useRef<HTMLInputElement>(null);
   const [scanName, setScanName] = useState(() =>
-    variant === "onboarding" ? BASELINE_ONBOARDING_SCAN_NAME : ""
+    variant === "onboarding" ? BASELINE_ONBOARDING_SCAN_NAME : "",
   );
   const [scanResults, setScanResults] = useState<ScanResults | null>(null);
+  const [completedHandoffScanId, setCompletedHandoffScanId] = useState<
+    number | null
+  >(null);
   const [reportOpen, setReportOpen] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -271,7 +283,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [captureZoom, setCaptureZoom] = useState<number>(CAPTURE_ZOOM_DEFAULT);
   const [brightness, setBrightness] = useState<number>(ADJUST_DEFAULT);
   const [contrast, setContrast] = useState<number>(ADJUST_DEFAULT);
-  const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(null);
+  const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(
+    null,
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const currentCameraStep =
@@ -287,12 +301,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       guidanceActive,
       captureZoom,
       currentCameraStep.id,
-      previewFilter
+      previewFilter,
+      tokenParam,
     );
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceVolume, setVoiceVolume] = useState(() =>
-    loadStoredCaptureVoiceVolume()
+    loadStoredCaptureVoiceVolume(),
   );
   const captureDebugUi = isCaptureDebugEnabled();
   const [showDebug, setShowDebug] = useState(false);
@@ -348,7 +363,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     let cancelled = false;
     void (async () => {
       const scanNumber = await fetchNextScanNumber(async () => {
-        const res = await fetch("/api/patient/home", { credentials: "include" });
+        const res = await fetch("/api/patient/home", {
+          credentials: "include",
+        });
         if (!res.ok) throw new Error("home");
         return (await res.json()) as { skinScanHistory?: unknown[] };
       });
@@ -393,57 +410,69 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setScanResults(null);
   }, []);
 
-  const clearSlot = useCallback((index: number) => {
-    setSlotCaptures((prev) => {
-      const next = [...prev];
-      const removed = next[index];
-      if (removed) URL.revokeObjectURL(removed.preview);
-      next[index] = null;
-      return next;
-    });
-    if (step === "confirm") setStep("upload");
-  }, [step]);
+  const clearSlot = useCallback(
+    (index: number) => {
+      setSlotCaptures((prev) => {
+        const next = [...prev];
+        const removed = next[index];
+        if (removed) URL.revokeObjectURL(removed.preview);
+        next[index] = null;
+        return next;
+      });
+      if (step === "confirm") setStep("upload");
+    },
+    [step],
+  );
 
   const openUploadForSlot = useCallback((index: number) => {
     setUploadTargetIndex(index);
     slotUploadInputRef.current?.click();
   }, []);
 
-  const applyFilesToEmptySlots = useCallback((files: FileList | File[] | null) => {
-    if (!files?.length) return;
-    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (images.length === 0) {
-      setUploadError("Please choose image files only.");
-      return;
-    }
-    setUploadError(null);
-    setSlotCaptures((prev) => {
-      const next = [...prev];
-      let imageIdx = 0;
-      let added = 0;
-      for (let slotIdx = 0; slotIdx < N_CAPTURES && imageIdx < images.length; slotIdx++) {
-        if (next[slotIdx]) continue;
-        const file = images[imageIdx++]!;
-        next[slotIdx] = {
-          file,
-          preview: URL.createObjectURL(file),
-          label: FACE_SCAN_CAPTURE_STEPS[slotIdx].id,
-        };
-        added += 1;
+  const applyFilesToEmptySlots = useCallback(
+    (files: FileList | File[] | null) => {
+      if (!files?.length) return;
+      const images = Array.from(files).filter((f) =>
+        f.type.startsWith("image/"),
+      );
+      if (images.length === 0) {
+        setUploadError("Please choose image files only.");
+        return;
       }
-      const leftover = images.length - added;
-      if (leftover > 0) {
-        setUploadError(
-          `Added ${added} photo${added === 1 ? "" : "s"} to empty slots. ${leftover} extra file${leftover === 1 ? " was" : "s were"} skipped — tap a slot to replace one.`
-        );
-      }
-      if (allSlotsFilled(next)) {
-        queueMicrotask(() => setStep("confirm"));
-      }
-      return next;
-    });
-    setScanResults(null);
-  }, []);
+      setUploadError(null);
+      setSlotCaptures((prev) => {
+        const next = [...prev];
+        let imageIdx = 0;
+        let added = 0;
+        for (
+          let slotIdx = 0;
+          slotIdx < N_CAPTURES && imageIdx < images.length;
+          slotIdx++
+        ) {
+          if (next[slotIdx]) continue;
+          const file = images[imageIdx++]!;
+          next[slotIdx] = {
+            file,
+            preview: URL.createObjectURL(file),
+            label: FACE_SCAN_CAPTURE_STEPS[slotIdx].id,
+          };
+          added += 1;
+        }
+        const leftover = images.length - added;
+        if (leftover > 0) {
+          setUploadError(
+            `Added ${added} photo${added === 1 ? "" : "s"} to empty slots. ${leftover} extra file${leftover === 1 ? " was" : "s were"} skipped — tap a slot to replace one.`,
+          );
+        }
+        if (allSlotsFilled(next)) {
+          queueMicrotask(() => setStep("confirm"));
+        }
+        return next;
+      });
+      setScanResults(null);
+    },
+    [],
+  );
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -475,37 +504,37 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     void el.play().catch(() => {});
   }, [cameraOpen, facingMode, cameraStepIndex]);
 
-  const startCamera = useCallback(
-    async (facing: "user" | "environment") => {
-      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-        setCameraError(
-          "Camera is not available in this browser. Try Chrome, Safari, or Edge, or upload photos instead."
-        );
-        return;
-      }
-      setCameraError(null);
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: facing },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        });
-        streamRef.current = stream;
-        setFacingMode(facing);
-        setCameraOpen(true);
-      } catch {
-        setCameraError(
-          "Could not open the camera. Allow permission in your browser, use HTTPS (or localhost), or upload files instead."
-        );
-      }
-    },
-    []
-  );
+  const startCamera = useCallback(async (facing: "user" | "environment") => {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
+      setCameraError(
+        "Camera is not available in this browser. Try Chrome, Safari, or Edge, or upload photos instead.",
+      );
+      return;
+    }
+    setCameraError(null);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setFacingMode(facing);
+      setCameraOpen(true);
+    } catch {
+      setCameraError(
+        "Could not open the camera. Allow permission in your browser, use HTTPS (or localhost), or upload files instead.",
+      );
+    }
+  }, []);
 
   const openCameraForMultiCapture = useCallback(() => {
     setUploadError(null);
@@ -518,7 +547,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     const nextIdx = firstEmptySlotIndex(slotCaptures);
     if (nextIdx >= N_CAPTURES) {
       setUploadError(
-        "All five angles are filled. Remove one below to retake with the camera, or continue to preview."
+        "All five angles are filled. Remove one below to retake with the camera, or continue to preview.",
       );
       return;
     }
@@ -526,12 +555,15 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     void startCamera("user");
   }, [slotCaptures, startCamera, clearPendingCapture, resetAdjustments]);
 
+  const autoStartedHandoffTokenRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (tokenParam) {
-      setPhotoGuideOpen(false);
-      setOnboardingGuideComplete(true);
-      openCameraForMultiCapture();
-    }
+    if (!tokenParam || autoStartedHandoffTokenRef.current === tokenParam)
+      return;
+    autoStartedHandoffTokenRef.current = tokenParam;
+    setPhotoGuideOpen(false);
+    setOnboardingGuideComplete(true);
+    openCameraForMultiCapture();
   }, [tokenParam, openCameraForMultiCapture]);
 
   const requestOpenCamera = useCallback(() => {
@@ -593,7 +625,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       ({ w: tw, h: th } = viewfinderCaptureDimensions(
         viewfinderW,
         viewfinderH,
-        maxEdge
+        maxEdge,
       ));
     } else if (w > maxEdge || h > maxEdge) {
       if (w >= h) {
@@ -630,7 +662,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         h,
         viewfinderW,
         viewfinderH,
-        zoom
+        zoom,
       ));
     } else if (zoom > 1) {
       sw = w / zoom;
@@ -671,7 +703,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         const captured = new File(
           [blob],
           `face-scan-${step.id}-${Date.now()}.jpg`,
-          { type: "image/jpeg" }
+          { type: "image/jpeg" },
         );
         const preview = URL.createObjectURL(blob);
         setPendingCapture((prev) => {
@@ -680,7 +712,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         });
       },
       "image/jpeg",
-      0.82
+      0.82,
     );
   }, [
     captureZoom,
@@ -700,7 +732,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setSlotCaptures((prev) => {
       if (cameraStepIndex >= N_CAPTURES) return prev;
       const next = [...prev];
-      if (next[cameraStepIndex]) URL.revokeObjectURL(next[cameraStepIndex]!.preview);
+      if (next[cameraStepIndex])
+        URL.revokeObjectURL(next[cameraStepIndex]!.preview);
       next[cameraStepIndex] = item;
       if (allSlotsFilled(next)) {
         queueMicrotask(() => {
@@ -759,7 +792,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       setIsDragging(false);
       applyFilesToEmptySlots(e.dataTransfer.files);
     },
-    [applyFilesToEmptySlots]
+    [applyFilesToEmptySlots],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -784,7 +817,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     try {
       const formData = new FormData();
       formData.append("scanName", finalScanName);
-      formData.append("captureSource", tokenParam ? "mobile-web-handoff" : "web");
+      formData.append(
+        "captureSource",
+        tokenParam ? "mobile-web-handoff" : "web",
+      );
       if (sessionIdParam) {
         formData.append("sessionId", sessionIdParam);
       }
@@ -800,12 +836,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           },
           body: formData,
         });
+        const json = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const errJson = await res.json().catch(() => ({}));
           throw new Error(
-            errJson.message || errJson.error || `Submission failed (${res.status})`
+            json.message || json.error || `Submission failed (${res.status})`,
           );
         }
+        const scanId = Number(json?.data?.id);
+        setCompletedHandoffScanId(Number.isFinite(scanId) ? scanId : null);
         setStep("results");
         return;
       }
@@ -828,7 +866,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       const scanId = outcome.scanId;
       if (isOnboardingScan) {
         router.push(
-          `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`
+          `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
         );
         return;
       }
@@ -837,7 +875,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       setScanError(
         err instanceof Error
           ? err.message
-          : "Network error. Check your connection and try again."
+          : "Network error. Check your connection and try again.",
       );
       setStep("naming");
     }
@@ -851,16 +889,20 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     sessionIdParam,
   ]);
 
-  const showPhotoGuide =
-    step === "upload" && !cameraOpen && photoGuideOpen;
+  const showPhotoGuide = step === "upload" && !cameraOpen && photoGuideOpen;
   const onboardingPastGuide = !isOnboardingScan || onboardingGuideComplete;
-  const showUploadChrome = !showPhotoGuide && onboardingPastGuide && step !== "phone-qr";
+  const showUploadChrome =
+    !showPhotoGuide && onboardingPastGuide && step !== "phone-qr";
   const navy = SKINFIT_THEME.navy;
   const onboardingSurface =
     "border-[#2C3E6B]/10 bg-white/25 shadow-none backdrop-blur-sm";
-  const onboardingSurfaceHover =
-    "hover:border-[#2C3E6B]/18 hover:bg-white/35";
-  if (tokenParam && step === "results") {
+  const onboardingSurfaceHover = "hover:border-[#2C3E6B]/18 hover:bg-white/35";
+  if (isMobileHandoff && step === "results") {
+    const mobileReportHref =
+      completedHandoffScanId && sessionIdParam && tokenParam
+        ? `/api/mobile-capture/claim?s=${encodeURIComponent(sessionIdParam)}&t=${encodeURIComponent(tokenParam)}&next=${encodeURIComponent(`/dashboard/history/scans/${completedHandoffScanId}`)}`
+        : null;
+
     return (
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-12 text-center">
         <motion.div
@@ -871,12 +913,24 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20 animate-bounce">
             <Check className="h-8 w-8" />
           </div>
-          <h2 className="mt-6 text-2xl font-extrabold text-[#2C3E6B]">Analysis Submitted!</h2>
-          <p className="mt-3 text-sm text-slate-500 leading-relaxed">
-            Your photos have been received and analyzed successfully. Check your computer screen to view the detailed skin analysis report.
+          <h2 className="mt-6 text-2xl font-extrabold text-[#2C3E6B]">
+            Photos sent to your computer
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-500">
+            Your guided face capture is complete. The desktop page will open the
+            report automatically.
           </p>
-          <p className="mt-6 text-xs text-slate-400">
-            You can safely close this browser tab now.
+          {mobileReportHref ? (
+            <a
+              href={mobileReportHref}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2C3E6B] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#3d5080]"
+            >
+              Continue on this phone
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          ) : null}
+          <p className="mt-4 text-xs text-slate-400">
+            Or keep this tab open while you check the report on your computer.
           </p>
         </motion.div>
       </div>
@@ -911,7 +965,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           onBack={() => setStep("upload")}
           onComplete={(scanId) => {
             if (isOnboardingScan) {
-              router.push(`/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`);
+              router.push(
+                `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
+              );
             } else {
               router.push(`/dashboard/history/scans/${scanId}`);
             }
@@ -920,33 +976,39 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         />
       )}
 
-      {showUploadChrome && step !== "scanning" && !(step === "upload" && cameraOpen) && !isOnboardingScan ? (
-      <motion.header
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mx-auto max-w-4xl"
-      >
-        <div className="flex items-center justify-between gap-3 sm:gap-4">
-          <div className="min-w-0 text-left">
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
-              Skin analysis
-            </p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight" style={{ color: navy }}>
-              AI face scan
-            </h1>
+      {showUploadChrome &&
+      step !== "scanning" &&
+      !(step === "upload" && cameraOpen) &&
+      !isOnboardingScan ? (
+        <motion.header
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mx-auto max-w-4xl"
+        >
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
+            <div className="min-w-0 text-left">
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+                Skin analysis
+              </p>
+              <h1
+                className="mt-1 text-3xl font-extrabold tracking-tight"
+                style={{ color: navy }}
+              >
+                AI face scan
+              </h1>
+            </div>
+            {step === "upload" && !cameraOpen ? (
+              <Link
+                href="/dashboard/history"
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
+              >
+                <History className="h-4 w-4" aria-hidden />
+                See scan history
+              </Link>
+            ) : null}
           </div>
-          {step === "upload" && !cameraOpen ? (
-            <Link
-              href="/dashboard/history"
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
-            >
-              <History className="h-4 w-4" aria-hidden />
-              See scan history
-            </Link>
-          ) : null}
-        </div>
-      </motion.header>
+        </motion.header>
       ) : null}
 
       {/* Step: Upload — live camera (multi-capture) */}
@@ -1094,7 +1156,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           className="w-full"
         >
           <div className="space-y-5">
-            <div className={`grid gap-4 ${isMobileDevice ? "md:grid-cols-[1.05fr_0.95fr]" : "md:grid-cols-[1.05fr_1fr_1fr]"}`}>
+            <div
+              className={`grid gap-4 ${isMobileDevice ? "md:grid-cols-[1.05fr_0.95fr]" : "md:grid-cols-[1.05fr_1fr_1fr]"}`}
+            >
               {!isMobileDevice && (
                 <button
                   type="button"
@@ -1115,7 +1179,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                         Scan with phone camera
                       </h2>
                       <p className="mt-2 text-xs leading-relaxed text-white/75">
-                        Scan a QR code to capture with your phone. Best image quality for face scanning.
+                        Scan a QR code to capture with your phone. Best image
+                        quality for face scanning.
                       </p>
                     </div>
                     <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] shadow-sm transition-colors group-hover:bg-slate-50">
@@ -1147,23 +1212,32 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                         Webcam
                       </span>
                     )}
-                    <div className={`mt-6 flex h-14 w-14 items-center justify-center rounded-2xl shadow-inner ${
-                      isMobileDevice ? "bg-white/15" : "bg-[#2C3E6B]/5"
-                    }`}>
+                    <div
+                      className={`mt-6 flex h-14 w-14 items-center justify-center rounded-2xl shadow-inner ${
+                        isMobileDevice ? "bg-white/15" : "bg-[#2C3E6B]/5"
+                      }`}
+                    >
                       <Camera className="h-7 w-7" />
                     </div>
                     <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
-                      {isMobileDevice ? "Use device camera" : "Use laptop webcam"}
+                      {isMobileDevice
+                        ? "Use device camera"
+                        : "Use laptop webcam"}
                     </h2>
-                    <p className={`mt-2 text-xs leading-relaxed ${isMobileDevice ? "text-white/75" : "text-[#64748B]"}`}>
-                      Capture using your {isMobileDevice ? "device" : "webcam"} camera. Keep angles aligned with the guide.
+                    <p
+                      className={`mt-2 text-xs leading-relaxed ${isMobileDevice ? "text-white/75" : "text-[#64748B]"}`}
+                    >
+                      Capture using your {isMobileDevice ? "device" : "webcam"}{" "}
+                      camera. Keep angles aligned with the guide.
                     </p>
                   </div>
-                  <span className={`mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-extrabold transition-colors ${
-                    isMobileDevice 
-                      ? "bg-white text-[#2C3E6B] group-hover:bg-[#F8FAFC]" 
-                      : "bg-[#2C3E6B] text-white group-hover:bg-[#3d5080]"
-                  }`}>
+                  <span
+                    className={`mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-extrabold transition-colors ${
+                      isMobileDevice
+                        ? "bg-white text-[#2C3E6B] group-hover:bg-[#F8FAFC]"
+                        : "bg-[#2C3E6B] text-white group-hover:bg-[#3d5080]"
+                    }`}
+                  >
                     {isMobileDevice ? "Start Camera" : "Start Webcam"}
                     <Camera className="h-3.5 w-3.5" />
                   </span>
@@ -1204,11 +1278,15 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
                     <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
                   </div>
-                  <h2 className="mt-4 text-base font-extrabold" style={{ color: navy }}>
+                  <h2
+                    className="mt-4 text-base font-extrabold"
+                    style={{ color: navy }}
+                  >
                     Upload photos
                   </h2>
                   <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
-                    Tap each slot below to add one photo at a time, or drop files to fill.
+                    Tap each slot below to add one photo at a time, or drop
+                    files to fill.
                   </p>
                   <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
                     {captureCount}/{N_CAPTURES} added
@@ -1227,7 +1305,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 </label>
               </div>
             </div>
-
 
             <div className="space-y-4 pt-1">
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
@@ -1373,7 +1450,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
               {slotCaptures.map((c, i) =>
                 c ? (
-                  <figure key={`${c.label}-${i}`} className="flex min-w-0 flex-col gap-2">
+                  <figure
+                    key={`${c.label}-${i}`}
+                    className="flex min-w-0 flex-col gap-2"
+                  >
                     <div className="relative aspect-[3/4] w-full min-h-[140px] overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/80 sm:min-h-[160px] lg:min-h-0">
                       <img
                         src={c.preview}
@@ -1393,7 +1473,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                       {FACE_SCAN_CAPTURE_STEPS[i].title}
                     </figcaption>
                   </figure>
-                ) : null
+                ) : null,
               )}
             </div>
           </div>
@@ -1415,11 +1495,11 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             </button>
             <button
               type="button"
-              onClick={() => setStep("naming")}
+              onClick={isMobileHandoff ? runScan : () => setStep("naming")}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080]"
             >
               <Check className="h-4 w-4" />
-              Looks good
+              {isMobileHandoff ? "Send to computer" : "Looks good"}
             </button>
           </div>
         </motion.div>
@@ -1450,7 +1530,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                       className="h-full w-full object-cover object-center grayscale-[15%]"
                     />
                   </div>
-                ) : null
+                ) : null,
               )}
             </div>
           </div>
@@ -1465,7 +1545,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             </div>
           ) : null}
           <div className="rounded-[22px] border border-white/70 bg-white/35 p-6 backdrop-blur-sm">
-            <label htmlFor="scan-name" className="mb-3 block text-sm font-medium text-[#2C3E6B]">
+            <label
+              htmlFor="scan-name"
+              className="mb-3 block text-sm font-medium text-[#2C3E6B]"
+            >
               Name this scan
             </label>
             <input
@@ -1488,9 +1571,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       )}
 
       {/* Step: Scanning */}
-      {step === "queued" && (
-        <ScanQueuedConfirmation variant={variant} />
-      )}
+      {step === "queued" && <ScanQueuedConfirmation variant={variant} />}
 
       {step === "scanning" && (
         <motion.div
@@ -1507,8 +1588,12 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             >
               <Sparkles className="h-10 w-10 text-[#2C3E6B] sm:h-12 sm:w-12" />
             </motion.div>
-            <p className="text-2xl font-bold text-[#2C3E6B] sm:text-3xl">Submitting your scan…</p>
-            <p className="mt-3 text-base text-[#6B7280] sm:text-lg">Just a moment</p>
+            <p className="text-2xl font-bold text-[#2C3E6B] sm:text-3xl">
+              Submitting your scan…
+            </p>
+            <p className="mt-3 text-base text-[#6B7280] sm:text-lg">
+              Just a moment
+            </p>
             <div className="absolute bottom-0 left-0 right-0 h-1.5 overflow-hidden bg-[#2C3E6B]/10">
               <motion.div
                 className="h-full w-1/3 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
@@ -1535,8 +1620,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             imageUrl={primaryPreview}
             faceCaptureGallery={slotCaptures.flatMap((c, i) =>
               c
-                ? [{ label: FACE_SCAN_CAPTURE_STEPS[i].title, imageUrl: c.preview }]
-                : []
+                ? [
+                    {
+                      label: FACE_SCAN_CAPTURE_STEPS[i].title,
+                      imageUrl: c.preview,
+                    },
+                  ]
+                : [],
             )}
             regions={scanResults.detected_regions}
             metrics={{
@@ -1550,9 +1640,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             }}
             aiSummary={scanResults.ai_summary}
             scanDate={
-              scanResults.scanDate
-                ? new Date(scanResults.scanDate)
-                : new Date()
+              scanResults.scanDate ? new Date(scanResults.scanDate) : new Date()
             }
           />
           {!reportOpen && (

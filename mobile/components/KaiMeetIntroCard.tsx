@@ -9,7 +9,13 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  RadialGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
 
 import {
   KAI_INTRO_LINES,
@@ -42,13 +48,28 @@ function HaloDots({ size }: { size: number }) {
   );
 }
 
-function CardGradient({ cx = "72%", cy = "48%" }: { cx?: string; cy?: string }) {
+function CardGradient({
+  cx = "72%",
+  cy = "48%",
+}: {
+  cx?: string;
+  cy?: string;
+}) {
   return (
     <Svg width="100%" height="100%" style={StyleSheet.absoluteFillObject}>
       <Defs>
         <RadialGradient id="kaiMeetGlow" cx={cx} cy={cy} rx="55%" ry="65%">
-          <Stop offset="0%" stopColor={KAI_MEET_CARD.gradient.glow} stopOpacity="1" />
-          <Stop offset="70%" stopColor={KAI_MEET_CARD.gradient.mid} stopOpacity="0" />
+          <Stop
+            offset="0%"
+            stopColor={KAI_MEET_CARD.gradient.glow}
+            stopOpacity="1"
+          />
+          <Stop offset="44%" stopColor="#DCEAFF" stopOpacity="0.24" />
+          <Stop
+            offset="78%"
+            stopColor={KAI_MEET_CARD.gradient.mid}
+            stopOpacity="0"
+          />
         </RadialGradient>
       </Defs>
       <Rect width="100%" height="100%" fill="url(#kaiMeetGlow)" />
@@ -67,12 +88,14 @@ export function KaiMeetIntroCard() {
 
   const line = KAI_INTRO_LINES[lineIndex] ?? KAI_INTRO_LINES[0];
 
-  const cardMinHeight = isWide ? KAI_MEET_CARD.minHeightWide : KAI_MEET_CARD.minHeightPhone;
+  const cardMinHeight = isWide
+    ? KAI_MEET_CARD.minHeightWide
+    : KAI_MEET_CARD.minHeightPhone;
   const avatarHeight = isWide
-    ? Math.min(cardMinHeight * 0.92, 460)
-    : Math.min(width * 0.46, 210);
+    ? Math.min(cardMinHeight * 0.94, 470)
+    : Math.min(width * 0.52, 230);
   const avatarWidth = avatarHeight * (132 / 291);
-  const haloSize = Math.min(avatarHeight * 1.08, isWide ? 380 : 300);
+  const haloSize = Math.min(avatarHeight * 1.58, isWide ? 560 : 360);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -89,7 +112,7 @@ export function KaiMeetIntroCard() {
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     loop.start();
     return () => loop.stop();
@@ -108,14 +131,13 @@ export function KaiMeetIntroCard() {
           duration: 500,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     blink.start();
     return () => blink.stop();
   }, [cursorOpacity]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTyped("");
   }, [lineIndex]);
 
@@ -149,16 +171,26 @@ export function KaiMeetIntroCard() {
         <CardGradient cx={isWide ? "74%" : "50%"} cy={isWide ? "50%" : "60%"} />
       </View>
 
-      <View style={[styles.inner, isWide && styles.innerWide, { minHeight: cardMinHeight }]}>
+      <View
+        style={[
+          styles.inner,
+          isWide && styles.innerWide,
+          { minHeight: cardMinHeight },
+        ]}
+      >
         <View style={[styles.copyCol, isWide && styles.copyColWide]}>
           <Text style={styles.meet}>Meet</Text>
-          <Text style={[styles.kaiTitle, isWide && styles.kaiTitleWide]}>kAI</Text>
+          <Text style={[styles.kaiTitle, isWide && styles.kaiTitleWide]}>
+            kAI
+          </Text>
           <Text style={styles.kicker}>YOUR SKIN COMPANION</Text>
 
           <View style={styles.descWrap}>
             <Text style={styles.descText}>
               {typed}
-              <Animated.Text style={[styles.cursor, { opacity: cursorOpacity }]}>
+              <Animated.Text
+                style={[styles.cursor, { opacity: cursorOpacity }]}
+              >
                 |
               </Animated.Text>
             </Text>
@@ -170,7 +202,12 @@ export function KaiMeetIntroCard() {
             <Animated.View
               style={[
                 styles.avatarFloat,
-                { transform: [{ translateY: floatY }, { translateX: isWide ? -24 : -12 }] },
+                {
+                  transform: [
+                    { translateY: floatY },
+                    { translateX: isWide ? -24 : -12 },
+                  ],
+                },
               ]}
             >
               <View
@@ -181,11 +218,23 @@ export function KaiMeetIntroCard() {
               >
                 <View
                   style={[
+                    styles.haloGlow,
+                    {
+                      width: haloSize * 0.9,
+                      height: haloSize * 0.9,
+                      borderRadius: (haloSize * 0.9) / 2,
+                      bottom: avatarHeight * 0.5 - (haloSize * 0.9) / 2,
+                      marginLeft: -(haloSize * 0.9) / 2,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
                     styles.haloWrap,
                     {
                       width: haloSize,
                       height: haloSize,
-                      bottom: avatarHeight * 0.42 - haloSize / 2,
+                      bottom: avatarHeight * 0.5 - haloSize / 2,
                       marginLeft: -haloSize / 2,
                     },
                   ]}
@@ -194,7 +243,6 @@ export function KaiMeetIntroCard() {
                 </View>
                 {/* eslint-disable-next-line jsx-a11y/alt-text */}
                 <Image
-                  // eslint-disable-next-line @typescript-eslint/no-require-imports
                   source={require("../assets/images/kai-avatar.png")}
                   style={{ width: avatarWidth, height: avatarHeight }}
                   resizeMode="contain"
@@ -215,14 +263,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     shadowColor: "#2C3E6B",
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
+    shadowOpacity: 0.44,
+    shadowRadius: 28,
     elevation: 10,
     marginBottom: 16,
   },
   gradientOverlay: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.85,
+    opacity: 0.95,
   },
   inner: {
     flexDirection: "column",
@@ -312,7 +360,13 @@ const styles = StyleSheet.create({
   haloWrap: {
     position: "absolute",
     left: "50%",
-    opacity: 0.95,
+    opacity: 0.98,
+    zIndex: 0,
+  },
+  haloGlow: {
+    position: "absolute",
+    left: "50%",
+    backgroundColor: "rgba(220,234,255,0.2)",
     zIndex: 0,
   },
 });

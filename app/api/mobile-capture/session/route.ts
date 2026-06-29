@@ -11,20 +11,26 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "Authentication required." },
-        { status: 401 }
+        { status: 401 },
       );
     }
+
+    const body = await request.json().catch(() => ({}));
+    const variant = body?.variant === "onboarding" ? "onboarding" : "dashboard";
 
     const secret = getSessionSecret();
     if (!secret) {
       return NextResponse.json(
-        { success: false, error: "Server misconfigured: missing session secret." },
-        { status: 500 }
+        {
+          success: false,
+          error: "Server misconfigured: missing session secret.",
+        },
+        { status: 500 },
       );
     }
 
     const sessionId = crypto.randomUUID();
-    
+
     // Create a 15-minute token signed with the session secret
     const key = new TextEncoder().encode(secret);
     const token = await new SignJWT({
@@ -49,7 +55,7 @@ export async function POST(request: NextRequest) {
     const host = request.headers.get("host") || "localhost:3000";
     const proto = request.headers.get("x-forwarded-proto") || "http";
     const origin = `${proto}://${host}`;
-    const url = `${origin}/onboarding/capture/photos?s=${sessionId}&t=${token}`;
+    const url = `${origin}/m/capture?s=${sessionId}&t=${token}&v=${variant}`;
 
     return NextResponse.json({
       success: true,
@@ -61,7 +67,7 @@ export async function POST(request: NextRequest) {
     console.error("[mobile-capture/session] error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to generate mobile capture session." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

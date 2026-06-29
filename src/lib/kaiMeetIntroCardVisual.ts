@@ -7,10 +7,10 @@ export const KAI_MEET_CARD = {
   minHeightPhone: 220,
   gradient: {
     /** Radial spotlight glow behind the avatar. */
-    glow: "rgba(200, 215, 255, 0.55)",
-    mid: "#8EA3DE",
-    edge: "#465A9C",
-    deep: "#203066",
+    glow: "rgba(218, 232, 255, 0.72)",
+    mid: "#879BD4",
+    edge: "#4A609F",
+    deep: "#243B78",
   },
   text: {
     meet: "#1B2C5B",
@@ -54,11 +54,60 @@ export function meetCardHaloDots(): MeetCardDot[] {
   const cy = 50;
 
   const rings = [
-    { radius: 20, count: 36,  dotR: 0.70, accentR: 1.10, opacity: 0.22, accentOpacity: 0.36, accentEvery: 6 },
-    { radius: 30, count: 54,  dotR: 0.75, accentR: 1.20, opacity: 0.32, accentOpacity: 0.48, accentEvery: 6 },
-    { radius: 40, count: 72,  dotR: 0.80, accentR: 1.30, opacity: 0.42, accentOpacity: 0.60, accentEvery: 6 },
-    { radius: 50, count: 90,  dotR: 0.85, accentR: 1.40, opacity: 0.52, accentOpacity: 0.72, accentEvery: 6 },
-    { radius: 60, count: 108, dotR: 0.90, accentR: 1.50, opacity: 0.62, accentOpacity: 0.84, accentEvery: 6 },
+    {
+      radius: 18,
+      count: 34,
+      dotR: 0.62,
+      accentR: 1.05,
+      opacity: 0.2,
+      accentOpacity: 0.38,
+      accentEvery: 6,
+    },
+    {
+      radius: 28,
+      count: 52,
+      dotR: 0.68,
+      accentR: 1.15,
+      opacity: 0.3,
+      accentOpacity: 0.5,
+      accentEvery: 6,
+    },
+    {
+      radius: 38,
+      count: 70,
+      dotR: 0.74,
+      accentR: 1.25,
+      opacity: 0.42,
+      accentOpacity: 0.64,
+      accentEvery: 7,
+    },
+    {
+      radius: 49,
+      count: 90,
+      dotR: 0.82,
+      accentR: 1.42,
+      opacity: 0.56,
+      accentOpacity: 0.8,
+      accentEvery: 6,
+    },
+    {
+      radius: 60,
+      count: 112,
+      dotR: 0.88,
+      accentR: 1.55,
+      opacity: 0.7,
+      accentOpacity: 0.95,
+      accentEvery: 7,
+    },
+    {
+      radius: 70,
+      count: 128,
+      dotR: 0.72,
+      accentR: 1.45,
+      opacity: 0.34,
+      accentOpacity: 0.66,
+      accentEvery: 8,
+    },
   ];
 
   for (const ring of rings) {
