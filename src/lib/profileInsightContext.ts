@@ -27,6 +27,7 @@ import {
   summarizeBehavior,
   type BehaviorSnapshot,
 } from "@/src/lib/ragCorrelationStats";
+import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
 
 export type ProfileObservationSource =
@@ -88,6 +89,12 @@ function fmtDay(ymd: string): string {
 
 function fmtRange(startYmd: string, endYmd: string): string {
   return `${fmtDay(startYmd)} – ${fmtDay(endYmd)}`;
+}
+
+function deltaTrendLabel(delta: number): string {
+  if (delta >= 3) return "improved";
+  if (delta <= -3) return "worsened";
+  return "steady";
 }
 
 function scanRowForResolution(scan: {
@@ -410,19 +417,49 @@ export function buildProfileRetrievalQuery(ctx: ProfileInsightContext): string {
   return bits.join(" ");
 }
 
-export function profileContextForLlm(ctx: ProfileInsightContext): string {
-  const paramsLine = (s: ProfileScanSummary | null) =>
-    s
-      ? `kAI ${s.kaiScore ?? "—"}/100 · ${s.params
-          .map((p) => {
-            const d =
-              p.delta == null ? "" : p.delta >= 0 ? ` Δ+${p.delta}` : ` Δ${p.delta}`;
-            return `${RAG_KAI_PARAM_LABELS[p.key]}=${p.value ?? "—"}${d}`;
-          })
-          .join(" · ")}`
-      : "none";
+export function profileContextForLlm(
+  ctx: ProfileInsightContext,
+  scoresUnlocked = false
+): string {
+  const paramsLine = (s: ProfileScanSummary | null) => {
+    if (!s) return "none";
+    if (scoresUnlocked) {
+      return `kAI ${s.kaiScore ?? "—"}/100 · ${s.params
+        .map((p) => {
+          const d =
+            p.delta == null
+              ? ""
+              : p.delta >= 0
+                ? ` Δ+${p.delta} (${deltaTrendLabel(p.delta)})`
+                : ` Δ${p.delta} (${deltaTrendLabel(p.delta)})`;
+          return `${RAG_KAI_PARAM_LABELS[p.key]}=${p.value ?? "—"}${d}`;
+        })
+        .join(" · ")}`;
+    }
+    const kai =
+      s.kaiScore != null
+        ? `kAI grade ${patientClarityToGrade(s.kaiScore)}`
+        : "kAI —";
+    const params = s.params
+      .map((p) => {
+        const grade =
+          p.value == null ? "—" : patientClarityToGrade(p.value);
+        const trend =
+          p.delta == null
+            ? ""
+            : p.delta >= 3
+              ? " (improving vs last scan)"
+              : p.delta <= -3
+                ? " (slipped vs last scan)"
+                : " (steady vs last scan)";
+        return `${RAG_KAI_PARAM_LABELS[p.key]} grade ${grade}${trend}`;
+      })
+      .join(" · ");
+    return `${kai} · ${params}`;
+  };
 
-  return `WINDOW: ${ctx.modeLabel}
+  return `SCORE_SCALE: All parameters are 0–100 clarity scores — HIGHER is healthier/better, LOWER is worse. Positive Δ = improvement, negative Δ = worsening. Letter grades: A (best) → E (worst).
+WINDOW: ${ctx.modeLabel}
 Data policy: ${ctx.mode === "last_7_days" ? "Use only last 7 calendar days of logs and scans." : ctx.mode === "first_week" ? "Use all days from baseline scan through today (first week)." : "Baseline scan only; no week trend yet."}
 Log days in window (${ctx.logDaysUsed.length}): ${ctx.logDaysUsed.join(", ") || "none"}
 Scan days in window (${ctx.scanDaysUsed.length}): ${ctx.scanDaysUsed.join(", ") || "none"}

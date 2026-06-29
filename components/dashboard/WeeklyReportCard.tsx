@@ -20,6 +20,7 @@ import {
   parsePriorityAction,
   softenPatientText,
   trendSummary,
+  scoresUnlockedHint,
 } from "@/src/lib/weeklyInsightFormat";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 import { patientKaiScoreView } from "@/src/lib/clarityGrade";
@@ -76,7 +77,7 @@ export function WeeklyReportCard({
   scoresUnlocked = false,
   className = "",
 }: Props) {
-  const trend = trendSummary(weeklyDelta);
+  const trend = trendSummary(weeklyDelta, scoresUnlocked);
   const kaiView = patientKaiScoreView(kaiScore, scoresUnlocked);
   const parsedActions = priorityActions.map((act) => parsePriorityAction(act, scoresUnlocked));
   const TrendIcon =
@@ -118,6 +119,9 @@ export function WeeklyReportCard({
                   {kaiView.kaiPrimary}
                 </span>
               </p>
+              <p className="mt-1 text-[10px] leading-snug text-[#94a3b8]">
+                {scoresUnlockedHint(scoresUnlocked)}
+              </p>
             </div>
             <div className="text-right">
               {showTrend ? (
@@ -151,6 +155,7 @@ export function WeeklyReportCard({
             <h4 className="text-[15px] font-bold text-[#1A1A2E]">What we noticed</h4>
             <p className="mt-0.5 text-xs text-[#64748B]">
               Short highlights from your scans and logs
+              {!scoresUnlocked ? " — letter grades only until your clinic visit" : ""}
             </p>
             {observations.length > 0 ? (
               <ul className="mt-3 space-y-2.5">

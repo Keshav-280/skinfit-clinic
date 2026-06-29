@@ -15,6 +15,7 @@ import {
   parsePriorityAction,
   softenPatientText,
   trendSummary,
+  scoresUnlockedHint,
   type ObservationSource,
 } from "@/lib/weeklyInsightFormat";
 import { patientKaiScoreView } from "../../../src/lib/clarityGrade";
@@ -86,7 +87,7 @@ export default function WeeklyReportCard({
   scoresUnlocked = false,
 }: Props) {
   const rows = normalizeObservations(observations);
-  const trend = trendSummary(weeklyDelta);
+  const trend = trendSummary(weeklyDelta, scoresUnlocked);
   const kaiView = patientKaiScoreView(kaiScore, scoresUnlocked);
   const parsedActions = priorityActions.map((act) => parsePriorityAction(act, scoresUnlocked));
 
@@ -124,6 +125,7 @@ export default function WeeklyReportCard({
                   {kaiView.kaiPrimary}
                 </Text>
               </View>
+              <Text style={s.scaleHint}>{scoresUnlockedHint(scoresUnlocked)}</Text>
             </View>
             <View style={s.snapshotSide}>
               {showTrend ? (
@@ -163,7 +165,10 @@ export default function WeeklyReportCard({
 
           <View style={s.section}>
             <Text style={s.sectionTitle}>What we noticed</Text>
-            <Text style={s.sectionSub}>Short highlights from your scans and logs</Text>
+            <Text style={s.sectionSub}>
+              Short highlights from your scans and logs
+              {!scoresUnlocked ? " — letter grades only until your clinic visit" : ""}
+            </Text>
             {rows.length > 0 ? (
               rows.map((item, i) => {
                 const accent = observationAccent(item.source);
@@ -318,6 +323,13 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: NAVY,
     lineHeight: 34,
+  },
+  scaleHint: {
+    marginTop: 4,
+    fontSize: 10,
+    lineHeight: 14,
+    color: TEXT_LIGHT,
+    maxWidth: 180,
   },
   scoreUnit: {
     fontSize: 14,

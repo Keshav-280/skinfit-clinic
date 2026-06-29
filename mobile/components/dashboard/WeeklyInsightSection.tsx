@@ -62,7 +62,7 @@ export function WeeklyInsightSection({ home, style, reloadNonce = 0 }: Props) {
       priorityActions={model.card.priorityActions}
       observationsUnavailable={model.card.observationsUnavailable}
       actionsUnavailable={model.card.actionsUnavailable}
-      scoresUnlocked={home?.scoresUnlocked ?? false}
+      scoresUnlocked={home?.scoresUnlocked ?? skinExtra?.scoresUnlocked ?? false}
     />
     </View>
   );

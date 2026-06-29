@@ -251,6 +251,7 @@ export async function GET(request: Request) {
       insightsUnavailable,
       observationsUnavailable,
       actionsUnavailable,
+      scoresUnlocked,
       sparklines,
       paramLabels: Object.fromEntries(
         RAG_KAI_PARAM_KEYS.map((k) => [k, RAG_KAI_PARAM_LABELS[k]])

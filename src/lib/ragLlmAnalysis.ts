@@ -49,7 +49,7 @@ function paramsLine(
   return params
     .map((p) => {
       const displayVal = p.value;
-      const grade = displayVal == null ? "—" : clarityToGrade(displayVal);
+      const grade = displayVal == null ? "—" : patientClarityToGrade(displayVal);
       const v = displayVal == null ? "—" : scoresUnlocked ? String(displayVal) : `grade ${grade}`;
       const d = p.delta == null ? "—" : p.delta >= 0 ? `+${p.delta}` : String(p.delta);
       const deltaStr = scoresUnlocked ? `Δ${d}` : `change from last scan`;

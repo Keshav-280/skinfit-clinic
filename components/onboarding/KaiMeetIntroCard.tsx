@@ -9,23 +9,30 @@ import {
   KAI_LINE_PAUSE_MS,
   KAI_TYPING_MS_PER_CHAR,
 } from "@/src/lib/kaiIntroScript";
+import {
+  KAI_MEET_CARD,
+  meetCardBackgroundDots,
+  meetCardHaloDots,
+} from "@/src/lib/kaiMeetIntroCardVisual";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-function SparkleHalo({ className }: { className?: string }) {
-  const dots = Array.from({ length: 48 }, (_, i) => {
-    const angle = (i / 48) * Math.PI * 2;
-    const radius = 46 + (i % 3) * 2;
-    const x = 50 + Math.cos(angle) * radius;
-    const y = 50 + Math.sin(angle) * radius;
-    const size = i % 4 === 0 ? 3.5 : i % 2 === 0 ? 2.5 : 1.8;
-    const opacity = 0.35 + (i % 5) * 0.12;
-    return { x, y, size, opacity, key: i };
-  });
+const BG_DOTS = meetCardBackgroundDots();
+const HALO_DOTS = meetCardHaloDots();
 
+function DotFieldSvg({
+  dots,
+  className,
+  glow = false,
+}: {
+  dots: typeof BG_DOTS;
+  className?: string;
+  glow?: boolean;
+}) {
   return (
     <svg
       viewBox="0 0 100 100"
+      preserveAspectRatio="none"
       className={className}
       aria-hidden
     >
@@ -34,9 +41,10 @@ function SparkleHalo({ className }: { className?: string }) {
           key={dot.key}
           cx={dot.x}
           cy={dot.y}
-          r={dot.size}
+          r={dot.r}
           fill="white"
           opacity={dot.opacity}
+          style={glow ? { filter: "blur(0.3px)" } : undefined}
         />
       ))}
     </svg>
@@ -71,19 +79,37 @@ export function KaiMeetIntroCard() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: easeOut }}
-      className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#7B8EC8] via-[#8B96D8] to-[#A8B5E0] shadow-[0_16px_40px_-14px_rgba(44,62,107,0.45)]"
+      className="relative overflow-hidden rounded-[20px] shadow-[0_20px_48px_-16px_rgba(44,62,107,0.5)]"
+      style={{
+        background: `
+          radial-gradient(ellipse 95% 110% at 72% 48%, ${KAI_MEET_CARD.gradient.glow} 0%, transparent 52%),
+          radial-gradient(ellipse 120% 100% at 18% 80%, rgba(255,255,255,0.14) 0%, transparent 45%),
+          linear-gradient(145deg, ${KAI_MEET_CARD.gradient.mid} 0%, ${KAI_MEET_CARD.gradient.edge} 52%, ${KAI_MEET_CARD.gradient.deep} 100%)
+        `,
+      }}
     >
-      <div className="flex flex-col md:min-h-[280px] md:flex-row md:items-stretch">
-        <div className="flex min-w-0 flex-1 flex-col justify-center px-6 py-7 sm:px-8 sm:py-8 md:max-w-[58%] md:py-9">
-          <p className="text-sm font-bold tracking-tight text-[#1E3264]">Meet</p>
-          <h1 className="mt-0.5 text-[3.25rem] font-extrabold leading-[0.95] tracking-tight text-white sm:text-[3.75rem] md:text-[4.25rem]">
+      <DotFieldSvg
+        dots={BG_DOTS}
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-90"
+      />
+
+      <div className="relative flex min-h-[300px] flex-col md:min-h-[400px] md:flex-row md:items-stretch">
+        {/* Copy */}
+        <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-7 py-8 sm:px-9 sm:py-10 md:max-w-[54%] md:py-12 lg:max-w-[52%]">
+          <p
+            className="text-sm font-bold tracking-tight"
+            style={{ color: KAI_MEET_CARD.text.meet }}
+          >
+            Meet
+          </p>
+          <h1 className="mt-1 text-[3.5rem] font-extrabold leading-[0.92] tracking-tight text-white sm:text-[4rem] md:text-[4.5rem] lg:text-[5rem]">
             kAI
           </h1>
-          <p className="mt-2 text-xs font-bold uppercase tracking-[0.22em] text-white/95 sm:text-sm">
+          <p className="mt-3 text-[11px] font-extrabold uppercase tracking-[0.28em] text-white sm:text-xs">
             Your skin companion
           </p>
 
-          <div className="mt-5 min-h-[5.5rem] sm:min-h-[4.75rem] md:min-h-[5.25rem]">
+          <div className="mt-6 min-h-[5.5rem] md:mt-8 md:min-h-[4.5rem]">
             <AnimatePresence mode="wait">
               <motion.p
                 key={lineIndex}
@@ -91,13 +117,15 @@ export function KaiMeetIntroCard() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22 }}
-                className="max-w-md text-sm font-medium leading-relaxed text-[#1F2A44] sm:text-[15px] md:text-base"
+                className="max-w-sm text-[15px] font-medium leading-relaxed md:max-w-md md:text-base"
+                style={{ color: KAI_MEET_CARD.text.typed }}
               >
                 {typed}
                 <motion.span
                   animate={{ opacity: [1, 0, 1] }}
                   transition={{ duration: 0.9, repeat: Infinity }}
-                  className="ml-0.5 inline-block text-[#1E3264]"
+                  className="ml-0.5 inline-block"
+                  style={{ color: KAI_MEET_CARD.text.cursor }}
                   aria-hidden
                 >
                   |
@@ -107,22 +135,27 @@ export function KaiMeetIntroCard() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[220px] flex-none items-end justify-center px-4 pb-0 pt-2 sm:min-h-[240px] md:min-h-0 md:w-[42%] md:px-2 md:pt-0">
-          <SparkleHalo className="pointer-events-none absolute bottom-[8%] right-[8%] h-[min(72vw,240px)] w-[min(72vw,240px)] opacity-90 md:bottom-[10%] md:right-[6%] md:h-[min(100%,260px)] md:w-[min(100%,260px)]" />
-          <motion.div
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-            className="relative z-10"
-          >
-            <Image
-              src="/images/kai-avatar.png"
-              alt="kAI — your SkinFit AI skin companion"
-              width={180}
-              height={397}
-              className="h-[min(52vw,220px)] w-auto object-contain sm:h-[240px] md:h-[min(34vw,268px)] md:max-h-[268px]"
-              priority
-            />
-          </motion.div>
+        {/* Avatar + halo — halo locked to character, not the card corner */}
+        <div className="relative flex min-h-[260px] flex-none items-stretch justify-center md:min-h-0 md:w-[46%] lg:w-[48%]">
+          <div className="flex h-full w-full items-end justify-center pb-1 md:pb-2">
+            <motion.div
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+              className="relative inline-block"
+            >
+              <div className="pointer-events-none absolute bottom-[20%] left-1/2 aspect-square w-[108%] -translate-x-1/2">
+                <DotFieldSvg dots={HALO_DOTS} className="h-full w-full" glow />
+              </div>
+              <Image
+                src="/images/kai-avatar.png"
+                alt="kAI — your SkinFit AI skin companion"
+                width={200}
+                height={441}
+                className="relative z-10 block h-[min(58vw,280px)] w-auto object-contain object-bottom sm:h-[300px] md:h-[380px] lg:h-[400px]"
+                priority
+              />
+            </motion.div>
+          </div>
         </div>
       </div>
     </motion.section>

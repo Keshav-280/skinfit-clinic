@@ -454,6 +454,13 @@ export function analyzeFaceFraming(
       faceFill: prev.faceFill,
     };
   }
+    if (isSideProfile) {
+      return {
+        quality: "good",
+        message: "Hold your side profile in the oval",
+        faceFill: prev?.faceFill ?? null,
+      };
+    }
     return {
       quality: "no_face",
       message: framingMessage("no_face", FACE_TARGET.cx, FACE_TARGET.cy),

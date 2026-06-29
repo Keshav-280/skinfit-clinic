@@ -55,7 +55,7 @@ export function WeeklyInsightSection({ home, className = "", reloadNonce = 0 }: 
       priorityActions={model.card.priorityActions}
       observationsUnavailable={model.card.observationsUnavailable}
       actionsUnavailable={model.card.actionsUnavailable}
-      scoresUnlocked={home?.scoresUnlocked ?? false}
+      scoresUnlocked={home?.scoresUnlocked ?? skinExtra?.scoresUnlocked ?? false}
     />
   );
 }

@@ -29,6 +29,7 @@ export type SkinProfileForWeekly = {
   scanCount?: number;
   kaiInsightsEnabled?: boolean;
   weeklyInsight?: WeeklyInsightScheduleSnapshot;
+  scoresUnlocked?: boolean;
 };
 
 export type WeeklyHomeSnapshot = {
