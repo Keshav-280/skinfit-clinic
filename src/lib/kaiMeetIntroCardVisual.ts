@@ -4,7 +4,7 @@ export const KAI_MEET_CARD = {
   radius: 20,
   /** Desktop min height — taller hero card. */
   minHeightWide: 460,
-  minHeightPhone: 300,
+  minHeightPhone: 220,
   gradient: {
     /** Radial spotlight glow behind the avatar. */
     glow: "rgba(200, 215, 255, 0.55)",
@@ -54,10 +54,11 @@ export function meetCardHaloDots(): MeetCardDot[] {
   const cy = 50;
 
   const rings = [
-    { radius: 20, count: 36, dotR: 0.9,  accentR: 1.4, opacity: 0.55, accentOpacity: 0.80, accentEvery: 6 },
-    { radius: 30, count: 52, dotR: 0.95, accentR: 1.5, opacity: 0.50, accentOpacity: 0.75, accentEvery: 6 },
-    { radius: 40, count: 64, dotR: 1.0,  accentR: 1.6, opacity: 0.45, accentOpacity: 0.70, accentEvery: 7 },
-    { radius: 50, count: 80, dotR: 0.85, accentR: 1.7, opacity: 0.35, accentOpacity: 0.60, accentEvery: 8 },
+    { radius: 20, count: 36,  dotR: 0.70, accentR: 1.10, opacity: 0.22, accentOpacity: 0.36, accentEvery: 6 },
+    { radius: 30, count: 54,  dotR: 0.75, accentR: 1.20, opacity: 0.32, accentOpacity: 0.48, accentEvery: 6 },
+    { radius: 40, count: 72,  dotR: 0.80, accentR: 1.30, opacity: 0.42, accentOpacity: 0.60, accentEvery: 6 },
+    { radius: 50, count: 90,  dotR: 0.85, accentR: 1.40, opacity: 0.52, accentOpacity: 0.72, accentEvery: 6 },
+    { radius: 60, count: 108, dotR: 0.90, accentR: 1.50, opacity: 0.62, accentOpacity: 0.84, accentEvery: 6 },
   ];
 
   for (const ring of rings) {

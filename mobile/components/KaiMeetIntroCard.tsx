@@ -27,7 +27,7 @@ const HALO_DOTS = meetCardHaloDots();
 
 function HaloDots({ size }: { size: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100">
+    <Svg width={size} height={size} viewBox="-15 -15 130 130">
       {HALO_DOTS.map((dot) => (
         <Circle
           key={dot.key}
@@ -70,7 +70,7 @@ export function KaiMeetIntroCard() {
   const cardMinHeight = isWide ? KAI_MEET_CARD.minHeightWide : KAI_MEET_CARD.minHeightPhone;
   const avatarHeight = isWide
     ? Math.min(cardMinHeight * 0.92, 460)
-    : Math.min(width * 0.58, 280);
+    : Math.min(width * 0.46, 210);
   const avatarWidth = avatarHeight * (132 / 291);
   const haloSize = Math.min(avatarHeight * 1.08, isWide ? 380 : 300);
 
@@ -170,7 +170,7 @@ export function KaiMeetIntroCard() {
             <Animated.View
               style={[
                 styles.avatarFloat,
-                { transform: [{ translateY: floatY }] },
+                { transform: [{ translateY: floatY }, { translateX: isWide ? -24 : -12 }] },
               ]}
             >
               <View
@@ -236,8 +236,8 @@ const styles = StyleSheet.create({
   copyCol: {
     flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 32,
-    paddingBottom: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
     justifyContent: "center",
   },
   copyColWide: {
@@ -272,8 +272,8 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.98)",
   },
   descWrap: {
-    marginTop: 24,
-    minHeight: 88,
+    marginTop: 16,
+    minHeight: 72,
   },
   descText: {
     fontSize: 15,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     color: KAI_MEET_CARD.text.desc,
   },
   avatarCol: {
-    minHeight: 260,
+    minHeight: 190,
     paddingHorizontal: 12,
   },
   avatarColWide: {
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-end",
-    minHeight: 260,
+    minHeight: 190,
     paddingBottom: 4,
   },
   avatarFloat: {

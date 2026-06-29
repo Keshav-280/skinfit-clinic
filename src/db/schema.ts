@@ -1152,3 +1152,15 @@ export const familyWalletTransactions = pgTable(
     ),
   })
 );
+
+export const mobileCaptureSessions = pgTable("mobile_capture_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  status: text("status").notNull().default("pending"),
+  scanId: integer("scan_id").references(() => scans.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

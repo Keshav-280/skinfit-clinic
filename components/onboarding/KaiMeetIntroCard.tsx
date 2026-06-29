@@ -31,7 +31,7 @@ function DotFieldSvg({
 }) {
   return (
     <svg
-      viewBox="0 0 100 100"
+      viewBox="-15 -15 130 130"
       preserveAspectRatio={preserveAspectRatio}
       className={className}
       aria-hidden
@@ -89,9 +89,9 @@ export function KaiMeetIntroCard() {
         `,
       }}
     >
-      <div className="relative flex min-h-[300px] flex-col md:min-h-[460px] md:flex-row md:items-stretch">
+      <div className="relative flex min-h-[220px] flex-col md:min-h-[460px] md:flex-row md:items-stretch">
         {/* Copy */}
-        <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-7 py-8 sm:px-9 sm:py-10 md:max-w-[54%] md:py-12 lg:max-w-[52%]">
+        <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-7 py-6 sm:px-9 sm:py-8 md:max-w-[54%] md:py-12 lg:max-w-[52%]">
           <p
             className="text-sm font-bold tracking-tight"
             style={{ color: KAI_MEET_CARD.text.meet }}
@@ -105,7 +105,7 @@ export function KaiMeetIntroCard() {
             YOUR SKIN COMPANION
           </p>
 
-          <div className="mt-6 min-h-[5.5rem] md:mt-8 md:min-h-[4.5rem]">
+          <div className="mt-4 min-h-[4.5rem] md:mt-8 md:min-h-[4.5rem]">
             <AnimatePresence mode="wait">
               <motion.p
                 key={lineIndex}
@@ -132,12 +132,12 @@ export function KaiMeetIntroCard() {
         </div>
 
         {/* Avatar + halo — halo locked to character, not the card corner */}
-        <div className="relative flex min-h-[300px] flex-none items-stretch justify-center md:min-h-0 md:w-[46%] lg:w-[48%]">
+        <div className="relative flex min-h-[220px] flex-none items-stretch justify-center md:min-h-0 md:w-[46%] lg:w-[48%]">
           <div className="flex h-full w-full items-end justify-center pb-1 md:pb-2">
             <motion.div
               animate={{ y: [0, -5, 0] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-              className="relative inline-block"
+              className="relative inline-block -translate-x-4 md:-translate-x-8"
             >
               <div className="pointer-events-none absolute bottom-[20%] left-1/2 aspect-square w-[108%] -translate-x-1/2">
                 <DotFieldSvg dots={HALO_DOTS} className="h-full w-full" glow preserveAspectRatio="xMidYMid meet" />
@@ -147,7 +147,7 @@ export function KaiMeetIntroCard() {
                 alt="kAI — your SkinFit AI skin companion"
                 width={200}
                 height={441}
-                className="relative z-10 block h-[min(78vw,340px)] w-auto object-contain object-bottom sm:h-[320px] md:h-[440px] lg:h-[460px]"
+                className="relative z-10 block h-[min(55vw,220px)] w-auto object-contain object-bottom sm:h-[260px] md:h-[440px] lg:h-[460px]"
                 priority
               />
             </motion.div>

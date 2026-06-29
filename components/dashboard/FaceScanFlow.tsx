@@ -15,6 +15,8 @@ import {
   ZoomIn,
   X,
   History,
+  Smartphone,
+  Laptop,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
 import { CaptureFaceGuideOverlayWeb } from "@/components/dashboard/CaptureFaceGuideOverlayWeb";
@@ -49,6 +51,7 @@ import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 import { FaceScanPhotoGuide } from "@/components/dashboard/FaceScanPhotoGuide";
 import { FaceIdentityCheckResults } from "@/components/onboarding/FaceIdentityCheckResults";
 import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
+import { MobileCaptureQRPanel } from "@/components/dashboard/MobileCaptureQRPanel";
 import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
 import { submitFaceScan } from "@/src/lib/submitFaceScan";
 import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
@@ -64,7 +67,7 @@ import {
   viewfinderCaptureDimensions,
 } from "@/src/lib/faceGuideCrop";
 
-type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "queued" | "results";
+type ScanStep = "upload" | "confirm" | "naming" | "scanning" | "queued" | "results" | "phone-qr";
 
 interface ClinicalScores {
   active_acne?: number;
@@ -224,6 +227,18 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const router = useRouter();
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isMobile =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        ) || navigator.maxTouchPoints > 0;
+      setIsMobileDevice(isMobile);
+    }
+  }, []);
+
   const [photoGuideOpen, setPhotoGuideOpen] = useState(
     () => variant === "onboarding"
   );
@@ -794,7 +809,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const showPhotoGuide =
     step === "upload" && !cameraOpen && photoGuideOpen;
   const onboardingPastGuide = !isOnboardingScan || onboardingGuideComplete;
-  const showUploadChrome = !showPhotoGuide && onboardingPastGuide;
+  const showUploadChrome = !showPhotoGuide && onboardingPastGuide && step !== "phone-qr";
   const navy = SKINFIT_THEME.navy;
   const onboardingSurface =
     "border-[#2C3E6B]/10 bg-white/25 shadow-none backdrop-blur-sm";
@@ -822,6 +837,20 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           showDismissOption={!isOnboardingScan}
         />
       ) : null}
+
+      {step === "phone-qr" && (
+        <MobileCaptureQRPanel
+          onBack={() => setStep("upload")}
+          onComplete={(scanId) => {
+            if (isOnboardingScan) {
+              router.push(`/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`);
+            } else {
+              router.push(`/dashboard/history/scans/${scanId}`);
+            }
+          }}
+          isOnboardingScan={isOnboardingScan}
+        />
+      )}
 
       {showUploadChrome && step !== "scanning" && !(step === "upload" && cameraOpen) && !isOnboardingScan ? (
       <motion.header
@@ -997,30 +1026,78 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           className="w-full"
         >
           <div className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+            <div className={`grid gap-4 ${isMobileDevice ? "md:grid-cols-[1.05fr_0.95fr]" : "md:grid-cols-[1.05fr_1fr_1fr]"}`}>
+              {!isMobileDevice && (
+                <button
+                  type="button"
+                  onClick={() => setStep("phone-qr")}
+                  className="group relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#2C3E6B] to-[#1E294B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.85)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_48px_-18px_rgba(44,62,107,0.95)] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                >
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 transition-transform duration-500 group-hover:scale-110" />
+                  <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-full bg-emerald-400/10" />
+                  <div className="relative flex h-full flex-col justify-between">
+                    <div>
+                      <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-emerald-300">
+                        ★ Recommended
+                      </span>
+                      <div className="mt-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 shadow-inner">
+                        <Smartphone className="h-7 w-7 text-emerald-300" />
+                      </div>
+                      <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
+                        Scan with phone camera
+                      </h2>
+                      <p className="mt-2 text-xs leading-relaxed text-white/75">
+                        Scan a QR code to capture with your phone. Best image quality for face scanning.
+                      </p>
+                    </div>
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] shadow-sm transition-colors group-hover:bg-slate-50">
+                      Use Phone Camera
+                      <Smartphone className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={requestOpenCamera}
-                className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition hover:-translate-y-0.5 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                className={`group relative overflow-hidden rounded-[24px] p-6 text-left transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30 ${
+                  isMobileDevice
+                    ? "bg-[#2C3E6B] text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] hover:bg-[#354A7A]"
+                    : "border border-[#2C3E6B]/15 bg-white text-[#2C3E6B] hover:bg-slate-50 hover:border-[#2C3E6B]/30 shadow-sm"
+                }`}
               >
-                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
-                <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-full bg-emerald-400/15" />
-                <div className="relative">
-                  <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
-                    Recommended
-                  </span>
-                  <div className="mt-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
-                    <Camera className="h-7 w-7" />
+                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#2C3E6B]/5" />
+                <div className="relative flex h-full flex-col justify-between">
+                  <div>
+                    {isMobileDevice ? (
+                      <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
+                        Recommended
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/70">
+                        Webcam
+                      </span>
+                    )}
+                    <div className={`mt-6 flex h-14 w-14 items-center justify-center rounded-2xl shadow-inner ${
+                      isMobileDevice ? "bg-white/15" : "bg-[#2C3E6B]/5"
+                    }`}>
+                      <Camera className="h-7 w-7" />
+                    </div>
+                    <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
+                      {isMobileDevice ? "Use device camera" : "Use laptop webcam"}
+                    </h2>
+                    <p className={`mt-2 text-xs leading-relaxed ${isMobileDevice ? "text-white/75" : "text-[#64748B]"}`}>
+                      Capture using your {isMobileDevice ? "device" : "webcam"} camera. Keep angles aligned with the guide.
+                    </p>
                   </div>
-                  <h2 className="mt-5 text-2xl font-extrabold tracking-tight">
-                    Use device camera
-                  </h2>
-                  <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/75">
-                    Guided capture keeps the five angles in order and reduces upload mistakes.
-                  </p>
-                  <span className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-[#2C3E6B] shadow-sm transition group-hover:bg-[#F8FAFC]">
-                    Start camera scan
-                    <Camera className="h-4 w-4" />
+                  <span className={`mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-extrabold transition-colors ${
+                    isMobileDevice 
+                      ? "bg-white text-[#2C3E6B] group-hover:bg-[#F8FAFC]" 
+                      : "bg-[#2C3E6B] text-white group-hover:bg-[#3d5080]"
+                  }`}>
+                    {isMobileDevice ? "Start Camera" : "Start Webcam"}
+                    <Camera className="h-3.5 w-3.5" />
                   </span>
                 </div>
               </button>
@@ -1032,7 +1109,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
-                className={`flex min-h-[270px] flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors ${
+                className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
                   isDragging
                     ? "border-[#2C3E6B]/40 bg-white/40"
                     : isOnboardingScan
@@ -1059,30 +1136,30 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
                     <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
                   </div>
-                  <h2 className="mt-4 text-lg font-extrabold" style={{ color: navy }}>
+                  <h2 className="mt-4 text-base font-extrabold" style={{ color: navy }}>
                     Upload photos
                   </h2>
-                  <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[#64748B]">
-                    Tap each slot below to add one photo at a time, or drop several
-                    files to fill empty slots.
+                  <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
+                    Tap each slot below to add one photo at a time, or drop files to fill.
                   </p>
-                  <p className="mx-auto mt-1 text-xs font-semibold text-[#4CAF50]">
+                  <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
                     {captureCount}/{N_CAPTURES} added
                   </p>
                 </div>
                 <label
                   htmlFor="scan-file-input"
-                  className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-extrabold text-[#2C3E6B] transition ${
+                  className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition ${
                     isOnboardingScan
                       ? "border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50"
                       : "border-white/70 bg-white/75 hover:bg-white"
                   }`}
                 >
-                  <ImagePlus className="h-4 w-4" />
-                  Choose photos
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  Choose files
                 </label>
               </div>
             </div>
+
 
             <div className="space-y-4 pt-1">
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
