@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Camera,
@@ -225,6 +225,9 @@ export type FaceScanFlowVariant = "dashboard" | "onboarding";
 
 export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionIdParam = searchParams.get("s");
+  const tokenParam = searchParams.get("t");
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
   const [isMobileDevice, setIsMobileDevice] = useState(false);
@@ -523,6 +526,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     void startCamera("user");
   }, [slotCaptures, startCamera, clearPendingCapture, resetAdjustments]);
 
+  useEffect(() => {
+    if (tokenParam) {
+      setPhotoGuideOpen(false);
+      setOnboardingGuideComplete(true);
+      openCameraForMultiCapture();
+    }
+  }, [tokenParam, openCameraForMultiCapture]);
+
   const requestOpenCamera = useCallback(() => {
     if (skipPhotoGuide) {
       openCameraForMultiCapture();
@@ -773,10 +784,32 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     try {
       const formData = new FormData();
       formData.append("scanName", finalScanName);
-      formData.append("captureSource", "web");
+      formData.append("captureSource", tokenParam ? "mobile-web-handoff" : "web");
+      if (sessionIdParam) {
+        formData.append("sessionId", sessionIdParam);
+      }
       slotCaptures.forEach((c) => {
         if (c) formData.append("images", c.file);
       });
+
+      if (tokenParam) {
+        const res = await fetch("/api/mobile-capture/submit", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${tokenParam}`,
+          },
+          body: formData,
+        });
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(
+            errJson.message || errJson.error || `Submission failed (${res.status})`
+          );
+        }
+        setStep("results");
+        return;
+      }
+
       const outcome = await submitFaceScan(formData);
 
       if (outcome.mode === "queued") {
@@ -800,11 +833,23 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
         return;
       }
       router.push(`/dashboard/history/scans/${scanId}`);
-    } catch {
-      setScanError("Network error. Check your connection and try again.");
+    } catch (err: unknown) {
+      setScanError(
+        err instanceof Error
+          ? err.message
+          : "Network error. Check your connection and try again."
+      );
       setStep("naming");
     }
-  }, [slotCaptures, slotsComplete, scanName, router, isOnboardingScan]);
+  }, [
+    slotCaptures,
+    slotsComplete,
+    scanName,
+    router,
+    isOnboardingScan,
+    tokenParam,
+    sessionIdParam,
+  ]);
 
   const showPhotoGuide =
     step === "upload" && !cameraOpen && photoGuideOpen;
@@ -815,6 +860,29 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     "border-[#2C3E6B]/10 bg-white/25 shadow-none backdrop-blur-sm";
   const onboardingSurfaceHover =
     "hover:border-[#2C3E6B]/18 hover:bg-white/35";
+  if (tokenParam && step === "results") {
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-3xl border border-[#2C3E6B]/10 bg-white p-8 shadow-xl backdrop-blur-md"
+        >
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20 animate-bounce">
+            <Check className="h-8 w-8" />
+          </div>
+          <h2 className="mt-6 text-2xl font-extrabold text-[#2C3E6B]">Analysis Submitted!</h2>
+          <p className="mt-3 text-sm text-slate-500 leading-relaxed">
+            Your photos have been received and analyzed successfully. Check your computer screen to view the detailed skin analysis report.
+          </p>
+          <p className="mt-6 text-xs text-slate-400">
+            You can safely close this browser tab now.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`${

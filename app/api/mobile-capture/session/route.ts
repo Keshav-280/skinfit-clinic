@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const host = request.headers.get("host") || "localhost:3000";
     const proto = request.headers.get("x-forwarded-proto") || "http";
     const origin = `${proto}://${host}`;
-    const url = `${origin}/m/capture?s=${sessionId}&t=${token}`;
+    const url = `${origin}/onboarding/capture/photos?s=${sessionId}&t=${token}`;
 
     return NextResponse.json({
       success: true,
