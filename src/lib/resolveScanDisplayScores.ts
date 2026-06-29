@@ -157,10 +157,22 @@ export function resolveScanDisplayScores(input: {
         )
       : null;
 
+  const hasDoctorParamOverrides =
+    (doctorOverrides?.parameterScores &&
+      Object.values(doctorOverrides.parameterScores).some(
+        (v) => typeof v === "number" && Number.isFinite(v)
+      )) ||
+    (doctorOverrides?.modelFeatureScores &&
+      Object.values(doctorOverrides.modelFeatureScores).some(
+        (v) => typeof v === "number" && Number.isFinite(v)
+      ));
+
   const resolvedKaiScore =
     typeof doctorOverrides?.kaiScore === "number" && Number.isFinite(doctorOverrides.kaiScore)
       ? clampInt(doctorOverrides.kaiScore, 0, 100)
-      : storedKai ?? computedKai;
+      : hasDoctorParamOverrides
+        ? computedKai
+        : storedKai ?? computedKai;
 
   const resolvedAcne =
     resolvedRagParamValues.active_acne ?? input.baseMetricsColumns.acne;
