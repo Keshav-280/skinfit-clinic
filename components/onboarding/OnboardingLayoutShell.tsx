@@ -70,7 +70,7 @@ export function OnboardingLayoutShell({
         </div>
       </div>
       <main
-        className={`mx-auto w-full ${maxWidthClass} px-4 pb-16 pt-3 pr-14 md:px-6 md:pt-4 md:pr-16`}
+        className={`mx-auto w-full ${maxWidthClass} px-4 pb-16 pt-3 md:px-6 md:pt-4`}
       >
         {children}
       </main>
