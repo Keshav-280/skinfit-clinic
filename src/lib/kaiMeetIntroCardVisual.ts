@@ -46,47 +46,32 @@ export function meetCardBackgroundDots(): MeetCardDot[] {
   return dots;
 }
 
-/** Two clean concentric dotted circles around the avatar.
- *  Inner ring + outer ring — simple, proper, no overcomplication.
- */
+/** Four clean concentric dotted circles around the avatar. */
 export function meetCardHaloDots(): MeetCardDot[] {
   const dots: MeetCardDot[] = [];
   let key = 0;
   const cx = 50;
   const cy = 50;
 
-  // --- Inner circle ---
-  const innerCount = 52;
-  const innerRadius = 30;
-  for (let i = 0; i < innerCount; i++) {
-    const angle = (i / innerCount) * Math.PI * 2;
-    // Every ~5th dot slightly larger for accent
-    const r = i % 5 === 0 ? 1.6 : 1.0;
-    const opacity = i % 5 === 0 ? 0.75 : 0.5;
-    dots.push({
-      x: cx + Math.cos(angle) * innerRadius,
-      y: cy + Math.sin(angle) * innerRadius,
-      r,
-      opacity,
-      key: key++,
-    });
-  }
+  const rings = [
+    { radius: 20, count: 36, dotR: 0.9,  accentR: 1.4, opacity: 0.55, accentOpacity: 0.80, accentEvery: 6 },
+    { radius: 30, count: 52, dotR: 0.95, accentR: 1.5, opacity: 0.50, accentOpacity: 0.75, accentEvery: 6 },
+    { radius: 40, count: 64, dotR: 1.0,  accentR: 1.6, opacity: 0.45, accentOpacity: 0.70, accentEvery: 7 },
+    { radius: 50, count: 80, dotR: 0.85, accentR: 1.7, opacity: 0.35, accentOpacity: 0.60, accentEvery: 8 },
+  ];
 
-  // --- Outer circle ---
-  const outerCount = 72;
-  const outerRadius = 44;
-  for (let i = 0; i < outerCount; i++) {
-    const angle = (i / outerCount) * Math.PI * 2;
-    // Every ~6th dot larger for accent
-    const r = i % 6 === 0 ? 1.8 : i % 3 === 0 ? 1.2 : 0.85;
-    const opacity = i % 6 === 0 ? 0.85 : i % 3 === 0 ? 0.6 : 0.4;
-    dots.push({
-      x: cx + Math.cos(angle) * outerRadius,
-      y: cy + Math.sin(angle) * outerRadius,
-      r,
-      opacity,
-      key: key++,
-    });
+  for (const ring of rings) {
+    for (let i = 0; i < ring.count; i++) {
+      const angle = (i / ring.count) * Math.PI * 2;
+      const isAccent = i % ring.accentEvery === 0;
+      dots.push({
+        x: cx + Math.cos(angle) * ring.radius,
+        y: cy + Math.sin(angle) * ring.radius,
+        r: isAccent ? ring.accentR : ring.dotR,
+        opacity: isAccent ? ring.accentOpacity : ring.opacity,
+        key: key++,
+      });
+    }
   }
 
   return dots;
