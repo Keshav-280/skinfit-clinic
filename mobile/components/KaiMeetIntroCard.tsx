@@ -42,16 +42,15 @@ function HaloDots({ size }: { size: number }) {
   );
 }
 
-function CardGradient() {
+function CardGradient({ cx = "72%", cy = "48%" }: { cx?: string; cy?: string }) {
   return (
     <Svg width="100%" height="100%" style={StyleSheet.absoluteFillObject}>
       <Defs>
-        <RadialGradient id="kaiMeetGlow" cx="72%" cy="48%" rx="55%" ry="65%">
+        <RadialGradient id="kaiMeetGlow" cx={cx} cy={cy} rx="55%" ry="65%">
           <Stop offset="0%" stopColor={KAI_MEET_CARD.gradient.glow} stopOpacity="1" />
-          <Stop offset="55%" stopColor={KAI_MEET_CARD.gradient.mid} stopOpacity="0" />
+          <Stop offset="70%" stopColor={KAI_MEET_CARD.gradient.mid} stopOpacity="0" />
         </RadialGradient>
       </Defs>
-      <Rect width="100%" height="100%" fill={KAI_MEET_CARD.gradient.deep} />
       <Rect width="100%" height="100%" fill="url(#kaiMeetGlow)" />
     </Svg>
   );
@@ -147,7 +146,7 @@ export function KaiMeetIntroCard() {
         style={StyleSheet.absoluteFillObject}
       />
       <View style={styles.gradientOverlay} pointerEvents="none">
-        <CardGradient />
+        <CardGradient cx={isWide ? "74%" : "50%"} cy={isWide ? "50%" : "60%"} />
       </View>
 
       <View style={[styles.inner, isWide && styles.innerWide, { minHeight: cardMinHeight }]}>

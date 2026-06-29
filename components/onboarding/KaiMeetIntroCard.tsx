@@ -83,9 +83,9 @@ export function KaiMeetIntroCard() {
       className="relative overflow-hidden rounded-[20px] shadow-[0_20px_48px_-16px_rgba(44,62,107,0.5)]"
       style={{
         background: `
-          radial-gradient(ellipse 95% 110% at 72% 48%, ${KAI_MEET_CARD.gradient.glow} 0%, transparent 52%),
-          radial-gradient(ellipse 120% 100% at 18% 80%, rgba(255,255,255,0.14) 0%, transparent 45%),
-          linear-gradient(145deg, ${KAI_MEET_CARD.gradient.mid} 0%, ${KAI_MEET_CARD.gradient.edge} 52%, ${KAI_MEET_CARD.gradient.deep} 100%)
+          radial-gradient(circle 280px at 74% 50%, ${KAI_MEET_CARD.gradient.glow} 0%, transparent 100%),
+          radial-gradient(ellipse 120% 100% at 18% 80%, rgba(255,255,255,0.12) 0%, transparent 45%),
+          linear-gradient(135deg, ${KAI_MEET_CARD.gradient.mid} 0%, ${KAI_MEET_CARD.gradient.edge} 50%, ${KAI_MEET_CARD.gradient.deep} 100%)
         `,
       }}
     >
