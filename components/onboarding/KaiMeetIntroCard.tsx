@@ -132,7 +132,7 @@ export function KaiMeetIntroCard() {
         </div>
 
         {/* Avatar + halo — halo locked to character, not the card corner */}
-        <div className="relative flex min-h-[260px] flex-none items-stretch justify-center md:min-h-0 md:w-[46%] lg:w-[48%]">
+        <div className="relative flex min-h-[300px] flex-none items-stretch justify-center md:min-h-0 md:w-[46%] lg:w-[48%]">
           <div className="flex h-full w-full items-end justify-center pb-1 md:pb-2">
             <motion.div
               animate={{ y: [0, -5, 0] }}
@@ -147,7 +147,7 @@ export function KaiMeetIntroCard() {
                 alt="kAI — your SkinFit AI skin companion"
                 width={200}
                 height={441}
-                className="relative z-10 block h-[min(58vw,280px)] w-auto object-contain object-bottom sm:h-[300px] md:h-[440px] lg:h-[460px]"
+                className="relative z-10 block h-[min(78vw,340px)] w-auto object-contain object-bottom sm:h-[320px] md:h-[440px] lg:h-[460px]"
                 priority
               />
             </motion.div>
