@@ -97,7 +97,10 @@ export function useMobileScanCaptureGuidance(
     initialMobileModels(captureCfg, needsMp, false)
   );
 
+  const stepStartRef = useRef<number>(0);
+
   const beginStepWarmup = useCallback(() => {
+    stepStartRef.current = Date.now();
     warmupUntilRef.current = Date.now() + CAPTURE_STEP_WARMUP_MS;
     wasInWarmupRef.current = true;
     setGuidance(null);
@@ -183,6 +186,12 @@ export function useMobileScanCaptureGuidance(
 
       if (!inWarmup && next) {
         let finalGuidance = next;
+        const elapsedSinceStepStart = now - stepStartRef.current;
+        if (elapsedSinceStepStart < 4000) {
+          setGuidance(null);
+          prevPublishedGuidanceRef.current = null;
+          return;
+        }
         const prev = prevPublishedGuidanceRef.current;
         const isWarningTypeChanged = Boolean(
           prev &&

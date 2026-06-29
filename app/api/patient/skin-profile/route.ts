@@ -33,6 +33,7 @@ import {
   computePatientInsightSchedule,
   getPatientFirstScanAt,
 } from "@/src/lib/patientInsightSchedule";
+import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 
 /** Regenerate insights at most once per week unless a new scan arrives. */
 const INSIGHTS_STALE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -61,7 +62,8 @@ type InsightSections = StoredProfileInsightsPayload & {
  */
 async function resolveInsightSections(
   userId: string,
-  insightCtx: ProfileInsightContext
+  insightCtx: ProfileInsightContext,
+  scoresUnlocked = false
 ): Promise<InsightSections> {
   const [{ value: scanCount }] = await db
     .select({ value: count() })
@@ -70,8 +72,8 @@ async function resolveInsightSections(
 
   if (!isKaiInsightsEnabled()) {
     const [keyObservations, priorityKnowDo] = await Promise.all([
-      buildProfileKeyObservationsLlm(userId, insightCtx),
-      buildProfilePriorityKnowDoLlm(userId, insightCtx),
+      buildProfileKeyObservationsLlm(userId, insightCtx, undefined, scoresUnlocked),
+      buildProfilePriorityKnowDoLlm(userId, insightCtx, undefined, scoresUnlocked),
     ]);
     return { keyObservations, priorityKnowDo, scanCount, generatedAt: null, reused: false };
   }
@@ -96,8 +98,8 @@ async function resolveInsightSections(
   // One retrieval shared by both sections (previously two separate RAG calls).
   const evidence = await retrieveForProfile(insightCtx);
   const [keyObservations, priorityKnowDo] = await Promise.all([
-    buildProfileKeyObservationsLlm(userId, insightCtx, evidence),
-    buildProfilePriorityKnowDoLlm(userId, insightCtx, evidence),
+    buildProfileKeyObservationsLlm(userId, insightCtx, evidence, scoresUnlocked),
+    buildProfilePriorityKnowDoLlm(userId, insightCtx, evidence, scoresUnlocked),
   ]);
 
   const payload: StoredProfileInsightsPayload = { keyObservations, priorityKnowDo };
@@ -160,13 +162,14 @@ export async function GET(request: Request) {
     ]);
 
     const insightSchedule = computePatientInsightSchedule(firstScanAt);
+    const scoresUnlocked = await isPatientClinicVisited(userId);
 
     const {
       keyObservations,
       priorityKnowDo,
       scanCount,
       generatedAt: insightsGeneratedAt,
-    } = await resolveInsightSections(userId, insightCtx);
+    } = await resolveInsightSections(userId, insightCtx, scoresUnlocked);
 
     const recentScans = await db
       .select({

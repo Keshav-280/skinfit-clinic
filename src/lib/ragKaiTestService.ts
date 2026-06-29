@@ -427,7 +427,8 @@ async function buildMonthlyForCalendarMonth(
 
   const parametersDetail: MonthlyReportDetail["parameters"] =
     RAG_KAI_PARAM_KEYS.map((key) => {
-      const latest = latestScan.paramValues[key];
+      const rawLatest = latestScan.paramValues[key];
+      const latest = typeof rawLatest === "number" ? patientDisplayClarity(rawLatest) : null;
       const row = latestParams.find((p) => p.key === key);
       const vsPrior = row?.delta ?? null;
       let vsMonthStart: number | null = null;
@@ -438,18 +439,19 @@ async function buildMonthlyForCalendarMonth(
         typeof latestScan.paramValues[key] === "number"
       ) {
         vsMonthStart = Math.round(
-          (latestScan.paramValues[key] as number) -
-            (firstCalScan.paramValues[key] as number)
+          patientDisplayClarity(latestScan.paramValues[key] as number) -
+            patientDisplayClarity(firstCalScan.paramValues[key] as number)
         );
       }
+      const rawMonthMean = paramMeansPartial[key];
       const monthMean =
-        typeof paramMeansPartial[key] === "number"
-          ? paramMeansPartial[key]!
+        typeof rawMonthMean === "number"
+          ? patientDisplayClarity(rawMonthMean)
           : null;
       return {
         key,
         label: RAG_KAI_PARAM_LABELS[key],
-        latest: typeof latest === "number" ? latest : null,
+        latest,
         vsPrior,
         vsMonthStart,
         monthMean,
@@ -457,11 +459,14 @@ async function buildMonthlyForCalendarMonth(
     });
 
   const scansShown = monthScans.length > 0 ? monthScans : [latestScan];
-  const scansChrono = scansShown.map((s) => ({
-    index: scansWithParams.findIndex((x) => x.id === s.id) + 1,
-    date: ymd(s.createdAt),
-    kaiScore: computeRagKaiScore(s.paramValues) ?? s.overallScore,
-  }));
+  const scansChrono = scansShown.map((s) => {
+    const rawScore = computeRagKaiScore(s.paramValues) ?? s.overallScore ?? 0;
+    return {
+      index: scansWithParams.findIndex((x) => x.id === s.id) + 1,
+      date: ymd(s.createdAt),
+      kaiScore: patientDisplayClarity(rawScore),
+    };
+  });
 
   const hooksInMonth = scanReports
     .filter((r) => r.scanDate >= startStr && r.scanDate <= endStr)
@@ -490,8 +495,8 @@ async function buildMonthlyForCalendarMonth(
     highlights,
     risks,
     nextMonthFocus,
-    kaiTrajectory: scoreTrend,
-    kaiMonthAvgFromParams,
+    kaiTrajectory: displayScoreTrend,
+    kaiMonthAvgFromParams: displayKaiMonthAvgFromParams,
     adherence30d: {
       fullRoutineDays: monthBehavior.fullRoutineDays,
       windowDays: monthBehavior.windowDays,
@@ -528,8 +533,8 @@ async function buildMonthlyForCalendarMonth(
     highlights,
     risks,
     nextMonthFocus,
-    scoreTrend,
-    kaiMonthAvgFromParams,
+    scoreTrend: displayScoreTrend,
+    kaiMonthAvgFromParams: displayKaiMonthAvgFromParams,
     llmUsed: Boolean(monthlyLlm),
     detail: monthlyDetail,
   };

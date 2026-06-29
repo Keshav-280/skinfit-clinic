@@ -49,8 +49,7 @@ const NAVY = "#2C3E6B";
 /** One short, human guidance line shown during live capture (also spoken by the voice guide). */
 function humanGuidanceMessage(
   g: CaptureGuidanceSnapshot | null,
-  expressionStep: boolean,
-  elapsed: number
+  expressionStep: boolean
 ): string {
   if (!g) return CAPTURE_GUIDANCE_WARMUP_MESSAGE;
   let msg = "Hold still…";
@@ -62,9 +61,6 @@ function humanGuidanceMessage(
     msg = "Perfect — hold still and tap capture";
   }
 
-  if (elapsed > 4000 && !g.readyToCapture) {
-    return msg + " (tap capture anyway)";
-  }
   return msg;
 }
 type Props = {
@@ -101,17 +97,12 @@ export function FiveAngleCameraStep({
   const [voiceEnabled, setVoiceEnabled] = useState(() => voiceSpeechAvailable);
   const [voiceVolume, setVoiceVolume] = useState(0.42);
 
-  const stepStartRef = useRef<number>(0);
-  const [elapsed, setElapsed] = useState(0);
-
   useEffect(() => {
     void loadStoredCaptureVoiceVolume().then(setVoiceVolume);
   }, []);
 
-  useEffect(() => {
-    captureVoiceGuide.setVolume(voiceVolume);
-    void storeCaptureVoiceVolume(voiceVolume);
-  }, [voiceVolume]);
+  const stepStartRef = useRef<number>(0);
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     stepStartRef.current = Date.now();
@@ -121,6 +112,11 @@ export function FiveAngleCameraStep({
     }, 500);
     return () => clearInterval(t);
   }, [stepIndex]);
+
+  useEffect(() => {
+    captureVoiceGuide.setVolume(voiceVolume);
+    void storeCaptureVoiceVolume(voiceVolume);
+  }, [voiceVolume]);
 
   const step = FACE_SCAN_CAPTURE_STEPS[stepIndex];
   const stepId = step?.id ?? "centre";
@@ -259,7 +255,7 @@ export function FiveAngleCameraStep({
     );
   }
 
-  const guidanceReady = (guidance?.readyToCapture ?? false) || elapsed > 4000;
+  const guidanceReady = (guidance?.readyToCapture ?? false) && elapsed > 4000;
   const isDisabled =
     busy || shooting || !cameraReady || reviewingCapture || !guidanceReady;
   const previewOverlay = previewOverlayOpacity(
@@ -365,7 +361,7 @@ export function FiveAngleCameraStep({
       shooting={shooting}
       shutterDisabled={isDisabled}
       guidance={guidance}
-      guidanceMessage={humanGuidanceMessage(guidance, expressionStep, elapsed)}
+      guidanceMessage={humanGuidanceMessage(guidance, expressionStep)}
       guidanceReady={guidanceReady}
       voiceEnabled={voiceEnabled}
       voiceVolume={voiceVolume}

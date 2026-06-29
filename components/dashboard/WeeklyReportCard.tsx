@@ -78,7 +78,7 @@ export function WeeklyReportCard({
 }: Props) {
   const trend = trendSummary(weeklyDelta);
   const kaiView = patientKaiScoreView(kaiScore, scoresUnlocked);
-  const parsedActions = priorityActions.map(parsePriorityAction);
+  const parsedActions = priorityActions.map((act) => parsePriorityAction(act, scoresUnlocked));
   const TrendIcon =
     trend.tone === "up" ? TrendingUp : trend.tone === "down" ? TrendingDown : Minus;
 
@@ -172,7 +172,7 @@ export function WeeklyReportCard({
                         <p className="mt-1 pl-6 text-[11px] text-[#64748B]">{item.dateLabel}</p>
                       ) : null}
                       <p className="mt-1 pl-6 text-sm leading-relaxed text-[#1A1A2E]">
-                        {softenPatientText(item.text)}
+                        {softenPatientText(item.text, scoresUnlocked)}
                       </p>
                     </li>
                   );
@@ -215,7 +215,7 @@ export function WeeklyReportCard({
                       </div>
                     ) : (
                       <p className="mt-2 pl-7 text-sm leading-relaxed text-[#1A1A2E]">
-                        {softenPatientText(priorityActions[i] ?? "")}
+                        {softenPatientText(priorityActions[i] ?? "", scoresUnlocked)}
                       </p>
                     )}
                     {action.target ? (

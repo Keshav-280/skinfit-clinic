@@ -1,4 +1,5 @@
 import type { ObservationRow } from "@/src/lib/weeklyInsightModel";
+import { patientClarityToGrade } from "./clarityGrade";
 
 export type ParsedPriorityAction = {
   title: string;
@@ -8,18 +9,46 @@ export type ParsedPriorityAction = {
 };
 
 /** Strip dense scores so copy reads naturally for patients. */
-export function softenPatientText(text: string): string {
-  return text
+export function softenPatientText(text: string, scoresUnlocked = false): string {
+  let res = text
     .replace(/\s*\(\d{1,3}(?:\/100)?\)/g, "")
-    .replace(/\bkAI score of \d+(?:\/100)?/gi, "your skin grade")
-    .replace(/\bscore of \d+(?:\/100)?/gi, "your grade")
+    .replace(/\b(?:(?:a|an)\s+)?kAI score of \d+(?:\/100)?/gi, "your skin grade")
+    .replace(/\b(?:(?:a|an)\s+)?score of \d+(?:\/100)?/gi, "your grade")
     .replace(/\boverall (?:skin )?(?:score|grade) (?:is )?[A-E]\b/gi, "overall grade")
     .replace(/\baveraging (\d+(?:\.\d+)?)\/10/gi, "around $1 out of 10")
     .replace(/\s{2,}/g, " ")
     .trim();
+
+  if (!scoresUnlocked) {
+    // Protect dates and durations from being parsed as scores.
+    // e.g. "2 June", "28 June", "7 days", "1 day"
+    const protectedMatches: string[] = [];
+    const protectRegex = /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}\b|\b\d+\s+(?:day|week|month|year|hour|glass|visit|scan)[s]?\b/gi;
+    
+    res = res.replace(protectRegex, (match) => {
+      protectedMatches.push(match);
+      return `__PROTECTED_${protectedMatches.length - 1}__`;
+    });
+
+    // Replace other standalone numbers with corresponding grades
+    res = res.replace(/\b([0-9]{1,3})\b/g, (match) => {
+      const val = Number(match);
+      if (val >= 0 && val <= 100) {
+        return `grade ${patientClarityToGrade(val)}`;
+      }
+      return match;
+    });
+
+    // Restore protected dates/durations
+    res = res.replace(/__PROTECTED_(\d+)__/g, (match, index) => {
+      return protectedMatches[Number(index)] ?? match;
+    });
+  }
+
+  return res;
 }
 
-export function parsePriorityAction(raw: string): ParsedPriorityAction {
+export function parsePriorityAction(raw: string, scoresUnlocked = false): ParsedPriorityAction {
   const cleaned = raw.replace(/\s+/g, " ").trim();
   const dashSplit = cleaned.match(/^(.+?)\s*[—–-]\s*(.+)$/);
   const title = (dashSplit?.[1] ?? cleaned).trim();
@@ -31,9 +60,9 @@ export function parsePriorityAction(raw: string): ParsedPriorityAction {
 
   return {
     title,
-    why: why ? softenPatientText(why) : undefined,
-    do: doLine ? softenPatientText(doLine) : undefined,
-    target: target ? softenPatientText(target) : undefined,
+    why: why ? softenPatientText(why, scoresUnlocked) : undefined,
+    do: doLine ? softenPatientText(doLine, scoresUnlocked) : undefined,
+    target: target ? softenPatientText(target, scoresUnlocked) : undefined,
   };
 }
 

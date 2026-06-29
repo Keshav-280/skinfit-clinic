@@ -549,20 +549,6 @@ export function useWebScanCaptureGuidance(
         };
         let next = buildCaptureGuidance(lastLighting, framing, currentZoom);
 
-        const lightingOk = lastLighting.quality === "good";
-        const faceOk = framing.quality === "good";
-
-        const elapsedSinceStepStart = now - stepStartRef.current;
-        if (elapsedSinceStepStart > 4000) {
-          next.readyToCapture = true;
-          if (!lightingOk) {
-            next.lightingMessage = next.lightingMessage.replace(" (tap Capture anyway)", "") + " (tap Capture anyway)";
-          }
-          if (!faceOk) {
-            next.faceMessage = next.faceMessage.replace(" (tap Capture anyway)", "") + " (tap Capture anyway)";
-          }
-        }
-
         const useClassifier =
           FACE_CAPTURE_CONFIG.expression === "classifier" &&
           Boolean(serverPreview?.expressionAvailable && serverPreview.expression);
@@ -608,6 +594,13 @@ export function useWebScanCaptureGuidance(
             expressionPipelineActive,
             expressionCalibrationRef.current
           );
+        }
+
+        const elapsedSinceStepStart = now - stepStartRef.current;
+        if (elapsedSinceStepStart < 4000) {
+          setGuidance(null);
+          prevPublishedGuidanceRef.current = null;
+          return;
         }
 
         const prev = prevPublishedGuidanceRef.current;

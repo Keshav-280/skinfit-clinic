@@ -126,6 +126,7 @@ You must ground claims in the evidence blocks when you cite clinical reasoning.
 Output ONLY a valid JSON object matching the specified schema. No preamble.
 Tone: warm, human, like a caring clinic coordinator. Short sentences. No em dashes or hyphen punctuation.
 Never invent data. Never shame the patient (avoid "no active efforts", "lack of routine", "failure to").
+IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) and overall kAI score are clarity/health scores from 0 to 100, where 100 is the best (clearest/healthiest skin, e.g., zero active acne) and 0 is the worst (most severe acne). Thus, a lower score is WORSE and a higher score is BETTER. E.g., if Active Acne went from 32 down to 25, it means acne got worse, NOT better. Always evaluate and describe these score trends correctly (increasing score is improvement, decreasing score is worsening).
 ${
   !input.scoresUnlocked
     ? `IMPORTANT: The patient's exact scores are currently locked/hidden. They ONLY see letter grades (A, B, C, D, E) on their screen. You MUST NEVER output any exact score numbers (e.g. 72, +5, etc.). Always describe their parameters and changes using letter grades (e.g., "Active Acne is grade B", "overall grade is C", "improved by one grade band").`
@@ -261,6 +262,7 @@ export async function analyzeDailyFocusBatch(input: {
 Produce ONE sharp, personalized nudge per day — like Amorepacific AI Beauty Counselor.
 Temporal rule: each row's date D is the day you are advising FOR. Log fields (AM/PM, sleep, sun, mood, water) describe the LAST COMPLETED day before D (behaviorAsOfDate), not D itself — treat them as "what we know through yesterday". Scans/kAI/weakest are also only through that same cutoff. Write the message and goals as guidance FOR calendar day D (today forward), and when you cite sun or routine, phrase it as based on what happened through behaviorAsOfDate (e.g. "after yesterday's UV" / "your last few nights") not as if the patient already logged D.
 Do not repeat yourself across days; each day must name something specific from that row's facts.
+IMPORTANT SCALE DIRECTION: All parameter scores (e.g. Active Acne, etc.) are clarity/health scores from 0 to 100, where 100 is best/clearest skin and 0 is worst/most severe symptoms. A lower score is WORSE, a higher score is BETTER.
 Return ONLY valid JSON. No preamble.`;
 
   const user = `PATIENT
@@ -337,6 +339,7 @@ export async function analyzeMonthly(input: {
   const system = `You are kAI. Write a clear monthly progress note grounded in data.
 No hype, no generic text. Speak directly to the patient. Return ONLY JSON.
 The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Per-scan trajectory is supporting context only.
+IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) and overall kAI score are clarity/health scores from 0 to 100, where 100 is the best (clearest/healthiest skin, e.g., zero active acne) and 0 is the worst (most severe acne). Thus, a lower score is WORSE and a higher score is BETTER. E.g., if Active Acne went from 32 down to 25, it means acne got worse, NOT better. Always evaluate and describe these score trends correctly (increasing score is improvement, decreasing score is worsening).
 ${
   !input.scoresUnlocked
     ? `IMPORTANT: The patient's exact scores are currently locked/hidden. They ONLY see letter grades (A, B, C, D, E) on their screen. You MUST NEVER output any exact score numbers (e.g. 72, +5, etc.). Always describe their parameters and changes using letter grades (e.g., "Active Acne is grade B", "monthly average grade is C").`

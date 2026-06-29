@@ -127,7 +127,8 @@ export async function retrieveForProfile(ctx: ProfileInsightContext) {
 
 export async function generateProfileKeyObservationsRag(
   ctx: ProfileInsightContext,
-  sharedEvidence?: ProfileEvidence
+  sharedEvidence?: ProfileEvidence,
+  scoresUnlocked = false
 ): Promise<ProfileObservationItem[]> {
   const correlations = profileCorrelations(ctx);
   const signalPack = buildNarrativeSignalPack(correlations, ctx.behavior);
@@ -137,6 +138,14 @@ export async function generateProfileKeyObservationsRag(
 Ground clinical claims in TEXTBOOK EVIDENCE blocks when you explain mechanisms.
 Use ONLY the patient data in the user message — never invent scan scores, dates, or log days.
 Output ONLY valid JSON. No markdown.
+
+IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) are clarity/health scores from 0 to 100, where 100 is the best (clearest/healthiest skin, e.g. zero active acne) and 0 is the worst (most severe acne). Thus, a lower score is WORSE and a higher score is BETTER. E.g., if Active Acne went from 32 down to 25, it means the acne got worse, NOT better. Always evaluate and describe these score trends correctly (increasing score is improvement, decreasing score is worsening).
+
+${
+  !scoresUnlocked
+    ? `IMPORTANT: The patient's exact scores are currently locked/hidden. They ONLY see letter grades (A, B, C, D, E) on their screen. You MUST NEVER output any exact score numbers (e.g. 72, 32, 25, etc.) in the text of your observations. Always describe parameters and changes qualitatively or using letter grades (e.g. "Active Acne is grade D", "overall grade is B").`
+    : `SCORES: The patient's exact scores are unlocked. You can refer to exact score numbers (e.g. "Active Acne is 32").`
+}
 
 Rules for observations:
 - Return 2–4 observations, ordered: (1) baseline/onboarding scan insight, (2) lifestyle from logged days in the stated window, (3) scan trend if 2+ scans exist in window, optional (4) tie-in from weekly report snippet if provided.
@@ -176,7 +185,8 @@ Return JSON:
 
 export async function generateProfilePriorityActionsRag(
   ctx: ProfileInsightContext,
-  sharedEvidence?: ProfileEvidence
+  sharedEvidence?: ProfileEvidence,
+  scoresUnlocked = false
 ): Promise<{ know: string[]; do: string[] }> {
   const correlations = profileCorrelations(ctx);
   const signalPack = buildNarrativeSignalPack(correlations, ctx.behavior);
@@ -189,9 +199,17 @@ export async function generateProfilePriorityActionsRag(
 Ground recommendations in TEXTBOOK EVIDENCE. Use only provided patient data.
 Output ONLY JSON. No generic filler like "scan weekly" without tying to their numbers.
 
+IMPORTANT SCALE DIRECTION: All parameters are clarity/health scores from 0 to 100, where 100 is the best (healthiest) and 0 is the worst. A lower score is WORSE, a higher score is BETTER.
+
+${
+  !scoresUnlocked
+    ? `IMPORTANT: The patient's exact scores are currently locked. You MUST NEVER output any exact score numbers (e.g. 72, 32, etc.) in the actions or facts. Always describe parameters qualitatively or using letter grades.`
+    : `The patient's exact scores are unlocked. You can refer to exact score numbers.`
+}
+
 know: exactly 3 short facts about THIS patient (concern, sensitivity/UV, one data-backed habit signal).
 actions: exactly 3 priority actions. Each detail MUST be 3 lines:
-Why: <1 sentence with their numbers>
+Why: <1 sentence with their numbers (or grades if locked)>
 Do: <specific instruction with timing>
 Target: <measurable checkpoint before next scan>`;
 
@@ -235,7 +253,8 @@ Return JSON:
 export async function buildProfileKeyObservationsLlm(
   userId: string,
   ctx?: ProfileInsightContext,
-  sharedEvidence?: ProfileEvidence
+  sharedEvidence?: ProfileEvidence,
+  scoresUnlocked = false
 ): Promise<ProfileKeyObservationsPayload> {
   const context = ctx ?? (await gatherProfileInsightContext(userId));
   const base: ProfileKeyObservationsPayload = {
@@ -256,7 +275,7 @@ export async function buildProfileKeyObservationsLlm(
     return base;
   }
 
-  const items = await generateProfileKeyObservationsRag(context, sharedEvidence);
+  const items = await generateProfileKeyObservationsRag(context, sharedEvidence, scoresUnlocked);
   return {
     ...base,
     items,
@@ -268,13 +287,14 @@ export async function buildProfileKeyObservationsLlm(
 export async function buildProfilePriorityKnowDoLlm(
   userId: string,
   ctx?: ProfileInsightContext,
-  sharedEvidence?: ProfileEvidence
+  sharedEvidence?: ProfileEvidence,
+  scoresUnlocked = false
 ): Promise<{ know: string[]; do: string[]; generatedBy: "llm_rag"; llmUnavailable: boolean }> {
   const context = ctx ?? (await gatherProfileInsightContext(userId));
   if (!isKaiInsightsEnabled()) {
     return { know: [], do: [], generatedBy: "llm_rag", llmUnavailable: true };
   }
-  const { know, do: doList } = await generateProfilePriorityActionsRag(context, sharedEvidence);
+  const { know, do: doList } = await generateProfilePriorityActionsRag(context, sharedEvidence, scoresUnlocked);
   return {
     know,
     do: doList,

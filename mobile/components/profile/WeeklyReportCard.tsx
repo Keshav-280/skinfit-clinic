@@ -88,7 +88,7 @@ export default function WeeklyReportCard({
   const rows = normalizeObservations(observations);
   const trend = trendSummary(weeklyDelta);
   const kaiView = patientKaiScoreView(kaiScore, scoresUnlocked);
-  const parsedActions = priorityActions.map(parsePriorityAction);
+  const parsedActions = priorityActions.map((act) => parsePriorityAction(act, scoresUnlocked));
 
   return (
     <View style={card.base}>
@@ -184,7 +184,7 @@ export default function WeeklyReportCard({
                       <Text style={s.observationMeta}>{item.dateLabel}</Text>
                     ) : null}
                     <Text style={s.observationBody}>
-                      {softenPatientText(item.text)}
+                      {softenPatientText(item.text, scoresUnlocked)}
                     </Text>
                   </View>
                 );
@@ -219,7 +219,7 @@ export default function WeeklyReportCard({
                     </View>
                   ) : (
                     <Text style={s.actionDoText}>
-                      {softenPatientText(priorityActions[i] ?? "")}
+                      {softenPatientText(priorityActions[i] ?? "", scoresUnlocked)}
                     </Text>
                   )}
                   {action.target ? (

@@ -162,7 +162,7 @@ export const CAPTURE_STEP_WARMUP_MS = 2400;
 
 /** Shown while guidance is suppressed after a step change or returning from review. */
 export const CAPTURE_GUIDANCE_WARMUP_MESSAGE =
-  "Checking lighting and distance…";
+  "Checking… hold still";
 
 /**
  * Minimum lighting score required for `readyToCapture`.
