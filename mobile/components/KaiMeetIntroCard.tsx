@@ -69,7 +69,7 @@ export function KaiMeetIntroCard() {
 
   const cardMinHeight = isWide ? KAI_MEET_CARD.minHeightWide : KAI_MEET_CARD.minHeightPhone;
   const avatarHeight = isWide
-    ? Math.min(cardMinHeight * 0.92, 400)
+    ? Math.min(cardMinHeight * 0.92, 460)
     : Math.min(width * 0.58, 280);
   const avatarWidth = avatarHeight * (132 / 291);
   const haloSize = Math.min(avatarHeight * 1.08, isWide ? 380 : 300);

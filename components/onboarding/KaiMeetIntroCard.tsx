@@ -89,7 +89,7 @@ export function KaiMeetIntroCard() {
         `,
       }}
     >
-      <div className="relative flex min-h-[300px] flex-col md:min-h-[400px] md:flex-row md:items-stretch">
+      <div className="relative flex min-h-[300px] flex-col md:min-h-[460px] md:flex-row md:items-stretch">
         {/* Copy */}
         <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-7 py-8 sm:px-9 sm:py-10 md:max-w-[54%] md:py-12 lg:max-w-[52%]">
           <p
@@ -147,7 +147,7 @@ export function KaiMeetIntroCard() {
                 alt="kAI — your SkinFit AI skin companion"
                 width={200}
                 height={441}
-                className="relative z-10 block h-[min(58vw,280px)] w-auto object-contain object-bottom sm:h-[300px] md:h-[380px] lg:h-[400px]"
+                className="relative z-10 block h-[min(58vw,280px)] w-auto object-contain object-bottom sm:h-[300px] md:h-[440px] lg:h-[460px]"
                 priority
               />
             </motion.div>
