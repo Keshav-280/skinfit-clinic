@@ -6,14 +6,15 @@ export const KAI_MEET_CARD = {
   minHeightWide: 400,
   minHeightPhone: 300,
   gradient: {
-    /** Radial highlight behind avatar (right side). */
-    glow: "#A8B8E8",
-    mid: "#8B96D8",
-    edge: "#5A6DB8",
-    deep: "#4A5E9E",
+    /** Radial highlight behind avatar (right side) - softer for premium look. */
+    glow: "rgba(168, 184, 232, 0.45)",
+    mid: "#6478B4",
+    edge: "#45568F",
+    deep: "#28386C",
   },
   text: {
-    meet: "#1E3264",
+    meet: "#1B2C5B",
+    desc: "#1B2C5B",
     typed: "rgba(255,255,255,0.92)",
     cursor: "rgba(255,255,255,0.75)",
   },
