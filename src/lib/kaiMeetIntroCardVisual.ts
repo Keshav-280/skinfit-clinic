@@ -46,8 +46,8 @@ export function meetCardBackgroundDots(): MeetCardDot[] {
   return dots;
 }
 
-/** Wide circular orbit of dots centered behind the avatar (viewBox 0–100).
- *  Matches target design: scattered stars in a large open circle around the character.
+/** Two clean concentric dotted circles around the avatar.
+ *  Inner ring + outer ring — simple, proper, no overcomplication.
  */
 export function meetCardHaloDots(): MeetCardDot[] {
   const dots: MeetCardDot[] = [];
@@ -55,53 +55,36 @@ export function meetCardHaloDots(): MeetCardDot[] {
   const cx = 50;
   const cy = 50;
 
-  // --- Primary orbit ring (large, clean circle) ---
-  const primaryCount = 72;
-  for (let i = 0; i < primaryCount; i += 1) {
-    const angle = (i / primaryCount) * Math.PI * 2;
-    // Vary radius slightly so dots don't sit on a perfect mechanical ring
-    const jitter = ((i * 13) % 7) - 3;
-    const radius = 42 + jitter * 0.5;
-    // Bigger dots with some size variety
-    const r =
-      i % 9 === 0 ? 2.2        // large accent dot
-      : i % 4 === 0 ? 1.6      // medium dot
-      : 1.1;                    // fine dot
-    // High, uniform opacity — bright stars
-    const opacity = 0.55 + ((i * 7) % 10) * 0.04;
+  // --- Inner circle ---
+  const innerCount = 52;
+  const innerRadius = 30;
+  for (let i = 0; i < innerCount; i++) {
+    const angle = (i / innerCount) * Math.PI * 2;
+    // Every ~5th dot slightly larger for accent
+    const r = i % 5 === 0 ? 1.6 : 1.0;
+    const opacity = i % 5 === 0 ? 0.75 : 0.5;
     dots.push({
-      x: cx + Math.cos(angle) * radius,
-      y: cy + Math.sin(angle) * radius,
+      x: cx + Math.cos(angle) * innerRadius,
+      y: cy + Math.sin(angle) * innerRadius,
       r,
       opacity,
       key: key++,
     });
   }
 
-  // --- Scattered inner field — sparse fine dots inside the ring ---
-  const innerCount = 48;
-  for (let i = 0; i < innerCount; i += 1) {
-    const angle = (i / innerCount) * Math.PI * 2 + 0.15;
-    const radius = 14 + ((i * 11) % 24);
+  // --- Outer circle ---
+  const outerCount = 72;
+  const outerRadius = 44;
+  for (let i = 0; i < outerCount; i++) {
+    const angle = (i / outerCount) * Math.PI * 2;
+    // Every ~6th dot larger for accent
+    const r = i % 6 === 0 ? 1.8 : i % 3 === 0 ? 1.2 : 0.85;
+    const opacity = i % 6 === 0 ? 0.85 : i % 3 === 0 ? 0.6 : 0.4;
     dots.push({
-      x: cx + Math.cos(angle) * radius,
-      y: cy + Math.sin(angle) * radius,
-      r: 0.7 + ((i * 3) % 5) * 0.22,
-      opacity: 0.3 + ((i * 5) % 8) * 0.05,
-      key: key++,
-    });
-  }
-
-  // --- Outer scattered stars just beyond the ring ---
-  const outerCount = 30;
-  for (let i = 0; i < outerCount; i += 1) {
-    const angle = (i / outerCount) * Math.PI * 2 + 0.4;
-    const radius = 47 + ((i * 7) % 10);
-    dots.push({
-      x: cx + Math.cos(angle) * radius,
-      y: cy + Math.sin(angle) * radius,
-      r: i % 5 === 0 ? 1.8 : 0.9,
-      opacity: 0.35 + ((i * 3) % 7) * 0.06,
+      x: cx + Math.cos(angle) * outerRadius,
+      y: cy + Math.sin(angle) * outerRadius,
+      r,
+      opacity,
       key: key++,
     });
   }
