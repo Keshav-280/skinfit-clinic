@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { UserRound, Users } from "lucide-react";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
@@ -15,6 +16,9 @@ import {
 } from "@/src/lib/doctorPortalTheme";
 import { GlobalRefreshButton } from "@/components/ui/GlobalRefreshButton";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import {
+  sanitizeDoctorPortalNext,
+} from "@/src/lib/auth/doctor-portal-next";
 
 export const metadata: Metadata = {
   title: {
@@ -33,7 +37,10 @@ export default async function DoctorPortalLayout({
 }) {
   const id = await getDoctorPortalUserId();
   if (!id) {
-    redirect("/doctor/login");
+    const headersList = await headers();
+    const pathname = headersList.get("x-pathname") ?? "/doctor/patients";
+    const next = encodeURIComponent(sanitizeDoctorPortalNext(pathname));
+    redirect(`/doctor/login?next=${next}`);
   }
 
   return (

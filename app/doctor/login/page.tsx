@@ -1,12 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useState } from "react";
 import { Eye, EyeOff, Stethoscope } from "lucide-react";
+import { sanitizeDoctorPortalNext } from "@/src/lib/auth/doctor-portal-next";
+
+function DoctorLoginFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#F6F4EB] px-4">
+      <p className="text-sm text-slate-500">Loading…</p>
+    </div>
+  );
+}
 
 export default function DoctorLoginPage() {
-  const router = useRouter();
+  return (
+    <Suspense fallback={<DoctorLoginFallback />}>
+      <DoctorLoginForm />
+    </Suspense>
+  );
+}
+
+function DoctorLoginForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -36,14 +53,16 @@ export default function DoctorLoginPage() {
           );
           return;
         }
-        window.location.assign("/doctor/patients");
+        window.location.assign(
+          sanitizeDoctorPortalNext(searchParams.get("next"))
+        );
       } catch {
         setError("Network error.");
       } finally {
         setLoading(false);
       }
     },
-    [email, password, router]
+    [email, password, searchParams]
   );
 
   return (

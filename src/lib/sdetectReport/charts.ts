@@ -2,15 +2,18 @@ import type { jsPDF } from "jspdf";
 import type { SdetectMetric } from "./types";
 
 export const SKINFIT_REPORT_THEME = {
-  navy: [36, 42, 95] as [number, number, number],
+  navy: [30, 58, 95] as [number, number, number],
   navyLight: [74, 82, 140] as [number, number, number],
   peach: [241, 185, 143] as [number, number, number],
-  ink: [30, 30, 40] as [number, number, number],
-  muted: [100, 100, 110] as [number, number, number],
+  ink: [45, 45, 55] as [number, number, number],
+  muted: [120, 120, 130] as [number, number, number],
   grid: [210, 214, 224] as [number, number, number],
-  fill: [76, 175, 120] as [number, number, number],
-  pageBg: [248, 249, 252] as [number, number, number],
+  fill: [76, 175, 80] as [number, number, number],
+  pageBg: [255, 255, 255] as [number, number, number],
   card: [255, 255, 255] as [number, number, number],
+  cardGrey: [245, 245, 245] as [number, number, number],
+  lineDot: [130, 130, 140] as [number, number, number],
+  lineStroke: [90, 90, 100] as [number, number, number],
 } as const;
 
 export function radarGeometry(
@@ -110,6 +113,10 @@ export function drawRadarChart(
   }
 }
 
+type LineChartOptions = {
+  compact?: boolean;
+};
+
 export function drawLineChart(
   doc: jsPDF,
   title: string,
@@ -117,10 +124,13 @@ export function drawLineChart(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
+  options: LineChartOptions = {}
 ) {
+  const compact = options.compact ?? false;
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(compact ? 9 : 11);
   doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
   doc.text(title, x, y);
 
@@ -132,10 +142,10 @@ export function drawLineChart(
     return;
   }
 
-  const chartTop = y + 14;
-  const chartHeight = height - 36;
-  const chartWidth = width - 20;
-  const left = x + 10;
+  const chartTop = y + (compact ? 12 : 14);
+  const chartHeight = height - (compact ? 30 : 36);
+  const chartWidth = width - (compact ? 8 : 20);
+  const left = x + (compact ? 4 : 10);
   const bottom = chartTop + chartHeight;
 
   doc.setDrawColor(...SKINFIT_REPORT_THEME.grid);
@@ -143,10 +153,12 @@ export function drawLineChart(
   for (const tick of [0, 20, 40, 60, 80, 100]) {
     const ty = bottom - (tick / 100) * chartHeight;
     doc.line(left, ty, left + chartWidth, ty);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
-    doc.text(String(tick), left - 12, ty + 2, { align: "right" });
+    if (!compact) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+      doc.text(String(tick), left - 12, ty + 2, { align: "right" });
+    }
   }
 
   const slot = chartWidth / metrics.length;
@@ -157,28 +169,30 @@ export function drawLineChart(
     return { metric, px, py, score };
   });
 
-  doc.setDrawColor(...SKINFIT_REPORT_THEME.navy);
-  doc.setLineWidth(1.4);
+  doc.setDrawColor(...(compact ? SKINFIT_REPORT_THEME.lineStroke : SKINFIT_REPORT_THEME.navy));
+  doc.setLineWidth(compact ? 1.1 : 1.4);
   for (let i = 1; i < points.length; i++) {
     doc.line(points[i - 1].px, points[i - 1].py, points[i].px, points[i].py);
   }
 
   for (const point of points) {
-    doc.setFillColor(...SKINFIT_REPORT_THEME.peach);
-    doc.setDrawColor(...SKINFIT_REPORT_THEME.navy);
+    doc.setFillColor(...(compact ? SKINFIT_REPORT_THEME.lineDot : SKINFIT_REPORT_THEME.peach));
+    doc.setDrawColor(...(compact ? SKINFIT_REPORT_THEME.lineDot : SKINFIT_REPORT_THEME.navy));
     doc.setLineWidth(1);
-    doc.circle(point.px, point.py, 3.2, "FD");
+    doc.circle(point.px, point.py, compact ? 2.8 : 3.2, "FD");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-    doc.text(String(point.score), point.px, point.py - 7, { align: "center" });
+    doc.setFontSize(compact ? 7 : 8);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
+    doc.text(String(point.score), point.px, point.py - (compact ? 6 : 7), {
+      align: "center",
+    });
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
+    doc.setFontSize(compact ? 5.5 : 6.5);
     doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
     const label = doc.splitTextToSize(point.metric.label, slot * 0.95);
-    doc.text(label, point.px, bottom + 8, { align: "center" });
+    doc.text(label, point.px, bottom + (compact ? 6 : 8), { align: "center" });
   }
 }
 

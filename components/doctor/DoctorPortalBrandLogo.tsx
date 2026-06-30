@@ -5,7 +5,7 @@ type Props = {
   className?: string;
 };
 
-/** Navbar brand mark — no background panel; transparent PNG works best on light headers. */
+/** Navbar brand mark — SVG for crisp rendering at all sizes. */
 export function DoctorPortalBrandLogo({ className = "" }: Props) {
   return (
     <Link
@@ -14,10 +14,10 @@ export function DoctorPortalBrandLogo({ className = "" }: Props) {
       aria-label="SkinFit Wellness — doctor portal home"
     >
       <Image
-        src="/branding/skinfit-doctor-logo.png"
+        src="/branding/skinfit-wellness-logo.svg"
         alt="SkinFit Wellness"
-        width={248}
-        height={54}
+        width={560}
+        height={135}
         priority
         className="h-7 w-auto max-w-[9.5rem] object-contain object-left sm:h-8 sm:max-w-[11rem]"
       />
