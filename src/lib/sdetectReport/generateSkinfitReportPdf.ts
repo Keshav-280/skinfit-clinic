@@ -133,7 +133,7 @@ function parseAdviceParts(
   index: number
 ): { heading: string; body: string } {
   const numbered = /^\d+\.\s/.test(item) ? item : `${index + 1}. ${item}`;
-  const match = numbered.match(/^(\d+\.\s+[^:]+:)\s*(.*)$/s);
+  const match = numbered.match(/^(\d+\.\s+[^:]+:)\s*([\s\S]*)$/);
   if (match) {
     return {
       heading: match[1],
