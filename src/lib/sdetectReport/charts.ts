@@ -11,7 +11,9 @@ export const SKINFIT_REPORT_THEME = {
   fill: [76, 175, 80] as [number, number, number],
   pageBg: [255, 255, 255] as [number, number, number],
   card: [255, 255, 255] as [number, number, number],
-  cardGrey: [245, 245, 245] as [number, number, number],
+  /** Visible grey panel — matches design mockup patient/chart cards. */
+  cardGrey: [236, 239, 245] as [number, number, number],
+  cardBorder: [210, 216, 228] as [number, number, number],
   lineDot: [130, 130, 140] as [number, number, number],
   lineStroke: [90, 90, 100] as [number, number, number],
 } as const;

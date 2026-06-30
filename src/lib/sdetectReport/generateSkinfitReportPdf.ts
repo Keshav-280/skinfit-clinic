@@ -1,3 +1,4 @@
+import { appendFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { jsPDF } from "jspdf";
@@ -7,6 +8,34 @@ import { reportQrDataUrl } from "./qrCode";
 import type { SdetectFaceImages, SdetectReportData } from "./types";
 
 type LogoAsset = { dataUrl: string; displayW: number; displayH: number };
+type SignatureAsset = { dataUrl: string; aspect: number };
+
+const DEBUG_LOG_PATH = path.join(process.cwd(), ".cursor/debug-bba219.log");
+
+function debugLog(
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>
+) {
+  // #region agent log
+  try {
+    appendFileSync(
+      DEBUG_LOG_PATH,
+      `${JSON.stringify({
+        sessionId: "bba219",
+        hypothesisId,
+        location,
+        message,
+        data,
+        timestamp: Date.now(),
+      })}\n`
+    );
+  } catch {
+    /* ignore */
+  }
+  // #endregion
+}
 
 const CLINIC_LOCATIONS = [
   {
@@ -16,7 +45,7 @@ const CLINIC_LOCATIONS = [
   },
   {
     address:
-      "3rd Floor, 534/A, 'The Apex' Sarjapur Rd, Bengaluru, Karnataka 560034",
+      "3rd Floor, 534/A, 7th Cross Road, 4th Block, Koramangala, Bengaluru - 560034",
     phone: "+91 91879 67633",
   },
 ] as const;
@@ -24,6 +53,7 @@ const CLINIC_LOCATIONS = [
 const QR_FALLBACK_URL = "https://my.skinfitwellness.in";
 
 let logoCache: LogoAsset | null = null;
+let signatureCache: SignatureAsset | null = null;
 
 const LOGO_DISPLAY_H = 32;
 
@@ -58,6 +88,35 @@ async function loadHeaderLogo(): Promise<LogoAsset> {
     displayH: LOGO_DISPLAY_H,
   };
   return logoCache;
+}
+
+async function loadSignatureImage(): Promise<SignatureAsset> {
+  if (signatureCache) return signatureCache;
+
+  const sigPath = path.join(process.cwd(), "public/branding/dr-skin-fit-signature.png");
+  const buffer = await readFile(sigPath);
+  const meta = await sharp(buffer).metadata();
+  const png = await sharp(buffer).png({ compressionLevel: 6 }).toBuffer();
+
+  signatureCache = {
+    dataUrl: `data:image/png;base64,${png.toString("base64")}`,
+    aspect: (meta.width ?? 492) / (meta.height ?? 192),
+  };
+  return signatureCache;
+}
+
+function drawGreyCard(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius = 10
+) {
+  doc.setFillColor(...SKINFIT_REPORT_THEME.cardGrey);
+  doc.setDrawColor(...SKINFIT_REPORT_THEME.cardBorder);
+  doc.setLineWidth(0.75);
+  doc.roundedRect(x, y, w, h, radius, radius, "FD");
 }
 
 async function imageDataUrl(
@@ -115,9 +174,8 @@ function drawPatientCard(
   w: number,
   h: number
 ) {
-  const radius = 10;
-  doc.setFillColor(...SKINFIT_REPORT_THEME.cardGrey);
-  doc.roundedRect(x, y, w, h, radius, radius, "F");
+  const radius = 12;
+  drawGreyCard(doc, x, y, w, h, radius);
 
   const textW = w * 0.44;
   const imgX = x + textW + 12;
@@ -300,8 +358,10 @@ function drawRadarTitle(doc: jsPDF, x: number, y: number, w: number) {
   const pillY = y;
   const pillH = 22;
 
-  doc.setFillColor(...SKINFIT_REPORT_THEME.cardGrey);
-  doc.roundedRect(pillX, pillY, titleW, pillH, 6, 6, "F");
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(...SKINFIT_REPORT_THEME.cardBorder);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(pillX, pillY, titleW, pillH, 6, 6, "FD");
   doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
   doc.text(title, pillX + titleW / 2, pillY + 14, { align: "center" });
 }
@@ -342,17 +402,24 @@ async function drawFooter(doc: jsPDF, qrUrl: string) {
   doc.line(margin, footerTop, pageW - margin, footerTop);
 
   const sigX = margin;
-  const sigY = footerTop + 18;
-  doc.setFont("times", "italic");
-  doc.setFontSize(20);
-  doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-  doc.text("Dr. Skin Fit", sigX, sigY);
+  const sigY = footerTop + 8;
+  const sigDisplayH = 28;
+  const signature = await loadSignatureImage();
+  const sigDisplayW = sigDisplayH * signature.aspect;
+  doc.addImage(
+    signature.dataUrl,
+    "PNG",
+    sigX,
+    sigY,
+    sigDisplayW,
+    sigDisplayH
+  );
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
-  doc.text("Signature", sigX, sigY + 12);
-  doc.text("Skinfit Wellness", sigX, sigY + 22);
+  doc.text("Signature", sigX, sigY + sigDisplayH + 10);
+  doc.text("Skinfit Wellness", sigX, sigY + sigDisplayH + 20);
 
   const colW = 175;
   const addrStartX = margin + 115;
@@ -415,10 +482,11 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
   await drawPatientImages(doc, data, margin, patientY, contentW, patientH);
 
   const metricsH = 52;
-  const metricsY = patientY + patientH - 22;
+  const metricsOverlap = 26;
+  const metricsY = patientY + patientH - metricsOverlap;
   drawMetricsBar(doc, data, margin, metricsY, contentW, metricsH);
 
-  const chartsY = metricsY + metricsH + 16;
+  const chartsY = metricsY + metricsH + 14;
   const footerReserve = 108;
   const issueReserve = 72;
   const chartsH = pageH - chartsY - footerReserve - issueReserve;
@@ -427,31 +495,50 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
   const rightW = contentW - gutter - leftW;
   const rightX = margin + leftW + gutter;
 
-  drawRadarTitle(doc, margin, chartsY, leftW);
-  const radarSize = Math.min(leftW - 8, chartsH - 28);
+  // #region agent log
+  debugLog("H1", "generateSkinfitReportPdf.ts:layout", "pdf layout metrics", {
+    patientY,
+    patientH,
+    metricsY,
+    metricsOverlap,
+    chartsY,
+    chartsH,
+    leftW,
+    rightW,
+    pageH,
+  });
+  // #endregion
+
+  drawGreyCard(doc, margin, chartsY, leftW, chartsH, 10);
+  drawRadarTitle(doc, margin, chartsY + 10, leftW);
+  const radarPad = 12;
+  const radarSize = Math.min(leftW - radarPad * 2, chartsH - 52);
   const radarX = margin + (leftW - radarSize) / 2;
-  const radarY = chartsY + 30;
+  const radarY = chartsY + 38;
   drawRadarChart(doc, data.radar, radarX, radarY, radarSize);
 
-  const lineH = (chartsH - 12) / 2;
+  const lineGap = 10;
+  const lineH = (chartsH - lineGap) / 2;
+  drawGreyCard(doc, rightX, chartsY, rightW, lineH, 8);
   drawLineChart(
     doc,
     "General analysis",
     data.generalAnalysis,
-    rightX,
-    chartsY,
-    rightW,
-    lineH,
+    rightX + 8,
+    chartsY + 8,
+    rightW - 16,
+    lineH - 8,
     { compact: true }
   );
+  drawGreyCard(doc, rightX, chartsY + lineH + lineGap, rightW, lineH, 8);
   drawLineChart(
     doc,
     "In-depth analysis",
     data.inDepthAnalysis,
-    rightX,
-    chartsY + lineH + 10,
-    rightW,
-    lineH,
+    rightX + 8,
+    chartsY + lineH + lineGap + 8,
+    rightW - 16,
+    lineH - 8,
     { compact: true }
   );
 
