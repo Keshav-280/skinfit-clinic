@@ -96,28 +96,18 @@ function drawGreyCard(
   doc.roundedRect(x, y, w, h, radius, radius, "FD");
 }
 
-async function imageDataUrl(
-  buffer: Buffer
-): Promise<{ dataUrl: string; width: number; height: number }> {
-  const meta = await sharp(buffer).metadata();
-  const jpg = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
-  return {
-    dataUrl: `data:image/jpeg;base64,${jpg.toString("base64")}`,
-    width: meta.width ?? 1,
-    height: meta.height ?? 1,
-  };
-}
-
-function fitContain(
-  srcW: number,
-  srcH: number,
-  maxW: number,
-  maxH: number
-): { w: number; h: number; offsetX: number; offsetY: number } {
-  const scale = Math.min(maxW / srcW, maxH / srcH);
-  const w = srcW * scale;
-  const h = srcH * scale;
-  return { w, h, offsetX: (maxW - w) / 2, offsetY: (maxH - h) / 2 };
+async function imageCoverBottomDataUrl(
+  buffer: Buffer,
+  displayW: number,
+  displayH: number
+): Promise<string> {
+  const pixelW = Math.max(64, Math.round(displayW * 3));
+  const pixelH = Math.max(64, Math.round(displayH * 3));
+  const jpg = await sharp(buffer)
+    .resize(pixelW, pixelH, { fit: "cover", position: "bottom" })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+  return `data:image/jpeg;base64,${jpg.toString("base64")}`;
 }
 
 function wrap(doc: jsPDF, text: string, maxWidth: number): string[] {
@@ -130,11 +120,49 @@ function measureWrappedLines(
   doc: jsPDF,
   text: string,
   maxWidth: number,
-  fontSize: number
+  fontSize: number,
+  fontStyle: "normal" | "bold" = "normal"
 ): number {
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", fontStyle);
   doc.setFontSize(fontSize);
   return wrap(doc, text, maxWidth).length;
+}
+
+function parseAdviceParts(
+  item: string,
+  index: number
+): { heading: string; body: string } {
+  const numbered = /^\d+\.\s/.test(item) ? item : `${index + 1}. ${item}`;
+  const match = numbered.match(/^(\d+\.\s+[^:]+:)\s*(.*)$/s);
+  if (match) {
+    return {
+      heading: match[1],
+      body: match[2].replace(/\s+/g, " ").trim(),
+    };
+  }
+  return { heading: numbered, body: "" };
+}
+
+function measureSkincareAdviceHeight(
+  doc: jsPDF,
+  items: string[],
+  maxW: number
+): number {
+  const lineH = 10;
+  const bodySize = 8;
+  const advice = items.map((item) => item.trim()).filter(Boolean);
+  if (!advice.length) return 0;
+
+  let total = 16;
+  advice.forEach((item, index) => {
+    const { heading, body } = parseAdviceParts(item, index);
+    total += measureWrappedLines(doc, heading, maxW, bodySize, "bold") * lineH;
+    if (body) {
+      total += measureWrappedLines(doc, body, maxW, bodySize) * lineH;
+    }
+    total += 2;
+  });
+  return total;
 }
 
 function estimateNarrativeHeight(
@@ -142,7 +170,7 @@ function estimateNarrativeHeight(
   data: SdetectReportData,
   maxW: number
 ): number {
-  const sectionGap = 10;
+  const sectionGap = 8;
   const headerH = 16;
   const lineH = 10;
   const bodySize = 8;
@@ -151,16 +179,12 @@ function estimateNarrativeHeight(
   if (data.issueAnalysis.trim()) {
     total += headerH;
     total += measureWrappedLines(doc, data.issueAnalysis, maxW, bodySize) * lineH;
-    total += sectionGap;
   }
 
   const advice = data.skincareAdvice.filter((item) => item.trim());
   if (advice.length) {
-    total += headerH;
-    for (const item of advice) {
-      total += measureWrappedLines(doc, item, maxW, bodySize) * lineH + 2;
-    }
-    total += sectionGap;
+    if (total > 0) total += sectionGap;
+    total += measureSkincareAdviceHeight(doc, data.skincareAdvice, maxW);
   }
 
   return total;
@@ -177,7 +201,7 @@ function drawBodyParagraph(
   let cy = startY;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
+  doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
   for (const line of lines) {
     if (cy > maxY) break;
     doc.text(line, x, cy);
@@ -205,20 +229,47 @@ function drawPageHeader(doc: jsPDF, logo: LogoAsset) {
   );
 }
 
+function formatPatientPhone(phone: string): string {
+  const trimmed = phone.trim();
+  if (!trimmed || trimmed === "—") return trimmed;
+  if (trimmed.startsWith("+")) return trimmed;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) return `+91 ${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return `+91 ${digits.slice(2)}`;
+  }
+  return trimmed;
+}
+
+/** Patient profile card background (light green). */
+const PATIENT_CARD_GREEN = [242, 244, 241] as [number, number, number];
+
+function drawPatientCardBackground(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius = 12
+) {
+  doc.setFillColor(...PATIENT_CARD_GREEN);
+  doc.setDrawColor(...SKINFIT_REPORT_THEME.cardBorder);
+  doc.setLineWidth(0.75);
+  doc.roundedRect(x, y, w, h, radius, radius, "FD");
+}
+
 function drawPatientCard(
   doc: jsPDF,
   data: SdetectReportData,
   x: number,
   y: number,
   w: number,
-  h: number
+  contentH: number,
+  cardH: number
 ) {
-  const radius = 12;
-  drawGreyCard(doc, x, y, w, h, radius);
+  drawPatientCardBackground(doc, x, y, w, cardH);
 
   const textW = w * 0.44;
-  const imgX = x + textW + 12;
-  const imgW = w - textW - 24;
   const padX = x + 20;
   let ty = y + 28;
 
@@ -232,19 +283,22 @@ function drawPatientCard(
   doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
   doc.text(data.patient.name, padX + helloW, ty);
 
-  ty += 20;
+  const nameW = doc.getTextWidth(data.patient.name);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+  doc.text(data.patient.gender, padX + helloW + nameW + 14, ty);
+
+  ty += 20;
+  doc.setFontSize(9.5);
   doc.text(`Age: ${data.patient.age}yrs`, padX, ty);
-  doc.text(data.patient.gender, padX + textW * 0.42, ty);
 
   ty += 18;
   doc.setFontSize(8.5);
   doc.text("Contact information", padX, ty);
   ty += 12;
   doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
-  doc.text(data.patient.phone, padX, ty);
+  doc.text(formatPatientPhone(data.patient.phone), padX, ty);
 
   ty += 18;
   doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
@@ -259,38 +313,6 @@ function drawPatientCard(
   ty += 12;
   doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
   doc.text(String(data.patient.scanFrequency), padX, ty);
-
-  const imgPad = 8;
-  const imgAreaY = y + imgPad;
-  const imgAreaH = h - imgPad * 2;
-  const mainW = imgW * 0.58;
-  const sideW = imgW - mainW - 8;
-  const sideH = (imgAreaH - 8) / 2;
-
-  const slots: Array<{
-    key: keyof SdetectFaceImages | null;
-    sx: number;
-    sy: number;
-    sw: number;
-    sh: number;
-  }> = [
-    { key: "front", sx: imgX, sy: imgAreaY, sw: mainW, sh: imgAreaH },
-    { key: "left", sx: imgX + mainW + 8, sy: imgAreaY, sw: sideW, sh: sideH },
-    {
-      key: "right",
-      sx: imgX + mainW + 8,
-      sy: imgAreaY + sideH + 8,
-      sw: sideW,
-      sh: sideH,
-    },
-  ];
-
-  for (const slot of slots) {
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(...SKINFIT_REPORT_THEME.grid);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(slot.sx, slot.sy, slot.sw, slot.sh, 4, 4, "FD");
-  }
 }
 
 async function drawPatientImages(
@@ -311,7 +333,8 @@ async function drawPatientImages(
   const imgAreaH = h - imgPad * 2;
   const mainW = imgW * 0.58;
   const sideW = imgW - mainW - 8;
-  const sideH = (imgAreaH - 8) / 2;
+  const sideGap = 4;
+  const sideH = (imgAreaH - sideGap) / 2;
 
   const slots: Array<{
     key: keyof SdetectFaceImages;
@@ -321,33 +344,23 @@ async function drawPatientImages(
     sh: number;
   }> = [
     { key: "front", sx: imgX, sy: imgAreaY, sw: mainW, sh: imgAreaH },
-    { key: "left", sx: imgX + mainW + 8, sy: imgAreaY, sw: sideW, sh: sideH },
+    { key: "right", sx: imgX + mainW + 8, sy: imgAreaY, sw: sideW, sh: sideH },
     {
-      key: "right",
+      key: "left",
       sx: imgX + mainW + 8,
-      sy: imgAreaY + sideH + 8,
+      sy: imgAreaY + sideH + sideGap,
       sw: sideW,
       sh: sideH,
     },
   ];
 
   for (const slot of slots) {
-    const { dataUrl, width, height } = await imageDataUrl(data.faceImages[slot.key]);
-    const innerPad = 3;
-    const fit = fitContain(
-      width,
-      height,
-      slot.sw - innerPad * 2,
-      slot.sh - innerPad * 2
+    const dataUrl = await imageCoverBottomDataUrl(
+      data.faceImages[slot.key],
+      slot.sw,
+      slot.sh
     );
-    doc.addImage(
-      dataUrl,
-      "JPEG",
-      slot.sx + innerPad + fit.offsetX,
-      slot.sy + innerPad + fit.offsetY,
-      fit.w,
-      fit.h
-    );
+    doc.addImage(dataUrl, "JPEG", slot.sx, slot.sy, slot.sw, slot.sh);
   }
 }
 
@@ -372,11 +385,10 @@ function drawMetricsBar(
 
   metrics.forEach((metric, i) => {
     const cx = x + cellW * i + cellW / 2;
-    doc.setFont("helvetica", "bold");
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(22);
     doc.setTextColor(255, 255, 255);
     doc.text(metric.value, cx, y + 30, { align: "center" });
-    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.text(metric.label, cx, y + 44, { align: "center" });
 
@@ -436,17 +448,22 @@ function drawSkincareAdvice(
   doc.text("Skincare advice", x, y);
 
   let cy = y + 16;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
 
   advice.forEach((item, index) => {
-    const numbered = /^\d+\.\s/.test(item) ? item : `${index + 1}. ${item}`;
-    const lines = wrap(doc, numbered, maxW);
-    for (const line of lines) {
-      if (cy > maxY) return cy;
+    const { heading, body } = parseAdviceParts(item, index);
+    if (cy > maxY) return;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
+    for (const line of wrap(doc, heading, maxW)) {
+      if (cy > maxY) return;
       doc.text(line, x, cy);
       cy += 10;
+    }
+
+    if (body) {
+      cy = drawBodyParagraph(doc, wrap(doc, body, maxW), x, cy, 10, maxY);
     }
     cy += 2;
   });
@@ -481,7 +498,7 @@ async function drawFooter(doc: jsPDF, qrUrl: string) {
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+  doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
   doc.text("Signature", sigX, sigY + sigDisplayH + 10);
   doc.text("Skinfit Wellness", sigX, sigY + sigDisplayH + 20);
 
@@ -489,21 +506,15 @@ async function drawFooter(doc: jsPDF, qrUrl: string) {
   const addrStartX = margin + 115;
   CLINIC_LOCATIONS.forEach((loc, i) => {
     const ax = addrStartX + i * (colW + 16);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-    doc.text("Address", ax, footerContentY + 8);
-
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
-    doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
-    let ay = footerContentY + 18;
+    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
+    let ay = footerContentY + 8;
     for (const line of wrap(doc, loc.address, colW - 4)) {
       doc.text(line, ax, ay);
       ay += 9;
     }
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
     doc.text("Mobile:", ax, ay + 2);
     doc.setFont("helvetica", "normal");
     doc.text(loc.phone, ax + 30, ay + 2);
@@ -541,21 +552,33 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
   drawPageHeader(doc, logo);
 
   const patientY = 52;
-  const patientH = 178;
-  drawPatientCard(doc, data, margin, patientY, contentW, patientH);
-  await drawPatientImages(doc, data, margin, patientY, contentW, patientH);
+  const patientContentH = 178;
+  const patientCardH = patientContentH * 1.1;
+  drawPatientCard(doc, data, margin, patientY, contentW, patientContentH, patientCardH);
+  await drawPatientImages(doc, data, margin, patientY, contentW, patientContentH);
 
   const metricsH = 52;
-  const metricsGap = 10;
-  const metricsY = patientY + patientH + metricsGap;
-  drawMetricsBar(doc, data, margin, metricsY, contentW, metricsH);
+  const metricsOverlap = 14;
+  const metricsShiftDown = patientContentH * 0.04;
+  const metricsRaise = patientCardH * 0.08;
+  const metricsY = patientY + patientCardH - metricsOverlap + metricsShiftDown - metricsRaise;
+  const metricsBarW = contentW * 0.78;
+  const metricsBarX = margin + (contentW - metricsBarW) / 2;
+  drawMetricsBar(doc, data, metricsBarX, metricsY, metricsBarW, metricsH);
 
   const chartsY = metricsY + metricsH + 14;
   const narrativeTopGap = 24;
-  const maxNarrativeBottom = pageH - FOOTER_RESERVE - 14;
+  const narrativeBottomPad = 14;
+  const maxNarrativeBottom = pageH - FOOTER_RESERVE - narrativeBottomPad;
   const narrativeHeight = estimateNarrativeHeight(doc, data, contentW);
   const minChartsH = 200;
-  const maxChartsH = pageH - chartsY - FOOTER_RESERVE - narrativeHeight - narrativeTopGap;
+  const maxChartsH =
+    pageH -
+    chartsY -
+    FOOTER_RESERVE -
+    narrativeHeight -
+    narrativeTopGap -
+    narrativeBottomPad;
   const chartsH = Math.max(minChartsH, maxChartsH);
   const gutter = 16;
   const leftW = (contentW - gutter) * 0.48;
@@ -579,14 +602,15 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
   });
 
   const innerPad = 10;
+  const topChartExtra = 8;
   const lineGap = 8;
-  const lineH = (chartsH - innerPad * 2 - lineGap) / 2;
+  const lineH = (chartsH - innerPad * 2 - topChartExtra - lineGap) / 2;
   drawLineChart(
     doc,
     "General analysis",
     data.generalAnalysis,
     rightX + innerPad,
-    chartsY + innerPad,
+    chartsY + innerPad + topChartExtra,
     rightW - innerPad * 2,
     lineH,
     { compact: true }
@@ -596,7 +620,7 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
     "In-depth analysis",
     data.inDepthAnalysis,
     rightX + innerPad,
-    chartsY + innerPad + lineH + lineGap,
+    chartsY + innerPad + topChartExtra + lineH + lineGap,
     rightW - innerPad * 2,
     lineH,
     { compact: true }

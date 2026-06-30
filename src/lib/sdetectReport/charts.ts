@@ -75,7 +75,7 @@ export function drawRadarChart(
   const padX = 8;
   const padTop = 2;
   const padBottom = 4;
-  const labelOffset = 12;
+  const labelOffset = 14;
   const clipLeft = bounds.x + 4;
   const clipRight = bounds.x + bounds.w - 4;
   const labelMaxW = Math.min(48, bounds.w * 0.36);
@@ -179,6 +179,11 @@ export function drawRadarChart(
       if (ly - labelBlockH < bounds.labelMinY) {
         ly = bounds.labelMinY + labelBlockH;
       }
+    }
+
+    /** Top-axis labels (e.g. Superficial pigment) — sit above the polygon. */
+    if (sin < -0.45) {
+      ly -= 10;
     }
 
     doc.setFont("helvetica", "normal");
