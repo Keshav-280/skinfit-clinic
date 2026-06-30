@@ -221,6 +221,6 @@ export function customerFromApi(
       report?.ServerCreateTime?.slice(0, 10) ??
       "—",
     scanFrequency:
-      Number.parseInt(customer?.count ?? c?.Count ?? "0", 10) || 0,
+      Number.parseInt(c?.Count ?? customer?.count ?? "0", 10) || 0,
   };
 }

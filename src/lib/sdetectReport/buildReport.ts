@@ -17,7 +17,7 @@ function mergePatient(
     age: apiPatient.age || pdfPatient.age,
     phone: masked(apiPatient.phone) && !masked(pdfPatient.phone) ? pdfPatient.phone : apiPatient.phone,
     reportDate: pdfPatient.reportDate !== "—" ? pdfPatient.reportDate : apiPatient.reportDate,
-    scanFrequency: apiPatient.scanFrequency || pdfPatient.scanFrequency,
+    scanFrequency: pdfPatient.scanFrequency || apiPatient.scanFrequency,
   };
 }
 
