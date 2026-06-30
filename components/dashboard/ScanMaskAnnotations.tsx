@@ -3,8 +3,8 @@
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import {
   legacyMaskTitleCropStyle,
+  scanMaskPanelAspectCss,
   shouldCropLegacyMaskTitle,
-  SCAN_MASK_FRAME_ASPECT_CSS,
 } from "@/src/lib/maskImageCrop";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import {
@@ -40,12 +40,12 @@ function MaskPanel({
   const displaySrc = publicFileDisplayUrl(src) ?? src;
   const fallback = fallbackSrc ? publicFileDisplayUrl(fallbackSrc) ?? fallbackSrc : "";
   const cropLegacyTitle = shouldCropLegacyMaskTitle(displaySrc, maskExportVersion);
-  const fitClass = stretch ? "object-fill" : "object-cover";
+  const fitClass = stretch ? "object-fill" : "object-contain";
   return (
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
-        style={{ aspectRatio: SCAN_MASK_FRAME_ASPECT_CSS }}
+        style={{ aspectRatio: scanMaskPanelAspectCss(cropLegacyTitle) }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

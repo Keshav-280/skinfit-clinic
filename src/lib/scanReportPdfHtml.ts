@@ -4,9 +4,9 @@ import { patientClarityToGrade, patientDisplayClarity } from "./clarityGrade";
 
 import {
   legacyMaskTitleCropPercents,
+  scanMaskPanelAspectCss,
   shouldCropLegacyMaskTitle,
   SCAN_FACE_FRAME_ASPECT_CSS,
-  SCAN_MASK_FRAME_ASPECT_CSS,
 } from "./maskImageCrop";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "./onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "./patientTrackerReport.types";
@@ -274,30 +274,23 @@ function maskPanelHtml(
   alt: string,
   caption: string,
   fallback?: string,
-  maskExportVersion?: number | null,
-  stretch = false
+  maskExportVersion?: number | null
 ): string {
   const fallbackAttr = fallback
     ? ` onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src=${JSON.stringify(fallback)}}"`
     : "";
   const legacy = shouldCropLegacyMaskTitle(src, maskExportVersion);
-  const objectFit = stretch ? "fill" : legacy ? "cover" : "contain";
+  const objectFit = legacy ? "cover" : "contain";
   const imgStyle = legacy
     ? (() => {
         const { heightPct, topPct } = legacyMaskTitleCropPercents();
         return ` style="height:${heightPct}%;top:${topPct}%;object-fit:${objectFit};object-position:center;"`;
       })()
-    : stretch
-      ? ` style="object-fit:fill;object-position:center;"`
-      : "";
-  const imgClass = legacy
-    ? "mask-panel-img mask-panel-img-legacy"
-    : stretch
-      ? "mask-panel-img mask-panel-img-stretch"
-      : "mask-panel-img";
+    : "";
+  const imgClass = legacy ? "mask-panel-img mask-panel-img-legacy" : "mask-panel-img";
   return `
     <figure class="mask-panel">
-      <div class="mask-panel-frame" style="aspect-ratio: ${legacy ? '1 / 1' : '3 / 4'};">
+      <div class="mask-panel-frame" style="aspect-ratio: ${scanMaskPanelAspectCss(legacy)};">
         <img class="${imgClass}" src=${JSON.stringify(src)} alt=${JSON.stringify(alt)}${imgStyle}${fallbackAttr} />
       </div>
       <figcaption>${esc(caption)}</figcaption>
@@ -323,8 +316,7 @@ function buildMaskAnnotationsHtml(p: ScanReportPdfPayload): string {
         "Wrinkle mask overlay",
         p.wrinklePoseLabel ?? WRINKLE_MASK_PANEL_LABEL,
         p.wrinkleFallbackDataUri,
-        p.maskExportVersion,
-        true
+        p.maskExportVersion
       );
     }
     if (acMask) {
@@ -789,7 +781,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .mask-panel-frame {
       position: relative;
       width: 100%;
-      aspect-ratio: ${SCAN_MASK_FRAME_ASPECT_CSS};
+      aspect-ratio: ${SCAN_FACE_FRAME_ASPECT_CSS};
       overflow: hidden;
       border-radius: 8px;
       background: #fafafa;
@@ -808,9 +800,6 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       inset: auto;
       left: 0;
       width: 100%;
-    }
-    .mask-panel-img-stretch {
-      object-fit: fill;
     }
     .mask-panel figcaption {
       margin-top: 8px;

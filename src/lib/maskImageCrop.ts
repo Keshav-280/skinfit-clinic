@@ -9,9 +9,22 @@ export const MASK_MATPLOTLIB_TITLE_CROP_RATIO = 0.13;
 export const SCAN_FACE_FRAME_ASPECT = 3 / 4;
 export const SCAN_FACE_FRAME_ASPECT_CSS = "3 / 4";
 
-/** Mask overlay panels — square 224×224 inference output (width / height). */
-export const SCAN_MASK_FRAME_ASPECT = 1;
-export const SCAN_MASK_FRAME_ASPECT_CSS = "1 / 1";
+/** Legacy matplotlib mask panels (title band cropped in a square frame). */
+export const SCAN_MASK_LEGACY_FRAME_ASPECT = 1;
+export const SCAN_MASK_LEGACY_FRAME_ASPECT_CSS = "1 / 1";
+
+/**
+ * Title-free mask JPEGs are square inference crops; display in 3:4 to match face
+ * capture panels with object-contain so the full face stays visible (letterbox).
+ */
+export const SCAN_MASK_FRAME_ASPECT = SCAN_FACE_FRAME_ASPECT;
+export const SCAN_MASK_FRAME_ASPECT_CSS = SCAN_FACE_FRAME_ASPECT_CSS;
+
+export function scanMaskPanelAspectCss(cropLegacyTitle: boolean): string {
+  return cropLegacyTitle
+    ? SCAN_MASK_LEGACY_FRAME_ASPECT_CSS
+    : SCAN_MASK_FRAME_ASPECT_CSS;
+}
 
 /** Title-free JPEG overlays from `/analyze_dual_scan` (no matplotlib). */
 export const MASK_EXPORT_VERSION_TITLE_FREE = 2;

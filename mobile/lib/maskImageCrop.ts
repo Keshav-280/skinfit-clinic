@@ -3,7 +3,7 @@
 import type { ImageStyle } from "react-native";
 
 export const SCAN_FACE_FRAME_ASPECT = 3 / 4;
-export const SCAN_MASK_FRAME_ASPECT = 1;
+export const SCAN_MASK_FRAME_ASPECT = SCAN_FACE_FRAME_ASPECT;
 
 export const MASK_MATPLOTLIB_TITLE_CROP_RATIO = 0.13;
 export const MASK_EXPORT_VERSION_TITLE_FREE = 2;

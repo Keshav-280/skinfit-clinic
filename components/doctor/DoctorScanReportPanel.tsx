@@ -7,7 +7,7 @@ import {
   WRINKLE_MASK_PANEL_LABEL,
 } from "@/src/lib/scanMaskLabels";
 import {
-  SCAN_MASK_FRAME_ASPECT_CSS,
+  scanMaskPanelAspectCss,
   shouldCropLegacyMaskTitle,
   legacyMaskTitleCropStyle,
 } from "@/src/lib/maskImageCrop";
@@ -87,12 +87,12 @@ function DoctorScanMaskImage({
   stretch?: boolean;
 }) {
   const cropLegacyTitle = shouldCropLegacyMaskTitle(src, maskExportVersion);
-  const fitClass = stretch ? "object-fill" : cropLegacyTitle ? "object-contain" : "object-cover";
+  const fitClass = stretch ? "object-fill" : "object-contain";
   return (
     <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
-        style={{ aspectRatio: SCAN_MASK_FRAME_ASPECT_CSS }}
+        style={{ aspectRatio: scanMaskPanelAspectCss(cropLegacyTitle) }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

@@ -8,7 +8,7 @@ import {
 import {
   legacyMaskTitleCropImageStyle,
   shouldCropLegacyMaskTitle,
-  SCAN_MASK_FRAME_ASPECT,
+  SCAN_FACE_FRAME_ASPECT,
 } from "@/lib/maskImageCrop";
 
 function MaskPanel({
@@ -17,24 +17,23 @@ function MaskPanel({
   caption,
   authToken,
   maskExportVersion,
-  stretch = false,
 }: {
   uri: string;
   fallbackUri?: string;
   caption: string;
   authToken?: string | null;
   maskExportVersion?: number | null;
-  stretch?: boolean;
 }) {
   const cropLegacyTitle = shouldCropLegacyMaskTitle(uri, maskExportVersion);
+  const panelAspect = cropLegacyTitle ? 1 : SCAN_FACE_FRAME_ASPECT;
   return (
     <View style={styles.item}>
-      <View style={[styles.imageClip, { aspectRatio: cropLegacyTitle ? 1 : 3 / 4 }]}>
+      <View style={[styles.imageClip, { aspectRatio: panelAspect }]}>
         <ReportContainImage
           imageUrl={uri}
           fallbackImageUrl={fallbackUri}
           authToken={authToken}
-          resizeMode={stretch ? "stretch" : "cover"}
+          resizeMode="contain"
           style={StyleSheet.absoluteFillObject}
           imageStyle={cropLegacyTitle ? legacyMaskTitleCropImageStyle() : undefined}
         />
@@ -76,7 +75,6 @@ export function ScanMaskAnnotationsNative({
           caption={wrinkleLabel}
           authToken={authToken}
           maskExportVersion={maskExportVersion}
-          stretch
         />
       ) : null}
       {acne ? (
@@ -106,7 +104,6 @@ const styles = StyleSheet.create({
     position: "relative",
     width: "100%",
     maxWidth: 340,
-    aspectRatio: SCAN_MASK_FRAME_ASPECT,
     overflow: "hidden",
     borderRadius: 12,
     backgroundColor: "#f4f4f5",
