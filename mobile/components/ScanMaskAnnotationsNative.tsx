@@ -33,7 +33,7 @@ function MaskPanel({
           imageUrl={uri}
           fallbackImageUrl={fallbackUri}
           authToken={authToken}
-          resizeMode="contain"
+          resizeMode={cropLegacyTitle ? "contain" : "cover"}
           style={StyleSheet.absoluteFillObject}
           imageStyle={cropLegacyTitle ? legacyMaskTitleCropImageStyle() : undefined}
         />

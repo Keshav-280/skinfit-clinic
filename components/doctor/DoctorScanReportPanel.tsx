@@ -87,7 +87,7 @@ function DoctorScanMaskImage({
   stretch?: boolean;
 }) {
   const cropLegacyTitle = shouldCropLegacyMaskTitle(src, maskExportVersion);
-  const fitClass = stretch ? "object-fill" : "object-contain";
+  const fitClass = stretch ? "object-fill" : cropLegacyTitle ? "object-contain" : "object-cover";
   return (
     <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
       <div

@@ -14,8 +14,7 @@ export const SCAN_MASK_LEGACY_FRAME_ASPECT = 1;
 export const SCAN_MASK_LEGACY_FRAME_ASPECT_CSS = "1 / 1";
 
 /**
- * Title-free mask JPEGs are square inference crops; display in 3:4 to match face
- * capture panels with object-contain so the full face stays visible (letterbox).
+ * Title-free mask JPEGs are 3:4 portrait exports — fill the panel with object-cover.
  */
 export const SCAN_MASK_FRAME_ASPECT = SCAN_FACE_FRAME_ASPECT;
 export const SCAN_MASK_FRAME_ASPECT_CSS = SCAN_FACE_FRAME_ASPECT_CSS;

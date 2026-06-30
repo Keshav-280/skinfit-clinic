@@ -280,7 +280,7 @@ function maskPanelHtml(
     ? ` onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src=${JSON.stringify(fallback)}}"`
     : "";
   const legacy = shouldCropLegacyMaskTitle(src, maskExportVersion);
-  const objectFit = legacy ? "cover" : "contain";
+  const objectFit = "cover";
   const imgStyle = legacy
     ? (() => {
         const { heightPct, topPct } = legacyMaskTitleCropPercents();
@@ -792,7 +792,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
       object-position: center;
       display: block;
     }

@@ -40,7 +40,7 @@ function MaskPanel({
   const displaySrc = publicFileDisplayUrl(src) ?? src;
   const fallback = fallbackSrc ? publicFileDisplayUrl(fallbackSrc) ?? fallbackSrc : "";
   const cropLegacyTitle = shouldCropLegacyMaskTitle(displaySrc, maskExportVersion);
-  const fitClass = stretch ? "object-fill" : "object-contain";
+  const fitClass = stretch ? "object-fill" : cropLegacyTitle ? "object-contain" : "object-cover";
   return (
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
