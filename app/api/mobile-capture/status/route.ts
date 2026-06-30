@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
       success: true,
       status: currentStatus,
       scanId: session.scanId,
+      captureImages:
+        currentStatus === "photos_ready" ? session.captureImages ?? null : null,
     });
   } catch (error) {
     console.error("[mobile-capture/status] error:", error);

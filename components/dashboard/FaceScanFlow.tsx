@@ -1058,22 +1058,45 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       ) : null}
 
       {step === "phone-qr" && (
-        <MobileCaptureQRPanel
-          onBack={() => setStep("upload")}
-          onPhotosReady={(captureImages) => {
-            void handleRemotePhotosReady(captureImages);
-          }}
-          onScanComplete={(scanId) => {
-            if (isOnboardingScan) {
-              router.push(
-                `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
-              );
-            } else {
-              router.push(`/dashboard/history/scans/${scanId}`);
-            }
-          }}
-          isOnboardingScan={isOnboardingScan}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-auto w-full max-w-lg space-y-5"
+        >
+          {!isOnboardingScan ? (
+            <header className="text-center sm:text-left">
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+                Skin analysis
+              </p>
+              <h1
+                className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl"
+                style={{ color: navy }}
+              >
+                Scan with your phone
+              </h1>
+              <p className="mt-2 text-sm text-[#64748B]">
+                Point your phone camera at the QR code below to capture all five
+                angles.
+              </p>
+            </header>
+          ) : null}
+          <MobileCaptureQRPanel
+            onBack={() => setStep("upload")}
+            onPhotosReady={(captureImages) => {
+              void handleRemotePhotosReady(captureImages);
+            }}
+            onScanComplete={(scanId) => {
+              if (isOnboardingScan) {
+                router.push(
+                  `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
+                );
+              } else {
+                router.push(`/dashboard/history/scans/${scanId}`);
+              }
+            }}
+            isOnboardingScan={isOnboardingScan}
+          />
+        </motion.div>
       )}
 
       {showUploadChrome &&
@@ -1263,27 +1286,26 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <button
                   type="button"
                   onClick={() => setStep("phone-qr")}
-                  className="group relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#2C3E6B] to-[#1E294B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.85)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_48px_-18px_rgba(44,62,107,0.95)] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                  className="group relative overflow-hidden rounded-[24px] border-2 border-[#4CAF50]/35 bg-white p-6 text-left text-[#2C3E6B] shadow-[0_4px_24px_-10px_rgba(44,62,107,0.14)] transition-all duration-300 hover:-translate-y-1 hover:border-[#4CAF50]/50 hover:shadow-[0_14px_36px_-12px_rgba(44,62,107,0.18)] focus:outline-none focus:ring-2 focus:ring-[#4CAF50]/25"
                 >
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 transition-transform duration-500 group-hover:scale-110" />
-                  <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-24 rounded-tl-full bg-emerald-400/10" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E8F5E9]/80 transition-transform duration-500 group-hover:scale-110" />
                   <div className="relative flex h-full flex-col justify-between">
                     <div>
-                      <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-emerald-300">
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-emerald-700 ring-1 ring-emerald-100">
                         ★ Recommended
                       </span>
-                      <div className="mt-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 shadow-inner">
-                        <Smartphone className="h-7 w-7 text-emerald-300" />
+                      <div className="mt-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8F5E9] shadow-inner ring-1 ring-[#4CAF50]/15">
+                        <Smartphone className="h-7 w-7 text-[#2E7D32]" />
                       </div>
                       <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
                         Scan with phone camera
                       </h2>
-                      <p className="mt-2 text-xs leading-relaxed text-white/75">
+                      <p className="mt-2 text-xs leading-relaxed text-[#64748B]">
                         Scan a QR code to capture with your phone. Best image
                         quality for face scanning.
                       </p>
                     </div>
-                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] shadow-sm transition-colors group-hover:bg-slate-50">
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2C3E6B] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition-colors group-hover:bg-[#354A7A]">
                       Use Phone Camera
                       <Smartphone className="h-3.5 w-3.5" />
                     </span>

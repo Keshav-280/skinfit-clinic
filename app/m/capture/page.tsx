@@ -17,10 +17,10 @@ function MobileCaptureFlow() {
 
 export default function MobileCapturePage() {
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100 flex flex-col justify-center">
+    <div className="flex min-h-screen flex-col justify-center bg-[#F2F9F2] text-[#2C3E6B]">
       <Suspense
         fallback={
-          <div className="text-center py-12 text-slate-400">
+          <div className="py-12 text-center text-sm text-[#64748B]">
             Loading capture tool...
           </div>
         }
