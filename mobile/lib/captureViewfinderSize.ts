@@ -20,7 +20,8 @@ function fitViewfinder3x4(maxWidth: number, maxHeight: number) {
   };
 }
 
-const VIEWFINDER_CHROME_BELOW = 300;
+/** Header + step title — tips/controls scroll below the viewfinder. */
+const VIEWFINDER_CHROME_BELOW = 120;
 const VIEWFINDER_CHROME_ABOVE = 132;
 
 /** Stable on-screen viewfinder size — must match `OnboardingCaptureStepUI`. */

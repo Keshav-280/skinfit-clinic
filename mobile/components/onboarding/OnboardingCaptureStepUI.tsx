@@ -8,6 +8,7 @@ import {
   LayoutChangeEvent,
   PanResponder,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,6 +21,7 @@ import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
 import {
   CAPTURE_GUIDANCE_WARMUP_MESSAGE,
+  LIGHTING_SCORE_READY_THRESHOLD,
   type CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
 import {
@@ -47,13 +49,21 @@ type StepMeta = {
 function VoiceVolumeSlider({
   value,
   onChange,
+  onDragStart,
+  onDragEnd,
 }: {
   value: number;
   onChange: (value: number) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }) {
   const trackWidth = useRef(0);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
 
   function computeValue(x: number) {
     const w = trackWidth.current;
@@ -70,11 +80,21 @@ function VoiceVolumeSlider({
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (e) => {
+          onDragStartRef.current?.();
           onChangeRef.current(computeValue(e.nativeEvent.locationX));
         },
         onPanResponderMove: (e) => {
           onChangeRef.current(computeValue(e.nativeEvent.locationX));
+        },
+        onPanResponderRelease: () => {
+          onDragEndRef.current?.();
+        },
+        onPanResponderTerminate: () => {
+          onDragEndRef.current?.();
         },
       }),
     []
@@ -207,6 +227,7 @@ export function OnboardingCaptureStepUI({
   showExtraTipsHelp = true,
 }: Props) {
   const [extraTipsOpen, setExtraTipsOpen] = useState(false);
+  const [volumeDragging, setVolumeDragging] = useState(false);
   const insets = useSafeAreaInsets();
   const progress = (stepIndex + 1) / totalSteps;
   const { width: screenW, height: screenH } = Dimensions.get("window");
@@ -280,9 +301,18 @@ export function OnboardingCaptureStepUI({
           <VoiceVolumeSlider
             value={voiceVolume}
             onChange={onVoiceVolumeChange}
+            onDragStart={() => setVolumeDragging(true)}
+            onDragEnd={() => setVolumeDragging(false)}
           />
         ) : null}
 
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={!volumeDragging}
+          keyboardShouldPersistTaps="handled"
+        >
         <Text style={styles.stepCount}>
           {stepIndex + 1} of {totalSteps}
         </Text>
@@ -397,6 +427,7 @@ export function OnboardingCaptureStepUI({
             <Text style={styles.libraryLinkText}>Pick from library instead</Text>
           </Pressable>
         ) : null}
+        </ScrollView>
       </View>
 
       <CaptureExtraTipsModal
@@ -423,7 +454,9 @@ function CaptureGuidanceStatusBoxes({
     );
   }
 
-  const lightingOk = guidance.lighting === "good" || guidance.lightingScore >= 60;
+  const lightingOk =
+    guidance.lighting === "good" ||
+    guidance.lightingScore >= LIGHTING_SCORE_READY_THRESHOLD;
   const faceOk = guidance.face === "good";
 
   return (
@@ -479,6 +512,13 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 8,
   },
   topBar: {
     flexDirection: "row",

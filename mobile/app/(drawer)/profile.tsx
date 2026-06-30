@@ -115,61 +115,90 @@ export default function ProfileScreen() {
     ]);
   }, [token, applyProfile]);
 
+  const loadProfilePhoto = useCallback(async () => {
+    if (!token) return null;
+    return fetchAndCachePhoto(token);
+  }, [token]);
+
   useFocusEffect(
     useCallback(() => {
       if (!token) return;
       let cancelled = false;
 
       (async () => {
-        // 1. Restore cached data instantly (only on first mount or if state is empty)
-        if (!hydrated.current) {
-          const [cp, ch, cachedPhoto] = await Promise.all([
+        try {
+          // 1. Restore cached data instantly (only on first mount or after token change)
+          if (!hydrated.current) {
+            const [cp, ch, cachedPhoto] = await Promise.all([
+              getCached<ProfileUser>(CK_PROFILE),
+              getCached<HomePayload>(CK_HOME),
+              getCachedPhoto(),
+            ]);
+            if (cancelled) return;
+            if (cp) {
+              applyProfile(cp);
+              setLoading(false);
+            }
+            if (ch) setHomeData(ch);
+            if (cachedPhoto) setPhotoUri(cachedPhoto);
+            hydrated.current = true;
+          }
+
+          // 2. Skip profile network if cache is fresh — use stored profile, not React state
+          const [age, cachedProfile] = await Promise.all([
+            getCacheAge(CK_PROFILE),
             getCached<ProfileUser>(CK_PROFILE),
-            getCached<HomePayload>(CK_HOME),
-            getCachedPhoto(),
           ]);
           if (cancelled) return;
-          if (cp) { applyProfile(cp); setLoading(false); }
-          if (ch) setHomeData(ch);
-          if (cachedPhoto) setPhotoUri(cachedPhoto);
-          hydrated.current = true;
-        }
 
-        // 2. Check staleness — skip network if fresh
-        const age = await getCacheAge(CK_PROFILE);
-        if (age < STALE_MS && hydrated.current && name) {
-          setLoading(false);
-          return;
-        }
+          if (age < STALE_MS && cachedProfile) {
+            applyProfile(cachedProfile);
+            setLoading(false);
+            const uri = await loadProfilePhoto();
+            if (!cancelled) setPhotoUri(uri);
+            return;
+          }
 
-        // 3. Fetch fresh in background (no spinner if we already have cached data)
-        const showSpinner = !name;
-        if (showSpinner) setLoading(true);
-        else setRefreshing(true);
+          // 3. Fetch fresh profile + home in background
+          const showSpinner = !cachedProfile;
+          if (showSpinner) setLoading(true);
+          else setRefreshing(true);
 
-        try {
           await fetchFresh();
           if (!cancelled) setError(null);
-        } catch (e) {
-          if (!cancelled) setError(e instanceof ApiError ? e.message : "Could not load profile.");
-        } finally {
-          if (!cancelled) { setLoading(false); setRefreshing(false); }
-        }
 
-        fetchAndCachePhoto(token).then((uri) => { if (!cancelled) setPhotoUri(uri); });
+          const uri = await loadProfilePhoto();
+          if (!cancelled) setPhotoUri(uri);
+        } catch (e) {
+          if (!cancelled) {
+            setError(e instanceof ApiError ? e.message : "Could not load profile.");
+          }
+        } finally {
+          if (!cancelled) {
+            setLoading(false);
+            setRefreshing(false);
+          }
+        }
       })();
 
-      return () => { cancelled = true; };
-    }, [token, fetchFresh, applyProfile, name])
+      return () => {
+        cancelled = true;
+      };
+    }, [token, fetchFresh, applyProfile, loadProfilePhoto])
   );
 
   const onPullRefresh = useCallback(async () => {
     setRefreshing(true);
-    try { await fetchFresh(); }
-    catch {}
-    finally { setRefreshing(false); }
-    if (token) fetchAndCachePhoto(token).then((uri) => setPhotoUri(uri));
-  }, [fetchFresh, token]);
+    try {
+      await fetchFresh();
+      const uri = await loadProfilePhoto();
+      setPhotoUri(uri);
+    } catch {
+      /* keep existing UI */
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchFresh, loadProfilePhoto]);
 
   function handlePhotoPress() {
     if (!token || uploadingPhoto) return;

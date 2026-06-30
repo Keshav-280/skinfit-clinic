@@ -25,6 +25,7 @@ import { needsExpressionCheck } from "@/lib/captureExpression";
 import { isNativeFaceLandmarkAvailable } from "@/lib/nativeFaceLandmarkDetection";
 import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
 import {
+  CAPTURE_GUIDANCE_SETTLE_MS,
   CAPTURE_STEP_WARMUP_MS,
   type CaptureAssistModels,
   type CaptureGuidanceSnapshot,
@@ -93,6 +94,7 @@ export function useMobileScanCaptureGuidance(
   const wasInWarmupRef = useRef(false);
   const warningSwitchingUntilRef = useRef<number>(0);
   const prevPublishedGuidanceRef = useRef<CaptureGuidanceSnapshot | null>(null);
+  const lastGuidancePublishRef = useRef(0);
   const [models, setModels] = useState<CaptureAssistModels>(() =>
     initialMobileModels(captureCfg, needsMp, false)
   );
@@ -119,6 +121,7 @@ export function useMobileScanCaptureGuidance(
     setPreviewAspect("—");
     warningSwitchingUntilRef.current = 0;
     prevPublishedGuidanceRef.current = null;
+    lastGuidancePublishRef.current = 0;
   }, []);
 
   const expressionStep = needsExpressionCheck();
@@ -180,18 +183,26 @@ export function useMobileScanCaptureGuidance(
           faceLandmarks: null,
         };
         setFaceLandmarks(null);
+        lastGuidancePublishRef.current = 0;
       } else if (inWarmup) {
         wasInWarmupRef.current = true;
       }
 
       if (!inWarmup && next) {
-        let finalGuidance = next;
         const elapsedSinceStepStart = now - stepStartRef.current;
         if (elapsedSinceStepStart < 4000) {
           setGuidance(null);
           prevPublishedGuidanceRef.current = null;
           return;
         }
+
+        const publishNow =
+          lastGuidancePublishRef.current === 0 ||
+          now - lastGuidancePublishRef.current >= CAPTURE_GUIDANCE_SETTLE_MS;
+        if (!publishNow) return;
+
+        lastGuidancePublishRef.current = now;
+        let finalGuidance = next;
         const prev = prevPublishedGuidanceRef.current;
         const isWarningTypeChanged = Boolean(
           prev &&

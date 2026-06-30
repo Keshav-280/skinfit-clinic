@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import {
   ScanCaptureDebugOverlay,
-  isCaptureDebugEnabled,
   isCaptureDebugTapEnabled,
 } from "@/components/ScanCaptureDebugOverlay";
 import { CaptureFaceGuideOverlayNative } from "@/components/capture/CaptureFaceGuideOverlayNative";
@@ -41,6 +40,7 @@ import { lockedTakePictureAsync } from "@/lib/lockedCameraCapture";
 import { prepareCapturedScanPhotoUri } from "@/lib/normalizeScanImage";
 import {
   CAPTURE_GUIDANCE_WARMUP_MESSAGE,
+  LIGHTING_SCORE_READY_THRESHOLD,
   type CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
 
@@ -53,7 +53,7 @@ function humanGuidanceMessage(
 ): string {
   if (!g) return CAPTURE_GUIDANCE_WARMUP_MESSAGE;
   let msg = "Hold still…";
-  if (g.lighting !== "good" && g.lightingScore < 60) msg = g.lightingMessage;
+  if (g.lighting !== "good" && g.lightingScore < LIGHTING_SCORE_READY_THRESHOLD) msg = g.lightingMessage;
   else if (g.face !== "good") msg = g.faceMessage;
   else if (expressionStep && g.expressionOk !== true && g.expressionMessage) {
     msg = g.expressionMessage;
@@ -88,11 +88,10 @@ export function FiveAngleCameraStep({
   const [shooting, setShooting] = useState(false);
   const [pendingUri, setPendingUri] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("front");
-  const [showDebug, setShowDebug] = useState(() => isCaptureDebugEnabled());
+  const [showDebug, setShowDebug] = useState(false);
   const [cameraAdjust, setCameraAdjust] = useState<CameraAdjustments>(
     DEFAULT_CAMERA_ADJUSTMENTS
   );
-  const captureDebug = isCaptureDebugEnabled();
   const voiceSpeechAvailable = isCaptureVoiceSpeechAvailable();
   const [voiceEnabled, setVoiceEnabled] = useState(() => voiceSpeechAvailable);
   const [voiceVolume, setVoiceVolume] = useState(0.42);
@@ -100,18 +99,6 @@ export function FiveAngleCameraStep({
   useEffect(() => {
     void loadStoredCaptureVoiceVolume().then(setVoiceVolume);
   }, []);
-
-  const stepStartRef = useRef<number>(0);
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    stepStartRef.current = Date.now();
-    setElapsed(0);
-    const t = setInterval(() => {
-      setElapsed(Date.now() - stepStartRef.current);
-    }, 500);
-    return () => clearInterval(t);
-  }, [stepIndex]);
 
   useEffect(() => {
     captureVoiceGuide.setVolume(voiceVolume);
@@ -255,7 +242,7 @@ export function FiveAngleCameraStep({
     );
   }
 
-  const guidanceReady = (guidance?.readyToCapture ?? false) && elapsed > 4000;
+  const guidanceReady = guidance?.readyToCapture ?? false;
   const isDisabled =
     busy || shooting || !cameraReady || reviewingCapture || !guidanceReady;
   const previewOverlay = previewOverlayOpacity(
@@ -380,7 +367,7 @@ export function FiveAngleCameraStep({
       cameraReady={cameraReady}
       showGuidanceBanner
       showVoiceToggle={voiceSpeechAvailable}
-      showDevControls={__DEV__ || captureDebug}
+      showDevControls={false}
     />
   );
 }

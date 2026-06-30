@@ -6,13 +6,17 @@ export type { CaptureAssistModels } from "../../src/lib/scanCaptureGuidance";
 
 import {
   CAPTURE_LIGHTING_THRESHOLDS,
+  LIGHTING_SCORE_READY_THRESHOLD,
 } from "../../src/lib/scanCaptureGuidance";
 
 export {
+  CAPTURE_GUIDANCE_SETTLE_MS,
   CAPTURE_GUIDANCE_WARMUP_MESSAGE,
   CAPTURE_LIGHTING_THRESHOLDS,
   CAPTURE_STEP_WARMUP_MS,
   FACE_BOX_SMOOTH_ALPHA,
+  LIGHTING_SCORE_READY_THRESHOLD,
+  averageFaceBoxes,
   smoothFaceBox,
 } from "../../src/lib/scanCaptureGuidance";
 
@@ -525,7 +529,8 @@ export function buildCaptureGuidance(
       )
     : null;
   const lightingOk =
-    lighting.quality === "good" || lighting.score >= 60;
+    lighting.quality === "good" ||
+    lighting.score >= LIGHTING_SCORE_READY_THRESHOLD;
   const faceOk = framing.quality === "good";
   const readyToCapture = lightingOk && faceOk;
 
