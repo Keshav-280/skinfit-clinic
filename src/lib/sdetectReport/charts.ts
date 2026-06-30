@@ -136,7 +136,7 @@ export function drawRadarChart(
     if (cos > 0.25) align = "left";
     else if (cos < -0.25) align = "right";
 
-    const lines = doc.splitTextToSize(point.metric.label, labelMaxW);
+    const lines = doc.splitTextToSize(point.metric.label, labelMaxW) as string[];
     const scoreLine = `${point.metric.score}%`;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6);
