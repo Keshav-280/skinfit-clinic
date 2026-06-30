@@ -1,15 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Eye, EyeOff, Stethoscope } from "lucide-react";
-import { sanitizeOAuthNext } from "@/src/lib/auth/oauth/state";
 
 export default function DoctorLoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nextPath = sanitizeOAuthNext(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -39,14 +36,14 @@ export default function DoctorLoginPage() {
           );
           return;
         }
-        window.location.assign(nextPath ?? "/doctor/patients");
+        window.location.assign("/doctor/patients");
       } catch {
         setError("Network error.");
       } finally {
         setLoading(false);
       }
     },
-    [email, password, nextPath, router]
+    [email, password, router]
   );
 
   return (

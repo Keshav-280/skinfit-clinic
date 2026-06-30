@@ -13,6 +13,13 @@ function isStaffRole(role: unknown): boolean {
   return role === "doctor" || role === "admin";
 }
 
+function annotatorNotAllowed(): NextResponse {
+  return new NextResponse("Not allowed", {
+    status: 403,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -21,29 +28,36 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const annotatorPage = isAnnotatorPage(pathname);
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const secret = getSessionSecret();
-  const annotatorPage = isAnnotatorPage(pathname);
-  const loginPath = annotatorPage ? "/doctor/login" : "/login";
+
+  if (annotatorPage) {
+    if (!token || !secret) return annotatorNotAllowed();
+    try {
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+        algorithms: ["HS256"],
+      });
+      if (!isStaffRole(payload.role)) return annotatorNotAllowed();
+      return NextResponse.next();
+    } catch {
+      return annotatorNotAllowed();
+    }
+  }
 
   if (!token || !secret) {
-    const login = new URL(loginPath, request.url);
+    const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
 
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+    await jwtVerify(token, new TextEncoder().encode(secret), {
       algorithms: ["HS256"],
     });
-    if (annotatorPage && !isStaffRole(payload.role)) {
-      const login = new URL("/doctor/login", request.url);
-      login.searchParams.set("next", pathname);
-      return NextResponse.redirect(login);
-    }
     return NextResponse.next();
   } catch {
-    const login = new URL(loginPath, request.url);
+    const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }

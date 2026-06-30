@@ -1,5 +1,4 @@
 import Script from "next/script";
-import { redirect } from "next/navigation";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 
 export default async function AnnotatorLayout({
@@ -9,7 +8,11 @@ export default async function AnnotatorLayout({
 }) {
   const staffId = await getDoctorPortalUserId();
   if (!staffId) {
-    redirect("/doctor/login");
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-100 text-neutral-700">
+        <p className="text-lg font-medium">Not allowed</p>
+      </div>
+    );
   }
 
   return (
