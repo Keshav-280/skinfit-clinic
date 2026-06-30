@@ -13,11 +13,12 @@ import {
 } from "@/src/lib/clarityGrade";
 
 describe("patientDisplayClarity", () => {
-  it("saturates high raw scores near 80", () => {
-    expect(patientDisplayClarity(100)).toBeLessThanOrEqual(80);
+  it("saturates high raw scores below 80 (no grade A band)", () => {
+    expect(patientDisplayClarity(100)).toBeLessThan(80);
+    expect(patientDisplayClarity(100)).toBeLessThanOrEqual(79);
+    expect(patientClarityToGrade(100)).toBe("B");
+    expect(patientClarityToGrade(97)).toBe("B");
     expect(patientDisplayClarity(97)).toBeGreaterThanOrEqual(78);
-    expect(patientDisplayClarity(97)).toBeLessThanOrEqual(80);
-    expect(patientDisplayClarity(96)).toBeLessThan(patientDisplayClarity(100));
   });
 
   it("preserves sensitivity in mid range", () => {
@@ -46,6 +47,10 @@ describe("patientClarityToGrade", () => {
   it("maps inflated raw scores to B, not A", () => {
     expect(patientClarityToGrade(96)).toBe("B");
     expect(patientClarityToGrade(97)).toBe("B");
+    expect(patientClarityToGrade(100)).toBe("B");
+    for (let r = 0; r <= 100; r++) {
+      expect(patientClarityToGrade(r)).not.toBe("A");
+    }
   });
 });
 
@@ -77,10 +82,13 @@ describe("patientScoreView", () => {
     expect(locked.label).toBe("B");
   });
 
-  it("shows exact raw score when unlocked", () => {
+  it("shows capped display score when unlocked", () => {
     const unlocked = patientScoreView(72, true);
     expect(unlocked.locked).toBe(false);
-    expect(unlocked.label).toBe("72");
+    expect(unlocked.label).toBe(String(patientDisplayClarity(72)));
+    const high = patientScoreView(100, true);
+    expect(Number(high.label)).toBeLessThanOrEqual(80);
+    expect(high.label).not.toBe("100");
   });
 });
 
@@ -92,9 +100,11 @@ describe("patientKaiScoreView", () => {
     expect(locked.kaiSecondary).toBe("");
   });
 
-  it("shows exact score when unlocked", () => {
+  it("shows capped display score when unlocked", () => {
     const unlocked = patientKaiScoreView(72, true);
     expect(unlocked.showLock).toBe(false);
-    expect(unlocked.kaiPrimary).toBe("72");
+    expect(unlocked.kaiPrimary).toBe(String(patientDisplayClarity(72)));
+    const high = patientKaiScoreView(100, true);
+    expect(Number(high.kaiPrimary)).toBeLessThanOrEqual(80);
   });
 });

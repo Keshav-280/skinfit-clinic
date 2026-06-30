@@ -1,6 +1,7 @@
 /**
  * Patient-facing clarity grades (raw 0–100 model score → calibrated display → A–E).
- * Locked UI uses calibrated grades; unlocked UI shows raw resolved scores (doctor parity).
+ * Storage/DB keeps raw resolved scores (doctor parity); patient UI always shows
+ * calibrated display scores (capped ≤80) when unlocked, letter grades when locked.
  */
 
 export type ClarityGrade = "A" | "B" | "C" | "D" | "E";
@@ -26,8 +27,10 @@ export const CLARITY_GRADE_BANDS: ReadonlyArray<{
   { grade: "E", min: 0, max: 19 },
 ] as const;
 
-/** Upper bound of patient display clarity (gamma saturation cap). */
+/** Upper bound of patient display clarity (gamma saturation asymptote). */
 export const PATIENT_DISPLAY_SCORE_MAX = 80;
+/** Hard cap on patient-facing numeric scores — strictly below 80 so grade A is never shown. */
+export const PATIENT_DISPLAY_SCORE_CAP = 79;
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
 
@@ -45,7 +48,7 @@ export function patientDisplayClarity(rawScore: number): number {
   const saturated =
     PATIENT_DISPLAY_SCORE_MAX *
     (1 - Math.exp(-PATIENT_DISPLAY_LAMBDA * Math.pow(x, PATIENT_DISPLAY_GAMMA)));
-  return clampClarity(saturated);
+  return Math.min(PATIENT_DISPLAY_SCORE_CAP, clampClarity(saturated));
 }
 
 /** Map calibrated display clarity to letter grade (>=80 A … <20 E). */
@@ -58,9 +61,10 @@ export function clarityToGrade(displayScore: number): ClarityGrade {
   return "E";
 }
 
-/** Raw model clarity → calibrated display → letter grade (patient UI). */
+/** Raw model clarity → calibrated display → letter grade (patient UI; never A). */
 export function patientClarityToGrade(rawScore: number): ClarityGrade {
-  return clarityToGrade(patientDisplayClarity(rawScore));
+  const grade = clarityToGrade(patientDisplayClarity(rawScore));
+  return grade === "A" ? "B" : grade;
 }
 
 /** Ring / chart color by letter grade (patient UI). */
@@ -154,20 +158,19 @@ export function patientScoreView(
   rawScore: number,
   scoresUnlocked: boolean
 ): PatientScoreView {
-  const displayScore = scoresUnlocked
-    ? clampClarity(rawScore)
-    : patientDisplayClarity(rawScore);
+  const displayScore = patientDisplayClarity(rawScore);
   const grade = clarityToGrade(displayScore);
   const rangeLabel = gradeRangeLabel(grade);
   const locked = !scoresUnlocked;
+  const label = scoresUnlocked
+    ? String(displayScore)
+    : patientGradeWithRange(rawScore);
   return {
     grade,
     displayScore,
     color: gradeColor(grade),
     sublabel: gradeSublabel(grade),
-    label: scoresUnlocked
-      ? String(clampClarity(rawScore))
-      : patientGradeWithRange(rawScore),
+    label,
     rangeLabel,
     locked,
   };
@@ -210,7 +213,7 @@ export function patientParamGaugeLabel(
   scoresUnlocked: boolean
 ): string {
   return scoresUnlocked
-    ? String(clampClarity(rawScore))
+    ? String(patientDisplayClarity(rawScore))
     : patientClarityToGrade(rawScore);
 }
 
@@ -227,6 +230,6 @@ export function patientChartDisplayValue(
   rawScore: number,
   scoresUnlocked: boolean
 ): number {
-  if (scoresUnlocked) return clampClarity(rawScore);
+  if (scoresUnlocked) return patientDisplayClarity(rawScore);
   return GRADE_CHART_Y[patientClarityToGrade(rawScore)];
 }

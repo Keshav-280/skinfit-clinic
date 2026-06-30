@@ -17,6 +17,7 @@ import {
   RAG_KAI_PARAM_KEYS,
   RAG_KAI_PARAM_LABELS,
 } from "@/src/lib/ragEightParams";
+import { patientDisplayClarity } from "@/src/lib/clarityGrade";
 import {
   kaiScoreFromScanRow,
   ragParamValuesFromScanRow,
@@ -176,7 +177,7 @@ export async function computePatientTrackerScoreBundle(input: {
       source: hasModelValue ? "ai" : "none",
       delta:
         typeof cur === "number" && typeof prev === "number"
-          ? Math.round(cur - prev)
+          ? Math.round(patientDisplayClarity(cur) - patientDisplayClarity(prev))
           : null,
       prevScanValue: typeof prev === "number" ? Math.round(prev) : null,
       prevWeekAverage,
@@ -230,7 +231,11 @@ export async function computePatientTrackerScoreBundle(input: {
       })
     : null;
   const lastScanDelta =
-    prevKai == null ? null : Math.round(currentKai - prevKai);
+    prevKai == null
+      ? null
+      : Math.round(
+          patientDisplayClarity(currentKai) - patientDisplayClarity(prevKai)
+        );
   const kaiDelta = lastScanDelta ?? 0;
 
   const isFirstOnboardingScan =
