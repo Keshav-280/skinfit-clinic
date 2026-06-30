@@ -179,7 +179,14 @@ export default function HistoryListScreen() {
           <Ionicons name="chevron-back" size={22} color={NAVY} />
         </Pressable>
         <Text style={styles.headerTitle}>Treatment History</Text>
-        <View style={{ width: 36 }} />
+        <Pressable
+          onPress={() => router.push("/(drawer)/scan")}
+          style={styles.headerActionBtn}
+          hitSlop={12}
+          accessibilityLabel="Take scan"
+        >
+          <Ionicons name="camera-outline" size={22} color={NAVY} />
+        </Pressable>
       </View>
     <ScrollView
       style={styles.scroll}
@@ -429,6 +436,14 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerActionBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,

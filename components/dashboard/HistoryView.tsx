@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Archive,
+  Camera,
   Check,
   ChevronRight,
   FileText,
@@ -281,18 +282,27 @@ export function HistoryView({
                 : "Complete your first scan to start tracking progress."}
             </p>
           </div>
-          {testScansCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => void onDeleteTestScans()}
-              disabled={deleteLoading}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-red-200/80 bg-red-50/90 px-4 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Remove only the demo/test scans from your history"
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/scan"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
             >
-              <Trash2 className="h-4 w-4" />
-              {deleteLoading ? "Deleting..." : `Delete test scans (${testScansCount})`}
-            </button>
-          ) : null}
+              <Camera className="h-4 w-4" aria-hidden />
+              Take scan
+            </Link>
+            {testScansCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => void onDeleteTestScans()}
+                disabled={deleteLoading}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-red-200/80 bg-red-50/90 px-4 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                title="Remove only the demo/test scans from your history"
+              >
+                <Trash2 className="h-4 w-4" />
+                {deleteLoading ? "Deleting..." : `Delete test scans (${testScansCount})`}
+              </button>
+            ) : null}
+          </div>
         </div>
         {deleteError ? (
           <div
@@ -353,9 +363,16 @@ export function HistoryView({
               </motion.div>
             ))
           ) : (
-            <p className={`col-span-full py-10 text-center ${patientMuted}`}>
-              No scans yet. Complete your first AI scan to track progress.
-            </p>
+            <div className={`col-span-full flex flex-col items-center gap-4 py-10 text-center ${patientMuted}`}>
+              <p>No scans yet. Complete your first AI scan to track progress.</p>
+              <Link
+                href="/dashboard/scan"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80"
+              >
+                <Camera className="h-4 w-4" aria-hidden />
+                Take scan
+              </Link>
+            </div>
           )}
         </div>
       </motion.section>
