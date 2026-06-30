@@ -183,5 +183,11 @@ export function mergeRagParamValuesFromScan(input: {
     out.wrinkles = clampPct(input.wrinklesColumn);
   }
 
+  // Doctor-entered 0–100 parameter scores beat every other source.
+  for (const key of RAG_KAI_ALL_PARAM_KEYS) {
+    const p = doctorOverrideParamScore(key);
+    if (p != null) out[key] = p;
+  }
+
   return out;
 }

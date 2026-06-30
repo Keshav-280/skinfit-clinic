@@ -167,11 +167,13 @@ export function resolveScanDisplayScores(input: {
         (v) => typeof v === "number" && Number.isFinite(v)
       ));
 
+  // When doctor overrides any of the six params, kAI must match their weighted sum.
   const resolvedKaiScore =
-    typeof doctorOverrides?.kaiScore === "number" && Number.isFinite(doctorOverrides.kaiScore)
-      ? clampInt(doctorOverrides.kaiScore, 0, 100)
-      : hasDoctorParamOverrides
-        ? computedKai
+    hasDoctorParamOverrides && computedKai != null
+      ? computedKai
+      : typeof doctorOverrides?.kaiScore === "number" &&
+          Number.isFinite(doctorOverrides.kaiScore)
+        ? clampInt(doctorOverrides.kaiScore, 0, 100)
         : storedKai ?? computedKai;
 
   const resolvedAcne =
@@ -317,28 +319,8 @@ export function ragParamValuesFromScanRow(
   });
 }
 
-/** Weighted kAI score with doctor override when present. */
+/** Weighted kAI score — same resolution path as patient/doctor scan metrics. */
 export function kaiScoreFromScanRow(row: ScanRowForScoreResolution): number {
-  const { effectiveScoresJson, doctorOverrides } = resolveEffectiveScoresJson(
-    row.scores
-  );
-  if (
-    typeof doctorOverrides?.kaiScore === "number" &&
-    Number.isFinite(doctorOverrides.kaiScore)
-  ) {
-    return clampInt(doctorOverrides.kaiScore, 0, 100);
-  }
-
-  const root =
-    effectiveScoresJson && typeof effectiveScoresJson === "object"
-      ? (effectiveScoresJson as Record<string, unknown>)
-      : null;
-  const storedKai =
-    typeof root?.overallKaiScore === "number" && Number.isFinite(root.overallKaiScore)
-      ? clampInt(root.overallKaiScore, 0, 100)
-      : null;
-  if (storedKai != null) return storedKai;
-
   return resolveScanDisplayScores({
     scoresJson: row.scores,
     baseMetricsColumns: {

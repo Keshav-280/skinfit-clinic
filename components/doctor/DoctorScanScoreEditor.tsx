@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
 import type { DoctorScanReportPayload } from "@/src/lib/doctorScanReportPayload";
 import { patientClarityToGrade } from "@/src/lib/clarityGrade";
+import { computeRagKaiScore } from "@/src/lib/ragEightParams";
 import {
   doctorPatientPageFormInputClass,
   doctorPatientPageNavyBtnGhostClass,
@@ -57,9 +58,14 @@ function buildFormState(report: DoctorScanReportPayload) {
     parameterScores[key] = initialParamScore(report, key);
   }
   return {
-    kaiScore: clampPct(report.metrics.overall_score),
     parameterScores,
   };
+}
+
+function kaiFromParameterScores(
+  parameterScores: Record<EditableParamKey, number>
+): number {
+  return computeRagKaiScore(parameterScores) ?? 70;
 }
 
 function formatDoctorScoreSaveError(code: string | undefined): string {
@@ -103,9 +109,14 @@ export function DoctorScanScoreEditor({
     setForm(buildFormState(report));
   }, [report]);
 
+  const kaiScore = useMemo(
+    () => kaiFromParameterScores(form.parameterScores),
+    [form.parameterScores]
+  );
+
   const kaiGrade = useMemo(
-    () => patientClarityToGrade(form.kaiScore),
-    [form.kaiScore]
+    () => patientClarityToGrade(kaiScore),
+    [kaiScore]
   );
 
   async function patchScores(body: Record<string, unknown>) {
@@ -130,7 +141,7 @@ export function DoctorScanScoreEditor({
     setFlash(null);
     try {
       await patchScores({
-        kaiScore: form.kaiScore,
+        kaiScore,
         parameterScores: form.parameterScores,
       });
       setFlash("Scores saved. Patient notified via clinic support chat.");
@@ -170,7 +181,7 @@ export function DoctorScanScoreEditor({
         <div>
           <h4 className="text-xs font-semibold text-[#2C3E6B]">Adjust scores</h4>
           <p className="mt-0.5 text-[11px] leading-relaxed text-[#2C3E6B]/60">
-            Override kAI and six skin parameters. Patient sees updates after save.
+            Override the six skin parameters. kAI updates automatically from their weighted sum.
           </p>
         </div>
         {report.scoreEdit.hasOverrides ? (
@@ -184,20 +195,12 @@ export function DoctorScanScoreEditor({
         <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
           <span className="text-xs text-[#2C3E6B]/70">kAI score (0–100)</span>
           <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={form.kaiScore}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  kaiScore: clampPct(Number(e.target.value)),
-                }))
-              }
+            <output
               className={`${doctorPatientPageFormInputClass} w-24 tabular-nums`}
-            />
+              aria-live="polite"
+            >
+              {kaiScore}
+            </output>
             <span className="rounded-md bg-[#2C3E6B]/8 px-2 py-1 text-sm font-bold text-[#2C3E6B]">
               {kaiGrade}
             </span>

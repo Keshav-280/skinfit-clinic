@@ -50,7 +50,7 @@ function run() {
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 4);
   }
 
-  // Case 2: doctor override merges into clinical scores + uses kaiScore override.
+  // Case 2: doctor param overrides via modelFeatureScores — kAI follows weighted params.
   {
     const res = resolveScanDisplayScores({
       scoresJson: {
@@ -67,13 +67,14 @@ function run() {
       baseMetricsColumns: makeBaseMetrics(),
     });
 
-    assert.equal(res.metrics.overall_score, 72);
+    // Weighted from overridden severities: 58 (not the stale kaiScore: 72).
+    assert.equal(res.metrics.overall_score, 58);
     assert.equal(res.metrics.clinical_scores?.active_acne, 5);
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 1);
     assert.equal(res.resolvedRagParamValues.active_acne, 0);
   }
 
-  // Case 3: doctor override without modelFeatureScores keeps clinical values from base model.
+  // Case 3: legacy kaiScore-only override (no param changes) is preserved.
   {
     const res = resolveScanDisplayScores({
       scoresJson: {
@@ -85,6 +86,31 @@ function run() {
 
     assert.equal(res.metrics.overall_score, 33);
     assert.equal(res.metrics.clinical_scores?.active_acne, 2);
+  }
+
+  // Case 4: direct parameterScores overrides recompute kAI from weighted sum.
+  {
+    const res = resolveScanDisplayScores({
+      scoresJson: {
+        modelFeatureScores,
+        doctorOverrides: {
+          kaiScore: 99,
+          parameterScores: {
+            active_acne: 25,
+            sagging_volume: 77,
+            wrinkles: 76,
+            acne_scar: 100,
+            under_eye: 100,
+            pigmentation: 100,
+          },
+        },
+      },
+      baseMetricsColumns: makeBaseMetrics(),
+    });
+
+    assert.equal(res.metrics.overall_score, 76);
+    assert.equal(res.resolvedRagParamValues.active_acne, 25);
+    assert.equal(res.resolvedRagParamValues.sagging_volume, 77);
   }
 }
 

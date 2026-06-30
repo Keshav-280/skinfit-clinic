@@ -8,7 +8,7 @@ import { assertDoctorPatientAccess } from "@/src/lib/doctorPatientCare";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { invalidateUserHomeCache, invalidateUserInsightsCache, invalidateUserScanDerivedCaches } from "@/src/lib/infra";
 import { resolveScanDisplayScores, type DoctorOverrides, DOCTOR_EDITABLE_MFS_KEYS } from "@/src/lib/resolveScanDisplayScores";
-import { RAG_KAI_PARAM_KEYS } from "@/src/lib/ragEightParams";
+import { computeRagKaiScore, RAG_KAI_PARAM_KEYS } from "@/src/lib/ragEightParams";
 
 type AllowedMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
 
@@ -19,11 +19,6 @@ function isAllowedMfsKey(k: string): k is AllowedMfsKey {
 function clampSeverity1to5(n: number): number {
   if (!Number.isFinite(n)) return 1;
   return Math.max(1, Math.min(5, Math.round(n)));
-}
-
-function clampKaiScore0to100(n: number): number {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
 export async function PATCH(
@@ -102,18 +97,6 @@ export async function PATCH(
   if (reset) {
     nextDoctorOverrides = null;
   } else {
-    const nextKaiScore =
-      typeof b.kaiScore === "number" && Number.isFinite(b.kaiScore)
-        ? clampKaiScore0to100(b.kaiScore)
-        : safeExistingOverrides.kaiScore;
-
-    if (nextKaiScore == null) {
-      return NextResponse.json(
-        { error: "kaiScore_REQUIRED" },
-        { status: 400 }
-      );
-    }
-
     const nextMfsFromPatch: Record<string, number | null> = {};
     if (b.modelFeatureScores && typeof b.modelFeatureScores === "object") {
       const m = b.modelFeatureScores as Record<string, unknown>;
@@ -152,17 +135,32 @@ export async function PATCH(
       }
     }
 
+    const mergedParameterScores = {
+      ...(safeExistingOverrides.parameterScores ?? {}),
+      ...nextParamScoresFromPatch,
+    };
+
+    const nextKaiScoreFromParams = computeRagKaiScore(
+      mergedParameterScores as Partial<
+        Record<(typeof RAG_KAI_PARAM_KEYS)[number], number | null | undefined>
+      >
+    );
+
+    if (nextKaiScoreFromParams == null) {
+      return NextResponse.json(
+        { error: "kaiScore_REQUIRED" },
+        { status: 400 }
+      );
+    }
+
     nextDoctorOverrides = {
       ...safeExistingOverrides,
-      kaiScore: nextKaiScore,
+      kaiScore: nextKaiScoreFromParams,
       modelFeatureScores: {
         ...(safeExistingOverrides.modelFeatureScores ?? {}),
         ...nextMfsFromPatch,
       },
-      parameterScores: {
-        ...(safeExistingOverrides.parameterScores ?? {}),
-        ...nextParamScoresFromPatch,
-      },
+      parameterScores: mergedParameterScores,
     };
   }
 
