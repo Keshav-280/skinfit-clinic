@@ -37,10 +37,8 @@ function run() {
       baseMetricsColumns: makeBaseMetrics(),
     });
 
-    // Expected weighted average (see ragEightParams weights).
-    // under_eye from hydration column (60), acne_scar from texture column (55).
-    // sum = 4910, sumW = 76 → 64.6 → round 65
-    assert.equal(res.metrics.overall_score, 65);
+    // Patient-facing params after display calibration; sumW=76 → 61
+    assert.equal(res.metrics.overall_score, 61);
     assert.equal(res.metrics.clinical_scores?.active_acne, 2);
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 4);
   }
@@ -62,8 +60,8 @@ function run() {
       baseMetricsColumns: makeBaseMetrics(),
     });
 
-    // Weighted from overridden severities + hydration/texture columns: 67 (not stale kaiScore: 72).
-    assert.equal(res.metrics.overall_score, 67);
+    // Patient-facing weighted params after MFS overrides + column hydration/texture.
+    assert.equal(res.metrics.overall_score, 58);
     assert.equal(res.metrics.clinical_scores?.active_acne, 5);
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 1);
     assert.equal(res.resolvedRagParamValues.active_acne, 0);
@@ -103,9 +101,9 @@ function run() {
       baseMetricsColumns: makeBaseMetrics(),
     });
 
-    assert.equal(res.metrics.overall_score, 76);
-    assert.equal(res.resolvedRagParamValues.active_acne, 25);
-    assert.equal(res.resolvedRagParamValues.sagging_volume, 77);
+    assert.equal(res.metrics.overall_score, 65);
+    assert.equal(res.resolvedRagParamValues.active_acne, 20);
+    assert.equal(res.resolvedRagParamValues.sagging_volume, 75);
   }
 }
 

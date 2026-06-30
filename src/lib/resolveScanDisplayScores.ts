@@ -32,10 +32,16 @@ export type DoctorOverrides = {
    */
   modelFeatureScores?: Record<string, number | null | undefined> | null;
   /**
-   * Doctor-entered direct 0–100 clarity scores for the six patient-facing parameters.
+   * Doctor-entered patient-facing parameter scores (capped display scale, ≤79).
+   * When {@link patientDisplayScale} is 2, values are stored as shown to patients.
    */
   parameterScores?: Record<string, number | null | undefined> | null;
+  /** `2` = {@link parameterScores} are patient-facing display values (not raw model). */
+  patientDisplayScale?: number;
 };
+
+/** Doctor overrides store patient-facing display scores (same numbers patients see). */
+export const DOCTOR_PATIENT_DISPLAY_SCALE = 2;
 
 function clampInt(n: number, min: number, max: number) {
   if (!Number.isFinite(n)) return min;
@@ -216,6 +222,11 @@ export type DoctorScoreEditMeta = {
     modelFeatureScores: Partial<Record<DoctorEditableMfsKey, number>>;
     parameterScores: Record<string, number>;
   };
+  /** Resolved patient-facing scores (what the patient report shows). */
+  currentDisplay: {
+    kaiScore: number;
+    parameterScores: Record<string, number>;
+  };
   doctorOverrides: DoctorOverrides | null;
 };
 
@@ -257,6 +268,29 @@ export function buildDoctorScoreEditMeta(
     parameterScores,
   };
 
+  const currentResolved = resolveScanDisplayScores({
+    scoresJson,
+    baseMetricsColumns: baseMetricsColumns ?? {
+      overallScore: 0,
+      acne: 0,
+      wrinkles: 0,
+      pigmentation: 0,
+      hydration: 0,
+      texture: 0,
+    },
+  });
+  const currentParameterScores: Record<string, number> = {};
+  for (const key of RAG_KAI_PARAM_KEYS) {
+    currentParameterScores[key] =
+      currentResolved.resolvedRagParamValues[key] ??
+      aiBase.parameterScores[key] ??
+      70;
+  }
+  const currentDisplay = {
+    kaiScore: currentResolved.metrics.overall_score,
+    parameterScores: currentParameterScores,
+  };
+
   let hasOverrides = false;
   if (doctorOverrides) {
     if (
@@ -296,6 +330,7 @@ export function buildDoctorScoreEditMeta(
   return {
     hasOverrides,
     aiBase,
+    currentDisplay,
     doctorOverrides,
   };
 }

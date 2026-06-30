@@ -39,6 +39,11 @@ function clampClarity(score: number): number {
   return Math.min(100, Math.max(0, Math.round(score)));
 }
 
+/** Unlocked UI — resolved scores are already patient-facing; clamp only. */
+export function patientUnlockedDisplayScore(resolvedScore: number): number {
+  return Math.min(PATIENT_DISPLAY_SCORE_CAP, clampClarity(resolvedScore));
+}
+
 /**
  * Smooth saturation curve for patient-facing clarity (0–~80).
  * f(x) = CAP · (1 − exp(−λ · (x/100)^γ))
@@ -158,12 +163,14 @@ export function patientScoreView(
   rawScore: number,
   scoresUnlocked: boolean
 ): PatientScoreView {
-  const displayScore = patientDisplayClarity(rawScore);
+  const displayScore = scoresUnlocked
+    ? patientUnlockedDisplayScore(rawScore)
+    : patientDisplayClarity(rawScore);
   const grade = clarityToGrade(displayScore);
   const rangeLabel = gradeRangeLabel(grade);
   const locked = !scoresUnlocked;
   const label = scoresUnlocked
-    ? String(displayScore)
+    ? String(patientUnlockedDisplayScore(rawScore))
     : patientGradeWithRange(rawScore);
   return {
     grade,
@@ -213,7 +220,7 @@ export function patientParamGaugeLabel(
   scoresUnlocked: boolean
 ): string {
   return scoresUnlocked
-    ? String(patientDisplayClarity(rawScore))
+    ? String(patientUnlockedDisplayScore(rawScore))
     : patientClarityToGrade(rawScore);
 }
 
@@ -230,6 +237,6 @@ export function patientChartDisplayValue(
   rawScore: number,
   scoresUnlocked: boolean
 ): number {
-  if (scoresUnlocked) return patientDisplayClarity(rawScore);
+  if (scoresUnlocked) return patientUnlockedDisplayScore(rawScore);
   return GRADE_CHART_Y[patientClarityToGrade(rawScore)];
 }

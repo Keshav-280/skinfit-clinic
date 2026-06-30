@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
 import type { DoctorScanReportPayload } from "@/src/lib/doctorScanReportPayload";
-import { patientClarityToGrade } from "@/src/lib/clarityGrade";
+import { PATIENT_DISPLAY_SCORE_CAP } from "@/src/lib/clarityGrade";
 import { computeRagKaiScore } from "@/src/lib/ragEightParams";
 import {
   doctorPatientPageFormInputClass,
@@ -34,13 +34,17 @@ const PARAM_LABELS: Record<EditableParamKey, string> = {
 };
 
 function clampPct(n: number): number {
-  return Math.max(0, Math.min(100, Math.round(n)));
+  return Math.max(0, Math.min(PATIENT_DISPLAY_SCORE_CAP, Math.round(n)));
 }
 
 function initialParamScore(
   report: DoctorScanReportPayload,
   key: EditableParamKey
 ): number {
+  const fromCurrent = report.scoreEdit.currentDisplay?.parameterScores?.[key];
+  if (typeof fromCurrent === "number" && Number.isFinite(fromCurrent)) {
+    return clampPct(fromCurrent);
+  }
   const fromOverrides = report.scoreEdit.doctorOverrides?.parameterScores?.[key];
   if (typeof fromOverrides === "number" && Number.isFinite(fromOverrides)) {
     return clampPct(fromOverrides);
@@ -181,7 +185,7 @@ export function DoctorScanScoreEditor({
         <div>
           <h4 className="text-xs font-semibold text-[#2C3E6B]">Adjust scores</h4>
           <p className="mt-0.5 text-[11px] leading-relaxed text-[#2C3E6B]/60">
-            Override the six skin parameters. kAI updates automatically from their weighted sum.
+            Patient-facing scores (capped below 80). kAI updates from their weighted sum.
           </p>
         </div>
         {report.scoreEdit.hasOverrides ? (

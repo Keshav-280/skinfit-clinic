@@ -2,10 +2,30 @@ import {
   RAG_KAI_ALL_PARAM_KEYS,
   type RagKaiParamKey,
 } from "@/src/lib/ragEightParams";
+import {
+  PATIENT_DISPLAY_SCORE_CAP,
+  patientDisplayClarity,
+} from "@/src/lib/clarityGrade";
+import { DOCTOR_PATIENT_DISPLAY_SCALE } from "@/src/lib/resolveScanDisplayScores";
 
 function clampPct(n: number) {
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function clampPatientDisplay(n: number) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(PATIENT_DISPLAY_SCORE_CAP, Math.round(n)));
+}
+
+function doctorUsesPatientDisplayScale(scoresJson: unknown): boolean {
+  if (!scoresJson || typeof scoresJson !== "object") return false;
+  const rawOv = (scoresJson as Record<string, unknown>).doctorOverrides;
+  if (!rawOv || typeof rawOv !== "object") return false;
+  return (
+    (rawOv as { patientDisplayScale?: number }).patientDisplayScale ===
+    DOCTOR_PATIENT_DISPLAY_SCALE
+  );
 }
 
 /** Map clinical 1–5 severity to 0–100 clarity (higher is better), same as `/api/scan`. */
@@ -193,10 +213,20 @@ export function mergeRagParamValuesFromScan(input: {
     out.wrinkles = clampPct(input.wrinklesColumn);
   }
 
-  // Doctor-entered 0–100 parameter scores beat every other source.
+  const displayNative = doctorUsesPatientDisplayScale(input.scoresJson);
+
+  // Normalize to patient-facing display scale (doctor + patient use the same numbers).
   for (const key of RAG_KAI_ALL_PARAM_KEYS) {
-    const p = doctorOverrideParamScore(key);
-    if (p != null) out[key] = p;
+    const doctorParam = doctorOverrideParamScore(key);
+    if (doctorParam != null) {
+      out[key] = displayNative
+        ? clampPatientDisplay(doctorParam)
+        : clampPatientDisplay(patientDisplayClarity(doctorParam));
+      continue;
+    }
+    if (out[key] != null) {
+      out[key] = clampPatientDisplay(patientDisplayClarity(out[key]!));
+    }
   }
 
   return out;

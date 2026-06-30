@@ -15,7 +15,7 @@ import { normalizeTrackerReportNarrative } from "@/src/lib/trackerReportNarrativ
 import { sanitizeTrackerResources } from "@/src/lib/trackerResourceLinks";
 
 /** Bump when score/delta resolution logic changes — triggers one-time repair on load. */
-export const TRACKER_SCORE_FORMAT_VERSION = 3;
+export const TRACKER_SCORE_FORMAT_VERSION = 4;
 
 function isMissingTrackerSnapshotColumn(error: unknown): boolean {
   const err = error as { code?: string; message?: string };

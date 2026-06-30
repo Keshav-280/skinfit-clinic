@@ -10,6 +10,7 @@ import {
   patientGradeWithRange,
   patientKaiScoreView,
   patientScoreView,
+  patientUnlockedDisplayScore,
 } from "@/src/lib/clarityGrade";
 
 describe("patientDisplayClarity", () => {
@@ -85,9 +86,9 @@ describe("patientScoreView", () => {
   it("shows capped display score when unlocked", () => {
     const unlocked = patientScoreView(72, true);
     expect(unlocked.locked).toBe(false);
-    expect(unlocked.label).toBe(String(patientDisplayClarity(72)));
-    const high = patientScoreView(100, true);
-    expect(Number(high.label)).toBeLessThanOrEqual(80);
+    expect(unlocked.label).toBe(String(patientUnlockedDisplayScore(72)));
+    const high = patientScoreView(79, true);
+    expect(Number(high.label)).toBeLessThanOrEqual(79);
     expect(high.label).not.toBe("100");
   });
 });
@@ -103,8 +104,8 @@ describe("patientKaiScoreView", () => {
   it("shows capped display score when unlocked", () => {
     const unlocked = patientKaiScoreView(72, true);
     expect(unlocked.showLock).toBe(false);
-    expect(unlocked.kaiPrimary).toBe(String(patientDisplayClarity(72)));
-    const high = patientKaiScoreView(100, true);
-    expect(Number(high.kaiPrimary)).toBeLessThanOrEqual(80);
+    expect(unlocked.kaiPrimary).toBe(String(patientUnlockedDisplayScore(72)));
+    const high = patientKaiScoreView(79, true);
+    expect(Number(high.kaiPrimary)).toBeLessThanOrEqual(79);
   });
 });
