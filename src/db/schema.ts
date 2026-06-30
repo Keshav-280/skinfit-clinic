@@ -1161,6 +1161,10 @@ export const mobileCaptureSessions = pgTable("mobile_capture_sessions", {
   token: text("token").notNull().unique(),
   status: text("status").notNull().default("pending"),
   scanId: integer("scan_id").references(() => scans.id, { onDelete: "set null" }),
+  captureImages:
+    jsonb("capture_images").$type<
+      Array<{ label: string; imageUrl: string; previewUrl?: string }>
+    >(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

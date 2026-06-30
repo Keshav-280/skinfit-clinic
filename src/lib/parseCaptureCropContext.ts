@@ -6,7 +6,11 @@ export function parseCaptureCropContext(
 ): CaptureCropContext | undefined {
   const sourceRaw = formData.get("captureSource");
   const source =
-    sourceRaw === "web" ? "web" : sourceRaw === "mobile" ? "mobile" : undefined;
+    sourceRaw === "web" || sourceRaw === "mobile-web-handoff"
+      ? "web"
+      : sourceRaw === "mobile"
+        ? "mobile"
+        : undefined;
 
   const vfRaw = formData.get("captureViewfinder");
   if (typeof vfRaw === "string" && vfRaw.trim()) {

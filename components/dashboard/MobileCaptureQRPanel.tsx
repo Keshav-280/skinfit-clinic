@@ -12,30 +12,44 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+type MobileCaptureImageRef = {
+  label: string;
+  imageUrl: string;
+  previewUrl?: string;
+};
+
 interface MobileCaptureQRPanelProps {
   onBack: () => void;
-  onComplete: (scanId: number) => void;
+  onPhotosReady: (captureImages: MobileCaptureImageRef[]) => void;
+  /** Phone finished a full scan on-device (continue-on-phone path). */
+  onScanComplete?: (scanId: number) => void;
   isOnboardingScan?: boolean;
 }
 
 export function MobileCaptureQRPanel({
   onBack,
-  onComplete,
+  onPhotosReady,
+  onScanComplete,
   isOnboardingScan = false,
 }: MobileCaptureQRPanelProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>("");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
-  const [status, setStatus] = useState<"pending" | "complete" | "expired">(
-    "pending",
-  );
+  const [status, setStatus] = useState<
+    "pending" | "photos_ready" | "complete" | "expired"
+  >("pending");
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const onCompleteRef = useRef(onComplete);
+  const onPhotosReadyRef = useRef(onPhotosReady);
+  const onScanCompleteRef = useRef(onScanComplete);
 
   useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
+    onPhotosReadyRef.current = onPhotosReady;
+  }, [onPhotosReady]);
+
+  useEffect(() => {
+    onScanCompleteRef.current = onScanComplete;
+  }, [onScanComplete]);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -107,13 +121,24 @@ export function MobileCaptureQRPanel({
         const data = await res.json();
 
         if (data.success) {
-          if (data.status === "complete") {
+          if (
+            data.status === "photos_ready" &&
+            Array.isArray(data.captureImages)
+          ) {
+            setStatus("photos_ready");
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            setTimeout(() => {
+              onPhotosReadyRef.current(data.captureImages);
+            }, 900);
+          } else if (data.status === "complete") {
             setStatus("complete");
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-            // Wait 1.5s for success animation to play, then trigger completion
-            setTimeout(() => {
-              onCompleteRef.current(data.scanId);
-            }, 1500);
+            const scanId = Number(data.scanId);
+            if (Number.isFinite(scanId) && scanId >= 1) {
+              setTimeout(() => {
+                onScanCompleteRef.current?.(scanId);
+              }, 900);
+            }
           } else if (data.status === "expired") {
             setStatus("expired");
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
@@ -208,14 +233,14 @@ export function MobileCaptureQRPanel({
                 </div>
               )}
 
-              <div className="mt-4 flex items-center gap-2 rounded-full bg-[#EBF2FE] px-3.5 py-1 text-xs font-bold text-[#2C3E6B]">
+              <div className="mt-4 flex items-center gap-2 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
                 <Smartphone className="h-3.5 w-3.5 animate-pulse" />
-                Waiting for phone camera...
+                Waiting for phone photos...
               </div>
             </motion.div>
           )}
 
-          {status === "complete" && (
+          {(status === "photos_ready" || status === "complete") && (
             <motion.div
               key="complete"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -227,7 +252,7 @@ export function MobileCaptureQRPanel({
                 Photos Received!
               </h3>
               <p className="mt-2 text-sm text-emerald-800">
-                Processing your face scan now. Hang tight.
+                Loading them into your desktop scan preview now.
               </p>
             </motion.div>
           )}

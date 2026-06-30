@@ -54,6 +54,7 @@ import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
 import { submitFaceScan } from "@/src/lib/submitFaceScan";
 import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
 import { ScanPhotoGuideDismissCheckbox } from "@/components/dashboard/ScanPhotoGuideDismissCheckbox";
+import { loadRemoteCaptureSlots } from "@/src/lib/loadRemoteCaptureSlots";
 import {
   clearScanPhotoGuideDismissed,
   isScanPhotoGuideDismissed,
@@ -72,7 +73,8 @@ type ScanStep =
   | "scanning"
   | "queued"
   | "results"
-  | "phone-qr";
+  | "phone-qr"
+  | "handoff-sent";
 
 interface ClinicalScores {
   active_acne?: number;
@@ -111,6 +113,12 @@ type CaptureItem = {
   file: File;
   preview: string;
   label: (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
+};
+
+type MobileCaptureImageRef = {
+  label: string;
+  imageUrl: string;
+  previewUrl?: string;
 };
 
 type PendingCapture = CaptureItem;
@@ -276,6 +284,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [handoffSending, setHandoffSending] = useState(false);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
   const [identityChecks, setIdentityChecks] = useState<
     FaceIdentityImageCheck[] | null
   >(null);
@@ -780,6 +790,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     setScanResults(null);
     setUploadError(null);
     setScanError(null);
+    setHandoffSending(false);
+    setHandoffError(null);
     setIdentityChecks(null);
     setPhotoGuideOpen(false);
     setPhotoGuideIntent("camera");
@@ -807,6 +819,68 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     assignFileToSlot(uploadTargetIndex, file);
     setUploadTargetIndex(null);
   };
+
+  const sendPhotosToDesktop = useCallback(async () => {
+    if (!slotsComplete || !sessionIdParam || !tokenParam) return;
+    setHandoffSending(true);
+    setHandoffError(null);
+    try {
+      const formData = new FormData();
+      formData.append("sessionId", sessionIdParam);
+      slotCaptures.forEach((c) => {
+        if (c) formData.append("images", c.file);
+      });
+
+      const res = await fetch("/api/mobile-capture/photos", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${tokenParam}`,
+        },
+        body: formData,
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        success?: boolean;
+      };
+      if (!res.ok || !json.success) {
+        throw new Error(
+          json.error || `Could not send photos to desktop (${res.status}).`,
+        );
+      }
+      setStep("handoff-sent");
+    } catch (err: unknown) {
+      setHandoffError(
+        err instanceof Error
+          ? err.message
+          : "Could not send photos. Check your connection and try again.",
+      );
+    } finally {
+      setHandoffSending(false);
+    }
+  }, [slotCaptures, slotsComplete, sessionIdParam, tokenParam]);
+
+  const handleRemotePhotosReady = useCallback(
+    async (captureImages: MobileCaptureImageRef[]) => {
+      try {
+        setUploadError(null);
+        const loaded = await loadRemoteCaptureSlots(captureImages);
+        setSlotCaptures((prev) => {
+          revokeSlotCaptures(prev);
+          return loaded;
+        });
+        setCameraStepIndex(0);
+        setStep("confirm");
+      } catch (err: unknown) {
+        setUploadError(
+          err instanceof Error
+            ? err.message
+            : "Could not load photos from your phone.",
+        );
+        setStep("phone-qr");
+      }
+    },
+    [],
+  );
 
   const runScan = useCallback(async () => {
     if (!slotsComplete) return;
@@ -897,10 +971,36 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const onboardingSurface =
     "border-[#2C3E6B]/10 bg-white/25 shadow-none backdrop-blur-sm";
   const onboardingSurfaceHover = "hover:border-[#2C3E6B]/18 hover:bg-white/35";
+  if (isMobileHandoff && step === "handoff-sent") {
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-3xl border border-[#2C3E6B]/10 bg-white p-8 shadow-xl backdrop-blur-md"
+        >
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20">
+            <Check className="h-8 w-8" />
+          </div>
+          <h2 className="mt-6 text-2xl font-extrabold text-[#2C3E6B]">
+            Photos sent to your computer
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-slate-500">
+            Your five angles are on the desktop scan page. Name your scan and
+            start analysis there when you are ready.
+          </p>
+          <p className="mt-4 text-xs text-slate-400">
+            You can close this tab or keep capturing another set below.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (isMobileHandoff && step === "results") {
     const mobileReportHref =
       completedHandoffScanId && sessionIdParam && tokenParam
-        ? `/api/mobile-capture/claim?s=${encodeURIComponent(sessionIdParam)}&t=${encodeURIComponent(tokenParam)}&next=${encodeURIComponent(`/dashboard/history/scans/${completedHandoffScanId}`)}`
+        ? `/api/mobile-capture/claim?s=${encodeURIComponent(sessionIdParam)}&t=${encodeURIComponent(tokenParam)}&next=${encodeURIComponent(isOnboardingScan ? `/onboarding/baseline-report?scanId=${completedHandoffScanId}` : `/dashboard/history/scans/${completedHandoffScanId}`)}`
         : null;
 
     return (
@@ -914,24 +1014,21 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             <Check className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-2xl font-extrabold text-[#2C3E6B]">
-            Photos sent to your computer
+            Scan complete
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
-            Your guided face capture is complete. The desktop page will open the
-            report automatically.
+            Your analysis is ready. View the report on this phone or on your
+            computer.
           </p>
           {mobileReportHref ? (
             <a
               href={mobileReportHref}
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2C3E6B] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#3d5080]"
             >
-              Continue on this phone
+              View report
               <ArrowRight className="h-4 w-4" />
             </a>
           ) : null}
-          <p className="mt-4 text-xs text-slate-400">
-            Or keep this tab open while you check the report on your computer.
-          </p>
         </motion.div>
       </div>
     );
@@ -963,7 +1060,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       {step === "phone-qr" && (
         <MobileCaptureQRPanel
           onBack={() => setStep("upload")}
-          onComplete={(scanId) => {
+          onPhotosReady={(captureImages) => {
+            void handleRemotePhotosReady(captureImages);
+          }}
+          onScanComplete={(scanId) => {
             if (isOnboardingScan) {
               router.push(
                 `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
@@ -1477,7 +1577,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
               )}
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={() => {
@@ -1487,20 +1587,54 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 });
                 setCameraStepIndex(0);
                 setStep("upload");
+                if (isMobileHandoff) {
+                  openCameraForMultiCapture();
+                }
               }}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
             >
               <RotateCcw className="h-4 w-4" />
               Retake
             </button>
-            <button
-              type="button"
-              onClick={isMobileHandoff ? runScan : () => setStep("naming")}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080]"
-            >
-              <Check className="h-4 w-4" />
-              {isMobileHandoff ? "Send to computer" : "Looks good"}
-            </button>
+            {isMobileHandoff ? (
+              <>
+                <button
+                  type="button"
+                  disabled={handoffSending}
+                  onClick={() => void sendPhotosToDesktop()}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:opacity-60"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  {handoffSending ? "Sending…" : "Send photos to desktop"}
+                </button>
+                <button
+                  type="button"
+                  disabled={handoffSending}
+                  onClick={() => setStep("naming")}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2C3E6B]/20 bg-white/80 py-3 text-sm font-medium text-[#2C3E6B] shadow-sm transition-colors hover:bg-white"
+                >
+                  <Check className="h-4 w-4" />
+                  Continue scanning from here
+                </button>
+                {handoffError ? (
+                  <p
+                    className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-900"
+                    role="alert"
+                  >
+                    {handoffError}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStep("naming")}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080]"
+              >
+                <Check className="h-4 w-4" />
+                Looks good
+              </button>
+            )}
           </div>
         </motion.div>
       )}
