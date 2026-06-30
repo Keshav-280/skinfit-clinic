@@ -61,6 +61,8 @@ export type RadarBounds = {
   y: number;
   w: number;
   h: number;
+  /** Keep upper-axis labels below this y (avoids overlapping a title above the chart). */
+  labelMinY?: number;
 };
 
 export function drawRadarChart(
@@ -85,8 +87,12 @@ export function drawRadarChart(
   const radius = Math.max(28, Math.min(maxRadiusByW, maxRadiusByH));
 
   const cx = bounds.x + bounds.w / 2;
-  /** Shift center up so labels fit with minimal empty space below. */
-  const cy = bounds.y + padTop + labelOffset + radius;
+  const titleClearance =
+    bounds.labelMinY != null ? bounds.labelMinY - bounds.y + labelOffset + 10 : 0;
+  /** Shift center down so upper labels stay below any title above the chart. */
+  const cy =
+    bounds.y +
+    Math.max(padTop + labelOffset + radius, titleClearance + labelOffset + radius);
 
   const { axis, data, gridLevels } = radarGeometry(
     metrics,
@@ -166,6 +172,14 @@ export function drawRadarChart(
 
     /** Nudge bottom labels up slightly to trim dead space under the polygon. */
     if (sin > 0.55) ly -= 4;
+
+    /** Keep top-axis labels from overlapping the section title. */
+    if (sin < -0.15 && bounds.labelMinY != null) {
+      const labelBlockH = lines.length * 7 + 9;
+      if (ly - labelBlockH < bounds.labelMinY) {
+        ly = bounds.labelMinY + labelBlockH;
+      }
+    }
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);

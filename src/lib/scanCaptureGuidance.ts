@@ -172,6 +172,19 @@ export const CAPTURE_GUIDANCE_WARMUP_MESSAGE =
 export const LIGHTING_SCORE_READY_THRESHOLD = 60;
 
 /**
+ * Brightness warning thresholds — tuned for "clear and bright" indoor capture.
+ * Previous values (mean 185 / 18% hot pixels) flagged normal skin highlights too often.
+ */
+export const CAPTURE_LIGHTING_THRESHOLDS = {
+  /** Mean frame luma above this → too bright (0–255). */
+  meanTooBright: 200,
+  /** Fraction of pixels above `brightPixelLuma` → too bright. */
+  brightRatioTooBright: 0.32,
+  /** Per-pixel luma counted as a blown highlight. */
+  brightPixelLuma: 225,
+} as const;
+
+/**
  * EMA for portrait bbox — higher alpha = faster response to movement.
  * Increased from 0.14 to 0.35 so guidance reacts within 1–2 frames on both web and mobile.
  */
@@ -276,7 +289,7 @@ export function analyzeLightingFromRgba(
       sumSq += L * L;
       n++;
       if (L < 45) dark++;
-      if (L > 210) bright++;
+      if (L > CAPTURE_LIGHTING_THRESHOLDS.brightPixelLuma) bright++;
       // Per-pixel chroma (max−min) — covered cameras are near-grayscale.
       satSum += Math.max(r, g, b) - Math.min(r, g, b);
       if (x < midX) {
@@ -321,7 +334,10 @@ export function analyzeLightingFromRgba(
   if (coveredOrDark) {
     quality = "too_dark";
     message = "Too dark — uncover the camera and face a window or soft light";
-  } else if (mean > 185 || brightRatio > 0.18) {
+  } else if (
+    mean > CAPTURE_LIGHTING_THRESHOLDS.meanTooBright ||
+    brightRatio > CAPTURE_LIGHTING_THRESHOLDS.brightRatioTooBright
+  ) {
     quality = "too_bright";
     message = "Too bright — step back from direct sun or harsh lamp";
   } else if (sideDelta > 30) {

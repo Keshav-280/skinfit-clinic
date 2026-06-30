@@ -4,8 +4,13 @@
 
 export type { CaptureAssistModels } from "../../src/lib/scanCaptureGuidance";
 
+import {
+  CAPTURE_LIGHTING_THRESHOLDS,
+} from "../../src/lib/scanCaptureGuidance";
+
 export {
   CAPTURE_GUIDANCE_WARMUP_MESSAGE,
+  CAPTURE_LIGHTING_THRESHOLDS,
   CAPTURE_STEP_WARMUP_MS,
   FACE_BOX_SMOOTH_ALPHA,
   smoothFaceBox,
@@ -244,7 +249,7 @@ export function analyzeLightingFromRgba(
       sumSq += L * L;
       n++;
       if (L < 45) dark++;
-      if (L > 210) bright++;
+      if (L > CAPTURE_LIGHTING_THRESHOLDS.brightPixelLuma) bright++;
       // Per-pixel chroma (max−min) — covered cameras are near-grayscale.
       satSum += Math.max(r, g, b) - Math.min(r, g, b);
       if (x < midX) {
@@ -289,7 +294,10 @@ export function analyzeLightingFromRgba(
   if (coveredOrDark) {
     quality = "too_dark";
     message = "Too dark — uncover the camera and face a window or soft light";
-  } else if (mean > 185 || brightRatio > 0.18) {
+  } else if (
+    mean > CAPTURE_LIGHTING_THRESHOLDS.meanTooBright ||
+    brightRatio > CAPTURE_LIGHTING_THRESHOLDS.brightRatioTooBright
+  ) {
     quality = "too_bright";
     message = "Too bright — step back from direct sun or harsh lamp";
   } else if (sideDelta > 30) {

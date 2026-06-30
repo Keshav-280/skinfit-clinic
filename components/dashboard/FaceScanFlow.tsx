@@ -1024,7 +1024,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
             start analysis there when you are ready.
           </p>
           <p className="mt-4 text-xs text-slate-400">
-            You can close this tab or keep capturing another set below.
+            You can close this tab.
           </p>
         </motion.div>
       </div>
@@ -1640,15 +1640,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 >
                   <Smartphone className="h-4 w-4" />
                   {handoffSending ? "Sending…" : "Send photos to desktop"}
-                </button>
-                <button
-                  type="button"
-                  disabled={handoffSending}
-                  onClick={() => setStep("naming")}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2C3E6B]/20 bg-white/80 py-3 text-sm font-medium text-[#2C3E6B] shadow-sm transition-colors hover:bg-white"
-                >
-                  <Check className="h-4 w-4" />
-                  Continue scanning from here
                 </button>
                 {handoffError ? (
                   <p
