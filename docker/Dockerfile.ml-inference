@@ -14,4 +14,4 @@ COPY apps/ml-worker/python/patches/face_analyzer.py /app/patches/face_analyzer.p
 RUN python -c "import torch; torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14_reg', pretrained=False)"
 # face_analysis_tool mounted read-only at runtime — copy + offline backbone patch
 EXPOSE 8765
-CMD ["sh", "-c", "cp -a /app/face_analysis /tmp/face_analysis && cp /app/patches/backbone_offline.py /tmp/face_analysis/models/backbone.py && cp /app/patches/face_analyzer.py /tmp/face_analysis/models/face_analyzer.py && cd /tmp/face_analysis && PYTHONPATH=/tmp/face_analysis uvicorn api_server:app --host 0.0.0.0 --port 8765"]
+CMD ["sh", "-c", "rm -rf /tmp/face_analysis && cp -a /app/face_analysis /tmp/face_analysis && cp /app/patches/backbone_offline.py /tmp/face_analysis/models/backbone.py && cp /app/patches/face_analyzer.py /tmp/face_analysis/models/face_analyzer.py && cd /tmp/face_analysis && PYTHONPATH=/tmp/face_analysis uvicorn api_server:app --host 0.0.0.0 --port 8765"]

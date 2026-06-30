@@ -1,6 +1,17 @@
 import Script from "next/script";
+import { redirect } from "next/navigation";
+import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 
-export default function AnnotatorLayout({ children }: { children: React.ReactNode }) {
+export default async function AnnotatorLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const staffId = await getDoctorPortalUserId();
+  if (!staffId) {
+    redirect("/doctor/login");
+  }
+
   return (
     <>
       <Script id="annotator-version-guard" strategy="afterInteractive">{`

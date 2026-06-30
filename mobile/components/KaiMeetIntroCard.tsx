@@ -33,7 +33,7 @@ const HALO_DOTS = meetCardHaloDots();
 
 function HaloDots({ size }: { size: number }) {
   return (
-    <Svg width={size} height={size} viewBox="-15 -15 130 130">
+    <Svg width={size} height={size} viewBox="-24 -24 148 148">
       {HALO_DOTS.map((dot) => (
         <Circle
           key={dot.key}

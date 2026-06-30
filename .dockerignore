@@ -24,9 +24,11 @@ models/*
 models/acne-detector/*
 !models/acne-detector/best.pt
 
-# Ignore local uploaded files and media caches
+# Ignore local uploaded files, generated artifacts, and media caches
 **/uploads
 uploads
+local-tools/
+*.pdf
 
 # Ignore git and local environment files
 .git

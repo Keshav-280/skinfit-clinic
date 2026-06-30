@@ -31,7 +31,7 @@ function DotFieldSvg({
 }) {
   return (
     <svg
-      viewBox="-15 -15 130 130"
+      viewBox="-24 -24 148 148"
       preserveAspectRatio={preserveAspectRatio}
       className={className}
       aria-hidden
