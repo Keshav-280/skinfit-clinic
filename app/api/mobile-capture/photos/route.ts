@@ -1,54 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
 
 import { db } from "@/src/db";
 import { mobileCaptureSessions } from "@/src/db/schema";
-import { getSessionSecret } from "@/src/lib/auth/session-secret";
+import { verifyMobileCaptureAuthHeader } from "@/src/lib/auth/verifyMobileCaptureAuth";
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
+import { parseCaptureCropContext } from "@/src/lib/parseCaptureCropContext";
 import { readWebFormData } from "@/src/lib/webRequestFormData";
 import { buildScanImagesFromForm } from "@/src/lib/scanSubmitPayload";
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization") || "";
-    if (!authHeader.startsWith("Bearer ")) {
+    const auth = await verifyMobileCaptureAuthHeader(request);
+    if (!auth.ok) {
       return NextResponse.json(
-        { success: false, error: "Authentication required." },
-        { status: 401 },
+        { success: false, error: auth.error },
+        { status: auth.status },
       );
     }
-
-    const token = authHeader.slice(7).trim();
-    const secret = getSessionSecret();
-    if (!token || !secret) {
-      return NextResponse.json(
-        { success: false, error: "Server authentication error." },
-        { status: 401 },
-      );
-    }
-
-    let userId = "";
-    try {
-      const key = new TextEncoder().encode(secret);
-      const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
-      if (payload.purpose !== "mobile-capture") {
-        throw new Error("Invalid token purpose");
-      }
-      userId = typeof payload.sub === "string" ? payload.sub : "";
-    } catch {
-      return NextResponse.json(
-        { success: false, error: "Invalid or expired token." },
-        { status: 401 },
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID not found in token." },
-        { status: 401 },
-      );
-    }
+    const { userId, token } = auth;
 
     const formData = await readWebFormData(request);
     const sessionId = formData.get("sessionId") as string;
@@ -112,12 +82,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { faceCaptureImages } = await buildScanImagesFromForm(images);
+    const captureCropContext = parseCaptureCropContext(formData);
 
     await db
       .update(mobileCaptureSessions)
       .set({
         status: "photos_ready",
         captureImages: faceCaptureImages,
+        captureCropContext: captureCropContext ?? null,
       })
       .where(eq(mobileCaptureSessions.id, sessionId));
 

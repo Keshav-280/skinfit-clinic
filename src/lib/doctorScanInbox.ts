@@ -1,7 +1,6 @@
-import { and, desc, eq, gte, inArray, isNull, or, gt } from "drizzle-orm";
+import { and, desc, eq, gte, gt } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
-import { listPatientIdsForDoctor } from "@/src/lib/doctorPatientCare";
 
 export const DOCTOR_SCAN_INBOX_WINDOW_DAYS = 14;
 
@@ -19,14 +18,11 @@ function scanInboxSince(): Date {
   return since;
 }
 
-/** Recent patient scans visible to this doctor (care link + doctor_id isolation). */
+/** Recent patient scans visible to any doctor in the portal inbox bell. */
 export async function loadDoctorScanInbox(
   doctorId: string,
   limit = 25
 ): Promise<DoctorScanInboxRow[]> {
-  const patientIds = await listPatientIdsForDoctor(doctorId);
-  if (patientIds.length === 0) return [];
-
   const since = scanInboxSince();
 
   const [staffRow] = await db
@@ -49,9 +45,8 @@ export async function loadDoctorScanInbox(
     .innerJoin(users, eq(scans.userId, users.id))
     .where(
       and(
-        inArray(scans.userId, patientIds),
+        eq(users.role, "patient"),
         gte(scans.createdAt, since),
-        or(isNull(scans.doctorId), eq(scans.doctorId, doctorId)),
         seenAt ? gt(scans.createdAt, seenAt) : undefined
       )
     )

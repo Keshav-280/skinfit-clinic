@@ -218,6 +218,12 @@ export default function ScanScreen() {
         setPhase("done");
         return;
       }
+      if (outcome.mode === "completed") {
+        setSlots(emptyFaceScanSlots());
+        setScanName("");
+        router.replace(`/(drawer)/history/${outcome.scanId}` as Href);
+        return;
+      }
       setSlots(emptyFaceScanSlots());
       setScanName("");
       setReportPending(false);

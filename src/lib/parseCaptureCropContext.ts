@@ -5,34 +5,40 @@ export function parseCaptureCropContext(
   formData: WebFormData
 ): CaptureCropContext | undefined {
   const sourceRaw = formData.get("captureSource");
-  const source =
-    sourceRaw === "web" || sourceRaw === "mobile-web-handoff"
-      ? "web"
-      : sourceRaw === "mobile"
-        ? "mobile"
-        : undefined;
-
   const vfRaw = formData.get("captureViewfinder");
+  let viewfinderW: number | undefined;
+  let viewfinderH: number | undefined;
+
   if (typeof vfRaw === "string" && vfRaw.trim()) {
     try {
       const parsed = JSON.parse(vfRaw) as { width?: number; height?: number };
-      const viewfinderW = Number(parsed.width);
-      const viewfinderH = Number(parsed.height);
-      if (
-        Number.isFinite(viewfinderW) &&
-        Number.isFinite(viewfinderH) &&
-        viewfinderW > 0 &&
-        viewfinderH > 0
-      ) {
-        return {
-          source: source ?? "mobile",
-          viewfinderW,
-          viewfinderH,
-        };
+      const w = Number(parsed.width);
+      const h = Number(parsed.height);
+      if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
+        viewfinderW = w;
+        viewfinderH = h;
       }
     } catch {
       /* ignore */
     }
+  }
+
+  const hasViewfinder =
+    viewfinderW != null && viewfinderH != null && viewfinderW > 0 && viewfinderH > 0;
+
+  const source =
+    sourceRaw === "mobile" || (sourceRaw === "mobile-web-handoff" && hasViewfinder)
+      ? "mobile"
+      : sourceRaw === "web" || sourceRaw === "mobile-web-handoff"
+        ? "web"
+        : undefined;
+
+  if (hasViewfinder && viewfinderW != null && viewfinderH != null) {
+    return {
+      source: source ?? "mobile",
+      viewfinderW,
+      viewfinderH,
+    };
   }
 
   if (source === "web") return { source: "web" };

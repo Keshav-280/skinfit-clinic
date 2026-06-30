@@ -85,6 +85,11 @@ export async function POST(request: NextRequest) {
   }
 
   const captureCropContext = parseCaptureCropContext(formData);
+  const mobileSessionIdRaw = formData.get("mobileSessionId");
+  const mobileSessionId =
+    typeof mobileSessionIdRaw === "string" && mobileSessionIdRaw.trim()
+      ? mobileSessionIdRaw.trim()
+      : undefined;
 
   const identity = await enforceScanFaceIdentity({
     userId,
@@ -113,6 +118,7 @@ export async function POST(request: NextRequest) {
     faceCaptureImages,
     primaryImageUrl,
     captureCropContext,
+    ...(mobileSessionId ? { mobileSessionId } : {}),
   };
 
   const [jobRow] = await db

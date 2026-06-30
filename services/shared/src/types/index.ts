@@ -21,6 +21,8 @@ export type ScanJobPayload = {
     viewfinderW?: number;
     viewfinderH?: number;
   };
+  /** QR handoff session to mark complete when async scan finishes on desktop. */
+  mobileSessionId?: string;
 };
 
 export type ScanJobResult = {

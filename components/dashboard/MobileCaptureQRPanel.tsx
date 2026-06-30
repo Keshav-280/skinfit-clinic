@@ -18,11 +18,21 @@ type MobileCaptureImageRef = {
   previewUrl?: string;
 };
 
+type MobileCaptureCropContext = {
+  source: "mobile" | "web";
+  viewfinderW?: number;
+  viewfinderH?: number;
+};
+
 interface MobileCaptureQRPanelProps {
   onBack: () => void;
-  onPhotosReady: (captureImages: MobileCaptureImageRef[]) => void;
+  onPhotosReady: (
+    captureImages: MobileCaptureImageRef[],
+    cropContext?: MobileCaptureCropContext | null,
+  ) => void;
   /** Phone finished a full scan on-device (continue-on-phone path). */
   onScanComplete?: (scanId: number) => void;
+  onSessionReady?: (sessionId: string) => void;
   isOnboardingScan?: boolean;
 }
 
@@ -30,6 +40,7 @@ export function MobileCaptureQRPanel({
   onBack,
   onPhotosReady,
   onScanComplete,
+  onSessionReady,
   isOnboardingScan = false,
 }: MobileCaptureQRPanelProps) {
   const [loading, setLoading] = useState(true);
@@ -40,8 +51,10 @@ export function MobileCaptureQRPanel({
     "pending" | "photos_ready" | "complete" | "expired"
   >("pending");
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollFailuresRef = useRef(0);
   const onPhotosReadyRef = useRef(onPhotosReady);
   const onScanCompleteRef = useRef(onScanComplete);
+  const onSessionReadyRef = useRef(onSessionReady);
 
   useEffect(() => {
     onPhotosReadyRef.current = onPhotosReady;
@@ -51,11 +64,16 @@ export function MobileCaptureQRPanel({
     onScanCompleteRef.current = onScanComplete;
   }, [onScanComplete]);
 
+  useEffect(() => {
+    onSessionReadyRef.current = onSessionReady;
+  }, [onSessionReady]);
+
   const fetchSession = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       setStatus("pending");
+      pollFailuresRef.current = 0;
 
       const res = await fetch("/api/mobile-capture/session", {
         method: "POST",
@@ -77,6 +95,7 @@ export function MobileCaptureQRPanel({
       }
 
       setSessionId(data.sessionId);
+      onSessionReadyRef.current?.(data.sessionId);
 
       const qrDataUrl = await QRCode.toDataURL(data.url, {
         width: 280,
@@ -115,7 +134,17 @@ export function MobileCaptureQRPanel({
         const res = await fetch(
           `/api/mobile-capture/status?sessionId=${sessionId}`,
         );
-        if (!res.ok) return;
+        if (!res.ok) {
+          pollFailuresRef.current += 1;
+          if (pollFailuresRef.current >= 5) {
+            setError(
+              "Lost connection while waiting for your phone. Check your network and try again.",
+            );
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+          }
+          return;
+        }
+        pollFailuresRef.current = 0;
         const data = await res.json();
 
         if (data.success) {
@@ -124,7 +153,10 @@ export function MobileCaptureQRPanel({
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             if (Array.isArray(data.captureImages) && data.captureImages.length > 0) {
               setTimeout(() => {
-                onPhotosReadyRef.current(data.captureImages);
+                onPhotosReadyRef.current(
+                  data.captureImages,
+                  data.captureCropContext ?? null,
+                );
               }, 600);
             } else {
               setError(
@@ -140,6 +172,10 @@ export function MobileCaptureQRPanel({
               setTimeout(() => {
                 onScanCompleteRef.current?.(scanId);
               }, 900);
+            } else {
+              setError(
+                "Your phone finished the scan, but the report id was missing. Open History or generate a new QR code.",
+              );
             }
           } else if (data.status === "expired") {
             setStatus("expired");
@@ -148,6 +184,13 @@ export function MobileCaptureQRPanel({
         }
       } catch (err) {
         console.error("Error polling capture status:", err);
+        pollFailuresRef.current += 1;
+        if (pollFailuresRef.current >= 5) {
+          setError(
+            "Lost connection while waiting for your phone. Check your network and try again.",
+          );
+          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        }
       }
     }, 2000);
 
@@ -256,9 +299,9 @@ export function MobileCaptureQRPanel({
             </motion.div>
           )}
 
-          {(status === "photos_ready" || status === "complete") && (
+          {status === "photos_ready" && (
             <motion.div
-              key="complete"
+              key="photos-ready"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center text-center"
@@ -269,6 +312,23 @@ export function MobileCaptureQRPanel({
               </h3>
               <p className="mt-2 text-sm text-[#64748B]">
                 Loading them into your desktop scan preview now.
+              </p>
+            </motion.div>
+          )}
+
+          {status === "complete" && (
+            <motion.div
+              key="scan-complete"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center text-center"
+            >
+              <CheckCircle className="h-16 w-16 text-emerald-500" />
+              <h3 className="mt-4 text-lg font-bold text-[#2C3E6B]">
+                Scan complete!
+              </h3>
+              <p className="mt-2 text-sm text-[#64748B]">
+                Opening your report on this device…
               </p>
             </motion.div>
           )}

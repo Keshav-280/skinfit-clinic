@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { eq } from "drizzle-orm";
-import { scanJobs, scans, skinScans, users } from "@/src/db/schema";
+import { scanJobs, scans, skinScans, users, mobileCaptureSessions } from "@/src/db/schema";
 import type { NodePgAppDatabase } from "@/src/db/database-types";
 
 export type ScanJobDatabase = NodePgAppDatabase;
@@ -388,12 +388,22 @@ export async function processScanJob(
   });
 
   if (inserted?.id != null) {
-    void notifyDoctorsPatientScanCompleted({
+    await notifyDoctorsPatientScanCompleted({
       patientId: user.id,
       patientName: user.name?.trim() || "Patient",
       scanId: inserted.id,
       scanName: payload.scanName ?? null,
     });
+
+    if (payload.mobileSessionId) {
+      await database
+        .update(mobileCaptureSessions)
+        .set({
+          status: "complete",
+          scanId: inserted.id,
+        })
+        .where(eq(mobileCaptureSessions.id, payload.mobileSessionId));
+    }
   }
 
   await Promise.all([

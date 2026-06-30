@@ -63,6 +63,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  if (session.status !== "complete" || session.scanId == null) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   const [user] = await db
     .select({
       id: users.id,

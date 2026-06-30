@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
 import { db } from "@/src/db";
 import {
   scans,
@@ -9,7 +8,7 @@ import {
   users,
   mobileCaptureSessions,
 } from "@/src/db/schema";
-import { getSessionSecret } from "@/src/lib/auth/session-secret";
+import { verifyMobileCaptureAuthHeader } from "@/src/lib/auth/verifyMobileCaptureAuth";
 import { buildDummyAiSummary } from "@/src/lib/dummyScanSummary";
 import { patientClarityToGrade } from "@/src/lib/clarityGrade";
 import { getFaceAnalysisServiceSecret } from "@/src/lib/faceAnalysisEnv";
@@ -233,46 +232,14 @@ function buildDummyKaiV2() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate via Bearer token
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const auth = await verifyMobileCaptureAuthHeader(request);
+    if (!auth.ok) {
       return NextResponse.json(
-        { success: false, error: "Authentication required." },
-        { status: 401 },
+        { success: false, error: auth.error },
+        { status: auth.status },
       );
     }
-    const token = authHeader.slice(7).trim();
-    const secret = getSessionSecret();
-    if (!token || !secret) {
-      return NextResponse.json(
-        { success: false, error: "Server authentication error." },
-        { status: 401 },
-      );
-    }
-
-    let userId: string;
-    try {
-      const key = new TextEncoder().encode(secret);
-      const { payload } = await jwtVerify(token, key, {
-        algorithms: ["HS256"],
-      });
-      if (payload.purpose !== "mobile-capture") {
-        throw new Error("Invalid token purpose");
-      }
-      userId = payload.sub || "";
-    } catch {
-      return NextResponse.json(
-        { success: false, error: "Invalid or expired token." },
-        { status: 401 },
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID not found in token." },
-        { status: 401 },
-      );
-    }
+    const { userId, token } = auth;
 
     const formData = await readWebFormData(request);
     const scanName = (formData.get("scanName") as string) || "Untitled Scan";
@@ -298,7 +265,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (session.status !== "pending") {
+    if (session.status === "complete" && session.scanId != null) {
+      return NextResponse.json({
+        success: true,
+        data: { id: session.scanId },
+      });
+    }
+
+    if (session.status !== "pending" && session.status !== "photos_ready") {
       return NextResponse.json(
         { success: false, error: `Session is already ${session.status}.` },
         { status: 400 },
@@ -316,7 +290,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (session.userId !== userId) {
+    if (session.userId !== userId || session.token !== token) {
       return NextResponse.json(
         { success: false, error: "Session does not belong to this user." },
         { status: 403 },

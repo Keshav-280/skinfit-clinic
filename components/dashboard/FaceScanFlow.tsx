@@ -55,6 +55,8 @@ import { submitFaceScan } from "@/src/lib/submitFaceScan";
 import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
 import { ScanPhotoGuideDismissCheckbox } from "@/components/dashboard/ScanPhotoGuideDismissCheckbox";
 import { loadRemoteCaptureSlots } from "@/src/lib/loadRemoteCaptureSlots";
+import { appendCaptureCropContext } from "@/src/lib/parseCaptureCropContext";
+import type { CaptureCropContext } from "@/src/lib/cropScanImageForMl";
 import {
   clearScanPhotoGuideDismissed,
   isScanPhotoGuideDismissed,
@@ -286,6 +288,10 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const [scanError, setScanError] = useState<string | null>(null);
   const [handoffSending, setHandoffSending] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [qrSessionId, setQrSessionId] = useState<string | null>(null);
+  const [qrCropContext, setQrCropContext] =
+    useState<CaptureCropContext | null>(null);
+  const handoffViewfinderRef = useRef<{ w: number; h: number } | null>(null);
   const [identityChecks, setIdentityChecks] = useState<
     FaceIdentityImageCheck[] | null
   >(null);
@@ -628,6 +634,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     const cropToGuide = shouldCropToFaceGuide(step.id);
     const viewfinderW = video.clientWidth;
     const viewfinderH = video.clientHeight;
+    if (viewfinderW > 0 && viewfinderH > 0) {
+      handoffViewfinderRef.current = { w: viewfinderW, h: viewfinderH };
+    }
     const maxEdge = 1280;
     let tw: number;
     let th: number;
@@ -827,6 +836,14 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     try {
       const formData = new FormData();
       formData.append("sessionId", sessionIdParam);
+      const vf = handoffViewfinderRef.current;
+      if (vf) {
+        appendCaptureCropContext(formData, {
+          source: "mobile",
+          viewfinderW: vf.w,
+          viewfinderH: vf.h,
+        });
+      }
       slotCaptures.forEach((c) => {
         if (c) formData.append("images", c.file);
       });
@@ -860,9 +877,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   }, [slotCaptures, slotsComplete, sessionIdParam, tokenParam]);
 
   const handleRemotePhotosReady = useCallback(
-    async (captureImages: MobileCaptureImageRef[]) => {
+    async (
+      captureImages: MobileCaptureImageRef[],
+      cropContext?: CaptureCropContext | null,
+    ) => {
       try {
         setUploadError(null);
+        setQrCropContext(cropContext ?? null);
         const loaded = await loadRemoteCaptureSlots(captureImages);
         setSlotCaptures((prev) => {
           revokeSlotCaptures(prev);
@@ -891,12 +912,23 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     try {
       const formData = new FormData();
       formData.append("scanName", finalScanName);
-      formData.append(
-        "captureSource",
-        tokenParam ? "mobile-web-handoff" : "web",
-      );
+      if (qrSessionId && !sessionIdParam) {
+        formData.append("mobileSessionId", qrSessionId);
+      }
       if (sessionIdParam) {
         formData.append("sessionId", sessionIdParam);
+      }
+      const vf = handoffViewfinderRef.current;
+      if (tokenParam && vf) {
+        appendCaptureCropContext(formData, {
+          source: "mobile",
+          viewfinderW: vf.w,
+          viewfinderH: vf.h,
+        });
+      } else if (qrCropContext) {
+        appendCaptureCropContext(formData, qrCropContext);
+      } else if (!tokenParam) {
+        appendCaptureCropContext(formData, { source: "web" });
       }
       slotCaptures.forEach((c) => {
         if (c) formData.append("images", c.file);
@@ -961,6 +993,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
     isOnboardingScan,
     tokenParam,
     sessionIdParam,
+    qrSessionId,
+    qrCropContext,
   ]);
 
   const showPhotoGuide = step === "upload" && !cameraOpen && photoGuideOpen;
@@ -1082,8 +1116,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           ) : null}
           <MobileCaptureQRPanel
             onBack={() => setStep("upload")}
-            onPhotosReady={(captureImages) => {
-              void handleRemotePhotosReady(captureImages);
+            onSessionReady={setQrSessionId}
+            onPhotosReady={(captureImages, cropContext) => {
+              void handleRemotePhotosReady(captureImages, cropContext);
             }}
             onScanComplete={(scanId) => {
               if (isOnboardingScan) {
@@ -1279,155 +1314,130 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           className="w-full"
         >
           <div className="space-y-5">
-            <div
-              className={`grid gap-4 ${isMobileDevice ? "md:grid-cols-[1.05fr_0.95fr]" : "md:grid-cols-[1.05fr_1fr_1fr]"}`}
-            >
-              {!isMobileDevice && (
-                <button
-                  type="button"
-                  onClick={() => setStep("phone-qr")}
-                  className="group relative overflow-hidden rounded-[24px] border-2 border-[#4CAF50]/35 bg-white p-6 text-left text-[#2C3E6B] shadow-[0_4px_24px_-10px_rgba(44,62,107,0.14)] transition-all duration-300 hover:-translate-y-1 hover:border-[#4CAF50]/50 hover:shadow-[0_14px_36px_-12px_rgba(44,62,107,0.18)] focus:outline-none focus:ring-2 focus:ring-[#4CAF50]/25"
-                >
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E8F5E9]/80 transition-transform duration-500 group-hover:scale-110" />
-                  <div className="relative flex h-full flex-col justify-between">
-                    <div>
-                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-emerald-700 ring-1 ring-emerald-100">
-                        ★ Recommended
-                      </span>
-                      <div className="mt-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8F5E9] shadow-inner ring-1 ring-[#4CAF50]/15">
-                        <Smartphone className="h-7 w-7 text-[#2E7D32]" />
-                      </div>
-                      <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
-                        Scan with phone camera
-                      </h2>
-                      <p className="mt-2 text-xs leading-relaxed text-[#64748B]">
-                        Scan a QR code to capture with your phone. Best image
-                        quality for face scanning.
-                      </p>
-                    </div>
-                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#2C3E6B] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition-colors group-hover:bg-[#354A7A]">
-                      Use Phone Camera
-                      <Smartphone className="h-3.5 w-3.5" />
-                    </span>
-                  </div>
-                </button>
-              )}
-
+            {!isMobileDevice ? (
               <button
                 type="button"
-                onClick={requestOpenCamera}
-                className={`group relative overflow-hidden rounded-[24px] p-6 text-left transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30 ${
-                  isMobileDevice
-                    ? "bg-[#2C3E6B] text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] hover:bg-[#354A7A]"
-                    : "border border-[#2C3E6B]/15 bg-white text-[#2C3E6B] hover:bg-slate-50 hover:border-[#2C3E6B]/30 shadow-sm"
-                }`}
+                onClick={() => setStep("phone-qr")}
+                className="group relative w-full overflow-hidden rounded-[24px] bg-[#2C3E6B] p-8 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
               >
-                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#2C3E6B]/5" />
-                <div className="relative flex h-full flex-col justify-between">
-                  <div>
-                    {isMobileDevice ? (
-                      <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
-                        Recommended
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/70">
-                        Webcam
-                      </span>
-                    )}
-                    <div
-                      className={`mt-6 flex h-14 w-14 items-center justify-center rounded-2xl shadow-inner ${
-                        isMobileDevice ? "bg-white/15" : "bg-[#2C3E6B]/5"
-                      }`}
-                    >
-                      <Camera className="h-7 w-7" />
+                <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-110" />
+                <div className="relative flex min-h-[220px] flex-col justify-between sm:flex-row sm:items-end sm:gap-8">
+                  <div className="max-w-xl">
+                    <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
+                      Recommended
+                    </span>
+                    <div className="mt-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
+                      <Smartphone className="h-8 w-8" />
                     </div>
-                    <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
-                      {isMobileDevice
-                        ? "Use device camera"
-                        : "Use laptop webcam"}
+                    <h2 className="mt-5 text-2xl font-extrabold tracking-tight leading-tight">
+                      Scan with phone camera
                     </h2>
-                    <p
-                      className={`mt-2 text-xs leading-relaxed ${isMobileDevice ? "text-white/75" : "text-[#64748B]"}`}
-                    >
-                      Capture using your {isMobileDevice ? "device" : "webcam"}{" "}
-                      camera. Keep angles aligned with the guide.
+                    <p className="mt-2 text-sm leading-relaxed text-white/75">
+                      On desktop, capture with your phone for the best face-scan
+                      quality. Scan the QR code to start on your phone.
                     </p>
                   </div>
-                  <span
-                    className={`mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-extrabold transition-colors ${
-                      isMobileDevice
-                        ? "bg-white text-[#2C3E6B] group-hover:bg-[#F8FAFC]"
-                        : "bg-[#2C3E6B] text-white group-hover:bg-[#3d5080]"
-                    }`}
-                  >
-                    {isMobileDevice ? "Start Camera" : "Start Webcam"}
-                    <Camera className="h-3.5 w-3.5" />
+                  <span className="mt-8 inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-[#2C3E6B] transition-colors group-hover:bg-[#F8FAFC] sm:mt-0">
+                    Use Phone Camera
+                    <Smartphone className="h-4 w-4" />
                   </span>
                 </div>
               </button>
-
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
-                  isDragging
-                    ? "border-[#2C3E6B]/40 bg-white/40"
-                    : isOnboardingScan
-                      ? `border-[#2C3E6B]/12 ${onboardingSurface}`
-                      : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
-                }`}
-              >
-                <input
-                  id="scan-file-input"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="sr-only"
-                  onChange={handleInputChange}
-                />
-                <input
-                  ref={slotUploadInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={handleSlotUploadChange}
-                />
-                <div>
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
-                    <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
+            ) : (
+              <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+                <button
+                  type="button"
+                  onClick={requestOpenCamera}
+                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                >
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
+                  <div className="relative flex h-full flex-col justify-between">
+                    <div>
+                      <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
+                        Recommended
+                      </span>
+                      <div className="mt-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
+                        <Camera className="h-7 w-7" />
+                      </div>
+                      <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
+                        Use device camera
+                      </h2>
+                      <p className="mt-2 text-xs leading-relaxed text-white/75">
+                        Capture using your device camera. Keep angles aligned
+                        with the guide.
+                      </p>
+                    </div>
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition-colors group-hover:bg-[#F8FAFC]">
+                      Start Camera
+                      <Camera className="h-3.5 w-3.5" />
+                    </span>
                   </div>
-                  <h2
-                    className="mt-4 text-base font-extrabold"
-                    style={{ color: navy }}
-                  >
-                    Upload photos
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
-                    Tap each slot below to add one photo at a time, or drop
-                    files to fill.
-                  </p>
-                  <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
-                    {captureCount}/{N_CAPTURES} added
-                  </p>
-                </div>
-                <label
-                  htmlFor="scan-file-input"
-                  className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition ${
-                    isOnboardingScan
-                      ? "border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50"
-                      : "border-white/70 bg-white/75 hover:bg-white"
+                </button>
+
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
+                    isDragging
+                      ? "border-[#2C3E6B]/40 bg-white/40"
+                      : isOnboardingScan
+                        ? `border-[#2C3E6B]/12 ${onboardingSurface}`
+                        : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
                   }`}
                 >
-                  <ImagePlus className="h-3.5 w-3.5" />
-                  Choose files
-                </label>
+                  <input
+                    id="scan-file-input"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    onChange={handleInputChange}
+                  />
+                  <input
+                    ref={slotUploadInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleSlotUploadChange}
+                  />
+                  <div>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
+                      <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
+                    </div>
+                    <h2
+                      className="mt-4 text-base font-extrabold"
+                      style={{ color: navy }}
+                    >
+                      Upload photos
+                    </h2>
+                    <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
+                      Tap each slot below to add one photo at a time, or drop
+                      files to fill.
+                    </p>
+                    <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
+                      {captureCount}/{N_CAPTURES} added
+                    </p>
+                  </div>
+                  <label
+                    htmlFor="scan-file-input"
+                    className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition ${
+                      isOnboardingScan
+                        ? "border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50"
+                        : "border-white/70 bg-white/75 hover:bg-white"
+                    }`}
+                  >
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Choose files
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
+            {isMobileDevice ? (
             <div className="space-y-4 pt-1">
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
                 Capture checklist
@@ -1536,6 +1546,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 </Link>
               ) : null}
             </div>
+            ) : null}
           </div>
 
           {uploadError ? (

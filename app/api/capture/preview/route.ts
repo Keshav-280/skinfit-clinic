@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 import { withApiHandler } from "@/src/lib/api/withApiHandler";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import {
+  getBearerTokenFromRequest,
+  verifyMobileCaptureBearerToken,
+} from "@/src/lib/auth/verifyMobileCaptureAuth";
 import { isCapturePreviewApiEnabled, isRetinaFaceModelOnDisk } from "@/src/lib/capturePreviewServer";
 import { runFacePreviewInference } from "@/src/lib/facePreviewInference";
 import { checkRateLimit } from "@/src/lib/security/rateLimit";
@@ -22,7 +26,14 @@ export const GET = withApiHandler("capture.preview.status", async () => {
  * Multipart field: `file` (JPEG). Requires auth. Heavier than on-device MediaPipe.
  */
 export const POST = withApiHandler("capture.preview", async (request) => {
-  const userId = await getSessionUserIdFromRequest(request);
+  let userId = await getSessionUserIdFromRequest(request);
+  if (!userId) {
+    const bearer = getBearerTokenFromRequest(request);
+    if (bearer) {
+      const auth = await verifyMobileCaptureBearerToken(bearer);
+      if (auth.ok) userId = auth.userId;
+    }
+  }
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
