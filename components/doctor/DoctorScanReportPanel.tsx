@@ -92,7 +92,7 @@ function DoctorScanMaskImage({
     <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
-        style={{ aspectRatio: cropLegacyTitle ? "1 / 1" : "3 / 4" }}
+        style={{ aspectRatio: SCAN_MASK_FRAME_ASPECT_CSS }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -267,7 +267,6 @@ export function DoctorScanReportPanel({
                 alt="Wrinkle mask overlay"
                 caption={WRINKLE_MASK_PANEL_LABEL}
                 maskExportVersion={report.maskExportVersion}
-                stretch
               />
             ) : null}
             {acneMask ? (

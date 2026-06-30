@@ -45,7 +45,7 @@ function MaskPanel({
     <figure className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
-        style={{ aspectRatio: cropLegacyTitle ? "1 / 1" : "3 / 4" }}
+        style={{ aspectRatio: SCAN_MASK_FRAME_ASPECT_CSS }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -124,7 +124,6 @@ export function ScanMaskAnnotations({
               caption={wrinklePoseLabel}
               fallbackSrc={wrinkleFallbackUrl}
               maskExportVersion={maskExportVersion}
-              stretch
             />
           ) : null}
           {acne ? (

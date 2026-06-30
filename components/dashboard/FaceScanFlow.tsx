@@ -1314,37 +1314,40 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           className="w-full"
         >
           <div className="space-y-5">
-            {!isMobileDevice ? (
-              <button
-                type="button"
-                onClick={() => setStep("phone-qr")}
-                className="group relative w-full overflow-hidden rounded-[24px] bg-[#2C3E6B] p-8 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
-              >
-                <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-110" />
-                <div className="relative flex min-h-[220px] flex-col justify-between sm:flex-row sm:items-end sm:gap-8">
-                  <div className="max-w-xl">
-                    <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
-                      Recommended
-                    </span>
-                    <div className="mt-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
-                      <Smartphone className="h-8 w-8" />
+            <div
+              className={`grid gap-4 ${isMobileDevice ? "md:grid-cols-[1.05fr_0.95fr]" : "md:grid-cols-[1.05fr_0.95fr]"}`}
+            >
+              {!isMobileDevice ? (
+                <button
+                  type="button"
+                  onClick={() => setStep("phone-qr")}
+                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                >
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-110" />
+                  <div className="relative flex h-full flex-col justify-between">
+                    <div>
+                      <span className="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/80">
+                        Recommended
+                      </span>
+                      <div className="mt-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
+                        <Smartphone className="h-7 w-7" />
+                      </div>
+                      <h2 className="mt-5 text-xl font-extrabold tracking-tight leading-tight">
+                        Scan with phone camera
+                      </h2>
+                      <p className="mt-2 text-xs leading-relaxed text-white/75">
+                        On desktop, capture with your phone for the best
+                        face-scan quality. Scan the QR code to start on your
+                        phone.
+                      </p>
                     </div>
-                    <h2 className="mt-5 text-2xl font-extrabold tracking-tight leading-tight">
-                      Scan with phone camera
-                    </h2>
-                    <p className="mt-2 text-sm leading-relaxed text-white/75">
-                      On desktop, capture with your phone for the best face-scan
-                      quality. Scan the QR code to start on your phone.
-                    </p>
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition-colors group-hover:bg-[#F8FAFC]">
+                      Use Phone Camera
+                      <Smartphone className="h-3.5 w-3.5" />
+                    </span>
                   </div>
-                  <span className="mt-8 inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-[#2C3E6B] transition-colors group-hover:bg-[#F8FAFC] sm:mt-0">
-                    Use Phone Camera
-                    <Smartphone className="h-4 w-4" />
-                  </span>
-                </div>
-              </button>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={requestOpenCamera}
@@ -1373,71 +1376,70 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                     </span>
                   </div>
                 </button>
+              )}
 
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                  className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
-                    isDragging
-                      ? "border-[#2C3E6B]/40 bg-white/40"
-                      : isOnboardingScan
-                        ? `border-[#2C3E6B]/12 ${onboardingSurface}`
-                        : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
+                  isDragging
+                    ? "border-[#2C3E6B]/40 bg-white/40"
+                    : isOnboardingScan
+                      ? `border-[#2C3E6B]/12 ${onboardingSurface}`
+                      : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
+                }`}
+              >
+                <input
+                  id="scan-file-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={handleInputChange}
+                />
+                <input
+                  ref={slotUploadInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleSlotUploadChange}
+                />
+                <div>
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
+                    <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
+                  </div>
+                  <h2
+                    className="mt-4 text-base font-extrabold"
+                    style={{ color: navy }}
+                  >
+                    Upload photos
+                  </h2>
+                  <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
+                    Tap each slot below to add one photo at a time, or drop
+                    files to fill.
+                  </p>
+                  <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
+                    {captureCount}/{N_CAPTURES} added
+                  </p>
+                </div>
+                <label
+                  htmlFor="scan-file-input"
+                  className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition ${
+                    isOnboardingScan
+                      ? "border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50"
+                      : "border-white/70 bg-white/75 hover:bg-white"
                   }`}
                 >
-                  <input
-                    id="scan-file-input"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="sr-only"
-                    onChange={handleInputChange}
-                  />
-                  <input
-                    ref={slotUploadInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={handleSlotUploadChange}
-                  />
-                  <div>
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
-                      <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
-                    </div>
-                    <h2
-                      className="mt-4 text-base font-extrabold"
-                      style={{ color: navy }}
-                    >
-                      Upload photos
-                    </h2>
-                    <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
-                      Tap each slot below to add one photo at a time, or drop
-                      files to fill.
-                    </p>
-                    <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
-                      {captureCount}/{N_CAPTURES} added
-                    </p>
-                  </div>
-                  <label
-                    htmlFor="scan-file-input"
-                    className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition ${
-                      isOnboardingScan
-                        ? "border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50"
-                        : "border-white/70 bg-white/75 hover:bg-white"
-                    }`}
-                  >
-                    <ImagePlus className="h-3.5 w-3.5" />
-                    Choose files
-                  </label>
-                </div>
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  Choose files
+                </label>
               </div>
-            )}
+            </div>
 
-            {isMobileDevice ? (
             <div className="space-y-4 pt-1">
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
                 Capture checklist
@@ -1546,7 +1548,6 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 </Link>
               ) : null}
             </div>
-            ) : null}
           </div>
 
           {uploadError ? (
