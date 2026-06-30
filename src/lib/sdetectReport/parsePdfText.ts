@@ -68,12 +68,30 @@ function parseMetrics(text: string, labels: readonly string[]): SdetectMetric[] 
   return metrics;
 }
 
-function parseSection(text: string, start: string, end?: string): string {
-  const startIdx = text.indexOf(start);
+function parseSection(text: string, start: string, end?: string | string[]): string {
+  const lower = text.toLowerCase();
+  const startLower = start.toLowerCase();
+  const startIdx = lower.indexOf(startLower);
   if (startIdx < 0) return "";
-  const slice = text.slice(startIdx + start.length);
-  const endIdx = end ? slice.indexOf(end) : -1;
-  return (endIdx >= 0 ? slice.slice(0, endIdx) : slice).trim();
+  let slice = text.slice(startIdx + start.length);
+  const endMarkers = end ? (Array.isArray(end) ? end : [end]) : [];
+  for (const marker of endMarkers) {
+    const endIdx = slice.toLowerCase().indexOf(marker.toLowerCase());
+    if (endIdx >= 0) {
+      slice = slice.slice(0, endIdx);
+      break;
+    }
+  }
+  return cleanNarrativeText(slice);
+}
+
+function cleanNarrativeText(text: string): string {
+  return text
+    .replace(/\d+\s*\/\s*\d+/g, " ")
+    .replace(/Note:\s*This report is for clinical reference only[^.]*\.?/gi, "")
+    .replace(/Skin Analyzer Report/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function parsePatient(text: string): SdetectPatient {
@@ -112,12 +130,13 @@ function parseComprehensiveScore(text: string): number {
 }
 
 function parseAdvice(text: string): string[] {
-  const block = parseSection(text, "Skincare advice", "Note:");
+  const block = parseSection(text, "Skincare advice", ["Note:", "Skin Analyzer Report"]);
+  if (!block) return [];
   const items: string[] = [];
   const re = /\d+\.\s+([^]+?)(?=\d+\.\s+|$)/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(block))) {
-    const line = match[1].replace(/\s+/g, " ").trim();
+    const line = cleanNarrativeText(match[1]);
     if (line) items.push(line);
   }
   return items;
@@ -148,9 +167,11 @@ export async function parseSdetectPdfText(
 ): Promise<Omit<SdetectReportData, "faceImages" | "sourceReportUrl" | "reportSn">> {
   const text = await extractPdfText(pdfBuffer);
 
-  const issueAnalysis = parseSection(text, "Issue analysis", "Skincare advice")
-    .replace(/\s+/g, " ")
-    .trim();
+  const issueAnalysis = parseSection(text, "Issue analysis", [
+    "Skincare advice",
+    "Note:",
+    "Skin Analyzer Report",
+  ]);
 
   return {
     classification: parseClassification(text),

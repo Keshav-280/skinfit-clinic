@@ -116,7 +116,69 @@ function fitContain(
 }
 
 function wrap(doc: jsPDF, text: string, maxWidth: number): string[] {
-  return doc.splitTextToSize(text.replace(/\s+/g, " ").trim(), maxWidth);
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return [];
+  return doc.splitTextToSize(cleaned, maxWidth);
+}
+
+function measureWrappedLines(
+  doc: jsPDF,
+  text: string,
+  maxWidth: number,
+  fontSize: number
+): number {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(fontSize);
+  return wrap(doc, text, maxWidth).length;
+}
+
+function estimateNarrativeHeight(
+  doc: jsPDF,
+  data: SdetectReportData,
+  maxW: number
+): number {
+  const sectionGap = 10;
+  const headerH = 16;
+  const lineH = 10;
+  const bodySize = 8;
+  let total = 0;
+
+  if (data.issueAnalysis.trim()) {
+    total += headerH;
+    total += measureWrappedLines(doc, data.issueAnalysis, maxW, bodySize) * lineH;
+    total += sectionGap;
+  }
+
+  const advice = data.skincareAdvice.filter((item) => item.trim());
+  if (advice.length) {
+    total += headerH;
+    for (const item of advice) {
+      total += measureWrappedLines(doc, item, maxW, bodySize) * lineH + 2;
+    }
+    total += sectionGap;
+  }
+
+  return total;
+}
+
+function drawBodyParagraph(
+  doc: jsPDF,
+  lines: string[],
+  x: number,
+  startY: number,
+  lineH: number,
+  maxY: number
+): number {
+  let cy = startY;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
+  for (const line of lines) {
+    if (cy > maxY) break;
+    doc.text(line, x, cy);
+    cy += lineH;
+  }
+  return cy;
 }
 
 function drawPageHeader(doc: jsPDF, logo: LogoAsset) {
@@ -346,20 +408,52 @@ function drawIssueAnalysis(
   maxW: number,
   maxY: number
 ): number {
+  const trimmed = text.trim();
+  if (!trimmed) return y;
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
   doc.text("Issue analysis", x, y);
 
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  const lines = wrap(doc, trimmed, maxW);
+  return drawBodyParagraph(doc, lines, x, y + 16, 10, maxY);
+}
+
+function drawSkincareAdvice(
+  doc: jsPDF,
+  items: string[],
+  x: number,
+  y: number,
+  maxW: number,
+  maxY: number
+): number {
+  const advice = items.map((item) => item.trim()).filter(Boolean);
+  if (!advice.length) return y;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
+  doc.text("Skincare advice", x, y);
+
   let cy = y + 16;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
-  for (const line of wrap(doc, text, maxW)) {
-    if (cy > maxY) break;
-    doc.text(line, x, cy);
-    cy += 11;
-  }
+
+  advice.forEach((item, index) => {
+    const numbered = /^\d+\.\s/.test(item) ? item : `${index + 1}. ${item}`;
+    const lines = wrap(doc, numbered, maxW);
+    for (const line of lines) {
+      if (cy > maxY) return cy;
+      doc.text(line, x, cy);
+      cy += 10;
+    }
+    cy += 2;
+  });
+
   return cy;
 }
 
@@ -460,8 +554,12 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
 
   const chartsY = metricsY + metricsH + 14;
   const footerReserve = 108;
-  const issueReserve = 72;
-  const chartsH = pageH - chartsY - footerReserve - issueReserve;
+  const narrativeTopGap = 10;
+  const maxNarrativeBottom = pageH - footerReserve - 8;
+  const narrativeHeight = estimateNarrativeHeight(doc, data, contentW);
+  const minChartsH = 200;
+  const maxChartsH = pageH - chartsY - footerReserve - narrativeHeight - narrativeTopGap;
+  const chartsH = Math.max(minChartsH, maxChartsH);
   const gutter = 16;
   const leftW = (contentW - gutter) * 0.48;
   const rightW = contentW - gutter - leftW;
@@ -504,8 +602,23 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
     { compact: true }
   );
 
-  const issueY = chartsY + chartsH + 10;
-  drawIssueAnalysis(doc, data.issueAnalysis, margin, issueY, contentW, pageH - footerReserve - 8);
+  const issueY = chartsY + chartsH + narrativeTopGap;
+  let narrativeY = drawIssueAnalysis(
+    doc,
+    data.issueAnalysis,
+    margin,
+    issueY,
+    contentW,
+    maxNarrativeBottom
+  );
+  narrativeY = drawSkincareAdvice(
+    doc,
+    data.skincareAdvice,
+    margin,
+    narrativeY + 8,
+    contentW,
+    maxNarrativeBottom
+  );
 
   const qrUrl = data.sourceReportUrl ?? QR_FALLBACK_URL;
   await drawFooter(doc, qrUrl);

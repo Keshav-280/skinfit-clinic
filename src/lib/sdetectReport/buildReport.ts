@@ -69,8 +69,20 @@ export async function buildSdetectReportFromPdf(
       radar = preferMetrics(api.radar, parsed.radar);
       generalAnalysis = preferMetrics(api.generalAnalysis, parsed.generalAnalysis);
       inDepthAnalysis = preferMetrics(api.inDepthAnalysis, parsed.inDepthAnalysis);
-      if (api.issueAnalysis) issueAnalysis = api.issueAnalysis;
-      if (api.skincareAdvice.length) skincareAdvice = api.skincareAdvice;
+      if (api.issueAnalysis) {
+        issueAnalysis =
+          api.issueAnalysis.length >= issueAnalysis.length
+            ? api.issueAnalysis
+            : issueAnalysis || api.issueAnalysis;
+      }
+      if (api.skincareAdvice.length) {
+        skincareAdvice =
+          api.skincareAdvice.length >= skincareAdvice.length
+            ? api.skincareAdvice
+            : skincareAdvice.length
+              ? skincareAdvice
+              : api.skincareAdvice;
+      }
     } catch {
       /* keep PDF-only data when API fetch fails */
     }
