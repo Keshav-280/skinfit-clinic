@@ -147,7 +147,7 @@ SCAN CONTEXT
 ${input.scanContextNote ?? "Standard weekly tracker report."}
 
 SCAN #${input.scanIndex} on ${input.scanDate}
-kAI score: ${input.scoresUnlocked ? patientDisplayClarity(input.kaiScore) : `grade ${patientClarityToGrade(input.kaiScore)}`}
+kAI score: ${input.scoresUnlocked ? input.kaiScore : `grade ${patientClarityToGrade(input.kaiScore)}`}
 Weekly delta: ${input.scoresUnlocked ? `${input.weeklyDelta >= 0 ? "+" : ""}${input.weeklyDelta}` : "change from last scan"}
 Consistency: ${input.consistencyPct}%
 Parameters: ${paramsLine(input.params, input.scoresUnlocked)}

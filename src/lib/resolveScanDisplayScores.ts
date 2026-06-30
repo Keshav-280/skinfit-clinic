@@ -3,6 +3,7 @@ import { parseClinicalScores } from "@/src/lib/parseClinicalScores";
 import type { RagKaiParamKey } from "@/src/lib/ragEightParams";
 import {
   computeRagKaiScore,
+  RAG_KAI_ALL_PARAM_KEYS,
   RAG_KAI_PARAM_KEYS,
 } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
@@ -316,7 +317,51 @@ export function ragParamValuesFromScanRow(
     pigmentationColumn: row.pigmentation,
     acneColumn: row.acne,
     wrinklesColumn: row.wrinkles,
+    hydrationColumn: row.hydration ?? 0,
+    textureColumn: row.texture ?? 0,
   });
+}
+
+/** `kaiParams` storage keys differ from RAG keys for some parameters. */
+const RAG_TO_KAI_PARAMS_KEY: Record<RagKaiParamKey, string> = {
+  active_acne: "active_acne",
+  sagging_volume: "sagging_volume",
+  hair_health: "hair_health",
+  wrinkles: "wrinkles",
+  skin_quality: "skin_quality",
+  acne_scar: "acne_scars",
+  under_eye: "under_eye",
+  pigmentation: "pigmentation",
+};
+
+/** Keep `scores.overallKaiScore` and `scores.kaiParams` aligned with resolved display scores. */
+export function syncResolvedScoresToScoresJson(
+  scoresJson: Record<string, unknown>,
+  resolved: ResolvedScanDisplayScores
+): Record<string, unknown> {
+  const existingKaiParams =
+    scoresJson.kaiParams && typeof scoresJson.kaiParams === "object"
+      ? (scoresJson.kaiParams as Record<string, Record<string, unknown>>)
+      : {};
+
+  const kaiParams: Record<string, Record<string, unknown>> = {
+    ...existingKaiParams,
+  };
+  for (const key of RAG_KAI_ALL_PARAM_KEYS) {
+    const v = resolved.resolvedRagParamValues[key];
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    const storageKey = RAG_TO_KAI_PARAMS_KEY[key];
+    kaiParams[storageKey] = {
+      ...(existingKaiParams[storageKey] ?? {}),
+      value: clampInt(v, 0, 100),
+    };
+  }
+
+  return {
+    ...scoresJson,
+    overallKaiScore: resolved.metrics.overall_score,
+    kaiParams,
+  };
 }
 
 /** Weighted kAI score — same resolution path as patient/doctor scan metrics. */

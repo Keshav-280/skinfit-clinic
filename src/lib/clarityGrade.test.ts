@@ -77,10 +77,10 @@ describe("patientScoreView", () => {
     expect(locked.label).toBe("B");
   });
 
-  it("shows exact calibrated score when unlocked", () => {
+  it("shows exact raw score when unlocked", () => {
     const unlocked = patientScoreView(72, true);
     expect(unlocked.locked).toBe(false);
-    expect(unlocked.label).toBe(String(patientDisplayClarity(72)));
+    expect(unlocked.label).toBe("72");
   });
 });
 
@@ -95,6 +95,6 @@ describe("patientKaiScoreView", () => {
   it("shows exact score when unlocked", () => {
     const unlocked = patientKaiScoreView(72, true);
     expect(unlocked.showLock).toBe(false);
-    expect(unlocked.kaiPrimary).toBe(String(patientDisplayClarity(72)));
+    expect(unlocked.kaiPrimary).toBe("72");
   });
 });

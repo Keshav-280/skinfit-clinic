@@ -64,6 +64,8 @@ export function mergeRagParamValuesFromScan(input: {
   pigmentationColumn: number;
   acneColumn: number;
   wrinklesColumn: number;
+  hydrationColumn?: number;
+  textureColumn?: number;
 }): Partial<Record<RagKaiParamKey, number>> {
   const out: Partial<Record<RagKaiParamKey, number>> = {};
 
@@ -133,6 +135,14 @@ export function mergeRagParamValuesFromScan(input: {
   setIfMissing(
     "pigmentation",
     input.pigmentationColumn > 0 ? input.pigmentationColumn : null
+  );
+  setIfMissing(
+    "under_eye",
+    (input.hydrationColumn ?? 0) > 0 ? input.hydrationColumn! : null
+  );
+  setIfMissing(
+    "acne_scar",
+    (input.textureColumn ?? 0) > 0 ? input.textureColumn! : null
   );
 
   setIfMissing("active_acne", kaiParamClarity(kaiParams, "active_acne"));

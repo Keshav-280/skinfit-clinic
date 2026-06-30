@@ -27,6 +27,7 @@ import {
   computePatientInsightSchedule,
   getPatientFirstScanAt,
 } from "@/src/lib/patientInsightSchedule";
+import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -158,6 +159,8 @@ async function buildPatientHomePayload(
         pigmentation: scans.pigmentation,
         acne: scans.acne,
         wrinkles: scans.wrinkles,
+        hydration: scans.hydration,
+        texture: scans.texture,
       })
       .from(scans)
       .where(eq(scans.userId, userId))
@@ -218,8 +221,18 @@ async function buildPatientHomePayload(
       }
     : null;
 
-  const kaiSkinScore =
-    recentScansForMetrics[0]?.overallScore ?? skinScanRows[0]?.skinScore ?? 0;
+  const latestScan = recentScansForMetrics[0];
+  const kaiSkinScore = latestScan
+    ? kaiScoreFromScanRow({
+        overallScore: latestScan.overallScore,
+        acne: latestScan.acne,
+        wrinkles: latestScan.wrinkles,
+        pigmentation: latestScan.pigmentation,
+        hydration: latestScan.hydration ?? 0,
+        texture: latestScan.texture ?? 0,
+        scores: latestScan.scores,
+      })
+    : skinScanRows[0]?.skinScore ?? 0;
 
   const { weeklyDeltaScore, weeklyDeltaMeaningful } = computeHomeWeeklyDeltaScore(
     recentScansForMetrics,

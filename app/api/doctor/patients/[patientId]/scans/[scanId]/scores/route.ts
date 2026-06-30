@@ -7,7 +7,7 @@ import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import { assertDoctorPatientAccess } from "@/src/lib/doctorPatientCare";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { invalidateUserHomeCache, invalidateUserInsightsCache, invalidateUserScanDerivedCaches } from "@/src/lib/infra";
-import { resolveScanDisplayScores, type DoctorOverrides, DOCTOR_EDITABLE_MFS_KEYS } from "@/src/lib/resolveScanDisplayScores";
+import { resolveScanDisplayScores, syncResolvedScoresToScoresJson, type DoctorOverrides, DOCTOR_EDITABLE_MFS_KEYS } from "@/src/lib/resolveScanDisplayScores";
 import { computeRagKaiScore, RAG_KAI_PARAM_KEYS } from "@/src/lib/ragEightParams";
 
 type AllowedMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
@@ -191,10 +191,15 @@ export async function PATCH(
     },
   });
 
+  const syncedScoresJson = syncResolvedScoresToScoresJson(
+    nextScoresJson as Record<string, unknown>,
+    resolved
+  );
+
   await db
     .update(scans)
     .set({
-      scores: nextScoresJson,
+      scores: syncedScoresJson,
       overallScore: resolved.metrics.overall_score,
       acne: resolved.metrics.acne,
       wrinkles: resolved.metrics.wrinkles,
@@ -204,11 +209,17 @@ export async function PATCH(
     })
     .where(and(eq(scans.id, scanId), eq(scans.userId, patientId)));
 
-  // Persist new tracker snapshot so patient (unlocked or locked) sees updated sections.
-  try {
-    await persistScanTrackerSnapshot(patientId, scanId);
-  } catch (e) {
-    console.error("[doctor-scores] tracker snapshot persist failed", e);
+  const snapshotSaved = await persistScanTrackerSnapshot(patientId, scanId).catch(
+    (e) => {
+      console.error("[doctor-scores] tracker snapshot persist failed", e);
+      return false;
+    }
+  );
+  if (!snapshotSaved) {
+    return NextResponse.json(
+      { error: "TRACKER_SNAPSHOT_FAILED" },
+      { status: 500 }
+    );
   }
 
   await Promise.all([
@@ -247,7 +258,7 @@ export async function PATCH(
           skinScore: resolved.metrics.overall_score,
           analysisResults: {
             ...analysisResults,
-            ...nextScoresJson,
+            ...syncedScoresJson,
             overallScore: resolved.metrics.overall_score,
             kaiOverallScore: resolved.metrics.overall_score,
             acne: resolved.metrics.acne,

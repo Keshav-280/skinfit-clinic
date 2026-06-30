@@ -29,7 +29,6 @@ import {
   kaiScoreFromScanRow,
   ragParamValuesFromScanRow,
 } from "@/src/lib/resolveScanDisplayScores";
-import { patientDisplayClarity } from "@/src/lib/clarityGrade";
 import { deriveSkinIdentityAt } from "@/src/lib/ragSkinIdentityDerive";
 import type {
   PatientTrackerCause,
@@ -65,12 +64,12 @@ function clampPct(n: number) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-function patientDisplayDelta(
+function scanDelta(
   current: number | null,
   previous: number | null
 ): number | null {
   if (typeof current !== "number" || typeof previous !== "number") return null;
-  return patientDisplayClarity(current) - patientDisplayClarity(previous);
+  return Math.round(current - previous);
 }
 
 function buildRetrievalQuery(params: {
@@ -231,7 +230,7 @@ export async function buildRagPatientTrackerNarrative(input: {
       value: typeof v0 === "number" ? v0 : null,
       delta:
         typeof v0 === "number" && typeof v1 === "number"
-          ? Math.round(patientDisplayClarity(v0) - patientDisplayClarity(v1))
+          ? Math.round(v0 - v1)
           : null,
     };
   });
@@ -239,8 +238,8 @@ export async function buildRagPatientTrackerNarrative(input: {
   const kaiNow = kaiScoreFromScanRow(scanRow);
   const kaiPrev = prevScan ? kaiScoreFromScanRow(prevScan) : kaiNow;
   const weeklyDelta =
-    prevScan == null ? 0 : Math.round(patientDisplayClarity(kaiNow) - patientDisplayClarity(kaiPrev));
-  const weeklyDeltaForLlm = patientDisplayDelta(kaiNow, kaiPrev) ?? 0;
+    prevScan == null ? 0 : Math.round(kaiNow - kaiPrev);
+  const weeklyDeltaForLlm = scanDelta(kaiNow, kaiPrev) ?? 0;
 
   const cutoff7 = new Date(scanRow.createdAt);
   cutoff7.setDate(cutoff7.getDate() - 7);
@@ -338,7 +337,7 @@ export async function buildRagPatientTrackerNarrative(input: {
       params: params.map((p) => ({
         key: p.key as RagKaiParamKey,
         value: p.value,
-        delta: patientDisplayDelta(
+        delta: scanDelta(
           p.value,
           prevVals[p.key as RagKaiParamKey] ?? null
         ),

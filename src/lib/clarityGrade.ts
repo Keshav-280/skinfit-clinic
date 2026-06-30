@@ -1,6 +1,6 @@
 /**
  * Patient-facing clarity grades (raw 0–100 model score → calibrated display → A–E).
- * Raw scores stay in DB/API; calibration applies only for patient UI and copy.
+ * Locked UI uses calibrated grades; unlocked UI shows raw resolved scores (doctor parity).
  */
 
 export type ClarityGrade = "A" | "B" | "C" | "D" | "E";
@@ -154,7 +154,9 @@ export function patientScoreView(
   rawScore: number,
   scoresUnlocked: boolean
 ): PatientScoreView {
-  const displayScore = patientDisplayClarity(rawScore);
+  const displayScore = scoresUnlocked
+    ? clampClarity(rawScore)
+    : patientDisplayClarity(rawScore);
   const grade = clarityToGrade(displayScore);
   const rangeLabel = gradeRangeLabel(grade);
   const locked = !scoresUnlocked;
@@ -163,7 +165,9 @@ export function patientScoreView(
     displayScore,
     color: gradeColor(grade),
     sublabel: gradeSublabel(grade),
-    label: scoresUnlocked ? String(displayScore) : patientGradeWithRange(rawScore),
+    label: scoresUnlocked
+      ? String(clampClarity(rawScore))
+      : patientGradeWithRange(rawScore),
     rangeLabel,
     locked,
   };
@@ -206,7 +210,7 @@ export function patientParamGaugeLabel(
   scoresUnlocked: boolean
 ): string {
   return scoresUnlocked
-    ? String(patientDisplayClarity(rawScore))
+    ? String(clampClarity(rawScore))
     : patientClarityToGrade(rawScore);
 }
 
@@ -223,6 +227,6 @@ export function patientChartDisplayValue(
   rawScore: number,
   scoresUnlocked: boolean
 ): number {
-  if (scoresUnlocked) return patientDisplayClarity(rawScore);
+  if (scoresUnlocked) return clampClarity(rawScore);
   return GRADE_CHART_Y[patientClarityToGrade(rawScore)];
 }

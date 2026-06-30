@@ -1,8 +1,7 @@
 import "server-only";
 
 import { isSameWeek, subDays } from "date-fns";
-import { resolveScanDisplayScores } from "@/src/lib/resolveScanDisplayScores";
-import { patientDisplayClarity } from "@/src/lib/clarityGrade";
+import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 
 export type HomeWeeklyDeltaScanRow = {
   overallScore: number;
@@ -21,18 +20,15 @@ function average(xs: number[]): number | null {
 }
 
 function kaiForScan(scan: HomeWeeklyDeltaScanRow): number {
-  const overall = resolveScanDisplayScores({
-    scoresJson: scan.scores,
-    baseMetricsColumns: {
-      overallScore: scan.overallScore,
-      acne: scan.acne,
-      wrinkles: scan.wrinkles,
-      pigmentation: scan.pigmentation,
-      hydration: scan.hydration ?? 0,
-      texture: scan.texture ?? 0,
-    },
-  }).metrics.overall_score;
-  return patientDisplayClarity(overall);
+  return kaiScoreFromScanRow({
+    overallScore: scan.overallScore,
+    acne: scan.acne,
+    wrinkles: scan.wrinkles,
+    pigmentation: scan.pigmentation,
+    hydration: scan.hydration ?? 0,
+    texture: scan.texture ?? 0,
+    scores: scan.scores,
+  });
 }
 
 /** Week-over-week kAI change for the home dashboard (Mon-start weeks). */

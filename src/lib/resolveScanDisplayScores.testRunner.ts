@@ -38,14 +38,9 @@ function run() {
     });
 
     // Expected weighted average (see ragEightParams weights).
-    // active_acne 75 * 16
-    // sagging_volume 100 * 12
-    // wrinkles 25 * 14
-    // acne_scar 50 * 12
-    // under_eye 0 * 10
-    // pigmentation 75 * 12
-    // sum = 4250, sumW = 76 → 55.92 → round 56
-    assert.equal(res.metrics.overall_score, 56);
+    // under_eye from hydration column (60), acne_scar from texture column (55).
+    // sum = 4910, sumW = 76 → 64.6 → round 65
+    assert.equal(res.metrics.overall_score, 65);
     assert.equal(res.metrics.clinical_scores?.active_acne, 2);
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 4);
   }
@@ -67,8 +62,8 @@ function run() {
       baseMetricsColumns: makeBaseMetrics(),
     });
 
-    // Weighted from overridden severities: 58 (not the stale kaiScore: 72).
-    assert.equal(res.metrics.overall_score, 58);
+    // Weighted from overridden severities + hydration/texture columns: 67 (not stale kaiScore: 72).
+    assert.equal(res.metrics.overall_score, 67);
     assert.equal(res.metrics.clinical_scores?.active_acne, 5);
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 1);
     assert.equal(res.resolvedRagParamValues.active_acne, 0);
