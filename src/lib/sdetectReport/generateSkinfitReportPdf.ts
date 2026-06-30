@@ -1,4 +1,3 @@
-import { appendFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { jsPDF } from "jspdf";
@@ -9,33 +8,6 @@ import type { SdetectFaceImages, SdetectReportData } from "./types";
 
 type LogoAsset = { dataUrl: string; displayW: number; displayH: number };
 type SignatureAsset = { dataUrl: string; aspect: number };
-
-const DEBUG_LOG_PATH = path.join(process.cwd(), ".cursor/debug-bba219.log");
-
-function debugLog(
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown>
-) {
-  // #region agent log
-  try {
-    appendFileSync(
-      DEBUG_LOG_PATH,
-      `${JSON.stringify({
-        sessionId: "bba219",
-        hypothesisId,
-        location,
-        message,
-        data,
-        timestamp: Date.now(),
-      })}\n`
-    );
-  } catch {
-    /* ignore */
-  }
-  // #endregion
-}
 
 const CLINIC_LOCATIONS = [
   {
@@ -490,55 +462,45 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
   const footerReserve = 108;
   const issueReserve = 72;
   const chartsH = pageH - chartsY - footerReserve - issueReserve;
-  const gutter = 14;
+  const gutter = 16;
   const leftW = (contentW - gutter) * 0.48;
   const rightW = contentW - gutter - leftW;
   const rightX = margin + leftW + gutter;
-
-  // #region agent log
-  debugLog("H1", "generateSkinfitReportPdf.ts:layout", "pdf layout metrics", {
-    patientY,
-    patientH,
-    metricsY,
-    metricsOverlap,
-    chartsY,
-    chartsH,
-    leftW,
-    rightW,
-    pageH,
-  });
-  // #endregion
+  const cardPad = 10;
+  const titleAreaH = 32;
 
   drawGreyCard(doc, margin, chartsY, leftW, chartsH, 10);
-  drawRadarTitle(doc, margin, chartsY + 10, leftW);
-  const radarPad = 12;
-  const radarSize = Math.min(leftW - radarPad * 2, chartsH - 52);
-  const radarX = margin + (leftW - radarSize) / 2;
-  const radarY = chartsY + 38;
-  drawRadarChart(doc, data.radar, radarX, radarY, radarSize);
+  drawGreyCard(doc, rightX, chartsY, rightW, chartsH, 10);
 
-  const lineGap = 10;
-  const lineH = (chartsH - lineGap) / 2;
-  drawGreyCard(doc, rightX, chartsY, rightW, lineH, 8);
+  drawRadarTitle(doc, margin, chartsY + cardPad, leftW);
+  drawRadarChart(doc, data.radar, {
+    x: margin + cardPad,
+    y: chartsY + titleAreaH,
+    w: leftW - cardPad * 2,
+    h: chartsH - titleAreaH - 6,
+  });
+
+  const innerPad = 10;
+  const lineGap = 8;
+  const lineH = (chartsH - innerPad * 2 - lineGap) / 2;
   drawLineChart(
     doc,
     "General analysis",
     data.generalAnalysis,
-    rightX + 8,
-    chartsY + 8,
-    rightW - 16,
-    lineH - 8,
+    rightX + innerPad,
+    chartsY + innerPad,
+    rightW - innerPad * 2,
+    lineH,
     { compact: true }
   );
-  drawGreyCard(doc, rightX, chartsY + lineH + lineGap, rightW, lineH, 8);
   drawLineChart(
     doc,
     "In-depth analysis",
     data.inDepthAnalysis,
-    rightX + 8,
-    chartsY + lineH + lineGap + 8,
-    rightW - 16,
-    lineH - 8,
+    rightX + innerPad,
+    chartsY + innerPad + lineH + lineGap,
+    rightW - innerPad * 2,
+    lineH,
     { compact: true }
   );
 

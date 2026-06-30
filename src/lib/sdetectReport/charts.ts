@@ -22,7 +22,8 @@ export function radarGeometry(
   metrics: SdetectMetric[],
   cx: number,
   cy: number,
-  radius: number
+  radius: number,
+  labelOffset = 12
 ) {
   const n = metrics.length;
   const step = (2 * Math.PI) / n;
@@ -32,8 +33,8 @@ export function radarGeometry(
     const angle = start + i * step;
     const x = cx + radius * Math.cos(angle);
     const y = cy + radius * Math.sin(angle);
-    const lx = cx + (radius + 22) * Math.cos(angle);
-    const ly = cy + (radius + 22) * Math.sin(angle);
+    const lx = cx + (radius + labelOffset) * Math.cos(angle);
+    const ly = cy + (radius + labelOffset) * Math.sin(angle);
     return { metric, x, y, lx, ly, angle };
   });
 
@@ -55,18 +56,45 @@ export function radarGeometry(
   return { axis, data, gridLevels };
 }
 
+export type RadarBounds = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
 export function drawRadarChart(
   doc: jsPDF,
   metrics: SdetectMetric[],
-  x: number,
-  y: number,
-  size: number
+  bounds: RadarBounds
 ) {
   if (!metrics.length) return;
-  const cx = x + size / 2;
-  const cy = y + size / 2;
-  const radius = size * 0.34;
-  const { axis, data, gridLevels } = radarGeometry(metrics, cx, cy, radius);
+
+  const padX = 8;
+  const padTop = 2;
+  const padBottom = 4;
+  const labelOffset = 12;
+  const clipLeft = bounds.x + 4;
+  const clipRight = bounds.x + bounds.w - 4;
+  const labelMaxW = Math.min(48, bounds.w * 0.36);
+
+  const innerW = bounds.w - padX * 2;
+  const innerH = bounds.h - padTop - padBottom;
+  const maxRadiusByW = innerW / 2 - labelOffset - 2;
+  const maxRadiusByH = innerH / 2 - labelOffset - 6;
+  const radius = Math.max(28, Math.min(maxRadiusByW, maxRadiusByH));
+
+  const cx = bounds.x + bounds.w / 2;
+  /** Shift center up so labels fit with minimal empty space below. */
+  const cy = bounds.y + padTop + labelOffset + radius;
+
+  const { axis, data, gridLevels } = radarGeometry(
+    metrics,
+    cx,
+    cy,
+    radius,
+    labelOffset
+  );
 
   const drawClosed = (points: { x: number; y: number }[], style: "S" | "FD") => {
     if (points.length < 2) return;
@@ -96,22 +124,56 @@ export function drawRadarChart(
   }
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
   for (const point of axis) {
     const cos = Math.cos(point.angle);
-    const lines = doc.splitTextToSize(point.metric.label, 72);
+    const sin = Math.sin(point.angle);
+    let lx = point.lx;
+    let ly = point.ly;
+
     let align: "left" | "center" | "right" = "center";
-    if (cos > 0.35) align = "left";
-    else if (cos < -0.35) align = "right";
-    doc.text(lines, point.lx, point.ly, { align });
+    if (cos > 0.25) align = "left";
+    else if (cos < -0.25) align = "right";
+
+    const lines = doc.splitTextToSize(point.metric.label, labelMaxW);
+    const scoreLine = `${point.metric.score}%`;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6);
+    const scoreW = doc.getTextWidth(scoreLine);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    const textW = Math.max(
+      scoreW,
+      ...lines.map((line) => doc.getTextWidth(line))
+    );
+
+    if (align === "left" && lx + textW > clipRight) {
+      lx = clipRight;
+      align = "right";
+    } else if (align === "right" && lx - textW < clipLeft) {
+      lx = clipLeft;
+      align = "left";
+    } else if (align === "center") {
+      if (cos > 0 && lx + textW / 2 > clipRight) {
+        lx = clipRight;
+        align = "right";
+      } else if (cos < 0 && lx - textW / 2 < clipLeft) {
+        lx = clipLeft;
+        align = "left";
+      }
+    }
+
+    /** Nudge bottom labels up slightly to trim dead space under the polygon. */
+    if (sin > 0.55) ly -= 4;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    doc.text(lines, lx, ly, { align });
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-    doc.text(`${point.metric.score}%`, point.lx, point.ly + lines.length * 8 + 2, {
-      align,
-    });
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    doc.text(scoreLine, lx, ly + lines.length * 7 + 1, { align });
   }
 }
 
