@@ -9,6 +9,7 @@ import {
 } from "@/src/db/schema";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { patientDisplayClarity } from "@/src/lib/clarityGrade";
+import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 import { buildMonthlyRagCronPayload } from "@/src/lib/ragCronMonthlyPayload";
 import { generateRagKaiOutput } from "@/src/lib/ragKaiTestService";
 import { publishNotification } from "@/src/lib/infra";
@@ -52,6 +53,12 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
       .select({
         id: scans.id,
         overallScore: scans.overallScore,
+        acne: scans.acne,
+        wrinkles: scans.wrinkles,
+        pigmentation: scans.pigmentation,
+        hydration: scans.hydration,
+        texture: scans.texture,
+        scores: scans.scores,
         createdAt: scans.createdAt,
       })
       .from(scans)
@@ -76,15 +83,17 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
 
     const latest = recent[0];
     const prev = recent[1];
+    const latestKai = kaiScoreFromScanRow(latest);
+    const prevKai = prev != null ? kaiScoreFromScanRow(prev) : null;
     const delta =
-      prev != null
-        ? patientDisplayClarity(latest.overallScore) - patientDisplayClarity(prev.overallScore)
+      prevKai != null
+        ? patientDisplayClarity(latestKai) - patientDisplayClarity(prevKai)
         : 0;
 
     await db.insert(weeklyReports).values({
       userId: p.id,
       weekStart,
-      kaiScore: latest.overallScore,
+      kaiScore: latestKai,
       weeklyDelta: delta,
       consistencyScore: null,
       narrativeText:

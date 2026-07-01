@@ -50,6 +50,7 @@ import {
   invalidateUserScanDerivedCaches,
 } from "@/src/lib/infra";
 import { computeRagKaiScore } from "@/src/lib/ragEightParams";
+import { scanDisplayMetricsFromRow } from "@/src/lib/resolveScanDisplayScores";
 import {
   buildFaceIdentityInputsFromJpegs,
   enforceScanFaceIdentity,
@@ -749,11 +750,32 @@ export async function POST(request: NextRequest) {
         .where(eq(mobileCaptureSessions.id, sessionId));
     }
 
+    const scoresJsonForDisplay = {
+      modelFeatureScores: modelFeatureScores as Record<string, number | null>,
+      overallKaiScore,
+      kaiParams: v2params,
+      ...(overlayDataUri ? { overlayDataUri } : {}),
+      ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
+      ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
+      ...(spatialOutputs ? { spatialOutputs } : {}),
+    };
+    const displayMetrics = scanDisplayMetricsFromRow({
+      overallScore: metrics.overall_score,
+      acne: metrics.acne,
+      wrinkles: metrics.wrinkles,
+      pigmentation: metrics.pigmentation,
+      hydration: metrics.hydration,
+      texture: metrics.texture,
+      scores: scoresJsonForDisplay,
+    });
+    const resolvedMetrics = { ...metrics, ...displayMetrics };
+    const resolvedOverallKai = displayMetrics.overall_score;
+
     return NextResponse.json({
       success: true,
       data: {
-        metrics,
-        overallKaiScore,
+        metrics: resolvedMetrics,
+        overallKaiScore: resolvedOverallKai,
         kaiParams: v2params,
         detected_regions,
         ai_summary: aiSummary,

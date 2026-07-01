@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
 import { resolveScanDisplayScores } from "@/src/lib/resolveScanDisplayScores";
+import { computeRagKaiScore } from "@/src/lib/ragEightParams";
 
 function makeBaseMetrics() {
   return {
@@ -37,8 +38,8 @@ function run() {
       baseMetricsColumns: makeBaseMetrics(),
     });
 
-    // Patient-facing params after display calibration; sumW=76 → 61
-    assert.equal(res.metrics.overall_score, 61);
+    // Patient-facing params after display calibration; weights sum to 100 → 62
+    assert.equal(res.metrics.overall_score, 62);
     assert.equal(res.metrics.clinical_scores?.active_acne, 2);
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 4);
   }
@@ -104,6 +105,31 @@ function run() {
     assert.equal(res.metrics.overall_score, 65);
     assert.equal(res.resolvedRagParamValues.active_acne, 20);
     assert.equal(res.resolvedRagParamValues.sagging_volume, 75);
+  }
+
+  // Case 5: stored raw overallKaiScore must not override weighted display params.
+  {
+    const res = resolveScanDisplayScores({
+      scoresJson: {
+        modelFeatureScores,
+        overallKaiScore: 71,
+      },
+      baseMetricsColumns: { ...makeBaseMetrics(), overallScore: 71 },
+    });
+    assert.equal(res.metrics.overall_score, 62);
+  }
+
+  // Case 6: displayed category scores → overall matches weighted average (weights sum 100).
+  {
+    const overall = computeRagKaiScore({
+      active_acne: 69,
+      sagging_volume: 73,
+      wrinkles: 72,
+      acne_scar: 77,
+      under_eye: 79,
+      pigmentation: 27,
+    });
+    assert.equal(overall, 66);
   }
 }
 

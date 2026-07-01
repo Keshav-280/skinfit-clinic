@@ -15,6 +15,7 @@ import { displayUserPhone } from "../../../src/lib/auth/phone";
 import { isPatientClinicVisited } from "../../../src/lib/patientClinicVisit";
 import { patientScanImagePath } from "../../../src/lib/patientScanImagePath";
 import { analysisResultsToParams } from "../../../src/lib/skinScanAnalysis";
+import { kaiScoreFromScanRow } from "../../../src/lib/resolveScanDisplayScores";
 
 export default async function HistoryPage() {
   const userId = await getSessionUserId();
@@ -110,7 +111,15 @@ export default async function HistoryPage() {
       id: s.id,
       scanName: s.scanName,
       imageUrl: patientScanImagePath(s.id, { preview: true, thumbnail: true }),
-      overallScore: s.overallScore,
+      overallScore: kaiScoreFromScanRow({
+        overallScore: s.overallScore,
+        acne: s.acne,
+        wrinkles: s.wrinkles,
+        pigmentation: s.pigmentation,
+        hydration: s.hydration,
+        texture: s.texture,
+        scores: s.scores,
+      }),
       params,
       createdAt: s.createdAt,
       aiSummary: s.aiSummary ?? null,

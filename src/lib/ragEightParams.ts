@@ -43,16 +43,19 @@ export const RAG_KAI_PARAM_LABELS: Record<RagKaiParamKey, string> = {
   pigmentation: "Pigmentation",
 };
 
-/** Weights sum to 100 for weighted kAI score (all dimensions; patient score uses visible keys only). */
+/**
+ * Patient-visible weights sum to 100 (used by {@link computeRagKaiScore}).
+ * Hidden keys (`hair_health`, `skin_quality`) are retained for catalog parity only.
+ */
 export const RAG_KAI_PARAM_WEIGHTS: Record<RagKaiParamKey, number> = {
-  active_acne: 16,
-  sagging_volume: 12,
+  active_acne: 21,
+  sagging_volume: 16,
   hair_health: 10,
-  wrinkles: 14,
+  wrinkles: 18,
   skin_quality: 14,
-  acne_scar: 12,
-  under_eye: 10,
-  pigmentation: 12,
+  acne_scar: 16,
+  under_eye: 13,
+  pigmentation: 16,
 };
 
 function clamp0to100(v: number) {

@@ -13,6 +13,7 @@ import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
+import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
   if (!userId) {
@@ -160,7 +161,15 @@ export async function GET(request: Request) {
       id: s.id,
       scanName: s.scanName,
       imageUrl: patientScanImagePath(s.id, { preview: true, thumbnail: true }),
-      overallScore: s.overallScore,
+      overallScore: kaiScoreFromScanRow({
+        overallScore: s.overallScore,
+        acne: s.acne,
+        wrinkles: s.wrinkles,
+        pigmentation: s.pigmentation,
+        hydration: s.hydration,
+        texture: s.texture,
+        scores: s.scores,
+      }),
       analysisResults,
       createdAt: s.createdAt.toISOString(),
       aiSummary: s.aiSummary ?? null,

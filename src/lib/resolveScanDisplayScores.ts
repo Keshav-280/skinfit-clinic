@@ -152,18 +152,6 @@ export function resolveScanDisplayScores(input: {
       Record<(typeof RAG_KAI_PARAM_KEYS)[number], number | null | undefined>
     >) ?? input.baseMetricsColumns.overallScore;
 
-  const storedKai =
-    effectiveScoresJson &&
-    typeof effectiveScoresJson === "object" &&
-    typeof (effectiveScoresJson as Record<string, unknown>).overallKaiScore ===
-      "number"
-      ? clampInt(
-          (effectiveScoresJson as Record<string, unknown>).overallKaiScore as number,
-          0,
-          100
-        )
-      : null;
-
   const hasDoctorParamOverrides =
     (doctorOverrides?.parameterScores &&
       Object.values(doctorOverrides.parameterScores).some(
@@ -174,14 +162,19 @@ export function resolveScanDisplayScores(input: {
         (v) => typeof v === "number" && Number.isFinite(v)
       ));
 
-  // When doctor overrides any of the six params, kAI must match their weighted sum.
+  const hasKaiScoreOnlyOverride =
+    typeof doctorOverrides?.kaiScore === "number" &&
+    Number.isFinite(doctorOverrides.kaiScore) &&
+    !hasDoctorParamOverrides;
+
+  // Overall kAI always follows the six displayed category scores (weighted sum).
+  // Legacy doctor kaiScore-only override is preserved when no param edits exist.
   const resolvedKaiScore =
     hasDoctorParamOverrides && computedKai != null
       ? computedKai
-      : typeof doctorOverrides?.kaiScore === "number" &&
-          Number.isFinite(doctorOverrides.kaiScore)
-        ? clampInt(doctorOverrides.kaiScore, 0, 100)
-        : storedKai ?? computedKai;
+      : hasKaiScoreOnlyOverride
+        ? clampInt(doctorOverrides!.kaiScore!, 0, 100)
+        : computedKai;
 
   const resolvedAcne =
     resolvedRagParamValues.active_acne ?? input.baseMetricsColumns.acne;
