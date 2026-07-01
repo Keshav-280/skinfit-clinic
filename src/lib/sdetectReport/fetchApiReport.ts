@@ -46,51 +46,99 @@ type ApiReportPayload = {
   };
 };
 
-const FACE_IMAGE_SPECS: Record<keyof SdetectFaceImages, Array<[string, string]>> = {
-  front: [
-    ["2", "White map"],
-    ["2", "White light"],
-    ["3", "White map"],
-  ],
-  left: [
-    ["1", "White light"],
-    ["2", "White light"],
-    ["3", "White light"],
-  ],
-  right: [
-    ["3", "White light"],
-    ["2", "White light"],
-    ["1", "White light"],
-  ],
+// FaceType codes: "2" = front, "1" = left, "3" = right.
+// Preferred face angle per slot, most-appropriate first.
+const FACE_TYPE_PRIORITY: Record<keyof SdetectFaceImages, string[]> = {
+  front: ["2", "1", "3"],
+  left: ["1", "2", "3"],
+  right: ["3", "2", "1"],
 };
 
-function resolveFaceImageUrl(
-  byFaceLight: Map<string, string>,
-  specs: Array<[string, string]>
-): string | null {
-  for (const [faceType, lightName] of specs) {
-    const url = byFaceLight.get(`${faceType}|${lightName}`);
-    if (url) return url;
+// Natural-colour photos first; diagnostic overlays (UV, Wood's, polarised, maps)
+// only as a last resort so the card never renders a weird greyscale map when a
+// real photo exists.
+const LIGHT_PRIORITY = ["White light", "White map"];
+
+/**
+ * Build a prioritised list of `faceType|light` keys for a slot: preferred angle
+ * + natural light first, then any light for the preferred angle, then other
+ * angles, and finally anything available.
+ */
+function candidateKeys(
+  slot: keyof SdetectFaceImages,
+  available: Map<string, string>
+): string[] {
+  const keys: string[] = [];
+  const push = (k: string) => {
+    if (available.has(k) && !keys.includes(k)) keys.push(k);
+  };
+
+  const availableLights = new Set(
+    [...available.keys()].map((k) => k.split("|")[1])
+  );
+  const lightsInOrder = [
+    ...LIGHT_PRIORITY,
+    ...[...availableLights].filter((l) => !LIGHT_PRIORITY.includes(l)),
+  ];
+
+  // Preferred angle × natural light, then preferred angle × any light.
+  for (const faceType of FACE_TYPE_PRIORITY[slot]) {
+    for (const light of lightsInOrder) push(`${faceType}|${light}`);
   }
-  return null;
+  // Absolute last resort: literally anything the API returned.
+  for (const k of available.keys()) push(k);
+  return keys;
 }
 
+/**
+ * Resolve three face images robustly. Prefers a distinct natural photo per slot,
+ * but falls back through every available angle/light combination and will reuse
+ * an image rather than show nothing. Returns null only when the API returned no
+ * usable images at all.
+ */
 async function resolveFaceImages(
   byFaceLight: Map<string, string>
 ): Promise<SdetectFaceImages | null> {
-  const faceUrls: Record<keyof SdetectFaceImages, string | null> = {
-    front: resolveFaceImageUrl(byFaceLight, FACE_IMAGE_SPECS.front),
-    left: resolveFaceImageUrl(byFaceLight, FACE_IMAGE_SPECS.left),
-    right: resolveFaceImageUrl(byFaceLight, FACE_IMAGE_SPECS.right),
-  };
-  if (!faceUrls.front || !faceUrls.left || !faceUrls.right) return null;
+  if (byFaceLight.size === 0) return null;
 
-  const [front, left, right] = await Promise.all([
-    fetchImageBuffer(faceUrls.front),
-    fetchImageBuffer(faceUrls.left),
-    fetchImageBuffer(faceUrls.right),
+  const slots: Array<keyof SdetectFaceImages> = ["front", "left", "right"];
+  const chosenUrl: Record<keyof SdetectFaceImages, string | null> = {
+    front: null,
+    left: null,
+    right: null,
+  };
+  const usedUrls = new Set<string>();
+
+  // Pass 1: prefer a distinct image per slot.
+  for (const slot of slots) {
+    for (const key of candidateKeys(slot, byFaceLight)) {
+      const url = byFaceLight.get(key);
+      if (url && !usedUrls.has(url)) {
+        chosenUrl[slot] = url;
+        usedUrls.add(url);
+        break;
+      }
+    }
+  }
+
+  // Pass 2: fill any still-empty slot even if it means reusing an image.
+  for (const slot of slots) {
+    if (chosenUrl[slot]) continue;
+    const key = candidateKeys(slot, byFaceLight)[0];
+    chosenUrl[slot] = (key && byFaceLight.get(key)) || null;
+  }
+
+  const front = chosenUrl.front ?? chosenUrl.left ?? chosenUrl.right;
+  const left = chosenUrl.left ?? front;
+  const right = chosenUrl.right ?? front;
+  if (!front || !left || !right) return null;
+
+  const [frontBuf, leftBuf, rightBuf] = await Promise.all([
+    fetchImageBuffer(front),
+    fetchImageBuffer(left),
+    fetchImageBuffer(right),
   ]);
-  return { front, left, right };
+  return { front: frontBuf, left: leftBuf, right: rightBuf };
 }
 
 const RADAR_NAMES = [
