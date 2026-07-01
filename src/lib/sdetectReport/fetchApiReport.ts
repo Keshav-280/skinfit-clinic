@@ -46,36 +46,63 @@ type ApiReportPayload = {
   };
 };
 
-// FaceType codes: "1" = left, "2" = front/centre, "3" = right.
-// Each display slot only uses natural "White light" for its angle — no UV/maps
-// or cross-angle reuse (wrong slot → placeholder in the PDF).
-const NATURAL_LIGHT = "White light";
+// FaceType codes: "1" = left profile, "2" = front/centre, "3" = right profile.
+// Centre must be White light front only. Left/right must be natural photos at
+// their own angle (White light first, then other non-diagnostic lights).
+const WHITE_LIGHT = "White light";
 
-const FACE_SLOT_KEYS: Record<keyof SdetectFaceImages, string> = {
-  left: `1|${NATURAL_LIGHT}`,
-  front: `2|${NATURAL_LIGHT}`,
-  right: `3|${NATURAL_LIGHT}`,
-};
+/** Diagnostic overlays — never used for left/right profile slots. */
+const NON_NATURAL_LIGHT_RE =
+  /map|uv|wood|polari|heat|red map|brown|pigment|porphyrin|collagen/i;
+
+function isNaturalLight(lightName: string): boolean {
+  return !NON_NATURAL_LIGHT_RE.test(lightName);
+}
+
+function pickProfileUrl(
+  byFaceLight: Map<string, string>,
+  faceType: string
+): string | null {
+  const whiteKey = `${faceType}|${WHITE_LIGHT}`;
+  const white = byFaceLight.get(whiteKey);
+  if (white) return white;
+
+  for (const [key, url] of byFaceLight) {
+    const [ft, light] = key.split("|");
+    if (ft === faceType && light && light !== WHITE_LIGHT && isNaturalLight(light)) {
+      return url;
+    }
+  }
+  return null;
+}
+
+function pickCentreWhiteUrl(byFaceLight: Map<string, string>): string | null {
+  return byFaceLight.get(`2|${WHITE_LIGHT}`) ?? null;
+}
 
 async function resolveFaceImages(
   byFaceLight: Map<string, string>
 ): Promise<SdetectFaceImages | null> {
   if (byFaceLight.size === 0) return null;
 
+  const slotUrls: Record<keyof SdetectFaceImages, string | null> = {
+    left: pickProfileUrl(byFaceLight, "1"),
+    front: pickCentreWhiteUrl(byFaceLight),
+    right: pickProfileUrl(byFaceLight, "3"),
+  };
+
   const result: SdetectFaceImages = { left: null, front: null, right: null };
 
   await Promise.all(
-    (Object.keys(FACE_SLOT_KEYS) as Array<keyof SdetectFaceImages>).map(
-      async (slot) => {
-        const url = byFaceLight.get(FACE_SLOT_KEYS[slot]);
-        if (!url) return;
-        try {
-          result[slot] = await fetchImageBuffer(url);
-        } catch {
-          result[slot] = null;
-        }
+    (Object.keys(slotUrls) as Array<keyof SdetectFaceImages>).map(async (slot) => {
+      const url = slotUrls[slot];
+      if (!url) return;
+      try {
+        result[slot] = await fetchImageBuffer(url);
+      } catch {
+        result[slot] = null;
       }
-    )
+    })
   );
 
   return result;
