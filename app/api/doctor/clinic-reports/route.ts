@@ -5,6 +5,7 @@ import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
 import {
   clinicReportShareUrl,
   findPatientByEmail,
+  listRecentClinicReportPatients,
   normalizePatientEmail,
   serializeClinicReportRow,
 } from "@/src/lib/clinicExternalReports";
@@ -49,7 +50,9 @@ export async function GET(req: Request) {
     })
   );
 
-  return Response.json({ reports: enriched });
+  const recentPatients = await listRecentClinicReportPatients(doctorId);
+
+  return Response.json({ reports: enriched, recentPatients });
 }
 
 export async function POST(req: Request) {

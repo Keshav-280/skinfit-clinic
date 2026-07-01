@@ -36,7 +36,49 @@ type ClinicReportRow = {
   kind: "external_clinic_report";
 };
 
+type ClinicReportPatientPick = {
+  name: string;
+  email: string;
+  lastUsedAt: string;
+};
+
 type CreateTab = "generate" | "upload";
+
+function PatientEmailSelect({
+  patients,
+  value,
+  onChange,
+  placeholder = "Select patient…",
+  className = "",
+}: {
+  patients: ClinicReportPatientPick[];
+  value: string;
+  onChange: (email: string, patient: ClinicReportPatientPick | null) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => {
+        const email = e.target.value;
+        const patient = patients.find((p) => p.email === email) ?? null;
+        onChange(email, patient);
+      }}
+      disabled={patients.length === 0}
+      className={className}
+    >
+      <option value="">
+        {patients.length === 0 ? "No patients with email yet" : placeholder}
+      </option>
+      {patients.map((p) => (
+        <option key={p.email} value={p.email}>
+          {p.name} — {p.email}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function statusLabel(row: ClinicReportRow): { text: string; className: string } {
   if (row.status === "draft" && !row.hasPdf) {
@@ -47,7 +89,7 @@ function statusLabel(row: ClinicReportRow): { text: string; className: string } 
   }
   if (row.status === "draft" && row.hasPdf && !row.hasEmail) {
     return {
-      text: "Saved — add email to send",
+      text: "Saved — assign patient to send",
       className: "bg-violet-50 text-violet-800 border border-violet-200",
     };
   }
@@ -88,6 +130,7 @@ export function DoctorClinicReportsClient() {
 
   const [createTab, setCreateTab] = useState<CreateTab>("generate");
   const [reports, setReports] = useState<ClinicReportRow[]>([]);
+  const [recentPatients, setRecentPatients] = useState<ClinicReportPatientPick[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [patientEmail, setPatientEmail] = useState("");
@@ -103,7 +146,7 @@ export function DoctorClinicReportsClient() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [listView, setListView] = useState<ListView>("active");
-  const [emailDrafts, setEmailDrafts] = useState<Record<string, string>>({});
+  const [patientPick, setPatientPick] = useState<Record<string, string>>({});
   const [updatingEmailId, setUpdatingEmailId] = useState<string | null>(null);
 
   // Upload tab
@@ -132,8 +175,12 @@ export function DoctorClinicReportsClient() {
     try {
       const res = await fetch("/api/doctor/clinic-reports", { credentials: "include" });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
-      const data = (await res.json()) as { reports?: ClinicReportRow[] };
+      const data = (await res.json()) as {
+        reports?: ClinicReportRow[];
+        recentPatients?: ClinicReportPatientPick[];
+      };
       setReports(data.reports ?? []);
+      setRecentPatients(data.recentPatients ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load reports");
     } finally {
@@ -364,9 +411,10 @@ export function DoctorClinicReportsClient() {
     }
   }
 
-  async function addEmailToReport(id: string) {
-    const email = emailDrafts[id]?.trim();
+  async function assignPatientToReport(id: string) {
+    const email = patientPick[id]?.trim();
     if (!email) return;
+    const picked = recentPatients.find((p) => p.email === email);
     setUpdatingEmailId(id);
     setError(null);
     setActionMsg(null);
@@ -375,16 +423,19 @@ export function DoctorClinicReportsClient() {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientEmail: email }),
+        body: JSON.stringify({
+          patientEmail: email,
+          ...(picked?.name ? { patientName: picked.name } : {}),
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? `Update failed (${res.status})`);
-      setEmailDrafts((prev) => {
+      setPatientPick((prev) => {
         const next = { ...prev };
         delete next[id];
         return next;
       });
-      setActionMsg("Email added. You can now Send or Email the patient.");
+      setActionMsg("Patient assigned. You can now Send or Email the report.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
@@ -563,22 +614,22 @@ export function DoctorClinicReportsClient() {
             </p>
             {!row.archived && !row.hasEmail ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <input
-                  type="email"
-                  value={emailDrafts[row.id] ?? ""}
-                  onChange={(e) =>
-                    setEmailDrafts((prev) => ({ ...prev, [row.id]: e.target.value }))
+                <PatientEmailSelect
+                  patients={recentPatients}
+                  value={patientPick[row.id] ?? ""}
+                  onChange={(email) =>
+                    setPatientPick((prev) => ({ ...prev, [row.id]: email }))
                   }
-                  placeholder="Add patient email"
-                  className="min-w-[12rem] flex-1 rounded-lg border border-[#242a5f]/20 px-2.5 py-1.5 text-xs"
+                  placeholder="Select patient"
+                  className="min-w-[14rem] flex-1 rounded-lg border border-[#242a5f]/20 bg-white px-2.5 py-1.5 text-xs text-[#242a5f]"
                 />
                 <button
                   type="button"
-                  disabled={!emailDrafts[row.id]?.trim() || updatingEmailId === row.id}
-                  onClick={() => void addEmailToReport(row.id)}
+                  disabled={!patientPick[row.id]?.trim() || updatingEmailId === row.id}
+                  onClick={() => void assignPatientToReport(row.id)}
                   className="rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-xs font-semibold text-violet-900 disabled:opacity-40"
                 >
-                  {updatingEmailId === row.id ? "Saving…" : "Add email"}
+                  {updatingEmailId === row.id ? "Saving…" : "Assign patient"}
                 </button>
               </div>
             ) : null}
@@ -749,13 +800,19 @@ export function DoctorClinicReportsClient() {
           </label>
           <label className="block">
             <span className="text-sm font-medium text-[#242a5f]">Patient email</span>
-            <input
-              type="email"
+            <PatientEmailSelect
+              patients={recentPatients}
               value={patientEmail}
-              onChange={(e) => setPatientEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-[#242a5f]/20 px-3 py-2.5 text-sm"
-              placeholder="Add later"
+              onChange={(email, patient) => {
+                setPatientEmail(email);
+                if (patient?.name) setPatientName(patient.name);
+              }}
+              placeholder="Select patient (optional)"
+              className="mt-1 w-full rounded-lg border border-[#242a5f]/20 bg-white px-3 py-2.5 text-sm text-[#242a5f]"
             />
+            <p className="mt-1 text-xs text-zinc-500">
+              Recent patients, newest first. You can also assign from a saved report below.
+            </p>
           </label>
         </div>
 

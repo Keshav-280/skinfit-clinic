@@ -472,6 +472,81 @@ export async function emailClinicExternalReport(params: {
   return { ok: true, inAppDelivery };
 }
 
+export type ClinicReportPatientPick = {
+  name: string;
+  email: string;
+  lastUsedAt: string;
+};
+
+/** Recent patients for clinic report assignment — report history first, then platform signups. */
+export async function listRecentClinicReportPatients(
+  doctorId: string
+): Promise<ClinicReportPatientPick[]> {
+  const [reportRows, platformRows] = await Promise.all([
+    db.query.clinicExternalReports.findMany({
+      where: eq(clinicExternalReports.doctorId, doctorId),
+      orderBy: [desc(clinicExternalReports.createdAt)],
+      limit: 200,
+      columns: {
+        patientEmail: true,
+        patientName: true,
+        createdAt: true,
+        sentAt: true,
+      },
+    }),
+    db
+      .select({
+        name: users.name,
+        email: users.email,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "patient"),
+          sql`${users.email} is not null and trim(${users.email}) <> ''`
+        )
+      )
+      .orderBy(desc(users.createdAt))
+      .limit(80),
+  ]);
+
+  const byEmail = new Map<string, { name: string; email: string; lastUsedAt: Date }>();
+
+  for (const row of reportRows) {
+    const rawEmail = row.patientEmail?.trim();
+    if (!rawEmail) continue;
+    const email = normalizePatientEmail(rawEmail);
+    const at = row.sentAt ?? row.createdAt;
+    const name = row.patientName?.trim() || rawEmail;
+    const prev = byEmail.get(email);
+    if (!prev || at > prev.lastUsedAt) {
+      byEmail.set(email, { name, email, lastUsedAt: at });
+    }
+  }
+
+  for (const row of platformRows) {
+    const rawEmail = row.email?.trim();
+    if (!rawEmail) continue;
+    const email = normalizePatientEmail(rawEmail);
+    if (byEmail.has(email)) continue;
+    byEmail.set(email, {
+      name: row.name?.trim() || rawEmail,
+      email,
+      lastUsedAt: row.createdAt,
+    });
+  }
+
+  return [...byEmail.values()]
+    .sort((a, b) => b.lastUsedAt.getTime() - a.lastUsedAt.getTime())
+    .slice(0, 60)
+    .map(({ name, email, lastUsedAt }) => ({
+      name,
+      email,
+      lastUsedAt: lastUsedAt.toISOString(),
+    }));
+}
+
 export function serializeClinicReportRow(
   row: typeof clinicExternalReports.$inferSelect,
   opts?: { accountExists?: boolean; shareUrl?: string }
