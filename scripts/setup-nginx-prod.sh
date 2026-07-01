@@ -10,8 +10,11 @@ COMPOSE="docker compose -f docker/docker-compose.yml -f docker/docker-compose.pr
 echo "==> Pulling latest code (skip if not a git repo)"
 git pull 2>/dev/null || true
 
-echo "==> Starting nginx + web + ML stack with prod overlay"
-$COMPOSE up -d --build web nginx ml-worker ml-inference acne-detector
+echo "==> Rebuild web only (ML images are large — not rebuilt here)"
+$COMPOSE up -d --build web
+
+echo "==> Start / restart ML services using existing images (no build)"
+$COMPOSE up -d --no-build ml-worker ml-inference acne-detector nginx
 
 echo "==> Health check (nginx -> /healthz)"
 sleep 2
