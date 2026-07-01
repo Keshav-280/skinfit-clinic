@@ -34,7 +34,8 @@ export async function GET(req: Request, ctx: RouteCtx) {
   }
 
   const patient = row.patientEmail ? await findPatientByEmail(row.patientEmail) : null;
-  const shareUrl = clinicReportShareUrl(row.shareToken);
+  const origin = new URL(req.url).origin;
+  const shareUrl = clinicReportShareUrl(row.shareToken, origin);
 
   return Response.json({
     report: serializeClinicReportRow(row, { accountExists: Boolean(patient?.id), shareUrl }),
@@ -44,6 +45,7 @@ export async function GET(req: Request, ctx: RouteCtx) {
           patientName: row.patientName,
           shareUrl,
           title: row.title,
+          appBaseUrl: origin,
         })
       : null,
   });
@@ -89,12 +91,13 @@ export async function POST(req: Request, ctx: RouteCtx) {
           patientName: row.patientName,
           shareUrl,
           title: row.title,
+          appBaseUrl: origin,
         })
       : null,
     patientMessage:
       result.status === "pending_account"
-        ? "No SkinFit account for this email yet. Ask the patient to sign up with the same email, then tap Send again — the report will appear in Past Reports."
-        : "Report delivered to Past Reports and the patient was notified from clinic chat.",
+        ? "No SkinFit account for this email yet. Ask the patient to sign up at my.skinfitwellness.in/login with the same email, then tap Send again."
+        : "Report delivered and the patient was notified from clinic chat.",
   });
 }
 
@@ -192,10 +195,10 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   const shareUrl = clinicReportShareUrl(row.shareToken, origin);
   let message = `Email sent to ${row.patientEmail} with the PDF attached.`;
   if (result.inAppDelivery === "sent") {
-    message += " Report was also delivered to Past Reports in the app.";
+    message += " Report was also delivered in the patient's account.";
   } else if (result.inAppDelivery === "pending_account") {
     message +=
-      " No SkinFit account yet — ask them to sign up with the same email, then tap Send to finish in-app delivery.";
+      " No SkinFit account yet — ask them to sign up at my.skinfitwellness.in/login with the same email, then tap Send to finish delivery.";
   }
 
   return Response.json({

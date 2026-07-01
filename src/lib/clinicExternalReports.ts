@@ -27,18 +27,53 @@ export function clinicReportShareUrl(shareToken: string, baseUrl?: string): stri
   return `${base}/api/clinic-reports/share/${shareToken}`;
 }
 
+function patientPortalOrigin(appBaseUrl?: string): string {
+  return (
+    appBaseUrl?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.AUTH_URL?.trim() ||
+    "https://my.skinfitwellness.in"
+  ).replace(/\/$/, "");
+}
+
+function clinicReportPatientAccessCopy(params: {
+  patientEmail: string;
+  appBaseUrl?: string;
+}): { text: string; html: string } {
+  const origin = patientPortalOrigin(params.appBaseUrl);
+  const signupUrl = `${origin}/login?mode=register`;
+  const preregUrl = `${origin}/pre-release`;
+  const email = params.patientEmail;
+
+  const text = `Sign up at ${origin}/login using ${email}, or pre-register for early access at ${preregUrl}.`;
+
+  const html = `
+<p style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.55;color:#52525b;margin:0">
+  Sign up at <a href="${escapeHtml(signupUrl)}" style="color:#242a5f;font-weight:600">${escapeHtml(origin)}/login</a>
+  using <strong>${escapeHtml(email)}</strong>, or
+  <a href="${escapeHtml(preregUrl)}" style="color:#242a5f;font-weight:600">pre-register</a> for early access.
+</p>`;
+
+  return { text, html };
+}
+
 export function clinicReportGmailShareHref(params: {
   patientEmail: string | null;
   patientName?: string | null;
   shareUrl: string;
   title: string;
+  appBaseUrl?: string;
 }): string | null {
   const email = params.patientEmail?.trim();
   if (!email) return null;
   const name = params.patientName?.trim() || "there";
+  const access = clinicReportPatientAccessCopy({
+    patientEmail: email,
+    appBaseUrl: params.appBaseUrl,
+  });
   const subject = encodeURIComponent(`Your SkinFit skin analysis report — ${params.title}`);
   const body = encodeURIComponent(
-    `Hi ${name},\n\nYour skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.\n\nCreate your SkinFit account with this email (${email}) to find it anytime under Past Reports in the app.\n\n— SkinFit Wellness`
+    `Hi ${name},\n\nYour skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.\n\n${access.text}\n\n— SkinFit Wellness`
   );
   return `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
 }
@@ -339,24 +374,27 @@ function clinicReportEmailCopy(params: {
   patientName?: string | null;
   patientEmail: string;
   title: string;
+  appBaseUrl?: string;
 }) {
   const name = params.patientName?.trim() || "there";
+  const access = clinicReportPatientAccessCopy({
+    patientEmail: params.patientEmail,
+    appBaseUrl: params.appBaseUrl,
+  });
   const subject = `Your SkinFit skin analysis report — ${params.title}`;
   const text = `Hi ${name},
 
 Your skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.
 
-Create your SkinFit account with this email (${params.patientEmail}) to find it anytime under Past Reports in the app.
+${access.text}
 
 — SkinFit Wellness`;
 
   const html = `
 <p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">Hi ${escapeHtml(name)},</p>
 <p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">Your skin analysis report from <strong>SkinFit Wellness</strong> is ready. The PDF is attached to this email.</p>
-<p style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.55;color:#52525b">
-  Sign up with <strong>${escapeHtml(params.patientEmail)}</strong> to find it anytime under <em>Past Reports</em> in the SkinFit app.
-</p>
-<p style="font-family:system-ui,sans-serif;font-size:14px;color:#71717a">— SkinFit Wellness</p>`;
+${access.html}
+<p style="font-family:system-ui,sans-serif;font-size:14px;color:#71717a;margin:16px 0 0">— SkinFit Wellness</p>`;
 
   return { subject, text, html, filename: `${params.title.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80)}.pdf` };
 }
@@ -392,6 +430,7 @@ export async function emailClinicExternalReport(params: {
     patientName: report.patientName,
     patientEmail: report.patientEmail,
     title: report.title,
+    appBaseUrl: params.appBaseUrl,
   });
 
   const pdfBuf = await getStorage().read(report.storagePath);

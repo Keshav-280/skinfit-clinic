@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { defaultOutputBasename } from "@/src/lib/sdetectReport/outputFilename";
+import { resolveOutputBasename } from "@/src/lib/sdetectReport/outputFilename";
 
 type ClinicReportRow = {
   id: string;
@@ -69,11 +69,12 @@ function statusLabel(row: ClinicReportRow): { text: string; className: string } 
 
 function pickGeneratorFile(
   f: File,
+  patientName: string,
   setFile: (file: File) => void,
   setOutputName: (name: string) => void
 ) {
   setFile(f);
-  setOutputName(defaultOutputBasename(f.name));
+  setOutputName(resolveOutputBasename(patientName, f.name));
 }
 
 type ListView = "active" | "archived";
@@ -236,7 +237,7 @@ export function DoctorClinicReportsClient() {
       const attachedPending = res.headers.get("X-Clinic-Report-Attached-Pending") === "1";
       const downloadName =
         res.headers.get("X-Output-Filename") ??
-        `${outputName.trim() || defaultOutputBasename(sourceFile.name)}.pdf`;
+        `${outputName.trim() || resolveOutputBasename(patientName, sourceFile.name)}.pdf`;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -664,7 +665,13 @@ export function DoctorClinicReportsClient() {
               type="text"
               required
               value={patientName}
-              onChange={(e) => setPatientName(e.target.value)}
+              onChange={(e) => {
+                const name = e.target.value;
+                setPatientName(name);
+                if (createTab === "generate") {
+                  setOutputName(resolveOutputBasename(name, sourceFile?.name ?? null));
+                }
+              }}
               className="mt-1 w-full rounded-lg border border-[#242a5f]/20 px-3 py-2.5 text-sm"
             />
           </label>
@@ -708,7 +715,7 @@ export function DoctorClinicReportsClient() {
               onDrop={(e) => {
                 e.preventDefault();
                 const f = e.dataTransfer.files?.[0];
-                if (f) pickGeneratorFile(f, setSourceFile, setOutputName);
+                if (f) pickGeneratorFile(f, patientName, setSourceFile, setOutputName);
               }}
             >
               <input
@@ -718,7 +725,7 @@ export function DoctorClinicReportsClient() {
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) pickGeneratorFile(f, setSourceFile, setOutputName);
+                  if (f) pickGeneratorFile(f, patientName, setSourceFile, setOutputName);
                 }}
               />
               <p className="text-sm text-zinc-700">
@@ -743,7 +750,7 @@ export function DoctorClinicReportsClient() {
                   type="text"
                   value={outputName}
                   onChange={(e) => setOutputName(e.target.value)}
-                  placeholder="skinfit-report"
+                  placeholder="skinfit-report_Name"
                   disabled={!sourceFile}
                   className="min-w-0 flex-1 px-3 py-2.5 text-sm text-zinc-800 outline-none disabled:bg-zinc-50 disabled:text-zinc-400"
                 />

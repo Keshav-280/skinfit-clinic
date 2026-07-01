@@ -3,6 +3,27 @@ export function defaultOutputBasename(uploadName: string): string {
   return `skinfit-${stem}`;
 }
 
+/** e.g. "Saikat" → "skinfit-report_Saikat" */
+export function outputBasenameFromPatientName(patientName: string): string {
+  const safe = patientName
+    .trim()
+    .replace(/[/\\?%*:|"<>]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+  return safe ? `skinfit-report_${safe}` : "skinfit-report";
+}
+
+export function resolveOutputBasename(
+  patientName: string,
+  uploadName?: string | null
+): string {
+  if (patientName.trim()) return outputBasenameFromPatientName(patientName);
+  if (uploadName?.trim()) return defaultOutputBasename(uploadName);
+  return "skinfit-report";
+}
+
 export function sanitizeOutputFilename(raw: string, fallbackBasename: string): string {
   const trimmed = raw.trim() || fallbackBasename;
   const withoutExt = trimmed.replace(/\.pdf$/i, "").trim();
