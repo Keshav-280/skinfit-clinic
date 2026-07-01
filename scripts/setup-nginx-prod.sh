@@ -13,8 +13,11 @@ git pull 2>/dev/null || true
 echo "==> Rebuild web only (ML images are large — not rebuilt here)"
 $COMPOSE up -d --build web
 
-echo "==> Start / restart ML services using existing images (no build)"
-$COMPOSE up -d --no-build ml-worker ml-inference acne-detector nginx
+echo "==> Data stores + ML (existing images, no build)"
+$COMPOSE up -d --no-build redis postgres
+$COMPOSE up -d --no-build ml-inference acne-detector
+$COMPOSE up -d --no-build ml-worker
+$COMPOSE up -d --no-build nginx
 
 echo "==> Health check (nginx -> /healthz)"
 sleep 2

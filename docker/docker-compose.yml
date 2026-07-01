@@ -77,10 +77,14 @@ services:
     volumes:
       - uploads:/uploads
     depends_on:
-      - redis
-      - postgres
-      - ml-inference
-      - acne-detector
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      ml-inference:
+        condition: service_started
+      acne-detector:
+        condition: service_started
 
   ml-inference:
     build:
