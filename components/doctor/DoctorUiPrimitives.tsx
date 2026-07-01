@@ -62,6 +62,7 @@ export {
   DOCTOR_IVORY_CALENDAR_PANEL,
   doctorDropdownClass,
   doctorInsetStripClass,
+  doctorHeaderBellBtnClass,
   doctorBtnPrimaryClass,
   doctorFormInputClass,
   doctorPanelPreClass,

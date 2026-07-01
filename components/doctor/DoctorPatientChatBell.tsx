@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { doctorDropdownClass } from "@/components/doctor/DoctorUiPrimitives";
+import { doctorDropdownClass, doctorHeaderBellBtnClass } from "@/components/doctor/DoctorUiPrimitives";
 import { DOCTOR_PATIENT_CHAT_INBOX_REFRESH_EVENT } from "@/src/lib/doctorPatientChatInboxEvents";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 
@@ -114,7 +114,7 @@ export function DoctorPatientChatBell() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
+        className={`${doctorHeaderBellBtnClass} ${
           open || count > 0
             ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
             : "text-slate-700 hover:bg-slate-100"

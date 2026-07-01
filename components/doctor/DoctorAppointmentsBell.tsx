@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { doctorHeaderBellBtnClass } from "@/components/doctor/DoctorUiPrimitives";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 
 type Item = {
@@ -70,7 +71,7 @@ export function DoctorAppointmentsBell() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100"
+        className={`${doctorHeaderBellBtnClass} text-slate-700 hover:bg-slate-100`}
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={`Upcoming appointments. ${count} in the next 14 days.`}

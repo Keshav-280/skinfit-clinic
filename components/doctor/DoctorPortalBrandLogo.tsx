@@ -19,7 +19,7 @@ export function DoctorPortalBrandLogo({ className = "" }: Props) {
         width={560}
         height={135}
         priority
-        className="h-7 w-auto max-w-[9.5rem] object-contain object-left sm:h-8 sm:max-w-[11rem]"
+        className="h-6 w-auto max-w-[6rem] object-contain object-left sm:h-8 sm:max-w-[11rem]"
       />
     </Link>
   );

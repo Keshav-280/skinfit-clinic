@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Bell, Check } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
-import { doctorDropdownClass } from "@/components/doctor/DoctorUiPrimitives";
+import { doctorDropdownClass, doctorHeaderBellBtnClass } from "@/components/doctor/DoctorUiPrimitives";
 
 type SosItem = {
   patientId: string;
@@ -153,7 +153,7 @@ export function DoctorSosBell() {
           setAckError(null);
           setOpen((o) => !o);
         }}
-        className={`relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
+        className={`${doctorHeaderBellBtnClass} ${
           open || count > 0
             ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
             : "text-slate-700 hover:bg-slate-100"

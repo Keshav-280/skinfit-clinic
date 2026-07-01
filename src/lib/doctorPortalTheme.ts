@@ -113,6 +113,10 @@ export const doctorIvoryToggleOnClass =
 export const doctorPortalShellClass =
   "min-h-screen bg-[#F6F4EB] bg-gradient-to-b from-[#F4F2E8] via-[#F6F4EB] to-[#FAF8F4]";
 
+/** Compact header icon buttons — icon-only on mobile, label from sm+. */
+export const doctorHeaderBellBtnClass =
+  "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-medium transition sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-2";
+
 /** Top portal bar — mostly opaque so header controls stay readable. */
 export const doctorGlassHeaderClass =
   "border-b border-slate-200/70 bg-[#F6F4EB]/90 shadow-[0_4px_20px_rgba(15,23,42,0.05)] backdrop-blur-md";

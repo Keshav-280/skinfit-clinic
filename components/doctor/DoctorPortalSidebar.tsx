@@ -10,18 +10,18 @@ export function DoctorPortalSidebar() {
 
   return (
     <aside
-      className={`sticky top-0 hidden h-screen w-[4.5rem] flex-shrink-0 flex-col md:flex ${doctorGlassSidebarClass}`}
+      className={`sticky top-0 z-30 flex h-screen w-12 flex-shrink-0 flex-col sm:w-[4.5rem] ${doctorGlassSidebarClass}`}
       aria-label="Doctor portal navigation"
     >
       <nav
-        className={`flex flex-1 flex-col gap-0.5 pt-2 ${collapsed ? "px-2" : "px-3"}`}
+        className={`flex flex-1 flex-col gap-0.5 pt-2 ${collapsed ? "px-1 sm:px-2" : "px-3"}`}
         aria-label="Primary"
       >
         <DoctorPortalNav collapsed={collapsed} />
       </nav>
 
       <div
-        className={`border-t border-white/30 py-3 ${collapsed ? "px-2" : "px-3"}`}
+        className={`border-t border-white/30 py-3 ${collapsed ? "px-1 sm:px-2" : "px-3"}`}
       >
         <DoctorLogoutButton collapsed={collapsed} />
       </div>
