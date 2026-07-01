@@ -14,7 +14,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { ScanCaptureExtraTipsPanel } from "@/components/dashboard/ScanCaptureExtraTipsPanel";
+import { SCAN_CAPTURE_EXTRA_TIPS } from "@/src/lib/scanCaptureExtraTips";
 import {
   CAPTURE_GUIDANCE_WARMUP_MESSAGE,
   type CaptureGuidanceSnapshot,
@@ -204,6 +204,62 @@ function StepTipsOverlay({
   );
 }
 
+function ExtraTipsOverlay({
+  open,
+  onOpen,
+  onClose,
+}: {
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm"
+        aria-label="Show extra tips"
+      >
+        <Lightbulb className="h-3.5 w-3.5" aria-hidden />
+      </button>
+    );
+  }
+
+  return (
+    <div className="absolute right-2 top-2 z-20 max-w-[min(88%,230px)] rounded-xl bg-black/72 p-2.5 text-left text-white shadow-lg backdrop-blur-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-extrabold uppercase tracking-wide text-white/90">
+          Extra tips
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 text-[10px] font-semibold text-white/70 underline-offset-2 hover:text-white hover:underline"
+          aria-label="Hide extra tips"
+        >
+          Hide
+        </button>
+      </div>
+      <ul className="mt-1.5 space-y-1.5">
+        {SCAN_CAPTURE_EXTRA_TIPS.map(({ title, description }) => (
+          <li key={title} className="flex items-start gap-1.5 text-[11px] leading-snug text-white/95">
+            <span
+              className="mt-1.5 h-1 w-1 shrink-0 rounded-full"
+              style={{ backgroundColor: ACCENT }}
+              aria-hidden
+            />
+            <span>
+              <span className="font-semibold">{title}. </span>
+              <span className="text-white/80">{description}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function WebCaptureStepShell({
   step,
   stepIndex,
@@ -224,9 +280,11 @@ export function WebCaptureStepShell({
 }: Props) {
   const progress = ((stepIndex + 1) / totalSteps) * 100;
   const [stepTipsOpen, setStepTipsOpen] = useState(true);
+  const [extraTipsOpen, setExtraTipsOpen] = useState(false);
 
   useEffect(() => {
     setStepTipsOpen(true);
+    setExtraTipsOpen(false);
   }, [stepIndex]);
 
   useEffect(() => {
@@ -340,14 +398,27 @@ export function WebCaptureStepShell({
             <div className="relative h-[min(52vh,420px)] w-[min(72vw,280px)] shrink-0 overflow-hidden rounded-xl bg-zinc-900 shadow-inner sm:h-[320px] sm:w-[240px] sm:rounded-2xl md:h-[384px] md:w-[288px] lg:h-[440px] lg:w-[330px] xl:h-[520px] xl:w-[390px]">
               {viewfinder}
               {!reviewingCapture ? (
-                <StepTipsOverlay
-                  tips={step.tips}
-                  open={stepTipsOpen}
-                  onOpen={() => setStepTipsOpen(true)}
-                  onClose={() => setStepTipsOpen(false)}
-                />
+                <>
+                  <StepTipsOverlay
+                    tips={step.tips}
+                    open={stepTipsOpen}
+                    onOpen={() => setStepTipsOpen(true)}
+                    onClose={() => setStepTipsOpen(false)}
+                  />
+                  <ExtraTipsOverlay
+                    open={extraTipsOpen}
+                    onOpen={() => setExtraTipsOpen(true)}
+                    onClose={() => setExtraTipsOpen(false)}
+                  />
+                </>
               ) : null}
             </div>
+
+            {!reviewingCapture ? (
+              <div className="w-full max-w-[min(72vw,280px)] shrink-0 sm:max-w-[240px] md:hidden">
+                <GuidanceStatusBoxes guidance={guidance} />
+              </div>
+            ) : null}
 
             <div className="w-full max-w-[min(72vw,280px)] shrink-0 sm:max-w-[240px] md:max-w-[288px]">
               {reviewingCapture ? (
@@ -360,12 +431,6 @@ export function WebCaptureStepShell({
               ) : null}
               {controls}
             </div>
-
-            {!reviewingCapture ? (
-              <div className="w-full max-w-[min(72vw,280px)] md:hidden sm:max-w-[240px]">
-                <ScanCaptureExtraTipsPanel compact dense />
-              </div>
-            ) : null}
           </div>
 
           <aside className="relative z-10 hidden min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain pl-0.5 md:flex md:pl-2">
