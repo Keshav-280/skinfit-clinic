@@ -5,6 +5,7 @@ import {
 } from "./fetchApiReport";
 import { parseSdetectPdfText } from "./parsePdfText";
 import type { SdetectMetric, SdetectReportData } from "./types";
+import { extractReportWithVision } from "./visionExtract";
 
 function mergePatient(
   pdfPatient: SdetectReportData["patient"],
@@ -61,6 +62,7 @@ export async function buildSdetectReportFromPdf(
         params.reportSn,
         params.token
       );
+
       faceImages = api.faceImages;
       classification = api.classification || classification;
       moisture = api.moisture || moisture;
@@ -85,6 +87,36 @@ export async function buildSdetectReportFromPdf(
       }
     } catch {
       /* keep PDF-only data when API fetch fails */
+    }
+  }
+
+  // Vision-OCR fallback: when text extraction (and API) left key fields empty —
+  // scanned/image-only PDFs, unknown layouts, other languages — render the pages
+  // and let a vision model read the printed values. Only fills what's missing.
+  const needsVision =
+    patient.name === "—" ||
+    comprehensiveScore === 0 ||
+    classification === "—" ||
+    radar.length < 5;
+
+  if (needsVision) {
+    const vision = await extractReportWithVision(pdfBuffer).catch(() => null);
+
+    if (vision) {
+      if (patient.name === "—" && vision.patient.name) patient.name = vision.patient.name;
+      if (patient.gender === "—" && vision.patient.gender) patient.gender = vision.patient.gender;
+      if (!patient.age && vision.patient.age) patient.age = vision.patient.age;
+      if (patient.phone === "—" && vision.patient.phone) patient.phone = vision.patient.phone;
+      if (patient.reportDate === "—" && vision.patient.reportDate) patient.reportDate = vision.patient.reportDate;
+      if (!patient.scanFrequency && vision.patient.scanFrequency) patient.scanFrequency = vision.patient.scanFrequency;
+      if (classification === "—" && vision.classification) classification = vision.classification;
+      if (!moisture && vision.moisture) moisture = vision.moisture;
+      if (!comprehensiveScore && vision.comprehensiveScore) comprehensiveScore = vision.comprehensiveScore;
+      radar = preferMetrics(radar, vision.radar);
+      generalAnalysis = preferMetrics(generalAnalysis, vision.generalAnalysis);
+      inDepthAnalysis = preferMetrics(inDepthAnalysis, vision.inDepthAnalysis);
+      if (!issueAnalysis && vision.issueAnalysis) issueAnalysis = vision.issueAnalysis;
+      if (!skincareAdvice.length && vision.skincareAdvice.length) skincareAdvice = vision.skincareAdvice;
     }
   }
 

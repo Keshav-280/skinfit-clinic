@@ -38,6 +38,24 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Some Medixora PDFs export text with a space between every glyph
+ * (e.g. "N a m e ： K o k i l a"). Word groups are still separated by 2+ spaces.
+ */
+function normalizePerLetterSpacedText(text: string): string {
+  const tokens = text.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return text;
+
+  const singleCharRatio =
+    tokens.filter((tok) => [...tok].length === 1).length / tokens.length;
+  if (singleCharRatio < 0.3) return text;
+
+  return text
+    .split(/\s{2,}/)
+    .map((chunk) => chunk.replace(/(?<=\S) (?=\S)/g, ""))
+    .join(" ");
+}
+
 function findPercentAfterLabel(text: string, label: string): number | null {
   const re = new RegExp(
     `${escapeRegExp(label).replace(/\s+/g, "\\s+")}[^\\d]{0,40}(\\d{1,3})\\s*%`,
@@ -114,18 +132,22 @@ function parsePatient(text: string): SdetectPatient {
 
 function parseClassification(text: string): string {
   const match = text.match(
-    /Skin Classification\s*([A-Z]{4})|(?:^|\n)\s*([A-Z]{4})\s*\n\s*Skin Classification/m
+    /Skin Classification\s*([A-Z]{4})|(?:^|\n)\s*([A-Z]{4})\s*\n\s*Skin Classification|([A-Z]{4})\s+Skin Classification/m
   );
-  return match?.[1] ?? match?.[2] ?? "—";
+  return match?.[1] ?? match?.[2] ?? match?.[3] ?? "—";
 }
 
 function parseMoisture(text: string): number {
-  const match = text.match(/Moisture\s*(\d{1,3})\s*%/i);
+  const match =
+    text.match(/Moisture\s*(\d{1,3})\s*%/i) ??
+    text.match(/(\d{1,3})\s*%\s*Moisture/i);
   return match ? Number.parseInt(match[1], 10) : 0;
 }
 
 function parseComprehensiveScore(text: string): number {
-  const match = text.match(/Comprehensive score\s*(\d{1,3})/i);
+  const match =
+    text.match(/Comprehensive score\s*(\d{1,3})/i) ??
+    text.match(/(\d{1,3})\s+Comprehensive score/i);
   return match ? Number.parseInt(match[1], 10) : 0;
 }
 
@@ -159,7 +181,7 @@ async function extractPdfText(pdfBuffer: Buffer): Promise<string> {
     parts.push(line);
   }
   await doc.destroy();
-  return parts.join("\n");
+  return normalizePerLetterSpacedText(parts.join("\n"));
 }
 
 export async function parseSdetectPdfText(

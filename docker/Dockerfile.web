@@ -33,6 +33,8 @@ COPY apps/ml-worker/python/requirements-identity.txt /tmp/requirements-identity.
 COPY scripts/requirements-sdetect-qr.txt /tmp/requirements-sdetect-qr.txt
 COPY apps/ml-worker/python/face_identity_infer.py /app/apps/ml-worker/python/face_identity_infer.py
 COPY scripts/sdetect_decode_pdf_qr.py /app/scripts/sdetect_decode_pdf_qr.py
+COPY scripts/sdetect_render_pdf.py /app/scripts/sdetect_render_pdf.py
+COPY scripts/prod-test-vision-ocr.mjs /app/scripts/prod-test-vision-ocr.mjs
 RUN /opt/identity-venv/bin/pip install --no-cache-dir -r /tmp/requirements-identity.txt \
   && /opt/identity-venv/bin/pip install --no-cache-dir -r /tmp/requirements-sdetect-qr.txt \
   && /opt/identity-venv/bin/python3 -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider']).prepare(ctx_id=-1)"
