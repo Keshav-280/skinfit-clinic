@@ -1,8 +1,22 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { appendFileSync } from "fs";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+
+const DEBUG_LOG = "/Users/sagnikdey/skinfit-clinic/.cursor/debug-0d1bdd.log";
+
+function agentLog(payload: Record<string, unknown>) {
+  try {
+    appendFileSync(
+      DEBUG_LOG,
+      `${JSON.stringify({ sessionId: "0d1bdd", timestamp: Date.now(), ...payload })}\n`
+    );
+  } catch {
+    /* ignore */
+  }
+}
 
 const MAX_TOKEN_LEN = 512;
 
@@ -65,6 +79,18 @@ export async function POST(req: Request) {
     .update(users)
     .set({ expoPushToken: token })
     .where(eq(users.id, userId));
+
+  agentLog({
+    location: "push-token/route.ts:POST",
+    message: "push token saved",
+    hypothesisId: "C,D",
+    data: {
+      userId,
+      hasToken: Boolean(token),
+      tokenPrefix: token?.slice(0, 28) ?? null,
+      cleared: token === null,
+    },
+  });
 
   return NextResponse.json({ success: true });
 }

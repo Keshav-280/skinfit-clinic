@@ -1,8 +1,21 @@
 import { eq, inArray } from "drizzle-orm";
+import { appendFileSync } from "fs";
 import { db } from "@/src/db/client";
 import { users } from "@/src/db/schema";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+const DEBUG_LOG = "/Users/sagnikdey/skinfit-clinic/.cursor/debug-0d1bdd.log";
+
+function agentLog(payload: Record<string, unknown>) {
+  try {
+    appendFileSync(
+      DEBUG_LOG,
+      `${JSON.stringify({ sessionId: "0d1bdd", timestamp: Date.now(), ...payload })}\n`
+    );
+  } catch {
+    /* ignore */
+  }
+}
 
 export async function sendExpoPushNotification(opts: {
   expoPushToken: string;
@@ -29,11 +42,29 @@ export async function sendExpoPushNotification(opts: {
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
       console.warn("[expoPush] send failed", res.status, j);
+      agentLog({
+        location: "expoPush.ts:sendExpoPushNotification",
+        message: "expo push send failed",
+        hypothesisId: "D",
+        data: { status: res.status, err: j, tokenPrefix: opts.expoPushToken.slice(0, 28) },
+      });
       return false;
     }
+    agentLog({
+      location: "expoPush.ts:sendExpoPushNotification",
+      message: "expo push send ok",
+      hypothesisId: "D",
+      data: { tokenPrefix: opts.expoPushToken.slice(0, 28), title: opts.title },
+    });
     return true;
   } catch (e) {
     console.warn("[expoPush] send error", e);
+    agentLog({
+      location: "expoPush.ts:sendExpoPushNotification",
+      message: "expo push send error",
+      hypothesisId: "D",
+      data: { err: e instanceof Error ? e.message : String(e) },
+    });
     return false;
   }
 }
@@ -54,7 +85,15 @@ export async function notifyPatientNewClinicChat(
     .where(eq(users.id, patientUserId))
     .limit(1);
   const token = row?.token?.trim();
-  if (!token) return;
+  if (!token) {
+    agentLog({
+      location: "expoPush.ts:notifyPatientNewClinicChat",
+      message: "push skipped no token",
+      hypothesisId: "C,D",
+      data: { patientUserId },
+    });
+    return;
+  }
 
   const body =
     messagePreview.length > 140

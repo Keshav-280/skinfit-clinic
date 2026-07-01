@@ -11,7 +11,6 @@ import { buildNarrativeSignalPack } from "@/src/lib/ragCorrelationStats";
 import type { TextbookChunk } from "@/src/lib/ragTextbookIndex";
 import {
   patientDisplayClarity,
-  clarityToGrade,
   patientClarityToGrade,
 } from "@/src/lib/clarityGrade";
 

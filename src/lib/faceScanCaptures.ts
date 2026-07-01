@@ -75,6 +75,13 @@ export const FACE_SCAN_CAPTURE_STEPS = [
 
 export type FaceScanCaptureId = (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
 
+/** Left/right profile shots — one cheek faces away, so frame-half brightness differs by design. */
+export function isSideProfileCaptureStep(
+  stepId: FaceScanCaptureId | string | null | undefined
+): boolean {
+  return stepId === "left" || stepId === "right";
+}
+
 /** @deprecated use buildAutoScanName — kept for legacy rows/labels */
 export const DEFAULT_SCAN_NAME = "Untitled Scan";
 

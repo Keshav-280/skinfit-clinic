@@ -3,7 +3,6 @@ import { Picker } from "@react-native-picker/picker";
 import { useEffect, useState } from "react";
 import {
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -34,25 +33,6 @@ export function AgeDropdown({ value, onChange }: Props) {
   }, [sheetOpen, value]);
 
   const displayLabel = value ? `${value} years old` : "Select your age";
-
-  if (Platform.OS === "android") {
-    return (
-      <View style={[styles.field, value ? styles.fieldFilled : null]}>
-        <Picker
-          mode="dropdown"
-          selectedValue={value || ""}
-          onValueChange={(next) => onChange(next ? String(next) : "")}
-          style={styles.androidPicker}
-          dropdownIconColor={NAVY}
-        >
-          <Picker.Item label="Select your age" value="" color={PLACEHOLDER} />
-          {ONBOARDING_AGE_OPTIONS.map((age) => (
-            <Picker.Item key={age} label={`${age} years old`} value={String(age)} />
-          ))}
-        </Picker>
-      </View>
-    );
-  }
 
   return (
     <>
@@ -96,8 +76,8 @@ export function AgeDropdown({ value, onChange }: Props) {
             <Picker
               selectedValue={draft}
               onValueChange={(next) => setDraft(String(next))}
-              style={styles.iosPicker}
-              itemStyle={styles.iosPickerItem}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
             >
               {ONBOARDING_AGE_OPTIONS.map((age) => (
                 <Picker.Item key={age} label={`${age} years old`} value={String(age)} />
@@ -146,11 +126,6 @@ const styles = StyleSheet.create({
     color: PLACEHOLDER,
     fontWeight: "500",
   },
-  androidPicker: {
-    width: "100%",
-    color: NAVY_DARK,
-    marginHorizontal: 4,
-  },
   modalRoot: {
     flex: 1,
     justifyContent: "flex-end",
@@ -197,11 +172,11 @@ const styles = StyleSheet.create({
     color: NAVY,
     fontWeight: "700",
   },
-  iosPicker: {
+  picker: {
     width: "100%",
     height: 216,
   },
-  iosPickerItem: {
+  pickerItem: {
     fontSize: 20,
     color: NAVY_DARK,
   },

@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
 import type { DoctorScanReportPayload } from "@/src/lib/doctorScanReportPayload";
-import { PATIENT_DISPLAY_SCORE_CAP, patientClarityToGrade } from "@/src/lib/clarityGrade";
+import {
+  PATIENT_DISPLAY_SCORE_CAP,
+  PATIENT_DISPLAY_SCORE_FLOOR,
+  patientClarityToGrade,
+} from "@/src/lib/clarityGrade";
 import { computeRagKaiScore } from "@/src/lib/ragEightParams";
 import {
   doctorPatientPageFormInputClass,
@@ -34,7 +38,10 @@ const PARAM_LABELS: Record<EditableParamKey, string> = {
 };
 
 function clampPct(n: number): number {
-  return Math.max(0, Math.min(PATIENT_DISPLAY_SCORE_CAP, Math.round(n)));
+  return Math.max(
+    PATIENT_DISPLAY_SCORE_FLOOR,
+    Math.min(PATIENT_DISPLAY_SCORE_CAP, Math.round(n))
+  );
 }
 
 function initialParamScore(

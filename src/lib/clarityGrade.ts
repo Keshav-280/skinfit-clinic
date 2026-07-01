@@ -1,12 +1,13 @@
 /**
  * Patient-facing clarity grades (raw 0–100 model score → calibrated display → A–E).
  * Storage/DB keeps raw resolved scores (doctor parity); patient UI always shows
- * calibrated display scores (capped ≤80) when unlocked, letter grades when locked.
+ * calibrated display scores (floor 20, cap ≤79) when unlocked, letter grades when locked.
+ * Grade E is never shown to patients — floored to D (score ≥ 20).
  */
 
 export type ClarityGrade = "A" | "B" | "C" | "D" | "E";
 
-/** Worst → best — used for locked checkpoint bars (E … A). */
+/** Worst → best — locked checkpoint bars (E slot kept for layout; patients never get E). */
 export const CLARITY_GRADES_ASCENDING: readonly ClarityGrade[] = [
   "E",
   "D",
@@ -31,6 +32,8 @@ export const CLARITY_GRADE_BANDS: ReadonlyArray<{
 export const PATIENT_DISPLAY_SCORE_MAX = 80;
 /** Hard cap on patient-facing numeric scores — strictly below 80 so grade A is never shown. */
 export const PATIENT_DISPLAY_SCORE_CAP = 79;
+/** Floor on patient-facing numeric scores — grade E is never shown (minimum D = 20). */
+export const PATIENT_DISPLAY_SCORE_FLOOR = 20;
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
 
@@ -39,9 +42,18 @@ function clampClarity(score: number): number {
   return Math.min(100, Math.max(0, Math.round(score)));
 }
 
+/** Final patient-facing display score — always in [20, 79]. */
+export function clampPatientFacingDisplayScore(score: number): number {
+  if (!Number.isFinite(score)) return PATIENT_DISPLAY_SCORE_FLOOR;
+  return Math.max(
+    PATIENT_DISPLAY_SCORE_FLOOR,
+    Math.min(PATIENT_DISPLAY_SCORE_CAP, Math.round(score))
+  );
+}
+
 /** Unlocked UI — resolved scores are already patient-facing; clamp only. */
 export function patientUnlockedDisplayScore(resolvedScore: number): number {
-  return Math.min(PATIENT_DISPLAY_SCORE_CAP, clampClarity(resolvedScore));
+  return clampPatientFacingDisplayScore(resolvedScore);
 }
 
 /**
@@ -53,10 +65,10 @@ export function patientDisplayClarity(rawScore: number): number {
   const saturated =
     PATIENT_DISPLAY_SCORE_MAX *
     (1 - Math.exp(-PATIENT_DISPLAY_LAMBDA * Math.pow(x, PATIENT_DISPLAY_GAMMA)));
-  return Math.min(PATIENT_DISPLAY_SCORE_CAP, clampClarity(saturated));
+  return clampPatientFacingDisplayScore(saturated);
 }
 
-/** Map calibrated display clarity to letter grade (>=80 A … <20 E). */
+/** Map display clarity to letter grade (>=80 A … >=20 D). Internal only — use patientGradeFromDisplayScore for UI. */
 export function clarityToGrade(displayScore: number): ClarityGrade {
   const s = clampClarity(displayScore);
   if (s >= 80) return "A";
@@ -66,10 +78,17 @@ export function clarityToGrade(displayScore: number): ClarityGrade {
   return "E";
 }
 
-/** Raw model clarity → calibrated display → letter grade (patient UI; never A). */
+/** Patient letter grade from a display score (never A or E). */
+export function patientGradeFromDisplayScore(displayScore: number): ClarityGrade {
+  const grade = clarityToGrade(clampPatientFacingDisplayScore(displayScore));
+  if (grade === "A") return "B";
+  if (grade === "E") return "D";
+  return grade;
+}
+
+/** Raw model clarity → calibrated display → letter grade (patient UI; never A or E). */
 export function patientClarityToGrade(rawScore: number): ClarityGrade {
-  const grade = clarityToGrade(patientDisplayClarity(rawScore));
-  return grade === "A" ? "B" : grade;
+  return patientGradeFromDisplayScore(patientDisplayClarity(rawScore));
 }
 
 /** Ring / chart color by letter grade (patient UI). */
@@ -109,7 +128,7 @@ export function classifySkinParamMetric(v: number): {
   displayScore: number;
 } {
   const displayScore = patientDisplayClarity(v);
-  const grade = clarityToGrade(displayScore);
+  const grade = patientGradeFromDisplayScore(displayScore);
   return {
     displayScore,
     grade,
@@ -166,7 +185,7 @@ export function patientScoreView(
   const displayScore = scoresUnlocked
     ? patientUnlockedDisplayScore(rawScore)
     : patientDisplayClarity(rawScore);
-  const grade = clarityToGrade(displayScore);
+  const grade = patientGradeFromDisplayScore(displayScore);
   const rangeLabel = gradeRangeLabel(grade);
   const locked = !scoresUnlocked;
   const label = scoresUnlocked
@@ -230,7 +249,7 @@ const GRADE_CHART_Y: Record<ClarityGrade, number> = {
   B: 60,
   C: 40,
   D: 20,
-  E: 0,
+  E: 20,
 };
 
 export function patientChartDisplayValue(

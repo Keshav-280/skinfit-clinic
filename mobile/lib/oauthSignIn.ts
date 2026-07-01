@@ -101,10 +101,13 @@ type GoogleSignInSdk = {
     hasPlayServices: (options: {
       showPlayServicesUpdateDialog: boolean;
     }) => Promise<boolean>;
+    hasPreviousSignIn: () => boolean;
     signIn: () => Promise<
       | { type: "cancelled" }
       | { type: "success"; data: { idToken: string | null } }
     >;
+    signOut: () => Promise<null>;
+    revokeAccess: () => Promise<null>;
     getTokens: () => Promise<{ idToken: string | null }>;
   };
   statusCodes: { SIGN_IN_CANCELLED: string; IN_PROGRESS: string };
@@ -142,6 +145,41 @@ export async function configureGoogleSignIn(): Promise<void> {
     if (__DEV__) {
       console.warn("[oauth] configureGoogleSignIn failed", e);
     }
+  }
+}
+
+/** Clears the native Google Sign-In session so the next sign-in shows the account picker. */
+export async function clearGoogleNativeSignInSession(): Promise<void> {
+  if (Platform.OS === "web" || !isGoogleSignInNativeModuleLinked()) return;
+
+  await configureGoogleSignIn();
+  const sdk = await loadGoogleSignInSdk();
+  if (!sdk) return;
+
+  const { GoogleSignin } = sdk;
+  if (!GoogleSignin.hasPreviousSignIn()) return;
+
+  try {
+    await GoogleSignin.revokeAccess();
+  } catch {
+    /* no Google grant (e.g. signed in with email) — still try signOut */
+  }
+  try {
+    await GoogleSignin.signOut();
+  } catch (e) {
+    if (__DEV__) {
+      console.warn("[oauth] clearGoogleNativeSignInSession signOut failed", e);
+    }
+  }
+}
+
+/** Clears third-party OAuth SDK sessions (Google native, in-app browser). Call on app sign-out. */
+export async function signOutFromOAuthProviders(): Promise<void> {
+  await clearGoogleNativeSignInSession();
+  try {
+    await WebBrowser.dismissAuthSession();
+  } catch {
+    /* no active auth session */
   }
 }
 
@@ -234,6 +272,9 @@ async function signInWithGoogleNativeSdk(): Promise<NativeOAuthCredential> {
   if (Platform.OS === "android") {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
   }
+
+  // Android caches the last account; clear so signIn() shows the account picker.
+  await clearGoogleNativeSignInSession();
 
   try {
     const result = await GoogleSignin.signIn();

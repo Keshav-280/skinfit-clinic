@@ -258,6 +258,8 @@ export function FiveAngleCameraStep({
         facing={facing}
         zoom={cameraAdjust.zoom}
         enableTorch={cameraAdjust.torch}
+        // Live guidance calls takePictureAsync ~every TICK_MS; Android flashes white when true.
+        animateShutter={false}
         onCameraReady={() => {
           setCameraReady(true);
           if (voiceEnabled) void startAudioPrimingLoop();

@@ -21,6 +21,7 @@ import {
   type NormalizedFaceBox,
   type StableFramingState,
 } from "@/src/lib/scanCaptureGuidance";
+import { isSideProfileCaptureStep } from "@/src/lib/faceScanCaptures";
 import { smoothLandmarks } from "@/src/lib/faceMeshOutline";
 import { installMediapipeConsoleFilter } from "@/src/lib/mediapipeConsoleFilter";
 import {
@@ -361,6 +362,8 @@ export function useWebScanCaptureGuidance(
         imageData.data,
         imageData.width,
         imageData.height,
+        undefined,
+        { skipUnevenLighting: isSideProfileCaptureStep(stepId) },
       );
 
       const frameCanvas = canvasFromImageData(
@@ -580,7 +583,7 @@ export function useWebScanCaptureGuidance(
         const lastLighting =
           frameSamplesRef.current[frameSamplesRef.current.length - 1]
             ?.lighting ?? lighting;
-        const isSide = stepId === "left" || stepId === "right";
+        const isSide = isSideProfileCaptureStep(stepId);
         const framing = analyzeFaceFraming(
           avgBox,
           framingStateRef.current,

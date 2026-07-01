@@ -9,7 +9,7 @@ import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { invalidateUserHomeCache, invalidateUserInsightsCache, invalidateUserScanDerivedCaches } from "@/src/lib/infra";
 import { resolveScanDisplayScores, syncResolvedScoresToScoresJson, type DoctorOverrides, DOCTOR_EDITABLE_MFS_KEYS, DOCTOR_PATIENT_DISPLAY_SCALE } from "@/src/lib/resolveScanDisplayScores";
 import { computeRagKaiScore, RAG_KAI_PARAM_KEYS } from "@/src/lib/ragEightParams";
-import { PATIENT_DISPLAY_SCORE_CAP } from "@/src/lib/clarityGrade";
+import { clampPatientFacingDisplayScore } from "@/src/lib/clarityGrade";
 
 type AllowedMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
 
@@ -132,10 +132,7 @@ export async function PATCH(
             { status: 400 }
           );
         }
-        nextParamScoresFromPatch[k] = Math.max(
-          0,
-          Math.min(PATIENT_DISPLAY_SCORE_CAP, Math.round(v))
-        );
+        nextParamScoresFromPatch[k] = clampPatientFacingDisplayScore(v);
       }
     }
 

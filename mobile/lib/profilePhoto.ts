@@ -1,7 +1,12 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { apiFetch } from "@/lib/api";
+
+type UploadPhotoOptions = {
+  /** Fires only after the user picked/captured a photo — not while the picker is open. */
+  onUploadStart?: () => void;
+};
 
 const CACHE_DIR = `${FileSystem.documentDirectory}profile-photos/`;
 let _photoUserId: string | null = null;
@@ -57,19 +62,31 @@ export async function clearAllCachedPhotos() {
   } catch {}
 }
 
+/** Square center-crop + resize — avoids Android/iOS in-picker crop overlay (`allowsEditing`). */
+async function squareProfilePhotoUri(sourceUri: string): Promise<string> {
+  const oriented = await manipulateAsync(sourceUri, []);
+  const { width, height } = oriented;
+  const cropSize = Math.min(width, height);
+  const originX = Math.floor((width - cropSize) / 2);
+  const originY = Math.floor((height - cropSize) / 2);
+  const saved = await manipulateAsync(
+    oriented.uri,
+    [
+      { crop: { originX, originY, width: cropSize, height: cropSize } },
+      { resize: { width: 300, height: 300 } },
+    ],
+    { format: SaveFormat.JPEG, compress: 0.7 }
+  );
+  return saved.uri;
+}
+
 async function compressAndUpload(
   sourceUri: string,
   token: string
 ): Promise<{ uri: string } | { error: string }> {
-  const context = ImageManipulator.manipulate(sourceUri);
-  context.resize({ width: 300, height: 300 });
-  const imageRef = await context.renderAsync();
-  const saved = await imageRef.saveAsync({
-    format: SaveFormat.JPEG,
-    compress: 0.7,
-  });
+  const savedUri = await squareProfilePhotoUri(sourceUri);
 
-  const base64 = await FileSystem.readAsStringAsync(saved.uri, {
+  const base64 = await FileSystem.readAsStringAsync(savedUri, {
     encoding: "base64",
   });
 
@@ -94,7 +111,8 @@ async function compressAndUpload(
 }
 
 export async function pickAndUploadPhoto(
-  token: string
+  token: string,
+  opts?: UploadPhotoOptions
 ): Promise<{ uri: string } | { error: string }> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
@@ -103,20 +121,21 @@ export async function pickAndUploadPhoto(
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ["images"],
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.8,
+    allowsEditing: false,
+    quality: 0.85,
   });
 
   if (result.canceled || !result.assets?.[0]) {
     return { error: "cancelled" };
   }
 
+  opts?.onUploadStart?.();
   return compressAndUpload(result.assets[0].uri, token);
 }
 
 export async function captureAndUploadPhoto(
-  token: string
+  token: string,
+  opts?: UploadPhotoOptions
 ): Promise<{ uri: string } | { error: string }> {
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) {
@@ -125,9 +144,8 @@ export async function captureAndUploadPhoto(
 
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ["images"],
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.8,
+    allowsEditing: false,
+    quality: 0.85,
     cameraType: ImagePicker.CameraType.front,
   });
 
@@ -135,6 +153,7 @@ export async function captureAndUploadPhoto(
     return { error: "cancelled" };
   }
 
+  opts?.onUploadStart?.();
   return compressAndUpload(result.assets[0].uri, token);
 }
 

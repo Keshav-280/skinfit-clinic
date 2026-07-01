@@ -203,9 +203,10 @@ export default function ProfileScreen() {
   function handlePhotoPress() {
     if (!token || uploadingPhoto) return;
     const upload = async (fn: typeof pickAndUploadPhoto) => {
-      setUploadingPhoto(true);
       try {
-        const result = await fn(token);
+        const result = await fn(token, {
+          onUploadStart: () => setUploadingPhoto(true),
+        });
         if ("uri" in result) setPhotoUri(result.uri + "?" + Date.now());
         else if (result.error !== "cancelled") Alert.alert("Photo", result.error);
       } finally {

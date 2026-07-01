@@ -31,8 +31,10 @@ import {
   type CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
 
-/** Faster ticks for responsive guidance — reduced from 1100ms. */
-const TICK_MS = 450;
+/** Preview analysis interval — Android takePicture flashes the viewfinder unless animateShutter is off. */
+const TICK_MS_IOS = 450;
+const TICK_MS_ANDROID = 800;
+const TICK_MS = Platform.OS === "android" ? TICK_MS_ANDROID : TICK_MS_IOS;
 const EXPRESSION_TICK_MS = 350;
 
 type CameraRef = RefObject<CameraView | null>;

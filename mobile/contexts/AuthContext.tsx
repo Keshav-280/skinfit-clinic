@@ -12,6 +12,7 @@ import { Platform } from "react-native";
 import { apiUrl, networkFetchErrorMessage } from "@/lib/api";
 import {
   signInWithOAuthNative,
+  signOutFromOAuthProviders,
   type NativeOAuthProvider,
 } from "@/lib/oauthSignIn";
 import { clearAllAppCaches, setCacheUserId } from "@/lib/apiCache";
@@ -417,6 +418,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await unregisterPushToken(prevToken);
       } catch {
         /* offline or expired session — still sign out locally */
+      }
+    }
+    if (Platform.OS !== "web") {
+      try {
+        await signOutFromOAuthProviders();
+      } catch {
+        /* still clear local session */
       }
     }
     await sessionDelete(TOKEN_KEY);

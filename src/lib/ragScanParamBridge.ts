@@ -3,7 +3,7 @@ import {
   type RagKaiParamKey,
 } from "@/src/lib/ragEightParams";
 import {
-  PATIENT_DISPLAY_SCORE_CAP,
+  clampPatientFacingDisplayScore,
   patientDisplayClarity,
 } from "@/src/lib/clarityGrade";
 import { DOCTOR_PATIENT_DISPLAY_SCALE } from "@/src/lib/resolveScanDisplayScores";
@@ -14,8 +14,7 @@ function clampPct(n: number) {
 }
 
 function clampPatientDisplay(n: number) {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(PATIENT_DISPLAY_SCORE_CAP, Math.round(n)));
+  return clampPatientFacingDisplayScore(n);
 }
 
 function doctorUsesPatientDisplayScale(scoresJson: unknown): boolean {

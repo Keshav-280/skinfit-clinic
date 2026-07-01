@@ -79,6 +79,7 @@ export {
   buildAutoScanName,
   DEFAULT_SCAN_NAME,
   fetchNextScanNumber,
+  isSideProfileCaptureStep,
   resolveScanName,
   SCAN_NAME_INPUT_PLACEHOLDER,
   type BuildAutoScanNameOptions,

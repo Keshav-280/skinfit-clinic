@@ -219,7 +219,8 @@ export function analyzeLightingFromRgba(
   data: Uint8Array,
   width: number,
   height: number,
-  region = FRAME_REGION
+  region = FRAME_REGION,
+  opts?: { skipUnevenLighting?: boolean }
 ): {
   quality: LightingQuality;
   score: number;
@@ -288,6 +289,7 @@ export function analyzeLightingFromRgba(
 
   let quality: LightingQuality = "good";
   let message = "Lighting looks good";
+  const skipUnevenLighting = Boolean(opts?.skipUnevenLighting);
 
   // Covered lens / near-black: very low brightness OR a flat near-grayscale frame
   // (camera auto-gain often brightens a covered lens to gray noise — catch that too).
@@ -305,7 +307,7 @@ export function analyzeLightingFromRgba(
   ) {
     quality = "too_bright";
     message = "Too bright — step back from direct sun or harsh lamp";
-  } else if (sideDelta > 30) {
+  } else if (!skipUnevenLighting && sideDelta > 30) {
     quality = "uneven";
     message = "Uneven light — rotate so both sides of your face are lit";
   } else if (std < 25) {
@@ -319,7 +321,7 @@ export function analyzeLightingFromRgba(
         Math.abs(mean - 128) * 0.4 -
         darkRatio * 90 -
         brightRatio * 90 -
-        sideDelta * 0.8 -
+        (skipUnevenLighting ? 0 : sideDelta * 0.8) -
         Math.max(0, 30 - std) * 1.5
     ),
     0,

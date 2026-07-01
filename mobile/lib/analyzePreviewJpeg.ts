@@ -16,6 +16,7 @@ import { fetchFacePreviewInference } from "@/lib/fetchFacePreviewInference";
 import { detectFaceLandmarksForPreview } from "@/lib/detectFaceLandmarksForPreview";
 import { extractFaceLandmarkPoints } from "@/lib/nativeFaceLandmarkDetection";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
+import { isSideProfileCaptureStep } from "@/lib/faceScanCaptures";
 import { faceBoxFromLandmarkPoints } from "../../src/lib/facePortraitBox";
 import {
   analyzeFaceFraming,
@@ -151,7 +152,9 @@ export async function analyzePreviewImageUri(
   }
   const previewAspect = `${width}:${height}`;
 
-  const lighting = analyzeLightingFromRgba(data, width, height);
+  const lighting = analyzeLightingFromRgba(data, width, height, undefined, {
+    skipUnevenLighting: isSideProfileCaptureStep(options?.stepId),
+  });
 
   let rawBox: NormalizedFaceBox | null = null;
   let landmarkBox: NormalizedFaceBox | null = null;
@@ -246,7 +249,7 @@ export async function analyzePreviewImageUri(
   }
   const hasFaceEstimate =
     Boolean(smoothedBox && smoothedBox.width >= 0.05 && smoothedBox.height >= 0.05);
-  const isSide = options?.stepId === "left" || options?.stepId === "right";
+  const isSide = isSideProfileCaptureStep(options?.stepId);
   const framing = analyzeFaceFraming(smoothedBox, emptyState.framing, isSide);
   const nextState: PreviewGuidanceState = {
     smoothedBox,
