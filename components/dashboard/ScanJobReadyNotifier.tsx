@@ -20,6 +20,7 @@ type ScanReadyToast = {
 type ScanFailedToast = {
   jobId: string;
   title: string;
+  detail?: string;
 };
 
 export function ScanJobReadyNotifier() {
@@ -43,6 +44,7 @@ export function ScanJobReadyNotifier() {
         const data = (await res.json()) as {
           status?: string;
           scanId?: number | null;
+          error?: string;
         };
         const status = String(data.status ?? "");
         const scanId =
@@ -69,7 +71,15 @@ export function ScanJobReadyNotifier() {
           const title = job.scanName?.trim() || "Your scan";
           setFailedToasts((prev) => {
             if (prev.some((t) => t.jobId === job.jobId)) return prev;
-            return [...prev, { jobId: job.jobId, title }];
+            return [
+              ...prev,
+              {
+                jobId: job.jobId,
+                title,
+                detail:
+                  typeof data.error === "string" ? data.error : undefined,
+              },
+            ];
           });
         }
       } catch {
@@ -110,7 +120,8 @@ export function ScanJobReadyNotifier() {
           <p className="text-sm font-semibold text-red-800">Scan could not finish</p>
           <p className="mt-1 text-sm text-zinc-600">{toast.title}</p>
           <p className="mt-1 text-xs text-zinc-500">
-            We retried several times. Please run a new scan when inference is ready.
+            {toast.detail ??
+              "We retried several times. Please run a new scan when inference is ready."}
           </p>
           <button
             type="button"

@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
     primaryImageUrl,
     captureCropContext,
     ...(mobileSessionId ? { mobileSessionId } : {}),
+    identityVerifiedAt: new Date().toISOString(),
   };
 
   const [jobRow] = await db

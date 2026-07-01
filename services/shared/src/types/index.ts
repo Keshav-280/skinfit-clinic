@@ -23,6 +23,8 @@ export type ScanJobPayload = {
   };
   /** QR handoff session to mark complete when async scan finishes on desktop. */
   mobileSessionId?: string;
+  /** Set by POST /api/scans/submit after face-identity passes — worker skips re-check. */
+  identityVerifiedAt?: string;
 };
 
 export type ScanJobResult = {

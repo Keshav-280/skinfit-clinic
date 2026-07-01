@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { scanJobs } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { getJobStatus } from "@/src/lib/infra";
+import { scanJobStaleMessage } from "@/src/lib/scanJobStale";
 
 export async function GET(
   request: NextRequest,
@@ -24,6 +25,22 @@ export async function GET(
   }
 
   const cached = await getJobStatus(jobId);
+  const staleError = scanJobStaleMessage(
+    row.status,
+    row.updatedAt,
+    row.createdAt
+  );
+  if (staleError && (row.status === "pending" || row.status === "processing")) {
+    return NextResponse.json({
+      jobId,
+      status: "failed",
+      scanId: row.resultScanId ?? cached?.scanId,
+      error: staleError,
+      updatedAt: row.updatedAt?.toISOString(),
+      stale: true,
+    });
+  }
+
   return NextResponse.json({
     jobId,
     status: row.status,

@@ -392,6 +392,8 @@ export async function enforceScanFaceIdentity(args: {
   centreImagePath?: string;
   centreImageJpeg?: Buffer;
   images?: FaceIdentityImageInput[];
+  /** ISO timestamp from submit route — skip duplicate worker-side verification. */
+  skipWhenVerifiedAt?: string;
 }): Promise<ScanFaceIdentityGateResult> {
   const logBase = { userId: args.userId, scanName: args.scanName };
   logger.info("face_identity_check_start", logBase);
@@ -402,6 +404,15 @@ export async function enforceScanFaceIdentity(args: {
       reason: "FACE_IDENTITY_VERIFICATION disabled",
     });
     return { ok: true, action: "skipped" };
+  }
+
+  if (args.skipWhenVerifiedAt) {
+    logger.info("face_identity_skipped", {
+      ...logBase,
+      reason: "verified_at_submit",
+      verifiedAt: args.skipWhenVerifiedAt,
+    });
+    return { ok: true, action: "verified" };
   }
 
   const imagesToCheck = resolveFaceIdentityImages(args);

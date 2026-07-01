@@ -99,6 +99,7 @@ export async function processScanJob(
     userId: payload.userId,
     scanName: payload.scanName,
     images: buildFaceIdentityInputsFromPaths(payload.imagePaths),
+    skipWhenVerifiedAt: payload.identityVerifiedAt,
   });
   if (!identity.ok) {
     const checkSummary =
