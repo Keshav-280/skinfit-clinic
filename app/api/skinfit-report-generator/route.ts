@@ -35,11 +35,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "Empty PDF" }, { status: 400 });
     }
 
-    const report = await buildSdetectReportFromPdf(pdfBuffer);
-    const content = await buildKaiReportContent(report);
     const eventLabelField = form.get("eventLabel");
     const eventLabel =
       typeof eventLabelField === "string" ? eventLabelField.trim() : "";
+
+    const report = await buildSdetectReportFromPdf(pdfBuffer);
+    const content = await buildKaiReportContent(report, { eventLabel });
     const outPdf = await generateKaiReportPdf(report, content, { eventLabel });
     const fallbackBasename = defaultOutputBasename(file.name);
     const outputNameField = form.get("outputName");
