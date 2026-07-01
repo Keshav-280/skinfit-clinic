@@ -76,8 +76,13 @@ async function renderPdfPages(pdfBuffer: Buffer): Promise<string[]> {
   });
 }
 
+function defaultOpenAiModel(): string {
+  return process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-4o-mini";
+}
+
+/** Vision OCR model — defaults to mini (3-page vision on gpt-4o is token-heavy). Override with SKINFIT_REPORT_VISION_MODEL. */
 function visionModel(): string {
-  return process.env.SKINFIT_REPORT_OPENAI_MODEL?.trim() || "gpt-4o";
+  return process.env.SKINFIT_REPORT_VISION_MODEL?.trim() || defaultOpenAiModel();
 }
 
 let cachedClient: OpenAI | null = null;
@@ -169,7 +174,7 @@ export async function extractReportWithVision(
   const client = getClient();
   if (!client) return null;
 
-  const images = await renderPdfPages(pdfBuffer);
+  const images = (await renderPdfPages(pdfBuffer)).slice(0, 2);
   if (!images.length) return null;
 
   let raw: RawVision | null = null;
@@ -185,7 +190,7 @@ export async function extractReportWithVision(
             { type: "text", text: VISION_PROMPT },
             ...images.map((b64) => ({
               type: "image_url" as const,
-              image_url: { url: `data:image/png;base64,${b64}`, detail: "high" as const },
+              image_url: { url: `data:image/png;base64,${b64}`, detail: "low" as const },
             })),
           ],
         },

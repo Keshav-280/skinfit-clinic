@@ -121,10 +121,12 @@ export function expandBaumannCode(code: string): string {
   return parts.join(" · ");
 }
 
+function defaultOpenAiModel(): string {
+  return process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-4o-mini";
+}
+
 function model(): string {
-  // Deliberately NOT falling back to OPENAI_CHAT_MODEL (gpt-4o-mini on prod) —
-  // this report warrants a stronger model. Override with SKINFIT_REPORT_OPENAI_MODEL.
-  return process.env.SKINFIT_REPORT_OPENAI_MODEL?.trim() || "gpt-4o";
+  return process.env.SKINFIT_REPORT_OPENAI_MODEL?.trim() || defaultOpenAiModel();
 }
 
 let cachedClient: OpenAI | null = null;
