@@ -264,7 +264,7 @@ export async function resetPasswordWithOtp(
       ok: false,
       code: "OAUTH_ACCOUNT",
       message:
-        "This account uses social sign-in. Sign in with Google or Apple instead.",
+        "This account uses social sign-in. Sign in with Google instead.",
     };
   }
 

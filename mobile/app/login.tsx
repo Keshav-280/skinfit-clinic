@@ -307,7 +307,6 @@ export default function LoginScreen() {
           <SocialAuthButtons
             loading={loading}
             divider="none"
-            alwaysShowApple
             onGoogle={async () => {
               setLoading(true);
               try {
@@ -317,19 +316,6 @@ export default function LoginScreen() {
                 const msg =
                   e instanceof Error ? e.message : "Something went wrong.";
                 Alert.alert("Google sign in", msg);
-              } finally {
-                setLoading(false);
-              }
-            }}
-            onApple={async () => {
-              setLoading(true);
-              try {
-                await signInWithOAuth("apple");
-                router.replace("/");
-              } catch (e) {
-                const msg =
-                  e instanceof Error ? e.message : "Something went wrong.";
-                Alert.alert("Apple sign in", msg);
               } finally {
                 setLoading(false);
               }

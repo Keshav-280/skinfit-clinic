@@ -308,17 +308,6 @@ export default function SignupScreen() {
             divider="before"
             dividerLabel="Or Register with"
             dividerUppercase={false}
-            iconShape="square"
-            iconOrder="facebook-first"
-            facebookStyle="outlined"
-            showFacebook
-            alwaysShowApple
-            onFacebook={() =>
-              Alert.alert(
-                "Facebook sign-in",
-                "Facebook sign-in is not available in the app yet. Use Google, Apple, or email instead."
-              )
-            }
             onGoogle={async () => {
               setLoading(true);
               try {
@@ -327,18 +316,6 @@ export default function SignupScreen() {
               } catch (e) {
                 const msg = e instanceof Error ? e.message : "Something went wrong.";
                 Alert.alert("Google sign in", msg);
-              } finally {
-                setLoading(false);
-              }
-            }}
-            onApple={async () => {
-              setLoading(true);
-              try {
-                await signInWithOAuth("apple");
-                router.replace("/onboarding/kai-intro");
-              } catch (e) {
-                const msg = e instanceof Error ? e.message : "Something went wrong.";
-                Alert.alert("Apple sign in", msg);
               } finally {
                 setLoading(false);
               }

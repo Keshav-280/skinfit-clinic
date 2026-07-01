@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -26,21 +25,10 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-function AppleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-2.032 1.58-3.006 1.56-.126-1.085.468-2.28 1.148-3.02.77-.83 2.122-1.46 3.035-1.5.018 1.287-.397 2.464-1 2.88zM20.98 17.3c-.588 1.35-.861 1.937-1.612 3.14-1.045 1.675-2.523 3.76-4.355 3.78-1.625.02-2.04-1.05-4.237-1.05-2.197 0-2.648 1.03-4.27 1.07-1.813.04-3.195-1.85-4.24-3.52-2.305-3.7-2.55-8.04-1.126-10.35 1.004-1.72 2.59-2.73 4.09-2.73 1.887 0 3.075 1.09 4.63 1.09 1.488 0 2.4-1.09 4.12-1.09 1.474 0 2.808.85 3.703 2.33-3.216 1.7-2.693 6.16.852 7.41-.185.51-.388 1.01-.737 1.71z"
-      />
-    </svg>
-  );
-}
-
 type SocialLoginButtonsProps = {
   disabled?: boolean;
   variant?: "light" | "dark";
-  /** Sign-in mockup: icons without heavy boxes */
+  /** @deprecated Bar layout is always used; kept for call-site compatibility */
   compact?: boolean;
 };
 
@@ -48,92 +36,29 @@ function oauthHref(path: string, next: string | null): string {
   return next ? `${path}?next=${encodeURIComponent(next)}` : path;
 }
 
-function SocialIconButton({
-  href,
+export function SocialLoginButtons({
   disabled,
-  icon,
-  label,
-  variant,
-  compact,
-}: {
-  href: string;
-  disabled?: boolean;
-  icon: ReactNode;
-  label: string;
-  variant: "light" | "dark";
-  compact?: boolean;
-}) {
+  variant = "light",
+}: SocialLoginButtonsProps) {
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
   const isDark = variant === "dark";
-
-  if (compact && !isDark) {
-    return (
-      <a
-        href={disabled ? undefined : href}
-        aria-disabled={disabled}
-        aria-label={label}
-        title={label}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#1E232C] transition hover:bg-[#F7F8F9] focus:outline-none focus:ring-2 focus:ring-[#525FE1]/25 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-        onClick={(e) => {
-          if (disabled) e.preventDefault();
-        }}
-      >
-        {icon}
-      </a>
-    );
-  }
 
   return (
     <a
-      href={disabled ? undefined : href}
+      href={disabled ? undefined : oauthHref("/api/auth/oauth/google", next)}
       aria-disabled={disabled}
-      aria-label={label}
-      title={label}
-      className={`inline-flex items-center justify-center border shadow-sm transition focus:outline-none focus:ring-2 aria-disabled:pointer-events-none aria-disabled:opacity-50 ${
-        compact ? "h-11 w-11 rounded-full" : "h-14 w-14 rounded-xl"
-      } ${
+      className={`flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3.5 text-[15px] font-semibold shadow-sm transition focus:outline-none focus:ring-2 aria-disabled:pointer-events-none aria-disabled:opacity-50 ${
         isDark
-          ? "border-white/20 bg-white/10 text-white hover:border-white/30 hover:bg-white/15 focus:ring-[#E8EFE6]/25 focus:ring-offset-2 focus:ring-offset-[#2C3E6B]"
-          : "border-slate-200 bg-white text-[#1E232C] hover:border-slate-300 hover:bg-[#F7F8F9] focus:ring-[#525FE1]/20 focus:ring-offset-2"
+          ? "border-white/20 bg-white text-[#1E232C] hover:bg-white/95 focus:ring-[#E8EFE6]/25 focus:ring-offset-2 focus:ring-offset-[#2C3E6B]"
+          : "border-[#E8ECF4] bg-white text-[#1E232C] hover:border-slate-300 hover:bg-[#F7F8F9] focus:ring-[#525FE1]/20 focus:ring-offset-2"
       }`}
       onClick={(e) => {
         if (disabled) e.preventDefault();
       }}
     >
-      {icon}
+      <GoogleIcon className="h-5 w-5 shrink-0" />
+      <span>Continue with Google</span>
     </a>
-  );
-}
-
-export function SocialLoginButtons({
-  disabled,
-  variant = "light",
-  compact = false,
-}: SocialLoginButtonsProps) {
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next");
-
-  return (
-    <div className="flex justify-center gap-4">
-      <SocialIconButton
-        href={oauthHref("/api/auth/oauth/google", next)}
-        disabled={disabled}
-        variant={variant}
-        compact={compact}
-        icon={<GoogleIcon className="h-6 w-6 shrink-0" />}
-        label="Continue with Google"
-      />
-      <SocialIconButton
-        href={oauthHref("/api/auth/oauth/apple", next)}
-        disabled={disabled}
-        variant={variant}
-        compact={compact}
-        icon={
-          <AppleIcon
-            className={`${compact ? "h-6 w-6" : "h-7 w-7"} shrink-0`}
-          />
-        }
-        label="Continue with Apple"
-      />
-    </div>
   );
 }

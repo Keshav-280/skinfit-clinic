@@ -1,24 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Alert, Platform, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { Text } from "@/components/Themed";
 import {
   getGoogleSignInConfigStatus,
   googleSignInConfigHint,
-  isAppleSignInAvailable,
 } from "@/lib/oauthSignIn";
-
-function AppleIcon({ size = 22, color = "#000" }: { size?: number; color?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path
-        fill={color}
-        d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-2.032 1.58-3.006 1.56-.126-1.085.468-2.28 1.148-3.02.77-.83 2.122-1.46 3.035-1.5.018 1.287-.397 2.464-1 2.88zM20.98 17.3c-.588 1.35-.861 1.937-1.612 3.14-1.045 1.675-2.523 3.76-4.355 3.78-1.625.02-2.04-1.05-4.237-1.05-2.197 0-2.648 1.03-4.27 1.07-1.813.04-3.195-1.85-4.24-3.52-2.305-3.7-2.55-8.04-1.126-10.35 1.004-1.72 2.59-2.73 4.09-2.73 1.887 0 3.075 1.09 4.63 1.09 1.488 0 2.4-1.09 4.12-1.09 1.474 0 2.808.85 3.703 2.33-3.216 1.7-2.693 6.16.852 7.41-.185.51-.388 1.01-.737 1.71z"
-      />
-    </Svg>
-  );
-}
 
 function GoogleMulticolorIcon({ size = 22 }: { size?: number }) {
   return (
@@ -43,61 +30,31 @@ function GoogleMulticolorIcon({ size = 22 }: { size?: number }) {
   );
 }
 
-const ICON_SIZE = 52;
-const SQUARE_ICON_SIZE = 56;
-
 type Props = {
   onGoogle: () => void;
-  onApple: () => void;
-  onFacebook?: () => void;
   loading?: boolean;
   disabled?: boolean;
-  showFacebook?: boolean;
-  alwaysShowApple?: boolean;
   divider?: "none" | "before" | "after";
   dividerLabel?: string;
   dividerUppercase?: boolean;
-  iconShape?: "circle" | "square";
-  iconOrder?: "google-first" | "facebook-first";
-  facebookStyle?: "filled" | "outlined";
 };
 
 export function SocialAuthButtons({
   onGoogle,
-  onApple,
-  onFacebook,
   loading,
   disabled,
-  showFacebook = false,
-  alwaysShowApple = false,
   divider = "after",
   dividerLabel = "or",
   dividerUppercase = true,
-  iconShape = "circle",
-  iconOrder = "google-first",
-  facebookStyle = "filled",
 }: Props) {
   const googleStatus = getGoogleSignInConfigStatus();
-  const showGoogle = true;
   const googleReady =
     googleStatus === "ready" ||
     googleStatus === "needs_native_build" ||
     googleStatus === "needs_web_client_id";
-  const appleReady = isAppleSignInAvailable();
-  const showApple = alwaysShowApple || appleReady;
   const googleHint = googleSignInConfigHint();
 
-  if (!showGoogle && !showApple && !showFacebook) {
-    return null;
-  }
-
   const blocked = Boolean(loading || disabled);
-  const iconSize = iconShape === "square" ? SQUARE_ICON_SIZE : ICON_SIZE;
-  const iconBtnStyle: ViewStyle = {
-    width: iconSize,
-    height: iconSize,
-    borderRadius: iconShape === "square" ? 12 : iconSize / 2,
-  };
 
   function onGooglePress() {
     if (googleReady && !blocked) {
@@ -107,18 +64,6 @@ export function SocialAuthButtons({
     if (googleHint) {
       Alert.alert("Google sign-in", googleHint);
     }
-  }
-
-  function onFacebookPress() {
-    if (blocked) return;
-    if (onFacebook) {
-      onFacebook();
-      return;
-    }
-    Alert.alert(
-      "Facebook sign-in",
-      "Facebook sign-in is not available in the app yet."
-    );
   }
 
   const dividerNode =
@@ -134,100 +79,27 @@ export function SocialAuthButtons({
       </View>
     );
 
-  const googleBtn = showGoogle ? (
-    <Pressable
-      key="google"
-      style={({ pressed }) => [
-        styles.iconBtn,
-        iconBtnStyle,
-        styles.iconBtnLight,
-        (!googleReady || blocked) && styles.iconBtnDisabled,
-        pressed && googleReady && !blocked && styles.iconBtnPressed,
-      ]}
-      onPress={onGooglePress}
-      disabled={blocked}
-      accessibilityRole="button"
-      accessibilityLabel="Continue with Google"
-      accessibilityState={{ disabled: !googleReady || blocked }}
-    >
-      <GoogleMulticolorIcon size={22} />
-    </Pressable>
-  ) : null;
-
-  const facebookBtn = showFacebook ? (
-    <Pressable
-      key="facebook"
-      style={({ pressed }) => [
-        styles.iconBtn,
-        iconBtnStyle,
-        facebookStyle === "filled" ? styles.iconBtnFacebook : styles.iconBtnLight,
-        blocked && styles.iconBtnDisabled,
-        pressed && !blocked && styles.iconBtnPressed,
-      ]}
-      onPress={onFacebookPress}
-      disabled={blocked}
-      accessibilityRole="button"
-      accessibilityLabel="Continue with Facebook"
-    >
-      <Ionicons
-        name="logo-facebook"
-        size={24}
-        color={facebookStyle === "filled" ? "#fff" : "#1877F2"}
-      />
-    </Pressable>
-  ) : null;
-
-  const appleBtn = showApple ? (
-    <Pressable
-      key="apple"
-      style={({ pressed }) => [
-        styles.iconBtn,
-        iconBtnStyle,
-        styles.iconBtnLight,
-        (!appleReady || blocked) && styles.iconBtnDisabled,
-        pressed && appleReady && !blocked && styles.iconBtnPressed,
-      ]}
-      onPress={() => {
-        if (appleReady && !blocked) {
-          onApple();
-          return;
-        }
-        if (!appleReady) {
-          Alert.alert(
-            "Apple sign-in",
-            Platform.OS === "ios"
-              ? "Sign in with Apple requires a paid Apple Developer account. Set EXPO_PUBLIC_ENABLE_NATIVE_APPLE_SIGNIN=1 and rebuild, or use Google or email."
-              : "Set EXPO_PUBLIC_APPLE_SERVICES_ID for Apple sign-in on Android."
-          );
-        }
-      }}
-      disabled={blocked}
-      accessibilityRole="button"
-      accessibilityLabel="Continue with Apple"
-      accessibilityState={{ disabled: !appleReady || blocked }}
-    >
-      <AppleIcon size={22} />
-    </Pressable>
-  ) : null;
-
-  const iconButtons =
-    iconOrder === "facebook-first"
-      ? [facebookBtn, googleBtn, appleBtn]
-      : [googleBtn, facebookBtn, appleBtn];
-
   return (
     <View style={styles.wrap}>
       {divider === "before" ? dividerNode : null}
 
-      <View style={styles.iconRow}>{iconButtons}</View>
+      <Pressable
+        style={({ pressed }) => [
+          styles.googleBar,
+          (!googleReady || blocked) && styles.googleBarDisabled,
+          pressed && googleReady && !blocked && styles.googleBarPressed,
+        ]}
+        onPress={onGooglePress}
+        disabled={blocked}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+        accessibilityState={{ disabled: !googleReady || blocked }}
+      >
+        <GoogleMulticolorIcon size={22} />
+        <Text style={styles.googleBarLabel}>Continue with Google</Text>
+      </Pressable>
 
-      {googleHint ? (
-        <Text style={styles.hint}>{googleHint}</Text>
-      ) : Platform.OS === "android" && showGoogle && !showApple ? (
-        <Text style={styles.hint}>
-          Add EXPO_PUBLIC_APPLE_SERVICES_ID for Apple sign-in on Android.
-        </Text>
-      ) : null}
+      {googleHint ? <Text style={styles.hint}>{googleHint}</Text> : null}
 
       {divider === "after" ? dividerNode : null}
     </View>
@@ -238,30 +110,30 @@ const styles = StyleSheet.create({
   wrap: {
     gap: 10,
   },
-  iconRow: {
+  googleBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 20,
-  },
-  iconBtn: {
-    alignItems: "center",
-    justifyContent: "center",
+    gap: 12,
+    width: "100%",
+    minHeight: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E8ECF4",
-  },
-  iconBtnLight: {
     backgroundColor: "#fff",
   },
-  iconBtnFacebook: {
-    backgroundColor: "#1877F2",
-    borderColor: "#1877F2",
+  googleBarLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1E232C",
   },
-  iconBtnPressed: {
+  googleBarPressed: {
     opacity: 0.88,
-    transform: [{ scale: 0.96 }],
+    transform: [{ scale: 0.99 }],
   },
-  iconBtnDisabled: {
+  googleBarDisabled: {
     opacity: 0.45,
   },
   hint: {

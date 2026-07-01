@@ -82,7 +82,7 @@ export async function POST(req: Request) {
         {
           error: "OAUTH_ACCOUNT",
           message:
-            "This account uses social sign-in. Use Continue with Google or Apple below.",
+            "This account uses social sign-in. Use Continue with Google below.",
         },
         { status: 401 }
       );

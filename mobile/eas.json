@@ -5,7 +5,12 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://my.skinfitwellness.in",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "361907329782-2sip40ae2bur4dqdepkgh02tuoalvllt.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "361907329782-eva2ooqiftlc3nncp1k0bf95p3ciiq30.apps.googleusercontent.com"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -14,7 +19,9 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://my.skinfitwellness.in",
-        "EXPO_PUBLIC_CHAT_DOCTOR_E2EE_DISABLED": "1"
+        "EXPO_PUBLIC_CHAT_DOCTOR_E2EE_DISABLED": "1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "361907329782-2sip40ae2bur4dqdepkgh02tuoalvllt.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "361907329782-eva2ooqiftlc3nncp1k0bf95p3ciiq30.apps.googleusercontent.com"
       }
     },
     "preview-ios": {
@@ -25,7 +32,9 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://my.skinfitwellness.in",
         "EXPO_PUBLIC_CHAT_DOCTOR_E2EE_DISABLED": "1",
-        "EXPO_PUBLIC_IOS_PERSONAL_TEAM": "1"
+        "EXPO_PUBLIC_IOS_PERSONAL_TEAM": "1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "361907329782-2sip40ae2bur4dqdepkgh02tuoalvllt.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "361907329782-eva2ooqiftlc3nncp1k0bf95p3ciiq30.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -33,7 +42,9 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://my.skinfitwellness.in"
+        "EXPO_PUBLIC_API_URL": "https://my.skinfitwellness.in",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "361907329782-2sip40ae2bur4dqdepkgh02tuoalvllt.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "361907329782-eva2ooqiftlc3nncp1k0bf95p3ciiq30.apps.googleusercontent.com"
       }
     }
   },
