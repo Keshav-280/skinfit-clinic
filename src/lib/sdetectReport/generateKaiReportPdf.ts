@@ -119,17 +119,18 @@ async function drawIdentityRow(
   y: number,
   w: number
 ): Promise<number> {
-  const rowH = 66;
-  sectionLabel(doc, "analysed for", x, y + 10);
+  const imgH = 88;
+  const imgW = 70;
+  const gap = 8;
+  const rowH = imgH;
+
+  sectionLabel(doc, "analysed for", x, y + 22);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(23);
+  doc.setFontSize(24);
   doc.setTextColor(...KAI.navy);
-  doc.text(data.patient.name || "—", x, y + 36);
+  doc.text(data.patient.name || "—", x, y + 50);
 
   if (data.faceImages) {
-    const imgH = rowH - 6;
-    const imgW = 40;
-    const gap = 6;
     const keys: Array<keyof SdetectFaceImages> = ["left", "front", "right"];
     const totalW = imgW * keys.length + gap * (keys.length - 1);
     let ix = x + w - totalW;
@@ -159,24 +160,26 @@ function drawSkinTypeCard(
   sectionLabel(doc, "your skin type", x + pad, y + 20);
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(21);
+  doc.setFontSize(20);
   doc.setTextColor(...KAI.navy);
   doc.text(content.skinTypeCode || "—", x + pad, y + 44);
-  const codeW = doc.getTextWidth(content.skinTypeCode || "—");
 
+  // Full plain expansion on its own line so no descriptor is clipped.
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...KAI.muted);
-  const plainLines = wrap(doc, content.skinTypePlain, w - pad * 2 - codeW - 12);
-  if (plainLines.length) {
-    doc.text(plainLines[0], x + pad + codeW + 12, y + 44);
+  const plainLines = wrap(doc, content.skinTypePlain, w - pad * 2);
+  let py = y + 60;
+  for (const line of plainLines) {
+    doc.text(line, x + pad, py);
+    py += 12;
   }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...KAI.ink);
   const summaryLines = wrap(doc, content.skinTypeSummary, w - pad * 2);
-  let sy = y + 64;
+  let sy = py + 6;
   for (const line of summaryLines) {
     if (sy > y + h - 10) break;
     doc.text(line, x + pad, sy);
@@ -268,14 +271,14 @@ function drawObservationsCard(
     doc.text(titleLines[0] ?? obs.title, titleX, rowTop + 8);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFontSize(8.5);
     doc.setTextColor(...KAI.ink);
     const commentaryLines = wrap(doc, obs.commentary, innerW - 14);
-    let ty = rowTop + 20;
+    let ty = rowTop + 21;
     for (const line of commentaryLines) {
       if (ty > rowTop + rowH - 6) break;
       doc.text(line, titleX, ty);
-      ty += 10;
+      ty += 11;
     }
 
     if (index < observations.length - 1) {
@@ -419,9 +422,9 @@ export async function generateKaiReportPdf(
 
   drawHeader(doc, data, options.eventLabel ?? "");
 
-  let y = 66 + 22;
+  let y = 66 + 20;
   y = await drawIdentityRow(doc, data, margin, y, contentW);
-  y += 12;
+  y += 16;
 
   const gutter = 16;
   const skinTypeW = (contentW - gutter) * 0.6;
@@ -429,14 +432,14 @@ export async function generateKaiReportPdf(
   const row2H = 126;
   drawSkinTypeCard(doc, content, margin, y, skinTypeW, row2H);
   drawScoreCard(doc, content, margin + skinTypeW + gutter, y, scoreW, row2H);
-  y += row2H + 12;
+  y += row2H + 16;
 
   const obsW = (contentW - gutter) * 0.56;
   const radarW = contentW - gutter - obsW;
-  const row3H = 214;
+  const row3H = 188;
   drawObservationsCard(doc, content, margin, y, obsW, row3H);
   drawComprehensiveCard(doc, content, margin + obsW + gutter, y, radarW, row3H);
-  y += row3H + 14;
+  y += row3H + 16;
 
   // Insight box grows to fit the AI text; footer keeps a minimum height.
   const gapAfterInsight = 14;
