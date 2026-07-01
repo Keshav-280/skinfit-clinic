@@ -64,6 +64,7 @@ Rules for selecting the top 3 observations:
 - EXCEPTION: if the person is under 30, do not lead with Wrinkle even if it scores low — mention it briefly in the insight as prevention instead.
 - EXCEPTION: if two parameters are closely related (e.g. Sebum and Pores, or Superficial Pigment and Brown Pigment), group them into one observation using the lower of the two scores.
 - Use the exact numeric score from the data for each observation.
+- Moisture % is a hydration reading only — never use it as an observation score. Only scores from the Analysis parameter lists count.
 
 Return ONLY the JSON. No markdown fences, no commentary outside the JSON.`;
 
@@ -157,7 +158,7 @@ function buildRawDataBlock(data: SdetectReportData): string {
     `Gender: ${p.gender}`,
     `Baumann skin type code: ${data.classification}`,
     `Comprehensive score: ${data.comprehensiveScore}`,
-    `Moisture: ${data.moisture}%`,
+    `Moisture level: ${data.moisture}% (hydration reading — not a scored skin parameter)`,
     "",
     `Comprehensive Analysis parameters (label: score): ${metricLine(data.radar)}`,
     `General Analysis parameters: ${metricLine(data.generalAnalysis)}`,
@@ -208,8 +209,7 @@ function normaliseObservations(raw: unknown): KaiObservation[] {
     .filter((o) => o.title && o.commentary);
 }
 
-/** Lowest-3 parameters as a deterministic fallback when the model returns nothing usable. */
-function fallbackObservations(data: SdetectReportData): KaiObservation[] {
+function allScoredMetrics(data: SdetectReportData): SdetectMetric[] {
   const all = [...data.radar];
   const seen = new Set(all.map((m) => m.label));
   for (const m of [...data.generalAnalysis, ...data.inDepthAnalysis]) {
@@ -218,7 +218,35 @@ function fallbackObservations(data: SdetectReportData): KaiObservation[] {
       seen.add(m.label);
     }
   }
-  return all
+  return all;
+}
+
+/** Lowest parameter scores — used to correct AI observations that pick moisture etc. */
+function lowestMetricScores(data: SdetectReportData, count = 3): number[] {
+  return allScoredMetrics(data)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, count)
+    .map((m) => m.score);
+}
+
+/** Observation scores must come from scraped parameters, not moisture or comprehensive score. */
+function applyTrueObservationScores(
+  observations: KaiObservation[],
+  data: SdetectReportData
+): KaiObservation[] {
+  const validScores = new Set(allScoredMetrics(data).map((m) => m.score));
+  const rankedLowest = lowestMetricScores(data, 3);
+  return observations.slice(0, 3).map((obs, index) => {
+    const score = validScores.has(obs.score)
+      ? obs.score
+      : (rankedLowest[index] ?? obs.score);
+    return { ...obs, score, color: colorForScore(score) };
+  });
+}
+
+/** Lowest-3 parameters as a deterministic fallback when the model returns nothing usable. */
+function fallbackObservations(data: SdetectReportData): KaiObservation[] {
+  return allScoredMetrics(data)
     .sort((a, b) => a.score - b.score)
     .slice(0, 3)
     .map((m) => ({
@@ -268,8 +296,10 @@ export async function buildKaiReportContent(
   }
 
   const observations = ai ? normaliseObservations(ai.observations) : [];
-  const finalObservations =
-    observations.length >= 3 ? observations : fallbackObservations(data);
+  const finalObservations = applyTrueObservationScores(
+    observations.length >= 3 ? observations : fallbackObservations(data),
+    data
+  );
 
   const skinTypeCode = asString(ai?.skinTypeCode, data.classification) || data.classification;
   // Derive the plain expansion from the code (fixed mapping) rather than trusting

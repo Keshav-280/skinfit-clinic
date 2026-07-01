@@ -46,11 +46,52 @@ type ApiReportPayload = {
   };
 };
 
-const FACE_IMAGE_SPECS: Record<keyof SdetectFaceImages, [string, string]> = {
-  front: ["2", "White map"],
-  left: ["1", "White light"],
-  right: ["3", "White light"],
+const FACE_IMAGE_SPECS: Record<keyof SdetectFaceImages, Array<[string, string]>> = {
+  front: [
+    ["2", "White map"],
+    ["2", "White light"],
+    ["3", "White map"],
+  ],
+  left: [
+    ["1", "White light"],
+    ["2", "White light"],
+    ["3", "White light"],
+  ],
+  right: [
+    ["3", "White light"],
+    ["2", "White light"],
+    ["1", "White light"],
+  ],
 };
+
+function resolveFaceImageUrl(
+  byFaceLight: Map<string, string>,
+  specs: Array<[string, string]>
+): string | null {
+  for (const [faceType, lightName] of specs) {
+    const url = byFaceLight.get(`${faceType}|${lightName}`);
+    if (url) return url;
+  }
+  return null;
+}
+
+async function resolveFaceImages(
+  byFaceLight: Map<string, string>
+): Promise<SdetectFaceImages | null> {
+  const faceUrls: Record<keyof SdetectFaceImages, string | null> = {
+    front: resolveFaceImageUrl(byFaceLight, FACE_IMAGE_SPECS.front),
+    left: resolveFaceImageUrl(byFaceLight, FACE_IMAGE_SPECS.left),
+    right: resolveFaceImageUrl(byFaceLight, FACE_IMAGE_SPECS.right),
+  };
+  if (!faceUrls.front || !faceUrls.left || !faceUrls.right) return null;
+
+  const [front, left, right] = await Promise.all([
+    fetchImageBuffer(faceUrls.front),
+    fetchImageBuffer(faceUrls.left),
+    fetchImageBuffer(faceUrls.right),
+  ]);
+  return { front, left, right };
+}
 
 const RADAR_NAMES = [
   "Superficial pigment",
@@ -120,7 +161,7 @@ export async function fetchSdetectApiReport(
 ): Promise<{
   report: NonNullable<ApiReportPayload["data"]>["data"];
   customer: NonNullable<ApiReportPayload["data"]>["customer"];
-  faceImages: SdetectFaceImages;
+  faceImages: SdetectFaceImages | null;
   radar: SdetectMetric[];
   generalAnalysis: SdetectMetric[];
   inDepthAnalysis: SdetectMetric[];
@@ -154,24 +195,7 @@ export async function fetchSdetectApiReport(
     }
   }
 
-  const faceUrls: Record<keyof SdetectFaceImages, string> = {
-    front: "",
-    left: "",
-    right: "",
-  };
-  for (const [key, [faceType, lightName]] of Object.entries(FACE_IMAGE_SPECS) as Array<
-    [keyof SdetectFaceImages, [string, string]]
-  >) {
-    const url = byFaceLight.get(`${faceType}|${lightName}`);
-    if (!url) throw new Error(`missing face image: ${key}`);
-    faceUrls[key] = url;
-  }
-
-  const [front, left, right] = await Promise.all([
-    fetchImageBuffer(faceUrls.front),
-    fetchImageBuffer(faceUrls.left),
-    fetchImageBuffer(faceUrls.right),
-  ]);
+  const faceImages = await resolveFaceImages(byFaceLight).catch(() => null);
 
   const moistureScore = scoreFromDetail(
     details.filter((d) => d.Name === "Moisture"),
@@ -194,7 +218,7 @@ export async function fetchSdetectApiReport(
   return {
     report,
     customer,
-    faceImages: { front, left, right },
+    faceImages,
     radar: metricsFromDetails(details, RADAR_NAMES, "2"),
     generalAnalysis: metricsFromDetails(details, GENERAL_NAMES, "2"),
     inDepthAnalysis: metricsFromDetails(details, IN_DEPTH_NAMES, "2"),
