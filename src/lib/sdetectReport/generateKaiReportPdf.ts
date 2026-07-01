@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { jsPDF } from "jspdf";
 import sharp from "sharp";
 import type { KaiObservationColor, KaiReportContent } from "./aiReport";
@@ -44,6 +46,57 @@ const CLINIC_LOCATIONS = [
 
 const BOOKING_URL = "https://my.skinfitwellness.in";
 
+type LogoAsset = { dataUrl: string; displayW: number; displayH: number };
+
+let logoCache: LogoAsset | null = null;
+
+const LOGO_DISPLAY_H = 30;
+
+async function loadHeaderLogo(): Promise<LogoAsset> {
+  if (logoCache) return logoCache;
+
+  const svgPath = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.svg");
+  const wellnessPng = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.png");
+  const rasterH = LOGO_DISPLAY_H * 4;
+
+  let raster: Buffer;
+  try {
+    raster = await sharp(svgPath)
+      .resize({ height: rasterH })
+      .png({ compressionLevel: 6 })
+      .toBuffer();
+  } catch {
+    const buffer = await readFile(wellnessPng);
+    raster = await sharp(buffer)
+      .resize({ height: rasterH, kernel: sharp.kernel.lanczos3 })
+      .png({ compressionLevel: 6 })
+      .toBuffer();
+  }
+
+  const meta = await sharp(raster).metadata();
+  const aspect = (meta.width ?? 248) / (meta.height ?? rasterH);
+  const displayW = Math.round(LOGO_DISPLAY_H * aspect);
+
+  logoCache = {
+    dataUrl: `data:image/png;base64,${raster.toString("base64")}`,
+    displayW,
+    displayH: LOGO_DISPLAY_H,
+  };
+  return logoCache;
+}
+
+function formatPatientPhone(phone: string): string {
+  const trimmed = phone.trim();
+  if (!trimmed || trimmed === "—") return trimmed;
+  if (trimmed.startsWith("+")) return trimmed;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) return `+91 ${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return `+91 ${digits.slice(2)}`;
+  }
+  return trimmed;
+}
+
 function wrap(doc: jsPDF, text: string, maxWidth: number): string[] {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return [];
@@ -80,7 +133,12 @@ function sectionLabel(doc: jsPDF, text: string, x: number, y: number, align: "le
   doc.text(text.toUpperCase(), x, y, { align, charSpace: 0.6 });
 }
 
-function drawHeader(doc: jsPDF, data: SdetectReportData, eventLabel: string) {
+async function drawHeader(
+  doc: jsPDF,
+  logo: LogoAsset,
+  data: SdetectReportData,
+  eventLabel: string
+) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 32;
   const h = 66;
@@ -88,16 +146,21 @@ function drawHeader(doc: jsPDF, data: SdetectReportData, eventLabel: string) {
   doc.setFillColor(...KAI.navy);
   doc.rect(0, 0, pageW, h, "F");
 
-  // Text wordmark: SKINFIT (white) + WELLNESS.in (coral)
-  const logoY = 40;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(19);
-  doc.setTextColor(...KAI.white);
-  doc.text("SKINFIT", margin, logoY, { charSpace: 0.4 });
-  const brandW = doc.getTextWidth("SKINFIT");
-  doc.setFontSize(10.5);
-  doc.setTextColor(...KAI.coral);
-  doc.text("WELLNESS.in", margin + brandW + 8, logoY, { charSpace: 0.4 });
+  // Full-colour logo on a white badge so navy SKINFIT text stays visible.
+  const badgePadX = 10;
+  const badgePadY = 8;
+  const badgeW = logo.displayW + badgePadX * 2;
+  const badgeH = logo.displayH + badgePadY * 2;
+  doc.setFillColor(...KAI.white);
+  doc.roundedRect(margin, (h - badgeH) / 2, badgeW, badgeH, 6, 6, "F");
+  doc.addImage(
+    logo.dataUrl,
+    "PNG",
+    margin + badgePadX,
+    (h - logo.displayH) / 2,
+    logo.displayW,
+    logo.displayH
+  );
 
   const subtitle = [eventLabel.trim(), data.patient.reportDate]
     .filter((s) => s && s !== "—")
@@ -121,26 +184,66 @@ async function drawIdentityRow(
 ): Promise<number> {
   const imgH = 88;
   const imgW = 70;
-  const gap = 8;
-  const rowH = imgH;
+  const imgGap = 8;
+  const pad = 16;
+  const imgBlockW = data.faceImages
+    ? imgW * 3 + imgGap * 2
+    : 0;
+  const rowH = Math.max(imgH + 8, 118);
 
-  sectionLabel(doc, "analysed for", x, y + 22);
+  roundedCard(doc, x, y, w, rowH);
+
+  const textX = x + pad;
+  let ty = y + 22;
+  sectionLabel(doc, "analysed for", textX, ty);
+
+  ty += 20;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   doc.setTextColor(...KAI.navy);
-  doc.text(data.patient.name || "—", x, y + 50);
+  doc.text(data.patient.name || "—", textX, ty);
+
+  const gender = data.patient.gender?.trim();
+  if (gender && gender !== "—") {
+    const nameW = doc.getTextWidth(data.patient.name || "—");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.setTextColor(...KAI.muted);
+    doc.text(gender, textX + nameW + 10, ty);
+  }
+
+  const detailLine = (label: string, value: string) => {
+    if (!value || value === "—") return;
+    ty += 15;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...KAI.muted);
+    doc.text(label, textX, ty);
+    doc.setTextColor(...KAI.ink);
+    doc.text(value, textX + 92, ty);
+  };
+
+  ty += 6;
+  if (data.patient.age > 0) {
+    detailLine("Age", `${data.patient.age} yrs`);
+  }
+  detailLine("Contact", formatPatientPhone(data.patient.phone));
+  detailLine("Date of report", data.patient.reportDate);
+  if (data.patient.scanFrequency > 0) {
+    detailLine("Skin analysis frequency", String(data.patient.scanFrequency));
+  }
 
   if (data.faceImages) {
     const keys: Array<keyof SdetectFaceImages> = ["left", "front", "right"];
-    const totalW = imgW * keys.length + gap * (keys.length - 1);
-    let ix = x + w - totalW;
+    let ix = x + w - pad - imgBlockW;
+    const imgY = y + (rowH - imgH) / 2;
     for (const key of keys) {
       const url = await faceImageDataUrl(data.faceImages[key], imgW, imgH);
       doc.setDrawColor(...KAI.cardBorder);
       doc.setLineWidth(0.75);
-      doc.roundedRect(ix - 1, y - 1, imgW + 2, imgH + 2, 6, 6, "S");
-      doc.addImage(url, "JPEG", ix, y, imgW, imgH);
-      ix += imgW + gap;
+      doc.roundedRect(ix - 1, imgY - 1, imgW + 2, imgH + 2, 6, 6, "S");
+      doc.addImage(url, "JPEG", ix, imgY, imgW, imgH);
+      ix += imgW + imgGap;
     }
   }
 
@@ -420,7 +523,8 @@ export async function generateKaiReportPdf(
   doc.setFillColor(...KAI.cream);
   doc.rect(0, 0, pageW, pageH, "F");
 
-  drawHeader(doc, data, options.eventLabel ?? "");
+  const logo = await loadHeaderLogo();
+  await drawHeader(doc, logo, data, options.eventLabel ?? "");
 
   let y = 66 + 20;
   y = await drawIdentityRow(doc, data, margin, y, contentW);

@@ -1153,6 +1153,66 @@ export const familyWalletTransactions = pgTable(
   })
 );
 
+export const clinicExternalReportStatusEnum = pgEnum("clinic_external_report_status", [
+  "draft",
+  "pending_account",
+  "sent",
+]);
+
+/**
+ * Static PDF reports from external skin analysers (e.g. Medixora booth).
+ * Not linked to internal AI scan pipeline — stored PDF only.
+ */
+export const clinicExternalReports = pgTable(
+  "clinic_external_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    doctorId: uuid("doctor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    patientEmail: varchar("patient_email", { length: 255 }).notNull(),
+    patientName: varchar("patient_name", { length: 255 }),
+    patientUserId: uuid("patient_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    title: varchar("title", { length: 255 }).notNull(),
+    /** Null until PDF is attached (email may be saved before the scan). */
+    storagePath: text("storage_path"),
+    shareToken: uuid("share_token").notNull().defaultRandom().unique(),
+    status: clinicExternalReportStatusEnum("status").notNull().default("draft"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    doctorCreatedIdx: index("clinic_external_reports_doctor_created_idx").on(
+      table.doctorId,
+      table.createdAt
+    ),
+    patientEmailIdx: index("clinic_external_reports_patient_email_idx").on(
+      table.patientEmail
+    ),
+    patientUserIdx: index("clinic_external_reports_patient_user_idx").on(
+      table.patientUserId
+    ),
+  })
+);
+
+/** Early-access emails collected before app store launch. */
+export const preReleaseSignups = pgTable(
+  "pre_release_signups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: varchar("email", { length: 255 }).notNull(),
+    source: varchar("source", { length: 64 }).notNull().default("pre-release"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    emailUnique: uniqueIndex("pre_release_signups_email_unique").on(table.email),
+  })
+);
+
 export const mobileCaptureSessions = pgTable("mobile_capture_sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")

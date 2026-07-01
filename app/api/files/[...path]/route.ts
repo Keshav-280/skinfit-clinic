@@ -10,6 +10,7 @@ const MIME: Record<string, string> = {
   mp3: "audio/mpeg",
   m4a: "audio/mp4",
   wav: "audio/wav",
+  pdf: "application/pdf",
 };
 
 /**

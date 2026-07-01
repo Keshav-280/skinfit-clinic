@@ -55,6 +55,14 @@ type HistoryPayload = {
     primaryGoal: string | null;
   };
   scans: ScanRow[];
+  clinicReports?: Array<{
+    id: string;
+    title: string;
+    kind: "external_clinic_report";
+    status: string;
+    createdAt: string;
+    downloadUrl: string;
+  }>;
   reportVoiceNotes?: ReportVoiceRow[];
   reportVoiceNotesArchived?: ReportVoiceRow[];
   scoresUnlocked?: boolean;
@@ -161,6 +169,7 @@ export default function HistoryListScreen() {
   }
 
   const scans = data?.scans ?? [];
+  const clinicReports = data?.clinicReports ?? [];
   const scoresUnlocked = data?.scoresUnlocked ?? false;
   const scoreLabel = (raw: number) =>
     scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
@@ -255,6 +264,40 @@ export default function HistoryListScreen() {
           ))}
         </View>
       )}
+
+      {clinicReports.length > 0 ? (
+        <View style={{ marginTop: 28 }}>
+          <Text style={styles.sectionTitle}>Clinic skin reports</Text>
+          <Text style={[styles.empty, { marginBottom: 12, textAlign: "left" }]}>
+            PDF from your clinic visit — not an in-app AI scan.
+          </Text>
+          {clinicReports.map((report) => (
+            <View key={report.id} style={[styles.visitCard, CARD, { marginBottom: 12 }]}>
+              <View style={styles.visitHeader}>
+                <Text style={styles.visitDate} numberOfLines={2}>
+                  {report.title}
+                </Text>
+                <View style={[styles.chip, { backgroundColor: "#ede9fe" }]}>
+                  <Text style={[styles.chipText, { color: "#5b21b6" }]}>External PDF</Text>
+                </View>
+              </View>
+              <Text style={styles.visitDoc}>
+                {format(new Date(report.createdAt), "MMM d, yyyy")}
+              </Text>
+              <Pressable
+                style={[styles.btnPrimary, { marginTop: 10 }]}
+                onPress={() => {
+                  void import("expo-linking").then(({ openURL }) =>
+                    openURL(report.downloadUrl)
+                  );
+                }}
+              >
+                <Text style={styles.btnPrimaryText}>View PDF</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       <View style={[styles.visitSection, CARD, { marginTop: 28 }]}>
         <Text style={styles.subsectionTitle}>Audio notes</Text>

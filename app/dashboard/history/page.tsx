@@ -6,6 +6,7 @@ import {
   scans,
   users,
   visitNotes,
+  clinicExternalReports,
 } from "../../../src/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { HistoryView } from "../../../components/dashboard/HistoryView";
@@ -16,6 +17,7 @@ import { isPatientClinicVisited } from "../../../src/lib/patientClinicVisit";
 import { patientScanImagePath } from "../../../src/lib/patientScanImagePath";
 import { analysisResultsToParams } from "../../../src/lib/skinScanAnalysis";
 import { kaiScoreFromScanRow } from "../../../src/lib/resolveScanDisplayScores";
+import { clinicReportShareUrl } from "../../../src/lib/clinicExternalReports";
 
 export default async function HistoryPage() {
   const userId = await getSessionUserId();
@@ -45,7 +47,8 @@ export default async function HistoryPage() {
     primaryGoal: user.primaryGoal,
   };
 
-  const [scansList, visitsList, reportVoiceRows, scoresUnlocked] = await Promise.all([
+  const [scansList, visitsList, reportVoiceRows, clinicReportRows, scoresUnlocked] =
+    await Promise.all([
     db.query.scans.findMany({
       where: eq(scans.userId, user.id),
       columns: {
@@ -99,6 +102,18 @@ export default async function HistoryPage() {
         )
       )
       .orderBy(desc(doctorFeedbackVoiceNotes.createdAt)),
+    db.query.clinicExternalReports.findMany({
+      where: eq(clinicExternalReports.patientUserId, user.id),
+      columns: {
+        id: true,
+        title: true,
+        status: true,
+        sentAt: true,
+        createdAt: true,
+        shareToken: true,
+      },
+      orderBy: [desc(clinicExternalReports.sentAt), desc(clinicExternalReports.createdAt)],
+    }),
     isPatientClinicVisited(userId),
   ]);
 
@@ -165,10 +180,22 @@ export default async function HistoryPage() {
     .map(mapReport)
     .filter(hasAudio);
 
+  const clinicReports = clinicReportRows
+    .filter((r) => r.status === "sent")
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      kind: "external_clinic_report" as const,
+      status: r.status,
+      createdAt: (r.sentAt ?? r.createdAt).toISOString(),
+      downloadUrl: clinicReportShareUrl(r.shareToken),
+    }));
+
   return (
     <HistoryView
       scans={scanRecords}
       visitNotes={visitRecords}
+      clinicReports={clinicReports}
       reportVoiceNotes={reportVoiceNotes}
       reportVoiceNotesArchived={reportVoiceNotesArchived}
       patient={patient}

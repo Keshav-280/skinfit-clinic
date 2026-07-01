@@ -165,6 +165,11 @@ export async function POST(req: Request) {
     );
   }
 
+  const { linkPendingClinicReportsForUser } = await import(
+    "@/src/lib/clinicExternalReports"
+  );
+  void linkPendingClinicReportsForUser(inserted.id, inserted.email);
+
   const token = await createSessionToken(
     {
       id: inserted.id,

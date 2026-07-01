@@ -19,6 +19,11 @@ export default function SkinfitReportGeneratorPage() {
   const [eventLabel, setEventLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastPdfBlob, setLastPdfBlob] = useState<Blob | null>(null);
+  const [saveEmail, setSaveEmail] = useState("");
+  const [saveName, setSaveName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   async function handleGenerate() {
     if (!file) return;
@@ -51,6 +56,8 @@ export default function SkinfitReportGeneratorPage() {
         throw new Error(text || `Generation failed (${res.status})`);
       }
       const blob = await res.blob();
+      setLastPdfBlob(blob);
+      setSaveMsg(null);
       const downloadName =
         res.headers.get("X-Output-Filename") ??
         `${outputName.trim() || defaultOutputBasename(file.name)}.pdf`;
@@ -72,10 +79,87 @@ export default function SkinfitReportGeneratorPage() {
     }
   }
 
+  async function handleSaveToClinic() {
+    if (!lastPdfBlob || !saveEmail.trim()) return;
+    setSaving(true);
+    setSaveMsg(null);
+    setError(null);
+    try {
+      let attachToId: string | undefined;
+      const listRes = await fetch("/api/doctor/clinic-reports", { credentials: "include" });
+      if (listRes.ok) {
+        const listData = (await listRes.json()) as {
+          reports?: Array<{ id: string; patientEmail: string; hasPdf: boolean; status: string }>;
+        };
+        const emailNorm = saveEmail.trim().toLowerCase();
+        const pending = listData.reports?.find(
+          (r) =>
+            r.status === "draft" &&
+            !r.hasPdf &&
+            r.patientEmail.toLowerCase() === emailNorm
+        );
+        attachToId = pending?.id;
+      }
+
+      const form = new FormData();
+      const name = `${outputName.trim() || defaultOutputBasename(file?.name ?? "report")}.pdf`;
+      form.append("file", new File([lastPdfBlob], name, { type: "application/pdf" }));
+      form.append("patientEmail", saveEmail.trim());
+      if (saveName.trim()) form.append("patientName", saveName.trim());
+      form.append("title", outputName.trim() || "Skin analysis report");
+      if (attachToId) form.append("attachToId", attachToId);
+      const res = await fetch("/api/doctor/clinic-reports", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? `Save failed (${res.status})`);
+      setSaveMsg(
+        attachToId
+          ? "PDF attached to the patient you registered earlier. Open Clinic reports to Send."
+          : "Saved to Clinic reports. Open that section to Send, share via Gmail, or show QR."
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-xl px-4 py-8 sm:px-6">
       <div className="rounded-2xl border border-white/40 bg-white/80 p-8 shadow-sm backdrop-blur-sm">
         <h1 className="text-2xl font-semibold text-[#242a5f]">SkinFit report generator</h1>
+        <p className="mt-2 text-sm text-zinc-600">
+          Enter the patient email before or after the scan — it is used when saving to clinic
+          reports.
+        </p>
+
+        <div className="mt-5 rounded-xl border border-[#242a5f]/15 bg-[#F8F9FC] p-5">
+          <h2 className="text-sm font-semibold text-[#242a5f]">Patient (for clinic reports)</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-medium text-[#242a5f]">Patient email</span>
+              <input
+                type="email"
+                value={saveEmail}
+                onChange={(e) => setSaveEmail(e.target.value)}
+                placeholder="patient@email.com"
+                className="mt-1 w-full rounded-lg border border-[#242a5f]/20 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-[#242a5f]">Patient name</span>
+              <input
+                type="text"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-[#242a5f]/20 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+        </div>
 
         <div
           role="button"
@@ -166,6 +250,27 @@ export default function SkinfitReportGeneratorPage() {
         >
           {loading ? "Generating…" : "Generate SkinFit PDF"}
         </button>
+
+        {lastPdfBlob ? (
+          <div className="mt-6 rounded-xl border border-[#242a5f]/15 bg-[#F8F9FC] p-5">
+            <h2 className="text-sm font-semibold text-[#242a5f]">Save to clinic reports</h2>
+            <p className="mt-1 text-xs text-zinc-600">
+              PDF is ready. Uses the patient email above (edit anytime). If you already registered
+              this email in Clinic reports, the PDF will attach to that entry.
+            </p>
+            {saveMsg ? (
+              <p className="mt-3 text-xs text-emerald-700">{saveMsg}</p>
+            ) : null}
+            <button
+              type="button"
+              disabled={saving || !saveEmail.trim()}
+              onClick={() => void handleSaveToClinic()}
+              className="mt-4 w-full rounded-lg border border-[#242a5f]/25 bg-white px-4 py-2.5 text-sm font-semibold text-[#242a5f] disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save draft to clinic reports"}
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

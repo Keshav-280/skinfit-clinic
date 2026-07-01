@@ -164,6 +164,11 @@ export async function resolveOAuthUser(
     providerEmail: profile.email,
   });
 
+  const { linkPendingClinicReportsForUser } = await import(
+    "@/src/lib/clinicExternalReports"
+  );
+  void linkPendingClinicReportsForUser(inserted.id, inserted.email);
+
   return {
     ok: true,
     isNewUser: true,
