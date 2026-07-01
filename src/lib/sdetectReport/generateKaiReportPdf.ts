@@ -111,22 +111,10 @@ async function faceImageDataUrl(buffer: Buffer, w: number, h: number): Promise<s
   return `data:image/jpeg;base64,${jpg.toString("base64")}`;
 }
 
-function drawFaceSlotUnavailable(
-  doc: jsPDF,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-) {
-  doc.setFillColor(236, 236, 236);
-  doc.setDrawColor(...KAI.cardBorder);
-  doc.setLineWidth(0.75);
-  doc.roundedRect(x, y, w, h, 6, 6, "FD");
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(130, 130, 130);
-  doc.text("Image not", x + w / 2, y + h / 2 - 4, { align: "center" });
-  doc.text("available", x + w / 2, y + h / 2 + 5, { align: "center" });
+const FACE_SLOT_ORDER: Array<keyof SdetectFaceImages> = ["left", "front", "right"];
+
+function presentFaceSlots(faceImages: SdetectFaceImages): Array<keyof SdetectFaceImages> {
+  return FACE_SLOT_ORDER.filter((key) => faceImages[key] != null);
 }
 
 function roundedCard(
@@ -204,9 +192,11 @@ async function drawIdentityRow(
   const imgW = 70;
   const imgGap = 8;
   const pad = 16;
-  const imgBlockW = data.faceImages
-    ? imgW * 3 + imgGap * 2
-    : 0;
+  const presentSlots = data.faceImages ? presentFaceSlots(data.faceImages) : [];
+  const imgBlockW =
+    presentSlots.length > 0
+      ? presentSlots.length * imgW + (presentSlots.length - 1) * imgGap
+      : 0;
   const rowH = Math.max(imgH + 8, 118);
 
   roundedCard(doc, x, y, w, rowH);
@@ -251,21 +241,17 @@ async function drawIdentityRow(
     detailLine("Skin analysis frequency", String(data.patient.scanFrequency));
   }
 
-  if (data.faceImages) {
-    const keys: Array<keyof SdetectFaceImages> = ["left", "front", "right"];
+  if (data.faceImages && presentSlots.length > 0) {
     let ix = x + w - pad - imgBlockW;
     const imgY = y + (rowH - imgH) / 2;
-    for (const key of keys) {
+    for (const key of presentSlots) {
+      const buf = data.faceImages[key];
+      if (!buf) continue;
       doc.setDrawColor(...KAI.cardBorder);
       doc.setLineWidth(0.75);
       doc.roundedRect(ix - 1, imgY - 1, imgW + 2, imgH + 2, 6, 6, "S");
-      const buf = data.faceImages[key];
-      if (buf) {
-        const url = await faceImageDataUrl(buf, imgW, imgH);
-        doc.addImage(url, "JPEG", ix, imgY, imgW, imgH);
-      } else {
-        drawFaceSlotUnavailable(doc, ix, imgY, imgW, imgH);
-      }
+      const url = await faceImageDataUrl(buf, imgW, imgH);
+      doc.addImage(url, "JPEG", ix, imgY, imgW, imgH);
       ix += imgW + imgGap;
     }
   }

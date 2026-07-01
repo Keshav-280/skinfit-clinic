@@ -110,23 +110,7 @@ async function imageCoverBottomDataUrl(
   return `data:image/jpeg;base64,${jpg.toString("base64")}`;
 }
 
-function drawFaceSlotUnavailable(
-  doc: jsPDF,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-) {
-  doc.setFillColor(236, 236, 236);
-  doc.setDrawColor(...SKINFIT_REPORT_THEME.cardBorder);
-  doc.setLineWidth(0.75);
-  doc.roundedRect(x, y, w, h, 6, 6, "FD");
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(130, 130, 130);
-  doc.text("Image not", x + w / 2, y + h / 2 - 4, { align: "center" });
-  doc.text("available", x + w / 2, y + h / 2 + 5, { align: "center" });
-}
+const FACE_SLOT_ORDER: Array<keyof SdetectFaceImages> = ["left", "front", "right"];
 
 function wrap(doc: jsPDF, text: string, maxWidth: number): string[] {
   const cleaned = text.replace(/\s+/g, " ").trim();
@@ -343,6 +327,9 @@ async function drawPatientImages(
 ) {
   if (!data.faceImages) return;
 
+  const presentSlots = FACE_SLOT_ORDER.filter((key) => data.faceImages![key] != null);
+  if (presentSlots.length === 0) return;
+
   const textW = w * 0.44;
   const imgX = x + textW + 12;
   const imgW = w - textW - 24;
@@ -350,25 +337,15 @@ async function drawPatientImages(
   const imgAreaY = y + imgPad;
   const imgAreaH = h - imgPad * 2;
   const gap = 6;
-  const slotW = (imgW - gap * 2) / 3;
+  const slotW = (imgW - gap * (presentSlots.length - 1)) / presentSlots.length;
 
-  const slots: Array<{
-    key: keyof SdetectFaceImages;
-    sx: number;
-  }> = [
-    { key: "left", sx: imgX },
-    { key: "front", sx: imgX + slotW + gap },
-    { key: "right", sx: imgX + (slotW + gap) * 2 },
-  ];
-
-  for (const slot of slots) {
-    const buf = data.faceImages[slot.key];
-    if (buf) {
-      const dataUrl = await imageCoverBottomDataUrl(buf, slotW, imgAreaH);
-      doc.addImage(dataUrl, "JPEG", slot.sx, imgAreaY, slotW, imgAreaH);
-    } else {
-      drawFaceSlotUnavailable(doc, slot.sx, imgAreaY, slotW, imgAreaH);
-    }
+  let sx = imgX;
+  for (const key of presentSlots) {
+    const buf = data.faceImages![key];
+    if (!buf) continue;
+    const dataUrl = await imageCoverBottomDataUrl(buf, slotW, imgAreaH);
+    doc.addImage(dataUrl, "JPEG", sx, imgAreaY, slotW, imgAreaH);
+    sx += slotW + gap;
   }
 }
 

@@ -47,9 +47,9 @@ type ApiReportPayload = {
 };
 
 // FaceType codes: "1" = left profile, "2" = front/centre, "3" = right profile.
-// Centre must be White light front only. Left/right must be natural photos at
-// their own angle (White light first, then other non-diagnostic lights).
+// Left/right: natural White light at their angle. Centre: White map (frontal).
 const WHITE_LIGHT = "White light";
+const WHITE_MAP = "White map";
 
 /** Diagnostic overlays — never used for left/right profile slots. */
 const NON_NATURAL_LIGHT_RE =
@@ -76,8 +76,8 @@ function pickProfileUrl(
   return null;
 }
 
-function pickCentreWhiteUrl(byFaceLight: Map<string, string>): string | null {
-  return byFaceLight.get(`2|${WHITE_LIGHT}`) ?? null;
+function pickCentreWhiteMapUrl(byFaceLight: Map<string, string>): string | null {
+  return byFaceLight.get(`2|${WHITE_MAP}`) ?? null;
 }
 
 async function resolveFaceImages(
@@ -87,7 +87,7 @@ async function resolveFaceImages(
 
   const slotUrls: Record<keyof SdetectFaceImages, string | null> = {
     left: pickProfileUrl(byFaceLight, "1"),
-    front: pickCentreWhiteUrl(byFaceLight),
+    front: pickCentreWhiteMapUrl(byFaceLight),
     right: pickProfileUrl(byFaceLight, "3"),
   };
 
