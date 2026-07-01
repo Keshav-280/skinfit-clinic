@@ -28,21 +28,23 @@ export function clinicReportShareUrl(shareToken: string, baseUrl?: string): stri
 }
 
 export function clinicReportGmailShareHref(params: {
-  patientEmail: string;
+  patientEmail: string | null;
   patientName?: string | null;
   shareUrl: string;
   title: string;
-}): string {
+}): string | null {
+  const email = params.patientEmail?.trim();
+  if (!email) return null;
   const name = params.patientName?.trim() || "there";
   const subject = encodeURIComponent(`Your SkinFit skin analysis report — ${params.title}`);
   const body = encodeURIComponent(
-    `Hi ${name},\n\nYour skin analysis report from SkinFit Wellness is ready.\n\nDownload your report:\n${params.shareUrl}\n\nCreate your SkinFit account with this email (${params.patientEmail}) to find it anytime under Past Reports in the app.\n\n— SkinFit Wellness`
+    `Hi ${name},\n\nYour skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.\n\nCreate your SkinFit account with this email (${email}) to find it anytime under Past Reports in the app.\n\n— SkinFit Wellness`
   );
-  return `mailto:${encodeURIComponent(params.patientEmail)}?subject=${subject}&body=${body}`;
+  return `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
 }
 
-export async function findPatientByEmail(email: string) {
-  const normalized = normalizePatientEmail(email);
+export async function findPatientByEmail(email: string | null | undefined) {
+  const normalized = email ? normalizePatientEmail(email) : "";
   if (!normalized) return null;
   return db.query.users.findFirst({
     where: and(
@@ -105,6 +107,9 @@ export async function sendClinicExternalReport(params: {
   if (!report.storagePath?.trim()) {
     return { ok: false, error: "PDF_NOT_ATTACHED" };
   }
+  if (!report.patientEmail?.trim()) {
+    return { ok: false, error: "PATIENT_EMAIL_REQUIRED" };
+  }
 
   const patient = await findPatientByEmail(report.patientEmail);
   const now = new Date();
@@ -134,8 +139,7 @@ export async function sendClinicExternalReport(params: {
 
   await invalidateUserHistoryCache(patient.id);
 
-  const shareUrl = clinicReportShareUrl(report.shareToken, params.appBaseUrl);
-  const message = `Your clinic skin analysis report "${report.title}" is ready. Open Past Reports in the app to view it, or download here: ${shareUrl}`;
+  const message = `Your clinic skin analysis report "${report.title}" is ready. Open Past Reports in the app to view it.`;
 
   await sendClinicSupportMessage({
     patientId: patient.id,
@@ -147,33 +151,48 @@ export async function sendClinicExternalReport(params: {
   return { ok: true, status: "sent", patientUserId: patient.id };
 }
 
-/** Store a generated clinic PDF — attaches to an email-only draft when one exists. */
+/** Store a generated clinic PDF — attaches to a matching name/email draft when one exists. */
 export async function saveClinicExternalReportPdf(params: {
   doctorId: string;
-  patientEmail: string;
-  patientName?: string | null;
+  patientName: string;
+  patientEmail?: string | null;
   title: string;
   pdfBuffer: Buffer;
 }): Promise<{ id: string; attachedToPending: boolean }> {
-  const patientEmail = normalizePatientEmail(params.patientEmail);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
-    throw new Error("Invalid patientEmail");
+  const patientName = params.patientName.trim().slice(0, 255);
+  if (!patientName) {
+    throw new Error("patientName required");
   }
 
-  const patientName =
-    typeof params.patientName === "string" && params.patientName.trim()
-      ? params.patientName.trim().slice(0, 255)
-      : null;
+  let patientEmail: string | null = null;
+  if (params.patientEmail?.trim()) {
+    const normalized = normalizePatientEmail(params.patientEmail);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      throw new Error("Invalid patientEmail");
+    }
+    patientEmail = normalized;
+  }
+
   const title = params.title.trim().slice(0, 255) || "Skin analysis report";
-  const patient = await findPatientByEmail(patientEmail);
+  const patient = patientEmail ? await findPatientByEmail(patientEmail) : null;
+
+  const pendingWhere = patientEmail
+    ? and(
+        eq(clinicExternalReports.doctorId, params.doctorId),
+        eq(clinicExternalReports.status, "draft"),
+        sql`lower(${clinicExternalReports.patientEmail}) = ${patientEmail}`,
+        isNull(clinicExternalReports.storagePath)
+      )
+    : and(
+        eq(clinicExternalReports.doctorId, params.doctorId),
+        eq(clinicExternalReports.status, "draft"),
+        sql`lower(${clinicExternalReports.patientName}) = ${patientName.toLowerCase()}`,
+        isNull(clinicExternalReports.patientEmail),
+        isNull(clinicExternalReports.storagePath)
+      );
 
   const pendingRows = await db.query.clinicExternalReports.findMany({
-    where: and(
-      eq(clinicExternalReports.doctorId, params.doctorId),
-      eq(clinicExternalReports.status, "draft"),
-      sql`lower(${clinicExternalReports.patientEmail}) = ${patientEmail}`,
-      isNull(clinicExternalReports.storagePath)
-    ),
+    where: pendingWhere,
     orderBy: [desc(clinicExternalReports.createdAt)],
     limit: 1,
   });
@@ -192,7 +211,8 @@ export async function saveClinicExternalReportPdf(params: {
       .update(clinicExternalReports)
       .set({
         title,
-        patientName: patientName ?? pending.patientName,
+        patientName,
+        patientEmail: patientEmail ?? pending.patientEmail,
         patientUserId: patient?.id ?? pending.patientUserId,
         storagePath: uploaded.path,
         updatedAt: new Date(),
@@ -218,20 +238,113 @@ export async function saveClinicExternalReportPdf(params: {
   return { id: row.id, attachedToPending: false };
 }
 
+export async function updateClinicExternalReportPatient(params: {
+  reportId: string;
+  doctorId: string;
+  patientEmail?: string | null;
+  patientName?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const report = await db.query.clinicExternalReports.findFirst({
+    where: and(
+      eq(clinicExternalReports.id, params.reportId),
+      eq(clinicExternalReports.doctorId, params.doctorId)
+    ),
+  });
+  if (!report) return { ok: false, error: "NOT_FOUND" };
+
+  let patientEmail = report.patientEmail;
+  if (params.patientEmail !== undefined) {
+    const raw = params.patientEmail?.trim() ?? "";
+    if (!raw) {
+      patientEmail = null;
+    } else {
+      const normalized = normalizePatientEmail(raw);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+        return { ok: false, error: "Invalid patientEmail" };
+      }
+      patientEmail = normalized;
+    }
+  }
+
+  let patientName = report.patientName;
+  if (params.patientName !== undefined) {
+    const raw = params.patientName?.trim() ?? "";
+    if (!raw) return { ok: false, error: "patientName required" };
+    patientName = raw.slice(0, 255);
+  }
+
+  const patient = patientEmail ? await findPatientByEmail(patientEmail) : null;
+
+  await db
+    .update(clinicExternalReports)
+    .set({
+      patientEmail,
+      patientName,
+      patientUserId: patient?.id ?? report.patientUserId,
+      updatedAt: new Date(),
+    })
+    .where(eq(clinicExternalReports.id, report.id));
+
+  return { ok: true };
+}
+
+export async function setClinicExternalReportArchived(params: {
+  reportId: string;
+  doctorId: string;
+  archived: boolean;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const report = await db.query.clinicExternalReports.findFirst({
+    where: and(
+      eq(clinicExternalReports.id, params.reportId),
+      eq(clinicExternalReports.doctorId, params.doctorId)
+    ),
+  });
+  if (!report) return { ok: false, error: "NOT_FOUND" };
+
+  await db
+    .update(clinicExternalReports)
+    .set({
+      doctorArchivedAt: params.archived ? new Date() : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(clinicExternalReports.id, report.id));
+
+  return { ok: true };
+}
+
+export async function deleteClinicExternalReport(params: {
+  reportId: string;
+  doctorId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const report = await db.query.clinicExternalReports.findFirst({
+    where: and(
+      eq(clinicExternalReports.id, params.reportId),
+      eq(clinicExternalReports.doctorId, params.doctorId)
+    ),
+  });
+  if (!report) return { ok: false, error: "NOT_FOUND" };
+
+  if (report.storagePath?.trim()) {
+    await getStorage().delete(report.storagePath).catch(() => undefined);
+  }
+
+  await db
+    .delete(clinicExternalReports)
+    .where(eq(clinicExternalReports.id, report.id));
+
+  return { ok: true };
+}
+
 function clinicReportEmailCopy(params: {
   patientName?: string | null;
   patientEmail: string;
   title: string;
-  shareUrl: string;
 }) {
   const name = params.patientName?.trim() || "there";
   const subject = `Your SkinFit skin analysis report — ${params.title}`;
   const text = `Hi ${name},
 
-Your skin analysis report from SkinFit Wellness is ready.
-
-Download your report (also attached as PDF):
-${params.shareUrl}
+Your skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.
 
 Create your SkinFit account with this email (${params.patientEmail}) to find it anytime under Past Reports in the app.
 
@@ -239,11 +352,7 @@ Create your SkinFit account with this email (${params.patientEmail}) to find it 
 
   const html = `
 <p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">Hi ${escapeHtml(name)},</p>
-<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">Your skin analysis report from <strong>SkinFit Wellness</strong> is ready.</p>
-<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">
-  <a href="${escapeHtml(params.shareUrl)}" style="color:#242a5f;font-weight:600">Download your report online</a>
-  — the PDF is also attached to this email.
-</p>
+<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">Your skin analysis report from <strong>SkinFit Wellness</strong> is ready. The PDF is attached to this email.</p>
 <p style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.55;color:#52525b">
   Sign up with <strong>${escapeHtml(params.patientEmail)}</strong> to find it anytime under <em>Past Reports</em> in the SkinFit app.
 </p>
@@ -252,7 +361,7 @@ Create your SkinFit account with this email (${params.patientEmail}) to find it 
   return { subject, text, html, filename: `${params.title.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80)}.pdf` };
 }
 
-/** Send report to patient inbox via SMTP (PDF attached + download link). */
+/** Send report to patient inbox via SMTP (PDF attached). */
 export async function emailClinicExternalReport(params: {
   reportId: string;
   doctorId: string;
@@ -275,13 +384,14 @@ export async function emailClinicExternalReport(params: {
   if (!report.storagePath?.trim()) {
     return { ok: false, error: "PDF_NOT_ATTACHED" };
   }
+  if (!report.patientEmail?.trim()) {
+    return { ok: false, error: "PATIENT_EMAIL_REQUIRED" };
+  }
 
-  const shareUrl = clinicReportShareUrl(report.shareToken, params.appBaseUrl);
   const { subject, text, html, filename } = clinicReportEmailCopy({
     patientName: report.patientName,
     patientEmail: report.patientEmail,
     title: report.title,
-    shareUrl,
   });
 
   const pdfBuf = await getStorage().read(report.storagePath);
@@ -328,6 +438,7 @@ export function serializeClinicReportRow(
   opts?: { accountExists?: boolean; shareUrl?: string }
 ) {
   const hasPdf = Boolean(row.storagePath?.trim());
+  const hasEmail = Boolean(row.patientEmail?.trim());
   return {
     id: row.id,
     patientEmail: row.patientEmail,
@@ -336,10 +447,13 @@ export function serializeClinicReportRow(
     title: row.title,
     status: row.status,
     hasPdf,
+    hasEmail,
     accountCreated:
       opts?.accountExists ??
       (Boolean(row.patientUserId) || row.status === "sent"),
     sentAt: row.sentAt?.toISOString() ?? null,
+    archived: row.doctorArchivedAt != null,
+    archivedAt: row.doctorArchivedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     shareUrl: hasPdf
       ? (opts?.shareUrl ?? clinicReportShareUrl(row.shareToken))

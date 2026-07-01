@@ -5,10 +5,13 @@ import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
 import {
   clinicReportGmailShareHref,
   clinicReportShareUrl,
+  deleteClinicExternalReport,
   emailClinicExternalReport,
   findPatientByEmail,
   sendClinicExternalReport,
+  setClinicExternalReportArchived,
   serializeClinicReportRow,
+  updateClinicExternalReportPatient,
 } from "@/src/lib/clinicExternalReports";
 import { getStorage } from "@/src/lib/infra";
 
@@ -30,17 +33,19 @@ export async function GET(req: Request, ctx: RouteCtx) {
     return Response.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  const patient = await findPatientByEmail(row.patientEmail);
+  const patient = row.patientEmail ? await findPatientByEmail(row.patientEmail) : null;
   const shareUrl = clinicReportShareUrl(row.shareToken);
 
   return Response.json({
     report: serializeClinicReportRow(row, { accountExists: Boolean(patient?.id), shareUrl }),
-    gmailShareHref: clinicReportGmailShareHref({
-      patientEmail: row.patientEmail,
-      patientName: row.patientName,
-      shareUrl,
-      title: row.title,
-    }),
+    gmailShareHref: row.patientEmail
+      ? clinicReportGmailShareHref({
+          patientEmail: row.patientEmail,
+          patientName: row.patientName,
+          shareUrl,
+          title: row.title,
+        })
+      : null,
   });
 }
 
@@ -59,7 +64,10 @@ export async function POST(req: Request, ctx: RouteCtx) {
   });
 
   if (!result.ok) {
-    const status = result.error === "PDF_NOT_ATTACHED" ? 400 : 404;
+    const status =
+      result.error === "PDF_NOT_ATTACHED" || result.error === "PATIENT_EMAIL_REQUIRED"
+        ? 400
+        : 404;
     return Response.json({ error: result.error }, { status });
   }
 
@@ -75,12 +83,14 @@ export async function POST(req: Request, ctx: RouteCtx) {
     ok: true,
     deliveryStatus: result.status,
     report: serializeClinicReportRow(row, { shareUrl }),
-    gmailShareHref: clinicReportGmailShareHref({
-      patientEmail: row.patientEmail,
-      patientName: row.patientName,
-      shareUrl,
-      title: row.title,
-    }),
+    gmailShareHref: row.patientEmail
+      ? clinicReportGmailShareHref({
+          patientEmail: row.patientEmail,
+          patientName: row.patientName,
+          shareUrl,
+          title: row.title,
+        })
+      : null,
     patientMessage:
       result.status === "pending_account"
         ? "No SkinFit account for this email yet. Ask the patient to sign up with the same email, then tap Send again — the report will appear in Past Reports."
@@ -88,7 +98,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
   });
 }
 
-/** Email report to patient via SMTP (PDF attached). */
+/** Update patient details (JSON) or email report via SMTP (no body). */
 export async function PATCH(req: Request, ctx: RouteCtx) {
   const doctorId = await getDoctorPortalUserIdFromRequest(req);
   if (!doctorId) {
@@ -96,6 +106,63 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   }
 
   const { id } = await ctx.params;
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const body = (await req.json().catch(() => null)) as {
+      patientEmail?: string | null;
+      patientName?: string | null;
+      archived?: boolean;
+    } | null;
+    if (!body) {
+      return Response.json({ error: "Invalid body" }, { status: 400 });
+    }
+    if (body.archived !== undefined) {
+      const archiveResult = await setClinicExternalReportArchived({
+        reportId: id,
+        doctorId,
+        archived: Boolean(body.archived),
+      });
+      if (!archiveResult.ok) {
+        return Response.json({ error: archiveResult.error }, { status: 404 });
+      }
+    }
+    if (body.patientEmail !== undefined || body.patientName !== undefined) {
+      const result = await updateClinicExternalReportPatient({
+        reportId: id,
+        doctorId,
+        patientEmail: body.patientEmail,
+        patientName: body.patientName,
+      });
+      if (!result.ok) {
+        const status = result.error === "NOT_FOUND" ? 404 : 400;
+        return Response.json({ error: result.error }, { status });
+      }
+    }
+    if (
+      body.archived === undefined &&
+      body.patientEmail === undefined &&
+      body.patientName === undefined
+    ) {
+      return Response.json({ error: "No updates" }, { status: 400 });
+    }
+    const row = await db.query.clinicExternalReports.findFirst({
+      where: eq(clinicExternalReports.id, id),
+    });
+    if (!row) {
+      return Response.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+    const patient = row.patientEmail ? await findPatientByEmail(row.patientEmail) : null;
+    const origin = new URL(req.url).origin;
+    return Response.json({
+      ok: true,
+      report: serializeClinicReportRow(row, {
+        accountExists: Boolean(patient?.id),
+        shareUrl: clinicReportShareUrl(row.shareToken, origin),
+      }),
+    });
+  }
+
   const origin = new URL(req.url).origin;
   const result = await emailClinicExternalReport({
     reportId: id,
@@ -107,7 +174,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
     const status =
       result.error === "SMTP_NOT_CONFIGURED"
         ? 503
-        : result.error === "PDF_NOT_ATTACHED"
+        : result.error === "PDF_NOT_ATTACHED" || result.error === "PATIENT_EMAIL_REQUIRED"
           ? 400
           : result.error === "SEND_FAILED"
             ? 502
@@ -136,6 +203,20 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
     message,
     report: serializeClinicReportRow(row, { shareUrl }),
   });
+}
+
+export async function DELETE(_req: Request, ctx: RouteCtx) {
+  const doctorId = await getDoctorPortalUserIdFromRequest(_req);
+  if (!doctorId) {
+    return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  const { id } = await ctx.params;
+  const result = await deleteClinicExternalReport({ reportId: id, doctorId });
+  if (!result.ok) {
+    return Response.json({ error: result.error }, { status: 404 });
+  }
+  return Response.json({ ok: true });
 }
 
 /** Doctor download of stored PDF */

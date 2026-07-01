@@ -50,38 +50,43 @@ export async function POST(req: Request) {
 
     const emailRaw = form.get("patientEmail");
     const nameRaw = form.get("patientName");
-    if (typeof emailRaw !== "string" || !emailRaw.trim()) {
-      return Response.json(
-        { error: "Patient email is required — the report is saved to Clinic reports automatically." },
-        { status: 400 }
-      );
+    if (typeof nameRaw !== "string" || !nameRaw.trim()) {
+      return Response.json({ error: "Patient name is required" }, { status: 400 });
     }
-    const patientEmail = normalizePatientEmail(emailRaw);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
-      return Response.json({ error: "Invalid patient email" }, { status: 400 });
-    }
-    const patientName =
-      typeof nameRaw === "string" && nameRaw.trim() ? nameRaw.trim() : null;
+    const patientName = nameRaw.trim().slice(0, 255);
     const title = outputFilename.replace(/\.pdf$/i, "") || "Skin analysis report";
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${outputFilename}"`,
+      "X-Output-Filename": outputFilename,
+      "Cache-Control": "no-store",
+    };
+
+    let patientEmail: string | null = null;
+    if (typeof emailRaw === "string" && emailRaw.trim()) {
+      const normalized = normalizePatientEmail(emailRaw);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+        return Response.json({ error: "Invalid patient email" }, { status: 400 });
+      }
+      patientEmail = normalized;
+    }
 
     const saved = await saveClinicExternalReportPdf({
       doctorId: staffId,
-      patientEmail,
       patientName,
+      patientEmail,
       title,
       pdfBuffer: Buffer.from(outPdf),
     });
 
+    headers["X-Clinic-Report-Saved"] = "1";
+    headers["X-Clinic-Report-Id"] = saved.id;
+    headers["X-Clinic-Report-Attached-Pending"] = saved.attachedToPending ? "1" : "0";
+
     return new Response(new Uint8Array(outPdf), {
       status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${outputFilename}"`,
-        "X-Output-Filename": outputFilename,
-        "X-Clinic-Report-Id": saved.id,
-        "X-Clinic-Report-Attached-Pending": saved.attachedToPending ? "1" : "0",
-        "Cache-Control": "no-store",
-      },
+      headers,
     });
   } catch (err) {
     console.error("[skinfit-report-generator]", err);

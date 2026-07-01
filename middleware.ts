@@ -20,7 +20,7 @@ function isDoctorProtectedPath(pathname: string): boolean {
 
 function doctorProtectedReturnPath(pathname: string): string {
   if (pathname === "/skinfit-report-generator") {
-    return "/doctor/skinfit-report-generator";
+    return "/doctor/clinic-reports?tab=generate";
   }
   return pathname;
 }
@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
       }
       if (pathname === "/skinfit-report-generator") {
         return NextResponse.redirect(
-          new URL("/doctor/skinfit-report-generator", request.url)
+          new URL("/doctor/clinic-reports?tab=generate", request.url)
         );
       }
       return forwardWithPathname(request, pathname);

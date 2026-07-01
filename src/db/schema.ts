@@ -1170,7 +1170,7 @@ export const clinicExternalReports = pgTable(
     doctorId: uuid("doctor_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    patientEmail: varchar("patient_email", { length: 255 }).notNull(),
+    patientEmail: varchar("patient_email", { length: 255 }),
     patientName: varchar("patient_name", { length: 255 }),
     patientUserId: uuid("patient_user_id").references(() => users.id, {
       onDelete: "set null",
@@ -1181,6 +1181,8 @@ export const clinicExternalReports = pgTable(
     shareToken: uuid("share_token").notNull().defaultRandom().unique(),
     status: clinicExternalReportStatusEnum("status").notNull().default("draft"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
+    /** Doctor portal hide — does not remove from patient Past Reports. */
+    doctorArchivedAt: timestamp("doctor_archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
