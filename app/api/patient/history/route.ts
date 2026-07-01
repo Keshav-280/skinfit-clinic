@@ -15,7 +15,6 @@ import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
-import { clinicReportShareUrl } from "@/src/lib/clinicExternalReports";
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
   if (!userId) {
@@ -228,7 +227,7 @@ export async function GET(request: Request) {
       kind: "external_clinic_report" as const,
       status: r.status,
       createdAt: (r.sentAt ?? r.createdAt).toISOString(),
-      downloadUrl: clinicReportShareUrl(r.shareToken),
+      downloadUrl: `/api/patient/clinic-reports/${r.id}?download=1`,
     }));
 
     const basePayload = {

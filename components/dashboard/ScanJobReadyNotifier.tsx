@@ -147,7 +147,7 @@ export function ScanJobReadyNotifier() {
           <p className="mt-1 text-sm text-zinc-600">{toast.title}</p>
           <div className="mt-3 flex items-center gap-3 text-xs font-semibold">
             <Link
-              href={`/dashboard/history/scans/${toast.scanId}`}
+              href="/dashboard/history"
               className="rounded-lg bg-[#2C3E6B] px-3 py-2 text-white"
               onClick={() => {
                 dismissUnreadReadyScan(toast.scanId);
@@ -156,7 +156,7 @@ export function ScanJobReadyNotifier() {
                 );
               }}
             >
-              Open report
+              View history
             </Link>
             <button
               type="button"

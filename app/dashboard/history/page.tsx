@@ -17,7 +17,6 @@ import { isPatientClinicVisited } from "../../../src/lib/patientClinicVisit";
 import { patientScanImagePath } from "../../../src/lib/patientScanImagePath";
 import { analysisResultsToParams } from "../../../src/lib/skinScanAnalysis";
 import { kaiScoreFromScanRow } from "../../../src/lib/resolveScanDisplayScores";
-import { clinicReportShareUrl } from "../../../src/lib/clinicExternalReports";
 
 export default async function HistoryPage() {
   const userId = await getSessionUserId();
@@ -188,7 +187,7 @@ export default async function HistoryPage() {
       kind: "external_clinic_report" as const,
       status: r.status,
       createdAt: (r.sentAt ?? r.createdAt).toISOString(),
-      downloadUrl: clinicReportShareUrl(r.shareToken),
+      downloadUrl: `/api/patient/clinic-reports/${r.id}?download=1`,
     }));
 
   return (

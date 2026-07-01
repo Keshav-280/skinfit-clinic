@@ -110,6 +110,24 @@ async function imageCoverBottomDataUrl(
   return `data:image/jpeg;base64,${jpg.toString("base64")}`;
 }
 
+function drawFaceSlotUnavailable(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  doc.setFillColor(236, 236, 236);
+  doc.setDrawColor(...SKINFIT_REPORT_THEME.cardBorder);
+  doc.setLineWidth(0.75);
+  doc.roundedRect(x, y, w, h, 6, 6, "FD");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(130, 130, 130);
+  doc.text("Image not", x + w / 2, y + h / 2 - 4, { align: "center" });
+  doc.text("available", x + w / 2, y + h / 2 + 5, { align: "center" });
+}
+
 function wrap(doc: jsPDF, text: string, maxWidth: number): string[] {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return [];
@@ -331,36 +349,26 @@ async function drawPatientImages(
   const imgPad = 8;
   const imgAreaY = y + imgPad;
   const imgAreaH = h - imgPad * 2;
-  const mainW = imgW * 0.58;
-  const sideW = imgW - mainW - 8;
-  const sideGap = 4;
-  const sideH = (imgAreaH - sideGap) / 2;
+  const gap = 6;
+  const slotW = (imgW - gap * 2) / 3;
 
   const slots: Array<{
     key: keyof SdetectFaceImages;
     sx: number;
-    sy: number;
-    sw: number;
-    sh: number;
   }> = [
-    { key: "front", sx: imgX, sy: imgAreaY, sw: mainW, sh: imgAreaH },
-    { key: "right", sx: imgX + mainW + 8, sy: imgAreaY, sw: sideW, sh: sideH },
-    {
-      key: "left",
-      sx: imgX + mainW + 8,
-      sy: imgAreaY + sideH + sideGap,
-      sw: sideW,
-      sh: sideH,
-    },
+    { key: "left", sx: imgX },
+    { key: "front", sx: imgX + slotW + gap },
+    { key: "right", sx: imgX + (slotW + gap) * 2 },
   ];
 
   for (const slot of slots) {
-    const dataUrl = await imageCoverBottomDataUrl(
-      data.faceImages[slot.key],
-      slot.sw,
-      slot.sh
-    );
-    doc.addImage(dataUrl, "JPEG", slot.sx, slot.sy, slot.sw, slot.sh);
+    const buf = data.faceImages[slot.key];
+    if (buf) {
+      const dataUrl = await imageCoverBottomDataUrl(buf, slotW, imgAreaH);
+      doc.addImage(dataUrl, "JPEG", slot.sx, imgAreaY, slotW, imgAreaH);
+    } else {
+      drawFaceSlotUnavailable(doc, slot.sx, imgAreaY, slotW, imgAreaH);
+    }
   }
 }
 

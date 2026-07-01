@@ -275,11 +275,11 @@ export default function DashboardNotificationsPage() {
               {readyScans.map((scan) => (
                 <AlertRow
                   key={scan.scanId}
-                  href={`/dashboard/history/scans/${scan.scanId}`}
+                  href="/dashboard/history"
                   onClick={() => dismissUnreadReadyScan(scan.scanId)}
                   icon={<Sparkles className="h-5 w-5" aria-hidden />}
                   title="Scan report ready"
-                  subtitle={scan.title}
+                  subtitle={`${scan.title} — open treatment history to view.`}
                   count={1}
                   tone="teal"
                 />
