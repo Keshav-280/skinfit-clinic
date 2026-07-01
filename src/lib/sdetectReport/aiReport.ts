@@ -48,7 +48,6 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
   "skinTypeCode": "Baumann code from report e.g. ORNW",
   "skinTypePlain": "Full plain English expansion of each letter. O=Oily D=Dry, S=Sensitive R=Resistant, P=Pigmented N=Non-pigmented, W=Wrinkle-prone T=Tight. Format as: Oily · Sensitive · Pigmented · Tight",
   "skinTypeSummary": "1 sentence. Must feel like you looked at THIS specific person — not a textbook definition. Reference day-to-day experience: how skin feels by afternoon, recurring problems, Bangalore humidity.",
-  "kaiScoreLabel": "85-100=Radiant Skin, 70-84=Strong Foundation, 55-69=Room to Glow, 40-54=Needs Attention, Below 40=Time to Act",
   "kaiScoreContext": "1 sentence only. Put their comprehensive score in perspective without being alarming or falsely reassuring. Reference their age where relevant.",
   "observations": [
     {
@@ -177,7 +176,6 @@ type RawAiContent = {
   skinTypeCode?: unknown;
   skinTypePlain?: unknown;
   skinTypeSummary?: unknown;
-  kaiScoreLabel?: unknown;
   kaiScoreContext?: unknown;
   observations?: unknown;
   insight?: unknown;
@@ -317,7 +315,7 @@ export async function buildKaiReportContent(
     skinTypePlain,
     skinTypeSummary: asString(ai?.skinTypeSummary),
     kaiScore,
-    kaiScoreLabel: asString(ai?.kaiScoreLabel) || kaiScoreLabel(kaiScore),
+    kaiScoreLabel: kaiScoreLabel(kaiScore),
     kaiScoreGrade: grade,
     kaiScoreBand: band,
     kaiScoreContext: asString(ai?.kaiScoreContext),
