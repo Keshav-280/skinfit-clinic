@@ -11,7 +11,6 @@ import {
   Check,
   ImagePlus,
   Sun,
-  Contrast,
   ZoomIn,
   X,
   History,
@@ -1241,31 +1240,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <ScanCaptureExtraTipsPanel compact dense />
                 <div className="shrink-0 rounded-lg border border-[#2C3E6B]/10 bg-white/70 p-2 sm:rounded-xl sm:p-2.5">
                   <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#2C3E6B]/60 sm:text-[11px]">
-                    Adjust
+                    Zoom
                   </p>
-                  <div className="mt-1.5 space-y-1.5">
-                    <AdjustSlider
-                      compact
-                      icon={<Sun className="h-3 w-3 text-[#2C3E6B]/70" />}
-                      label="Brightness"
-                      value={brightness}
-                      min={ADJUST_MIN}
-                      max={ADJUST_MAX}
-                      step={ADJUST_STEP}
-                      suffix="%"
-                      onChange={setBrightness}
-                    />
-                    <AdjustSlider
-                      compact
-                      icon={<Contrast className="h-3 w-3 text-[#2C3E6B]/70" />}
-                      label="Contrast"
-                      value={contrast}
-                      min={ADJUST_MIN}
-                      max={ADJUST_MAX}
-                      step={ADJUST_STEP}
-                      suffix="%"
-                      onChange={setContrast}
-                    />
+                  <div className="mt-1.5">
                     <AdjustSlider
                       compact
                       icon={<ZoomIn className="h-3 w-3 text-[#2C3E6B]/70" />}
@@ -1278,13 +1255,13 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                       format={(v) => v.toFixed(1)}
                       onChange={setCaptureZoomManual}
                     />
-                    {adjustmentsChanged ? (
+                    {captureZoom !== CAPTURE_ZOOM_DEFAULT ? (
                       <button
                         type="button"
-                        onClick={resetAdjustments}
-                        className="text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
+                        onClick={() => setCaptureZoomManual(CAPTURE_ZOOM_DEFAULT)}
+                        className="mt-1.5 text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
                       >
-                        Reset brightness & contrast
+                        Reset zoom
                       </button>
                     ) : null}
                   </div>
