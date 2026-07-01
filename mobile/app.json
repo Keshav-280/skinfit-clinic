@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SkinnFit",
+    "name": "SkinFit Wellness",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,7 @@
       "bundleIdentifier": "app.skinfit.clinic",
       "usesAppleSignIn": false,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Allow SkinnFit to record voice notes for your doctor.",
+        "NSMicrophoneUsageDescription": "Allow SkinFit Wellness to record voice notes for your doctor.",
         "UIBackgroundModes": [
           "remote-notification"
         ],
@@ -31,7 +31,7 @@
     "android": {
       "package": "app.skinfit.clinic",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/splash-logo-transparent.png",
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
         "backgroundColor": "#D6E4D0"
       },
       "edgeToEdgeEnabled": true,
@@ -59,7 +59,7 @@
       [
         "react-native-vision-camera",
         {
-          "cameraPermissionText": "Allow SkinnFit to capture your 5-angle kAI face scan.",
+          "cameraPermissionText": "Allow SkinFit Wellness to capture your 5-angle kAI face scan.",
           "enableMicrophonePermission": false
         }
       ],
@@ -68,21 +68,21 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow SkinnFit to select a photo for your skin scan.",
-          "cameraPermission": "Allow SkinnFit to take a photo for your skin scan."
+          "photosPermission": "Allow SkinFit Wellness to select a photo for your skin scan.",
+          "cameraPermission": "Allow SkinFit Wellness to take a photo for your skin scan."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow SkinnFit to capture your 5-angle kAI face scan.",
+          "cameraPermission": "Allow SkinFit Wellness to capture your 5-angle kAI face scan.",
           "microphonePermission": false
         }
       ],
       [
         "expo-av",
         {
-          "microphonePermission": "Allow SkinnFit to record voice notes for your doctor."
+          "microphonePermission": "Allow SkinFit Wellness to record voice notes for your doctor."
         }
       ],
       [
