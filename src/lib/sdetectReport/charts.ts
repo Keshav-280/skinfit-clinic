@@ -18,6 +18,75 @@ export const SKINFIT_REPORT_THEME = {
   lineStroke: [90, 90, 100] as [number, number, number],
 } as const;
 
+type RGB = [number, number, number];
+
+/** Gauge colour stops (position 0..1 across the arc): red -> orange -> amber -> green. */
+const GAUGE_STOPS: Array<{ at: number; rgb: RGB }> = [
+  { at: 0, rgb: [214, 69, 69] },
+  { at: 0.35, rgb: [232, 139, 72] },
+  { at: 0.62, rgb: [224, 183, 74] },
+  { at: 1, rgb: [76, 175, 80] },
+];
+
+function gaugeColorAt(t: number): RGB {
+  const clamped = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < GAUGE_STOPS.length; i += 1) {
+    const prev = GAUGE_STOPS[i - 1];
+    const next = GAUGE_STOPS[i];
+    if (clamped <= next.at) {
+      const span = next.at - prev.at || 1;
+      const f = (clamped - prev.at) / span;
+      return [
+        Math.round(prev.rgb[0] + (next.rgb[0] - prev.rgb[0]) * f),
+        Math.round(prev.rgb[1] + (next.rgb[1] - prev.rgb[1]) * f),
+        Math.round(prev.rgb[2] + (next.rgb[2] - prev.rgb[2]) * f),
+      ];
+    }
+  }
+  return GAUGE_STOPS[GAUGE_STOPS.length - 1].rgb;
+}
+
+/**
+ * Semicircular SkinFit score gauge (speedometer style). Fills a red->green
+ * rainbow arc up to `score`, greys the remainder. Draws no text — the caller
+ * positions the number/label to keep layout control.
+ */
+export function drawScoreGauge(
+  doc: jsPDF,
+  cx: number,
+  baselineY: number,
+  radius: number,
+  score: number,
+  thickness = 9
+) {
+  const value = Math.max(0, Math.min(100, score)) / 100;
+  const segments = 72;
+  doc.setLineWidth(thickness);
+  // jsPDF typing omits setLineCap; it exists at runtime.
+  (doc as unknown as { setLineCap: (cap: string) => void }).setLineCap("round");
+
+  const point = (t: number) => {
+    const theta = Math.PI * (1 - t);
+    return { x: cx + radius * Math.cos(theta), y: baselineY - radius * Math.sin(theta) };
+  };
+
+  for (let i = 0; i < segments; i += 1) {
+    const t0 = i / segments;
+    const t1 = (i + 1) / segments;
+    const mid = (t0 + t1) / 2;
+    const p0 = point(t0);
+    const p1 = point(t1);
+    if (mid <= value) {
+      doc.setDrawColor(...gaugeColorAt(mid));
+    } else {
+      doc.setDrawColor(224, 226, 232);
+    }
+    doc.line(p0.x, p0.y, p1.x, p1.y);
+  }
+
+  (doc as unknown as { setLineCap: (cap: string) => void }).setLineCap("butt");
+}
+
 export function radarGeometry(
   metrics: SdetectMetric[],
   cx: number,

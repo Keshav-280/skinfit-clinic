@@ -1,6 +1,7 @@
 import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
+import { buildKaiReportContent } from "@/src/lib/sdetectReport/aiReport";
 import { buildSdetectReportFromPdf } from "@/src/lib/sdetectReport/buildReport";
-import { generateSkinfitReportPdf } from "@/src/lib/sdetectReport/generateSkinfitReportPdf";
+import { generateKaiReportPdf } from "@/src/lib/sdetectReport/generateKaiReportPdf";
 import {
   defaultOutputBasename,
   sanitizeOutputFilename,
@@ -31,7 +32,11 @@ export async function POST(req: Request) {
     }
 
     const report = await buildSdetectReportFromPdf(pdfBuffer);
-    const outPdf = await generateSkinfitReportPdf(report);
+    const content = await buildKaiReportContent(report);
+    const eventLabelField = form.get("eventLabel");
+    const eventLabel =
+      typeof eventLabelField === "string" ? eventLabelField.trim() : "";
+    const outPdf = await generateKaiReportPdf(report, content, { eventLabel });
     const fallbackBasename = defaultOutputBasename(file.name);
     const outputNameField = form.get("outputName");
     const outputFilename = sanitizeOutputFilename(

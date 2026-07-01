@@ -16,6 +16,7 @@ export default function SkinfitReportGeneratorPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [outputName, setOutputName] = useState("");
+  const [eventLabel, setEventLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,9 @@ export default function SkinfitReportGeneratorPage() {
       form.append("file", file);
       if (outputName.trim()) {
         form.append("outputName", outputName.trim());
+      }
+      if (eventLabel.trim()) {
+        form.append("eventLabel", eventLabel.trim());
       }
       const res = await fetch("/api/skinfit-report-generator", {
         method: "POST",
@@ -133,6 +137,20 @@ export default function SkinfitReportGeneratorPage() {
           </div>
           <span className="mt-1 block text-xs text-zinc-500">
             Auto-filled from upload; edit before generating.
+          </span>
+        </label>
+
+        <label className="mt-4 block">
+          <span className="text-sm font-medium text-[#242a5f]">Event / occasion label</span>
+          <input
+            type="text"
+            value={eventLabel}
+            onChange={(e) => setEventLabel(e.target.value)}
+            placeholder="e.g. FLO Santé"
+            className="mt-1.5 block w-full rounded-lg border border-[#242a5f]/20 bg-white px-3 py-2.5 text-sm text-zinc-800 outline-none focus:ring-2 focus:ring-[#242a5f]/20"
+          />
+          <span className="mt-1 block text-xs text-zinc-500">
+            Optional. Shown next to the date in the report header.
           </span>
         </label>
 
