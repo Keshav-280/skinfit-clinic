@@ -395,12 +395,8 @@ export function HistoryView({
           transition={{ delay: 0.12, duration: 0.4 }}
           className={CARD}
         >
-          <p className={patientKicker}>From your clinic visit</p>
           <h2 className={patientSectionTitle}>Clinic skin reports</h2>
-          <p className={`mt-1 mb-4 ${patientMuted}`}>
-            PDF reports from the external skin analyser — view only, not part of in-app AI scans.
-          </p>
-          <div className="space-y-3">
+          <div className="mt-4 space-y-3">
             {clinicReports.map((report) => (
               <div key={report.id} className={`overflow-hidden ${patientInnerCard}`}>
                 <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5">
@@ -410,7 +406,6 @@ export function HistoryView({
                     </span>
                     <div>
                       <p className="font-semibold text-[#1A1A2E]">{report.title}</p>
-                      <p className="mt-0.5 text-xs text-violet-700">External clinic report · PDF</p>
                       <time
                         dateTime={report.createdAt}
                         className="mt-1 block text-xs text-[#6B7280]"

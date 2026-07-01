@@ -5,6 +5,7 @@ import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
 import {
   clinicReportGmailShareHref,
   clinicReportShareUrl,
+  emailClinicExternalReport,
   findPatientByEmail,
   sendClinicExternalReport,
   serializeClinicReportRow,
@@ -84,6 +85,56 @@ export async function POST(req: Request, ctx: RouteCtx) {
       result.status === "pending_account"
         ? "No SkinFit account for this email yet. Ask the patient to sign up with the same email, then tap Send again — the report will appear in Past Reports."
         : "Report delivered to Past Reports and the patient was notified from clinic chat.",
+  });
+}
+
+/** Email report to patient via SMTP (PDF attached). */
+export async function PATCH(req: Request, ctx: RouteCtx) {
+  const doctorId = await getDoctorPortalUserIdFromRequest(req);
+  if (!doctorId) {
+    return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  const { id } = await ctx.params;
+  const origin = new URL(req.url).origin;
+  const result = await emailClinicExternalReport({
+    reportId: id,
+    doctorId,
+    appBaseUrl: origin,
+  });
+
+  if (!result.ok) {
+    const status =
+      result.error === "SMTP_NOT_CONFIGURED"
+        ? 503
+        : result.error === "PDF_NOT_ATTACHED"
+          ? 400
+          : result.error === "SEND_FAILED"
+            ? 502
+            : 404;
+    return Response.json({ error: result.error }, { status });
+  }
+
+  const row = await db.query.clinicExternalReports.findFirst({
+    where: eq(clinicExternalReports.id, id),
+  });
+  if (!row) {
+    return Response.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+
+  const shareUrl = clinicReportShareUrl(row.shareToken, origin);
+  let message = `Email sent to ${row.patientEmail} with the PDF attached.`;
+  if (result.inAppDelivery === "sent") {
+    message += " Report was also delivered to Past Reports in the app.";
+  } else if (result.inAppDelivery === "pending_account") {
+    message +=
+      " No SkinFit account yet — ask them to sign up with the same email, then tap Send to finish in-app delivery.";
+  }
+
+  return Response.json({
+    ok: true,
+    message,
+    report: serializeClinicReportRow(row, { shareUrl }),
   });
 }
 

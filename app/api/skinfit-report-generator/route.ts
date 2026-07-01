@@ -1,4 +1,8 @@
 import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
+import {
+  normalizePatientEmail,
+  saveClinicExternalReportPdf,
+} from "@/src/lib/clinicExternalReports";
 import { buildKaiReportContent } from "@/src/lib/sdetectReport/aiReport";
 import { buildSdetectReportFromPdf } from "@/src/lib/sdetectReport/buildReport";
 import { generateKaiReportPdf } from "@/src/lib/sdetectReport/generateKaiReportPdf";
@@ -44,12 +48,38 @@ export async function POST(req: Request) {
       fallbackBasename
     );
 
+    const emailRaw = form.get("patientEmail");
+    const nameRaw = form.get("patientName");
+    if (typeof emailRaw !== "string" || !emailRaw.trim()) {
+      return Response.json(
+        { error: "Patient email is required — the report is saved to Clinic reports automatically." },
+        { status: 400 }
+      );
+    }
+    const patientEmail = normalizePatientEmail(emailRaw);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
+      return Response.json({ error: "Invalid patient email" }, { status: 400 });
+    }
+    const patientName =
+      typeof nameRaw === "string" && nameRaw.trim() ? nameRaw.trim() : null;
+    const title = outputFilename.replace(/\.pdf$/i, "") || "Skin analysis report";
+
+    const saved = await saveClinicExternalReportPdf({
+      doctorId: staffId,
+      patientEmail,
+      patientName,
+      title,
+      pdfBuffer: Buffer.from(outPdf),
+    });
+
     return new Response(new Uint8Array(outPdf), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${outputFilename}"`,
         "X-Output-Filename": outputFilename,
+        "X-Clinic-Report-Id": saved.id,
+        "X-Clinic-Report-Attached-Pending": saved.attachedToPending ? "1" : "0",
         "Cache-Control": "no-store",
       },
     });

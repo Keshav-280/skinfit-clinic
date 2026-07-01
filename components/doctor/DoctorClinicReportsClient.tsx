@@ -56,6 +56,7 @@ export function DoctorClinicReportsClient() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [attachingId, setAttachingId] = useState<string | null>(null);
+  const [emailingId, setEmailingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,7 +148,7 @@ export function DoctorClinicReportsClient() {
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? `Attach failed (${res.status})`);
-      setActionMsg("PDF attached. You can now Send, share via Gmail, or show QR.");
+      setActionMsg("PDF attached. You can now Send, email the patient, or show QR.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Attach failed");
@@ -197,21 +198,43 @@ export function DoctorClinicReportsClient() {
     URL.revokeObjectURL(url);
   }
 
-  async function openGmail(id: string) {
-    const res = await fetch(`/api/doctor/clinic-reports/${id}`, { credentials: "include" });
-    if (!res.ok) return;
-    const data = (await res.json()) as { gmailShareHref?: string };
-    if (data.gmailShareHref) window.open(data.gmailShareHref, "_blank");
+  async function emailReport(id: string) {
+    setEmailingId(id);
+    setActionMsg(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/doctor/clinic-reports/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        const msg =
+          data.error === "SMTP_NOT_CONFIGURED"
+            ? "Email is not configured on the server. Ask admin to set SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_FROM."
+            : data.error === "PDF_NOT_ATTACHED"
+              ? "Attach a PDF before emailing."
+              : data.error === "SEND_FAILED"
+                ? "Email failed to send. Try again in a moment."
+                : (data.error ?? `Email failed (${res.status})`);
+        throw new Error(msg);
+      }
+      setActionMsg(data.message ?? "Email sent to patient.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Email failed");
+    } finally {
+      setEmailingId(null);
+    }
   }
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <div>
         <h1 className="text-2xl font-semibold text-[#242a5f]">Clinic reports</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Store external analyser PDFs for patients. Reports are static files only — not linked to
-          the in-app SkinFit scanner or AI pipeline.
-        </p>
       </div>
 
       <form
@@ -219,10 +242,6 @@ export function DoctorClinicReportsClient() {
         className="rounded-2xl border border-white/40 bg-white/80 p-6 shadow-sm backdrop-blur-sm"
       >
         <h2 className="text-lg font-semibold text-[#242a5f]">Save new report</h2>
-        <p className="mt-1 text-xs text-zinc-600">
-          Enter the patient email before or after the scan. Save the email alone first, or add the
-          PDF in the same step.
-        </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="block sm:col-span-1">
             <span className="text-sm font-medium text-[#242a5f]">Patient email *</span>
@@ -262,9 +281,6 @@ export function DoctorClinicReportsClient() {
               onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
               className="mt-1 block w-full text-sm"
             />
-            <span className="mt-1 block text-xs text-zinc-500">
-              Optional if you are only registering the patient before the scan.
-            </span>
           </label>
         </div>
         <button
@@ -303,8 +319,7 @@ export function DoctorClinicReportsClient() {
         <p className="text-sm text-zinc-500">Loading…</p>
       ) : reports.length === 0 ? (
         <p className="rounded-xl border border-dashed border-zinc-200 bg-white/60 px-4 py-8 text-center text-sm text-zinc-500">
-          No reports yet. Generate one in Report generator, then save it here — or upload a PDF
-          above.
+          No reports yet.
         </p>
       ) : (
         <ul className="space-y-3">
@@ -327,9 +342,6 @@ export function DoctorClinicReportsClient() {
                         className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
                       >
                         {badge.text}
-                      </span>
-                      <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-800">
-                        External clinic report
                       </span>
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -379,12 +391,12 @@ export function DoctorClinicReportsClient() {
                     </button>
                     <button
                       type="button"
-                      disabled={!row.hasPdf}
-                      onClick={() => void openGmail(row.id)}
+                      disabled={!row.hasPdf || emailingId === row.id}
+                      onClick={() => void emailReport(row.id)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-[#242a5f]/20 px-3 py-2 text-xs font-medium text-[#242a5f] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Mail className="h-3.5 w-3.5" />
-                      Gmail
+                      {emailingId === row.id ? "Sending…" : "Email"}
                     </button>
                     <button
                       type="button"

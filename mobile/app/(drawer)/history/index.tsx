@@ -268,18 +268,12 @@ export default function HistoryListScreen() {
       {clinicReports.length > 0 ? (
         <View style={{ marginTop: 28 }}>
           <Text style={styles.sectionTitle}>Clinic skin reports</Text>
-          <Text style={[styles.empty, { marginBottom: 12, textAlign: "left" }]}>
-            PDF from your clinic visit — not an in-app AI scan.
-          </Text>
           {clinicReports.map((report) => (
             <View key={report.id} style={[styles.visitCard, CARD, { marginBottom: 12 }]}>
               <View style={styles.visitHeader}>
                 <Text style={styles.visitDate} numberOfLines={2}>
                   {report.title}
                 </Text>
-                <View style={[styles.chip, { backgroundColor: "#ede9fe" }]}>
-                  <Text style={[styles.chipText, { color: "#5b21b6" }]}>External PDF</Text>
-                </View>
               </View>
               <Text style={styles.visitDoc}>
                 {format(new Date(report.createdAt), "MMM d, yyyy")}
