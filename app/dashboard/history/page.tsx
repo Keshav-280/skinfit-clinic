@@ -102,7 +102,10 @@ export default async function HistoryPage() {
   ]);
 
   const scanRecords = scansList.map((s) => {
-    const params = analysisResultsToParams(s.scores, { texture: s.texture });
+    const params = analysisResultsToParams(s.scores, {
+      texture: s.texture,
+      pigmentation: s.pigmentation,
+    });
     return {
       id: s.id,
       scanName: s.scanName,

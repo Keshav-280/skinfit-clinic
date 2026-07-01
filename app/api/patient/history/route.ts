@@ -144,7 +144,11 @@ export async function GET(request: Request) {
   const scanRecords = scansList.map((s) => {
     const analysisResults =
       s.scores && typeof s.scores === "object"
-        ? { ...(s.scores as Record<string, unknown>), texture: s.texture }
+        ? {
+            ...(s.scores as Record<string, unknown>),
+            texture: s.texture,
+            pigmentation: s.pigmentation,
+          }
         : {
             acne: s.acne,
             pigmentation: s.pigmentation,

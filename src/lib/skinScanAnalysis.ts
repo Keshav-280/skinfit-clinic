@@ -59,8 +59,10 @@ function firstDefined(...vals: (number | undefined)[]): number | undefined {
 /** Build the 6-parameter dashboard rows from `skin_scans.analysis_results`. */
 export function analysisResultsToParams(
   analysis: unknown,
-  /** Denormalized scan columns — only needed when `analysis` is `scans.scores` JSON. */
-  columnOverrides?: Partial<Pick<ScanBaseMetricsColumns, "texture">>,
+  /** Denormalized scan columns — beat stale values inside `scans.scores` JSON. */
+  columnOverrides?: Partial<
+    Pick<ScanBaseMetricsColumns, "texture" | "pigmentation">
+  >,
 ): { label: string; value: number }[] {
   const a =
     analysis && typeof analysis === "object"
@@ -73,7 +75,8 @@ export function analysisResultsToParams(
       overallScore: readNum(a, "overallScore") ?? 0,
       acne: readNum(a, "acne") ?? 0,
       wrinkles: readNum(a, "wrinkles") ?? 0,
-      pigmentation: readNum(a, "pigmentation") ?? 0,
+      pigmentation:
+        columnOverrides?.pigmentation ?? readNum(a, "pigmentation") ?? 0,
       hydration: readNum(a, "hydration") ?? 0,
       texture: columnOverrides?.texture ?? readNum(a, "texture") ?? 0,
     },
