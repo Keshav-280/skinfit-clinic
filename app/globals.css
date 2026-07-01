@@ -48,7 +48,8 @@ body {
 }
 
 /* Patient onboarding — always mint (ignore OS dark mode body bleed). */
-[data-onboarding-shell] {
+[data-onboarding-shell],
+[data-pre-release-shell] {
   color-scheme: light;
   color: #1f2a44;
   background-color: #d6e4d0;
@@ -57,7 +58,8 @@ body {
 }
 
 @media (prefers-color-scheme: dark) {
-  [data-onboarding-shell] {
+  [data-onboarding-shell],
+  [data-pre-release-shell] {
     background-color: #d6e4d0;
     background-image: linear-gradient(180deg, #d6e4d0 0%, #e0eada 45%, #eaf0e6 100%);
     color: #1f2a44;
