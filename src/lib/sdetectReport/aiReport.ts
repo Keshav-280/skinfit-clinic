@@ -98,6 +98,29 @@ function colorForScore(score: number): KaiObservationColor {
   return "green";
 }
 
+/** Fixed Baumann letter map (position-independent — each letter is unambiguous). */
+const BAUMANN_MAP: Record<string, string> = {
+  O: "Oily",
+  D: "Dry",
+  S: "Sensitive",
+  R: "Resistant",
+  P: "Pigmented",
+  N: "Non-pigmented",
+  W: "Wrinkle-prone",
+  T: "Tight",
+};
+
+/**
+ * Expand a Baumann skin-type code (e.g. ORNW) into its plain-English descriptors
+ * deterministically. The mapping is fixed, so we never rely on the model for this
+ * — guarantees all four descriptors always render.
+ */
+export function expandBaumannCode(code: string): string {
+  const letters = code.trim().toUpperCase().replace(/[^A-Z]/g, "").split("");
+  const parts = letters.map((l) => BAUMANN_MAP[l]).filter(Boolean);
+  return parts.join(" · ");
+}
+
 function model(): string {
   // Deliberately NOT falling back to OPENAI_CHAT_MODEL (gpt-4o-mini on prod) —
   // this report warrants a stronger model. Override with SKINFIT_REPORT_OPENAI_MODEL.
@@ -247,10 +270,15 @@ export async function buildKaiReportContent(
     observations.length >= 3 ? observations : fallbackObservations(data);
 
   const skinTypeCode = asString(ai?.skinTypeCode, data.classification) || data.classification;
+  // Derive the plain expansion from the code (fixed mapping) rather than trusting
+  // the model, which occasionally drops a descriptor. Fall back to AI text only
+  // if the code has no recognisable Baumann letters.
+  const derivedPlain = expandBaumannCode(skinTypeCode);
+  const skinTypePlain = derivedPlain || asString(ai?.skinTypePlain);
 
   return {
     skinTypeCode,
-    skinTypePlain: asString(ai?.skinTypePlain),
+    skinTypePlain,
     skinTypeSummary: asString(ai?.skinTypeSummary),
     kaiScore,
     kaiScoreLabel: asString(ai?.kaiScoreLabel) || kaiScoreLabel(kaiScore),
