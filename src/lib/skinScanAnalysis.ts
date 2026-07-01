@@ -1,5 +1,8 @@
 import { filterPatientVisibleParamRows } from "@/src/lib/patientVisibleParams";
-import { resolveScanDisplayScores } from "./resolveScanDisplayScores";
+import {
+  resolveScanDisplayScores,
+  type ScanBaseMetricsColumns,
+} from "./resolveScanDisplayScores";
 
 /** Stored in `skin_scans.analysis_results` JSON — higher = better for each metric. */
 export type SkinAnalysisResults = {
@@ -55,7 +58,9 @@ function firstDefined(...vals: (number | undefined)[]): number | undefined {
 
 /** Build the 6-parameter dashboard rows from `skin_scans.analysis_results`. */
 export function analysisResultsToParams(
-  analysis: unknown
+  analysis: unknown,
+  /** Denormalized scan columns — only needed when `analysis` is `scans.scores` JSON. */
+  columnOverrides?: Partial<Pick<ScanBaseMetricsColumns, "texture">>,
 ): { label: string; value: number }[] {
   const a =
     analysis && typeof analysis === "object"
@@ -70,7 +75,7 @@ export function analysisResultsToParams(
       wrinkles: readNum(a, "wrinkles") ?? 0,
       pigmentation: readNum(a, "pigmentation") ?? 0,
       hydration: readNum(a, "hydration") ?? 0,
-      texture: readNum(a, "texture") ?? 0,
+      texture: columnOverrides?.texture ?? readNum(a, "texture") ?? 0,
     },
   });
 

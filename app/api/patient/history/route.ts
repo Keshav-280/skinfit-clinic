@@ -142,13 +142,16 @@ export async function GET(request: Request) {
     ]);
 
   const scanRecords = scansList.map((s) => {
-    const analysisResults = s.scores || {
-      acne: s.acne,
-      pigmentation: s.pigmentation,
-      wrinkles: s.wrinkles,
-      hydration: s.hydration,
-      texture: s.texture,
-    };
+    const analysisResults =
+      s.scores && typeof s.scores === "object"
+        ? { ...(s.scores as Record<string, unknown>), texture: s.texture }
+        : {
+            acne: s.acne,
+            pigmentation: s.pigmentation,
+            wrinkles: s.wrinkles,
+            hydration: s.hydration,
+            texture: s.texture,
+          };
     return {
       id: s.id,
       scanName: s.scanName,

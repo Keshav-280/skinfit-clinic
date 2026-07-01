@@ -33,9 +33,9 @@ function fmtNum(n: number | null | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
-/** Dev builds: tap captured/review photos to open debug UI. */
+/** Dev tap on review photos — disabled in product UI (debug overlay code kept). */
 export function isCaptureDebugTapEnabled(): boolean {
-  return __DEV__;
+  return false;
 }
 
 /** Opt-in via env — also enables bug icon in capture header. */

@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import {
   ScanCaptureDebugOverlay,
-  isCaptureDebugTapEnabled,
 } from "@/components/ScanCaptureDebugOverlay";
 import { CaptureFaceGuideOverlayNative } from "@/components/capture/CaptureFaceGuideOverlayNative";
 import { OnboardingCaptureStepUI } from "@/components/onboarding/OnboardingCaptureStepUI";
@@ -283,25 +282,12 @@ export function FiveAngleCameraStep({
         />
       ) : null}
       {pendingUri ? (
-        <Pressable
+        <Image
+          source={{ uri: pendingUri }}
           style={StyleSheet.absoluteFill}
-          onPress={() => {
-            if (isCaptureDebugTapEnabled()) setShowDebug((v) => !v);
-          }}
-          disabled={!isCaptureDebugTapEnabled()}
-          accessibilityRole="button"
-          accessibilityLabel={
-            isCaptureDebugTapEnabled()
-              ? "Toggle capture debug"
-              : `Captured ${step?.title ?? "photo"}`
-          }
-        >
-          <Image
-            source={{ uri: pendingUri }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-        </Pressable>
+          resizeMode="cover"
+          accessibilityLabel={`Captured ${step?.title ?? "photo"}`}
+        />
       ) : null}
       {!reviewingCapture && !cameraReady ? (
         <View style={styles.cameraLoading}>

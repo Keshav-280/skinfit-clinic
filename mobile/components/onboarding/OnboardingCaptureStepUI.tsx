@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   Image,
   LayoutChangeEvent,
@@ -16,7 +17,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CaptureExtraTipsModal } from "@/components/capture/CaptureExtraTipsModal";
-import { isCaptureDebugTapEnabled } from "@/components/ScanCaptureDebugOverlay";
 import { getCaptureViewfinderSize } from "@/lib/captureViewfinderSize";
 import type { FaceScanCaptureId } from "@/lib/faceScanCaptures";
 import {
@@ -51,11 +51,15 @@ function VoiceVolumeSlider({
   onChange,
   onDragStart,
   onDragEnd,
+  compact = false,
+  style,
 }: {
   value: number;
   onChange: (value: number) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  compact?: boolean;
+  style?: object;
 }) {
   const trackWidth = useRef(0);
   const onChangeRef = useRef(onChange);
@@ -104,8 +108,8 @@ function VoiceVolumeSlider({
   const ratio = span > 0 ? (value - CAPTURE_VOICE_VOLUME_MIN) / span : 0;
 
   return (
-    <View style={voiceVolumeStyles.row}>
-      <Ionicons name="volume-mute" size={16} color={MUTED} />
+    <View style={[voiceVolumeStyles.row, compact && voiceVolumeStyles.rowCompact, style]}>
+      {!compact ? <Ionicons name="volume-mute" size={16} color={MUTED} /> : null}
       <View
         style={voiceVolumeStyles.track}
         onLayout={(e: LayoutChangeEvent) => {
@@ -119,7 +123,7 @@ function VoiceVolumeSlider({
           pointerEvents="none"
         />
       </View>
-      <Ionicons name="volume-high" size={16} color={MUTED} />
+      {!compact ? <Ionicons name="volume-high" size={16} color={MUTED} /> : null}
     </View>
   );
 }
@@ -131,6 +135,13 @@ const voiceVolumeStyles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     paddingBottom: 4,
+  },
+  rowCompact: {
+    flex: 1,
+    minWidth: 72,
+    gap: 6,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
   },
   track: {
     flex: 1,
@@ -228,7 +239,30 @@ export function OnboardingCaptureStepUI({
 }: Props) {
   const [extraTipsOpen, setExtraTipsOpen] = useState(false);
   const [volumeDragging, setVolumeDragging] = useState(false);
+  // Tips overlay: show on the camera feed for 2s on each step, then smoothly
+  // collapse to a small "Tips" pill the user can tap to bring them back.
+  const [tipsOpen, setTipsOpen] = useState(true);
+  const tipsAnim = useRef(new Animated.Value(1)).current;
+  const tipsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    setTipsOpen(true);
+  }, [stepIndex]);
+
+  useEffect(() => {
+    Animated.timing(tipsAnim, {
+      toValue: tipsOpen ? 1 : 0,
+      duration: 280,
+      useNativeDriver: true,
+    }).start();
+    if (!tipsOpen) return;
+    if (tipsTimer.current) clearTimeout(tipsTimer.current);
+    tipsTimer.current = setTimeout(() => setTipsOpen(false), 2000);
+    return () => {
+      if (tipsTimer.current) clearTimeout(tipsTimer.current);
+    };
+  }, [tipsOpen, tipsAnim]);
   const progress = (stepIndex + 1) / totalSteps;
   const { width: screenW, height: screenH } = Dimensions.get("window");
   const viewfinderSize = useMemo(
@@ -258,21 +292,33 @@ export function OnboardingCaptureStepUI({
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
           </View>
-          <View style={styles.topActions}>
-            {showVoiceToggle && voiceAvailable ? (
+          {showVoiceToggle && voiceAvailable ? (
+            <>
               <Pressable
                 onPress={onToggleVoice}
-                style={styles.iconBtn}
+                style={[styles.iconBtn, voiceEnabled && styles.iconBtnActive]}
                 hitSlop={8}
                 accessibilityLabel={voiceEnabled ? "Mute voice guide" : "Unmute voice guide"}
               >
                 <Ionicons
                   name={voiceEnabled ? "volume-high" : "volume-mute"}
                   size={20}
-                  color={NAVY}
+                  color={voiceEnabled ? "#FFFFFF" : NAVY}
                 />
               </Pressable>
-            ) : null}
+              {voiceEnabled ? (
+                <VoiceVolumeSlider
+                  compact
+                  value={voiceVolume}
+                  onChange={onVoiceVolumeChange}
+                  onDragStart={() => setVolumeDragging(true)}
+                  onDragEnd={() => setVolumeDragging(false)}
+                  style={styles.voiceSliderInline}
+                />
+              ) : null}
+            </>
+          ) : null}
+          <View style={styles.topActions}>
             {showDevControls ? (
               <Pressable
                 onPress={onToggleDebug}
@@ -297,15 +343,6 @@ export function OnboardingCaptureStepUI({
           </View>
         </View>
 
-        {showVoiceToggle && voiceAvailable && voiceEnabled ? (
-          <VoiceVolumeSlider
-            value={voiceVolume}
-            onChange={onVoiceVolumeChange}
-            onDragStart={() => setVolumeDragging(true)}
-            onDragEnd={() => setVolumeDragging(false)}
-          />
-        ) : null}
-
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -328,10 +365,66 @@ export function OnboardingCaptureStepUI({
             collapsable={false}
           >
             {viewfinder}
+            {!reviewingCapture ? (
+              <>
+                <Animated.View
+                  pointerEvents={tipsOpen ? "auto" : "none"}
+                  style={[
+                    styles.tipsOverlay,
+                    {
+                      opacity: tipsAnim,
+                      transform: [
+                        {
+                          translateY: tipsAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [10, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Pressable
+                    style={styles.tipsOverlayInner}
+                    onPress={() => setTipsOpen(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Hide tips"
+                  >
+                    <Text style={styles.tipsOverlayHeading}>Tips</Text>
+                    {step.tips.map((tip) => (
+                      <View key={tip} style={styles.tipsOverlayRow}>
+                        <View style={styles.tipsOverlayBullet} />
+                        <Text style={styles.tipsOverlayText}>{tip}</Text>
+                      </View>
+                    ))}
+                  </Pressable>
+                </Animated.View>
+                <Animated.View
+                  pointerEvents={tipsOpen ? "none" : "auto"}
+                  style={[
+                    styles.tipsFab,
+                    {
+                      opacity: tipsAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 0],
+                      }),
+                    },
+                  ]}
+                >
+                  <Pressable
+                    style={styles.tipsFabBtn}
+                    onPress={() => setTipsOpen(true)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Show tips"
+                  >
+                    <Ionicons name="bulb-outline" size={15} color="#FFFFFF" />
+                    <Text style={styles.tipsFabText}>Tips</Text>
+                  </Pressable>
+                </Animated.View>
+              </>
+            ) : null}
           </View>
-          {reviewingCapture && isCaptureDebugTapEnabled() ? (
-            <Text style={styles.debugHint}>Tap photo for debug</Text>
-          ) : null}
         </View>
 
         {!reviewingCapture && showGuidanceBanner ? (
@@ -350,16 +443,6 @@ export function OnboardingCaptureStepUI({
             </View>
           )
         ) : null}
-
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsHeading}>Tips</Text>
-          {step.tips.map((tip) => (
-            <View key={tip} style={styles.tipRow}>
-              <View style={styles.tipBullet} />
-              <Text style={styles.tipText}>{tip}</Text>
-            </View>
-          ))}
-        </View>
 
         {reviewingCapture ? (
           <View style={styles.reviewActions}>
@@ -532,6 +615,7 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     flex: 1,
+    minWidth: 48,
     height: 5,
     borderRadius: 999,
     backgroundColor: ACCENT_SOFT,
@@ -546,8 +630,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    minWidth: 40,
+    flexShrink: 0,
     justifyContent: "flex-end",
+  },
+  voiceSliderInline: {
+    flex: 1,
+    minWidth: 64,
+    maxWidth: 112,
   },
   iconBtn: {
     width: 34,
@@ -685,49 +774,70 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: "100%",
   },
-  debugHint: {
-    marginTop: 6,
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#6B7280",
-    letterSpacing: 0.2,
-  },
   viewfinder: {
     borderRadius: 18,
     overflow: "hidden",
     backgroundColor: "#1F2937",
     position: "relative",
   },
-  tipsCard: {
-    marginTop: 4,
-    gap: 6,
-    flexShrink: 0,
-    paddingBottom: 4,
+  tipsOverlay: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    bottom: 10,
   },
-  tipsHeading: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: ACCENT,
+  tipsOverlayInner: {
+    backgroundColor: "rgba(17, 24, 39, 0.62)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  tipsOverlayHeading: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: "#FBCFE8",
     marginBottom: 2,
   },
-  tipRow: {
+  tipsOverlayRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 8,
   },
-  tipBullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  tipsOverlayBullet: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: ACCENT,
-    marginTop: 7,
+    marginTop: 6,
   },
-  tipText: {
+  tipsOverlayText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#4B5563",
+    fontSize: 13,
+    lineHeight: 18,
+    color: "rgba(255,255,255,0.92)",
     fontWeight: "500",
+  },
+  tipsFab: {
+    position: "absolute",
+    left: 10,
+    bottom: 10,
+  },
+  tipsFabBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(17, 24, 39, 0.6)",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  tipsFabText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   controls: {
     flexDirection: "row",

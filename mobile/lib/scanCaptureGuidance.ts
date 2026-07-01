@@ -79,27 +79,28 @@ const FACE_TARGET = {
 };
 
 /**
- * Unified framing band — face should fill **12–42%** of the frame.
- * Matches web `src/lib/scanCaptureGuidance.ts` for cross-device consistency.
- *
- * The whole face must sit INSIDE the guide ellipse with margin (hairline, cheeks,
- * chin all visible). A face fill of ~12–42% keeps the head comfortably inside the
- * ellipse without forcing the user uncomfortably close or far.
+ * Mobile framing band — face should fill **20–42%** of the frame.
+ * Stricter than web (12–42%): phone preview FOV and detectors read smaller,
+ * so a higher minimum keeps users close enough for reliable analysis.
  */
-export const IDEAL_FACE_FILL_MIN = 0.12;
+export const IDEAL_FACE_FILL_MIN = 0.2;
 export const IDEAL_FACE_FILL_MAX = 0.42;
-/** ±3 pts hysteresis around the 12–42% band (widened so framing is easier). */
+/** ±3 pts hysteresis around the 20–42% band. */
 const CAPTURE_FRAMING_TOLERANCE = 0.03;
 const IDEAL_FACE_FILL_AREA = (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
+/** Side profiles: same absolute slack as web (3pp below front enter, 4pp below front min). */
+const SIDE_TOO_SMALL_ENTER = IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE - 0.03;
+const SIDE_TOO_SMALL_EXIT = IDEAL_FACE_FILL_MIN - 0.04;
+
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 15% — "move closer". */
+  /** Below 17% — "move closer". */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At/above 18% — size OK (lower bound). */
+  /** At/above 20% — size OK (lower bound). */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 35% — "ease back". */
+  /** Above 45% — "ease back". */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At/below 32% — size OK (upper bound). */
+  /** At/below 42% — size OK (upper bound). */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
   /** Keep face within the ellipse guide. */
   centerEnterX: 0.15,
@@ -108,7 +109,7 @@ export const CAPTURE_FRAMING_THRESHOLDS = {
   centerExitY: 0.12,
 } as const;
 
-/** Auto-zoom converges toward the center of the 18–32% band (25%). */
+/** Auto-zoom target — midpoint of the 20–42% band (~31%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }
@@ -386,26 +387,26 @@ export function estimateFaceBoxFromSkin(
 }
 
 function framingMessage(quality: FaceFramingQuality, cx: number, cy: number): string {
+  // Wording mirrors web `src/lib/scanCaptureGuidance.ts` for cross-device parity.
   switch (quality) {
     case "no_face":
-      return "Look at the camera so I can see your face";
+      return "Face not detected, look at the camera";
     case "off_center": {
       const offX = Math.abs(cx - FACE_TARGET.cx);
       const offY = Math.abs(cy - FACE_TARGET.cy);
-      return offX > offY
-        ? cx < FACE_TARGET.cx
-          ? "Move a little to your right"
-          : "Move a little to your left"
-        : cy < FACE_TARGET.cy
-          ? "Lower your chin a little"
-          : "Lift your chin a little";
+      if (offX > offY) {
+        return cx < FACE_TARGET.cx ? "Move slightly right" : "Move slightly left";
+      }
+      return cy < FACE_TARGET.cy
+        ? "Lower your chin slightly"
+        : "Raise your chin slightly";
     }
     case "too_small":
-      return "Bring your face closer to the camera";
+      return "Move closer to the camera";
     case "too_large":
-      return "Move back just a little";
+      return "Ease back a little";
     default:
-      return "Perfect — hold still";
+      return "Face framing looks good";
   }
 }
 
@@ -418,8 +419,8 @@ function classifyFraming(
 ): FaceFramingQuality {
   const p = prev ?? "no_face";
 
-  const minEnter = isSideProfile ? 0.06 : TOO_SMALL_ENTER;
-  const minExit = isSideProfile ? 0.08 : TOO_SMALL_EXIT;
+  const minEnter = isSideProfile ? SIDE_TOO_SMALL_ENTER : TOO_SMALL_ENTER;
+  const minExit = isSideProfile ? SIDE_TOO_SMALL_EXIT : TOO_SMALL_EXIT;
 
   if (p === "too_large") {
     if (faceFill >= TOO_LARGE_EXIT) return "too_large";

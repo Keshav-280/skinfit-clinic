@@ -55,7 +55,12 @@ export type PreviewGuidanceState = {
   framing: StableFramingState | null;
   expressionCalibration: ExpressionCalibration;
   faceLandmarks: Array<{ x: number; y: number }> | null;
+  /** Consecutive ticks with no detected face box (web parity: drop after MAX_FACE_MISSES). */
+  faceMisses?: number;
 };
+
+/** Match web `useWebScanCaptureGuidance` — drop a stale face box after this many empty ticks. */
+const MAX_FACE_MISSES = 3;
 
 export type AnalyzePreviewOptions = {
   stepId: FaceScanCaptureId;
@@ -123,6 +128,7 @@ export async function analyzePreviewImageUri(
     framing: state?.framing ?? null,
     expressionCalibration: state?.expressionCalibration ?? { openEarBaseline: null },
     faceLandmarks: state?.faceLandmarks ?? null,
+    faceMisses: state?.faceMisses ?? 0,
   };
   const emptyMeta = {
     bboxSource: "—",
@@ -177,15 +183,21 @@ export async function analyzePreviewImageUri(
     rawBox = landmarkBox;
     bboxSource = "landmark";
   } else if (!landmarkPipelineActive) {
-    const skinBox = estimateFaceBoxFromSkin(data, width, height);
-    if (skinBox) {
-      rawBox = shrinkNormalizedFaceBox(skinBox, 0.8);
-      bboxSource = "skin";
-      bboxKind = "skin";
-    } else if (serverPreview?.box && serverPreview.detectorAvailable) {
+    // Web parity: a real face detector (server RetinaFace) ALWAYS beats the
+    // skin-pixel heuristic. Skin estimation keeps the box large when the user
+    // moves far (it catches neck/background skin) which made framing wrongly
+    // read "good" at any distance. Only fall back to skin if no detector box.
+    if (serverPreview?.box && serverPreview.detectorAvailable) {
       rawBox = shrinkNormalizedFaceBox(serverPreview.box, 0.74);
       bboxSource = "retinaface";
       bboxKind = "server";
+    } else {
+      const skinBox = estimateFaceBoxFromSkin(data, width, height);
+      if (skinBox) {
+        rawBox = shrinkNormalizedFaceBox(skinBox, 0.8);
+        bboxSource = "skin";
+        bboxKind = "skin";
+      }
     }
   } else {
     if (!serverPreview && options?.authToken) {
@@ -213,10 +225,25 @@ export async function analyzePreviewImageUri(
     rawBox = expandSquarePreviewBoxToPortraitFrame(rawBox);
   }
 
-  const smoothedBox =
-    landmarkPipelineActive && !rawBox
-      ? null
-      : smoothFaceBox(emptyState.smoothedBox, rawBox, MOBILE_PREVIEW_SMOOTH_ALPHA);
+  // Web parity (MAX_FACE_MISSES): hold the smoothed box across brief detector
+  // gaps, but after a few consecutive misses drop it so framing honestly reports
+  // "no face" instead of clinging to the last good box (and falsely staying ready).
+  let faceMisses = emptyState.faceMisses ?? 0;
+  let smoothedBox: NormalizedFaceBox | null;
+  if (rawBox) {
+    faceMisses = 0;
+    smoothedBox = smoothFaceBox(
+      emptyState.smoothedBox,
+      rawBox,
+      MOBILE_PREVIEW_SMOOTH_ALPHA
+    );
+  } else {
+    faceMisses += 1;
+    smoothedBox =
+      landmarkPipelineActive || faceMisses >= MAX_FACE_MISSES
+        ? null
+        : emptyState.smoothedBox;
+  }
   const hasFaceEstimate =
     Boolean(smoothedBox && smoothedBox.width >= 0.05 && smoothedBox.height >= 0.05);
   const isSide = options?.stepId === "left" || options?.stepId === "right";
@@ -226,6 +253,7 @@ export async function analyzePreviewImageUri(
     framing: { quality: framing.quality, faceFill: framing.faceFill },
     expressionCalibration: emptyState.expressionCalibration,
     faceLandmarks: landmarkPoints?.length ? landmarkPoints : null,
+    faceMisses,
   };
 
   const guidance = buildCaptureGuidance(lighting, framing, currentZoom, {
