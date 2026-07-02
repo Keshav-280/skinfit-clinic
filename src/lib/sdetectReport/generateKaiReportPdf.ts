@@ -3,7 +3,7 @@ import sharp from "sharp";
 import type { KaiObservationColor, KaiReportContent } from "./aiReport";
 import { drawRadarChart, drawScoreGauge } from "./charts";
 import { type LogoAsset, loadHeaderLogo } from "./headerLogo";
-import { PDF_A4_OPTIONS, ptToMm } from "./pdfPage";
+import { A4_HEIGHT_MM, PDF_A4_OPTIONS, ptToMm } from "./pdfPage";
 import { reportQrDataUrl } from "./qrCode";
 import type { SdetectFaceImages, SdetectReportData } from "./types";
 
@@ -92,6 +92,10 @@ type PreparedFaceImage = {
   offsetY: number;
 };
 
+const MAP_TOP_CROP_RATIO = 0.03;
+/** Keep the face-centered band; white-map scans have wide empty side margins. */
+const MAP_CENTER_WIDTH_RATIO = 0.9;
+
 async function prepareFaceImage(
   buffer: Buffer,
   slotW: number,
@@ -102,10 +106,20 @@ async function prepareFaceImage(
   const slotPxH = Math.max(1, Math.round((slotH * FACE_PRINT_DPI) / 25.4));
 
   if (variant === "map") {
+    const meta = await sharp(buffer).metadata();
+    const srcW = meta.width ?? slotPxW;
+    const srcH = meta.height ?? slotPxH;
+    const cropTop = Math.min(srcH - 1, Math.floor(srcH * MAP_TOP_CROP_RATIO));
+    const cropH = Math.max(1, srcH - cropTop);
+    const contentW = Math.max(1, Math.floor(srcW * MAP_CENTER_WIDTH_RATIO));
+    const insetX = Math.floor((srcW - contentW) / 2);
+
     const jpg = await sharp(buffer)
-      .resize(slotPxW, slotPxH, { fit: "cover", position: "centre" })
+      .extract({ left: insetX, top: cropTop, width: contentW, height: cropH })
+      .resize(slotPxW, slotPxH, { fit: "fill" })
       .jpeg({ quality: 92 })
       .toBuffer();
+
     return {
       dataUrl: `data:image/jpeg;base64,${jpg.toString("base64")}`,
       drawW: slotW,
@@ -248,7 +262,7 @@ async function drawIdentityRow(
   const profileH = ptToMm(50);
   const whiteMapH = profileH * 2 + profileGap;
   const profileColW = ptToMm(42);
-  const whiteMapW = ptToMm(50);
+  const whiteMapW = profileColW * 1.5;
   const medixoraBlockW = whiteMapW + imgGap + profileColW;
 
   const fallbackImgH = ptToMm(88);
@@ -363,7 +377,7 @@ function measureSkinTypeCardHeight(
   const pad = CARD_PAD;
   const innerW = w - pad * 2;
   let h = ptToMm(16) + ptToMm(4);
-  h += ptToMm(18);
+  h += ptToMm(24);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   const plainLines = wrap(doc, content.skinTypePlain, innerW);
@@ -375,8 +389,8 @@ function measureSkinTypeCardHeight(
 }
 
 function measureScoreCardHeight(doc: jsPDF, content: KaiReportContent, w: number): number {
-  const radius = Math.min(w * 0.28, ptToMm(28));
-  return ptToMm(16) + radius * 1.1 + ptToMm(4) + ptToMm(19) + ptToMm(8);
+  const radius = Math.min(w * 0.28, ptToMm(26));
+  return ptToMm(22) + radius + ptToMm(14) + ptToMm(16) + ptToMm(6);
 }
 
 function measureRow2Height(
@@ -408,13 +422,13 @@ function drawSkinTypeCard(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(...KAI.navy);
-  doc.text(content.skinTypeCode || "—", x + pad, y + ptToMm(34));
+  doc.text(content.skinTypeCode || "—", x + pad, y + ptToMm(40));
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...KAI.muted);
   const plainLines = wrap(doc, content.skinTypePlain, innerW);
-  let py = y + ptToMm(46);
+  let py = y + ptToMm(52);
   for (const line of plainLines) {
     doc.text(line, x + pad, py);
     py += ptToMm(11);
@@ -444,38 +458,48 @@ function drawScoreCard(
   const cx = x + w / 2;
   sectionLabel(doc, "skinfit score", cx, y + ptToMm(16), "center");
 
-  const bottomPad = ptToMm(8);
-  const gradeY = y + h - bottomPad;
+  const bottomPad = ptToMm(6);
+  const labelLift = A4_HEIGHT_MM * 0.014;
+  const gradeLayoutY = y + h - bottomPad;
+  const scoreLabelLayoutY = gradeLayoutY - ptToMm(8);
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...KAI.muted);
-  doc.text(`${content.kaiScoreGrade} grade · ${content.kaiScoreBand}`, cx, gradeY, { align: "center" });
+  doc.text(
+    `${content.kaiScoreGrade} grade · ${content.kaiScoreBand}`,
+    cx,
+    gradeLayoutY - labelLift,
+    { align: "center" }
+  );
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.setTextColor(...KAI.navy);
-  const scoreLabelY = gradeY - ptToMm(9);
-  doc.text(content.kaiScoreLabel, cx, scoreLabelY, { align: "center" });
+  doc.text(content.kaiScoreLabel, cx, scoreLabelLayoutY - labelLift, { align: "center" });
 
-  const gaugeZoneTop = y + ptToMm(24);
-  const gaugeZoneBottom = scoreLabelY - ptToMm(12);
-  const gaugeZoneH = Math.max(ptToMm(18), gaugeZoneBottom - gaugeZoneTop);
-  const radius = Math.min(w * 0.28, ptToMm(28), gaugeZoneH * 0.45);
-  const gaugeThickness = ptToMm(5);
-  const gaugeBaseY = gaugeZoneTop + gaugeZoneH * 0.46 + radius * 0.08;
+  const gaugeDownOffset = ptToMm(10) + A4_HEIGHT_MM * 0.005;
+  const gaugeTop = y + ptToMm(22);
+  const maxRadiusByHeight = Math.max(
+    ptToMm(10),
+    scoreLabelLayoutY - ptToMm(14) - gaugeTop - gaugeDownOffset
+  );
+  const layoutRadius = Math.min(w * 0.28, ptToMm(26), maxRadiusByHeight);
+  const gaugeBaseY = gaugeTop + layoutRadius + gaugeDownOffset;
+  const radius = Math.min(layoutRadius + ptToMm(3), w * 0.5 - ptToMm(4), ptToMm(29));
+  const gaugeThickness = ptToMm(6);
   drawScoreGauge(doc, cx, gaugeBaseY, radius, content.kaiScore, gaugeThickness);
 
-  const scoreFontSize = 19;
+  const scoreFontSize = 21;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(scoreFontSize);
   doc.setTextColor(...KAI.navy);
-  // Sit the number in the bowl below the arc, not on the stroke.
-  const scoreY = gaugeBaseY - ptToMm(4);
+  const scoreY = gaugeBaseY - ptToMm(3);
   doc.text(String(content.kaiScore), cx, scoreY, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setTextColor(...KAI.muted);
-  doc.text("/100", cx, scoreY + ptToMm(7), { align: "center" });
+  doc.text("/100", cx, scoreY + ptToMm(6.5) + A4_HEIGHT_MM * 0.001, { align: "center" });
 }
 
 function drawObservationsCard(
