@@ -376,7 +376,7 @@ function measureSkinTypeCardHeight(
 
 function measureScoreCardHeight(doc: jsPDF, content: KaiReportContent, w: number): number {
   const radius = Math.min(w * 0.28, ptToMm(28));
-  return ptToMm(16) + radius + ptToMm(4) + ptToMm(19) + ptToMm(8);
+  return ptToMm(16) + radius * 1.1 + ptToMm(4) + ptToMm(19) + ptToMm(8);
 }
 
 function measureRow2Height(
@@ -457,18 +457,17 @@ function drawScoreCard(
   const scoreLabelY = gradeY - ptToMm(9);
   doc.text(content.kaiScoreLabel, cx, scoreLabelY, { align: "center" });
 
-  const preGaugeBaseY = scoreLabelY - ptToMm(13);
-  const gaugeTop = y + ptToMm(22);
-  const maxRadiusByHeight = Math.max(ptToMm(12), preGaugeBaseY - gaugeTop);
-  const radius = Math.min(w * 0.28, ptToMm(28), maxRadiusByHeight);
-  // Raise the arc independently so it sits above the score with clear gap.
-  const gaugeBaseY = preGaugeBaseY - radius * 0.28;
+  const gaugeZoneTop = y + ptToMm(24);
+  const gaugeZoneBottom = scoreLabelY - ptToMm(12);
+  const gaugeZoneH = Math.max(ptToMm(18), gaugeZoneBottom - gaugeZoneTop);
+  const radius = Math.min(w * 0.28, ptToMm(28), gaugeZoneH * 0.45);
+  const gaugeBaseY = gaugeZoneTop + gaugeZoneH * 0.5 + radius * 0.1;
   drawScoreGauge(doc, cx, gaugeBaseY, radius, content.kaiScore, ptToMm(5));
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...KAI.navy);
-  const scoreY = preGaugeBaseY - radius * 0.1;
+  const scoreY = gaugeBaseY - radius * 0.28;
   doc.text(String(content.kaiScore), cx, scoreY, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);

@@ -138,7 +138,7 @@ function normaliseKey(key: string): string {
 /** Pull the requested labels out of the model's free-form metrics map. */
 function metricsForLabels(
   metricMap: Map<string, number>,
-  labels: string[]
+  labels: readonly string[]
 ): SdetectMetric[] {
   const out: SdetectMetric[] = [];
   for (const label of labels) {
