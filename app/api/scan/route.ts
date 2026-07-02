@@ -532,6 +532,7 @@ export async function POST(request: NextRequest) {
                 "If a grade is mid-range or strong (B or A), do not talk about it as if it were a major concern.",
                 "",
                 "Internal context uses 0–100 scores mapped to grades and optional 1–5 clinical severities (higher = worse on 1–5). Use grades in your sentence; ignore conflicting 1–5 hints if they disagree with the grade story.",
+                "Never mention UV, sun exposure, or sunscreen habits — this app does not collect sun-exposure data.",
                 "No clinical jargon, no diagnosis.",
               ].join("\n"),
             },

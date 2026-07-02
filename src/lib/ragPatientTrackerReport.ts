@@ -82,7 +82,6 @@ function buildRetrievalQuery(params: {
   if (params.primaryConcern) bits.push(params.primaryConcern);
   if (params.weakestLabel) bits.push(params.weakestLabel);
   bits.push(...params.topDeltaLabels);
-  if (params.behavior.highSunDays >= 2) bits.push("photoprotection sunscreen UV");
   if (params.behavior.highStressDays >= 2) bits.push("stress cortisol acne flare");
   if (params.behavior.avgSleepHours < 6) bits.push("sleep barrier repair");
   bits.push("Indian skin", "dermatology", "clinical management");

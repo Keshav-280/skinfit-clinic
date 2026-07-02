@@ -23,9 +23,9 @@ export function buildDummyAiSummary(m: DummyScanMetrics): string {
   const acneScar = patientClarityToGrade(m.texture);
   const pigmentation = patientClarityToGrade(m.pigmentation);
   const templates = [
-    `Today's overall skin grade is ${overall} — your under-eye area (${underEye}) and acne scars (${acneScar}) are helping keep things balanced; stay consistent with SPF and gentle cleansing.`,
+    `Today's overall skin grade is ${overall} — your under-eye area (${underEye}) and acne scars (${acneScar}) are helping keep things balanced; stay consistent with gentle cleansing and hydration.`,
     `We're seeing an overall grade of ${overall}. Acne clarity is ${acne} and fine-line smoothness is ${wrinkles}; a steady routine usually nudges these grades up over time.`,
-    `Grade check: ${overall} overall. Pigmentation is ${pigmentation} and under-eye area is ${underEye} — prioritize barrier care and sun protection this week.`,
+    `Grade check: ${overall} overall. Pigmentation is ${pigmentation} and under-eye area is ${underEye} — prioritize barrier care and a consistent routine this week.`,
     `Your snapshot shows overall grade ${overall} with acne scars at ${acneScar} and wrinkles at ${wrinkles}. Nothing alarming for a home check-in; keep sleep and water steady.`,
     `Overall ${overall}: acne ${acne}, under-eye ${underEye}. Small day-to-day swings are normal — log how your skin feels alongside these grades.`,
     `Reading of ${overall} today, with acne scars ${acneScar} and pigmentation ${pigmentation}. Consider lighter actives if anything feels tight or irritated.`,
@@ -34,13 +34,21 @@ export function buildDummyAiSummary(m: DummyScanMetrics): string {
   return templates[randomInt(0, templates.length - 1)];
 }
 
+/** The app does not collect sun-exposure data — drop sentences claiming UV influenced results. */
+function stripUvClaimSentences(text: string): string {
+  const kept = text
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => !/\bUV\b|\bsun exposure\b|high-?uv/i.test(s));
+  return kept.join(" ").trim() || text;
+}
+
 export function formatAiSummary(
   text: string | null | undefined,
   metrics: DummyScanMetrics,
   scoresUnlocked: boolean
 ): string {
   if (!text) return "";
-  let formatted = text;
+  let formatted = stripUvClaimSentences(text);
 
   // Replace legacy terms with aligned table labels for past scan compatibility
   formatted = formatted
@@ -181,6 +189,28 @@ export function formatAiSummary(
       const suffix = match.substring(numIndex + numberStr.length);
       return `${matchedPrefix}${patientClarityToGrade(metrics.overall_score)}${suffix}`;
     });
+  }
+
+  // Final hard guards — patient-facing scores are always 20–79, never "/100".
+  formatted = formatted.replace(/\b(\d{1,3})\s*(?:\/\s*100|out of 100)\b/gi, (_m, n: string) => {
+    const v = Number(n);
+    if (scoresUnlocked) {
+      return String(Math.max(20, Math.min(79, Number.isFinite(v) ? v : calibratedMetrics.overall_score)));
+    }
+    return patientClarityToGrade(metrics.overall_score);
+  });
+  if (scoresUnlocked) {
+    // 80–199 can never be a valid patient score — replace with the real calibrated overall.
+    formatted = formatted.replace(
+      /\b(?:1\d\d|[89]\d)\b(?!\s*%)/g,
+      String(calibratedMetrics.overall_score)
+    );
+  } else {
+    // Locked patients must never see score-like numbers at all.
+    formatted = formatted.replace(
+      /\b(?:1\d\d|[2-9]\d)\b(?!\s*%)/g,
+      patientClarityToGrade(metrics.overall_score)
+    );
   }
 
   return formatted;

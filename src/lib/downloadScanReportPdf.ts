@@ -9,6 +9,14 @@ import {
   SCAN_REPORT_PDF_PAGE_BG,
 } from "@/src/lib/scanReportPdfBackground";
 
+/** Desktop viewport for PDF capture — Tailwind sm/md/lg apply regardless of device or zoom. */
+const SCAN_REPORT_PDF_DESKTOP_WINDOW = {
+  width: 1280,
+  height: 900,
+} as const;
+
+const SCAN_REPORT_PDF_CONTENT_WIDTH_PX = 720;
+
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -96,14 +104,29 @@ function applyPdfCloneVisibility(clonedRoot: HTMLElement | Document) {
   });
 }
 
+function injectDesktopPdfCaptureStyles(doc: Document) {
+  if (doc.getElementById("scan-report-pdf-desktop-styles")) return;
+  const style = doc.createElement("style");
+  style.id = "scan-report-pdf-desktop-styles";
+  style.textContent = `
+    [data-pdf-root],
+    [data-pdf-section] {
+      overflow: visible !important;
+      overflow-x: visible !important;
+    }
+  `;
+  doc.head.appendChild(style);
+}
+
 /** Widen nested columns so every captured section shares the same content width. */
-function applyPdfCloneLayout(clonedRoot: HTMLElement | Document) {
+function applyPdfCloneLayout(doc: Document, clonedRoot: HTMLElement) {
   applyPdfCloneVisibility(clonedRoot);
-  const root =
-    clonedRoot instanceof Document ? clonedRoot.body : clonedRoot;
+  const root = clonedRoot;
   if (!root) return;
 
-  const pdfWidthPx = 720;
+  injectDesktopPdfCaptureStyles(doc);
+
+  const pdfWidthPx = SCAN_REPORT_PDF_CONTENT_WIDTH_PX;
   root.querySelectorAll("[data-pdf-root], [data-pdf-section]").forEach((el) => {
     const node = el as HTMLElement;
     node.style.width = `${pdfWidthPx}px`;
@@ -297,8 +320,10 @@ async function renderReportToJsPdf(element: HTMLElement) {
       foreignObjectRendering: false,
       logging: false,
       backgroundColor: SCAN_REPORT_PDF_PAGE_BG,
-      onclone: (_doc: Document, cloned: HTMLElement) => {
-        applyPdfCloneLayout(cloned);
+      windowWidth: SCAN_REPORT_PDF_DESKTOP_WINDOW.width,
+      windowHeight: SCAN_REPORT_PDF_DESKTOP_WINDOW.height,
+      onclone: (doc: Document, cloned: HTMLElement) => {
+        applyPdfCloneLayout(doc, cloned);
       },
     } as const;
 

@@ -12,6 +12,10 @@ import type { TextbookChunk } from "@/src/lib/ragTextbookIndex";
 import {
   patientDisplayClarity,
   patientClarityToGrade,
+  patientUnlockedDisplayScore,
+  gradeSublabel,
+  PATIENT_DISPLAY_SCORE_CAP,
+  PATIENT_DISPLAY_SCORE_FLOOR,
 } from "@/src/lib/clarityGrade";
 
 let cachedClient: OpenAI | null = null;
@@ -41,17 +45,25 @@ function chunkLines(chunks: Array<{ chunk: TextbookChunk; score: number }>) {
     .join("\n\n");
 }
 
+/** Qualitative band word for locked patients (no numbers, no letter grades in prose). */
+function lockedQualitativeBand(rawScore: number): string {
+  return gradeSublabel(patientClarityToGrade(rawScore)).toLowerCase();
+}
+
 function paramsLine(
   params: Array<{ key: RagKaiParamKey; value: number | null; delta: number | null }>,
   scoresUnlocked: boolean
 ) {
   return params
     .map((p) => {
-      const displayVal = p.value;
-      const grade = displayVal == null ? "—" : patientClarityToGrade(displayVal);
-      const v = displayVal == null ? "—" : scoresUnlocked ? String(displayVal) : `grade ${grade}`;
+      const v =
+        p.value == null
+          ? "—"
+          : scoresUnlocked
+            ? String(patientUnlockedDisplayScore(p.value))
+            : lockedQualitativeBand(p.value);
       const d = p.delta == null ? "—" : p.delta >= 0 ? `+${p.delta}` : String(p.delta);
-      const deltaStr = scoresUnlocked ? `Δ${d}` : `change from last scan`;
+      const deltaStr = scoresUnlocked ? `Δ${d}` : `trend: ${p.delta == null ? "unknown" : p.delta >= 3 ? "improving" : p.delta <= -3 ? "softer" : "steady"}`;
       return `${RAG_KAI_PARAM_LABELS[p.key]}=${v} (${deltaStr})`;
     })
     .join(" · ");
@@ -125,11 +137,15 @@ You must ground claims in the evidence blocks when you cite clinical reasoning.
 Output ONLY a valid JSON object matching the specified schema. No preamble.
 Tone: warm, human, like a caring clinic coordinator. Short sentences. No em dashes or hyphen punctuation.
 Never invent data. Never shame the patient (avoid "no active efforts", "lack of routine", "failure to").
-IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) and overall kAI score are clarity/health scores from 0 to 100, where 100 is the best (clearest/healthiest skin, e.g., zero active acne) and 0 is the worst (most severe acne). Thus, a lower score is WORSE and a higher score is BETTER. E.g., if Active Acne went from 32 down to 25, it means acne got worse, NOT better. Always evaluate and describe these score trends correctly (increasing score is improvement, decreasing score is worsening).
+IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) and the overall kAI score are clarity/health scores where higher is BETTER (clearer, healthier skin) and lower is WORSE. E.g., if Active Acne went from 32 down to 25, acne got worse, NOT better. Always describe trends with this direction.
+STRICT DATA RULES:
+- Every number you write MUST appear verbatim in the data below. Never invent, estimate, round up, or extrapolate a score.
+- Patient scores are ALWAYS between ${PATIENT_DISPLAY_SCORE_FLOOR} and ${PATIENT_DISPLAY_SCORE_CAP}. Never write a skin score above ${PATIENT_DISPLAY_SCORE_CAP}, never write "100", never write "X/100", and never describe a score as perfect or maxed out.
+- NEVER mention UV, sun exposure, sunscreen days, or photoprotection habits as something we measured. This app does NOT collect sun-exposure data. Do not reference it at all.
 ${
   !input.scoresUnlocked
-    ? `IMPORTANT: The patient's exact scores are currently locked/hidden. They ONLY see letter grades (A, B, C, D, E) on their screen. You MUST NEVER output any exact score numbers (e.g. 72, +5, etc.). Always describe their parameters and changes using letter grades (e.g., "Active Acne is grade B", "overall grade is C", "improved by one grade band").`
-    : `SCORES: refer to skin only with the capped patient-display scores/deltas provided. You can refer to both exact score numbers and letter grades (e.g., "Active Acne is 72 (grade B)").`
+    ? `- The patient's exact scores are LOCKED. You MUST NOT output any score numbers or deltas (no "72", no "+5"), and you MUST NOT use letter grades (A/B/C/D/E) either. Describe every parameter only with qualitative words already given in the data (e.g. "good", "moderate", "improving", "held steady").`
+    : `- The patient's exact scores are UNLOCKED. Use ONLY the exact score numbers and deltas provided below. Do NOT use letter grades (A/B/C/D/E) anywhere — the patient sees numbers, not grades.`
 }
 CAUSES MUST BE BALANCED: include BOTH what went well (wins) and what dragged (risks), not just one side. If a parameter held steady, explain why in plain words. If everything was positive, one gentle watch-out for next week is enough.
 EMPATHY PARAGRAPH: at most 2 short sentences. Encouraging, specific to the data, forward looking. No clinical lecture.`;
@@ -139,15 +155,14 @@ Name: ${input.patient.name}
 Skin type: ${input.patient.skinType ?? "unknown"}
 Primary concern: ${input.patient.primaryConcern ?? "unknown"}
 Sensitivity index: ${input.patient.sensitivityIndex ?? "n/a"}/10
-UV sensitivity: ${input.patient.uvSensitivity ?? "n/a"}
 Hormonal correlation: ${input.patient.hormonalCorrelation ?? "n/a"}
 
 SCAN CONTEXT
 ${input.scanContextNote ?? "Standard weekly tracker report."}
 
 SCAN #${input.scanIndex} on ${input.scanDate}
-kAI score: ${input.scoresUnlocked ? input.kaiScore : `grade ${patientClarityToGrade(input.kaiScore)}`}
-Weekly delta: ${input.scoresUnlocked ? `${input.weeklyDelta >= 0 ? "+" : ""}${input.weeklyDelta}` : "change from last scan"}
+kAI score: ${input.scoresUnlocked ? patientUnlockedDisplayScore(input.kaiScore) : lockedQualitativeBand(input.kaiScore)}
+Weekly delta: ${input.scoresUnlocked ? `${input.weeklyDelta >= 0 ? "+" : ""}${input.weeklyDelta}` : input.weeklyDelta >= 3 ? "improving" : input.weeklyDelta <= -3 ? "softer than last scan" : "steady"}
 Consistency: ${input.consistencyPct}%
 Parameters: ${paramsLine(input.params, input.scoresUnlocked)}
 
@@ -157,7 +172,6 @@ AM days: ${input.behavior.amRoutineDays}, PM days: ${input.behavior.pmRoutineDay
 Routine intensity (granular): avg AM checklist ${input.behavior.avgAmRoutineStepPct}%, avg PM checklist ${input.behavior.avgPmRoutineStepPct}% → blended ~${input.behavior.routineWeightedConsistencyPct}%
 Avg sleep: ${input.behavior.avgSleepHours}h, Avg water: ${input.behavior.avgWaterGlasses} glasses
 Avg stress: ${input.behavior.avgStress}/10, High-stress days: ${input.behavior.highStressDays}
-High-UV days: ${input.behavior.highSunDays}, Moderate-UV: ${input.behavior.moderateSunDays}
 Journal entries: ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%) • missed journaling on ${input.behavior.journalMissedDays} days
 
 SIGNAL PACK
@@ -196,8 +210,9 @@ ${chunkLines(input.evidence)}
 
 TASK
 Produce the weekly tracker report for this scan. Be concrete and tied to data above.
-- CAUSES: exactly 4 bullets, each tagged internally: at least 2 "wins" (what helped or what held steady) and at least 1 "drag" or risk (what hurt or what could regress). Use real numbers from the data.
+- CAUSES: exactly 4 bullets, each tagged internally: at least 2 "wins" (what helped or what held steady) and at least 1 "drag" or risk (what hurt or what could regress). ${input.scoresUnlocked ? "Only cite numbers that appear verbatim in the data above." : "Use qualitative words only, never numbers or letter grades."}
   - Prefix each cause with either "Win:" or "Drag:" or "Watch:" so the UI can tag it.
+  - Never mention UV or sun exposure.
 - EMPATHY: max 2 short warm sentences. Plain language. Forward looking. No dashes as punctuation.
 - ACTION DETAILS: each action.detail must be EXACTLY 3 lines in this structure:
   Why: <1 sentence tied to this patient's numbers/signals>
@@ -207,7 +222,7 @@ Return ONLY JSON with this exact shape:
 {
   "hookLine": "string (one human sentence naming what happened this week; earned, not generic)",
   "empathyParagraph": "string (max 2 short sentences; warm, human, encouraging)",
-  "causes": ["Win: <sentence with numbers>", "Win: <sentence>", "Drag: <sentence>", "Watch: <sentence>"],
+  "causes": ["Win: <sentence>", "Win: <sentence>", "Drag: <sentence>", "Watch: <sentence>"],
   "actions": [
     {"rank": 1, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."},
     {"rank": 2, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."},
@@ -259,9 +274,10 @@ export async function analyzeDailyFocusBatch(input: {
   if (input.dailyFacts.length === 0) return [];
   const system = `You are kAI, a dermatology-aware AI beauty counselor.
 Produce ONE sharp, personalized nudge per day — like Amorepacific AI Beauty Counselor.
-Temporal rule: each row's date D is the day you are advising FOR. Log fields (AM/PM, sleep, sun, mood, water) describe the LAST COMPLETED day before D (behaviorAsOfDate), not D itself — treat them as "what we know through yesterday". Scans/kAI/weakest are also only through that same cutoff. Write the message and goals as guidance FOR calendar day D (today forward), and when you cite sun or routine, phrase it as based on what happened through behaviorAsOfDate (e.g. "after yesterday's UV" / "your last few nights") not as if the patient already logged D.
+Temporal rule: each row's date D is the day you are advising FOR. Log fields (AM/PM, sleep, mood, water) describe the LAST COMPLETED day before D (behaviorAsOfDate), not D itself — treat them as "what we know through yesterday". Scans/kAI/weakest are also only through that same cutoff. Write the message and goals as guidance FOR calendar day D (today forward), and when you cite routine or sleep, phrase it as based on what happened through behaviorAsOfDate (e.g. "your last few nights") not as if the patient already logged D.
 Do not repeat yourself across days; each day must name something specific from that row's facts.
-IMPORTANT SCALE DIRECTION: All parameter scores (e.g. Active Acne, etc.) are clarity/health scores from 0 to 100, where 100 is best/clearest skin and 0 is worst/most severe symptoms. A lower score is WORSE, a higher score is BETTER.
+NEVER mention UV or sun exposure — this app does not collect sun-exposure data.
+IMPORTANT SCALE DIRECTION: All parameter scores (e.g. Active Acne, etc.) are clarity/health scores where higher is better/clearer skin and lower is worse. Only cite numbers that appear in the data.
 Return ONLY valid JSON. No preamble.`;
 
   const user = `PATIENT
@@ -269,16 +285,14 @@ ${input.patient.name} · Skin: ${input.patient.skinType ?? "unknown"} · Concern
 
 WEEK ${input.weekStartDate} → ${input.weekEndDate}
 
-PER-DAY FACTS — each line: target day D, then signals through behaviorAsOfDate (day before D). Do not treat AM/PM/sun/mood as same-calendar-day-as-D.
+PER-DAY FACTS — each line: target day D, then signals through behaviorAsOfDate (day before D). Do not treat AM/PM/mood as same-calendar-day-as-D.
 ${input.dailyFacts
   .map(
     (d) =>
       `D=${d.date} (signals through ${d.behaviorAsOfDate ?? "—"}) | AM=${d.amRoutine ? "Y" : "N"} PM=${d.pmRoutine ? "Y" : "N"} sleep=${
         d.sleepHours ?? "—"
-      }h stress=${d.stressLevel ?? "—"} water=${d.waterGlasses ?? "—"} sun=${
-        d.sunExposure ?? "—"
-      } mood=${d.mood ?? "—"} | scans=${d.scansUpToDate} kAI=${
-        d.latestKaiScore ?? "—"
+      }h stress=${d.stressLevel ?? "—"} water=${d.waterGlasses ?? "—"} mood=${d.mood ?? "—"} | scans=${d.scansUpToDate} kAI=${
+        d.latestKaiScore == null ? "—" : patientUnlockedDisplayScore(d.latestKaiScore)
       } weakest=${d.weakestParamLabel ?? "—"} consistency7d=${d.routineConsistencyPct}%`
   )
   .join("\n")}
@@ -338,11 +352,15 @@ export async function analyzeMonthly(input: {
   const system = `You are kAI. Write a clear monthly progress note grounded in data.
 No hype, no generic text. Speak directly to the patient. Return ONLY JSON.
 The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Per-scan trajectory is supporting context only.
-IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) and overall kAI score are clarity/health scores from 0 to 100, where 100 is the best (clearest/healthiest skin, e.g., zero active acne) and 0 is the worst (most severe acne). Thus, a lower score is WORSE and a higher score is BETTER. E.g., if Active Acne went from 32 down to 25, it means acne got worse, NOT better. Always evaluate and describe these score trends correctly (increasing score is improvement, decreasing score is worsening).
+IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) and the overall kAI score are clarity/health scores where higher is BETTER (clearer, healthier skin) and lower is WORSE. E.g., if Active Acne went from 32 down to 25, acne got worse, NOT better. Always describe trends with this direction.
+STRICT DATA RULES:
+- Every number you write MUST appear verbatim in the data provided. Never invent, estimate, or extrapolate a score.
+- Patient scores are ALWAYS between ${PATIENT_DISPLAY_SCORE_FLOOR} and ${PATIENT_DISPLAY_SCORE_CAP}. Never write a skin score above ${PATIENT_DISPLAY_SCORE_CAP}, never write "100" or "X/100", and never describe a score as perfect or maxed out.
+- NEVER mention UV, sun exposure, sunscreen days, or photoprotection habits as something we measured — this app does not collect sun-exposure data.
 ${
   !input.scoresUnlocked
-    ? `IMPORTANT: The patient's exact scores are currently locked/hidden. They ONLY see letter grades (A, B, C, D, E) on their screen. You MUST NEVER output any exact score numbers (e.g. 72, +5, etc.). Always describe their parameters and changes using letter grades (e.g., "Active Acne is grade B", "monthly average grade is C").`
-    : `The patient's exact scores are unlocked. You can refer to both exact score numbers and letter grades (e.g., "Active Acne is 72 (grade B)").`
+    ? `- The patient's exact scores are LOCKED. You MUST NOT output any score numbers or deltas, and you MUST NOT use letter grades (A/B/C/D/E) either. Describe parameters only with qualitative words (e.g. "good", "moderate", "improving", "held steady").`
+    : `- The patient's exact scores are UNLOCKED. Use ONLY the exact score numbers provided. Do NOT use letter grades (A/B/C/D/E) anywhere — the patient sees numbers, not grades.`
 }
 Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) — tell them to reboot that habit next month — and cite partial checklist completion percentages when blended routine intensity is weak.`;
 
@@ -350,15 +368,15 @@ Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) �
 ${input.patient.name} · Skin: ${input.patient.skinType ?? "unknown"} · Concern: ${input.patient.primaryConcern ?? "unknown"}
 
 MONTH STARTING ${input.monthStart}
-HEADLINE MONTH kAI (mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${input.kaiMonthAvgFromParams == null ? "n/a" : input.scoresUnlocked ? patientDisplayClarity(input.kaiMonthAvgFromParams) : `grade ${patientClarityToGrade(input.kaiMonthAvgFromParams)}`}
-Per-scan kAI series in this month (${input.scoreTrend.length} pts): ${input.scoreTrend.map((s) => input.scoresUnlocked ? patientDisplayClarity(s) : patientClarityToGrade(s)).join(" → ")}
+HEADLINE MONTH kAI (mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${input.kaiMonthAvgFromParams == null ? "n/a" : input.scoresUnlocked ? patientDisplayClarity(input.kaiMonthAvgFromParams) : lockedQualitativeBand(input.kaiMonthAvgFromParams)}
+Per-scan kAI series in this month (${input.scoreTrend.length} pts): ${input.scoreTrend.map((s) => input.scoresUnlocked ? String(patientDisplayClarity(s)) : lockedQualitativeBand(s)).join(" → ")}
 
 LATEST PARAMETERS
 ${paramsLine(input.latestParams, input.scoresUnlocked)}
 
 BEHAVIOR (past ${input.behavior.windowDays} calendar days counted in this month report)
 Full AM+PM: ${input.behavior.fullRoutineDays}/${input.behavior.windowDays} | granular blend ~${input.behavior.routineWeightedConsistencyPct}% (avg AM checklist ${input.behavior.avgAmRoutineStepPct}% · avg PM checklist ${input.behavior.avgPmRoutineStepPct}%)
-Sleep avg ${input.behavior.avgSleepHours}h | high-UV ${input.behavior.highSunDays}d | high-stress ${input.behavior.highStressDays}d | journal ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%, missed ${input.behavior.journalMissedDays}d)
+Sleep avg ${input.behavior.avgSleepHours}h | high-stress ${input.behavior.highStressDays}d | journal ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%, missed ${input.behavior.journalMissedDays}d)
 
 EVIDENCE
 ${chunkLines(input.evidence).slice(0, 2000)}

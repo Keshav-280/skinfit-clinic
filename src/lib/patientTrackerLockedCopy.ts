@@ -3,6 +3,10 @@
  * numeric scores/deltas so UI shows qualitative language only.
  */
 
+import {
+  PATIENT_DISPLAY_SCORE_CAP,
+  PATIENT_DISPLAY_SCORE_FLOOR,
+} from "./clarityGrade";
 import type {
   PatientTrackerCause,
   PatientTrackerFocusAction,
@@ -84,11 +88,11 @@ function rewriteKnownCausePatterns(body: string, tone: CauseTone): string {
       return "Active acne held steady, likely helped by manageable stress levels.";
     }
     if (
-      (/pigmentation|skin quality|uv|photo/.test(lower) && tone === "win") ||
+      (/pigmentation|skin quality|photo/.test(lower) && tone === "win") ||
       (/no high-uv|zero high-uv|low-uv/.test(lower) &&
         /pigmentation|skin quality/.test(lower))
     ) {
-      return "Lower UV exposure helped protect pigmentation and skin quality.";
+      return "Your habits this week helped protect pigmentation and skin quality.";
     }
     if (/full-routine|routine days/.test(lower)) {
       return "Sticking to your routine supported this area.";
@@ -224,6 +228,70 @@ function sanitizeFocusActionsForLockedPatient(
 }
 
 /**
+ * The app does not collect sun-exposure data, so AI prose must never claim UV
+ * exposure influenced results. Drops whole sentences that reference UV/sun days.
+ */
+export function stripUvExposureClaims(text: string): string {
+  const sentences = (text ?? "").split(/(?<=[.!?])\s+/);
+  const kept = sentences.filter(
+    (s) =>
+      !/\bUV\b|\bsun exposure\b|high-?uv|\bsun(?:ny)? days?\b|\bsun-exposed\b/i.test(
+        s
+      )
+  );
+  const out = collapseWhitespace(kept.join(" "));
+  if (out) return out;
+  return "Your daily habits shaped this week's results. Keep your routine consistent.";
+}
+
+/**
+ * Patient-facing scores are always within [floor, cap] (currently 20–79).
+ * Rewrite hallucinated out-of-range claims like "100", "95/100", "perfect score"
+ * into safe qualitative language instead of fabricated exact numbers.
+ */
+export function sanitizeOverflowScoreClaims(text: string): string {
+  let s = text ?? "";
+
+  s = s.replace(/\b(\d{1,3})\s*(?:\/|out of)\s*100\b/gi, (_m, n: string) => {
+    const v = Number(n);
+    return v >= PATIENT_DISPLAY_SCORE_FLOOR && v <= PATIENT_DISPLAY_SCORE_CAP
+      ? n
+      : "a strong score";
+  });
+  s = s.replace(
+    /\b(?:a\s+|an\s+)?perfect(?:\s+score)?(?:\s+of)?\s+100\b/gi,
+    "an excellent result"
+  );
+  s = s.replace(/\b(?:a|an)\s+perfect score\b/gi, "an excellent result");
+  s = s.replace(/\bperfect score\b/gi, "excellent result");
+
+  s = s
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => {
+      if (!/\b(?:score|scores|scored|kai|clarity)\b/i.test(sentence)) {
+        return sentence;
+      }
+      return sentence.replace(
+        /\b(is|was|of|at|to|reached|hit|now)\s+(?:a\s+)?(?:8\d|9\d|1\d\d)\b(?!\s*%)/gi,
+        (_m, verb: string) => {
+          const v = verb.toLowerCase();
+          return v === "to" || v === "reached" || v === "hit"
+            ? "to a strong level"
+            : "is at a strong level";
+        }
+      );
+    })
+    .join(" ");
+
+  return collapseWhitespace(s);
+}
+
+/** Hard guards applied to ALL AI prose regardless of lock state. */
+function applyUniversalProseGuards(text: string): string {
+  return sanitizeOverflowScoreClaims(stripUvExposureClaims(text));
+}
+
+/**
  * Remove letter-grade language (A–E) from AI prose. Unlocked patients see exact
  * numbers, locked patients see qualitative words — neither should read like
  * "you're a solid B". Conservative patterns to avoid hitting "vitamin C" etc.
@@ -250,23 +318,28 @@ export function stripLetterGradeLanguage(text: string): string {
 /**
  * Single source of truth for what AI prose a patient sees in the tracker report.
  * - Locked (not visited): strip exact scores/deltas → qualitative copy.
- * - Always: strip letter-grade language (unlocked shows numbers, not grades).
+ * - Always: strip letter-grade language (unlocked shows numbers, not grades),
+ *   drop UV/sun-exposure claims (not collected), and rewrite out-of-range
+ *   score claims (patient scores never exceed the display cap).
  */
 export function presentTrackerReportNarrative(
   report: PatientTrackerReport,
   scoresUnlocked: boolean
 ): PatientTrackerReport {
-  const hookSentence = stripLetterGradeLanguage(
+  const guard = (text: string) =>
+    applyUniversalProseGuards(stripLetterGradeLanguage(text));
+
+  const hookSentence = guard(
     scoresUnlocked
       ? report.hookSentence
       : sanitizeTrackerNarrativeForLockedPatient(report.hookSentence)
   );
-  const insightText = stripLetterGradeLanguage(
+  const insightText = guard(
     scoresUnlocked
       ? report.insightText
       : sanitizeTrackerNarrativeForLockedPatient(report.insightText)
   );
-  const predictionText = stripLetterGradeLanguage(
+  const predictionText = guard(
     scoresUnlocked
       ? report.predictionText
       : sanitizeTrackerNarrativeForLockedPatient(report.predictionText)
@@ -275,17 +348,29 @@ export function presentTrackerReportNarrative(
     scoresUnlocked
       ? report.causes
       : sanitizeTrackerCausesForLockedPatient(report.causes)
-  ).map((c: PatientTrackerCause) => ({
-    ...c,
-    text: stripLetterGradeLanguage(c.text),
-  }));
+  ).map((c: PatientTrackerCause) => {
+    const m = c.text.trim().match(/^(Win|Drag|Watch):\s*(.*)$/i);
+    if (!m) return { ...c, text: guard(c.text) };
+    const label = m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1).toLowerCase();
+    return { ...c, text: `${label}: ${guard(m[2] ?? "")}` };
+  });
   const focusActions: PatientTrackerFocusAction[] = (
     scoresUnlocked
       ? report.focusActions
       : sanitizeFocusActionsForLockedPatient(report.focusActions)
   ).map((a: PatientTrackerFocusAction) => ({
     ...a,
-    detail: stripLetterGradeLanguage(a.detail),
+    // Guard line by line — detail is "\n"-separated Why/Do/Target rows.
+    detail: a.detail
+      .split(/\n+/)
+      .map((line) => {
+        const m = line.trim().match(/^(Why|Do|Target):\s*(.*)$/i);
+        if (!m) return guard(line);
+        const body = guard(m[2] ?? "");
+        return `${m[1]}: ${body}`;
+      })
+      .filter(Boolean)
+      .join("\n"),
   }));
 
   return {

@@ -33,7 +33,7 @@ import {
 } from "./patientVisibleParams";
 
 const CAUSES_P1 =
-  "Environmental factors such as UV exposure, seasonal dryness, and urban pollution can accentuate texture irregularities and uneven tone. A consistent barrier-focused routine helps mitigate these stressors.";
+  "Environmental factors such as seasonal dryness and urban pollution can accentuate texture irregularities and uneven tone. A consistent barrier-focused routine helps mitigate these stressors.";
 const CAUSES_P2 =
   "Hormonal shifts, stress, and sleep patterns may also influence oil balance and sensitivity. Tracking flare-ups alongside lifestyle changes gives clearer insight into your skin's triggers.";
 

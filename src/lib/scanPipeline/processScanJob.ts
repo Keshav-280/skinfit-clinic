@@ -256,9 +256,10 @@ export async function processScanJob(
           {
             role: "user",
             content: [
-              "Write one short patient-facing sentence using letter grades only (A–E, A is best).",
-              "Do not include raw numbers, percentages, or /100.",
-              `Grades: overall ${patientClarityToGrade(metrics.overall_score)}, acne ${patientClarityToGrade(metrics.acne)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, hydration ${patientClarityToGrade(metrics.hydration)}.`,
+              "Write one short patient-facing sentence about this skin scan using ONLY the letter grades given below (A–E, A is best).",
+              "STRICT RULES: never include raw numbers, percentages, or '/100'; never invent grades not listed; never mention UV, sun exposure, or sunscreen habits (this app does not collect sun-exposure data).",
+              "Warm, plain language. No em dashes.",
+              `Grades: overall ${patientClarityToGrade(metrics.overall_score)}, acne ${patientClarityToGrade(metrics.acne)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, under-eye ${patientClarityToGrade(metrics.hydration)}.`,
             ].join(" "),
           },
         ],

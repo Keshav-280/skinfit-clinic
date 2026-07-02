@@ -241,18 +241,8 @@ export function correlateBehaviorToDelta(
     );
   }
 
-  // ---- Sun exposure ----
-  if (behavior.highSunDays === 0) {
-    if (paramKey === "pigmentation" || paramKey === "wrinkles") {
-      wins.push("zero high-UV days helped protect pigmentation and photo-aging");
-    }
-  } else if (behavior.highSunDays >= 2) {
-    if (paramKey === "pigmentation" || paramKey === "wrinkles") {
-      drags.push(
-        `${behavior.highSunDays} high-UV days likely pressured ${RAG_KAI_PARAM_LABELS[paramKey].toLowerCase()}`
-      );
-    }
-  }
+  // Sun exposure intentionally excluded — the app does not collect UV data,
+  // so AI narratives must never cite it as a measured signal.
 
   // ---- Stress ----
   if (behavior.highStressDays === 0 && behavior.avgStress > 0) {
@@ -350,7 +340,6 @@ export function buildNarrativeSignalPack(
       sleep: `${behavior.avgSleepHours}h avg`,
       water: `${behavior.avgWaterGlasses} glasses avg`,
       stress: `${behavior.avgStress}/10 avg · ${behavior.highStressDays} high-stress days`,
-      sun: `${behavior.highSunDays} high-UV · ${behavior.moderateSunDays} moderate-UV days`,
       journal: `${behavior.journalEntriesCount}/${behavior.windowDays} logged (${behavior.journalCompliancePct}%)`,
     },
     topWins,
