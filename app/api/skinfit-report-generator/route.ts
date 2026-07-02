@@ -3,6 +3,7 @@ import {
   normalizePatientEmail,
   saveClinicExternalReportPdf,
 } from "@/src/lib/clinicExternalReports";
+import { KAI_REPORT_EVENT_LABEL } from "@/src/lib/sdetectReport/eventLabel";
 import { buildKaiReportContent } from "@/src/lib/sdetectReport/aiReport";
 import { buildSdetectReportFromPdf } from "@/src/lib/sdetectReport/buildReport";
 import { generateKaiReportPdf } from "@/src/lib/sdetectReport/generateKaiReportPdf";
@@ -37,7 +38,9 @@ export async function POST(req: Request) {
 
     const eventLabelField = form.get("eventLabel");
     const eventLabel =
-      typeof eventLabelField === "string" ? eventLabelField.trim() : "";
+      typeof eventLabelField === "string" && eventLabelField.trim()
+        ? eventLabelField.trim()
+        : KAI_REPORT_EVENT_LABEL;
 
     const report = await buildSdetectReportFromPdf(pdfBuffer);
     const content = await buildKaiReportContent(report, { eventLabel });

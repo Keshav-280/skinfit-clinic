@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { KAI_REPORT_EVENT_LABEL } from "../lib/sdetectReport/eventLabel";
 import { buildKaiReportContent } from "../lib/sdetectReport/aiReport";
 import { buildSdetectReportFromPdf } from "../lib/sdetectReport/buildReport";
 import { generateKaiReportPdf } from "../lib/sdetectReport/generateKaiReportPdf";
@@ -11,8 +12,8 @@ async function main() {
 
   const buf = readFileSync(input);
   const report = await buildSdetectReportFromPdf(buf);
-  const content = await buildKaiReportContent(report, { eventLabel: "Preview" });
-  const pdf = await generateKaiReportPdf(report, content, { eventLabel: "Preview" });
+  const content = await buildKaiReportContent(report, { eventLabel: KAI_REPORT_EVENT_LABEL });
+  const pdf = await generateKaiReportPdf(report, content, { eventLabel: KAI_REPORT_EVENT_LABEL });
   writeFileSync(output, pdf);
 
   console.log(

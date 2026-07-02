@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import sharp from "sharp";
 import type { KaiObservationColor, KaiReportContent } from "./aiReport";
 import { drawRadarChart, drawScoreGauge } from "./charts";
+import { KAI_REPORT_EVENT_LABEL } from "./eventLabel";
 import { type LogoAsset, loadHeaderLogo } from "./headerLogo";
 import { A4_HEIGHT_MM, PDF_A4_OPTIONS, ptToMm } from "./pdfPage";
 import { reportQrDataUrl } from "./qrCode";
@@ -50,7 +51,7 @@ const INSTAGRAM_URL = "https://www.instagram.com/skinfitwellness.in/";
 const MARGIN = ptToMm(32);
 const GUTTER = ptToMm(16);
 const LEFT_COL_RATIO = 0.56;
-const HEADER_H = ptToMm(60);
+const HEADER_H = ptToMm(42);
 const ROW2_MIN_H = ptToMm(88);
 const ROW2_BOTTOM_TRIM_MM = (25 * 25.4) / 96;
 const MIN_FOOTER_H = ptToMm(66);
@@ -779,7 +780,6 @@ function drawInsightBox(
   const lines = wrap(doc, content.insight, w - INSIGHT_PAD * 2);
   let ty = y + INSIGHT_TEXT_TOP;
   for (const line of lines) {
-    if (ty > y + h - ptToMm(10)) break;
     doc.text(line, x + INSIGHT_PAD, ty);
     ty += INSIGHT_LINE_H;
   }
@@ -912,7 +912,7 @@ export async function generateKaiReportPdf(
   doc.rect(0, 0, pageW, pageH, "F");
 
   const logo = await loadHeaderLogo();
-  await drawHeader(doc, logo, data, options.eventLabel ?? "");
+  await drawHeader(doc, logo, data, options.eventLabel?.trim() || KAI_REPORT_EVENT_LABEL);
 
   let y = HEADER_H + GAP_AFTER_HEADER;
   y = await drawIdentityRow(doc, data, MARGIN, y, contentW);
@@ -929,15 +929,7 @@ export async function generateKaiReportPdf(
 
   const requiredFooterH = measureContactFooterHeight(doc, contentW);
   const measuredRow3H = measureRow3Height(doc, content, leftColW);
-  const pageBudget = pageH - MARGIN;
-  let minInsightH = MIN_INSIGHT_H;
-  let stackNeed =
-    y + GAP_SECTION + measuredRow3H + GAP_SECTION + MIN_INSIGHT_H + GAP_AFTER_INSIGHT + requiredFooterH;
-  if (stackNeed > pageBudget) {
-    minInsightH = Math.max(ptToMm(36), MIN_INSIGHT_H - (stackNeed - pageBudget));
-    stackNeed =
-      y + GAP_SECTION + measuredRow3H + GAP_SECTION + minInsightH + GAP_AFTER_INSIGHT + requiredFooterH;
-  }
+  const measuredInsight = measureInsightHeight(doc, content, contentW);
 
   const row3H = measuredRow3H;
   drawObservationsCard(doc, content, MARGIN, y, leftColW, row3H);
@@ -946,11 +938,7 @@ export async function generateKaiReportPdf(
 
   const maxInsightBottom = pageH - MARGIN - requiredFooterH - GAP_AFTER_INSIGHT;
   const insightAvailable = Math.max(0, maxInsightBottom - y);
-  const measuredInsight = measureInsightHeight(doc, content, contentW);
-  const insightH = Math.min(
-    Math.max(minInsightH, measuredInsight),
-    insightAvailable
-  );
+  const insightH = Math.min(measuredInsight, insightAvailable);
   drawInsightBox(doc, content, MARGIN, y, contentW, insightH);
   y += insightH + GAP_AFTER_INSIGHT;
 

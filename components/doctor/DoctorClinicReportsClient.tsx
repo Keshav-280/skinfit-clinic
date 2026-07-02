@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { KAI_REPORT_EVENT_LABEL } from "@/src/lib/sdetectReport/eventLabel";
 import { resolveOutputBasename } from "@/src/lib/sdetectReport/outputFilename";
 
 type ClinicReportRow = {
@@ -157,7 +158,7 @@ export function DoctorClinicReportsClient() {
   // Generate tab
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [outputName, setOutputName] = useState("");
-  const [eventLabel, setEventLabel] = useState("");
+  const [eventLabel, setEventLabel] = useState(KAI_REPORT_EVENT_LABEL);
   const [generating, setGenerating] = useState(false);
   const [lastReportId, setLastReportId] = useState<string | null>(null);
   const [updatingEmail, setUpdatingEmail] = useState(false);
