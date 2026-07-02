@@ -461,18 +461,21 @@ function drawScoreCard(
   const gaugeZoneBottom = scoreLabelY - ptToMm(12);
   const gaugeZoneH = Math.max(ptToMm(18), gaugeZoneBottom - gaugeZoneTop);
   const radius = Math.min(w * 0.28, ptToMm(28), gaugeZoneH * 0.45);
-  const gaugeBaseY = gaugeZoneTop + gaugeZoneH * 0.5 + radius * 0.1;
-  drawScoreGauge(doc, cx, gaugeBaseY, radius, content.kaiScore, ptToMm(5));
+  const gaugeThickness = ptToMm(5);
+  const gaugeBaseY = gaugeZoneTop + gaugeZoneH * 0.46 + radius * 0.08;
+  drawScoreGauge(doc, cx, gaugeBaseY, radius, content.kaiScore, gaugeThickness);
 
+  const scoreFontSize = 19;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(scoreFontSize);
   doc.setTextColor(...KAI.navy);
-  const scoreY = gaugeBaseY - radius * 0.28;
+  // Sit the number in the bowl below the arc, not on the stroke.
+  const scoreY = gaugeBaseY - ptToMm(4);
   doc.text(String(content.kaiScore), cx, scoreY, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...KAI.muted);
-  doc.text("/100", cx, scoreY + ptToMm(8), { align: "center" });
+  doc.text("/100", cx, scoreY + ptToMm(7), { align: "center" });
 }
 
 function drawObservationsCard(
