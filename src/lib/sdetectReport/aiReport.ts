@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { SDETECT_RADAR_LABELS } from "./radarLabels";
 import type { SdetectMetric, SdetectReportData } from "./types";
 
 /** Grade band metadata — matches Medixora's own colour system (see prompt SECTION 2). */
@@ -61,12 +62,13 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
 }
 
 SECTION 3 — TOP 3 OBSERVATIONS rules:
+- ONLY use parameters from the Comprehensive Analysis radar chart (the green spider chart axes) for all 3 observations. Never use General Analysis or In-depth Analysis parameters or scores.
 - Return exactly 3 observations in this fixed order:
-  1) FIRST — the single highest-scoring parameter. Lead with a genuine positive (green tone). Celebrate what is working; frame as a strength to protect and build on.
-  2) SECOND and THIRD — the two lowest-scoring parameters. Primary concerns (red/amber tone). Explain mechanism and why each matters.
-- EXCEPTION: if under 30, do not use Wrinkle as a concern observation (positions 2–3) unless it is genuinely among the 2 lowest — mention wrinkles briefly in insight as prevention instead.
-- EXCEPTION: if two low parameters are closely related (Sebum+Pores, Superficial+Brown pigment), group into one observation using the lower score and pick the next-lowest for the third slot.
-- Use the exact numeric score from the Analysis parameter lists for each observation.
+  1) FIRST — the single highest-scoring radar-chart parameter. Lead with a genuine positive (green tone). Celebrate what is working; frame as a strength to protect and build on.
+  2) SECOND and THIRD — the two lowest-scoring radar-chart parameters. Primary concerns (red/amber tone). Explain mechanism and why each matters.
+- EXCEPTION: if under 30, do not use Wrinkle as a concern observation (positions 2–3) unless it is genuinely among the 2 lowest on the radar chart — mention wrinkles briefly in insight as prevention instead.
+- EXCEPTION: if two low radar parameters are closely related (Sebum+Pores, Superficial+Brown pigment), group into one observation using the lower score and pick the next-lowest radar parameter for the third slot.
+- Use the exact numeric score from the Comprehensive Analysis radar chart for each observation.
 - Moisture % is a hydration reading only — never use it as an observation score.
 - Return exactly 3 observations. Each commentary must be exactly 2 complete sentences (not 1, not 3).
 
@@ -165,9 +167,9 @@ function buildRawDataBlock(data: SdetectReportData): string {
     `Comprehensive score: ${data.comprehensiveScore}`,
     `Moisture level: ${data.moisture}% (hydration reading — not a scored skin parameter)`,
     "",
-    `Comprehensive Analysis parameters (label: score): ${metricLine(data.radar)}`,
-    `General Analysis parameters: ${metricLine(data.generalAnalysis)}`,
-    `In-depth Analysis parameters: ${metricLine(data.inDepthAnalysis)}`,
+    `Comprehensive Analysis / radar chart parameters ONLY (use these for observations): ${metricLine(data.radar)}`,
+    `General Analysis parameters (context only — do NOT use for observation scores): ${metricLine(data.generalAnalysis)}`,
+    `In-depth Analysis parameters (context only — do NOT use for observation scores): ${metricLine(data.inDepthAnalysis)}`,
   ];
   if (data.issueAnalysis.trim()) {
     lines.push("", `Issue analysis text: ${data.issueAnalysis.trim()}`);
@@ -238,20 +240,23 @@ function ensureTwoSentences(commentary: string, title: string, score: number): s
   return cleaned;
 }
 
-function allScoredMetrics(data: SdetectReportData): SdetectMetric[] {
-  const all = [...data.radar];
-  const seen = new Set(all.map((m) => m.label));
-  for (const m of [...data.generalAnalysis, ...data.inDepthAnalysis]) {
-    if (!seen.has(m.label)) {
-      all.push(m);
-      seen.add(m.label);
-    }
+/** Comprehensive Analysis radar chart metrics only — observations must match this chart. */
+function radarChartMetrics(data: SdetectReportData): SdetectMetric[] {
+  if (!data.radar.length) return [];
+  const byLabel = new Map(data.radar.map((m) => [m.label, m]));
+  const ordered: SdetectMetric[] = [];
+  for (const label of SDETECT_RADAR_LABELS) {
+    const metric = byLabel.get(label);
+    if (metric) ordered.push(metric);
   }
-  return all;
+  for (const metric of data.radar) {
+    if (!ordered.some((m) => m.label === metric.label)) ordered.push(metric);
+  }
+  return ordered;
 }
 
 function highestScoredMetric(data: SdetectReportData): SdetectMetric | null {
-  const metrics = allScoredMetrics(data);
+  const metrics = radarChartMetrics(data);
   if (!metrics.length) return null;
   return metrics.sort((a, b) => b.score - a.score)[0];
 }
@@ -259,7 +264,7 @@ function highestScoredMetric(data: SdetectReportData): SdetectMetric | null {
 function lowestConcernMetrics(data: SdetectReportData, count = 2): SdetectMetric[] {
   const age = data.patient.age;
   const top = highestScoredMetric(data);
-  const sorted = allScoredMetrics(data).sort((a, b) => a.score - b.score);
+  const sorted = radarChartMetrics(data).sort((a, b) => a.score - b.score);
   const concerns: SdetectMetric[] = [];
   for (const metric of sorted) {
     if (top && metric.label === top.label) continue;
@@ -410,15 +415,17 @@ function alignObservationsOrder(
   return aligned.slice(0, 3);
 }
 
-/** Pin each observation slot to scraped metric scores: highest, then 2 lowest concerns. */
+/** Pin each observation slot to radar-chart metrics: highest, then 2 lowest concerns. */
 function applyTrueObservationScores(
   observations: KaiObservation[],
   data: SdetectReportData
 ): KaiObservation[] {
   const targets = observationMetrics(data);
   return observations.slice(0, 3).map((obs, index) => {
-    const score = targets[index]?.score ?? obs.score;
-    return { ...obs, score, color: colorForScore(score) };
+    const metric = targets[index];
+    const score = metric?.score ?? obs.score;
+    const commentary = ensureTwoSentences(obs.commentary, obs.title, score);
+    return { ...obs, score, color: colorForScore(score), commentary };
   });
 }
 
