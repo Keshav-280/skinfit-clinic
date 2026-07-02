@@ -57,7 +57,7 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
       "commentary": "Exactly 2 complete sentences — every sentence must end with a full stop; never truncate or leave a sentence unfinished. Sentence 1: what is happening in their skin right now — the mechanism, specific to their score. Sentence 2: why this matters for their age and skin type, with Indian context where the data supports it. No products or treatments."
     }
   ],
-  "insight": "Exactly 3-4 complete sentences, maximum 380 characters total — every sentence must end with a full stop; never truncate or leave a sentence unfinished. RULE 1: Connect the top 3 observations into one root-cause story — why these happen together. RULE 2: Be age-intelligent (under 28: prevention + strengths; 28-38: early intervention; 38-48: restoration + protection; 48+: maintain strengths, address what shifted). RULE 3: Use real Indian-specific factors where data supports (PIH/melanin reactivity, Bangalore humidity, year-round high UV, hormonal melasma, refined-carb/dairy diet). RULE 4: End by naming at least one parameter that scored well and what it means — a genuine positive. RULE 5: No clinic references, treatment names, or product categories."
+  "insight": "Exactly 4-5 complete sentences, target 400-450 characters total (never exceed 450) — every sentence must end with a full stop; never truncate or leave a sentence unfinished. Be specific and layered: name mechanisms, connect observations, and add one concrete day-to-day detail. RULE 1: Connect the top 3 observations into one root-cause story — why these happen together. RULE 2: Be age-intelligent (under 28: prevention + strengths; 28-38: early intervention; 38-48: restoration + protection; 48+: maintain strengths, address what shifted). RULE 3: Use real Indian-specific factors where data supports (PIH/melanin reactivity, Bangalore humidity, year-round high UV, hormonal melasma, refined-carb/dairy diet). RULE 4: End by naming at least one parameter that scored well and what it means — a genuine positive. RULE 5: No clinic references, treatment names, or product categories."
 }
 
 SECTION 3 — TOP 3 OBSERVATIONS rules:
@@ -192,7 +192,7 @@ function clampScore(value: unknown, fallback: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-const INSIGHT_MAX_CHARS = 380;
+const INSIGHT_MAX_CHARS = 450;
 
 function clampInsightLength(text: string, max = INSIGHT_MAX_CHARS): string {
   const cleaned = text.replace(/\s+/g, " ").trim();

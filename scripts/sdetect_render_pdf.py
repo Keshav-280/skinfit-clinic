@@ -18,8 +18,8 @@ except ImportError as exc:
     print(json.dumps({"error": f"missing dependency: {exc}"}))
     sys.exit(2)
 
-MAX_PAGES = 2
-SCALE = 2.0
+MAX_PAGES = 3
+SCALE = 3.0
 
 
 def render_pdf(pdf_bytes: bytes) -> list[str]:

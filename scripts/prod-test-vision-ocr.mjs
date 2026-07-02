@@ -16,7 +16,7 @@ if (!key) {
   process.exit(1);
 }
 
-const model = process.env.SKINFIT_REPORT_VISION_MODEL?.trim() || process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-4o-mini";
+const model = process.env.SKINFIT_REPORT_VISION_MODEL?.trim() || "gpt-4o";
 const python = process.env.SDETECT_QR_PYTHON || "/opt/identity-venv/bin/python3";
 const renderScript = path.join(process.cwd(), "scripts/sdetect_render_pdf.py");
 const pdfBuffer = readFileSync(pdfPath);

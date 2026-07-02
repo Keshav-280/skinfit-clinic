@@ -4,8 +4,9 @@ import {
   fetchSdetectApiReport,
 } from "./fetchApiReport";
 import { parseSdetectPdfText } from "./parsePdfText";
+import { SDETECT_RADAR_LABELS } from "./radarLabels";
 import type { SdetectMetric, SdetectReportData } from "./types";
-import { extractReportWithVision } from "./visionExtract";
+import { extractReportWithVision, isGarbledPatientName } from "./visionExtract";
 
 function mergePatient(
   pdfPatient: SdetectReportData["patient"],
@@ -32,6 +33,30 @@ function preferMetrics(
     label: m.label,
     score: byLabel.get(m.label) ?? m.score,
   }));
+}
+
+const GENERAL_EXPECTED = 8;
+const IN_DEPTH_EXPECTED = 7;
+
+function isLowConfidenceParse(state: {
+  patient: SdetectReportData["patient"];
+  classification: string;
+  comprehensiveScore: number;
+  radar: SdetectMetric[];
+  generalAnalysis: SdetectMetric[];
+  inDepthAnalysis: SdetectMetric[];
+}): boolean {
+  if (isGarbledPatientName(state.patient.name)) return true;
+  if (state.classification === "—") return true;
+  if (state.comprehensiveScore === 0) return true;
+  if (state.radar.length < 8) return true;
+  if (state.generalAnalysis.length < 4) return true;
+  if (state.classification !== "—" && state.comprehensiveScore === 0) return true;
+  const totalMetrics =
+    state.radar.length + state.generalAnalysis.length + state.inDepthAnalysis.length;
+  const totalExpected =
+    SDETECT_RADAR_LABELS.length + GENERAL_EXPECTED + IN_DEPTH_EXPECTED;
+  return totalMetrics < totalExpected * 0.5;
 }
 
 export async function buildSdetectReportFromPdf(
@@ -90,33 +115,35 @@ export async function buildSdetectReportFromPdf(
     }
   }
 
-  // Vision-OCR fallback: when text extraction (and API) left key fields empty —
-  // scanned/image-only PDFs, unknown layouts, other languages — render the pages
-  // and let a vision model read the printed values. Only fills what's missing.
-  const needsVision =
-    patient.name === "—" ||
-    comprehensiveScore === 0 ||
-    classification === "—" ||
-    radar.length < 5;
+  // Vision-OCR fallback: scanned/photocopy PDFs often have a broken text layer that
+  // parses partially — trigger vision when fields are empty or the parse looks unreliable.
+  const lowConfidence = isLowConfidenceParse({
+    patient,
+    classification,
+    comprehensiveScore,
+    radar,
+    generalAnalysis,
+    inDepthAnalysis,
+  });
 
-  if (needsVision) {
+  if (lowConfidence) {
     const vision = await extractReportWithVision(pdfBuffer).catch(() => null);
 
     if (vision) {
-      if (patient.name === "—" && vision.patient.name) patient.name = vision.patient.name;
-      if (patient.gender === "—" && vision.patient.gender) patient.gender = vision.patient.gender;
-      if (!patient.age && vision.patient.age) patient.age = vision.patient.age;
-      if (patient.phone === "—" && vision.patient.phone) patient.phone = vision.patient.phone;
-      if (patient.reportDate === "—" && vision.patient.reportDate) patient.reportDate = vision.patient.reportDate;
-      if (!patient.scanFrequency && vision.patient.scanFrequency) patient.scanFrequency = vision.patient.scanFrequency;
-      if (classification === "—" && vision.classification) classification = vision.classification;
-      if (!moisture && vision.moisture) moisture = vision.moisture;
-      if (!comprehensiveScore && vision.comprehensiveScore) comprehensiveScore = vision.comprehensiveScore;
-      radar = preferMetrics(radar, vision.radar);
-      generalAnalysis = preferMetrics(generalAnalysis, vision.generalAnalysis);
-      inDepthAnalysis = preferMetrics(inDepthAnalysis, vision.inDepthAnalysis);
-      if (!issueAnalysis && vision.issueAnalysis) issueAnalysis = vision.issueAnalysis;
-      if (!skincareAdvice.length && vision.skincareAdvice.length) skincareAdvice = vision.skincareAdvice;
+      if (vision.patient.name) patient.name = vision.patient.name;
+      if (vision.patient.gender) patient.gender = vision.patient.gender;
+      if (vision.patient.age) patient.age = vision.patient.age;
+      if (vision.patient.phone) patient.phone = vision.patient.phone;
+      if (vision.patient.reportDate) patient.reportDate = vision.patient.reportDate;
+      if (vision.patient.scanFrequency) patient.scanFrequency = vision.patient.scanFrequency;
+      if (vision.classification) classification = vision.classification;
+      if (vision.moisture) moisture = vision.moisture;
+      if (vision.comprehensiveScore) comprehensiveScore = vision.comprehensiveScore;
+      radar = preferMetrics(vision.radar, radar);
+      generalAnalysis = preferMetrics(vision.generalAnalysis, generalAnalysis);
+      inDepthAnalysis = preferMetrics(vision.inDepthAnalysis, inDepthAnalysis);
+      if (vision.issueAnalysis) issueAnalysis = vision.issueAnalysis;
+      if (vision.skincareAdvice.length) skincareAdvice = vision.skincareAdvice;
     }
   }
 

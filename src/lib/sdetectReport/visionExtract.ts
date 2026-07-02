@@ -65,13 +65,41 @@ async function renderPdfPages(pdfBuffer: Buffer): Promise<string[]> {
   });
 }
 
-function defaultOpenAiModel(): string {
-  return process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-4o-mini";
+/** Vision OCR model — gpt-4o reads copy/scan PDFs far better than mini. Override with SKINFIT_REPORT_VISION_MODEL. */
+function visionModel(): string {
+  return process.env.SKINFIT_REPORT_VISION_MODEL?.trim() || "gpt-4o";
 }
 
-/** Vision OCR model — defaults to mini (3-page vision on gpt-4o is token-heavy). Override with SKINFIT_REPORT_VISION_MODEL. */
-function visionModel(): string {
-  return process.env.SKINFIT_REPORT_VISION_MODEL?.trim() || defaultOpenAiModel();
+const RADAR_EXPECTED = SDETECT_RADAR_LABELS.length;
+const GENERAL_EXPECTED = GENERAL_LABELS.length;
+const IN_DEPTH_EXPECTED = IN_DEPTH_LABELS.length;
+
+/** 0–100 completeness score for a text or vision parse (higher = more fields recovered). */
+export function parseConfidenceScore(fields: {
+  radarCount: number;
+  generalAnalysisCount: number;
+  inDepthAnalysisCount: number;
+  hasClassification: boolean;
+  comprehensiveScore: number;
+  patientName: string;
+}): number {
+  let score = 0;
+  score += Math.min(fields.radarCount / RADAR_EXPECTED, 1) * 40;
+  score += Math.min(fields.generalAnalysisCount / GENERAL_EXPECTED, 1) * 25;
+  score += Math.min(fields.inDepthAnalysisCount / IN_DEPTH_EXPECTED, 1) * 20;
+  if (fields.hasClassification) score += 5;
+  if (fields.comprehensiveScore > 0) score += 5;
+  if (fields.patientName !== "—" && !isGarbledPatientName(fields.patientName)) score += 5;
+  return Math.round(score);
+}
+
+/** Detect OCR-garbled names (e.g. "J o h n" from broken text extraction). */
+export function isGarbledPatientName(name: string): boolean {
+  if (name === "—" || !name.trim()) return true;
+  const tokens = name.trim().split(/\s+/);
+  if (tokens.length < 3) return false;
+  const singleChar = tokens.filter((t) => t.length === 1).length;
+  return singleChar / tokens.length >= 0.5;
 }
 
 let cachedClient: OpenAI | null = null;
@@ -83,7 +111,9 @@ function getClient(): OpenAI | null {
   return cachedClient;
 }
 
-const VISION_PROMPT = `You are reading a Medixora Bitmoji B3 "Skin Analyzer Report" PDF that has been rendered to images. Extract the raw data exactly as printed. Do NOT invent values — if a field is not visible, use null (for text) or omit the metric.
+const VISION_PROMPT = `You are reading a Medixora Bitmoji B3 "Skin Analyzer Report" PDF that has been rendered to images. The source may be a clean print, photocopy, flatbed scan, or phone photo — expect faded text, grey background noise, skew, compression artifacts, and low contrast. Read carefully; focus on small labels, gauge numbers, and table scores even when faint. Extract the raw data exactly as printed. Do NOT invent values — if a field is not legible, use null (for text) or omit the metric.
+
+Metrics often continue onto page 2–3 (radar chart, general analysis tables, in-depth analysis). Read all provided page images.
 
 Return ONLY a JSON object with these keys:
 {
@@ -163,7 +193,7 @@ export async function extractReportWithVision(
   const client = getClient();
   if (!client) return null;
 
-  const images = (await renderPdfPages(pdfBuffer)).slice(0, 2);
+  const images = (await renderPdfPages(pdfBuffer)).slice(0, 3);
   if (!images.length) return null;
 
   let raw: RawVision | null = null;
@@ -179,7 +209,7 @@ export async function extractReportWithVision(
             { type: "text", text: VISION_PROMPT },
             ...images.map((b64) => ({
               type: "image_url" as const,
-              image_url: { url: `data:image/png;base64,${b64}`, detail: "low" as const },
+              image_url: { url: `data:image/png;base64,${b64}`, detail: "high" as const },
             })),
           ],
         },
