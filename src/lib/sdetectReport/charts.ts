@@ -166,6 +166,8 @@ type RadarLabelLayout = {
   lines: string[];
   scoreLine: string;
   textW: number;
+  anchorLx: number;
+  anchorLy: number;
   blockTop: number;
   blockBottom: number;
   blockLeft: number;
@@ -276,48 +278,45 @@ function clampLayoutToBounds(
   remeasureLayout(doc, layout, labelFontSize, labelLineH, textW, scoreGap);
 }
 
-function distributeLabelsVertically(
-  layouts: RadarLabelLayout[],
-  minY: number,
-  maxY: number,
-  minGap: number
+function limitLayoutDrift(
+  layout: RadarLabelLayout,
+  maxDriftX: number,
+  maxDriftY: number
 ) {
-  if (layouts.length < 2) return;
-  layouts.sort((a, b) => a.ly - b.ly);
-  const heights = layouts.map((l) => l.blockBottom - l.blockTop);
-  const totalH = heights.reduce((sum, h) => sum + h, 0);
-  const gap = Math.max(minGap, (maxY - minY - totalH) / (layouts.length - 1));
-  let cursor = minY;
-  layouts.forEach((layout, index) => {
-    const h = heights[index];
-    const shift = cursor - layout.blockTop;
-    layout.ly += shift;
-    layout.blockTop += shift;
-    layout.blockBottom += shift;
-    cursor += h + gap;
-  });
+  layout.lx = Math.max(layout.anchorLx - maxDriftX, Math.min(layout.anchorLx + maxDriftX, layout.lx));
+  layout.ly = Math.max(layout.anchorLy - maxDriftY, Math.min(layout.anchorLy + maxDriftY, layout.ly));
 }
 
-function distributeLabelsHorizontally(
+function resolveAllLabelCollisions(
   layouts: RadarLabelLayout[],
-  minX: number,
-  maxX: number,
-  minGap: number
+  labelCollisionGap: number,
+  clipLeft: number,
+  clipRight: number,
+  labelMinY: number,
+  labelMaxY: number,
+  maxDriftX: number,
+  maxDriftY: number
 ) {
-  if (layouts.length < 2) return;
-  layouts.sort((a, b) => a.lx - b.lx);
-  const widths = layouts.map((l) => l.blockRight - l.blockLeft);
-  const totalW = widths.reduce((sum, w) => sum + w, 0);
-  const gap = Math.max(minGap, (maxX - minX - totalW) / (layouts.length - 1));
-  let cursor = minX;
-  layouts.forEach((layout, index) => {
-    const w = widths[index];
-    const shift = cursor - layout.blockLeft;
-    layout.lx += shift;
-    layout.blockLeft += shift;
-    layout.blockRight += shift;
-    cursor += w + gap;
-  });
+  const quadrant = (layout: RadarLabelLayout): "left" | "right" | "top" | "bottom" => {
+    const absCos = Math.abs(layout.cos);
+    const absSin = Math.abs(layout.sin);
+    if (absCos > absSin) return layout.cos > 0 ? "right" : "left";
+    return layout.sin > 0 ? "bottom" : "top";
+  };
+
+  const leftLabels = layouts.filter((l) => quadrant(l) === "left");
+  const rightLabels = layouts.filter((l) => quadrant(l) === "right");
+  const topLabels = layouts.filter((l) => quadrant(l) === "top");
+  const bottomLabels = layouts.filter((l) => quadrant(l) === "bottom");
+
+  resolveLabelCollisions(leftLabels, labelCollisionGap, labelMinY, labelMaxY);
+  resolveLabelCollisions(rightLabels, labelCollisionGap, labelMinY, labelMaxY);
+  resolveHorizontalCollisions(topLabels, labelCollisionGap, clipLeft, clipRight);
+  resolveHorizontalCollisions(bottomLabels, labelCollisionGap, clipLeft, clipRight);
+
+  for (const layout of layouts) {
+    limitLayoutDrift(layout, maxDriftX, maxDriftY);
+  }
 }
 
 function resolveLabelCollisions(
@@ -424,9 +423,9 @@ export function drawRadarChart(
   const compact = options.compact ?? metrics.length > 8;
   const padX = ptToMm(compact ? 6 : 8);
   const padY = ptToMm(compact ? 4 : 6);
-  const labelOffset = ptToMm(compact ? 14 : 14);
-  const labelReserve = ptToMm(compact ? 12 : 6);
-  const compactRadiusScale = compact ? 0.78 : 1;
+  const labelOffset = ptToMm(compact ? 10 : 14);
+  const labelReserve = ptToMm(compact ? 8 : 6);
+  const compactRadiusScale = compact ? 0.9 : 1;
   const clipInset = ptToMm(compact ? 5 : 4);
   const clipLeft = bounds.x + clipInset;
   const clipRight = bounds.x + bounds.w - clipInset;
@@ -554,6 +553,8 @@ export function drawRadarChart(
       lines,
       scoreLine,
       textW,
+      anchorLx: lx,
+      anchorLy: ly,
       blockTop: block.top,
       blockBottom: block.bottom,
       blockLeft: block.left,
@@ -561,29 +562,18 @@ export function drawRadarChart(
     });
   }
 
-  const quadrant = (layout: RadarLabelLayout): "left" | "right" | "top" | "bottom" => {
-    const absCos = Math.abs(layout.cos);
-    const absSin = Math.abs(layout.sin);
-    if (absCos > absSin) return layout.cos > 0 ? "right" : "left";
-    return layout.sin > 0 ? "bottom" : "top";
-  };
-
-  const leftLabels = layouts.filter((l) => quadrant(l) === "left");
-  const rightLabels = layouts.filter((l) => quadrant(l) === "right");
-  const topLabels = layouts.filter((l) => quadrant(l) === "top");
-  const bottomLabels = layouts.filter((l) => quadrant(l) === "bottom");
-
-  if (compact) {
-    distributeLabelsVertically(leftLabels, labelMinY, labelMaxY, labelCollisionGap);
-    distributeLabelsVertically(rightLabels, labelMinY, labelMaxY, labelCollisionGap);
-    distributeLabelsHorizontally(topLabels, clipLeft, clipRight, labelCollisionGap);
-    distributeLabelsHorizontally(bottomLabels, clipLeft, clipRight, labelCollisionGap);
-  } else {
-    resolveLabelCollisions(leftLabels, labelCollisionGap, labelMinY, labelMaxY);
-    resolveLabelCollisions(rightLabels, labelCollisionGap, labelMinY, labelMaxY);
-    resolveHorizontalCollisions(topLabels, labelCollisionGap, clipLeft, clipRight);
-    resolveHorizontalCollisions(bottomLabels, labelCollisionGap, clipLeft, clipRight);
-  }
+  const maxDriftX = ptToMm(compact ? 5 : 8);
+  const maxDriftY = ptToMm(compact ? 5 : 8);
+  resolveAllLabelCollisions(
+    layouts,
+    labelCollisionGap,
+    clipLeft,
+    clipRight,
+    labelMinY,
+    labelMaxY,
+    maxDriftX,
+    maxDriftY
+  );
 
   for (const layout of layouts) {
     clampLayoutToBounds(
