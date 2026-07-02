@@ -749,16 +749,47 @@ const INSIGHT_FONT = 9;
 const INSIGHT_TEXT_TOP = ptToMm(36);
 
 /** Height needed to render the full insight text at the report width. */
-function measureInsightHeight(doc: jsPDF, content: KaiReportContent, w: number): number {
+function insightWrappedLines(doc: jsPDF, text: string, w: number): string[] {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return [];
   doc.setFont("helvetica", "normal");
   doc.setFontSize(INSIGHT_FONT);
-  const lines = wrap(doc, content.insight, w - INSIGHT_PAD * 2);
+  return wrap(doc, cleaned, w - INSIGHT_PAD * 2);
+}
+
+function measureInsightHeight(doc: jsPDF, insight: string, w: number): number {
+  const lines = insightWrappedLines(doc, insight, w);
+  if (!lines.length) return INSIGHT_TEXT_TOP + ptToMm(12);
   return INSIGHT_TEXT_TOP + lines.length * INSIGHT_LINE_H + ptToMm(12);
+}
+
+function maxInsightLinesForHeight(maxH: number): number {
+  return Math.max(1, Math.floor((maxH - INSIGHT_TEXT_TOP - ptToMm(12)) / INSIGHT_LINE_H));
+}
+
+/** Drop trailing sentences so insight fits the remaining page height. */
+function truncateInsightToMaxLines(doc: jsPDF, text: string, w: number, maxLines: number): string {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned || maxLines < 1) return "";
+  if (insightWrappedLines(doc, cleaned, w).length <= maxLines) return cleaned;
+
+  const sentences = cleaned.match(/[^.!?]+[.!?]+/g) ?? [cleaned];
+  let best = "";
+  for (const sentence of sentences) {
+    const candidate = (best ? `${best} ${sentence}` : sentence).replace(/\s+/g, " ").trim();
+    if (insightWrappedLines(doc, candidate, w).length <= maxLines) best = candidate;
+    else break;
+  }
+  return best || sentences[0]?.trim() || cleaned;
+}
+
+function fitInsightToHeight(doc: jsPDF, text: string, w: number, maxH: number): string {
+  return truncateInsightToMaxLines(doc, text, w, maxInsightLinesForHeight(maxH));
 }
 
 function drawInsightBox(
   doc: jsPDF,
-  content: KaiReportContent,
+  insight: string,
   x: number,
   y: number,
   w: number,
@@ -777,7 +808,7 @@ function drawInsightBox(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(INSIGHT_FONT);
   doc.setTextColor(...KAI.navy);
-  const lines = wrap(doc, content.insight, w - INSIGHT_PAD * 2);
+  const lines = insightWrappedLines(doc, insight, w);
   let ty = y + INSIGHT_TEXT_TOP;
   for (const line of lines) {
     doc.text(line, x + INSIGHT_PAD, ty);
@@ -929,7 +960,6 @@ export async function generateKaiReportPdf(
 
   const requiredFooterH = measureContactFooterHeight(doc, contentW);
   const measuredRow3H = measureRow3Height(doc, content, leftColW);
-  const measuredInsight = measureInsightHeight(doc, content, contentW);
 
   const row3H = measuredRow3H;
   drawObservationsCard(doc, content, MARGIN, y, leftColW, row3H);
@@ -938,8 +968,10 @@ export async function generateKaiReportPdf(
 
   const maxInsightBottom = pageH - MARGIN - requiredFooterH - GAP_AFTER_INSIGHT;
   const insightAvailable = Math.max(0, maxInsightBottom - y);
-  const insightH = Math.min(measuredInsight, insightAvailable);
-  drawInsightBox(doc, content, MARGIN, y, contentW, insightH);
+  const fittedInsight = fitInsightToHeight(doc, content.insight, contentW, insightAvailable);
+  const insightH = measureInsightHeight(doc, fittedInsight, contentW);
+
+  drawInsightBox(doc, fittedInsight, MARGIN, y, contentW, insightH);
   y += insightH + GAP_AFTER_INSIGHT;
 
   const footerH = pageH - MARGIN - y;
