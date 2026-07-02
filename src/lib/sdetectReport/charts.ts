@@ -165,7 +165,6 @@ type RadarLabelLayout = {
   align: "left" | "center" | "right";
   lines: string[];
   scoreLine: string;
-  singleLine: boolean;
   textW: number;
   blockTop: number;
   blockBottom: number;
@@ -233,27 +232,16 @@ function remeasureLayout(
   textW: number,
   scoreGap: number
 ) {
-  const block =
-    layout.singleLine && layout.lines.length === 1
-      ? measureSingleLineBlock(
-          doc,
-          layout.lx,
-          layout.ly,
-          layout.align,
-          layout.lines[0],
-          layout.scoreLine,
-          labelFontSize
-        )
-      : measureMultiLineBlock(
-          layout.lx,
-          layout.ly,
-          layout.align,
-          textW,
-          layout.lines.length + 1,
-          labelLineH,
-          labelFontSize,
-          scoreGap
-        );
+  const block = measureMultiLineBlock(
+    layout.lx,
+    layout.ly,
+    layout.align,
+    textW,
+    layout.lines.length + 1,
+    labelLineH,
+    labelFontSize,
+    scoreGap
+  );
   layout.blockTop = block.top;
   layout.blockBottom = block.bottom;
   layout.blockLeft = block.left;
@@ -413,37 +401,16 @@ function drawRadarLabel(
   labelLineH: number,
   scoreGap: number
 ) {
-  if (layout.singleLine && layout.lines.length === 1) {
-    const label = layout.lines[0];
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(labelFontSize);
-    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
-    const labelW = doc.getTextWidth(label);
-    doc.setFont("helvetica", "bold");
-    const scoreW = doc.getTextWidth(layout.scoreLine);
-    const gap = ptToMm(1.5);
-    const totalW = labelW + gap + scoreW;
-    let startX = layout.lx;
-    if (layout.align === "right") startX = layout.lx - totalW;
-    else if (layout.align === "center") startX = layout.lx - totalW / 2;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
-    doc.text(label, startX, layout.ly);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-    doc.text(layout.scoreLine, startX + labelW + gap, layout.ly);
-    return;
-  }
-
   doc.setFont("helvetica", "normal");
   doc.setFontSize(labelFontSize);
   doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
   doc.text(layout.lines, layout.lx, layout.ly, { align: layout.align });
+
+  const scoreY = layout.ly + layout.lines.length * labelLineH + scoreGap;
   doc.setFont("helvetica", "bold");
+  doc.setFontSize(labelFontSize);
   doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-  doc.text(layout.scoreLine, layout.lx, layout.ly + layout.lines.length * labelLineH + scoreGap, {
-    align: layout.align,
-  });
+  doc.text(layout.scoreLine, layout.lx, scoreY, { align: layout.align });
 }
 
 export function drawRadarChart(
@@ -466,8 +433,8 @@ export function drawRadarChart(
   const labelMinY = bounds.labelMinY ?? bounds.y + padY;
   const labelMaxY = bounds.labelMaxY ?? bounds.y + bounds.h - padY;
   const labelFontSize = compact ? 4.8 : 6;
-  const labelLineH = ptToMm(compact ? 5.5 : 7);
-  const scoreGap = ptToMm(compact ? 0.5 : 1);
+  const labelLineH = ptToMm(compact ? 6.5 : 7);
+  const scoreGap = ptToMm(compact ? 2.5 : 2);
   const labelCollisionGap = ptToMm(compact ? 1.5 : 3);
   const dataDotR = ptToMm(compact ? 1.3 : 2.2);
   const labelLineExtent = ptToMm(compact ? labelFontSize * 2.4 + 3 : labelFontSize + 1.5);
@@ -528,10 +495,7 @@ export function drawRadarChart(
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(labelFontSize);
-    const labelMaxW = compact
-      ? ptToMm(26)
-      : Math.min(ptToMm(48), bounds.w * 0.36);
-    const lines = doc.splitTextToSize(displayLabel, labelMaxW) as string[];
+    const lines = [displayLabel];
     doc.setFont("helvetica", "bold");
     const scoreW = doc.getTextWidth(scoreLine);
     doc.setFont("helvetica", "normal");
@@ -589,7 +553,6 @@ export function drawRadarChart(
       align,
       lines,
       scoreLine,
-      singleLine: false,
       textW,
       blockTop: block.top,
       blockBottom: block.bottom,
