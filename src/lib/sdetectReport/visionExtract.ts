@@ -2,18 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import OpenAI from "openai";
 import type { SdetectMetric, SdetectPatient } from "./types";
-
-const RADAR_LABELS = [
-  "Superficial pigment",
-  "Brown pigment",
-  "Mixed spot",
-  "Collagen",
-  "Sebum",
-  "Pores",
-  "Blackhead",
-  "Acne",
-  "Heat Map of Sensitivity",
-];
+import { SDETECT_RADAR_LABELS } from "./radarLabels";
 
 const GENERAL_LABELS = [
   "Sebum",
@@ -37,7 +26,7 @@ const IN_DEPTH_LABELS = [
 ];
 
 const ALL_LABELS = Array.from(
-  new Set([...RADAR_LABELS, ...GENERAL_LABELS, ...IN_DEPTH_LABELS])
+  new Set([...SDETECT_RADAR_LABELS, ...GENERAL_LABELS, ...IN_DEPTH_LABELS])
 );
 
 export type VisionExtractResult = {
@@ -228,7 +217,7 @@ export async function extractReportWithVision(
     classification,
     moisture: asNumber(raw.moisture),
     comprehensiveScore: asNumber(raw.comprehensiveScore),
-    radar: metricsForLabels(metricMap, RADAR_LABELS),
+    radar: metricsForLabels(metricMap, SDETECT_RADAR_LABELS),
     generalAnalysis: metricsForLabels(metricMap, GENERAL_LABELS),
     inDepthAnalysis: metricsForLabels(metricMap, IN_DEPTH_LABELS),
     issueAnalysis: asText(raw.issueAnalysis) ?? "",

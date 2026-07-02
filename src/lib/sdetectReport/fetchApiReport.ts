@@ -1,4 +1,5 @@
 import type { SdetectFaceImages, SdetectMetric } from "./types";
+import { SDETECT_RADAR_LABELS } from "./radarLabels";
 
 type ApiResultDetail = {
   Name?: string;
@@ -108,17 +109,7 @@ async function resolveFaceImages(
   return result;
 }
 
-const RADAR_NAMES = [
-  "Superficial pigment",
-  "Brown pigment",
-  "Mixed spot",
-  "Collagen",
-  "Sebum",
-  "Pores",
-  "Blackhead",
-  "Acne",
-  "Heat Map of Sensitivity",
-];
+const RADAR_NAMES = [...SDETECT_RADAR_LABELS];
 
 const GENERAL_NAMES = [
   "Sebum",

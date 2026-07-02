@@ -1,17 +1,6 @@
 import type { SdetectMetric, SdetectPatient, SdetectReportData } from "./types";
 import { loadPdfJsServer } from "./pdfJsServer";
-
-const RADAR_LABELS = [
-  "Superficial pigment",
-  "Brown pigment",
-  "Mixed spot",
-  "Collagen",
-  "Sebum",
-  "Pores",
-  "Blackhead",
-  "Acne",
-  "Heat Map of Sensitivity",
-] as const;
+import { SDETECT_RADAR_LABELS } from "./radarLabels";
 
 const GENERAL_LABELS = [
   "Sebum",
@@ -200,7 +189,7 @@ export async function parseSdetectPdfText(
     moisture: parseMoisture(text),
     comprehensiveScore: parseComprehensiveScore(text),
     patient: parsePatient(text),
-    radar: parseMetrics(text, RADAR_LABELS),
+    radar: parseMetrics(text, SDETECT_RADAR_LABELS),
     issueAnalysis,
     skincareAdvice: parseAdvice(text),
     generalAnalysis: parseMetrics(text, GENERAL_LABELS),

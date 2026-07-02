@@ -1,4 +1,5 @@
 import type { jsPDF } from "jspdf";
+import { ptToMm } from "./pdfPage";
 import type { SdetectMetric } from "./types";
 
 export const SKINFIT_REPORT_THEME = {
@@ -8,7 +9,8 @@ export const SKINFIT_REPORT_THEME = {
   ink: [45, 45, 55] as [number, number, number],
   muted: [120, 120, 130] as [number, number, number],
   grid: [210, 214, 224] as [number, number, number],
-  fill: [76, 175, 80] as [number, number, number],
+  /** Radar polygon fill — ~75% of [76,175,80] over white. */
+  fill: [121, 195, 124] as [number, number, number],
   pageBg: [255, 255, 255] as [number, number, number],
   card: [255, 255, 255] as [number, number, number],
   /** Visible grey panel — matches design mockup patient/chart cards. */
@@ -132,44 +134,355 @@ export type RadarBounds = {
   h: number;
   /** Keep upper-axis labels below this y (avoids overlapping a title above the chart). */
   labelMinY?: number;
+  /** Keep lower-axis labels above this y (clips labels inside the card). */
+  labelMaxY?: number;
 };
+
+export type RadarChartOptions = {
+  /** Tighter layout for 9+ axes (e.g. 11-parameter Medixora reports). */
+  compact?: boolean;
+};
+
+const COMPACT_RADAR_LABELS: Record<string, string> = {
+  "Superficial pigment": "Sup. pigment",
+  "Brown pigment": "Brown pigment",
+  "Mixed spot": "Mixed spot",
+  "Deep Pigment": "Deep pigment",
+  "Heat Map of Sensitivity": "Heat sens.",
+  "Red Map of Sensitivity": "Red sens.",
+};
+
+function radarDisplayLabel(label: string, compact: boolean): string {
+  if (!compact) return label;
+  return COMPACT_RADAR_LABELS[label] ?? label;
+}
+
+type RadarLabelLayout = {
+  cos: number;
+  sin: number;
+  lx: number;
+  ly: number;
+  align: "left" | "center" | "right";
+  lines: string[];
+  scoreLine: string;
+  singleLine: boolean;
+  textW: number;
+  blockTop: number;
+  blockBottom: number;
+  blockLeft: number;
+  blockRight: number;
+};
+
+function measureSingleLineBlock(
+  doc: jsPDF,
+  lx: number,
+  ly: number,
+  align: "left" | "center" | "right",
+  label: string,
+  scoreLine: string,
+  labelFontSize: number
+): { top: number; bottom: number; left: number; right: number } {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(labelFontSize);
+  const labelW = doc.getTextWidth(label);
+  doc.setFont("helvetica", "bold");
+  const scoreW = doc.getTextWidth(scoreLine);
+  const gap = ptToMm(1.5);
+  const totalW = labelW + gap + scoreW;
+  const ascent = ptToMm(labelFontSize * 0.85);
+  const descent = ptToMm(labelFontSize * 0.2);
+  let left = lx;
+  if (align === "right") left = lx - totalW;
+  else if (align === "center") left = lx - totalW / 2;
+  return {
+    top: ly - ascent,
+    bottom: ly + descent,
+    left,
+    right: left + totalW,
+  };
+}
+
+function measureMultiLineBlock(
+  lx: number,
+  ly: number,
+  align: "left" | "center" | "right",
+  textW: number,
+  lineCount: number,
+  labelLineH: number,
+  labelFontSize: number,
+  scoreGap = 0
+): { top: number; bottom: number; left: number; right: number } {
+  const ascent = ptToMm(labelFontSize * 0.85);
+  const descent = ptToMm(labelFontSize * 0.2);
+  let left = lx;
+  if (align === "right") left = lx - textW;
+  else if (align === "center") left = lx - textW / 2;
+  return {
+    top: ly - ascent,
+    bottom: ly + (lineCount - 1) * labelLineH + scoreGap + descent,
+    left,
+    right: left + textW,
+  };
+}
+
+function remeasureLayout(
+  doc: jsPDF,
+  layout: RadarLabelLayout,
+  labelFontSize: number,
+  labelLineH: number,
+  textW: number,
+  scoreGap: number
+) {
+  const block =
+    layout.singleLine && layout.lines.length === 1
+      ? measureSingleLineBlock(
+          doc,
+          layout.lx,
+          layout.ly,
+          layout.align,
+          layout.lines[0],
+          layout.scoreLine,
+          labelFontSize
+        )
+      : measureMultiLineBlock(
+          layout.lx,
+          layout.ly,
+          layout.align,
+          textW,
+          layout.lines.length + 1,
+          labelLineH,
+          labelFontSize,
+          scoreGap
+        );
+  layout.blockTop = block.top;
+  layout.blockBottom = block.bottom;
+  layout.blockLeft = block.left;
+  layout.blockRight = block.right;
+}
+
+function clampLayoutToBounds(
+  doc: jsPDF,
+  layout: RadarLabelLayout,
+  labelFontSize: number,
+  labelLineH: number,
+  textW: number,
+  scoreGap: number,
+  clipLeft: number,
+  clipRight: number,
+  labelMinY: number,
+  labelMaxY: number
+) {
+  remeasureLayout(doc, layout, labelFontSize, labelLineH, textW, scoreGap);
+  if (layout.blockRight > clipRight) {
+    layout.lx -= layout.blockRight - clipRight;
+  }
+  if (layout.blockLeft < clipLeft) {
+    layout.lx += clipLeft - layout.blockLeft;
+  }
+  if (layout.blockBottom > labelMaxY) {
+    layout.ly -= layout.blockBottom - labelMaxY;
+  }
+  if (layout.blockTop < labelMinY) {
+    layout.ly += labelMinY - layout.blockTop;
+  }
+  remeasureLayout(doc, layout, labelFontSize, labelLineH, textW, scoreGap);
+}
+
+function distributeLabelsVertically(
+  layouts: RadarLabelLayout[],
+  minY: number,
+  maxY: number,
+  minGap: number
+) {
+  if (layouts.length < 2) return;
+  layouts.sort((a, b) => a.ly - b.ly);
+  const heights = layouts.map((l) => l.blockBottom - l.blockTop);
+  const totalH = heights.reduce((sum, h) => sum + h, 0);
+  const gap = Math.max(minGap, (maxY - minY - totalH) / (layouts.length - 1));
+  let cursor = minY;
+  layouts.forEach((layout, index) => {
+    const h = heights[index];
+    const shift = cursor - layout.blockTop;
+    layout.ly += shift;
+    layout.blockTop += shift;
+    layout.blockBottom += shift;
+    cursor += h + gap;
+  });
+}
+
+function distributeLabelsHorizontally(
+  layouts: RadarLabelLayout[],
+  minX: number,
+  maxX: number,
+  minGap: number
+) {
+  if (layouts.length < 2) return;
+  layouts.sort((a, b) => a.lx - b.lx);
+  const widths = layouts.map((l) => l.blockRight - l.blockLeft);
+  const totalW = widths.reduce((sum, w) => sum + w, 0);
+  const gap = Math.max(minGap, (maxX - minX - totalW) / (layouts.length - 1));
+  let cursor = minX;
+  layouts.forEach((layout, index) => {
+    const w = widths[index];
+    const shift = cursor - layout.blockLeft;
+    layout.lx += shift;
+    layout.blockLeft += shift;
+    layout.blockRight += shift;
+    cursor += w + gap;
+  });
+}
+
+function resolveLabelCollisions(
+  layouts: RadarLabelLayout[],
+  minGap: number,
+  minY: number,
+  maxY: number
+) {
+  if (layouts.length < 2) return;
+  layouts.sort((a, b) => a.blockTop - b.blockTop);
+
+  for (let i = 1; i < layouts.length; i++) {
+    const overlap = layouts[i - 1].blockBottom + minGap - layouts[i].blockTop;
+    if (overlap > 0) {
+      layouts[i].ly += overlap;
+      layouts[i].blockTop += overlap;
+      layouts[i].blockBottom += overlap;
+    }
+  }
+
+  const overflow = layouts[layouts.length - 1].blockBottom - maxY;
+  if (overflow > 0) {
+    for (const layout of layouts) {
+      layout.ly -= overflow;
+      layout.blockTop -= overflow;
+      layout.blockBottom -= overflow;
+    }
+  }
+
+  const underflow = minY - layouts[0].blockTop;
+  if (underflow > 0) {
+    for (const layout of layouts) {
+      layout.ly += underflow;
+      layout.blockTop += underflow;
+      layout.blockBottom += underflow;
+    }
+  }
+}
+
+function resolveHorizontalCollisions(
+  layouts: RadarLabelLayout[],
+  minGap: number,
+  minX: number,
+  maxX: number
+) {
+  if (layouts.length < 2) return;
+  layouts.sort((a, b) => a.blockLeft - b.blockLeft);
+
+  for (let i = 1; i < layouts.length; i++) {
+    const overlap = layouts[i - 1].blockRight + minGap - layouts[i].blockLeft;
+    if (overlap > 0) {
+      layouts[i].lx += overlap;
+      layouts[i].blockLeft += overlap;
+      layouts[i].blockRight += overlap;
+    }
+  }
+
+  const overflow = layouts[layouts.length - 1].blockRight - maxX;
+  if (overflow > 0) {
+    for (const layout of layouts) {
+      layout.lx -= overflow;
+      layout.blockLeft -= overflow;
+      layout.blockRight -= overflow;
+    }
+  }
+
+  const underflow = minX - layouts[0].blockLeft;
+  if (underflow > 0) {
+    for (const layout of layouts) {
+      layout.lx += underflow;
+      layout.blockLeft += underflow;
+      layout.blockRight += underflow;
+    }
+  }
+}
+
+function drawRadarLabel(
+  doc: jsPDF,
+  layout: RadarLabelLayout,
+  labelFontSize: number,
+  labelLineH: number,
+  scoreGap: number
+) {
+  if (layout.singleLine && layout.lines.length === 1) {
+    const label = layout.lines[0];
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(labelFontSize);
+    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    const labelW = doc.getTextWidth(label);
+    doc.setFont("helvetica", "bold");
+    const scoreW = doc.getTextWidth(layout.scoreLine);
+    const gap = ptToMm(1.5);
+    const totalW = labelW + gap + scoreW;
+    let startX = layout.lx;
+    if (layout.align === "right") startX = layout.lx - totalW;
+    else if (layout.align === "center") startX = layout.lx - totalW / 2;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+    doc.text(label, startX, layout.ly);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
+    doc.text(layout.scoreLine, startX + labelW + gap, layout.ly);
+    return;
+  }
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(labelFontSize);
+  doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+  doc.text(layout.lines, layout.lx, layout.ly, { align: layout.align });
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
+  doc.text(layout.scoreLine, layout.lx, layout.ly + layout.lines.length * labelLineH + scoreGap, {
+    align: layout.align,
+  });
+}
 
 export function drawRadarChart(
   doc: jsPDF,
   metrics: SdetectMetric[],
-  bounds: RadarBounds
+  bounds: RadarBounds,
+  options: RadarChartOptions = {}
 ) {
   if (!metrics.length) return;
 
-  const padX = 8;
-  const padTop = 2;
-  const padBottom = 4;
-  const labelOffset = 14;
-  const clipLeft = bounds.x + 4;
-  const clipRight = bounds.x + bounds.w - 4;
-  const labelMaxW = Math.min(48, bounds.w * 0.36);
+  const compact = options.compact ?? metrics.length > 8;
+  const padX = ptToMm(compact ? 6 : 8);
+  const padY = ptToMm(compact ? 4 : 6);
+  const labelOffset = ptToMm(compact ? 14 : 14);
+  const labelReserve = ptToMm(compact ? 12 : 6);
+  const compactRadiusScale = compact ? 0.78 : 1;
+  const clipInset = ptToMm(compact ? 5 : 4);
+  const clipLeft = bounds.x + clipInset;
+  const clipRight = bounds.x + bounds.w - clipInset;
+  const labelMinY = bounds.labelMinY ?? bounds.y + padY;
+  const labelMaxY = bounds.labelMaxY ?? bounds.y + bounds.h - padY;
+  const labelFontSize = compact ? 4.8 : 6;
+  const labelLineH = ptToMm(compact ? 5.5 : 7);
+  const scoreGap = ptToMm(compact ? 0.5 : 1);
+  const labelCollisionGap = ptToMm(compact ? 1.5 : 3);
+  const dataDotR = ptToMm(compact ? 1.3 : 2.2);
+  const labelLineExtent = ptToMm(compact ? labelFontSize * 2.4 + 3 : labelFontSize + 1.5);
 
   const innerW = bounds.w - padX * 2;
-  const innerH = bounds.h - padTop - padBottom;
-  const maxRadiusByW = innerW / 2 - labelOffset - 2;
-  const maxRadiusByH = innerH / 2 - labelOffset - 6;
-  const radius = Math.max(28, Math.min(maxRadiusByW, maxRadiusByH));
-
   const cx = bounds.x + bounds.w / 2;
-  const titleClearance =
-    bounds.labelMinY != null ? bounds.labelMinY - bounds.y + labelOffset + 10 : 0;
-  /** Shift center down so upper labels stay below any title above the chart. */
-  const cy =
-    bounds.y +
-    Math.max(padTop + labelOffset + radius, titleClearance + labelOffset + radius);
+  const cy = bounds.y + bounds.h / 2;
+  const maxRadiusByW = innerW / 2 - labelOffset - labelReserve;
+  const maxRadiusByTop = cy - labelMinY - labelOffset - labelLineExtent - ptToMm(compact ? 2 : 0);
+  const maxRadiusByBottom = labelMaxY - cy - labelOffset - labelLineExtent - ptToMm(compact ? 2 : 0);
+  const radius =
+    Math.max(0, Math.min(maxRadiusByW, maxRadiusByTop, maxRadiusByBottom)) * compactRadiusScale;
+  if (radius < ptToMm(5)) return;
 
-  const { axis, data, gridLevels } = radarGeometry(
-    metrics,
-    cx,
-    cy,
-    radius,
-    labelOffset
-  );
+  const { axis, data, gridLevels } = radarGeometry(metrics, cx, cy, radius, labelOffset);
 
   const drawClosed = (points: { x: number; y: number }[], style: "S" | "FD") => {
     if (points.length < 2) return;
@@ -181,7 +494,7 @@ export function drawRadarChart(
   };
 
   doc.setDrawColor(...SKINFIT_REPORT_THEME.grid);
-  doc.setLineWidth(0.6);
+  doc.setLineWidth(ptToMm(0.6));
   for (const ring of gridLevels) drawClosed(ring, "S");
 
   for (const point of axis) {
@@ -190,17 +503,16 @@ export function drawRadarChart(
 
   doc.setFillColor(...SKINFIT_REPORT_THEME.fill);
   doc.setDrawColor(...SKINFIT_REPORT_THEME.navy);
-  doc.setLineWidth(1.4);
+  doc.setLineWidth(ptToMm(compact ? 1 : 1.4));
   drawClosed(data, "FD");
 
   for (const point of data) {
     doc.setFillColor(...SKINFIT_REPORT_THEME.navy);
-    doc.circle(point.x, point.y, 2.2, "F");
+    doc.circle(point.x, point.y, dataDotR, "F");
   }
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6);
-  doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
+  const layouts: RadarLabelLayout[] = [];
+
   for (const point of axis) {
     const cos = Math.cos(point.angle);
     const sin = Math.sin(point.angle);
@@ -208,20 +520,22 @@ export function drawRadarChart(
     let ly = point.ly;
 
     let align: "left" | "center" | "right" = "center";
-    if (cos > 0.25) align = "left";
-    else if (cos < -0.25) align = "right";
+    if (cos > 0.3) align = "left";
+    else if (cos < -0.3) align = "right";
 
-    const lines = doc.splitTextToSize(point.metric.label, labelMaxW) as string[];
+    const displayLabel = radarDisplayLabel(point.metric.label, compact);
     const scoreLine = `${point.metric.score}%`;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(labelFontSize);
+    const labelMaxW = compact
+      ? ptToMm(26)
+      : Math.min(ptToMm(48), bounds.w * 0.36);
+    const lines = doc.splitTextToSize(displayLabel, labelMaxW) as string[];
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(6);
     const scoreW = doc.getTextWidth(scoreLine);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
-    const textW = Math.max(
-      scoreW,
-      ...lines.map((line) => doc.getTextWidth(line))
-    );
+    const textW = Math.max(scoreW, ...lines.map((line) => doc.getTextWidth(line)));
 
     if (align === "left" && lx + textW > clipRight) {
       lx = clipRight;
@@ -230,38 +544,101 @@ export function drawRadarChart(
       lx = clipLeft;
       align = "left";
     } else if (align === "center") {
-      if (cos > 0 && lx + textW / 2 > clipRight) {
+      if (lx + textW / 2 > clipRight) {
         lx = clipRight;
         align = "right";
-      } else if (cos < 0 && lx - textW / 2 < clipLeft) {
+      } else if (lx - textW / 2 < clipLeft) {
         lx = clipLeft;
         align = "left";
       }
     }
 
-    /** Nudge bottom labels up slightly to trim dead space under the polygon. */
-    if (sin > 0.55) ly -= 4;
+    const measureBlock = () =>
+      measureMultiLineBlock(
+        lx,
+        ly,
+        align,
+        textW,
+        lines.length + 1,
+        labelLineH,
+        labelFontSize,
+        scoreGap
+      );
 
-    /** Keep top-axis labels from overlapping the section title. */
-    if (sin < -0.15 && bounds.labelMinY != null) {
-      const labelBlockH = lines.length * 7 + 9;
-      if (ly - labelBlockH < bounds.labelMinY) {
-        ly = bounds.labelMinY + labelBlockH;
-      }
+    let block = measureBlock();
+
+    if (sin > 0.5) ly -= ptToMm(2);
+    if (sin < -0.45) ly -= ptToMm(compact ? 3 : 6);
+
+    block = measureBlock();
+
+    if (block.bottom > labelMaxY) {
+      ly -= block.bottom - labelMaxY;
+      block = measureBlock();
+    }
+    if (block.top < labelMinY) {
+      ly += labelMinY - block.top;
+      block = measureBlock();
     }
 
-    /** Top-axis labels (e.g. Superficial pigment) — sit above the polygon. */
-    if (sin < -0.45) {
-      ly -= 10;
-    }
+    layouts.push({
+      cos,
+      sin,
+      lx,
+      ly,
+      align,
+      lines,
+      scoreLine,
+      singleLine: false,
+      textW,
+      blockTop: block.top,
+      blockBottom: block.bottom,
+      blockLeft: block.left,
+      blockRight: block.right,
+    });
+  }
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
-    doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
-    doc.text(lines, lx, ly, { align });
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-    doc.text(scoreLine, lx, ly + lines.length * 7 + 1, { align });
+  const quadrant = (layout: RadarLabelLayout): "left" | "right" | "top" | "bottom" => {
+    const absCos = Math.abs(layout.cos);
+    const absSin = Math.abs(layout.sin);
+    if (absCos > absSin) return layout.cos > 0 ? "right" : "left";
+    return layout.sin > 0 ? "bottom" : "top";
+  };
+
+  const leftLabels = layouts.filter((l) => quadrant(l) === "left");
+  const rightLabels = layouts.filter((l) => quadrant(l) === "right");
+  const topLabels = layouts.filter((l) => quadrant(l) === "top");
+  const bottomLabels = layouts.filter((l) => quadrant(l) === "bottom");
+
+  if (compact) {
+    distributeLabelsVertically(leftLabels, labelMinY, labelMaxY, labelCollisionGap);
+    distributeLabelsVertically(rightLabels, labelMinY, labelMaxY, labelCollisionGap);
+    distributeLabelsHorizontally(topLabels, clipLeft, clipRight, labelCollisionGap);
+    distributeLabelsHorizontally(bottomLabels, clipLeft, clipRight, labelCollisionGap);
+  } else {
+    resolveLabelCollisions(leftLabels, labelCollisionGap, labelMinY, labelMaxY);
+    resolveLabelCollisions(rightLabels, labelCollisionGap, labelMinY, labelMaxY);
+    resolveHorizontalCollisions(topLabels, labelCollisionGap, clipLeft, clipRight);
+    resolveHorizontalCollisions(bottomLabels, labelCollisionGap, clipLeft, clipRight);
+  }
+
+  for (const layout of layouts) {
+    clampLayoutToBounds(
+      doc,
+      layout,
+      labelFontSize,
+      labelLineH,
+      layout.textW,
+      scoreGap,
+      clipLeft,
+      clipRight,
+      labelMinY,
+      labelMaxY
+    );
+  }
+
+  for (const layout of layouts) {
+    drawRadarLabel(doc, layout, labelFontSize, labelLineH, scoreGap);
   }
 }
 

@@ -3,10 +3,11 @@ import path from "node:path";
 import { jsPDF } from "jspdf";
 import sharp from "sharp";
 import { drawLineChart, drawRadarChart, SKINFIT_REPORT_THEME } from "./charts";
+import { type LogoAsset, loadHeaderLogo } from "./headerLogo";
+import { PDF_A4_OPTIONS, ptToMm } from "./pdfPage";
 import { reportQrDataUrl } from "./qrCode";
 import type { SdetectFaceImages, SdetectReportData } from "./types";
 
-type LogoAsset = { dataUrl: string; displayW: number; displayH: number };
 type SignatureAsset = { dataUrl: string; aspect: number };
 
 const CLINIC_LOCATIONS = [
@@ -25,47 +26,13 @@ const CLINIC_LOCATIONS = [
 const QR_FALLBACK_URL = "https://my.skinfitwellness.in";
 
 /** Vertical space reserved at page bottom for rule + footer content. */
-const FOOTER_RESERVE = 118;
+const FOOTER_RESERVE = ptToMm(118);
 /** Gap between the horizontal rule and footer content below it. */
-const FOOTER_RULE_CONTENT_GAP = 16;
+const FOOTER_RULE_CONTENT_GAP = ptToMm(16);
 
-let logoCache: LogoAsset | null = null;
 let signatureCache: SignatureAsset | null = null;
 
-const LOGO_DISPLAY_H = 32;
-
-async function loadHeaderLogo(): Promise<LogoAsset> {
-  if (logoCache) return logoCache;
-
-  const svgPath = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.svg");
-  const wellnessPng = path.join(process.cwd(), "public/branding/skinfit-wellness-logo.png");
-  const rasterH = LOGO_DISPLAY_H * 4;
-
-  let raster: Buffer;
-  try {
-    raster = await sharp(svgPath)
-      .resize({ height: rasterH })
-      .png({ compressionLevel: 6 })
-      .toBuffer();
-  } catch {
-    const buffer = await readFile(wellnessPng);
-    raster = await sharp(buffer)
-      .resize({ height: rasterH, kernel: sharp.kernel.lanczos3 })
-      .png({ compressionLevel: 6 })
-      .toBuffer();
-  }
-
-  const meta = await sharp(raster).metadata();
-  const aspect = (meta.width ?? 248) / (meta.height ?? rasterH);
-  const displayW = Math.round(LOGO_DISPLAY_H * aspect);
-
-  logoCache = {
-    dataUrl: `data:image/png;base64,${raster.toString("base64")}`,
-    displayW,
-    displayH: LOGO_DISPLAY_H,
-  };
-  return logoCache;
-}
+const LOGO_DISPLAY_H = ptToMm(32);
 
 async function loadSignatureImage(): Promise<SignatureAsset> {
   if (signatureCache) return signatureCache;
@@ -214,18 +181,18 @@ function drawBodyParagraph(
 
 function drawPageHeader(doc: jsPDF, logo: LogoAsset) {
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 22;
+  const margin = ptToMm(22);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(17);
   doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-  doc.text("Skin Analyzer Report", margin, 36);
+  doc.text("Skin Analyzer Report", margin, ptToMm(36));
 
   doc.addImage(
     logo.dataUrl,
     "PNG",
     pageW - margin - logo.displayW,
-    18,
+    ptToMm(18),
     logo.displayW,
     logo.displayH
   );
@@ -459,17 +426,17 @@ function drawSkincareAdvice(
 async function drawFooter(doc: jsPDF, qrUrl: string) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 22;
+  const margin = ptToMm(22);
   const footerLineY = pageH - FOOTER_RESERVE;
   const footerContentY = footerLineY + FOOTER_RULE_CONTENT_GAP;
 
   doc.setDrawColor(...SKINFIT_REPORT_THEME.grid);
-  doc.setLineWidth(0.75);
+  doc.setLineWidth(0.2);
   doc.line(margin, footerLineY, pageW - margin, footerLineY);
 
   const sigX = margin;
-  const sigY = footerContentY + 2;
-  const sigDisplayH = 28;
+  const sigY = footerContentY + ptToMm(2);
+  const sigDisplayH = ptToMm(28);
   const signature = await loadSignatureImage();
   const sigDisplayW = sigDisplayH * signature.aspect;
   doc.addImage(
@@ -484,66 +451,66 @@ async function drawFooter(doc: jsPDF, qrUrl: string) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...SKINFIT_REPORT_THEME.ink);
-  doc.text("Signature", sigX, sigY + sigDisplayH + 10);
-  doc.text("Skinfit Wellness", sigX, sigY + sigDisplayH + 20);
+  doc.text("Signature", sigX, sigY + sigDisplayH + ptToMm(10));
+  doc.text("Skinfit Wellness", sigX, sigY + sigDisplayH + ptToMm(20));
 
-  const colW = 175;
-  const addrStartX = margin + 115;
+  const colW = ptToMm(175);
+  const addrStartX = margin + ptToMm(115);
   CLINIC_LOCATIONS.forEach((loc, i) => {
-    const ax = addrStartX + i * (colW + 16);
+    const ax = addrStartX + i * (colW + ptToMm(16));
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(...SKINFIT_REPORT_THEME.navy);
-    let ay = footerContentY + 8;
-    for (const line of wrap(doc, loc.address, colW - 4)) {
+    let ay = footerContentY + ptToMm(8);
+    for (const line of wrap(doc, loc.address, colW - ptToMm(4))) {
       doc.text(line, ax, ay);
-      ay += 9;
+      ay += ptToMm(9);
     }
     doc.setFont("helvetica", "bold");
-    doc.text("Mobile:", ax, ay + 2);
+    doc.text("Mobile:", ax, ay + ptToMm(2));
     doc.setFont("helvetica", "normal");
-    doc.text(loc.phone, ax + 30, ay + 2);
+    doc.text(loc.phone, ax + ptToMm(30), ay + ptToMm(2));
 
     if (i === 0) {
       doc.setDrawColor(...SKINFIT_REPORT_THEME.grid);
-      doc.setLineWidth(0.5);
-      doc.line(ax + colW + 6, footerContentY + 2, ax + colW + 6, footerContentY + 66);
+      doc.setLineWidth(0.15);
+      doc.line(ax + colW + ptToMm(6), footerContentY + ptToMm(2), ax + colW + ptToMm(6), footerContentY + ptToMm(66));
     }
   });
 
-  const qrSize = 52;
+  const qrSize = ptToMm(52);
   const qrX = pageW - margin - qrSize;
-  const qrY = footerContentY + 4;
+  const qrY = footerContentY + ptToMm(4);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...SKINFIT_REPORT_THEME.muted);
-  doc.text("scan me", qrX + qrSize / 2, qrY - 2, { align: "center" });
+  doc.text("scan me", qrX + qrSize / 2, qrY - ptToMm(2), { align: "center" });
 
   const qrDataUrl = await reportQrDataUrl(qrUrl);
   doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
   doc.setFillColor(...SKINFIT_REPORT_THEME.navy);
-  doc.rect(0, pageH - 6, pageW, 6, "F");
+  doc.rect(0, pageH - ptToMm(6), pageW, ptToMm(6), "F");
 }
 
 export async function generateSkinfitReportPdf(data: SdetectReportData): Promise<Buffer> {
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const doc = new jsPDF(PDF_A4_OPTIONS);
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 22;
+  const margin = ptToMm(22);
   const contentW = pageW - margin * 2;
-  const logo = await loadHeaderLogo();
+  const logo = await loadHeaderLogo(LOGO_DISPLAY_H);
 
   drawPageHeader(doc, logo);
 
-  const patientY = 52;
-  const patientContentH = 178;
+  const patientY = ptToMm(52);
+  const patientContentH = ptToMm(178);
   const patientCardH = patientContentH * 1.1;
   drawPatientCard(doc, data, margin, patientY, contentW, patientContentH, patientCardH);
   await drawPatientImages(doc, data, margin, patientY, contentW, patientContentH);
 
-  const metricsH = 52;
-  const metricsOverlap = 14;
+  const metricsH = ptToMm(52);
+  const metricsOverlap = ptToMm(14);
   const metricsShiftDown = patientContentH * 0.04;
   const metricsRaise = patientCardH * 0.08;
   const metricsY = patientY + patientCardH - metricsOverlap + metricsShiftDown - metricsRaise;
@@ -551,12 +518,12 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
   const metricsBarX = margin + (contentW - metricsBarW) / 2;
   drawMetricsBar(doc, data, metricsBarX, metricsY, metricsBarW, metricsH);
 
-  const chartsY = metricsY + metricsH + 14;
-  const narrativeTopGap = 24;
-  const narrativeBottomPad = 14;
+  const chartsY = metricsY + metricsH + ptToMm(14);
+  const narrativeTopGap = ptToMm(24);
+  const narrativeBottomPad = ptToMm(14);
   const maxNarrativeBottom = pageH - FOOTER_RESERVE - narrativeBottomPad;
   const narrativeHeight = estimateNarrativeHeight(doc, data, contentW);
-  const minChartsH = 200;
+  const minChartsH = ptToMm(200);
   const maxChartsH =
     pageH -
     chartsY -
@@ -565,30 +532,30 @@ export async function generateSkinfitReportPdf(data: SdetectReportData): Promise
     narrativeTopGap -
     narrativeBottomPad;
   const chartsH = Math.max(minChartsH, maxChartsH);
-  const gutter = 16;
+  const gutter = ptToMm(16);
   const leftW = (contentW - gutter) * 0.48;
   const rightW = contentW - gutter - leftW;
   const rightX = margin + leftW + gutter;
-  const cardPad = 10;
+  const cardPad = ptToMm(10);
 
-  drawGreyCard(doc, margin, chartsY, leftW, chartsH, 10);
-  drawGreyCard(doc, rightX, chartsY, rightW, chartsH, 10);
+  drawGreyCard(doc, margin, chartsY, leftW, chartsH, ptToMm(10));
+  drawGreyCard(doc, rightX, chartsY, rightW, chartsH, ptToMm(10));
 
   const titleY = chartsY + cardPad;
   const titleH = drawRadarTitle(doc, margin, titleY, leftW);
   const titleBottomY = titleY + titleH;
-  const radarY = titleBottomY + 8;
+  const radarY = titleBottomY + ptToMm(8);
   drawRadarChart(doc, data.radar, {
     x: margin + cardPad,
     y: radarY,
     w: leftW - cardPad * 2,
-    h: chartsH - (radarY - chartsY) - 6,
-    labelMinY: titleBottomY + 2,
+    h: chartsH - (radarY - chartsY) - ptToMm(6),
+    labelMinY: titleBottomY + ptToMm(2),
   });
 
-  const innerPad = 10;
-  const topChartExtra = 8;
-  const lineGap = 8;
+  const innerPad = ptToMm(10);
+  const topChartExtra = ptToMm(8);
+  const lineGap = ptToMm(8);
   const lineH = (chartsH - innerPad * 2 - topChartExtra - lineGap) / 2;
   drawLineChart(
     doc,

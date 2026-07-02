@@ -207,7 +207,7 @@ function normaliseObservations(raw: unknown): KaiObservation[] {
           : colorForScore(score);
       return { title, score, color, commentary };
     })
-    .filter((o) => o.title && o.commentary);
+    .filter((o) => o.title);
 }
 
 function allScoredMetrics(data: SdetectReportData): SdetectMetric[] {
@@ -254,7 +254,7 @@ function fallbackObservations(data: SdetectReportData): KaiObservation[] {
       title: m.label,
       score: m.score,
       color: colorForScore(m.score),
-      commentary: "",
+      commentary: `Scored ${m.score}% on your comprehensive analysis — one of the areas that needs the most attention right now.`,
     }));
 }
 
