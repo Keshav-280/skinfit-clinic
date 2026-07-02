@@ -57,7 +57,7 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
       "commentary": "Exactly 2 complete sentences — every sentence must end with a full stop; never truncate or leave a sentence unfinished. Sentence 1: what is happening in their skin right now — the mechanism, specific to their score. Sentence 2: why this matters for their age and skin type, with Indian context where the data supports it. No products or treatments."
     }
   ],
-  "insight": "MANDATORY: write exactly 4 or 5 complete sentences (never 3 or fewer), 400-450 characters total — this is the user's personalised guidance. Every sentence must end with a full stop. Structure: (1-2) connect the top 3 observations into one root-cause story — why they happen together; (3) one concrete day-to-day focus — what to prioritise this week; (4) age-intelligent guidance (under 28: prevention; 28-38: early intervention; 38-48: restoration; 48+: maintain strengths); (5) name at least one parameter that scored well and what it means — a genuine positive. Use Indian context where data supports (PIH, humidity, UV, diet). No clinic, treatment, or product names."
+  "insight": "MANDATORY: write exactly 5 complete sentences (minimum 4, never 3 or fewer), 500-580 characters total — this is the user's personalised guidance section. Every sentence must end with a full stop. Structure: (1-2) connect the top 3 observations into one root-cause story; (3) one concrete day-to-day focus for this week; (4) age-intelligent guidance; (5) name at least one parameter that scored well and what it means — a genuine positive. Use Indian context where data supports (PIH, humidity, UV, diet). No clinic, treatment, or product names."
 }
 
 SECTION 3 — TOP 3 OBSERVATIONS rules:
@@ -192,7 +192,8 @@ function clampScore(value: unknown, fallback: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-const INSIGHT_MAX_CHARS = 450;
+const INSIGHT_MAX_CHARS = 580;
+const INSIGHT_MIN_SENTENCES = 4;
 
 function clampInsightLength(text: string, max = INSIGHT_MAX_CHARS): string {
   const cleaned = text.replace(/\s+/g, " ").trim();
@@ -205,6 +206,12 @@ function clampInsightLength(text: string, max = INSIGHT_MAX_CHARS): string {
     if (candidate.length <= max) packed = candidate;
     else break;
   }
+  if (packed && countSentences(packed) >= INSIGHT_MIN_SENTENCES) return packed;
+
+  // Prefer keeping at least 4 full sentences even if slightly over max
+  const minPack = sentences.slice(0, INSIGHT_MIN_SENTENCES).join(" ").replace(/\s+/g, " ").trim();
+  if (minPack && countSentences(minPack) >= INSIGHT_MIN_SENTENCES) return minPack;
+
   if (packed) return packed;
 
   const slice = cleaned.slice(0, max);
@@ -248,7 +255,7 @@ function strongestMetric(data: SdetectReportData): SdetectMetric | null {
   return (strong[0] ?? metrics.sort((a, b) => b.score - a.score)[0]) ?? null;
 }
 
-/** Pad short AI insight to 4+ guiding sentences — observations card already has detail. */
+/** Pad short AI insight to 4–5 guiding sentences — observations card already has detail. */
 function ensureInsightGuidance(
   insight: string,
   observations: KaiObservation[],
@@ -267,7 +274,8 @@ function ensureInsightGuidance(
     text =
       `Your scan shows ${focus} linked together — this pattern is common and very manageable with steady focus. ` +
       `Protect your barrier daily and keep hydration consistent so your skin can recover between stressors. ` +
-      `Prioritise sun protection every morning — Bangalore UV is year-round and drives most pigmentation flare-ups.`;
+      `Prioritise sun protection every morning — Bangalore UV is year-round and drives most pigmentation flare-ups. ` +
+      `This week, keep your routine simple: cleanse gently, moisturise while skin is damp, and do not skip SPF.`;
     if (age) {
       text += ` At ${age}, the habits you build now matter more than quick fixes for long-term tone and texture.`;
     } else {
@@ -279,17 +287,38 @@ function ensureInsightGuidance(
     return text;
   }
 
-  while (countSentences(text) < 4) {
-    const n = countSentences(text);
-    if (n === 3 && strong && !text.toLowerCase().includes(strong.label.toLowerCase().slice(0, 6))) {
-      text += ` Your ${strong.label} at ${strong.score} is a genuine asset — build on that strength while you address the priority areas above.`;
-    } else if (n <= 3 && age && !text.includes(String(age))) {
-      text += ` At ${age}, steady daily care and consistent sun protection will move these scores more than occasional intensive treatments.`;
-    } else if (n <= 3 && !/sun|uv|protect|daily|habit|focus|priorit/i.test(text)) {
-      text += ` Focus on consistency this week — hydration, gentle care, and morning sun protection give your skin the best chance to recover.`;
-    } else {
-      break;
-    }
+  const labelHint = strong?.label.toLowerCase().slice(0, 6) ?? "";
+  const pads: Array<() => string | null> = [
+    () =>
+      strong && labelHint && !text.toLowerCase().includes(labelHint)
+        ? `Your ${strong.label} at ${strong.score} is a genuine asset — build on that strength while you address the priority areas above.`
+        : null,
+    () =>
+      !/sun|spf|uv|morning protect/i.test(text)
+        ? `Make broad-spectrum sun protection non-negotiable every morning — Bangalore UV accelerates pigmentation and collagen loss.`
+        : null,
+    () =>
+      !/this week|daily|habit|consistent|focus on|priorit/i.test(text)
+        ? `This week, prioritise barrier support and steady hydration — that alone reduces sensitivity and helps everything else work better.`
+        : null,
+    () =>
+      age && !/steady|habit|consistent/i.test(text)
+        ? `At ${age}, steady daily care will move these scores faster than occasional intensive treatments.`
+        : null,
+    () =>
+      "Consistent morning SPF and gentle hydration give your skin the best chance to recover between stressors."
+  ];
+
+  for (const next of pads) {
+    if (countSentences(text) >= 5) break;
+    const extra = next();
+    if (!extra) continue;
+    text = `${text} ${extra}`.replace(/\s+/g, " ").trim();
+  }
+
+  while (countSentences(text) < INSIGHT_MIN_SENTENCES) {
+    text +=
+      " Focus on consistency this week — gentle cleansing, daily hydration, and morning sun protection support everything else.";
   }
 
   return text;

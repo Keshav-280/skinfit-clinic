@@ -783,6 +783,8 @@ function splitSentences(text: string): string[] {
   return text.match(/[^.!?]+[.!?]+/g) ?? [text];
 }
 
+const INSIGHT_MIN_SENTENCES = 4;
+
 /** Prefer shrinking font/padding over dropping sentences; keep at least 4 when possible. */
 function resolveInsightLayout(
   doc: jsPDF,
@@ -802,7 +804,7 @@ function resolveInsightLayout(
   const smallest = INSIGHT_LAYOUTS[INSIGHT_LAYOUTS.length - 1];
   const maxLines = maxInsightLinesForHeight(maxH, smallest);
   const sentences = splitSentences(cleaned);
-  const minKeep = Math.min(4, sentences.length);
+  const minKeep = Math.min(INSIGHT_MIN_SENTENCES, sentences.length);
 
   for (let keep = sentences.length; keep >= minKeep; keep -= 1) {
     const candidate = sentences.slice(0, keep).join(" ").replace(/\s+/g, " ").trim();
@@ -1003,8 +1005,8 @@ export async function generateKaiReportPdf(
   drawComprehensiveCard(doc, content, rightColX, y, rightColW, row3H);
   y += row3H + GAP_SECTION;
 
-  const maxInsightBottom = pageH - MARGIN - requiredFooterH - GAP_AFTER_INSIGHT;
-  const insightAvailable = Math.max(MIN_INSIGHT_H, maxInsightBottom - y);
+  const footerY = pageH - MARGIN - requiredFooterH;
+  const insightAvailable = Math.max(MIN_INSIGHT_H, footerY - GAP_AFTER_INSIGHT - y);
   const { layout: insightLayout, text: fittedInsight } = resolveInsightLayout(
     doc,
     content.insight,
@@ -1014,11 +1016,8 @@ export async function generateKaiReportPdf(
   const insightH = measureInsightHeight(doc, fittedInsight, contentW, insightLayout);
 
   drawInsightBox(doc, fittedInsight, MARGIN, y, contentW, insightH, insightLayout);
-  y += insightH + GAP_AFTER_INSIGHT;
 
-  const footerH = pageH - MARGIN - y;
-  const actualFooterH = Math.min(requiredFooterH, footerH);
-  await drawContactFooter(doc, MARGIN, y, contentW, actualFooterH);
+  await drawContactFooter(doc, MARGIN, footerY, contentW, requiredFooterH);
 
   return Buffer.from(doc.output("arraybuffer"));
 }
