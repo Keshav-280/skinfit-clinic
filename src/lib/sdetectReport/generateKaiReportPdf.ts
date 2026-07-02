@@ -743,48 +743,84 @@ function drawComprehensiveCard(
   );
 }
 
-const INSIGHT_PAD = ptToMm(18);
-const INSIGHT_LINE_H = ptToMm(12);
-const INSIGHT_FONT = 9;
-const INSIGHT_TEXT_TOP = ptToMm(36);
+const INSIGHT_LAYOUTS = [
+  { fontSize: 9, lineH: ptToMm(11.5), pad: ptToMm(14), textTop: ptToMm(32), bottomPad: ptToMm(8) },
+  { fontSize: 8.5, lineH: ptToMm(10.5), pad: ptToMm(12), textTop: ptToMm(30), bottomPad: ptToMm(6) },
+  { fontSize: 8, lineH: ptToMm(9.5), pad: ptToMm(10), textTop: ptToMm(28), bottomPad: ptToMm(5) },
+] as const;
 
-/** Height needed to render the full insight text at the report width. */
-function insightWrappedLines(doc: jsPDF, text: string, w: number): string[] {
+type InsightLayout = (typeof INSIGHT_LAYOUTS)[number];
+
+function insightWrappedLines(
+  doc: jsPDF,
+  text: string,
+  w: number,
+  layout: InsightLayout
+): string[] {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return [];
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(INSIGHT_FONT);
-  return wrap(doc, cleaned, w - INSIGHT_PAD * 2);
+  doc.setFontSize(layout.fontSize);
+  return wrap(doc, cleaned, w - layout.pad * 2);
 }
 
-function measureInsightHeight(doc: jsPDF, insight: string, w: number): number {
-  const lines = insightWrappedLines(doc, insight, w);
-  if (!lines.length) return INSIGHT_TEXT_TOP + ptToMm(12);
-  return INSIGHT_TEXT_TOP + lines.length * INSIGHT_LINE_H + ptToMm(12);
+function measureInsightHeight(
+  doc: jsPDF,
+  insight: string,
+  w: number,
+  layout: InsightLayout
+): number {
+  const lines = insightWrappedLines(doc, insight, w, layout);
+  if (!lines.length) return layout.textTop + layout.bottomPad + ptToMm(8);
+  return layout.textTop + lines.length * layout.lineH + layout.bottomPad;
 }
 
-function maxInsightLinesForHeight(maxH: number): number {
-  return Math.max(1, Math.floor((maxH - INSIGHT_TEXT_TOP - ptToMm(12)) / INSIGHT_LINE_H));
+function maxInsightLinesForHeight(maxH: number, layout: InsightLayout): number {
+  return Math.max(1, Math.floor((maxH - layout.textTop - layout.bottomPad) / layout.lineH));
 }
 
-/** Drop trailing sentences so insight fits the remaining page height. */
-function truncateInsightToMaxLines(doc: jsPDF, text: string, w: number, maxLines: number): string {
+function splitSentences(text: string): string[] {
+  return text.match(/[^.!?]+[.!?]+/g) ?? [text];
+}
+
+/** Prefer shrinking font/padding over dropping sentences; keep at least 4 when possible. */
+function resolveInsightLayout(
+  doc: jsPDF,
+  text: string,
+  w: number,
+  maxH: number
+): { layout: InsightLayout; text: string } {
   const cleaned = text.replace(/\s+/g, " ").trim();
-  if (!cleaned || maxLines < 1) return "";
-  if (insightWrappedLines(doc, cleaned, w).length <= maxLines) return cleaned;
+  const fallback = INSIGHT_LAYOUTS[0];
+  if (!cleaned) return { layout: fallback, text: "" };
 
-  const sentences = cleaned.match(/[^.!?]+[.!?]+/g) ?? [cleaned];
-  let best = "";
+  for (const layout of INSIGHT_LAYOUTS) {
+    const h = measureInsightHeight(doc, cleaned, w, layout);
+    if (h <= maxH) return { layout, text: cleaned };
+  }
+
+  const smallest = INSIGHT_LAYOUTS[INSIGHT_LAYOUTS.length - 1];
+  const maxLines = maxInsightLinesForHeight(maxH, smallest);
+  const sentences = splitSentences(cleaned);
+  const minKeep = Math.min(4, sentences.length);
+
+  for (let keep = sentences.length; keep >= minKeep; keep -= 1) {
+    const candidate = sentences.slice(0, keep).join(" ").replace(/\s+/g, " ").trim();
+    if (insightWrappedLines(doc, candidate, w, smallest).length <= maxLines) {
+      return { layout: smallest, text: candidate };
+    }
+  }
+
+  let best = sentences[0]?.trim() ?? cleaned;
   for (const sentence of sentences) {
-    const candidate = (best ? `${best} ${sentence}` : sentence).replace(/\s+/g, " ").trim();
-    if (insightWrappedLines(doc, candidate, w).length <= maxLines) best = candidate;
+    const candidate = (best === sentences[0]?.trim() ? sentence : `${best} ${sentence}`)
+      .replace(/\s+/g, " ")
+      .trim();
+    if (insightWrappedLines(doc, candidate, w, smallest).length <= maxLines) best = candidate;
     else break;
   }
-  return best || sentences[0]?.trim() || cleaned;
-}
 
-function fitInsightToHeight(doc: jsPDF, text: string, w: number, maxH: number): string {
-  return truncateInsightToMaxLines(doc, text, w, maxInsightLinesForHeight(maxH));
+  return { layout: smallest, text: best };
 }
 
 function drawInsightBox(
@@ -793,7 +829,8 @@ function drawInsightBox(
   x: number,
   y: number,
   w: number,
-  h: number
+  h: number,
+  layout: InsightLayout
 ) {
   doc.setFillColor(...KAI.cream);
   doc.setDrawColor(...KAI.navy);
@@ -803,16 +840,16 @@ function drawInsightBox(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(...KAI.navy);
-  doc.text("YOUR PERSONALISED NEXT STEP", x + INSIGHT_PAD, y + ptToMm(20), { charSpace: 0.6 });
+  doc.text("YOUR PERSONALISED NEXT STEP", x + layout.pad, y + ptToMm(20), { charSpace: 0.6 });
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(INSIGHT_FONT);
+  doc.setFontSize(layout.fontSize);
   doc.setTextColor(...KAI.navy);
-  const lines = insightWrappedLines(doc, insight, w);
-  let ty = y + INSIGHT_TEXT_TOP;
+  const lines = insightWrappedLines(doc, insight, w, layout);
+  let ty = y + layout.textTop;
   for (const line of lines) {
-    doc.text(line, x + INSIGHT_PAD, ty);
-    ty += INSIGHT_LINE_H;
+    doc.text(line, x + layout.pad, ty);
+    ty += layout.lineH;
   }
 }
 
@@ -967,11 +1004,16 @@ export async function generateKaiReportPdf(
   y += row3H + GAP_SECTION;
 
   const maxInsightBottom = pageH - MARGIN - requiredFooterH - GAP_AFTER_INSIGHT;
-  const insightAvailable = Math.max(0, maxInsightBottom - y);
-  const fittedInsight = fitInsightToHeight(doc, content.insight, contentW, insightAvailable);
-  const insightH = measureInsightHeight(doc, fittedInsight, contentW);
+  const insightAvailable = Math.max(MIN_INSIGHT_H, maxInsightBottom - y);
+  const { layout: insightLayout, text: fittedInsight } = resolveInsightLayout(
+    doc,
+    content.insight,
+    contentW,
+    insightAvailable
+  );
+  const insightH = measureInsightHeight(doc, fittedInsight, contentW, insightLayout);
 
-  drawInsightBox(doc, fittedInsight, MARGIN, y, contentW, insightH);
+  drawInsightBox(doc, fittedInsight, MARGIN, y, contentW, insightH, insightLayout);
   y += insightH + GAP_AFTER_INSIGHT;
 
   const footerH = pageH - MARGIN - y;

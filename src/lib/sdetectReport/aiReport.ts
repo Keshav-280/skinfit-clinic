@@ -57,7 +57,7 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
       "commentary": "Exactly 2 complete sentences — every sentence must end with a full stop; never truncate or leave a sentence unfinished. Sentence 1: what is happening in their skin right now — the mechanism, specific to their score. Sentence 2: why this matters for their age and skin type, with Indian context where the data supports it. No products or treatments."
     }
   ],
-  "insight": "Exactly 4-5 complete sentences, target 400-450 characters total (never exceed 450) — every sentence must end with a full stop; never truncate or leave a sentence unfinished. Be specific and layered: name mechanisms, connect observations, and add one concrete day-to-day detail. RULE 1: Connect the top 3 observations into one root-cause story — why these happen together. RULE 2: Be age-intelligent (under 28: prevention + strengths; 28-38: early intervention; 38-48: restoration + protection; 48+: maintain strengths, address what shifted). RULE 3: Use real Indian-specific factors where data supports (PIH/melanin reactivity, Bangalore humidity, year-round high UV, hormonal melasma, refined-carb/dairy diet). RULE 4: End by naming at least one parameter that scored well and what it means — a genuine positive. RULE 5: No clinic references, treatment names, or product categories."
+  "insight": "MANDATORY: write exactly 4 or 5 complete sentences (never 3 or fewer), 400-450 characters total — this is the user's personalised guidance. Every sentence must end with a full stop. Structure: (1-2) connect the top 3 observations into one root-cause story — why they happen together; (3) one concrete day-to-day focus — what to prioritise this week; (4) age-intelligent guidance (under 28: prevention; 28-38: early intervention; 38-48: restoration; 48+: maintain strengths); (5) name at least one parameter that scored well and what it means — a genuine positive. Use Indian context where data supports (PIH, humidity, UV, diet). No clinic, treatment, or product names."
 }
 
 SECTION 3 — TOP 3 OBSERVATIONS rules:
@@ -197,6 +197,16 @@ const INSIGHT_MAX_CHARS = 450;
 function clampInsightLength(text: string, max = INSIGHT_MAX_CHARS): string {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned || cleaned.length <= max) return cleaned;
+
+  const sentences = cleaned.match(/[^.!?]+[.!?]+/g) ?? [cleaned];
+  let packed = "";
+  for (const sentence of sentences) {
+    const candidate = (packed ? `${packed} ${sentence}` : sentence).replace(/\s+/g, " ").trim();
+    if (candidate.length <= max) packed = candidate;
+    else break;
+  }
+  if (packed) return packed;
+
   const slice = cleaned.slice(0, max);
   const lastStop = Math.max(slice.lastIndexOf("."), slice.lastIndexOf("!"), slice.lastIndexOf("?"));
   return (lastStop > 80 ? slice.slice(0, lastStop + 1) : `${slice.trimEnd()}…`).trim();
@@ -217,6 +227,72 @@ function ensureTwoSentences(commentary: string, title: string, score: number): s
     return `${cleaned} At a score of ${score}, this matters more for long-term tone and texture than a single good or bad week — notice when ${topic} feels worse after heat, stress, or skipped care.`;
   }
   return cleaned;
+}
+
+function allScoredMetrics(data: SdetectReportData): SdetectMetric[] {
+  const all = [...data.radar];
+  const seen = new Set(all.map((m) => m.label));
+  for (const m of [...data.generalAnalysis, ...data.inDepthAnalysis]) {
+    if (!seen.has(m.label)) {
+      all.push(m);
+      seen.add(m.label);
+    }
+  }
+  return all;
+}
+
+function strongestMetric(data: SdetectReportData): SdetectMetric | null {
+  const metrics = allScoredMetrics(data);
+  if (!metrics.length) return null;
+  const strong = metrics.filter((m) => m.score >= 60).sort((a, b) => b.score - a.score);
+  return (strong[0] ?? metrics.sort((a, b) => b.score - a.score)[0]) ?? null;
+}
+
+/** Pad short AI insight to 4+ guiding sentences — observations card already has detail. */
+function ensureInsightGuidance(
+  insight: string,
+  observations: KaiObservation[],
+  data: SdetectReportData
+): string {
+  let text = insight.replace(/\s+/g, " ").trim();
+  const age = data.patient.age;
+  const strong = strongestMetric(data);
+  const topTitles = observations
+    .slice(0, 2)
+    .map((o) => o.title.toLowerCase())
+    .filter(Boolean);
+
+  if (!text) {
+    const focus = topTitles.length ? topTitles.join(" and ") : "your priority concerns";
+    text =
+      `Your scan shows ${focus} linked together — this pattern is common and very manageable with steady focus. ` +
+      `Protect your barrier daily and keep hydration consistent so your skin can recover between stressors. ` +
+      `Prioritise sun protection every morning — Bangalore UV is year-round and drives most pigmentation flare-ups.`;
+    if (age) {
+      text += ` At ${age}, the habits you build now matter more than quick fixes for long-term tone and texture.`;
+    } else {
+      text += ` Small, consistent daily habits will move these scores faster than occasional intensive care.`;
+    }
+    if (strong) {
+      text += ` Your ${strong.label} at ${strong.score} is already a strength — use that as your foundation.`;
+    }
+    return text;
+  }
+
+  while (countSentences(text) < 4) {
+    const n = countSentences(text);
+    if (n === 3 && strong && !text.toLowerCase().includes(strong.label.toLowerCase().slice(0, 6))) {
+      text += ` Your ${strong.label} at ${strong.score} is a genuine asset — build on that strength while you address the priority areas above.`;
+    } else if (n <= 3 && age && !text.includes(String(age))) {
+      text += ` At ${age}, steady daily care and consistent sun protection will move these scores more than occasional intensive treatments.`;
+    } else if (n <= 3 && !/sun|uv|protect|daily|habit|focus|priorit/i.test(text)) {
+      text += ` Focus on consistency this week — hydration, gentle care, and morning sun protection give your skin the best chance to recover.`;
+    } else {
+      break;
+    }
+  }
+
+  return text;
 }
 
 function normaliseObservations(raw: unknown): KaiObservation[] {
@@ -240,18 +316,6 @@ function normaliseObservations(raw: unknown): KaiObservation[] {
       return { title, score, color, commentary };
     })
     .filter((o) => o.title);
-}
-
-function allScoredMetrics(data: SdetectReportData): SdetectMetric[] {
-  const all = [...data.radar];
-  const seen = new Set(all.map((m) => m.label));
-  for (const m of [...data.generalAnalysis, ...data.inDepthAnalysis]) {
-    if (!seen.has(m.label)) {
-      all.push(m);
-      seen.add(m.label);
-    }
-  }
-  return all;
 }
 
 /** Lowest parameter scores — used to correct AI observations that pick moisture etc. */
@@ -354,6 +418,8 @@ export async function buildKaiReportContent(
     observations: finalObservations,
     radarLabels,
     radarValues,
-    insight: clampInsightLength(asString(ai?.insight)),
+    insight: clampInsightLength(
+      ensureInsightGuidance(asString(ai?.insight), finalObservations, data)
+    ),
   };
 }
