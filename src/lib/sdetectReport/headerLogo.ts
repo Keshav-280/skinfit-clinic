@@ -6,7 +6,7 @@ import { ptToMm } from "./pdfPage";
 export type LogoAsset = { dataUrl: string; displayW: number; displayH: number };
 
 /** Header logo display height on the PDF page (millimetres). */
-export const HEADER_LOGO_DISPLAY_H = ptToMm(26);
+export const HEADER_LOGO_DISPLAY_H = ptToMm(34);
 
 /** Target print resolution for rasterising the vector logo. */
 const LOGO_PRINT_DPI = 300;

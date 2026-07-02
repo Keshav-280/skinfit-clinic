@@ -54,7 +54,7 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
       "title": "Max 4 words, plain English. Never use a clinical Medixora parameter name directly (e.g. Porphyrin -> Clogged pores and bacteria; Heat Map of Sensitivity -> Skin sensitivity and redness).",
       "score": 0,
       "color": "red if below 40 / amber if 40-59 / green if 60+",
-      "commentary": "Exactly 2 sentences maximum. Sentence 1: what is happening in their skin right now — the mechanism, specific to their score. Sentence 2: why this matters for their age and skin type, with Indian context where the data supports it. No products or treatments."
+      "commentary": "Exactly 2 complete sentences — every sentence must end with a full stop; never truncate or leave a sentence unfinished. Sentence 1: what is happening in their skin right now — the mechanism, specific to their score. Sentence 2: why this matters for their age and skin type, with Indian context where the data supports it. No products or treatments."
     }
   ],
   "insight": "4-6 sentences. RULE 1: Connect the top 3 observations into one root-cause story — why these happen together. RULE 2: Be age-intelligent (under 28: prevention + strengths; 28-38: early intervention; 38-48: restoration + protection; 48+: maintain strengths, address what shifted). RULE 3: Use real Indian-specific factors where data supports (PIH/melanin reactivity, Bangalore humidity, year-round high UV, hormonal melasma, refined-carb/dairy diet). RULE 4: End by naming at least one parameter that scored well and what it means — a genuine positive. RULE 5: No clinic references, treatment names, or product categories."
@@ -66,6 +66,7 @@ SECTION 3 — TOP 3 OBSERVATIONS rules:
 - EXCEPTION: if two parameters are closely related (Sebum+Pores, Superficial+Brown pigment), group into one observation using the lower score.
 - Use the exact numeric score from the Analysis parameter lists for each observation.
 - Moisture % is a hydration reading only — never use it as an observation score.
+- Return exactly 3 observations. Each commentary must be exactly 2 complete sentences (not 1, not 3).
 
 Return ONLY the JSON. No markdown fences, no commentary outside the JSON.`;
 }
@@ -191,6 +192,23 @@ function clampScore(value: unknown, fallback: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+function countSentences(text: string): number {
+  return (text.match(/[^.!?]+[.!?]+/g) ?? []).length;
+}
+
+/** Pad short AI commentary to two complete sentences for consistent card layout. */
+function ensureTwoSentences(commentary: string, title: string, score: number): string {
+  const cleaned = commentary.replace(/\s+/g, " ").trim();
+  if (!cleaned) return commentary;
+  if (countSentences(cleaned) >= 2) return cleaned;
+
+  const topic = title.toLowerCase();
+  if (countSentences(cleaned) === 1) {
+    return `${cleaned} At a score of ${score}, this matters more for long-term tone and texture than a single good or bad week — notice when ${topic} feels worse after heat, stress, or skipped care.`;
+  }
+  return cleaned;
+}
+
 function normaliseObservations(raw: unknown): KaiObservation[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -199,7 +217,11 @@ function normaliseObservations(raw: unknown): KaiObservation[] {
       const o = (item ?? {}) as Record<string, unknown>;
       const score = clampScore(o.score, 0);
       const title = asString(o.title, "Skin observation").replace(/\s+/g, " ");
-      const commentary = asString(o.commentary).replace(/\s+/g, " ");
+      const commentary = ensureTwoSentences(
+        asString(o.commentary).replace(/\s+/g, " "),
+        title,
+        score
+      );
       const colorRaw = asString(o.color).toLowerCase();
       const color: KaiObservationColor =
         colorRaw === "red" || colorRaw === "amber" || colorRaw === "green"
@@ -254,7 +276,7 @@ function fallbackObservations(data: SdetectReportData): KaiObservation[] {
       title: m.label,
       score: m.score,
       color: colorForScore(m.score),
-      commentary: `Scored ${m.score}% on your comprehensive analysis — one of the areas that needs the most attention right now.`,
+      commentary: `Your ${m.label} scored ${m.score}% on this scan, placing it among your lowest-scoring parameters. At this level, the skin is working harder than ideal to stay balanced in this area.`,
     }));
 }
 

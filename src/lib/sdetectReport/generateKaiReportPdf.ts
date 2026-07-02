@@ -16,7 +16,7 @@ const KAI = {
   ink: [40, 42, 70] as RGB,
   coral: [216, 139, 107] as RGB,
   coralLight: [232, 190, 170] as RGB,
-  teal: [122, 158, 147] as RGB,
+  teal: [102, 136, 126] as RGB,
   muted: [120, 122, 138] as RGB,
   card: [255, 255, 255] as RGB,
   cardBorder: [225, 222, 214] as RGB,
@@ -44,23 +44,34 @@ const CLINIC_LOCATIONS = [
   },
 ] as const;
 
-const BOOKING_URL = "https://my.skinfitwellness.in";
+const INSTAGRAM_URL = "https://www.instagram.com/skinfitwellness.in/";
 
 /** A4 printable layout (millimetres). */
 const MARGIN = ptToMm(32);
 const GUTTER = ptToMm(16);
 const LEFT_COL_RATIO = 0.56;
-const HEADER_H = ptToMm(50);
+const HEADER_H = ptToMm(60);
 const ROW2_MIN_H = ptToMm(88);
-const ROW3_H = 80;
+const ROW2_BOTTOM_TRIM_MM = (25 * 25.4) / 96;
 const MIN_FOOTER_H = ptToMm(66);
-const MAX_FOOTER_H = ptToMm(82);
+const MAX_FOOTER_H = ptToMm(88);
+const FOOTER_CTA_GAP = ptToMm(4);
+const FOOTER_BOTTOM_PAD = ptToMm(4);
+const FOOTER_QR_SIZE = ptToMm(42);
+const FOOTER_QR_LABEL_GAP = ptToMm(3);
+const FOOTER_QR_LABEL_H = ptToMm(6);
 const MIN_INSIGHT_H = ptToMm(80);
-const GAP_SECTION = ptToMm(12);
-const GAP_AFTER_HEADER = ptToMm(14);
-const GAP_AFTER_INSIGHT = ptToMm(10);
+const GAP_SECTION = ptToMm(10);
+const GAP_AFTER_HEADER = ptToMm(12);
+const GAP_AFTER_INSIGHT = ptToMm(5);
 const CARD_PAD = ptToMm(16);
 const CARD_RADIUS = ptToMm(12);
+const SKIN_TYPE_CODE_BASELINE = ptToMm(40);
+/** Vertical gap from Baumann code baseline to grey trait descriptor line. */
+const SKIN_TYPE_CODE_TO_PLAIN_GAP = ptToMm(15);
+const SKIN_TYPE_PLAIN_BASELINE = SKIN_TYPE_CODE_BASELINE + SKIN_TYPE_CODE_TO_PLAIN_GAP;
+const IDENTITY_PROFILE_H = ptToMm(58);
+const IDENTITY_PROFILE_W = ptToMm(46);
 
 function formatPatientPhone(phone: string): string {
   const trimmed = phone.trim();
@@ -92,9 +103,27 @@ type PreparedFaceImage = {
   offsetY: number;
 };
 
-const MAP_TOP_CROP_RATIO = 0.03;
+const MAP_TOP_CROP_RATIO = 0.1;
 /** Keep the face-centered band; white-map scans have wide empty side margins. */
 const MAP_CENTER_WIDTH_RATIO = 0.9;
+
+function mapCropDimensions(srcW: number, srcH: number) {
+  const cropTop = Math.min(srcH - 1, Math.floor(srcH * MAP_TOP_CROP_RATIO));
+  const cropH = Math.max(1, srcH - cropTop);
+  const contentW = Math.max(1, Math.floor(srcW * MAP_CENTER_WIDTH_RATIO));
+  const insetX = Math.floor((srcW - contentW) / 2);
+  return { cropTop, cropH, contentW, insetX };
+}
+
+async function measureMapDrawWidth(buffer: Buffer, slotH: number): Promise<number> {
+  const meta = await sharp(buffer).metadata();
+  const srcW = meta.width ?? 1;
+  const srcH = meta.height ?? 1;
+  const { cropH, contentW } = mapCropDimensions(srcW, srcH);
+  const slotPxH = Math.max(1, Math.round((slotH * FACE_PRINT_DPI) / 25.4));
+  const drawPxW = Math.max(1, Math.round((slotPxH * contentW) / cropH));
+  return (drawPxW * 25.4) / FACE_PRINT_DPI;
+}
 
 async function prepareFaceImage(
   buffer: Buffer,
@@ -109,22 +138,24 @@ async function prepareFaceImage(
     const meta = await sharp(buffer).metadata();
     const srcW = meta.width ?? slotPxW;
     const srcH = meta.height ?? slotPxH;
-    const cropTop = Math.min(srcH - 1, Math.floor(srcH * MAP_TOP_CROP_RATIO));
-    const cropH = Math.max(1, srcH - cropTop);
-    const contentW = Math.max(1, Math.floor(srcW * MAP_CENTER_WIDTH_RATIO));
-    const insetX = Math.floor((srcW - contentW) / 2);
+    const { cropTop, cropH, contentW, insetX } = mapCropDimensions(srcW, srcH);
+    const drawPxH = slotPxH;
+    const drawPxW = Math.max(1, Math.round((drawPxH * contentW) / cropH));
 
     const jpg = await sharp(buffer)
       .extract({ left: insetX, top: cropTop, width: contentW, height: cropH })
-      .resize(slotPxW, slotPxH, { fit: "fill" })
+      .resize(drawPxW, drawPxH, { fit: "fill" })
       .jpeg({ quality: 92 })
       .toBuffer();
 
+    const drawW = (drawPxW * 25.4) / FACE_PRINT_DPI;
+    const drawH = (drawPxH * 25.4) / FACE_PRINT_DPI;
+
     return {
       dataUrl: `data:image/jpeg;base64,${jpg.toString("base64")}`,
-      drawW: slotW,
-      drawH: slotH,
-      offsetX: 0,
+      drawW,
+      drawH,
+      offsetX: (slotW - drawW) / 2,
       offsetY: 0,
     };
   }
@@ -234,13 +265,14 @@ async function drawHeader(
     .filter((s) => s && s !== "—")
     .join("  ·  ");
   const midY = h / 2;
-  const titleY = midY - (subtitle ? ptToMm(5) : 0);
-  const subtitleY = midY + ptToMm(9);
+  const titleY = midY - (subtitle ? ptToMm(5.5) : 0);
+  const subtitleY = midY + ptToMm(9.5);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(10.5);
   doc.setTextColor(...KAI.navy);
   doc.text("Your personal skin analysis", pageW - MARGIN, titleY, { align: "right" });
   if (subtitle) {
+    doc.setFontSize(10);
     doc.setTextColor(...KAI.coral);
     doc.text(subtitle, pageW - MARGIN, subtitleY, { align: "right" });
   }
@@ -259,14 +291,17 @@ async function drawIdentityRow(
 
   const imgGap = ptToMm(6);
   const profileGap = ptToMm(4);
-  const profileH = ptToMm(50);
+  const profileH = IDENTITY_PROFILE_H;
   const whiteMapH = profileH * 2 + profileGap;
-  const profileColW = ptToMm(42);
-  const whiteMapW = profileColW * 1.5;
+  const profileColW = IDENTITY_PROFILE_W;
+  const whiteMapW =
+    medixoraLayout && data.faceImages?.front
+      ? await measureMapDrawWidth(data.faceImages.front, whiteMapH)
+      : profileColW * 1.5;
   const medixoraBlockW = whiteMapW + imgGap + profileColW;
 
-  const fallbackImgH = ptToMm(88);
-  const fallbackImgW = ptToMm(66);
+  const fallbackImgH = ptToMm(100);
+  const fallbackImgW = ptToMm(72);
   const fallbackBlockW =
     presentSlots.length > 0
       ? presentSlots.length * fallbackImgW + (presentSlots.length - 1) * imgGap
@@ -275,7 +310,7 @@ async function drawIdentityRow(
   const imgBlockW = medixoraLayout ? medixoraBlockW : fallbackBlockW;
   const imgBlockH = medixoraLayout ? whiteMapH : fallbackImgH;
   const textH = measureIdentityTextHeight(data);
-  const rowH = Math.max(imgBlockH + CARD_PAD, textH + ptToMm(8));
+  const rowH = Math.max(imgBlockH + ptToMm(10), textH + ptToMm(6));
 
   roundedCard(doc, x, y, w, rowH);
 
@@ -376,8 +411,7 @@ function measureSkinTypeCardHeight(
 ): number {
   const pad = CARD_PAD;
   const innerW = w - pad * 2;
-  let h = ptToMm(16) + ptToMm(4);
-  h += ptToMm(24);
+  let h = SKIN_TYPE_PLAIN_BASELINE;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   const plainLines = wrap(doc, content.skinTypePlain, innerW);
@@ -385,12 +419,29 @@ function measureSkinTypeCardHeight(
   h += ptToMm(4);
   const summaryLines = wrap(doc, content.skinTypeSummary, innerW);
   h += summaryLines.length * ptToMm(12);
-  return h + ptToMm(8);
+  return h + ptToMm(2);
 }
 
+/** Fixed gap from score cluster to "Needs Attention" label (CSS px). */
+const SCORE_TO_LABEL_GAP_MM = (35 * 25.4) / 96;
+/** Lift status + grade lines closer to the gauge (CSS px). */
+const SCORE_LABEL_LIFT_MM = (15 * 25.4) / 96;
+const GAUGE_SCALE = 1.2;
+
 function measureScoreCardHeight(doc: jsPDF, content: KaiReportContent, w: number): number {
-  const radius = Math.min(w * 0.28, ptToMm(26));
-  return ptToMm(22) + radius + ptToMm(14) + ptToMm(16) + ptToMm(6);
+  const layoutRadius = Math.min(w * 0.28 * GAUGE_SCALE, ptToMm(26 * GAUGE_SCALE));
+  const gaugeDownOffset = ptToMm(10 * GAUGE_SCALE) + A4_HEIGHT_MM * 0.005 * GAUGE_SCALE;
+  const gaugeTop = ptToMm(22 * GAUGE_SCALE);
+  const gaugeBaseY = gaugeTop + layoutRadius + gaugeDownOffset;
+  const scoreBlockBottom =
+    gaugeBaseY -
+    ptToMm(3 * GAUGE_SCALE) +
+    ptToMm(6.5 * GAUGE_SCALE) +
+    A4_HEIGHT_MM * 0.001 * GAUGE_SCALE +
+    ptToMm(4 * GAUGE_SCALE);
+  const scoreLabelY = scoreBlockBottom + SCORE_TO_LABEL_GAP_MM;
+  const gradeY = scoreLabelY + ptToMm(10);
+  return gradeY + ptToMm(2);
 }
 
 function measureRow2Height(
@@ -399,11 +450,10 @@ function measureRow2Height(
   leftW: number,
   rightW: number
 ): number {
-  return Math.max(
-    ROW2_MIN_H,
-    measureSkinTypeCardHeight(doc, content, leftW),
-    measureScoreCardHeight(doc, content, rightW)
-  );
+  const skinH = measureSkinTypeCardHeight(doc, content, leftW);
+  const scoreH = measureScoreCardHeight(doc, content, rightW);
+  const contentH = Math.max(skinH, scoreH);
+  return Math.max(contentH, Math.max(ROW2_MIN_H, contentH) - ROW2_BOTTOM_TRIM_MM);
 }
 
 function drawSkinTypeCard(
@@ -422,13 +472,13 @@ function drawSkinTypeCard(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(...KAI.navy);
-  doc.text(content.skinTypeCode || "—", x + pad, y + ptToMm(40));
+  doc.text(content.skinTypeCode || "—", x + pad, y + SKIN_TYPE_CODE_BASELINE);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(...KAI.muted);
   const plainLines = wrap(doc, content.skinTypePlain, innerW);
-  let py = y + ptToMm(52);
+  let py = y + SKIN_TYPE_PLAIN_BASELINE;
   for (const line of plainLines) {
     doc.text(line, x + pad, py);
     py += ptToMm(11);
@@ -440,7 +490,6 @@ function drawSkinTypeCard(
   const summaryLines = wrap(doc, content.skinTypeSummary, innerW);
   let sy = py + ptToMm(4);
   for (const line of summaryLines) {
-    if (sy > y + h - ptToMm(6)) break;
     doc.text(line, x + pad, sy);
     sy += ptToMm(12);
   }
@@ -458,48 +507,130 @@ function drawScoreCard(
   const cx = x + w / 2;
   sectionLabel(doc, "skinfit score", cx, y + ptToMm(16), "center");
 
-  const bottomPad = ptToMm(6);
-  const labelLift = A4_HEIGHT_MM * 0.014;
-  const gradeLayoutY = y + h - bottomPad;
-  const scoreLabelLayoutY = gradeLayoutY - ptToMm(8);
+  const gaugeDownOffset = ptToMm(10 * GAUGE_SCALE) + A4_HEIGHT_MM * 0.005 * GAUGE_SCALE;
+  const gaugeTop = y + ptToMm(22 * GAUGE_SCALE);
+  const layoutRadius = Math.min(w * 0.28 * GAUGE_SCALE, ptToMm(26 * GAUGE_SCALE));
+  const gaugeBaseY = gaugeTop + layoutRadius + gaugeDownOffset;
+  const radius = Math.min(
+    layoutRadius + ptToMm(3 * GAUGE_SCALE),
+    w * 0.5 - ptToMm(4 * GAUGE_SCALE),
+    ptToMm(29 * GAUGE_SCALE)
+  );
+  const gaugeThickness = ptToMm(6 * GAUGE_SCALE);
+  drawScoreGauge(doc, cx, gaugeBaseY, radius, content.kaiScore, gaugeThickness);
 
+  const scoreFontSize = 21 * GAUGE_SCALE;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(scoreFontSize);
+  doc.setTextColor(...KAI.navy);
+  const scoreY = gaugeBaseY - ptToMm(3 * GAUGE_SCALE);
+  doc.text(String(content.kaiScore), cx, scoreY, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(8 * GAUGE_SCALE);
   doc.setTextColor(...KAI.muted);
   doc.text(
-    `${content.kaiScoreGrade} grade · ${content.kaiScoreBand}`,
+    "/100",
     cx,
-    gradeLayoutY - labelLift,
+    scoreY + ptToMm(6.5 * GAUGE_SCALE) + A4_HEIGHT_MM * 0.001 * GAUGE_SCALE,
     { align: "center" }
   );
+
+  const scoreBlockBottom =
+    scoreY + ptToMm(6.5 * GAUGE_SCALE) + A4_HEIGHT_MM * 0.001 * GAUGE_SCALE + ptToMm(4 * GAUGE_SCALE);
+  const scoreLabelY = scoreBlockBottom + SCORE_TO_LABEL_GAP_MM - SCORE_LABEL_LIFT_MM;
+  const gradeY = scoreLabelY + ptToMm(10);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   doc.setTextColor(...KAI.navy);
-  doc.text(content.kaiScoreLabel, cx, scoreLabelLayoutY - labelLift, { align: "center" });
+  doc.text(content.kaiScoreLabel, cx, scoreLabelY, { align: "center" });
 
-  const gaugeDownOffset = ptToMm(10) + A4_HEIGHT_MM * 0.005;
-  const gaugeTop = y + ptToMm(22);
-  const maxRadiusByHeight = Math.max(
-    ptToMm(10),
-    scoreLabelLayoutY - ptToMm(14) - gaugeTop - gaugeDownOffset
-  );
-  const layoutRadius = Math.min(w * 0.28, ptToMm(26), maxRadiusByHeight);
-  const gaugeBaseY = gaugeTop + layoutRadius + gaugeDownOffset;
-  const radius = Math.min(layoutRadius + ptToMm(3), w * 0.5 - ptToMm(4), ptToMm(29));
-  const gaugeThickness = ptToMm(6);
-  drawScoreGauge(doc, cx, gaugeBaseY, radius, content.kaiScore, gaugeThickness);
-
-  const scoreFontSize = 21;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(scoreFontSize);
-  doc.setTextColor(...KAI.navy);
-  const scoreY = gaugeBaseY - ptToMm(3);
-  doc.text(String(content.kaiScore), cx, scoreY, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...KAI.muted);
-  doc.text("/100", cx, scoreY + ptToMm(6.5) + A4_HEIGHT_MM * 0.001, { align: "center" });
+  doc.text(`${content.kaiScoreGrade} grade · ${content.kaiScoreBand}`, cx, gradeY, { align: "center" });
+}
+
+function observationCommentary(obs: KaiReportContent["observations"][number]): string {
+  return (
+    obs.commentary.trim() ||
+    `Scored ${obs.score}% on your comprehensive analysis — one of the areas that needs the most attention right now.`
+  );
+}
+
+const OBS_HEADER_H = ptToMm(28);
+const OBS_BOTTOM_PAD = ptToMm(3);
+const OBS_DIVIDER_H = ptToMm(5);
+const OBS_TITLE_TOP = ptToMm(10);
+const OBS_TITLE_LINE_H = ptToMm(11);
+const OBS_COMMENTARY_GAP = ptToMm(2);
+const OBS_COMMENTARY_LINE_H = ptToMm(10.5);
+const OBS_ROW_END_PAD = ptToMm(4);
+
+function observationRowLayout(
+  doc: jsPDF,
+  obs: KaiReportContent["observations"][number],
+  w: number
+) {
+  const pad = CARD_PAD;
+  const innerW = w - pad * 2;
+  const titleX = pad + ptToMm(14);
+
+  const pillLabel = `score ${obs.score}`;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  const pillW = doc.getTextWidth(pillLabel) + ptToMm(16);
+  const pillX = w - pad - pillW;
+  const titleMaxW = pillX - titleX - ptToMm(6);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  const titleLines = wrap(doc, obs.title, titleMaxW);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  const commentaryLines = wrap(doc, observationCommentary(obs), innerW - ptToMm(14));
+
+  const contentH =
+    OBS_TITLE_TOP +
+    titleLines.length * OBS_TITLE_LINE_H +
+    OBS_COMMENTARY_GAP +
+    commentaryLines.length * OBS_COMMENTARY_LINE_H +
+    OBS_ROW_END_PAD;
+
+  return {
+    titleLines,
+    commentaryLines,
+    contentH: Math.max(ptToMm(16), contentH),
+  };
+}
+
+function measureObservationRowHeight(
+  doc: jsPDF,
+  obs: KaiReportContent["observations"][number],
+  w: number
+): number {
+  return observationRowLayout(doc, obs, w).contentH;
+}
+
+function measureObservationsCardHeight(doc: jsPDF, content: KaiReportContent, w: number): number {
+  const observations = content.observations.slice(0, 3);
+  if (!observations.length) return OBS_HEADER_H + OBS_BOTTOM_PAD;
+
+  let bodyH = 0;
+  observations.forEach((obs, index) => {
+    bodyH += measureObservationRowHeight(doc, obs, w);
+    if (index < observations.length - 1) bodyH += OBS_DIVIDER_H;
+  });
+  return OBS_HEADER_H + bodyH + OBS_BOTTOM_PAD;
+}
+
+function measureRow3Height(
+  doc: jsPDF,
+  content: KaiReportContent,
+  leftW: number
+): number {
+  return measureObservationsCardHeight(doc, content, leftW);
 }
 
 function drawObservationsCard(
@@ -510,28 +641,21 @@ function drawObservationsCard(
   w: number,
   h: number
 ) {
-  roundedCard(doc, x, y, w, h);
   const pad = CARD_PAD;
-  sectionLabel(doc, "top 3 observations", x + pad, y + ptToMm(20));
-
-  const innerW = w - pad * 2;
-  const titleX = x + pad + ptToMm(14);
   const observations = content.observations.slice(0, 3);
+  const cardH = measureObservationsCardHeight(doc, content, w);
+  roundedCard(doc, x, y, w, Math.max(h, cardH));
+  sectionLabel(doc, "top 3 observations", x + pad, y + ptToMm(16));
+
+  const titleX = x + pad + ptToMm(14);
   if (!observations.length) return;
 
-  const headerH = ptToMm(32);
-  const bottomPad = ptToMm(8);
-  const dividerH = ptToMm(10);
-  const dividerCount = Math.max(observations.length - 1, 0);
-  const bodyH = h - headerH - bottomPad;
-  const rowH = (bodyH - dividerCount * dividerH) / observations.length;
-
-  let cy = y + headerH;
+  let cy = y + OBS_HEADER_H;
 
   observations.forEach((obs, index) => {
+    const { titleLines, commentaryLines, contentH: rowH } = observationRowLayout(doc, obs, w);
     const rowTop = cy;
     const rowBottom = rowTop + rowH;
-    const textLimit = rowBottom - ptToMm(4);
     const style = OBS_STYLE[obs.color];
     const dotX = x + pad + ptToMm(3);
 
@@ -554,35 +678,27 @@ function drawObservationsCard(
     doc.setFontSize(11);
     doc.setTextColor(...KAI.navy);
     const titleMaxW = pillX - titleX - ptToMm(6);
-    const titleLines = wrap(doc, obs.title, titleMaxW);
-    let ty = rowTop + ptToMm(10);
+    let ty = rowTop + OBS_TITLE_TOP;
     for (const line of titleLines) {
-      if (ty > textLimit) break;
       doc.text(line, titleX, ty);
-      ty += ptToMm(12);
+      ty += OBS_TITLE_LINE_H;
     }
 
-    const commentary =
-      obs.commentary.trim() ||
-      `Scored ${obs.score}% on your comprehensive analysis — one of the areas that needs the most attention right now.`;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(...KAI.ink);
-    const commentaryLines = wrap(doc, commentary, innerW - ptToMm(14));
-    const commentaryLineH = ptToMm(10.5);
-    ty += ptToMm(2);
+    ty += OBS_COMMENTARY_GAP;
     for (const line of commentaryLines) {
-      if (ty > textLimit) break;
       doc.text(line, titleX, ty);
-      ty += commentaryLineH;
+      ty += OBS_COMMENTARY_LINE_H;
     }
 
     if (index < observations.length - 1) {
-      const dividerY = rowBottom + dividerH / 2;
+      const dividerY = rowBottom + OBS_DIVIDER_H / 2;
       doc.setDrawColor(...KAI.divider);
       doc.setLineWidth(ptToMm(0.5));
       doc.line(x + pad, dividerY, x + w - pad, dividerY);
-      cy = rowBottom + dividerH;
+      cy = rowBottom + OBS_DIVIDER_H;
     } else {
       cy = rowBottom;
     }
@@ -647,17 +763,19 @@ function drawInsightBox(
   w: number,
   h: number
 ) {
-  doc.setFillColor(...KAI.navy);
-  doc.roundedRect(x, y, w, h, CARD_RADIUS, CARD_RADIUS, "F");
+  doc.setFillColor(...KAI.cream);
+  doc.setDrawColor(...KAI.navy);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(x, y, w, h, CARD_RADIUS, CARD_RADIUS, "FD");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  doc.setTextColor(...KAI.coralLight);
+  doc.setTextColor(...KAI.navy);
   doc.text("YOUR PERSONALISED NEXT STEP", x + INSIGHT_PAD, y + ptToMm(20), { charSpace: 0.6 });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(INSIGHT_FONT);
-  doc.setTextColor(...KAI.white);
+  doc.setTextColor(...KAI.navy);
   const lines = wrap(doc, content.insight, w - INSIGHT_PAD * 2);
   let ty = y + INSIGHT_TEXT_TOP;
   for (const line of lines) {
@@ -665,6 +783,69 @@ function drawInsightBox(
     doc.text(line, x + INSIGHT_PAD, ty);
     ty += INSIGHT_LINE_H;
   }
+}
+
+function measureLocationBlockHeight(doc: jsPDF, address: string, colW: number): number {
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  let h = ptToMm(12);
+  for (const _line of wrap(doc, address, colW - 4)) {
+    h += ptToMm(8.5);
+  }
+  return h + ptToMm(3) + ptToMm(8);
+}
+
+function footerLayoutMetrics(doc: jsPDF, w: number) {
+  const pad = CARD_PAD;
+  const qrSize = FOOTER_QR_SIZE;
+  const qrGap = ptToMm(16);
+  const qrX = w - pad - qrSize;
+  const locGap = ptToMm(16);
+  const locAreaW = qrX - pad - qrGap;
+  const colW = (locAreaW - locGap) / 2;
+  const ashokH = measureLocationBlockHeight(doc, CLINIC_LOCATIONS[0].address, colW);
+  const koraH = measureLocationBlockHeight(doc, CLINIC_LOCATIONS[1].address, colW);
+  const qrStackH = qrSize + FOOTER_QR_LABEL_GAP + FOOTER_QR_LABEL_H;
+  const rightRowH = Math.max(koraH, qrStackH);
+  const contentBlockH = Math.max(ashokH, rightRowH);
+  return { pad, qrSize, qrGap, qrX, locGap, colW, ashokH, koraH, qrStackH, rightRowH, contentBlockH };
+}
+
+function measureContactFooterHeight(doc: jsPDF, w: number): number {
+  const { contentBlockH } = footerLayoutMetrics(doc, w);
+  const labelH = ptToMm(28);
+  const ctaH = ptToMm(8);
+  return Math.max(
+    labelH + ptToMm(4) + contentBlockH + FOOTER_CTA_GAP + ctaH + FOOTER_BOTTOM_PAD,
+    MIN_FOOTER_H
+  );
+}
+
+function drawLocationBlock(
+  doc: jsPDF,
+  ax: number,
+  titleBaseline: number,
+  title: string,
+  loc: (typeof CLINIC_LOCATIONS)[number],
+  colW: number
+) {
+  let ay = titleBaseline;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...KAI.navy);
+  doc.text(title, ax, ay);
+  ay += ptToMm(12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...KAI.ink);
+  for (const line of wrap(doc, loc.address, colW - 4)) {
+    doc.text(line, ax, ay);
+    ay += ptToMm(8.5);
+  }
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...KAI.navy);
+  ay += ptToMm(3);
+  doc.text(loc.phone, ax, ay);
 }
 
 async function drawContactFooter(
@@ -678,41 +859,43 @@ async function drawContactFooter(
   const pad = CARD_PAD;
   sectionLabel(doc, "contact details of skinfit", x + pad, y + ptToMm(18));
 
-  const qrSize = h - ptToMm(24);
-  const qrX = x + w - pad - qrSize;
-  const qrY = y + ptToMm(14);
-  const qrDataUrl = await reportQrDataUrl(BOOKING_URL);
-  doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.setTextColor(...KAI.muted);
-  doc.text("scan to book", qrX + qrSize / 2, qrY + qrSize + ptToMm(8), { align: "center" });
+  const { qrSize, qrGap, qrX, locGap, colW, koraH, qrStackH, rightRowH, contentBlockH } =
+    footerLayoutMetrics(doc, w);
 
-  const colW = (qrX - (x + pad) - ptToMm(16)) / 2;
-  CLINIC_LOCATIONS.forEach((loc, i) => {
-    const ax = x + pad + i * (colW + ptToMm(16));
-    let ay = y + ptToMm(34);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...KAI.navy);
-    doc.text(i === 0 ? "Ashok Nagar" : "Koramangala", ax, ay);
-    ay += ptToMm(12);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...KAI.ink);
-    for (const line of wrap(doc, loc.address, colW - 4)) {
-      doc.text(line, ax, ay);
-      ay += ptToMm(9);
-    }
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...KAI.navy);
-    doc.text(loc.phone, ax, ay + ptToMm(2));
-  });
+  const contentTop = y + ptToMm(28);
+  const contentBlockTop = contentTop + ptToMm(4);
+  const contentMid = contentBlockTop + contentBlockH / 2;
+  const contentBlockBottom = contentBlockTop + contentBlockH;
+  const ctaBaseline = contentBlockBottom + FOOTER_CTA_GAP;
+
+  const contentBlockStart = contentMid - contentBlockH / 2;
+  drawLocationBlock(doc, x + pad, contentBlockStart, "Ashok Nagar", CLINIC_LOCATIONS[0], colW);
+
+  const rightRowTop = contentMid - rightRowH / 2;
+  const koraTitleBaseline = rightRowTop + (rightRowH - koraH) / 2;
+  const koraX = x + pad + colW + locGap;
+  drawLocationBlock(doc, koraX, koraTitleBaseline, "Koramangala", CLINIC_LOCATIONS[1], colW);
+
+  const qrStackTop = rightRowTop + (rightRowH - qrStackH) / 2;
+  const qrY = qrStackTop;
+  const qrDataUrl = await reportQrDataUrl(INSTAGRAM_URL);
+  doc.addImage(qrDataUrl, "PNG", x + qrX, qrY, qrSize, qrSize);
+
+  const qrLabel = "@SKINFITWELLNESS.IN";
+  let labelSize = 5.5;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...KAI.muted);
+  doc.setFontSize(labelSize);
+  while (doc.getTextWidth(qrLabel) > qrSize && labelSize > 4) {
+    labelSize -= 0.25;
+    doc.setFontSize(labelSize);
+  }
+  doc.text(qrLabel, x + qrX + qrSize / 2, qrY + qrSize + FOOTER_QR_LABEL_GAP, { align: "center" });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(...KAI.coral);
-  doc.text("Book your consult at my.skinfitwellness.in", x + pad, y + h - ptToMm(12));
+  doc.text("Book your consult", x + pad, ctaBaseline);
 }
 
 export async function generateKaiReportPdf(
@@ -744,28 +927,36 @@ export async function generateKaiReportPdf(
   drawScoreCard(doc, content, rightColX, y, rightColW, row2H);
   y += row2H + GAP_SECTION;
 
-  drawObservationsCard(doc, content, MARGIN, y, leftColW, ROW3_H);
-  drawComprehensiveCard(doc, content, rightColX, y, rightColW, ROW3_H);
-  y += ROW3_H + GAP_SECTION;
+  const requiredFooterH = measureContactFooterHeight(doc, contentW);
+  const measuredRow3H = measureRow3Height(doc, content, leftColW);
+  const pageBudget = pageH - MARGIN;
+  let minInsightH = MIN_INSIGHT_H;
+  let stackNeed =
+    y + GAP_SECTION + measuredRow3H + GAP_SECTION + MIN_INSIGHT_H + GAP_AFTER_INSIGHT + requiredFooterH;
+  if (stackNeed > pageBudget) {
+    minInsightH = Math.max(ptToMm(36), MIN_INSIGHT_H - (stackNeed - pageBudget));
+    stackNeed =
+      y + GAP_SECTION + measuredRow3H + GAP_SECTION + minInsightH + GAP_AFTER_INSIGHT + requiredFooterH;
+  }
 
-  const maxInsightBottom = pageH - MARGIN - MIN_FOOTER_H - GAP_AFTER_INSIGHT;
+  const row3H = measuredRow3H;
+  drawObservationsCard(doc, content, MARGIN, y, leftColW, row3H);
+  drawComprehensiveCard(doc, content, rightColX, y, rightColW, row3H);
+  y += row3H + GAP_SECTION;
+
+  const maxInsightBottom = pageH - MARGIN - requiredFooterH - GAP_AFTER_INSIGHT;
   const insightAvailable = Math.max(0, maxInsightBottom - y);
   const measuredInsight = measureInsightHeight(doc, content, contentW);
   const insightH = Math.min(
-    Math.max(MIN_INSIGHT_H, measuredInsight),
+    Math.max(minInsightH, measuredInsight),
     insightAvailable
   );
   drawInsightBox(doc, content, MARGIN, y, contentW, insightH);
   y += insightH + GAP_AFTER_INSIGHT;
 
   const footerH = pageH - MARGIN - y;
-  await drawContactFooter(
-    doc,
-    MARGIN,
-    y,
-    contentW,
-    Math.max(MIN_FOOTER_H, Math.min(footerH, MAX_FOOTER_H))
-  );
+  const actualFooterH = Math.min(requiredFooterH, footerH);
+  await drawContactFooter(doc, MARGIN, y, contentW, actualFooterH);
 
   return Buffer.from(doc.output("arraybuffer"));
 }
