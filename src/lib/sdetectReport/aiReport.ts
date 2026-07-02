@@ -54,16 +54,18 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
       "title": "Max 4 words, plain English. Never use a clinical Medixora parameter name directly (e.g. Porphyrin -> Clogged pores and bacteria; Heat Map of Sensitivity -> Skin sensitivity and redness).",
       "score": 0,
       "color": "red if below 40 / amber if 40-59 / green if 60+",
-      "commentary": "Exactly 2 complete sentences — every sentence must end with a full stop; never truncate or leave a sentence unfinished. Sentence 1: what is happening in their skin right now — the mechanism, specific to their score. Sentence 2: why this matters for their age and skin type, with Indian context where the data supports it. No products or treatments."
+      "commentary": "Exactly 2 complete sentences — every sentence must end with a full stop; never truncate or leave a sentence unfinished. For observation 1 (highest score): celebrate the strength — what is working well and why it matters to protect. For observations 2–3 (lowest scores): sentence 1 explains the mechanism; sentence 2 why it matters for their age and skin type, with Indian context where data supports it. No products or treatments."
     }
   ],
-  "insight": "MANDATORY: write exactly 5 complete sentences (minimum 4, never 3 or fewer), 500-580 characters total — this is the user's personalised guidance section. Every sentence must end with a full stop. Structure: (1-2) connect the top 3 observations into one root-cause story; (3) one concrete day-to-day focus for this week; (4) age-intelligent guidance; (5) name at least one parameter that scored well and what it means — a genuine positive. Use Indian context where data supports (PIH, humidity, UV, diet). No clinic, treatment, or product names."
+  "insight": "MANDATORY: write exactly 5 complete sentences (minimum 4, never 3 or fewer), 500-580 characters total — this is the user's personalised guidance section. Every sentence must end with a full stop. Structure: (1-2) connect the 2 concern observations (positions 2–3) into one root-cause story; (3) one concrete day-to-day focus for this week; (4) age-intelligent guidance; (5) reinforce the strength from observation 1 and what it means. Use Indian context where data supports (PIH, humidity, UV, diet). No clinic, treatment, or product names."
 }
 
 SECTION 3 — TOP 3 OBSERVATIONS rules:
-- Rank ALL parameters by score, lowest first; pick the 3 lowest as primary concerns.
-- EXCEPTION: if under 30, do not lead with Wrinkle even if low — mention briefly in insight as prevention.
-- EXCEPTION: if two parameters are closely related (Sebum+Pores, Superficial+Brown pigment), group into one observation using the lower score.
+- Return exactly 3 observations in this fixed order:
+  1) FIRST — the single highest-scoring parameter. Lead with a genuine positive (green tone). Celebrate what is working; frame as a strength to protect and build on.
+  2) SECOND and THIRD — the two lowest-scoring parameters. Primary concerns (red/amber tone). Explain mechanism and why each matters.
+- EXCEPTION: if under 30, do not use Wrinkle as a concern observation (positions 2–3) unless it is genuinely among the 2 lowest — mention wrinkles briefly in insight as prevention instead.
+- EXCEPTION: if two low parameters are closely related (Sebum+Pores, Superficial+Brown pigment), group into one observation using the lower score and pick the next-lowest for the third slot.
 - Use the exact numeric score from the Analysis parameter lists for each observation.
 - Moisture % is a hydration reading only — never use it as an observation score.
 - Return exactly 3 observations. Each commentary must be exactly 2 complete sentences (not 1, not 3).
@@ -248,11 +250,37 @@ function allScoredMetrics(data: SdetectReportData): SdetectMetric[] {
   return all;
 }
 
-function strongestMetric(data: SdetectReportData): SdetectMetric | null {
+function highestScoredMetric(data: SdetectReportData): SdetectMetric | null {
   const metrics = allScoredMetrics(data);
   if (!metrics.length) return null;
-  const strong = metrics.filter((m) => m.score >= 60).sort((a, b) => b.score - a.score);
-  return (strong[0] ?? metrics.sort((a, b) => b.score - a.score)[0]) ?? null;
+  return metrics.sort((a, b) => b.score - a.score)[0];
+}
+
+function lowestConcernMetrics(data: SdetectReportData, count = 2): SdetectMetric[] {
+  const age = data.patient.age;
+  const top = highestScoredMetric(data);
+  const sorted = allScoredMetrics(data).sort((a, b) => a.score - b.score);
+  const concerns: SdetectMetric[] = [];
+  for (const metric of sorted) {
+    if (top && metric.label === top.label) continue;
+    if (age && age < 30 && /wrinkle/i.test(metric.label)) continue;
+    concerns.push(metric);
+    if (concerns.length >= count) break;
+  }
+  return concerns;
+}
+
+/** Observation order: 1 strength (highest) + 2 concerns (lowest). */
+function observationMetrics(data: SdetectReportData): SdetectMetric[] {
+  const top = highestScoredMetric(data);
+  const concerns = lowestConcernMetrics(data, 2);
+  if (!top) return concerns.slice(0, 3);
+  const merged = [top, ...concerns.filter((m) => m.label !== top.label)];
+  return merged.slice(0, 3);
+}
+
+function strongestMetric(data: SdetectReportData): SdetectMetric | null {
+  return highestScoredMetric(data);
 }
 
 /** Pad short AI insight to 4–5 guiding sentences — observations card already has detail. */
@@ -264,13 +292,13 @@ function ensureInsightGuidance(
   let text = insight.replace(/\s+/g, " ").trim();
   const age = data.patient.age;
   const strong = strongestMetric(data);
-  const topTitles = observations
-    .slice(0, 2)
+  const concernTitles = observations
+    .slice(1, 3)
     .map((o) => o.title.toLowerCase())
     .filter(Boolean);
 
   if (!text) {
-    const focus = topTitles.length ? topTitles.join(" and ") : "your priority concerns";
+    const focus = concernTitles.length ? concernTitles.join(" and ") : "your priority concerns";
     text =
       `Your scan shows ${focus} linked together — this pattern is common and very manageable with steady focus. ` +
       `Protect your barrier daily and keep hydration consistent so your skin can recover between stressors. ` +
@@ -347,12 +375,44 @@ function normaliseObservations(raw: unknown): KaiObservation[] {
     .filter((o) => o.title);
 }
 
-/** Lowest parameter scores — used to correct AI observations that pick moisture etc. */
-function lowestMetricScores(data: SdetectReportData, count = 3): number[] {
-  return allScoredMetrics(data)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, count)
-    .map((m) => m.score);
+/** Match AI observations to strength + 2 concerns order using scraped scores. */
+function alignObservationsOrder(
+  observations: KaiObservation[],
+  data: SdetectReportData
+): KaiObservation[] {
+  const expected = observationMetrics(data);
+  if (expected.length < 3 || observations.length < 3) return observations;
+
+  const used = new Set<number>();
+  const aligned: KaiObservation[] = [];
+
+  for (const metric of expected) {
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    observations.forEach((obs, index) => {
+      if (used.has(index)) return;
+      const dist = Math.abs(obs.score - metric.score);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = index;
+      }
+    });
+    if (bestIdx >= 0) {
+      used.add(bestIdx);
+      aligned.push(observations[bestIdx]);
+    }
+  }
+
+  observations.forEach((obs, index) => {
+    if (!used.has(index) && aligned.length < 3) aligned.push(obs);
+  });
+
+  return aligned.slice(0, 3);
+}
+
+/** Target scores for observations: highest, then 2 lowest concerns. */
+function observationTargetScores(data: SdetectReportData): number[] {
+  return observationMetrics(data).map((m) => m.score);
 }
 
 /** Observation scores must come from scraped parameters, not moisture or comprehensive score. */
@@ -361,26 +421,26 @@ function applyTrueObservationScores(
   data: SdetectReportData
 ): KaiObservation[] {
   const validScores = new Set(allScoredMetrics(data).map((m) => m.score));
-  const rankedLowest = lowestMetricScores(data, 3);
+  const targetScores = observationTargetScores(data);
   return observations.slice(0, 3).map((obs, index) => {
     const score = validScores.has(obs.score)
       ? obs.score
-      : (rankedLowest[index] ?? obs.score);
+      : (targetScores[index] ?? obs.score);
     return { ...obs, score, color: colorForScore(score) };
   });
 }
 
-/** Lowest-3 parameters as a deterministic fallback when the model returns nothing usable. */
+/** Strength + 2 concerns as a deterministic fallback when the model returns nothing usable. */
 function fallbackObservations(data: SdetectReportData): KaiObservation[] {
-  return allScoredMetrics(data)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 3)
-    .map((m) => ({
-      title: m.label,
-      score: m.score,
-      color: colorForScore(m.score),
-      commentary: `Your ${m.label} scored ${m.score}% on this scan, placing it among your lowest-scoring parameters. At this level, the skin is working harder than ideal to stay balanced in this area.`,
-    }));
+  return observationMetrics(data).map((m, index) => ({
+    title: m.label,
+    score: m.score,
+    color: colorForScore(m.score),
+    commentary:
+      index === 0
+        ? `Your ${m.label} scored ${m.score}% — one of your strongest areas on this scan. This is a solid foundation your skin is already doing well, and protecting it matters while you work on other priorities.`
+        : `Your ${m.label} scored ${m.score}% on this scan, placing it among your lowest-scoring parameters. At this level, the skin is working harder than ideal to stay balanced in this area.`,
+  }));
 }
 
 /**
@@ -423,8 +483,10 @@ export async function buildKaiReportContent(
   }
 
   const observations = ai ? normaliseObservations(ai.observations) : [];
+  const picked =
+    observations.length >= 3 ? observations : fallbackObservations(data);
   const finalObservations = applyTrueObservationScores(
-    observations.length >= 3 ? observations : fallbackObservations(data),
+    alignObservationsOrder(picked, data),
     data
   );
 

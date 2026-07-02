@@ -553,10 +553,11 @@ function drawScoreCard(
 }
 
 function observationCommentary(obs: KaiReportContent["observations"][number]): string {
-  return (
-    obs.commentary.trim() ||
-    `Scored ${obs.score}% on your comprehensive analysis — one of the areas that needs the most attention right now.`
-  );
+  if (obs.commentary.trim()) return obs.commentary.trim();
+  if (obs.score >= 60) {
+    return `Scored ${obs.score}% on your comprehensive analysis — one of your strongest areas and a solid foundation to protect.`;
+  }
+  return `Scored ${obs.score}% on your comprehensive analysis — one of the areas that needs the most attention right now.`;
 }
 
 const OBS_HEADER_H = ptToMm(28);
