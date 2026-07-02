@@ -90,6 +90,7 @@ import {
 } from "@/components/dashboard/MonthlyInsightView";
 import { parseMonthlyReportDisplay } from "@/src/lib/patientInsightDisplay";
 import type { PatientMonthlyInsightSnapshot } from "@/src/lib/patientInsightDisplay";
+import { displayUserPhone } from "@/src/lib/auth/phone";
 import type { WeeklyInsightViewModel } from "@/src/lib/weeklyInsightModel";
 import { DoctorSnippetTextarea } from "@/components/doctor/DoctorSnippetTextarea";
 import {
@@ -1392,19 +1393,30 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
   useEffect(() => {
     setRoutinePlanTextDirty(false);
     setGeneralFeedbackDirty(false);
-    setOpenScanReportId(null);
   }, [patientId]);
 
   useEffect(() => {
     const raw = searchParams.get("scanId") ?? searchParams.get("scan");
-    if (!raw || !/^\d+$/.test(raw)) return;
+    if (!raw || !/^\d+$/.test(raw)) {
+      setOpenScanReportId(null);
+      return;
+    }
     const scanId = parseInt(raw, 10);
     if (!Number.isFinite(scanId) || scanId < 1) return;
+
+    let cancelled = false;
     setActiveTab("overview");
     setOverviewSubTab("scans");
     setScansSectionExpanded(true);
-    void loadSection("scans");
-    setOpenScanReportId(scanId);
+
+    void (async () => {
+      await loadSection("scans");
+      if (!cancelled) setOpenScanReportId(scanId);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, patientId, loadSection]);
 
   const patient = data?.patient;
@@ -2099,6 +2111,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     ? `AM ${p.routineAmReminderHm} · PM ${p.routinePmReminderHm}`
     : "Off";
   const memberSince = new Date(p.createdAt).toLocaleDateString();
+  const displayPhone = displayUserPhone(p.phoneCountryCode, p.phone);
+  const contactLine = [displayPhone, p.email?.trim() || null]
+    .filter(Boolean)
+    .join(" · ");
   const ageLabel =
     p.age != null ? `age: ${p.age} ${p.age === 1 ? "year" : "years"}` : null;
   const streakRatio =
@@ -2179,12 +2195,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 </span>
               ) : null}
             </div>
-            {(p.phone || p.phoneCountryCode || p.email) ? (
-              <p className="mt-0.5 truncate text-sm text-white/75">
-                {[p.phoneCountryCode, p.phone].filter(Boolean).join(" ")}
-                {p.phone && p.email ? " · " : null}
-                {p.email}
-              </p>
+            {contactLine ? (
+              <p className="mt-0.5 truncate text-sm text-white/75">{contactLine}</p>
             ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">

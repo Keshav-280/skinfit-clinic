@@ -49,7 +49,7 @@ export default async function DoctorPortalLayout({
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden">
         <header
-          className={`sticky top-0 z-20 flex w-full min-w-0 items-center gap-1 overflow-hidden px-2 py-1 sm:gap-2 sm:px-4 sm:py-1.5 ${doctorGlassHeaderClass}`}
+          className={`sticky top-0 z-40 flex w-full min-w-0 items-center gap-1 overflow-visible px-2 py-1 sm:gap-2 sm:px-4 sm:py-1.5 ${doctorGlassHeaderClass}`}
         >
           <DoctorPortalBrandLogo className="min-w-0" />
 
