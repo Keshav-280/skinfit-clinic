@@ -410,22 +410,14 @@ function alignObservationsOrder(
   return aligned.slice(0, 3);
 }
 
-/** Target scores for observations: highest, then 2 lowest concerns. */
-function observationTargetScores(data: SdetectReportData): number[] {
-  return observationMetrics(data).map((m) => m.score);
-}
-
-/** Observation scores must come from scraped parameters, not moisture or comprehensive score. */
+/** Pin each observation slot to scraped metric scores: highest, then 2 lowest concerns. */
 function applyTrueObservationScores(
   observations: KaiObservation[],
   data: SdetectReportData
 ): KaiObservation[] {
-  const validScores = new Set(allScoredMetrics(data).map((m) => m.score));
-  const targetScores = observationTargetScores(data);
+  const targets = observationMetrics(data);
   return observations.slice(0, 3).map((obs, index) => {
-    const score = validScores.has(obs.score)
-      ? obs.score
-      : (targetScores[index] ?? obs.score);
+    const score = targets[index]?.score ?? obs.score;
     return { ...obs, score, color: colorForScore(score) };
   });
 }
