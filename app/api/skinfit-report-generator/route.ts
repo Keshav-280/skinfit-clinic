@@ -7,6 +7,7 @@ import { KAI_REPORT_EVENT_LABEL } from "@/src/lib/sdetectReport/eventLabel";
 import { buildKaiReportContent } from "@/src/lib/sdetectReport/aiReport";
 import { buildSdetectReportFromPdf } from "@/src/lib/sdetectReport/buildReport";
 import { generateKaiReportPdf } from "@/src/lib/sdetectReport/generateKaiReportPdf";
+import { reportError, reportLog } from "@/src/lib/sdetectReport/pipelineLog";
 import {
   defaultOutputBasename,
   sanitizeOutputFilename,
@@ -42,7 +43,14 @@ export async function POST(req: Request) {
         ? eventLabelField.trim()
         : KAI_REPORT_EVENT_LABEL;
 
-    const report = await buildSdetectReportFromPdf(pdfBuffer);
+    reportLog("upload_received", {
+      filename: file.name,
+      bytes: pdfBuffer.length,
+      eventLabel,
+      doctorId: staffId,
+    });
+
+    const report = await buildSdetectReportFromPdf(pdfBuffer, { sourceFilename: file.name });
     const content = await buildKaiReportContent(report, { eventLabel });
     const outPdf = await generateKaiReportPdf(report, content, { eventLabel });
     const fallbackBasename = defaultOutputBasename(file.name);
@@ -88,12 +96,20 @@ export async function POST(req: Request) {
     headers["X-Clinic-Report-Id"] = saved.id;
     headers["X-Clinic-Report-Attached-Pending"] = saved.attachedToPending ? "1" : "0";
 
+    reportLog("generate_complete", {
+      outputFilename,
+      outputBytes: outPdf.length,
+      clinicReportId: saved.id,
+      patientName,
+      observationScores: content.observations.map((o) => o.score),
+    });
+
     return new Response(new Uint8Array(outPdf), {
       status: 200,
       headers,
     });
   } catch (err) {
-    console.error("[skinfit-report-generator]", err);
+    reportError("generate_failed", err);
     const message = err instanceof Error ? err.message : "Report generation failed";
     return Response.json({ error: message }, { status: 500 });
   }
