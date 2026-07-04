@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import {
   MonthlyInsightView,
@@ -17,39 +17,39 @@ export function ProfileRagKaiInsightsSection({
 }) {
   const [data, setData] = useState<MonthlyInsightViewData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setErr(null);
-      setLoading(true);
-      try {
-        const res = await fetch("/api/patient/monthly-insight", {
-          credentials: "include",
-        });
-        if (!res.ok) {
-          if (!cancelled) {
-            setData(null);
-            setErr("Could not load monthly insight.");
-          }
-          return;
-        }
-        const json = (await res.json()) as MonthlyInsightViewData;
-        if (!cancelled) setData(json);
-      } catch {
-        if (!cancelled) {
-          setData(null);
-          setErr("Could not load monthly insight.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+  const load = useCallback(async (monthStart?: string | null, isSwitch = false) => {
+    if (isSwitch) setHistoryLoading(true);
+    else setLoading(true);
+    setErr(null);
+    try {
+      const qs = monthStart
+        ? `?monthStart=${encodeURIComponent(monthStart)}`
+        : "";
+      const res = await fetch(`/api/patient/monthly-insight${qs}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        setData(null);
+        setErr("Could not load monthly insight.");
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      const json = (await res.json()) as MonthlyInsightViewData;
+      setData(json);
+    } catch {
+      setData(null);
+      setErr("Could not load monthly insight.");
+    } finally {
+      setLoading(false);
+      setHistoryLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   if (loading) {
     if (embedded && compact) {
@@ -79,6 +79,16 @@ export function ProfileRagKaiInsightsSection({
   if (!data) return null;
 
   return (
-    <MonthlyInsightView data={data} embedded={embedded} compact={compact} showPdfButton />
+    <MonthlyInsightView
+      data={data}
+      embedded={embedded}
+      compact={compact}
+      showPdfButton
+      historyLoading={historyLoading}
+      onSelectMonth={(monthStart) => {
+        if (monthStart === data.selectedMonthStart) return;
+        void load(monthStart, true);
+      }}
+    />
   );
 }

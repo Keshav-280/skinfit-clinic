@@ -74,7 +74,17 @@ type ScheduleVisitRow = {
 
 type MonthlyInsightPayload = {
   locked: boolean;
+  reportReady?: boolean;
   nextInsightAt: string;
+  dueMonthStart?: string | null;
+  selectedMonthStart?: string | null;
+  history?: Array<{
+    monthStart: string;
+    periodLabel: string;
+    hasReport: boolean;
+    kaiMonthAvg: number | null;
+    isDue?: boolean;
+  }>;
   monthly: import("@/lib/monthlyInsightExport").MonthlyInsightExportData | null;
 };
 
@@ -978,6 +988,18 @@ export default function SchedulesScreen() {
             locked={monthlyInsight.locked}
             nextInsightAt={monthlyInsight.nextInsightAt}
             monthly={monthlyInsight.monthly}
+            history={monthlyInsight.history}
+            selectedMonthStart={monthlyInsight.selectedMonthStart}
+            onSelectMonth={(monthStart) => {
+              if (!token || monthStart === monthlyInsight.selectedMonthStart) return;
+              void apiJson<MonthlyInsightPayload>(
+                `/api/patient/monthly-insight?monthStart=${encodeURIComponent(monthStart)}`,
+                token,
+                { method: "GET" }
+              )
+                .then((monthly) => setMonthlyInsight(monthly))
+                .catch(() => {});
+            }}
             onExportPdf={(monthly) => void exportMonthlyInsightPdf(monthly)}
           />
         ) : null}

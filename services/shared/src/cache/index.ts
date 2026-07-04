@@ -64,6 +64,7 @@ export async function invalidateUserInsightsCache(userId: string): Promise<void>
   await cache.del(CacheKeys.skinProfile(userId));
   await cache.del(CacheKeys.skinIdentity(userId));
   await cache.del(CacheKeys.monthlyInsight(userId));
+  await cache.delByPrefix(`${CacheKeys.monthlyInsight(userId)}:`);
   await cache.delByPrefix(CacheKeys.hydrationInsightPrefix(userId));
 }
 

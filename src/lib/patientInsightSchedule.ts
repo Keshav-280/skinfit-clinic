@@ -87,11 +87,14 @@ export function computePatientInsightSchedule(
     : null;
 
   if (!monthlyLocked) {
+    // Unlock index m (1, 2, …): period m covers [addMonths(anchor, m-1), addMonths(anchor, m)).
+    // First unlock (m=1) is the month after onboarding scan — period start is the first-scan day
+    // (e.g. scan Jun 4 → unlock Jul 4 → report for June, monthStart = Jun 4).
     let m = MONTHLY_INSIGHT_MONTHS_AFTER_FIRST_SCAN;
     while (addMonths(anchor, m + 1) <= today) {
       m += 1;
     }
-    dueMonthlyPeriodStart = addMonths(anchor, m);
+    dueMonthlyPeriodStart = addMonths(anchor, m - 1);
     nextMonthlyInsightAt = addMonths(anchor, m + 1).toISOString();
   }
 
@@ -106,4 +109,35 @@ export function computePatientInsightSchedule(
     dueWeeklyPeriodStart,
     dueMonthlyPeriodStart,
   };
+}
+
+/**
+ * Completed monthly period starts (oldest → newest), available once monthly history unlocks
+ * (1 calendar month after the onboarding scan).
+ */
+export function listCompletedMonthlyPeriodStarts(
+  firstScanAt: Date | null,
+  now = new Date()
+): Date[] {
+  const schedule = computePatientInsightSchedule(firstScanAt, now);
+  if (!firstScanAt || schedule.monthlyLocked || !schedule.dueMonthlyPeriodStart) {
+    return [];
+  }
+  const anchor = startOfDay(firstScanAt);
+  const due = startOfDay(schedule.dueMonthlyPeriodStart);
+  const periods: Date[] = [];
+  let cursor = anchor;
+  while (cursor.getTime() <= due.getTime()) {
+    periods.push(cursor);
+    cursor = addMonths(cursor, 1);
+  }
+  return periods;
+}
+
+/** Calendar month key `YYYY-MM` for a period start date. */
+export function monthlyPeriodCalendarKey(periodStart: Date): string {
+  const d = startOfDay(periodStart);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }

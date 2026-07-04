@@ -72,10 +72,22 @@ export function alignMonthlyProseToHeadlineKai<
   };
 }
 
+export type MonthlyHistoryItem = {
+  monthStart: string;
+  periodLabel: string;
+  hasReport: boolean;
+  kaiMonthAvg: number | null;
+  isDue?: boolean;
+};
+
 export type PatientMonthlyInsightSnapshot = {
   locked: boolean;
+  reportReady?: boolean;
   nextInsightAt: string | null;
   latestMonthStart: string | null;
+  dueMonthStart?: string | null;
+  selectedMonthStart?: string | null;
+  history?: MonthlyHistoryItem[];
   monthly: MonthlyReportDisplay | null;
 };
 

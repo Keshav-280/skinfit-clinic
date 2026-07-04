@@ -12,7 +12,7 @@ import { patientDisplayClarity } from "@/src/lib/clarityGrade";
 import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 import { buildMonthlyRagCronPayload } from "@/src/lib/ragCronMonthlyPayload";
 import { generateRagKaiOutput } from "@/src/lib/ragKaiTestService";
-import { publishNotification } from "@/src/lib/infra";
+import { invalidateUserInsightsCache, publishNotification } from "@/src/lib/infra";
 import {
   computePatientInsightSchedule,
   getPatientFirstScanAt,
@@ -169,6 +169,7 @@ export async function runMonthlyReportsJob(): Promise<{ rows: number }> {
           monthStartStr
         ) as Record<string, unknown>,
       });
+      void invalidateUserInsightsCache(p.id);
       void publishNotification("monthly.insight", p.id, {});
       ragProcessed += 1;
       n += 1;
@@ -182,6 +183,7 @@ export async function runMonthlyReportsJob(): Promise<{ rows: number }> {
         note: "Automated monthly placeholder; extend with scanReportPdfHtml export.",
       },
     });
+    void invalidateUserInsightsCache(p.id);
     n += 1;
   }
   return { rows: n };

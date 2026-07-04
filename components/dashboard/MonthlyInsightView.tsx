@@ -17,11 +17,24 @@ import {
   patientSectionTitle,
 } from "@/src/lib/patientDashboardTheme";
 
+export type MonthlyHistoryItem = {
+  monthStart: string;
+  periodLabel: string;
+  hasReport: boolean;
+  kaiMonthAvg: number | null;
+  isDue?: boolean;
+};
+
 export type MonthlyInsightViewData = {
   questionnaireLocked?: boolean;
   locked: boolean;
+  /** False when the selected month has no RAG report yet. */
+  reportReady?: boolean;
   nextInsightAt: string | null;
   latestMonthStart?: string | null;
+  dueMonthStart?: string | null;
+  selectedMonthStart?: string | null;
+  history?: MonthlyHistoryItem[];
   monthly: {
     summaryTitle: string;
     summaryBody: string;
@@ -402,11 +415,15 @@ export function MonthlyInsightView({
   embedded = false,
   compact = false,
   showPdfButton = true,
+  onSelectMonth,
+  historyLoading = false,
 }: {
   data: MonthlyInsightViewData;
   embedded?: boolean;
   compact?: boolean;
   showPdfButton?: boolean;
+  onSelectMonth?: (monthStart: string) => void;
+  historyLoading?: boolean;
 }) {
   if (data.questionnaireLocked) {
     return (
@@ -418,8 +435,35 @@ export function MonthlyInsightView({
   }
 
   const monthly = data.monthly;
+  const history = data.history ?? [];
+  const selectedMonthStart = data.selectedMonthStart ?? data.dueMonthStart ?? null;
   const nextInsightFriendly = formatNextInsightFriendly(data.nextInsightAt);
   const [pdfBusy, setPdfBusy] = useState(false);
+
+  const historySelector =
+    !data.locked && history.length > 0 ? (
+      <div className={`flex flex-wrap gap-1.5 ${compact ? "mb-2" : "mb-3"}`}>
+        {history.map((h) => {
+          const active = h.monthStart === selectedMonthStart;
+          return (
+            <button
+              key={h.monthStart}
+              type="button"
+              disabled={historyLoading || !onSelectMonth}
+              onClick={() => onSelectMonth?.(h.monthStart)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                active
+                  ? "bg-[#2C3E6B] text-white"
+                  : "border border-[#e5e7eb] bg-white text-[#2C3E6B] hover:bg-[#f8fafc]"
+              } disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              {h.periodLabel}
+              {!h.hasReport ? " · …" : ""}
+            </button>
+          );
+        })}
+      </div>
+    ) : null;
 
   const onPdf = () => {
     if (!monthly?.detail || pdfBusy) return;
@@ -461,7 +505,9 @@ export function MonthlyInsightView({
         <div className="mb-4 flex justify-end">{pdfButton(patientPrimaryBtn)}</div>
       ) : null}
 
-      {data.locked || !monthly ? (
+      {historySelector}
+
+      {data.locked ? (
         <div
           className={`${patientInnerCard} ${
             compact && embedded ? "px-3 py-2.5" : "px-4 py-4"
@@ -486,6 +532,30 @@ export function MonthlyInsightView({
           >
             Unlocks around{" "}
             <span className="font-semibold text-[#2C3E6B]">{nextInsightFriendly}</span>.
+          </p>
+        </div>
+      ) : historyLoading ? (
+        <div
+          className={`flex items-center gap-2 ${patientInnerCard} ${
+            compact ? "px-3 py-3 text-xs" : "px-4 py-4 text-sm"
+          } text-[#6B7280]`}
+        >
+          <Loader2 className="h-4 w-4 animate-spin text-indigo-600" aria-hidden />
+          Loading month…
+        </div>
+      ) : !monthly ? (
+        <div
+          className={`${patientInnerCard} ${
+            compact && embedded ? "px-3 py-2.5" : "px-4 py-4"
+          }`}
+        >
+          <p className={patientKicker}>Preparing report</p>
+          <p
+            className={`mt-1.5 leading-snug ${
+              compact ? "text-[11px] text-[#6B7280]" : `text-sm ${patientMuted}`
+            }`}
+          >
+            This month&apos;s insight is being prepared. Check back shortly.
           </p>
         </div>
       ) : (
@@ -525,8 +595,12 @@ export function monthlySnapshotToViewData(
   const m = snapshot.monthly;
   return {
     locked: snapshot.locked,
+    reportReady: snapshot.reportReady ?? m != null,
     nextInsightAt: snapshot.nextInsightAt,
     latestMonthStart: snapshot.latestMonthStart,
+    dueMonthStart: snapshot.dueMonthStart,
+    selectedMonthStart: snapshot.selectedMonthStart,
+    history: snapshot.history,
     monthly: m
       ? {
           summaryTitle: m.summaryTitle ?? "",

@@ -1373,20 +1373,36 @@ export async function generateRagKaiOutput(input: {
     }
   }
 
-  // -------- Monthly synthesis (calendar months; ≥45 tracked days ⇒ prior month + current) --------
+  // -------- Monthly synthesis (calendar months) --------
+  // Always include the previous calendar month + current so the first unlock
+  // (1 month after onboarding scan) can serve last month's report (e.g. June),
+  // not the unlock month (July).
   const generatedAtIso = new Date().toISOString();
   const monthlyLlmTally = { ok: false };
-  const twinMonthsLongWindow = totalDays >= 45;
 
   const monthTargets: Array<{ y: number; m: number }> = [];
-  if (twinMonthsLongWindow) {
-    const prevAnchor = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    monthTargets.push({
-      y: prevAnchor.getFullYear(),
-      m: prevAnchor.getMonth(),
-    });
-  }
+  const prevAnchor = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  monthTargets.push({
+    y: prevAnchor.getFullYear(),
+    m: prevAnchor.getMonth(),
+  });
   monthTargets.push({ y: today.getFullYear(), m: today.getMonth() });
+
+  // If the patient's first scan is older, also cover that scan's calendar month
+  // when it isn't already in the window (keeps history labels correct).
+  const firstScanMonthAt = scansWithParams[0]?.createdAt ?? null;
+  if (firstScanMonthAt) {
+    const firstKey = `${firstScanMonthAt.getFullYear()}-${firstScanMonthAt.getMonth()}`;
+    const hasFirst = monthTargets.some(
+      (t) => `${t.y}-${t.m}` === firstKey
+    );
+    if (!hasFirst) {
+      monthTargets.unshift({
+        y: firstScanMonthAt.getFullYear(),
+        m: firstScanMonthAt.getMonth(),
+      });
+    }
+  }
 
   const sharedCtx = {
     today,
@@ -1422,7 +1438,11 @@ export async function generateRagKaiOutput(input: {
   }
 
   llmStats.monthlyAnalyzed = monthlyLlmTally.ok;
-  const monthly = monthlies[monthlies.length - 1]!;
+  // Prefer the previous calendar month as the default "completed" monthly report.
+  const prevKey = `${prevAnchor.getFullYear()}-${String(prevAnchor.getMonth() + 1).padStart(2, "0")}`;
+  const monthly =
+    monthlies.find((m) => m.monthStart.startsWith(prevKey)) ??
+    monthlies[monthlies.length - 1]!;
 
   return {
     user: { id: user.id, name: user.name, email: user.email },

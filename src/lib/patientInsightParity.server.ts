@@ -14,9 +14,12 @@ import {
   storedPayloadHasContent,
 } from "@/src/lib/profileInsightsStore";
 import { computeHomeWeeklyDeltaScore } from "@/src/lib/patientHomeWeeklyDelta";
+import { ymdFromDateOnly } from "@/src/lib/date-only";
 import {
   computePatientInsightSchedule,
   getPatientFirstScanAt,
+  listCompletedMonthlyPeriodStarts,
+  monthlyPeriodCalendarKey,
 } from "@/src/lib/patientInsightSchedule";
 import {
   buildWeeklyInsightViewModel,
@@ -33,13 +36,22 @@ import {
 
 export type { PatientMonthlyInsightSnapshot, MonthlyReportDisplay } from "@/src/lib/patientInsightDisplay";
 
+function periodLabelFromPayload(
+  payload: MonthlyRagCronPayloadV1,
+  monthStart: Date
+): string {
+  const fromDetail = payload.monthly?.detail?.periodLabel?.trim();
+  if (fromDetail) return fromDetail;
+  return monthStart.toLocaleString("en-US", { month: "long", year: "numeric" });
+}
+
 /** Same monthly insight the patient `/api/patient/monthly-insight` serves (without cache). */
 export async function loadPatientMonthlyInsightSnapshot(
-  userId: string
+  userId: string,
+  requestedMonthStart?: string | null
 ): Promise<PatientMonthlyInsightSnapshot> {
   const { monthlyReports, users } = await import("@/src/db/schema");
   const { userHasQuestionnaire } = await import("@/src/lib/onboardingAccess");
-  const { and } = await import("drizzle-orm");
 
   const [userRow, firstScanAt] = await Promise.all([
     db.query.users.findFirst({
@@ -51,53 +63,100 @@ export async function loadPatientMonthlyInsightSnapshot(
 
   const questionnaireLocked = !userHasQuestionnaire(userRow?.primaryConcern);
   const schedule = computePatientInsightSchedule(firstScanAt);
+  const completedPeriods = listCompletedMonthlyPeriodStarts(firstScanAt);
+  const dueMonthStart = schedule.dueMonthlyPeriodStart;
+  const dueMonthStartYmd = dueMonthStart ? ymdFromDateOnly(dueMonthStart) : null;
+  const featureLocked = questionnaireLocked || schedule.monthlyLocked;
 
-  let row = null;
-  if (schedule.dueMonthlyPeriodStart) {
-    [row] = await db
-      .select()
-      .from(monthlyReports)
-      .where(
-        and(
-          eq(monthlyReports.userId, userId),
-          eq(monthlyReports.monthStart, schedule.dueMonthlyPeriodStart)
-        )
-      )
-      .orderBy(desc(monthlyReports.createdAt))
-      .limit(1);
+  const allRows = await db
+    .select()
+    .from(monthlyReports)
+    .where(eq(monthlyReports.userId, userId))
+    .orderBy(desc(monthlyReports.monthStart), desc(monthlyReports.createdAt));
+
+  const ragRows = allRows.filter((r) => isRagMonthlyPayloadV1(r.payloadJson));
+  const rowByPeriodYmd = new Map<string, (typeof ragRows)[number]>();
+  const rowByCalendarKey = new Map<string, (typeof ragRows)[number]>();
+  for (const row of ragRows) {
+    const ymd = ymdFromDateOnly(row.monthStart);
+    if (!rowByPeriodYmd.has(ymd)) rowByPeriodYmd.set(ymd, row);
+    const calKey = monthlyPeriodCalendarKey(row.monthStart);
+    if (!rowByCalendarKey.has(calKey)) rowByCalendarKey.set(calKey, row);
+    const payloadMonthly = (row.payloadJson as MonthlyRagCronPayloadV1).monthly;
+    const monthlyCal = payloadMonthly?.monthStart?.slice(0, 7);
+    if (monthlyCal && !rowByCalendarKey.has(monthlyCal)) {
+      rowByCalendarKey.set(monthlyCal, row);
+    }
   }
 
-  if (!row) {
-    const [latestRow] = await db
-      .select()
-      .from(monthlyReports)
-      .where(eq(monthlyReports.userId, userId))
-      .orderBy(desc(monthlyReports.monthStart), desc(monthlyReports.createdAt))
-      .limit(1);
-    row = latestRow ?? null;
+  function findRowForPeriod(periodStart: Date) {
+    const ymd = ymdFromDateOnly(periodStart);
+    return (
+      rowByPeriodYmd.get(ymd) ??
+      rowByCalendarKey.get(monthlyPeriodCalendarKey(periodStart)) ??
+      null
+    );
   }
 
-  const ragPayload = isRagMonthlyPayloadV1(row?.payloadJson)
-    ? (row.payloadJson as MonthlyRagCronPayloadV1)
+  const history = featureLocked
+    ? []
+    : completedPeriods
+        .map((periodStart) => {
+          const row = findRowForPeriod(periodStart);
+          const rag =
+            row && isRagMonthlyPayloadV1(row.payloadJson) ? row.payloadJson : null;
+          const monthStartYmd = ymdFromDateOnly(periodStart);
+          return {
+            monthStart: monthStartYmd,
+            periodLabel: rag
+              ? periodLabelFromPayload(rag, periodStart)
+              : periodStart.toLocaleString("en-US", {
+                  month: "long",
+                  year: "numeric",
+                }),
+            hasReport: rag != null,
+            kaiMonthAvg:
+              typeof rag?.monthly?.kaiMonthAvgFromParams === "number"
+                ? rag.monthly.kaiMonthAvgFromParams
+                : null,
+            isDue: dueMonthStartYmd === monthStartYmd,
+          };
+        })
+        .reverse();
+
+  const selectedPeriodStart =
+    requestedMonthStart &&
+    completedPeriods.some((p) => ymdFromDateOnly(p) === requestedMonthStart)
+      ? completedPeriods.find((p) => ymdFromDateOnly(p) === requestedMonthStart)!
+      : dueMonthStart;
+
+  const selectedRow = selectedPeriodStart
+    ? findRowForPeriod(selectedPeriodStart)
     : null;
-  const hasDueReport =
-    schedule.dueMonthlyPeriodStart != null &&
-    row != null &&
-    row.monthStart.getTime() === schedule.dueMonthlyPeriodStart.getTime() &&
-    ragPayload != null;
+  const ragPayload =
+    selectedRow && isRagMonthlyPayloadV1(selectedRow.payloadJson)
+      ? (selectedRow.payloadJson as MonthlyRagCronPayloadV1)
+      : null;
 
-  const locked = questionnaireLocked || schedule.monthlyLocked || !hasDueReport;
+  const monthly =
+    !featureLocked && ragPayload
+      ? parseMonthlyReportDisplay(ragPayload)
+      : null;
 
   return {
-    locked,
+    locked: featureLocked,
+    reportReady: monthly != null,
     nextInsightAt:
       schedule.nextMonthlyInsightAt ??
       schedule.dueMonthlyPeriodStart?.toISOString() ??
       null,
-    latestMonthStart: row ? row.monthStart.toISOString().slice(0, 10) : null,
-    monthly: hasDueReport && ragPayload
-      ? parseMonthlyReportDisplay(ragPayload)
+    latestMonthStart: dueMonthStartYmd,
+    dueMonthStart: dueMonthStartYmd,
+    selectedMonthStart: selectedPeriodStart
+      ? ymdFromDateOnly(selectedPeriodStart)
       : null,
+    history,
+    monthly,
   };
 }
 
