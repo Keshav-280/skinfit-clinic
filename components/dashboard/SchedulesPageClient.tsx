@@ -1475,7 +1475,6 @@ export default function SchedulesPageClient({
               <ManageGridSectionHeader
                 kicker="kAI"
                 title="Monthly insight"
-                description="A once-a-month recap of your skin progress from scans and daily logs."
                 compact
               />
               <ProfileRagKaiInsightsSection embedded compact />

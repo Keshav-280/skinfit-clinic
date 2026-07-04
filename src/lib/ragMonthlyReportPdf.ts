@@ -302,13 +302,6 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
     color: ${T.navyDark};
     margin-top: 4px;
   }
-  .brand-sub {
-    margin-top: 6px;
-    font-size: 12px;
-    line-height: 1.45;
-    color: ${T.inkMuted};
-    max-width: 26rem;
-  }
   .meta {
     text-align: right;
     font-size: 11px;
@@ -353,12 +346,6 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.02em;
-  }
-  .hero-score-h {
-    margin-top: 6px;
-    font-size: 10px;
-    line-height: 1.35;
-    color: rgba(255,255,255,0.7);
   }
   .hero-copy { flex: 1; min-width: 0; padding-top: 2px; }
   .hero-title {
@@ -529,7 +516,6 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
       <div>
         <p class="brand-kicker">kAI · SkinFit</p>
         <h1 class="brand-title">Monthly insight</h1>
-        <p class="brand-sub">A calm recap of your skin progress from scans and daily check-ins.</p>
       </div>
       <div class="meta">
         <strong>${esc(data.patientName)}</strong>
@@ -542,7 +528,6 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
       <div class="hero-score">
         <p class="hero-score-k">Month kAI</p>
         <p class="hero-score-v">${esc(monthKai)}</p>
-        <p class="hero-score-h">Your overall skin score for the month</p>
       </div>
       <div class="hero-copy">
         <p class="hero-title">${esc(data.summaryTitle || "Your month in review")}</p>

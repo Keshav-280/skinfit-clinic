@@ -31,9 +31,6 @@ export function ScheduleMonthlyInsightCard({
       <View style={styles.header}>
         <Text style={styles.kicker}>kAI</Text>
         <Text style={styles.title}>Monthly insight</Text>
-        <Text style={styles.description}>
-          A once-a-month recap of your skin progress from scans and daily logs.
-        </Text>
       </View>
 
       {locked ? (
@@ -88,12 +85,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#18181b",
     marginTop: 2,
-  },
-  description: {
-    fontSize: 11,
-    lineHeight: 15,
-    color: TEXT_MUTED,
-    marginTop: 4,
   },
   lockedBlock: { gap: 8 },
   lockRow: { flexDirection: "row", alignItems: "center", gap: 6 },

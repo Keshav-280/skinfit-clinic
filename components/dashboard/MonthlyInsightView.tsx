@@ -161,10 +161,9 @@ function MonthlyDetailBody({
             >
               {monthKai != null ? monthKai : "—"}
             </p>
-            <p className="mt-1.5 text-[11px] text-white/70">
-              Overall skin score for the month
-              {detail?.periodLabel ? ` · ${detail.periodLabel}` : ""}
-            </p>
+            {detail?.periodLabel ? (
+              <p className="mt-1.5 text-[11px] text-white/70">{detail.periodLabel}</p>
+            ) : null}
           </div>
           <p className="max-w-[55%] text-right text-[10px] font-extrabold uppercase leading-snug tracking-[0.12em] text-white/70">
             {monthly.summaryTitle}
@@ -451,12 +450,7 @@ export function MonthlyInsightView({
   const body = (
     <>
       {!embedded && showPdfButton ? (
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <p className={patientMuted}>
-            A detailed once-a-month recap from your scans and daily check-ins.
-          </p>
-          {pdfButton(patientPrimaryBtn)}
-        </div>
+        <div className="mb-4 flex justify-end">{pdfButton(patientPrimaryBtn)}</div>
       ) : embedded && compact && showPdfButton ? (
         <div className="mb-2 flex justify-end">
           {pdfButton(

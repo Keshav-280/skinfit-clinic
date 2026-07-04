@@ -102,10 +102,7 @@ export default function MonthlyReportCard({
         <View style={s.body}>
           {monthly.kaiMonthAvgFromParams != null && (
             <View style={s.scorePill}>
-              <View>
-                <Text style={s.scoreLabel}>Month kAI</Text>
-                <Text style={s.scoreHint}>Overall skin score for the month</Text>
-              </View>
+              <Text style={s.scoreLabel}>Month kAI</Text>
               <Text style={s.scoreValue}>{monthly.kaiMonthAvgFromParams}</Text>
             </View>
           )}
@@ -293,11 +290,6 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "rgba(255,255,255,0.8)",
-  },
-  scoreHint: {
-    marginTop: 2,
-    fontSize: 11,
-    color: "rgba(255,255,255,0.65)",
   },
   scoreValue: {
     fontSize: 28,

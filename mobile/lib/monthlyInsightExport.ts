@@ -139,13 +139,11 @@ export function buildMonthlyInsightHtml(monthly: MonthlyInsightExportData): stri
   body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#2C3E6B;background:#F4F7FB;padding:20px;line-height:1.5}
   .brand-k{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#3d5080}
   .brand-t{font-family:Georgia,serif;font-size:26px;font-weight:500;color:#1E3264;margin-top:4px}
-  .brand-s{font-size:12px;color:#52525b;margin-top:6px}
   .meta{margin-top:10px;font-size:12px;color:#52525b}
   .meta strong{color:${NAVY}}
   .hero{margin-top:16px;padding:16px;border-radius:18px;background:linear-gradient(135deg,#1E3264 0%,#2C3E6B 55%,#3d5080 100%);color:#fff}
   .score-k{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72)}
   .score-v{font-size:40px;font-weight:800;line-height:1;margin-top:4px}
-  .score-h{font-size:11px;color:rgba(255,255,255,.72);margin-top:4px}
   .hero-title{margin-top:14px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.72)}
   .hero-body{margin-top:6px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.94)}
   .card{margin-top:12px;padding:14px;border-radius:16px;border:1px solid rgba(44,62,107,.12);background:#fff}
@@ -166,7 +164,6 @@ export function buildMonthlyInsightHtml(monthly: MonthlyInsightExportData): stri
 </style></head><body>
   <p class="brand-k">kAI · SkinFit</p>
   <h1 class="brand-t">Monthly insight</h1>
-  <p class="brand-s">A detailed recap of your skin progress from scans and daily check-ins.</p>
   ${
     name || period
       ? `<p class="meta">${name ? `<strong>${escHtml(name)}</strong>` : ""}${
@@ -177,7 +174,6 @@ export function buildMonthlyInsightHtml(monthly: MonthlyInsightExportData): stri
   <section class="hero">
     <p class="score-k">Month kAI</p>
     <p class="score-v">${escHtml(monthKai)}</p>
-    <p class="score-h">Your overall skin score for the month</p>
     <p class="hero-title">${escHtml(monthly.summaryTitle || "Your month in review")}</p>
     <p class="hero-body">${escHtml(monthly.summaryBody || "")}</p>
   </section>
