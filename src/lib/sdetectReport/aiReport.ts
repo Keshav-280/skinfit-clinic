@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import { SDETECT_RADAR_LABELS } from "./radarLabels";
-import { reportDebug, reportLog } from "./pipelineLog";
 import type { SdetectMetric, SdetectReportData } from "./types";
 
 /** Grade band metadata — matches Medixora's own colour system (see prompt SECTION 2). */
@@ -476,17 +475,8 @@ export async function buildKaiReportContent(
       });
       const txt = completion.choices[0]?.message?.content;
       if (txt) ai = JSON.parse(txt) as RawAiContent;
-      reportLog("ai_prose_ok", {
-        model: model(),
-        skinTypeCode: asString(ai?.skinTypeCode) || data.classification,
-        observationCount: Array.isArray(ai?.observations) ? ai!.observations!.length : 0,
-        insightChars: asString(ai?.insight).length,
-      });
-      reportDebug("ai_prose_insight", { insight: asString(ai?.insight) });
     } catch (err) {
-      reportLog("ai_prose_failed", {
-        error: err instanceof Error ? err.message : String(err),
-      });
+      console.error("[skinfit-report-generator] AI interpretation failed", err);
       ai = null;
     }
   }
@@ -498,11 +488,6 @@ export async function buildKaiReportContent(
     alignObservationsOrder(picked, data),
     data
   );
-
-  reportLog("observations_final", {
-    scores: finalObservations.map((o) => o.score),
-    titles: finalObservations.map((o) => o.title),
-  });
 
   const skinTypeCode = asString(ai?.skinTypeCode, data.classification) || data.classification;
   // Derive the plain expansion from the code (fixed mapping) rather than trusting

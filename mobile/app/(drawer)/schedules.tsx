@@ -75,14 +75,7 @@ type ScheduleVisitRow = {
 type MonthlyInsightPayload = {
   locked: boolean;
   nextInsightAt: string;
-  monthly: {
-    summaryTitle: string;
-    summaryBody: string;
-    highlights: string[];
-    risks: string[];
-    nextMonthFocus: string[];
-    kaiMonthAvgFromParams: number | null;
-  } | null;
+  monthly: import("@/lib/monthlyInsightExport").MonthlyInsightExportData | null;
 };
 
 type PendingScheduleRequestRow = {

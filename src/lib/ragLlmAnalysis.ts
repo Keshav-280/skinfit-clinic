@@ -10,8 +10,7 @@ import type {
 import { buildNarrativeSignalPack } from "@/src/lib/ragCorrelationStats";
 import type { TextbookChunk } from "@/src/lib/ragTextbookIndex";
 import {
-  patientDisplayClarity,
-  patientClarityToGrade,
+  patientGradeFromDisplayScore,
   patientUnlockedDisplayScore,
   gradeSublabel,
   PATIENT_DISPLAY_SCORE_CAP,
@@ -45,9 +44,23 @@ function chunkLines(chunks: Array<{ chunk: TextbookChunk; score: number }>) {
     .join("\n\n");
 }
 
-/** Qualitative band word for locked patients (no numbers, no letter grades in prose). */
-function lockedQualitativeBand(rawScore: number): string {
-  return gradeSublabel(patientClarityToGrade(rawScore)).toLowerCase();
+/**
+ * Qualitative band for already-calibrated patient display scores (no numbers in prose).
+ * Callers pass already-calibrated patient display scores —
+ * do not re-apply the saturation curve here.
+ */
+function lockedQualitativeBand(displayScore: number): string {
+  return gradeSublabel(patientGradeFromDisplayScore(displayScore)).toLowerCase();
+}
+
+/** Format an already-calibrated display score for the LLM prompt. */
+function displayScoreForPrompt(
+  displayScore: number,
+  scoresUnlocked: boolean
+): string {
+  return scoresUnlocked
+    ? String(patientUnlockedDisplayScore(displayScore))
+    : lockedQualitativeBand(displayScore);
 }
 
 function paramsLine(
@@ -57,25 +70,35 @@ function paramsLine(
   return params
     .map((p) => {
       const v =
-        p.value == null
-          ? "—"
-          : scoresUnlocked
-            ? String(patientUnlockedDisplayScore(p.value))
-            : lockedQualitativeBand(p.value);
+        p.value == null ? "—" : displayScoreForPrompt(p.value, scoresUnlocked);
       const d = p.delta == null ? "—" : p.delta >= 0 ? `+${p.delta}` : String(p.delta);
-      const deltaStr = scoresUnlocked ? `Δ${d}` : `trend: ${p.delta == null ? "unknown" : p.delta >= 3 ? "improving" : p.delta <= -3 ? "softer" : "steady"}`;
+      const direction =
+        p.delta == null
+          ? "unknown"
+          : p.delta >= 3
+            ? "BETTER"
+            : p.delta <= -3
+              ? "WORSE"
+              : "steady";
+      const deltaStr = scoresUnlocked
+        ? `Δ${d}, ${direction}`
+        : `trend: ${direction === "BETTER" ? "improving" : direction === "WORSE" ? "softer" : "steady"}`;
       return `${RAG_KAI_PARAM_LABELS[p.key]}=${v} (${deltaStr})`;
     })
     .join(" · ");
 }
 
-async function callJson<T>(system: string, user: string): Promise<T | null> {
+async function callJson<T>(
+  system: string,
+  user: string,
+  opts?: { temperature?: number }
+): Promise<T | null> {
   const client = getClient();
   if (!client) return null;
   try {
     const completion = await client.chat.completions.create({
       model: model(),
-      temperature: 0.5,
+      temperature: opts?.temperature ?? 0.5,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
@@ -327,6 +350,14 @@ export type LlmMonthlyAnalysis = {
   highlights: string[];
   risks: string[];
   nextMonthFocus: string[];
+  /** Deep notes on notable parameter moves (1–2 sentences each). */
+  parameterNotes?: string[];
+  /** How habits likely shaped skin outcomes this month. */
+  habitNotes?: string[];
+  /** Short story of the scan-to-scan kAI path this month. */
+  scanStory?: string;
+  /** Warm closing line for next month. */
+  closingNote?: string;
 };
 
 export async function analyzeMonthly(input: {
@@ -337,7 +368,10 @@ export async function analyzeMonthly(input: {
   };
   monthStart: string;
   scoreTrend: number[];
-  /** Primary headline month score: weighted kAI from mean of each parameter across scans in month. */
+  /**
+   * Primary headline month score (already patient-display calibrated).
+   * Weighted kAI from mean of each parameter across scans in month.
+   */
   kaiMonthAvgFromParams: number | null;
   scansAveragedForMonthKai: number;
   latestParams: Array<{
@@ -345,18 +379,55 @@ export async function analyzeMonthly(input: {
     value: number | null;
     delta: number | null;
   }>;
+  /** First scan in month → latest scan in month (display scores). */
+  monthParamMoves?: Array<{
+    key: RagKaiParamKey;
+    from: number;
+    to: number;
+    delta: number;
+  }>;
   behavior: BehaviorSnapshot;
   evidence: Array<{ chunk: TextbookChunk; score: number }>;
   scoresUnlocked: boolean;
 }): Promise<LlmMonthlyAnalysis | null> {
-  const system = `You are kAI. Write a clear monthly progress note grounded in data.
-No hype, no generic text. Speak directly to the patient. Return ONLY JSON.
-The headline month kAI is kaiMonthAvgFromParams: it is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Per-scan trajectory is supporting context only.
-IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) and the overall kAI score are clarity/health scores where higher is BETTER (clearer, healthier skin) and lower is WORSE. E.g., if Active Acne went from 32 down to 25, acne got worse, NOT better. Always describe trends with this direction.
+  const headlineKai =
+    input.kaiMonthAvgFromParams == null
+      ? null
+      : patientUnlockedDisplayScore(input.kaiMonthAvgFromParams);
+  const headlineForPrompt =
+    headlineKai == null
+      ? "n/a"
+      : displayScoreForPrompt(headlineKai, input.scoresUnlocked);
+  const trendForPrompt = input.scoreTrend
+    .map((s) => displayScoreForPrompt(s, input.scoresUnlocked))
+    .join(" → ");
+
+  const monthMovesLine =
+    input.monthParamMoves && input.monthParamMoves.length > 0
+      ? input.monthParamMoves
+          .map((m) => {
+            const direction =
+              m.delta >= 3 ? "BETTER" : m.delta <= -3 ? "WORSE" : "steady";
+            if (!input.scoresUnlocked) {
+              return `${RAG_KAI_PARAM_LABELS[m.key]}: ${direction}`;
+            }
+            return `${RAG_KAI_PARAM_LABELS[m.key]}: ${m.from} → ${m.to} (Δ${
+              m.delta >= 0 ? `+${m.delta}` : m.delta
+            }, ${direction})`;
+          })
+          .join("\n")
+      : "(no in-month scan pair)";
+
+  const system = `You are kAI. Write a rich, super-detailed monthly progress report grounded in data.
+No hype, no generic filler. Speak directly to the patient like a caring clinic coordinator who studied their month closely. Return ONLY JSON.
+The headline month kAI is the ONLY overall month score. It is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Per-scan trajectory is supporting context only — never substitute a per-scan kAI for the headline month score.
+IMPORTANT SCALE DIRECTION: Every parameter (Active Acne, Wrinkles, Pigmentation, etc.) and overall kAI is a clarity/health score where HIGHER is BETTER and LOWER is WORSE. Active Acne is NOT an acne-severity count — a drop from 57 to 20 means acne clarity got WORSE, not better. Only call a change "improved" / "win" when the score ROSE. Only call it "declined" / "risk" when the score FELL. Use the BETTER/WORSE labels in the data — never invert them.
 STRICT DATA RULES:
 - Every number you write MUST appear verbatim in the data provided. Never invent, estimate, or extrapolate a score.
+- When stating overall / month kAI, write exactly the HEADLINE MONTH kAI value. Do not use any other number from the per-scan series as the overall score.
 - Patient scores are ALWAYS between ${PATIENT_DISPLAY_SCORE_FLOOR} and ${PATIENT_DISPLAY_SCORE_CAP}. Never write a skin score above ${PATIENT_DISPLAY_SCORE_CAP}, never write "100" or "X/100", and never describe a score as perfect or maxed out.
 - NEVER mention UV, sun exposure, sunscreen days, or photoprotection habits as something we measured — this app does not collect sun-exposure data.
+- Be DETAILED: connect parameter moves to habits (sleep, stress, routine, journal), explain what likely helped or hurt, and give concrete next-month actions. Prefer specific numbers and day counts over vague praise.
 ${
   !input.scoresUnlocked
     ? `- The patient's exact scores are LOCKED. You MUST NOT output any score numbers or deltas, and you MUST NOT use letter grades (A/B/C/D/E) either. Describe parameters only with qualitative words (e.g. "good", "moderate", "improving", "held steady").`
@@ -368,29 +439,78 @@ Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) �
 ${input.patient.name} · Skin: ${input.patient.skinType ?? "unknown"} · Concern: ${input.patient.primaryConcern ?? "unknown"}
 
 MONTH STARTING ${input.monthStart}
-HEADLINE MONTH kAI (mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${input.kaiMonthAvgFromParams == null ? "n/a" : input.scoresUnlocked ? patientDisplayClarity(input.kaiMonthAvgFromParams) : lockedQualitativeBand(input.kaiMonthAvgFromParams)}
-Per-scan kAI series in this month (${input.scoreTrend.length} pts): ${input.scoreTrend.map((s) => input.scoresUnlocked ? String(patientDisplayClarity(s)) : lockedQualitativeBand(s)).join(" → ")}
+HEADLINE MONTH kAI (cite this exact value as overall month score; mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${headlineForPrompt}
+Per-scan kAI series in this month (${input.scoreTrend.length} pts, supporting only — do NOT use these as overall month score): ${trendForPrompt}
 
-LATEST PARAMETERS
+MONTH PARAMETER MOVES (first scan in month → latest)
+${monthMovesLine}
+
+LATEST PARAMETERS (vs prior scan)
 ${paramsLine(input.latestParams, input.scoresUnlocked)}
 
 BEHAVIOR (past ${input.behavior.windowDays} calendar days counted in this month report)
 Full AM+PM: ${input.behavior.fullRoutineDays}/${input.behavior.windowDays} | granular blend ~${input.behavior.routineWeightedConsistencyPct}% (avg AM checklist ${input.behavior.avgAmRoutineStepPct}% · avg PM checklist ${input.behavior.avgPmRoutineStepPct}%)
-Sleep avg ${input.behavior.avgSleepHours}h | high-stress ${input.behavior.highStressDays}d | journal ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%, missed ${input.behavior.journalMissedDays}d)
+Sleep avg ${input.behavior.avgSleepHours}h | water avg ${input.behavior.avgWaterGlasses} glasses | stress avg ${input.behavior.avgStress}/10 | high-stress ${input.behavior.highStressDays}d | journal ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%, missed ${input.behavior.journalMissedDays}d)
 
 EVIDENCE
 ${chunkLines(input.evidence).slice(0, 2000)}
 
 Return ONLY JSON:
 {
-  "summaryTitle": "string (<= 8 words, specific to this month)",
-  "summaryBody": "string (3-4 sentences, plain language, tied to data)",
-  "highlights": ["3 concrete wins tied to numbers"],
-  "risks": ["2 specific risks/regressions to watch"],
-  "nextMonthFocus": ["3 specific focus areas for next month"]
+  "summaryTitle": "string (<= 10 words, specific to this month)",
+  "summaryBody": "string (4-6 sentences: open with headline month kAI when unlocked, cover overall trajectory, strongest win, biggest soft spot, and how habits showed up)",
+  "highlights": ["5-6 detailed wins; each 1-2 sentences with numbers and why it matters"],
+  "risks": ["3-4 detailed risks/regressions; each 1-2 sentences with numbers and what to watch"],
+  "nextMonthFocus": ["4-5 specific, actionable focus items; each should say what to do and why"],
+  "parameterNotes": ["one detailed note per notable parameter move (BETTER or WORSE); skip steady ones; 1-2 sentences each"],
+  "habitNotes": ["2-4 notes linking routine/sleep/stress/journal/water to skin outcomes this month"],
+  "scanStory": "string (2-3 sentences narrating the per-scan kAI path and how it relates to the headline month kAI)",
+  "closingNote": "string (1 warm, specific closing sentence for next month)"
 }`;
 
-  return await callJson<LlmMonthlyAnalysis>(system, user);
+  const result = await callJson<LlmMonthlyAnalysis>(system, user, {
+    temperature: 0.25,
+  });
+  if (!result) return null;
+  return sanitizeMonthlyLlmAnalysis(result, headlineKai, input.scoresUnlocked);
+}
+
+/** Keep LLM prose aligned with the headline month score shown in the UI. */
+function sanitizeMonthlyLlmAnalysis(
+  analysis: LlmMonthlyAnalysis,
+  headlineKai: number | null,
+  scoresUnlocked: boolean
+): LlmMonthlyAnalysis {
+  if (!scoresUnlocked || headlineKai == null) return analysis;
+
+  const fixProse = (text: string) =>
+    text
+      .replace(
+        /\b((?:overall|month(?:ly)?)\s+)?kAI\s+score\s+(?:was|is|of|at)\s+\d+\b/gi,
+        (match) => match.replace(/\d+/, String(headlineKai))
+      )
+      .replace(
+        /\b(?:overall|month(?:ly)?)\s+kAI\s+(?:was|is|of|at)\s+\d+\b/gi,
+        (match) => match.replace(/\d+/, String(headlineKai))
+      )
+      .replace(
+        /\byour\s+kAI\s+(?:was|is|of|at)\s+\d+\b/gi,
+        (match) => match.replace(/\d+/, String(headlineKai))
+      );
+
+  return {
+    ...analysis,
+    summaryTitle: fixProse(analysis.summaryTitle ?? ""),
+    summaryBody: fixProse(analysis.summaryBody ?? ""),
+    highlights: (analysis.highlights ?? []).map(fixProse),
+    risks: (analysis.risks ?? []).map(fixProse),
+    nextMonthFocus: (analysis.nextMonthFocus ?? []).map(fixProse),
+    parameterNotes: (analysis.parameterNotes ?? []).map(fixProse),
+    habitNotes: (analysis.habitNotes ?? []).map(fixProse),
+    scanStory: analysis.scanStory != null ? fixProse(analysis.scanStory) : analysis.scanStory,
+    closingNote:
+      analysis.closingNote != null ? fixProse(analysis.closingNote) : analysis.closingNote,
+  };
 }
 
 export function isLlmEnabled() {
@@ -414,7 +534,7 @@ Return JSON: { "action": "..." }`;
   const user = `Patient context:
 - Total scans completed: ${input.scanCount}
 - Primary concern: ${input.primaryConcern ?? "not set"}
-- Current weakest parameter: ${input.weakestArea ?? "unknown"} (score: ${input.weakestScore == null ? "N/A" : patientDisplayClarity(input.weakestScore)}/100)
+- Current weakest parameter: ${input.weakestArea ?? "unknown"} (score: ${input.weakestScore == null ? "N/A" : patientUnlockedDisplayScore(input.weakestScore)})
 - Weekly change in weakest area: ${input.weeklyDelta != null ? (input.weeklyDelta >= 0 ? `+${input.weeklyDelta}` : String(input.weeklyDelta)) : "N/A"}
 
 Existing actions (do NOT repeat these):

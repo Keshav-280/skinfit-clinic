@@ -842,8 +842,7 @@ function drawInsightBox(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
-  doc.setTextColor(...KAI.navy);
-  doc.text("YOUR PERSONALISED NEXT STEP", x + layout.pad, y + ptToMm(20), { charSpace: 0.6 });
+  sectionLabel(doc, "your personalised next step", x + layout.pad, y + ptToMm(20));
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(layout.fontSize);

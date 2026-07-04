@@ -4,14 +4,9 @@ import {
   fetchSdetectApiReport,
 } from "./fetchApiReport";
 import { parseSdetectPdfText } from "./parsePdfText";
-import { reportDebug, reportLog, truncateText } from "./pipelineLog";
 import { SDETECT_RADAR_LABELS } from "./radarLabels";
 import type { SdetectMetric, SdetectReportData } from "./types";
 import { extractReportWithVision, isGarbledPatientName } from "./visionExtract";
-
-function metricSummary(metrics: SdetectMetric[]): Array<{ label: string; score: number }> {
-  return metrics.map((m) => ({ label: m.label, score: m.score }));
-}
 
 function mergePatient(
   pdfPatient: SdetectReportData["patient"],
@@ -65,36 +60,11 @@ function isLowConfidenceParse(state: {
 }
 
 export async function buildSdetectReportFromPdf(
-  pdfBuffer: Buffer,
-  options: { sourceFilename?: string } = {}
+  pdfBuffer: Buffer
 ): Promise<SdetectReportData> {
-  reportLog("pdf_received", {
-    sourceFilename: options.sourceFilename ?? null,
-    bytes: pdfBuffer.length,
-  });
-
   const parsed = await parseSdetectPdfText(pdfBuffer);
-  reportLog("text_parse_done", {
-    patientName: parsed.patient.name,
-    classification: parsed.classification,
-    comprehensiveScore: parsed.comprehensiveScore,
-    moisture: parsed.moisture,
-    radarCount: parsed.radar.length,
-    generalCount: parsed.generalAnalysis.length,
-    inDepthCount: parsed.inDepthAnalysis.length,
-    garbledName: isGarbledPatientName(parsed.patient.name),
-  });
-  reportDebug("text_parse_radar", { radar: metricSummary(parsed.radar) });
-  reportDebug("text_parse_general", { general: metricSummary(parsed.generalAnalysis) });
-  reportDebug("text_parse_issue", { issueAnalysis: truncateText(parsed.issueAnalysis, 800) });
-
   const qrUrl = await decodeQrFromPdf(pdfBuffer);
   const params = qrUrl ? parseReportUrlParams(qrUrl) : null;
-  reportLog("qr_decode", {
-    decoded: Boolean(qrUrl),
-    reportSn: params?.reportSn ?? null,
-    hasApiParams: Boolean(params),
-  });
 
   let faceImages: SdetectReportData["faceImages"] = null;
   const sourceReportUrl = qrUrl;
@@ -140,17 +110,8 @@ export async function buildSdetectReportFromPdf(
               ? skincareAdvice
               : api.skincareAdvice;
       }
-      reportLog("api_fetch_ok", {
-        radarCount: radar.length,
-        hasFaces: Boolean(faceImages),
-        classification,
-        comprehensiveScore,
-      });
-      reportDebug("api_fetch_radar", { radar: metricSummary(radar) });
-    } catch (err) {
-      reportLog("api_fetch_failed", {
-        error: err instanceof Error ? err.message : String(err),
-      });
+    } catch {
+      /* keep PDF-only data when API fetch fails */
     }
   }
 
@@ -166,29 +127,9 @@ export async function buildSdetectReportFromPdf(
   });
 
   if (lowConfidence) {
-    reportLog("vision_ocr_start", {
-      reason: "low_confidence_parse",
-      radarCount: radar.length,
-      generalCount: generalAnalysis.length,
-      classification,
-      comprehensiveScore,
-    });
-    const vision = await extractReportWithVision(pdfBuffer).catch((err) => {
-      reportLog("vision_ocr_failed", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return null;
-    });
+    const vision = await extractReportWithVision(pdfBuffer).catch(() => null);
 
     if (vision) {
-      reportLog("vision_ocr_ok", {
-        patientName: vision.patient.name ?? null,
-        classification: vision.classification,
-        comprehensiveScore: vision.comprehensiveScore,
-        radarCount: vision.radar.length,
-        generalCount: vision.generalAnalysis.length,
-      });
-      reportDebug("vision_ocr_radar", { radar: metricSummary(vision.radar) });
       if (vision.patient.name) patient.name = vision.patient.name;
       if (vision.patient.gender) patient.gender = vision.patient.gender;
       if (vision.patient.age) patient.age = vision.patient.age;
@@ -204,19 +145,7 @@ export async function buildSdetectReportFromPdf(
       if (vision.issueAnalysis) issueAnalysis = vision.issueAnalysis;
       if (vision.skincareAdvice.length) skincareAdvice = vision.skincareAdvice;
     }
-  } else {
-    reportLog("vision_ocr_skipped", { reason: "text_parse_confident" });
   }
-
-  reportLog("extract_complete", {
-    patientName: patient.name,
-    classification,
-    comprehensiveScore,
-    radarCount: radar.length,
-    radar: metricSummary(radar),
-    hasFaces: Boolean(faceImages),
-    usedVision: lowConfidence,
-  });
 
   return {
     classification,

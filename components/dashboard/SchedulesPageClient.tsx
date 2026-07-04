@@ -1471,7 +1471,7 @@ export default function SchedulesPageClient({
           </button>
 
           {showKaiInsights ? (
-            <div className="flex flex-col overflow-hidden rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+            <div className="flex flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
               <ManageGridSectionHeader
                 kicker="kAI"
                 title="Monthly insight"

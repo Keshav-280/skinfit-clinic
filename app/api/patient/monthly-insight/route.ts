@@ -9,6 +9,7 @@ import {
   computePatientInsightSchedule,
   getPatientFirstScanAt,
 } from "@/src/lib/patientInsightSchedule";
+import { alignMonthlyProseToHeadlineKai } from "@/src/lib/patientInsightDisplay";
 import { isRagMonthlyPayloadV1 } from "@/src/lib/ragCronMonthlyPayload";
 
 export async function GET(request: Request) {
@@ -72,7 +73,9 @@ export async function GET(request: Request) {
       nextInsightAt,
       firstScanYmd: schedule.firstScanYmd,
       latestMonthStart: row ? row.monthStart.toISOString().slice(0, 10) : null,
-      monthly: hasDueReport ? ragPayload?.monthly ?? null : null,
+      monthly: hasDueReport && ragPayload?.monthly
+        ? alignMonthlyProseToHeadlineKai(ragPayload.monthly)
+        : null,
     };
   });
 

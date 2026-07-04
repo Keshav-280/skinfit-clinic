@@ -109,6 +109,10 @@ export type MonthlyOutput = {
   highlights: string[];
   risks: string[];
   nextMonthFocus: string[];
+  parameterNotes: string[];
+  habitNotes: string[];
+  scanStory: string | null;
+  closingNote: string | null;
   scoreTrend: number[];
   /** Weighted kAI from mean of each parameter across scans in this month (primary month score). */
   kaiMonthAvgFromParams: number | null;
@@ -227,6 +231,121 @@ function hookFallback(delta: number) {
   if (delta >= 4) return "Your skin improved this week — your consistency is paying off.";
   if (delta <= -4) return "Tough week — here is what likely drove the dip and what to fix first.";
   return "Steady week — your trend is stable, now let's sharpen your highest-impact actions.";
+}
+
+type MonthParamMove = {
+  key: RagKaiParamKey;
+  from: number;
+  to: number;
+  delta: number;
+};
+
+/** Deterministic month highlights from first→latest scan (higher score = better). */
+function buildMonthParamHighlights(
+  moves: MonthParamMove[],
+  scoresUnlocked: boolean
+): string[] {
+  return moves
+    .filter((m) => m.delta >= 3)
+    .sort((a, b) => b.delta - a.delta)
+    .slice(0, 5)
+    .map((m) =>
+      scoresUnlocked
+        ? `${RAG_KAI_PARAM_LABELS[m.key]} improved from ${m.from} to ${m.to} (Δ+${m.delta}) — a clear win to protect next month.`
+        : `${RAG_KAI_PARAM_LABELS[m.key]} improved this month — protect that momentum.`
+    );
+}
+
+/** Deterministic month risks from first→latest scan (lower score = worse). */
+function buildMonthParamRisks(
+  moves: MonthParamMove[],
+  scoresUnlocked: boolean
+): string[] {
+  return moves
+    .filter((m) => m.delta <= -3)
+    .sort((a, b) => a.delta - b.delta)
+    .slice(0, 4)
+    .map((m) =>
+      scoresUnlocked
+        ? `${RAG_KAI_PARAM_LABELS[m.key]} declined from ${m.from} to ${m.to} (Δ${m.delta}) — prioritise recovery here.`
+        : `${RAG_KAI_PARAM_LABELS[m.key]} softened this month — prioritise recovery here.`
+    );
+}
+
+function signedDelta(n: number): string {
+  return `${n > 0 ? "+" : ""}${n}`;
+}
+
+function buildMonthParamNotes(
+  params: MonthlyReportDetail["parameters"],
+  scoresUnlocked: boolean
+): string[] {
+  return params
+    .filter((p) => p.vsMonthStart != null && Math.abs(p.vsMonthStart) >= 2)
+    .sort(
+      (a, b) => Math.abs(b.vsMonthStart ?? 0) - Math.abs(a.vsMonthStart ?? 0)
+    )
+    .slice(0, 6)
+    .map((p) => {
+      const d = p.vsMonthStart ?? 0;
+      const dir =
+        d >= 3 ? "improved" : d <= -3 ? "softened" : "held mostly steady";
+      if (!scoresUnlocked) {
+        return `${p.label} ${dir} from the start of the month to your latest scan.`;
+      }
+      const mean =
+        p.monthMean != null ? ` Month average sat at ${p.monthMean}.` : "";
+      const prior =
+        p.vsPrior != null
+          ? ` Versus the prior scan: ${signedDelta(p.vsPrior)}.`
+          : "";
+      return `${p.label} ${dir} across the month (${signedDelta(d)} from open to latest; latest ${p.latest ?? "—"}).${mean}${prior}`;
+    });
+}
+
+function buildMonthHabitNotes(
+  ad: MonthlyReportDetail["adherence30d"]
+): string[] {
+  const notes = [
+    `Full AM+PM routine on ${ad.fullRoutineDays} of ${ad.windowDays} days, with checklist consistency at ${ad.routineWeightedConsistencyPct}% (AM avg ${ad.avgAmRoutineStepPct}%, PM avg ${ad.avgPmRoutineStepPct}%).`,
+    `Sleep averaged ${ad.avgSleepHours}h. Stress averaged ${ad.avgStress}/10 with ${ad.highStressDays} high-stress day${ad.highStressDays === 1 ? "" : "s"}.`,
+    `Skin journal on ${ad.journalDays} of ${ad.windowDays} days (${ad.journalCompliancePct}%); about ${ad.journalMissedDays} day${ad.journalMissedDays === 1 ? "" : "s"} missed.`,
+  ];
+  if (ad.avgWaterGlasses > 0) {
+    notes.push(
+      `Hydration averaged ${ad.avgWaterGlasses} glasses daily — steady water intake supports barrier recovery.`
+    );
+  }
+  return notes;
+}
+
+function buildMonthScanStory(
+  scans: MonthlyReportDetail["scans"],
+  kaiMonthAvg: number | null,
+  scoresUnlocked: boolean
+): string {
+  if (!scans.length) {
+    return "No scans were logged in this month window, so this recap leans on your latest available scan and daily check-ins.";
+  }
+  if (!scoresUnlocked) {
+    return `You completed ${scans.length} scan${scans.length === 1 ? "" : "s"} this month. Your headline month score blends parameter averages across those visits.`;
+  }
+  const series = scans.map((s) => s.kaiScore).join(" → ");
+  return `You completed ${scans.length} scan${scans.length === 1 ? "" : "s"} this month. Per-scan kAI moved ${series}. Your headline month kAI is ${kaiMonthAvg ?? "—"}, which blends parameter averages across those scans rather than simply averaging the per-scan scores.`;
+}
+
+function mergeUniqueStrings(...groups: Array<string[] | undefined>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const group of groups) {
+    for (const item of group ?? []) {
+      const key = item.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(item.trim());
+    }
+  }
+  return out;
 }
 
 function buildRetrievalQuery(params: {
@@ -350,6 +469,18 @@ async function buildMonthlyForCalendarMonth(
     kaiMonthAvgFromParams != null ? patientDisplayClarity(kaiMonthAvgFromParams) : null;
   const displayScoreTrend = scoreTrend.map(patientDisplayClarity);
 
+  const firstCalScan = monthScans[0] ?? null;
+  const monthParamMoves = RAG_KAI_PARAM_KEYS.flatMap((key) => {
+    if (!firstCalScan || !latestScan) return [];
+    const fromRaw = firstCalScan.paramValues[key];
+    const toRaw = latestScan.paramValues[key];
+    if (typeof fromRaw !== "number" || typeof toRaw !== "number") return [];
+    const from = patientDisplayClarity(fromRaw);
+    const to = patientDisplayClarity(toRaw);
+    return [{ key, from, to, delta: Math.round(to - from) }];
+  });
+
+  const scoresUnlocked = user.clinicVisitedAt != null;
   let monthlyLlm = null;
   if (llmEnabled) {
     monthlyLlm = await analyzeMonthly({
@@ -367,9 +498,10 @@ async function buildMonthlyForCalendarMonth(
         value: p.value,
         delta: p.delta,
       })),
+      monthParamMoves,
       behavior: monthBehavior,
       evidence: monthlyEvidence,
-      scoresUnlocked: user.clinicVisitedAt != null,
+      scoresUnlocked,
     });
     if (monthlyLlm) monthlyLlmTally.ok = true;
   }
@@ -379,19 +511,23 @@ async function buildMonthlyForCalendarMonth(
     monthlyLlm?.summaryTitle ?? "kAI monthly progress";
   const summaryBody =
     monthlyLlm?.summaryBody ??
-    `Month kAI from mean parameters: ${displayKaiMonthAvgFromParams ?? "—"} (weighted score after averaging each of 6 parameters across scans this month). Per-scan kAI series: ${displayScoreTrend.join(" → ")}.`;
-  const highlights =
-    monthlyLlm?.highlights && monthlyLlm.highlights.length > 0
-      ? monthlyLlm.highlights
-      : [
-          `Month kAI (mean parameters): ${displayKaiMonthAvgFromParams ?? "—"} · last scan kAI in month: ${displayScoreTrend[displayScoreTrend.length - 1] ?? "—"}`,
-          `Full-routine days: ${monthBehavior.fullRoutineDays}/${windowDays} (${periodLabel})`,
-          `Avg sleep ${monthBehavior.avgSleepHours}h · high-UV ${monthBehavior.highSunDays}d`,
-        ];
-  const risksLlm = monthlyLlm?.risks ?? [];
-  const nextMonthFocusLlm = monthlyLlm?.nextMonthFocus ?? [];
+    `Your headline month kAI is ${displayKaiMonthAvgFromParams ?? "—"}. That score blends each skin parameter across ${scansForMonthAvg.length} scan${scansForMonthAvg.length === 1 ? "" : "s"} this month, rather than simply averaging per-scan totals. Per-scan kAI moved ${displayScoreTrend.join(" → ")}. Full AM+PM routine landed on ${monthBehavior.fullRoutineDays}/${windowDays} days, with checklist consistency at ${monthBehavior.routineWeightedConsistencyPct}% and journal coverage at ${monthBehavior.journalCompliancePct}%.`;
+  const ruleHighlights = buildMonthParamHighlights(
+    monthParamMoves,
+    scoresUnlocked
+  );
+  const highlights = mergeUniqueStrings(
+    monthlyLlm?.highlights,
+    ruleHighlights,
+    [
+      `Headline month kAI: ${displayKaiMonthAvgFromParams ?? "—"} across ${scansForMonthAvg.length} scan${scansForMonthAvg.length === 1 ? "" : "s"} in ${periodLabel}.`,
+      `Full-routine days: ${monthBehavior.fullRoutineDays}/${windowDays} · sleep avg ${monthBehavior.avgSleepHours}h · journal ${monthBehavior.journalCompliancePct}%.`,
+    ]
+  ).slice(0, 8);
 
-  const ruleRisks: string[] = [];
+  const ruleRisks: string[] = [
+    ...buildMonthParamRisks(monthParamMoves, scoresUnlocked),
+  ];
   if (monthBehavior.journalCompliancePct < 46) {
     ruleRisks.push(
       `Skin journal only on ${monthBehavior.journalEntriesCount}/${monthBehavior.windowDays} days (${monthBehavior.journalCompliancePct}%) — flare triggers and texture shifts are invisible without quick notes.`
@@ -402,15 +538,15 @@ async function buildMonthlyForCalendarMonth(
     monthBehavior.routineWeightedConsistencyPct < 60
   ) {
     ruleRisks.push(
-      `Checklist completion averaged ${monthBehavior.routineWeightedConsistencyPct}% (many partial AM/PM days) — laziness here usually drags acne and pigmentation response.`
+      `Checklist completion averaged ${monthBehavior.routineWeightedConsistencyPct}% (many partial AM/PM days) — incomplete routines usually drag acne and pigmentation response.`
     );
   }
-  const risks = [...risksLlm, ...ruleRisks].slice(0, 10);
+  const risks = mergeUniqueStrings(ruleRisks, monthlyLlm?.risks).slice(0, 8);
 
   const ruleFocus: string[] = [];
   if (monthBehavior.journalCompliancePct < 46) {
     ruleFocus.push(
-      "Log a tiny nightly skin note ≥4 nights weekly (sun, spike, itch, sting, breakout map) even when you skip routines."
+      "Log a tiny nightly skin note on at least 4 nights weekly (sting, itch, breakout map, sleep) even when you skip routines — patterns only show up with notes."
     );
   }
   if (
@@ -418,12 +554,17 @@ async function buildMonthlyForCalendarMonth(
     monthBehavior.routineWeightedConsistencyPct < 65
   ) {
     ruleFocus.push(
-      "Finish one tier fully (e.g. PM cleanse + moisturizer) instead of ticking every bottle halfway."
+      "Finish one tier fully (for example PM cleanse + moisturizer) instead of ticking every bottle halfway — complete steps beat partial checklists."
     );
   }
-  const nextMonthFocus = [...nextMonthFocusLlm, ...ruleFocus].slice(0, 10);
+  ruleFocus.push(
+    "Keep scan angles and lighting consistent so next month’s parameter moves stay trustworthy."
+  );
+  const nextMonthFocus = mergeUniqueStrings(
+    monthlyLlm?.nextMonthFocus,
+    ruleFocus
+  ).slice(0, 8);
   const calendarRange = `${startStr} → ${endStr}`;
-  const firstCalScan = monthScans[0] ?? null;
 
   const parametersDetail: MonthlyReportDetail["parameters"] =
     RAG_KAI_PARAM_KEYS.map((key) => {
@@ -481,6 +622,44 @@ async function buildMonthlyForCalendarMonth(
           .slice(-3)
           .map((r) => r.tracker.section1.hookLine);
 
+  const adherence30d: MonthlyReportDetail["adherence30d"] = {
+    fullRoutineDays: monthBehavior.fullRoutineDays,
+    windowDays: monthBehavior.windowDays,
+    amDays: monthBehavior.amRoutineDays,
+    pmDays: monthBehavior.pmRoutineDays,
+    avgAmRoutineStepPct: monthBehavior.avgAmRoutineStepPct,
+    avgPmRoutineStepPct: monthBehavior.avgPmRoutineStepPct,
+    routineWeightedConsistencyPct: monthBehavior.routineWeightedConsistencyPct,
+    journalCompliancePct: monthBehavior.journalCompliancePct,
+    journalMissedDays: monthBehavior.journalMissedDays,
+    avgSleepHours: monthBehavior.avgSleepHours,
+    avgWaterGlasses: monthBehavior.avgWaterGlasses,
+    avgStress: monthBehavior.avgStress,
+    highStressDays: monthBehavior.highStressDays,
+    highSunDays: monthBehavior.highSunDays,
+    moderateSunDays: monthBehavior.moderateSunDays,
+    journalDays: monthBehavior.journalEntriesCount,
+  };
+
+  const parameterNotes = mergeUniqueStrings(
+    monthlyLlm?.parameterNotes,
+    buildMonthParamNotes(parametersDetail, scoresUnlocked)
+  ).slice(0, 8);
+  const habitNotes = mergeUniqueStrings(
+    monthlyLlm?.habitNotes,
+    buildMonthHabitNotes(adherence30d)
+  ).slice(0, 6);
+  const scanStory =
+    monthlyLlm?.scanStory?.trim() ||
+    buildMonthScanStory(
+      scansChrono,
+      displayKaiMonthAvgFromParams,
+      scoresUnlocked
+    );
+  const closingNote =
+    monthlyLlm?.closingNote?.trim() ||
+    "Carry the wins, fix the soft spots early, and keep your check-ins honest — next month’s insight gets sharper with every scan and note.";
+
   const monthlyDetail: MonthlyReportDetail = {
     patientName: user.name,
     patientEmail: user.email,
@@ -495,26 +674,13 @@ async function buildMonthlyForCalendarMonth(
     highlights,
     risks,
     nextMonthFocus,
+    parameterNotes,
+    habitNotes,
+    scanStory,
+    closingNote,
     kaiTrajectory: displayScoreTrend,
     kaiMonthAvgFromParams: displayKaiMonthAvgFromParams,
-    adherence30d: {
-      fullRoutineDays: monthBehavior.fullRoutineDays,
-      windowDays: monthBehavior.windowDays,
-      amDays: monthBehavior.amRoutineDays,
-      pmDays: monthBehavior.pmRoutineDays,
-      avgAmRoutineStepPct: monthBehavior.avgAmRoutineStepPct,
-      avgPmRoutineStepPct: monthBehavior.avgPmRoutineStepPct,
-      routineWeightedConsistencyPct: monthBehavior.routineWeightedConsistencyPct,
-      journalCompliancePct: monthBehavior.journalCompliancePct,
-      journalMissedDays: monthBehavior.journalMissedDays,
-      avgSleepHours: monthBehavior.avgSleepHours,
-      avgWaterGlasses: monthBehavior.avgWaterGlasses,
-      avgStress: monthBehavior.avgStress,
-      highStressDays: monthBehavior.highStressDays,
-      highSunDays: monthBehavior.highSunDays,
-      moderateSunDays: monthBehavior.moderateSunDays,
-      journalDays: monthBehavior.journalEntriesCount,
-    },
+    adherence30d,
     scans: scansChrono,
     parameters: parametersDetail,
     identity: skinIdentityTimeline.current,
@@ -533,6 +699,10 @@ async function buildMonthlyForCalendarMonth(
     highlights,
     risks,
     nextMonthFocus,
+    parameterNotes,
+    habitNotes,
+    scanStory,
+    closingNote,
     scoreTrend: displayScoreTrend,
     kaiMonthAvgFromParams: displayKaiMonthAvgFromParams,
     llmUsed: Boolean(monthlyLlm),
