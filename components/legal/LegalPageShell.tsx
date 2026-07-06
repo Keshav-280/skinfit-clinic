@@ -10,14 +10,19 @@ type Props = {
   kicker: string;
   title: string;
   lastUpdated: string;
+  intro?: string;
   children: ReactNode;
   footer?: ReactNode;
 };
+
+const DEFAULT_INTRO =
+  "This policy applies to the SkinnFit mobile app and patient web dashboard used with participating dermatology clinics in India.";
 
 export function LegalPageShell({
   kicker,
   title,
   lastUpdated,
+  intro = DEFAULT_INTRO,
   children,
   footer,
 }: Props) {
@@ -67,10 +72,7 @@ export function LegalPageShell({
           <p className="mt-3 text-sm leading-relaxed text-[#5C6478]">
             Last updated: <span className="font-semibold text-[#2C3E6B]">{lastUpdated}</span>
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-[#5C6478]">
-            This policy applies to the SkinnFit mobile app and patient web dashboard used with
-            participating dermatology clinics in India.
-          </p>
+          <p className="mt-2 text-sm leading-relaxed text-[#5C6478]">{intro}</p>
 
           <div className="mt-8 space-y-8">{children}</div>
 

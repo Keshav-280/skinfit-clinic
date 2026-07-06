@@ -31,6 +31,7 @@ import {
   TEXT_MUTED,
   card,
 } from "@/components/profile/theme";
+import { MedicalDisclaimerLegalFooter } from "@/components/MedicalDisclaimerLegalFooter";
 import ProfileHeaderCard from "@/components/profile/ProfileHeaderCard";
 import FamilyWalletCard from "@/components/profile/FamilyWalletCard";
 import PatientProgressTracker from "@/components/profile/PatientProgressTracker";
@@ -275,6 +276,8 @@ export default function ProfileScreen() {
             </Text>
           </View>
         ) : null}
+
+        <MedicalDisclaimerLegalFooter />
 
         <View style={{ height: 60 }} />
       </ScrollView>

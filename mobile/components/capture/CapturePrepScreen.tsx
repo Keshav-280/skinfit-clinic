@@ -1,11 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CapturePhotoGuideModal } from "@/components/capture/CapturePhotoGuideModal";
 import { bottomDockInset } from "@/lib/bottomDockInset";
+import { MEDICAL_DISCLAIMER_CAPTURE } from "@/lib/medicalDisclaimer";
 import { SKINFIT_GRADIENT, SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
@@ -86,7 +87,12 @@ export function CapturePrepScreen({
           </Pressable>
         </View>
 
-        <View style={styles.main}>
+        <ScrollView
+          style={styles.main}
+          contentContainerStyle={styles.mainContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           <View style={styles.hero}>
             <Text style={styles.title}>
               Let&apos;s capture{"\n"}your best profile
@@ -110,29 +116,31 @@ export function CapturePrepScreen({
               </View>
             ))}
           </View>
-
-          <View style={styles.privacyGap} />
-
-          {showPrivacy ? (
-            <Pressable
-              style={styles.privacyRow}
-              onPress={openPrivacy}
-              disabled={!WEB_PORTAL_URL}
-              accessibilityRole="link"
-              accessibilityLabel="Your photos are secure. Read our Privacy Policy."
-            >
-              <Ionicons name="lock-closed-outline" size={14} color={MUTED} style={styles.lockIcon} />
-              <Text style={styles.privacyText}>
-                Your photos are secure and private.{" "}
-                {WEB_PORTAL_URL ? (
-                  <Text style={styles.privacyLink}>Read our Privacy Policy.</Text>
-                ) : null}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+        </ScrollView>
 
         <View style={styles.footer}>
+          <View style={styles.legalBlock}>
+            <Text style={styles.medicalNote}>{MEDICAL_DISCLAIMER_CAPTURE}</Text>
+
+            {showPrivacy ? (
+              <Pressable
+                style={styles.privacyRow}
+                onPress={openPrivacy}
+                disabled={!WEB_PORTAL_URL}
+                accessibilityRole="link"
+                accessibilityLabel="Your photos are secure. Read our Privacy Policy."
+              >
+                <Ionicons name="lock-closed-outline" size={14} color={MUTED} style={styles.lockIcon} />
+                <Text style={styles.privacyText}>
+                  Your photos are secure and private.{" "}
+                  {WEB_PORTAL_URL ? (
+                    <Text style={styles.privacyLink}>Read our Privacy Policy.</Text>
+                  ) : null}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
           <Pressable
             style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
             onPress={onStart}
@@ -176,7 +184,10 @@ const styles = StyleSheet.create({
   main: {
     flex: 1,
     minHeight: 0,
-    overflow: "hidden",
+  },
+  mainContent: {
+    flexGrow: 1,
+    paddingBottom: 8,
   },
   topBar: {
     flexDirection: "row",
@@ -208,11 +219,7 @@ const styles = StyleSheet.create({
   tips: {
     marginTop: 24,
     gap: 20,
-  },
-  privacyGap: {
-    flexGrow: 1,
-    flexShrink: 1,
-    minHeight: 32,
+    paddingBottom: 8,
   },
   tipRow: {
     flexDirection: "row",
@@ -237,16 +244,28 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   footer: {
+    flexShrink: 0,
     gap: 18,
-    paddingTop: 16,
+    paddingTop: 12,
+  },
+  legalBlock: {
+    flexShrink: 0,
+    gap: 8,
+    paddingBottom: 4,
+  },
+  medicalNote: {
+    fontSize: 11,
+    lineHeight: 17,
+    color: MUTED,
+    textAlign: "center",
+    width: "100%",
   },
   privacyRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "center",
     gap: 6,
-    paddingHorizontal: 8,
-    marginBottom: 8,
+    width: "100%",
   },
   lockIcon: { marginTop: 2 },
   privacyText: {

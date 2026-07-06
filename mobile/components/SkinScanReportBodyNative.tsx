@@ -24,6 +24,7 @@ import { DOT_MARKER_LEGEND } from "@/lib/scanMaskLabels";
 import { TrackerReportSectionsNative } from "@/components/TrackerReportSectionsNative";
 import type { ScanSpatialOutputs } from "@/lib/spatialOutputs";
 import type { PatientTrackerReport } from "@/lib/patientTrackerReport.types";
+import { scanReportDisclaimer } from "@/lib/medicalDisclaimer";
 import { patientScanImageDisplayUrl } from "@/lib/patientScanImagePath";
 import { fetchAuthenticatedScanImageUri } from "@/lib/fetchAuthenticatedScanImage";
 import {
@@ -514,6 +515,10 @@ export function SkinScanReportBodyNative({
           </LinearGradient>
         ) : null}
 
+        <View style={styles.medicalFooter}>
+          <Text style={styles.medicalFooterText}>{scanReportDisclaimer()}</Text>
+        </View>
+
         <View style={styles.beigeFooter}>
           <View style={styles.footerRule} />
           <Text style={styles.knowSkin}>To know your skin better</Text>
@@ -913,6 +918,17 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: "rgba(255,255,255,0.9)",
     marginBottom: 14,
+  },
+  medicalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 4,
+  },
+  medicalFooterText: {
+    textAlign: "center",
+    fontSize: 9,
+    lineHeight: 14,
+    color: "#a1a1aa",
   },
   beigeFooter: {
     paddingHorizontal: 20,

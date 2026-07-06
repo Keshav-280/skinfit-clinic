@@ -1,139 +1,190 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import { Sparkles } from "lucide-react";
-import { Button } from "../../components/ui/Button";
+import Link from "next/link";
+
+import {
+  LegalBulletList,
+  LegalPageShell,
+  LegalSection,
+} from "@/components/legal/LegalPageShell";
+import {
+  CLINIC_PUBLIC_CONTACT,
+  TERMS_OF_SERVICE_LAST_UPDATED,
+} from "@/src/lib/clinicPublicContact";
 
 export const metadata: Metadata = {
   title: "Terms of Service — SkinnFit",
   description: "Terms governing your use of the SkinnFit patient app and dashboard.",
 };
 
-const sections = [
-  {
-    title: "1. The Service",
-    body: [
-      "SkinnFit helps patients of participating dermatology clinics capture AI-assisted skin scans, view reports, chat with their care team, track wellness habits, and manage appointments.",
-      "SkinnFit is a care coordination tool. It is not a substitute for professional medical diagnosis, emergency care, or in-person examination.",
-    ],
-  },
-  {
-    title: "2. Eligibility",
-    body: [
-      "You must be at least 13 years old (or the minimum age in your country). If under 18, a parent or guardian must permit your use.",
-      "You must provide accurate registration information and keep your credentials secure.",
-    ],
-  },
-  {
-    title: "3. Medical disclaimer",
-    body: [
-      "For emergencies, call your local emergency number immediately.",
-      "Scan results and AI responses are informational. Only your licensed healthcare provider can diagnose and prescribe treatment.",
-      "Using the AI chat feature alone does not create a doctor–patient relationship.",
-    ],
-  },
-  {
-    title: "4. Acceptable use",
-    body: [
-      "Do not upload unlawful, harassing, or misleading content.",
-      "Do not attempt to disrupt, reverse engineer, or misuse the Service.",
-      "Do not share another person’s health images without consent.",
-    ],
-  },
-  {
-    title: "5. Your content",
-    body: [
-      "You retain ownership of content you submit. You grant us a limited license to store and transmit it to operate the Service and share it with your care team.",
-      "You confirm you have consent to submit content, including your facial images.",
-    ],
-  },
-  {
-    title: "6. Privacy",
-    body: [
-      "Our Privacy Policy explains how we handle personal and health-related data.",
-    ],
-  },
-  {
-    title: "7. Disclaimers & liability",
-    body: [
-      "The Service is provided “as is” without warranties to the maximum extent permitted by law.",
-      "Our liability is limited as described in the full Terms. Some jurisdictions may not allow certain limitations.",
-    ],
-  },
-  {
-    title: "8. Governing law",
-    body: [
-      "These Terms are governed by the laws of India. Courts in [FILL IN — e.g. Bangalore, Karnataka] have jurisdiction unless mandatory consumer law requires otherwise.",
-    ],
-  },
-  {
-    title: "9. Contact",
-    body: [
-      "[Legal Entity Name] · [FILL IN address]",
-      "Email: [FILL IN support@skinfit.app] · Phone: [FILL IN phone]",
-    ],
-  },
-];
+const { legalName, addressLine, email, jurisdiction } = CLINIC_PUBLIC_CONTACT;
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-white text-slate-800">
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-600/30">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-800">
-              SkinnFit
-            </span>
-          </Link>
-          <Link href="/login">
-            <Button size="md" variant="primary">
-              Patient Login
-            </Button>
-          </Link>
-        </div>
-      </nav>
-
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <p className="text-sm font-medium text-teal-600">Legal</p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight text-slate-900">
-          Terms of Service
-        </h1>
-        <p className="mt-4 text-slate-600">
-          Last updated: [FILL IN DATE]. Full version for store submission:{" "}
-          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">
-            docs/store-submission/terms-of-service.md
-          </code>
-        </p>
-
-        <div className="prose prose-slate mt-12 max-w-none">
-          {sections.map((section) => (
-            <section key={section.title} className="mb-10">
-              <h2 className="text-xl font-semibold text-slate-900">
-                {section.title}
-              </h2>
-              <ul className="mt-4 list-disc space-y-2 pl-5 text-slate-600">
-                {section.body.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-
-        <p className="mt-12 border-t border-slate-200 pt-8 text-sm text-slate-500">
+    <LegalPageShell
+      kicker="Legal"
+      title="Terms of Service"
+      lastUpdated={TERMS_OF_SERVICE_LAST_UPDATED}
+      intro="These Terms govern your use of the SkinnFit mobile app and patient web dashboard used with participating dermatology clinics in India."
+      footer={
+        <>
           See also{" "}
-          <Link href="/privacy" className="text-teal-600 hover:text-teal-700">
+          <Link
+            href="/privacy"
+            className="font-semibold text-[#2C3E6B] underline underline-offset-2"
+          >
             Privacy Policy
           </Link>{" "}
           and{" "}
-          <Link href="/contact" className="text-teal-600 hover:text-teal-700">
+          <Link
+            href="/contact"
+            className="font-semibold text-[#2C3E6B] underline underline-offset-2"
+          >
             Contact
           </Link>
+          . Questions? Email{" "}
+          <a
+            href={`mailto:${email}`}
+            className="font-semibold text-[#2C3E6B] underline underline-offset-2"
+          >
+            {email}
+          </a>
           .
+        </>
+      }
+    >
+      <LegalSection title="1. Who operates SkinnFit">
+        <p>
+          {legalName} operates the SkinnFit mobile application and patient web dashboard for
+          participating dermatology clinics.
         </p>
-      </main>
-    </div>
+        <LegalBulletList
+          items={[
+            `Operator: ${legalName}`,
+            `Address: ${addressLine}`,
+            `Support: ${email}`,
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="2. The Service">
+        <p>
+          SkinnFit helps patients of participating clinics capture AI-assisted skin scans, view
+          reports, chat with their care team, track wellness habits, and coordinate appointments.
+        </p>
+        <LegalBulletList
+          items={[
+            "SkinnFit is a care coordination and education tool.",
+            "It is not a substitute for professional medical advice, diagnosis, emergency care, or in-person examination.",
+            "Features may vary by clinic and may change as the platform is improved.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="3. Eligibility & your account">
+        <LegalBulletList
+          items={[
+            "You must be at least 13 years old, or the minimum age required in your country. If you are under 18, a parent or guardian must permit your use.",
+            "You must provide accurate registration information and keep your login credentials secure.",
+            "You are responsible for activity on your account unless you notify us promptly of unauthorized access.",
+            "One account per person unless your clinic explicitly authorizes a shared family arrangement.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="4. Medical disclaimer">
+        <p>
+          Always consult a qualified healthcare professional for medical advice, diagnosis, or
+          treatment. Do not delay seeking professional care because of information in SkinnFit.
+        </p>
+        <LegalBulletList
+          items={[
+            "For emergencies, call your local emergency number immediately.",
+            "Scan results, scores, and AI responses are informational and educational only.",
+            "Only your licensed healthcare provider can diagnose conditions and prescribe treatment.",
+            "Using chat or AI features alone does not create a doctor–patient relationship.",
+            "SkinnFit does not provide emergency or urgent care services.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="5. Acceptable use">
+        <LegalBulletList
+          items={[
+            "Do not upload unlawful, harassing, misleading, or abusive content.",
+            "Do not attempt to disrupt, reverse engineer, scrape, or misuse the Service.",
+            "Do not share another person’s health images or data without their consent.",
+            "Do not use SkinnFit to impersonate a clinician or misrepresent medical qualifications.",
+            "We may suspend or terminate access for violations or risks to users, clinics, or the platform.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="6. Your content">
+        <LegalBulletList
+          items={[
+            "You retain ownership of content you submit, including photos, messages, and journal entries.",
+            "You grant us a limited license to store, process, and transmit your content to operate the Service and share it with your assigned care team.",
+            "You confirm you have consent to submit content, including facial images and health-related information.",
+            "You may request deletion of your account data as described in our Privacy Policy, subject to legal and care-record obligations.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="7. AI features">
+        <LegalBulletList
+          items={[
+            "AI skin analysis and assistant responses are generated automatically and may be incomplete or inaccurate.",
+            "AI output is intended to support self-tracking and clinic conversations, not to replace clinical judgment.",
+            "Do not rely on AI output as the sole basis for medical decisions.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="8. Privacy">
+        <p>
+          Our{" "}
+          <Link href="/privacy" className="font-semibold text-[#2C3E6B] underline underline-offset-2">
+            Privacy Policy
+          </Link>{" "}
+          explains how we collect, use, store, and protect personal and health-related information.
+          By using SkinnFit, you also agree to that policy.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="9. Disclaimers & limitation of liability">
+        <LegalBulletList
+          items={[
+            "The Service is provided “as is” and “as available” to the maximum extent permitted by law.",
+            "We do not guarantee uninterrupted, error-free, or fully accurate operation.",
+            `To the extent permitted by law, ${legalName} and its affiliates are not liable for indirect, incidental, or consequential damages arising from use of the Service.`,
+            "Nothing in these Terms limits rights that cannot be waived under applicable consumer protection law.",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="10. Changes to these Terms">
+        <p>
+          We may update these Terms from time to time. Revised versions are posted on this page with
+          a new “Last updated” date. Continued use of SkinnFit after changes means you accept the
+          updated Terms.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="11. Governing law">
+        <p>
+          These Terms are governed by the laws of India. Courts in {jurisdiction} have jurisdiction
+          unless mandatory consumer law in your place of residence requires otherwise.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="12. Contact">
+        <LegalBulletList
+          items={[
+            `${legalName} · ${addressLine}`,
+            `Email: ${email}`,
+          ]}
+        />
+      </LegalSection>
+    </LegalPageShell>
   );
 }

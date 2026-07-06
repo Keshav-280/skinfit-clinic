@@ -11,6 +11,7 @@ import {
 
 import { KaiMeetIntroCard } from "@/components/KaiMeetIntroCard";
 import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
+import { MEDICAL_DISCLAIMER_SHORT } from "@/lib/medicalDisclaimer";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
@@ -52,6 +53,7 @@ export default function KaiIntroScreen() {
               </View>
             ))}
           </View>
+          <Text style={styles.boundaryDisclaimer}>{MEDICAL_DISCLAIMER_SHORT}</Text>
         </View>
 
         <Pressable
@@ -127,6 +129,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
     color: "#52525b",
+  },
+  boundaryDisclaimer: {
+    marginTop: 10,
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#52525b",
+    textAlign: "center",
   },
   btn: {
     borderRadius: 16,

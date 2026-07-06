@@ -46,6 +46,7 @@ import {
   DEFAULT_PATIENT_CHAT_ASSISTANT,
 } from "@/lib/featureFlags";
 import { DoctorChatClinicVisitGate } from "@/components/chat/DoctorChatClinicVisitGate";
+import { MedicalDisclaimerBanner } from "@/components/MedicalDisclaimerBanner";
 import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "../../../src/lib/patientClinicVisitMessages";
 
 type AssistantId = "ai" | "doctor" | "support";
@@ -1775,6 +1776,10 @@ export default function ChatScreen() {
             <Ionicons name="eye-off-outline" size={16} color="#64748b" />
             <Text style={styles.clearBtnText}>Clear my view</Text>
           </Pressable>
+        ) : null}
+
+        {active === "ai" || active === "doctor" ? (
+          <MedicalDisclaimerBanner variant={active === "ai" ? "ai" : "doctor"} />
         ) : null}
 
         <View

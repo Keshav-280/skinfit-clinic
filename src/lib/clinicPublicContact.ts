@@ -7,3 +7,5 @@ export const CLINIC_PUBLIC_CONTACT = {
 } as const;
 
 export const PRIVACY_POLICY_LAST_UPDATED = "7 June 2026";
+
+export const TERMS_OF_SERVICE_LAST_UPDATED = "7 June 2026";
