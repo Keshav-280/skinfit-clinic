@@ -11,33 +11,53 @@ import {
 
 import { KaiMeetIntroCard } from "@/components/KaiMeetIntroCard";
 import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
-import { MEDICAL_DISCLAIMER_SHORT } from "@/lib/medicalDisclaimer";
+import { useAuth } from "@/contexts/AuthContext";
+import { MEDICAL_DISCLAIMER_CAPTURE } from "@/lib/medicalDisclaimer";
 
 const NAVY = "#2C3E6B";
 const NAVY_DARK = "#1E3264";
-const BOUNDARIES = [
-  "No diagnosis",
-  "No prescriptions",
-  "Some concerns need a clinic visit",
-  "Your doctor guides your care",
-];
+const BOUNDARY_ROWS = [
+  ["No diagnosis", "No prescriptions"],
+  ["Clinic visit when needed", "Doctor guides care"],
+] as const;
 
 export default function KaiIntroScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+      router.replace("/login" as Href);
+    } catch (e) {
+      console.error("Sign out failed:", e);
+    }
+  }
 
   return (
-    <OnboardingLayoutShell scanTheme={false} showHeader={false} showSignOut contentMaxWidth={896}>
+    <OnboardingLayoutShell scanTheme={false} showHeader={false} contentMaxWidth={896}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Pressable
-          onPress={() => router.push("/onboarding/questionnaire?entry=start" as Href)}
-          hitSlop={8}
-          style={styles.skipLinkWrap}
-        >
-          <Text style={styles.skipLink}>Skip to questionnaire</Text>
-        </Pressable>
+        <View style={styles.topRow}>
+          <Pressable
+            onPress={() => router.push("/onboarding/questionnaire?entry=start" as Href)}
+            hitSlop={8}
+            style={styles.skipLinkWrap}
+          >
+            <Text style={styles.skipLink}>Skip to questionnaire</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void handleSignOut()}
+            hitSlop={8}
+            style={({ pressed }) => [styles.signOutBtn, pressed && styles.signOutBtnPressed]}
+            accessibilityLabel="Sign out"
+            accessibilityRole="button"
+          >
+            <Ionicons name="log-out-outline" size={18} color={NAVY} />
+          </Pressable>
+        </View>
 
         <KaiMeetIntroCard />
 
@@ -46,14 +66,18 @@ export default function KaiIntroScreen() {
             <Ionicons name="shield-checkmark-outline" size={14} color={NAVY_DARK} />
             <Text style={styles.boundaryKicker}>BEFORE YOU START</Text>
           </View>
-          <View style={styles.boundaryRow}>
-            {BOUNDARIES.map((line) => (
-              <View key={line} style={styles.boundaryPill}>
-                <Text style={styles.boundaryText}>{line}</Text>
+          <View style={styles.boundaryRows}>
+            {BOUNDARY_ROWS.map((row) => (
+              <View key={row.join("-")} style={styles.boundaryRow}>
+                {row.map((line) => (
+                  <View key={line} style={styles.boundaryPill}>
+                    <Text style={styles.boundaryText}>{line}</Text>
+                  </View>
+                ))}
               </View>
             ))}
           </View>
-          <Text style={styles.boundaryDisclaimer}>{MEDICAL_DISCLAIMER_SHORT}</Text>
+          <Text style={styles.boundaryDisclaimer}>{MEDICAL_DISCLAIMER_CAPTURE}</Text>
         </View>
 
         <Pressable
@@ -80,9 +104,25 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 4,
   },
-  skipLinkWrap: {
-    alignSelf: "flex-start",
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
     marginBottom: 8,
+  },
+  skipLinkWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  signOutBtn: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  signOutBtnPressed: {
+    opacity: 0.7,
   },
   skipLink: {
     fontSize: 14,
@@ -111,24 +151,30 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     color: NAVY_DARK,
   },
+  boundaryRows: {
+    gap: 6,
+  },
   boundaryRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "center",
     gap: 6,
   },
   boundaryPill: {
+    flex: 1,
+    maxWidth: "48%",
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.8)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.7)",
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 5,
+    alignItems: "center",
   },
   boundaryText: {
     fontSize: 10,
     fontWeight: "600",
     color: "#52525b",
+    textAlign: "center",
   },
   boundaryDisclaimer: {
     marginTop: 10,

@@ -82,6 +82,25 @@ module.exports = () => {
       return true;
     })
     .map((entry) => {
+      if (Array.isArray(entry) && entry[0] === "expo-build-properties" && apiUsesHttp(apiBase)) {
+        const base = entry[1] ?? {};
+        return [
+          "expo-build-properties",
+          {
+            ...base,
+            ios: {
+              ...(base.ios ?? {}),
+              infoPlist: {
+                NSAppTransportSecurity: iosAppTransportSecurity(apiBase),
+              },
+            },
+            android: {
+              ...(base.android ?? {}),
+              usesCleartextTraffic: true,
+            },
+          },
+        ];
+      }
       if (entry === "expo-build-properties" && apiUsesHttp(apiBase)) {
         return [
           "expo-build-properties",

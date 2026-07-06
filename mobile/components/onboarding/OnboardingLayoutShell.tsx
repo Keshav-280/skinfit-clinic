@@ -85,8 +85,7 @@ export function OnboardingLayoutShell({
             styles.plainMain,
             { maxWidth: contentMaxWidth },
             !showHeader && {
-              paddingTop: insets.top + (showSignOut ? 12 : 20),
-              paddingRight: showSignOut ? 52 : 16,
+              paddingTop: insets.top + 20,
             },
           ]}
         >

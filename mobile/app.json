@@ -2,7 +2,7 @@
   "expo": {
     "name": "SkinFit Wellness",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "skinfit",
@@ -94,7 +94,16 @@
           "defaultChannel": "default"
         }
       ],
-      "expo-build-properties",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableProguardInReleaseBuilds": true
+          }
+        }
+      ],
       "@react-native-google-signin/google-signin",
       "expo-apple-authentication"
     ],

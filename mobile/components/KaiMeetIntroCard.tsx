@@ -93,15 +93,19 @@ export function KaiMeetIntroCard() {
     : KAI_MEET_CARD.minHeightPhone;
   const avatarHeight = isWide
     ? Math.min(cardMinHeight * 0.94, 470)
-    : Math.min(width * 0.52, 230);
+    : Math.min(width * 0.4, 182);
   const avatarWidth = avatarHeight * (132 / 291);
-  const haloSize = Math.min(avatarHeight * 1.58, isWide ? 560 : 360);
+  const haloSize = Math.min(avatarHeight * 1.34, isWide ? 560 : 248);
+  const frameWidth = Math.max(avatarWidth, haloSize);
+  const frameHeight = Math.max(avatarHeight + 20, haloSize + 12);
+  const haloTop = (frameHeight - haloSize) / 2;
+  const avatarLeft = (frameWidth - avatarWidth) / 2;
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(floatY, {
-          toValue: -5,
+          toValue: -3,
           duration: 2250,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
@@ -205,7 +209,7 @@ export function KaiMeetIntroCard() {
                 {
                   transform: [
                     { translateY: floatY },
-                    { translateX: isWide ? -24 : -12 },
+                    { translateX: isWide ? -24 : 0 },
                   ],
                 },
               ]}
@@ -213,7 +217,7 @@ export function KaiMeetIntroCard() {
               <View
                 style={[
                   styles.avatarFrame,
-                  { width: avatarWidth, height: avatarHeight },
+                  { width: frameWidth, height: frameHeight },
                 ]}
               >
                 <View
@@ -223,8 +227,8 @@ export function KaiMeetIntroCard() {
                       width: haloSize * 0.9,
                       height: haloSize * 0.9,
                       borderRadius: (haloSize * 0.9) / 2,
-                      bottom: avatarHeight * 0.5 - (haloSize * 0.9) / 2,
-                      marginLeft: -(haloSize * 0.9) / 2,
+                      top: haloTop + (haloSize - haloSize * 0.9) / 2,
+                      left: (frameWidth - haloSize * 0.9) / 2,
                     },
                   ]}
                 />
@@ -234,8 +238,8 @@ export function KaiMeetIntroCard() {
                     {
                       width: haloSize,
                       height: haloSize,
-                      bottom: avatarHeight * 0.5 - haloSize / 2,
-                      marginLeft: -haloSize / 2,
+                      top: haloTop,
+                      left: (frameWidth - haloSize) / 2,
                     },
                   ]}
                 >
@@ -244,7 +248,14 @@ export function KaiMeetIntroCard() {
                 {/* eslint-disable-next-line jsx-a11y/alt-text */}
                 <Image
                   source={require("../assets/images/kai-avatar.png")}
-                  style={{ width: avatarWidth, height: avatarHeight }}
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: avatarLeft,
+                    width: avatarWidth,
+                    height: avatarHeight,
+                    zIndex: 1,
+                  }}
                   resizeMode="contain"
                   accessibilityLabel="kAI, your SkinFit AI skin companion"
                 />
@@ -333,8 +344,9 @@ const styles = StyleSheet.create({
     color: KAI_MEET_CARD.text.desc,
   },
   avatarCol: {
-    minHeight: 190,
+    minHeight: 200,
     paddingHorizontal: 12,
+    paddingTop: 4,
   },
   avatarColWide: {
     width: "48%",
@@ -344,9 +356,9 @@ const styles = StyleSheet.create({
   avatarStage: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "flex-end",
-    minHeight: 190,
-    paddingBottom: 4,
+    justifyContent: "center",
+    minHeight: 200,
+    paddingBottom: 10,
   },
   avatarFloat: {
     alignItems: "center",
@@ -355,17 +367,15 @@ const styles = StyleSheet.create({
   avatarFrame: {
     position: "relative",
     alignItems: "center",
-    justifyContent: "flex-end",
+    justifyContent: "center",
   },
   haloWrap: {
     position: "absolute",
-    left: "50%",
     opacity: 0.98,
     zIndex: 0,
   },
   haloGlow: {
     position: "absolute",
-    left: "50%",
     backgroundColor: "rgba(220,234,255,0.2)",
     zIndex: 0,
   },
