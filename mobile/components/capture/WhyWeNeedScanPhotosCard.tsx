@@ -5,6 +5,7 @@ import {
   FACE_OUTLINE_DIAGRAM_IMAGE,
   WHY_WE_NEED_SCAN_PHOTOS,
 } from "@/lib/whyWeNeedScanPhotos";
+import { MEDICAL_DISCLAIMER_CAPTURE } from "@/lib/medicalDisclaimer";
 import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
@@ -69,6 +70,8 @@ export function WhyWeNeedScanPhotosCard({ footer }: Props) {
           <LabelBlock {...right[1]} align="left" />
         </View>
       </View>
+
+      <Text style={styles.disclaimer}>{MEDICAL_DISCLAIMER_CAPTURE}</Text>
 
       {footer ? <View style={styles.footer}>{footer}</View> : null}
     </View>
@@ -143,6 +146,13 @@ const styles = StyleSheet.create({
   },
   textRight: {
     textAlign: "right",
+  },
+  disclaimer: {
+    marginTop: 14,
+    fontSize: 11,
+    lineHeight: 17,
+    color: "#5C6478",
+    textAlign: "center",
   },
   footer: {
     marginTop: 16,

@@ -2,7 +2,7 @@ export const MEDICAL_DISCLAIMER_SHORT =
   "SkinFit provides educational skin insights and care coordination. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional for medical concerns.";
 
 export const MEDICAL_DISCLAIMER_CAPTURE =
-  "Scan results are educational only.\nAlways consult a qualified healthcare professional for medical advice, diagnosis, or treatment.";
+  "Scan results are educational only, not a medical diagnosis. Always consult a healthcare professional for medical advice or treatment.";
 
 export const MEDICAL_DISCLAIMER_CHAT_AI =
   "For medical advice, diagnosis, or treatment, consult a qualified healthcare professional. AI responses are informational only.";

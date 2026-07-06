@@ -91,7 +91,7 @@ export function CapturePrepScreen({
           style={styles.main}
           contentContainerStyle={styles.mainContent}
           showsVerticalScrollIndicator={false}
-          bounces={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.hero}>
             <Text style={styles.title}>
@@ -116,9 +116,33 @@ export function CapturePrepScreen({
               </View>
             ))}
           </View>
-        </ScrollView>
 
-        <View style={styles.footer}>
+          <View style={styles.actions}>
+            <Pressable
+              style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+              onPress={onStart}
+            >
+              <Text style={styles.btnText}>Start Scan</Text>
+            </Pressable>
+
+            {onUploadPhotos ? (
+              <Pressable
+                style={({ pressed }) => [styles.uploadBtn, pressed && styles.uploadBtnPressed]}
+                onPress={onUploadPhotos}
+              >
+                <Ionicons name="images-outline" size={18} color={NAVY} />
+                <Text style={styles.uploadBtnText}>Upload photos instead</Text>
+              </Pressable>
+            ) : null}
+
+            {onViewHistory ? (
+              <Pressable style={styles.historyLink} onPress={onViewHistory}>
+                <Ionicons name="time-outline" size={18} color={NAVY} />
+                <Text style={styles.historyLinkText}>View past scans</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
           <View style={styles.legalBlock}>
             <Text style={styles.medicalNote}>{MEDICAL_DISCLAIMER_CAPTURE}</Text>
 
@@ -140,31 +164,7 @@ export function CapturePrepScreen({
               </Pressable>
             ) : null}
           </View>
-
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={onStart}
-          >
-            <Text style={styles.btnText}>Start Scan</Text>
-          </Pressable>
-
-          {onUploadPhotos ? (
-            <Pressable
-              style={({ pressed }) => [styles.uploadBtn, pressed && styles.uploadBtnPressed]}
-              onPress={onUploadPhotos}
-            >
-              <Ionicons name="images-outline" size={18} color={NAVY} />
-              <Text style={styles.uploadBtnText}>Upload photos instead</Text>
-            </Pressable>
-          ) : null}
-
-          {onViewHistory ? (
-            <Pressable style={styles.historyLink} onPress={onViewHistory}>
-              <Ionicons name="time-outline" size={18} color={NAVY} />
-              <Text style={styles.historyLinkText}>View past scans</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        </ScrollView>
       </View>
 
       <CapturePhotoGuideModal
@@ -186,7 +186,6 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   mainContent: {
-    flexGrow: 1,
     paddingBottom: 8,
   },
   topBar: {
@@ -217,9 +216,12 @@ const styles = StyleSheet.create({
     maxWidth: 310,
   },
   tips: {
-    marginTop: 24,
-    gap: 20,
-    paddingBottom: 8,
+    marginTop: 20,
+    gap: 14,
+  },
+  actions: {
+    marginTop: 20,
+    gap: 14,
   },
   tipRow: {
     flexDirection: "row",
@@ -243,15 +245,10 @@ const styles = StyleSheet.create({
     color: NAVY,
     lineHeight: 24,
   },
-  footer: {
-    flexShrink: 0,
-    gap: 18,
-    paddingTop: 12,
-  },
   legalBlock: {
-    flexShrink: 0,
+    marginTop: 16,
     gap: 8,
-    paddingBottom: 4,
+    paddingTop: 4,
   },
   medicalNote: {
     fontSize: 11,
