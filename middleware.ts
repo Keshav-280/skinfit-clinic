@@ -29,13 +29,6 @@ function isStaffRole(role: unknown): boolean {
   return role === "doctor" || role === "admin";
 }
 
-function annotatorNotAllowed(): NextResponse {
-  return new NextResponse("Not allowed", {
-    status: 403,
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  });
-}
-
 function forwardWithPathname(request: NextRequest, pathname: string): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
@@ -52,21 +45,12 @@ export async function middleware(request: NextRequest) {
 
   const annotatorPage = isAnnotatorPage(pathname);
   const doctorProtected = isDoctorProtectedPath(pathname);
+  const patientProtected =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    annotatorPage;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const secret = getSessionSecret();
-
-  if (annotatorPage) {
-    if (!token || !secret) return annotatorNotAllowed();
-    try {
-      const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
-        algorithms: ["HS256"],
-      });
-      if (!isStaffRole(payload.role)) return annotatorNotAllowed();
-      return NextResponse.next();
-    } catch {
-      return annotatorNotAllowed();
-    }
-  }
 
   if (doctorProtected) {
     const returnPath = doctorProtectedReturnPath(pathname);
@@ -93,10 +77,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const patientDashboard =
-    pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-
-  if (!patientDashboard) {
+  if (!patientProtected) {
     return NextResponse.next();
   }
 

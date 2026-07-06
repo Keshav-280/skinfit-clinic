@@ -1,20 +1,10 @@
 import Script from "next/script";
-import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 
-export default async function AnnotatorLayout({
+export default function AnnotatorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const staffId = await getDoctorPortalUserId();
-  if (!staffId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-100 text-neutral-700">
-        <p className="text-lg font-medium">Not allowed</p>
-      </div>
-    );
-  }
-
   return (
     <>
       <Script id="annotator-version-guard" strategy="afterInteractive">{`

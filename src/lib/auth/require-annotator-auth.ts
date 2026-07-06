@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getDoctorPortalUserIdFromRequest } from "@/src/lib/auth/doctor-access";
+import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 
-/** Returns 403 if not clinic staff; otherwise null (caller may proceed). */
+/** Returns 401 response if unauthenticated; otherwise null (caller may proceed). */
 export async function requireAnnotatorAuth(
   request: Request
 ): Promise<NextResponse | null> {
-  const staffId = await getDoctorPortalUserIdFromRequest(request);
-  if (staffId) return null;
-
-  return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+  const userId = await getSessionUserIdFromRequest(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return null;
 }
