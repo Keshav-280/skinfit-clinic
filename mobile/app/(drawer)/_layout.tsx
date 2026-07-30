@@ -252,13 +252,13 @@ export default function DrawerLayout() {
       >
         <Drawer.Screen
           name="index"
-          options={{ title: "Monitor", drawerLabel: "Monitor", headerShown: false }}
+          options={{ title: "Build", drawerLabel: "Build", headerShown: false }}
         />
         <Drawer.Screen
           name="scan"
           options={{
-            title: "Measure",
-            drawerLabel: "Measure",
+            title: "Diagnose",
+            drawerLabel: "Diagnose",
             headerShown: false,
             lazy: false,
           }}
@@ -266,8 +266,8 @@ export default function DrawerLayout() {
         <Drawer.Screen
           name="schedules"
           options={{
-            title: "Manage",
-            drawerLabel: "Manage",
+            title: "Maintain",
+            drawerLabel: "Maintain",
             headerShown: false,
           }}
         />
