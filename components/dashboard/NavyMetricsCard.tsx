@@ -8,13 +8,13 @@ import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "@/src/lib/clarityGrade
 
 const RING_TRACK = "rgba(255,255,255,0.18)";
 const RING_TRACK_LOCKED = "rgba(255,255,255,0.12)";
-const CONSISTENCY_COLOR = "#60A5FA";
-const PROGRESS_COLOR = "#F3B98F";
+const CONSISTENCY_COLOR = "#2CFA2C";
+const PROGRESS_COLOR = "#FA114F";
 const UNLOCK_HINT = "Complete your 2nd week scan to unlock";
 
-const RING_SIZE = 200;
-const STROKE = 11;
-const GAP = 6;
+const RING_SIZE = 220;
+const STROKE = 18;
+const GAP = 4;
 
 function ringGeometry() {
   const outerR = (RING_SIZE - STROKE) / 2;
@@ -326,13 +326,15 @@ export function NavyMetricsCard({
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 shrink-0 rounded-full bg-white/30" aria-hidden />
-          <span className="text-[11px] font-semibold text-white/55">
-            Consistency 🔒
+          <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
+            Consistency <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 shrink-0 rounded-full bg-white/30" aria-hidden />
-          <span className="text-[11px] font-semibold text-white/55">Progress 🔒</span>
+          <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
+            Progress <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
+          </span>
         </div>
       </div>
 

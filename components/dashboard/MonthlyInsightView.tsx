@@ -330,7 +330,7 @@ function MonthlyDetailBody({
 
       {environmentNote ? (
         <div className={`${patientInnerCard} ${cardPad}`}>
-          <p className={patientKicker}>🌤️ Environment &amp; lifestyle</p>
+          <p className={patientKicker}>Environment &amp; lifestyle</p>
           <p
             className={`mt-1.5 text-[#374151] ${
               compact ? "text-[12px] leading-snug" : "text-sm leading-relaxed"

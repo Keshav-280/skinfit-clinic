@@ -1,11 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ClipboardList, Loader2 } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
-  DASHBOARD_SECTION_CARD,
-  DashboardSectionHeader,
-} from "@/components/dashboard/DashboardSectionHeader";
+  Atom,
+  Check,
+  Droplet,
+  FlaskConical,
+  Loader2,
+  MapPin,
+  Pill,
+  Sparkles,
+  Sun,
+} from "lucide-react";
 
 export type WellnessCheckinData = {
   id?: string;
@@ -36,6 +43,45 @@ const ROUTINE_OPTIONS = [
   "Sunscreen",
 ] as const;
 
+const ROUTINE_ICONS: Record<(typeof ROUTINE_OPTIONS)[number], LucideIcon> = {
+  Cleanser: Droplet,
+  "Toner/Serum": FlaskConical,
+  Moisturiser: Sparkles,
+  Sunscreen: Sun,
+};
+
+function stressDescriptor(level: number): { label: string; color: string } {
+  if (level <= 3) return { label: "Relaxed", color: "#4CAF50" };
+  if (level <= 6) return { label: "Balanced", color: "#CA8A04" };
+  if (level <= 8) return { label: "Tense", color: "#F59E0B" };
+  return { label: "High stress", color: "#DC2626" };
+}
+
+function SectionBlock({
+  label,
+  children,
+  showDivider = true,
+}: {
+  label: string;
+  children: ReactNode;
+  showDivider?: boolean;
+}) {
+  return (
+    <div className={showDivider ? "border-t border-[#E5E7EB]/80 pt-7" : ""}>
+      <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#2C3E6B]/55">
+        {label}
+      </p>
+      <div className="space-y-6">{children}</div>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="mb-2.5 text-sm font-semibold text-[#18181b]">{children}</p>
+  );
+}
+
 function PillGroup({
   label,
   options,
@@ -49,8 +95,8 @@ function PillGroup({
 }) {
   return (
     <div>
-      <p className="mb-2 text-sm font-bold text-[#2C3E6B]">{label}</p>
-      <div className="flex flex-wrap gap-2">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="flex flex-wrap gap-2.5">
         {options.map((opt) => {
           const selected = value === opt;
           return (
@@ -58,9 +104,9 @@ function PillGroup({
               key={opt}
               type="button"
               onClick={() => onChange(selected ? null : opt)}
-              className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
+              className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition active:scale-95 ${
                 selected
-                  ? "border-[#2C3E6B] bg-[#2C3E6B] text-white"
+                  ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-sm ring-2 ring-[#2C3E6B]/25 ring-offset-1"
                   : "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
               }`}
             >
@@ -68,6 +114,43 @@ function PillGroup({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function IconTextField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  Icon,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  Icon: LucideIcon;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-2.5 block text-sm font-semibold text-[#18181b]">
+        {label}
+      </label>
+      <div className="relative">
+        <Icon
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2C3E6B]/45"
+          aria-hidden
+        />
+        <input
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAF8] py-3 pl-11 pr-4 text-sm text-[#18181b] outline-none transition placeholder:text-[#9CA3AF] focus:border-[#2C3E6B]/30 focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+        />
       </div>
     </div>
   );
@@ -132,6 +215,8 @@ export function WeeklyWellnessCheckinCard({
     activeIngredients,
   ]);
 
+  const stressMeta = stressDescriptor(stressLevel);
+
   function toggleRoutine(item: string) {
     setRoutine((prev) =>
       prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
@@ -181,178 +266,195 @@ export function WeeklyWellnessCheckinCard({
   }
 
   return (
-    <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
-      <DashboardSectionHeader
-        icon={ClipboardList}
-        title="WEEKLY WELLNESS CHECK-IN"
-        action={
+    <div className="mx-auto w-full max-w-2xl">
+      {/* Intro header */}
+      <header className="mb-8 text-center md:mb-10 md:text-left">
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+          Weekly Wellness
+        </p>
+        <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight text-[#18181b] md:text-[2.25rem] md:leading-tight">
+          Wellness begins from within
+        </h1>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[#6B7280] md:mx-0 md:text-[15px]">
+          Skincare and wellness is a holistic journey. Let&apos;s track your
+          weekly goals so kAI can personalise your care.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+          <span className="inline-flex items-center rounded-full border border-[#2C3E6B]/15 bg-white/70 px-3 py-1.5 text-xs font-semibold text-[#2C3E6B] shadow-sm backdrop-blur-sm">
+            Week of {initialWeekYmd}
+          </span>
           <span
-            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
               completed
                 ? "bg-emerald-100 text-emerald-800"
                 : "bg-amber-100 text-amber-900"
             }`}
           >
-            {completed
-              ? "This week's check-in: ✓ Completed"
-              : "This week's check-in: Pending"}
+            {completed ? (
+              <Check className="h-3.5 w-3.5" aria-hidden />
+            ) : null}
+            {completed ? "Completed" : "Pending"}
           </span>
-        }
-      />
-
-      <p className="mb-1 text-xs font-medium text-[#6B7280]">
-        Week of {initialWeekYmd}
-      </p>
-
-      <div className="mt-4 space-y-5">
-        <PillGroup
-          label="Nutrition Levels"
-          options={NUTRITION_OPTIONS}
-          value={nutritionLevel}
-          onChange={setNutritionLevel}
-        />
-        <PillGroup
-          label="Exercise Hours"
-          options={EXERCISE_OPTIONS}
-          value={exerciseHours}
-          onChange={setExerciseHours}
-        />
-        <PillGroup
-          label="Sleep Hours / Day"
-          options={SLEEP_OPTIONS}
-          value={sleepHours}
-          onChange={setSleepHours}
-        />
-
-        <div>
-          <label
-            htmlFor="wellness-supplements"
-            className="mb-2 block text-sm font-bold text-[#2C3E6B]"
-          >
-            Supplements
-          </label>
-          <input
-            id="wellness-supplements"
-            value={supplements}
-            onChange={(e) => setSupplements(e.target.value)}
-            placeholder="e.g. Vitamin D, Biotin, Zinc…"
-            className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-sm text-[#18181b] outline-none ring-[#2C3E6B]/15 placeholder:text-[#9CA3AF] focus:ring-2"
-          />
         </div>
+      </header>
 
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <label
-              htmlFor="wellness-stress"
-              className="text-sm font-bold text-[#2C3E6B]"
-            >
-              Level of Stress
-            </label>
-            <span className="text-sm font-extrabold tabular-nums text-[#2C3E6B]">
-              {stressTouched ? `${stressLevel}/10` : "—/10"}
-            </span>
-          </div>
-          <input
-            id="wellness-stress"
-            type="range"
-            min={1}
-            max={10}
-            step={1}
-            value={stressLevel}
-            onChange={(e) => {
-              setStressTouched(true);
-              setStressLevel(Number(e.target.value));
-            }}
-            className="w-full accent-[#2C3E6B]"
-          />
-          <div className="mt-1 flex justify-between text-[11px] font-medium text-[#9CA3AF]">
-            <span>1</span>
-            <span>10</span>
-          </div>
-        </div>
+      {/* Questionnaire card */}
+      <section className="rounded-3xl bg-white p-6 shadow-[0_4px_24px_-8px_rgba(44,62,107,0.15)] md:p-8">
+        <div className="space-y-0">
+          <SectionBlock label="Lifestyle" showDivider={false}>
+            <PillGroup
+              label="Nutrition Levels"
+              options={NUTRITION_OPTIONS}
+              value={nutritionLevel}
+              onChange={setNutritionLevel}
+            />
+            <PillGroup
+              label="Exercise Hours"
+              options={EXERCISE_OPTIONS}
+              value={exerciseHours}
+              onChange={setExerciseHours}
+            />
+            <PillGroup
+              label="Sleep Hours / Day"
+              options={SLEEP_OPTIONS}
+              value={sleepHours}
+              onChange={setSleepHours}
+            />
+          </SectionBlock>
 
-        <div>
-          <label
-            htmlFor="wellness-city"
-            className="mb-2 block text-sm font-bold text-[#2C3E6B]"
-          >
-            City
-          </label>
-          <input
-            id="wellness-city"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="e.g. Mumbai, Delhi…"
-            className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-sm text-[#18181b] outline-none ring-[#2C3E6B]/15 placeholder:text-[#9CA3AF] focus:ring-2"
-          />
-        </div>
+          <SectionBlock label="Body & Mind">
+            <IconTextField
+              id="wellness-supplements"
+              label="Supplements"
+              value={supplements}
+              onChange={setSupplements}
+              placeholder="e.g. Vitamin D, Biotin, Zinc…"
+              Icon={Pill}
+            />
 
-        <div>
-          <p className="mb-2 text-sm font-bold text-[#2C3E6B]">Skincare Routine</p>
-          <div className="flex flex-wrap gap-3">
-            {ROUTINE_OPTIONS.map((item) => {
-              const checked = routine.includes(item);
-              return (
-                <label
-                  key={item}
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-semibold text-[#2C3E6B]"
+            <div>
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <FieldLabel>Level of Stress</FieldLabel>
+                <span className="text-sm font-extrabold tabular-nums text-[#2C3E6B]">
+                  {stressTouched ? `${stressLevel}/10` : "—/10"}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {Array.from({ length: 10 }, (_, i) => {
+                  const n = i + 1;
+                  const selected = stressTouched && stressLevel === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => {
+                        setStressTouched(true);
+                        setStressLevel(n);
+                      }}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition active:scale-95 sm:h-10 sm:w-10 ${
+                        selected
+                          ? "bg-[#2C3E6B] text-white shadow-sm ring-2 ring-[#2C3E6B]/25 ring-offset-1"
+                          : "border border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
+                      }`}
+                      aria-label={`Stress level ${n}`}
+                      aria-pressed={selected}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+              {stressTouched ? (
+                <p
+                  className="mt-2.5 text-sm font-semibold"
+                  style={{ color: stressMeta.color }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleRoutine(item)}
-                    className="h-4 w-4 rounded border-[#E5E7EB] accent-[#2C3E6B]"
-                  />
-                  {item}
-                </label>
-              );
-            })}
-          </div>
+                  {stressMeta.label}
+                </p>
+              ) : (
+                <p className="mt-2.5 text-sm text-[#9CA3AF]">
+                  Tap a number to rate your stress
+                </p>
+              )}
+            </div>
+
+            <IconTextField
+              id="wellness-city"
+              label="City"
+              value={city}
+              onChange={setCity}
+              placeholder="e.g. Mumbai, Delhi…"
+              Icon={MapPin}
+            />
+          </SectionBlock>
+
+          <SectionBlock label="Skincare">
+            <div>
+              <FieldLabel>Skincare Routine</FieldLabel>
+              <div className="flex flex-wrap gap-2.5">
+                {ROUTINE_OPTIONS.map((item) => {
+                  const checked = routine.includes(item);
+                  const Icon = ROUTINE_ICONS[item];
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleRoutine(item)}
+                      aria-pressed={checked}
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition active:scale-95 ${
+                        checked
+                          ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-sm ring-2 ring-[#2C3E6B]/25 ring-offset-1"
+                          : "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <IconTextField
+              id="wellness-actives"
+              label="Active Ingredients"
+              value={activeIngredients}
+              onChange={setActiveIngredients}
+              placeholder="e.g. Retinol, Niacinamide, Vitamin C…"
+              Icon={Atom}
+            />
+          </SectionBlock>
         </div>
 
-        <div>
-          <label
-            htmlFor="wellness-actives"
-            className="mb-2 block text-sm font-bold text-[#2C3E6B]"
+        <div className="mt-8 space-y-3 border-t border-[#E5E7EB]/80 pt-6">
+          {error ? (
+            <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              {error}
+            </p>
+          ) : null}
+          {savedHint ? (
+            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              {savedHint}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            disabled={!hasAny || saving}
+            onClick={() => void onSave()}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2C3E6B] to-[#3A4F86] px-6 py-3.5 text-sm font-bold text-white shadow-[0_8px_20px_-10px_rgba(44,62,107,0.55)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
           >
-            Active Ingredients
-          </label>
-          <input
-            id="wellness-actives"
-            value={activeIngredients}
-            onChange={(e) => setActiveIngredients(e.target.value)}
-            placeholder="e.g. Retinol, Niacinamide, Vitamin C…"
-            className="w-full rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-sm text-[#18181b] outline-none ring-[#2C3E6B]/15 placeholder:text-[#9CA3AF] focus:ring-2"
-          />
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Saving…
+              </>
+            ) : (
+              "Save Weekly Check-in"
+            )}
+          </button>
         </div>
-
-        {error ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-            {error}
-          </p>
-        ) : null}
-        {savedHint ? (
-          <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-            {savedHint}
-          </p>
-        ) : null}
-
-        <button
-          type="button"
-          disabled={!hasAny || saving}
-          onClick={() => void onSave()}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Saving…
-            </>
-          ) : (
-            "Save Weekly Check-in"
-          )}
-        </button>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }

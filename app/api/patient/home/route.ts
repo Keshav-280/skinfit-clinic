@@ -73,6 +73,7 @@ async function buildPatientHomePayload(
       profilePhotoUrl: true,
       skinType: true,
       primaryConcern: true,
+      fitzpatrick: true,
       streakCurrent: true,
       streakLongest: true,
       cycleTrackingEnabled: true,
@@ -342,6 +343,9 @@ async function buildPatientHomePayload(
     firstScanAt: firstScanAt?.toISOString() ?? null,
     userName: userRow.name ?? "Patient",
     profilePhotoUrl: userRow.profilePhotoUrl ?? null,
+    skinType: userRow.skinType ?? null,
+    primaryConcern: userRow.primaryConcern ?? null,
+    fitzpatrick: userRow.fitzpatrick ?? null,
     feedbackEntries,
     archivedFeedbackEntries,
   };

@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   Mic,
+  MessageCircle,
   MessageSquare,
 } from "lucide-react";
 import {
@@ -454,9 +455,9 @@ export function PatientDoctorHomeSections({
       {doctorChatEnabled ? (
         <Link
           href="/dashboard/chat?assistant=support"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
         >
-          <MessageSquare className="h-4 w-4 shrink-0" aria-hidden />
+          <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
           Chat with Doctor
         </Link>
       ) : (

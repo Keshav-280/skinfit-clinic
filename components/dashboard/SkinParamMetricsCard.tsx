@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 import { CircularGauge } from "@/components/dashboard/CircularGauge";
 import {
@@ -9,9 +10,10 @@ import {
   patientParamGaugeLabel,
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
+import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
 
 const SKIN_PARAM_INNER_CELL =
-  "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[14px] border border-[#E8EBE8] bg-[#F5F7F5] px-2 py-3";
+  "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[14px] border border-[#E8EBE8] bg-[#F5F7F5] px-2 py-3 transition hover:opacity-80";
 
 export type SkinParamMetric = {
   label: string;
@@ -43,30 +45,47 @@ export function SkinParamMetricsCard({
         SKIN PARAMETER METRICS
       </h3>
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        {metrics.slice(0, 4).map((p) => (
-          <div
-            key={p.label}
-            className={SKIN_PARAM_INNER_CELL}
-          >
-            <CircularGauge
-              value={patientChartDisplayValue(p.value, scoresUnlocked)}
-              color={p.color}
-              size={76}
-              strokeWidth={5.5}
-              displayValue={patientParamGaugeLabel(p.value, scoresUnlocked)}
-              valueClassName="text-[22px] sm:text-[24px] text-[#18181b]"
-            />
-            <p className="text-center text-[15px] font-extrabold leading-tight text-[#18181b] sm:text-[16px]">
-              {p.label}
-            </p>
-            <p
-              className="text-[13px] font-extrabold sm:text-[14px]"
-              style={{ color: p.color }}
-            >
-              {scoresUnlocked ? p.sublabel : p.grade}
-            </p>
-          </div>
-        ))}
+        {metrics.slice(0, 4).map((p) => {
+          const href = scoreDetailHref(p.label);
+          const inner = (
+            <>
+              <CircularGauge
+                value={patientChartDisplayValue(p.value, scoresUnlocked)}
+                color={p.color}
+                size={76}
+                strokeWidth={5.5}
+                displayValue={patientParamGaugeLabel(p.value, scoresUnlocked)}
+                valueClassName="text-[22px] sm:text-[24px] text-[#18181b]"
+              />
+              <p className="inline-flex items-center gap-0.5 text-center text-[15px] font-extrabold leading-tight text-[#18181b] underline-offset-2 group-hover:underline sm:text-[16px]">
+                {p.label}
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#6B7280]" aria-hidden />
+              </p>
+              <p
+                className="text-[13px] font-extrabold sm:text-[14px]"
+                style={{ color: p.color }}
+              >
+                {scoresUnlocked ? p.sublabel : p.grade}
+              </p>
+            </>
+          );
+          if (href) {
+            return (
+              <Link
+                key={p.label}
+                href={href}
+                className={`${SKIN_PARAM_INNER_CELL} group cursor-pointer`}
+              >
+                {inner}
+              </Link>
+            );
+          }
+          return (
+            <div key={p.label} className={SKIN_PARAM_INNER_CELL}>
+              {inner}
+            </div>
+          );
+        })}
       </div>
       <Link
         href={viewAllHref}

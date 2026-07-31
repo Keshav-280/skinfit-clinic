@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Camera, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowLeft, Camera, ChevronRight, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import {
   RAG_KAI_PARAM_KEYS,
@@ -18,6 +18,7 @@ import {
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
 import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
+import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
 
 interface SkinParam {
   name: string;
@@ -267,13 +268,17 @@ function ParamCard({
 }) {
   const { label, color, bg, text, grade, displayScore } = statusInfo(param.value);
   const gradeHint = grade;
+  const href = scoreDetailHref(param.name);
 
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/60 bg-white/35 p-4 backdrop-blur-sm">
+  const body = (
+    <>
       <div className="w-full">
         <MiniLineChart data={param.history} color={color} paramName={param.name} scoresUnlocked={scoresUnlocked} />
       </div>
-      <span className="text-sm font-semibold text-[#2C3E6B]">{param.name}</span>
+      <span className="inline-flex items-center gap-0.5 text-sm font-semibold text-[#2C3E6B] underline-offset-2 group-hover:underline">
+        {param.name}
+        <ChevronRight className="h-3.5 w-3.5 text-[#6B7280]" aria-hidden />
+      </span>
       <ProgressRing
         value={displayScore}
         color={color}
@@ -285,6 +290,23 @@ function ParamCard({
         </span>
         <TrendIndicator history={param.history} scoresUnlocked={scoresUnlocked} />
       </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="group flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-white/60 bg-white/35 p-4 backdrop-blur-sm transition hover:opacity-80"
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/60 bg-white/35 p-4 backdrop-blur-sm">
+      {body}
     </div>
   );
 }
