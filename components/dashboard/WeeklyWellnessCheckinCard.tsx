@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { format, parseISO } from "date-fns";
 import type { LucideIcon } from "lucide-react";
 import {
   Atom,
@@ -265,33 +266,41 @@ export function WeeklyWellnessCheckinCard({
     }
   }
 
+  const weekOfLabel = useMemo(() => {
+    try {
+      return format(parseISO(`${initialWeekYmd}T00:00:00`), "d MMM");
+    } catch {
+      return initialWeekYmd;
+    }
+  }, [initialWeekYmd]);
+
   return (
     <div className="mx-auto w-full max-w-2xl">
       {/* Intro header */}
-      <header className="mb-8 text-center md:mb-10 md:text-left">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
-          Weekly Wellness
+      <header className="mb-10 text-center md:mb-12 md:text-left">
+        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#2C3E6B]/55">
+          Weekly Ritual
         </p>
-        <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight text-[#18181b] md:text-[2.25rem] md:leading-tight">
-          Wellness begins from within
+        <h1 className="mt-3 font-serif text-[1.85rem] font-semibold leading-[1.15] tracking-tight text-[#18181b] md:text-[2.35rem]">
+          Beautiful skin is built from within.
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[#6B7280] md:mx-0 md:text-[15px]">
-          Skincare and wellness is a holistic journey. Let&apos;s track your
-          weekly goals so kAI can personalise your care.
+        <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[#6B7280] md:mx-0">
+          A few moments each week to log how you&apos;re living — so kAI can
+          tune your care to your life.
         </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-          <span className="inline-flex items-center rounded-full border border-[#2C3E6B]/15 bg-white/70 px-3 py-1.5 text-xs font-semibold text-[#2C3E6B] shadow-sm backdrop-blur-sm">
-            Week of {initialWeekYmd}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
+          <span className="inline-flex items-center rounded-full border border-[#2C3E6B]/12 bg-white/60 px-3.5 py-1.5 text-xs font-medium text-[#2C3E6B]/80 backdrop-blur-sm">
+            Week of {weekOfLabel}
           </span>
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium ${
               completed
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-amber-100 text-amber-900"
+                ? "border-emerald-200/80 bg-emerald-50/60 text-emerald-800"
+                : "border-amber-200/70 bg-amber-50/50 text-amber-900/80"
             }`}
           >
             {completed ? (
-              <Check className="h-3.5 w-3.5" aria-hidden />
+              <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
             ) : null}
             {completed ? "Completed" : "Pending"}
           </span>

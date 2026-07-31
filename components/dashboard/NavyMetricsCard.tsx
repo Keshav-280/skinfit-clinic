@@ -6,11 +6,29 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ClinicScoreUnlockModal } from "@/components/dashboard/ClinicScoreUnlockModal";
 import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "@/src/lib/clarityGrade";
 
-const RING_TRACK = "rgba(255,255,255,0.18)";
-const RING_TRACK_LOCKED = "rgba(255,255,255,0.12)";
 const CONSISTENCY_COLOR = "#2CFA2C";
 const PROGRESS_COLOR = "#FA114F";
 const UNLOCK_HINT = "Complete your 2nd week scan to unlock";
+
+/**
+ * Apple-style ring track: a dimmed version of the ring's own active color,
+ * so a locked/empty ring previews the color it will fill with (not grey).
+ */
+function dimRingColor(hex: string, alpha = 0.25): string {
+  const h = hex.replace("#", "");
+  const full =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return "rgba(255,255,255,0.14)";
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 const RING_SIZE = 220;
 const STROKE = 18;
@@ -256,7 +274,7 @@ export function NavyMetricsCard({
               radius={outerR}
               fill={0}
               color={PROGRESS_COLOR}
-              track={RING_TRACK_LOCKED}
+              track={dimRingColor(PROGRESS_COLOR)}
             />
             <RingCircle
               cx={cx}
@@ -264,7 +282,7 @@ export function NavyMetricsCard({
               radius={middleR}
               fill={0}
               color={CONSISTENCY_COLOR}
-              track={RING_TRACK_LOCKED}
+              track={dimRingColor(CONSISTENCY_COLOR)}
             />
             <RingCircle
               cx={cx}
@@ -272,7 +290,7 @@ export function NavyMetricsCard({
               radius={innerR}
               fill={skinFill}
               color={skinColor}
-              track={RING_TRACK}
+              track={dimRingColor(skinColor)}
             />
           </g>
 

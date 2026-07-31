@@ -362,6 +362,9 @@ type FeedbackEntry = {
 type HomeData = {
   skinScanHistory: SkinScanItem[];
   kaiSkinScore: number;
+  weeklyDeltaScore?: number;
+  weeklyDeltaMeaningful?: boolean;
+  streakCurrent?: number;
   doctorFeedback: string | null;
   doctorVoiceNotes: Array<{
     id: string;
@@ -780,6 +783,14 @@ export function PatientDashboardDesktop() {
         scoresUnlocked={scoresUnlocked}
         analysisResults={latestScan?.analysisResults}
         skinSummary={skinSummary}
+        skinType={data.skinType}
+        primaryConcern={data.primaryConcern}
+        fitzpatrick={data.fitzpatrick}
+        weeklyDeltaScore={data.weeklyDeltaScore ?? 0}
+        weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
+        streakCurrent={data.streakCurrent}
+        lastScanAt={latestScan?.createdAt ?? null}
+        scanCount={data.skinScanHistory.length}
         href={reportHref}
         hasScan={Boolean(latestScan)}
       />
