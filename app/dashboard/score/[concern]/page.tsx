@@ -16,7 +16,6 @@ import {
   classifySkinParamMetric,
   patientClarityToGrade,
 } from "@/src/lib/clarityGrade";
-import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import { presentTrackerReportNarrative } from "@/src/lib/patientTrackerLockedCopy";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import {
@@ -89,7 +88,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     }),
   ]);
 
-  const scoresUnlocked = isPatientClinicVisited(user?.clinicVisitedAt ?? null);
+  const scoresUnlocked = (user?.clinicVisitedAt ?? null) != null;
 
   const currentValue = latestScan
     ? valueForConcern(slug, displayName, latestScan.scores, {
