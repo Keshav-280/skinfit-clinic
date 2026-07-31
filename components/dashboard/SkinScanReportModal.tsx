@@ -65,7 +65,16 @@ export function SkinScanReportModal({
         className="relative z-10 my-auto w-full max-w-3xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <SkinScanReportBody {...bodyProps} onClose={onClose} />
+        <SkinScanReportBody
+          {...bodyProps}
+          onClose={onClose}
+          reportMode={
+            bodyProps.reportMode ??
+            (typeof bodyProps.scanId === "number" && bodyProps.scanId > 0
+              ? "navigate"
+              : "scroll")
+          }
+        />
       </div>
     </div>
   );

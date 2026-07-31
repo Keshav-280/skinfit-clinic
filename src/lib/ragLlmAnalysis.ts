@@ -115,6 +115,69 @@ async function callJson<T>(
 
 /** -------- Tracker report analysis (per scan) -------- */
 
+export type LlmWellnessCheckinInput = {
+  nutritionLevel: string | null;
+  exerciseHours: string | null;
+  sleepHours: string | null;
+  supplements: string | null;
+  stressLevel: number | null;
+  city: string | null;
+  skincareRoutine: string[] | null;
+  activeIngredients: string | null;
+  weekYmd: string;
+};
+
+export type LlmCityWeatherInput = {
+  city: string;
+  tempC: number;
+  humidity: number;
+  condition: string;
+  uvIndex: number;
+  aqi: number | null;
+};
+
+function formatWellnessBlock(
+  wellness: LlmWellnessCheckinInput | null | undefined
+): string {
+  if (!wellness) return "No wellness check-in submitted this week.";
+  return `
+Nutrition: ${wellness.nutritionLevel ?? "not reported"}
+Exercise: ${wellness.exerciseHours ?? "not reported"} hours/week
+Sleep pattern: ${wellness.sleepHours ?? "not reported"} hours/day
+Supplements: ${wellness.supplements ?? "none reported"}
+Self-reported stress: ${wellness.stressLevel ?? "not reported"}/10
+City: ${wellness.city ?? "not reported"}
+Skincare routine: ${wellness.skincareRoutine?.join(", ") ?? "not reported"}
+Active ingredients: ${wellness.activeIngredients ?? "none reported"}
+`.trim();
+}
+
+function formatCityWeatherBlock(
+  cityWeather: LlmCityWeatherInput | null | undefined
+): string {
+  if (!cityWeather) return "City weather data not available.";
+  return `
+City: ${cityWeather.city}
+Temperature: ${cityWeather.tempC}°C
+Humidity: ${cityWeather.humidity}%
+Conditions: ${cityWeather.condition}
+UV Index: ${cityWeather.uvIndex}
+Air Quality Index: ${cityWeather.aqi ?? "unavailable"}
+`.trim();
+}
+
+function formatWellnessWeeksBlock(
+  weeks: LlmWellnessCheckinInput[] | null | undefined
+): string {
+  if (!weeks || weeks.length === 0) return "No wellness check-ins this month.";
+  return weeks
+    .map(
+      (w) =>
+        `Week of ${w.weekYmd}: nutrition=${w.nutritionLevel ?? "n/a"}; exercise=${w.exerciseHours ?? "n/a"}h; sleep=${w.sleepHours ?? "n/a"}; stress=${w.stressLevel ?? "n/a"}/10; city=${w.city ?? "n/a"}; routine=${w.skincareRoutine?.join("/") ?? "n/a"}; actives=${w.activeIngredients ?? "n/a"}; supplements=${w.supplements ?? "n/a"}`
+    )
+    .join("\n");
+}
+
 export type LlmTrackerAnalysis = {
   hookLine: string;
   empathyParagraph: string;
@@ -152,8 +215,11 @@ export async function analyzeTrackerReport(input: {
   visitNotesSummary: string | null;
   recentChatSummary: string | null;
   scoresUnlocked: boolean;
+  wellness?: LlmWellnessCheckinInput | null;
+  cityWeather?: LlmCityWeatherInput | null;
 }): Promise<LlmTrackerAnalysis | null> {
   const signalPack = buildNarrativeSignalPack(input.correlations, input.behavior);
+  const hasWellnessOrWeather = Boolean(input.wellness || input.cityWeather);
 
   const system = `You are kAI, a dermatology-informed AI beauty counselor.
 You must ground claims in the evidence blocks when you cite clinical reasoning.
@@ -164,12 +230,21 @@ IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentat
 STRICT DATA RULES:
 - Every number you write MUST appear verbatim in the data below. Never invent, estimate, round up, or extrapolate a score.
 - Patient scores are ALWAYS between ${PATIENT_DISPLAY_SCORE_FLOOR} and ${PATIENT_DISPLAY_SCORE_CAP}. Never write a skin score above ${PATIENT_DISPLAY_SCORE_CAP}, never write "100", never write "X/100", and never describe a score as perfect or maxed out.
-- NEVER mention UV, sun exposure, sunscreen days, or photoprotection habits as something we measured. This app does NOT collect sun-exposure data. Do not reference it at all.
+- Do NOT say "UV exposure" or "sun exposure hours" as something we measured — this app does NOT collect sun-exposure habit data. You MAY mention UV Index from CITY WEATHER as an environmental factor when that data is provided.
 ${
   !input.scoresUnlocked
     ? `- The patient's exact scores are LOCKED. You MUST NOT output any score numbers or deltas (no "72", no "+5"), and you MUST NOT use letter grades (A/B/C/D/E) either. Describe every parameter only with qualitative words already given in the data (e.g. "good", "moderate", "improving", "held steady").`
     : `- The patient's exact scores are UNLOCKED. Use ONLY the exact score numbers and deltas provided below. Do NOT use letter grades (A/B/C/D/E) anywhere — the patient sees numbers, not grades.`
 }
+WELLNESS & ENVIRONMENT INTEGRATION:
+- When wellness check-in data is available, correlate lifestyle choices with skin outcomes. For example: "Your high-protein diet this week likely supported collagen production" or "Eating outside frequently can mean higher sodium and oil intake, which may contribute to breakouts."
+- When city weather data is available, ALWAYS mention it naturally in the analysis. Examples:
+  - "Mumbai's humidity at 85% this week means your skin is retaining more moisture — great for hydration, but watch for clogged pores."
+  - "Delhi's AQI of 180 means pollution particles are settling on your skin daily. Double-cleansing at night is non-negotiable right now."
+  - "Bangalore's mild 24°C weather is kind to your skin — your hydration scores reflect that."
+- Connect weather + skincare routine: if humidity is high and they're using heavy moisturiser, suggest switching to a lighter one. If it's dry and cold and they skipped moisturiser, flag it.
+- Connect supplements + active ingredients to skin parameters: if they're using Retinol, mention its effect on wrinkles/texture. If taking Vitamin C supplements, connect to pigmentation.
+- Make the environmental insights feel like a smart friend who checked the weather for them, not a textbook. Keep it conversational and specific to THEIR city.
 CAUSES MUST BE BALANCED: include BOTH what went well (wins) and what dragged (risks), not just one side. If a parameter held steady, explain why in plain words. If everything was positive, one gentle watch-out for next week is enough.
 EMPATHY PARAGRAPH: at most 2 short sentences. Encouraging, specific to the data, forward looking. No clinical lecture.`;
 
@@ -196,6 +271,12 @@ Routine intensity (granular): avg AM checklist ${input.behavior.avgAmRoutineStep
 Avg sleep: ${input.behavior.avgSleepHours}h, Avg water: ${input.behavior.avgWaterGlasses} glasses
 Avg stress: ${input.behavior.avgStress}/10, High-stress days: ${input.behavior.highStressDays}
 Journal entries: ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%) • missed journaling on ${input.behavior.journalMissedDays} days
+
+WEEKLY WELLNESS CHECK-IN
+${formatWellnessBlock(input.wellness)}
+
+CITY WEATHER & ENVIRONMENT (live data for patient's city)
+${formatCityWeatherBlock(input.cityWeather)}
 
 SIGNAL PACK
 IMPROVERS (Δ ≥ +3):
@@ -233,9 +314,9 @@ ${chunkLines(input.evidence)}
 
 TASK
 Produce the weekly tracker report for this scan. Be concrete and tied to data above.
-- CAUSES: exactly 4 bullets, each tagged internally: at least 2 "wins" (what helped or what held steady) and at least 1 "drag" or risk (what hurt or what could regress). ${input.scoresUnlocked ? "Only cite numbers that appear verbatim in the data above." : "Use qualitative words only, never numbers or letter grades."}
-  - Prefix each cause with either "Win:" or "Drag:" or "Watch:" so the UI can tag it.
-  - Never mention UV or sun exposure.
+- CAUSES: exactly 5 bullets. At least 2 "wins", at least 1 "drag", and at least 1 must reference either wellness check-in data or city weather/environment if available${hasWellnessOrWeather ? " (it is available below — use it)" : " (skip Environment tag if neither is available)"}. ${input.scoresUnlocked ? "Only cite numbers that appear verbatim in the data above." : "Use qualitative words only, never numbers or letter grades."}
+  - Tag each with "Win:", "Drag:", "Watch:", or "Environment:" so the UI can tag it.
+  - Never claim measured UV exposure or sun-exposure hours; weather UV Index is OK when provided.
 - EMPATHY: max 2 short warm sentences. Plain language. Forward looking. No dashes as punctuation.
 - ACTION DETAILS: each action.detail must be EXACTLY 3 lines in this structure:
   Why: <1 sentence tied to this patient's numbers/signals>
@@ -245,7 +326,7 @@ Return ONLY JSON with this exact shape:
 {
   "hookLine": "string (one human sentence naming what happened this week; earned, not generic)",
   "empathyParagraph": "string (max 2 short sentences; warm, human, encouraging)",
-  "causes": ["Win: <sentence>", "Win: <sentence>", "Drag: <sentence>", "Watch: <sentence>"],
+  "causes": ["Win: <sentence>", "Win: <sentence>", "Drag: <sentence>", "Watch: <sentence>", "Environment: <sentence>"],
   "actions": [
     {"rank": 1, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."},
     {"rank": 2, "title": "string", "detail": "Why: ...\nDo: ...\nTarget: ..."},
@@ -358,6 +439,8 @@ export type LlmMonthlyAnalysis = {
   scanStory?: string;
   /** Warm closing line for next month. */
   closingNote?: string;
+  /** 1–2 sentences on how city/weather/lifestyle shaped this month's skin. */
+  environmentNote?: string;
 };
 
 export async function analyzeMonthly(input: {
@@ -389,6 +472,10 @@ export async function analyzeMonthly(input: {
   behavior: BehaviorSnapshot;
   evidence: Array<{ chunk: TextbookChunk; score: number }>;
   scoresUnlocked: boolean;
+  wellness?: LlmWellnessCheckinInput | null;
+  /** All wellness check-ins in the month (for trend language). */
+  wellnessWeeks?: LlmWellnessCheckinInput[] | null;
+  cityWeather?: LlmCityWeatherInput | null;
 }): Promise<LlmMonthlyAnalysis | null> {
   const headlineKai =
     input.kaiMonthAvgFromParams == null
@@ -426,8 +513,13 @@ STRICT DATA RULES:
 - Every number you write MUST appear verbatim in the data provided. Never invent, estimate, or extrapolate a score.
 - When stating overall / month kAI, write exactly the HEADLINE MONTH kAI value. Do not use any other number from the per-scan series as the overall score.
 - Patient scores are ALWAYS between ${PATIENT_DISPLAY_SCORE_FLOOR} and ${PATIENT_DISPLAY_SCORE_CAP}. Never write a skin score above ${PATIENT_DISPLAY_SCORE_CAP}, never write "100" or "X/100", and never describe a score as perfect or maxed out.
-- NEVER mention UV, sun exposure, sunscreen days, or photoprotection habits as something we measured — this app does not collect sun-exposure data.
+- Do NOT say "UV exposure" or "sun exposure hours" as something we measured — this app does not collect sun-exposure habit data. You MAY mention UV Index from city weather when provided.
 - Be DETAILED: connect parameter moves to habits (sleep, stress, routine, journal), explain what likely helped or hurt, and give concrete next-month actions. Prefer specific numbers and day counts over vague praise.
+WELLNESS & ENVIRONMENT INTEGRATION:
+- When wellness data spans multiple weeks, identify trends: "You reported eating outside 3 of 4 weeks — your pigmentation dipped each time."
+- Reference cumulative city weather patterns: "Delhi stayed above AQI 150 for most of the month — your skin barrier scores reflect the pollution load."
+- Connect skincare routine / actives / supplements from wellness check-ins to parameter moves when relevant.
+- Keep environmental notes conversational and city-specific.
 ${
   !input.scoresUnlocked
     ? `- The patient's exact scores are LOCKED. You MUST NOT output any score numbers or deltas, and you MUST NOT use letter grades (A/B/C/D/E) either. Describe parameters only with qualitative words (e.g. "good", "moderate", "improving", "held steady").`
@@ -452,6 +544,15 @@ BEHAVIOR (past ${input.behavior.windowDays} calendar days counted in this month 
 Full AM+PM: ${input.behavior.fullRoutineDays}/${input.behavior.windowDays} | granular blend ~${input.behavior.routineWeightedConsistencyPct}% (avg AM checklist ${input.behavior.avgAmRoutineStepPct}% · avg PM checklist ${input.behavior.avgPmRoutineStepPct}%)
 Sleep avg ${input.behavior.avgSleepHours}h | water avg ${input.behavior.avgWaterGlasses} glasses | stress avg ${input.behavior.avgStress}/10 | high-stress ${input.behavior.highStressDays}d | journal ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%, missed ${input.behavior.journalMissedDays}d)
 
+WEEKLY WELLNESS CHECK-INS THIS MONTH
+${formatWellnessWeeksBlock(input.wellnessWeeks?.length ? input.wellnessWeeks : input.wellness ? [input.wellness] : null)}
+
+LATEST WELLNESS SNAPSHOT
+${formatWellnessBlock(input.wellness)}
+
+CITY WEATHER & ENVIRONMENT (live / recent for patient's city)
+${formatCityWeatherBlock(input.cityWeather)}
+
 EVIDENCE
 ${chunkLines(input.evidence).slice(0, 2000)}
 
@@ -465,7 +566,8 @@ Return ONLY JSON:
   "parameterNotes": ["one detailed note per notable parameter move (BETTER or WORSE); skip steady ones; 1-2 sentences each"],
   "habitNotes": ["2-4 notes linking routine/sleep/stress/journal/water to skin outcomes this month"],
   "scanStory": "string (2-3 sentences narrating the per-scan kAI path and how it relates to the headline month kAI)",
-  "closingNote": "string (1 warm, specific closing sentence for next month)"
+  "closingNote": "string (1 warm, specific closing sentence for next month)",
+  "environmentNote": "string (1-2 sentences on how city/weather/lifestyle from wellness shaped this month's skin; omit or empty if no wellness/weather data)"
 }`;
 
   const result = await callJson<LlmMonthlyAnalysis>(system, user, {
@@ -510,6 +612,10 @@ function sanitizeMonthlyLlmAnalysis(
     scanStory: analysis.scanStory != null ? fixProse(analysis.scanStory) : analysis.scanStory,
     closingNote:
       analysis.closingNote != null ? fixProse(analysis.closingNote) : analysis.closingNote,
+    environmentNote:
+      analysis.environmentNote != null
+        ? fixProse(analysis.environmentNote)
+        : analysis.environmentNote,
   };
 }
 

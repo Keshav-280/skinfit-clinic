@@ -190,6 +190,20 @@
       "when": 1782749476198,
       "tag": "0026_tearful_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1785400000000,
+      "tag": "0053_wellness_checkins",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1785401000000,
+      "tag": "0054_notification_logs",
+      "breakpoints": true
     }
   ]
 }

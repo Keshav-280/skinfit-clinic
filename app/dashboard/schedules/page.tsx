@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { and, asc, count, desc, eq, gt, inArray, isNotNull } from "drizzle-orm";
+import { format, startOfWeek } from "date-fns";
 import { db } from "@/src/db";
 import {
   appointments,
@@ -7,6 +8,7 @@ import {
   priorityReminders,
   scheduleEvents,
   users,
+  wellnessCheckins,
 } from "@/src/db/schema";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { DEFAULT_PRIORITY_REMINDERS } from "@/src/lib/defaultSchedulesData";
@@ -310,6 +312,38 @@ export default async function SchedulesPage() {
       ? { ...latestVisit, doctorPhotoUrl: assignedDoctor.photoUrl }
       : latestVisit;
 
+  const wellnessWeekYmd = format(
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
+    "yyyy-MM-dd"
+  );
+  const [wellnessRow] = await db
+    .select()
+    .from(wellnessCheckins)
+    .where(
+      and(
+        eq(wellnessCheckins.userId, userId),
+        eq(wellnessCheckins.weekYmd, wellnessWeekYmd)
+      )
+    )
+    .limit(1);
+
+  const initialWellnessCheckin = wellnessRow
+    ? {
+        id: wellnessRow.id,
+        nutritionLevel: wellnessRow.nutritionLevel ?? null,
+        exerciseHours: wellnessRow.exerciseHours ?? null,
+        sleepHours: wellnessRow.sleepHours ?? null,
+        supplements: wellnessRow.supplements ?? null,
+        stressLevel: wellnessRow.stressLevel ?? null,
+        city: wellnessRow.city ?? null,
+        skincareRoutine: Array.isArray(wellnessRow.skincareRoutine)
+          ? wellnessRow.skincareRoutine
+          : null,
+        activeIngredients: wellnessRow.activeIngredients ?? null,
+        weekYmd: wellnessRow.weekYmd,
+      }
+    : null;
+
   return (
     <div className="min-h-full bg-[#E8EFE6] px-4 py-5 pb-12 md:px-6">
       <SchedulesPageClient
@@ -324,6 +358,8 @@ export default async function SchedulesPage() {
         patientHasPhone={patientHasPhoneOnFile(digestRow?.phone)}
         initialPhoneCountryCode={digestRow?.phoneCountryCode ?? "+91"}
         initialPhone={digestRow?.phone ?? null}
+        initialWellnessCheckin={initialWellnessCheckin}
+        wellnessWeekYmd={wellnessWeekYmd}
       />
     </div>
   );

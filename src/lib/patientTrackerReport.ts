@@ -107,6 +107,8 @@ export async function buildPatientTrackerReport(input: {
     causes: ragNarrative.causes,
     focusActions: ragNarrative.focusActions,
     resources: ragNarrative.resources,
+    wellness: ragNarrative.wellness,
+    cityWeather: ragNarrative.cityWeather,
   };
 
   return { ok: true, report };

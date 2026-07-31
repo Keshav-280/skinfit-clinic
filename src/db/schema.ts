@@ -1215,6 +1215,76 @@ export const preReleaseSignups = pgTable(
   })
 );
 
+/** Weekly wellness questionnaire (Maintain / schedules page). */
+export const wellnessCheckins = pgTable(
+  "wellness_checkins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    nutritionLevel: text("nutrition_level"),
+    exerciseHours: text("exercise_hours"),
+    sleepHours: text("sleep_hours"),
+    supplements: text("supplements"),
+    stressLevel: integer("stress_level"),
+    city: text("city"),
+    skincareRoutine: jsonb("skincare_routine").$type<string[] | null>(),
+    activeIngredients: text("active_ingredients"),
+    /** Monday of the week this check-in covers (YYYY-MM-DD). */
+    weekYmd: varchar("week_ymd", { length: 10 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userWeekUidx: uniqueIndex("wellness_checkins_user_week_uidx").on(
+      table.userId,
+      table.weekYmd
+    ),
+    userCreatedIdx: index("wellness_checkins_user_created_idx").on(
+      table.userId,
+      table.createdAt
+    ),
+  })
+);
+
+export const notificationChannelEnum = pgEnum("notification_channel", [
+  "push",
+  "whatsapp",
+  "email",
+]);
+
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "weekly_reminder",
+]);
+
+/** Outbound patient notifications (dedupe by user + channel + type + week). */
+export const notificationLogs = pgTable(
+  "notification_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    channel: notificationChannelEnum("channel").notNull(),
+    type: notificationTypeEnum("type").notNull().default("weekly_reminder"),
+    weekYmd: varchar("week_ymd", { length: 10 }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    dedupeUidx: uniqueIndex("notification_logs_user_channel_type_week_uidx").on(
+      table.userId,
+      table.channel,
+      table.type,
+      table.weekYmd
+    ),
+    userSentIdx: index("notification_logs_user_sent_idx").on(
+      table.userId,
+      table.sentAt
+    ),
+  })
+);
+
 export const mobileCaptureSessions = pgTable("mobile_capture_sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")

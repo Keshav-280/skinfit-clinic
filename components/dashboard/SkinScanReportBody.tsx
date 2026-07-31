@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Mail, Share2, X, Shield } from "lucide-react";
+import { flushSync } from "react-dom";
+import { Mail, Share2, X, Shield } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
 import { Cormorant_Garamond } from "next/font/google";
@@ -20,6 +21,7 @@ import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types"
 import { TrackerReportSections } from "./TrackerReportSections";
 import { ScanReportPdfBackdrop } from "./ScanReportPdfBackdrop";
 import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
+import { ScanViewer } from "./ScanViewer";
 import { WRINKLE_MASK_PANEL_LABEL, ACNE_MASK_PANEL_LABEL } from "@/src/lib/scanMaskLabels";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
@@ -241,6 +243,12 @@ export interface SkinScanReportBodyProps {
   serverTracker?: PatientTrackerReport | null;
   /** When false (default), patient sees letter grades until clinic visit unlocks exact scores. */
   scoresUnlocked?: boolean;
+  /**
+   * How "View Full Report" behaves from the immersive ScanViewer.
+   * - scroll: expand tracker sections below (default)
+   * - navigate: go to /dashboard/history/{scanId}
+   */
+  reportMode?: "navigate" | "scroll";
 }
 
 export function SkinScanReportBody({
@@ -266,8 +274,10 @@ export function SkinScanReportBody({
   defaultShareEmail = null,
   serverTracker,
   scoresUnlocked = false,
+  reportMode = "scroll",
 }: SkinScanReportBodyProps) {
   const reportRef = useRef<HTMLDivElement>(null);
+  const fullReportRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -275,6 +285,7 @@ export function SkinScanReportBody({
   const [shareBusy, setShareBusy] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareDone, setShareDone] = useState(false);
+  const [fullReportOpen, setFullReportOpen] = useState(false);
   const [clientTracker, setClientTracker] = useState<
     PatientTrackerReport | null | undefined
   >(undefined);
@@ -399,6 +410,9 @@ export function SkinScanReportBody({
   }, [metrics.clinical_scores]);
 
   const handleDownloadPdf = useCallback(async () => {
+    flushSync(() => {
+      setFullReportOpen(true);
+    });
     const el = reportRef.current;
     if (!el) return;
     setPdfError(null);
@@ -415,6 +429,8 @@ export function SkinScanReportBody({
       // Give a small buffer so the patient image + sections are visible in the capture.
       if (autoDownload) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, 850));
+      } else {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 120));
       }
       await downloadScanReportPdf(
         el,
@@ -522,99 +538,126 @@ export function SkinScanReportBody({
       {!scoresUnlocked && !promoDismissed ? (
         <ScanReportClinicPromoOverlay onDismiss={dismissClinicPromo} />
       ) : null}
-      <div className="absolute right-3 top-3 z-30 flex flex-col items-end gap-2">
-        <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleDownloadPdf}
-          disabled={pdfLoading}
-          className="flex h-10 items-center gap-1.5 rounded-full border border-white bg-white px-3 text-xs font-semibold text-zinc-600 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:bg-white hover:text-zinc-900 disabled:opacity-60"
-          title="Download report as PDF"
-        >
-          <Download className="h-4 w-4 shrink-0" aria-hidden />
-          {pdfLoading ? "…" : "PDF"}
-        </button>
-        {typeof scanId === "number" && scanId > 0 ? (
-          <button
-            type="button"
-            onClick={() => {
-              setShareOpen((o) => !o);
-              setShareError(null);
-              setShareDone(false);
-            }}
-            className={`flex h-10 items-center gap-1.5 rounded-full border border-white bg-white px-3 text-xs font-semibold shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:bg-white disabled:opacity-60 ${
-              shareOpen ? "text-[#2C3E6B] ring-2 ring-[#2C3E6B]/20" : "text-zinc-600 hover:text-zinc-900"
-            }`}
-            title="Share report"
-            aria-expanded={shareOpen}
-          >
-            <Share2 className="h-4 w-4 shrink-0" aria-hidden />
-            Share
-          </button>
-        ) : null}
-        {onClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white bg-white text-zinc-500 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:border-white hover:bg-white hover:text-zinc-900 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] active:scale-[0.97]"
-            aria-label="Close"
-          >
-            <X className="h-[15px] w-[15px] stroke-[1.75]" />
-          </button>
-        ) : null}
-        </div>
-        {shareOpen && typeof scanId === "number" && scanId > 0 ? (
-          <div className="w-[min(100vw-2rem,20rem)] rounded-2xl border border-zinc-200/90 bg-white/95 p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              Share report
-            </p>
-            <div className="mt-2 flex items-center gap-2 text-zinc-400">
-              <div className="h-px flex-1 bg-zinc-200" />
-              <span className="text-[10px] font-medium uppercase tracking-wide">
-                Email
-              </span>
-              <div className="h-px flex-1 bg-zinc-200" />
-            </div>
-           
-            <label className="mt-2 block text-[11px] font-medium text-zinc-600">
-              To
-              <input
-                type="email"
-                value={shareEmail}
-                onChange={(e) => setShareEmail(e.target.value)}
-                placeholder="name@gmail.com"
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/20"
-                autoComplete="email"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => void handleShareByEmail()}
-              disabled={shareBusy || pdfLoading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-              style={{ backgroundColor: T.navy }}
-            >
-              <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              {shareBusy ? "Sending…" : "Send by email"}
-            </button>
-            {shareError ? (
-              <p className="mt-2 text-[11px] text-rose-600">{shareError}</p>
+
+      {/* Immersive photo-first viewer (screen only; PDF uses print layout below). */}
+      <div data-pdf-screen-only className="relative z-20 -mx-0 mb-4 w-full overflow-hidden rounded-[22px] sm:rounded-[22px]">
+        <div className="absolute right-3 top-3 z-30 flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            {typeof scanId === "number" && scanId > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShareOpen((o) => !o);
+                  setShareError(null);
+                  setShareDone(false);
+                }}
+                className={`flex h-10 items-center gap-1.5 rounded-full border border-white/40 bg-black/30 px-3 text-xs font-semibold text-white shadow-[0_2px_12px_rgba(0,0,0,0.2)] backdrop-blur-md transition hover:bg-black/45 ${
+                  shareOpen ? "ring-2 ring-white/40" : ""
+                }`}
+                title="Share report"
+                aria-expanded={shareOpen}
+              >
+                <Share2 className="h-4 w-4 shrink-0" aria-hidden />
+                Share
+              </button>
             ) : null}
-            {shareDone ? (
-              <p className="mt-2 text-[11px] font-medium text-[#2C3E6B]">
-                Sent. Check the inbox (and spam).
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/40 bg-black/30 text-white shadow-[0_2px_12px_rgba(0,0,0,0.2)] backdrop-blur-md transition hover:bg-black/45 active:scale-[0.97]"
+                aria-label="Close"
+              >
+                <X className="h-[15px] w-[15px] stroke-[1.75]" />
+              </button>
+            ) : null}
+          </div>
+          {shareOpen && typeof scanId === "number" && scanId > 0 ? (
+            <div className="w-[min(100vw-2rem,20rem)] rounded-2xl border border-zinc-200/90 bg-white/95 p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                Share report
               </p>
-            ) : null}
+              <div className="mt-2 flex items-center gap-2 text-zinc-400">
+                <div className="h-px flex-1 bg-zinc-200" />
+                <span className="text-[10px] font-medium uppercase tracking-wide">
+                  Email
+                </span>
+                <div className="h-px flex-1 bg-zinc-200" />
+              </div>
+              <label className="mt-2 block text-[11px] font-medium text-zinc-600">
+                To
+                <input
+                  type="email"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  placeholder="name@gmail.com"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/20"
+                  autoComplete="email"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleShareByEmail()}
+                disabled={shareBusy || pdfLoading}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                style={{ backgroundColor: T.navy }}
+              >
+                <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {shareBusy ? "Sending…" : "Send by email"}
+              </button>
+              {shareError ? (
+                <p className="mt-2 text-[11px] text-rose-600">{shareError}</p>
+              ) : null}
+              {shareDone ? (
+                <p className="mt-2 text-[11px] font-medium text-[#2C3E6B]">
+                  Sent. Check the inbox (and spam).
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        {pdfError ? (
+          <div className="pointer-events-none absolute right-3 top-16 z-40 max-w-[280px] rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 shadow-sm">
+            {pdfError}
+          </div>
+        ) : null}
+        <ScanViewer
+          imageUrl={imageUrl}
+          faceCaptureGallery={faceCaptureGallery}
+          metrics={metrics}
+          regions={regions}
+          wrinkleMaskUrl={wrinkleUrl}
+          acneMaskUrl={acneUrl}
+          maskExportVersion={maskExportVersion}
+          spatialOutputs={spatialOutputs}
+          scoresUnlocked={scoresUnlocked}
+          scanId={scanId}
+          tracker={tracker}
+          reportMode={reportMode}
+          pdfLoading={pdfLoading}
+          onDownloadPdf={() => void handleDownloadPdf()}
+          onRequestFullReport={() => {
+            setFullReportOpen(true);
+            window.requestAnimationFrame(() => {
+              fullReportRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            });
+          }}
+        />
+        {!scoresUnlocked ? (
+          <div className="px-4 pb-4">
+            <ClinicScoreUnlockCta compact />
           </div>
         ) : null}
       </div>
-      {pdfError ? (
-        <div className="pointer-events-none absolute right-3 top-16 z-40 max-w-[280px] rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 shadow-sm">
-          {pdfError}
-        </div>
-      ) : null}
 
-    <div className="relative mt-12 w-full overflow-hidden rounded-[22px] sm:mt-14">
+    <div
+      className={`relative mt-0 w-full overflow-hidden rounded-[22px] sm:mt-2 ${
+        fullReportOpen ? "" : "hidden"
+      }`}
+    >
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -690,19 +733,12 @@ export function SkinScanReportBody({
         </div>
       </div>
 
-      <div data-pdf-section className="relative z-[1] w-full break-inside-avoid">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent"
-        data-pdf-screen-only
-        aria-hidden
-      />
-
+        data-pdf-section
+        data-pdf-print-only
+        className="relative z-[1] hidden w-full break-inside-avoid"
+      >
       <div className="relative px-5 pb-10 pt-9 sm:px-9 sm:pb-12">
-        {!scoresUnlocked ? (
-          <div className="mx-auto mb-6 max-w-xl" data-pdf-screen-only>
-            <ClinicScoreUnlockCta compact />
-          </div>
-        ) : null}
         <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2C3E6B]/70">
           {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
         </p>
@@ -792,6 +828,7 @@ export function SkinScanReportBody({
       </div>
 
       <div
+        ref={fullReportRef}
         data-pdf-section
         className="relative z-[1] w-full min-w-0 max-w-full break-inside-avoid overflow-x-clip px-5 pb-10 pt-6 sm:px-9 sm:pt-8"
       >
@@ -834,6 +871,19 @@ export function SkinScanReportBody({
             report={tracker}
             serifClassName={serif.className}
             scoresUnlocked={scoresUnlocked}
+            scanId={scanId}
+            onDownloadPdf={() => void handleDownloadPdf()}
+            onEmailReport={() => {
+              setShareOpen(true);
+              setShareError(null);
+              setShareDone(false);
+              const trimmed = shareEmail.trim();
+              if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+                void handleShareByEmail();
+              }
+            }}
+            pdfLoading={pdfLoading}
+            emailBusy={shareBusy}
           />
         ) : (
           <>

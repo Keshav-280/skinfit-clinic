@@ -34,6 +34,8 @@ import type {
   PatientTrackerCause,
   PatientTrackerFocusAction,
   PatientTrackerResource,
+  TrackerCityWeatherSnapshot,
+  TrackerWellnessSnapshot,
 } from "@/src/lib/patientTrackerReport.types";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import {
@@ -42,6 +44,7 @@ import {
   scanContextNoteForLlm,
 } from "@/src/lib/trackerReportNarrative";
 import { buildTrackerResources } from "@/src/lib/trackerResourceLinks";
+import { loadWellnessAndWeatherForScan } from "@/src/lib/wellnessWeatherContext";
 
 type ScanRow = {
   id: number;
@@ -90,14 +93,15 @@ function buildRetrievalQuery(params: {
 
 function causeImpact(text: string): PatientTrackerCause["impact"] {
   const t = text.trim();
-  if (/^win:/i.test(t)) return "medium";
   if (/^drag:/i.test(t)) return "high";
+  if (/^environment:/i.test(t)) return "low";
+  if (/^win:/i.test(t)) return "medium";
   if (/^watch:/i.test(t)) return "medium";
   return "medium";
 }
 
 function mapCauses(lines: string[]): PatientTrackerCause[] {
-  return lines.slice(0, 4).map((text) => ({
+  return lines.slice(0, 5).map((text) => ({
     text: text.trim(),
     impact: causeImpact(text),
   }));
@@ -167,6 +171,8 @@ export type RagPatientTrackerNarrative = {
   empathyParagraph: string;
   evidenceIds: string[];
   llmUsed: boolean;
+  wellness: TrackerWellnessSnapshot | null;
+  cityWeather: TrackerCityWeatherSnapshot | null;
 };
 
 export async function buildRagPatientTrackerNarrative(input: {
@@ -307,9 +313,13 @@ export async function buildRagPatientTrackerNarrative(input: {
     topK: 8,
   });
 
-  const [visits, chatMsgs] = await Promise.all([
+  const [visits, chatMsgs, wellnessCtx] = await Promise.all([
     loadVisitNotesUpTo(userId, scanRow.createdAt),
     loadRecentChatUpTo(userId, scanRow.createdAt),
+    loadWellnessAndWeatherForScan({
+      userId,
+      scanDate: scanRow.createdAt,
+    }),
   ]);
 
   const scanContextNote = scanContextNoteForLlm(scanContextKind);
@@ -347,6 +357,8 @@ export async function buildRagPatientTrackerNarrative(input: {
       visitNotesSummary: summarizeVisitNotes(visits),
       recentChatSummary: summarizeChat(chatMsgs),
       scoresUnlocked: user?.clinicVisitedAt != null,
+      wellness: wellnessCtx.wellness,
+      cityWeather: wellnessCtx.cityWeather,
     });
   }
 
@@ -471,5 +483,7 @@ export async function buildRagPatientTrackerNarrative(input: {
     empathyParagraph,
     evidenceIds: evidence.map((e, i) => `E${i + 1}`),
     llmUsed: Boolean(llmOut),
+    wellness: wellnessCtx.wellness,
+    cityWeather: wellnessCtx.cityWeather,
   };
 }

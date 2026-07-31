@@ -45,6 +45,7 @@ export type MonthlyInsightViewData = {
     habitNotes?: string[];
     scanStory?: string | null;
     closingNote?: string | null;
+    environmentNote?: string | null;
     kaiMonthAvgFromParams: number | null;
     detail?: MonthlyReportDetail;
   } | null;
@@ -151,6 +152,8 @@ function MonthlyDetailBody({
   const habitNotes = (detail?.habitNotes ?? monthly.habitNotes ?? []).slice(0, 6);
   const scanStory = detail?.scanStory ?? monthly.scanStory ?? null;
   const closingNote = detail?.closingNote ?? monthly.closingNote ?? null;
+  const environmentNote =
+    detail?.environmentNote ?? monthly.environmentNote ?? null;
   const ad = detail?.adherence30d;
   const params = detail?.parameters ?? [];
   const scans = detail?.scans ?? [];
@@ -322,6 +325,19 @@ function MonthlyDetailBody({
         <div className={`${patientInnerCard} ${cardPad}`}>
           <p className={patientKicker}>Habits this month</p>
           <BulletList items={habitNotes} compact={compact} />
+        </div>
+      ) : null}
+
+      {environmentNote ? (
+        <div className={`${patientInnerCard} ${cardPad}`}>
+          <p className={patientKicker}>🌤️ Environment &amp; lifestyle</p>
+          <p
+            className={`mt-1.5 text-[#374151] ${
+              compact ? "text-[12px] leading-snug" : "text-sm leading-relaxed"
+            }`}
+          >
+            {environmentNote}
+          </p>
         </div>
       ) : null}
 
@@ -612,6 +628,7 @@ export function monthlySnapshotToViewData(
           habitNotes: m.habitNotes,
           scanStory: m.scanStory,
           closingNote: m.closingNote,
+          environmentNote: m.environmentNote,
           kaiMonthAvgFromParams: m.kaiMonthAvg,
           detail: m.detail ?? undefined,
         }

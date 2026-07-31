@@ -27,6 +27,8 @@ export type MonthlyReportDetail = {
   scanStory?: string | null;
   /** Warm closing line. */
   closingNote?: string | null;
+  /** How city weather / wellness lifestyle shaped the month. */
+  environmentNote?: string | null;
   kaiTrajectory: number[];
   /** Weighted kAI from mean of each parameter score across scans in this month. */
   kaiMonthAvgFromParams: number | null;
@@ -183,6 +185,7 @@ export function enrichMonthlyReportDetail(
     habitNotes,
     scanStory,
     closingNote,
+    environmentNote: data.environmentNote?.trim() || null,
     highlights: data.highlights ?? [],
     risks: data.risks ?? [],
     nextMonthFocus: data.nextMonthFocus ?? [],
@@ -605,6 +608,15 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
           : ""
       }
     </section>
+
+    ${
+      data.environmentNote?.trim()
+        ? `<section class="card">
+      <p class="kicker">Environment &amp; lifestyle</p>
+      <p class="body-copy">${esc(data.environmentNote)}</p>
+    </section>`
+        : ""
+    }
 
     <section class="card">
       <p class="kicker">Scan story</p>

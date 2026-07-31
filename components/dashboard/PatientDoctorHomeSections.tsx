@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Archive,
   Check,
   ChevronRight,
-  Loader2,
   Mic,
   MessageSquare,
 } from "lucide-react";
@@ -21,10 +20,6 @@ import {
 import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisitMessages";
 
 const NAVY = "#2C3E6B";
-
-const PLAIN_DOCTOR_CHAT_MAX_LEN = 4000;
-const DOCTOR_CHECKUP_FOLLOWUP_PREFIX =
-  "Hi doctor, this is my doubt regarding my checkup message:\n\n";
 
 export type DoctorVoiceNoteItem = {
   id: string;
@@ -43,14 +38,6 @@ export type FeedbackEntryItem = {
   doctorPhotoUrl?: string | null;
   doctorId?: string | null;
 };
-
-function buildAutoDoctorFollowUpMessage(checkupNotes: string): string {
-  const notes = checkupNotes.trim();
-  const combined = `${DOCTOR_CHECKUP_FOLLOWUP_PREFIX}${notes}`;
-  if (combined.length <= PLAIN_DOCTOR_CHAT_MAX_LEN) return combined;
-  const budget = PLAIN_DOCTOR_CHAT_MAX_LEN - DOCTOR_CHECKUP_FOLLOWUP_PREFIX.length - 1;
-  return `${DOCTOR_CHECKUP_FOLLOWUP_PREFIX}${notes.slice(0, Math.max(0, budget))}…`;
-}
 
 function voiceNoteAudioSrc(uri: string | null | undefined): string | undefined {
   const t = uri?.trim();
@@ -400,11 +387,6 @@ export function PatientDoctorHomeSections({
   onRefresh,
   className = "",
 }: Props) {
-  const router = useRouter();
-  const [doctorFollowUpBusy, setDoctorFollowUpBusy] = useState(false);
-  const [doctorFollowUpHint, setDoctorFollowUpHint] = useState<string | null>(
-    null
-  );
   const [doctorChatEnabled, setDoctorChatEnabled] = useState(true);
 
   useEffect(() => {
@@ -455,12 +437,6 @@ export function PatientDoctorHomeSections({
     [activeEntries]
   );
 
-  const primaryTextForChat =
-    textEntries[0]?.feedbackText?.trim() ??
-    voiceEntries.find((e) => e.feedbackText?.trim())?.feedbackText?.trim() ??
-    doctorFeedback?.trim() ??
-    "";
-
   const hasUnread = useMemo(
     () =>
       doctorVoiceNoteIsNew ||
@@ -475,6 +451,20 @@ export function PatientDoctorHomeSections({
 
   return (
     <div className={`flex w-full flex-col gap-4 ${className}`}>
+      {doctorChatEnabled ? (
+        <Link
+          href="/dashboard/chat?assistant=support"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
+        >
+          <MessageSquare className="h-4 w-4 shrink-0" aria-hidden />
+          Chat with Doctor
+        </Link>
+      ) : (
+        <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm leading-relaxed text-amber-950">
+          {DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE}
+        </p>
+      )}
+
       <section
         id="doctor-written-feedback"
         className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD}`}
@@ -495,68 +485,6 @@ export function PatientDoctorHomeSections({
                 onChanged={onRefresh}
               />
             ))}
-            {primaryTextForChat ? (
-              doctorChatEnabled ? (
-              <button
-                type="button"
-                disabled={doctorFollowUpBusy}
-                onClick={() => {
-                  void (async () => {
-                     setDoctorFollowUpHint(null);
-                     setDoctorFollowUpBusy(true);
-                     try {
-                       const text = buildAutoDoctorFollowUpMessage(primaryTextForChat);
-                       const res = await fetch("/api/chat/plain/message", {
-                         method: "POST",
-                         credentials: "include",
-                         headers: { "Content-Type": "application/json" },
-                         body: JSON.stringify({
-                           assistantId: "doctor",
-                           text,
-                         }),
-                       });
-                       const j = (await res.json()) as {
-                         success?: boolean;
-                         error?: string;
-                         message?: string;
-                       };
-                       if (!res.ok || !j.success) {
-                         setDoctorFollowUpHint(
-                           j.message ?? j.error ?? "Could not open chat. Try again."
-                         );
-                         return;
-                       }
-                       router.push("/dashboard/chat?assistant=doctor");
-                     } catch {
-                       setDoctorFollowUpHint("Network error. Try again.");
-                     } finally {
-                       setDoctorFollowUpBusy(false);
-                     }
-                  })();
-                }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                {doctorFollowUpBusy ? (
-                  <>
-                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                    Opening chat…
-                  </>
-                ) : (
-                  <>
-                    Have a question? Open doctor chat
-                    <ChevronRight className="h-4 w-4" aria-hidden />
-                  </>
-                )}
-              </button>
-              ) : (
-                <p className="rounded-[14px] border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm leading-relaxed text-amber-950">
-                  {DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE}
-                </p>
-              )
-            ) : null}
-            {doctorFollowUpHint ? (
-              <p className="text-xs font-medium text-red-600">{doctorFollowUpHint}</p>
-            ) : null}
           </div>
         ) : onboardingComplete ? (
           <p className="text-sm text-[#6B7280]">No written feedback yet.</p>

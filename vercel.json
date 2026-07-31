@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/kai-monthly",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-reminders",
+      "schedule": "30 3 * * 1"
     }
   ]
 }

@@ -41,6 +41,12 @@ import {
   patientDisplayClarity,
   patientClarityToGrade,
 } from "@/src/lib/clarityGrade";
+import { fetchCityWeather } from "@/src/lib/cityWeather";
+import {
+  loadWellnessAndWeatherForScan,
+  loadWellnessCheckinsInRange,
+} from "@/src/lib/wellnessWeatherContext";
+import { format, startOfWeek } from "date-fns";
 
 type ParamRow = {
   key: RagKaiParamKey;
@@ -113,6 +119,7 @@ export type MonthlyOutput = {
   habitNotes: string[];
   scanStory: string | null;
   closingNote: string | null;
+  environmentNote?: string | null;
   scoreTrend: number[];
   /** Weighted kAI from mean of each parameter across scans in this month (primary month score). */
   kaiMonthAvgFromParams: number | null;
@@ -373,7 +380,7 @@ type CalendarMonthlyCtx = {
   scansWithParams: ScanWithParams[];
   logs: Array<typeof dailyLogs.$inferSelect>;
   scanReports: ScanReport[];
-  user: { name: string; email: string; clinicVisitedAt?: Date | null };
+  user: { id: string; name: string; email: string; clinicVisitedAt?: Date | null };
   skinIdentity: SkinIdentityCard;
   skinIdentityTimeline: SkinIdentityTimeline;
   llmEnabled: boolean;
@@ -481,6 +488,33 @@ async function buildMonthlyForCalendarMonth(
   });
 
   const scoresUnlocked = user.clinicVisitedAt != null;
+  const weekYmdFrom = format(
+    startOfWeek(calMonthStart, { weekStartsOn: 1 }),
+    "yyyy-MM-dd"
+  );
+  const weekYmdTo = format(
+    startOfWeek(
+      sameMonthNow ? today : calMonthEndDay,
+      { weekStartsOn: 1 }
+    ),
+    "yyyy-MM-dd"
+  );
+  const wellnessWeeks = await loadWellnessCheckinsInRange(
+    user.id,
+    weekYmdFrom,
+    weekYmdTo
+  );
+  const wellness =
+    wellnessWeeks.length > 0
+      ? wellnessWeeks[wellnessWeeks.length - 1]!
+      : null;
+  const weatherCity =
+    [...wellnessWeeks].reverse().find((w) => w.city?.trim())?.city?.trim() ??
+    null;
+  const cityWeather = weatherCity
+    ? await fetchCityWeather(weatherCity)
+    : null;
+
   let monthlyLlm = null;
   if (llmEnabled) {
     monthlyLlm = await analyzeMonthly({
@@ -502,6 +536,9 @@ async function buildMonthlyForCalendarMonth(
       behavior: monthBehavior,
       evidence: monthlyEvidence,
       scoresUnlocked,
+      wellness,
+      wellnessWeeks,
+      cityWeather,
     });
     if (monthlyLlm) monthlyLlmTally.ok = true;
   }
@@ -659,6 +696,8 @@ async function buildMonthlyForCalendarMonth(
   const closingNote =
     monthlyLlm?.closingNote?.trim() ||
     "Carry the wins, fix the soft spots early, and keep your check-ins honest — next month’s insight gets sharper with every scan and note.";
+  const environmentNote =
+    monthlyLlm?.environmentNote?.trim() || null;
 
   const monthlyDetail: MonthlyReportDetail = {
     patientName: user.name,
@@ -678,6 +717,7 @@ async function buildMonthlyForCalendarMonth(
     habitNotes,
     scanStory,
     closingNote,
+    environmentNote,
     kaiTrajectory: displayScoreTrend,
     kaiMonthAvgFromParams: displayKaiMonthAvgFromParams,
     adherence30d,
@@ -703,6 +743,7 @@ async function buildMonthlyForCalendarMonth(
     habitNotes,
     scanStory,
     closingNote,
+    environmentNote,
     scoreTrend: displayScoreTrend,
     kaiMonthAvgFromParams: displayKaiMonthAvgFromParams,
     llmUsed: Boolean(monthlyLlm),
@@ -990,9 +1031,13 @@ export async function generateRagKaiOutput(input: {
       topK: 5,
     });
 
-    const [visits, chatMsgs] = await Promise.all([
+    const [visits, chatMsgs, wellnessCtx] = await Promise.all([
       loadVisitNotesUpTo(user.id, current.createdAt),
       loadRecentChatUpTo(user.id, current.createdAt),
+      loadWellnessAndWeatherForScan({
+        userId: user.id,
+        scanDate: current.createdAt,
+      }),
     ]);
 
     let llmOut = null;
@@ -1022,6 +1067,8 @@ export async function generateRagKaiOutput(input: {
         visitNotesSummary: summarizeVisitNotes(visits),
         recentChatSummary: summarizeChat(chatMsgs),
         scoresUnlocked: user.clinicVisitedAt != null,
+        wellness: wellnessCtx.wellness,
+        cityWeather: wellnessCtx.cityWeather,
       });
       if (llmOut) llmStats.scansAnalyzed += 1;
     }

@@ -45,6 +45,10 @@ import {
   type LastTreatmentVisit,
 } from "@/components/dashboard/LastTreatmentCard";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
+import {
+  WeeklyWellnessCheckinCard,
+  type WellnessCheckinData,
+} from "@/components/dashboard/WeeklyWellnessCheckinCard";
 import { patientDoctorLabel } from "@/src/lib/doctorDisplayName";
 import {
   patientKicker,
@@ -442,6 +446,8 @@ export default function SchedulesPageClient({
   patientHasPhone: initialPatientHasPhone = true,
   initialPhoneCountryCode = "+91",
   initialPhone = null,
+  initialWellnessCheckin = null,
+  wellnessWeekYmd,
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
   initialAppointmentEvents: ScheduleEventRow[];
@@ -454,6 +460,8 @@ export default function SchedulesPageClient({
   patientHasPhone?: boolean;
   initialPhoneCountryCode?: string;
   initialPhone?: string | null;
+  initialWellnessCheckin?: WellnessCheckinData | null;
+  wellnessWeekYmd: string;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"month" | "week">("month");
@@ -1016,6 +1024,16 @@ export default function SchedulesPageClient({
 
   return (
     <div className="mx-auto max-w-7xl space-y-4">
+      <p className="text-base font-medium leading-relaxed text-[#2C3E6B] md:text-center">
+        Skin care and wellness is a wholistic journey that begins from within. Let&apos;s
+        track your weekly goals…
+      </p>
+
+      <WeeklyWellnessCheckinCard
+        initialCheckin={initialWellnessCheckin}
+        initialWeekYmd={wellnessWeekYmd}
+      />
+
       {requestFormUrl ? (
         <div className="mx-auto max-w-lg rounded-[18px] border border-white/60 bg-white/40 px-4 py-3 text-center text-sm text-[#2C3E6B] backdrop-blur-sm">
           <p>If your clinic uses a Google Form, you can complete it here:</p>

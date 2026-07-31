@@ -17,6 +17,8 @@ import {
   Activity,
   Camera,
   NotebookPen,
+  Calendar,
+  Play,
 } from "lucide-react";
 
 const ONBOARDING_FIRST_SCAN_HREF = "/onboarding/capture/photos";
@@ -64,7 +66,9 @@ import {
 } from "@/components/dashboard/DashboardSectionHeader";
 import { WeeklyInsightSection } from "@/components/dashboard/WeeklyInsightSection";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
+import { SkinDNACard } from "@/components/dashboard/SkinDNACard";
 import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
+import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
 import {
   PATIENT_GREEN,
   PATIENT_NAVY,
@@ -75,6 +79,300 @@ import {
   RAG_KAI_PARAM_KEYS,
   RAG_KAI_PARAM_LABELS,
 } from "@/src/lib/ragEightParams";
+import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
+
+/* ─── Build-tab content: appointments / articles / videos ─── */
+
+type UpcomingApptRow = {
+  id: string;
+  eventDateYmd: string;
+  eventTimeHm: string | null;
+  eventSlotEndTimeHm?: string | null;
+  title: string;
+  completed?: boolean;
+  cancelled?: boolean;
+  doctorName?: string | null;
+  appointmentType?: string | null;
+  status: "booked" | "requested" | "completed" | "cancelled";
+};
+
+const TOP_ARTICLES = [
+  {
+    title: "Understanding Your Skin Type: A Complete Guide",
+    category: "Skin Basics",
+    readTime: "5 min",
+    href: "#",
+  },
+  {
+    title: "How Indian Climate Affects Your Skin Health",
+    category: "Climate & Skin",
+    readTime: "4 min",
+    href: "#",
+  },
+  {
+    title: "The Science Behind kAI Skin Score",
+    category: "kAI Technology",
+    readTime: "3 min",
+    href: "#",
+  },
+  {
+    title: "Building a Skincare Routine That Actually Works",
+    category: "Routines",
+    readTime: "6 min",
+    href: "#",
+  },
+] as const;
+
+const RECOMMENDED_VIDEOS = [
+  {
+    title: "Meet SkinFit Wellness — Our Mission",
+    duration: "2:30",
+    href: "#",
+  },
+  {
+    title: "How to Take the Perfect AI Skin Scan",
+    duration: "1:45",
+    href: "#",
+  },
+  {
+    title: "Understanding Your Skin Report",
+    duration: "3:15",
+    href: "#",
+  },
+] as const;
+
+function apptStatusBadge(status: UpcomingApptRow["status"]) {
+  switch (status) {
+    case "completed":
+      return {
+        label: "Completed",
+        className: "bg-sky-100 text-sky-900",
+      };
+    case "requested":
+      return {
+        label: "Requested",
+        className: "bg-amber-100 text-amber-900",
+      };
+    case "cancelled":
+      return {
+        label: "Cancelled",
+        className: "bg-zinc-100 text-zinc-600",
+      };
+    default:
+      return {
+        label: "Booked",
+        className: "bg-emerald-100 text-emerald-900",
+      };
+  }
+}
+
+function UpcomingAppointmentsSection() {
+  const [rows, setRows] = useState<UpcomingApptRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/patient/schedules", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          initialAppointmentEvents?: Array<{
+            id: string;
+            eventDateYmd: string;
+            eventTimeHm: string | null;
+            eventSlotEndTimeHm?: string | null;
+            title: string;
+            completed?: boolean;
+            cancelled?: boolean;
+            doctorName?: string | null;
+            appointmentType?: string | null;
+          }>;
+          pendingScheduleRequests?: Array<{
+            id: string;
+            preferredDateYmd: string;
+            issue?: string;
+          }>;
+        };
+        if (!alive) return;
+        const today = format(new Date(), "yyyy-MM-dd");
+        const booked = (data.initialAppointmentEvents ?? [])
+          .filter((e) => !e.cancelled)
+          .map((e): UpcomingApptRow => ({
+            ...e,
+            status: e.completed ? "completed" : "booked",
+          }));
+        const pending = (data.pendingScheduleRequests ?? []).map(
+          (r): UpcomingApptRow => ({
+            id: `req:${r.id}`,
+            eventDateYmd: r.preferredDateYmd,
+            eventTimeHm: null,
+            title: r.issue?.trim() || "Visit request",
+            appointmentType: "Requested visit",
+            doctorName: null,
+            status: "requested",
+          })
+        );
+        const upcoming = [...booked, ...pending]
+          .filter((e) => e.eventDateYmd >= today && e.status !== "completed")
+          .sort((a, b) => {
+            const c = a.eventDateYmd.localeCompare(b.eventDateYmd);
+            if (c !== 0) return c;
+            return (a.eventTimeHm ?? "99:99").localeCompare(b.eventTimeHm ?? "99:99");
+          })
+          .slice(0, 3);
+        setRows(upcoming);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return (
+    <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
+      <DashboardSectionHeader icon={Calendar} title="UPCOMING APPOINTMENTS" />
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#6B7280]">
+          <Loader2 className="h-4 w-4 animate-spin text-[#2C3E6B]" aria-hidden />
+          Loading appointments…
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <p className="text-sm font-medium text-[#6B7280]">No upcoming appointments</p>
+          <Link
+            href="/dashboard/schedules"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#243456]"
+          >
+            Book an Appointment
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {rows.map((row) => {
+            const badge = apptStatusBadge(row.status);
+            let timeLabel = "Time TBD";
+            if (row.eventTimeHm && /^\d{2}:\d{2}$/.test(row.eventTimeHm)) {
+              try {
+                timeLabel = formatSlotTimeRange(
+                  row.eventTimeHm,
+                  row.eventSlotEndTimeHm ?? null
+                );
+              } catch {
+                timeLabel = row.eventTimeHm;
+              }
+            }
+            let dateLabel = row.eventDateYmd;
+            try {
+              dateLabel = format(parseISO(row.eventDateYmd), "EEE, MMM d");
+            } catch {
+              /* keep ymd */
+            }
+            return (
+              <div
+                key={row.id}
+                className="flex flex-col gap-2 rounded-xl border border-[#E5E7EB] bg-[#F2F9F2]/60 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-extrabold text-[#2C3E6B]">{dateLabel}</p>
+                    <span className="text-xs font-semibold text-[#6B7280]">{timeLabel}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badge.className}`}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-[15px] font-semibold text-[#18181b]">
+                    {row.appointmentType?.trim() || row.title}
+                  </p>
+                  {row.doctorName?.trim() ? (
+                    <p className="mt-0.5 text-[13px] text-[#6B7280]">
+                      Dr. {row.doctorName.trim()}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+          <Link
+            href="/dashboard/schedules"
+            className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#2C3E6B] transition hover:underline"
+          >
+            View All Appointments
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TopArticlesSection() {
+  return (
+    <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
+      <DashboardSectionHeader icon={NotebookPen} title="TOP ARTICLES" />
+      <div className="space-y-2.5">
+        {TOP_ARTICLES.map((article) => (
+          <Link
+            key={article.title}
+            href={article.href}
+            className="flex flex-col gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-3 transition hover:border-[#2C3E6B]/25 hover:bg-[#F2F9F2]/50 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="min-w-0">
+              <span className="inline-flex rounded-full bg-[#E8EFE6] px-2.5 py-0.5 text-[11px] font-bold text-[#2C3E6B]">
+                {article.category}
+              </span>
+              <p className="mt-1.5 text-[15px] font-bold leading-snug text-[#2C3E6B]">
+                {article.title}
+              </p>
+            </div>
+            <span className="shrink-0 text-[12px] font-semibold text-[#6B7280]">
+              {article.readTime}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RecommendedVideosSection() {
+  return (
+    <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
+      <DashboardSectionHeader icon={Play} title="RECOMMENDED VIDEOS" />
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
+        {RECOMMENDED_VIDEOS.map((video) => (
+          <Link
+            key={video.title}
+            href={video.href}
+            className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-auto"
+          >
+            <div className="relative flex aspect-video items-center justify-center bg-[#2C3E6B]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm">
+                <Play className="h-5 w-5 fill-current" aria-hidden />
+              </span>
+              <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-white">
+                {video.duration}
+              </span>
+            </div>
+            <p className="px-3 py-2.5 text-[13px] font-bold leading-snug text-[#2C3E6B]">
+              {video.title}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 const NAVY = PATIENT_NAVY;
 const GREEN = PATIENT_GREEN;
@@ -140,6 +438,7 @@ type HomeData = {
   routinePmReminderHm: string;
   homeDateYmd?: string;
   userName?: string;
+  profilePhotoUrl?: string | null;
   kaiInsightsEnabled?: boolean;
   weeklyInsight?: {
     locked: boolean;
@@ -476,6 +775,7 @@ export function PatientDashboardDesktop() {
 
   return (
     <div className="space-y-5">
+        <WelcomeModal />
         {/* Greeting */}
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -590,6 +890,16 @@ export function PatientDashboardDesktop() {
             />
           )}
         </div>
+
+        {data.skinScanHistory.length > 0 ? (
+          <SkinDNACard
+            patientName={greetingName}
+            profileImageUrl={data.profilePhotoUrl}
+            kaiSkinScore={data.kaiSkinScore}
+            scoresUnlocked={scoresUnlocked}
+            analysisResults={data.skinScanHistory[0]?.analysisResults}
+          />
+        ) : null}
 
         {!scoresUnlocked ? <ClinicScoreUnlockCta /> : null}
 
@@ -724,6 +1034,10 @@ export function PatientDashboardDesktop() {
             onRefresh={() => void loadHome()}
             className="min-h-0"
           />
+
+          <UpcomingAppointmentsSection />
+          <TopArticlesSection />
+          <RecommendedVideosSection />
         </div>
 
         {skinParams.length > 0 ? (

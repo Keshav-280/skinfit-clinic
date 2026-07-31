@@ -70,6 +70,7 @@ async function buildPatientHomePayload(
     where: eq(users.id, userId),
     columns: {
       name: true,
+      profilePhotoUrl: true,
       skinType: true,
       primaryConcern: true,
       streakCurrent: true,
@@ -340,6 +341,7 @@ async function buildPatientHomePayload(
     },
     firstScanAt: firstScanAt?.toISOString() ?? null,
     userName: userRow.name ?? "Patient",
+    profilePhotoUrl: userRow.profilePhotoUrl ?? null,
     feedbackEntries,
     archivedFeedbackEntries,
   };

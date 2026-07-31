@@ -228,17 +228,19 @@ function sanitizeFocusActionsForLockedPatient(
 }
 
 /**
- * The app does not collect sun-exposure data, so AI prose must never claim UV
- * exposure influenced results. Drops whole sentences that reference UV/sun days.
+ * The app does not collect sun-exposure habit data, so AI prose must never claim
+ * measured UV/sun days. Weather "UV Index" mentions are allowed.
  */
 export function stripUvExposureClaims(text: string): string {
-  const sentences = (text ?? "").split(/(?<=[.!?])\s+/);
-  const kept = sentences.filter(
-    (s) =>
-      !/\bUV\b|\bsun exposure\b|high-?uv|\bsun(?:ny)? days?\b|\bsun-exposed\b/i.test(
-        s
-      )
-  );
+  const sentences = (text ?? "").slice(0).split(/(?<=[.!?])\s+/);
+  const kept = sentences.filter((s) => {
+    if (/\bUV\s*[Ii]ndex\b/.test(s)) {
+      return !/\bsun exposure\b|\bsunscreen days\b|\bphotoprotection\b/i.test(s);
+    }
+    return !/\bUV\b|\bsun exposure\b|high-?uv|\bsun(?:ny)? days?\b|\bsun-exposed\b/i.test(
+      s
+    );
+  });
   const out = collapseWhitespace(kept.join(" "));
   if (out) return out;
   return "Your daily habits shaped this week's results. Keep your routine consistent.";
@@ -349,7 +351,7 @@ export function presentTrackerReportNarrative(
       ? report.causes
       : sanitizeTrackerCausesForLockedPatient(report.causes)
   ).map((c: PatientTrackerCause) => {
-    const m = c.text.trim().match(/^(Win|Drag|Watch):\s*(.*)$/i);
+    const m = c.text.trim().match(/^(Win|Drag|Watch|Environment):\s*(.*)$/i);
     if (!m) return { ...c, text: guard(c.text) };
     const label = m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1).toLowerCase();
     return { ...c, text: `${label}: ${guard(m[2] ?? "")}` };

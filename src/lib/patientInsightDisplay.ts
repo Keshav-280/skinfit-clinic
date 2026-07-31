@@ -16,6 +16,7 @@ export type MonthlyReportDisplay = {
   habitNotes: string[];
   scanStory: string | null;
   closingNote: string | null;
+  environmentNote: string | null;
   detail: MonthlyReportDetail | null;
 };
 
@@ -35,6 +36,7 @@ export function alignMonthlyProseToHeadlineKai<
     habitNotes?: string[] | null;
     scanStory?: string | null;
     closingNote?: string | null;
+    environmentNote?: string | null;
     kaiMonthAvgFromParams?: number | null;
   },
 >(monthly: T): T {
@@ -69,6 +71,10 @@ export function alignMonthlyProseToHeadlineKai<
       monthly.scanStory != null ? fixProse(monthly.scanStory) : monthly.scanStory,
     closingNote:
       monthly.closingNote != null ? fixProse(monthly.closingNote) : monthly.closingNote,
+    environmentNote:
+      monthly.environmentNote != null
+        ? fixProse(monthly.environmentNote)
+        : monthly.environmentNote,
   };
 }
 
@@ -106,6 +112,7 @@ export function parseMonthlyReportDisplay(payload: unknown): MonthlyReportDispla
     habitNotes: [],
     scanStory: null,
     closingNote: null,
+    environmentNote: null,
     detail: null,
   };
 
@@ -129,6 +136,8 @@ export function parseMonthlyReportDisplay(payload: unknown): MonthlyReportDispla
       habitNotes: (m.habitNotes ?? detail?.habitNotes ?? []).filter(Boolean),
       scanStory: m.scanStory?.trim() || detail?.scanStory?.trim() || null,
       closingNote: m.closingNote?.trim() || detail?.closingNote?.trim() || null,
+      environmentNote:
+        m.environmentNote?.trim() || detail?.environmentNote?.trim() || null,
       detail,
     };
   }

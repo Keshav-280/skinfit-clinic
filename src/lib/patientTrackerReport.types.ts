@@ -39,6 +39,29 @@ export type KaiOnboardingClinical = {
   notes: string[];
 };
 
+/** Snapshot of the week's wellness questionnaire (when submitted). */
+export type TrackerWellnessSnapshot = {
+  nutritionLevel: string | null;
+  exerciseHours: string | null;
+  sleepHours: string | null;
+  supplements: string | null;
+  stressLevel: number | null;
+  city: string | null;
+  skincareRoutine: string[] | null;
+  activeIngredients: string | null;
+  weekYmd: string;
+};
+
+/** Live city weather at report build time (when city + API available). */
+export type TrackerCityWeatherSnapshot = {
+  city: string;
+  tempC: number;
+  humidity: number;
+  condition: string;
+  uvIndex: number;
+  aqi: number | null;
+};
+
 export type PatientTrackerReport = {
   scanContext: {
     kind: "onboarding_first_scan" | "same_week_followup" | "new_week_followup";
@@ -72,6 +95,10 @@ export type PatientTrackerReport = {
   };
   /** Questionnaire-derived flags/notes for kAI report (chronic, sensitivity, triggers, sleep). */
   onboardingClinical?: KaiOnboardingClinical | null;
+  /** Weekly wellness check-in used for this scan's analysis (if any). */
+  wellness?: TrackerWellnessSnapshot | null;
+  /** City weather used for this scan's analysis (if any). */
+  cityWeather?: TrackerCityWeatherSnapshot | null;
   /**
    * Bumped when score/delta resolution changes. Snapshots below current version
    * get a one-time score repair on load (no LLM); then served from DB as-is.
