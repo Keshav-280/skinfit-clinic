@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -38,7 +38,6 @@ import {
   formatSkinDnaSummary,
 } from "@/components/dashboard/SkinDNACard";
 import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
-import { AppointmentsCalendar } from "@/components/dashboard/AppointmentsCalendar";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 
 /* ─── Build-tab content: appointments / articles / videos ─── */
@@ -593,7 +592,11 @@ function DashboardDatePicker({
 }
 
 /* ─── Main Component ─── */
-export function PatientDashboardDesktop() {
+export function PatientDashboardDesktop({
+  calendarSlot = null,
+}: {
+  calendarSlot?: ReactNode;
+} = {}) {
   const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -811,9 +814,8 @@ export function PatientDashboardDesktop() {
         className="min-h-0"
       />
 
-      {/* 4. Calendar — appointments grid + upcoming list */}
-      <AppointmentsCalendar />
-      <UpcomingAppointmentsSection />
+      {/* 4. Calendar — full appointments calendar with booking */}
+      {calendarSlot}
 
       {/* 5. Top Articles */}
       <TopArticlesSection />
