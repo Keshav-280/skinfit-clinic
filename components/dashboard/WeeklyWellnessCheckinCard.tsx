@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { format, parseISO } from "date-fns";
 import type { LucideIcon } from "lucide-react";
 import {
   Atom,
+  Brain,
   Check,
   Droplet,
   FlaskConical,
+  Leaf,
   Loader2,
   MapPin,
   Pill,
@@ -51,35 +52,55 @@ const ROUTINE_ICONS: Record<(typeof ROUTINE_OPTIONS)[number], LucideIcon> = {
   Sunscreen: Sun,
 };
 
-function stressDescriptor(level: number): { label: string; color: string } {
-  if (level <= 3) return { label: "Relaxed", color: "#4CAF50" };
-  if (level <= 6) return { label: "Balanced", color: "#CA8A04" };
-  if (level <= 8) return { label: "Tense", color: "#F59E0B" };
-  return { label: "High stress", color: "#DC2626" };
+function stressDescriptor(level: number): { label: string; color: string; bg: string } {
+  if (level <= 3)
+    return { label: "Relaxed", color: "#15803D", bg: "rgba(48,209,88,0.14)" };
+  if (level <= 6)
+    return { label: "Balanced", color: "#A16207", bg: "rgba(202,138,4,0.14)" };
+  if (level <= 8)
+    return { label: "Tense", color: "#C2410C", bg: "rgba(245,158,11,0.16)" };
+  return { label: "High stress", color: "#B91C1C", bg: "rgba(220,38,38,0.12)" };
 }
+
+const PILL_SELECTED =
+  "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-[0_4px_14px_-4px_rgba(44,62,107,0.45)] ring-2 ring-[#2C3E6B]/20 ring-offset-1";
+const PILL_IDLE =
+  "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/25 hover:bg-[#F2F9F2]";
 
 function SectionBlock({
   label,
+  helper,
+  Icon,
   children,
   showDivider = true,
 }: {
   label: string;
+  helper: string;
+  Icon: LucideIcon;
   children: ReactNode;
   showDivider?: boolean;
 }) {
   return (
-    <div className={showDivider ? "border-t border-[#E5E7EB]/80 pt-7" : ""}>
-      <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#2C3E6B]/55">
-        {label}
-      </p>
-      <div className="space-y-6">{children}</div>
+    <div className={showDivider ? "border-t border-[#E8EBE8] pt-8" : ""}>
+      <div className="mb-6 flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/8 text-[#2C3E6B]">
+          <Icon className="h-[18px] w-[18px]" aria-hidden />
+        </span>
+        <div className="min-w-0 pt-0.5">
+          <p className="text-[13px] font-bold tracking-wide text-[#18181b]">
+            {label}
+          </p>
+          <p className="mt-0.5 text-[13px] text-[#6B7280]">{helper}</p>
+        </div>
+      </div>
+      <div className="space-y-7">{children}</div>
     </div>
   );
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-2.5 text-sm font-semibold text-[#18181b]">{children}</p>
+    <p className="mb-3 text-sm font-semibold text-[#18181b]">{children}</p>
   );
 }
 
@@ -105,10 +126,8 @@ function PillGroup({
               key={opt}
               type="button"
               onClick={() => onChange(selected ? null : opt)}
-              className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition active:scale-95 ${
-                selected
-                  ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-sm ring-2 ring-[#2C3E6B]/25 ring-offset-1"
-                  : "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
+              className={`rounded-full border px-4 py-3 text-sm font-semibold transition duration-150 active:scale-95 ${
+                selected ? PILL_SELECTED : PILL_IDLE
               }`}
             >
               {opt}
@@ -126,6 +145,7 @@ function IconTextField({
   value,
   onChange,
   placeholder,
+  helper,
   Icon,
 }: {
   id: string;
@@ -133,16 +153,20 @@ function IconTextField({
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
+  helper: string;
   Icon: LucideIcon;
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2.5 block text-sm font-semibold text-[#18181b]">
+      <label
+        htmlFor={id}
+        className="mb-3 block text-sm font-semibold text-[#18181b]"
+      >
         {label}
       </label>
       <div className="relative">
         <Icon
-          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2C3E6B]/45"
+          className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#2C3E6B]/40"
           aria-hidden
         />
         <input
@@ -150,19 +174,22 @@ function IconTextField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAF8] py-3 pl-11 pr-4 text-sm text-[#18181b] outline-none transition placeholder:text-[#9CA3AF] focus:border-[#2C3E6B]/30 focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+          className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAF8] py-3.5 pl-12 pr-4 text-[15px] text-[#18181b] outline-none transition placeholder:text-[#9CA3AF] focus:border-[#2C3E6B]/25 focus:bg-white focus:shadow-[inset_0_0_0_3px_rgba(44,62,107,0.08)]"
         />
       </div>
+      <p className="mt-2 text-xs text-[#9CA3AF]">{helper}</p>
     </div>
   );
 }
 
 export function WeeklyWellnessCheckinCard({
   initialCheckin = null,
-  initialWeekYmd,
+  onCompletedChange,
 }: {
   initialCheckin?: WellnessCheckinData | null;
+  /** Kept for callers that still pass the week label (intro lives on the page). */
   initialWeekYmd: string;
+  onCompletedChange?: (completed: boolean) => void;
 }) {
   const [nutritionLevel, setNutritionLevel] = useState<string | null>(
     initialCheckin?.nutritionLevel ?? null
@@ -189,7 +216,6 @@ export function WeeklyWellnessCheckinCard({
   const [activeIngredients, setActiveIngredients] = useState(
     initialCheckin?.activeIngredients ?? ""
   );
-  const [completed, setCompleted] = useState(Boolean(initialCheckin));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedHint, setSavedHint] = useState<string | null>(null);
@@ -253,7 +279,7 @@ export function WeeklyWellnessCheckinCard({
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Could not save check-in.");
       }
-      setCompleted(true);
+      onCompletedChange?.(true);
       setSavedHint(
         data.updated
           ? "Updated this week's check-in."
@@ -266,89 +292,60 @@ export function WeeklyWellnessCheckinCard({
     }
   }
 
-  const weekOfLabel = useMemo(() => {
-    try {
-      return format(parseISO(`${initialWeekYmd}T00:00:00`), "d MMM");
-    } catch {
-      return initialWeekYmd;
-    }
-  }, [initialWeekYmd]);
-
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      {/* Intro header */}
-      <header className="mb-10 text-center md:mb-12 md:text-left">
-        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#2C3E6B]/55">
-          Weekly Ritual
-        </p>
-        <h1 className="mt-3 font-serif text-[1.85rem] font-semibold leading-[1.15] tracking-tight text-[#18181b] md:text-[2.35rem]">
-          Beautiful skin is built from within.
-        </h1>
-        <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[#6B7280] md:mx-0">
-          A few moments each week to log how you&apos;re living — so kAI can
-          tune your care to your life.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
-          <span className="inline-flex items-center rounded-full border border-[#2C3E6B]/12 bg-white/60 px-3.5 py-1.5 text-xs font-medium text-[#2C3E6B]/80 backdrop-blur-sm">
-            Week of {weekOfLabel}
-          </span>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium ${
-              completed
-                ? "border-emerald-200/80 bg-emerald-50/60 text-emerald-800"
-                : "border-amber-200/70 bg-amber-50/50 text-amber-900/80"
-            }`}
-          >
-            {completed ? (
-              <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            ) : null}
-            {completed ? "Completed" : "Pending"}
-          </span>
-        </div>
-      </header>
+    <section className="rounded-3xl border border-[#E5E7EB]/90 bg-white p-6 shadow-[0_8px_40px_-12px_rgba(44,62,107,0.18)] md:p-9">
+      <div className="space-y-0">
+        <SectionBlock
+          label="Lifestyle"
+          helper="How you've been living this week"
+          Icon={Leaf}
+          showDivider={false}
+        >
+          <PillGroup
+            label="Nutrition Levels"
+            options={NUTRITION_OPTIONS}
+            value={nutritionLevel}
+            onChange={setNutritionLevel}
+          />
+          <PillGroup
+            label="Exercise Hours"
+            options={EXERCISE_OPTIONS}
+            value={exerciseHours}
+            onChange={setExerciseHours}
+          />
+          <PillGroup
+            label="Sleep Hours / Day"
+            options={SLEEP_OPTIONS}
+            value={sleepHours}
+            onChange={setSleepHours}
+          />
+        </SectionBlock>
 
-      {/* Questionnaire card */}
-      <section className="rounded-3xl bg-white p-6 shadow-[0_4px_24px_-8px_rgba(44,62,107,0.15)] md:p-8">
-        <div className="space-y-0">
-          <SectionBlock label="Lifestyle" showDivider={false}>
-            <PillGroup
-              label="Nutrition Levels"
-              options={NUTRITION_OPTIONS}
-              value={nutritionLevel}
-              onChange={setNutritionLevel}
-            />
-            <PillGroup
-              label="Exercise Hours"
-              options={EXERCISE_OPTIONS}
-              value={exerciseHours}
-              onChange={setExerciseHours}
-            />
-            <PillGroup
-              label="Sleep Hours / Day"
-              options={SLEEP_OPTIONS}
-              value={sleepHours}
-              onChange={setSleepHours}
-            />
-          </SectionBlock>
+        <SectionBlock
+          label="Body & Mind"
+          helper="What supports you — and what weighs on you"
+          Icon={Brain}
+        >
+          <IconTextField
+            id="wellness-supplements"
+            label="Supplements"
+            value={supplements}
+            onChange={setSupplements}
+            placeholder="e.g. Vitamin D, Biotin, Zinc…"
+            helper="Optional — list anything you take regularly"
+            Icon={Pill}
+          />
 
-          <SectionBlock label="Body & Mind">
-            <IconTextField
-              id="wellness-supplements"
-              label="Supplements"
-              value={supplements}
-              onChange={setSupplements}
-              placeholder="e.g. Vitamin D, Biotin, Zinc…"
-              Icon={Pill}
-            />
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <FieldLabel>Level of Stress</FieldLabel>
+              <span className="text-sm font-extrabold tabular-nums text-[#2C3E6B]">
+                {stressTouched ? `${stressLevel}/10` : "—/10"}
+              </span>
+            </div>
 
-            <div>
-              <div className="mb-2.5 flex items-center justify-between gap-2">
-                <FieldLabel>Level of Stress</FieldLabel>
-                <span className="text-sm font-extrabold tabular-nums text-[#2C3E6B]">
-                  {stressTouched ? `${stressLevel}/10` : "—/10"}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <div className="relative rounded-2xl bg-gradient-to-r from-[#30D158]/25 via-amber-300/30 to-red-400/30 p-1.5 sm:p-2">
+              <div className="flex flex-wrap justify-between gap-1.5 rounded-xl bg-white/70 p-1.5 backdrop-blur-[2px] sm:gap-2 sm:p-2">
                 {Array.from({ length: 10 }, (_, i) => {
                   const n = i + 1;
                   const selected = stressTouched && stressLevel === n;
@@ -360,10 +357,8 @@ export function WeeklyWellnessCheckinCard({
                         setStressTouched(true);
                         setStressLevel(n);
                       }}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition active:scale-95 sm:h-10 sm:w-10 ${
-                        selected
-                          ? "bg-[#2C3E6B] text-white shadow-sm ring-2 ring-[#2C3E6B]/25 ring-offset-1"
-                          : "border border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition duration-150 active:scale-95 sm:h-10 sm:w-10 ${
+                        selected ? PILL_SELECTED : PILL_IDLE
                       }`}
                       aria-label={`Stress level ${n}`}
                       aria-pressed={selected}
@@ -373,97 +368,115 @@ export function WeeklyWellnessCheckinCard({
                   );
                 })}
               </div>
-              {stressTouched ? (
-                <p
-                  className="mt-2.5 text-sm font-semibold"
-                  style={{ color: stressMeta.color }}
-                >
-                  {stressMeta.label}
-                </p>
-              ) : (
-                <p className="mt-2.5 text-sm text-[#9CA3AF]">
-                  Tap a number to rate your stress
-                </p>
-              )}
             </div>
 
-            <IconTextField
-              id="wellness-city"
-              label="City"
-              value={city}
-              onChange={setCity}
-              placeholder="e.g. Mumbai, Delhi…"
-              Icon={MapPin}
-            />
-          </SectionBlock>
-
-          <SectionBlock label="Skincare">
-            <div>
-              <FieldLabel>Skincare Routine</FieldLabel>
-              <div className="flex flex-wrap gap-2.5">
-                {ROUTINE_OPTIONS.map((item) => {
-                  const checked = routine.includes(item);
-                  const Icon = ROUTINE_ICONS[item];
-                  return (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => toggleRoutine(item)}
-                      aria-pressed={checked}
-                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition active:scale-95 ${
-                        checked
-                          ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-sm ring-2 ring-[#2C3E6B]/25 ring-offset-1"
-                          : "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-                      {item}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <IconTextField
-              id="wellness-actives"
-              label="Active Ingredients"
-              value={activeIngredients}
-              onChange={setActiveIngredients}
-              placeholder="e.g. Retinol, Niacinamide, Vitamin C…"
-              Icon={Atom}
-            />
-          </SectionBlock>
-        </div>
-
-        <div className="mt-8 space-y-3 border-t border-[#E5E7EB]/80 pt-6">
-          {error ? (
-            <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {error}
-            </p>
-          ) : null}
-          {savedHint ? (
-            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              {savedHint}
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={!hasAny || saving}
-            onClick={() => void onSave()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2C3E6B] to-[#3A4F86] px-6 py-3.5 text-sm font-bold text-white shadow-[0_8px_20px_-10px_rgba(44,62,107,0.55)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Saving…
-              </>
+            {stressTouched ? (
+              <span
+                className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-bold transition-colors duration-300"
+                style={{
+                  color: stressMeta.color,
+                  backgroundColor: stressMeta.bg,
+                }}
+              >
+                {stressMeta.label}
+              </span>
             ) : (
-              "Save Weekly Check-in"
+              <p className="mt-3 text-sm text-[#9CA3AF]">
+                Tap a number to rate your stress
+              </p>
             )}
-          </button>
-        </div>
-      </section>
-    </div>
+          </div>
+
+          <IconTextField
+            id="wellness-city"
+            label="City"
+            value={city}
+            onChange={setCity}
+            placeholder="e.g. Mumbai, Delhi…"
+            helper="Helps kAI factor in your local climate"
+            Icon={MapPin}
+          />
+        </SectionBlock>
+
+        <SectionBlock
+          label="Skincare"
+          helper="What you put on your skin this week"
+          Icon={Sparkles}
+        >
+          <div>
+            <FieldLabel>Skincare Routine</FieldLabel>
+            <div className="flex flex-wrap gap-2.5">
+              {ROUTINE_OPTIONS.map((item) => {
+                const checked = routine.includes(item);
+                const Icon = ROUTINE_ICONS[item];
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => toggleRoutine(item)}
+                    aria-pressed={checked}
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition duration-150 active:scale-95 ${
+                      checked ? PILL_SELECTED : PILL_IDLE
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <IconTextField
+            id="wellness-actives"
+            label="Active Ingredients"
+            value={activeIngredients}
+            onChange={setActiveIngredients}
+            placeholder="e.g. Retinol, Niacinamide, Vitamin C…"
+            helper="Optional — actives you used this week"
+            Icon={Atom}
+          />
+        </SectionBlock>
+      </div>
+
+      <div className="mt-10 space-y-3 border-t border-[#E8EBE8] pt-7">
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-2xl border border-red-200/80 bg-red-50/90 px-4 py-3.5 text-sm leading-relaxed text-red-800 shadow-sm"
+          >
+            {error}
+          </p>
+        ) : null}
+        {savedHint ? (
+          <p
+            role="status"
+            className="inline-flex w-full items-start gap-2 rounded-2xl border border-[#30D158]/30 bg-[#F2F9F2] px-4 py-3.5 text-sm leading-relaxed text-[#18181b] shadow-sm"
+          >
+            <Check
+              className="mt-0.5 h-4 w-4 shrink-0 text-[#30D158]"
+              aria-hidden
+            />
+            <span>{savedHint}</span>
+          </p>
+        ) : null}
+
+        <button
+          type="button"
+          disabled={!hasAny || saving}
+          onClick={() => void onSave()}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2C3E6B] to-[#3A4F86] px-7 py-4 text-sm font-bold text-white shadow-[0_10px_28px_-10px_rgba(44,62,107,0.55)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_-10px_rgba(44,62,107,0.6)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Saving…
+            </>
+          ) : (
+            "Save Weekly Check-in"
+          )}
+        </button>
+      </div>
+    </section>
   );
 }

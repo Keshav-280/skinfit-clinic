@@ -6,8 +6,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ClinicScoreUnlockModal } from "@/components/dashboard/ClinicScoreUnlockModal";
 import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "@/src/lib/clarityGrade";
 
-const CONSISTENCY_COLOR = "#2CFA2C";
-const PROGRESS_COLOR = "#FA114F";
+// Three distinct Apple-style ring colors.
+const KAI_COLOR = "#22D3EE"; // inner — cyan
+const CONSISTENCY_COLOR = "#30D158"; // middle — green
+const PROGRESS_COLOR = "#FA114F"; // outer — red
 const UNLOCK_HINT = "Complete your 2nd week scan to unlock";
 
 /**
@@ -206,7 +208,6 @@ export function NavyMetricsCard({
   const skinFillTarget = hasScan
     ? Math.min(100, Math.max(0, Math.round(kaiSkinScore)))
     : 0;
-  const skinColor = kai?.color ?? "#4CAF50";
   const [skinFill, setSkinFill] = useState(0);
 
   useEffect(() => {
@@ -289,8 +290,8 @@ export function NavyMetricsCard({
               cy={cy}
               radius={innerR}
               fill={skinFill}
-              color={skinColor}
-              track={dimRingColor(skinColor)}
+              color={KAI_COLOR}
+              track={dimRingColor(KAI_COLOR)}
             />
           </g>
 
@@ -336,20 +337,28 @@ export function NavyMetricsCard({
           <span
             className="h-2 w-2 shrink-0 rounded-full"
             style={{
-              backgroundColor: hasScan ? skinColor : "rgba(255,255,255,0.35)",
+              backgroundColor: hasScan ? KAI_COLOR : "rgba(255,255,255,0.35)",
             }}
             aria-hidden
           />
           <span className="text-[11px] font-semibold text-white/90">kAI Score</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 shrink-0 rounded-full bg-white/30" aria-hidden />
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: CONSISTENCY_COLOR }}
+            aria-hidden
+          />
           <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
             Consistency <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 shrink-0 rounded-full bg-white/30" aria-hidden />
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: PROGRESS_COLOR }}
+            aria-hidden
+          />
           <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
             Progress <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
           </span>

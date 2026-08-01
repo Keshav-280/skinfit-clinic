@@ -128,6 +128,15 @@ function shortToneLabel(fitz: string | null | undefined): string | null {
   return full.replace(/\s+tone$/i, "").trim() || full;
 }
 
+/** Capitalize the first letter of each word (values often arrive lowercase). */
+function toTitleCase(s: string): string {
+  return s
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
 function formatConcernLabel(concern: string): string {
   const c = concern.trim();
   if (!c) return c;
@@ -143,9 +152,9 @@ export function formatSkinDnaSummary(input: {
 }): string | null {
   const parts: string[] = [];
   const skin = input.skinType?.trim();
-  if (skin) parts.push(skin);
+  if (skin) parts.push(toTitleCase(skin));
   const concern = input.primaryConcern?.trim();
-  if (concern) parts.push(formatConcernLabel(concern));
+  if (concern) parts.push(toTitleCase(formatConcernLabel(concern)));
   const tone = fitzpatrickToneLabel(input.fitzpatrick);
   if (tone) parts.push(tone);
   return parts.length > 0 ? parts.join(" · ") : null;
@@ -269,16 +278,18 @@ export function SkinDNACard({
   const displayName = patientName.trim() || "Patient";
   const photo = profileImageUrl?.trim() || null;
   const gradeText = kai.showLock
-    ? `Grade ${kai.grade} · locked`
-    : `Grade ${kai.grade} · ${kai.sublabel}`;
+    ? `Grade ${kai.grade} · Locked`
+    : `Grade ${kai.grade} · ${toTitleCase(kai.sublabel)}`;
 
   const identityFacts: { label: string; value: string }[] = [];
   const typeVal = skinType?.trim();
-  if (typeVal) identityFacts.push({ label: "Skin type", value: typeVal });
+  if (typeVal)
+    identityFacts.push({ label: "Skin Type", value: toTitleCase(typeVal) });
   const toneVal = shortToneLabel(fitzpatrick);
-  if (toneVal) identityFacts.push({ label: "Tone", value: toneVal });
+  if (toneVal) identityFacts.push({ label: "Tone", value: toTitleCase(toneVal) });
   const concernVal = primaryConcern?.trim();
-  if (concernVal) identityFacts.push({ label: "Focus", value: concernVal });
+  if (concernVal)
+    identityFacts.push({ label: "Focus", value: toTitleCase(concernVal) });
   identityFacts.push({
     label: "Last scan",
     value: hasScan ? relativeScanLabel(lastScanAt) : "No scan yet",
