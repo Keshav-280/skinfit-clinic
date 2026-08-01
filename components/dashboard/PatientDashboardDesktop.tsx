@@ -38,6 +38,7 @@ import {
   formatSkinDnaSummary,
 } from "@/components/dashboard/SkinDNACard";
 import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
+import { AppointmentsCalendar } from "@/components/dashboard/AppointmentsCalendar";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 
 /* ─── Build-tab content: appointments / articles / videos ─── */
@@ -361,6 +362,7 @@ type FeedbackEntry = {
 
 type HomeData = {
   skinScanHistory: SkinScanItem[];
+  latestScanReportId?: number | null;
   kaiSkinScore: number;
   weeklyDeltaScore?: number;
   weeklyDeltaMeaningful?: boolean;
@@ -691,9 +693,10 @@ export function PatientDashboardDesktop() {
   );
 
   const latestScan = data?.skinScanHistory[0] ?? null;
-  const reportHref = latestScan
-    ? `/dashboard/history/scans/${latestScan.id}`
-    : "/dashboard/history";
+  const reportHref =
+    data?.latestScanReportId != null
+      ? `/dashboard/history/scans/${data.latestScanReportId}`
+      : "/dashboard/history";
 
   if (loading) {
     return (
@@ -808,7 +811,8 @@ export function PatientDashboardDesktop() {
         className="min-h-0"
       />
 
-      {/* 4. Calendar — upcoming appointments */}
+      {/* 4. Calendar — appointments grid + upcoming list */}
+      <AppointmentsCalendar />
       <UpcomingAppointmentsSection />
 
       {/* 5. Top Articles */}

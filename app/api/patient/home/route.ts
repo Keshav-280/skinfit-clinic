@@ -155,6 +155,7 @@ async function buildPatientHomePayload(
     }),
     db
       .select({
+        id: scans.id,
         overallScore: scans.overallScore,
         createdAt: scans.createdAt,
         scores: scans.scores,
@@ -308,6 +309,7 @@ async function buildPatientHomePayload(
     amItems,
     pmItems,
     routinePlanReady,
+    latestScanReportId: latestScan?.id ?? null,
     kaiSkinScore: clampPct(kaiSkinScore),
     weeklyDeltaScore: Math.round(weeklyDeltaScore),
     weeklyDeltaMeaningful,
