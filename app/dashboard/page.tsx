@@ -23,7 +23,7 @@ export default async function DashboardPage() {
           initialScheduleUnreadCount={schedule.initialScheduleUnreadCount}
           latestVisit={schedule.latestVisit}
           assignedDoctor={schedule.assignedDoctor}
-          showKaiInsights={schedule.showKaiInsights}
+          showKaiInsights={false}
           patientHasPhone={schedule.patientHasPhone}
           initialPhoneCountryCode={schedule.initialPhoneCountryCode}
           initialPhone={schedule.initialPhone}

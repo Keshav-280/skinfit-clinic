@@ -25,10 +25,12 @@ import {
   Loader2,
   Calendar,
   Play,
+  Activity,
   NotebookPen,
 } from "lucide-react";
 import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
+import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
 import {
   DASHBOARD_SECTION_CARD,
   DashboardSectionHeader,
@@ -383,6 +385,7 @@ type HomeData = {
   feedbackEntries: FeedbackEntry[];
   archivedFeedbackEntries?: FeedbackEntry[];
   onboardingComplete: boolean;
+  kaiInsightsEnabled?: boolean;
   scoresUnlocked?: boolean;
   progress?: PatientProgressSnapshot;
   userName?: string;
@@ -822,6 +825,16 @@ export function PatientDashboardDesktop({
 
       {/* 6. Recommended Videos */}
       <RecommendedVideosSection />
+
+      {/* 7. Monthly Insight */}
+      {data.kaiInsightsEnabled ? (
+        <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
+          <DashboardSectionHeader icon={Activity} title="MONTHLY INSIGHT" />
+          <div className="mt-2">
+            <ProfileRagKaiInsightsSection embedded compact />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
