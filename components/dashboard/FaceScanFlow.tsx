@@ -463,6 +463,10 @@ export function FaceScanFlow({
         return;
       }
       setUploadError(null);
+      if (variant === "dashboard") {
+        setShowDeviceUpload(true);
+        setStep("phone-qr");
+      }
       setSlotCaptures((prev) => {
         const next = [...prev];
         let imageIdx = 0;
@@ -494,7 +498,7 @@ export function FaceScanFlow({
       });
       setScanResults(null);
     },
-    [],
+    [variant],
   );
 
   const stopCamera = useCallback(() => {

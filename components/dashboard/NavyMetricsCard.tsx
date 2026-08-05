@@ -263,34 +263,34 @@ export function NavyMetricsCard({
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 md:flex-col md:items-start md:justify-center md:gap-y-3">
       <div className="flex items-center gap-1.5">
         <span
-          className="h-2 w-2 shrink-0 rounded-full"
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
           style={{
             backgroundColor: hasScan ? KAI_COLOR : "rgba(255,255,255,0.35)",
           }}
           aria-hidden
         />
-        <span className="text-[11px] font-semibold text-white/90">kAI Score</span>
+        <span className="text-sm font-semibold text-white/90">kAI Score</span>
       </div>
       <div className="flex items-center gap-1.5">
         <span
-          className="h-2 w-2 shrink-0 rounded-full"
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
           style={{ backgroundColor: CONSISTENCY_COLOR }}
           aria-hidden
         />
-        <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
+        <span className="flex items-center gap-0.5 text-sm font-semibold text-white/55">
           Consistency{" "}
-          <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
+          <Lock className="h-3 w-3 text-white/50" strokeWidth={2.5} />
         </span>
       </div>
       <div className="flex items-center gap-1.5">
         <span
-          className="h-2 w-2 shrink-0 rounded-full"
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
           style={{ backgroundColor: PROGRESS_COLOR }}
           aria-hidden
         />
-        <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
+        <span className="flex items-center gap-0.5 text-sm font-semibold text-white/55">
           Progress{" "}
-          <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
+          <Lock className="h-3 w-3 text-white/50" strokeWidth={2.5} />
         </span>
       </div>
     </div>

@@ -73,15 +73,19 @@ function SectionBlock({
   Icon,
   children,
   showDivider = true,
+  className = "",
 }: {
   label: string;
   helper: string;
   Icon: LucideIcon;
   children: ReactNode;
   showDivider?: boolean;
+  className?: string;
 }) {
   return (
-    <div className={showDivider ? "border-t border-[#E8EBE8] pt-8" : ""}>
+    <div
+      className={`${showDivider ? "border-t border-[#E8EBE8] pt-8" : ""} ${className}`}
+    >
       <div className="mb-6 flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/8 text-[#2C3E6B]">
           <Icon className="h-[18px] w-[18px]" aria-hidden />
@@ -325,6 +329,8 @@ export function WeeklyWellnessCheckinCard({
           label="Body & Mind"
           helper="What supports you — and what weighs on you"
           Icon={Brain}
+          showDivider={false}
+          className="pt-8"
         >
           <IconTextField
             id="wellness-supplements"
