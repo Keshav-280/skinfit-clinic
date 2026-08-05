@@ -237,7 +237,14 @@ function AdjustSlider({
 
 export type FaceScanFlowVariant = "dashboard" | "onboarding";
 
-export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
+export function FaceScanFlow({
+  variant,
+  onLayoutExpanded,
+}: {
+  variant: FaceScanFlowVariant;
+  /** When true, parent should expand to full-width flow (camera / confirm / etc.). */
+  onLayoutExpanded?: (expanded: boolean) => void;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionIdParam = searchParams.get("s");
@@ -246,6 +253,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
   const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [showDeviceUpload, setShowDeviceUpload] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -998,12 +1006,107 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
 
   const showPhotoGuide = step === "upload" && !cameraOpen && photoGuideOpen;
   const onboardingPastGuide = !isOnboardingScan || onboardingGuideComplete;
-  const showUploadChrome =
-    !showPhotoGuide && onboardingPastGuide && step !== "phone-qr";
+  /** Keep chrome visible under the phone-QR modal so file inputs stay mounted. */
+  const showUploadChrome = !showPhotoGuide && onboardingPastGuide;
   const navy = SKINFIT_THEME.navy;
   const onboardingSurface =
     "border-[#2C3E6B]/10 bg-white/25 shadow-none backdrop-blur-sm";
   const onboardingSurfaceHover = "hover:border-[#2C3E6B]/18 hover:bg-white/35";
+  const isDiagnoseHero =
+    variant === "dashboard" &&
+    ((step === "upload" && !cameraOpen && !showPhotoGuide) ||
+      step === "phone-qr");
+
+  useEffect(() => {
+    onLayoutExpanded?.(!isDiagnoseHero);
+  }, [isDiagnoseHero, onLayoutExpanded]);
+
+  const captureSlotsPanel = (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
+          Capture checklist
+        </p>
+        <p className="text-[11px] font-semibold text-[#4CAF50]">
+          {captureCount}/{N_CAPTURES} added
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-5">
+        {FACE_SCAN_CAPTURE_STEPS.map((captureStep, index) => {
+          const filled = slotCaptures[index];
+          return (
+            <div
+              key={captureStep.id}
+              className={`relative rounded-2xl border px-2 py-2 text-center transition-colors ${
+                filled
+                  ? "border-[#4CAF50]/40 bg-[#E8F5E9]/80"
+                  : "cursor-pointer border-[#2C3E6B]/15 bg-white hover:border-[#2C3E6B]/30 hover:bg-[#F2F9F2]"
+              }`}
+            >
+              {filled ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => clearSlot(index)}
+                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#64748B] shadow-sm transition hover:bg-rose-50 hover:text-rose-600"
+                    aria-label={`Remove ${captureStep.title}`}
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={filled.preview}
+                    alt={captureStep.title}
+                    className="mx-auto h-12 w-12 rounded-xl object-cover ring-1 ring-[#4CAF50]/30"
+                  />
+                  <p className="mt-1 line-clamp-2 text-[10px] font-bold leading-tight text-[#1E5E3A]">
+                    {captureStep.title}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openUploadForSlot(index)}
+                    className="mt-1 text-[10px] font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
+                  >
+                    Replace
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openUploadForSlot(index)}
+                  className="flex w-full flex-col items-center py-1"
+                >
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#94A3B8]">
+                    {index + 1}
+                  </p>
+                  <p className="mt-0.5 text-xs font-bold text-[#2C3E6B]">
+                    {captureStep.title}
+                  </p>
+                  <p className="mt-1 text-[10px] font-medium text-[#94A3B8]">
+                    Tap to upload
+                  </p>
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {slotsComplete ? (
+        <button
+          type="button"
+          onClick={() => {
+            setShowDeviceUpload(false);
+            setStep("confirm");
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] py-3 text-sm font-bold text-white transition hover:bg-[#243456]"
+        >
+          <Check className="h-4 w-4" aria-hidden />
+          Continue to preview
+        </button>
+      ) : null}
+    </div>
+  );
+
   if (isMobileHandoff && step === "handoff-sent") {
     return (
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-12 text-center">
@@ -1074,11 +1177,30 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
           : step === "scanning"
             ? "mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-4 py-8 md:px-8"
-            : variant === "dashboard"
-              ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
-              : "mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center space-y-5"
+            : isDiagnoseHero
+              ? "flex h-full min-h-0 w-full flex-col"
+              : variant === "dashboard"
+                ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
+                : "mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center space-y-5"
       }`}
     >
+      {/* Always-mounted pickers so modal upload can trigger them */}
+      <input
+        id="scan-file-input"
+        type="file"
+        accept="image/*"
+        multiple
+        className="sr-only"
+        onChange={handleInputChange}
+      />
+      <input
+        ref={slotUploadInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={handleSlotUploadChange}
+      />
+
       {showPhotoGuide ? (
         <FaceScanPhotoGuide
           mode={photoGuideIntent}
@@ -1091,52 +1213,146 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
       ) : null}
 
       {step === "phone-qr" && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto w-full max-w-lg space-y-5"
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Scan with your phone"
         >
-          {!isOnboardingScan ? (
-            <header className="text-center sm:text-left">
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
-                Skin analysis
-              </p>
-              <h1
-                className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl"
-                style={{ color: navy }}
-              >
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#E5E7EB] bg-white/95 px-4 py-3 backdrop-blur-sm sm:px-5">
+              <p className="text-sm font-extrabold text-[#18181b]">
                 Scan with your phone
-              </h1>
-              <p className="mt-2 text-sm text-[#64748B]">
-                Point your phone camera at the QR code below to capture all five
-                angles.
               </p>
-            </header>
-          ) : null}
-          <MobileCaptureQRPanel
-            onBack={() => setStep("upload")}
-            onSessionReady={setQrSessionId}
-            onPhotosReady={(captureImages, cropContext) => {
-              void handleRemotePhotosReady(captureImages, cropContext);
-            }}
-            onScanComplete={(scanId) => {
-              if (isOnboardingScan) {
-                router.push(
-                  `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
-                );
-              } else {
-                router.push(`/dashboard/history/scans/${scanId}`);
-              }
-            }}
-            isOnboardingScan={isOnboardingScan}
-          />
-        </motion.div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeviceUpload(false);
+                  setStep("upload");
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#6B7280] transition hover:bg-[#F2F9F2]"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+
+            <div className="space-y-5 px-4 py-5 sm:px-5">
+              {!isOnboardingScan ? (
+                <div className="text-center sm:text-left">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+                    Skin analysis
+                  </p>
+                  <h2
+                    className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl"
+                    style={{ color: navy }}
+                  >
+                    Continue on your phone
+                  </h2>
+                  <p className="mt-2 text-sm text-[#64748B]">
+                    Point your phone camera at the QR code below to capture all
+                    five angles.
+                  </p>
+                </div>
+              ) : null}
+
+              <MobileCaptureQRPanel
+                onBack={() => {
+                  setShowDeviceUpload(false);
+                  setStep("upload");
+                }}
+                onSessionReady={setQrSessionId}
+                onPhotosReady={(captureImages, cropContext) => {
+                  void handleRemotePhotosReady(captureImages, cropContext);
+                }}
+                onScanComplete={(scanId) => {
+                  if (isOnboardingScan) {
+                    router.push(
+                      `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
+                    );
+                  } else {
+                    router.push(`/dashboard/history/scans/${scanId}`);
+                  }
+                }}
+                isOnboardingScan={isOnboardingScan}
+              />
+
+              <div className="relative flex items-center gap-3 py-1">
+                <div className="h-px flex-1 bg-[#E5E7EB]" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9CA3AF]">
+                  or
+                </span>
+                <div className="h-px flex-1 bg-[#E5E7EB]" />
+              </div>
+
+              {!showDeviceUpload ? (
+                <button
+                  type="button"
+                  onClick={() => setShowDeviceUpload(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/20 bg-[#F2F9F2] px-4 py-3.5 text-sm font-bold text-[#2C3E6B] transition hover:border-[#2C3E6B]/35 hover:bg-[#E8EFE6]"
+                >
+                  <ImagePlus className="h-4 w-4" aria-hidden />
+                  Upload photos from this device
+                </button>
+              ) : (
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={`space-y-4 rounded-2xl border-2 border-dashed p-4 transition-colors ${
+                    isDragging
+                      ? "border-[#2C3E6B]/40 bg-[#F2F9F2]"
+                      : "border-[#2C3E6B]/15 bg-[#F8FAF8]"
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E8EFE6]">
+                      <ImagePlus className="h-5 w-5 text-[#2C3E6B]" />
+                    </div>
+                    <p className="mt-3 text-sm font-extrabold text-[#18181b]">
+                      Upload photos from this device
+                    </p>
+                    <p className="mx-auto mt-1 max-w-xs text-xs text-[#64748B]">
+                      Tap each slot to add one photo, or choose multiple files at
+                      once.
+                    </p>
+                    <label
+                      htmlFor="scan-file-input"
+                      className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/20 bg-white px-5 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition hover:bg-[#F2F9F2]"
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      Choose files
+                    </label>
+                  </div>
+                  {captureSlotsPanel}
+                  {uploadError ? (
+                    <p
+                      className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-900"
+                      role="alert"
+                    >
+                      {uploadError}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {showUploadChrome &&
       step !== "scanning" &&
+      step !== "phone-qr" &&
       !(step === "upload" && cameraOpen) &&
-      !isOnboardingScan ? (
+      !isOnboardingScan &&
+      !isDiagnoseHero ? (
         <motion.header
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1288,17 +1504,30 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="w-full"
+          className={`w-full ${isDiagnoseHero ? "flex h-full flex-col" : ""}`}
         >
-          <div className="space-y-5">
+          <div
+            className={`space-y-5 ${isDiagnoseHero ? "flex h-full min-h-0 flex-col" : ""}`}
+          >
             <div
-              className={`grid gap-4 ${isMobileDevice ? "md:grid-cols-[1.05fr_0.95fr]" : "md:grid-cols-[1.05fr_0.95fr]"}`}
+              className={`grid gap-4 ${
+                isOnboardingScan
+                  ? "md:grid-cols-[1.05fr_0.95fr]"
+                  : isDiagnoseHero
+                    ? "flex-1"
+                    : ""
+              }`}
             >
               {!isMobileDevice ? (
                 <button
                   type="button"
-                  onClick={() => setStep("phone-qr")}
-                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                  onClick={() => {
+                    setShowDeviceUpload(false);
+                    setStep("phone-qr");
+                  }}
+                  className={`group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30 ${
+                    isDiagnoseHero ? "flex h-full min-h-[280px] flex-col" : ""
+                  }`}
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-110" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1315,7 +1544,8 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                       <p className="mt-2 text-xs leading-relaxed text-white/75">
                         On desktop, capture with your phone for the best
                         face-scan quality. Scan the QR code to start on your
-                        phone.
+                        phone — or upload photos from this device in the next
+                        step.
                       </p>
                     </div>
                     <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition-colors group-hover:bg-[#F8FAFC]">
@@ -1328,7 +1558,9 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 <button
                   type="button"
                   onClick={requestOpenCamera}
-                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                  className={`group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30 ${
+                    isDiagnoseHero ? "flex h-full min-h-[280px] flex-col" : ""
+                  }`}
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1355,181 +1587,107 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
                 </button>
               )}
 
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
-                  isDragging
-                    ? "border-[#2C3E6B]/40 bg-white/40"
-                    : isOnboardingScan
-                      ? `border-[#2C3E6B]/12 ${onboardingSurface}`
-                      : "border-[#2C3E6B]/15 bg-white/60 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.2)]"
-                }`}
-              >
-                <input
-                  id="scan-file-input"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="sr-only"
-                  onChange={handleInputChange}
-                />
-                <input
-                  ref={slotUploadInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={handleSlotUploadChange}
-                />
-                <div>
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
-                    <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
-                  </div>
-                  <h2
-                    className="mt-4 text-base font-extrabold"
-                    style={{ color: navy }}
-                  >
-                    Upload photos
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
-                    Tap each slot below to add one photo at a time, or drop
-                    files to fill.
-                  </p>
-                  <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
-                    {captureCount}/{N_CAPTURES} added
-                  </p>
-                </div>
-                <label
-                  htmlFor="scan-file-input"
-                  className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition ${
-                    isOnboardingScan
-                      ? "border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50"
-                      : "border-white/70 bg-white/75 hover:bg-white"
+              {isOnboardingScan ? (
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
+                    isDragging
+                      ? "border-[#2C3E6B]/40 bg-white/40"
+                      : `border-[#2C3E6B]/12 ${onboardingSurface}`
                   }`}
                 >
-                  <ImagePlus className="h-3.5 w-3.5" />
-                  Choose files
-                </label>
-              </div>
+                  <div>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
+                      <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
+                    </div>
+                    <h2
+                      className="mt-4 text-base font-extrabold"
+                      style={{ color: navy }}
+                    >
+                      Upload photos
+                    </h2>
+                    <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-[#64748B]">
+                      Tap each slot below to add one photo at a time, or drop
+                      files to fill.
+                    </p>
+                    <p className="mx-auto mt-1 text-[10px] font-semibold text-[#4CAF50]">
+                      {captureCount}/{N_CAPTURES} added
+                    </p>
+                  </div>
+                  <label
+                    htmlFor="scan-file-input"
+                    className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50`}
+                  >
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Choose files
+                  </label>
+                </div>
+              ) : null}
             </div>
 
-            <div className="space-y-4 pt-1">
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
-                Capture checklist
-              </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-5">
-                {FACE_SCAN_CAPTURE_STEPS.map((captureStep, index) => {
-                  const filled = slotCaptures[index];
-                  return (
-                    <div
-                      key={captureStep.id}
-                      className={`relative rounded-2xl border px-2 py-2 text-center transition-colors ${
-                        filled
-                          ? "border-[#4CAF50]/40 bg-[#E8F5E9]/80"
-                          : isOnboardingScan
-                            ? `cursor-pointer ${onboardingSurface} ${onboardingSurfaceHover}`
-                            : "cursor-pointer border-[#2C3E6B]/15 bg-white/60 hover:border-[#2C3E6B]/30 hover:bg-white/80"
-                      }`}
-                    >
-                      {filled ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => clearSlot(index)}
-                            className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#64748B] shadow-sm transition hover:bg-rose-50 hover:text-rose-600"
-                            aria-label={`Remove ${captureStep.title}`}
-                          >
-                            <X className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={filled.preview}
-                            alt={captureStep.title}
-                            className="mx-auto h-12 w-12 rounded-xl object-cover ring-1 ring-[#4CAF50]/30"
-                          />
-                          <p className="mt-1 line-clamp-2 text-[10px] font-bold leading-tight text-[#1E5E3A]">
-                            {captureStep.title}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => openUploadForSlot(index)}
-                            className="mt-1 text-[10px] font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
-                          >
-                            Replace
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => openUploadForSlot(index)}
-                          className="flex w-full flex-col items-center py-1"
-                        >
-                          <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#94A3B8]">
-                            {index + 1}
-                          </p>
-                          <p className="mt-0.5 text-xs font-bold text-[#2C3E6B]">
-                            {captureStep.title}
-                          </p>
-                          <p className="mt-1 text-[10px] font-medium text-[#94A3B8]">
-                            Tap to upload
-                          </p>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex flex-row flex-wrap items-stretch gap-3">
-                {!isOnboardingScan ? (
-                  <ScanPhotoGuideDismissCheckbox
-                    checked={skipPhotoGuide}
-                    onChange={handleSkipPhotoGuideChange}
-                    className="min-w-[min(100%,240px)] flex-1 bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
-                  />
+            {isOnboardingScan || !isDiagnoseHero ? (
+              <div className="space-y-4 pt-1">
+                {captureSlotsPanel}
+                <div className="flex flex-row flex-wrap items-stretch gap-3">
+                  {!isOnboardingScan ? (
+                    <ScanPhotoGuideDismissCheckbox
+                      checked={skipPhotoGuide}
+                      onChange={handleSkipPhotoGuideChange}
+                      className="min-w-[min(100%,240px)] flex-1 bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={openPhotoGuideReview}
+                    className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-bold text-[#2C3E6B] transition sm:px-6 ${
+                      isOnboardingScan
+                        ? `w-full ${onboardingSurface} ${onboardingSurfaceHover}`
+                        : "border-[#2C3E6B]/25 bg-white/60 shadow-sm hover:border-[#2C3E6B]/40 hover:bg-white/80"
+                    }`}
+                  >
+                    <Sun className="h-4 w-4" aria-hidden />
+                    View photo tips
+                  </button>
+                </div>
+
+                {isOnboardingScan ? (
+                  <Link
+                    href="/onboarding/questionnaire?entry=start"
+                    className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
+                  >
+                    Continue to questionnaire
+                  </Link>
                 ) : null}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   type="button"
                   onClick={openPhotoGuideReview}
-                  className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-bold text-[#2C3E6B] transition sm:px-6 ${
-                    isOnboardingScan
-                      ? `w-full ${onboardingSurface} ${onboardingSurfaceHover}`
-                      : "border-[#2C3E6B]/25 bg-white/60 shadow-sm hover:border-[#2C3E6B]/40 hover:bg-white/80"
-                  }`}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
                 >
                   <Sun className="h-4 w-4" aria-hidden />
                   View photo tips
                 </button>
-              </div>
-
-              {slotsComplete ? (
-                <button
-                  type="button"
-                  onClick={() => setStep("confirm")}
-                  className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] py-3 text-sm font-bold text-white transition hover:bg-[#243456]"
-                >
-                  <Check className="h-4 w-4" aria-hidden />
-                  Continue to preview
-                </button>
-              ) : null}
-
-              {isOnboardingScan ? (
                 <Link
-                  href="/onboarding/questionnaire?entry=start"
-                  className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
+                  href="/dashboard/history"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-[#2C3E6B]/15 bg-white px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-[#F2F9F2]"
                 >
-                  Continue to questionnaire
+                  <History className="h-4 w-4" aria-hidden />
+                  Scan history
                 </Link>
-              ) : null}
-            </div>
+              </div>
+            )}
           </div>
 
-          {uploadError ? (
+          {uploadError && step === "upload" ? (
             <p
-              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900"
+              className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900"
               role="alert"
             >
               {uploadError}
@@ -1537,7 +1695,7 @@ export function FaceScanFlow({ variant }: { variant: FaceScanFlowVariant }) {
           ) : null}
           {cameraError ? (
             <p
-              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900"
+              className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900"
               role="alert"
             >
               {cameraError}

@@ -344,29 +344,31 @@ export function WeeklyWellnessCheckinCard({
               </span>
             </div>
 
-            <div className="relative rounded-2xl bg-gradient-to-r from-[#30D158]/25 via-amber-300/30 to-red-400/30 p-1.5 sm:p-2">
-              <div className="flex flex-wrap justify-between gap-1.5 rounded-xl bg-white/70 p-1.5 backdrop-blur-[2px] sm:gap-2 sm:p-2">
-                {Array.from({ length: 10 }, (_, i) => {
-                  const n = i + 1;
-                  const selected = stressTouched && stressLevel === n;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => {
-                        setStressTouched(true);
-                        setStressLevel(n);
-                      }}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition duration-150 active:scale-95 sm:h-10 sm:w-10 ${
-                        selected ? PILL_SELECTED : PILL_IDLE
-                      }`}
-                      aria-label={`Stress level ${n}`}
-                      aria-pressed={selected}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
+            <div className="min-w-0 overflow-x-auto">
+              <div className="flex w-max min-w-full flex-nowrap rounded-2xl bg-gradient-to-r from-[#30D158]/25 via-amber-300/30 to-red-400/30 p-1.5 sm:p-2">
+                <div className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-0.5 rounded-xl bg-white/70 p-1 backdrop-blur-[2px] sm:gap-1.5 sm:p-1.5">
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const n = i + 1;
+                    const selected = stressTouched && stressLevel === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => {
+                          setStressTouched(true);
+                          setStressLevel(n);
+                        }}
+                        className={`flex h-8 min-h-8 min-w-8 flex-1 basis-0 items-center justify-center rounded-full text-xs font-bold transition duration-150 active:scale-95 sm:h-10 sm:min-h-10 sm:min-w-10 sm:max-w-10 sm:flex-none sm:basis-auto sm:text-sm ${
+                          selected ? PILL_SELECTED : PILL_IDLE
+                        }`}
+                        aria-label={`Stress level ${n}`}
+                        aria-pressed={selected}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

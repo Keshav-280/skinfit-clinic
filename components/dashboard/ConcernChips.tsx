@@ -5,10 +5,11 @@ import { classifySkinParamMetric } from "@/src/lib/clarityGrade";
 export type ConcernChipId =
   | "all"
   | "acne"
+  | "acne_scars"
   | "pigmentation"
   | "wrinkles"
-  | "hydration"
-  | "texture";
+  | "under_eye"
+  | "sagging_volume";
 
 export type ConcernChipItem = {
   id: ConcernChipId;

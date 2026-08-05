@@ -163,7 +163,8 @@ export function formatSkinDnaSummary(input: {
 function relativeScanLabel(iso: string | null | undefined): string {
   if (!iso?.trim()) return "No scan yet";
   try {
-    return formatDistanceToNow(parseISO(iso), { addSuffix: true });
+    const rel = formatDistanceToNow(parseISO(iso), { addSuffix: true });
+    return rel ? rel[0]!.toUpperCase() + rel.slice(1) : rel;
   } catch {
     return "No scan yet";
   }

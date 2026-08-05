@@ -259,12 +259,49 @@ export function NavyMetricsCard({
     );
   })();
 
+  const legend = (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 md:flex-col md:items-start md:justify-center md:gap-y-3">
+      <div className="flex items-center gap-1.5">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{
+            backgroundColor: hasScan ? KAI_COLOR : "rgba(255,255,255,0.35)",
+          }}
+          aria-hidden
+        />
+        <span className="text-[11px] font-semibold text-white/90">kAI Score</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: CONSISTENCY_COLOR }}
+          aria-hidden
+        />
+        <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
+          Consistency{" "}
+          <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: PROGRESS_COLOR }}
+          aria-hidden
+        />
+        <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
+          Progress{" "}
+          <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <div
       ref={cardRef}
-      className={`flex h-full flex-col items-center justify-center rounded-[20px] bg-[#2D3E6B] px-5 py-4 md:px-6 md:py-5 ${className}`}
+      className={`flex h-full flex-col items-center justify-center rounded-[20px] bg-[#2D3E6B] px-5 py-4 md:flex-row md:items-center md:justify-center md:gap-8 md:px-6 md:py-5 ${className}`}
     >
-      <div className="relative" style={{ width: RING_SIZE, height: RING_SIZE }}>
+      <div className="relative shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
         <UnlockTooltip visible={lockedTip !== null} labelId={tipId} />
 
         <svg width={RING_SIZE} height={RING_SIZE} className="block" aria-hidden>
@@ -314,14 +351,16 @@ export function NavyMetricsCard({
                 onHoverIn={() => setLockedTip("consistency")}
                 onHoverOut={() => setLockedTip(null)}
                 onToggle={() =>
-                  setLockedTip((t) => (t === "consistency" ? null : "consistency"))
+                  setLockedTip((t) =>
+                    t === "consistency" ? null : "consistency"
+                  )
                 }
               />
             </>
           )}
         </svg>
 
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div
             className={`flex h-[72px] w-[72px] items-center justify-center ${
               hasScan && kai?.showLock ? "pointer-events-auto" : ""
@@ -332,38 +371,7 @@ export function NavyMetricsCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
-        <div className="flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{
-              backgroundColor: hasScan ? KAI_COLOR : "rgba(255,255,255,0.35)",
-            }}
-            aria-hidden
-          />
-          <span className="text-[11px] font-semibold text-white/90">kAI Score</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ backgroundColor: CONSISTENCY_COLOR }}
-            aria-hidden
-          />
-          <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
-            Consistency <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ backgroundColor: PROGRESS_COLOR }}
-            aria-hidden
-          />
-          <span className="flex items-center gap-0.5 text-[11px] font-semibold text-white/55">
-            Progress <Lock className="h-2.5 w-2.5 text-white/50" strokeWidth={2.5} />
-          </span>
-        </div>
-      </div>
+      <div className="mt-4 md:mt-0">{legend}</div>
 
       <ClinicScoreUnlockModal open={unlockOpen} onClose={() => setUnlockOpen(false)} />
     </div>

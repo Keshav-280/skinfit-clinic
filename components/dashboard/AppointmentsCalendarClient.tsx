@@ -458,6 +458,7 @@ export default function AppointmentsCalendarClient({
   const router = useRouter();
   const [view, setView] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
+  const [selectedYmd, setSelectedYmd] = useState(() => localYmd(new Date()));
   const [scheduleRefreshing, setScheduleRefreshing] = useState(false);
   const [treatmentEvents, setTreatmentEvents] = useState(initialTreatmentEvents);
   const [appointmentEvents, setAppointmentEvents] = useState(
@@ -595,7 +596,29 @@ export default function AppointmentsCalendarClient({
 
   useEffect(() => {
     setCurrentDate(new Date());
+    setSelectedYmd(localYmd(new Date()));
   }, []);
+
+  const upcomingNext = useMemo(() => {
+    const todayYmd = localYmd(new Date());
+    return appointmentCalendarEvents
+      .filter(
+        (e) =>
+          !e.cancelled &&
+          !e.completed &&
+          e.eventDateYmd >= todayYmd &&
+          (e.id.startsWith("appt:") || e.id.startsWith("req:"))
+      )
+      .slice(0, 3);
+  }, [appointmentCalendarEvents]);
+
+  const selectedDayEvents = useMemo(() => {
+    try {
+      return getCellEvents(parseLocalYmd(selectedYmd), mergedCalendarEvents);
+    } catch {
+      return [] as ScheduleEventRow[];
+    }
+  }, [selectedYmd, mergedCalendarEvents]);
 
   const archiveListEvent = useCallback((eventId: string) => {
     setArchivedListIds(archiveScheduleListItem(eventId));
@@ -1015,9 +1038,9 @@ export default function AppointmentsCalendarClient({
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4">
+    <div className="w-full space-y-4">
       {requestFormUrl ? (
-        <div className="mx-auto max-w-lg rounded-[18px] border border-white/60 bg-white/40 px-4 py-3 text-center text-sm text-[#2C3E6B] backdrop-blur-sm">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-center text-sm text-[#2C3E6B] shadow-sm">
           <p>If your clinic uses a Google Form, you can complete it here:</p>
           <a
             href={requestFormUrl}
@@ -1038,7 +1061,7 @@ export default function AppointmentsCalendarClient({
       ) : null}
 
       {sheetRelayNotice ? (
-        <div className="mx-auto max-w-lg rounded-[18px] border border-amber-200/60 bg-amber-50/50 px-4 py-3 text-sm text-amber-950 backdrop-blur-sm">
+        <div className="rounded-2xl border border-amber-200/60 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
           <p>{sheetRelayNotice}</p>
           <button
             type="button"
@@ -1050,454 +1073,505 @@ export default function AppointmentsCalendarClient({
         </div>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)] lg:items-start">
-      <section
-        id="schedules-calendar-root"
-        className="min-w-0 overflow-hidden rounded-[20px] border border-[#e2e8f0] bg-white p-3 shadow-md md:p-4"
-      >
-        <div className="mb-0.5">
-          <h3 className="text-[17px] font-extrabold tracking-tight text-[#18181b]">
-            Your schedule
-          </h3>
-          <p className="mt-0.5 whitespace-pre-line text-[12px] leading-snug text-[#64748b]">
-            {`${headerLabel}\nTap a day to request a visit`}
-          </p>
-        </div>
-
-        <div className="mb-1.5 mt-2 flex flex-wrap items-center justify-between gap-2">
-          <div
-            className="flex min-w-0 shrink gap-1 rounded-[14px] border border-[#e2e8f0] bg-[#f8fafc] p-1"
-            role="group"
-            aria-label="Calendar view"
-          >
-            <button
-              type="button"
-              onClick={() => setView("month")}
-              className={`flex items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-shadow ${
-                view === "month"
-                  ? "bg-white font-bold text-[#2B3A67] shadow-sm"
-                  : "text-[#64748b]"
-              }`}
-            >
-              <Calendar
-                className="mr-1.5 h-4 w-4 shrink-0"
-                strokeWidth={2}
-                color={view === "month" ? "#2B3A67" : "#64748b"}
-                aria-hidden
-              />
-              Month
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("week")}
-              className={`flex items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-shadow ${
-                view === "week"
-                  ? "bg-white font-bold text-[#2B3A67] shadow-sm"
-                  : "text-[#64748b]"
-              }`}
-            >
-              <CalendarDays
-                className="mr-1.5 h-4 w-4 shrink-0"
-                strokeWidth={2}
-                color={view === "week" ? "#2B3A67" : "#64748b"}
-                aria-hidden
-              />
-              Week
-            </button>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.85fr)] lg:items-start">
+        {/* Main calendar column */}
+        <section
+          id="schedules-calendar-root"
+          className="min-w-0 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm sm:p-4"
+        >
+          <div className="mb-2">
+            <h3 className="text-[17px] font-extrabold tracking-tight text-[#18181b]">
+              Your schedule
+            </h3>
+            <p className="mt-0.5 text-[12px] leading-snug text-[#6B7280]">
+              {headerLabel}
+              <span className="text-[#9CA3AF]"> · Tap a day to view appointments</span>
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void refreshSchedulesPage()}
-              disabled={scheduleRefreshing}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#2B3A67] transition hover:bg-[#f8fafc] disabled:opacity-50"
-              aria-label="Refresh calendar"
-              aria-busy={scheduleRefreshing}
-            >
-              <RefreshCw
-                className={`h-5 w-5 ${scheduleRefreshing ? "animate-spin" : ""}`}
-                aria-hidden
-              />
-            </button>
+
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <div
-              className="flex overflow-hidden rounded-xl border border-[#e2e8f0] bg-white"
+              className="flex min-w-0 shrink gap-1 rounded-xl border border-[#E5E7EB] bg-[#F2F9F2] p-1"
               role="group"
-              aria-label="Change period"
+              aria-label="Calendar view"
             >
               <button
                 type="button"
-                onClick={handlePrev}
-                className="flex h-9 w-9 items-center justify-center text-[#3f3f46] transition hover:bg-[#f8fafc]"
-                aria-label="Previous month or week"
+                onClick={() => setView("month")}
+                className={`flex items-center rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-shadow ${
+                  view === "month"
+                    ? "bg-white font-bold text-[#2C3E6B] shadow-sm"
+                    : "text-[#6B7280]"
+                }`}
               >
-                <ChevronLeft className="h-5 w-5" />
+                <Calendar
+                  className="mr-1.5 h-4 w-4 shrink-0"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                Month
               </button>
-              <span className="w-px self-stretch bg-[#e2e8f0]" aria-hidden />
               <button
                 type="button"
-                onClick={handleNext}
-                className="flex h-9 w-9 items-center justify-center text-[#3f3f46] transition hover:bg-[#f8fafc]"
-                aria-label="Next month or week"
+                onClick={() => setView("week")}
+                className={`flex items-center rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-shadow ${
+                  view === "week"
+                    ? "bg-white font-bold text-[#2C3E6B] shadow-sm"
+                    : "text-[#6B7280]"
+                }`}
               >
-                <ChevronRight className="h-5 w-5" />
+                <CalendarDays
+                  className="mr-1.5 h-4 w-4 shrink-0"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                Week
               </button>
             </div>
-          </div>
-        </div>
-
-        <div className="w-full overflow-hidden rounded-xl border border-[#e2e8f0] bg-[#fafafa]">
-          <div className="grid grid-cols-7 border-b border-[#e2e8f0] bg-[#f1f5f9]">
-            {DAYS.map((d) => (
-              <div
-                key={d}
-                className="border-r border-[#e2e8f0] px-0.5 py-1.5 text-center last:border-r-0"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void refreshSchedulesPage()}
+                disabled={scheduleRefreshing}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#2C3E6B] transition hover:bg-[#F2F9F2] disabled:opacity-50"
+                aria-label="Refresh calendar"
+                aria-busy={scheduleRefreshing}
               >
-                <span className="text-[9px] font-extrabold uppercase tracking-wide text-[#64748b]">
-                  {d}
-                </span>
+                <RefreshCw
+                  className={`h-4 w-4 ${scheduleRefreshing ? "animate-spin" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              <div
+                className="flex overflow-hidden rounded-xl border border-[#E5E7EB] bg-white"
+                role="group"
+                aria-label="Change period"
+              >
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F2F9F2]"
+                  aria-label="Previous month or week"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <span className="w-px self-stretch bg-[#E5E7EB]" aria-hidden />
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F2F9F2]"
+                  aria-label="Next month or week"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#FAFAFA]">
+            <div className="grid grid-cols-7 border-b border-[#E5E7EB] bg-[#F2F9F2]">
+              {DAYS.map((d) => (
+                <div
+                  key={d}
+                  className="border-r border-[#E5E7EB] px-0.5 py-1.5 text-center last:border-r-0"
+                >
+                  <span className="text-[9px] font-extrabold uppercase tracking-wide text-[#6B7280]">
+                    {d}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {chunkWeeks(calendarCells).map((row, ri) => (
+              <div key={ri} className="grid grid-cols-7">
+                {row.map((day, ci) => {
+                  const colIndex = ci;
+                  const cellEvents =
+                    day !== null ? getCellEvents(day, mergedCalendarEvents) : [];
+                  const hasContent = cellEvents.length > 0;
+                  const isToday = day !== null && isSameDay(day, new Date());
+                  const cellYmd = day ? localYmd(day) : null;
+                  const isSelected = cellYmd === selectedYmd;
+                  const showDots = view === "month";
+                  const cellMin = view === "week" ? "min-h-24" : "min-h-[52px]";
+                  const borderLast = colIndex === 6 ? "border-r-0" : "border-r";
+
+                  const inner =
+                    day !== null ? (
+                      <>
+                        <div
+                          className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${
+                            isSelected
+                              ? "bg-[#2D3E6B] text-white"
+                              : isToday
+                                ? "ring-2 ring-[#4CAF50] ring-offset-1"
+                                : ""
+                          }`}
+                        >
+                          <span
+                            className={`text-[11px] font-semibold ${
+                              isSelected
+                                ? "text-white"
+                                : hasContent
+                                  ? "text-[#2C3E6B]"
+                                  : "text-[#6B7280]"
+                            } ${isToday && !isSelected ? "font-extrabold text-[#2C3E6B]" : ""}`}
+                          >
+                            {getDate(day)}
+                          </span>
+                        </div>
+                        {showDots ? (
+                          <div className="mt-0.5 flex min-h-[8px] flex-row flex-wrap justify-center gap-0.5">
+                            {cellEvents.slice(0, 3).map((event) => (
+                              <span
+                                key={event.id}
+                                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                                style={{
+                                  backgroundColor: isSelected
+                                    ? "rgba(255,255,255,0.9)"
+                                    : eventDotColor(event),
+                                }}
+                                title={
+                                  isAppointmentCalendarEvent(event)
+                                    ? "Appointment"
+                                    : "Treatment"
+                                }
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          cellEvents.map((event) => {
+                            const timeLabel = formatEventTimeChip(
+                              event.eventTimeHm,
+                              event.eventSlotEndTimeHm
+                            );
+                            const done = event.completed;
+                            const isPre = event.eventKind === "pre_treatment";
+                            const isPost = event.eventKind === "post_treatment";
+                            const chipBg = done
+                              ? "border-sky-300/35 bg-sky-50/95"
+                              : isPre
+                                ? "border-blue-800/45 bg-blue-50/95"
+                                : isPost
+                                  ? "border-violet-700/45 bg-violet-50/95"
+                                  : "border-[rgba(44,62,107,0.3)] bg-[#E8EFE6]/80";
+                            const tone = done
+                              ? "text-sky-950"
+                              : isPre
+                                ? "text-blue-900"
+                                : isPost
+                                  ? "text-violet-900"
+                                  : "text-[#2C3E6B]";
+                            return (
+                              <div
+                                key={event.id}
+                                className={`mt-1 rounded-lg border px-1.5 py-1 ${chipBg}`}
+                              >
+                                {isPre || isPost ? (
+                                  <p
+                                    className={`mb-0.5 text-[8px] font-extrabold uppercase ${
+                                      isPre ? "text-blue-900" : "text-violet-900"
+                                    }`}
+                                  >
+                                    {isPre ? "Pre" : "Post"}
+                                  </p>
+                                ) : null}
+                                {timeLabel ? (
+                                  <p className={`text-[10px] font-bold ${tone}`}>
+                                    {timeLabel}
+                                  </p>
+                                ) : null}
+                                <p
+                                  className={`line-clamp-3 text-[10px] font-semibold leading-snug ${tone}`}
+                                >
+                                  {event.title}
+                                </p>
+                              </div>
+                            );
+                          })
+                        )}
+                      </>
+                    ) : null;
+
+                  const wrapCls = `${borderLast} border-b border-[#E5E7EB] px-0.5 py-1.5 ${
+                    isSelected ? "bg-[#2D3E6B]/5" : day ? "bg-white" : "bg-[#F8FAFC]"
+                  } ${cellMin}`;
+
+                  if (day !== null && cellYmd) {
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        type="button"
+                        className={`${wrapCls} w-full min-w-0 cursor-pointer text-center align-top transition hover:bg-[#F2F9F2]`}
+                        onClick={() => setSelectedYmd(cellYmd)}
+                        aria-label={format(day, "EEEE, MMMM d, yyyy")}
+                        aria-current={isSelected ? "date" : undefined}
+                      >
+                        {inner}
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div key={`e-${ri}-${ci}`} className={`${wrapCls} min-w-0`}>
+                      {inner}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
-          {chunkWeeks(calendarCells).map((row, ri) => (
-            <div key={ri} className="grid grid-cols-7">
-              {row.map((day, ci) => {
-                const colIndex = ci;
-                const cellEvents =
-                  day !== null ? getCellEvents(day, mergedCalendarEvents) : [];
-                const hasContent = cellEvents.length > 0;
-                const isToday = day !== null && isSameDay(day, new Date());
-                const cellYmd = day ? localYmd(day) : null;
-                const showDots = view === "month";
-                const cellMin = view === "week" ? "min-h-24" : "min-h-[56px]";
-                const borderLast = colIndex === 6 ? "border-r-0" : "border-r";
-                const bg = day ? "bg-white" : "bg-[#f8fafc]";
 
-                const inner =
-                  day !== null ? (
-                    <>
-                      <div
-                        className={`inline-flex rounded-lg px-1.5 py-0.5 ${
-                          isToday ? "bg-[rgba(43,58,103,0.12)]" : ""
-                        }`}
-                      >
+          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 px-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-[#9CA3AF]">
+              Appointments
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
+              <span className="h-2 w-2 rounded-full bg-[#2C3E6B]" /> Upcoming
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
+              <span className="h-2 w-2 rounded-full bg-[#d97706]" /> Requested
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
+              <span className="h-2 w-2 rounded-full bg-[#dc2626]" /> Cancelled
+            </span>
+            <span className="w-full text-[10px] font-bold uppercase tracking-wide text-[#9CA3AF] sm:w-auto sm:pl-1">
+              Treatment
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
+              <span className="h-2 w-2 rounded-full bg-[#1e3a8a]" /> Pre
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
+              <span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Post
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
+              <span className="h-2 w-2 rounded-full bg-[#16a34a]" /> Done
+            </span>
+          </div>
+
+          {/* Selected day details */}
+          <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F8FAF8] px-3 py-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">
+                {selectedYmd === localYmd(new Date())
+                  ? "Today"
+                  : (() => {
+                      try {
+                        return format(parseLocalYmd(selectedYmd), "EEE, MMM d");
+                      } catch {
+                        return selectedYmd;
+                      }
+                    })()}
+              </p>
+              <button
+                type="button"
+                onClick={() => openRequestModalForDate(selectedYmd)}
+                className="text-[11px] font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
+              >
+                Request visit this day
+              </button>
+            </div>
+            {selectedDayEvents.length === 0 ? (
+              <p className="text-sm text-[#6B7280]">No appointments on this day</p>
+            ) : (
+              <ul className="space-y-2">
+                {selectedDayEvents.map((event) => {
+                  const pending = event.id.startsWith("req:");
+                  const cancelled = event.cancelled === true;
+                  const done = event.completed;
+                  const statusLabel = cancelled
+                    ? "Cancelled"
+                    : pending
+                      ? "Requested"
+                      : done
+                        ? "Completed"
+                        : "Booked";
+                  const statusCls = cancelled
+                    ? "bg-zinc-100 text-zinc-600"
+                    : pending
+                      ? "bg-amber-100 text-amber-900"
+                      : done
+                        ? "bg-sky-100 text-sky-900"
+                        : "bg-emerald-100 text-emerald-900";
+                  const timeLabel =
+                    formatEventTimeChip(
+                      event.eventTimeHm,
+                      event.eventSlotEndTimeHm
+                    ) || "All day";
+                  return (
+                    <li
+                      key={event.id}
+                      className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold tabular-nums text-[#6B7280]">
+                          {timeLabel}
+                        </span>
                         <span
-                          className={`text-[10px] font-semibold ${
-                            hasContent ? "text-[#2B3A67]" : "text-[#64748b]"
-                          } ${isToday ? "font-extrabold text-[#2B3A67]" : ""}`}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusCls}`}
                         >
-                          {getDate(day)}
+                          {statusLabel}
                         </span>
                       </div>
-                      {showDots ? (
-                        <div className="mt-0.5 flex min-h-[8px] flex-row flex-wrap gap-1">
-                          {cellEvents.slice(0, 5).map((event) => (
-                            <span
-                              key={event.id}
-                              className="inline-block h-[7px] w-[7px] shrink-0 rounded-full ring-1 ring-white"
-                              style={{ backgroundColor: eventDotColor(event) }}
-                              title={
-                                isAppointmentCalendarEvent(event)
-                                  ? "Appointment"
-                                  : "Treatment"
-                              }
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        cellEvents.map((event) => {
-                          const timeLabel = formatEventTimeChip(
-                            event.eventTimeHm,
-                            event.eventSlotEndTimeHm
-                          );
-                          const done = event.completed;
-                          const isPre = event.eventKind === "pre_treatment";
-                          const isPost = event.eventKind === "post_treatment";
-                          const chipBg = done
-                            ? "border-sky-300/35 bg-sky-50/95"
-                            : isPre
-                              ? "border-blue-800/45 bg-blue-50/95"
-                              : isPost
-                                ? "border-violet-700/45 bg-violet-50/95"
-                                : "border-[rgba(43,58,103,0.3)] bg-[rgba(232,238,246,0.95)]";
-                          const tone = done
-                            ? "text-sky-950"
-                            : isPre
-                              ? "text-blue-900"
-                              : isPost
-                                ? "text-violet-900"
-                                : "text-[#2B3A67]";
-                          return (
-                            <div
-                              key={event.id}
-                              className={`mt-1 rounded-lg border px-1.5 py-1 ${chipBg}`}
-                            >
-                              {isPre || isPost ? (
-                                <p
-                                  className={`mb-0.5 text-[8px] font-extrabold uppercase ${
-                                    isPre ? "text-blue-900" : "text-violet-900"
-                                  }`}
-                                >
-                                  {isPre ? "Pre" : "Post"}
-                                </p>
-                              ) : null}
-                              {timeLabel ? (
-                                <p className={`text-[10px] font-bold ${tone}`}>{timeLabel}</p>
-                              ) : null}
-                              <p
-                                className={`line-clamp-4 text-[10px] font-semibold leading-snug ${tone}`}
-                              >
-                                {event.title}
-                              </p>
-                              {done ? (
-                                <p className="mt-0.5 text-[8px] font-bold text-sky-950">Done</p>
-                              ) : null}
-                            </div>
-                          );
-                        })
-                      )}
-                    </>
-                  ) : null;
-
-                const wrapCls = `${borderLast} border-b border-[#e2e8f0] px-0.5 py-1 ${bg} ${cellMin}`;
-
-                if (day !== null) {
-                  return (
-                    <button
-                      key={day.toISOString()}
-                      type="button"
-                      className={`${wrapCls} w-full min-w-0 cursor-pointer text-left align-top transition hover:bg-[#f8fafc]`}
-                      onClick={() => openRequestModalForDate(cellYmd)}
-                    >
-                      {inner}
-                    </button>
+                      <p className="mt-1 text-sm font-semibold text-[#18181b]">
+                        {event.appointmentType?.trim() || event.title}
+                      </p>
+                      {event.doctorName?.trim() ? (
+                        <p className="mt-0.5 text-[12px] text-[#6B7280]">
+                          {patientDoctorLabel(event.doctorName)}
+                        </p>
+                      ) : null}
+                    </li>
                   );
-                }
+                })}
+              </ul>
+            )}
+          </div>
 
-                return (
-                  <div
-                    key={`e-${ri}-${ci}`}
-                    className={`${wrapCls} min-w-0`}
-                  >
-                    {inner}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 px-1">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-[#94a3b8]">
-            Appointments
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-            <span className="h-2 w-2 rounded-full bg-[#2B3A67]" /> Upcoming
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-            <span className="h-2 w-2 rounded-full bg-[#d97706]" /> Requested
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-            <span className="h-2 w-2 rounded-full bg-[#dc2626]" /> Cancelled
-          </span>
-          <span className="w-full text-[10px] font-bold uppercase tracking-wide text-[#94a3b8] md:w-auto md:pl-2">
-            Treatment
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-            <span className="h-2 w-2 rounded-full bg-[#1e3a8a]" /> Pre
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-            <span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Post
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#52525b]">
-            <span className="h-2 w-2 rounded-full bg-[#16a34a]" /> Done
-          </span>
-        </div>
-      </section>
-
-      <section className="flex min-w-0 flex-col rounded-[22px] border border-[#e2e8f0] bg-white shadow-sm lg:sticky lg:top-24">
-        <div className="border-b border-[#e4e4e7] bg-[rgba(232,238,246,0.45)] px-4 py-3">
-          <h4 className="text-base font-extrabold text-[#18181b]">This {view === "month" ? "month" : "week"}</h4>
-          <p className="mt-0.5 text-xs text-[#64748b]">
-            Visits, requests, and care reminders
-          </p>
-        </div>
-        <div className="flex-1 space-y-2 p-3">
-          {visibleListEvents.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[#71717a]">
-              {mergedListEvents.length > 0 && archivedListCount > 0
-                ? `All ${view === "month" ? "month" : "week"} items are archived.`
-                : `Nothing scheduled in this ${view === "month" ? "month" : "week"}.`}
+          {/* Compact upcoming list */}
+          <div className="mt-3 border-t border-[#E5E7EB] pt-3">
+            <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-[#6B7280]">
+              Upcoming
             </p>
-          ) : (
-            visibleListEvents.map((event) => renderScheduleEventCard(event))
-          )}
-          {archivedListCount > 0 ? (
-            <div className="space-y-2 border-t border-[#e4e4e7] pt-2">
-              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                <button
-                  type="button"
-                  onClick={() => setShowArchivedList((open) => !open)}
-                  className="text-xs font-semibold text-[#2B3A67] underline decoration-[#2B3A67]/40 underline-offset-2 hover:text-[#1f245c]"
-                >
-                  {showArchivedList
-                    ? "Hide archived"
-                    : `Show ${archivedListCount} archived`}
-                </button>
-                {showArchivedList ? (
-                  <button
-                    type="button"
-                    onClick={unarchiveAllListEvents}
-                    className="text-xs font-semibold text-[#2B3A67] underline decoration-[#2B3A67]/40 underline-offset-2 hover:text-[#1f245c]"
-                  >
-                    Restore all
-                  </button>
-                ) : null}
-              </div>
-              {showArchivedList ? (
-                <div className="space-y-2">
-                  {archivedListEvents.map((event) =>
-                    renderScheduleEventCard(event, { archived: true })
-                  )}
+            {upcomingNext.length === 0 ? (
+              <p className="text-sm text-[#6B7280]">No upcoming appointments</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {upcomingNext.map((e) => (
+                  <li key={e.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedYmd(e.eventDateYmd);
+                        setView("month");
+                        setCurrentDate(parseLocalYmd(e.eventDateYmd));
+                      }}
+                      className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-[#F2F9F2]"
+                    >
+                      <span className="min-w-0 truncate text-sm font-semibold text-[#18181b]">
+                        {e.appointmentType?.trim() || e.title}
+                      </span>
+                      <span className="shrink-0 text-[11px] font-medium tabular-nums text-[#6B7280]">
+                        {format(parseLocalYmd(e.eventDateYmd), "MMM d")}
+                        {e.eventTimeHm ? ` · ${e.eventTimeHm}` : ""}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        {/* Right sidebar */}
+        <aside className="flex min-w-0 flex-col gap-3">
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-2xl bg-[#2C3E6B] px-4 py-3.5 text-left shadow-md shadow-[#2C3E6B]/20 transition hover:bg-[#243456]"
+            onClick={openRequestModal}
+          >
+            <Calendar className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold leading-tight text-white">
+                Request an Appointment
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-white/80">
+                Pick a date and preferred time
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-white" aria-hidden />
+          </button>
+
+          <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+            <div className="border-b border-[#E5E7EB] bg-[#F2F9F2]/80 px-3.5 py-2.5">
+              <h4 className="text-sm font-extrabold text-[#18181b]">
+                This {view === "month" ? "month" : "week"}
+              </h4>
+              <p className="mt-0.5 text-[11px] text-[#6B7280]">
+                Visits, requests, and reminders
+              </p>
+            </div>
+            <div className="max-h-[280px] space-y-2 overflow-y-auto p-2.5 lg:max-h-[360px]">
+              {visibleListEvents.length === 0 ? (
+                <p className="py-4 text-center text-sm text-[#6B7280]">
+                  {mergedListEvents.length > 0 && archivedListCount > 0
+                    ? `All ${view === "month" ? "month" : "week"} items are archived.`
+                    : `Nothing scheduled this ${view === "month" ? "month" : "week"}.`}
+                </p>
+              ) : (
+                visibleListEvents.map((event) => renderScheduleEventCard(event))
+              )}
+              {archivedListCount > 0 ? (
+                <div className="space-y-2 border-t border-[#E5E7EB] pt-2">
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowArchivedList((open) => !open)}
+                      className="text-xs font-semibold text-[#2C3E6B] underline decoration-[#2C3E6B]/40 underline-offset-2"
+                    >
+                      {showArchivedList
+                        ? "Hide archived"
+                        : `Show ${archivedListCount} archived`}
+                    </button>
+                    {showArchivedList ? (
+                      <button
+                        type="button"
+                        onClick={unarchiveAllListEvents}
+                        className="text-xs font-semibold text-[#2C3E6B] underline decoration-[#2C3E6B]/40 underline-offset-2"
+                      >
+                        Restore all
+                      </button>
+                    ) : null}
+                  </div>
+                  {showArchivedList ? (
+                    <div className="space-y-2">
+                      {archivedListEvents.map((event) =>
+                        renderScheduleEventCard(event, { archived: true })
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
-          ) : null}
-        </div>
-      </section>
-      </div>
+          </section>
 
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:items-start">
-        {featuredUpcoming ? (
-          <button
-            type="button"
-            id="featured-upcoming"
-            className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-[#f8faf8] p-4 text-left shadow-sm transition hover:bg-[#f4faf4]"
-            onClick={() => {
-              setView("month");
-              setCurrentDate(parseLocalYmd(featuredUpcoming.eventDateYmd));
-              requestAnimationFrame(() => {
-                document
-                  .getElementById("schedules-calendar-root")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <span className="rounded-xl border border-[#2B3A67] px-3 py-1 text-base font-bold text-[#2B3A67]">
-                Upcoming
-              </span>
-              <ChevronRight className="h-5 w-5 text-[#2B3A67]" aria-hidden />
-            </div>
-            <div className="mt-3 flex items-center gap-3">
-              <ManageGridDoctorAvatar photoUrl={featuredUpcoming.doctorPhotoUrl} />
+          <section className="rounded-2xl border border-[#E5E7EB] bg-white px-3.5 py-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <ManageGridDoctorAvatar
+                photoUrl={
+                  featuredUpcoming?.doctorPhotoUrl ?? assignedDoctor?.photoUrl
+                }
+                className="h-10 w-10"
+              />
               <div className="min-w-0 flex-1">
-                <p className="text-base font-bold text-[#18181b]">
-                  {patientDoctorLabel(featuredUpcoming.doctorName)}
-                </p>
-                <p className="mt-0.5 text-[13px] text-[#71717a]">
-                  {featuredUpcoming.appointmentType?.trim() || "Consultation"}
-                </p>
-              </div>
-            </div>
-            {featuredUpcoming.crmPatientMessage ? (
-              <div className="mt-2.5 flex gap-2 rounded-[10px] bg-[#f0f4ff] p-2.5">
-                <MessageCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2B3A67]" aria-hidden />
-                <p className="line-clamp-2 flex-1 text-[13px] leading-[1.35] text-[#2B3A67]">
-                  {featuredUpcoming.crmPatientMessage}
-                </p>
-              </div>
-            ) : null}
-            <div className="mt-auto flex items-center gap-3 pt-3.5">
-              <div className="flex h-[72px] w-[68px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-[#262b74] text-white">
-                <span className="text-sm font-bold">
-                  {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "EEE")}
-                </span>
-                <span className="mt-0.5 text-[22px] font-bold leading-none">
-                  {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "dd")}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-bold text-[#2f2f2f]">
-                  {formatScheduleWhen(
-                    featuredUpcoming.eventDateYmd,
-                    featuredUpcoming.eventTimeHm,
-                    featuredUpcoming.eventSlotEndTimeHm
+                <p className="truncate text-sm font-bold text-[#18181b]">
+                  {patientDoctorLabel(
+                    featuredUpcoming?.doctorName ?? assignedDoctor?.name
                   )}
                 </p>
-                <p className="mt-0.5 text-[13px] text-[#71717a]">
-                  {format(parseLocalYmd(featuredUpcoming.eventDateYmd), "MMMM yyyy")}
-                </p>
+                <p className="text-[11px] text-[#6B7280]">Your clinic doctor</p>
               </div>
             </div>
-          </button>
-        ) : (
-          <div className="flex h-full min-h-[200px] flex-col rounded-[20px] border border-[#e4e4e7] bg-[#f8faf8] p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="rounded-xl border border-[#2B3A67] px-3 py-1 text-base font-bold text-[#2B3A67]">
-                Upcoming
-              </span>
-            </div>
-            <div className="mt-3 flex items-center gap-3">
-              <ManageGridDoctorAvatar photoUrl={assignedDoctor?.photoUrl} />
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-bold text-[#18181b]">
-                  {patientDoctorLabel(assignedDoctor?.name)}
-                </p>
-                <p className="mt-0.5 text-[13px] text-[#71717a]">Your clinic doctor</p>
-              </div>
-            </div>
-            <p className="mt-auto pt-4 text-sm text-[#71717a]">
-              No upcoming appointments.
-            </p>
-          </div>
-        )}
+          </section>
 
-        <div className="flex flex-col gap-3.5 sm:row-span-2 sm:self-start">
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 rounded-[20px] bg-[#272d77] px-4 py-3.5 text-left shadow-md shadow-[#272d77]/20 transition hover:bg-[#1f245c]"
-            onClick={openRequestModal}
-          >
-            <Calendar className="h-6 w-6 shrink-0 text-white" strokeWidth={2} aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-bold leading-tight text-white">
-                Request an Appointment
-              </p>
-              <p className="mt-0.5 text-[12px] leading-snug text-white/85">
-                Pick a date & share your preferred time slots.
-              </p>
-            </div>
-            <ChevronRight className="h-5 w-5 shrink-0 text-white" aria-hidden />
-          </button>
-
-          {showKaiInsights ? (
-            <div className="flex flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
+          {latestVisit ? (
+            <section className="rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
               <ManageGridSectionHeader
-                kicker="kAI"
-                title="Monthly insight"
+                kicker="Clinic"
+                title="Last visit"
+                icon={Stethoscope}
                 compact
               />
-              <ProfileRagKaiInsightsSection embedded compact />
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col rounded-[20px] border border-[#e4e4e7] bg-white p-4 shadow-sm">
-          {latestVisit ? (
-            <>
-              <ManageGridSectionHeader kicker="Clinic" title="Visits" icon={Stethoscope} />
               <LastTreatmentCard visit={latestVisit} compact />
-            </>
-          ) : (
-            <ManageGridSectionHeader
-              kicker="Clinic"
-              title="Visits"
-              icon={Stethoscope}
-              compact
-              aside="No visits yet"
-            />
-          )}
-        </div>
+            </section>
+          ) : null}
+
+          {showKaiInsights ? (
+            <section className="rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
+              <ManageGridSectionHeader kicker="kAI" title="Monthly insight" compact />
+              <ProfileRagKaiInsightsSection embedded compact />
+            </section>
+          ) : null}
+        </aside>
       </div>
 
       {clinicMsgOpen && clinicMsgApptId ? (

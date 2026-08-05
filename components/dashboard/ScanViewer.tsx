@@ -20,7 +20,9 @@ import { ScanFaceOverlay } from "./ScanMaskAnnotations";
 const CONCERN_META: Array<{
   id: Exclude<ConcernChipId, "all">;
   label: string;
-  metricKey: keyof ReportMetrics;
+  /** Legacy 0–100 metric fallback when no tracker param row is present. */
+  metricKey?: keyof ReportMetrics;
+  /** RAG kAI param keys (primary score source, via tracker.paramRows). */
   paramKeys: string[];
 }> = [
   {
@@ -28,6 +30,11 @@ const CONCERN_META: Array<{
     label: "Active Acne",
     metricKey: "acne",
     paramKeys: ["active_acne", "acne"],
+  },
+  {
+    id: "acne_scars",
+    label: "Acne Scars",
+    paramKeys: ["acne_scar", "acne_scars"],
   },
   {
     id: "pigmentation",
@@ -42,16 +49,14 @@ const CONCERN_META: Array<{
     paramKeys: ["wrinkles", "wrinkle_severity"],
   },
   {
-    id: "hydration",
-    label: "Hydration",
-    metricKey: "hydration",
-    paramKeys: ["hydration"],
+    id: "under_eye",
+    label: "Under Eye",
+    paramKeys: ["under_eye"],
   },
   {
-    id: "texture",
-    label: "Texture",
-    metricKey: "texture",
-    paramKeys: ["texture", "skin_texture"],
+    id: "sagging_volume",
+    label: "Sagging & Volume",
+    paramKeys: ["sagging_volume"],
   },
 ];
 
@@ -122,7 +127,8 @@ function insightLine(
       : `Grade ${view.label} — trending ${dir === "up" ? "better" : "softer"} vs last scan.`;
   }
   if (view) {
-    return `${view.sublabel}: ${id === "hydration" ? "barrier moisture" : id === "texture" ? "surface smoothness" : id} is a priority focus this week.`;
+    const label = CONCERN_META.find((m) => m.id === id)?.label ?? id;
+    return `${view.sublabel}: ${label} is a priority focus this week.`;
   }
   return "Tap to focus this concern on your scan photo.";
 }
@@ -184,8 +190,18 @@ export function ScanViewer({
 
   const chips: ConcernChipItem[] = useMemo(() => {
     return CONCERN_META.flatMap((meta) => {
-      const raw = metrics[meta.metricKey];
-      if (typeof raw !== "number") return [];
+      // Primary source: RAG kAI param score (0–100) from the tracker report.
+      const row = tracker?.paramRows?.find((r) =>
+        meta.paramKeys.includes(r.key)
+      );
+      let raw: number | null =
+        row && typeof row.value === "number" ? row.value : null;
+      // Fallback: legacy 0–100 metric (only for params that have one).
+      if (raw == null && meta.metricKey) {
+        const m = metrics[meta.metricKey];
+        if (typeof m === "number") raw = m;
+      }
+      if (raw == null) return [];
       const view = patientScoreView(raw, scoresUnlocked);
       return [
         {
@@ -196,7 +212,7 @@ export function ScanViewer({
         },
       ];
     });
-  }, [metrics, scoresUnlocked]);
+  }, [metrics, scoresUnlocked, tracker]);
 
   const selectedMeta =
     activeConcern === "all"

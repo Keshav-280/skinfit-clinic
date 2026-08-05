@@ -121,7 +121,7 @@ export default function SchedulesPageClient({
           </div>
 
           <h1 className="mt-5 font-serif text-3xl font-semibold leading-[1.12] tracking-tight text-[#18181b] md:text-4xl md:leading-[1.1]">
-            Beautiful skin is built from within.
+            Beautiful Skin Is Built From Within.
           </h1>
 
           <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-[#6B7280] md:mx-0 md:text-base">

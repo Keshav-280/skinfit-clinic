@@ -29,11 +29,14 @@ function regionMatchesConcern(
 ): boolean {
   if (activeConcern === "all") return true;
   const x = issue.toLowerCase();
-  if (activeConcern === "acne") return x.includes("acne");
+  if (activeConcern === "acne") return x.includes("acne") && !x.includes("scar");
+  if (activeConcern === "acne_scars") return x.includes("scar");
   if (activeConcern === "wrinkles") return x.includes("wrinkle");
   if (activeConcern === "pigmentation") return x.includes("pigment");
-  if (activeConcern === "hydration") return x.includes("hydrat") || x.includes("dry");
-  if (activeConcern === "texture") return x.includes("texture") || x.includes("pore");
+  if (activeConcern === "under_eye")
+    return x.includes("eye") || x.includes("dark circle");
+  if (activeConcern === "sagging_volume")
+    return x.includes("sag") || x.includes("volume") || x.includes("contour");
   return false;
 }
 
@@ -158,14 +161,7 @@ export function ScanFaceOverlay({
   const showAcne =
     Boolean(acne) && (activeConcern === "all" || activeConcern === "acne");
   const showPigmentTint = activeConcern === "pigmentation";
-  const showDots =
-    regions.length > 0 &&
-    (activeConcern === "all" ||
-      activeConcern === "pigmentation" ||
-      activeConcern === "acne" ||
-      activeConcern === "wrinkles" ||
-      activeConcern === "hydration" ||
-      activeConcern === "texture");
+  const showDots = regions.length > 0;
 
   const hasAny = wrinkle || acne || regions.length > 0;
   if (!hasAny) return null;
@@ -225,7 +221,9 @@ export function ScanFaceOverlay({
         className="absolute inset-0 transition-opacity duration-300 ease-out"
         style={{
           opacity:
-            activeConcern === "hydration" || activeConcern === "texture"
+            activeConcern === "acne_scars" ||
+            activeConcern === "under_eye" ||
+            activeConcern === "sagging_volume"
               ? 0.12
               : 0,
           background: "rgba(15,23,42,0.35)",

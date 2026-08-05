@@ -4,7 +4,6 @@ import { after } from "next/server";
 import { User } from "lucide-react";
 import { PatientPortalBrandLogo } from "@/components/dashboard/PatientPortalBrandLogo";
 import { DashboardNav } from "./dashboard-nav";
-import { LogoutButton } from "./logout-button";
 import { DashboardClinicSupportBell } from "@/components/dashboard/DashboardClinicSupportBell";
 import { DashboardInboxProvider } from "@/components/dashboard/DashboardInboxContext";
 import { ScanJobReadyNotifier } from "@/components/dashboard/ScanJobReadyNotifier";
@@ -53,7 +52,6 @@ export default async function DashboardLayout({
             >
               <User className="h-4 w-4" />
             </Link>
-            <LogoutButton />
           </div>
         </div>
       </nav>

@@ -12,6 +12,7 @@ import {
 import { FamilyWalletCard } from "@/components/dashboard/FamilyWalletCard";
 import { PatientProgressTracker } from "@/components/dashboard/PatientProgressTracker";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
+import { LogoutButton } from "@/app/dashboard/logout-button";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
 import { getPatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 
@@ -139,6 +140,9 @@ export default async function ProfilePage() {
           </>
         }
       />
+      <div className="border-t border-[#E5E7EB] pt-6">
+        <LogoutButton />
+      </div>
     </div>
   );
 }

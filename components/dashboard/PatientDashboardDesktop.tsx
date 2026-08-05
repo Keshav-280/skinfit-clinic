@@ -744,9 +744,6 @@ export function PatientDashboardDesktop({
             <span className="font-light">Hello </span>
             <span className="font-extrabold">{greetingName}</span>
           </h1>
-          <p className="mt-1 text-sm text-[#6B7280] md:text-base">
-            Let&apos;s achieve your best skin day!
-          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {data.progress && !data.progress.allComplete ? (
