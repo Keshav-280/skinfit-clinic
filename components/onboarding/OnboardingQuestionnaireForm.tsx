@@ -83,7 +83,7 @@ function writeKaiAckCache(key: string, message: string) {
   }
 }
 
-function sleep(ms: number): Promise<void> {
+function delayMs(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
@@ -902,7 +902,7 @@ export function OnboardingQuestionnaireForm() {
       }
       const elapsed = Date.now() - started;
       if (elapsed < minMs) {
-        await sleep(minMs - elapsed);
+        await delayMs(minMs - elapsed);
       }
       setIsTyping(false);
       setMessages((m) => [...m, { id: msgId(), role: "kai", text: message }]);
