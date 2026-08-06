@@ -13,6 +13,10 @@ function isScanThemeRoute(pathname: string | null): boolean {
   );
 }
 
+function isQuestionnaireChatRoute(pathname: string | null): boolean {
+  return pathname === "/onboarding/questionnaire";
+}
+
 function OnboardingSignOutLink() {
   const router = useRouter();
 
@@ -45,6 +49,18 @@ export function OnboardingLayoutShell({
 }) {
   const pathname = usePathname();
   const scanTheme = isScanThemeRoute(pathname);
+  const questionnaireChat = isQuestionnaireChatRoute(pathname);
+
+  if (questionnaireChat) {
+    return (
+      <div
+        data-onboarding-shell
+        className="h-dvh max-h-dvh overflow-hidden bg-[#F0F0F0] text-[#1F2A44] [color-scheme:light]"
+      >
+        <main className="h-full w-full overflow-hidden">{children}</main>
+      </div>
+    );
+  }
 
   if (scanTheme) {
     return (
