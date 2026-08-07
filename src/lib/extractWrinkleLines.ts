@@ -24,7 +24,7 @@ function pythonBin(): string {
 export function jpegDataUriOrB64ToRawB64(input: string): string | null {
   const s = input.trim();
   if (!s) return null;
-  const m = /^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/s.exec(s);
+  const m = /^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/.exec(s);
   if (m?.[1]) return m[1];
   // Already raw base64
   if (/^[A-Za-z0-9+/=\s]+$/.test(s) && s.length > 32) return s.replace(/\s+/g, "");
