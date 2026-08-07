@@ -16,6 +16,17 @@ import {
   type ConcernChipItem,
 } from "./ConcernChips";
 import { ScanFaceOverlay } from "./ScanMaskAnnotations";
+import { ScanDetectionOverlay } from "./ScanDetectionOverlay";
+import type {
+  DetectionRegion,
+  ProxyRegion,
+  WrinkleLine,
+} from "@/src/lib/scanDetectionRegions";
+import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
+import {
+  legacyMaskTitleCropStyle,
+  shouldCropLegacyMaskTitle,
+} from "@/src/lib/maskImageCrop";
 
 const CONCERN_META: Array<{
   id: Exclude<ConcernChipId, "all">;
@@ -104,6 +115,37 @@ function ReportFaceImage({
   );
 }
 
+/** Legacy wrinkle heatmap when vector polylines are not available. */
+function WrinkleMaskFallback({
+  src,
+  visible,
+  maskExportVersion,
+}: {
+  src: string;
+  visible: boolean;
+  maskExportVersion?: number | null;
+}) {
+  const displaySrc = publicFileDisplayUrl(src) ?? src;
+  const cropLegacyTitle = shouldCropLegacyMaskTitle(
+    displaySrc,
+    maskExportVersion
+  );
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={displaySrc}
+      alt=""
+      aria-hidden={!visible}
+      className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ease-out"
+      style={{
+        opacity: visible ? 0.72 : 0,
+        mixBlendMode: "screen",
+        ...(cropLegacyTitle ? legacyMaskTitleCropStyle() : null),
+      }}
+    />
+  );
+}
+
 function insightLine(
   id: Exclude<ConcernChipId, "all">,
   score: number | null,
@@ -138,6 +180,12 @@ export type ScanViewerProps = {
   faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
   metrics: ReportMetrics;
   regions: ReportRegion[];
+  /** Interactive dashed circles from acne-detector (newer scans). */
+  detectionRegions?: DetectionRegion[];
+  /** Skeleton wrinkle polylines (newer scans). */
+  wrinkleLines?: WrinkleLine[];
+  /** Landmark proxy zones for pigmentation / scars / under-eye / sagging. */
+  proxyRegions?: ProxyRegion[];
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
   maskExportVersion?: number | null;
@@ -157,6 +205,9 @@ export function ScanViewer({
   faceCaptureGallery,
   metrics,
   regions,
+  detectionRegions,
+  wrinkleLines,
+  proxyRegions,
   wrinkleMaskUrl,
   acneMaskUrl,
   maskExportVersion,
@@ -278,6 +329,16 @@ export function ScanViewer({
     );
   }
 
+  const hasDetectionRegions = (detectionRegions?.length ?? 0) > 0;
+  const hasWrinkleLines = (wrinkleLines?.length ?? 0) > 0;
+  const hasProxyRegions = (proxyRegions?.length ?? 0) > 0;
+  const useVectorOverlay =
+    hasDetectionRegions || hasWrinkleLines || hasProxyRegions;
+  const showWrinkleMaskFallback =
+    useVectorOverlay && !hasWrinkleLines && Boolean(wrinkleMaskUrl?.trim());
+  const wrinkleMaskVisible =
+    activeConcern === "all" || activeConcern === "wrinkles";
+
   return (
     <div className="w-full bg-[#F2F9F2]">
       <div className="relative bg-[#0F172A]">
@@ -296,15 +357,33 @@ export function ScanViewer({
                 className="relative h-full min-w-full shrink-0 snap-center"
               >
                 <ReportFaceImage src={photo.imageUrl} alt={photo.label} />
-                <ScanFaceOverlay
-                  imageUrl={photo.imageUrl}
-                  wrinkleMaskUrl={wrinkleMaskUrl}
-                  acneMaskUrl={acneMaskUrl}
-                  maskExportVersion={maskExportVersion}
-                  spatialOutputs={spatialOutputs}
-                  regions={regions}
-                  activeConcern={activeConcern}
-                />
+                {useVectorOverlay ? (
+                  <>
+                    {showWrinkleMaskFallback ? (
+                      <WrinkleMaskFallback
+                        src={wrinkleMaskUrl!}
+                        visible={wrinkleMaskVisible}
+                        maskExportVersion={maskExportVersion}
+                      />
+                    ) : null}
+                    <ScanDetectionOverlay
+                      regions={detectionRegions ?? []}
+                      wrinkleLines={wrinkleLines ?? []}
+                      proxyRegions={proxyRegions ?? []}
+                      activeConcern={activeConcern}
+                    />
+                  </>
+                ) : (
+                  <ScanFaceOverlay
+                    imageUrl={photo.imageUrl}
+                    wrinkleMaskUrl={wrinkleMaskUrl}
+                    acneMaskUrl={acneMaskUrl}
+                    maskExportVersion={maskExportVersion}
+                    spatialOutputs={spatialOutputs}
+                    regions={regions}
+                    activeConcern={activeConcern}
+                  />
+                )}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/50 to-transparent" />
                 <p className="absolute bottom-10 left-4 text-xs font-medium text-white/80">
                   {photo.label}
@@ -365,6 +444,12 @@ export function ScanViewer({
           activeId={activeConcern}
           onSelect={setActiveConcern}
         />
+
+        {hasProxyRegions ? (
+          <p className="px-4 text-center text-[10px] italic text-zinc-400">
+            Zone highlights are AI-estimated based on your skin analysis scores
+          </p>
+        ) : null}
 
         <div className="min-h-[4.5rem] px-4">
           <AnimatePresence mode="wait">

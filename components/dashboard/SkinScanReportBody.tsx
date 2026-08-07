@@ -24,6 +24,11 @@ import { ScanMaskAnnotations } from "./ScanMaskAnnotations";
 import { ScanViewer } from "./ScanViewer";
 import { WRINKLE_MASK_PANEL_LABEL, ACNE_MASK_PANEL_LABEL } from "@/src/lib/scanMaskLabels";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import type {
+  DetectionRegion,
+  ProxyRegion,
+  WrinkleLine,
+} from "@/src/lib/scanDetectionRegions";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
 import { patientClarityToGrade, patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from "@/src/lib/clarityGrade";
 import { ClinicScoreUnlockCta } from "./ClinicScoreUnlockCta";
@@ -218,6 +223,9 @@ export interface SkinScanReportBodyProps {
   /** Multi–face-capture scans: show every pose below the hero (included in PDF). */
   faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
   regions: ReportRegion[];
+  detectionRegions?: DetectionRegion[];
+  wrinkleLines?: WrinkleLine[];
+  proxyRegions?: ProxyRegion[];
   metrics: ReportMetrics;
   aiSummary?: string;
   /** Combined wrinkle + acne overlay from the model. */
@@ -258,6 +266,9 @@ export function SkinScanReportBody({
   imageUrl,
   faceCaptureGallery,
   regions,
+  detectionRegions,
+  wrinkleLines,
+  proxyRegions,
   metrics,
   aiSummary,
   annotatedImageUrl: _annotatedImageUrl,
@@ -626,6 +637,9 @@ export function SkinScanReportBody({
           faceCaptureGallery={faceCaptureGallery}
           metrics={metrics}
           regions={regions}
+          detectionRegions={detectionRegions}
+          wrinkleLines={wrinkleLines}
+          proxyRegions={proxyRegions}
           wrinkleMaskUrl={wrinkleUrl}
           acneMaskUrl={acneUrl}
           maskExportVersion={maskExportVersion}

@@ -13,6 +13,7 @@ import {
 } from "../../../../../src/lib/parseClinicalScores";
 import { scanDisplayMetricsFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
 import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
+import { parseScanDetectionRegions, parseScanProxyRegions, parseScanWrinkleLines } from "../../../../../src/lib/scanDetectionRegions";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { buildFaceCaptureGallery } from "../../../../../src/lib/faceCaptureGallery";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
@@ -128,6 +129,9 @@ export default async function ScanReportPage({
   const acneMaskUrl = parseScanAcneMaskDataUri(scores);
   const maskExportVersion = parseMaskExportVersion(scores);
   const spatialOutputs = parseScanSpatialOutputs(scores);
+  const detectionRegions = parseScanDetectionRegions(scores);
+  const wrinkleLines = parseScanWrinkleLines(scores);
+  const proxyRegions = parseScanProxyRegions(scores);
 
   const faceCaptureImages =
     ("faceCaptureImages" in row ? row.faceCaptureImages : null) as
@@ -144,6 +148,9 @@ export default async function ScanReportPage({
       imageUrl={patientScanImagePath(row.id)}
       faceCaptureGallery={faceCaptureGallery}
       regions={regions}
+      detectionRegions={detectionRegions}
+      wrinkleLines={wrinkleLines}
+      proxyRegions={proxyRegions}
       metrics={scanDisplayMetricsFromRow({
         overallScore: row.overallScore,
         acne: row.acne,

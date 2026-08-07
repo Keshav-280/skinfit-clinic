@@ -7,8 +7,18 @@ import { buildFaceCaptureGallery } from "@/src/lib/faceCaptureGallery";
 import { parseScanAcneMaskDataUri, parseScanOverlayDataUri, parseScanWrinkleMaskDataUri, parseMaskExportVersion } from "@/src/lib/parseClinicalScores";
 import type { FaceCaptureRef } from "@/src/lib/resolveScanImageUrl";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
-import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
-import { parseScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import {
+  parseScanSpatialOutputs,
+  type ScanSpatialOutputs,
+} from "@/src/lib/spatialOutputs";
+import {
+  parseScanDetectionRegions,
+  parseScanProxyRegions,
+  parseScanWrinkleLines,
+  type DetectionRegion,
+  type ProxyRegion,
+  type WrinkleLine,
+} from "@/src/lib/scanDetectionRegions";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import {
@@ -59,6 +69,9 @@ export type DoctorScanReportPayload = {
   imageUrl: string;
   faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
   regions: ReportRegion[];
+  detectionRegions: DetectionRegion[];
+  wrinkleLines: WrinkleLine[];
+  proxyRegions: ProxyRegion[];
   metrics: ReportMetrics;
   aiSummary: string | null;
   annotatedImageUrl: string | null;
@@ -131,6 +144,9 @@ export async function buildDoctorScanReportPayload(
   }
 
   const regions = parseScanRegions(row.annotations);
+  const detectionRegions = parseScanDetectionRegions(row.scores);
+  const wrinkleLines = parseScanWrinkleLines(row.scores);
+  const proxyRegions = parseScanProxyRegions(row.scores);
   const wrinkleMaskStored = parseScanWrinkleMaskDataUri(row.scores);
   const acneMaskStored = parseScanAcneMaskDataUri(row.scores);
   const annotatedImageStored = parseScanOverlayDataUri(row.scores);
@@ -164,6 +180,9 @@ export async function buildDoctorScanReportPayload(
     imageUrl: doctorScanImagePath(patientId, row.id, { preview: true }),
     faceCaptureGallery,
     regions,
+    detectionRegions,
+    wrinkleLines,
+    proxyRegions,
     metrics: scanDisplayMetricsFromRow(row),
     aiSummary: row.aiSummary,
     annotatedImageUrl: annotatedImageStored ?? null,

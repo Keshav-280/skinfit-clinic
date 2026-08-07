@@ -5,7 +5,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -22,9 +21,7 @@ import {
 import { parseOnboardingAge } from "@/src/lib/onboardingAgeOptions";
 import {
   buildOnboardingQuestionnairePayload,
-  type BaselineDietType,
-  type BaselineSleep,
-  type ConcernSeverity,
+  type ConcernDuration,
   type OnboardingQuestionnaireFormState,
   type QuestionnaireEntryMode,
   type SkinSensitivity,
@@ -33,15 +30,26 @@ import {
   ONBOARDING_CONCERN_IDS,
   ONBOARDING_CONCERN_LABELS,
   formatOnboardingConcernLabels,
-  primaryOnboardingConcern,
   type OnboardingConcernId,
 } from "@/src/lib/onboardingConcerns";
 import {
+  ONBOARDING_CHAT_DURATION_OPTIONS,
+  ONBOARDING_CHAT_SKIN_TYPES,
+  ONBOARDING_CHAT_TRIGGER_OPTIONS,
+  onboardingChatDurationAsk,
   onboardingChatFallbackAck,
   onboardingChatFallbackMessage,
   onboardingChatNextQuestionText,
+  onboardingChatTriggersAsk,
   type OnboardingChatQuestionId,
+  type OnboardingChatSkinType,
 } from "@/src/lib/onboardingChatKai";
+import {
+  REFERRAL_SOURCE_OPTIONS,
+  formatReferralSourceAnswer,
+  isReferralSourceId,
+  type ReferralSourceId,
+} from "@/src/lib/onboardingReferralSource";
 
 const KAI_ACK_CACHE_KEY = "skinfit_onboarding_kai_acks_v1";
 const KAI_ACK_MAX_WAIT_MS = 3000;
@@ -100,20 +108,6 @@ const GENDER_OPTIONS: { value: string; label: string }[] = [
   { value: "prefer_not_say", label: "Prefer not to say" },
 ];
 
-const SLEEP_OPTIONS: { value: BaselineSleep; label: string }[] = [
-  { value: "under5", label: "Under 5 hours" },
-  { value: "5to6", label: "5–6 hours" },
-  { value: "7to8", label: "7–8 hours" },
-  { value: "8plus", label: "8+ hours" },
-];
-
-const DIET_OPTIONS: { value: BaselineDietType; label: string }[] = [
-  { value: "vegetarian", label: "Vegetarian" },
-  { value: "vegan", label: "Vegan" },
-  { value: "nonveg", label: "Non-vegetarian" },
-  { value: "mixed", label: "Mixed / flexible" },
-];
-
 const SENSITIVITY_OPTIONS: { value: SkinSensitivity; label: string }[] = [
   { value: "low", label: "Not really" },
   { value: "moderate", label: "Sometimes" },
@@ -121,16 +115,16 @@ const SENSITIVITY_OPTIONS: { value: SkinSensitivity; label: string }[] = [
 ];
 
 /** Chat question order → legacy draft step index for persistence. */
-const CHAT_TO_DRAFT_STEP = [0, 1, 3, 9, 10, 8] as const;
+const CHAT_TO_DRAFT_STEP = [0, 1, 4, 11, 8, 12] as const;
 type ChatQuestionId = OnboardingChatQuestionId;
 
 const CHAT_QUESTIONS: ChatQuestionId[] = [
   "PROFILE_01",
   "CONCERN_01",
-  "SEV_01",
-  "LIFE_01",
-  "LIFE_02b",
+  "DUR_TRIG",
+  "SKIN_TYPE",
   "SENS_01",
+  "REF_01",
 ];
 
 type ChatMessage = {
@@ -142,116 +136,101 @@ type ChatMessage = {
 type PendingInput =
   | { kind: "profile" }
   | { kind: "concerns" }
-  | { kind: "severity" }
-  | { kind: "sleep" }
-  | { kind: "diet" }
+  | { kind: "duration" }
+  | { kind: "triggers" }
+  | { kind: "skinType" }
   | { kind: "sensitivity" }
+  | { kind: "referral" }
   | { kind: "summary" }
   | null;
 
+type AnswerSnapshot = {
+  ageInput: string;
+  gender: string | null;
+  concerns: OnboardingConcernId[];
+  duration: ConcernDuration | null;
+  triggers: string[];
+  skinType: OnboardingChatSkinType | null;
+  sensitivity: SkinSensitivity | null;
+  referralSource: ReferralSourceId | null;
+  referralOther: string;
+};
+
+type AnswerPatch = {
+  ageInput?: string;
+  gender?: string | null;
+  concerns?: OnboardingConcernId[];
+  duration?: ConcernDuration | null;
+  triggers?: string[];
+  skinType?: OnboardingChatSkinType | null;
+  sensitivity?: SkinSensitivity | null;
+  referralSource?: ReferralSourceId | null;
+  referralOther?: string;
+};
+
 function parseQuestionnaireEntryMode(value: string | null): QuestionnaireEntryMode {
   return value === "start" ? "start" : "resume";
-}
-
-function severityOptionsFor(concerns: readonly OnboardingConcernId[]) {
-  const c = primaryOnboardingConcern(concerns);
-  const map: Record<
-    OnboardingConcernId,
-    { mild: string; moderate: string; severe: string; ask: string }
-  > = {
-    acne: {
-      ask: "Got it. On a scale, how bad would you say the breakouts have been?",
-      mild: "A few pimples occasionally",
-      moderate: "Frequent breakouts, some scarring",
-      severe: "Cystic or painful acne constantly",
-    },
-    pigmentation: {
-      ask: "Got it. On a scale, how noticeable is the uneven tone?",
-      mild: "Slight patchiness I can see",
-      moderate: "Visible patches or spots in photos",
-      severe: "Dark patches covering large areas",
-    },
-    ageing: {
-      ask: "Got it. On a scale, how visible are the signs of ageing?",
-      mild: "Fine lines only visible up close",
-      moderate: "Wrinkles visible at rest, some sagging",
-      severe: "Deep wrinkles, significant volume loss",
-    },
-    hair: {
-      ask: "Got it. On a scale, how significant is the hair loss?",
-      mild: "Slight thinning, mostly in parting",
-      moderate: "Noticeable thinning or hairline recession",
-      severe: "Significant bald patches or rapid loss",
-    },
-    general: {
-      ask: "Got it. On a scale, how bad would you say it's been?",
-      mild: "Mild — mostly maintenance",
-      moderate: "Moderate — needs improving",
-      severe: "Severe — ongoing concerns",
-    },
-  };
-  return map[c];
-}
-
-function ackForConcerns(concerns: OnboardingConcernId[]): string {
-  return onboardingChatFallbackAck("CONCERN_01", concerns);
-}
-
-function ackForSeverity(sev: ConcernSeverity): string {
-  return onboardingChatFallbackAck("SEV_01", sev);
-}
-
-function ackForSleep(sleep: BaselineSleep): string {
-  return onboardingChatFallbackAck("LIFE_01", sleep);
-}
-
-function ackForDiet(diet: BaselineDietType): string {
-  return onboardingChatFallbackAck("LIFE_02b", diet);
-}
-
-function ackForSensitivity(s: SkinSensitivity): string {
-  return onboardingChatFallbackAck("SENS_01", s);
 }
 
 function genderLabel(value: string): string {
   return GENDER_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
+function durationLabel(id: ConcernDuration): string {
+  return (
+    ONBOARDING_CHAT_DURATION_OPTIONS.find((o) => o.id === id)?.label ?? id
+  );
+}
+
+function triggerLabelList(ids: string[]): string {
+  return ids
+    .map(
+      (id) =>
+        ONBOARDING_CHAT_TRIGGER_OPTIONS.find((o) => o.id === id)?.label ?? id
+    )
+    .join(", ");
+}
+
+function referralComplete(
+  source: ReferralSourceId | null,
+  other: string
+): boolean {
+  if (!source) return false;
+  if (source === "other") return other.trim().length >= 3;
+  return true;
+}
+
 function pendingKindForQuestion(q: ChatQuestionId): PendingInput {
   if (q === "PROFILE_01") return { kind: "profile" };
   if (q === "CONCERN_01") return { kind: "concerns" };
-  if (q === "SEV_01") return { kind: "severity" };
-  if (q === "LIFE_01") return { kind: "sleep" };
-  if (q === "LIFE_02b") return { kind: "diet" };
-  return { kind: "sensitivity" };
+  if (q === "DUR_TRIG") return { kind: "duration" };
+  if (q === "SKIN_TYPE") return { kind: "skinType" };
+  if (q === "SENS_01") return { kind: "sensitivity" };
+  return { kind: "referral" };
 }
 
-function buildSummaryText(answers: {
-  ageInput: string;
-  gender: string | null;
-  concerns: OnboardingConcernId[];
-  severity: ConcernSeverity | null;
-  sleep: BaselineSleep | null;
-  diet: BaselineDietType | null;
-  sensitivity: SkinSensitivity | null;
-}): string {
+function buildSummaryText(answers: AnswerSnapshot): string {
   const lines = [
     `Age & gender: ${answers.ageInput} · ${genderLabel(answers.gender!)}`,
     `Concerns: ${formatOnboardingConcernLabels(answers.concerns)}`,
-    `Severity: ${
-      answers.severity
-        ? severityOptionsFor(answers.concerns)[answers.severity]
-        : "—"
+    `Duration: ${
+      answers.duration ? durationLabel(answers.duration) : "—"
     }`,
-    `Sleep: ${
-      SLEEP_OPTIONS.find((o) => o.value === answers.sleep)?.label ?? "—"
+    `Triggers: ${
+      answers.triggers.length > 0 ? triggerLabelList(answers.triggers) : "—"
     }`,
-    `Diet: ${
-      DIET_OPTIONS.find((o) => o.value === answers.diet)?.label ?? "—"
-    }`,
+    `Skin type: ${answers.skinType ?? "—"}`,
     `Sensitivity: ${
       SENSITIVITY_OPTIONS.find((o) => o.value === answers.sensitivity)?.label ??
       "—"
+    }`,
+    `Heard about us: ${
+      answers.referralSource
+        ? formatReferralSourceAnswer({
+            source: answers.referralSource,
+            other: answers.referralOther,
+          })
+        : "—"
     }`,
   ];
   return `Perfect, here's what I've got:\n\n${lines.join("\n")}`;
@@ -317,33 +296,17 @@ function msgId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function firstIncompleteChatIndex(answers: {
-  ageInput: string;
-  gender: string | null;
-  concerns: OnboardingConcernId[];
-  severity: ConcernSeverity | null;
-  sleep: BaselineSleep | null;
-  diet: BaselineDietType | null;
-  sensitivity: SkinSensitivity | null;
-}): number {
+function firstIncompleteChatIndex(answers: AnswerSnapshot): number {
   if (parseOnboardingAge(answers.ageInput) == null || !answers.gender) return 0;
   if (answers.concerns.length === 0) return 1;
-  if (!answers.severity) return 2;
-  if (!answers.sleep) return 3;
-  if (!answers.diet) return 4;
-  if (!answers.sensitivity) return 5;
+  if (!answers.duration || answers.triggers.length === 0) return 2;
+  if (!answers.skinType) return 3;
+  if (!answers.sensitivity) return 4;
+  if (!referralComplete(answers.referralSource, answers.referralOther)) return 5;
   return 6;
 }
 
-function buildHistoryMessages(answers: {
-  ageInput: string;
-  gender: string | null;
-  concerns: OnboardingConcernId[];
-  severity: ConcernSeverity | null;
-  sleep: BaselineSleep | null;
-  diet: BaselineDietType | null;
-  sensitivity: SkinSensitivity | null;
-}): ChatMessage[] {
+function buildHistoryMessages(answers: AnswerSnapshot): ChatMessage[] {
   const out: ChatMessage[] = [];
   const push = (role: "kai" | "user", text: string) => {
     out.push({ id: msgId(), role, text });
@@ -357,56 +320,64 @@ function buildHistoryMessages(answers: {
     "Hey! Before we get started, tell me a bit about yourself — how old are you and how do you identify?"
   );
   if (answers.gender && parseOnboardingAge(answers.ageInput) != null) {
-    push(
-      "user",
-      `${answers.ageInput} · ${genderLabel(answers.gender)}`
-    );
+    push("user", `${answers.ageInput} · ${genderLabel(answers.gender)}`);
   }
   if (incomplete <= 1) return out;
 
   push(
     "kai",
-    `${genderLabel(answers.gender!)} · ${answers.ageInput} — thanks. So what's been bugging you about your skin lately? Pick everything that applies.`
+    `${onboardingChatFallbackAck("PROFILE_01", {
+      age: answers.ageInput,
+      gender: answers.gender,
+    })} So what's been bugging you about your skin lately? Pick everything that applies.`
   );
   if (answers.concerns.length > 0) {
     push("user", formatOnboardingConcernLabels(answers.concerns));
   }
   if (incomplete <= 2) return out;
 
-  const sevCopy = severityOptionsFor(answers.concerns);
-  push("kai", `${ackForConcerns(answers.concerns)} ${sevCopy.ask}`);
-  if (answers.severity) {
-    push("user", sevCopy[answers.severity]);
+  push(
+    "kai",
+    `${onboardingChatFallbackAck("CONCERN_01", answers.concerns)} ${onboardingChatDurationAsk(answers.concerns)}`
+  );
+  if (answers.duration) {
+    push("user", durationLabel(answers.duration));
+  }
+  if (answers.duration && answers.triggers.length === 0) {
+    push(
+      "kai",
+      `${onboardingChatFallbackAck("DUR_TRIG", {
+        phase: "duration",
+        duration: answers.duration,
+      })} ${onboardingChatTriggersAsk()}`
+    );
+    return out;
+  }
+  if (answers.triggers.length > 0) {
+    push(
+      "kai",
+      `${onboardingChatFallbackAck("DUR_TRIG", {
+        phase: "duration",
+        duration: answers.duration,
+      })} ${onboardingChatTriggersAsk()}`
+    );
+    push("user", triggerLabelList(answers.triggers));
   }
   if (incomplete <= 3) return out;
 
   push(
     "kai",
-    `${ackForSeverity(answers.severity!)} Quick lifestyle check — how many hours do you usually sleep?`
+    `${onboardingChatFallbackAck("DUR_TRIG", {
+      duration: answers.duration,
+      triggers: answers.triggers,
+    })} What would you say your skin type is?`
   );
-  if (answers.sleep) {
-    push(
-      "user",
-      SLEEP_OPTIONS.find((o) => o.value === answers.sleep)?.label ?? answers.sleep
-    );
-  }
+  if (answers.skinType) push("user", answers.skinType);
   if (incomplete <= 4) return out;
 
   push(
     "kai",
-    `${ackForSleep(answers.sleep!)} And what does your diet mostly look like?`
-  );
-  if (answers.diet) {
-    push(
-      "user",
-      DIET_OPTIONS.find((o) => o.value === answers.diet)?.label ?? answers.diet
-    );
-  }
-  if (incomplete <= 5) return out;
-
-  push(
-    "kai",
-    `${ackForDiet(answers.diet!)} Last one — does your skin react easily to new products or weather changes?`
+    `${onboardingChatFallbackAck("SKIN_TYPE", answers.skinType)} Does your skin react easily to new products or weather changes?`
   );
   if (answers.sensitivity) {
     push(
@@ -415,15 +386,30 @@ function buildHistoryMessages(answers: {
         answers.sensitivity
     );
   }
+  if (incomplete <= 5) return out;
+
+  push(
+    "kai",
+    `${onboardingChatFallbackAck("SENS_01", answers.sensitivity)} One last thing — how did you hear about SkinFit?`
+  );
+  if (answers.referralSource) {
+    push(
+      "user",
+      formatReferralSourceAnswer({
+        source: answers.referralSource,
+        other: answers.referralOther,
+      })
+    );
+  }
   return out;
 }
 
 function matchCustomText(
   question: ChatQuestionId,
   text: string,
-  concerns: OnboardingConcernId[]
+  pendingKind: PendingInput
 ):
-  | { ok: true; label: string; apply: Partial<AnswerPatch> }
+  | { ok: true; label: string; apply: Partial<AnswerPatch>; phase?: "duration" | "triggers" | "full" }
   | { ok: false } {
   const t = text.trim().toLowerCase();
   if (!t) return { ok: false };
@@ -433,7 +419,10 @@ function matchCustomText(
     const age = ageMatch ? parseOnboardingAge(ageMatch[1]) : null;
     let gender: string | null = null;
     for (const g of GENDER_OPTIONS) {
-      if (t.includes(g.label.toLowerCase()) || t.includes(g.value.replace(/_/g, " "))) {
+      if (
+        t.includes(g.label.toLowerCase()) ||
+        t.includes(g.value.replace(/_/g, " "))
+      ) {
         gender = g.value;
         break;
       }
@@ -448,18 +437,10 @@ function matchCustomText(
       };
     }
     if (age != null) {
-      return {
-        ok: true,
-        label: String(age),
-        apply: { ageInput: String(age) },
-      };
+      return { ok: true, label: String(age), apply: { ageInput: String(age) } };
     }
     if (gender) {
-      return {
-        ok: true,
-        label: genderLabel(gender),
-        apply: { gender },
-      };
+      return { ok: true, label: genderLabel(gender), apply: { gender } };
     }
     return { ok: false };
   }
@@ -485,50 +466,53 @@ function matchCustomText(
     };
   }
 
-  if (question === "SEV_01") {
-    const opts = severityOptionsFor(concerns);
-    let sev: ConcernSeverity | null = null;
-    if (t.includes("mild") || t.includes("occasionally") || t.includes("slight"))
-      sev = "mild";
-    else if (t.includes("severe") || t.includes("cystic") || t.includes("constant") || t.includes("worst"))
-      sev = "severe";
-    else if (t.includes("moderate") || t.includes("frequent") || t.includes("medium") || t.includes("bad"))
-      sev = "moderate";
-    if (!sev) return { ok: false };
-    return { ok: true, label: opts[sev], apply: { severity: sev } };
-  }
-
-  if (question === "LIFE_01") {
-    let sleep: BaselineSleep | null = null;
-    if (t.includes("under 5") || t.includes("less than 5") || /\b[1-4]\b/.test(t))
-      sleep = "under5";
-    else if (t.includes("5") && t.includes("6")) sleep = "5to6";
-    else if (t.includes("7") || t.includes("8 hour")) sleep = "7to8";
-    else if (t.includes("8+") || t.includes("more than 8") || t.includes("9"))
-      sleep = "8plus";
-    else if (t.includes("5") || t.includes("6")) sleep = "5to6";
-    if (!sleep) return { ok: false };
+  if (question === "DUR_TRIG" && pendingKind?.kind === "duration") {
+    let duration: ConcernDuration | null = null;
+    if (t.includes("under") || t.includes("recent") || t.includes("3 month"))
+      duration = "recent";
+    else if (t.includes("over") || t.includes("year") || t.includes("chronic"))
+      duration = "chronic";
+    else if (t.includes("month") || t.includes("ongoing")) duration = "ongoing";
+    if (!duration) return { ok: false };
     return {
       ok: true,
-      label: SLEEP_OPTIONS.find((o) => o.value === sleep)!.label,
-      apply: { sleep },
+      label: durationLabel(duration),
+      apply: { duration },
+      phase: "duration",
     };
   }
 
-  if (question === "LIFE_02b") {
-    let diet: BaselineDietType | null = null;
-    if (t.includes("vegan")) diet = "vegan";
-    else if (t.includes("vegetarian") || t.includes("veg ")) diet = "vegetarian";
-    else if (t.includes("non") || t.includes("meat") || t.includes("nonveg"))
-      diet = "nonveg";
-    else if (t.includes("mix") || t.includes("flex") || t.includes("everything"))
-      diet = "mixed";
-    if (!diet) return { ok: false };
+  if (question === "DUR_TRIG" && pendingKind?.kind === "triggers") {
+    const found: string[] = [];
+    for (const opt of ONBOARDING_CHAT_TRIGGER_OPTIONS) {
+      if (t.includes(opt.label.toLowerCase().split(" ")[0]!) || t.includes(opt.id)) {
+        found.push(opt.id);
+      }
+    }
+    if (t.includes("hormone") || t.includes("pcos")) found.push("hormonal");
+    if (t.includes("diet") || t.includes("food")) found.push("diet");
+    if (t.includes("stress") || t.includes("sleep")) found.push("stress");
+    if (t.includes("sun") || t.includes("pollution") || t.includes("environment"))
+      found.push("environmental");
+    if (t.includes("product") || t.includes("ingredient")) found.push("products");
+    if (t.includes("not sure") || t.includes("unsure") || t.includes("don't know"))
+      found.push("unsure");
+    const unique = [...new Set(found)];
+    if (unique.length === 0) return { ok: false };
     return {
       ok: true,
-      label: DIET_OPTIONS.find((o) => o.value === diet)!.label,
-      apply: { diet },
+      label: triggerLabelList(unique),
+      apply: { triggers: unique },
+      phase: "triggers",
     };
+  }
+
+  if (question === "SKIN_TYPE") {
+    const hit = ONBOARDING_CHAT_SKIN_TYPES.find((s) =>
+      t.includes(s.toLowerCase())
+    );
+    if (!hit) return { ok: false };
+    return { ok: true, label: hit, apply: { skinType: hit } };
   }
 
   if (question === "SENS_01") {
@@ -540,9 +524,18 @@ function matchCustomText(
       t.includes("yes")
     )
       sensitivity = "high";
-    else if (t.includes("sometimes") || t.includes("moderate") || t.includes("occasionally"))
+    else if (
+      t.includes("sometimes") ||
+      t.includes("moderate") ||
+      t.includes("occasionally")
+    )
       sensitivity = "moderate";
-    else if (t.includes("not") || t.includes("no") || t.includes("low") || t.includes("rarely"))
+    else if (
+      t.includes("not") ||
+      t.includes("no") ||
+      t.includes("low") ||
+      t.includes("rarely")
+    )
       sensitivity = "low";
     if (!sensitivity) return { ok: false };
     return {
@@ -552,18 +545,36 @@ function matchCustomText(
     };
   }
 
+  if (question === "REF_01") {
+    for (const opt of REFERRAL_SOURCE_OPTIONS) {
+      if (t.includes(opt.label.toLowerCase()) || t.includes(opt.id.replace(/_/g, " "))) {
+        if (opt.id === "other") {
+          const other = text.trim();
+          if (other.length < 3) return { ok: false };
+          return {
+            ok: true,
+            label: formatReferralSourceAnswer({ source: "other", other }),
+            apply: { referralSource: "other", referralOther: other },
+          };
+        }
+        return {
+          ok: true,
+          label: opt.label,
+          apply: { referralSource: opt.id, referralOther: "" },
+        };
+      }
+    }
+    if (t.length >= 3) {
+      return {
+        ok: true,
+        label: formatReferralSourceAnswer({ source: "other", other: text.trim() }),
+        apply: { referralSource: "other", referralOther: text.trim() },
+      };
+    }
+  }
+
   return { ok: false };
 }
-
-type AnswerPatch = {
-  ageInput?: string;
-  gender?: string | null;
-  concerns?: OnboardingConcernId[];
-  severity?: ConcernSeverity | null;
-  sleep?: BaselineSleep | null;
-  diet?: BaselineDietType | null;
-  sensitivity?: SkinSensitivity | null;
-};
 
 function KaiAvatar() {
   return (
@@ -635,17 +646,25 @@ export function OnboardingQuestionnaireForm() {
   const [ageInput, setAgeInput] = useState("");
   const [gender, setGender] = useState<string | null>(null);
   const [concerns, setConcerns] = useState<OnboardingConcernId[]>([]);
-  const [severity, setSeverity] = useState<ConcernSeverity | null>(null);
-  const [sleep, setSleep] = useState<BaselineSleep | null>(null);
-  const [diet, setDiet] = useState<BaselineDietType | null>(null);
+  const [duration, setDuration] = useState<ConcernDuration | null>(null);
+  const [triggers, setTriggers] = useState<string[]>([]);
+  const [skinType, setSkinType] = useState<OnboardingChatSkinType | null>(null);
   const [sensitivity, setSensitivity] = useState<SkinSensitivity | null>(null);
+  const [referralSource, setReferralSource] = useState<ReferralSourceId | null>(
+    null
+  );
+  const [referralOther, setReferralOther] = useState("");
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [pendingInput, setPendingInput] = useState<PendingInput>(null);
   const [chatIndex, setChatIndex] = useState(0);
-  const [pendingConcerns, setPendingConcerns] = useState<OnboardingConcernId[]>([]);
+  const [pendingConcerns, setPendingConcerns] = useState<OnboardingConcernId[]>(
+    []
+  );
+  const [pendingTriggers, setPendingTriggers] = useState<string[]>([]);
   const [draftAge, setDraftAge] = useState("");
+  const [draftReferralOther, setDraftReferralOther] = useState("");
   const [customText, setCustomText] = useState("");
   const [interactionLocked, setInteractionLocked] = useState(false);
 
@@ -656,20 +675,24 @@ export function OnboardingQuestionnaireForm() {
     ageInput,
     gender,
     concerns,
-    severity,
-    sleep,
-    diet,
+    duration,
+    triggers,
+    skinType,
     sensitivity,
+    referralSource,
+    referralOther,
     chatIndex,
   });
   fieldsRef.current = {
     ageInput,
     gender,
     concerns,
-    severity,
-    sleep,
-    diet,
+    duration,
+    triggers,
+    skinType,
     sensitivity,
+    referralSource,
+    referralOther,
     chatIndex,
   };
 
@@ -691,21 +714,21 @@ export function OnboardingQuestionnaireForm() {
           step as (typeof CHAT_TO_DRAFT_STEP)[number]
         );
         if (ix >= 0) setChatIndex(ix);
-        else if (step > 10) setChatIndex(6);
+        else if (step >= 12) setChatIndex(6);
         else setChatIndex(0);
       },
       setAgeInput,
       setGender,
       setConcerns: (value: OnboardingConcernId[]) => setConcerns(value),
       setOverallSkinHealth: () => {},
-      setSeverity: (value: string | null) =>
-        setSeverity(
-          value === "mild" || value === "moderate" || value === "severe"
+      setSeverity: () => {},
+      setDuration: (value: string | null) =>
+        setDuration(
+          value === "recent" || value === "ongoing" || value === "chronic"
             ? value
             : null
         ),
-      setDuration: () => {},
-      setTriggers: () => {},
+      setTriggers,
       setPriorTx: () => {},
       setTxText: () => {},
       setTxDur: () => {},
@@ -715,29 +738,22 @@ export function OnboardingQuestionnaireForm() {
             ? value
             : null
         ),
-      setSleep: (value: string | null) =>
-        setSleep(
-          value === "under5" ||
-            value === "5to6" ||
-            value === "7to8" ||
-            value === "8plus"
-            ? value
-            : null
-        ),
+      setSleep: () => {},
       setWater: () => {},
-      setDiet: (value: string | null) =>
-        setDiet(
-          value === "vegetarian" ||
-            value === "vegan" ||
-            value === "nonveg" ||
-            value === "mixed"
-            ? value
+      setDiet: () => {},
+      setSun: () => {},
+      setSkinType: (value: string | null) =>
+        setSkinType(
+          value &&
+            (ONBOARDING_CHAT_SKIN_TYPES as readonly string[]).includes(value)
+            ? (value as OnboardingChatSkinType)
             : null
         ),
-      setSun: () => {},
-      setSkinType: () => {},
-      setReferralSource: () => {},
-      setReferralOther: () => {},
+      setReferralSource: (value: string | null) =>
+        setReferralSource(
+          value && isReferralSourceId(value) ? value : null
+        ),
+      setReferralOther,
       setSkippedSteps: () => {},
     };
   }
@@ -755,21 +771,29 @@ export function OnboardingQuestionnaireForm() {
       gender: patch.gender !== undefined ? patch.gender : base.gender,
       concerns: patch.concerns ?? base.concerns,
       overallSkinHealth: "need_improve",
-      severity: patch.severity !== undefined ? patch.severity : base.severity,
-      duration: "ongoing",
-      triggers: ["unsure"],
+      severity: "moderate",
+      duration:
+        patch.duration !== undefined ? patch.duration : base.duration,
+      triggers: patch.triggers ?? base.triggers,
       priorTx: "no",
       txText: "",
       txDur: "",
       sensitivity:
         patch.sensitivity !== undefined ? patch.sensitivity : base.sensitivity,
-      sleep: patch.sleep !== undefined ? patch.sleep : base.sleep,
+      sleep: "7to8",
       water: "1to1_5l",
-      diet: patch.diet !== undefined ? patch.diet : base.diet,
+      diet: "mixed",
       sun: "moderate",
-      skinType: "Normal",
-      referralSource: "other",
-      referralOther: "Prefer not to say",
+      skinType:
+        patch.skinType !== undefined ? patch.skinType : base.skinType,
+      referralSource:
+        patch.referralSource !== undefined
+          ? patch.referralSource
+          : base.referralSource,
+      referralOther:
+        patch.referralOther !== undefined
+          ? patch.referralOther
+          : base.referralOther,
       skippedSteps: [],
     });
     try {
@@ -821,7 +845,6 @@ export function OnboardingQuestionnaireForm() {
 
       const merged = mergeOnboardingQuestionnaireDrafts(localDraft, serverDraft);
       if (merged && entryMode !== "start") {
-        // Chat flow no longer uses skipped steps; keep saved answers intact.
         merged.skippedSteps = [];
         applyOnboardingQuestionnaireDraft(merged, draftSetters(), entryMode);
         try {
@@ -859,10 +882,12 @@ export function OnboardingQuestionnaireForm() {
     ageInput,
     gender,
     concerns,
-    severity,
-    sleep,
-    diet,
+    duration,
+    triggers,
+    skinType,
     sensitivity,
+    referralSource,
+    referralOther,
     chatIndex,
   ]);
 
@@ -912,35 +937,27 @@ export function OnboardingQuestionnaireForm() {
     []
   );
 
+  const snapshotFromFields = useCallback((): AnswerSnapshot => {
+    const f = fieldsRef.current;
+    return {
+      ageInput: f.ageInput,
+      gender: f.gender,
+      concerns: f.concerns,
+      duration: f.duration,
+      triggers: f.triggers,
+      skinType: f.skinType,
+      sensitivity: f.sensitivity,
+      referralSource: f.referralSource,
+      referralOther: f.referralOther,
+    };
+  }, []);
+
   const askQuestion = useCallback(
-    (
-      index: number,
-      answers: {
-        gender: string | null;
-        ageInput: string;
-        concerns: OnboardingConcernId[];
-        severity: ConcernSeverity | null;
-        sleep: BaselineSleep | null;
-        diet: BaselineDietType | null;
-        sensitivity?: SkinSensitivity | null;
-      },
-      /** Full kAI bubble text when already resolved (OpenAI or fallback). */
-      kaiMessage?: string
-    ) => {
+    (index: number, answers: AnswerSnapshot, kaiMessage?: string) => {
       setChatIndex(index);
 
       if (index >= CHAT_QUESTIONS.length) {
-        const body = buildSummaryText({
-          ageInput: answers.ageInput,
-          gender: answers.gender,
-          concerns: answers.concerns,
-          severity: answers.severity,
-          sleep: answers.sleep,
-          diet: answers.diet,
-          sensitivity:
-            answers.sensitivity ?? fieldsRef.current.sensitivity,
-        });
-        // Summary is always hardcoded (never OpenAI).
+        const body = buildSummaryText(answers);
         const summary = kaiMessage ? `${kaiMessage}\n\n${body}` : body;
         pushKaiThen(summary, () => setPendingInput({ kind: "summary" }));
         return;
@@ -951,36 +968,34 @@ export function OnboardingQuestionnaireForm() {
         kaiMessage?.trim() ||
         onboardingChatNextQuestionText(q, {
           concerns: answers.concerns,
-          severity: answers.severity,
-          sleep: answers.sleep,
-          diet: answers.diet,
+          duration: answers.duration,
+          triggers: answers.triggers,
+          skinType: answers.skinType,
         });
-
-      const inputKind = pendingKindForQuestion(q);
 
       pushKaiThen(text, () => {
         if (q === "CONCERN_01") setPendingConcerns([]);
         if (q === "PROFILE_01") setDraftAge(fieldsRef.current.ageInput);
-        setPendingInput(inputKind);
+        if (q === "DUR_TRIG") {
+          if (answers.duration && answers.triggers.length === 0) {
+            setPendingTriggers([]);
+            setPendingInput({ kind: "triggers" });
+            return;
+          }
+          setPendingTriggers([]);
+        }
+        if (q === "REF_01") setDraftReferralOther(fieldsRef.current.referralOther);
+        setPendingInput(pendingKindForQuestion(q));
       });
     },
     [pushKaiThen]
   );
 
-  // Boot conversation once draft is ready
   useEffect(() => {
     if (!draftReady || bootStartedRef.current) return;
     bootStartedRef.current = true;
 
-    const snapshot = {
-      ageInput: fieldsRef.current.ageInput,
-      gender: fieldsRef.current.gender,
-      concerns: fieldsRef.current.concerns,
-      severity: fieldsRef.current.severity,
-      sleep: fieldsRef.current.sleep,
-      diet: fieldsRef.current.diet,
-      sensitivity: fieldsRef.current.sensitivity,
-    };
+    const snapshot = snapshotFromFields();
     const incomplete = firstIncompleteChatIndex(snapshot);
 
     if (incomplete === 0) {
@@ -998,19 +1013,8 @@ export function OnboardingQuestionnaireForm() {
       const history = buildHistoryMessages(snapshot);
       setMessages(history);
       setChatIndex(6);
-      const summaryLines = [
-        `Age & gender: ${snapshot.ageInput} · ${genderLabel(snapshot.gender!)}`,
-        `Concerns: ${formatOnboardingConcernLabels(snapshot.concerns)}`,
-        `Severity: ${severityOptionsFor(snapshot.concerns)[snapshot.severity!]}`,
-        `Sleep: ${SLEEP_OPTIONS.find((o) => o.value === snapshot.sleep)?.label}`,
-        `Diet: ${DIET_OPTIONS.find((o) => o.value === snapshot.diet)?.label}`,
-        `Sensitivity: ${
-          SENSITIVITY_OPTIONS.find((o) => o.value === snapshot.sensitivity)?.label
-        }`,
-      ];
-      pushKaiThen(
-        `Perfect, here's what I've got:\n\n${summaryLines.join("\n")}`,
-        () => setPendingInput({ kind: "summary" })
+      pushKaiThen(buildSummaryText(snapshot), () =>
+        setPendingInput({ kind: "summary" })
       );
       return;
     }
@@ -1018,7 +1022,9 @@ export function OnboardingQuestionnaireForm() {
     const history = buildHistoryMessages(snapshot);
     setMessages(history);
     setPendingConcerns(snapshot.concerns);
+    setPendingTriggers(snapshot.triggers);
     setDraftAge(snapshot.ageInput);
+    setDraftReferralOther(snapshot.referralOther);
     askQuestion(incomplete, snapshot);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftReady]);
@@ -1029,20 +1035,20 @@ export function OnboardingQuestionnaireForm() {
       gender,
       concerns,
       overallSkinHealth: "need_improve",
-      severity,
-      duration: "ongoing",
-      triggers: ["unsure"],
+      severity: "moderate",
+      duration,
+      triggers,
       priorTx: "no",
       txText: "",
       txDur: "",
       sensitivity,
-      sleep,
+      sleep: "7to8",
       water: "1to1_5l",
-      diet,
+      diet: "mixed",
       sun: "moderate",
-      skinType: "Normal",
-      referralSource: "other",
-      referralOther: "Prefer not to say",
+      skinType,
+      referralSource,
+      referralOther,
     };
   }
 
@@ -1079,6 +1085,11 @@ export function OnboardingQuestionnaireForm() {
       }).catch(() => {
         /* */
       });
+      try {
+        sessionStorage.removeItem(KAI_ACK_CACHE_KEY);
+      } catch {
+        /* */
+      }
       router.replace("/dashboard");
       router.refresh();
     } catch {
@@ -1105,21 +1116,29 @@ export function OnboardingQuestionnaireForm() {
       setConcerns(patch.concerns);
       fieldsRef.current.concerns = patch.concerns;
     }
-    if (patch.severity !== undefined) {
-      setSeverity(patch.severity);
-      fieldsRef.current.severity = patch.severity;
+    if (patch.duration !== undefined) {
+      setDuration(patch.duration);
+      fieldsRef.current.duration = patch.duration;
     }
-    if (patch.sleep !== undefined) {
-      setSleep(patch.sleep);
-      fieldsRef.current.sleep = patch.sleep;
+    if (patch.triggers !== undefined) {
+      setTriggers(patch.triggers);
+      fieldsRef.current.triggers = patch.triggers;
     }
-    if (patch.diet !== undefined) {
-      setDiet(patch.diet);
-      fieldsRef.current.diet = patch.diet;
+    if (patch.skinType !== undefined) {
+      setSkinType(patch.skinType);
+      fieldsRef.current.skinType = patch.skinType;
     }
     if (patch.sensitivity !== undefined) {
       setSensitivity(patch.sensitivity);
       fieldsRef.current.sensitivity = patch.sensitivity;
+    }
+    if (patch.referralSource !== undefined) {
+      setReferralSource(patch.referralSource);
+      fieldsRef.current.referralSource = patch.referralSource;
+    }
+    if (patch.referralOther !== undefined) {
+      setReferralOther(patch.referralOther);
+      fieldsRef.current.referralOther = patch.referralOther;
     }
   }
 
@@ -1129,10 +1148,12 @@ export function OnboardingQuestionnaireForm() {
       age: parseOnboardingAge(f.ageInput),
       gender: f.gender,
       concerns: f.concerns,
-      severity: f.severity,
-      sleep: f.sleep,
-      diet: f.diet,
+      duration: f.duration,
+      triggers: f.triggers,
+      skinType: f.skinType,
       sensitivity: f.sensitivity,
+      referralSource: f.referralSource,
+      referralOther: f.referralOther,
     };
   }
 
@@ -1145,6 +1166,8 @@ export function OnboardingQuestionnaireForm() {
     }
     if (q === "CONCERN_01") setPendingConcerns([]);
     if (q === "PROFILE_01") setDraftAge(fieldsRef.current.ageInput);
+    if (q === "DUR_TRIG") setPendingTriggers([]);
+    if (q === "REF_01") setDraftReferralOther(fieldsRef.current.referralOther);
     setPendingInput(pendingKindForQuestion(q));
   }
 
@@ -1165,27 +1188,17 @@ export function OnboardingQuestionnaireForm() {
           : CHAT_TO_DRAFT_STEP[nextIndex],
     });
 
-    const nextAnswers = {
-      gender: fieldsRef.current.gender,
-      ageInput: fieldsRef.current.ageInput,
-      concerns: fieldsRef.current.concerns,
-      severity: fieldsRef.current.severity,
-      sleep: fieldsRef.current.sleep,
-      diet: fieldsRef.current.diet,
-      sensitivity: fieldsRef.current.sensitivity,
-    };
-
+    const nextAnswers = snapshotFromFields();
     const nextQuestionId = CHAT_QUESTIONS[nextIndex] ?? null;
     const nextQuestionText = nextQuestionId
       ? onboardingChatNextQuestionText(nextQuestionId, {
           concerns: nextAnswers.concerns,
-          severity: nextAnswers.severity,
-          sleep: nextAnswers.sleep,
-          diet: nextAnswers.diet,
+          duration: nextAnswers.duration,
+          triggers: nextAnswers.triggers,
+          skinType: nextAnswers.skinType,
         })
       : "";
 
-    // Final summary is hardcoded — still allow a short OpenAI ack for the last answer.
     if (nextIndex >= CHAT_QUESTIONS.length) {
       void revealKaiMessage(
         () =>
@@ -1220,8 +1233,7 @@ export function OnboardingQuestionnaireForm() {
     if (interactionLocked) return;
     const age = parseOnboardingAge(nextAge);
     if (age == null || !nextGender) return;
-    const label = `${age} · ${genderLabel(nextGender)}`;
-    appendUser(label);
+    appendUser(`${age} · ${genderLabel(nextGender)}`);
     setPendingInput(null);
     advanceAfterAnswer(
       "PROFILE_01",
@@ -1238,33 +1250,70 @@ export function OnboardingQuestionnaireForm() {
     advanceAfterAnswer("CONCERN_01", next, 2, { concerns: next });
   }
 
-  function completeSeverity(sev: ConcernSeverity) {
+  function completeDuration(value: ConcernDuration) {
     if (interactionLocked) return;
-    const opts = severityOptionsFor(fieldsRef.current.concerns);
-    appendUser(opts[sev]);
+    const previousAnswers = currentPreviousAnswers();
+    appendUser(durationLabel(value));
     setPendingInput(null);
-    advanceAfterAnswer("SEV_01", sev, 3, { severity: sev });
+    applyAnswerPatch({ duration: value });
+    persistDraft({ duration: value, step: 4 });
+
+    void revealKaiMessage(
+      () =>
+        fetchKaiChatResponse({
+          questionId: "DUR_TRIG",
+          answer: { phase: "duration", duration: value },
+          previousAnswers,
+          nextQuestionText: onboardingChatTriggersAsk(),
+        }),
+      () => {
+        setPendingTriggers([]);
+        setPendingInput({ kind: "triggers" });
+      }
+    );
   }
 
-  function completeSleep(value: BaselineSleep) {
-    if (interactionLocked) return;
-    appendUser(SLEEP_OPTIONS.find((o) => o.value === value)!.label);
+  function completeTriggers(next: string[]) {
+    if (interactionLocked || next.length === 0) return;
+    const dur = fieldsRef.current.duration;
+    appendUser(triggerLabelList(next));
     setPendingInput(null);
-    advanceAfterAnswer("LIFE_01", value, 4, { sleep: value });
+    advanceAfterAnswer(
+      "DUR_TRIG",
+      { duration: dur, triggers: next },
+      3,
+      { triggers: next }
+    );
   }
 
-  function completeDiet(value: BaselineDietType) {
+  function completeSkinType(value: OnboardingChatSkinType) {
     if (interactionLocked) return;
-    appendUser(DIET_OPTIONS.find((o) => o.value === value)!.label);
+    appendUser(value);
     setPendingInput(null);
-    advanceAfterAnswer("LIFE_02b", value, 5, { diet: value });
+    advanceAfterAnswer("SKIN_TYPE", value, 4, { skinType: value });
   }
 
   function completeSensitivity(value: SkinSensitivity) {
     if (interactionLocked) return;
     appendUser(SENSITIVITY_OPTIONS.find((o) => o.value === value)!.label);
     setPendingInput(null);
-    advanceAfterAnswer("SENS_01", value, 6, { sensitivity: value });
+    advanceAfterAnswer("SENS_01", value, 5, { sensitivity: value });
+  }
+
+  function completeReferral(source: ReferralSourceId, other = "") {
+    if (interactionLocked) return;
+    if (source === "other" && other.trim().length < 3) return;
+    appendUser(formatReferralSourceAnswer({ source, other }));
+    setPendingInput(null);
+    advanceAfterAnswer(
+      "REF_01",
+      { source, other: other.trim() },
+      6,
+      {
+        referralSource: source,
+        referralOther: source === "other" ? other.trim() : "",
+      }
+    );
   }
 
   function handleCustomSend() {
@@ -1276,7 +1325,14 @@ export function OnboardingQuestionnaireForm() {
     const q = CHAT_QUESTIONS[chatIndex];
     if (!q) return;
 
-    const matched = matchCustomText(q, text, fieldsRef.current.concerns);
+    // Referral "Other" details can be typed in the bottom field when Other is selected
+    if (pendingInput.kind === "referral" && referralSource === "other") {
+      setCustomText("");
+      completeReferral("other", text);
+      return;
+    }
+
+    const matched = matchCustomText(q, text, pendingInput);
     setCustomText("");
 
     if (!matched.ok) {
@@ -1322,27 +1378,56 @@ export function OnboardingQuestionnaireForm() {
       advanceAfterAnswer("CONCERN_01", apply.concerns, 2, apply);
       return;
     }
-    if (q === "SEV_01" && apply.severity) {
-      advanceAfterAnswer("SEV_01", apply.severity, 3, apply);
+    if (q === "DUR_TRIG" && matched.phase === "duration" && apply.duration) {
+      // undo appendUser above path — completeDuration also appends; we already appended
+      // so call the mid-turn flow without double-appending
+      const previousAnswers = currentPreviousAnswers();
+      applyAnswerPatch({ duration: apply.duration });
+      persistDraft({ duration: apply.duration, step: 4 });
+      void revealKaiMessage(
+        () =>
+          fetchKaiChatResponse({
+            questionId: "DUR_TRIG",
+            answer: { phase: "duration", duration: apply.duration },
+            previousAnswers,
+            nextQuestionText: onboardingChatTriggersAsk(),
+          }),
+        () => {
+          setPendingTriggers([]);
+          setPendingInput({ kind: "triggers" });
+        }
+      );
       return;
     }
-    if (q === "LIFE_01" && apply.sleep) {
-      advanceAfterAnswer("LIFE_01", apply.sleep, 4, apply);
+    if (q === "DUR_TRIG" && apply.triggers) {
+      advanceAfterAnswer(
+        "DUR_TRIG",
+        { duration: fieldsRef.current.duration, triggers: apply.triggers },
+        3,
+        apply
+      );
       return;
     }
-    if (q === "LIFE_02b" && apply.diet) {
-      advanceAfterAnswer("LIFE_02b", apply.diet, 5, apply);
+    if (q === "SKIN_TYPE" && apply.skinType) {
+      advanceAfterAnswer("SKIN_TYPE", apply.skinType, 4, apply);
       return;
     }
     if (q === "SENS_01" && apply.sensitivity) {
-      advanceAfterAnswer("SENS_01", apply.sensitivity, 6, apply);
+      advanceAfterAnswer("SENS_01", apply.sensitivity, 5, apply);
+      return;
+    }
+    if (q === "REF_01" && apply.referralSource) {
+      advanceAfterAnswer(
+        "REF_01",
+        {
+          source: apply.referralSource,
+          other: apply.referralOther ?? "",
+        },
+        6,
+        apply
+      );
     }
   }
-
-  const sevOpts = useMemo(
-    () => severityOptionsFor(concerns),
-    [concerns]
-  );
 
   const optionsDisabled = interactionLocked || isTyping;
 
@@ -1479,33 +1564,13 @@ export function OnboardingQuestionnaireForm() {
                 </>
               ) : null}
 
-              {pendingInput.kind === "severity" ? (
+              {pendingInput.kind === "duration" ? (
                 <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      ["mild", sevOpts.mild],
-                      ["moderate", sevOpts.moderate],
-                      ["severe", sevOpts.severe],
-                    ] as const
-                  ).map(([id, label]) => (
+                  {ONBOARDING_CHAT_DURATION_OPTIONS.map((opt) => (
                     <Pill
-                      key={id}
+                      key={opt.id}
                       disabled={optionsDisabled}
-                      onClick={() => completeSeverity(id)}
-                    >
-                      {label}
-                    </Pill>
-                  ))}
-                </div>
-              ) : null}
-
-              {pendingInput.kind === "sleep" ? (
-                <div className="flex flex-wrap gap-2">
-                  {SLEEP_OPTIONS.map((opt) => (
-                    <Pill
-                      key={opt.value}
-                      disabled={optionsDisabled}
-                      onClick={() => completeSleep(opt.value)}
+                      onClick={() => completeDuration(opt.id)}
                     >
                       {opt.label}
                     </Pill>
@@ -1513,15 +1578,46 @@ export function OnboardingQuestionnaireForm() {
                 </div>
               ) : null}
 
-              {pendingInput.kind === "diet" ? (
+              {pendingInput.kind === "triggers" ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {ONBOARDING_CHAT_TRIGGER_OPTIONS.map((opt) => (
+                      <Pill
+                        key={opt.id}
+                        active={pendingTriggers.includes(opt.id)}
+                        disabled={optionsDisabled}
+                        onClick={() =>
+                          setPendingTriggers((cur) =>
+                            cur.includes(opt.id)
+                              ? cur.filter((x) => x !== opt.id)
+                              : [...cur, opt.id]
+                          )
+                        }
+                      >
+                        {opt.label}
+                      </Pill>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={optionsDisabled || pendingTriggers.length === 0}
+                    onClick={() => completeTriggers(pendingTriggers)}
+                    className="self-start rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                  >
+                    Done
+                  </button>
+                </>
+              ) : null}
+
+              {pendingInput.kind === "skinType" ? (
                 <div className="flex flex-wrap gap-2">
-                  {DIET_OPTIONS.map((opt) => (
+                  {ONBOARDING_CHAT_SKIN_TYPES.map((type) => (
                     <Pill
-                      key={opt.value}
+                      key={type}
                       disabled={optionsDisabled}
-                      onClick={() => completeDiet(opt.value)}
+                      onClick={() => completeSkinType(type)}
                     >
-                      {opt.label}
+                      {type}
                     </Pill>
                   ))}
                 </div>
@@ -1539,6 +1635,54 @@ export function OnboardingQuestionnaireForm() {
                     </Pill>
                   ))}
                 </div>
+              ) : null}
+
+              {pendingInput.kind === "referral" ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {REFERRAL_SOURCE_OPTIONS.map((opt) => (
+                      <Pill
+                        key={opt.id}
+                        active={referralSource === opt.id}
+                        disabled={optionsDisabled}
+                        onClick={() => {
+                          setReferralSource(opt.id);
+                          if (opt.id !== "other") {
+                            completeReferral(opt.id);
+                          } else {
+                            setDraftReferralOther(referralOther);
+                          }
+                        }}
+                      >
+                        {opt.label}
+                      </Pill>
+                    ))}
+                  </div>
+                  {referralSource === "other" ? (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        value={draftReferralOther}
+                        disabled={optionsDisabled}
+                        placeholder="Tell us how you heard about us"
+                        onChange={(e) => setDraftReferralOther(e.target.value)}
+                        className="w-full max-w-sm rounded-full border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 outline-none focus:border-[#2C3E6B]"
+                      />
+                      <button
+                        type="button"
+                        disabled={
+                          optionsDisabled || draftReferralOther.trim().length < 3
+                        }
+                        onClick={() =>
+                          completeReferral("other", draftReferralOther)
+                        }
+                        className="self-start rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                      >
+                        Continue
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
 
               {pendingInput.kind === "summary" ? (

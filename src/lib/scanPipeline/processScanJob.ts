@@ -207,6 +207,78 @@ export async function processScanJob(
     }
   }
 
+  let wrinkle_lines: import("@/src/lib/scanDetectionRegions").WrinkleLine[] = [];
+  let proxy_regions: import("@/src/lib/scanDetectionRegions").ProxyRegion[] = [];
+  let centreJpegB64: string | null = null;
+  const ensureCentreJpeg = async () => {
+    if (centreJpegB64) return centreJpegB64;
+    const { fileToJpegB64 } = await import("@/src/lib/extractWrinkleLines");
+    centreJpegB64 = await fileToJpegB64(filesForV2.centre);
+    return centreJpegB64;
+  };
+
+  if (merged.wrinkleMaskDataUri) {
+    try {
+      const { extractWrinkleLinesFromImages } = await import(
+        "@/src/lib/extractWrinkleLines"
+      );
+      wrinkle_lines = await extractWrinkleLinesFromImages({
+        wrinkleMaskDataUriOrB64: merged.wrinkleMaskDataUri,
+        sourceJpegB64: await ensureCentreJpeg(),
+      });
+      if (wrinkle_lines.length > 0) {
+        logger.info("wrinkle_lines_extracted", {
+          jobId,
+          count: wrinkle_lines.length,
+        });
+      }
+    } catch (err) {
+      logger.warn("wrinkle_lines_skipped", {
+        jobId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  try {
+    const { extractProxyRegionsFromImage } = await import(
+      "@/src/lib/extractProxyRegions"
+    );
+    const mfs = (merged.modelFeatureScores ?? {}) as Record<
+      string,
+      number | null
+    >;
+    proxy_regions = await extractProxyRegionsFromImage({
+      sourceJpegB64: await ensureCentreJpeg(),
+      scores: {
+        pigmentation: mfs.pigmentation_model ?? undefined,
+        acne_scars: mfs.acne_scars ?? undefined,
+        under_eye: mfs.under_eye ?? undefined,
+        sagging_volume: mfs.sagging_volume ?? undefined,
+      },
+    });
+    if (proxy_regions.length > 0) {
+      logger.info("proxy_regions_extracted", {
+        jobId,
+        count: proxy_regions.length,
+      });
+    }
+  } catch (err) {
+    logger.warn("proxy_regions_skipped", {
+      jobId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  const { buildAnnotationRegions } = await import(
+    "@/src/lib/scanDetectionRegions"
+  );
+  const annotation_regions = buildAnnotationRegions(
+    merged.detection_regions ?? [],
+    wrinkle_lines,
+    proxy_regions
+  );
+
   const storage = getStorage();
   const upload = storage.upload.bind(storage);
 
@@ -335,6 +407,12 @@ export async function processScanJob(
         ...(acneMaskUrl ? { acneMaskUrl } : {}),
         maskExportVersion,
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
+        ...(merged.detection_regions && merged.detection_regions.length > 0
+          ? { detection_regions: merged.detection_regions }
+          : {}),
+        ...(wrinkle_lines.length > 0 ? { wrinkle_lines } : {}),
+        ...(proxy_regions.length > 0 ? { proxy_regions } : {}),
+        ...(annotation_regions.length > 0 ? { annotation_regions } : {}),
       },
     })
     .returning({ id: scans.id });

@@ -11,6 +11,7 @@ import type {
   KaiParamInferenceRow,
 } from "@/src/lib/faceAnalysisInferenceV2";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import type { DetectionRegion } from "@/src/lib/scanDetectionRegions";
 import {
   ageAdjustedSaggingClarity,
   applyCompositeSaggingVolume,
@@ -358,6 +359,8 @@ export type ScanInferencePayload = {
   modelFeatureScores: ModelFeatureScores;
   clinical_scores: ClinicalScores;
   detected_regions: FaceAnalysisInferenceV2Result["detected_regions"];
+  /** Interactive SVG lesion circles from acne-detector-v1 (percentage coords). */
+  detection_regions?: DetectionRegion[];
   overlayDataUri?: string;
   wrinkleMaskDataUri?: string;
   acneMaskDataUri?: string;

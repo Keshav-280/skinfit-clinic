@@ -429,6 +429,10 @@ export async function POST(request: NextRequest) {
     let spatialOutputs: Awaited<
       ReturnType<typeof runFaceAnalysisServiceV2>
     >["spatialOutputs"];
+    let detection_regions: import("@/src/lib/scanDetectionRegions").DetectionRegion[] | undefined;
+    let wrinkle_lines: import("@/src/lib/scanDetectionRegions").WrinkleLine[] | undefined;
+    let proxy_regions: import("@/src/lib/scanDetectionRegions").ProxyRegion[] | undefined;
+    let annotation_regions: unknown[] | undefined;
 
     const useV2 =
       process.env.FACE_ANALYSIS_USE_V2 === "1" ||
@@ -521,6 +525,65 @@ export async function POST(request: NextRequest) {
         wrinkleMaskDataUri = merged.wrinkleMaskDataUri;
         acneMaskDataUri = merged.acneMaskDataUri;
         spatialOutputs = merged.spatialOutputs;
+        detection_regions = merged.detection_regions;
+
+        let centreJpegB64: string | null = null;
+        const ensureCentreJpeg = async () => {
+          if (centreJpegB64) return centreJpegB64;
+          const { fileToJpegB64 } = await import(
+            "@/src/lib/extractWrinkleLines"
+          );
+          centreJpegB64 = await fileToJpegB64(filesForV2.centre);
+          return centreJpegB64;
+        };
+
+        if (merged.wrinkleMaskDataUri) {
+          try {
+            const { extractWrinkleLinesFromImages } = await import(
+              "@/src/lib/extractWrinkleLines"
+            );
+            wrinkle_lines = await extractWrinkleLinesFromImages({
+              wrinkleMaskDataUriOrB64: merged.wrinkleMaskDataUri,
+              sourceJpegB64: await ensureCentreJpeg(),
+            });
+          } catch (err) {
+            console.warn("[mobile-capture] wrinkle line extraction skipped", {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+
+        try {
+          const { extractProxyRegionsFromImage } = await import(
+            "@/src/lib/extractProxyRegions"
+          );
+          const mfs = (merged.modelFeatureScores ?? {}) as Record<
+            string,
+            number | null
+          >;
+          proxy_regions = await extractProxyRegionsFromImage({
+            sourceJpegB64: await ensureCentreJpeg(),
+            scores: {
+              pigmentation: mfs.pigmentation_model ?? undefined,
+              acne_scars: mfs.acne_scars ?? undefined,
+              under_eye: mfs.under_eye ?? undefined,
+              sagging_volume: mfs.sagging_volume ?? undefined,
+            },
+          });
+        } catch (err) {
+          console.warn("[mobile-capture] proxy region extraction skipped", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+
+        const { buildAnnotationRegions } = await import(
+          "@/src/lib/scanDetectionRegions"
+        );
+        annotation_regions = buildAnnotationRegions(
+          detection_regions ?? [],
+          wrinkle_lines ?? [],
+          proxy_regions ?? []
+        );
       } catch (err) {
         console.error(
           useV2 ? "Face analysis v2 error:" : "Face analysis error:",
@@ -661,6 +724,16 @@ export async function POST(request: NextRequest) {
         ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
         ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
         ...(spatialOutputs ? { spatialOutputs } : {}),
+        ...(detection_regions && detection_regions.length > 0
+          ? { detection_regions }
+          : {}),
+        ...(wrinkle_lines && wrinkle_lines.length > 0
+          ? { wrinkle_lines }
+          : {}),
+        ...(proxy_regions && proxy_regions.length > 0 ? { proxy_regions } : {}),
+        ...(annotation_regions && annotation_regions.length > 0
+          ? { annotation_regions }
+          : {}),
       },
     };
 
@@ -758,6 +831,14 @@ export async function POST(request: NextRequest) {
       ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
       ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
       ...(spatialOutputs ? { spatialOutputs } : {}),
+      ...(detection_regions && detection_regions.length > 0
+        ? { detection_regions }
+        : {}),
+      ...(wrinkle_lines && wrinkle_lines.length > 0 ? { wrinkle_lines } : {}),
+      ...(proxy_regions && proxy_regions.length > 0 ? { proxy_regions } : {}),
+      ...(annotation_regions && annotation_regions.length > 0
+        ? { annotation_regions }
+        : {}),
     };
     const displayMetrics = scanDisplayMetricsFromRow({
       overallScore: metrics.overall_score,
@@ -786,6 +867,16 @@ export async function POST(request: NextRequest) {
         ...(wrinkleMaskDataUri ? { wrinkleMaskDataUri } : {}),
         ...(acneMaskDataUri ? { acneMaskDataUri } : {}),
         ...(spatialOutputs ? { spatialOutputs } : {}),
+        ...(detection_regions && detection_regions.length > 0
+          ? { detection_regions }
+          : {}),
+        ...(wrinkle_lines && wrinkle_lines.length > 0
+          ? { wrinkle_lines }
+          : {}),
+        ...(proxy_regions && proxy_regions.length > 0 ? { proxy_regions } : {}),
+        ...(annotation_regions && annotation_regions.length > 0
+          ? { annotation_regions }
+          : {}),
       },
     });
   } catch (error) {

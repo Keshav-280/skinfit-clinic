@@ -389,6 +389,30 @@ def analyze_face(model, bgr: np.ndarray, *, include_image: bool = True) -> dict[
             },
         },
     }
+    h_img, w_img = int(bgr.shape[0]), int(bgr.shape[1])
+    max_dim = max(h_img, w_img) or 1
+    result["detection_regions"] = [
+        {
+            "class": d.name,
+            "display_class": "comedonal" if d.name in COMEDONAL_PARTS else d.name,
+            "confidence": round(d.conf, 4),
+            "center_pct": [
+                round(((d.x1 + d.x2) / 2) / w_img * 100, 2),
+                round(((d.y1 + d.y2) / 2) / h_img * 100, 2),
+            ],
+            "radius_pct": round(
+                max(d.x2 - d.x1, d.y2 - d.y1) / 2 / max_dim * 100, 2
+            ),
+            "bbox_pct": [
+                round(d.x1 / w_img * 100, 2),
+                round(d.y1 / h_img * 100, 2),
+                round(d.x2 / w_img * 100, 2),
+                round(d.y2 / h_img * 100, 2),
+            ],
+        }
+        for d in dets_active
+    ]
+
     if include_image:
         result["annotated_image_jpeg_base64"] = render_annotated_jpeg_base64(bgr, dets_active)
     return result

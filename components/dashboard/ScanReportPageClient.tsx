@@ -9,6 +9,11 @@ import { SkinScanReportBody } from "./SkinScanReportBody";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
+import type {
+  DetectionRegion,
+  ProxyRegion,
+  WrinkleLine,
+} from "@/src/lib/scanDetectionRegions";
 
 export interface ScanReportPageClientProps {
   scanId: number;
@@ -19,6 +24,9 @@ export interface ScanReportPageClientProps {
   /** When set (one or more captures), report shows thumbnails / collage. */
   faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
   regions: ReportRegion[];
+  detectionRegions?: DetectionRegion[];
+  wrinkleLines?: WrinkleLine[];
+  proxyRegions?: ProxyRegion[];
   metrics: ReportMetrics;
   aiSummary: string | null;
   /** Wrinkle tint + acne circles from analyzer (data URI). */
@@ -42,6 +50,9 @@ export function ScanReportPageClient({
   imageUrl,
   faceCaptureGallery,
   regions,
+  detectionRegions,
+  wrinkleLines,
+  proxyRegions,
   metrics,
   aiSummary,
   annotatedImageUrl = null,
@@ -160,6 +171,9 @@ export function ScanReportPageClient({
           imageUrl={imageUrl}
           faceCaptureGallery={faceCaptureGallery}
           regions={regions}
+          detectionRegions={detectionRegions}
+          wrinkleLines={wrinkleLines}
+          proxyRegions={proxyRegions}
           metrics={metrics}
           aiSummary={aiSummary ?? undefined}
           annotatedImageUrl={annotatedImageUrl ?? undefined}

@@ -14,6 +14,10 @@ import {
   severityToClarity,
   type ScanInferencePayload,
 } from "@/src/lib/modelClinicalMetrics";
+import {
+  parseDetectionRegion,
+  type DetectionRegion,
+} from "@/src/lib/scanDetectionRegions";
 
 export type AcneDetectorGrade = {
   final_grade: string; // A–E
@@ -42,6 +46,8 @@ export type AcneDetectorResult = {
     face_mesh_ok: boolean;
     [k: string]: unknown;
   };
+  /** Percentage-based regions for interactive SVG overlays. */
+  detection_regions?: DetectionRegion[];
   /** Raw base64 JPEG (no data: prefix) with lesion boxes drawn. */
   annotated_image_jpeg_base64?: string;
 };
@@ -186,6 +192,40 @@ export function applyAcneDetectorToScanPayload(
       : [];
 
   const modelEight = { ...payload.modelEight, activeAcne: clarity };
+  let detectionRegions = Array.isArray(result.detection_regions)
+    ? result.detection_regions
+        .map((r) => parseDetectionRegion(r))
+        .filter((r): r is DetectionRegion => r != null)
+    : [];
+
+  // Older detector builds: derive percentage regions from pixel detections.
+  if (detectionRegions.length === 0 && imgW > 0 && imgH > 0) {
+    const maxDim = Math.max(imgW, imgH);
+    detectionRegions = result.detections.active.map((d) => {
+      const [x1, y1, x2, y2] = d.bbox;
+      const cx = ((x1 + x2) / 2 / imgW) * 100;
+      const cy = ((y1 + y2) / 2 / imgH) * 100;
+      const radius =
+        (Math.max(x2 - x1, y2 - y1) / 2 / maxDim) * 100;
+      return {
+        class: d.class,
+        display_class: d.display_class || d.class,
+        confidence: d.confidence,
+        center_pct: [
+          Math.round(cx * 100) / 100,
+          Math.round(cy * 100) / 100,
+        ] as [number, number],
+        radius_pct: Math.round(Math.max(0.15, radius) * 100) / 100,
+        bbox_pct: [
+          Math.round((x1 / imgW) * 10000) / 100,
+          Math.round((y1 / imgH) * 10000) / 100,
+          Math.round((x2 / imgW) * 10000) / 100,
+          Math.round((y2 / imgH) * 10000) / 100,
+        ] as [number, number, number, number],
+      };
+    });
+  }
+
   return canonicalizeScanInferencePayload({
     ...payload,
     legacyMetrics: { ...payload.legacyMetrics, acne: clarity },
@@ -197,7 +237,10 @@ export function applyAcneDetectorToScanPayload(
     modelEight,
     params,
     detected_regions: [...acneRegions, ...nonAcneRegions],
-    // Replace the acne mask panel with the detector's annotated image.
+    ...(detectionRegions.length > 0
+      ? { detection_regions: detectionRegions }
+      : {}),
+    // Keep annotated JPEG for backwards compatibility (legacy mask panel).
     ...(annotated ? { acneMaskDataUri: annotated } : {}),
   });
 }
