@@ -339,6 +339,21 @@ export function ScanViewer({
   const wrinkleMaskVisible =
     activeConcern === "all" || activeConcern === "wrinkles";
 
+  /** Map gallery labels to capture step ids for pose-scoped overlays. */
+  function poseIdForPhoto(label: string, index: number): string {
+    const l = label.toLowerCase();
+    if (l.includes("smil")) return "smiling";
+    if (l.includes("left")) return "left";
+    if (l.includes("right")) return "right";
+    if (l.includes("eye") || l.includes("closed")) return "eyes_closed";
+    if (l.includes("front") || l.includes("centr") || l.includes("primary")) {
+      return "centre";
+    }
+    // Single-photo reports / unknown labels → treat as centre so acne/proxy still show.
+    if (photos.length <= 1) return "centre";
+    return index === 0 ? "centre" : "other";
+  }
+
   return (
     <div className="w-full bg-[#F2F9F2]">
       <div className="relative bg-[#0F172A]">
@@ -351,15 +366,25 @@ export function ScanViewer({
               No scan photos
             </div>
           ) : (
-            photos.map((photo, i) => (
+            photos.map((photo, i) => {
+              const pose = poseIdForPhoto(photo.label, i);
+              const showAcneProxy = pose === "centre";
+              const showWrinkles = pose === "smiling";
+              const showWrinkleFallback =
+                showWrinkleMaskFallback && showWrinkles;
+              const poseHasOverlay =
+                (showAcneProxy && (hasDetectionRegions || hasProxyRegions)) ||
+                (showWrinkles && (hasWrinkleLines || showWrinkleFallback));
+
+              return (
               <div
                 key={`${photo.label}-${i}`}
                 className="relative h-full min-w-full shrink-0 snap-center"
               >
                 <ReportFaceImage src={photo.imageUrl} alt={photo.label} />
-                {useVectorOverlay ? (
+                {useVectorOverlay && poseHasOverlay ? (
                   <>
-                    {showWrinkleMaskFallback ? (
+                    {showWrinkleFallback ? (
                       <WrinkleMaskFallback
                         src={wrinkleMaskUrl!}
                         visible={wrinkleMaskVisible}
@@ -367,29 +392,38 @@ export function ScanViewer({
                       />
                     ) : null}
                     <ScanDetectionOverlay
-                      regions={detectionRegions ?? []}
-                      wrinkleLines={wrinkleLines ?? []}
-                      proxyRegions={proxyRegions ?? []}
+                      regions={
+                        showAcneProxy ? detectionRegions ?? [] : []
+                      }
+                      wrinkleLines={
+                        showWrinkles ? wrinkleLines ?? [] : []
+                      }
+                      proxyRegions={
+                        showAcneProxy ? proxyRegions ?? [] : []
+                      }
                       activeConcern={activeConcern}
                     />
                   </>
-                ) : (
+                ) : !useVectorOverlay ? (
                   <ScanFaceOverlay
                     imageUrl={photo.imageUrl}
-                    wrinkleMaskUrl={wrinkleMaskUrl}
-                    acneMaskUrl={acneMaskUrl}
+                    wrinkleMaskUrl={
+                      showWrinkles ? wrinkleMaskUrl : undefined
+                    }
+                    acneMaskUrl={showAcneProxy ? acneMaskUrl : undefined}
                     maskExportVersion={maskExportVersion}
                     spatialOutputs={spatialOutputs}
                     regions={regions}
                     activeConcern={activeConcern}
                   />
-                )}
+                ) : null}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/50 to-transparent" />
                 <p className="absolute bottom-10 left-4 text-xs font-medium text-white/80">
                   {photo.label}
                 </p>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 

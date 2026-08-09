@@ -12,6 +12,8 @@ RUN /opt/mask-venv/bin/pip install --no-cache-dir -r /tmp/requirements-mask-rest
   && /opt/mask-venv/bin/python3 -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider']).prepare(ctx_id=-1)"
 ENV MASK_RESTRICT_PYTHON=/opt/mask-venv/bin/python3
 ENV CAPTURE_PREVIEW_PYTHON=/opt/mask-venv/bin/python3
+ENV WRINKLE_LINES_PYTHON=/opt/mask-venv/bin/python3
+ENV PROXY_REGIONS_PYTHON=/opt/mask-venv/bin/python3
 ENV HOME=/home/skinfit NPM_CONFIG_CACHE=/app/.npm MPLCONFIGDIR=/app/.matplotlib
 RUN groupadd -r skinfit && useradd -r -g skinfit -d /home/skinfit skinfit \
   && mkdir -p /home/skinfit/.config /home/skinfit/.insightface /app/.npm /app/.matplotlib /uploads \

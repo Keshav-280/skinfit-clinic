@@ -391,6 +391,10 @@ def analyze_face(model, bgr: np.ndarray, *, include_image: bool = True) -> dict[
     }
     h_img, w_img = int(bgr.shape[0]), int(bgr.shape[1])
     max_dim = max(h_img, w_img) or 1
+    # Percentage-based regions for frontend SVG overlays (ScanDetectionOverlay).
+    # Always included so clients do not need to derive from pixel bboxes.
+    # Confidence floor (0.35) is slightly above YOLO CONF (0.3) to cut noise.
+    REGION_CONF_MIN = 0.35
     result["detection_regions"] = [
         {
             "class": d.name,
@@ -411,6 +415,7 @@ def analyze_face(model, bgr: np.ndarray, *, include_image: bool = True) -> dict[
             ],
         }
         for d in dets_active
+        if d.conf >= REGION_CONF_MIN
     ]
 
     if include_image:

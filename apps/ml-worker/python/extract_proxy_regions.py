@@ -95,7 +95,8 @@ def face_mesh_context():
         static_image_mode=True,
         max_num_faces=1,
         refine_landmarks=True,
-        min_detection_confidence=0.5,
+        # Stricter gate: unreliable landmarking → empty proxy regions.
+        min_detection_confidence=0.7,
     )
 
 
@@ -346,17 +347,22 @@ def zone_allowed(
     score: float,
     stats: dict[str, Any] | None,
 ) -> bool:
-    """Strict gating: score 1 never; score 2 needs attention confirm; 3+ needs zone>face."""
+    """Strict gating: score 1 never; score 2 needs attention; no-attn needs ≥3.5."""
     if score <= 1:
         return False
     if stats is None:
-        # No DINOv2 map: never show mild (2); allow moderate+ on landmarks only.
-        return score >= 3
+        # No DINOv2 map: require clearer severity so mild issues don't look like FPs.
+        return score >= 3.5
     if not stats["passes_vs_face"]:
         return False
     if score < 3:
         return bool(stats["passes_score2"])
     return True
+
+
+def face_oval_confidence(landmarks: Any) -> float:
+    """Mean visibility/presence over face oval; 1.0 if fields unavailable."""
+    return zone_landmark_confidence(landmarks, FACE_OVAL)
 
 
 def blend_center(
@@ -602,6 +608,10 @@ def extract_proxy_regions(
         raise RuntimeError("no face landmarks detected")
 
     landmarks = res.multi_face_landmarks[0].landmark
+    # Global safety: weak landmark confidence → wrong zones; skip entirely.
+    if face_oval_confidence(landmarks) < LANDMARK_CONF_MIN:
+        return [], False
+
     face_mask = face_patch_mask(landmarks, w, h)
 
     activations = patch_activations
@@ -610,14 +620,17 @@ def extract_proxy_regions(
         activations = compute_dino_patch_l2(source_bgr)
         attention_used = activations is not None
 
+    # Diffuse fallback needs clearer severity when attention is unavailable.
+    diffuse_min = 3.5 if not attention_used else 3.0
+
     candidates: list[dict[str, Any]] = []
 
     # ── Pigmentation: per-cheek + forehead independently ──
     pig = clamp_score(scores.get("pigmentation"))
     if pig is not None and pig > 1:
         pig_zones_before = len(candidates)
-        for idxs in (PIGMENT_LEFT_CHEEK, PIGMENT_RIGHT_CHEEK, PIGMENT_FOREHEAD):
-            # Forehead only considered for score ≥ 2 (still gated by attention)
+        cheek_zones = (PIGMENT_LEFT_CHEEK, PIGMENT_RIGHT_CHEEK)
+        for idxs in cheek_zones:
             ell = try_zone_ellipse(
                 landmarks,
                 idxs,
@@ -627,14 +640,27 @@ def extract_proxy_regions(
                 score=pig,
                 activations=activations,
                 face_mask=face_mask,
-                min_rx=3.0 if idxs is PIGMENT_FOREHEAD else 2.0,
-                min_ry=2.0 if idxs is PIGMENT_FOREHEAD else 1.5,
             )
             if ell:
-                if idxs is PIGMENT_FOREHEAD:
-                    ell["rx_pct"] = round(max(ell["rx_pct"], 5.0), 2)
                 candidates.append(ell)
-        if len(candidates) == pig_zones_before and pig >= 3:
+        # Forehead only for heavy pigmentation (score ≥ 4).
+        if pig >= 4:
+            ell = try_zone_ellipse(
+                landmarks,
+                PIGMENT_FOREHEAD,
+                w,
+                h,
+                cls="pigmentation",
+                score=pig,
+                activations=activations,
+                face_mask=face_mask,
+                min_rx=3.0,
+                min_ry=2.0,
+            )
+            if ell:
+                ell["rx_pct"] = round(max(ell["rx_pct"], 5.0), 2)
+                candidates.append(ell)
+        if len(candidates) == pig_zones_before and pig >= diffuse_min:
             diff = diffuse_face_ellipse(
                 landmarks, w, h, cls="pigmentation", score=pig
             )
@@ -658,7 +684,7 @@ def extract_proxy_regions(
             )
             if ell:
                 candidates.append(ell)
-        if len(candidates) == before and scars >= 3:
+        if len(candidates) == before and scars >= diffuse_min:
             diff = diffuse_face_ellipse(
                 landmarks, w, h, cls="acne_scars", score=scars
             )
@@ -679,14 +705,14 @@ def extract_proxy_regions(
                 score=under,
                 activations=activations,
                 face_mask=face_mask,
-                base_rx_pct=3.0,
-                base_ry_pct=1.5,
-                min_rx=2.0,
-                min_ry=1.0,
+                base_rx_pct=2.4,
+                base_ry_pct=1.2,
+                min_rx=1.6,
+                min_ry=0.8,
             )
             if ell:
                 candidates.append(ell)
-        if len(candidates) == before and under >= 3:
+        if len(candidates) == before and under >= diffuse_min:
             diff = diffuse_face_ellipse(
                 landmarks, w, h, cls="under_eye", score=under
             )
@@ -710,7 +736,7 @@ def extract_proxy_regions(
             )
             if line:
                 candidates.append(line)
-        if len(candidates) == before and sag >= 3:
+        if len(candidates) == before and sag >= diffuse_min:
             diff = diffuse_face_ellipse(
                 landmarks, w, h, cls="sagging_volume", score=sag
             )

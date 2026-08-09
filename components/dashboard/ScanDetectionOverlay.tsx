@@ -97,18 +97,46 @@ function proxyOpacity(
   score: number,
   matches: boolean,
   regionOpacity?: number,
-  diffuse?: boolean
+  diffuse?: boolean,
+  /** When viewing "all", dial proxies back ~30% vs model detections. */
+  allConcernDim?: boolean
 ): number {
   if (!matches) return 0.08;
+  let opacity: number;
   if (typeof regionOpacity === "number" && Number.isFinite(regionOpacity)) {
-    return regionOpacity;
+    opacity = regionOpacity;
+  } else if (diffuse) {
+    opacity = 0.3;
+  } else {
+    const s = Math.round(Math.max(1, Math.min(5, score)));
+    if (s <= 2) opacity = 0.35;
+    else if (s === 3) opacity = 0.55;
+    else if (s === 4) opacity = 0.75;
+    else opacity = 0.9;
   }
-  if (diffuse) return 0.3;
-  const s = Math.round(Math.max(1, Math.min(5, score)));
-  if (s <= 2) return 0.35;
-  if (s === 3) return 0.55;
-  if (s === 4) return 0.75;
-  return 0.9;
+  if (allConcernDim) opacity *= 0.7;
+  return opacity;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const full =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+  const n = Number.parseInt(full, 16);
+  if (!Number.isFinite(n)) return `rgba(107,114,128,${alpha})`;
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function proxyLabelText(cls: string): string {
+  return cls.replace(/_/g, " ");
 }
 
 type MergedCircle = {
@@ -172,7 +200,7 @@ function mergeNearbyRegions(
       const dist = Math.hypot(m.center_pct[0] - cx, m.center_pct[1] - cy);
       r = Math.max(r, dist + m.radius_pct);
     }
-    r = Math.max(r, 0.8);
+    r = Math.max(r, 1.2);
 
     const label = seed.display_class || seed.class;
     out.push({
@@ -335,6 +363,8 @@ export function ScanDetectionOverlay({
   );
 
   const hasProxy = proxyEllipses.length > 0 || proxyPolylines.length > 0;
+  const allConcernDim = activeConcern === "all";
+  const showProxyLabels = activeConcern !== "all";
 
   if (
     circles.length === 0 &&
@@ -393,7 +423,13 @@ export function ScanDetectionOverlay({
               vectorEffect="non-scaling-stroke"
               className="transition-opacity duration-300 ease-out"
               style={{
-                opacity: proxyOpacity(p.score, matches, p.opacity),
+                opacity: proxyOpacity(
+                  p.score,
+                  matches,
+                  p.opacity,
+                  false,
+                  allConcernDim
+                ),
               }}
             />
           );
@@ -422,11 +458,19 @@ export function ScanDetectionOverlay({
         ))}
         {proxyEllipses.map((e, i) => {
           const matches = proxyMatchesConcern(e.class, activeConcern);
+          const stroke = proxyStroke(e.class);
           const title =
             e.label ||
             (e.diffuse
-              ? `Diffuse ${e.class.replace(/_/g, " ")}`
-              : e.class.replace(/_/g, " "));
+              ? `Diffuse ${proxyLabelText(e.class)}`
+              : proxyLabelText(e.class));
+          const op = proxyOpacity(
+            e.score,
+            matches,
+            e.opacity,
+            e.diffuse,
+            allConcernDim
+          );
           return (
             <ellipse
               key={`proxy-ell-${e.class}-${i}`}
@@ -434,26 +478,48 @@ export function ScanDetectionOverlay({
               cy={e.center_pct[1]}
               rx={e.rx_pct}
               ry={e.ry_pct}
-              fill="none"
-              stroke={proxyStroke(e.class)}
+              fill={hexToRgba(stroke, 0.05)}
+              stroke={stroke}
               strokeWidth={1}
               strokeDasharray="8 4"
               vectorEffect="non-scaling-stroke"
               className="transition-opacity duration-300 ease-out"
-              style={{
-                opacity: proxyOpacity(
-                  e.score,
-                  matches,
-                  e.opacity,
-                  e.diffuse
-                ),
-              }}
+              style={{ opacity: op }}
             >
               <title>{title}</title>
             </ellipse>
           );
         })}
       </svg>
+      {showProxyLabels
+        ? proxyEllipses.map((e, i) => {
+            const matches = proxyMatchesConcern(e.class, activeConcern);
+            if (!matches) return null;
+            const stroke = proxyStroke(e.class);
+            const op = proxyOpacity(
+              e.score,
+              matches,
+              e.opacity,
+              e.diffuse,
+              allConcernDim
+            );
+            const top = Math.min(98, e.center_pct[1] + e.ry_pct + 0.6);
+            return (
+              <span
+                key={`proxy-lbl-${e.class}-${i}`}
+                className="absolute -translate-x-1/2 whitespace-nowrap text-[7px] leading-none tracking-wide transition-opacity duration-300 ease-out"
+                style={{
+                  left: `${e.center_pct[0]}%`,
+                  top: `${top}%`,
+                  color: stroke,
+                  opacity: op,
+                }}
+              >
+                {proxyLabelText(e.class)}
+              </span>
+            );
+          })
+        : null}
     </div>
   );
 }

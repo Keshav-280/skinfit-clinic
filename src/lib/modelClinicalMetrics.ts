@@ -42,7 +42,12 @@ export type ModelFeatureScores = {
 
 export function severityToClarity(severity: number): number {
   const s = Math.max(1, Math.min(5, severity));
-  return Math.round(100 - ((s - 1) / 4) * 100);
+  let clarity = Math.round(100 - ((s - 1) / 4) * 100);
+  // Floor: never show a broken-looking 0%.
+  clarity = Math.max(5, clarity);
+  // Ceiling: mild issues (severity > 1.2) must not round to a perfect 100.
+  if (s > 1.2) clarity = Math.min(95, clarity);
+  return clarity;
 }
 
 function num(v: unknown): number | undefined {

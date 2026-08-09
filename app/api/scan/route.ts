@@ -461,6 +461,7 @@ export async function POST(request: NextRequest) {
         detection_regions = merged.detection_regions;
 
         let centreJpegB64: string | null = null;
+        let smilingJpegB64: string | null = null;
         const ensureCentreJpeg = async () => {
           if (centreJpegB64) return centreJpegB64;
           const { fileToJpegB64 } = await import(
@@ -468,6 +469,14 @@ export async function POST(request: NextRequest) {
           );
           centreJpegB64 = await fileToJpegB64(filesForV2.centre);
           return centreJpegB64;
+        };
+        const ensureSmilingJpeg = async () => {
+          if (smilingJpegB64) return smilingJpegB64;
+          const { fileToJpegB64 } = await import(
+            "@/src/lib/extractWrinkleLines"
+          );
+          smilingJpegB64 = await fileToJpegB64(filesForV2.smiling);
+          return smilingJpegB64;
         };
 
         if (merged.wrinkleMaskDataUri) {
@@ -477,7 +486,7 @@ export async function POST(request: NextRequest) {
             );
             wrinkle_lines = await extractWrinkleLinesFromImages({
               wrinkleMaskDataUriOrB64: merged.wrinkleMaskDataUri,
-              sourceJpegB64: await ensureCentreJpeg(),
+              sourceJpegB64: await ensureSmilingJpeg(),
             });
           } catch (err) {
             console.warn("[scan] wrinkle line extraction skipped", {
@@ -668,6 +677,11 @@ export async function POST(request: NextRequest) {
         ...(annotation_regions && annotation_regions.length > 0
           ? { annotation_regions }
           : {}),
+        annotation_poses: {
+          detection_regions: "centre",
+          wrinkle_lines: "smiling",
+          proxy_regions: "centre",
+        },
       },
     };
 

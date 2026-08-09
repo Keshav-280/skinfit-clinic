@@ -210,13 +210,21 @@ export async function processScanJob(
   let wrinkle_lines: import("@/src/lib/scanDetectionRegions").WrinkleLine[] = [];
   let proxy_regions: import("@/src/lib/scanDetectionRegions").ProxyRegion[] = [];
   let centreJpegB64: string | null = null;
+  let smilingJpegB64: string | null = null;
   const ensureCentreJpeg = async () => {
     if (centreJpegB64) return centreJpegB64;
     const { fileToJpegB64 } = await import("@/src/lib/extractWrinkleLines");
     centreJpegB64 = await fileToJpegB64(filesForV2.centre);
     return centreJpegB64;
   };
+  const ensureSmilingJpeg = async () => {
+    if (smilingJpegB64) return smilingJpegB64;
+    const { fileToJpegB64 } = await import("@/src/lib/extractWrinkleLines");
+    smilingJpegB64 = await fileToJpegB64(filesForV2.smiling);
+    return smilingJpegB64;
+  };
 
+  // Wrinkle mask is from smiling pose — extract polylines against smiling photo only.
   if (merged.wrinkleMaskDataUri) {
     try {
       const { extractWrinkleLinesFromImages } = await import(
@@ -224,12 +232,13 @@ export async function processScanJob(
       );
       wrinkle_lines = await extractWrinkleLinesFromImages({
         wrinkleMaskDataUriOrB64: merged.wrinkleMaskDataUri,
-        sourceJpegB64: await ensureCentreJpeg(),
+        sourceJpegB64: await ensureSmilingJpeg(),
       });
       if (wrinkle_lines.length > 0) {
         logger.info("wrinkle_lines_extracted", {
           jobId,
           count: wrinkle_lines.length,
+          pose: "smiling",
         });
       }
     } catch (err) {
@@ -240,6 +249,7 @@ export async function processScanJob(
     }
   }
 
+  // Proxy zones align to centre (same pose as acne detector / primary face scores).
   try {
     const { extractProxyRegionsFromImage } = await import(
       "@/src/lib/extractProxyRegions"
@@ -261,6 +271,7 @@ export async function processScanJob(
       logger.info("proxy_regions_extracted", {
         jobId,
         count: proxy_regions.length,
+        pose: "centre",
       });
     }
   } catch (err) {
@@ -413,6 +424,11 @@ export async function processScanJob(
         ...(wrinkle_lines.length > 0 ? { wrinkle_lines } : {}),
         ...(proxy_regions.length > 0 ? { proxy_regions } : {}),
         ...(annotation_regions.length > 0 ? { annotation_regions } : {}),
+        annotation_poses: {
+          detection_regions: "centre",
+          wrinkle_lines: "smiling",
+          proxy_regions: "centre",
+        },
       },
     })
     .returning({ id: scans.id });
