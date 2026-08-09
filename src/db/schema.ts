@@ -333,6 +333,15 @@ export const scans = pgTable("scans", {
       kaiScore?: number;
       modelFeatureScores?: Record<string, number | null>;
     };
+    detection_regions?: unknown[];
+    wrinkle_lines?: unknown[];
+    proxy_regions?: unknown[];
+    annotation_regions?: unknown[];
+    annotation_poses?: {
+      detection_regions?: string;
+      wrinkle_lines?: string;
+      proxy_regions?: string;
+    };
   }>(),
   /** Bounding-box annotations from Roboflow (optional) */
   annotations: jsonb("annotations").$type<unknown[]>(),
