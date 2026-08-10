@@ -334,6 +334,7 @@ export const scans = pgTable("scans", {
       modelFeatureScores?: Record<string, number | null>;
     };
     detection_regions?: unknown[];
+    detection_regions_by_pose?: Record<string, unknown[]>;
     wrinkle_lines?: unknown[];
     proxy_regions?: unknown[];
     annotation_regions?: unknown[];

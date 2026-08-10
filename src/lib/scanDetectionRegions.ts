@@ -149,6 +149,26 @@ export function parseScanDetectionRegions(scores: unknown): DetectionRegion[] {
   return out;
 }
 
+/** Reads `scans.scores.detection_regions_by_pose` → { poseId: DetectionRegion[] }. */
+export function parseScanDetectionRegionsByPose(
+  scores: unknown
+): Record<string, DetectionRegion[]> {
+  if (!scores || typeof scores !== "object" || Array.isArray(scores)) return {};
+  const raw = (scores as Record<string, unknown>).detection_regions_by_pose;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, DetectionRegion[]> = {};
+  for (const [pose, list] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    const parsed: DetectionRegion[] = [];
+    for (const item of list) {
+      const p = parseDetectionRegion(item);
+      if (p) parsed.push(p);
+    }
+    if (parsed.length > 0) out[pose] = parsed;
+  }
+  return out;
+}
+
 /** Reads `scans.scores.wrinkle_lines`. */
 export function parseScanWrinkleLines(scores: unknown): WrinkleLine[] {
   if (!scores) return [];

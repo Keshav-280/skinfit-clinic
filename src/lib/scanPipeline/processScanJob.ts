@@ -225,6 +225,42 @@ export async function processScanJob(
     }
   }
 
+  // Acne detector on every pose. Grade/score stays from the centre pose above;
+  // the other poses contribute detection markers only, so spots show on all
+  // photos (a lesion on the left cheek is only visible in the left profile).
+  const detection_regions_by_pose: Record<
+    string,
+    import("@/src/lib/scanDetectionRegions").DetectionRegion[]
+  > = {};
+  if (merged.detection_regions && merged.detection_regions.length > 0) {
+    detection_regions_by_pose.centre = merged.detection_regions;
+  }
+  if (acneDetectorBase && !acneDetectorDisabled) {
+    for (const pose of ["left", "right", "eyes_closed", "smiling"] as const) {
+      try {
+        const r = await runAcneDetector(filesForV2[pose], {
+          baseUrl: acneDetectorBase,
+          apiKey: inferenceSecret,
+          timeoutMs: inferenceTimeoutMs,
+        });
+        if (Array.isArray(r.detection_regions) && r.detection_regions.length > 0) {
+          detection_regions_by_pose[pose] = r.detection_regions;
+          logger.info("acne_detection_regions_pose", {
+            jobId,
+            pose,
+            count: r.detection_regions.length,
+          });
+        }
+      } catch (err) {
+        logger.warn("acne_detector_pose_skipped", {
+          jobId,
+          pose,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
   let wrinkle_lines: import("@/src/lib/scanDetectionRegions").WrinkleLine[] = [];
   let proxy_regions: import("@/src/lib/scanDetectionRegions").ProxyRegion[] = [];
   let centreJpegB64: string | null = null;
@@ -445,6 +481,9 @@ export async function processScanJob(
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
         ...(merged.detection_regions && merged.detection_regions.length > 0
           ? { detection_regions: merged.detection_regions }
+          : {}),
+        ...(Object.keys(detection_regions_by_pose).length > 0
+          ? { detection_regions_by_pose }
           : {}),
         ...(wrinkle_lines.length > 0 ? { wrinkle_lines } : {}),
         ...(proxy_regions.length > 0 ? { proxy_regions } : {}),

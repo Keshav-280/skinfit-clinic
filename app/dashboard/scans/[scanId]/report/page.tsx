@@ -10,6 +10,7 @@ import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePat
 import type { FaceCaptureRef } from "../../../../../src/lib/resolveScanImageUrl";
 import {
   parseScanDetectionRegions,
+  parseScanDetectionRegionsByPose,
   parseScanProxyRegions,
   parseScanWrinkleLines,
 } from "../../../../../src/lib/scanDetectionRegions";
@@ -313,6 +314,7 @@ export default async function KaiScanReportPage({
         parameters={parameters}
         scanImages={scanImages}
         detectionRegions={parseScanDetectionRegions(row.scores)}
+        detectionRegionsByPose={parseScanDetectionRegionsByPose(row.scores)}
         wrinkleLines={parseScanWrinkleLines(row.scores)}
         proxyRegions={parseScanProxyRegions(row.scores)}
         isExistingPatient={scoresUnlocked}
@@ -537,6 +539,7 @@ export default async function KaiScanReportPage({
       }}
       scanImages={currentImages}
       detectionRegions={parseScanDetectionRegions(row.scores)}
+      detectionRegionsByPose={parseScanDetectionRegionsByPose(row.scores)}
       wrinkleLines={parseScanWrinkleLines(row.scores)}
       proxyRegions={parseScanProxyRegions(row.scores)}
       parameters={paramRows}

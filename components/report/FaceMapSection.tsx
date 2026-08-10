@@ -20,6 +20,8 @@ export type FaceMapChip = {
 type FaceMapSectionProps = {
   scanImages: Array<{ url: string; label: string; poseId?: string }>;
   detectionRegions?: DetectionRegion[];
+  /** Per-pose acne detections; falls back to `detectionRegions` (centre) when absent. */
+  detectionRegionsByPose?: Record<string, DetectionRegion[]>;
   wrinkleLines?: WrinkleLine[];
   proxyRegions?: ProxyRegion[];
   parameterGrades: FaceMapChip[];
@@ -47,6 +49,7 @@ function poseForLabel(label: string, poseId: string | undefined, index: number):
 export function FaceMapSection({
   scanImages,
   detectionRegions = [],
+  detectionRegionsByPose,
   wrinkleLines = [],
   proxyRegions = [],
   parameterGrades,
@@ -83,8 +86,13 @@ export function FaceMapSection({
     ? poseForLabel(photo.label, photo.poseId, activeIndex)
     : "centre";
 
-  const showAcneProxy = pose === "centre";
+  // Acne shows on every pose (per-pose detections); proxy stays on the centre
+  // pose and wrinkles on the smiling pose (landmark/mask models are frontal).
+  const acneForPose =
+    detectionRegionsByPose?.[pose] ??
+    (pose === "centre" ? detectionRegions : []);
   const showWrinkles = pose === "smiling";
+  const showProxy = pose === "centre";
 
   const chips = useMemo(
     () => [{ id: "all" as const, name: "All", grade: "", color: "mid" as const }, ...parameterGrades],
@@ -134,9 +142,9 @@ export function FaceMapSection({
         )}
         {photo ? (
           <ScanDetectionOverlay
-            regions={showAcneProxy ? detectionRegions : []}
+            regions={acneForPose}
             wrinkleLines={showWrinkles ? wrinkleLines : []}
-            proxyRegions={showAcneProxy ? proxyRegions : []}
+            proxyRegions={showProxy ? proxyRegions : []}
             activeConcern={activeConcern}
           />
         ) : null}

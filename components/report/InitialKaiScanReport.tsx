@@ -30,6 +30,7 @@ export type InitialKaiScanReportProps = {
   parameters: KaiReportParamRow[];
   scanImages: Array<{ url: string; label: string; poseId?: string }>;
   detectionRegions: DetectionRegion[];
+  detectionRegionsByPose?: Record<string, DetectionRegion[]>;
   wrinkleLines: WrinkleLine[];
   proxyRegions: ProxyRegion[];
   isExistingPatient: boolean;
@@ -49,6 +50,7 @@ export function InitialKaiScanReport({
   parameters,
   scanImages,
   detectionRegions,
+  detectionRegionsByPose,
   wrinkleLines,
   proxyRegions,
   isExistingPatient,
@@ -129,6 +131,7 @@ export function InitialKaiScanReport({
           <FaceMapSection
             scanImages={scanImages}
             detectionRegions={detectionRegions}
+            detectionRegionsByPose={detectionRegionsByPose}
             wrinkleLines={wrinkleLines}
             proxyRegions={proxyRegions}
             parameterGrades={chips}
