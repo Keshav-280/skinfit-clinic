@@ -25,6 +25,20 @@ FACE_OVAL = [
     172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
 ]
 
+# Non-skin regions cut out of the face mask. YOLO reliably fires on brow hair,
+# eyelid/lash shadow and lip edges; those are never acne.
+LEFT_EYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]
+RIGHT_EYE = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398]
+LEFT_BROW = [70, 63, 105, 66, 107, 55, 65, 52, 53, 46]
+RIGHT_BROW = [300, 293, 334, 296, 336, 285, 295, 282, 283, 276]
+LIPS = [
+    61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291,
+    409, 270, 269, 267, 0, 37, 39, 40, 185,
+]
+EXCLUDE_ZONES = [LEFT_EYE, RIGHT_EYE, LEFT_BROW, RIGHT_BROW, LIPS]
+# Dilate cut-outs so lashes/brow edges just outside the landmark ring are covered.
+EXCLUDE_DILATE_PX = int(os.getenv("EXCLUDE_DILATE_PX", "6"))
+
 EXCLUDED = {"dark spot"}
 COMEDONAL = "blackheads+whiteheads"
 COMEDONAL_PARTS = {"blackheads", "whiteheads"}
@@ -113,8 +127,27 @@ def build_face_mask(bgr: np.ndarray) -> tuple[np.ndarray, int, bool]:
         mask[:] = 255
         return mask, h * w, False
     lm = res.multi_face_landmarks[0].landmark
-    pts = np.array([(int(lm[i].x * w), int(lm[i].y * h)) for i in FACE_OVAL], dtype=np.int32)
-    cv2.fillConvexPoly(mask, pts, 255)
+
+    def poly(indices: list[int]) -> np.ndarray:
+        return np.array(
+            [(int(lm[i].x * w), int(lm[i].y * h)) for i in indices if i < len(lm)],
+            dtype=np.int32,
+        )
+
+    # fillPoly (not fillConvexPoly): the face oval is concave around the jaw and
+    # temples, and a convex hull spills into hair, ears and neck.
+    cv2.fillPoly(mask, [poly(FACE_OVAL)], 255)
+
+    cut = np.zeros((h, w), dtype=np.uint8)
+    for zone in EXCLUDE_ZONES:
+        pts = poly(zone)
+        if pts.shape[0] >= 3:
+            cv2.fillPoly(cut, [pts], 255)
+    if EXCLUDE_DILATE_PX > 0:
+        k = 2 * EXCLUDE_DILATE_PX + 1
+        cut = cv2.dilate(cut, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k)))
+    mask[cut > 0] = 0
+
     return mask, int(cv2.countNonZero(mask)), True
 
 
@@ -391,9 +424,13 @@ def analyze_face(model, bgr: np.ndarray, *, include_image: bool = True) -> dict[
     }
     h_img, w_img = int(bgr.shape[0]), int(bgr.shape[1])
     max_dim = max(h_img, w_img) or 1
-    # Confidence floor aligns with YOLO CONF so graded lesions are not dropped
-    # from the SVG overlay while still appearing in grade.score.
-    REGION_CONF_MIN = float(os.getenv("REGION_CONF_MIN", str(CONF)))
+    # Drawn markers are held to a higher bar than grading: a 0.3-confidence hit is
+    # useful signal in aggregate but reads as a false positive when circled on a
+    # patient's face. Grade still counts every detection above CONF.
+    REGION_CONF_MIN = float(os.getenv("REGION_CONF_MIN", "0.5"))
+    # Without landmarks the mask is the whole frame, so detections on hair,
+    # clothing and background would be drawn as lesions. Grade keeps them.
+    region_source = dets_active if mp_ok else []
     result["detection_regions"] = [
         {
             "class": d.name,
@@ -413,7 +450,7 @@ def analyze_face(model, bgr: np.ndarray, *, include_image: bool = True) -> dict[
                 round(d.y2 / h_img * 100, 2),
             ],
         }
-        for d in dets_active
+        for d in region_source
         if d.conf >= REGION_CONF_MIN
     ]
 
