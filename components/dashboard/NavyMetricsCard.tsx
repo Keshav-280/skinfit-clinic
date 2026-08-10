@@ -119,6 +119,7 @@ function LockedRingOverlay({
         fill="transparent"
         stroke="transparent"
         strokeWidth={outer - inner}
+        style={{ pointerEvents: "all" }}
         className="cursor-pointer"
         onPointerEnter={(e) => {
           if (e.pointerType === "mouse") onHoverIn();

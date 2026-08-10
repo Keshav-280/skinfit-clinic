@@ -334,13 +334,13 @@ function RecommendedVideosSection() {
   return (
     <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
       <DashboardSectionHeader icon={Play} title="RECOMMENDED VIDEOS" />
-      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 md:mx-0 md:px-0">
         {RECOMMENDED_VIDEOS.map((video) => (
           <button
             key={video.driveId}
             type="button"
             onClick={() => setActive(video)}
-            className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-auto"
+            className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-[calc((100%-1.5rem)/3)]"
           >
             <div className="relative flex aspect-video items-center justify-center bg-[#2C3E6B]">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm">
