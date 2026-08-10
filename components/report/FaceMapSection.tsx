@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent } from "react";
 import { ScanDetectionOverlay } from "@/components/dashboard/ScanDetectionOverlay";
 import type { ConcernChipId } from "@/components/dashboard/ConcernChips";
 import type {
@@ -53,8 +53,31 @@ export function FaceMapSection({
 }: FaceMapSectionProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeConcern, setActiveConcern] = useState<ConcernChipId>("all");
+  // Match the frame to the photo's real aspect ratio so object-cover never crops
+  // (a crop shifts the percentage-based overlay markers off their targets).
+  const [aspect, setAspect] = useState<number | null>(null);
+  const swipeStartX = useRef<number | null>(null);
 
   const photos = scanImages.length > 0 ? scanImages : [];
+
+  function selectIndex(i: number) {
+    const n = photos.length;
+    if (n === 0) return;
+    setActiveIndex(((i % n) + n) % n);
+    setAspect(null);
+  }
+
+  function onSwipeStart(e: PointerEvent<HTMLDivElement>) {
+    swipeStartX.current = e.clientX;
+  }
+  function onSwipeEnd(e: PointerEvent<HTMLDivElement>) {
+    const start = swipeStartX.current;
+    swipeStartX.current = null;
+    if (start == null || photos.length <= 1) return;
+    const dx = e.clientX - start;
+    if (Math.abs(dx) < 40) return;
+    selectIndex(activeIndex + (dx < 0 ? 1 : -1));
+  }
   const photo = photos[activeIndex] ?? photos[0];
   const pose = photo
     ? poseForLabel(photo.label, photo.poseId, activeIndex)
@@ -81,12 +104,27 @@ export function FaceMapSection({
         ) : null}
       </div>
 
-      <div className="relative mb-[13px] aspect-[4/3] overflow-hidden rounded-[14px] bg-gradient-to-br from-[#DCE4DA] to-[#C6D2C8]">
+      <div
+        className="relative mb-[13px] touch-pan-y select-none overflow-hidden rounded-[14px] bg-gradient-to-br from-[#DCE4DA] to-[#C6D2C8]"
+        style={{ aspectRatio: aspect ?? 4 / 3 }}
+        onPointerDown={onSwipeStart}
+        onPointerUp={onSwipeEnd}
+        onPointerCancel={() => {
+          swipeStartX.current = null;
+        }}
+      >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={photo.url}
             alt={photo.label}
+            onLoad={(e) => {
+              const el = e.currentTarget;
+              if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+                setAspect(el.naturalWidth / el.naturalHeight);
+              }
+            }}
+            draggable={false}
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
@@ -112,7 +150,7 @@ export function FaceMapSection({
                 key={i}
                 type="button"
                 aria-label={`Photo ${i + 1}`}
-                onClick={() => setActiveIndex(i)}
+                onClick={() => selectIndex(i)}
                 className={`block rounded-full transition-all ${
                   i === activeIndex
                     ? "h-1 w-3 rounded-sm bg-kai-navy/55"
