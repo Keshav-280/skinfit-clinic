@@ -27,6 +27,7 @@ import {
   Play,
   Activity,
   NotebookPen,
+  X,
 } from "lucide-react";
 import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { PatientDoctorHomeSections } from "@/components/dashboard/PatientDoctorHomeSections";
@@ -84,23 +85,23 @@ const TOP_ARTICLES = [
   },
 ] as const;
 
-const RECOMMENDED_VIDEOS = [
-  {
-    title: "Meet SkinFit Wellness — Our Mission",
-    duration: "2:30",
-    href: "#",
-  },
-  {
-    title: "How to Take the Perfect AI Skin Scan",
-    duration: "1:45",
-    href: "#",
-  },
-  {
-    title: "Understanding Your Skin Report",
-    duration: "3:15",
-    href: "#",
-  },
-] as const;
+const RECOMMENDED_VIDEOS: ReadonlyArray<{
+  title: string;
+  driveId: string;
+  duration?: string;
+}> = [
+  { title: "Understanding Mounjaro", driveId: "1nqQegQ9MR4kr3PknW5msHnBEWdpczyPj" },
+  { title: "Laser Hair Removal with Dr Mili", driveId: "1RgpO9GcRdIs8wsRt_mxORQW-gu5A476a" },
+  { title: "HIFU Skin Tightening", driveId: "1jbxmZPU7OPW7rzGmgwhde-FYPqZZLDJc" },
+  { title: "A Quick Look at SkinFit", driveId: "1sZPcHz5H2po4KnjUOy_xey9_UsgaEklc" },
+  { title: "Meet kAI, Your Skin Companion", driveId: "1AYhBi91pCj1_ySBQmmx-a92uczlpBhcX" },
+  { title: "Laser Hair Removal Explained", driveId: "14v-yziDJAk2G9HqLPp612KRcKAif-g3Y" },
+  { title: "Anti-Wrinkle Injections", driveId: "1oYXJzIV1l5vJBH0rIlTw6ORXKgk0Qpvj" },
+  { title: "SkinFit With Our Doctors", driveId: "1wA4enEyaoVbtbofEZzPAxofvMZJS622d" },
+  { title: "Inside SkinFit", driveId: "1IbO1w0qnw_TRhefEfzJ-jARtoUZvbh6m" },
+  { title: "SkinFit Highlights", driveId: "1tviy2gW7rRWRzwAWpyXWN82y0BZ9q0Jr" },
+  { title: "Meet Our Doctors", driveId: "1K7vfUSFuby4ZCpxBpDZzXxT7QVXCs_9Q" },
+];
 
 function apptStatusBadge(status: UpcomingApptRow["status"]) {
   switch (status) {
@@ -315,30 +316,86 @@ function TopArticlesSection() {
 }
 
 function RecommendedVideosSection() {
+  const [active, setActive] = useState<{
+    title: string;
+    driveId: string;
+    duration?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActive(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active]);
+
   return (
     <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
       <DashboardSectionHeader icon={Play} title="RECOMMENDED VIDEOS" />
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
         {RECOMMENDED_VIDEOS.map((video) => (
-          <Link
-            key={video.title}
-            href={video.href}
-            className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-auto"
+          <button
+            key={video.driveId}
+            type="button"
+            onClick={() => setActive(video)}
+            className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-auto"
           >
             <div className="relative flex aspect-video items-center justify-center bg-[#2C3E6B]">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm">
                 <Play className="h-5 w-5 fill-current" aria-hidden />
               </span>
-              <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-white">
-                {video.duration}
-              </span>
+              {video.duration ? (
+                <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-white">
+                  {video.duration}
+                </span>
+              ) : null}
             </div>
             <p className="px-3 py-2.5 text-[13px] font-bold leading-snug text-[#2C3E6B]">
               {video.title}
             </p>
-          </Link>
+          </button>
         ))}
       </div>
+
+      {active ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={active.title}
+          onClick={() => setActive(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] px-4 py-3">
+              <p className="min-w-0 truncate text-[14px] font-bold text-[#2C3E6B]">
+                {active.title}
+              </p>
+              <button
+                type="button"
+                onClick={() => setActive(null)}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6B7280] transition hover:bg-[#F3F4F6] hover:text-[#18181b]"
+                aria-label="Close video"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <div className="aspect-video w-full bg-black">
+              <iframe
+                title={active.title}
+                src={`https://drive.google.com/file/d/${active.driveId}/preview`}
+                className="h-full w-full border-0"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
