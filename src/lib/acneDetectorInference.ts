@@ -180,9 +180,12 @@ export function applyAcneDetectorToScanPayload(
   );
   const imgW = result.meta?.image_size?.[0] ?? 0;
   const imgH = result.meta?.image_size?.[1] ?? 0;
+  const activeDets = Array.isArray(result.detections?.active)
+    ? result.detections.active
+    : [];
   const acneRegions =
     imgW > 0 && imgH > 0
-      ? result.detections.active.slice(0, 8).map((d) => ({
+      ? activeDets.slice(0, 8).map((d) => ({
           issue: "Acne",
           coordinates: {
             x: Math.round((d.center[0] / imgW) * 1000) / 10,
@@ -192,21 +195,22 @@ export function applyAcneDetectorToScanPayload(
       : [];
 
   const modelEight = { ...payload.modelEight, activeAcne: clarity };
-  let detectionRegions = Array.isArray(result.detection_regions)
-    ? result.detection_regions
-        .map((r) => parseDetectionRegion(r))
-        .filter((r): r is DetectionRegion => r != null)
-    : [];
 
-  // Older detector builds: derive percentage regions from pixel detections.
-  if (detectionRegions.length === 0 && imgW > 0 && imgH > 0) {
+  // Prefer percentage regions from the detector; fall back to pixel bboxes.
+  let detectionRegions: DetectionRegion[] = [];
+  if (Array.isArray(result.detection_regions)) {
+    for (const raw of result.detection_regions) {
+      const parsed = parseDetectionRegion(raw);
+      if (parsed) detectionRegions.push(parsed);
+    }
+  }
+  if (detectionRegions.length === 0 && imgW > 0 && imgH > 0 && activeDets.length > 0) {
     const maxDim = Math.max(imgW, imgH);
-    detectionRegions = result.detections.active.map((d) => {
+    detectionRegions = activeDets.map((d) => {
       const [x1, y1, x2, y2] = d.bbox;
       const cx = ((x1 + x2) / 2 / imgW) * 100;
       const cy = ((y1 + y2) / 2 / imgH) * 100;
-      const radius =
-        (Math.max(x2 - x1, y2 - y1) / 2 / maxDim) * 100;
+      const radius = (Math.max(x2 - x1, y2 - y1) / 2 / maxDim) * 100;
       return {
         class: d.class,
         display_class: d.display_class || d.class,
@@ -237,9 +241,8 @@ export function applyAcneDetectorToScanPayload(
     modelEight,
     params,
     detected_regions: [...acneRegions, ...nonAcneRegions],
-    ...(detectionRegions.length > 0
-      ? { detection_regions: detectionRegions }
-      : {}),
+    // Always set explicitly so a prior empty/undefined value cannot stick around.
+    detection_regions: detectionRegions,
     // Keep annotated JPEG for backwards compatibility (legacy mask panel).
     ...(annotated ? { acneMaskDataUri: annotated } : {}),
   });

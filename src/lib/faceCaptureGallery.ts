@@ -9,12 +9,15 @@ import {
 export function buildFaceCaptureGallery(
   scanId: number,
   captures: FaceCaptureRef[] | null | undefined
-): Array<{ label: string; imageUrl: string }> | undefined {
+): Array<{ label: string; imageUrl: string; poseId?: string }> | undefined {
   if (!captures?.length) return undefined;
   return captures.map((entry, i) => {
     const direct = resolveCaptureImageSrc(entry);
+    const byLabel = FACE_SCAN_CAPTURE_STEPS.find((s) => s.id === entry.label);
+    const byIndex = FACE_SCAN_CAPTURE_STEPS[i];
     return {
-      label: FACE_SCAN_CAPTURE_STEPS[i]?.title ?? entry.label,
+      label: byLabel?.title ?? byIndex?.title ?? entry.label,
+      poseId: byLabel?.id ?? byIndex?.id,
       imageUrl: direct ?? patientScanImagePath(scanId, { index: i }),
     };
   });

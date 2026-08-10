@@ -29,7 +29,15 @@ function isActive(href: string, pathname: string | null): boolean {
   if (path === "/dashboard/scan") {
     return (
       pathname === "/dashboard/scan" ||
-      pathname.startsWith("/dashboard/history")
+      pathname.startsWith("/dashboard/history") ||
+      pathname.startsWith("/dashboard/scans")
+    );
+  }
+  if (path === "/dashboard/schedules") {
+    return (
+      pathname === "/dashboard/schedules" ||
+      pathname.startsWith("/dashboard/schedules/") ||
+      pathname.startsWith("/dashboard/maintain")
     );
   }
   return pathname === path || pathname.startsWith(`${path}/`);

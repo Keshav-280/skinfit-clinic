@@ -198,6 +198,24 @@ export async function processScanJob(
         score: acneResult.grade.score,
         lesions: acneResult.grade.f1?.active_lesion_count ?? null,
       });
+      logger.info("acne_detector_result_debug", {
+        jobId,
+        rawDetectionRegionsCount: Array.isArray(acneResult.detection_regions)
+          ? acneResult.detection_regions.length
+          : 0,
+        activeDetectionsCount: acneResult.detections?.active?.length ?? 0,
+        hasDetectionRegions: Boolean(
+          merged.detection_regions && merged.detection_regions.length > 0
+        ),
+        detectionRegionsCount: merged.detection_regions?.length ?? 0,
+        sampleRegion: merged.detection_regions?.[0] ?? null,
+        gradeInfo: acneResult.grade ?? null,
+      });
+      logger.info("acne_detection_regions", {
+        jobId,
+        count: merged.detection_regions?.length ?? 0,
+        sample: merged.detection_regions?.[0],
+      });
     } catch (err) {
       logger.warn("acne_detector_skipped", {
         jobId,
@@ -258,13 +276,20 @@ export async function processScanJob(
       string,
       number | null
     >;
+    const proxyScores = {
+      pigmentation: mfs.pigmentation_model ?? null,
+      acne_scars: mfs.acne_scars ?? null,
+      under_eye: mfs.under_eye ?? null,
+      sagging_volume: mfs.sagging_volume ?? null,
+    };
+    logger.info("proxy_regions_input_scores", { jobId, ...proxyScores });
     proxy_regions = await extractProxyRegionsFromImage({
       sourceJpegB64: await ensureCentreJpeg(),
       scores: {
-        pigmentation: mfs.pigmentation_model ?? undefined,
-        acne_scars: mfs.acne_scars ?? undefined,
-        under_eye: mfs.under_eye ?? undefined,
-        sagging_volume: mfs.sagging_volume ?? undefined,
+        pigmentation: proxyScores.pigmentation ?? undefined,
+        acne_scars: proxyScores.acne_scars ?? undefined,
+        under_eye: proxyScores.under_eye ?? undefined,
+        sagging_volume: proxyScores.sagging_volume ?? undefined,
       },
     });
     if (proxy_regions.length > 0) {

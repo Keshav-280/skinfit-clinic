@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { Check } from "lucide-react";
-import {
-  WeeklyWellnessCheckinCard,
-  type WellnessCheckinData,
-} from "@/components/dashboard/WeeklyWellnessCheckinCard";
 import type { LastTreatmentVisit } from "@/components/dashboard/LastTreatmentCard";
+import { WeeklyCheckinEntryCard } from "@/components/checkin/WeeklyCheckinEntryCard";
+import type { CheckinConcernPath } from "@/src/lib/checkin/definitions";
+import type { WellnessCheckinData } from "@/components/dashboard/WeeklyWellnessCheckinCard";
 
 /** Kept for page.tsx / mobile type compatibility — calendar UI removed from Maintain. */
 export type ScheduleEventRow = {
@@ -72,12 +71,14 @@ function HeroRingsMotif({ className = "" }: { className?: string }) {
 }
 
 /**
- * Maintain tab — weekly wellness questionnaire only.
- * Props from page.tsx are accepted for compatibility; only wellness fields are used.
+ * Maintain tab — weekly check-in entry (5-screen flow).
  */
 export default function SchedulesPageClient({
   initialWellnessCheckin = null,
   wellnessWeekYmd,
+  checkinConcern = "acne",
+  checkinSummary = null,
+  checkinCompleted = false,
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
   initialAppointmentEvents: ScheduleEventRow[];
@@ -92,8 +93,13 @@ export default function SchedulesPageClient({
   initialPhone?: string | null;
   initialWellnessCheckin?: WellnessCheckinData | null;
   wellnessWeekYmd: string;
+  checkinConcern?: CheckinConcernPath;
+  checkinSummary?: Array<{ label: string; value: string }> | null;
+  checkinCompleted?: boolean;
 }) {
-  const [completed, setCompleted] = useState(Boolean(initialWellnessCheckin));
+  const completed =
+    checkinCompleted ||
+    Boolean(initialWellnessCheckin?.sleepHours || initialWellnessCheckin?.id);
 
   const weekOfLabel = useMemo(() => {
     try {
@@ -103,9 +109,34 @@ export default function SchedulesPageClient({
     }
   }, [wellnessWeekYmd]);
 
+  const summary =
+    checkinSummary ??
+    (initialWellnessCheckin
+      ? [
+          {
+            label: "Sleep",
+            value: initialWellnessCheckin.sleepHours ?? "—",
+          },
+          {
+            label: "Stress",
+            value:
+              initialWellnessCheckin.stressLevel != null
+                ? String(initialWellnessCheckin.stressLevel)
+                : "—",
+          },
+          {
+            label: "Exercise",
+            value: initialWellnessCheckin.exerciseHours ?? "—",
+          },
+          {
+            label: "Fuel",
+            value: initialWellnessCheckin.nutritionLevel ?? "—",
+          },
+        ]
+      : null);
+
   return (
     <div className="relative">
-      {/* Soft hero band */}
       <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#EEF4EA] via-[#EEF4EA]/80 to-transparent px-4 pb-2 pt-8 md:-mx-6 md:px-6 md:pt-10">
         <HeroRingsMotif className="pointer-events-none absolute -right-8 -top-6 h-64 w-64 opacity-[0.04] md:-right-4 md:h-80 md:w-80" />
 
@@ -152,11 +183,13 @@ export default function SchedulesPageClient({
         </header>
       </div>
 
-      <div className="relative mx-auto mt-8 max-w-2xl pb-4 md:mt-10">
-        <WeeklyWellnessCheckinCard
-          initialCheckin={initialWellnessCheckin}
-          initialWeekYmd={wellnessWeekYmd}
-          onCompletedChange={setCompleted}
+      <div className="relative mx-auto mt-8 max-w-md pb-4 md:mt-10">
+        <WeeklyCheckinEntryCard
+          weekYmd={wellnessWeekYmd}
+          weekOfLabel={weekOfLabel}
+          completed={completed}
+          concern={checkinConcern}
+          summary={summary}
         />
       </div>
     </div>

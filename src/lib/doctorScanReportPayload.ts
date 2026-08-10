@@ -158,6 +158,7 @@ export async function buildDoctorScanReportPayload(
   const faceCaptureGallery = builtGallery
     ? builtGallery.map((entry, i) => ({
         label: entry.label,
+        poseId: entry.poseId,
         imageUrl: doctorScanImagePath(patientId, row.id, {
           index: i,
           preview: true,
@@ -166,6 +167,7 @@ export async function buildDoctorScanReportPayload(
     : [
         {
           label: FACE_SCAN_CAPTURE_STEPS[0]?.title ?? "Primary scan",
+          poseId: FACE_SCAN_CAPTURE_STEPS[0]?.id ?? "centre",
           imageUrl: doctorScanImagePath(patientId, row.id, { preview: true }),
         },
       ];

@@ -987,7 +987,7 @@ export function FaceScanFlow({
         );
         return;
       }
-      router.push(`/dashboard/history/scans/${scanId}`);
+      router.push(`/dashboard/scans/${scanId}/report`);
     } catch (err: unknown) {
       setScanError(
         err instanceof Error
@@ -1140,7 +1140,7 @@ export function FaceScanFlow({
   if (isMobileHandoff && step === "results") {
     const mobileReportHref =
       completedHandoffScanId && sessionIdParam && tokenParam
-        ? `/api/mobile-capture/claim?s=${encodeURIComponent(sessionIdParam)}&t=${encodeURIComponent(tokenParam)}&next=${encodeURIComponent(isOnboardingScan ? `/onboarding/baseline-report?scanId=${completedHandoffScanId}` : `/dashboard/history/scans/${completedHandoffScanId}`)}`
+        ? `/api/mobile-capture/claim?s=${encodeURIComponent(sessionIdParam)}&t=${encodeURIComponent(tokenParam)}&next=${encodeURIComponent(isOnboardingScan ? `/onboarding/baseline-report?scanId=${completedHandoffScanId}` : `/dashboard/scans/${completedHandoffScanId}/report`)}`
         : null;
 
     return (
@@ -1279,7 +1279,7 @@ export function FaceScanFlow({
                       `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
                     );
                   } else {
-                    router.push(`/dashboard/history/scans/${scanId}`);
+                    router.push(`/dashboard/scans/${scanId}/report`);
                   }
                 }}
                 isOnboardingScan={isOnboardingScan}

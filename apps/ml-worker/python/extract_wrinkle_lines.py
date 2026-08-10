@@ -37,10 +37,10 @@ FACE_OVAL = [
     172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
 ]
 
-DIFF_THRESHOLD = 50
-MIN_ARC_PX = 35.0
-MAX_WRINKLE_LINES = 12
-MIN_LENGTH_PCT = 1.5
+DIFF_THRESHOLD = 70
+MIN_ARC_PX = 50.0
+MAX_WRINKLE_LINES = 8
+MIN_LENGTH_PCT = 2.5
 
 
 def face_mesh_context():
@@ -94,6 +94,15 @@ def build_face_oval_mask(source_bgr: np.ndarray) -> np.ndarray | None:
     return mask
 
 
+def fallback_ellipse_mask(h: int, w: int) -> np.ndarray:
+    """Centre-weighted ellipse when Face Mesh is unavailable."""
+    mask = np.zeros((h, w), dtype=np.uint8)
+    cx, cy = w // 2, int(h * 0.44)
+    ax, ay = int(w * 0.34), int(h * 0.38)
+    cv2.ellipse(mask, (cx, cy), (ax, ay), 0, 0, 360, 255, -1)
+    return mask
+
+
 def skeletonize_fallback(binary: np.ndarray) -> np.ndarray:
     skel = np.zeros_like(binary)
     element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
@@ -137,9 +146,11 @@ def extract_wrinkle_lines(
     # Zero out everything outside the face BEFORE diffing so glasses frames,
     # hair edges, and background lighting cannot become polylines.
     face_mask = build_face_oval_mask(source_bgr)
-    if face_mask is not None:
-        source_bgr = cv2.bitwise_and(source_bgr, source_bgr, mask=face_mask)
-        mask = cv2.bitwise_and(mask, mask, mask=face_mask)
+    if face_mask is None:
+        face_mask = fallback_ellipse_mask(h, w)
+    # Always apply face mask — no more conditional
+    source_bgr = cv2.bitwise_and(source_bgr, source_bgr, mask=face_mask)
+    mask = cv2.bitwise_and(mask, mask, mask=face_mask)
 
     mask_gray = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
     source_gray = cv2.cvtColor(source_bgr, cv2.COLOR_BGR2GRAY)
@@ -153,8 +164,7 @@ def extract_wrinkle_lines(
     close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, close_kernel, iterations=1)
 
-    if face_mask is not None:
-        binary = cv2.bitwise_and(binary, face_mask)
+    binary = cv2.bitwise_and(binary, face_mask)
 
     skel = skeletonize(binary)
     contours, _ = cv2.findContours(skel, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)

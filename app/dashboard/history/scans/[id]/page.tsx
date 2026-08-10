@@ -115,6 +115,11 @@ export default async function ScanReportPage({
   if (!user) notFound();
   if (!row) notFound();
 
+  // kAI report UI (Initial + Update). PDF download stays on this page.
+  if (!autoDownload) {
+    redirect(`/dashboard/scans/${row.id}/report`);
+  }
+
   const scores = row.scores;
 
   const trackerSnapshot =

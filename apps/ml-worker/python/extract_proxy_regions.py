@@ -347,12 +347,12 @@ def zone_allowed(
     score: float,
     stats: dict[str, Any] | None,
 ) -> bool:
-    """Strict gating: score 1 never; score 2 needs attention; no-attn needs ≥3.5."""
+    """Strict gating: score 1 never; score 2 needs attention; no-attn needs ≥2.5."""
     if score <= 1:
         return False
     if stats is None:
-        # No DINOv2 map: require clearer severity so mild issues don't look like FPs.
-        return score >= 3.5
+        # No DINOv2 map: allow mild-moderate so Grade-B concerns still get zones.
+        return score >= 2.5
     if not stats["passes_vs_face"]:
         return False
     if score < 3:
@@ -621,7 +621,7 @@ def extract_proxy_regions(
         attention_used = activations is not None
 
     # Diffuse fallback needs clearer severity when attention is unavailable.
-    diffuse_min = 3.5 if not attention_used else 3.0
+    diffuse_min = 3.0
 
     candidates: list[dict[str, Any]] = []
 

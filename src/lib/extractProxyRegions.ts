@@ -5,6 +5,7 @@ import {
   type ProxyRegion,
 } from "@/src/lib/scanDetectionRegions";
 import { jpegDataUriOrB64ToRawB64 } from "@/src/lib/extractWrinkleLines";
+import { logger } from "@/services/shared/src/logging";
 
 const SCRIPT = resolve(
   process.cwd(),
@@ -22,6 +23,12 @@ function pythonBin(): string {
     process.env.CAPTURE_PREVIEW_PYTHON?.trim() ||
     "python3"
   );
+}
+
+function stderrSnippet(stderr: string | undefined): string | undefined {
+  const s = stderr?.trim();
+  if (!s) return undefined;
+  return s.slice(0, 300);
 }
 
 export type ProxyRegionScores = {
@@ -65,7 +72,10 @@ export async function extractProxyRegionsFromImage(input: {
   const anyActive = values.some(
     (v) => typeof v === "number" && Number.isFinite(v) && v > 1
   );
-  if (!anyActive) return [];
+  if (!anyActive) {
+    logger.info("proxy_regions_gated_out", { scores: input.scores });
+    return [];
+  }
 
   const defaultTimeout =
     dinoEnabled() && !input.patchActivations ? TIMEOUT_DINO_MS : TIMEOUT_MS;
@@ -82,25 +92,47 @@ export async function extractProxyRegionsFromImage(input: {
       patch_activations: input.patchActivations ?? undefined,
       timeoutMs: input.timeoutMs ?? defaultTimeout,
     });
-    if (!raw || raw.ok === false) return [];
+    if (!raw || raw.ok === false) {
+      logger.warn("proxy_regions_python_failed", {
+        error: raw?.error ?? "no output",
+        stderr: stderrSnippet(raw?.stderr),
+      });
+      return [];
+    }
     const list = Array.isArray(raw.proxy_regions) ? raw.proxy_regions : [];
     const out: ProxyRegion[] = [];
     for (const item of list) {
       const parsed = parseProxyRegion(item);
       if (parsed) out.push(parsed);
     }
+    if (out.length === 0) {
+      logger.info("proxy_regions_empty", {
+        scores: input.scores,
+        stderr: stderrSnippet(raw.stderr),
+      });
+    }
     return out;
-  } catch {
+  } catch (err) {
+    logger.warn("proxy_regions_spawn_failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return [];
   }
 }
+
+type ProxyExtractResult = {
+  ok?: boolean;
+  proxy_regions?: unknown;
+  error?: string;
+  stderr?: string;
+};
 
 function execExtract(payload: {
   source_b64: string;
   scores: Record<string, number>;
   patch_activations?: number[] | number[][];
   timeoutMs: number;
-}): Promise<{ ok?: boolean; proxy_regions?: unknown; error?: string }> {
+}): Promise<ProxyExtractResult> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(pythonBin(), [SCRIPT], {
       env: { ...process.env },
@@ -111,7 +143,13 @@ function execExtract(payload: {
     let stderr = "";
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
-      reject(new Error("proxy region extraction timed out"));
+      reject(
+        new Error(
+          `proxy region extraction timed out${
+            stderr.trim() ? `: ${stderr.trim().slice(0, 300)}` : ""
+          }`
+        )
+      );
     }, payload.timeoutMs);
 
     child.stdout.on("data", (c: Buffer) => {
@@ -136,11 +174,16 @@ function execExtract(payload: {
       }
       const line = stdout.trim().split("\n").pop() || "{}";
       try {
-        resolvePromise(
-          JSON.parse(line) as { ok?: boolean; proxy_regions?: unknown }
-        );
+        const parsed = JSON.parse(line) as ProxyExtractResult;
+        resolvePromise({ ...parsed, stderr });
       } catch {
-        reject(new Error(`invalid proxy_regions JSON: ${line.slice(0, 200)}`));
+        reject(
+          new Error(
+            `invalid proxy_regions JSON: ${line.slice(0, 200)}${
+              stderr.trim() ? ` | stderr: ${stderr.trim().slice(0, 300)}` : ""
+            }`
+          )
+        );
       }
     });
 

@@ -4,6 +4,7 @@ import {
   parseWrinkleLine,
   type WrinkleLine,
 } from "@/src/lib/scanDetectionRegions";
+import { logger } from "@/services/shared/src/logging";
 
 const SCRIPT = resolve(
   process.cwd(),
@@ -18,6 +19,12 @@ function pythonBin(): string {
     process.env.CAPTURE_PREVIEW_PYTHON?.trim() ||
     "python3"
   );
+}
+
+function stderrSnippet(stderr: string | undefined): string | undefined {
+  const s = stderr?.trim();
+  if (!s) return undefined;
+  return s.slice(0, 300);
 }
 
 /** Strip `data:image/...;base64,` prefix when present. */
@@ -59,7 +66,13 @@ export async function extractWrinkleLinesFromImages(input: {
       source_b64: sourceB64,
       timeoutMs: input.timeoutMs ?? TIMEOUT_MS,
     });
-    if (!raw || raw.ok === false) return [];
+    if (!raw || raw.ok === false) {
+      logger.warn("wrinkle_lines_python_failed", {
+        error: raw?.error ?? "no output",
+        stderr: stderrSnippet(raw?.stderr),
+      });
+      return [];
+    }
     const list = Array.isArray(raw.wrinkle_lines) ? raw.wrinkle_lines : [];
     const out: WrinkleLine[] = [];
     for (const item of list) {
@@ -67,16 +80,26 @@ export async function extractWrinkleLinesFromImages(input: {
       if (parsed) out.push(parsed);
     }
     return out;
-  } catch {
+  } catch (err) {
+    logger.warn("wrinkle_lines_spawn_failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return [];
   }
 }
+
+type WrinkleExtractResult = {
+  ok?: boolean;
+  wrinkle_lines?: unknown;
+  error?: string;
+  stderr?: string;
+};
 
 function execExtract(payload: {
   mask_b64: string;
   source_b64: string;
   timeoutMs: number;
-}): Promise<{ ok?: boolean; wrinkle_lines?: unknown; error?: string }> {
+}): Promise<WrinkleExtractResult> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(pythonBin(), [SCRIPT], {
       env: { ...process.env },
@@ -87,7 +110,13 @@ function execExtract(payload: {
     let stderr = "";
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
-      reject(new Error("wrinkle line extraction timed out"));
+      reject(
+        new Error(
+          `wrinkle line extraction timed out${
+            stderr.trim() ? `: ${stderr.trim().slice(0, 300)}` : ""
+          }`
+        )
+      );
     }, payload.timeoutMs);
 
     child.stdout.on("data", (c: Buffer) => {
@@ -112,9 +141,16 @@ function execExtract(payload: {
       }
       const line = stdout.trim().split("\n").pop() || "{}";
       try {
-        resolvePromise(JSON.parse(line) as { ok?: boolean; wrinkle_lines?: unknown });
+        const parsed = JSON.parse(line) as WrinkleExtractResult;
+        resolvePromise({ ...parsed, stderr });
       } catch {
-        reject(new Error(`invalid wrinkle_lines JSON: ${line.slice(0, 200)}`));
+        reject(
+          new Error(
+            `invalid wrinkle_lines JSON: ${line.slice(0, 200)}${
+              stderr.trim() ? ` | stderr: ${stderr.trim().slice(0, 300)}` : ""
+            }`
+          )
+        );
       }
     });
 

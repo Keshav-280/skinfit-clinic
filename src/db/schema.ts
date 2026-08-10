@@ -1242,6 +1242,24 @@ export const wellnessCheckins = pgTable(
     activeIngredients: text("active_ingredients"),
     /** Monday of the week this check-in covers (YYYY-MM-DD). */
     weekYmd: varchar("week_ymd", { length: 10 }).notNull(),
+    /** Check-in path: acne | pigmentation | wrinkles | hair_loss | weight_loss */
+    concern: varchar("concern", { length: 32 }),
+    water: text("water"),
+    /** Anchored stress key (calm | mostly_fine | …) — preferred over stressLevel. */
+    stressAnchor: text("stress_anchor"),
+    nutritionMulti: jsonb("nutrition_multi").$type<string[] | null>(),
+    supplementsList: jsonb("supplements_list").$type<string[] | null>(),
+    concernSpecific: jsonb("concern_specific").$type<Record<
+      string,
+      string | string[] | number | null
+    > | null>(),
+    flags: jsonb("flags").$type<string[] | null>(),
+    /** Canonical weekly check-in JSON for reports / LLM. */
+    payload: jsonb("payload").$type<Record<string, unknown> | null>(),
+    scanId: integer("scan_id").references(() => scans.id, {
+      onDelete: "set null",
+    }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

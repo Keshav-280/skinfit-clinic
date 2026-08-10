@@ -177,7 +177,7 @@ function insightLine(
 
 export type ScanViewerProps = {
   imageUrl: string;
-  faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
+  faceCaptureGallery?: Array<{ label: string; imageUrl: string; poseId?: string }>;
   metrics: ReportMetrics;
   regions: ReportRegion[];
   /** Interactive dashed circles from acne-detector (newer scans). */
@@ -339,14 +339,23 @@ export function ScanViewer({
   const wrinkleMaskVisible =
     activeConcern === "all" || activeConcern === "wrinkles";
 
-  /** Map gallery labels to capture step ids for pose-scoped overlays. */
-  function poseIdForPhoto(label: string, index: number): string {
-    const l = label.toLowerCase();
+  /** Map gallery labels / poseId to capture step ids for pose-scoped overlays. */
+  function poseIdForPhoto(
+    photo: { label: string; poseId?: string },
+    index: number
+  ): string {
+    if (photo.poseId) return photo.poseId;
+    const l = photo.label.toLowerCase();
     if (l.includes("smil")) return "smiling";
     if (l.includes("left")) return "left";
     if (l.includes("right")) return "right";
     if (l.includes("eye") || l.includes("closed")) return "eyes_closed";
-    if (l.includes("front") || l.includes("centr") || l.includes("primary")) {
+    if (
+      l.includes("front") ||
+      l.includes("centr") ||
+      l.includes("primary") ||
+      (l.includes("profile") && !l.includes("side") && !l.includes("left") && !l.includes("right"))
+    ) {
       return "centre";
     }
     // Single-photo reports / unknown labels → treat as centre so acne/proxy still show.
@@ -367,7 +376,7 @@ export function ScanViewer({
             </div>
           ) : (
             photos.map((photo, i) => {
-              const pose = poseIdForPhoto(photo.label, i);
+              const pose = poseIdForPhoto(photo, i);
               const showAcneProxy = pose === "centre";
               const showWrinkles = pose === "smiling";
               const showWrinkleFallback =

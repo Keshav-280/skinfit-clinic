@@ -122,12 +122,23 @@ export function parseWrinkleLine(raw: unknown): WrinkleLine | null {
   };
 }
 
-/** Reads `scans.scores.detection_regions` (or top-level array). */
+/** Reads `scans.scores.detection_regions` (or circle items in annotation_regions). */
 export function parseScanDetectionRegions(scores: unknown): DetectionRegion[] {
   if (!scores) return [];
   let list: unknown = scores;
   if (scores && typeof scores === "object" && !Array.isArray(scores)) {
-    list = (scores as Record<string, unknown>).detection_regions;
+    const root = scores as Record<string, unknown>;
+    list = root.detection_regions;
+    if (!Array.isArray(list) && Array.isArray(root.annotation_regions)) {
+      list = root.annotation_regions.filter(
+        (item) =>
+          item &&
+          typeof item === "object" &&
+          !Array.isArray(item) &&
+          (item as Record<string, unknown>).type === "circle" &&
+          (item as Record<string, unknown>).proxy !== true
+      );
+    }
   }
   if (!Array.isArray(list)) return [];
   const out: DetectionRegion[] = [];

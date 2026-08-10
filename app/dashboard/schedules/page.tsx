@@ -25,6 +25,9 @@ export default async function SchedulesPage() {
         initialPhone={data.initialPhone}
         initialWellnessCheckin={data.initialWellnessCheckin}
         wellnessWeekYmd={data.wellnessWeekYmd}
+        checkinConcern={data.checkinConcern}
+        checkinSummary={data.checkinSummary}
+        checkinCompleted={data.checkinCompleted}
       />
     </div>
   );

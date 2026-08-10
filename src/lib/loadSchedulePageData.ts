@@ -20,6 +20,12 @@ import { isKaiInsightsEnabled } from "@/src/lib/kaiInsightsEnabled";
 import { getLatestPatientVisit } from "@/src/lib/patientVisit";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import { patientHasPhoneOnFile } from "@/src/lib/ensurePatientPhoneForBooking";
+import {
+  primaryOnboardingConcern,
+  userConcernsFromProfile,
+} from "@/src/lib/onboardingConcerns";
+import { resolveCheckinConcernPath } from "@/src/lib/checkin/definitions";
+import type { WeeklyCheckInPayload } from "@/src/lib/checkin/types";
 
 function appointmentTypeLabel(t: string): string {
   if (t === "consultation") return "Consultation";
@@ -345,6 +351,41 @@ export async function loadSchedulePageData(userId: string) {
       }
     : null;
 
+  const profileUser = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { primaryConcern: true, concerns: true },
+  });
+  const concernIds = userConcernsFromProfile({
+    concerns: profileUser?.concerns ?? null,
+    primaryConcern: profileUser?.primaryConcern ?? null,
+  });
+  const checkinConcern = resolveCheckinConcernPath(
+    profileUser?.primaryConcern,
+    [primaryOnboardingConcern(concernIds), ...concernIds]
+  );
+
+  const payload = wellnessRow?.payload as WeeklyCheckInPayload | null;
+  const checkinCompleted = Boolean(
+    wellnessRow?.submittedAt ||
+      wellnessRow?.payload ||
+      wellnessRow?.stressAnchor ||
+      wellnessRow?.sleepHours
+  );
+  const checkinSummary = payload?.universal
+    ? [
+        { label: "Sleep", value: payload.universal.sleep_hours || "—" },
+        {
+          label: "Stress",
+          value: (payload.universal.stress || "—").replace(/_/g, " "),
+        },
+        { label: "Water", value: payload.universal.water || "—" },
+        {
+          label: "Exercise",
+          value: payload.universal.exercise_hours || "—",
+        },
+      ]
+    : null;
+
   return {
     initialTreatmentEvents,
     initialAppointmentEvents,
@@ -359,5 +400,8 @@ export async function loadSchedulePageData(userId: string) {
     initialPhone: digestRow?.phone ?? null,
     initialWellnessCheckin,
     wellnessWeekYmd,
+    checkinConcern,
+    checkinSummary,
+    checkinCompleted,
   };
 }

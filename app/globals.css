@@ -18,6 +18,23 @@
   --color-skinfit-mint: #e8efe6;
   --color-skinfit-mint-deep: #dce8d4;
   --color-skinfit-sage: #d6e4d0;
+
+  /* kAI report system (Aug 2026) */
+  --color-kai-navy: #2b3757;
+  --color-kai-navy-deep: #1e2840;
+  --color-kai-navy-mid: #3b4a70;
+  --color-kai-sage: #eef3ec;
+  --color-kai-sage-2: #e4ebe1;
+  --color-kai-paper: #fbfcfa;
+  --color-kai-ink: #1a2035;
+  --color-kai-ink-2: #5b6478;
+  --color-kai-ink-3: #8b93a4;
+  --color-kai-rule: #dde3da;
+  --color-kai-accent: #e07a3e;
+  --color-kai-good: #4e9b72;
+  --color-kai-mid: #d4a03f;
+  --color-kai-low: #c4694f;
+  --color-kai-track: #d6dce4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -80,6 +97,28 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@keyframes checkinSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes checkinSlideBack {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes context-menu-fade-in {
