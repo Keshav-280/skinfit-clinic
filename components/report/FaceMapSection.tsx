@@ -2,6 +2,11 @@
 
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 import { ScanDetectionOverlay } from "@/components/dashboard/ScanDetectionOverlay";
+import {
+  legacyMaskTitleCropStyle,
+  shouldCropLegacyMaskTitle,
+} from "@/src/lib/maskImageCrop";
+import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import type { ConcernChipId } from "@/components/dashboard/ConcernChips";
 import type {
   DetectionRegion,
@@ -23,6 +28,9 @@ type FaceMapSectionProps = {
   /** Per-pose acne detections; falls back to `detectionRegions` (centre) when absent. */
   detectionRegionsByPose?: Record<string, DetectionRegion[]>;
   wrinkleLines?: WrinkleLine[];
+  /** Model wrinkle segmentation heatmap (smiling pose) — preferred over polylines. */
+  wrinkleMaskUrl?: string | null;
+  maskExportVersion?: number | null;
   proxyRegions?: ProxyRegion[];
   parameterGrades: FaceMapChip[];
 };
@@ -51,6 +59,8 @@ export function FaceMapSection({
   detectionRegions = [],
   detectionRegionsByPose,
   wrinkleLines = [],
+  wrinkleMaskUrl,
+  maskExportVersion,
   proxyRegions = [],
   parameterGrades,
 }: FaceMapSectionProps) {
@@ -91,8 +101,16 @@ export function FaceMapSection({
   const acneForPose =
     detectionRegionsByPose?.[pose] ??
     (pose === "centre" ? detectionRegions : []);
-  const showWrinkles = pose === "smiling";
   const showProxy = pose === "centre";
+  // The model's wrinkle heatmap is far cleaner than skeleton polylines extracted
+  // from it — prefer the mask, and only fall back to lines when no mask exists.
+  const maskSrc = wrinkleMaskUrl?.trim()
+    ? publicFileDisplayUrl(wrinkleMaskUrl) ?? wrinkleMaskUrl
+    : "";
+  const showWrinkleMask = pose === "smiling" && Boolean(maskSrc);
+  const showWrinkles = pose === "smiling" && !showWrinkleMask;
+  const wrinkleMaskVisible =
+    activeConcern === "all" || activeConcern === "wrinkles";
 
   const chips = useMemo(
     () => [{ id: "all" as const, name: "All", grade: "", color: "mid" as const }, ...parameterGrades],
@@ -140,6 +158,23 @@ export function FaceMapSection({
             Capture with AI overlay
           </div>
         )}
+        {photo && showWrinkleMask ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={maskSrc}
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ease-out"
+            style={{
+              opacity: wrinkleMaskVisible ? 0.72 : 0,
+              mixBlendMode: "screen",
+              ...(shouldCropLegacyMaskTitle(maskSrc, maskExportVersion)
+                ? legacyMaskTitleCropStyle()
+                : null),
+            }}
+          />
+        ) : null}
         {photo ? (
           <ScanDetectionOverlay
             regions={acneForPose}

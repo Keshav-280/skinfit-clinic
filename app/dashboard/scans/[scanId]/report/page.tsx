@@ -14,6 +14,10 @@ import {
   parseScanProxyRegions,
   parseScanWrinkleLines,
 } from "../../../../../src/lib/scanDetectionRegions";
+import {
+  parseMaskExportVersion,
+  parseScanWrinkleMaskDataUri,
+} from "../../../../../src/lib/parseClinicalScores";
 import { scanDisplayMetricsFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
 import {
   buildKaiReportParamRows,
@@ -316,6 +320,8 @@ export default async function KaiScanReportPage({
         detectionRegions={parseScanDetectionRegions(row.scores)}
         detectionRegionsByPose={parseScanDetectionRegionsByPose(row.scores)}
         wrinkleLines={parseScanWrinkleLines(row.scores)}
+        wrinkleMaskUrl={parseScanWrinkleMaskDataUri(row.scores) ?? null}
+        maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
         proxyRegions={parseScanProxyRegions(row.scores)}
         isExistingPatient={scoresUnlocked}
         doctorName={doctorName}
@@ -541,6 +547,8 @@ export default async function KaiScanReportPage({
       detectionRegions={parseScanDetectionRegions(row.scores)}
       detectionRegionsByPose={parseScanDetectionRegionsByPose(row.scores)}
       wrinkleLines={parseScanWrinkleLines(row.scores)}
+      wrinkleMaskUrl={parseScanWrinkleMaskDataUri(row.scores) ?? null}
+      maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
       proxyRegions={parseScanProxyRegions(row.scores)}
       parameters={paramRows}
       movementGroups={movementGroups}

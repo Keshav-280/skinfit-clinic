@@ -32,6 +32,8 @@ export type InitialKaiScanReportProps = {
   detectionRegions: DetectionRegion[];
   detectionRegionsByPose?: Record<string, DetectionRegion[]>;
   wrinkleLines: WrinkleLine[];
+  wrinkleMaskUrl?: string | null;
+  maskExportVersion?: number | null;
   proxyRegions: ProxyRegion[];
   isExistingPatient: boolean;
   doctorName: string;
@@ -52,6 +54,8 @@ export function InitialKaiScanReport({
   detectionRegions,
   detectionRegionsByPose,
   wrinkleLines,
+  wrinkleMaskUrl,
+  maskExportVersion,
   proxyRegions,
   isExistingPatient,
   doctorName,
@@ -133,6 +137,8 @@ export function InitialKaiScanReport({
             detectionRegions={detectionRegions}
             detectionRegionsByPose={detectionRegionsByPose}
             wrinkleLines={wrinkleLines}
+            wrinkleMaskUrl={wrinkleMaskUrl}
+            maskExportVersion={maskExportVersion}
             proxyRegions={proxyRegions}
             parameterGrades={chips}
           />
