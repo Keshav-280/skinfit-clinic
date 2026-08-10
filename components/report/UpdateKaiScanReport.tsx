@@ -5,8 +5,15 @@ import { useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
 import { dismissUnreadReadyScan } from "@/src/lib/scanJobNotifications";
 import type { MovementGroups } from "@/src/lib/report/buildMovementGroups";
+import type { KaiReportParamRow } from "@/src/lib/kaiReportMapping";
+import type {
+  DetectionRegion,
+  ProxyRegion,
+  WrinkleLine,
+} from "@/src/lib/scanDetectionRegions";
 import { ReportHero } from "./ReportHero";
 import { ThenNowCompare } from "./ThenNowCompare";
+import { FaceMapSection } from "./FaceMapSection";
 import { MovementSection } from "./MovementSection";
 import { AttributionSection } from "./AttributionSection";
 import { WeekRecap } from "./WeekRecap";
@@ -31,6 +38,11 @@ export type UpdateKaiScanReportProps = {
     current: { url: string; date: string };
     caption?: string;
   };
+  scanImages: Array<{ url: string; label: string; poseId?: string }>;
+  detectionRegions: DetectionRegion[];
+  wrinkleLines: WrinkleLine[];
+  proxyRegions: ProxyRegion[];
+  parameters: KaiReportParamRow[];
   movementGroups: MovementGroups;
   attributionCards: Array<{ label: string; text: string }>;
   weekRecap: Array<{ label: string; value: string }>;
@@ -52,6 +64,11 @@ export function UpdateKaiScanReport({
   subtitle,
   position,
   thenNow,
+  scanImages,
+  detectionRegions,
+  wrinkleLines,
+  proxyRegions,
+  parameters,
   movementGroups,
   attributionCards,
   weekRecap,
@@ -67,6 +84,15 @@ export function UpdateKaiScanReport({
   useEffect(() => {
     dismissUnreadReadyScan(scanId);
   }, [scanId]);
+
+  const chips = parameters
+    .filter((p) => p.concernChipId != null)
+    .map((p) => ({
+      id: p.concernChipId!,
+      name: p.shortName,
+      grade: p.grade,
+      color: p.gradeColor,
+    }));
 
   return (
     <div className="min-h-[100dvh] bg-kai-sage">
@@ -110,6 +136,14 @@ export function UpdateKaiScanReport({
             previousImage={thenNow.previous}
             currentImage={thenNow.current}
             caption={thenNow.caption}
+          />
+
+          <FaceMapSection
+            scanImages={scanImages}
+            detectionRegions={detectionRegions}
+            wrinkleLines={wrinkleLines}
+            proxyRegions={proxyRegions}
+            parameterGrades={chips}
           />
 
           <MovementSection groups={movementGroups} />

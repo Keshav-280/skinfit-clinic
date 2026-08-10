@@ -535,6 +535,11 @@ export default async function KaiScanReportPage({
           date: formatScanDateShort(row.createdAt),
         },
       }}
+      scanImages={currentImages}
+      detectionRegions={parseScanDetectionRegions(row.scores)}
+      wrinkleLines={parseScanWrinkleLines(row.scores)}
+      proxyRegions={parseScanProxyRegions(row.scores)}
+      parameters={paramRows}
       movementGroups={movementGroups}
       attributionCards={attributionCards}
       weekRecap={weekRecap}

@@ -64,6 +64,7 @@ export function DiagnoseActivityRings() {
       latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
       consistencyScore={data.lifestyleAlignmentScore}
       scoresUnlocked={data.scoresUnlocked ?? false}
+      scanCount={data.skinScanHistory.length}
     />
   );
 }

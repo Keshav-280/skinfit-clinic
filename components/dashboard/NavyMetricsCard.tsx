@@ -180,13 +180,19 @@ type NavyMetricsCardProps = {
   latestScanAt: string | null;
   consistencyScore: number;
   scoresUnlocked?: boolean;
+  /** Number of scans the patient has taken — rings unlock from the 2nd scan. */
+  scanCount?: number;
   className?: string;
 };
 
 export function NavyMetricsCard({
   kaiSkinScore,
+  weeklyDeltaScore,
+  weeklyDeltaMeaningful = true,
+  consistencyScore,
   latestScanAt,
   scoresUnlocked = false,
+  scanCount = 0,
   className = "",
 }: NavyMetricsCardProps) {
   const [unlockOpen, setUnlockOpen] = useState(false);
@@ -198,8 +204,8 @@ export function NavyMetricsCard({
   const kai = hasScan ? patientKaiScoreView(kaiSkinScore, scoresUnlocked) : null;
   const lockedKaiAriaLabel = `${CLINIC_SCORE_UNLOCK.title}. ${CLINIC_SCORE_UNLOCK.message}`;
 
-  // Always locked for now — unlock when scoresUnlocked AND 2+ weeks of scans (later).
-  const ringsLocked = true;
+  // Consistency + Progress rings unlock from the patient's 2nd scan onward.
+  const ringsLocked = scanCount < 2;
 
   const { outerR, middleR, innerR } = ringGeometry();
   const cx = RING_SIZE / 2;
@@ -215,6 +221,28 @@ export function NavyMetricsCard({
     const id = requestAnimationFrame(() => setSkinFill(skinFillTarget));
     return () => cancelAnimationFrame(id);
   }, [skinFillTarget]);
+
+  // Consistency ring = weekly check-in consistency; Progress ring = this week's
+  // improvement. Both stay empty while locked (behind the lock overlay).
+  const consistencyFillTarget = ringsLocked
+    ? 0
+    : Math.min(100, Math.max(0, Math.round(consistencyScore)));
+  const progressFillTarget =
+    ringsLocked || !weeklyDeltaMeaningful
+      ? 0
+      : Math.min(100, Math.max(0, Math.round(weeklyDeltaScore)));
+  const [consistencyFill, setConsistencyFill] = useState(0);
+  const [progressFill, setProgressFill] = useState(0);
+
+  useEffect(() => {
+    setConsistencyFill(0);
+    setProgressFill(0);
+    const id = requestAnimationFrame(() => {
+      setConsistencyFill(consistencyFillTarget);
+      setProgressFill(progressFillTarget);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [consistencyFillTarget, progressFillTarget]);
 
   useEffect(() => {
     if (!lockedTip) return;
@@ -310,7 +338,7 @@ export function NavyMetricsCard({
               cx={cx}
               cy={cy}
               radius={outerR}
-              fill={0}
+              fill={progressFill}
               color={PROGRESS_COLOR}
               track={dimRingColor(PROGRESS_COLOR)}
             />
@@ -318,7 +346,7 @@ export function NavyMetricsCard({
               cx={cx}
               cy={cy}
               radius={middleR}
-              fill={0}
+              fill={consistencyFill}
               color={CONSISTENCY_COLOR}
               track={dimRingColor(CONSISTENCY_COLOR)}
             />
