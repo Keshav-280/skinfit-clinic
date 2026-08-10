@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { INITIAL_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/initialReportPrompt";
 import { UPDATE_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/updateReportPrompt";
 
-const TIMEOUT_MS = 5000;
+const TIMEOUT_MS = 20000;
 
 let cachedClient: OpenAI | null = null;
 

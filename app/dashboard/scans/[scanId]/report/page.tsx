@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { and, asc, desc, eq, lt } from "drizzle-orm";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { db } from "../../../../../src/db";
 import { scans, scheduleEvents, users } from "../../../../../src/db/schema";
 import { getSessionUserId } from "../../../../../src/lib/auth/get-session";
@@ -218,10 +218,13 @@ export default async function KaiScanReportPage({
   if (!user) notFound();
   if (!row) notFound();
 
+  // Compare against the most recent scan from a PRIOR calendar day. Two scans
+  // taken the same day carry no meaningful weekly movement, so same-day scans
+  // are excluded — with only same-day data the Initial report is shown instead.
   const previousMeta = await db.query.scans.findFirst({
     where: and(
       eq(scans.userId, userId),
-      lt(scans.createdAt, row.createdAt)
+      lt(scans.createdAt, startOfDay(row.createdAt))
     ),
     orderBy: [desc(scans.createdAt), desc(scans.id)],
     columns: { id: true },

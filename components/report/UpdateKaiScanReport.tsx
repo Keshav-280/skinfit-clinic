@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
 import { dismissUnreadReadyScan } from "@/src/lib/scanJobNotifications";
 import type { MovementGroups } from "@/src/lib/report/buildMovementGroups";
@@ -62,14 +62,22 @@ export function UpdateKaiScanReport({
   aiUnavailable,
   shareLine,
 }: UpdateKaiScanReportProps) {
+  const reportRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     dismissUnreadReadyScan(scanId);
   }, [scanId]);
 
   return (
     <div className="min-h-[100dvh] bg-kai-sage">
-      <div className="mx-auto min-h-[100dvh] w-full max-w-[392px] overflow-x-hidden bg-kai-sage shadow-[0_0_0_1px_rgba(43,55,87,0.06)]">
-        <div className="flex items-center gap-2 bg-kai-navy-deep px-4 pb-2 pt-3">
+      <div
+        ref={reportRef}
+        className="mx-auto min-h-[100dvh] w-full max-w-[392px] overflow-x-hidden bg-kai-sage shadow-[0_0_0_1px_rgba(43,55,87,0.06)]"
+      >
+        <div
+          data-pdf-screen-only
+          className="flex items-center gap-2 bg-kai-navy-deep px-4 pb-2 pt-3"
+        >
           <Link
             href="/dashboard/history"
             className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[12px] font-medium text-white/70 transition hover:text-white"
@@ -131,13 +139,14 @@ export function UpdateKaiScanReport({
             }}
             secondaryAction={{
               label: "Book your next visit",
-              href: "/dashboard/schedules",
+              href: "/dashboard?book=1",
             }}
           />
 
           <ReportShareFooter
             scanId={scanId}
             shareText={`SkinFit kAI: ${shareLine}`}
+            reportRef={reportRef}
           />
         </div>
       </div>

@@ -38,7 +38,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { validateNationalPhone } from "@/src/lib/auth/phone";
 import {
   LastTreatmentCard,
@@ -456,6 +456,8 @@ export default function AppointmentsCalendarClient({
   initialPhone?: string | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [view, setView] = useState<"month" | "week">("month");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [selectedYmd, setSelectedYmd] = useState(() => localYmd(new Date()));
@@ -703,6 +705,28 @@ export default function AppointmentsCalendarClient({
     setSheetRelayNotice(null);
     setRequestModalOpen(true);
   }, []);
+
+  /** Deep-link from report CTAs: /dashboard?book=1 opens the visit-request modal. */
+  useEffect(() => {
+    const book = searchParams.get("book");
+    if (book !== "1" && book !== "true") return;
+
+    openRequestModal();
+    const scrollTimer = window.setTimeout(() => {
+      document
+        .getElementById("schedules-calendar-root")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("book");
+    const q = params.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname || "/dashboard", {
+      scroll: false,
+    });
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [searchParams, openRequestModal, router, pathname]);
 
   const handlePrev = () => {
     if (!currentDate) return;
