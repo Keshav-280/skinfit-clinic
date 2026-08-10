@@ -13,6 +13,7 @@ import {
   parseScanDetectionRegionsByPose,
   parseScanProxyRegions,
   parseScanWrinkleLines,
+  ensureScarsAndUnderEyeProxyRegions,
 } from "../../../../../src/lib/scanDetectionRegions";
 import {
   parseMaskExportVersion,
@@ -158,6 +159,19 @@ function galleryImages(
       poseId: "centre",
     },
   ];
+}
+
+function faceMapProxyRegions(
+  scores: unknown,
+  clinical: {
+    acne_scars?: number | null;
+    under_eye?: number | null;
+  } | null | undefined
+) {
+  return ensureScarsAndUnderEyeProxyRegions(parseScanProxyRegions(scores), {
+    acne_scars: clinical?.acne_scars ?? null,
+    under_eye: clinical?.under_eye ?? null,
+  });
 }
 
 function centreImageUrl(
@@ -322,7 +336,10 @@ export default async function KaiScanReportPage({
         wrinkleLines={parseScanWrinkleLines(row.scores)}
         wrinkleMaskUrl={parseScanWrinkleMaskDataUri(row.scores) ?? null}
         maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
-        proxyRegions={parseScanProxyRegions(row.scores)}
+        proxyRegions={faceMapProxyRegions(
+          row.scores,
+          metrics.clinical_scores
+        )}
         isExistingPatient={scoresUnlocked}
         doctorName={doctorName}
       />
@@ -549,7 +566,7 @@ export default async function KaiScanReportPage({
       wrinkleLines={parseScanWrinkleLines(row.scores)}
       wrinkleMaskUrl={parseScanWrinkleMaskDataUri(row.scores) ?? null}
       maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
-      proxyRegions={parseScanProxyRegions(row.scores)}
+      proxyRegions={faceMapProxyRegions(row.scores, metrics.clinical_scores)}
       parameters={paramRows}
       movementGroups={movementGroups}
       attributionCards={attributionCards}

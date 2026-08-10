@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type PointerEvent } from "react";
 import { ScanDetectionOverlay } from "@/components/dashboard/ScanDetectionOverlay";
 import {
   legacyMaskTitleCropStyle,
+  MASK_EXPORT_VERSION_TITLE_FREE,
   shouldCropLegacyMaskTitle,
 } from "@/src/lib/maskImageCrop";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
@@ -28,7 +29,7 @@ type FaceMapSectionProps = {
   /** Per-pose acne detections; falls back to `detectionRegions` (centre) when absent. */
   detectionRegionsByPose?: Record<string, DetectionRegion[]>;
   wrinkleLines?: WrinkleLine[];
-  /** Model wrinkle segmentation heatmap (smiling pose) — preferred over polylines. */
+  /** Model wrinkle segmentation heatmap (smiling pose) — only used when no vector lines. */
   wrinkleMaskUrl?: string | null;
   maskExportVersion?: number | null;
   proxyRegions?: ProxyRegion[];
@@ -69,6 +70,7 @@ export function FaceMapSection({
   // Match the frame to the photo's real aspect ratio so object-cover never crops
   // (a crop shifts the percentage-based overlay markers off their targets).
   const [aspect, setAspect] = useState<number | null>(null);
+  const [photoReady, setPhotoReady] = useState(false);
   const swipeStartX = useRef<number | null>(null);
 
   const photos = scanImages.length > 0 ? scanImages : [];
@@ -76,8 +78,11 @@ export function FaceMapSection({
   function selectIndex(i: number) {
     const n = photos.length;
     if (n === 0) return;
-    setActiveIndex(((i % n) + n) % n);
+    const next = ((i % n) + n) % n;
+    if (next === activeIndex) return;
+    setActiveIndex(next);
     setAspect(null);
+    setPhotoReady(false);
   }
 
   function onSwipeStart(e: PointerEvent<HTMLDivElement>) {
@@ -102,13 +107,21 @@ export function FaceMapSection({
     detectionRegionsByPose?.[pose] ??
     (pose === "centre" ? detectionRegions : []);
   const showProxy = pose === "centre";
-  // The model's wrinkle heatmap is far cleaner than skeleton polylines extracted
-  // from it — prefer the mask, and only fall back to lines when no mask exists.
+
+  // Prefer SVG wrinkle lines (clean). Only fall back to the heatmap mask when
+  // there are no lines AND the export is a title-free heatmap (v2) — never
+  // screen-blend a face+heatmap composite (that causes double-exposure ghosting).
+  const hasWrinkleLines = wrinkleLines.length > 0;
   const maskSrc = wrinkleMaskUrl?.trim()
     ? publicFileDisplayUrl(wrinkleMaskUrl) ?? wrinkleMaskUrl
     : "";
-  const showWrinkleMask = pose === "smiling" && Boolean(maskSrc);
-  const showWrinkles = pose === "smiling" && !showWrinkleMask;
+  const safeHeatmap =
+    Boolean(maskSrc) &&
+    (maskExportVersion === MASK_EXPORT_VERSION_TITLE_FREE ||
+      maskExportVersion === 2);
+  const showWrinkles = pose === "smiling" && hasWrinkleLines;
+  const showWrinkleMask =
+    pose === "smiling" && !hasWrinkleLines && safeHeatmap;
   const wrinkleMaskVisible =
     activeConcern === "all" || activeConcern === "wrinkles";
 
@@ -116,6 +129,10 @@ export function FaceMapSection({
     () => [{ id: "all" as const, name: "All", grade: "", color: "mid" as const }, ...parameterGrades],
     [parameterGrades]
   );
+
+  const photoKey = photo
+    ? `${activeIndex}:${photo.poseId ?? ""}:${photo.url}`
+    : "empty";
 
   return (
     <section className="border-b border-kai-rule px-6 py-[26px]">
@@ -142,6 +159,7 @@ export function FaceMapSection({
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            key={photoKey}
             src={photo.url}
             alt={photo.label}
             onLoad={(e) => {
@@ -149,9 +167,13 @@ export function FaceMapSection({
               if (el.naturalWidth > 0 && el.naturalHeight > 0) {
                 setAspect(el.naturalWidth / el.naturalHeight);
               }
+              setPhotoReady(true);
             }}
+            onError={() => setPhotoReady(true)}
             draggable={false}
-            className="absolute inset-0 h-full w-full object-cover"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${
+              photoReady ? "opacity-100" : "opacity-0"
+            }`}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold uppercase tracking-[0.14em] text-kai-navy/30">
@@ -161,21 +183,23 @@ export function FaceMapSection({
         {photo && showWrinkleMask ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            key={`mask-${photoKey}`}
             src={maskSrc}
             alt=""
             aria-hidden
             draggable={false}
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ease-out"
             style={{
-              opacity: wrinkleMaskVisible ? 0.72 : 0,
-              mixBlendMode: "screen",
+              // Multiply keeps a true heatmap readable without stacking a second face.
+              opacity: wrinkleMaskVisible ? 0.55 : 0,
+              mixBlendMode: "multiply",
               ...(shouldCropLegacyMaskTitle(maskSrc, maskExportVersion)
                 ? legacyMaskTitleCropStyle()
                 : null),
             }}
           />
         ) : null}
-        {photo ? (
+        {photo && photoReady ? (
           <ScanDetectionOverlay
             regions={acneForPose}
             wrinkleLines={showWrinkles ? wrinkleLines : []}
@@ -183,11 +207,11 @@ export function FaceMapSection({
             activeConcern={activeConcern}
           />
         ) : null}
-        <p className="absolute bottom-[11px] left-3 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-kai-navy/60">
+        <p className="absolute bottom-[11px] left-3 z-[2] text-[9.5px] font-semibold uppercase tracking-[0.12em] text-kai-navy/60">
           {photo?.label ?? "Front profile"}
         </p>
         {photos.length > 1 ? (
-          <div className="absolute bottom-[11px] left-1/2 flex -translate-x-1/2 gap-1">
+          <div className="absolute bottom-[11px] left-1/2 z-[2] flex -translate-x-1/2 gap-1">
             {photos.map((_, i) => (
               <button
                 key={i}

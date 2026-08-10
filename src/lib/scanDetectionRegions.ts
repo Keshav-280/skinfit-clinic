@@ -283,3 +283,78 @@ export function buildAnnotationRegions(
     ...proxyRegions,
   ];
 }
+
+function opacityForSeverity(score: number): number {
+  const s = Math.round(Math.max(1, Math.min(5, score)));
+  if (s <= 2) return 0.45;
+  if (s === 3) return 0.6;
+  if (s === 4) return 0.78;
+  return 0.92;
+}
+
+function templateEllipse(
+  cls: "acne_scars" | "under_eye",
+  score: number,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  label: string
+): ProxyEllipse {
+  return {
+    type: "ellipse",
+    class: cls,
+    center_pct: [cx, cy],
+    rx_pct: rx,
+    ry_pct: ry,
+    score: Math.max(1, Math.min(5, score)),
+    opacity: opacityForSeverity(score),
+    label,
+    proxy: true,
+  };
+}
+
+/**
+ * When a scan has scar / under-eye severity but no stored proxy_regions
+ * (older jobs, extractor soft-fail), synthesise anatomical ellipses so the
+ * face map still annotates those two concerns.
+ */
+export function ensureScarsAndUnderEyeProxyRegions(
+  existing: ProxyRegion[],
+  scores: {
+    acne_scars?: number | null;
+    under_eye?: number | null;
+  }
+): ProxyRegion[] {
+  const out = [...existing];
+  const hasClass = (cls: string) => out.some((r) => r.class === cls);
+
+  const scars = scores.acne_scars;
+  if (
+    typeof scars === "number" &&
+    Number.isFinite(scars) &&
+    scars > 1 &&
+    !hasClass("acne_scars")
+  ) {
+    out.push(
+      templateEllipse("acne_scars", scars, 28, 54, 7.5, 6.5, "Acne scarring"),
+      templateEllipse("acne_scars", scars, 72, 54, 7.5, 6.5, "Acne scarring"),
+      templateEllipse("acne_scars", scars, 50, 74, 10, 5, "Acne scarring")
+    );
+  }
+
+  const under = scores.under_eye;
+  if (
+    typeof under === "number" &&
+    Number.isFinite(under) &&
+    under > 1 &&
+    !hasClass("under_eye")
+  ) {
+    out.push(
+      templateEllipse("under_eye", under, 36, 40, 6.5, 3.8, "Under-eye"),
+      templateEllipse("under_eye", under, 64, 40, 6.5, 3.8, "Under-eye")
+    );
+  }
+
+  return out;
+}

@@ -424,13 +424,10 @@ def analyze_face(model, bgr: np.ndarray, *, include_image: bool = True) -> dict[
     }
     h_img, w_img = int(bgr.shape[0]), int(bgr.shape[1])
     max_dim = max(h_img, w_img) or 1
-    # Drawn markers are held to a higher bar than grading: a 0.3-confidence hit is
-    # useful signal in aggregate but reads as a false positive when circled on a
-    # patient's face. Grade still counts every detection above CONF.
-    REGION_CONF_MIN = float(os.getenv("REGION_CONF_MIN", "0.5"))
-    # Without landmarks the mask is the whole frame, so detections on hair,
-    # clothing and background would be drawn as lesions. Grade keeps them.
-    region_source = dets_active if mp_ok else []
+    # Drawn markers are held slightly above the grade floor so weak hits still
+    # appear on the face map without flooding it with every 0.3-confidence box.
+    REGION_CONF_MIN = float(os.getenv("REGION_CONF_MIN", "0.35"))
+    region_source = dets_active
     result["detection_regions"] = [
         {
             "class": d.name,

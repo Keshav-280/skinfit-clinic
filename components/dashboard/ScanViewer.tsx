@@ -138,8 +138,8 @@ function WrinkleMaskFallback({
       aria-hidden={!visible}
       className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300 ease-out"
       style={{
-        opacity: visible ? 0.72 : 0,
-        mixBlendMode: "screen",
+        opacity: visible ? 0.55 : 0,
+        mixBlendMode: "multiply",
         ...(cropLegacyTitle ? legacyMaskTitleCropStyle() : null),
       }}
     />

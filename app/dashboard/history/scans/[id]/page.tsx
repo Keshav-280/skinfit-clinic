@@ -13,7 +13,7 @@ import {
 } from "../../../../../src/lib/parseClinicalScores";
 import { scanDisplayMetricsFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
 import { parseScanSpatialOutputs } from "../../../../../src/lib/spatialOutputs";
-import { parseScanDetectionRegions, parseScanProxyRegions, parseScanWrinkleLines } from "../../../../../src/lib/scanDetectionRegions";
+import { parseScanDetectionRegions, parseScanProxyRegions, parseScanWrinkleLines, ensureScarsAndUnderEyeProxyRegions } from "../../../../../src/lib/scanDetectionRegions";
 import { ScanReportPageClient } from "../../../../../components/dashboard/ScanReportPageClient";
 import { buildFaceCaptureGallery } from "../../../../../src/lib/faceCaptureGallery";
 import { patientScanImagePath } from "../../../../../src/lib/patientScanImagePath";
@@ -136,7 +136,22 @@ export default async function ScanReportPage({
   const spatialOutputs = parseScanSpatialOutputs(scores);
   const detectionRegions = parseScanDetectionRegions(scores);
   const wrinkleLines = parseScanWrinkleLines(scores);
-  const proxyRegions = parseScanProxyRegions(scores);
+  const metrics = scanDisplayMetricsFromRow({
+    overallScore: row.overallScore,
+    acne: row.acne,
+    wrinkles: row.wrinkles,
+    pigmentation: row.pigmentation,
+    hydration: row.hydration,
+    texture: row.texture,
+    scores,
+  });
+  const proxyRegions = ensureScarsAndUnderEyeProxyRegions(
+    parseScanProxyRegions(scores),
+    {
+      acne_scars: metrics.clinical_scores?.acne_scars ?? null,
+      under_eye: metrics.clinical_scores?.under_eye ?? null,
+    }
+  );
 
   const faceCaptureImages =
     ("faceCaptureImages" in row ? row.faceCaptureImages : null) as
@@ -156,15 +171,7 @@ export default async function ScanReportPage({
       detectionRegions={detectionRegions}
       wrinkleLines={wrinkleLines}
       proxyRegions={proxyRegions}
-      metrics={scanDisplayMetricsFromRow({
-        overallScore: row.overallScore,
-        acne: row.acne,
-        wrinkles: row.wrinkles,
-        pigmentation: row.pigmentation,
-        hydration: row.hydration,
-        texture: row.texture,
-        scores,
-      })}
+      metrics={metrics}
       aiSummary={row.aiSummary}
       annotatedImageUrl={annotatedImageUrl ?? null}
       wrinkleMaskUrl={wrinkleMaskUrl ?? null}

@@ -10,7 +10,7 @@ import type {
   WrinkleLine,
 } from "@/src/lib/scanDetectionRegions";
 
-const MERGE_DISTANCE_PCT = 8;
+const MERGE_DISTANCE_PCT = 3.5;
 const POLYLINE_MERGE_DISTANCE_PCT = 3;
 const SHORT_LINE_PCT = 6;
 
@@ -106,15 +106,15 @@ function proxyOpacity(
   if (typeof regionOpacity === "number" && Number.isFinite(regionOpacity)) {
     opacity = regionOpacity;
   } else if (diffuse) {
-    opacity = 0.3;
+    opacity = 0.35;
   } else {
     const s = Math.round(Math.max(1, Math.min(5, score)));
-    if (s <= 2) opacity = 0.35;
-    else if (s === 3) opacity = 0.55;
-    else if (s === 4) opacity = 0.75;
-    else opacity = 0.9;
+    if (s <= 2) opacity = 0.45;
+    else if (s === 3) opacity = 0.6;
+    else if (s === 4) opacity = 0.78;
+    else opacity = 0.92;
   }
-  if (allConcernDim) opacity *= 0.7;
+  if (allConcernDim) opacity *= 0.85;
   return opacity;
 }
 
@@ -200,7 +200,7 @@ function mergeNearbyRegions(
       const dist = Math.hypot(m.center_pct[0] - cx, m.center_pct[1] - cy);
       r = Math.max(r, dist + m.radius_pct);
     }
-    r = Math.max(r, 1.2);
+    r = Math.max(r, 2.2);
 
     const label = seed.display_class || seed.class;
     out.push({
@@ -364,7 +364,8 @@ export function ScanDetectionOverlay({
 
   const hasProxy = proxyEllipses.length > 0 || proxyPolylines.length > 0;
   const allConcernDim = activeConcern === "all";
-  const showProxyLabels = activeConcern !== "all";
+  /** Labels for scars / under-eye always; others only when that chip is selected. */
+  const showProxyLabels = true;
 
   if (
     circles.length === 0 &&
@@ -471,6 +472,8 @@ export function ScanDetectionOverlay({
             e.diffuse,
             allConcernDim
           );
+          const emphasize =
+            e.class === "acne_scars" || e.class === "under_eye";
           return (
             <ellipse
               key={`proxy-ell-${e.class}-${i}`}
@@ -478,10 +481,10 @@ export function ScanDetectionOverlay({
               cy={e.center_pct[1]}
               rx={e.rx_pct}
               ry={e.ry_pct}
-              fill={hexToRgba(stroke, 0.05)}
+              fill={hexToRgba(stroke, emphasize ? 0.14 : 0.05)}
               stroke={stroke}
-              strokeWidth={1}
-              strokeDasharray="8 4"
+              strokeWidth={emphasize ? 1.6 : 1}
+              strokeDasharray={emphasize ? "6 3" : "8 4"}
               vectorEffect="non-scaling-stroke"
               className="transition-opacity duration-300 ease-out"
               style={{ opacity: op }}
@@ -495,6 +498,10 @@ export function ScanDetectionOverlay({
         ? proxyEllipses.map((e, i) => {
             const matches = proxyMatchesConcern(e.class, activeConcern);
             if (!matches) return null;
+            const emphasize =
+              e.class === "acne_scars" || e.class === "under_eye";
+            // On "All", only label scars / under-eye to avoid clutter.
+            if (allConcernDim && !emphasize) return null;
             const stroke = proxyStroke(e.class);
             const op = proxyOpacity(
               e.score,

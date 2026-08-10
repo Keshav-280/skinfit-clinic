@@ -23,9 +23,9 @@ Output (stdout JSON):
 
 Gating:
   score 1     → never emit
-  score 2     → only if patch attention confirms the zone
-  score 3–5   → emit zones that beat face-wide activation * 1.2
-  max 8 regions total; diffuse full-face fallback when 3+ but no zone passes
+  pigmentation / sagging → attention-gated (score 2 needs confirmation)
+  acne_scars / under_eye → landmark zones whenever score > 1 (attention optional)
+  max 12 regions; prioritize under_eye + acne_scars; diffuse fallback when zones fail
 """
 
 from __future__ import annotations
@@ -55,8 +55,16 @@ SCAR_LEFT_CHEEK = [234, 93, 132, 58, 172]
 SCAR_RIGHT_CHEEK = [454, 323, 361, 288, 397]
 SCAR_JAW = [152, 148, 176, 149, 150, 136, 172, 58]
 
-UNDER_EYE_LEFT = [33, 7, 163, 144, 145, 153, 154, 155, 133]
-UNDER_EYE_RIGHT = [362, 382, 381, 380, 374, 373, 390, 249, 263]
+# Lower lid + infraorbital / upper cheek so under-eye bags/shadows get a
+# readable zone (lid-only rings were too thin to notice on the face map).
+UNDER_EYE_LEFT = [
+    33, 7, 163, 144, 145, 153, 154, 155, 133,
+    111, 117, 118, 119, 100, 120,
+]
+UNDER_EYE_RIGHT = [
+    362, 382, 381, 380, 374, 373, 390, 249, 263,
+    340, 346, 347, 348, 329, 349,
+]
 
 SAG_LEFT_NASOLABIAL = [36, 205, 206, 207, 187]
 SAG_RIGHT_NASOLABIAL = [266, 425, 426, 427, 411]
@@ -74,7 +82,7 @@ FACE_OVAL = [
 GRID = 16
 INPUT_SIZE = 224
 PATCH = INPUT_SIZE // GRID  # 14
-MAX_PROXY_REGIONS = 8
+MAX_PROXY_REGIONS = 12
 ZONE_VS_FACE_RATIO = 1.2
 # Relaxed so glasses / angled faces still get approximate zones instead of a
 # blank map. Landmark placement is cruder at this confidence but visible.
@@ -82,9 +90,17 @@ LANDMARK_CONF_MIN = 0.4
 TOP_K_PATCHES = 5
 ATTN_BLEND = 0.55  # weight toward attention centroid vs landmark centroid
 
+# Prefer scars + under-eye when capping — product asks for these on the map.
+CLASS_PRIORITY = {
+    "under_eye": 4,
+    "acne_scars": 4,
+    "pigmentation": 2,
+    "sagging_volume": 1,
+}
+
 # Conservative opacity by severity (frontend may use this directly)
-OPACITY_BY_SCORE = {2: 0.35, 3: 0.55, 4: 0.75, 5: 0.90}
-DIFFUSE_OPACITY = 0.3
+OPACITY_BY_SCORE = {2: 0.45, 3: 0.6, 4: 0.78, 5: 0.92}
+DIFFUSE_OPACITY = 0.35
 
 
 def face_mesh_context():
@@ -489,6 +505,10 @@ def try_zone_ellipse(
     base_ry_pct: float | None = None,
     min_rx: float = 2.0,
     min_ry: float = 1.5,
+    # When False, emit landmark zones even if DINOv2 attention does not confirm
+    # (used for acne_scars / under_eye so the face map is never empty).
+    require_attention: bool = True,
+    cy_shift_pct: float = 0.0,
 ) -> dict[str, Any] | None:
     if zone_landmark_confidence(landmarks, indices) < LANDMARK_CONF_MIN:
         return None
@@ -496,11 +516,15 @@ def try_zone_ellipse(
     if pts.shape[0] < 2:
         return None
     stats = zone_activation_stats(activations, face_mask, pts, w, h)
-    if not zone_allowed(score, stats):
+    if require_attention and not zone_allowed(score, stats):
+        return None
+    if score <= 1:
         return None
 
     lm_cx, lm_cy = float(np.mean(pts[:, 0])), float(np.mean(pts[:, 1]))
     cx, cy = blend_center(lm_cx, lm_cy, stats)
+    if cy_shift_pct:
+        cy = cy + (cy_shift_pct / 100.0) * h
     brx, bry = base_radii_from_pts(
         pts, w, h, base_rx_pct=base_rx_pct, base_ry_pct=base_ry_pct
     )
@@ -671,6 +695,8 @@ def extract_proxy_regions(
                 candidates.append(diff)
 
     # ── Acne scars ──
+    # Landmark-first: always place cheek/jaw zones when severity > 1 so the
+    # face map shows scars even without DINOv2 attention confirmation.
     scars = clamp_score(scores.get("acne_scars"))
     if scars is not None and scars > 1:
         before = len(candidates)
@@ -684,10 +710,13 @@ def extract_proxy_regions(
                 score=scars,
                 activations=activations,
                 face_mask=face_mask,
+                require_attention=False,
+                min_rx=3.5,
+                min_ry=3.0,
             )
             if ell:
                 candidates.append(ell)
-        if len(candidates) == before and scars >= diffuse_min:
+        if len(candidates) == before and scars >= 2:
             diff = diffuse_face_ellipse(
                 landmarks, w, h, cls="acne_scars", score=scars
             )
@@ -695,6 +724,8 @@ def extract_proxy_regions(
                 candidates.append(diff)
 
     # ── Under eye ──
+    # Landmark-first (same rationale as scars). Shift slightly downward so the
+    # ellipse covers the infraorbital shelf, not just the lash line.
     under = clamp_score(scores.get("under_eye"))
     if under is not None and under > 1:
         before = len(candidates)
@@ -708,14 +739,16 @@ def extract_proxy_regions(
                 score=under,
                 activations=activations,
                 face_mask=face_mask,
-                base_rx_pct=2.4,
-                base_ry_pct=1.2,
-                min_rx=1.6,
-                min_ry=0.8,
+                require_attention=False,
+                base_rx_pct=4.5,
+                base_ry_pct=2.8,
+                min_rx=3.2,
+                min_ry=2.0,
+                cy_shift_pct=1.8,
             )
             if ell:
                 candidates.append(ell)
-        if len(candidates) == before and under >= diffuse_min:
+        if len(candidates) == before and under >= 2:
             diff = diffuse_face_ellipse(
                 landmarks, w, h, cls="under_eye", score=under
             )
@@ -746,9 +779,11 @@ def extract_proxy_regions(
             if diff:
                 candidates.append(diff)
 
-    # Cap at 8 — keep highest score, then highest zone activation
-    def sort_key(r: dict[str, Any]) -> tuple[float, float]:
+    # Cap — prefer under-eye / scars, then highest score, then activation
+    def sort_key(r: dict[str, Any]) -> tuple[float, float, float]:
+        cls = str(r.get("class") or "")
         return (
+            float(CLASS_PRIORITY.get(cls, 0)),
             float(r.get("score") or 0),
             float(r.get("zone_activation") or 0),
         )

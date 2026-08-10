@@ -15,6 +15,7 @@ import {
   parseScanDetectionRegions,
   parseScanProxyRegions,
   parseScanWrinkleLines,
+  ensureScarsAndUnderEyeProxyRegions,
   type DetectionRegion,
   type ProxyRegion,
   type WrinkleLine,
@@ -146,7 +147,14 @@ export async function buildDoctorScanReportPayload(
   const regions = parseScanRegions(row.annotations);
   const detectionRegions = parseScanDetectionRegions(row.scores);
   const wrinkleLines = parseScanWrinkleLines(row.scores);
-  const proxyRegions = parseScanProxyRegions(row.scores);
+  const metrics = scanDisplayMetricsFromRow(row);
+  const proxyRegions = ensureScarsAndUnderEyeProxyRegions(
+    parseScanProxyRegions(row.scores),
+    {
+      acne_scars: metrics.clinical_scores?.acne_scars ?? null,
+      under_eye: metrics.clinical_scores?.under_eye ?? null,
+    }
+  );
   const wrinkleMaskStored = parseScanWrinkleMaskDataUri(row.scores);
   const acneMaskStored = parseScanAcneMaskDataUri(row.scores);
   const annotatedImageStored = parseScanOverlayDataUri(row.scores);
@@ -185,7 +193,7 @@ export async function buildDoctorScanReportPayload(
     detectionRegions,
     wrinkleLines,
     proxyRegions,
-    metrics: scanDisplayMetricsFromRow(row),
+    metrics,
     aiSummary: row.aiSummary,
     annotatedImageUrl: annotatedImageStored ?? null,
     wrinkleMaskUrl: wrinkleMaskStored
