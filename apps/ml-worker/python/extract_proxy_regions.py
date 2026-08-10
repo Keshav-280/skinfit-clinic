@@ -76,7 +76,9 @@ INPUT_SIZE = 224
 PATCH = INPUT_SIZE // GRID  # 14
 MAX_PROXY_REGIONS = 8
 ZONE_VS_FACE_RATIO = 1.2
-LANDMARK_CONF_MIN = 0.7
+# Relaxed so glasses / angled faces still get approximate zones instead of a
+# blank map. Landmark placement is cruder at this confidence but visible.
+LANDMARK_CONF_MIN = 0.4
 TOP_K_PATCHES = 5
 ATTN_BLEND = 0.55  # weight toward attention centroid vs landmark centroid
 
@@ -95,8 +97,9 @@ def face_mesh_context():
         static_image_mode=True,
         max_num_faces=1,
         refine_landmarks=True,
-        # Stricter gate: unreliable landmarking → empty proxy regions.
-        min_detection_confidence=0.7,
+        # Relaxed so faces with glasses / at an angle are still detected and
+        # produce approximate proxy zones instead of no landmarks at all.
+        min_detection_confidence=0.4,
     )
 
 
