@@ -11,6 +11,11 @@ const SCRIPT = resolve(
   "apps/ml-worker/python/extract_wrinkle_lines.py"
 );
 
+const RESTRICT_SCRIPT = resolve(
+  process.cwd(),
+  "apps/ml-worker/python/restrict_mask_to_face.py"
+);
+
 const TIMEOUT_MS = 25_000;
 
 function pythonBin(): string {
@@ -160,6 +165,92 @@ function execExtract(payload: {
         source_b64: payload.source_b64,
       })
     );
+    child.stdin.end();
+  });
+}
+
+/**
+ * Face-clip a wrinkle mask data URI: zeroes out pixels outside the face
+ * so screen-blend rendering doesn't produce background haze.
+ * Returns the original on failure (scan continues with unclipped mask).
+ */
+export async function clipWrinkleMaskToFace(input: {
+  wrinkleMaskDataUri: string;
+  sourceJpegB64: string;
+}): Promise<string> {
+  const maskB64 = jpegDataUriOrB64ToRawB64(input.wrinkleMaskDataUri);
+  const sourceB64 = jpegDataUriOrB64ToRawB64(input.sourceJpegB64);
+  if (!maskB64 || !sourceB64) return input.wrinkleMaskDataUri;
+
+  try {
+    const result = await execRestrict({
+      mask_b64: maskB64,
+      source_b64: sourceB64,
+      kind: "wrinkle",
+      timeoutMs: 20_000,
+    });
+    if (!result || result.ok === false || !result.jpeg_b64) {
+      logger.warn("wrinkle_mask_clip_failed", {
+        error: result?.error ?? "no output",
+      });
+      return input.wrinkleMaskDataUri;
+    }
+    return `data:image/jpeg;base64,${result.jpeg_b64}`;
+  } catch (err) {
+    logger.warn("wrinkle_mask_clip_error", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return input.wrinkleMaskDataUri;
+  }
+}
+
+type RestrictResult = {
+  ok?: boolean;
+  jpeg_b64?: string;
+  error?: string;
+};
+
+function execRestrict(payload: {
+  mask_b64: string;
+  source_b64: string;
+  kind: string;
+  timeoutMs: number;
+}): Promise<RestrictResult> {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(pythonBin(), [RESTRICT_SCRIPT], {
+      env: { ...process.env },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new Error("wrinkle mask clip timed out"));
+    }, payload.timeoutMs);
+
+    child.stdout.on("data", (c: Buffer) => { stdout += c.toString(); });
+    child.stderr.on("data", (c: Buffer) => { stderr += c.toString(); });
+    child.on("error", (err) => { clearTimeout(timer); reject(err); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code !== 0 && !stdout.trim()) {
+        reject(new Error(stderr.trim() || `restrict_mask exited ${code}`));
+        return;
+      }
+      const line = stdout.trim().split("\n").pop() || "{}";
+      try {
+        resolvePromise(JSON.parse(line) as RestrictResult);
+      } catch {
+        reject(new Error(`invalid restrict_mask JSON: ${line.slice(0, 200)}`));
+      }
+    });
+
+    child.stdin.write(JSON.stringify({
+      mask_b64: payload.mask_b64,
+      source_b64: payload.source_b64,
+      kind: payload.kind,
+    }));
     child.stdin.end();
   });
 }

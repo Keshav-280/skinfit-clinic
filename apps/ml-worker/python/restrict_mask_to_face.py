@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """
-Clip acne heatmap overlays to the face boundary only.
+Clip heatmap overlays to the face boundary only.
 
-Uses MediaPipe Face Mesh for a face-region mask. Inside the face: keeps the
-original inference mask pixels unchanged. Outside: replaces with the source photo
-(no heatmap on hair/background).
-
-Wrinkle masks are not processed here — callers should skip them.
+Uses MediaPipe Face Mesh for a face-region mask.
+- Acne: inside = original mask, outside = source photo.
+- Wrinkle: inside = original mask, outside = black (screen blend makes black invisible).
 
 Input:
   { "mask_b64": "<jpeg>", "source_b64": "<jpeg>", "kind": "acne"|"wrinkle" }
@@ -181,6 +179,25 @@ def clip_acne_mask_to_face(mask_bgr: np.ndarray, source_bgr: np.ndarray) -> np.n
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def clip_wrinkle_mask_to_face(mask_bgr: np.ndarray, source_bgr: np.ndarray) -> np.ndarray:
+    """
+    Zero out wrinkle mask outside the face boundary.
+    Wrinkle masks are rendered with screen blend — black = invisible.
+    """
+    fh, fw = mask_bgr.shape[:2]
+    source = cv2.resize(source_bgr, (fw, fh), interpolation=cv2.INTER_AREA)
+
+    skin = build_acne_face_clip_mask(source)
+    if skin is None:
+        skin = fallback_ellipse_mask(source)
+
+    alpha = skin.astype(np.float32) / 255.0
+    alpha3 = np.stack([alpha, alpha, alpha], axis=-1)
+
+    out = mask_bgr.astype(np.float32) * alpha3
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def main() -> None:
     try:
         payload = json.loads(sys.stdin.read() or "{}")
@@ -192,8 +209,8 @@ def main() -> None:
     source_b64 = payload.get("source_b64")
     kind = str(payload.get("kind") or "acne")
 
-    if kind != "acne":
-        print(json.dumps({"ok": False, "error": "only acne masks are clipped"}))
+    if kind not in ("acne", "wrinkle"):
+        print(json.dumps({"ok": False, "error": f"unknown kind: {kind}"}))
         return
 
     if not isinstance(mask_b64, str) or not isinstance(source_b64, str):
@@ -207,7 +224,10 @@ def main() -> None:
         return
 
     try:
-        out = clip_acne_mask_to_face(mask, source)
+        if kind == "wrinkle":
+            out = clip_wrinkle_mask_to_face(mask, source)
+        else:
+            out = clip_acne_mask_to_face(mask, source)
         print(json.dumps({"ok": True, "jpeg_b64": encode_jpeg_b64(out)}))
     except Exception as e:
         print(json.dumps({"ok": False, "error": str(e)}))

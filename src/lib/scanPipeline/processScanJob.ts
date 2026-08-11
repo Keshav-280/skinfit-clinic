@@ -281,12 +281,18 @@ export async function processScanJob(
   // Wrinkle mask is from smiling pose — extract polylines against smiling photo only.
   if (merged.wrinkleMaskDataUri) {
     try {
-      const { extractWrinkleLinesFromImages } = await import(
+      const { extractWrinkleLinesFromImages, clipWrinkleMaskToFace } = await import(
         "@/src/lib/extractWrinkleLines"
       );
+      const smilingB64 = await ensureSmilingJpeg();
+      // Face-clip the wrinkle mask so screen-blend doesn't haze background/hair.
+      merged.wrinkleMaskDataUri = await clipWrinkleMaskToFace({
+        wrinkleMaskDataUri: merged.wrinkleMaskDataUri,
+        sourceJpegB64: smilingB64,
+      });
       wrinkle_lines = await extractWrinkleLinesFromImages({
         wrinkleMaskDataUriOrB64: merged.wrinkleMaskDataUri,
-        sourceJpegB64: await ensureSmilingJpeg(),
+        sourceJpegB64: smilingB64,
       });
       if (wrinkle_lines.length > 0) {
         logger.info("wrinkle_lines_extracted", {
