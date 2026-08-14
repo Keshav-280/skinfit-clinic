@@ -790,11 +790,12 @@ export default function DashboardScreen() {
                 setWeekOffset(0);
               }}
               disabled={d.isFuture}
-              style={[
+              style={({ pressed }) => [
                 styles.dateChip,
                 d.isSelected && styles.dateChipToday,
                 d.isFuture && styles.dateChipDisabled,
                 d.isToday && !d.isSelected && styles.dateChipIsToday,
+                pressed && !d.isFuture && styles.dateChipPressed,
               ]}
             >
               <Text style={[styles.dateChipLabel, d.isSelected && styles.dateChipLabelToday]}>
@@ -1457,7 +1458,7 @@ function SkinParamMetricsCard({
         </View>
       )}
       <Pressable
-        style={[styles.viewAllParamsBtn, compact && styles.viewAllParamsBtnCompact]}
+        style={({ pressed }) => [styles.viewAllParamsBtn, compact && styles.viewAllParamsBtnCompact, pressed && styles.viewAllParamsBtnPressed]}
         onPress={onViewAll}
       >
         <Text style={[styles.viewAllParamsText, compact && styles.viewAllParamsTextCompact]}>
@@ -2003,14 +2004,19 @@ function DoctorFeedbackGroupBlock({
               editable={Boolean(replyDoctorId) && !replyBusy}
             />
             <Pressable
-              style={[
+              style={({ pressed }) => [
                 fbStyles.sendBtn,
-                { opacity: replyBusy || !replyText.trim() || !replyDoctorId ? 0.4 : 1 },
+                !replyBusy && pressed && { transform: [{ scale: 0.92 }] },
+                { opacity: !replyText.trim() || !replyDoctorId ? 0.35 : 1 },
               ]}
               disabled={replyBusy || !replyText.trim() || !replyDoctorId}
               onPress={() => void sendReply()}
             >
-              <Ionicons name="send" size={18} color="#fff" />
+              {replyBusy ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="send" size={18} color="#fff" />
+              )}
             </Pressable>
           </View>
           {replyError ? (
@@ -2450,6 +2456,7 @@ const styles = StyleSheet.create({
   dateChipDay: { fontSize: 13, fontWeight: "800", color: "#1A1A2E", marginTop: 2, lineHeight: 15 },
   dateChipDayToday: { color: "#fff" },
   dateChipDisabled: { opacity: 0.35 },
+  dateChipPressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
   weekMonthLabel: {
     width: "100%",
     marginTop: 2,
@@ -2969,6 +2976,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 10,
   },
+  viewAllParamsBtnPressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
   viewAllParamsText: { color: "#fff", fontSize: 15, fontWeight: "700" },
   viewAllParamsTextCompact: { fontSize: 11 },
 

@@ -4,28 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Menu, X } from "lucide-react";
+import { Bell, Camera, Home, Heart, MessageCircle, User, X } from "lucide-react";
 import clsx from "clsx";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
 
 const links = [
-  { href: "/dashboard/scan", label: "Diagnose" },
-  { href: "/dashboard", label: "Build" },
-  { href: "/dashboard/schedules", label: "Maintain" },
-  { href: "/dashboard/chat?assistant=support", label: "Chat With Us" },
+  { href: "/dashboard/scan", label: "Diagnose", Icon: Camera },
+  { href: "/dashboard", label: "Build", Icon: Home },
+  { href: "/dashboard/schedules", label: "Maintain", Icon: Heart },
+  { href: "/dashboard/chat?assistant=support", label: "Chat", Icon: MessageCircle },
 ] as const;
 
 function isActive(href: string, pathname: string | null): boolean {
   if (!pathname) return false;
   const path = href.split("?")[0] ?? href;
   if (path === "/dashboard") {
-    const isRoot =
-      pathname === "/dashboard" || pathname === "/dashboard/";
-    if (!isRoot) return false;
-    return true;
+    return pathname === "/dashboard" || pathname === "/dashboard/";
   }
-  /** AI Scan tab covers capture + scan history routes. */
   if (path === "/dashboard/scan") {
     return (
       pathname === "/dashboard/scan" ||
@@ -115,7 +111,7 @@ export function DashboardNav() {
     };
   }, [pathname]);
 
-  /** Mark schedule updates read after leaving Schedules (not on entry — avoids hiding the bell before the patient sees it). */
+  /** Mark schedule updates read after leaving Schedules. */
   useEffect(() => {
     if (!pathname?.startsWith("/dashboard/schedules")) return;
     return () => {
@@ -127,12 +123,13 @@ export function DashboardNav() {
   }, [pathname]);
 
   return (
-    <div className="flex min-w-0 flex-1 items-center justify-end md:justify-center">
+    <>
+      {/* Desktop tab bar */}
       <nav
         className="hidden flex-wrap items-center justify-center gap-1 md:flex"
         aria-label="Dashboard"
       >
-        {links.map(({ href, label }) => {
+        {links.map(({ href, label, Icon }) => {
           const active = isActive(href, pathname);
           const schedules = href === "/dashboard/schedules";
           const bell = schedules && scheduleBellCount > 0;
@@ -144,16 +141,14 @@ export function DashboardNav() {
                 linkBase,
                 "inline-flex items-center gap-1.5 px-3 py-2 lg:px-4",
                 active
-                  ? "bg-white/40 text-[#2C3E6B] font-semibold backdrop-blur-sm"
-                  : "text-[#2C3E6B]/70 hover:bg-white/40 hover:text-[#2C3E6B]"
+                  ? "bg-[#2C3E6B]/10 text-[#2C3E6B] font-semibold"
+                  : "text-[#2C3E6B]/60 hover:bg-[#2C3E6B]/8 hover:text-[#2C3E6B]"
               )}
               aria-current={active ? "page" : undefined}
             >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
               {bell ? (
-                <Bell
-                  className="h-3.5 w-3.5 shrink-0 text-[#2C3E6B]"
-                  aria-hidden
-                />
+                <Bell className="h-3.5 w-3.5 shrink-0" aria-hidden />
               ) : null}
               <span>{label}</span>
               {bell ? (
@@ -166,83 +161,88 @@ export function DashboardNav() {
         })}
       </nav>
 
-      <button
-        type="button"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#2C3E6B] hover:bg-white/50 md:hidden"
-        aria-expanded={open}
-        aria-controls="dashboard-mobile-nav"
-        aria-label={open ? "Close menu" : "Open menu"}
-        onClick={() => setOpen((o) => !o)}
-      >
-        {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-      </button>
-
-      {open && mounted
+      {/* Mobile bottom tab bar — portaled to body so it sits above all content */}
+      {mounted
         ? createPortal(
-            <>
-              <div
-                className="fixed inset-0 z-[200] bg-[#2C3E6B]/20 backdrop-blur-sm md:hidden"
-                aria-hidden
-                onClick={close}
-              />
-              <div
-                id="dashboard-mobile-nav"
-                className="fixed inset-y-0 right-0 z-[201] flex w-[min(20rem,calc(100vw-2.5rem))] max-w-full flex-col border-l border-white/30 bg-white/80 shadow-xl backdrop-blur-xl md:hidden"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Dashboard navigation"
-              >
-                <div className="flex items-center justify-between border-b border-white/40 px-4 py-3">
-                  <span className="font-bold text-[#2C3E6B]">Menu</span>
-                  <button
-                    type="button"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-[#2C3E6B] hover:bg-white/50"
-                    aria-label="Close menu"
-                    onClick={close}
+            <nav
+              className="fixed bottom-0 left-0 right-0 z-[100] flex border-t border-[#E5E7EB] bg-white/90 pb-safe backdrop-blur-md md:hidden"
+              aria-label="Dashboard"
+              style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+            >
+              {links.map(({ href, label, Icon }) => {
+                const active = isActive(href, pathname);
+                const schedules = href === "/dashboard/schedules";
+                const bell = schedules && scheduleBellCount > 0;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="relative flex flex-1 flex-col items-center gap-1 py-3 transition-opacity active:opacity-60"
+                    aria-current={active ? "page" : undefined}
                   >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <nav
-                  className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 pb-8"
-                  aria-label="Dashboard pages"
-                >
-                  {links.map(({ href, label }) => {
-                    const active = isActive(href, pathname);
-                    const schedules = href === "/dashboard/schedules";
-                    const bell = schedules && scheduleBellCount > 0;
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={close}
+                    <span
+                      className={clsx(
+                        "flex h-8 w-10 items-center justify-center rounded-xl transition-colors",
+                        active ? "bg-[#2C3E6B]/10" : ""
+                      )}
+                    >
+                      <Icon
                         className={clsx(
-                          linkBase,
-                          "inline-flex items-center gap-2 px-4 py-3.5",
-                          active
-                            ? "bg-white/40 text-[#2C3E6B] font-semibold"
-                            : "text-[#2C3E6B]/70 hover:bg-white/40"
+                          "h-5 w-5 shrink-0 transition-colors",
+                          active ? "text-[#2C3E6B]" : "text-[#9CA3AF]"
                         )}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        {bell ? (
-                          <Bell className="h-4 w-4 shrink-0 text-[#2C3E6B]" aria-hidden />
-                        ) : null}
-                        <span className="flex-1">{label}</span>
-                        {bell ? (
-                          <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-[#2C3E6B] px-1.5 text-[11px] font-bold text-white">
-                            {scheduleBellCount > 9 ? "9+" : scheduleBellCount}
-                          </span>
-                        ) : null}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
-            </>,
+                        aria-hidden
+                      />
+                    </span>
+                    <span
+                      className={clsx(
+                        "text-[10px] font-medium leading-none",
+                        active ? "text-[#2C3E6B] font-semibold" : "text-[#9CA3AF]"
+                      )}
+                    >
+                      {label}
+                    </span>
+                    {bell ? (
+                      <span className="absolute right-[calc(50%-18px)] top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#2C3E6B] text-[9px] font-bold text-white">
+                        {scheduleBellCount > 9 ? "9+" : scheduleBellCount}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+              {/* Profile tab */}
+              <Link
+                href="/dashboard/profile"
+                className="relative flex flex-1 flex-col items-center gap-1 py-3 transition-opacity active:opacity-60"
+                aria-label="Profile"
+              >
+                <span
+                  className={clsx(
+                    "flex h-8 w-10 items-center justify-center rounded-xl transition-colors",
+                    isActive("/dashboard/profile", pathname) ? "bg-[#2C3E6B]/10" : ""
+                  )}
+                >
+                  <User
+                    className={clsx(
+                      "h-5 w-5 shrink-0 transition-colors",
+                      isActive("/dashboard/profile", pathname) ? "text-[#2C3E6B]" : "text-[#9CA3AF]"
+                    )}
+                    aria-hidden
+                  />
+                </span>
+                <span
+                  className={clsx(
+                    "text-[10px] font-medium leading-none",
+                    isActive("/dashboard/profile", pathname) ? "text-[#2C3E6B] font-semibold" : "text-[#9CA3AF]"
+                  )}
+                >
+                  Profile
+                </span>
+              </Link>
+            </nav>,
             document.body
           )
         : null}
-    </div>
+    </>
   );
 }

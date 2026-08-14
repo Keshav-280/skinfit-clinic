@@ -93,7 +93,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   buttonPressed: {
-    opacity: 0.9,
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
   },
   buttonText: {
     fontSize: 14,

@@ -192,14 +192,14 @@ export function DailyJournalMergedCard({
         </Pressable>
         <View style={styles.stepper}>
           <Pressable
-            style={[styles.stepBtn, compact && styles.stepBtnCompact]}
+            style={({ pressed }) => [styles.stepBtn, compact && styles.stepBtnCompact, pressed && styles.stepBtnPressed]}
             onPress={() => adjustSleep(-0.5)}
             accessibilityLabel="Decrease sleep"
           >
             <Ionicons name="remove" size={compact ? 14 : 18} color={DASHBOARD_NAVY} />
           </Pressable>
           <Pressable
-            style={[styles.stepBtn, compact && styles.stepBtnCompact]}
+            style={({ pressed }) => [styles.stepBtn, compact && styles.stepBtnCompact, pressed && styles.stepBtnPressed]}
             onPress={() => adjustSleep(0.5)}
             accessibilityLabel="Increase sleep"
           >
@@ -234,14 +234,14 @@ export function DailyJournalMergedCard({
         </Pressable>
         <View style={styles.stepper}>
           <Pressable
-            style={[styles.stepBtn, compact && styles.stepBtnCompact]}
+            style={({ pressed }) => [styles.stepBtn, compact && styles.stepBtnCompact, pressed && styles.stepBtnPressed]}
             onPress={() => adjustWater(-1)}
             accessibilityLabel="Decrease hydration"
           >
             <Ionicons name="remove" size={compact ? 14 : 18} color={DASHBOARD_NAVY} />
           </Pressable>
           <Pressable
-            style={[styles.stepBtn, compact && styles.stepBtnCompact]}
+            style={({ pressed }) => [styles.stepBtn, compact && styles.stepBtnCompact, pressed && styles.stepBtnPressed]}
             onPress={() => adjustWater(1)}
             accessibilityLabel="Increase hydration"
           >
@@ -280,14 +280,14 @@ export function DailyJournalMergedCard({
         </Pressable>
         <View style={styles.stepper}>
           <Pressable
-            style={[styles.stepBtn, compact && styles.stepBtnCompact]}
+            style={({ pressed }) => [styles.stepBtn, compact && styles.stepBtnCompact, pressed && styles.stepBtnPressed]}
             onPress={() => adjustStress(-1)}
             accessibilityLabel="Decrease stress level"
           >
             <Ionicons name="remove" size={compact ? 14 : 18} color={DASHBOARD_NAVY} />
           </Pressable>
           <Pressable
-            style={[styles.stepBtn, compact && styles.stepBtnCompact]}
+            style={({ pressed }) => [styles.stepBtn, compact && styles.stepBtnCompact, pressed && styles.stepBtnPressed]}
             onPress={() => adjustStress(1)}
             accessibilityLabel="Increase stress level"
           >
@@ -425,6 +425,10 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
+  },
+  stepBtnPressed: {
+    opacity: 0.6,
+    transform: [{ scale: 0.88 }],
   },
   divider: {
     height: 1,
