@@ -74,6 +74,10 @@ export function parseScanAcneMaskDataUri(scores: unknown): string | undefined {
   return parseStoredImageRef(scores, "acneMaskUrl", "acneMaskDataUri");
 }
 
+export function parseScanSpotAnnotatedUrl(scores: unknown): string | undefined {
+  return parseStoredImageRef(scores, "spotAnnotatedUrl", "spotAnnotatedUrl");
+}
+
 /** `2` = title-free JPEG masks from fixed `/analyze_dual_scan`; absent/`1` = legacy matplotlib. */
 export function parseMaskExportVersion(scores: unknown): number | undefined {
   if (!scores || typeof scores !== "object") return undefined;

@@ -53,6 +53,7 @@ services:
       PUBLIC_UPLOAD_BASE_URL: ${PUBLIC_UPLOAD_BASE_URL:-http://localhost:3000/api/files}
       FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
       ACNE_DETECTOR_SERVICE_URL: http://acne-detector:8000
+      SPOT_DETECTOR_SERVICE_URL: http://spot-detector:8002
     volumes:
       - uploads:/uploads
     depends_on:
@@ -74,6 +75,7 @@ services:
       LOCAL_STORAGE_ROOT: /uploads
       FACE_ANALYSIS_SERVICE_URL: http://ml-inference:8765
       ACNE_DETECTOR_SERVICE_URL: http://acne-detector:8000
+      SPOT_DETECTOR_SERVICE_URL: http://spot-detector:8002
     volumes:
       - uploads:/uploads
     depends_on:
@@ -84,6 +86,8 @@ services:
       ml-inference:
         condition: service_started
       acne-detector:
+        condition: service_started
+      spot-detector:
         condition: service_started
 
   ml-inference:
@@ -118,6 +122,31 @@ services:
       IMGSZ: "896"
     volumes:
       - ../models:/models:ro
+
+  # Standalone dark-spot grid tool — NOT wired into ml-worker / face scan pipeline.
+  pigmentation-detector:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pigmentation-detector
+    env_file:
+      - ../.env
+      - ../.env.local
+    ports:
+      - "8001:8001"
+    environment:
+      TILE_PX: "18"
+      MIN_DELTA_L: "11"
+      NEIGHBOR_RING: "2"
+
+  spot-detector:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.spot-detector
+    env_file:
+      - ../.env
+      - ../.env.local
+    ports:
+      - "8002:8002"
 
 volumes:
   pgdata:

@@ -1,24 +1,97 @@
-import { StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const NAVY = "#2C3E6B";
+const NAVY_DARK = "#1E3264";
 
 export default function WellnessScreen() {
   return (
-    <View style={styles.wrap}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Coming soon</Text>
-        <Text style={styles.body}>
-          Holistic health tracking is currently in development — same as the web portal.
-        </Text>
-      </View>
-    </View>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <LinearGradient
+          colors={[NAVY, NAVY_DARK]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.title}>Track your wellness journey</Text>
+            <Text style={styles.subtitle}>
+              Skin care and wellness begins from within. Let&apos;s track your
+              weekly goals.
+            </Text>
+          </View>
+          <Image
+            source={require("@/assets/images/dr-ruby-cutout.png")}
+            style={styles.doctor}
+            resizeMode="contain"
+          />
+        </LinearGradient>
+
+        <View style={styles.sheet}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Coming soon</Text>
+            <Text style={styles.cardBody}>
+              Holistic health tracking is currently in development — same as the
+              web portal.
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  safe: {
     flex: 1,
-    backgroundColor: "#f8f5ef",
-    justifyContent: "center",
-    padding: 24,
+    backgroundColor: NAVY,
+  },
+  scroll: {
+    flexGrow: 1,
+    backgroundColor: "#F5F3EF",
+  },
+  header: {
+    height: 240,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    overflow: "hidden",
+    position: "relative",
+  },
+  headerTextWrap: {
+    maxWidth: "60%",
+  },
+  title: {
+    color: "#fff",
+    fontSize: 26,
+    fontWeight: "700",
+    lineHeight: 32,
+  },
+  subtitle: {
+    marginTop: 10,
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  doctor: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    height: 220,
+    width: 192,
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: "#F5F3EF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -20,
+    paddingTop: 28,
+    paddingHorizontal: 24,
   },
   card: {
     backgroundColor: "#fff",
@@ -32,6 +105,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 2,
   },
-  title: { fontSize: 26, fontWeight: "700", color: "#0f766e", textAlign: "center" },
-  body: { marginTop: 12, fontSize: 15, color: "#52525b", textAlign: "center", lineHeight: 22 },
+  cardTitle: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: NAVY,
+    textAlign: "center",
+  },
+  cardBody: {
+    marginTop: 12,
+    fontSize: 15,
+    color: "#52525b",
+    textAlign: "center",
+    lineHeight: 22,
+  },
 });

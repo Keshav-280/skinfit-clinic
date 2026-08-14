@@ -41,6 +41,13 @@ services:
     # One replica — scan jobs run sequentially (worker concurrency is already 1).
     container_name: skinfit-ml-worker
 
+  spot-detector:
+    restart: unless-stopped
+    ports: !reset []
+    expose:
+      - "8002"
+    container_name: skinfit-spot-detector
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped

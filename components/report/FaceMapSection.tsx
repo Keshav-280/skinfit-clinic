@@ -32,6 +32,7 @@ type FaceMapSectionProps = {
   wrinkleLines?: WrinkleLine[];
   /** Model wrinkle segmentation heatmap (smiling pose) — only used when no vector lines. */
   wrinkleMaskUrl?: string | null;
+  spotAnnotatedUrl?: string | null;
   maskExportVersion?: number | null;
   proxyRegions?: ProxyRegion[];
   parameterGrades: FaceMapChip[];
@@ -62,6 +63,7 @@ export function FaceMapSection({
   detectionRegionsByPose,
   wrinkleLines = [],
   wrinkleMaskUrl,
+  spotAnnotatedUrl,
   maskExportVersion,
   proxyRegions = [],
   parameterGrades,
@@ -239,6 +241,22 @@ export function FaceMapSection({
               ...(shouldCropLegacyMaskTitle(maskSrc, maskExportVersion)
                 ? legacyMaskTitleCropStyle()
                 : null),
+            }}
+          />
+        ) : null}
+        {photo && photoReady && spotAnnotatedUrl?.trim() && pose === "centre" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={publicFileDisplayUrl(spotAnnotatedUrl) ?? spotAnnotatedUrl}
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="pointer-events-none absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300 ease-out"
+            style={{
+              opacity:
+                activeConcern === "all" || activeConcern === "pigmentation"
+                  ? 0.85
+                  : 0,
             }}
           />
         ) : null}

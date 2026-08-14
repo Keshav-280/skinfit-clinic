@@ -1,5 +1,5 @@
 /** Patient dashboard — exact mockup palette (web + mobile). */
-export const PATIENT_MINT_BG = "#F2F9F2";
+export const PATIENT_MINT_BG = "#F5F3EF";
 export const PATIENT_NAVY = "#2D3E6B";
 export const PATIENT_NAVY_HOVER = "#243456";
 export const PATIENT_GREEN = "#4CAF50";
@@ -41,7 +41,7 @@ export const patientPrimaryBtn =
   "inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#2D3E6B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:opacity-50";
 
 export const patientSecondaryBtn =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D3E6B] transition hover:bg-[#F2F9F2]";
+  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D3E6B] transition hover:bg-[#F5F3EF]";
 
 export const patientInputBase =
   "rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-[#2D3E6B] placeholder:text-[#6B7280]/60 outline-none focus:border-[#2D3E6B]/40 focus:ring-2 focus:ring-[#2D3E6B]/10 disabled:opacity-60";
@@ -55,7 +55,7 @@ export const patientStatTile =
   "rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-3";
 
 export const patientScoreChip =
-  "rounded-md bg-[#F2F9F2] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#2D3E6B]";
+  "rounded-md bg-[#F5F3EF] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#2D3E6B]";
 
 /** Locked weekly trend glyph (↑ / ↓ / —). */
 export function lockedWeeklyProgressSymbol(weeklyDeltaScore: number): string {

@@ -8,6 +8,7 @@ import { parseScanRegions } from "../../../../../src/lib/parseScanAnnotations";
 import {
   parseScanAcneMaskDataUri,
   parseScanOverlayDataUri,
+  parseScanSpotAnnotatedUrl,
   parseScanWrinkleMaskDataUri,
   parseMaskExportVersion,
 } from "../../../../../src/lib/parseClinicalScores";
@@ -148,8 +149,16 @@ export default async function ScanReportPage({
   const proxyRegions = ensureScarsAndUnderEyeProxyRegions(
     parseScanProxyRegions(scores),
     {
-      acne_scars: metrics.clinical_scores?.acne_scars ?? null,
-      under_eye: metrics.clinical_scores?.under_eye ?? null,
+      acne_scars:
+        metrics.clinical_scores?.acne_scars ??
+        (metrics.texture > 0
+          ? 1 + ((100 - Math.min(100, metrics.texture)) / 100) * 4
+          : null),
+      under_eye:
+        metrics.clinical_scores?.under_eye ??
+        (metrics.hydration > 0
+          ? 1 + ((100 - Math.min(100, metrics.hydration)) / 100) * 4
+          : null),
     }
   );
 
@@ -176,6 +185,7 @@ export default async function ScanReportPage({
       annotatedImageUrl={annotatedImageUrl ?? null}
       wrinkleMaskUrl={wrinkleMaskUrl ?? null}
       acneMaskUrl={acneMaskUrl ?? null}
+      spotAnnotatedUrl={parseScanSpotAnnotatedUrl(scores) ?? null}
       maskExportVersion={maskExportVersion ?? null}
       spatialOutputs={spatialOutputs ?? null}
       scanDateIso={row.createdAt.toISOString()}

@@ -151,8 +151,16 @@ export async function buildDoctorScanReportPayload(
   const proxyRegions = ensureScarsAndUnderEyeProxyRegions(
     parseScanProxyRegions(row.scores),
     {
-      acne_scars: metrics.clinical_scores?.acne_scars ?? null,
-      under_eye: metrics.clinical_scores?.under_eye ?? null,
+      acne_scars:
+        metrics.clinical_scores?.acne_scars ??
+        (typeof metrics.texture === "number" && metrics.texture > 0
+          ? 1 + ((100 - Math.min(100, metrics.texture)) / 100) * 4
+          : null),
+      under_eye:
+        metrics.clinical_scores?.under_eye ??
+        (typeof metrics.hydration === "number" && metrics.hydration > 0
+          ? 1 + ((100 - Math.min(100, metrics.hydration)) / 100) * 4
+          : null),
     }
   );
   const wrinkleMaskStored = parseScanWrinkleMaskDataUri(row.scores);

@@ -5,20 +5,24 @@ import {
   type FaceCaptureRef,
 } from "@/src/lib/resolveScanImageUrl";
 
-/** Gallery entries for report UI — prefers stored file URLs, falls back to scan image API. */
+/** Gallery entries for report UI — prefers scan image API by index (stable auth). */
 export function buildFaceCaptureGallery(
   scanId: number,
   captures: FaceCaptureRef[] | null | undefined
 ): Array<{ label: string; imageUrl: string; poseId?: string }> | undefined {
   if (!captures?.length) return undefined;
   return captures.map((entry, i) => {
-    const direct = resolveCaptureImageSrc(entry);
     const byLabel = FACE_SCAN_CAPTURE_STEPS.find((s) => s.id === entry.label);
     const byIndex = FACE_SCAN_CAPTURE_STEPS[i];
+    const poseId = byLabel?.id ?? byIndex?.id;
+    const title = byLabel?.title ?? byIndex?.title ?? entry.label;
+    // Authenticated by-index URL is reliable across devices; fall back to stored URL.
+    const apiUrl = patientScanImagePath(scanId, { index: i, preview: true });
+    const direct = resolveCaptureImageSrc(entry, true);
     return {
-      label: byLabel?.title ?? byIndex?.title ?? entry.label,
-      poseId: byLabel?.id ?? byIndex?.id,
-      imageUrl: direct ?? patientScanImagePath(scanId, { index: i }),
+      label: title,
+      poseId,
+      imageUrl: apiUrl || direct || patientScanImagePath(scanId, { index: i }),
     };
   });
 }

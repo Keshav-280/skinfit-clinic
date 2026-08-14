@@ -17,11 +17,13 @@ import {
 } from "../../../../../src/lib/scanDetectionRegions";
 import {
   parseMaskExportVersion,
+  parseScanSpotAnnotatedUrl,
   parseScanWrinkleMaskDataUri,
 } from "../../../../../src/lib/parseClinicalScores";
 import { scanDisplayMetricsFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
 import {
   buildKaiReportParamRows,
+  clarityToSeverity,
   defaultInitialActions,
   filterScoredReportParams,
   initialReportHeadline,
@@ -166,11 +168,28 @@ function faceMapProxyRegions(
   clinical: {
     acne_scars?: number | null;
     under_eye?: number | null;
-  } | null | undefined
+  } | null | undefined,
+  legacy?: {
+    hydration?: number;
+    texture?: number;
+  }
 ) {
+  const scarsSeverity =
+    typeof clinical?.acne_scars === "number" && Number.isFinite(clinical.acne_scars)
+      ? clinical.acne_scars
+      : typeof legacy?.texture === "number" && legacy.texture > 0
+        ? clarityToSeverity(legacy.texture)
+        : null;
+  const underSeverity =
+    typeof clinical?.under_eye === "number" && Number.isFinite(clinical.under_eye)
+      ? clinical.under_eye
+      : typeof legacy?.hydration === "number" && legacy.hydration > 0
+        ? clarityToSeverity(legacy.hydration)
+        : null;
+
   return ensureScarsAndUnderEyeProxyRegions(parseScanProxyRegions(scores), {
-    acne_scars: clinical?.acne_scars ?? null,
-    under_eye: clinical?.under_eye ?? null,
+    acne_scars: scarsSeverity,
+    under_eye: underSeverity,
   });
 }
 
@@ -338,7 +357,11 @@ export default async function KaiScanReportPage({
         maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
         proxyRegions={faceMapProxyRegions(
           row.scores,
-          metrics.clinical_scores
+          metrics.clinical_scores,
+          {
+            hydration: metrics.hydration,
+            texture: metrics.texture,
+          }
         )}
         isExistingPatient={scoresUnlocked}
         doctorName={doctorName}
@@ -565,8 +588,12 @@ export default async function KaiScanReportPage({
       detectionRegionsByPose={parseScanDetectionRegionsByPose(row.scores)}
       wrinkleLines={parseScanWrinkleLines(row.scores)}
       wrinkleMaskUrl={parseScanWrinkleMaskDataUri(row.scores) ?? null}
+      spotAnnotatedUrl={parseScanSpotAnnotatedUrl(row.scores) ?? null}
       maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
-      proxyRegions={faceMapProxyRegions(row.scores, metrics.clinical_scores)}
+      proxyRegions={faceMapProxyRegions(row.scores, metrics.clinical_scores, {
+        hydration: metrics.hydration,
+        texture: metrics.texture,
+      })}
       parameters={paramRows}
       movementGroups={movementGroups}
       attributionCards={attributionCards}

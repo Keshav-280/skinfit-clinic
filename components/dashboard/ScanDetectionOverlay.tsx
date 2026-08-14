@@ -200,7 +200,7 @@ function mergeNearbyRegions(
       const dist = Math.hypot(m.center_pct[0] - cx, m.center_pct[1] - cy);
       r = Math.max(r, dist + m.radius_pct);
     }
-    r = Math.max(r, 2.2);
+    r = Math.max(r, 2.8);
 
     const label = seed.display_class || seed.class;
     out.push({
@@ -441,14 +441,14 @@ export function ScanDetectionOverlay({
             cx={c.cx}
             cy={c.cy}
             r={c.r}
-            fill="none"
+            fill={hexToRgba(c.stroke, 0.12)}
             stroke={c.stroke}
-            strokeWidth={1.5}
-            strokeDasharray="6 4"
+            strokeWidth={2}
+            strokeDasharray="5 3"
             vectorEffect="non-scaling-stroke"
             className="transition-opacity duration-300 ease-out"
             style={{
-              opacity: c.matches ? 1 : 0.15,
+              opacity: c.matches ? 1 : 0.12,
               animation: c.matches
                 ? "scan-det-pulse 400ms ease-out both"
                 : undefined,

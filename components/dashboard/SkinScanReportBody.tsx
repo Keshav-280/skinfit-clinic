@@ -232,6 +232,7 @@ export interface SkinScanReportBodyProps {
   annotatedImageUrl?: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
+  spotAnnotatedUrl?: string;
   maskExportVersion?: number | null;
   spatialOutputs?: ScanSpatialOutputs;
   scanDate: Date;
@@ -274,6 +275,7 @@ export function SkinScanReportBody({
   annotatedImageUrl: _annotatedImageUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
+  spotAnnotatedUrl,
   maskExportVersion,
   spatialOutputs,
   scanDate,
@@ -642,6 +644,7 @@ export function SkinScanReportBody({
           proxyRegions={proxyRegions}
           wrinkleMaskUrl={wrinkleUrl}
           acneMaskUrl={acneUrl}
+          spotAnnotatedUrl={spotAnnotatedUrl}
           maskExportVersion={maskExportVersion}
           spatialOutputs={spatialOutputs}
           scoresUnlocked={scoresUnlocked}

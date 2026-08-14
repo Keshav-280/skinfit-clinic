@@ -188,6 +188,7 @@ export type ScanViewerProps = {
   proxyRegions?: ProxyRegion[];
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
+  spotAnnotatedUrl?: string;
   maskExportVersion?: number | null;
   spatialOutputs?: ScanSpatialOutputs;
   scoresUnlocked?: boolean;
@@ -210,6 +211,7 @@ export function ScanViewer({
   proxyRegions,
   wrinkleMaskUrl,
   acneMaskUrl,
+  spotAnnotatedUrl,
   maskExportVersion,
   spatialOutputs,
   scoresUnlocked = false,
@@ -420,6 +422,7 @@ export function ScanViewer({
                       showWrinkles ? wrinkleMaskUrl : undefined
                     }
                     acneMaskUrl={showAcneProxy ? acneMaskUrl : undefined}
+                    spotAnnotatedUrl={spotAnnotatedUrl}
                     maskExportVersion={maskExportVersion}
                     spatialOutputs={spatialOutputs}
                     regions={regions}

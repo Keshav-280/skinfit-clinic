@@ -3,15 +3,14 @@ import { Redirect, type Href, usePathname, useRouter } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   Keyboard,
   Pressable,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { NotificationBell } from "@/components/NotificationBell";
 import { ScanJobReadyNotifier } from "@/components/ScanJobReadyNotifier";
@@ -36,103 +35,52 @@ const DOCK_ITEMS: Array<{
   key: string;
   href: Href;
   icon: keyof typeof Ionicons.glyphMap;
+  activeIcon: keyof typeof Ionicons.glyphMap;
+  label: string;
   match: string[];
 }> = [
-  { key: "scan", href: "/scan" as Href, icon: "camera-outline", match: ["/scan"] },
-  { key: "home", href: "/(drawer)" as Href, icon: "home-outline", match: ["/", "/index"] },
-  { key: "schedules", href: "/schedules" as Href, icon: "calendar-outline", match: ["/schedules"] },
-  { key: "chat", href: "/chat" as Href, icon: "chatbubbles", match: ["/chat"] },
-  { key: "profile", href: "/profile" as Href, icon: "person-circle-outline", match: ["/profile"] },
+  { key: "scan", href: "/scan" as Href, icon: "camera-outline", activeIcon: "camera", label: "Diagnose", match: ["/scan"] },
+  { key: "home", href: "/(drawer)" as Href, icon: "home-outline", activeIcon: "home", label: "Build", match: ["/", "/index"] },
+  { key: "schedules", href: "/schedules" as Href, icon: "heart-outline", activeIcon: "heart", label: "Maintain", match: ["/schedules"] },
+  { key: "chat", href: "/chat" as Href, icon: "chatbubbles-outline", activeIcon: "chatbubbles", label: "Chat", match: ["/chat"] },
+  { key: "profile", href: "/profile" as Href, icon: "person-outline", activeIcon: "person", label: "Profile", match: ["/profile"] },
 ];
 
 function routeIsActive(pathname: string, item: (typeof DOCK_ITEMS)[number]) {
   return item.match.some((entry) => pathname === entry || pathname.startsWith(`${entry}/`));
 }
 
-function AnimatedDock({
-  pathname,
-  visible,
-  onHide,
-  onInteraction,
-}: {
-  pathname: string;
-  visible: boolean;
-  onHide: () => void;
-  onInteraction: () => void;
-}) {
+function BottomTabBar({ pathname }: { pathname: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const anim = useRef(new Animated.Value(visible ? 1 : 0)).current;
-  const [rendered, setRendered] = useState(visible);
-
-  useEffect(() => {
-    if (visible) {
-      setRendered(true);
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 300,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(anim, {
-        toValue: 0,
-        duration: 350,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) setRendered(false);
-      });
-    }
-  }, [visible]);
-
-  if (!rendered) return null;
-
-  const translateY = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [80, 0],
-  });
 
   return (
-    <Animated.View
-      style={[
-        styles.dockWrap,
-        { bottom: Math.max(insets.bottom, 10), opacity: anim, transform: [{ translateY }] },
-      ]}
-      pointerEvents={visible ? "box-none" : "none"}
-    >
-      <View style={styles.dockBar}>
-        <Pressable style={styles.dockHideBtn} onPress={onHide} hitSlop={10}>
-          <Ionicons name="chevron-down" size={14} color="#6b7280" />
-        </Pressable>
-        {DOCK_ITEMS.map((item) => {
-          const active = routeIsActive(pathname, item);
-          return (
-            <Pressable
-              key={item.key}
-              style={styles.dockButton}
-              onPress={() => {
-                onInteraction();
-                router.replace(item.href);
-              }}
-              hitSlop={8}
-            >
-              <Ionicons name={item.icon} size={24} color={active ? "#23286f" : "#ffffff"} />
-            </Pressable>
-          );
-        })}
-      </View>
-    </Animated.View>
-  );
-}
-
-function DockRestoreButton({ onShow }: { onShow: () => void }) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={[styles.restoreWrap, { bottom: Math.max(insets.bottom, 10) }]} pointerEvents="box-none">
-      <Pressable style={styles.restoreBtn} onPress={onShow} hitSlop={10}>
-        <Ionicons name="chevron-up" size={18} color="#ffffff" />
-      </Pressable>
+    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      {DOCK_ITEMS.map((item) => {
+        const active = routeIsActive(pathname, item);
+        return (
+          <Pressable
+            key={item.key}
+            style={({ pressed }) => [styles.tabItem, pressed && styles.tabItemPressed]}
+            onPress={() => router.replace(item.href)}
+            hitSlop={4}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={item.label}
+          >
+            <View style={[styles.tabIconWrap, active && styles.tabIconWrapActive]}>
+              <Ionicons
+                name={active ? item.activeIcon : item.icon}
+                size={22}
+                color={active ? "#2D3E6B" : "#9CA3AF"}
+              />
+            </View>
+            <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -157,27 +105,7 @@ export default function DrawerLayout() {
       alive = false;
     };
   }, [user?.id]);
-  const showGlobalDock = true;
-  const [dockCollapsed, setDockCollapsed] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const dockVisible = showGlobalDock && !dockCollapsed && !keyboardVisible;
-  const autoHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const startAutoHide = useCallback(() => {
-    if (autoHideTimer.current) clearTimeout(autoHideTimer.current);
-    autoHideTimer.current = setTimeout(() => setDockCollapsed(true), 4000);
-  }, []);
-
-  const resetAutoHide = useCallback(() => {
-    startAutoHide();
-  }, [startAutoHide]);
-
-  useEffect(() => {
-    if (dockVisible) startAutoHide();
-    return () => {
-      if (autoHideTimer.current) clearTimeout(autoHideTimer.current);
-    };
-  }, [dockVisible, startAutoHide]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
@@ -218,7 +146,7 @@ export default function DrawerLayout() {
           drawerActiveTintColor: "#2C3E6B",
           drawerInactiveTintColor: "#64748b",
           headerTintColor: "#2C3E6B",
-          headerStyle: { backgroundColor: "#F2F9F2" },
+          headerStyle: { backgroundColor: "#F5F3EF" },
           headerTitleStyle: { fontWeight: "700", color: "#2C3E6B" },
           headerShadowVisible: false,
           // Drawer navigator only skips its toggle when headerLeft is null/undefined — not when
@@ -240,8 +168,8 @@ export default function DrawerLayout() {
             fontWeight: "600",
           },
           sceneContainerStyle: {
-            backgroundColor: "#F2F9F2",
-            paddingBottom: dockVisible ? 100 : 0,
+            backgroundColor: "#F5F3EF",
+            paddingBottom: keyboardVisible ? 0 : 88,
           },
           drawerIcon: ({ color, size }) => iconForRoute(route.name, color, size),
           headerRight:
@@ -299,7 +227,7 @@ export default function DrawerLayout() {
           options={{
             title: "Profile",
             drawerLabel: "Profile",
-            headerStyle: { backgroundColor: "#F2F9F2" },
+            headerStyle: { backgroundColor: "#F5F3EF" },
           }}
         />
         <Drawer.Screen
@@ -385,19 +313,7 @@ export default function DrawerLayout() {
         />
       </Drawer>
       <ScanJobReadyNotifier />
-      {showGlobalDock && !keyboardVisible && (
-        <>
-          <AnimatedDock
-            pathname={pathname}
-            visible={dockVisible}
-            onHide={() => setDockCollapsed(true)}
-            onInteraction={resetAutoHide}
-          />
-          {!dockVisible && (
-            <DockRestoreButton onShow={() => setDockCollapsed(false)} />
-          )}
-        </>
-      )}
+      {!keyboardVisible && <BottomTabBar pathname={pathname} />}
     </View>
   );
 }
@@ -405,63 +321,48 @@ export default function DrawerLayout() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  dockWrap: {
+  tabBar: {
     position: "absolute",
     left: 0,
     right: 0,
-    alignItems: "center",
-  },
-  dockBar: {
-    width: "86%",
-    borderRadius: 32,
-    backgroundColor: "rgba(167, 167, 167, 0.42)",
-    paddingVertical: 13,
-    paddingHorizontal: 14,
+    bottom: 0,
+    backgroundColor: "#ffffff",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E7EB",
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    shadowColor: "#111827",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  dockHideBtn: {
-    position: "absolute",
-    top: -12,
-    right: 14,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#d1d5db",
-    zIndex: 2,
-  },
-  dockButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  restoreWrap: {
-    position: "absolute",
-    right: 16,
-  },
-  restoreBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(35, 40, 111, 0.92)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#111827",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.24,
+    paddingTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 12,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 3,
+  },
+  tabItemPressed: {
+    opacity: 0.65,
+  },
+  tabIconWrap: {
+    width: 40,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  tabIconWrapActive: {
+    backgroundColor: "rgba(45, 62, 107, 0.1)",
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#9CA3AF",
+    marginBottom: 2,
+  },
+  tabLabelActive: {
+    color: "#2D3E6B",
+    fontWeight: "600",
   },
 });

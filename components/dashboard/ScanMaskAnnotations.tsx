@@ -140,6 +140,7 @@ export function ScanFaceOverlay({
   imageUrl: _imageUrl,
   wrinkleMaskUrl,
   acneMaskUrl,
+  spotAnnotatedUrl,
   maskExportVersion,
   spatialOutputs: _spatialOutputs,
   regions,
@@ -148,6 +149,7 @@ export function ScanFaceOverlay({
   imageUrl: string;
   wrinkleMaskUrl?: string;
   acneMaskUrl?: string;
+  spotAnnotatedUrl?: string;
   maskExportVersion?: number | null;
   spatialOutputs?: ScanSpatialOutputs;
   regions: ReportRegion[];
@@ -155,15 +157,19 @@ export function ScanFaceOverlay({
 }) {
   const wrinkle = wrinkleMaskUrl?.trim() || "";
   const acne = acneMaskUrl?.trim() || "";
+  const spot = spotAnnotatedUrl?.trim() || "";
   const showWrinkle =
     Boolean(wrinkle) &&
     (activeConcern === "all" || activeConcern === "wrinkles");
   const showAcne =
     Boolean(acne) && (activeConcern === "all" || activeConcern === "acne");
-  const showPigmentTint = activeConcern === "pigmentation";
+  const showSpot =
+    Boolean(spot) &&
+    (activeConcern === "all" || activeConcern === "pigmentation");
+  const showPigmentTint = !spot && activeConcern === "pigmentation";
   const showDots = regions.length > 0;
 
-  const hasAny = wrinkle || acne || regions.length > 0;
+  const hasAny = wrinkle || acne || spot || regions.length > 0;
   if (!hasAny) return null;
 
   return (
@@ -184,6 +190,14 @@ export function ScanFaceOverlay({
           visible={showAcne}
           maskExportVersion={maskExportVersion}
           blend="screen"
+        />
+      ) : null}
+      {spot ? (
+        <OverlayMaskImage
+          src={spot}
+          alt=""
+          visible={showSpot}
+          blend="normal"
         />
       ) : null}
 

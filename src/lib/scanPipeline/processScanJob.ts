@@ -261,6 +261,37 @@ export async function processScanJob(
     }
   }
 
+  // Spot detector v15 — pigmentation/redness annotated overlay on centre face.
+  let spotAnnotatedDataUri: string | null = null;
+  const spotDetectorBase = process.env.SPOT_DETECTOR_SERVICE_URL?.trim();
+  const spotDetectorDisabled =
+    process.env.SPOT_DETECTOR_DISABLED === "1" ||
+    process.env.SPOT_DETECTOR_DISABLED === "true";
+  if (spotDetectorBase && !spotDetectorDisabled) {
+    try {
+      const { runSpotDetector } = await import("@/src/lib/spotDetectorInference");
+      const spotResult = await runSpotDetector(filesForV2.centre, {
+        baseUrl: spotDetectorBase,
+        apiKey: inferenceSecret,
+        timeoutMs: inferenceTimeoutMs,
+      });
+      spotAnnotatedDataUri = spotResult.annotated_image;
+      logger.info("spot_detector_applied", {
+        jobId,
+        userId: payload.userId,
+        total: spotResult.summary.total,
+        dark: spotResult.summary.dark,
+        red: spotResult.summary.red,
+      });
+    } catch (err) {
+      logger.warn("spot_detector_skipped", {
+        jobId,
+        error: err instanceof Error ? err.message : String(err),
+        hint: "scan continues without spot overlay",
+      });
+    }
+  }
+
   let wrinkle_lines: import("@/src/lib/scanDetectionRegions").WrinkleLine[] = [];
   let proxy_regions: import("@/src/lib/scanDetectionRegions").ProxyRegion[] = [];
   let centreJpegB64: string | null = null;
@@ -378,6 +409,12 @@ export async function processScanJob(
     upload
   );
 
+  const spotAnnotatedUrl = await persistDataUriToStorage(
+    spotAnnotatedDataUri ?? undefined,
+    "masks",
+    upload
+  );
+
   const wrMaskVersion = maskExportVersionFromDataUri(merged.wrinkleMaskDataUri);
   const acMaskVersion = maskExportVersionFromDataUri(merged.acneMaskDataUri);
   const maskExportVersion =
@@ -483,6 +520,7 @@ export async function processScanJob(
         ...(overlayUrl ? { overlayUrl } : {}),
         ...(wrinkleMaskUrl ? { wrinkleMaskUrl } : {}),
         ...(acneMaskUrl ? { acneMaskUrl } : {}),
+        ...(spotAnnotatedUrl ? { spotAnnotatedUrl } : {}),
         maskExportVersion,
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
         ...(merged.detection_regions && merged.detection_regions.length > 0

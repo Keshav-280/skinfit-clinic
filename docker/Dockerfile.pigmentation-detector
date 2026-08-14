@@ -1,0 +1,22 @@
+# Grid-based dark spot detector — OpenCV + MediaPipe (no ML weights)
+# Runs on port 8001 internally.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY services/pigmentation-detector-v1/api/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+COPY services/pigmentation-detector-v1/api /app/api
+
+ENV TILE_PX=18
+ENV MIN_DELTA_L=11
+ENV NEIGHBOR_RING=2
+
+EXPOSE 8001
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001"]

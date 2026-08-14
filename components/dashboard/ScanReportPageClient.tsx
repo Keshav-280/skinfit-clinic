@@ -33,6 +33,7 @@ export interface ScanReportPageClientProps {
   annotatedImageUrl?: string | null;
   wrinkleMaskUrl?: string | null;
   acneMaskUrl?: string | null;
+  spotAnnotatedUrl?: string | null;
   maskExportVersion?: number | null;
   spatialOutputs?: ScanSpatialOutputs | null;
   scanDateIso: string;
@@ -58,6 +59,7 @@ export function ScanReportPageClient({
   annotatedImageUrl = null,
   wrinkleMaskUrl = null,
   acneMaskUrl = null,
+  spotAnnotatedUrl = null,
   maskExportVersion = null,
   spatialOutputs = null,
   scanDateIso,
@@ -179,6 +181,7 @@ export function ScanReportPageClient({
           annotatedImageUrl={annotatedImageUrl ?? undefined}
           wrinkleMaskUrl={wrinkleMaskUrl ?? undefined}
           acneMaskUrl={acneMaskUrl ?? undefined}
+          spotAnnotatedUrl={spotAnnotatedUrl ?? undefined}
           maskExportVersion={maskExportVersion ?? undefined}
           spatialOutputs={spatialOutputs ?? undefined}
           scanDate={scanDate}

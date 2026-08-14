@@ -315,9 +315,10 @@ function templateEllipse(
 }
 
 /**
- * When a scan has scar / under-eye severity but no stored proxy_regions
- * (older jobs, extractor soft-fail), synthesise anatomical ellipses so the
- * face map still annotates those two concerns.
+ * When a scan has scar / under-eye severity but no (or outdated) proxy_regions,
+ * synthesise anatomical ellipses so the face map still annotates those concerns.
+ *
+ * Coordinates assume object-contain on a front selfie (face fills most of frame).
  */
 export function ensureScarsAndUnderEyeProxyRegions(
   existing: ProxyRegion[],
@@ -326,34 +327,61 @@ export function ensureScarsAndUnderEyeProxyRegions(
     under_eye?: number | null;
   }
 ): ProxyRegion[] {
-  const out = [...existing];
-  const hasClass = (cls: string) => out.some((r) => r.class === cls);
+  const scarsScore =
+    typeof scores.acne_scars === "number" && Number.isFinite(scores.acne_scars)
+      ? scores.acne_scars
+      : null;
+  const underScore =
+    typeof scores.under_eye === "number" && Number.isFinite(scores.under_eye)
+      ? scores.under_eye
+      : null;
 
-  const scars = scores.acne_scars;
-  if (
-    typeof scars === "number" &&
-    Number.isFinite(scars) &&
-    scars > 1 &&
-    !hasClass("acne_scars")
-  ) {
+  const priorScars = existing.filter((r) => r.class === "acne_scars");
+  const priorUnder = existing.filter((r) => r.class === "under_eye");
+  // Old display templates put a blob on the chin (cy > 68); drop those.
+  const scarsLookStale = priorScars.some(
+    (r) => r.type === "ellipse" && r.center_pct[1] > 68
+  );
+
+  let out = existing.filter(
+    (r) => r.class !== "acne_scars" && r.class !== "under_eye"
+  );
+
+  const shouldPlaceScars =
+    scarsScore != null &&
+    scarsScore > 1 &&
+    (priorScars.length === 0 || scarsLookStale);
+  if (shouldPlaceScars && scarsScore != null) {
     out.push(
-      templateEllipse("acne_scars", scars, 28, 54, 7.5, 6.5, "Acne scarring"),
-      templateEllipse("acne_scars", scars, 72, 54, 7.5, 6.5, "Acne scarring"),
-      templateEllipse("acne_scars", scars, 50, 74, 10, 5, "Acne scarring")
+      templateEllipse("acne_scars", scarsScore, 30, 56, 5.8, 5.2, "Acne scarring"),
+      templateEllipse("acne_scars", scarsScore, 70, 56, 5.8, 5.2, "Acne scarring")
     );
+    if (scarsScore >= 3.2) {
+      out.push(
+        templateEllipse(
+          "acne_scars",
+          scarsScore,
+          50,
+          72,
+          7.5,
+          4.2,
+          "Acne scarring"
+        )
+      );
+    }
+  } else if (priorScars.length > 0 && !scarsLookStale) {
+    out.push(...priorScars);
   }
 
-  const under = scores.under_eye;
-  if (
-    typeof under === "number" &&
-    Number.isFinite(under) &&
-    under > 1 &&
-    !hasClass("under_eye")
-  ) {
+  const shouldPlaceUnder =
+    underScore != null && underScore > 1 && priorUnder.length === 0;
+  if (shouldPlaceUnder && underScore != null) {
     out.push(
-      templateEllipse("under_eye", under, 36, 40, 6.5, 3.8, "Under-eye"),
-      templateEllipse("under_eye", under, 64, 40, 6.5, 3.8, "Under-eye")
+      templateEllipse("under_eye", underScore, 37, 38.5, 5.8, 2.6, "Under-eye"),
+      templateEllipse("under_eye", underScore, 63, 38.5, 5.8, 2.6, "Under-eye")
     );
+  } else if (priorUnder.length > 0) {
+    out.push(...priorUnder);
   }
 
   return out;
