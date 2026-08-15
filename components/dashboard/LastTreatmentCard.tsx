@@ -82,7 +82,7 @@ export function LastTreatmentCard({
       </div>
       <Link
         href="/dashboard/history/visits"
-        className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] px-[18px] py-2 text-[13px] font-semibold text-white transition hover:bg-[#3d5080]"
+        className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#243456]"
       >
         View
       </Link>

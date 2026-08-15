@@ -278,10 +278,6 @@ export function SkinDNACard({
 
   const displayName = patientName.trim() || "Patient";
   const photo = profileImageUrl?.trim() || null;
-  const gradeText = kai.showLock
-    ? `Grade ${kai.grade} · Locked`
-    : `Grade ${kai.grade} · ${toTitleCase(kai.sublabel)}`;
-
   const identityFacts: { label: string; value: string }[] = [];
   const typeVal = skinType?.trim();
   if (typeVal)
@@ -334,7 +330,7 @@ export function SkinDNACard({
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl bg-white shadow-md ${className}`}
+      className={`overflow-hidden rounded-2xl bg-white shadow-md transition-shadow duration-200 hover:shadow-lg ${className}`}
     >
       {/* 1. Header */}
       <div className="flex items-start gap-3 px-4 pt-4 sm:gap-3.5 sm:px-5">
@@ -349,42 +345,50 @@ export function SkinDNACard({
           )}
         </div>
 
+        {/* Name + summary */}
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-lg font-bold leading-tight text-[#18181b]">
-                {displayName}
-              </p>
-              <span
-                className="mt-1.5 inline-flex max-w-full items-center truncate rounded-full border px-2.5 py-0.5 text-[11px] font-bold"
-                style={{
-                  color: kai.color,
-                  borderColor: `${kai.color}40`,
-                  backgroundColor: `${kai.color}1A`,
-                }}
-              >
-                {gradeText}
-              </span>
-              {skinSummary?.trim() &&
-              !skinType?.trim() &&
-              !primaryConcern?.trim() &&
-              !fitzpatrick?.trim() ? (
-                <p className="mt-1 truncate text-[12px] font-medium text-[#6B7280]">
-                  {skinSummary.trim()}
-                </p>
-              ) : null}
-            </div>
-            <TrendChip
-              weeklyDeltaScore={weeklyDeltaScore}
-              weeklyDeltaMeaningful={weeklyDeltaMeaningful}
-            />
+          <p className="truncate text-lg font-bold leading-tight text-[#18181b]">
+            {displayName}
+          </p>
+          {skinSummary?.trim() &&
+          !skinType?.trim() &&
+          !primaryConcern?.trim() &&
+          !fitzpatrick?.trim() ? (
+            <p className="mt-0.5 truncate text-[12px] font-medium text-[#6B7280]">
+              {skinSummary.trim()}
+            </p>
+          ) : null}
+        </div>
+
+        {/* Score widget */}
+        <div className="flex shrink-0 flex-col items-center gap-1.5">
+          <div
+            className="flex h-14 w-14 flex-col items-center justify-center rounded-2xl"
+            style={{ backgroundColor: `${kai.color}18`, border: `1.5px solid ${kai.color}35` }}
+          >
+            <span
+              className="text-2xl font-extrabold leading-none tabular-nums"
+              style={{ color: kai.color }}
+            >
+              {kai.showLock ? kai.grade : Math.round(kaiSkinScore)}
+            </span>
+            <span
+              className="mt-0.5 text-[9px] font-bold uppercase tracking-wide"
+              style={{ color: `${kai.color}CC` }}
+            >
+              {kai.showLock ? "Locked" : toTitleCase(kai.sublabel)}
+            </span>
           </div>
+          <TrendChip
+            weeklyDeltaScore={weeklyDeltaScore}
+            weeklyDeltaMeaningful={weeklyDeltaMeaningful}
+          />
         </div>
       </div>
 
       {/* 2. Identity strip */}
       {identityFacts.length > 0 ? (
-        <div className="mx-4 mt-4 flex gap-0 overflow-x-auto rounded-xl border border-[#E5E7EB] bg-[#F8FAF8] scrollbar-hide sm:mx-5">
+        <div className="mx-4 mt-4 flex gap-0 overflow-x-auto rounded-xl border border-[#E5E7EB] bg-[#F8F7F5] scrollbar-hide sm:mx-5">
           {identityFacts.map((fact, i) => (
             <div
               key={fact.label}
@@ -438,9 +442,15 @@ export function SkinDNACard({
       ) : null}
 
       {!hasScan ? (
-        <p className="mx-4 mt-3 text-sm font-medium text-[#6B7280] sm:mx-5">
-          Take your first scan to complete your Skin DNA
-        </p>
+        <div className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#F5F3EF] px-3.5 py-3 sm:mx-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/10">
+            <svg className="h-4 w-4 text-[#2C3E6B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#2C3E6B]">Complete your Skin DNA</p>
+            <p className="text-xs text-[#6B7280]">Take a 2-min scan to unlock your score &amp; insights</p>
+          </div>
+        </div>
       ) : null}
 
       {/* 4. Param tiles */}

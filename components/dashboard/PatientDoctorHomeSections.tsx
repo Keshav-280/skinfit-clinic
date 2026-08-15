@@ -455,7 +455,7 @@ export function PatientDoctorHomeSections({
       {doctorChatEnabled ? (
         <Link
           href="/dashboard/chat?assistant=support"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
         >
           <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
           Chat with Doctor
@@ -488,11 +488,24 @@ export function PatientDoctorHomeSections({
             ))}
           </div>
         ) : onboardingComplete ? (
-          <p className="text-sm text-[#6B7280]">No written feedback yet.</p>
+          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F8F7F5] px-4 py-3.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#9CA3AF]">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[#18181b]">No feedback yet</p>
+              <p className="text-xs text-[#6B7280]">Your doctor&apos;s written notes will appear here.</p>
+            </div>
+          </div>
         ) : (
-          <p className="text-sm text-[#6B7280]">
-            Written feedback will appear here after your doctor sends notes.
-          </p>
+          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#F5F3EF] px-4 py-3.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/10 text-[#2C3E6B]">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </span>
+            <p className="text-sm text-[#2C3E6B]">
+              Written feedback will appear here after your doctor reviews your baseline.
+            </p>
+          </div>
         )}
       </section>
 
@@ -532,14 +545,24 @@ export function PatientDoctorHomeSections({
             ))}
           </div>
         ) : !onboardingComplete ? (
-          <div className="rounded-[18px] border border-dashed border-[#2C3E6B]/25 bg-[#E8EFE6]/50 px-4 py-3 text-sm font-medium text-[#2C3E6B]">
-            Your doctor will send a voice note after reviewing your baseline.
-            We&apos;ll notify you with the bell when it arrives.
+          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#F5F3EF] px-4 py-3.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/10 text-[#2C3E6B]">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+            </span>
+            <p className="text-sm text-[#2C3E6B]">
+              Your doctor will send a voice note after your baseline review. The bell will notify you when it arrives.
+            </p>
           </div>
         ) : (
-          <p className="text-sm text-[#6B7280]">
-            No voice notes in your dashboard inbox yet.
-          </p>
+          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F8F7F5] px-4 py-3.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#9CA3AF]">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[#18181b]">No voice notes yet</p>
+              <p className="text-xs text-[#6B7280]">Voice notes from your doctor will appear here.</p>
+            </div>
+          </div>
         )}
 
         {archivedEntries.length > 0 ? (

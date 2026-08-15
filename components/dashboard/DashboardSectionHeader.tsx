@@ -4,8 +4,6 @@ import { patientDashboardCard } from "@/src/lib/patientDashboardTheme";
 
 export const DASHBOARD_SECTION_CARD = patientDashboardCard;
 
-const NAVY = "#2D3E6B";
-
 type Props = {
   icon: LucideIcon;
   title: string;
@@ -28,15 +26,12 @@ export function DashboardSectionHeader({
   return (
     <div className={`flex flex-wrap items-center justify-between gap-2 ${className}`}>
       <div className="flex min-w-0 items-center gap-2.5">
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-white"
-          style={{ backgroundColor: NAVY }}
-        >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-slate-100 text-slate-500">
           <Icon className="h-4 w-4" aria-hidden />
         </span>
         <TitleTag
           id={headingId}
-          className="text-base font-extrabold tracking-wide text-[#2C3E6B] md:text-lg"
+          className="text-base font-extrabold tracking-wide text-[#18181b] md:text-lg"
         >
           {title}
         </TitleTag>

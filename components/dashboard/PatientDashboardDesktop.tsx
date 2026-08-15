@@ -295,17 +295,17 @@ function TopArticlesSection() {
           <Link
             key={article.title}
             href={article.href}
-            className="flex flex-col gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-3 transition hover:border-[#2C3E6B]/25 hover:bg-[#F2F9F2]/50 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-3.5 py-3 transition hover:border-[#2C3E6B]/25 hover:bg-[#F5F3EF]/50 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0">
-              <span className="inline-flex rounded-full bg-[#E8EFE6] px-2.5 py-0.5 text-[11px] font-bold text-[#2C3E6B]">
+              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500">
                 {article.category}
               </span>
-              <p className="mt-1.5 text-[15px] font-bold leading-snug text-[#2C3E6B]">
+              <p className="mt-1.5 text-base font-bold leading-snug text-[#18181b]">
                 {article.title}
               </p>
             </div>
-            <span className="shrink-0 text-[12px] font-semibold text-[#6B7280]">
+            <span className="shrink-0 text-xs font-semibold text-[#6B7280]">
               {article.readTime}
             </span>
           </Link>
@@ -347,12 +347,12 @@ function RecommendedVideosSection() {
                 <Play className="h-5 w-5 fill-current" aria-hidden />
               </span>
               {video.duration ? (
-                <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-white">
+                <span className="absolute bottom-2 right-2 rounded-md bg-black/55 px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">
                   {video.duration}
                 </span>
               ) : null}
             </div>
-            <p className="px-3 py-2.5 text-[13px] font-bold leading-snug text-[#2C3E6B]">
+            <p className="px-3 py-2.5 text-sm font-semibold leading-snug text-[#18181b]">
               {video.title}
             </p>
           </button>
@@ -372,7 +372,7 @@ function RecommendedVideosSection() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] px-4 py-3">
-              <p className="min-w-0 truncate text-[14px] font-bold text-[#2C3E6B]">
+              <p className="min-w-0 truncate text-sm font-bold text-[#2C3E6B]">
                 {active.title}
               </p>
               <button
@@ -530,7 +530,7 @@ function DashboardDatePicker({
         <button
           type="button"
           onClick={() => setViewMonth((m) => subMonths(m, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#F2F9F2]"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#F5F3EF]"
           aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -541,7 +541,7 @@ function DashboardDatePicker({
         <button
           type="button"
           onClick={() => setViewMonth((m) => addMonths(m, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#F2F9F2]"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#F5F3EF]"
           aria-label="Next month"
         >
           <ChevronRight className="h-4 w-4" aria-hidden />
@@ -579,10 +579,10 @@ function DashboardDatePicker({
                   : disabled
                     ? "cursor-not-allowed text-slate-300"
                     : d.isToday
-                      ? "bg-white text-[#18181b] ring-2 ring-[#4CAF50] ring-offset-1 hover:bg-[#F2F9F2]"
+                      ? "bg-white text-[#18181b] ring-2 ring-[#4CAF50] ring-offset-1 hover:bg-[#F5F3EF]"
                       : d.inMonth
-                        ? "text-[#18181b] hover:bg-[#F2F9F2]"
-                        : "text-[#9CA3AF] hover:bg-[#F2F9F2]"
+                        ? "text-[#18181b] hover:bg-[#F5F3EF]"
+                        : "text-[#9CA3AF] hover:bg-[#F5F3EF]"
               }`}
             >
               {format(d.date, "d")}
@@ -608,7 +608,7 @@ function DashboardDatePicker({
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F2F9F2]"
+        className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F5F3EF]"
       >
         <Calendar className="h-4 w-4 shrink-0" aria-hidden />
         <span>{pillLabel}</span>
@@ -745,6 +745,13 @@ export function PatientDashboardDesktop({
     return raw.split(/\s+/)[0] ?? raw;
   }, [data?.userName]);
 
+  const timeGreeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
   const skinSummary = useMemo(
     () =>
       formatSkinDnaSummary({
@@ -797,16 +804,21 @@ export function PatientDashboardDesktop({
       {/* 1. Greeting */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl text-[#18181b] md:text-[28px]">
-            <span className="font-light">Hello </span>
-            <span className="font-extrabold">{greetingName}</span>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            {timeGreeting}
+          </p>
+          <h1 className="mt-0.5 text-2xl font-extrabold text-[#18181b] md:text-3xl">
+            {greetingName}
           </h1>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            Here&apos;s your skin health today.
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {data.progress && !data.progress.allComplete ? (
             <Link
               href="/dashboard/profile"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/20 bg-white px-3 py-2 text-xs font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F2F9F2] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/20 bg-white px-3 py-2 text-xs font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F5F3EF] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
             >
               Complete your profile
               <span className="text-[10px] font-bold text-[#6B7280] sm:text-xs">

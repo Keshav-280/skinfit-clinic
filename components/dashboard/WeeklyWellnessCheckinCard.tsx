@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -65,7 +65,7 @@ function stressDescriptor(level: number): { label: string; color: string; bg: st
 const PILL_SELECTED =
   "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-[0_4px_14px_-4px_rgba(44,62,107,0.45)] ring-2 ring-[#2C3E6B]/20 ring-offset-1";
 const PILL_IDLE =
-  "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/25 hover:bg-[#F2F9F2]";
+  "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/25 hover:bg-[#F5F3EF]";
 
 function SectionBlock({
   label,
@@ -327,7 +327,7 @@ export function WeeklyWellnessCheckinCard({
 
         <SectionBlock
           label="Body & Mind"
-          helper="What supports you — and what weighs on you"
+          helper="What supports you â€” and what weighs on you"
           Icon={Brain}
           showDivider={false}
           className="pt-8"
@@ -337,8 +337,8 @@ export function WeeklyWellnessCheckinCard({
             label="Supplements"
             value={supplements}
             onChange={setSupplements}
-            placeholder="e.g. Vitamin D, Biotin, Zinc…"
-            helper="Optional — list anything you take regularly"
+            placeholder="e.g. Vitamin D, Biotin, Zincâ€¦"
+            helper="Optional â€” list anything you take regularly"
             Icon={Pill}
           />
 
@@ -346,7 +346,7 @@ export function WeeklyWellnessCheckinCard({
             <div className="mb-3 flex items-center justify-between gap-2">
               <FieldLabel>Level of Stress</FieldLabel>
               <span className="text-sm font-extrabold tabular-nums text-[#2C3E6B]">
-                {stressTouched ? `${stressLevel}/10` : "—/10"}
+                {stressTouched ? `${stressLevel}/10` : "â€”/10"}
               </span>
             </div>
 
@@ -400,7 +400,7 @@ export function WeeklyWellnessCheckinCard({
             label="City"
             value={city}
             onChange={setCity}
-            placeholder="e.g. Mumbai, Delhi…"
+            placeholder="e.g. Mumbai, Delhiâ€¦"
             helper="Helps kAI factor in your local climate"
             Icon={MapPin}
           />
@@ -440,8 +440,8 @@ export function WeeklyWellnessCheckinCard({
             label="Active Ingredients"
             value={activeIngredients}
             onChange={setActiveIngredients}
-            placeholder="e.g. Retinol, Niacinamide, Vitamin C…"
-            helper="Optional — actives you used this week"
+            placeholder="e.g. Retinol, Niacinamide, Vitamin Câ€¦"
+            helper="Optional â€” actives you used this week"
             Icon={Atom}
           />
         </SectionBlock>
@@ -473,12 +473,12 @@ export function WeeklyWellnessCheckinCard({
           type="button"
           disabled={!hasAny || saving}
           onClick={() => void onSave()}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2C3E6B] to-[#3A4F86] px-7 py-4 text-sm font-bold text-white shadow-[0_10px_28px_-10px_rgba(44,62,107,0.55)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_-10px_rgba(44,62,107,0.6)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
         >
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Saving…
+              Savingâ€¦
             </>
           ) : (
             "Save Weekly Check-in"

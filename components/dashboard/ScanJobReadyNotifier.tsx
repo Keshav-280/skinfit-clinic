@@ -148,7 +148,7 @@ export function ScanJobReadyNotifier() {
           <div className="mt-3 flex items-center gap-3 text-xs font-semibold">
             <Link
               href="/dashboard/history"
-              className="rounded-lg bg-[#2C3E6B] px-3 py-2 text-white"
+              className="rounded-lg bg-[#2C3E6B] px-3 py-2 text-white transition hover:bg-[#243456] active:scale-[0.97]"
               onClick={() => {
                 dismissUnreadReadyScan(toast.scanId);
                 setToasts((prev) =>
@@ -160,7 +160,7 @@ export function ScanJobReadyNotifier() {
             </Link>
             <button
               type="button"
-              className="text-zinc-500"
+              className="text-zinc-500 transition hover:text-zinc-700"
               onClick={() => {
                 dismissUnreadReadyScan(toast.scanId);
                 setToasts((prev) =>

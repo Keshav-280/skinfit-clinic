@@ -374,14 +374,22 @@ export function HistoryView({
               </motion.div>
             ))
           ) : (
-            <div className={`col-span-full flex flex-col items-center gap-4 py-10 text-center ${patientMuted}`}>
-              <p>No scans yet. Complete your first AI scan to track progress.</p>
+            <div className="col-span-full flex flex-col items-center gap-5 rounded-2xl border border-dashed border-[#2C3E6B]/20 bg-white/60 px-6 py-14 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+                <Camera className="h-8 w-8 text-slate-400" aria-hidden />
+              </span>
+              <div className="max-w-xs">
+                <p className="text-base font-bold text-[#18181b]">Your first scan is waiting</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280]">
+                  kAI analyses your skin in 2 minutes. Take a selfie to unlock your Skin DNA, score, and personalised care plan.
+                </p>
+              </div>
               <Link
                 href="/dashboard/scan"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80"
+                className={patientPrimaryBtn}
               >
                 <Camera className="h-4 w-4" aria-hidden />
-                Take scan
+                Take your first AI scan
               </Link>
             </div>
           )}

@@ -142,7 +142,7 @@ export function DashboardNav() {
                 "inline-flex items-center gap-1.5 px-3 py-2 lg:px-4",
                 active
                   ? "bg-[#2C3E6B]/10 text-[#2C3E6B] font-semibold"
-                  : "text-[#2C3E6B]/60 hover:bg-[#2C3E6B]/8 hover:text-[#2C3E6B]"
+                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               )}
               aria-current={active ? "page" : undefined}
             >

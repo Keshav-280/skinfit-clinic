@@ -10,7 +10,7 @@ export function PatientPortalBrandLogo({ className = "" }: Props) {
   return (
     <Link
       href="/dashboard"
-      className={`inline-flex shrink-0 items-center ${className}`}
+      className={`inline-flex shrink-0 items-center transition-opacity hover:opacity-75 ${className}`}
       aria-label="SkinFit Wellness — dashboard home"
     >
       <Image

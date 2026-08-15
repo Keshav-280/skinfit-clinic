@@ -578,7 +578,7 @@ export function DashboardView({
                     type="button"
                     onClick={() => toggleAm(i)}
                     disabled={routineCheckboxesLocked}
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                     style={{
                       borderColor: TEAL,
                       backgroundColor: amDone[i] ? TEAL : "transparent",
@@ -621,7 +621,7 @@ export function DashboardView({
                     type="button"
                     onClick={() => togglePm(i)}
                     disabled={routineCheckboxesLocked}
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-zinc-300 bg-white transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-zinc-300 bg-white transition-colors hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                     style={
                       pmDone[i]
                         ? { borderColor: TEAL, backgroundColor: TEAL }

@@ -30,7 +30,7 @@ export function ClinicScoreUnlockCta({ className = "", compact = false }: Props)
           </p>
           <Link
             href={CLINIC_SCORE_UNLOCK.schedulesHref}
-            className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl bg-[#2C3E6B] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#354A7A]"
+            className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243456]"
           >
             <Calendar className="h-3.5 w-3.5" aria-hidden />
             {CLINIC_SCORE_UNLOCK.actionLabel}

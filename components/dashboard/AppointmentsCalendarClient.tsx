@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -71,20 +71,20 @@ export type ScheduleEventRow = {
   id: string;
   eventDateYmd: string;
   eventTimeHm: string | null;
-  /** Same-day end `HH:mm` (clinic wall); null → display uses start + 30 min. */
+  /** Same-day end `HH:mm` (clinic wall); null â†’ display uses start + 30 min. */
   eventSlotEndTimeHm?: string | null;
   title: string;
   /** From `schedule_events.event_kind` when present (e.g. clinician pre/post cues). */
   eventKind?: string;
   completed: boolean;
   cancelled?: boolean;
-  /** Pending visit requests only — used for “View photos”. */
+  /** Pending visit requests only â€” used for â€œView photosâ€. */
   attachmentsCount?: number;
   /** Confirmed bookings: CRM / prep note from sheet webhook (`patientMessage`). */
   crmPatientMessage?: string | null;
   /** Cancel / decline reason from CRM (`cancelledReason` + optional patient message). */
   cancellationReason?: string | null;
-  /** Confirmed bookings — doctor display (featured card). */
+  /** Confirmed bookings â€” doctor display (featured card). */
   doctorName?: string | null;
   doctorPhotoUrl?: string | null;
   appointmentType?: string | null;
@@ -228,16 +228,16 @@ function formatHmToAmPmPlain(hm: string): string {
   return format(new Date(2000, 0, 1, hh, mm, 0), "h:mm a");
 }
 
-/** Calendar chip: start–end in 12h (uses default +30m when end omitted). */
+/** Calendar chip: startâ€“end in 12h (uses default +30m when end omitted). */
 function formatEventTimeChip(
   timeHm: string | null,
   endHm: string | null | undefined
 ): string | null {
   if (!timeHm || !/^\d{2}:\d{2}$/.test(timeHm)) return null;
   const range = formatSlotTimeRange(timeHm, endHm ?? null);
-  const parts = range.split(" – ");
+  const parts = range.split(" â€“ ");
   if (parts.length === 1) return formatHmToAmPmPlain(parts[0]!);
-  return `${formatHmToAmPmPlain(parts[0]!)}–${formatHmToAmPmPlain(parts[1]!)}`;
+  return `${formatHmToAmPmPlain(parts[0]!)}â€“${formatHmToAmPmPlain(parts[1]!)}`;
 }
 
 function formatScheduleWhen(
@@ -249,9 +249,9 @@ function formatScheduleWhen(
   const dateStr = format(d, "MMM d, yyyy");
   const chip = formatEventTimeChip(timeHm, endHm);
   if (!chip) {
-    return `${dateStr} · All day`;
+    return `${dateStr} Â· All day`;
   }
-  return `${dateStr} · ${chip}`;
+  return `${dateStr} Â· ${chip}`;
 }
 
 function compareScheduleEvents(a: ScheduleEventRow, b: ScheduleEventRow): number {
@@ -743,7 +743,7 @@ export default function AppointmentsCalendarClient({
     ? "\u00a0"
     : view === "month"
       ? format(currentDate, "MMMM yyyy")
-      : `Week of ${format(startOfWeek(currentDate, WEEK_OPTS), "MMM d")} – ${format(endOfWeek(currentDate, WEEK_OPTS), "MMM d, yyyy")}`;
+      : `Week of ${format(startOfWeek(currentDate, WEEK_OPTS), "MMM d")} â€“ ${format(endOfWeek(currentDate, WEEK_OPTS), "MMM d, yyyy")}`;
 
   const refreshSchedulesPage = useCallback(async () => {
     setScheduleRefreshing(true);
@@ -885,7 +885,7 @@ export default function AppointmentsCalendarClient({
       }
       if (data.sheetRelayOmittedImages) {
         setSheetRelayNotice(
-          "Google Sheet was updated without sending photos (payload size limit). Your photos are still saved in Skinfit — use “View photos” on the pending request in the list below."
+          "Google Sheet was updated without sending photos (payload size limit). Your photos are still saved in Skinfit â€” use â€œView photosâ€ on the pending request in the list below."
         );
       } else {
         setSheetRelayNotice(null);
@@ -982,7 +982,7 @@ export default function AppointmentsCalendarClient({
             <button
               type="button"
               onClick={() => archiveListEvent(event.id)}
-              title="Archive — hide from this list"
+              title="Archive â€” hide from this list"
               className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#2C3E6B]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2C3E6B]/25 hover:bg-[#e8eef6]"
             >
               <Archive className="h-3 w-3 opacity-80" aria-hidden />
@@ -1032,12 +1032,16 @@ export default function AppointmentsCalendarClient({
         {isAppt && pending && (event.attachmentsCount ?? 0) > 0 ? (
           <p className="mt-2 text-[13px] text-[#64748b]">
             {event.attachmentsCount} photo{event.attachmentsCount !== 1 ? "s" : ""}{" "}
-            attached ·{" "}
+            attached Â·{" "}
             <button
               type="button"
-              className="font-semibold text-[#2B3A67] underline"
+              className="inline-flex items-center gap-1 font-semibold text-[#2B3A67] underline disabled:opacity-50"
+              disabled={attachmentViewerLoading}
               onClick={() => openPendingRequestPhotos(event.id.slice(4))}
             >
+              {attachmentViewerLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+              ) : null}
               View photos
             </button>
           </p>
@@ -1109,7 +1113,7 @@ export default function AppointmentsCalendarClient({
             </h3>
             <p className="mt-0.5 text-[12px] leading-snug text-[#6B7280]">
               {headerLabel}
-              <span className="text-[#9CA3AF]"> · Tap a day to view appointments</span>
+              <span className="text-[#9CA3AF]"> Â· Tap a day to view appointments</span>
             </p>
           </div>
 
@@ -1157,7 +1161,7 @@ export default function AppointmentsCalendarClient({
                 type="button"
                 onClick={() => void refreshSchedulesPage()}
                 disabled={scheduleRefreshing}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#2C3E6B] transition hover:bg-[#F2F9F2] disabled:opacity-50"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#2C3E6B] transition hover:bg-[#F5F3EF] disabled:opacity-50"
                 aria-label="Refresh calendar"
                 aria-busy={scheduleRefreshing}
               >
@@ -1174,7 +1178,7 @@ export default function AppointmentsCalendarClient({
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F2F9F2]"
+                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F5F3EF]"
                   aria-label="Previous month or week"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -1183,7 +1187,7 @@ export default function AppointmentsCalendarClient({
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F2F9F2]"
+                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F5F3EF]"
                   aria-label="Next month or week"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -1325,7 +1329,7 @@ export default function AppointmentsCalendarClient({
                       <button
                         key={day.toISOString()}
                         type="button"
-                        className={`${wrapCls} w-full min-w-0 cursor-pointer text-center align-top transition hover:bg-[#F2F9F2]`}
+                        className={`${wrapCls} w-full min-w-0 cursor-pointer text-center align-top transition hover:bg-[#F5F3EF]`}
                         onClick={() => setSelectedYmd(cellYmd)}
                         aria-label={format(day, "EEEE, MMMM d, yyyy")}
                         aria-current={isSelected ? "date" : undefined}
@@ -1395,7 +1399,12 @@ export default function AppointmentsCalendarClient({
               </button>
             </div>
             {selectedDayEvents.length === 0 ? (
-              <p className="text-sm text-[#6B7280]">No appointments on this day</p>
+              <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F8F7F5] px-3 py-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#9CA3AF]">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" /></svg>
+                </span>
+                <p className="text-xs text-[#6B7280]">No appointments — <span className="font-semibold text-[#2C3E6B]">free day</span></p>
+              </div>
             ) : (
               <ul className="space-y-2">
                 {selectedDayEvents.map((event) => {
@@ -1469,14 +1478,14 @@ export default function AppointmentsCalendarClient({
                         setView("month");
                         setCurrentDate(parseLocalYmd(e.eventDateYmd));
                       }}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-[#F2F9F2]"
+                      className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-[#F5F3EF]"
                     >
                       <span className="min-w-0 truncate text-sm font-semibold text-[#18181b]">
                         {e.appointmentType?.trim() || e.title}
                       </span>
                       <span className="shrink-0 text-[11px] font-medium tabular-nums text-[#6B7280]">
                         {format(parseLocalYmd(e.eventDateYmd), "MMM d")}
-                        {e.eventTimeHm ? ` · ${e.eventTimeHm}` : ""}
+                        {e.eventTimeHm ? ` Â· ${e.eventTimeHm}` : ""}
                       </span>
                     </button>
                   </li>
@@ -1631,7 +1640,7 @@ export default function AppointmentsCalendarClient({
             </p>
             <textarea
               className="mt-3 w-full min-h-[120px] rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-sm text-[#2C3E6B] outline-none backdrop-blur-sm ring-[#2C3E6B]/20 focus:ring-2"
-              placeholder="e.g. I need a different time on this day…"
+              placeholder="e.g. I need a different time on this dayâ€¦"
               value={clinicMsgText}
               onChange={(e) => setClinicMsgText(e.target.value)}
               disabled={clinicMsgBusy}
@@ -1647,7 +1656,7 @@ export default function AppointmentsCalendarClient({
                   setClinicMsgOpen(false);
                   setClinicMsgApptId(null);
                 }}
-                className="rounded-full px-4 py-2 text-sm font-semibold text-[#6B7280] hover:bg-white/60"
+                className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#6B7280] transition hover:bg-[#F5F3EF]"
               >
                 Cancel
               </button>
@@ -1720,7 +1729,7 @@ export default function AppointmentsCalendarClient({
                     setClinicMsgBusy(false);
                   }
                 }}
-                className="inline-flex items-center gap-2 rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-[#3d5080] disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {clinicMsgBusy ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1764,7 +1773,7 @@ export default function AppointmentsCalendarClient({
             {attachmentViewerLoading ? (
               <div className="mt-10 flex flex-col items-center justify-center gap-3 py-8 text-sm text-[#6B7280]">
                 <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" aria-hidden />
-                Loading photos…
+                Loading photosâ€¦
               </div>
             ) : attachmentViewerError ? (
               <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -2121,10 +2130,14 @@ export default function AppointmentsCalendarClient({
                   type="button"
                   onClick={() => void submitVisitRequest()}
                   disabled={requestSubmitting}
-                  className="flex flex-[1.2] items-center justify-center gap-2 rounded-full bg-[#2B3A67] py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#1e2a4d] disabled:opacity-60"
+                  className="flex flex-[1.2] items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <Send className="h-4 w-4" aria-hidden />
-                  {requestSubmitting ? "…" : "Send request"}
+                  {requestSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Send className="h-4 w-4" aria-hidden />
+                  )}
+                  {requestSubmitting ? "Sending…" : "Send request"}
                 </button>
               </div>
             </div>

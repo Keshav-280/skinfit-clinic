@@ -42,7 +42,7 @@ export function ReportSectionCard({
     >
       <button
         type="button"
-        className="flex w-full items-start gap-3 text-left"
+        className="flex w-full items-start gap-3 rounded-xl p-1 text-left transition-colors hover:bg-[#F5F3EF] -m-1"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}

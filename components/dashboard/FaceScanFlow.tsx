@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -488,7 +488,7 @@ export function FaceScanFlow({
         const leftover = images.length - added;
         if (leftover > 0) {
           setUploadError(
-            `Added ${added} photo${added === 1 ? "" : "s"} to empty slots. ${leftover} extra file${leftover === 1 ? " was" : "s were"} skipped — tap a slot to replace one.`,
+            `Added ${added} photo${added === 1 ? "" : "s"} to empty slots. ${leftover} extra file${leftover === 1 ? " was" : "s were"} skipped â€” tap a slot to replace one.`,
           );
         }
         if (allSlotsFilled(next)) {
@@ -1044,7 +1044,7 @@ export function FaceScanFlow({
               className={`relative rounded-2xl border px-2 py-2 text-center transition-colors ${
                 filled
                   ? "border-[#4CAF50]/40 bg-[#E8F5E9]/80"
-                  : "cursor-pointer border-[#2C3E6B]/15 bg-white hover:border-[#2C3E6B]/30 hover:bg-[#F2F9F2]"
+                  : "cursor-pointer border-[#2C3E6B]/15 bg-white hover:border-[#2C3E6B]/30 hover:bg-[#F5F3EF]"
               }`}
             >
               {filled ? (
@@ -1238,7 +1238,7 @@ export function FaceScanFlow({
                   setShowDeviceUpload(false);
                   setStep("upload");
                 }}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#6B7280] transition hover:bg-[#F2F9F2]"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#6B7280] transition hover:bg-[#F5F3EF]"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -1329,7 +1329,7 @@ export function FaceScanFlow({
                     </p>
                     <label
                       htmlFor="scan-file-input"
-                      className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/20 bg-white px-5 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition hover:bg-[#F2F9F2]"
+                      className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/20 bg-white px-5 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition hover:bg-[#F5F3EF]"
                     >
                       <ImagePlus className="h-3.5 w-3.5" />
                       Choose files
@@ -1388,7 +1388,7 @@ export function FaceScanFlow({
         </motion.header>
       ) : null}
 
-      {/* Step: Upload — live camera (multi-capture) */}
+      {/* Step: Upload â€” live camera (multi-capture) */}
       {!showPhotoGuide && step === "upload" && cameraOpen && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -1471,7 +1471,7 @@ export function FaceScanFlow({
                       min={CAPTURE_ZOOM_MIN}
                       max={CAPTURE_ZOOM_MAX}
                       step={CAPTURE_ZOOM_STEP}
-                      suffix="×"
+                      suffix="Ã—"
                       format={(v) => v.toFixed(1)}
                       onChange={setCaptureZoomManual}
                     />
@@ -1548,7 +1548,7 @@ export function FaceScanFlow({
                       <p className="mt-2 text-xs leading-relaxed text-white/75">
                         On desktop, capture with your phone for the best
                         face-scan quality. Scan the QR code to start on your
-                        phone — or upload photos from this device in the next
+                        phone â€” or upload photos from this device in the next
                         step.
                       </p>
                     </div>
@@ -1673,14 +1673,14 @@ export function FaceScanFlow({
                 <button
                   type="button"
                   onClick={openPhotoGuideReview}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-[#F2F9F2]"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-[#F5F3EF]"
                 >
                   <Sun className="h-4 w-4" aria-hidden />
                   View photo tips
                 </button>
                 <Link
                   href="/dashboard/history"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-[#2C3E6B]/15 bg-white px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-[#F2F9F2]"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-[#2C3E6B]/15 bg-white px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-[#F5F3EF]"
                 >
                   <History className="h-4 w-4" aria-hidden />
                   Scan history
@@ -1778,7 +1778,7 @@ export function FaceScanFlow({
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:opacity-60"
                 >
                   <Smartphone className="h-4 w-4" />
-                  {handoffSending ? "Sending…" : "Send photos to desktop"}
+                  {handoffSending ? "Sendingâ€¦" : "Send photos to desktop"}
                 </button>
                 {handoffError ? (
                   <p
@@ -1887,7 +1887,7 @@ export function FaceScanFlow({
               <Sparkles className="h-10 w-10 text-[#2C3E6B] sm:h-12 sm:w-12" />
             </motion.div>
             <p className="text-2xl font-bold text-[#2C3E6B] sm:text-3xl">
-              Submitting your scan…
+              Submitting your scanâ€¦
             </p>
             <p className="mt-3 text-base text-[#6B7280] sm:text-lg">
               Just a moment
@@ -1908,7 +1908,7 @@ export function FaceScanFlow({
         </motion.div>
       )}
 
-      {/* Step: Results — full report modal */}
+      {/* Step: Results â€” full report modal */}
       {step === "results" && scanResults && primaryPreview && (
         <>
           <SkinScanReportModal
