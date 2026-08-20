@@ -249,6 +249,7 @@ export function FaceScanFlow({
   const searchParams = useSearchParams();
   const sessionIdParam = searchParams.get("s");
   const tokenParam = searchParams.get("t");
+  const autoCameraParam = searchParams.get("autoCamera");
   const isMobileHandoff = Boolean(sessionIdParam && tokenParam);
   const isOnboardingScan = variant === "onboarding";
   const [step, setStep] = useState<ScanStep>("upload");
@@ -601,6 +602,16 @@ export function FaceScanFlow({
     setPhotoGuideIntent("camera");
     setPhotoGuideOpen(true);
   }, [skipPhotoGuide, openCameraForMultiCapture]);
+
+  /** `?autoCamera=1` (e.g. from the capture-guide carousel's shutter button)
+   * jumps straight into the normal camera-open flow — same guard/photo-guide
+   * behavior as tapping "Use Phone Camera" manually. */
+  const autoStartedCameraRef = useRef(false);
+  useEffect(() => {
+    if (!autoCameraParam || autoStartedCameraRef.current) return;
+    autoStartedCameraRef.current = true;
+    requestOpenCamera();
+  }, [autoCameraParam, requestOpenCamera]);
 
   const openPhotoGuideReview = useCallback(() => {
     setPhotoGuideIntent("review");

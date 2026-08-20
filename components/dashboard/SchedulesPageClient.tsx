@@ -42,6 +42,13 @@ type AssignedDoctorSummary = {
   photoUrl: string | null;
 };
 
+function initialsFromDoctorName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Dr";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
+}
+
 function HeroRingsMotif({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -138,18 +145,42 @@ export default function SchedulesPageClient({
 
   return (
     <div className="relative">
-      <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#2C3E6B] to-[#1E3264] px-4 pb-10 pt-8 md:-mx-6 md:px-6 md:pt-10">
+      <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#2C3E6B] to-[#1E3264] px-4 pb-16 pt-8 md:-mx-6 md:px-6 md:pb-20 md:pt-10">
         {assignedDoctor?.photoUrl ? (
-          <div className="pointer-events-none absolute bottom-0 right-0 h-56 w-44 md:h-64 md:w-52">
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-[80%]">
             <img
               src={assignedDoctor.photoUrl}
               alt={assignedDoctor.name}
-              className="h-full w-full object-contain object-bottom"
+              className="h-full w-full object-contain object-right-bottom"
             />
           </div>
         ) : (
           <HeroRingsMotif className="pointer-events-none absolute -right-8 -top-6 h-64 w-64 opacity-[0.06] md:-right-4 md:h-80 md:w-80" />
         )}
+
+        {assignedDoctor ? (
+          <div className="relative z-10 mb-4 flex items-center justify-center gap-2.5 md:justify-start">
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-white/25 md:h-20 md:w-20">
+              {assignedDoctor.photoUrl ? (
+                <img
+                  src={assignedDoctor.photoUrl}
+                  alt={assignedDoctor.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center bg-white/15 text-lg font-bold text-white">
+                  {initialsFromDoctorName(assignedDoctor.name)}
+                </span>
+              )}
+            </span>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white md:text-base">
+                {assignedDoctor.name}
+              </p>
+              <p className="text-xs text-white/55">Your care doctor</p>
+            </div>
+          </div>
+        ) : null}
 
         <header className="relative mx-auto max-w-2xl text-center md:text-left" style={{ maxWidth: assignedDoctor?.photoUrl ? "60%" : undefined }}>
           <div className="inline-flex flex-col items-center md:items-start">

@@ -130,7 +130,7 @@ export function KaiMeetIntroCard() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22 }}
-                className="max-w-sm text-base font-medium leading-relaxed md:max-w-md md:text-lg lg:text-xl"
+                className="inline-block max-w-sm rounded-2xl bg-white/70 px-4 py-3 text-base font-medium leading-relaxed shadow-[0_4px_18px_-6px_rgba(44,62,107,0.25)] backdrop-blur-sm md:max-w-md md:text-lg lg:text-xl"
                 style={{ color: KAI_MEET_CARD.text.desc }}
               >
                 {typed}

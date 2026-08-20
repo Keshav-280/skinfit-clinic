@@ -343,7 +343,7 @@ export function LoginForm() {
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Visual panel — photo. Mobile: hero on top with curved base. Desktop: right half. */}
-      <div className="relative order-1 h-[40vh] min-h-[300px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
+      <div className="relative order-1 h-[60vh] min-h-[380px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
         <Image
           src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1400&q=80&auto=format&fit=crop"
           alt="Skincare treatment at SkinFit Wellness"

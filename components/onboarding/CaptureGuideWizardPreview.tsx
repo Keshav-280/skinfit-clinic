@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { animate, motion, useMotionValue } from "framer-motion";
-import { Camera, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 
@@ -25,14 +25,10 @@ export function CaptureGuideWizardPreview() {
   const router = useRouter();
   const steps = FACE_SCAN_CAPTURE_STEPS;
   const [index, setIndex] = useState(0);
-  const [captured, setCaptured] = useState<Set<string>>(new Set());
-  const [flash, setFlash] = useState(false);
   const [width, setWidth] = useState(0);
+  const [held, setHeld] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragX = useMotionValue(0);
-
-  const step = steps[index]!;
-  const allCaptured = captured.size === steps.length;
 
   // Measure the visible viewport so the track can be positioned in real pixels
   // instead of percentages (percentages don't resolve reliably against an
@@ -66,12 +62,13 @@ export function CaptureGuideWizardPreview() {
 
   // Auto-advance every 1s, looping back to the first photo after the last.
   // Resets whenever `index` changes (manual swipe/click also restarts the timer).
+  // Paused entirely while the current photo is pressed/held.
   useEffect(() => {
-    if (allCaptured || width === 0) return;
+    if (width === 0 || held) return;
     const t = window.setTimeout(() => goTo(index + 1), 1000);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, allCaptured, width]);
+  }, [index, width, held]);
 
   function handleDragEnd(_: unknown, info: { offset: { x: number } }) {
     if (info.offset.x < -DRAG_THRESHOLD && index < steps.length - 1) {
@@ -84,41 +81,14 @@ export function CaptureGuideWizardPreview() {
     }
   }
 
+  /** Hands off to the real camera + AI pipeline (FaceScanFlow), picking up
+   * at the next empty angle — same flow as tapping "Use Phone Camera". */
   function takePicture() {
-    setFlash(true);
-    window.setTimeout(() => setFlash(false), 180);
-
-    setCaptured((prev) => {
-      const next = new Set(prev);
-      next.add(step.id);
-      return next;
-    });
-
-    const nextUncaptured = steps.findIndex(
-      (s, i) => i > index && !captured.has(s.id) && s.id !== step.id
-    );
-    window.setTimeout(() => {
-      if (nextUncaptured !== -1) {
-        goTo(nextUncaptured);
-      } else {
-        const firstUncaptured = steps.findIndex((s) => s.id !== step.id && !captured.has(s.id));
-        if (firstUncaptured !== -1) goTo(firstUncaptured);
-      }
-    }, 450);
+    router.push("/onboarding/capture/photos?autoCamera=1");
   }
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      {/* Capture flash */}
-      {flash ? (
-        <motion.div
-          className="pointer-events-none fixed inset-0 z-[60] bg-white"
-          initial={{ opacity: 0.9 }}
-          animate={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-        />
-      ) : null}
-
       <div className="flex flex-1 flex-col px-6 pt-6">
         {/* Top row: back + dot pagination + skip */}
         <div className="flex items-center justify-between">
@@ -143,11 +113,7 @@ export function CaptureGuideWizardPreview() {
               >
                 <span
                   className={`block rounded-full transition-all ${
-                    i === index
-                      ? "h-2 w-6 bg-[#2C3E6B]"
-                      : captured.has(s.id)
-                        ? "h-2 w-2 bg-[#2C3E6B]/50"
-                        : "h-2 w-2 bg-[#E5E7EB]"
+                    i === index ? "h-2 w-6 bg-[#2C3E6B]" : "h-2 w-2 bg-[#E5E7EB]"
                   }`}
                 />
               </button>
@@ -177,14 +143,19 @@ export function CaptureGuideWizardPreview() {
           >
             {steps.map((s) => {
               const photoSrc = REFERENCE_PHOTO_BY_ID[s.id];
-              const done = captured.has(s.id);
               return (
                 <div
                   key={s.id}
                   style={{ width: width || "100%" }}
                   className="flex h-full shrink-0 flex-col items-center justify-center"
                 >
-                  <div className="relative h-64 w-52 overflow-hidden rounded-[28px] border border-[#E5E7EB] bg-white shadow-sm">
+                  <div
+                    onPointerDown={() => setHeld(true)}
+                    onPointerUp={() => setHeld(false)}
+                    onPointerLeave={() => setHeld(false)}
+                    onPointerCancel={() => setHeld(false)}
+                    className="relative h-64 w-52 touch-none select-none overflow-hidden rounded-[28px] border border-[#E5E7EB] bg-white shadow-sm"
+                  >
                     {photoSrc ? (
                       <Image
                         src={photoSrc}
@@ -194,16 +165,6 @@ export function CaptureGuideWizardPreview() {
                         className="object-cover"
                         priority
                       />
-                    ) : null}
-                    {done ? (
-                      <motion.span
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 18 }}
-                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-[#2C3E6B] shadow-md"
-                      >
-                        <Check className="h-4 w-4 text-white" strokeWidth={3} />
-                      </motion.span>
                     ) : null}
                   </div>
 
@@ -239,33 +200,19 @@ export function CaptureGuideWizardPreview() {
         className="sticky bottom-0 flex flex-col items-center gap-3 bg-[#F5F3EF]/95 px-6 pb-8 pt-4 backdrop-blur-sm"
         style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}
       >
-        {allCaptured ? (
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={() => router.push("/onboarding/capture/photos")}
-            className="w-full rounded-2xl bg-[#2C3E6B] py-4 text-center text-[15px] font-bold text-white transition hover:bg-[#243456]"
-          >
-            All 5 angles captured. Continue
-          </motion.button>
-        ) : (
-          <>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
-              {captured.size}/{steps.length} captured
-            </p>
-            <button
-              type="button"
-              onClick={takePicture}
-              aria-label="Take picture"
-              className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-[#2C3E6B]/15 bg-white shadow-lg transition active:scale-95"
-            >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#2C3E6B]">
-                <Camera className="h-6 w-6 text-white" />
-              </span>
-            </button>
-          </>
-        )}
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
+          Ready? Tap to open the camera
+        </p>
+        <button
+          type="button"
+          onClick={takePicture}
+          aria-label="Take picture"
+          className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-[#2C3E6B]/15 bg-white shadow-lg transition active:scale-95"
+        >
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#2C3E6B]">
+            <Camera className="h-6 w-6 text-white" />
+          </span>
+        </button>
       </div>
     </div>
   );
