@@ -9,9 +9,6 @@ import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
-const NAVY_PANEL =
-  "bg-gradient-to-br from-[#1a2544] via-[#2C3E6B] to-[#162038]";
-
 const LABEL = "mb-2 block text-sm font-semibold text-[#1E232C]";
 const INPUT =
   "w-full rounded-lg border border-transparent bg-[#F7F8F9] px-4 py-3.5 text-[15px] text-[#1E232C] outline-none transition placeholder:text-[#8391A1] focus:border-[#525FE1]/30 focus:ring-2 focus:ring-[#525FE1]/15";
@@ -344,88 +341,44 @@ export function LoginForm() {
   const isSignIn = mode === "signin";
 
   return (
-    <div className="flex min-h-screen">
-      <div
-        className={`relative hidden min-h-screen flex-1 flex-col justify-between overflow-hidden px-12 py-16 lg:flex ${NAVY_PANEL}`}
-      >
-        {/* Ambient rings — kAI face-analysis motif */}
-        <svg
-          className="pointer-events-none absolute -right-24 top-1/2 h-[680px] w-[680px] -translate-y-1/2 opacity-[0.14]"
-          viewBox="0 0 600 600"
-          fill="none"
-          aria-hidden
-        >
-          <circle cx="300" cy="300" r="290" stroke="#F5F3EF" strokeWidth="1" />
-          <circle cx="300" cy="300" r="230" stroke="#F5F3EF" strokeWidth="1" />
-          <circle cx="300" cy="300" r="170" stroke="#F5F3EF" strokeWidth="1" />
-          <circle cx="300" cy="300" r="110" stroke="#F5F3EF" strokeWidth="1" />
-          <circle cx="300" cy="300" r="50" stroke="#F5F3EF" strokeWidth="1" />
-        </svg>
-        <div
-          className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full opacity-40 blur-3xl"
-          style={{ background: "radial-gradient(circle, #F5F3EF 0%, transparent 65%)" }}
-          aria-hidden
+    <div className="flex min-h-screen flex-col lg:flex-row">
+      {/* Visual panel — photo. Mobile: hero on top with curved base. Desktop: right half. */}
+      <div className="relative order-1 h-[40vh] min-h-[300px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
+        <Image
+          src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1400&q=80&auto=format&fit=crop"
+          alt="Skincare treatment at SkinFit Wellness"
+          fill
+          priority
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          className="object-cover object-center"
         />
-        <div
-          className="pointer-events-none absolute -bottom-40 -right-20 h-[420px] w-[420px] rounded-full opacity-30 blur-3xl"
-          style={{ background: "radial-gradient(circle, #C9A876 0%, transparent 70%)" }}
-          aria-hidden
-        />
+        {/* Scrim for text legibility — top on mobile, bottom on desktop */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1a2544]/75 via-[#1a2544]/10 to-transparent lg:bg-gradient-to-t lg:from-[#1a2544]/80 lg:via-[#1a2544]/10 lg:to-[#1a2544]/25" />
 
-        <div className="relative z-10">
+        {/* Brand + tagline overlay */}
+        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center px-6 pt-8 text-center lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:items-start lg:p-12 lg:text-left">
           <Image
             src="/branding/skinfit-wellness-logo.svg"
             alt="SkinFit Wellness"
             width={560}
             height={135}
             priority
-            className="h-11 w-auto max-w-[15rem] brightness-0 invert"
+            className="h-9 w-auto max-w-[12rem] brightness-0 invert lg:h-11 lg:max-w-[15rem]"
           />
+          <p className="mt-3 max-w-xs text-sm font-medium text-white/85 lg:mt-4 lg:max-w-md lg:text-xl lg:leading-relaxed">
+            Because your skin deserves the best care.
+          </p>
         </div>
 
-        <div className="relative z-10 max-w-md space-y-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
-            AI-guided skincare
-          </p>
-          <h2 className="font-serif text-4xl font-semibold leading-[1.15] text-white xl:text-5xl">
-            Beautiful skin, built with intelligence.
-          </h2>
-          <p className="text-base leading-relaxed text-white/70">
-            {isSignIn
-              ? "Continue your journey. Track your skin, your routines, and your progress — all in one private dashboard."
-              : "Join the SkinFit patient portal. Get an AI skin analysis, a personalised care plan, and doctor-guided support."}
-          </p>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              AI skin analysis
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
-              Doctor-guided care
-            </span>
-          </div>
-        </div>
-
-        <div className="relative z-10 text-xs text-white/40">
-          © SkinFit Wellness · Private patient portal
-        </div>
+        {/* Concave white base — mobile only, echoes the reference curve */}
+        <div className="pointer-events-none absolute -bottom-2 left-1/2 z-20 h-14 w-[160%] -translate-x-1/2 rounded-[100%] bg-white lg:hidden" />
       </div>
 
-      <div className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-12 text-[#1E232C]">
+      {/* Form panel — left on desktop, below the hero on mobile */}
+      <div className="order-2 flex flex-1 items-center justify-center bg-white px-6 py-10 text-[#1E232C] lg:min-h-screen lg:py-12">
         <div className="w-full max-w-md">
         {isSignIn ? (
           <div className="mb-8">
-            <div className="mb-6 flex justify-center lg:hidden">
-              <Image
-                src="/branding/skinfit-wellness-logo.svg"
-                alt="SkinFit Wellness"
-                width={560}
-                height={135}
-                priority
-                className="h-9 w-auto max-w-[11rem]"
-              />
-            </div>
             <h1 className="text-3xl font-bold tracking-tight text-[#1E232C]">
               Welcome back!{" "}
               <span aria-hidden className="inline-block">

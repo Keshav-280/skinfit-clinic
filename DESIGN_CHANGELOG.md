@@ -7,15 +7,14 @@ Each entry describes what changed and why, with before/after.
 
 ## 2026-08-20 — Session 3: Delight moments
 
-### Login page — illustrated hero panel
-**Before:** Split-screen. Left panel was a plain navy gradient with just the logo + one line of tagline text. Cold, generic — looked like an admin login.
-**After:** Left panel now has:
-- Layered SVG artwork (concentric rings + soft glow) evoking kAI's face-analysis rings, in warm cream/navy
-- Larger, bolder tagline ("Beautiful skin, built with intelligence.")
-- Sub-copy explaining what's inside
-- Trust chips ("AI Skin Analysis · Doctor-guided care")
+### Login page — real photo hero (metime-style)
+**Before:** Split-screen. Left = navy panel (first a plain gradient, then briefly abstract SVG rings), right = form. No real imagery; nothing on mobile.
+**After:** Photo-driven layout with a free-license Unsplash skincare portrait (facial treatment, serene):
+- **Desktop:** form on the LEFT, full-height photo on the RIGHT. White SkinFit logo + "Because your skin deserves the best care." overlaid on the photo bottom-left, over a soft navy scrim.
+- **Mobile:** photo as a hero on TOP (40vh) with a concave white curved base (echoes the metime reference), logo + tagline overlaid at the top, form below.
+- Photo served via Next/Image from `images.unsplash.com` (already whitelisted). Swap by changing the `src` URL, or drop a local file in `public/branding/` and point to it.
 
-Feels intentional and premium — like a product, not a form.
+Note: did NOT copy the metime asset (their licensed photo + trademark) — replicated the composition with a different, commercially-free photo.
 
 **Files:** `app/login/login-form.tsx`
 
