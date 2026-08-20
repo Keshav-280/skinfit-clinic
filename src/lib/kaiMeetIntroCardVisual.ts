@@ -14,7 +14,7 @@ export const KAI_MEET_CARD = {
   },
   text: {
     meet: "#1B2C5B",
-    desc: "#1B2C5B",
+    desc: "#3D4D7A",
     typed: "rgba(255,255,255,0.92)",
     cursor: "rgba(255,255,255,0.75)",
   },
