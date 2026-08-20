@@ -10,6 +10,7 @@ import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
+  addDays,
   addMonths,
   subMonths,
   isSameDay,
@@ -19,7 +20,6 @@ import {
 import {
   AlertTriangle,
   ArrowRight,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -519,6 +519,23 @@ function DashboardDatePicker({
   const pillLabel =
     selectedYmd === todayYmd ? "Today" : format(selectedDate, "EEE, MMM d");
 
+  const todayDate = useMemo(() => parseISO(`${todayYmd}T00:00:00`), [todayYmd]);
+
+  /** 7-day strip centered on the selected date (3 before, selected, 3 after). */
+  const stripDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(selectedDate, i - 3);
+      const ymd = format(d, "yyyy-MM-dd");
+      return {
+        date: d,
+        ymd,
+        isToday: ymd === todayYmd,
+        isSelected: ymd === selectedYmd,
+        isFuture: d.getTime() > todayDate.getTime() && ymd !== todayYmd,
+      };
+    });
+  }, [selectedDate, todayYmd, selectedYmd, todayDate]);
+
   function selectDay(ymd: string) {
     onSelectYmd(ymd);
     setOpen(false);
@@ -602,23 +619,53 @@ function DashboardDatePicker({
   );
 
   return (
-    <div ref={rootRef} className="relative inline-block">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3.5 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F5F3EF]"
-      >
-        <Calendar className="h-4 w-4 shrink-0" aria-hidden />
-        <span>{pillLabel}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-[#6B7280] transition ${
-            open ? "rotate-180" : ""
-          }`}
-          aria-hidden
-        />
-      </button>
+    <div ref={rootRef} className="relative">
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+        {stripDays.map((d) => {
+          if (d.isSelected) {
+            return (
+              <button
+                key={d.ymd}
+                type="button"
+                onClick={() => onSelectYmd(d.ymd)}
+                aria-current="date"
+                className="inline-flex shrink-0 items-center rounded-full bg-[#2C3E6B]/10 px-4 py-2 text-sm font-bold text-[#2C3E6B]"
+              >
+                {pillLabel}
+              </button>
+            );
+          }
+          return (
+            <button
+              key={d.ymd}
+              type="button"
+              disabled={d.isFuture}
+              onClick={() => onSelectYmd(d.ymd)}
+              aria-label={format(d.date, "EEEE, MMMM d, yyyy")}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition ${
+                d.isFuture
+                  ? "cursor-not-allowed text-slate-300"
+                  : d.isToday
+                    ? "text-[#2C3E6B] ring-1 ring-[#2C3E6B]/25 hover:bg-[#F5F3EF]"
+                    : "text-[#6B7280] hover:bg-[#F5F3EF] hover:text-[#18181b]"
+              }`}
+            >
+              {format(d.date, "d")}
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label="Choose a date from the calendar"
+          onClick={() => setOpen((v) => !v)}
+          className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+        >
+          <Calendar className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
 
       {open ? (
         <>

@@ -155,7 +155,7 @@ export function KaiMeetIntroCard() {
             className="mt-8 flex flex-col gap-3 sm:flex-row md:mt-10"
           >
             <Link
-              href="/onboarding/capture/photos"
+              href="/preview/capture-guide"
               className="group inline-flex items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-8px_rgba(44,62,107,0.4)] transition hover:bg-[#243456] hover:shadow-[0_14px_30px_-10px_rgba(44,62,107,0.45)]"
             >
               <Camera className="h-4 w-4" aria-hidden />
@@ -163,7 +163,7 @@ export function KaiMeetIntroCard() {
               <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden />
             </Link>
             <Link
-              href="/onboarding/questionnaire?entry=start"
+              href="/preview/questionnaire"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2C3E6B]/25 bg-white/70 px-5 py-3.5 text-sm font-bold text-[#2C3E6B] backdrop-blur-sm transition hover:border-[#2C3E6B]/40 hover:bg-white"
             >
               <ClipboardList className="h-4 w-4" aria-hidden />

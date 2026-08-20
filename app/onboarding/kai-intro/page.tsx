@@ -23,9 +23,9 @@ export default function KaiIntroPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2, ease: easeOut }}
-        className="mt-8 rounded-xl border border-[#2C3E6B]/10 bg-white/35 px-3 py-2 backdrop-blur-sm"
+        className="mt-8"
       >
-        <div className="mb-1 flex items-center justify-center gap-1.5 text-[#2C3E6B]">
+        <div className="mb-1.5 flex items-center justify-center gap-1.5 text-[#2C3E6B]/70">
           <Shield className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
           <p className="text-[9px] font-bold uppercase tracking-[0.16em]">
             Before you start
@@ -35,7 +35,7 @@ export default function KaiIntroPage() {
           {BOUNDARIES.map((line) => (
             <span
               key={line}
-              className="rounded-full border border-white/70 bg-white/80 px-2 py-0.5 text-[9px] font-medium text-zinc-600 shadow-sm"
+              className="rounded-full border border-[#2C3E6B]/15 bg-white/60 px-2 py-0.5 text-[9px] font-medium text-zinc-600"
             >
               {line}
             </span>
