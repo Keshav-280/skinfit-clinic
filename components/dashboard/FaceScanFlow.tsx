@@ -1878,32 +1878,56 @@ export function FaceScanFlow({
           transition={{ duration: 0.5 }}
           className="mx-auto flex w-full max-w-lg items-center justify-center"
         >
-          <div className="relative w-full overflow-hidden rounded-[22px] border border-white/70 bg-white/35 px-8 py-16 text-center backdrop-blur-sm sm:px-12 sm:py-20">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-[#2C3E6B]/25 border-t-[#2C3E6B] sm:h-24 sm:w-24"
-            >
-              <Sparkles className="h-10 w-10 text-[#2C3E6B] sm:h-12 sm:w-12" />
-            </motion.div>
-            <p className="text-2xl font-bold text-[#2C3E6B] sm:text-3xl">
-              Submitting your scanâ€¦
-            </p>
-            <p className="mt-3 text-base text-[#6B7280] sm:text-lg">
-              Just a moment
-            </p>
-            <div className="absolute bottom-0 left-0 right-0 h-1.5 overflow-hidden bg-[#2C3E6B]/10">
-              <motion.div
-                className="h-full w-1/3 bg-[#2C3E6B] shadow-[0_0_16px_rgba(44,62,107,0.4)]"
-                initial={{ x: "-100%" }}
-                animate={{ x: ["-100%", "400%"] }}
+          <div className="relative flex w-full flex-col items-center overflow-hidden rounded-[22px] border border-white/70 bg-white/40 px-8 py-20 text-center backdrop-blur-sm sm:px-12 sm:py-24">
+            {/* Breathing orb + ripple rings */}
+            <div className="relative mb-10 flex h-48 w-48 items-center justify-center sm:h-56 sm:w-56">
+              {/* Ripple ring 1 */}
+              <motion.span
+                className="absolute inset-0 rounded-full border border-[#2C3E6B]/25"
+                animate={{ scale: [1, 1.35, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              />
+              {/* Ripple ring 2 — offset for continuous feel */}
+              <motion.span
+                className="absolute inset-0 rounded-full border border-[#2C3E6B]/20"
+                animate={{ scale: [1, 1.55, 1], opacity: [0.4, 0, 0.4] }}
                 transition={{
-                  duration: 2.2,
+                  duration: 4,
                   repeat: Infinity,
                   ease: "easeInOut",
+                  delay: 1,
                 }}
               />
+              {/* Breathing orb */}
+              <motion.div
+                className="relative flex h-32 w-32 items-center justify-center rounded-full sm:h-36 sm:w-36"
+                animate={{
+                  scale: [1, 1.15, 1],
+                  boxShadow: [
+                    "0 0 40px 0 rgba(44,62,107,0.15)",
+                    "0 0 80px 8px rgba(44,62,107,0.35)",
+                    "0 0 40px 0 rgba(44,62,107,0.15)",
+                  ],
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  background:
+                    "radial-gradient(circle at 30% 30%, #4A5F92 0%, #2C3E6B 55%, #1E2A4D 100%)",
+                }}
+              >
+                <Sparkles
+                  className="h-10 w-10 text-white/85 sm:h-12 sm:w-12"
+                  aria-hidden
+                />
+              </motion.div>
             </div>
+
+            <p className="text-2xl font-bold text-[#2C3E6B] sm:text-3xl">
+              Take a deep breath.
+            </p>
+            <p className="mt-3 max-w-xs text-base text-[#6B7280] sm:text-lg">
+              kAI is analysing your skin. This takes about 20 seconds.
+            </p>
           </div>
         </motion.div>
       )}

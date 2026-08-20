@@ -29,7 +29,7 @@ export default function KaiIntroPage() {
 
       <KaiMeetIntroCard />
 
-      <div className="mt-4 flex flex-col gap-3">
+      <div className="mt-8 flex flex-col gap-3">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

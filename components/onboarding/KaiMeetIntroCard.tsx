@@ -76,35 +76,40 @@ export function KaiMeetIntroCard() {
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: easeOut }}
-      className="relative overflow-hidden rounded-[20px] shadow-[0_20px_48px_-16px_rgba(44,62,107,0.5)]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6, ease: easeOut }}
+      className="relative -mx-4 overflow-hidden md:-mx-6"
       style={{
         background: `
-          radial-gradient(circle 360px at 76% 48%, ${KAI_MEET_CARD.gradient.glow} 0%, rgba(218,232,255,0.18) 42%, transparent 72%),
-          radial-gradient(ellipse 120% 100% at 18% 80%, rgba(255,255,255,0.14) 0%, transparent 45%),
+          radial-gradient(circle 520px at 76% 55%, ${KAI_MEET_CARD.gradient.glow} 0%, rgba(218,232,255,0.14) 40%, transparent 72%),
+          radial-gradient(ellipse 120% 100% at 18% 90%, rgba(255,255,255,0.10) 0%, transparent 45%),
           linear-gradient(135deg, ${KAI_MEET_CARD.gradient.mid} 0%, ${KAI_MEET_CARD.gradient.edge} 54%, ${KAI_MEET_CARD.gradient.deep} 100%)
         `,
       }}
     >
-      <div className="relative flex min-h-[220px] flex-col md:min-h-[460px] md:flex-row md:items-stretch">
-        {/* Copy */}
-        <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-7 py-6 sm:px-9 sm:py-8 md:max-w-[54%] md:py-12 lg:max-w-[52%]">
+      <div className="relative flex min-h-[78vh] flex-col md:min-h-[80vh] md:flex-row md:items-stretch">
+        {/* Copy — text lives directly on the page, no card panel */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15, ease: easeOut }}
+          className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-7 pt-10 sm:px-10 sm:pt-14 md:max-w-[56%] md:py-16 md:pl-14 lg:pl-20"
+        >
           <p
-            className="text-sm font-bold tracking-tight"
+            className="text-base font-semibold tracking-tight"
             style={{ color: KAI_MEET_CARD.text.meet }}
           >
             Meet
           </p>
-          <h1 className="mt-1 text-[3.5rem] font-extrabold leading-[0.92] tracking-tight text-white sm:text-[4rem] md:text-[4.5rem] lg:text-[5rem]">
-            kAI
+          <h1 className="mt-1 text-[5rem] font-extrabold leading-[0.9] tracking-tight text-white sm:text-[6rem] md:text-[7rem] lg:text-[8.5rem]">
+            kAI.
           </h1>
-          <p className="mt-3 text-[11px] font-extrabold uppercase tracking-[0.28em] text-white sm:text-xs">
-            YOUR SKIN COMPANION
+          <p className="mt-4 text-sm font-extrabold uppercase tracking-[0.32em] text-white/90 sm:text-base">
+            Your skin companion.
           </p>
 
-          <div className="mt-4 min-h-[4.5rem] md:mt-8 md:min-h-[4.5rem]">
+          <div className="mt-8 min-h-[5rem] md:mt-12">
             <AnimatePresence mode="wait">
               <motion.p
                 key={lineIndex}
@@ -112,7 +117,7 @@ export function KaiMeetIntroCard() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22 }}
-                className="max-w-sm text-[15px] font-semibold leading-relaxed md:max-w-md md:text-base lg:text-[17px]"
+                className="max-w-sm text-base font-medium leading-relaxed md:max-w-md md:text-lg lg:text-xl"
                 style={{ color: KAI_MEET_CARD.text.desc }}
               >
                 {typed}
@@ -128,25 +133,30 @@ export function KaiMeetIntroCard() {
               </motion.p>
             </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Avatar + halo — halo locked to character, not the card corner */}
-        <div className="relative flex min-h-[220px] flex-none items-stretch justify-center md:min-h-0 md:w-[46%] lg:w-[48%]">
-          <div className="flex h-full w-full items-end justify-center pb-1 md:pb-2">
+        {/* Character — full-bleed, bottom-anchored */}
+        <div className="relative flex flex-none items-end justify-center md:w-[44%] lg:w-[46%]">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: easeOut }}
+            className="relative w-full"
+          >
             <motion.div
-              animate={{ y: [0, -5, 0] }}
+              animate={{ y: [0, -6, 0] }}
               transition={{
                 duration: 4.5,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-              className="relative inline-block -translate-x-4 md:-translate-x-8"
+              className="relative flex items-end justify-center"
             >
-              <div className="pointer-events-none absolute bottom-[12%] left-1/2 aspect-square w-[156%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(235,244,255,0.34)_0%,rgba(155,190,255,0.14)_38%,transparent_68%)] blur-[1px]" />
-              <div className="pointer-events-none absolute bottom-[10%] left-1/2 aspect-square w-[158%] -translate-x-1/2">
+              <div className="pointer-events-none absolute bottom-[8%] left-1/2 aspect-square w-[130%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(235,244,255,0.28)_0%,rgba(155,190,255,0.10)_40%,transparent_70%)] blur-[2px]" />
+              <div className="pointer-events-none absolute bottom-[6%] left-1/2 aspect-square w-[135%] -translate-x-1/2">
                 <DotFieldSvg
                   dots={HALO_DOTS}
-                  className="h-full w-full drop-shadow-[0_0_5px_rgba(214,235,255,0.65)]"
+                  className="h-full w-full drop-shadow-[0_0_6px_rgba(214,235,255,0.55)]"
                   glow
                   preserveAspectRatio="xMidYMid meet"
                 />
@@ -156,11 +166,11 @@ export function KaiMeetIntroCard() {
                 alt="kAI — your SkinFit AI skin companion"
                 width={200}
                 height={441}
-                className="relative z-10 block h-[min(58vw,230px)] w-auto object-contain object-bottom sm:h-[270px] md:h-[440px] lg:h-[470px]"
+                className="relative z-10 block h-[min(70vw,340px)] w-auto object-contain object-bottom sm:h-[400px] md:h-[560px] lg:h-[640px]"
                 priority
               />
             </motion.div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </motion.section>

@@ -346,9 +346,33 @@ export function LoginForm() {
   return (
     <div className="flex min-h-screen">
       <div
-        className={`hidden min-h-screen flex-1 flex-col justify-center px-12 lg:flex ${NAVY_PANEL}`}
+        className={`relative hidden min-h-screen flex-1 flex-col justify-between overflow-hidden px-12 py-16 lg:flex ${NAVY_PANEL}`}
       >
-        <div className="mx-auto max-w-md space-y-8">
+        {/* Ambient rings — kAI face-analysis motif */}
+        <svg
+          className="pointer-events-none absolute -right-24 top-1/2 h-[680px] w-[680px] -translate-y-1/2 opacity-[0.14]"
+          viewBox="0 0 600 600"
+          fill="none"
+          aria-hidden
+        >
+          <circle cx="300" cy="300" r="290" stroke="#F5F3EF" strokeWidth="1" />
+          <circle cx="300" cy="300" r="230" stroke="#F5F3EF" strokeWidth="1" />
+          <circle cx="300" cy="300" r="170" stroke="#F5F3EF" strokeWidth="1" />
+          <circle cx="300" cy="300" r="110" stroke="#F5F3EF" strokeWidth="1" />
+          <circle cx="300" cy="300" r="50" stroke="#F5F3EF" strokeWidth="1" />
+        </svg>
+        <div
+          className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full opacity-40 blur-3xl"
+          style={{ background: "radial-gradient(circle, #F5F3EF 0%, transparent 65%)" }}
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-40 -right-20 h-[420px] w-[420px] rounded-full opacity-30 blur-3xl"
+          style={{ background: "radial-gradient(circle, #C9A876 0%, transparent 70%)" }}
+          aria-hidden
+        />
+
+        <div className="relative z-10">
           <Image
             src="/branding/skinfit-wellness-logo.svg"
             alt="SkinFit Wellness"
@@ -357,11 +381,34 @@ export function LoginForm() {
             priority
             className="h-11 w-auto max-w-[15rem] brightness-0 invert"
           />
-          <p className="text-lg leading-relaxed text-white/80">
-            {isSignIn
-              ? "Welcome back to your personalized skincare journey."
-              : "Create your account to access your private dashboard and AI skin insights."}
+        </div>
+
+        <div className="relative z-10 max-w-md space-y-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
+            AI-guided skincare
           </p>
+          <h2 className="font-serif text-4xl font-semibold leading-[1.15] text-white xl:text-5xl">
+            Beautiful skin, built with intelligence.
+          </h2>
+          <p className="text-base leading-relaxed text-white/70">
+            {isSignIn
+              ? "Continue your journey. Track your skin, your routines, and your progress — all in one private dashboard."
+              : "Join the SkinFit patient portal. Get an AI skin analysis, a personalised care plan, and doctor-guided support."}
+          </p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              AI skin analysis
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+              Doctor-guided care
+            </span>
+          </div>
+        </div>
+
+        <div className="relative z-10 text-xs text-white/40">
+          © SkinFit Wellness · Private patient portal
         </div>
       </div>
 
