@@ -111,26 +111,51 @@ body {
   display: none;
 }
 
-@keyframes checkinSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(18px);
+/* Slow gradient sweep across hero headline text — draws the eye without being loud. */
+@keyframes hero-shimmer {
+  0% {
+    background-position: 0% 50%;
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+  100% {
+    background-position: 200% 50%;
   }
 }
+.hero-shimmer-text {
+  background-image: linear-gradient(
+    100deg,
+    #ffffff 0%,
+    #ffffff 42%,
+    #bfd0ff 50%,
+    #ffffff 58%,
+    #ffffff 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: hero-shimmer 4s linear infinite;
+}
 
-@keyframes checkinSlideBack {
+
+/* Login splash: "Wellness" wordmark pop-in — plain CSS (not Framer Motion)
+   because animating this specific <g> with Framer Motion hangs mid-hydration
+   in Turbopack dev mode; a CSS class toggle sidesteps it entirely. */
+@keyframes wellness-pop-in {
   from {
     opacity: 0;
-    transform: translateX(-18px);
+    transform: scale(0.55);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: scale(1);
   }
+}
+.wellness-pop-in {
+  animation: wellness-pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: 544px 357px;
+}
+.wellness-pop-hidden {
+  opacity: 0;
 }
 
 @keyframes context-menu-fade-in {

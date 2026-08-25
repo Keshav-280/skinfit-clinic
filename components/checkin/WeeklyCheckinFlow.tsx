@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckinScreen } from "@/components/checkin/CheckinScreen";
 import { AnchoredScaleField } from "@/components/checkin/fields/AnchoredScaleField";
 import { SingleSelectField } from "@/components/checkin/fields/SingleSelectField";
@@ -21,6 +21,8 @@ import {
   emptyCheckinAnswers,
   type CheckinAnswers,
 } from "@/src/lib/checkin/types";
+
+const easeOut = [0.22, 1, 0.36, 1] as const;
 
 function draftKey(weekYmd: string) {
   return `skinfit_weekly_checkin_draft_v1_${weekYmd}`;
@@ -216,90 +218,192 @@ export function WeeklyCheckinFlow({
   }
 
   if (mode === "done") {
-    const lines = summaryLines(answers);
     return (
-      <div className="min-h-[100dvh] bg-kai-sage">
-        <div className="mx-auto flex min-h-[100dvh] w-full max-w-[392px] flex-col bg-kai-paper px-6 py-10 shadow-[0_0_0_1px_rgba(43,55,87,0.06)]">
-          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(78,155,114,0.15)] text-kai-good">
-            <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
-          </div>
-          <h1 className="font-serif text-[24px] font-light tracking-[-0.02em] text-kai-ink">
-            Check-in complete
-          </h1>
-          <p className="mt-2 text-[13px] leading-[1.5] text-kai-ink-2">
-            Week of {weekYmd} · {CONCERN_PATH_LABELS[concern]} path. kAI can
-            now read your next scan in context.
-          </p>
-          <div className="mt-6 grid grid-cols-2 gap-2">
-            {lines.map((l) => (
-              <div key={l.label} className="rounded-[12px] bg-kai-sage px-3 py-3">
-                <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-kai-ink-3">
-                  {l.label}
-                </p>
-                <p className="mt-1 text-[13px] font-semibold capitalize text-kai-ink">
-                  {l.value}
-                </p>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setMode("form");
-              setStep(0);
-            }}
-            className="mt-8 w-full rounded-[12px] border border-kai-rule bg-white py-3.5 text-[14px] font-semibold text-kai-ink"
-          >
-            Edit answers
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard/schedules")}
-            className="mt-2.5 w-full rounded-[12px] bg-kai-navy py-3.5 text-[14px] font-semibold text-white"
-          >
-            Back to Maintain
-          </button>
-        </div>
-      </div>
+      <CheckinCompletion
+        weekYmd={weekYmd}
+        concern={concern}
+        lines={summaryLines(answers)}
+        onEdit={() => {
+          setMode("form");
+          setStep(0);
+        }}
+        onBackToMaintain={() => router.push("/dashboard/schedules")}
+      />
     );
   }
 
   return (
-    <div
-      key={step}
-      className={
-        dir === "forward"
-          ? "animate-[checkinSlideIn_220ms_ease-out]"
-          : "animate-[checkinSlideBack_220ms_ease-out]"
-      }
-    >
-      <CheckinScreen
-        step={step + 1}
-        totalSteps={screens.length}
-        title={screen.title}
-        subtitle={screen.subtitle}
-        onNext={goNext}
-        onBack={goBack}
-        isLast={isLast}
-        nextDisabled={!canNext}
-        submitting={submitting}
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={step}
+        initial={{ opacity: 0, x: dir === "forward" ? 24 : -24 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: dir === "forward" ? -60 : 60 }}
+        transition={{ duration: 0.28, ease: easeOut }}
       >
-        {screen.fields.map((field) => (
-          <FieldRenderer
-            key={field.key}
-            field={field}
-            answers={answers}
-            showCycle={showCycle}
-            onUniversal={setUniversal}
-            onUniversalMulti={setUniversalMulti}
-            onConcern={setConcernValue}
-          />
-        ))}
-        {error ? (
-          <p className="text-[12px] text-kai-low">{error}</p>
-        ) : null}
-      </CheckinScreen>
-    </div>
+        <CheckinScreen
+          step={step + 1}
+          totalSteps={screens.length}
+          title={screen.title}
+          subtitle={screen.subtitle}
+          onNext={goNext}
+          onBack={goBack}
+          isLast={isLast}
+          nextDisabled={!canNext}
+          submitting={submitting}
+        >
+          {screen.fields.map((field) => (
+            <FieldRenderer
+              key={field.key}
+              field={field}
+              answers={answers}
+              showCycle={showCycle}
+              onUniversal={setUniversal}
+              onUniversalMulti={setUniversalMulti}
+              onConcern={setConcernValue}
+            />
+          ))}
+          {error ? (
+            <p className="text-[13px] text-red-600">{error}</p>
+          ) : null}
+        </CheckinScreen>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+/** UPI-style success animation — big centered tick, then shrinks and docks
+ * to the top before revealing the summary + next-step buttons. */
+function CheckinCompletion({
+  weekYmd,
+  concern,
+  lines,
+  onEdit,
+  onBackToMaintain,
+}: {
+  weekYmd: string;
+  concern: CheckinConcernPath;
+  lines: Array<{ label: string; value: string }>;
+  onEdit: () => void;
+  onBackToMaintain: () => void;
+}) {
+  const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setSettled(true), 1500);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex flex-col items-center px-6"
+      animate={{ backgroundColor: settled ? "#F5F3EF" : "#2C3E6B" }}
+      transition={{ duration: 0.6, ease: easeOut }}
+    >
+      <div
+        className={`flex w-full flex-1 flex-col items-center ${
+          settled ? "justify-start pt-16" : "justify-center"
+        }`}
+      >
+        <motion.div
+          layout
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{
+            layout: { duration: 0.6, ease: easeOut },
+            scale: { type: "spring", stiffness: 260, damping: 18 },
+            opacity: { duration: 0.25 },
+          }}
+          className={`flex items-center justify-center rounded-full bg-white shadow-xl ${
+            settled ? "h-16 w-16" : "h-28 w-28"
+          }`}
+        >
+          <svg
+            width={settled ? 28 : 48}
+            height={settled ? 28 : 48}
+            viewBox="0 0 52 52"
+            fill="none"
+          >
+            <motion.path
+              d="M14 27l7 7 17-17"
+              stroke="#2C3E6B"
+              strokeWidth={5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.45, delay: 0.35, ease: "easeOut" }}
+            />
+          </svg>
+        </motion.div>
+
+        {!settled ? (
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.55, ease: easeOut }}
+            className="mt-6 text-lg font-bold text-white"
+          >
+            Check-in complete
+          </motion.p>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.15, ease: easeOut }}
+            className="mt-6 text-center"
+          >
+            <h1 className="text-2xl font-extrabold text-[#18181b]">
+              You&apos;re all set!
+            </h1>
+            <p className="mt-2 max-w-xs text-sm leading-relaxed text-[#6B7280]">
+              Week of {weekYmd} · {CONCERN_PATH_LABELS[concern]} path. kAI can
+              now read your next scan in context.
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              {lines.map((l) => (
+                <div
+                  key={l.label}
+                  className="rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-3 text-left"
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#6B7280]">
+                    {l.label}
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold capitalize text-[#18181b]">
+                    {l.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {settled ? (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.3, ease: easeOut }}
+          className="mb-8 flex w-full max-w-md flex-col gap-3"
+        >
+          <button
+            type="button"
+            onClick={onBackToMaintain}
+            className="w-full rounded-2xl bg-[#2C3E6B] py-4 text-center text-[15px] font-bold text-white transition hover:bg-[#243456]"
+          >
+            Back to Maintain
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="w-full rounded-2xl border border-[#2C3E6B]/25 bg-white py-4 text-center text-[15px] font-bold text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5"
+          >
+            Edit answers
+          </button>
+        </motion.div>
+      ) : null}
+    </motion.div>
   );
 }
 

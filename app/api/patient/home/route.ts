@@ -71,6 +71,7 @@ async function buildPatientHomePayload(
     columns: {
       name: true,
       profilePhotoUrl: true,
+      gender: true,
       skinType: true,
       primaryConcern: true,
       fitzpatrick: true,
@@ -345,6 +346,7 @@ async function buildPatientHomePayload(
     firstScanAt: firstScanAt?.toISOString() ?? null,
     userName: userRow.name ?? "Patient",
     profilePhotoUrl: userRow.profilePhotoUrl ?? null,
+    gender: userRow.gender ?? null,
     skinType: userRow.skinType ?? null,
     primaryConcern: userRow.primaryConcern ?? null,
     fitzpatrick: userRow.fitzpatrick ?? null,

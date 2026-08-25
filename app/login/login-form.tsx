@@ -4,10 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
+import { LoginIntroSplash } from "@/components/login/LoginIntroSplash";
 import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
+
+const easeOut = [0.22, 1, 0.36, 1] as const;
 
 const LABEL = "mb-2 block text-sm font-semibold text-[#1E232C]";
 const INPUT =
@@ -36,6 +40,10 @@ export function LoginForm() {
     searchParams.get("mode") === "register" ? "register" : "signin"
   );
   const [signInMethod, setSignInMethod] = useState<SignInMethod>("password");
+  // Splash plays once per browser session; the real page mounts immediately
+  // underneath it (logo shares a layoutId so it "hands off" smoothly), and
+  // everything else fades/slides in once the splash finishes.
+  const [introShowing, setIntroShowing] = useState(true);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -342,32 +350,50 @@ export function LoginForm() {
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
+      {introShowing ? (
+        <LoginIntroSplash onDone={() => setIntroShowing(false)} />
+      ) : null}
+
       {/* Visual panel — photo. Mobile: hero on top with curved base. Desktop: right half. */}
       <div className="relative order-1 h-[60vh] min-h-[380px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
-        <Image
-          src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1400&q=80&auto=format&fit=crop"
-          alt="Skincare treatment at SkinFit Wellness"
-          fill
-          priority
-          sizes="(max-width: 1024px) 100vw, 50vw"
-          className="object-cover object-center"
-        />
-        {/* Scrim for text legibility — top on mobile, bottom on desktop */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a2544]/75 via-[#1a2544]/10 to-transparent lg:bg-gradient-to-t lg:from-[#1a2544]/80 lg:via-[#1a2544]/10 lg:to-[#1a2544]/25" />
+        <motion.div
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={introShowing ? {} : { opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, ease: easeOut }}
+          className="absolute inset-0"
+        >
+          <Image
+            src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1400&q=80&auto=format&fit=crop"
+            alt="Skincare treatment at SkinFit Wellness"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover object-center"
+          />
+          {/* Scrim for text legibility — top on mobile, bottom on desktop */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1a2544]/75 via-[#1a2544]/10 to-transparent lg:bg-gradient-to-t lg:from-[#1a2544]/80 lg:via-[#1a2544]/10 lg:to-[#1a2544]/25" />
+        </motion.div>
 
         {/* Brand + tagline overlay */}
         <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center px-6 pt-8 text-center lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:items-start lg:p-12 lg:text-left">
-          <Image
-            src="/branding/skinfit-wellness-logo.svg"
-            alt="SkinFit Wellness"
-            width={560}
-            height={135}
-            priority
-            className="h-9 w-auto max-w-[12rem] brightness-0 invert lg:h-11 lg:max-w-[15rem]"
-          />
-          <p className="mt-3 max-w-xs text-sm font-medium text-white/85 lg:mt-4 lg:max-w-md lg:text-xl lg:leading-relaxed">
+          <motion.div layoutId="app-logo" transition={{ duration: 0.6, ease: easeOut }}>
+            <Image
+              src="/branding/skinfit-wellness-logo.svg"
+              alt="SkinFit Wellness"
+              width={560}
+              height={135}
+              priority
+              className="h-9 w-auto max-w-[12rem] brightness-0 invert lg:h-11 lg:max-w-[15rem]"
+            />
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={introShowing ? {} : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15, ease: easeOut }}
+            className="mt-3 max-w-xs text-sm font-medium text-white/85 lg:mt-4 lg:max-w-md lg:text-xl lg:leading-relaxed"
+          >
             Because your skin deserves the best care.
-          </p>
+          </motion.p>
         </div>
 
         {/* Concave white base — mobile only, echoes the reference curve */}
@@ -375,7 +401,12 @@ export function LoginForm() {
       </div>
 
       {/* Form panel — left on desktop, below the hero on mobile */}
-      <div className="order-2 flex flex-1 items-center justify-center bg-white px-6 py-10 text-[#1E232C] lg:min-h-screen lg:py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={introShowing ? {} : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1, ease: easeOut }}
+        className="order-2 flex flex-1 items-center justify-center bg-white px-6 py-10 text-[#1E232C] lg:min-h-screen lg:py-12"
+      >
         <div className="w-full max-w-md">
         {isSignIn ? (
           <div className="mb-8">
@@ -823,7 +854,7 @@ export function LoginForm() {
           </Link>
         </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Check, ChevronRight, ClipboardList } from "lucide-react";
 import { CONCERN_PATH_LABELS, type CheckinConcernPath } from "@/src/lib/checkin/definitions";
 
@@ -72,26 +73,48 @@ export function WeeklyCheckinEntryCard({
         ) : (
           <>
             <div className="mb-4 flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-kai-navy/10 text-kai-navy">
+              <motion.span
+                animate={{ scale: [1, 1.08, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-kai-navy/10 text-kai-navy"
+              >
                 <ClipboardList className="h-[18px] w-[18px]" aria-hidden />
-              </span>
+              </motion.span>
               <div>
                 <p className="text-[14px] font-semibold text-kai-ink">
                   Complete your check-in
                 </p>
                 <p className="mt-1 text-[12.5px] leading-[1.45] text-kai-ink-2">
-                  Sleep, stress, fuel, and your concern path — so this week&apos;s
+                  Sleep, stress, fuel, and your concern path, so this week&apos;s
                   scan report has real context.
                 </p>
               </div>
             </div>
-            <Link
-              href="/dashboard/maintain/checkin"
-              className="inline-flex w-full items-center justify-center gap-1 rounded-[12px] bg-kai-navy py-3.5 text-[13.5px] font-semibold text-white"
+            <motion.div
+              animate={{
+                boxShadow: [
+                  "0 4px 14px -4px rgba(45,62,107,0.35)",
+                  "0 4px 22px -2px rgba(45,62,107,0.6)",
+                  "0 4px 14px -4px rgba(45,62,107,0.35)",
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="rounded-[12px]"
             >
-              Start check-in
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </Link>
+              <Link
+                href="/dashboard/maintain/checkin"
+                className="group inline-flex w-full items-center justify-center gap-1 rounded-[12px] bg-kai-navy py-3.5 text-[13.5px] font-semibold text-white transition hover:bg-[#243456]"
+              >
+                Start check-in
+                <motion.span
+                  animate={{ x: [0, 3, 0] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                  className="inline-flex"
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                </motion.span>
+              </Link>
+            </motion.div>
             <p className="mt-2 text-center text-[10px] text-kai-ink-3">
               One per week · {weekYmd}
             </p>

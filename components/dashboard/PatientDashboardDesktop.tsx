@@ -87,20 +87,17 @@ const TOP_ARTICLES = [
 
 const RECOMMENDED_VIDEOS: ReadonlyArray<{
   title: string;
-  driveId: string;
+  driveId?: string;
+  youtubeId?: string;
   duration?: string;
 }> = [
-  { title: "Understanding Mounjaro", driveId: "1nqQegQ9MR4kr3PknW5msHnBEWdpczyPj" },
-  { title: "Laser Hair Removal with Dr Mili", driveId: "1RgpO9GcRdIs8wsRt_mxORQW-gu5A476a" },
-  { title: "HIFU Skin Tightening", driveId: "1jbxmZPU7OPW7rzGmgwhde-FYPqZZLDJc" },
-  { title: "A Quick Look at SkinFit", driveId: "1sZPcHz5H2po4KnjUOy_xey9_UsgaEklc" },
-  { title: "Meet kAI, Your Skin Companion", driveId: "1AYhBi91pCj1_ySBQmmx-a92uczlpBhcX" },
-  { title: "Laser Hair Removal Explained", driveId: "14v-yziDJAk2G9HqLPp612KRcKAif-g3Y" },
-  { title: "Anti-Wrinkle Injections", driveId: "1oYXJzIV1l5vJBH0rIlTw6ORXKgk0Qpvj" },
-  { title: "SkinFit With Our Doctors", driveId: "1wA4enEyaoVbtbofEZzPAxofvMZJS622d" },
-  { title: "Inside SkinFit", driveId: "1IbO1w0qnw_TRhefEfzJ-jARtoUZvbh6m" },
-  { title: "SkinFit Highlights", driveId: "1tviy2gW7rRWRzwAWpyXWN82y0BZ9q0Jr" },
-  { title: "Meet Our Doctors", driveId: "1K7vfUSFuby4ZCpxBpDZzXxT7QVXCs_9Q" },
+  { title: "Meet kAI, Your AI Skin Companion", youtubeId: "3NcCbch-Sdc" },
+  { title: "Meet the Doctors at SkinFit", youtubeId: "O1sxuWFrCzs" },
+  { title: "Real Results, Real Confidence", youtubeId: "bVAWwvBJwuo" },
+  { title: "Your Skin, Our Expertise", youtubeId: "OqSTHMK6KDg" },
+  { title: "HIFU Skin Tightening Treatment", youtubeId: "Ta7WnQi4_HY" },
+  { title: "Anti-Wrinkle Injections (Botox)", youtubeId: "aEYk2DUn6n4" },
+  { title: "Mounjaro Weight Loss Injections", youtubeId: "mMx2VFgfCbc" },
 ];
 
 function apptStatusBadge(status: UpcomingApptRow["status"]) {
@@ -318,7 +315,8 @@ function TopArticlesSection() {
 function RecommendedVideosSection() {
   const [active, setActive] = useState<{
     title: string;
-    driveId: string;
+    driveId?: string;
+    youtubeId?: string;
     duration?: string;
   } | null>(null);
 
@@ -337,12 +335,21 @@ function RecommendedVideosSection() {
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 md:mx-0 md:px-0">
         {RECOMMENDED_VIDEOS.map((video) => (
           <button
-            key={video.driveId}
+            key={video.title}
             type="button"
             onClick={() => setActive(video)}
             className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-[calc((100%-1.5rem)/3)]"
           >
-            <div className="relative flex aspect-video items-center justify-center bg-[#2C3E6B]">
+            <div
+              className="relative flex aspect-video items-center justify-center bg-[#2C3E6B] bg-cover bg-center"
+              style={
+                video.youtubeId
+                  ? {
+                      backgroundImage: `linear-gradient(rgba(44,62,107,0.35), rgba(44,62,107,0.35)), url(https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg)`,
+                    }
+                  : undefined
+              }
+            >
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm">
                 <Play className="h-5 w-5 fill-current" aria-hidden />
               </span>
@@ -387,7 +394,11 @@ function RecommendedVideosSection() {
             <div className="aspect-video w-full bg-black">
               <iframe
                 title={active.title}
-                src={`https://drive.google.com/file/d/${active.driveId}/preview`}
+                src={
+                  active.youtubeId
+                    ? `https://www.youtube.com/embed/${active.youtubeId}?autoplay=1`
+                    : `https://drive.google.com/file/d/${active.driveId}/preview`
+                }
                 className="h-full w-full border-0"
                 allow="autoplay; encrypted-media"
                 allowFullScreen
@@ -447,6 +458,7 @@ type HomeData = {
   progress?: PatientProgressSnapshot;
   userName?: string;
   profilePhotoUrl?: string | null;
+  gender?: string | null;
   skinType?: string | null;
   primaryConcern?: string | null;
   fitzpatrick?: string | null;
@@ -848,106 +860,115 @@ export function PatientDashboardDesktop({
     <div className="space-y-5">
       <WelcomeModal />
 
-      {/* 1. Greeting */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            {timeGreeting}
-          </p>
-          <h1 className="mt-0.5 text-2xl font-extrabold text-[#18181b] md:text-3xl">
-            {greetingName}
-          </h1>
-          <p className="mt-1 text-sm text-[#6B7280]">
-            Here&apos;s your skin health today.
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {data.progress && !data.progress.allComplete ? (
-            <Link
-              href="/dashboard/profile"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/20 bg-white px-3 py-2 text-xs font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F5F3EF] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
+      {/* 1. Greeting + date strip — sticks below the nav so the content
+          below (starting with the Skin DNA card) scrolls up and over it,
+          rather than the greeting simply scrolling away. */}
+      <div className="sticky top-14 z-0 space-y-4 sm:top-16">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {timeGreeting}
+            </p>
+            <h1 className="mt-0.5 text-2xl font-extrabold text-[#18181b] md:text-3xl">
+              {greetingName}
+            </h1>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              Here&apos;s your skin health today.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {data.progress && !data.progress.allComplete ? (
+              <Link
+                href="/dashboard/profile"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/20 bg-white px-3 py-2 text-xs font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F5F3EF] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
+              >
+                Complete your profile
+                <span className="text-[10px] font-bold text-[#6B7280] sm:text-xs">
+                  {data.progress.completedCount}/{data.progress.milestones.length}
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={triggerSos}
+              disabled={sosBusy}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#EF4444] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-60"
+              title="Urgent: notify doctor immediately"
             >
-              Complete your profile
-              <span className="text-[10px] font-bold text-[#6B7280] sm:text-xs">
-                {data.progress.completedCount}/{data.progress.milestones.length}
-              </span>
-              <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-            </Link>
-          ) : null}
-          <button
-            type="button"
-            onClick={triggerSos}
-            disabled={sosBusy}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#EF4444] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-60"
-            title="Urgent: notify doctor immediately"
-          >
-            {sosBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <AlertTriangle className="h-4 w-4" />
-            )}
-            Urgent
-          </button>
+              {sosBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-4 w-4" />
+              )}
+              Urgent
+            </button>
+          </div>
         </div>
+
+        <DashboardDatePicker
+          selectedYmd={selectedYmd}
+          todayYmd={todayYmd}
+          onSelectYmd={setSelectedYmd}
+        />
       </div>
 
-      <DashboardDatePicker
-        selectedYmd={selectedYmd}
-        todayYmd={todayYmd}
-        onSelectYmd={setSelectedYmd}
-      />
+      {/* Everything below rides a solid background over the sticky greeting
+          above, so scrolling visually tucks the greeting behind this card. */}
+      <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#F5F3EF] pt-1">
+        {/* 2. Skin DNA */}
+        <SkinDNACard
+          patientName={data.userName?.trim() || greetingName}
+          profileImageUrl={data.profilePhotoUrl}
+          gender={data.gender}
+          kaiSkinScore={data.kaiSkinScore}
+          scoresUnlocked={scoresUnlocked}
+          analysisResults={latestScan?.analysisResults}
+          skinSummary={skinSummary}
+          skinType={data.skinType}
+          primaryConcern={data.primaryConcern}
+          fitzpatrick={data.fitzpatrick}
+          weeklyDeltaScore={data.weeklyDeltaScore ?? 0}
+          weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
+          streakCurrent={data.streakCurrent}
+          lastScanAt={latestScan?.createdAt ?? null}
+          scanCount={data.skinScanHistory.length}
+          href={reportHref}
+          hasScan={Boolean(latestScan)}
+        />
 
-      {/* 2. Skin DNA */}
-      <SkinDNACard
-        patientName={data.userName?.trim() || greetingName}
-        profileImageUrl={data.profilePhotoUrl}
-        kaiSkinScore={data.kaiSkinScore}
-        scoresUnlocked={scoresUnlocked}
-        analysisResults={latestScan?.analysisResults}
-        skinSummary={skinSummary}
-        skinType={data.skinType}
-        primaryConcern={data.primaryConcern}
-        fitzpatrick={data.fitzpatrick}
-        weeklyDeltaScore={data.weeklyDeltaScore ?? 0}
-        weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
-        streakCurrent={data.streakCurrent}
-        lastScanAt={latestScan?.createdAt ?? null}
-        scanCount={data.skinScanHistory.length}
-        href={reportHref}
-        hasScan={Boolean(latestScan)}
-      />
+        {/* 3. Doctor's Feedback */}
+        <PatientDoctorHomeSections
+          feedbackEntries={data.feedbackEntries ?? []}
+          archivedFeedbackEntries={data.archivedFeedbackEntries ?? []}
+          doctorFeedback={data.doctorFeedback}
+          doctorVoiceNotes={data.doctorVoiceNotes}
+          doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
+          doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
+          onboardingComplete={data.onboardingComplete}
+          onRefresh={() => void loadHome()}
+          className="min-h-0"
+        />
 
-      {/* 3. Doctor's Feedback */}
-      <PatientDoctorHomeSections
-        feedbackEntries={data.feedbackEntries ?? []}
-        archivedFeedbackEntries={data.archivedFeedbackEntries ?? []}
-        doctorFeedback={data.doctorFeedback}
-        doctorVoiceNotes={data.doctorVoiceNotes}
-        doctorArchivedVoiceNotes={data.doctorArchivedVoiceNotes ?? []}
-        doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
-        onboardingComplete={data.onboardingComplete}
-        onRefresh={() => void loadHome()}
-        className="min-h-0"
-      />
+        {/* 4. Calendar — full appointments calendar with booking */}
+        {calendarSlot}
 
-      {/* 4. Calendar — full appointments calendar with booking */}
-      {calendarSlot}
+        {/* 5. Top Articles */}
+        <TopArticlesSection />
 
-      {/* 5. Top Articles */}
-      <TopArticlesSection />
+        {/* 6. Recommended Videos */}
+        <RecommendedVideosSection />
 
-      {/* 6. Recommended Videos */}
-      <RecommendedVideosSection />
-
-      {/* 7. Monthly Insight */}
-      {data.kaiInsightsEnabled ? (
-        <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
-          <DashboardSectionHeader icon={Activity} title="MONTHLY INSIGHT" />
-          <div className="mt-2">
-            <ProfileRagKaiInsightsSection embedded compact />
-          </div>
-        </section>
-      ) : null}
+        {/* 7. Monthly Insight */}
+        {data.kaiInsightsEnabled ? (
+          <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
+            <DashboardSectionHeader icon={Activity} title="MONTHLY INSIGHT" />
+            <div className="mt-2">
+              <ProfileRagKaiInsightsSection embedded compact />
+            </div>
+          </section>
+        ) : null}
+      </div>
     </div>
   );
 }

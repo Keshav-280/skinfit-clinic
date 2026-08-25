@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { motion } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import { Check } from "lucide-react";
 import type { LastTreatmentVisit } from "@/components/dashboard/LastTreatmentCard";
@@ -123,22 +124,22 @@ export default function SchedulesPageClient({
       ? [
           {
             label: "Sleep",
-            value: initialWellnessCheckin.sleepHours ?? "—",
+            value: initialWellnessCheckin.sleepHours ?? "-",
           },
           {
             label: "Stress",
             value:
               initialWellnessCheckin.stressLevel != null
                 ? String(initialWellnessCheckin.stressLevel)
-                : "—",
+                : "-",
           },
           {
             label: "Exercise",
-            value: initialWellnessCheckin.exerciseHours ?? "—",
+            value: initialWellnessCheckin.exerciseHours ?? "-",
           },
           {
             label: "Fuel",
-            value: initialWellnessCheckin.nutritionLevel ?? "—",
+            value: initialWellnessCheckin.nutritionLevel ?? "-",
           },
         ]
       : null);
@@ -184,7 +185,7 @@ export default function SchedulesPageClient({
 
         <header className="relative mx-auto max-w-2xl text-center md:text-left" style={{ maxWidth: assignedDoctor?.photoUrl ? "60%" : undefined }}>
           <div className="inline-flex flex-col items-center md:items-start">
-            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/55">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/70">
               Weekly Ritual
             </p>
             <span
@@ -193,12 +194,12 @@ export default function SchedulesPageClient({
             />
           </div>
 
-          <h1 className="mt-5 font-serif text-3xl font-semibold leading-[1.12] tracking-tight text-white md:text-4xl md:leading-[1.1]">
+          <h1 className="hero-shimmer-text mt-5 font-serif text-3xl font-semibold leading-[1.12] tracking-tight md:text-4xl md:leading-[1.1]">
             Beautiful Skin Is Built From Within.
           </h1>
 
           <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-white/70 md:mx-0 md:text-base">
-            A few moments each week to log how you&apos;re living — so kAI can
+            A few moments each week to log how you&apos;re living, so kAI can
             tune your care to your life.
           </p>
 
@@ -206,21 +207,31 @@ export default function SchedulesPageClient({
             <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
               Week of {weekOfLabel}
             </span>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium backdrop-blur-sm ${
-                completed
-                  ? "border-[#30D158]/50 bg-white/15 text-white"
-                  : "border-white/20 bg-white/10 text-white/70"
-              }`}
-            >
-              {completed ? (
-                <Check
-                  className="h-3.5 w-3.5 shrink-0 text-[#30D158]"
+            {completed ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/15 px-3.5 py-1.5 text-xs font-semibold text-emerald-200 backdrop-blur-sm">
+                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-300" aria-hidden />
+                Completed
+              </span>
+            ) : (
+              <motion.span
+                animate={{
+                  boxShadow: [
+                    "0 0 0 0 rgba(251,191,36,0.35)",
+                    "0 0 0 6px rgba(251,191,36,0)",
+                  ],
+                }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-3.5 py-1.5 text-xs font-semibold text-amber-200 backdrop-blur-sm"
+              >
+                <motion.span
+                  animate={{ opacity: [1, 0.35, 1] }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300"
                   aria-hidden
                 />
-              ) : null}
-              {completed ? "Completed" : "Pending"}
-            </span>
+                Pending
+              </motion.span>
+            )}
           </div>
         </header>
       </div>
