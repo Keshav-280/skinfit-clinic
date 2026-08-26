@@ -4,6 +4,7 @@
 // Safe to delete once confirmed; not linked from anywhere in the app.
 import { AlertTriangle, Activity } from "lucide-react";
 import { SkinDNACard } from "@/components/dashboard/SkinDNACard";
+import { TopArticlesSection } from "@/components/dashboard/PatientDashboardDesktop";
 import { DASHBOARD_SECTION_CARD } from "@/components/dashboard/DashboardSectionHeader";
 
 const MOCK_DATES = [22, 23, 24, 25, 26, 27, 28] as const;
@@ -112,7 +113,7 @@ export default async function BuildPreviewPage({
 
           <FillerSection title="Doctor's Feedback" />
           <FillerSection title="Calendar" />
-          <FillerSection title="Top Articles" />
+          <TopArticlesSection />
           <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6B7280]">
               <Activity className="h-3.5 w-3.5" />

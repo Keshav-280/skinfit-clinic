@@ -137,6 +137,22 @@ body {
 }
 
 
+/* Skin DNA card: two particles that spin around a ring on mount, then fade out
+   before the ring settles into its slow breathing pulse. */
+@keyframes dna-ring-orbit {
+  0% {
+    transform: rotate(0deg);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(720deg);
+    opacity: 0;
+  }
+}
+
 /* Login splash: "Wellness" wordmark pop-in — plain CSS (not Framer Motion)
    because animating this specific <g> with Framer Motion hangs mid-hydration
    in Turbopack dev mode; a CSS class toggle sidesteps it entirely. */

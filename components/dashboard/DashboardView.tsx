@@ -17,7 +17,7 @@ import { patientClarityToGrade, patientDisplayClarity } from "@/src/lib/clarityG
 import { DashboardSectionCountdown } from "./DashboardDayQuest";
 import { DashboardJournal } from "./DashboardJournal";
 import {
-  PatientDoctorHomeSections,
+  DoctorUpdatesCompact,
   type DoctorVoiceNoteItem,
 } from "./PatientDoctorHomeSections";
 
@@ -723,7 +723,7 @@ export function DashboardView({
         </div>
       </section>
 
-      <PatientDoctorHomeSections
+      <DoctorUpdatesCompact
         doctorFeedback={doctorFeedback}
         doctorVoiceNotes={doctorVoiceNotes}
         doctorArchivedVoiceNotes={doctorArchivedVoiceNotes}

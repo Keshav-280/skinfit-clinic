@@ -43,12 +43,8 @@ type AssignedDoctorSummary = {
   photoUrl: string | null;
 };
 
-function initialsFromDoctorName(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "Dr";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
-}
+/** Placeholder shown for any doctor without a profile photo on file. */
+const DEFAULT_DOCTOR_PHOTO = "/images/dr-ruby.png";
 
 function HeroRingsMotif({ className = "" }: { className?: string }) {
   return (
@@ -147,10 +143,10 @@ export default function SchedulesPageClient({
   return (
     <div className="relative">
       <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#2C3E6B] to-[#1E3264] px-4 pb-16 pt-8 md:-mx-6 md:px-6 md:pb-20 md:pt-10">
-        {assignedDoctor?.photoUrl ? (
+        {assignedDoctor ? (
           <div className="pointer-events-none absolute inset-y-0 right-0 w-[80%]">
             <img
-              src={assignedDoctor.photoUrl}
+              src={assignedDoctor.photoUrl ?? DEFAULT_DOCTOR_PHOTO}
               alt={assignedDoctor.name}
               className="h-full w-full object-contain object-right-bottom"
             />
@@ -162,17 +158,11 @@ export default function SchedulesPageClient({
         {assignedDoctor ? (
           <div className="relative z-10 mb-4 flex items-center justify-center gap-2.5 md:justify-start">
             <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-white/25 md:h-20 md:w-20">
-              {assignedDoctor.photoUrl ? (
-                <img
-                  src={assignedDoctor.photoUrl}
-                  alt={assignedDoctor.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center bg-white/15 text-lg font-bold text-white">
-                  {initialsFromDoctorName(assignedDoctor.name)}
-                </span>
-              )}
+              <img
+                src={assignedDoctor.photoUrl ?? DEFAULT_DOCTOR_PHOTO}
+                alt={assignedDoctor.name}
+                className="h-full w-full object-cover"
+              />
             </span>
             <div className="text-left">
               <p className="text-sm font-semibold text-white md:text-base">

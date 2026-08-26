@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   format,
   addMonths,
@@ -34,9 +34,11 @@ import {
   Send,
   ShieldCheck,
   Stethoscope,
-  User,
   X,
 } from "lucide-react";
+
+/** Placeholder shown for any doctor without a profile photo on file. */
+const DEFAULT_DOCTOR_PHOTO = "/images/dr-ruby.png";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { validateNationalPhone } from "@/src/lib/auth/phone";
@@ -356,22 +358,13 @@ function ManageGridDoctorAvatar({
   photoUrl?: string | null;
   className?: string;
 }) {
-  if (photoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={photoUrl}
-        alt=""
-        className={`${className} shrink-0 rounded-full object-cover`}
-      />
-    );
-  }
   return (
-    <div
-      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-[#2B3A67]`}
-    >
-      <User className="h-5 w-5 text-white" aria-hidden />
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={photoUrl ?? DEFAULT_DOCTOR_PHOTO}
+      alt=""
+      className={`${className} shrink-0 rounded-full object-cover`}
+    />
   );
 }
 
@@ -442,6 +435,7 @@ export default function AppointmentsCalendarClient({
   patientHasPhone: initialPatientHasPhone = true,
   initialPhoneCountryCode = "+91",
   initialPhone = null,
+  doctorUpdatesSlot = null,
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
   initialAppointmentEvents: ScheduleEventRow[];
@@ -454,6 +448,8 @@ export default function AppointmentsCalendarClient({
   patientHasPhone?: boolean;
   initialPhoneCountryCode?: string;
   initialPhone?: string | null;
+  /** Compact Doctor's Feedback / Voice Notes cards, rendered below the assigned-doctor card. */
+  doctorUpdatesSlot?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -1585,6 +1581,8 @@ export default function AppointmentsCalendarClient({
               </div>
             </div>
           </section>
+
+          {doctorUpdatesSlot}
 
           {latestVisit ? (
             <section className="rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">

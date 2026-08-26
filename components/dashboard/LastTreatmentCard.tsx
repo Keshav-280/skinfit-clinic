@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
-import { SquareCheck, User } from "lucide-react";
+import { SquareCheck } from "lucide-react";
 import { patientDoctorLabel } from "@/src/lib/doctorDisplayName";
+
+/** Placeholder shown for any doctor without a profile photo on file. */
+const DEFAULT_DOCTOR_PHOTO = "/images/dr-ruby.png";
 
 export type LastTreatmentVisit = {
   id: string;
@@ -25,22 +28,13 @@ function DoctorAvatar({
   photoUrl?: string | null;
   className?: string;
 }) {
-  if (photoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={photoUrl}
-        alt=""
-        className={`${className} shrink-0 rounded-full object-cover`}
-      />
-    );
-  }
   return (
-    <div
-      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]`}
-    >
-      <User className="h-1/2 w-1/2 text-white" aria-hidden />
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={photoUrl ?? DEFAULT_DOCTOR_PHOTO}
+      alt=""
+      className={`${className} shrink-0 rounded-full object-cover`}
+    />
   );
 }
 

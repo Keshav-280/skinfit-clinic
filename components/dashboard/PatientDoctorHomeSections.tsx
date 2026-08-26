@@ -12,10 +12,6 @@ import {
   MessageSquare,
 } from "lucide-react";
 import {
-  DASHBOARD_SECTION_CARD,
-  DashboardSectionHeader,
-} from "@/components/dashboard/DashboardSectionHeader";
-import {
   CLINIC_SUPPORT_INBOX_REFRESH_EVENT,
 } from "@/src/lib/clinicSupportInboxClient";
 import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisitMessages";
@@ -377,17 +373,8 @@ type Props = {
   className?: string;
 };
 
-export function PatientDoctorHomeSections({
-  feedbackEntries = [],
-  archivedFeedbackEntries = [],
-  doctorFeedback = "",
-  doctorVoiceNotes = [],
-  doctorArchivedVoiceNotes = [],
-  doctorVoiceNoteIsNew = false,
-  onboardingComplete = true,
-  onRefresh,
-  className = "",
-}: Props) {
+/** Whether doctor chat is unlocked for this patient (in-clinic visit requirement). */
+function useDoctorChatEnabled(): boolean {
   const [doctorChatEnabled, setDoctorChatEnabled] = useState(true);
 
   useEffect(() => {
@@ -406,6 +393,48 @@ export function PatientDoctorHomeSections({
     };
   }, []);
 
+  return doctorChatEnabled;
+}
+
+/** "Chat with Doctor" CTA — shown near the top of the Build page regardless of layout. */
+export function PatientDoctorHomeSections({ className = "" }: { className?: string }) {
+  const doctorChatEnabled = useDoctorChatEnabled();
+
+  return (
+    <div className={`w-full ${className}`}>
+      {doctorChatEnabled ? (
+        <Link
+          href="/dashboard/chat?assistant=support"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
+        >
+          <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+          Chat with Doctor
+        </Link>
+      ) : (
+        <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm leading-relaxed text-amber-950">
+          {DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Compact Doctor's Feedback + Voice Notes cards — sized for the appointments
+ * sidebar, directly under the assigned-doctor card rather than as full-width
+ * sections at the top of the page.
+ */
+export function DoctorUpdatesCompact({
+  feedbackEntries = [],
+  archivedFeedbackEntries = [],
+  doctorFeedback = "",
+  doctorVoiceNotes = [],
+  doctorArchivedVoiceNotes = [],
+  doctorVoiceNoteIsNew = false,
+  onboardingComplete = true,
+  onRefresh,
+  className = "",
+}: Props) {
   const activeEntries = useMemo(
     () =>
       resolveActiveFeedbackEntries(
@@ -445,40 +474,28 @@ export function PatientDoctorHomeSections({
     [doctorVoiceNoteIsNew, activeEntries]
   );
 
-  const latestVoiceDate = format(
-    new Date(voiceEntries[0]?.createdAt ?? Date.now()),
-    "dd/MM/yy"
-  );
+  const latestVoiceDate = voiceEntries[0]?.createdAt
+    ? format(new Date(voiceEntries[0].createdAt), "dd/MM/yy")
+    : "";
 
   return (
-    <div className={`flex w-full flex-col gap-4 ${className}`}>
-      {doctorChatEnabled ? (
-        <Link
-          href="/dashboard/chat?assistant=support"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
-        >
-          <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Chat with Doctor
-        </Link>
-      ) : (
-        <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm leading-relaxed text-amber-950">
-          {DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE}
-        </p>
-      )}
-
+    <div className={`flex w-full flex-col gap-3 ${className}`}>
       <section
         id="doctor-written-feedback"
-        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD}`}
+        className="scroll-mt-24 w-full rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm"
         aria-labelledby="doctor-written-feedback-heading"
       >
-        <DashboardSectionHeader
-          icon={MessageSquare}
-          title="DOCTOR'S FEEDBACK"
-          headingId="doctor-written-feedback-heading"
-        />
+        <div className="mb-2 flex items-center gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-slate-100 text-slate-500">
+            <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+          </span>
+          <h3 id="doctor-written-feedback-heading" className="text-sm font-extrabold text-[#18181b]">
+            Doctor&apos;s Feedback
+          </h3>
+        </div>
 
         {textEntries.length > 0 ? (
-          <div className="space-y-4">
+          <div className="max-h-[220px] space-y-2 overflow-y-auto">
             {textEntries.map((entry) => (
               <DashboardHomeTextBlock
                 key={entry.id}
@@ -487,55 +504,42 @@ export function PatientDoctorHomeSections({
               />
             ))}
           </div>
-        ) : onboardingComplete ? (
-          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F8F7F5] px-4 py-3.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#9CA3AF]">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-[#18181b]">No feedback yet</p>
-              <p className="text-xs text-[#6B7280]">Your doctor&apos;s written notes will appear here.</p>
-            </div>
-          </div>
         ) : (
-          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#F5F3EF] px-4 py-3.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/10 text-[#2C3E6B]">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </span>
-            <p className="text-sm text-[#2C3E6B]">
-              Written feedback will appear here after your doctor reviews your baseline.
-            </p>
-          </div>
+          <p className="py-1 text-xs text-[#6B7280]">
+            {onboardingComplete
+              ? "Your doctor's written notes will appear here."
+              : "Will appear after your doctor reviews your baseline."}
+          </p>
         )}
       </section>
 
       <section
         id="doctor-feedback"
-        className={`scroll-mt-24 w-full ${DASHBOARD_SECTION_CARD}`}
+        className="scroll-mt-24 w-full rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm"
         aria-labelledby="dashboard-voice-heading"
       >
-        <DashboardSectionHeader
-          icon={Mic}
-          title="VOICE NOTES"
-          headingId="dashboard-voice-heading"
-          action={
-            <>
-              {hasUnread ? (
-                <span className="rounded-[10px] bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-800">
-                  New
-                </span>
-              ) : null}
-              {voiceEntries.length > 0 ? (
-                <span className="rounded-[10px] border border-white/70 bg-white/50 px-2.5 py-1 text-xs font-semibold tabular-nums text-[#64748B]">
-                  {latestVoiceDate}
-                </span>
-              ) : null}
-            </>
-          }
-        />
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-slate-100 text-slate-500">
+              <Mic className="h-3.5 w-3.5" aria-hidden />
+            </span>
+            <h3 id="dashboard-voice-heading" className="text-sm font-extrabold text-[#18181b]">
+              Voice Notes
+            </h3>
+          </div>
+          {hasUnread ? (
+            <span className="rounded-[10px] bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
+              New
+            </span>
+          ) : voiceEntries.length > 0 ? (
+            <span className="text-[11px] font-semibold tabular-nums text-[#94A3B8]">
+              {latestVoiceDate}
+            </span>
+          ) : null}
+        </div>
 
         {voiceEntries.length > 0 ? (
-          <div className="space-y-4">
+          <div className="max-h-[220px] space-y-2 overflow-y-auto">
             {voiceEntries.map((entry) => (
               <DashboardHomeVoiceBlock
                 key={entry.id}
@@ -544,51 +548,35 @@ export function PatientDoctorHomeSections({
               />
             ))}
           </div>
-        ) : !onboardingComplete ? (
-          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#F5F3EF] px-4 py-3.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/10 text-[#2C3E6B]">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
-            </span>
-            <p className="text-sm text-[#2C3E6B]">
-              Your doctor will send a voice note after your baseline review. The bell will notify you when it arrives.
-            </p>
-          </div>
         ) : (
-          <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F8F7F5] px-4 py-3.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#9CA3AF]">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-[#18181b]">No voice notes yet</p>
-              <p className="text-xs text-[#6B7280]">Voice notes from your doctor will appear here.</p>
-            </div>
-          </div>
+          <p className="py-1 text-xs text-[#6B7280]">
+            {!onboardingComplete
+              ? "Sent after your baseline review — the bell will notify you."
+              : "Voice notes from your doctor will appear here."}
+          </p>
         )}
 
         {archivedEntries.length > 0 ? (
-          <details className="group mt-5 overflow-hidden rounded-[18px] border border-white/70 bg-white/30 backdrop-blur-sm">
-            <summary className="cursor-pointer list-none px-4 py-3.5 text-sm font-bold text-[#2C3E6B] transition hover:bg-white/40 [&::-webkit-details-marker]:hidden">
+          <details className="group mt-3 overflow-hidden rounded-[14px] border border-[#E5E7EB] bg-[#F8F7F5]">
+            <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-[#2C3E6B] transition hover:bg-white/60 [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <Archive className="h-4 w-4 text-[#64748B]" aria-hidden />
-                  Archived feedback
-                  <span className="rounded-full bg-[#2C3E6B] px-2 py-0.5 text-xs font-bold text-white tabular-nums">
+                <span className="flex items-center gap-1.5">
+                  <Archive className="h-3.5 w-3.5 text-[#64748B]" aria-hidden />
+                  Archived
+                  <span className="rounded-full bg-[#2C3E6B] px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
                     {archivedEntries.length}
                   </span>
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-[#94A3B8] transition group-open:rotate-90" />
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#94A3B8] transition group-open:rotate-90" />
               </span>
             </summary>
-            <p className="border-t border-white/60 px-4 pb-3 pt-2 text-xs leading-relaxed text-[#6B7280]">
-              Still here if you need them — nothing is deleted.
-            </p>
-            <div className="space-y-3 border-t border-white/60 bg-white/25 px-4 py-4">
+            <div className="space-y-2 border-t border-[#E5E7EB] bg-white p-2.5">
               {archivedEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="rounded-[14px] border border-white/70 bg-white/60 p-3"
+                  className="rounded-[10px] border border-[#E5E7EB] bg-[#F8F7F5] p-2.5"
                 >
-                  <p className="text-xs font-semibold text-[#64748B]">
+                  <p className="text-[11px] font-semibold text-[#64748B]">
                     {format(new Date(entry.createdAt), "dd/MM/yy · h:mm a")}
                   </p>
                   {entry.feedbackText?.trim() ? (
