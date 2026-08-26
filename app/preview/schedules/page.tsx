@@ -15,15 +15,22 @@ export default async function SchedulesPreviewPage({
   const usePlaceholderPhoto = resolvedSearchParams.photo !== "0";
 
   return (
-    <div className="min-h-dvh bg-[#F5F3EF] px-4 py-6 md:px-6">
+    <div className="min-h-dvh bg-[#E8EFE6] px-4 py-5 pb-12 md:px-6">
       <SchedulesPageClient
         initialTreatmentEvents={[]}
         initialAppointmentEvents={[]}
         pendingScheduleRequests={[]}
         closedScheduleRequests={[]}
-        wellnessWeekYmd="2026-08-17"
+        wellnessWeekYmd="2026-08-24"
         checkinConcern="acne"
-        checkinCompleted={false}
+        checkinCompleted
+        weeklyCheckinStreak={4}
+        checkinSummary={[
+          { label: "Sleep", value: "6-8 hrs" },
+          { label: "Stress", value: "Strained" },
+          { label: "Exercise", value: "4-6 days" },
+          { label: "Fuel", value: "2-3 L" },
+        ]}
         assignedDoctor={{
           name: "Dr. Ruby Sachdev",
           photoUrl: usePlaceholderPhoto ? "/images/dr-ruby.png" : null,

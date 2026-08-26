@@ -48,7 +48,7 @@ export function DiagnoseActivityRings() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[220px] items-center justify-center rounded-[20px] border border-[#E5E7EB] bg-white">
+      <div className="flex min-h-[140px] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-[#2C3E6B]" />
       </div>
     );
@@ -58,6 +58,7 @@ export function DiagnoseActivityRings() {
 
   return (
     <NavyMetricsCard
+      light
       kaiSkinScore={data.kaiSkinScore}
       weeklyDeltaScore={data.weeklyDeltaScore}
       weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}

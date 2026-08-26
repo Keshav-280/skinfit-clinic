@@ -1,7 +1,7 @@
 import "server-only";
 
 import { and, asc, count, desc, eq, gt, inArray, isNotNull } from "drizzle-orm";
-import { format, startOfWeek } from "date-fns";
+import { format, parseISO, startOfWeek, subWeeks } from "date-fns";
 import { db } from "@/src/db";
 import {
   appointments,
@@ -32,6 +32,23 @@ function appointmentTypeLabel(t: string): string {
   if (t === "follow-up") return "Follow-up";
   if (t === "scan-review") return "Scan review";
   return t;
+}
+
+/** Consecutive completed check-in weeks ending at (or just before) the current week. */
+function computeWeeklyCheckinStreak(
+  completedWeekYmds: Set<string>,
+  currentWeekYmd: string
+): number {
+  let cursor = currentWeekYmd;
+  if (!completedWeekYmds.has(cursor)) {
+    cursor = format(subWeeks(parseISO(`${cursor}T00:00:00`), 1), "yyyy-MM-dd");
+  }
+  let streak = 0;
+  while (completedWeekYmds.has(cursor)) {
+    streak += 1;
+    cursor = format(subWeeks(parseISO(`${cursor}T00:00:00`), 1), "yyyy-MM-dd");
+  }
+  return streak;
 }
 
 function cmpCalendarEventRows(
@@ -351,6 +368,28 @@ export async function loadSchedulePageData(userId: string) {
       }
     : null;
 
+  const recentCheckinWeeks = await db
+    .select({
+      weekYmd: wellnessCheckins.weekYmd,
+      submittedAt: wellnessCheckins.submittedAt,
+      payload: wellnessCheckins.payload,
+      stressAnchor: wellnessCheckins.stressAnchor,
+      sleepHours: wellnessCheckins.sleepHours,
+    })
+    .from(wellnessCheckins)
+    .where(eq(wellnessCheckins.userId, userId))
+    .orderBy(desc(wellnessCheckins.weekYmd))
+    .limit(60);
+  const completedCheckinWeekYmds = new Set(
+    recentCheckinWeeks
+      .filter((r) => Boolean(r.submittedAt || r.payload || r.stressAnchor || r.sleepHours))
+      .map((r) => r.weekYmd)
+  );
+  const weeklyCheckinStreak = computeWeeklyCheckinStreak(
+    completedCheckinWeekYmds,
+    wellnessWeekYmd
+  );
+
   const profileUser = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: { primaryConcern: true, concerns: true },
@@ -403,5 +442,6 @@ export async function loadSchedulePageData(userId: string) {
     checkinConcern,
     checkinSummary,
     checkinCompleted,
+    weeklyCheckinStreak,
   };
 }

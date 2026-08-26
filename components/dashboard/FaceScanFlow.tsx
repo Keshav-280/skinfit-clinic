@@ -16,6 +16,7 @@ import {
   History,
   Smartphone,
   ArrowRight,
+  Leaf,
 } from "lucide-react";
 import { SkinScanReportModal } from "@/components/dashboard/SkinScanReportModal";
 import { CaptureFaceGuideOverlayWeb } from "@/components/dashboard/CaptureFaceGuideOverlayWeb";
@@ -1522,8 +1523,47 @@ export function FaceScanFlow({
           className={`w-full ${isDiagnoseHero ? "flex h-full flex-col" : ""}`}
         >
           <div
-            className={`space-y-5 ${isDiagnoseHero ? "flex h-full min-h-0 flex-col" : ""}`}
+            className={
+              isDiagnoseHero
+                ? "relative -mx-3 flex h-full min-h-0 flex-col overflow-hidden sm:-mx-4"
+                : "space-y-5"
+            }
           >
+            {isDiagnoseHero ? (
+              <div className="pointer-events-none absolute inset-0" aria-hidden>
+                <svg
+                  viewBox="0 0 500 40"
+                  preserveAspectRatio="none"
+                  className="block h-8 w-full text-[#ECE9F8]"
+                >
+                  <path
+                    d="M0,22 C125,44 375,-4 500,18 L500,40 L0,40 Z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <div className="absolute inset-x-0 top-7 bottom-0 bg-gradient-to-b from-[#ECE9F8] via-[#E3DEF5] to-[#F5F3EF]" />
+                <Leaf
+                  className="leaf-drift absolute bottom-6 left-2 h-10 w-10 text-[#8FAE86]/35"
+                  style={{ ["--leaf-rot" as string]: "-18deg" }}
+                  strokeWidth={1.25}
+                />
+                <Leaf
+                  className="leaf-drift absolute right-3 top-1/3 h-6 w-6 text-[#8FAE86]/25"
+                  style={{
+                    ["--leaf-rot" as string]: "12deg",
+                    animationDelay: "1.4s",
+                  }}
+                  strokeWidth={1.25}
+                />
+              </div>
+            ) : null}
+            <div
+              className={
+                isDiagnoseHero
+                  ? "relative z-10 flex h-full min-h-0 flex-col space-y-3 px-3 pb-3 pt-1 sm:px-4"
+                  : "contents"
+              }
+            >
             <div
               className={`grid gap-4 ${
                 isOnboardingScan
@@ -1569,13 +1609,46 @@ export function FaceScanFlow({
                     </span>
                   </div>
                 </button>
+              ) : isDiagnoseHero ? (
+                <div className="flex h-full min-h-0 flex-col justify-end pt-6">
+                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]">
+                    Recommended
+                  </span>
+                  <div className="relative mt-4 flex items-center gap-4">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-dashed border-[#2C3E6B]/25">
+                      <div className="camera-icon-breathe flex h-12 w-12 items-center justify-center rounded-full bg-white">
+                        <Camera className="h-5 w-5 text-[#2C3E6B]" />
+                      </div>
+                      <Sparkles
+                        className="absolute -right-1 -top-1 h-3.5 w-3.5 text-[#2C3E6B]/40"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-extrabold tracking-tight leading-tight text-[#18181b]">
+                        Use device camera
+                      </h2>
+                      <p className="mt-1 text-xs leading-relaxed text-[#6B7280]">
+                        Capture using your device camera. Keep angles
+                        aligned with the guide.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={requestOpenCamera}
+                    className="cta-pop relative mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-5 py-3 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(44,62,107,0.6)] transition-colors hover:bg-[#354A7A]"
+                  >
+                    Start Camera
+                    <Camera className="h-4 w-4" />
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
                   onClick={requestOpenCamera}
-                  className={`group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30 ${
-                    isDiagnoseHero ? "flex h-full min-h-[280px] flex-col" : ""
-                  }`}
+                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1680,24 +1753,35 @@ export function FaceScanFlow({
                 ) : null}
               </div>
             ) : (
-              <div className="flex flex-wrap items-center gap-3 pt-1">
+              <div className="flex shrink-0 items-center gap-2.5">
                 <button
                   type="button"
                   onClick={openPhotoGuideReview}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/40 hover:bg-[#F5F3EF]"
+                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(44,62,107,0.5)] transition hover:bg-[#F8F7FC]"
                 >
-                  <Sun className="h-4 w-4" aria-hidden />
-                  View photo tips
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
+                    <Sun className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+                  </span>
+                  <span className="flex-1 text-left text-xs font-bold text-[#18181b]">
+                    View photo tips
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#9CA3AF]" aria-hidden />
                 </button>
                 <Link
                   href="/dashboard/history"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-[#2C3E6B]/15 bg-white px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-[#F5F3EF]"
+                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(44,62,107,0.5)] transition hover:bg-[#F8F7FC]"
                 >
-                  <History className="h-4 w-4" aria-hidden />
-                  Scan history
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
+                    <History className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+                  </span>
+                  <span className="flex-1 text-left text-xs font-bold text-[#18181b]">
+                    Scan history
+                  </span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#9CA3AF]" aria-hidden />
                 </Link>
               </div>
             )}
+            </div>
           </div>
 
           {uploadError && step === "upload" ? (

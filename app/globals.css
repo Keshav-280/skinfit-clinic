@@ -210,6 +210,48 @@ body {
   animation: quest-complete-check 0.9s cubic-bezier(0.34, 1.45, 0.64, 1) both;
 }
 
+/* Diagnose hero: camera icon glow — pure light pulse, no scale/movement. */
+@keyframes camera-icon-breathe {
+  0%,
+  100% {
+    box-shadow: 0 8px 20px -10px rgba(44, 62, 107, 0.4), 0 0 0 0 rgba(96, 130, 214, 0.35);
+  }
+  50% {
+    box-shadow: 0 8px 20px -10px rgba(44, 62, 107, 0.4), 0 0 14px 6px rgba(96, 130, 214, 0.45);
+  }
+}
+.camera-icon-breathe {
+  animation: camera-icon-breathe 2.4s ease-in-out infinite;
+}
+
+/* Diagnose hero: "Start Camera" CTA — a gentle pop/scale pulse to draw the tap. */
+@keyframes cta-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
+  }
+}
+.cta-pop {
+  animation: cta-pop 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Diagnose hero: gentle sway/drift for decorative background leaves. */
+@keyframes leaf-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(var(--leaf-rot, 0deg));
+  }
+  50% {
+    transform: translate(3px, -8px) rotate(calc(var(--leaf-rot, 0deg) + 4deg));
+  }
+}
+.leaf-drift {
+  animation: leaf-drift 5.5s ease-in-out infinite;
+}
+
 /* Custom 3D box shadows (very fade/subtle) */
 .shadow-3d-white {
   box-shadow: 

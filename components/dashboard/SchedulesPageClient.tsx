@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import { Check } from "lucide-react";
 import type { LastTreatmentVisit } from "@/components/dashboard/LastTreatmentCard";
@@ -46,6 +46,56 @@ type AssignedDoctorSummary = {
 /** Placeholder shown for any doctor without a profile photo on file. */
 const DEFAULT_DOCTOR_PHOTO = "/images/dr-ruby.png";
 
+function useRotatingMessage(messages: string[], intervalMs = 4200): string {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    setIndex(0);
+    if (messages.length <= 1) return;
+    const id = window.setInterval(() => {
+      setIndex((i) => (i + 1) % messages.length);
+    }, intervalMs);
+    return () => window.clearInterval(id);
+  }, [messages.length, intervalMs]);
+  return messages[index % messages.length] ?? "";
+}
+
+/** Doctor's-eye insight lines drawn from this week's actual check-in answers. */
+function buildDoctorInsights(
+  completed: boolean,
+  summary: Array<{ label: string; value: string }> | null
+): string[] {
+  if (!completed || !summary || summary.length === 0) {
+    return [
+      "Log this week's check-in so I can tailor your plan.",
+      "A minute now saves guesswork at your next visit.",
+    ];
+  }
+
+  const byLabel = Object.fromEntries(
+    summary.map((s) => [s.label.toLowerCase(), s.value])
+  );
+  const messages: string[] = [];
+
+  if (byLabel.sleep) {
+    messages.push(`Sleeping ${byLabel.sleep}, that's supporting your skin's repair cycle.`);
+  }
+  if (byLabel.stress) {
+    messages.push(`Stress noted as "${byLabel.stress}", I'll watch for flare patterns this week.`);
+  }
+  if (byLabel.exercise) {
+    messages.push(`${byLabel.exercise} of movement logged, keep that circulation going.`);
+  }
+  if (byLabel.water) {
+    messages.push(`Water intake at ${byLabel.water}, I'll factor that into your care plan.`);
+  } else if (byLabel.fuel) {
+    messages.push(`Fuel intake at ${byLabel.fuel}, I'll factor that into your care plan.`);
+  }
+  if (messages.length === 0) {
+    messages.push("Thanks for checking in, I'm reviewing your answers now.");
+  }
+  return messages;
+}
+
 function HeroRingsMotif({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -83,6 +133,7 @@ export default function SchedulesPageClient({
   checkinConcern = "acne",
   checkinSummary = null,
   checkinCompleted = false,
+  weeklyCheckinStreak = 0,
   assignedDoctor = null,
 }: {
   initialTreatmentEvents: ScheduleEventRow[];
@@ -101,6 +152,7 @@ export default function SchedulesPageClient({
   checkinConcern?: CheckinConcernPath;
   checkinSummary?: Array<{ label: string; value: string }> | null;
   checkinCompleted?: boolean;
+  weeklyCheckinStreak?: number;
 }) {
   const completed =
     checkinCompleted ||
@@ -114,92 +166,115 @@ export default function SchedulesPageClient({
     }
   }, [wellnessWeekYmd]);
 
-  const summary =
-    checkinSummary ??
-    (initialWellnessCheckin
-      ? [
-          {
-            label: "Sleep",
-            value: initialWellnessCheckin.sleepHours ?? "-",
-          },
-          {
-            label: "Stress",
-            value:
-              initialWellnessCheckin.stressLevel != null
-                ? String(initialWellnessCheckin.stressLevel)
-                : "-",
-          },
-          {
-            label: "Exercise",
-            value: initialWellnessCheckin.exerciseHours ?? "-",
-          },
-          {
-            label: "Fuel",
-            value: initialWellnessCheckin.nutritionLevel ?? "-",
-          },
-        ]
-      : null);
+  const summary = useMemo(
+    () =>
+      checkinSummary ??
+      (initialWellnessCheckin
+        ? [
+            {
+              label: "Sleep",
+              value: initialWellnessCheckin.sleepHours ?? "-",
+            },
+            {
+              label: "Stress",
+              value:
+                initialWellnessCheckin.stressLevel != null
+                  ? String(initialWellnessCheckin.stressLevel)
+                  : "-",
+            },
+            {
+              label: "Exercise",
+              value: initialWellnessCheckin.exerciseHours ?? "-",
+            },
+            {
+              label: "Fuel",
+              value: initialWellnessCheckin.nutritionLevel ?? "-",
+            },
+          ]
+        : null),
+    [checkinSummary, initialWellnessCheckin]
+  );
+
+  const doctorInsights = useMemo(
+    () => buildDoctorInsights(completed, summary),
+    [completed, summary]
+  );
+  const doctorInsight = useRotatingMessage(doctorInsights, 4200);
 
   return (
     <div className="relative">
-      <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#2C3E6B] to-[#1E3264] px-4 pb-16 pt-8 md:-mx-6 md:px-6 md:pb-20 md:pt-10">
+      <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#2C3E6B] to-[#1E3264] px-4 pb-16 pt-8 md:-mx-6 md:min-h-[460px] md:px-6 md:pb-20 md:pt-10">
+        <svg
+          viewBox="0 0 500 40"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-x-0 bottom-0 block h-8 w-full text-[#E8EFE6]"
+          aria-hidden
+        >
+          <path
+            d="M0,22 C125,44 375,-4 500,18 L500,40 L0,40 Z"
+            fill="currentColor"
+          />
+        </svg>
         {assignedDoctor ? (
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-[80%]">
+          <div className="absolute inset-y-0 right-0 w-[44%] sm:w-[46%] md:w-[58%]">
             <img
               src={assignedDoctor.photoUrl ?? DEFAULT_DOCTOR_PHOTO}
               alt={assignedDoctor.name}
-              className="h-full w-full object-contain object-right-bottom"
+              className="pointer-events-none h-full w-full object-contain object-right-bottom"
             />
+
+            <div className="absolute right-[10%] top-2 z-10 w-max max-w-[150px] sm:right-[12%] sm:top-3 sm:max-w-[170px] md:right-[14%] md:max-w-[200px]">
+              <div className="relative rounded-2xl rounded-br-md bg-white/75 px-3 py-2 shadow-[0_10px_24px_-8px_rgba(0,0,0,0.3)] backdrop-blur-sm">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={doctorInsight}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    className="text-[10.5px] font-medium leading-snug text-[#1E293B] sm:text-[11px]"
+                  >
+                    {doctorInsight}
+                  </motion.p>
+                </AnimatePresence>
+                <span
+                  className="absolute -bottom-[6px] right-5 h-2.5 w-2.5 rotate-45 rounded-[2px] bg-white/75"
+                  aria-hidden
+                />
+              </div>
+            </div>
           </div>
         ) : (
           <HeroRingsMotif className="pointer-events-none absolute -right-8 -top-6 h-64 w-64 opacity-[0.06] md:-right-4 md:h-80 md:w-80" />
         )}
 
-        {assignedDoctor ? (
-          <div className="relative z-10 mb-4 flex items-center justify-center gap-2.5 md:justify-start">
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-white/25 md:h-20 md:w-20">
-              <img
-                src={assignedDoctor.photoUrl ?? DEFAULT_DOCTOR_PHOTO}
-                alt={assignedDoctor.name}
-                className="h-full w-full object-cover"
-              />
-            </span>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-white md:text-base">
-                {assignedDoctor.name}
-              </p>
-              <p className="text-xs text-white/55">Your care doctor</p>
-            </div>
-          </div>
-        ) : null}
-
-        <header className="relative mx-auto max-w-2xl text-center md:text-left" style={{ maxWidth: assignedDoctor?.photoUrl ? "60%" : undefined }}>
-          <div className="inline-flex flex-col items-center md:items-start">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/70">
-              Weekly Ritual
-            </p>
-            <span
-              className="mt-2.5 h-1 w-1 rounded-full bg-white/40"
-              aria-hidden
-            />
-          </div>
-
-          <h1 className="hero-shimmer-text mt-5 font-serif text-3xl font-semibold leading-[1.12] tracking-tight md:text-4xl md:leading-[1.1]">
-            Beautiful Skin Is Built From Within.
+        <header
+          className="relative text-left"
+          style={{ maxWidth: assignedDoctor?.photoUrl ? "56%" : undefined }}
+        >
+          <h1 className="text-2xl font-extrabold leading-[1.14] tracking-tight text-white sm:text-3xl md:text-4xl md:leading-[1.1]">
+            Beautiful Skin Is Built From{" "}
+            <span className="text-[#AEB9E8]">Within.</span>
           </h1>
 
-          <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-white/70 md:mx-0 md:text-base">
-            A few moments each week to log how you&apos;re living, so kAI can
-            tune your care to your life.
-          </p>
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-xl leading-none" aria-hidden>
+              🔥
+            </span>
+            <p className="text-[15px] font-bold text-white sm:text-base">
+              {weeklyCheckinStreak > 0
+                ? `${weeklyCheckinStreak} week${weeklyCheckinStreak === 1 ? "" : "s"} streak`
+                : "Start your weekly streak"}
+            </p>
+          </div>
 
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
+          <div className="mt-7 flex flex-wrap items-center justify-start gap-2.5">
             <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
               Week of {weekOfLabel}
             </span>
             {completed ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/15 px-3.5 py-1.5 text-xs font-semibold text-emerald-200 backdrop-blur-sm">
-                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-300" aria-hidden />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3EC] px-3.5 py-1.5 text-xs font-bold text-kai-good">
+                <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Completed
               </span>
             ) : (

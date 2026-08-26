@@ -28,6 +28,7 @@ export default async function SchedulesPage() {
         checkinConcern={data.checkinConcern}
         checkinSummary={data.checkinSummary}
         checkinCompleted={data.checkinCompleted}
+        weeklyCheckinStreak={data.weeklyCheckinStreak}
       />
     </div>
   );

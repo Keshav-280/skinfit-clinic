@@ -32,9 +32,9 @@ function dimRingColor(hex: string, alpha = 0.25): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-const RING_SIZE = 220;
-const STROKE = 18;
-const GAP = 4;
+const RING_SIZE = 168;
+const STROKE = 14;
+const GAP = 3;
 
 function ringGeometry() {
   const outerR = (RING_SIZE - STROKE) / 2;
@@ -184,6 +184,8 @@ type NavyMetricsCardProps = {
   /** Number of scans the patient has taken — rings unlock from the 2nd scan. */
   scanCount?: number;
   className?: string;
+  /** Light-on-white theme (rings + a label/value legend) instead of the filled navy card. */
+  light?: boolean;
 };
 
 export function NavyMetricsCard({
@@ -194,6 +196,7 @@ export function NavyMetricsCard({
   latestScanAt,
   scoresUnlocked = false,
   scanCount = 0,
+  light = false,
   className = "",
 }: NavyMetricsCardProps) {
   const [unlockOpen, setUnlockOpen] = useState(false);
@@ -256,10 +259,13 @@ export function NavyMetricsCard({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [lockedTip]);
 
+  const centerTextCls = light ? "text-[#18181b]" : "text-white";
   const centerContent = (() => {
     if (!hasScan) {
       return (
-        <p className="px-1 text-center text-[10px] font-semibold leading-snug text-white/70">
+        <p
+          className={`px-1 text-center text-[10px] font-semibold leading-snug ${light ? "text-[#6B7280]" : "text-white/70"}`}
+        >
           No scan yet — take your first AI scan
         </p>
       );
@@ -270,25 +276,83 @@ export function NavyMetricsCard({
           type="button"
           onClick={() => setUnlockOpen(true)}
           aria-label={lockedKaiAriaLabel}
-          className="flex flex-col items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+          className={`flex flex-col items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${light ? "focus-visible:outline-[#2C3E6B]/40" : "focus-visible:outline-white/60"}`}
         >
-          <span className="flex items-center gap-1">
-            <Lock className="h-3.5 w-3.5 text-white/60" strokeWidth={2.25} aria-hidden />
-            <span className="text-[1.75rem] font-extrabold leading-none text-white">
-              {kai.gaugeDisplayValue}
-            </span>
+          <Lock
+            className={`h-3 w-3 ${light ? "text-[#9CA3AF]" : "text-white/60"}`}
+            strokeWidth={2.25}
+            aria-hidden
+          />
+          <span className={`text-2xl font-extrabold leading-none ${centerTextCls}`}>
+            {kai.gaugeDisplayValue}
           </span>
         </button>
       );
     }
     return (
-      <span className="text-[1.75rem] font-extrabold leading-none text-white tabular-nums">
+      <span className={`text-2xl font-extrabold leading-none tabular-nums ${centerTextCls}`}>
         {kai?.kaiPrimary}
       </span>
     );
   })();
 
-  const legend = (
+  const legendRow = (
+    color: string,
+    label: string,
+    value: string,
+    locked: boolean,
+    badgeBg: string,
+    badgeColor: string
+  ) => (
+    <div className="flex items-center justify-between gap-3">
+      <span className="flex items-center gap-1.5">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: color }}
+          aria-hidden
+        />
+        <span className="text-sm font-semibold text-[#18181b]">{label}</span>
+        {locked ? (
+          <Lock className="h-3 w-3 text-[#9CA3AF]" strokeWidth={2.5} aria-hidden />
+        ) : null}
+      </span>
+      <span
+        className="min-w-[54px] rounded-full px-3 py-1 text-center text-sm font-extrabold"
+        style={{ backgroundColor: badgeBg, color: badgeColor }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+
+  const legend = light ? (
+    <div className="flex w-full flex-col gap-2.5">
+      {legendRow(
+        KAI_COLOR,
+        "kAI Score",
+        hasScan ? (kai?.kaiPrimary ?? "—") : "—",
+        Boolean(kai?.showLock),
+        "#ECE9F8",
+        "#2C3E6B"
+      )}
+      {legendRow(
+        CONSISTENCY_COLOR,
+        "Consistency",
+        `${Math.round(consistencyScore)}%`,
+        ringsLocked,
+        `${CONSISTENCY_COLOR}1F`,
+        CONSISTENCY_COLOR
+      )}
+      {legendRow(
+        PROGRESS_COLOR,
+        "Progress",
+        `${Math.round(Math.abs(weeklyDeltaScore))}%`,
+        ringsLocked || !weeklyDeltaMeaningful,
+        `${PROGRESS_COLOR}1F`,
+        PROGRESS_COLOR
+      )}
+    </div>
+  ) : (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 md:flex-col md:items-start md:justify-center md:gap-y-3">
       <div className="flex items-center gap-1.5">
         <span
@@ -328,7 +392,11 @@ export function NavyMetricsCard({
   return (
     <div
       ref={cardRef}
-      className={`flex h-full flex-col items-center justify-center rounded-[20px] bg-[#2D3E6B] px-5 py-4 md:flex-row md:items-center md:justify-center md:gap-8 md:px-6 md:py-5 ${className}`}
+      className={
+        light
+          ? `flex h-full flex-row items-center justify-center gap-5 ${className}`
+          : `flex h-full flex-col items-center justify-center rounded-[20px] bg-[#2D3E6B] px-5 py-4 md:flex-row md:items-center md:justify-center md:gap-8 md:px-6 md:py-5 ${className}`
+      }
     >
       <div className="relative shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
         <UnlockTooltip visible={lockedTip !== null} labelId={tipId} />
@@ -391,7 +459,7 @@ export function NavyMetricsCard({
 
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div
-            className={`flex h-[72px] w-[72px] items-center justify-center ${
+            className={`flex h-[56px] w-[56px] items-center justify-center ${
               hasScan && kai?.showLock ? "pointer-events-auto" : ""
             }`}
           >
@@ -400,7 +468,7 @@ export function NavyMetricsCard({
         </div>
       </div>
 
-      <div className="mt-4 md:mt-0">{legend}</div>
+      <div className={light ? "min-w-0 flex-1" : "mt-4 md:mt-0"}>{legend}</div>
 
       <ClinicScoreUnlockModal open={unlockOpen} onClose={() => setUnlockOpen(false)} />
     </div>
