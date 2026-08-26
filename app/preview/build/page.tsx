@@ -5,8 +5,7 @@
 // confirmed; not linked from anywhere in the app.
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Activity, Bell, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { SkinDNACard } from "@/components/dashboard/SkinDNACard";
@@ -107,8 +106,11 @@ function FillerSection({ title }: { title: string }) {
 }
 
 export default function BuildPreviewPage() {
-  const searchParams = useSearchParams();
-  const gender = searchParams.get("gender") === "female" ? "female" : "male";
+  const [gender, setGender] = useState<"male" | "female">("male");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setGender(params.get("gender") === "female" ? "female" : "male");
+  }, []);
   const name = gender === "female" ? "Priya" : "Keshav";
   const mockLastScanAt = "2026-08-13T09:00:00.000Z";
 
