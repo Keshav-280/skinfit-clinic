@@ -37,10 +37,7 @@ import {
   X,
 } from "lucide-react";
 import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
-import {
-  DoctorUpdatesCompact,
-  PatientDoctorHomeSections,
-} from "@/components/dashboard/PatientDoctorHomeSections";
+import { DoctorUpdatesCompact } from "@/components/dashboard/PatientDoctorHomeSections";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
 import {
   DASHBOARD_SECTION_CARD,
@@ -874,10 +871,7 @@ export function PatientDashboardDesktop({
           hasScan={Boolean(latestScan)}
         />
 
-        {/* 3. Chat with Doctor CTA */}
-        <PatientDoctorHomeSections className="min-h-0" />
-
-        {/* 4. Calendar — full appointments calendar with booking. Doctor's
+        {/* 3. Calendar — full appointments calendar with booking. Doctor's
             Feedback / Voice Notes are injected as a compact sidebar slot,
             right below the assigned-doctor card, rather than as their own
             full-width sections. */}
