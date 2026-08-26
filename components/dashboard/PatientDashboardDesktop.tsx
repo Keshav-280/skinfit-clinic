@@ -819,16 +819,13 @@ export function PatientDashboardDesktop({
           rather than the greeting simply scrolling away. */}
       <div className="sticky top-14 z-0 space-y-4 sm:top-16">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="min-w-0">
+            <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
               {timeGreeting}
             </p>
-            <h1 className="mt-0.5 text-2xl font-extrabold text-[#18181b] md:text-3xl">
+            <h1 className="mt-0.5 truncate text-2xl font-extrabold text-[#18181b] md:text-3xl">
               {greetingName}
             </h1>
-            <p className="mt-1 text-sm text-[#6B7280]">
-              Here&apos;s your skin health today.
-            </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {data.progress && !data.progress.allComplete ? (
