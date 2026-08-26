@@ -455,6 +455,7 @@ export default function AppointmentsCalendarClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [view, setView] = useState<"month" | "week">("month");
+  const [calendarPopupOpen, setCalendarPopupOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [selectedYmd, setSelectedYmd] = useState(() => localYmd(new Date()));
   const [scheduleRefreshing, setScheduleRefreshing] = useState(false);
@@ -1077,6 +1078,46 @@ export default function AppointmentsCalendarClient({
             </p>
           </div>
 
+          {!calendarPopupOpen ? (
+            <button
+              type="button"
+              onClick={() => setCalendarPopupOpen(true)}
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-[#E5E7EB] bg-[#F2F9F2] px-3.5 py-3 text-left transition hover:bg-[#E8EFE6]"
+            >
+              <span className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 shrink-0 text-[#2C3E6B]" aria-hidden />
+                <span className="text-sm font-semibold text-[#18181b]">
+                  View calendar
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-[#6B7280]" aria-hidden />
+            </button>
+          ) : null}
+
+          {calendarPopupOpen ? (
+            <>
+              <div
+                className="fixed inset-0 z-40 bg-black/30"
+                aria-hidden
+                onClick={() => setCalendarPopupOpen(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Calendar"
+                className="fixed inset-x-0 bottom-0 z-50 max-h-[88vh] overflow-y-auto rounded-t-2xl bg-white p-3 shadow-lg sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:w-[min(92vw,640px)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:p-4"
+              >
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-[#E5E7EB] sm:hidden" />
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-bold text-[#18181b]">Your schedule</h4>
+            <button
+              type="button"
+              onClick={() => setCalendarPopupOpen(false)}
+              aria-label="Close calendar"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6B7280] transition hover:bg-[#F5F3EF]"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <div
               className="flex min-w-0 shrink gap-1 rounded-xl border border-[#E5E7EB] bg-[#F2F9F2] p-1"
@@ -1335,6 +1376,9 @@ export default function AppointmentsCalendarClient({
               <span className="h-2 w-2 rounded-full bg-[#16a34a]" /> Done
             </span>
           </div>
+              </div>
+            </>
+          ) : null}
 
           {/* Doctor's Feedback + Voice Notes — fills the space the old
               "selected day" / "upcoming" recap used to take, since that
