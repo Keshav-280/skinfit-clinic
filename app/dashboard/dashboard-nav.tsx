@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Camera, Home, Heart, MessageCircle, User, X } from "lucide-react";
+import { Bell, Camera, Home, Heart, MessageCircle, X } from "lucide-react";
 import clsx from "clsx";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
@@ -210,35 +210,6 @@ export function DashboardNav() {
                   </Link>
                 );
               })}
-              {/* Profile tab */}
-              <Link
-                href="/dashboard/profile"
-                className="relative flex flex-1 flex-col items-center gap-1 py-3 transition-opacity active:opacity-60"
-                aria-label="Profile"
-              >
-                <span
-                  className={clsx(
-                    "flex h-8 w-10 items-center justify-center rounded-xl transition-colors",
-                    isActive("/dashboard/profile", pathname) ? "bg-[#2C3E6B]/10" : ""
-                  )}
-                >
-                  <User
-                    className={clsx(
-                      "h-5 w-5 shrink-0 transition-colors",
-                      isActive("/dashboard/profile", pathname) ? "text-[#2C3E6B]" : "text-[#9CA3AF]"
-                    )}
-                    aria-hidden
-                  />
-                </span>
-                <span
-                  className={clsx(
-                    "text-[10px] font-medium leading-none",
-                    isActive("/dashboard/profile", pathname) ? "text-[#2C3E6B] font-semibold" : "text-[#9CA3AF]"
-                  )}
-                >
-                  Profile
-                </span>
-              </Link>
             </nav>,
             document.body
           )

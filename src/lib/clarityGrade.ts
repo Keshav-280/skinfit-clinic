@@ -37,6 +37,12 @@ export const PATIENT_DISPLAY_SCORE_FLOOR = 20;
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
 
+/** Formats a 0–100 patient-facing score as a whole number on a 0–10 scale. */
+export function scoreOutOfTen(score0to100: number): number {
+  if (!Number.isFinite(score0to100)) return 0;
+  return Math.max(0, Math.min(10, Math.round(score0to100 / 10)));
+}
+
 function clampClarity(score: number): number {
   if (!Number.isFinite(score)) return 0;
   return Math.min(100, Math.max(0, Math.round(score)));

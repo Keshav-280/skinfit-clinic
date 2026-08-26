@@ -3,8 +3,7 @@
 import { Lock } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { ClinicScoreUnlockModal } from "@/components/dashboard/ClinicScoreUnlockModal";
-import { CLINIC_SCORE_UNLOCK, patientKaiScoreView } from "@/src/lib/clarityGrade";
+import { scoreOutOfTen } from "@/src/lib/clarityGrade";
 
 // Three distinct Apple-style ring colors.
 const KAI_COLOR = "#22D3EE"; // inner — cyan
@@ -194,19 +193,15 @@ export function NavyMetricsCard({
   weeklyDeltaMeaningful = true,
   consistencyScore,
   latestScanAt,
-  scoresUnlocked = false,
   scanCount = 0,
   light = false,
   className = "",
 }: NavyMetricsCardProps) {
-  const [unlockOpen, setUnlockOpen] = useState(false);
   const [lockedTip, setLockedTip] = useState<"consistency" | "progress" | null>(null);
   const tipId = useId();
   const cardRef = useRef<HTMLDivElement>(null);
 
   const hasScan = Boolean(latestScanAt?.trim());
-  const kai = hasScan ? patientKaiScoreView(kaiSkinScore, scoresUnlocked) : null;
-  const lockedKaiAriaLabel = `${CLINIC_SCORE_UNLOCK.title}. ${CLINIC_SCORE_UNLOCK.message}`;
 
   // Consistency + Progress rings unlock from the patient's 2nd scan onward.
   const ringsLocked = scanCount < 2;
@@ -270,28 +265,10 @@ export function NavyMetricsCard({
         </p>
       );
     }
-    if (kai?.showLock) {
-      return (
-        <button
-          type="button"
-          onClick={() => setUnlockOpen(true)}
-          aria-label={lockedKaiAriaLabel}
-          className={`flex flex-col items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${light ? "focus-visible:outline-[#2C3E6B]/40" : "focus-visible:outline-white/60"}`}
-        >
-          <Lock
-            className={`h-3 w-3 ${light ? "text-[#9CA3AF]" : "text-white/60"}`}
-            strokeWidth={2.25}
-            aria-hidden
-          />
-          <span className={`text-2xl font-extrabold leading-none ${centerTextCls}`}>
-            {kai.gaugeDisplayValue}
-          </span>
-        </button>
-      );
-    }
     return (
       <span className={`text-2xl font-extrabold leading-none tabular-nums ${centerTextCls}`}>
-        {kai?.kaiPrimary}
+        {scoreOutOfTen(kaiSkinScore)}
+        <span className="text-sm font-bold opacity-60">/10</span>
       </span>
     );
   })();
@@ -330,8 +307,8 @@ export function NavyMetricsCard({
       {legendRow(
         KAI_COLOR,
         "kAI Score",
-        hasScan ? (kai?.kaiPrimary ?? "—") : "—",
-        Boolean(kai?.showLock),
+        hasScan ? `${scoreOutOfTen(kaiSkinScore)}/10` : "—",
+        false,
         "#ECE9F8",
         "#2C3E6B"
       )}
@@ -458,19 +435,13 @@ export function NavyMetricsCard({
         </svg>
 
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div
-            className={`flex h-[56px] w-[56px] items-center justify-center ${
-              hasScan && kai?.showLock ? "pointer-events-auto" : ""
-            }`}
-          >
+          <div className="flex h-[56px] w-[56px] items-center justify-center">
             {centerContent}
           </div>
         </div>
       </div>
 
       <div className={light ? "min-w-0 flex-1" : "mt-4 md:mt-0"}>{legend}</div>
-
-      <ClinicScoreUnlockModal open={unlockOpen} onClose={() => setUnlockOpen(false)} />
     </div>
   );
 }

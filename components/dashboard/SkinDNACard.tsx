@@ -5,15 +5,11 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  ChevronRight,
   CircleDot,
   Droplets,
   FileText,
   Fingerprint,
   Leaf,
-  Minus,
   Palette,
   Sparkles,
   Target,
@@ -23,7 +19,7 @@ import { differenceInCalendarDays, formatDistanceToNow, parseISO } from "date-fn
 import {
   classifySkinParamMetric,
   patientKaiScoreView,
-  patientScoreView,
+  scoreOutOfTen,
 } from "@/src/lib/clarityGrade";
 import { resolveScanDisplayScores } from "@/src/lib/resolveScanDisplayScores";
 import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
@@ -271,16 +267,16 @@ function SkinTypeIcon({ type }: { type: SkinTypeKey }) {
   );
 }
 
-function initialsFromName(name: string): string {
+export function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
 }
 
-type ResolvedGender = "male" | "female" | null;
+export type ResolvedGender = "male" | "female" | null;
 
-function resolveGender(gender: string | null | undefined): ResolvedGender {
+export function resolveGender(gender: string | null | undefined): ResolvedGender {
   const g = gender?.trim().toLowerCase();
   if (!g) return null;
   if (g.startsWith("m")) return "male";
@@ -294,7 +290,7 @@ function resolveGender(gender: string | null | undefined): ResolvedGender {
  * Gender tweaks hair style + a hue for the glow accents. The glasses lenses
  * pulse with a soft glow and a hand gives an occasional wave.
  */
-function AvatarIcon({ gender }: { gender: "male" | "female" }) {
+export function AvatarIcon({ gender }: { gender: "male" | "female" }) {
   const glow = gender === "female" ? "#F472B6" : "#22D3EE";
   const gradientFrom = gender === "female" ? "#7C3AED" : "#2563EB";
   const gradientTo = gender === "female" ? "#DB2777" : "#06B6D4";
@@ -398,47 +394,6 @@ function AvatarIcon({ gender }: { gender: "male" | "female" }) {
         <circle cx="50" cy="43" r="4.4" fill={skin} />
       </motion.g>
     </svg>
-  );
-}
-
-function TrendChip({
-  weeklyDeltaScore,
-  weeklyDeltaMeaningful,
-}: {
-  weeklyDeltaScore: number;
-  weeklyDeltaMeaningful: boolean;
-}) {
-  if (!weeklyDeltaMeaningful) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white/70">
-        <Minus className="h-3.5 w-3.5" aria-hidden />
-        Steady
-      </span>
-    );
-  }
-  const up = weeklyDeltaScore > 0;
-  const flat = weeklyDeltaScore === 0;
-  if (flat) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white/70">
-        <Minus className="h-3.5 w-3.5" aria-hidden />
-        Steady
-      </span>
-    );
-  }
-  if (up) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-400/15 px-2.5 py-1 text-[11px] font-bold text-emerald-200">
-        <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-        +{Math.abs(Math.round(weeklyDeltaScore))} this week
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-400/40 bg-red-400/15 px-2.5 py-1 text-[11px] font-bold text-red-200">
-      <ArrowDownRight className="h-3.5 w-3.5" aria-hidden />
-      −{Math.abs(Math.round(weeklyDeltaScore))} this week
-    </span>
   );
 }
 
@@ -594,7 +549,7 @@ type ParamTileData = {
   slugKey: string;
   Icon: LucideIcon;
   raw: number;
-  grade: string;
+  score: number;
   sublabel: string;
   color: string;
   href: string | null;
@@ -617,9 +572,9 @@ function InteractiveParamTile({
   onDeactivate: () => void;
 }) {
   const statusLine =
-    tile.grade === "A" || tile.grade === "B"
+    tile.score >= 7
       ? "Tracking well"
-      : tile.grade === "C"
+      : tile.score >= 4
         ? "Worth watching"
         : "Needs attention";
 
@@ -648,7 +603,7 @@ function InteractiveParamTile({
           className="text-sm font-extrabold leading-none tabular-nums"
           style={{ color: hasScan ? tile.color : "#9CA3AF" }}
         >
-          {hasScan ? tile.grade : "—"}
+          {hasScan ? tile.score : "—"}
         </span>
       </CircleRing>
       <span className="text-[9px] font-semibold uppercase tracking-wide text-white/60">
@@ -684,11 +639,7 @@ function InteractiveParamTile({
 }
 
 export function SkinDNACard({
-  patientName,
-  profileImageUrl = null,
-  gender = null,
   kaiSkinScore,
-  scoresUnlocked,
   analysisResults,
   params: paramsProp,
   skinSummary = null,
@@ -704,7 +655,8 @@ export function SkinDNACard({
   className = "",
   hasScan = true,
 }: SkinDNACardProps) {
-  const kai = patientKaiScoreView(kaiSkinScore, scoresUnlocked);
+  // Scores are always shown as numbers — never gated behind clinic-visit unlock.
+  const kai = patientKaiScoreView(kaiSkinScore, true);
   const fromAnalysis =
     hasScan && analysisResults
       ? skinDnaParamsFromAnalysis(analysisResults)
@@ -716,8 +668,6 @@ export function SkinDNACard({
     hydration: paramsProp?.hydration ?? fromAnalysis?.hydration ?? 0,
     texture: paramsProp?.texture ?? fromAnalysis?.texture ?? 0,
   };
-  const displayName = patientName.trim() || "Patient";
-  const photo = profileImageUrl?.trim() || null;
   const identityFacts: { label: string; value: string; icon?: ReactNode }[] = [];
   const typeVal = skinType?.trim();
   const skinTypeKey = resolveSkinTypeKey(typeVal);
@@ -756,30 +706,27 @@ export function SkinDNACard({
     const ranked = PARAM_TILES.map((t) => ({
       ...t,
       raw: params[t.key],
-      view: patientScoreView(params[t.key], scoresUnlocked),
     })).sort((a, b) => b.raw - a.raw);
 
     const best = ranked[0]!;
     const worst = ranked[ranked.length - 1]!;
     strongest = {
       name: best.fullLabel,
-      gradeLabel: `Grade ${best.view.grade}`,
+      gradeLabel: `${scoreOutOfTen(best.raw)}/10`,
     };
     if (best.key !== worst.key) {
       needsFocus = {
         name: worst.fullLabel,
-        gradeLabel: `Grade ${worst.view.grade}`,
+        gradeLabel: `${scoreOutOfTen(worst.raw)}/10`,
       };
     }
   }
 
-  const resolvedGender = resolveGender(gender);
   const recency = lastScanRecency(lastScanAt);
 
   const paramTiles: ParamTileData[] = PARAM_TILES.map((t) => {
     const raw = params[t.key];
     const metric = classifySkinParamMetric(raw);
-    const view = patientScoreView(raw, scoresUnlocked);
     return {
       key: t.key,
       label: t.label,
@@ -787,7 +734,7 @@ export function SkinDNACard({
       slugKey: t.slugKey,
       Icon: t.Icon,
       raw,
-      grade: view.grade,
+      score: scoreOutOfTen(raw),
       sublabel: toTitleCase(metric.sublabel),
       color: metric.color,
       href: scoreDetailHref(t.slugKey),
@@ -804,12 +751,6 @@ export function SkinDNACard({
   const headlineMessage = useRotatingMessage(insightMessages, 5000);
   const ringInsight = useRotatingMessage(
     insightMessages.length > 1 ? [...insightMessages.slice(1), insightMessages[0]!] : insightMessages,
-    5000
-  );
-  const tipMessage = useRotatingMessage(
-    insightMessages.length > 2
-      ? [...insightMessages.slice(2), ...insightMessages.slice(0, 2)]
-      : insightMessages,
     5000
   );
   const [activeParam, setActiveParam] = useState<SkinDNAParamKey | null>(null);
@@ -835,23 +776,11 @@ export function SkinDNACard({
         </svg>
 
         <div className="relative flex items-start gap-3 sm:gap-3.5">
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full ring-2 ring-white/25 ring-offset-2 ring-offset-[#0F1A3D]">
-            {photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photo} alt="" className="h-full w-full object-cover" />
-            ) : resolvedGender ? (
-              <AvatarIcon gender={resolvedGender} />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-white/10 text-sm font-bold tracking-wide text-white">
-                {initialsFromName(displayName)}
-              </div>
-            )}
-          </div>
-
-          {/* Name + rotating insight line */}
+          {/* Title + rotating insight line */}
           <div className="min-w-0 flex-1 pt-0.5">
-            <p className="truncate text-lg font-bold leading-tight text-white">
-              {displayName}
+            <p className="flex items-center gap-1.5 truncate text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">
+              <Sparkles className="h-3 w-3 shrink-0 text-white/40" aria-hidden />
+              Your Skin DNA
             </p>
             <AnimatePresence mode="wait">
               <motion.p
@@ -860,9 +789,8 @@ export function SkinDNACard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.35 }}
-                className="mt-0.5 flex items-center gap-1 truncate text-[12px] font-medium text-white/60"
+                className="mt-1 truncate text-[13px] font-semibold text-white"
               >
-                <Sparkles className="h-3 w-3 shrink-0 text-white/40" aria-hidden />
                 {hasScan
                   ? headlineMessage
                   : skinSummary?.trim() || "Unlock your skin potential"}
@@ -870,34 +798,14 @@ export function SkinDNACard({
             </AnimatePresence>
           </div>
 
-          {/* Score widget — animated ring gauge */}
-          <div className="flex shrink-0 flex-col items-center gap-1.5">
-            <CircleRing
-              pct={kai.showLock ? 0 : kaiSkinScore}
-              size={56}
-              strokeWidth={4}
-              color={kai.color}
-              trackColor="rgba(255,255,255,0.12)"
-            >
-              <div className="flex h-[42px] w-[42px] flex-col items-center justify-center rounded-full bg-[#0F1A3D]">
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.9, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="text-lg font-extrabold leading-none tabular-nums text-white"
-                >
-                  {kai.showLock ? kai.grade : Math.round(kaiSkinScore)}
-                </motion.span>
-                <span className="mt-0.5 text-[7px] font-bold uppercase tracking-wide text-white/50">
-                  {kai.showLock ? "Locked" : toTitleCase(kai.sublabel)}
-                </span>
-              </div>
-            </CircleRing>
-            <TrendChip
-              weeklyDeltaScore={weeklyDeltaScore}
-              weeklyDeltaMeaningful={weeklyDeltaMeaningful}
-            />
-          </div>
+          {/* View report action */}
+          <Link
+            href={href}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/15"
+          >
+            <FileText className="h-3.5 w-3.5" aria-hidden />
+            View Report
+          </Link>
         </div>
       </div>
 
@@ -957,7 +865,7 @@ export function SkinDNACard({
           )}
 
           <CircleRing
-            pct={kai.showLock ? 0 : kaiSkinScore}
+            pct={kaiSkinScore}
             size={84}
             strokeWidth={6}
             color={kai.color}
@@ -970,7 +878,8 @@ export function SkinDNACard({
                 transition={{ delay: 0.9, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className="text-2xl font-extrabold leading-none text-white"
               >
-                {kai.showLock ? kai.grade : Math.round(kaiSkinScore)}
+                {scoreOutOfTen(kaiSkinScore)}
+                <span className="text-xs font-bold opacity-60">/10</span>
               </motion.span>
               <span className="mt-1 text-[8px] font-bold uppercase tracking-wide text-white/50">
                 Overall
@@ -1029,7 +938,7 @@ export function SkinDNACard({
 
       {/* 4. Interactive param tiles */}
       <div
-        className="mt-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-5"
+        className="mt-4 flex gap-2 overflow-x-auto px-4 pb-4 scrollbar-hide sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-5"
         onMouseLeave={() => setActiveParam(null)}
       >
         {paramTiles.map((tile) => (
@@ -1045,32 +954,6 @@ export function SkinDNACard({
             }
           />
         ))}
-      </div>
-
-      {/* 5. Footer */}
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3 sm:px-5">
-        <Link
-          href={href}
-          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-white transition hover:underline"
-        >
-          <FileText className="h-3.5 w-3.5" aria-hidden />
-          View full report
-          <ChevronRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
-        </Link>
-        {hasScan ? (
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={tipMessage}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.35 }}
-              className="min-w-0 truncate text-right text-[12px] font-medium text-white/50"
-            >
-              ✦ {tipMessage}
-            </motion.p>
-          </AnimatePresence>
-        ) : null}
       </div>
     </motion.div>
   );

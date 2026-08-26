@@ -1,13 +1,11 @@
 import React from "react";
-import Link from "next/link";
 import { after } from "next/server";
-import { User } from "lucide-react";
 import { PatientPortalBrandLogo } from "@/components/dashboard/PatientPortalBrandLogo";
 import { DashboardNav } from "./dashboard-nav";
 import { DashboardClinicSupportBell } from "@/components/dashboard/DashboardClinicSupportBell";
 import { DashboardInboxProvider } from "@/components/dashboard/DashboardInboxContext";
 import { ScanJobReadyNotifier } from "@/components/dashboard/ScanJobReadyNotifier";
-import { GlobalRefreshButton } from "@/components/ui/GlobalRefreshButton";
+import { ProfileNavBadge } from "@/components/dashboard/ProfileNavBadge";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
 import { runAppointmentReminders } from "@/src/lib/runAppointmentReminders";
@@ -43,15 +41,8 @@ export default async function DashboardLayout({
           <DashboardNav />
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-            <GlobalRefreshButton compact />
             <DashboardClinicSupportBell />
-            <Link
-              href="/dashboard/profile"
-              className="hidden md:flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#2D3E6B] transition-colors hover:bg-white"
-              title="Profile"
-            >
-              <User className="h-4 w-4" />
-            </Link>
+            <ProfileNavBadge />
           </div>
         </div>
       </nav>

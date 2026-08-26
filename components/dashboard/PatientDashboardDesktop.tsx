@@ -523,8 +523,7 @@ function DashboardDatePicker({
     });
   }, [viewMonth, selectedYmd, todayYmd]);
 
-  const pillLabel =
-    selectedYmd === todayYmd ? "Today" : format(selectedDate, "EEE, MMM d");
+  const pillLabel = format(selectedDate, "EEE, d MMM");
 
   const todayDate = useMemo(() => parseISO(`${todayYmd}T00:00:00`), [todayYmd]);
 
@@ -614,21 +613,21 @@ function DashboardDatePicker({
 
   return (
     <div ref={rootRef} className="relative">
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-end gap-0.5">
         <button
           type="button"
           onClick={() => onSelectYmd(format(addDays(selectedDate, -7), "yyyy-MM-dd"))}
           aria-label="Previous week"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden />
+          <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
         </button>
 
         <button
           type="button"
           onClick={() => onSelectYmd(todayYmd)}
           aria-current="date"
-          className="inline-flex min-w-0 flex-1 items-center justify-center truncate rounded-full bg-[#2C3E6B]/10 px-4 py-2 text-sm font-bold text-[#2C3E6B]"
+          className="min-w-0 truncate px-1 text-xs font-semibold text-[#18181b]"
         >
           {pillLabel}
         </button>
@@ -638,13 +637,13 @@ function DashboardDatePicker({
           disabled={weekAheadDisabled}
           onClick={() => onSelectYmd(format(addDays(selectedDate, 7), "yyyy-MM-dd"))}
           aria-label="Next week"
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border shadow-sm transition ${
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition ${
             weekAheadDisabled
-              ? "cursor-not-allowed border-[#E5E7EB] bg-white text-slate-300"
-              : "border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+              ? "cursor-not-allowed text-slate-300"
+              : "text-[#9CA3AF] hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
           }`}
         >
-          <ChevronRight className="h-4 w-4" aria-hidden />
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </button>
 
         <button
@@ -653,9 +652,9 @@ function DashboardDatePicker({
           aria-haspopup="dialog"
           aria-label="Choose a date from the calendar"
           onClick={() => setOpen((v) => !v)}
-          className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+          className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
         >
-          <Calendar className="h-4 w-4" aria-hidden />
+          <Calendar className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
 
@@ -680,7 +679,7 @@ function DashboardDatePicker({
           <div
             role="dialog"
             aria-label="Choose date"
-            className="absolute left-0 top-full z-50 mt-2 hidden overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-lg md:block"
+            className="absolute right-0 top-full z-50 mt-2 hidden overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-lg md:block"
           >
             {calendarPanel}
           </div>
@@ -743,12 +742,19 @@ export function PatientDashboardDesktop({
     return raw.split(/\s+/)[0] ?? raw;
   }, [data?.userName]);
 
-  const timeGreeting = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
-  }, []);
+  const greetingSubtitle = useMemo(() => {
+    if (!data?.skinScanHistory.length) {
+      return "Let's get your first scan started.";
+    }
+    const delta = data.weeklyDeltaScore ?? 0;
+    if (data.weeklyDeltaMeaningful && delta > 0) {
+      return `Your skin improved ${Math.abs(Math.round(delta))}% this week.`;
+    }
+    if (data.weeklyDeltaMeaningful && delta < 0) {
+      return "Let's turn things around this week.";
+    }
+    return "Your skin is holding steady.";
+  }, [data?.skinScanHistory.length, data?.weeklyDeltaMeaningful, data?.weeklyDeltaScore]);
 
   const skinSummary = useMemo(
     () =>
@@ -802,37 +808,25 @@ export function PatientDashboardDesktop({
       {/* 1. Greeting + date strip — sticks below the nav so the content
           below (starting with the Skin DNA card) scrolls up and over it,
           rather than the greeting simply scrolling away. */}
-      <div className="sticky top-14 z-0 space-y-4 sm:top-16">
+      <div className="sticky top-14 z-0 sm:top-16">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-              {timeGreeting}
-            </p>
-            <h1 className="mt-0.5 truncate text-2xl font-extrabold text-[#18181b] md:text-3xl">
-              {greetingName}
+            <h1 className="truncate text-2xl font-extrabold text-[#18181b] md:text-3xl">
+              Hi {greetingName} 👋
             </h1>
+            <p className="mt-0.5 truncate text-sm text-[#6B7280]">
+              {greetingSubtitle}
+            </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {data.progress && !data.progress.allComplete ? (
-              <Link
-                href="/dashboard/profile"
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/20 bg-white px-3 py-2 text-xs font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F5F3EF] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
-              >
-                Complete your profile
-                <span className="text-[10px] font-bold text-[#6B7280] sm:text-xs">
-                  {data.progress.completedCount}/{data.progress.milestones.length}
-                </span>
-                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-              </Link>
-            ) : null}
+
+          <div className="shrink-0 pt-1">
+            <DashboardDatePicker
+              selectedYmd={selectedYmd}
+              todayYmd={todayYmd}
+              onSelectYmd={setSelectedYmd}
+            />
           </div>
         </div>
-
-        <DashboardDatePicker
-          selectedYmd={selectedYmd}
-          todayYmd={todayYmd}
-          onSelectYmd={setSelectedYmd}
-        />
       </div>
 
       {/* Everything below rides a solid background over the sticky greeting
