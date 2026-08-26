@@ -11,7 +11,6 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   format,
   startOfWeek,
@@ -27,7 +26,6 @@ import {
   parseISO,
 } from "date-fns";
 import {
-  AlertTriangle,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
@@ -714,56 +712,14 @@ export function PatientDashboardDesktop({
 }: {
   calendarSlot?: ReactNode;
 } = {}) {
-  const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedYmd, setSelectedYmd] = useState(() =>
     format(new Date(), "yyyy-MM-dd")
   );
-  const [sosBusy, setSosBusy] = useState(false);
   const loadSeqRef = useRef(0);
   const hasLoadedRef = useRef(false);
-
-  const triggerSos = useCallback(async () => {
-    if (sosBusy) return;
-    const detail = window.prompt(
-      "SOS alert: describe symptoms briefly (redness, swelling, pain, etc).",
-      ""
-    );
-    if (detail === null) return;
-    const text = detail.trim()
-      ? `SOS: ${detail.trim()}`
-      : "SOS: Adverse reaction after treatment. Need urgent doctor help.";
-    setSosBusy(true);
-    try {
-      const res = await fetch("/api/chat/plain/message", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assistantId: "doctor", isUrgent: true, text }),
-      });
-      const j = (await res.json()) as {
-        success?: boolean;
-        error?: string;
-        message?: string;
-      };
-      if (!res.ok || !j.success) {
-        window.alert(
-          j.message ??
-            (j.error === "NO_DOCTOR"
-              ? "No clinic doctors are available to receive urgent alerts."
-              : "Could not send urgent alert. Try again.")
-        );
-        return;
-      }
-      router.push("/dashboard/chat?assistant=doctor");
-    } catch {
-      /* silent */
-    } finally {
-      setSosBusy(false);
-    }
-  }, [router, sosBusy]);
 
   const loadHome = useCallback(async () => {
     const seq = ++loadSeqRef.current;
@@ -887,20 +843,6 @@ export function PatientDashboardDesktop({
                 <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
               </Link>
             ) : null}
-            <button
-              type="button"
-              onClick={triggerSos}
-              disabled={sosBusy}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#EF4444] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#DC2626] disabled:cursor-not-allowed disabled:opacity-60"
-              title="Urgent: notify doctor immediately"
-            >
-              {sosBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <AlertTriangle className="h-4 w-4" />
-              )}
-              Urgent
-            </button>
           </div>
         </div>
 
