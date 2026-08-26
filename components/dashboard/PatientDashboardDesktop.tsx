@@ -27,8 +27,10 @@ import {
 } from "date-fns";
 import {
   ArrowRight,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Loader2,
   Calendar,
   Play,
@@ -526,21 +528,6 @@ function DashboardDatePicker({
 
   const todayDate = useMemo(() => parseISO(`${todayYmd}T00:00:00`), [todayYmd]);
 
-  /** 7-day strip centered on the selected date (3 before, selected, 3 after). */
-  const stripDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = addDays(selectedDate, i - 3);
-      const ymd = format(d, "yyyy-MM-dd");
-      return {
-        date: d,
-        ymd,
-        isToday: ymd === todayYmd,
-        isSelected: ymd === selectedYmd,
-        isFuture: d.getTime() > todayDate.getTime() && ymd !== todayYmd,
-      };
-    });
-  }, [selectedDate, todayYmd, selectedYmd, todayDate]);
-
   function selectDay(ymd: string) {
     onSelectYmd(ymd);
     setOpen(false);
@@ -623,42 +610,42 @@ function DashboardDatePicker({
     </div>
   );
 
+  const weekAheadDisabled = addDays(selectedDate, 7).getTime() > todayDate.getTime();
+
   return (
     <div ref={rootRef} className="relative">
-      <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-        {stripDays.map((d) => {
-          if (d.isSelected) {
-            return (
-              <button
-                key={d.ymd}
-                type="button"
-                onClick={() => onSelectYmd(d.ymd)}
-                aria-current="date"
-                className="inline-flex shrink-0 items-center rounded-full bg-[#2C3E6B]/10 px-4 py-2 text-sm font-bold text-[#2C3E6B]"
-              >
-                {pillLabel}
-              </button>
-            );
-          }
-          return (
-            <button
-              key={d.ymd}
-              type="button"
-              disabled={d.isFuture}
-              onClick={() => onSelectYmd(d.ymd)}
-              aria-label={format(d.date, "EEEE, MMMM d, yyyy")}
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition ${
-                d.isFuture
-                  ? "cursor-not-allowed text-slate-300"
-                  : d.isToday
-                    ? "text-[#2C3E6B] ring-1 ring-[#2C3E6B]/25 hover:bg-[#F5F3EF]"
-                    : "text-[#6B7280] hover:bg-[#F5F3EF] hover:text-[#18181b]"
-              }`}
-            >
-              {format(d.date, "d")}
-            </button>
-          );
-        })}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onSelectYmd(format(addDays(selectedDate, -7), "yyyy-MM-dd"))}
+          aria-label="Previous week"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] shadow-sm transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSelectYmd(todayYmd)}
+          aria-current="date"
+          className="inline-flex min-w-0 flex-1 items-center justify-center truncate rounded-full bg-[#2C3E6B]/10 px-4 py-2 text-sm font-bold text-[#2C3E6B]"
+        >
+          {pillLabel}
+        </button>
+
+        <button
+          type="button"
+          disabled={weekAheadDisabled}
+          onClick={() => onSelectYmd(format(addDays(selectedDate, 7), "yyyy-MM-dd"))}
+          aria-label="Next week"
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border shadow-sm transition ${
+            weekAheadDisabled
+              ? "cursor-not-allowed border-[#E5E7EB] bg-white text-slate-300"
+              : "border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+          }`}
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </button>
 
         <button
           type="button"
@@ -715,6 +702,7 @@ export function PatientDashboardDesktop({
   const [selectedYmd, setSelectedYmd] = useState(() =>
     format(new Date(), "yyyy-MM-dd")
   );
+  const [monthlyInsightOpen, setMonthlyInsightOpen] = useState(true);
   const loadSeqRef = useRef(0);
   const hasLoadedRef = useRef(false);
 
@@ -905,10 +893,30 @@ export function PatientDashboardDesktop({
         {/* 7. Monthly Insight */}
         {data.kaiInsightsEnabled ? (
           <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
-            <DashboardSectionHeader icon={Activity} title="MONTHLY INSIGHT" />
-            <div className="mt-2">
-              <ProfileRagKaiInsightsSection embedded compact />
-            </div>
+            <DashboardSectionHeader
+              icon={Activity}
+              title="MONTHLY INSIGHT"
+              action={
+                <button
+                  type="button"
+                  onClick={() => setMonthlyInsightOpen((v) => !v)}
+                  aria-expanded={monthlyInsightOpen}
+                  aria-label={monthlyInsightOpen ? "Minimize" : "Expand"}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6B7280] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+                >
+                  {monthlyInsightOpen ? (
+                    <ChevronUp className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" aria-hidden />
+                  )}
+                </button>
+              }
+            />
+            {monthlyInsightOpen ? (
+              <div className="mt-2">
+                <ProfileRagKaiInsightsSection embedded compact />
+              </div>
+            ) : null}
           </section>
         ) : null}
       </div>
