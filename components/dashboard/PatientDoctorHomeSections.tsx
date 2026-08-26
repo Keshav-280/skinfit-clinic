@@ -371,6 +371,8 @@ type Props = {
   onboardingComplete?: boolean;
   onRefresh: () => void;
   className?: string;
+  /** Side-by-side on sm+ screens instead of stacked — for wide layout slots. */
+  twoColumn?: boolean;
 };
 
 /** Whether doctor chat is unlocked for this patient (in-clinic visit requirement). */
@@ -434,6 +436,7 @@ export function DoctorUpdatesCompact({
   onboardingComplete = true,
   onRefresh,
   className = "",
+  twoColumn = false,
 }: Props) {
   const activeEntries = useMemo(
     () =>
@@ -479,7 +482,11 @@ export function DoctorUpdatesCompact({
     : "";
 
   return (
-    <div className={`flex w-full flex-col gap-3 ${className}`}>
+    <div
+      className={`flex w-full flex-col gap-3 ${
+        twoColumn ? "sm:grid sm:grid-cols-2" : ""
+      } ${className}`}
+    >
       <section
         id="doctor-written-feedback"
         className="scroll-mt-24 w-full rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm"

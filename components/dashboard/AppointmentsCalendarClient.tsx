@@ -597,27 +597,6 @@ export default function AppointmentsCalendarClient({
     setSelectedYmd(localYmd(new Date()));
   }, []);
 
-  const upcomingNext = useMemo(() => {
-    const todayYmd = localYmd(new Date());
-    return appointmentCalendarEvents
-      .filter(
-        (e) =>
-          !e.cancelled &&
-          !e.completed &&
-          e.eventDateYmd >= todayYmd &&
-          (e.id.startsWith("appt:") || e.id.startsWith("req:"))
-      )
-      .slice(0, 3);
-  }, [appointmentCalendarEvents]);
-
-  const selectedDayEvents = useMemo(() => {
-    try {
-      return getCellEvents(parseLocalYmd(selectedYmd), mergedCalendarEvents);
-    } catch {
-      return [] as ScheduleEventRow[];
-    }
-  }, [selectedYmd, mergedCalendarEvents]);
-
   const archiveListEvent = useCallback((eventId: string) => {
     setArchivedListIds(archiveScheduleListItem(eventId));
   }, []);
@@ -905,21 +884,6 @@ export default function AppointmentsCalendarClient({
     } finally {
       setRequestSubmitting(false);
     }
-  }
-
-  function openRequestModalForDate(cellYmd: string | null) {
-    if (!cellYmd) return;
-    setRequestYmd(cellYmd);
-    setReqCalMonth(parseLocalYmd(cellYmd));
-    setRequestIssue("Skin concern");
-    setRequestDaysAffected("");
-    setRequestTimes("");
-    setRequestVisitNotes("");
-    setRequestSelectedWindows([]);
-    setRequestAttachments([]);
-    setRequestError(null);
-    setSheetRelayNotice(null);
-    setRequestModalOpen(true);
   }
 
   function renderScheduleEventCard(
@@ -1372,123 +1336,10 @@ export default function AppointmentsCalendarClient({
             </span>
           </div>
 
-          {/* Selected day details */}
-          <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F8FAF8] px-3 py-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">
-                {selectedYmd === localYmd(new Date())
-                  ? "Today"
-                  : (() => {
-                      try {
-                        return format(parseLocalYmd(selectedYmd), "EEE, MMM d");
-                      } catch {
-                        return selectedYmd;
-                      }
-                    })()}
-              </p>
-              <button
-                type="button"
-                onClick={() => openRequestModalForDate(selectedYmd)}
-                className="text-[11px] font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
-              >
-                Request visit this day
-              </button>
-            </div>
-            {selectedDayEvents.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F8F7F5] px-3 py-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#9CA3AF]">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" /></svg>
-                </span>
-                <p className="text-xs text-[#6B7280]">No appointments — <span className="font-semibold text-[#2C3E6B]">free day</span></p>
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {selectedDayEvents.map((event) => {
-                  const pending = event.id.startsWith("req:");
-                  const cancelled = event.cancelled === true;
-                  const done = event.completed;
-                  const statusLabel = cancelled
-                    ? "Cancelled"
-                    : pending
-                      ? "Requested"
-                      : done
-                        ? "Completed"
-                        : "Booked";
-                  const statusCls = cancelled
-                    ? "bg-zinc-100 text-zinc-600"
-                    : pending
-                      ? "bg-amber-100 text-amber-900"
-                      : done
-                        ? "bg-sky-100 text-sky-900"
-                        : "bg-emerald-100 text-emerald-900";
-                  const timeLabel =
-                    formatEventTimeChip(
-                      event.eventTimeHm,
-                      event.eventSlotEndTimeHm
-                    ) || "All day";
-                  return (
-                    <li
-                      key={event.id}
-                      className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-semibold tabular-nums text-[#6B7280]">
-                          {timeLabel}
-                        </span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusCls}`}
-                        >
-                          {statusLabel}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-[#18181b]">
-                        {event.appointmentType?.trim() || event.title}
-                      </p>
-                      {event.doctorName?.trim() ? (
-                        <p className="mt-0.5 text-[12px] text-[#6B7280]">
-                          {patientDoctorLabel(event.doctorName)}
-                        </p>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          {/* Compact upcoming list */}
-          <div className="mt-3 border-t border-[#E5E7EB] pt-3">
-            <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-[#6B7280]">
-              Upcoming
-            </p>
-            {upcomingNext.length === 0 ? (
-              <p className="text-sm text-[#6B7280]">No upcoming appointments</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {upcomingNext.map((e) => (
-                  <li key={e.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedYmd(e.eventDateYmd);
-                        setView("month");
-                        setCurrentDate(parseLocalYmd(e.eventDateYmd));
-                      }}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-[#F5F3EF]"
-                    >
-                      <span className="min-w-0 truncate text-sm font-semibold text-[#18181b]">
-                        {e.appointmentType?.trim() || e.title}
-                      </span>
-                      <span className="shrink-0 text-[11px] font-medium tabular-nums text-[#6B7280]">
-                        {format(parseLocalYmd(e.eventDateYmd), "MMM d")}
-                        {e.eventTimeHm ? ` Â· ${e.eventTimeHm}` : ""}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {/* Doctor's Feedback + Voice Notes — fills the space the old
+              "selected day" / "upcoming" recap used to take, since that
+              info already duplicates the calendar grid above. */}
+          {doctorUpdatesSlot ? <div className="mt-3">{doctorUpdatesSlot}</div> : null}
         </section>
 
         {/* Right sidebar */}
@@ -1581,8 +1432,6 @@ export default function AppointmentsCalendarClient({
               </div>
             </div>
           </section>
-
-          {doctorUpdatesSlot}
 
           {latestVisit ? (
             <section className="rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">

@@ -956,6 +956,7 @@ export function PatientDashboardDesktop({
                     doctorVoiceNoteIsNew={data.doctorVoiceNoteIsNew}
                     onboardingComplete={data.onboardingComplete}
                     onRefresh={() => void loadHome()}
+                    twoColumn
                   />
                 ),
               }
