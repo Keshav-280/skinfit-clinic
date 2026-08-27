@@ -30,8 +30,7 @@ import type {
   WrinkleLine,
 } from "@/src/lib/scanDetectionRegions";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
-import { patientClarityToGrade, patientDisplayClarity, patientParamGaugeLabel, patientScoreView } from "@/src/lib/clarityGrade";
-import { ClinicScoreUnlockCta } from "./ClinicScoreUnlockCta";
+import { patientDisplayClarity, scoreOutOfTen } from "@/src/lib/clarityGrade";
 import {
   SCAN_REPORT_PDF_BG,
   SCAN_REPORT_PDF_PAGE_BG,
@@ -352,9 +351,7 @@ export function SkinScanReportBody({
   const showTracker = tracker != null;
 
   const overall = clamp(metrics.overall_score);
-  const overallView = patientScoreView(overall, scoresUnlocked);
-  const paramLabel = (raw: number) => patientScoreView(raw, scoresUnlocked).label;
-  const gaugeCenter = (raw: number) => patientParamGaugeLabel(raw, scoresUnlocked);
+  const paramLabel = (raw: number) => `${scoreOutOfTen(raw)}/10`;
   const lastScanLabel = formatDistanceToNow(scanDate, { addSuffix: true });
   const wrinkleUrl = wrinkleMaskUrl?.trim() || "";
   const acneUrl = acneMaskUrl?.trim() || "";
@@ -373,9 +370,7 @@ export function SkinScanReportBody({
 
   const heroIntro =
     formattedSummary ||
-    (scoresUnlocked
-      ? `Your latest scan shows an overall score of ${overallView.label}. Detailed parameters and photo markers are below.`
-      : `Your latest scan shows an overall grade of ${overallView.label}. Visit the clinic for a free analysis to unlock your exact score.`);
+    `Your latest scan shows an overall score of ${scoreOutOfTen(overall)}/10. Detailed parameters and photo markers are below.`;
 
   const resolvedPhotos = useMemo(() => {
     if (faceCaptureGallery && faceCaptureGallery.length > 0) {
@@ -663,11 +658,6 @@ export function SkinScanReportBody({
             });
           }}
         />
-        {!scoresUnlocked ? (
-          <div className="px-4 pb-4">
-            <ClinicScoreUnlockCta compact />
-          </div>
-        ) : null}
       </div>
 
     <div
@@ -912,8 +902,8 @@ export function SkinScanReportBody({
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                 {eightClinicalDonuts
-                  ? "FaceAnalyzer v13 — six parameters (grades A–E · A is best)"
-                  : "AI model summary (grades A–E · A is best)"}
+                  ? "FaceAnalyzer v13 — six parameters (scored out of 10)"
+                  : "AI model summary (scored out of 10)"}
               </p>
               {eightClinicalDonuts ? (
                 <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:gap-2.5 md:mx-auto md:max-w-[540px] md:grid-cols-3 md:gap-3">
@@ -1025,7 +1015,7 @@ export function SkinScanReportBody({
                 className="mx-auto mt-8 w-full max-w-xl break-inside-avoid"
               >
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  FaceAnalyzer v13 — eight clinical axes (grades A–E)
+                  FaceAnalyzer v13 — eight clinical axes (scored out of 10)
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {CLINICAL_ROWS.map(({ key, label }) => {
@@ -1081,7 +1071,7 @@ export function SkinScanReportBody({
                       className={`${serif.className} mt-1 max-w-full text-[2.25rem] font-medium leading-none tracking-[-0.03em] sm:text-[2.75rem] md:text-[3.25rem]`}
                       style={{ color: T.peach }}
                     >
-                      {overallView.label}
+                      {scoreOutOfTen(overall)}/10
                     </p>
                     <p className="mt-2 text-[12px] font-medium text-zinc-500">
                       Last scan: {lastScanLabel}

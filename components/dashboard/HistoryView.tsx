@@ -19,7 +19,7 @@ import {
 } from "@/src/lib/patientVisit";
 import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
-import { patientClarityToGrade, patientScoreView } from "@/src/lib/clarityGrade";
+import { scoreOutOfTen } from "@/src/lib/clarityGrade";
 import {
   patientGlassShell,
   patientInnerCard,
@@ -223,10 +223,8 @@ export function HistoryView({
   reportVoiceNotes,
   reportVoiceNotesArchived = [],
   patient,
-  scoresUnlocked = false,
 }: HistoryViewProps) {
-  const scoreLabel = (raw: number) =>
-    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
+  const scoreLabel = (raw: number) => `${scoreOutOfTen(raw)}/10`;
   const router = useRouter();
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);

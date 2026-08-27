@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Download, Minus } from "lucide-react";
-import { patientKaiScoreView, patientScoreView } from "@/src/lib/clarityGrade";
+import { classifySkinParamMetric, scoreOutOfTen } from "@/src/lib/clarityGrade";
 import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
 import { trackerParamRowDisplayDelta } from "@/src/lib/trackerDisplayDelta";
@@ -149,28 +149,24 @@ function WrinkleMaskFallback({
 function insightLine(
   id: Exclude<ConcernChipId, "all">,
   score: number | null,
-  scoresUnlocked: boolean,
   tracker: PatientTrackerReport | null | undefined
 ): string {
   const row = tracker?.paramRows?.find((r) =>
     CONCERN_META.find((m) => m.id === id)?.paramKeys.includes(r.key)
   );
-  const view =
-    score != null ? patientScoreView(score, scoresUnlocked) : null;
   const delta =
     row && tracker
       ? trackerParamRowDisplayDelta(tracker, row)
       : row?.delta ?? null;
 
-  if (view && delta != null && Math.abs(delta) >= 1) {
+  if (score != null && delta != null && Math.abs(delta) >= 1) {
     const dir = delta > 0 ? "up" : "down";
-    return scoresUnlocked
-      ? `${view.label} this scan — ${dir === "up" ? "+" : ""}${delta} vs last. Keep focusing here.`
-      : `Grade ${view.label} — trending ${dir === "up" ? "better" : "softer"} vs last scan.`;
+    return `${scoreOutOfTen(score)}/10 this scan — ${dir === "up" ? "+" : ""}${delta} vs last. Keep focusing here.`;
   }
-  if (view) {
+  if (score != null) {
+    const sublabel = classifySkinParamMetric(score).sublabel;
     const label = CONCERN_META.find((m) => m.id === id)?.label ?? id;
-    return `${view.sublabel}: ${label} is a priority focus this week.`;
+    return `${sublabel}: ${label} is a priority focus this week.`;
   }
   return "Tap to focus this concern on your scan photo.";
 }
@@ -214,7 +210,6 @@ export function ScanViewer({
   spotAnnotatedUrl,
   maskExportVersion,
   spatialOutputs,
-  scoresUnlocked = false,
   scanId,
   tracker,
   reportMode = "scroll",
@@ -238,7 +233,6 @@ export function ScanViewer({
   }, [faceCaptureGallery, imageUrl]);
 
   const overall = Math.round(metrics.overall_score);
-  const kaiView = patientKaiScoreView(overall, scoresUnlocked);
   const weeklyDelta = tracker?.scores.weeklyDelta ?? null;
 
   const chips: ConcernChipItem[] = useMemo(() => {
@@ -255,17 +249,16 @@ export function ScanViewer({
         if (typeof m === "number") raw = m;
       }
       if (raw == null) return [];
-      const view = patientScoreView(raw, scoresUnlocked);
       return [
         {
           id: meta.id,
           label: meta.label,
           score: raw,
-          scoreLabel: view.label,
+          scoreLabel: `${scoreOutOfTen(raw)}/10`,
         },
       ];
     });
-  }, [metrics, scoresUnlocked, tracker]);
+  }, [metrics, tracker]);
 
   const selectedMeta =
     activeConcern === "all"
@@ -313,9 +306,7 @@ export function ScanViewer({
   }
 
   function handleWhatsAppShare() {
-    const scoreBit = scoresUnlocked
-      ? `kAI score ${kaiView.kaiPrimary}`
-      : `kAI grade ${kaiView.kaiPrimary}`;
+    const scoreBit = `kAI score ${scoreOutOfTen(overall)}/10`;
     const text = `My SkinFit Wellness scan — ${scoreBit}. Track your skin with AI at SkinFit.`;
     const url =
       typeof scanId === "number" && scanId > 0 && typeof window !== "undefined"
@@ -445,7 +436,8 @@ export function ScanViewer({
             kAI
           </p>
           <p className="text-lg font-extrabold tabular-nums leading-none text-white">
-            {kaiView.kaiPrimary}
+            {scoreOutOfTen(overall)}
+            <span className="text-[10px] font-bold opacity-70">/10</span>
           </p>
           {weeklyDelta != null && Math.abs(weeklyDelta) >= 1 ? (
             <span className="mt-1 inline-flex items-center text-white/90">
@@ -514,7 +506,7 @@ export function ScanViewer({
                   </p>
                   <p className="text-sm font-extrabold tabular-nums text-[#1E3264]">
                     {selectedChip.scoreLabel}
-                    {selectedDelta != null && scoresUnlocked ? (
+                    {selectedDelta != null ? (
                       <span className="ml-1.5 text-xs font-semibold text-[#6B7280]">
                         {selectedDelta > 0 ? "+" : ""}
                         {selectedDelta}
@@ -523,12 +515,7 @@ export function ScanViewer({
                   </p>
                 </div>
                 <p className="mt-1.5 text-sm leading-snug text-zinc-600">
-                  {insightLine(
-                    selectedMeta.id,
-                    selectedChip.score,
-                    scoresUnlocked,
-                    tracker
-                  )}
+                  {insightLine(selectedMeta.id, selectedChip.score, tracker)}
                 </p>
               </motion.div>
             ) : null}

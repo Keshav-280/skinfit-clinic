@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  CLARITY_GRADES_ASCENDING,
-  patientChartDisplayValue,
-  patientClarityToGrade,
-} from "@/src/lib/clarityGrade";
+import { patientChartDisplayValue, scoreOutOfTen } from "@/src/lib/clarityGrade";
 
 function valueForBar(n: number | null) {
   if (typeof n !== "number") return 0;
@@ -13,41 +9,12 @@ function valueForBar(n: number | null) {
 
 type Props = {
   value: number | null;
-  scoresUnlocked: boolean;
+  /** @deprecated scores are never locked anymore — kept for caller compatibility. */
+  scoresUnlocked?: boolean;
   className?: string;
 };
 
-export function ParamScoreBar({ value, scoresUnlocked, className = "" }: Props) {
-  if (!scoresUnlocked) {
-    const active =
-      typeof value === "number" ? patientClarityToGrade(value) : null;
-    return (
-      <div
-        className={`flex h-7 w-full max-w-[120px] items-center justify-between rounded-full bg-[rgba(44,62,107,0.1)] px-1 ${className}`}
-        role="img"
-        aria-label={
-          active ? `Grade ${active} (locked overview)` : "Grade checkpoints"
-        }
-      >
-        {CLARITY_GRADES_ASCENDING.map((grade) => {
-          const on = grade === active;
-          return (
-            <span
-              key={grade}
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-extrabold leading-none ${
-                on
-                  ? "bg-[#2C3E6B] text-white shadow-sm"
-                  : "bg-transparent text-zinc-400"
-              }`}
-            >
-              {grade}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
-
+export function ParamScoreBar({ value, className = "" }: Props) {
   const displayScore =
     typeof value === "number" ? patientChartDisplayValue(value, true) : null;
   const width = displayScore !== null ? valueForBar(displayScore) : 0;
@@ -60,8 +27,8 @@ export function ParamScoreBar({ value, scoresUnlocked, className = "" }: Props) 
           style={{ width: `${width}%` }}
         />
       </div>
-      <span className="min-w-[20px] text-right text-[11px] font-semibold tabular-nums text-[#2C3E6B]">
-        {displayScore !== null ? Math.round(displayScore) : "–"}
+      <span className="min-w-[28px] text-right text-[11px] font-semibold tabular-nums text-[#2C3E6B]">
+        {typeof value === "number" ? `${scoreOutOfTen(value)}/10` : "–"}
       </span>
     </div>
   );

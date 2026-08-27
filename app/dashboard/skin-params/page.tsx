@@ -12,12 +12,10 @@ import {
   classifySkinParamMetric,
   patientClarityToGrade,
   patientChartDisplayValue,
-  patientParamGaugeLabel,
-  patientScoreView,
   PATIENT_DISPLAY_SCORE_MAX,
+  scoreOutOfTen,
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
-import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
 
 interface SkinParam {
@@ -108,12 +106,10 @@ function MiniLineChart({
   data,
   color,
   paramName,
-  scoresUnlocked = false,
 }: {
   data: { value: number; date: string }[];
   color: string;
   paramName: string;
-  scoresUnlocked?: boolean;
 }) {
   const chartW = 200;
   const chartH = 44;
@@ -133,13 +129,12 @@ function MiniLineChart({
     rawValues = data.map((d) => d.value);
   }
 
-  const displayValues = rawValues.map((v) => patientChartDisplayValue(v, scoresUnlocked));
+  const displayValues = rawValues.map((v) => patientChartDisplayValue(v, true));
   const minV = 0;
   const maxV = PATIENT_DISPLAY_SCORE_MAX;
   const range = maxV - minV;
 
-  const pointLabel = (raw: number) =>
-    scoresUnlocked ? patientScoreView(raw, true).label : patientClarityToGrade(raw);
+  const pointLabel = (raw: number) => `${scoreOutOfTen(raw)}/10`;
 
   const points = displayValues.map((v, i) => {
     const x = padX + (i / (displayValues.length - 1)) * innerW;
@@ -213,12 +208,10 @@ function MiniLineChart({
 
 function TrendIndicator({
   history,
-  scoresUnlocked,
 }: {
   history: { value: number }[];
-  scoresUnlocked: boolean;
 }) {
-  const label = (v: number) => patientScoreView(v, scoresUnlocked).label;
+  const label = (v: number) => `${scoreOutOfTen(v)}/10`;
   if (history.length === 0) {
     return <span className="text-[11px] font-medium text-[#6B7280]">—</span>;
   }
@@ -259,21 +252,14 @@ function TrendIndicator({
   );
 }
 
-function ParamCard({
-  param,
-  scoresUnlocked,
-}: {
-  param: SkinParam;
-  scoresUnlocked: boolean;
-}) {
-  const { label, color, bg, text, grade, displayScore } = statusInfo(param.value);
-  const gradeHint = grade;
+function ParamCard({ param }: { param: SkinParam }) {
+  const { label, color, bg, text, displayScore } = statusInfo(param.value);
   const href = scoreDetailHref(param.name);
 
   const body = (
     <>
       <div className="w-full">
-        <MiniLineChart data={param.history} color={color} paramName={param.name} scoresUnlocked={scoresUnlocked} />
+        <MiniLineChart data={param.history} color={color} paramName={param.name} />
       </div>
       <span className="inline-flex items-center gap-0.5 text-sm font-semibold text-[#2C3E6B] underline-offset-2 group-hover:underline">
         {param.name}
@@ -282,13 +268,13 @@ function ParamCard({
       <ProgressRing
         value={displayScore}
         color={color}
-        displayLabel={patientParamGaugeLabel(param.value, scoresUnlocked)}
+        displayLabel={`${scoreOutOfTen(param.value)}/10`}
       />
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${bg} ${text}`}>
-          {scoresUnlocked ? label : gradeHint}
+          {label}
         </span>
-        <TrendIndicator history={param.history} scoresUnlocked={scoresUnlocked} />
+        <TrendIndicator history={param.history} />
       </div>
     </>
   );
@@ -315,7 +301,6 @@ export default function SkinParamsPage() {
   const [loading, setLoading] = useState(true);
   const [parameters, setParameters] = useState<SkinParam[]>([]);
   const [lastScanDate, setLastScanDate] = useState<string | null>(null);
-  const [scoresUnlocked, setScoresUnlocked] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -323,7 +308,6 @@ export default function SkinParamsPage() {
         const res = await fetch("/api/patient/home", { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json();
-        setScoresUnlocked(Boolean(data.scoresUnlocked));
         const history = data.skinScanHistory as { analysisResults: unknown; createdAt: string }[] | undefined;
         if (history && history.length > 0) {
           setParameters(extractAllParams(history));
@@ -374,12 +358,10 @@ export default function SkinParamsPage() {
         <h1 className="text-xl font-bold text-[#2C3E6B]">Skin Parameters</h1>
       </div>
 
-      {!scoresUnlocked ? <ClinicScoreUnlockCta className="mb-6" compact /> : null}
-
       {/* Parameter grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {parameters.map((param) => (
-          <ParamCard key={param.name} param={param} scoresUnlocked={scoresUnlocked} />
+          <ParamCard key={param.name} param={param} />
         ))}
       </div>
 

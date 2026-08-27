@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { patientKaiScoreView, patientClarityToGrade } from "@/src/lib/clarityGrade";
+import { scoreOutOfTen } from "@/src/lib/clarityGrade";
 import {
   lockedWeeklyTrendAria,
   weeklyTrendDirection,
@@ -197,7 +197,6 @@ export function TrackerReportSections({
   emailBusy?: boolean;
 }) {
   const presented = presentTrackerReportNarrative(report, scoresUnlocked);
-  const kaiView = patientKaiScoreView(report.scores.kaiScore, scoresUnlocked);
   const weeklyDelta = trackerWeeklyDeltaDisplay(report);
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";
   const focusActions = isOnboardingBaseline
@@ -225,15 +224,9 @@ export function TrackerReportSections({
     presented.hookSentence,
     presented.insightText
   );
-  const paramsSummary = summarizeParamsCard(
-    report,
-    visibleParamRows,
-    scoresUnlocked
-  );
+  const paramsSummary = summarizeParamsCard(report, visibleParamRows, true);
 
-  const scoreLabel = scoresUnlocked
-    ? kaiView.kaiPrimary
-    : patientClarityToGrade(report.scores.kaiScore);
+  const scoreLabel = `${scoreOutOfTen(report.scores.kaiScore)}/10`;
 
   function handleWhatsAppShare() {
     const link =
@@ -265,7 +258,7 @@ export function TrackerReportSections({
         <div className="mt-3 grid grid-cols-3 gap-2">
           <div className={statCell}>
             <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">
-              {scoresUnlocked ? "kAI score" : "kAI grade"}
+              kAI score
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
               {scoreLabel}
@@ -278,7 +271,7 @@ export function TrackerReportSections({
             <div className="mt-1 flex justify-center">
               <WeeklyDeltaDisplay
                 delta={weeklyDelta}
-                scoresUnlocked={scoresUnlocked}
+                scoresUnlocked
                 className="h-5 w-5"
               />
             </div>
@@ -519,12 +512,12 @@ export function TrackerReportSections({
               <span className="font-medium text-zinc-700">{row.label}</span>
               <ParamScoreBar
                 value={typeof row.value === "number" ? row.value : null}
-                scoresUnlocked={scoresUnlocked}
+                scoresUnlocked
               />
               <span className="flex justify-end">
                 <WeeklyDeltaDisplay
                   delta={trackerParamRowDisplayDelta(report, row)}
-                  scoresUnlocked={scoresUnlocked}
+                  scoresUnlocked
                 />
               </span>
             </div>

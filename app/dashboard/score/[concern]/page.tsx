@@ -12,10 +12,7 @@ import {
 import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
-import {
-  classifySkinParamMetric,
-  patientClarityToGrade,
-} from "@/src/lib/clarityGrade";
+import { classifySkinParamMetric, scoreOutOfTen } from "@/src/lib/clarityGrade";
 import { presentTrackerReportNarrative } from "@/src/lib/patientTrackerLockedCopy";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import {
@@ -25,22 +22,15 @@ import {
   type SkinConcernSlug,
 } from "@/src/lib/skinConcernSlug";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
-import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 
 type PageProps = {
   params: Promise<{ concern: string }>;
 };
 
-function gradePillClass(grade: string): string {
-  switch (grade) {
-    case "A":
-    case "B":
-      return "bg-green-100 text-green-800 border-green-200";
-    case "C":
-      return "bg-amber-100 text-amber-800 border-amber-200";
-    default:
-      return "bg-red-100 text-red-800 border-red-200";
-  }
+function scorePillClass(score: number): string {
+  if (score >= 7) return "bg-green-100 text-green-800 border-green-200";
+  if (score >= 4) return "bg-amber-100 text-amber-800 border-amber-200";
+  return "bg-red-100 text-red-800 border-red-200";
 }
 
 function valueForConcern(
@@ -99,10 +89,9 @@ export default async function ScoreConcernPage({ params }: PageProps) {
 
   const gradeInfo =
     currentValue != null ? classifySkinParamMetric(currentValue) : null;
-  const gradeLetter =
-    currentValue != null ? patientClarityToGrade(currentValue) : null;
+  const scoreValue = currentValue != null ? scoreOutOfTen(currentValue) : null;
 
-  let tracker = latestScan
+  const tracker = latestScan
     ? await loadScanTrackerReport(
         userId,
         latestScan.id,
@@ -157,11 +146,11 @@ export default async function ScoreConcernPage({ params }: PageProps) {
         <h1 className="text-2xl font-extrabold tracking-tight text-[#18181b] md:text-[28px]">
           {displayName}
         </h1>
-        {gradeLetter && gradeInfo ? (
+        {scoreValue != null && gradeInfo ? (
           <span
-            className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-bold ${gradePillClass(gradeLetter)}`}
+            className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-bold ${scorePillClass(scoreValue)}`}
           >
-            Grade {gradeLetter}
+            {scoreValue}/10
             <span className="ml-1.5 font-semibold opacity-80">
               · {gradeInfo.sublabel}
             </span>
@@ -170,8 +159,6 @@ export default async function ScoreConcernPage({ params }: PageProps) {
           <span className="text-sm text-[#6B7280]">No score yet</span>
         )}
       </div>
-
-      {!scoresUnlocked ? <ClinicScoreUnlockCta compact /> : null}
 
       <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
