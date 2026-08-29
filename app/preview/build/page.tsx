@@ -9,7 +9,10 @@ import { useEffect, useState } from "react";
 import { Activity, Bell, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { SkinDNACard } from "@/components/dashboard/SkinDNACard";
-import { TopArticlesSection } from "@/components/dashboard/PatientDashboardDesktop";
+import {
+  TopArticlesSection,
+  RecommendedVideosSection,
+} from "@/components/dashboard/PatientDashboardDesktop";
 import { DASHBOARD_SECTION_CARD } from "@/components/dashboard/DashboardSectionHeader";
 import { PatientPortalBrandLogo } from "@/components/dashboard/PatientPortalBrandLogo";
 import { AvatarIcon } from "@/components/dashboard/SkinDNACard";
@@ -135,12 +138,9 @@ export default function BuildPreviewPage() {
 
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:px-6">
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Preview only — mock data, no login. The nav profile badge above is
-          a hardcoded stand-in (60% complete) showing what it looks like
-          filled — the real one needs a login session to fetch your actual
-          photo/completion %. Try <code>?gender=female</code> in the URL to
-          see the other avatar. Scroll down to see the sticky-behind-card
-          effect.
+          Preview only — mock Build page, no login. Articles and videos sit
+          on the page background (no outer boxes). Try{" "}
+          <code>?gender=female</code> for the other avatar.
         </p>
 
         {/* 1. Greeting + date strip — sticks below the nav */}
@@ -192,6 +192,7 @@ export default function BuildPreviewPage() {
           <FillerSection title="Doctor's Feedback" />
           <FillerSection title="Calendar" />
           <TopArticlesSection />
+          <RecommendedVideosSection />
           <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#6B7280]">
               <Activity className="h-3.5 w-3.5" />

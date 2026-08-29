@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
+import { REPORT_CARD, REPORT_PILL } from "./reportCopy";
 
 type ThenNowCompareProps = {
   previousImage: { url: string; date: string };
@@ -21,7 +22,7 @@ function clampPct(n: number): number {
 export function ThenNowCompare({
   previousImage,
   currentImage,
-  caption = "Both captures passed quality checks, so this comparison is reliable.",
+  caption = "Slide to compare. Both captures passed quality checks.",
 }: ThenNowCompareProps) {
   const [position, setPosition] = useState(50);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -71,11 +72,10 @@ export function ThenNowCompare({
   }, []);
 
   return (
-    <section className="border-b border-kai-rule px-6 py-[26px]">
-      <div className="mb-[15px] flex items-baseline justify-between">
-        <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.15em] text-kai-ink-3">
-          Then / now
-        </h2>
+    <section className={`${REPORT_CARD} px-3.5 py-4`}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className={REPORT_PILL}>Then / now</span>
+        <span className="text-[11px] font-medium text-[#8B93A4]">Slide</span>
       </div>
       <div
         ref={frameRef}
@@ -90,9 +90,8 @@ export function ThenNowCompare({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onKeyDown={onKeyDown}
-        className="relative mb-3 aspect-[16/11] cursor-ew-resize touch-none select-none overflow-hidden rounded-[14px] bg-kai-sage-2"
+        className="relative mb-2.5 aspect-[4/5] cursor-ew-resize touch-none select-none overflow-hidden rounded-[18px] bg-[#EDE6F7]"
       >
-        {/* Then — full frame underneath */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={previousImage.url}
@@ -100,11 +99,10 @@ export function ThenNowCompare({
           draggable={false}
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         />
-        <span className="pointer-events-none absolute bottom-2.5 left-2.5 z-[2] rounded bg-black/45 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white">
+        <span className="pointer-events-none absolute bottom-2.5 left-2.5 z-[2] rounded-full bg-black/45 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white">
           {previousImage.date}
         </span>
 
-        {/* Now — clipped from the divider to the right edge */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{ clipPath: `inset(0 0 0 ${position}%)` }}
@@ -116,7 +114,7 @@ export function ThenNowCompare({
             draggable={false}
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <span className="absolute bottom-2.5 right-2.5 rounded bg-black/45 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white">
+          <span className="absolute bottom-2.5 right-2.5 rounded-full bg-black/45 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white">
             {currentImage.date}
           </span>
         </div>
@@ -127,7 +125,7 @@ export function ThenNowCompare({
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute top-1/2 z-[4] flex h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-kai-navy shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+          className="pointer-events-none absolute top-1/2 z-[4] flex h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#2C3E6B] shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
           style={{ left: `${position}%` }}
           aria-hidden
         >
@@ -136,7 +134,7 @@ export function ThenNowCompare({
           </span>
         </div>
       </div>
-      <p className="text-[11.5px] leading-[1.45] text-kai-ink-3">{caption}</p>
+      <p className="text-[11.5px] leading-[1.45] text-[#8B93A4]">{caption}</p>
     </section>
   );
 }

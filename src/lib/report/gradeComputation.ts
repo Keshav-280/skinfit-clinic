@@ -1,26 +1,23 @@
 /**
  * kAI report grade + movement helpers (Update Report).
- * Position 0–100 drives the Position Bar only — never shown as a number.
+ * Position 0–100 drives the Position Bar; patients see 0–10.
  */
+
+import { scoreOutOfTen } from "@/src/lib/clarityGrade";
 
 export type MovementKind = "improved" | "holding" | "declined";
 
 export type HeroMovementType = "improving" | "flat" | "declining";
 
-/** Map overall kAI score (0–100) to letter grade + Position Bar position. */
-export function scoreToGrade(score: number): { letter: string; position: number } {
+/** Map overall kAI score (0–100) to 0–10 display + Position Bar position. */
+export function scoreToGrade(score: number): {
+  letter: string;
+  position: number;
+  score10: number;
+} {
   const position = Math.max(0, Math.min(100, Math.round(score)));
-  let letter: string;
-  if (score >= 90) letter = "A";
-  else if (score >= 80) letter = "A-";
-  else if (score >= 70) letter = "B+";
-  else if (score >= 62) letter = "B";
-  else if (score >= 55) letter = "B-";
-  else if (score >= 48) letter = "C+";
-  else if (score >= 40) letter = "C";
-  else if (score >= 30) letter = "D+";
-  else letter = "D";
-  return { letter, position };
+  const score10 = scoreOutOfTen(score);
+  return { letter: String(score10), position, score10 };
 }
 
 /** Map severity (1–5, higher = worse) to sub-grade. */
@@ -60,20 +57,22 @@ export function movementToHeroBadge(
 }
 
 export function subtitleFromGrades(
-  currentLetter: string,
-  previousLetter: string,
+  current: string,
+  previous: string,
   kind: MovementKind
 ): string {
+  const cur = /\/10$/.test(current) ? current : `${current}/10`;
+  const prev = /\/10$/.test(previous) ? previous : `${previous}/10`;
   if (kind === "improved") {
-    return `Up from ${previousLetter} last week`;
+    return `Up from ${prev} last week`;
   }
   if (kind === "declined") {
-    return `Down from ${previousLetter} last week`;
+    return `Down from ${prev} last week`;
   }
-  if (currentLetter === previousLetter) {
-    return `Holding at ${currentLetter}`;
+  if (current === previous) {
+    return `Holding at ${cur}`;
   }
-  return `From ${previousLetter} last week`;
+  return `From ${prev} last week`;
 }
 
 /** Minimum days since first scan before movement can be claimed. */

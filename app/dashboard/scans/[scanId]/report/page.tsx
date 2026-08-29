@@ -301,7 +301,7 @@ export default async function KaiScanReportPage({
         grades: Object.fromEntries(
           paramRows.map((p) => [
             p.key,
-            { letter: p.grade, severity: p.severity },
+            { score_10: p.score10, severity: p.severity },
           ])
         ),
         overall: gradeInfo,
@@ -334,7 +334,7 @@ export default async function KaiScanReportPage({
     }
 
     const markerCount = Math.max(parameters.length, 1);
-    const grade = llm?.overall?.letter?.trim() || gradeInfo.letter;
+    const grade = String(gradeInfo.score10);
     const position = llm?.overall?.position ?? gradeInfo.position;
 
     return (
@@ -423,7 +423,14 @@ export default async function KaiScanReportPage({
       captured_at: row.createdAt.toISOString(),
       week_number: weekNumber,
       grades: Object.fromEntries(
-        paramRows.map((p) => [p.key, { letter: p.grade, position: Math.round(100 - ((p.severity - 1) / 4) * 100), severity: p.severity }])
+        paramRows.map((p) => [
+          p.key,
+          {
+            score_10: p.score10,
+            position: Math.round(100 - ((p.severity - 1) / 4) * 100),
+            severity: p.severity,
+          },
+        ])
       ),
       overall: gradeInfo,
     },
@@ -431,7 +438,7 @@ export default async function KaiScanReportPage({
       scan_id: String(previous.id),
       captured_at: previous.createdAt.toISOString(),
       grades: Object.fromEntries(
-        prevParamRows.map((p) => [p.key, { letter: p.grade, severity: p.severity }])
+        prevParamRows.map((p) => [p.key, { score_10: p.score10, severity: p.severity }])
       ),
       overall: prevGradeInfo,
       narrative_summary: previous.aiSummary,
@@ -480,13 +487,12 @@ export default async function KaiScanReportPage({
     llmFindings,
   });
 
-  const letter = llm?.overall?.letter?.trim() || gradeInfo.letter;
+  const score10 = String(gradeInfo.score10);
   const position = {
     current: llm?.overall?.position ?? gradeInfo.position,
     previous: llm?.overall?.previous_position ?? prevGradeInfo.position,
   };
-  const prevLetter =
-    llm?.overall?.previous_letter?.trim() || prevGradeInfo.letter;
+  const prevScore10 = String(prevGradeInfo.score10);
   const mvKind =
     (llm?.overall?.movement as typeof overallMv | undefined) &&
     ["improved", "holding", "declined"].includes(String(llm?.overall?.movement))
@@ -496,9 +502,9 @@ export default async function KaiScanReportPage({
   const topConcern = pickTopConcernName(paramRows);
   const headline =
     llm?.overall?.headline?.trim() ||
-    defaultUpdateHeadline(letter, paramRows, mvKind);
+    defaultUpdateHeadline(score10, paramRows, mvKind);
   const badge = movementToHeroBadge(mvKind);
-  const subtitle = subtitleFromGrades(letter, prevLetter, mvKind);
+  const subtitle = subtitleFromGrades(score10, prevScore10, mvKind);
 
   const attributionCards = buildAttributionCards({
     cityWeather,
@@ -561,12 +567,12 @@ export default async function KaiScanReportPage({
 
   const shareLine =
     llm?.share_card?.line?.trim() ||
-    formatShareLine(weekNumber, letter, mvKind, topConcern);
+    formatShareLine(weekNumber, score10, mvKind, topConcern);
 
   return (
     <UpdateKaiScanReport
       scanId={row.id}
-      grade={letter}
+      grade={score10}
       headline={headline}
       metaLeft={`Week ${weekNumber} · ${streak}-week streak`}
       metaRight={format(row.createdAt, "dd MMM yyyy")}

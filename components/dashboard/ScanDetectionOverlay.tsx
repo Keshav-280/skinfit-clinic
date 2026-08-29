@@ -328,6 +328,7 @@ export function ScanDetectionOverlay({
   activeConcern = "all",
   imageWidth: _imageWidth,
   imageHeight: _imageHeight,
+  live = false,
 }: {
   regions?: DetectionRegion[];
   /** Skeleton polylines for wrinkles (CureSkin-style dashed strokes). */
@@ -337,6 +338,8 @@ export function ScanDetectionOverlay({
   activeConcern?: ConcernChipId;
   imageWidth?: number;
   imageHeight?: number;
+  /** Staggered appear + soft breathe — report cover only. */
+  live?: boolean;
 }) {
   const circles = useMemo(
     () => mergeNearbyRegions(regions, activeConcern),
@@ -388,6 +391,10 @@ export function ScanDetectionOverlay({
             from { opacity: 0; }
             to { opacity: 1; }
           }
+          @keyframes scan-marker-breathe {
+            0%, 100% { stroke-opacity: 1; }
+            50% { stroke-opacity: 0.4; }
+          }
         `}</style>
         {polylines.map((p) => (
           <polyline
@@ -435,7 +442,7 @@ export function ScanDetectionOverlay({
             />
           );
         })}
-        {circles.map((c) => (
+        {circles.map((c, i) => (
           <circle
             key={c.key}
             cx={c.cx}
@@ -450,7 +457,9 @@ export function ScanDetectionOverlay({
             style={{
               opacity: c.matches ? 1 : 0.12,
               animation: c.matches
-                ? "scan-det-pulse 400ms ease-out both"
+                ? live
+                  ? `scan-det-pulse 480ms ease-out ${i * 75}ms both, scan-marker-breathe 2.6s ease-in-out ${520 + i * 75}ms infinite`
+                  : "scan-det-pulse 400ms ease-out both"
                 : undefined,
             }}
           >

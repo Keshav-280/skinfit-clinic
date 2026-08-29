@@ -1,9 +1,20 @@
 "use client";
 
 import { PositionBar } from "./PositionBar";
+import type { KaiGradeTone } from "@/src/lib/kaiReportMapping";
+import type { ConcernChipId } from "@/components/dashboard/ConcernChips";
+import { REPORT_CARD } from "./reportCopy";
+
+type WatchChip = {
+  name: string;
+  grade: string;
+  color: KaiGradeTone;
+  id?: ConcernChipId;
+};
 
 type ReportHeroProps = {
   grade: string;
+  title?: string;
   headline: string;
   meta: { left: string; right: string };
   movementBadge?: {
@@ -12,62 +23,100 @@ type ReportHeroProps = {
   };
   positionBar: { current: number; previous?: number };
   subtitle?: string;
+  watchChips?: WatchChip[];
+  /** Cover already shows grade + title — only the scale remains. */
+  layout?: "full" | "bar";
+  onWatchChip?: (id: ConcernChipId) => void;
+};
+
+const DOT: Record<KaiGradeTone, string> = {
+  good: "bg-kai-good",
+  mid: "bg-kai-mid",
+  low: "bg-kai-low",
 };
 
 export function ReportHero({
-  grade,
+  grade: _grade,
+  title,
   headline,
   meta,
   movementBadge,
   positionBar,
   subtitle,
+  watchChips = [],
+  layout = "full",
+  onWatchChip,
 }: ReportHeroProps) {
+  const heading = title?.trim() || headline;
+
+  if (layout === "bar") {
+    return (
+      <section className={`${REPORT_CARD} px-4 py-3.5`}>
+        <PositionBar
+          currentPosition={positionBar.current}
+          previousPosition={positionBar.previous}
+          variant="light"
+        />
+        {watchChips.length > 0 ? (
+          <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide">
+            {watchChips.map((chip) => (
+              <button
+                key={chip.name}
+                type="button"
+                onClick={() => chip.id && onWatchChip?.(chip.id)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#F4F0FA] px-3 py-1.5 text-[12px] font-semibold text-[#1A2035] transition hover:bg-[#E4DFF5]"
+              >
+                <span className={`report-live-dot-on h-1.5 w-1.5 rounded-full ${DOT[chip.color]}`} />
+                {chip.name}
+                <span
+                  className="text-[13px] font-normal text-[#2C3E6B]"
+                  style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+                >
+                  {chip.grade}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   const badge =
     movementBadge ??
     ({ label: "Starting line", type: "flat" } as const);
 
   const badgeClass =
     badge.type === "improving"
-      ? "bg-[rgba(78,155,114,0.2)] text-[#8FD6AE]"
+      ? "bg-[#4E9B72]/15 text-[#2F6B4A]"
       : badge.type === "declining"
-        ? "bg-[rgba(196,105,79,0.22)] text-[#F0B4A0]"
-        : "bg-white/10 text-white/70";
+        ? "bg-[#C4694F]/15 text-[#8A3D2C]"
+        : "bg-white/80 text-[#2C3E6B]";
 
   return (
-    <section className="relative overflow-hidden bg-kai-navy-deep px-6 pb-[26px] pt-[30px] text-white">
-      <div
-        className="pointer-events-none absolute -right-[70px] -top-[70px] h-[210px] w-[210px] rounded-full bg-white/[0.032]"
-        aria-hidden
-      />
-      <div className="relative mb-5 flex justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-white/50">
+    <section className="relative px-1 pb-1 pt-1">
+      <div className="mb-4 flex justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2C3E6B]/45">
         <span>{meta.left}</span>
         <span>{meta.right}</span>
       </div>
-      <div className="relative mb-1.5 flex items-end gap-[15px]">
-        <p className="font-serif text-[104px] font-light leading-[0.8] tracking-[-0.045em]">
-          {grade}
-        </p>
-        <div className="pb-[9px]">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.04em] ${badgeClass}`}
-          >
-            {badge.label}
-          </span>
-          {subtitle ? (
-            <p className="mt-2 text-[11px] tracking-[0.02em] text-white/55">
-              {subtitle}
-            </p>
-          ) : null}
-        </div>
-      </div>
-      <h1 className="relative mb-6 mt-4 font-serif text-[19px] font-light leading-[1.32] tracking-[-0.005em] text-white/[0.93]">
-        {headline}
+      <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.03em] text-[#1A2035]">
+        {heading}
       </h1>
-      <PositionBar
-        currentPosition={positionBar.current}
-        previousPosition={positionBar.previous}
-        variant="dark"
-      />
+      {subtitle ? (
+        <p className="mt-1.5 text-[12px] font-medium text-[#5B6478]">{subtitle}</p>
+      ) : null}
+      <span
+        className={`mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.04em] ${badgeClass}`}
+      >
+        {badge.label}
+      </span>
+      <div className="mt-5 px-1">
+        <PositionBar
+          currentPosition={positionBar.current}
+          previousPosition={positionBar.previous}
+          variant="light"
+        />
+      </div>
     </section>
   );
 }

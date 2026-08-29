@@ -11,7 +11,6 @@ import { downloadKaiReportPdf } from "@/src/lib/downloadKaiReportPdf";
 type ReportShareFooterProps = {
   scanId: number;
   shareText: string;
-  /** Element to capture for PDF (the max-w-[392px] report frame). */
   reportRef: RefObject<HTMLElement | null>;
 };
 
@@ -63,40 +62,39 @@ export function ReportShareFooter({
   }, [reportRef, scanId]);
 
   return (
-    <footer
-      data-pdf-screen-only
-      className="flex flex-col gap-2.5 px-6 py-5"
-    >
-      <button
-        type="button"
-        onClick={() => void handleShare()}
-        disabled={pdfLoading}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border border-kai-rule bg-white py-3 text-[13px] font-semibold text-kai-ink disabled:opacity-50"
-      >
-        <Share2 className="h-3.5 w-3.5" aria-hidden />
-        Share result
-      </button>
-      <button
-        type="button"
-        onClick={() => void handleDownloadPdf()}
-        disabled={pdfLoading}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[11px] border border-kai-rule bg-transparent py-3 text-[13px] font-semibold text-kai-ink-2 disabled:opacity-50"
-      >
-        {pdfLoading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-        ) : (
-          <Download className="h-3.5 w-3.5" aria-hidden />
-        )}
-        {pdfLoading ? "Preparing PDF…" : "Download PDF"}
-      </button>
+    <footer data-pdf-screen-only className="flex flex-col gap-2 px-1 py-2">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => void handleShare()}
+          disabled={pdfLoading}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/75 py-3 text-[13px] font-semibold text-[#1A2035] disabled:opacity-50"
+        >
+          <Share2 className="h-3.5 w-3.5" aria-hidden />
+          Share
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleDownloadPdf()}
+          disabled={pdfLoading}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/75 py-3 text-[13px] font-semibold text-[#5B6478] disabled:opacity-50"
+        >
+          {pdfLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Download className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {pdfLoading ? "PDF…" : "PDF"}
+        </button>
+      </div>
       {shareError ? (
         <p className="text-center text-[11px] text-kai-low">{shareError}</p>
       ) : null}
       {pdfError ? (
         <p className="text-center text-[11px] text-kai-low">{pdfError}</p>
       ) : null}
-      <p className="pt-1 text-center text-[10px] tracking-[0.04em] text-kai-ink-3">
-        Share card has no face photos · PDF includes your captures
+      <p className="pt-0.5 text-center text-[10px] tracking-[0.04em] text-[#8B93A4]">
+        Share has no face photos · PDF includes captures
       </p>
     </footer>
   );

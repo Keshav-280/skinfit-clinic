@@ -1,6 +1,8 @@
+import { score10Tone, severityToScoreOutOfTen } from "@/src/lib/clarityGrade";
+
 /**
- * kAI Initial/Update report helpers — severity ↔ sub-grade, findings templates.
- * Internal 0–100 clarity is used for Position Bar only; never shown as a number.
+ * kAI Initial/Update report helpers — severity ↔ 0–10 score, findings templates.
+ * Internal 0–100 clarity drives the Position Bar; patients see 0–10.
  */
 
 export type KaiGradeTone = "good" | "mid" | "low";
@@ -41,6 +43,10 @@ export function clarityToSubGrade(clarity: number): KaiSubGrade {
 }
 
 export function subGradeTone(grade: string): KaiGradeTone {
+  const n = Number.parseFloat(grade);
+  if (Number.isFinite(n) && /^\d+(\.\d+)?$/.test(grade.trim())) {
+    return score10Tone(n);
+  }
   const g = grade.toUpperCase();
   if (g.startsWith("A")) return "good";
   if (g.startsWith("B")) return "mid";
@@ -139,17 +145,18 @@ export const REPORT_PARAMETER_META: Array<{
 
 /** Template finding until LLM findings land. */
 export function templateFinding(name: string, severity: number): string {
-  const grade = severityToSubGrade(severity);
+  const score10 = severityToScoreOutOfTen(severity);
+  const label = `${score10}/10`;
   if (severity <= 1.2) {
-    return `${name} looks clear on this capture — mapped as a clean baseline (${grade}).`;
+    return `${name} looks clear on this capture — mapped as a clean baseline (${label}).`;
   }
   if (severity <= 2.5) {
-    return `Mild ${name.toLowerCase()} signal on this scan (${grade}). We'll watch this marker week to week.`;
+    return `Mild ${name.toLowerCase()} signal on this scan (${label}). We'll watch this marker week to week.`;
   }
   if (severity <= 3.5) {
-    return `Moderate ${name.toLowerCase()} findings (${grade}). This is one of the markers to prioritise in your plan.`;
+    return `Moderate ${name.toLowerCase()} findings (${label}). This is one of the markers to prioritise in your plan.`;
   }
-  return `Notable ${name.toLowerCase()} involvement (${grade}). This will frame your first clinic conversation.`;
+  return `Notable ${name.toLowerCase()} involvement (${label}). This will frame your first clinic conversation.`;
 }
 
 export function defaultInitialActions(topConcern: string): string[] {
@@ -208,7 +215,9 @@ export type KaiReportParamRow = {
   name: string;
   shortName: string;
   severity: number;
-  grade: KaiSubGrade;
+  /** Patient-facing 0–10 score, stored as a string for display. */
+  grade: string;
+  score10: number;
   gradeColor: KaiGradeTone;
   finding: string;
   concernChipId:
@@ -273,14 +282,16 @@ export function buildKaiReportParamRows(input: {
       }
     }
     if (severity == null || !Number.isFinite(severity)) continue;
-    const grade = severityToSubGrade(severity);
+    const score10 = severityToScoreOutOfTen(severity);
+    const grade = String(score10);
     rows.push({
       key: meta.key,
       name: meta.name,
       shortName: meta.shortName,
       severity,
       grade,
-      gradeColor: subGradeTone(grade),
+      score10,
+      gradeColor: score10Tone(score10),
       finding: templateFinding(meta.name, severity),
       concernChipId: concernChipForKey(meta.key),
     });

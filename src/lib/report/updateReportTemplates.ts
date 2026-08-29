@@ -138,18 +138,19 @@ export function defaultUpdateActions(opts: {
 }
 
 export function defaultUpdateHeadline(
-  letter: string,
+  score10: string,
   rows: KaiReportParamRow[],
   movement: "improved" | "holding" | "declined"
 ): string {
   const top = pickTopConcernName(rows).toLowerCase();
+  const label = /\/10$/.test(score10) ? score10 : `${score10}/10`;
   if (movement === "improved") {
-    return `${letter} — ${top} easing, rest holding`;
+    return `${label} — ${top} easing, rest holding`;
   }
   if (movement === "declined") {
-    return `${letter} — watch ${top}, rest holding`;
+    return `${label} — watch ${top}, rest holding`;
   }
-  return `${letter} — holding steady on ${top}`;
+  return `${label} — holding steady on ${top}`;
 }
 
 export function defaultNextStep(opts: {
@@ -171,17 +172,18 @@ export function defaultNextStep(opts: {
 
 export function formatShareLine(
   weekNumber: number,
-  letter: string,
+  score10: string,
   movement: "improved" | "holding" | "declined",
   topConcern: string
 ): string {
+  const label = /\/10$/.test(score10) ? score10 : `${score10}/10`;
   const mv =
     movement === "improved"
       ? `${topConcern} improving`
       : movement === "declined"
         ? `Watch ${topConcern.toLowerCase()}`
         : "Holding steady";
-  return `Week ${weekNumber} · ${letter} · ${mv}`;
+  return `Week ${weekNumber} · ${label} · ${mv}`;
 }
 
 export function formatScanDateShort(d: Date): string {

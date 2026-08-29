@@ -3,7 +3,10 @@
 import { Lock } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import {
+  patientGradeFromDisplayScore,
+  scoreOutOfTen,
+} from "@/src/lib/clarityGrade";
 
 // Three distinct Apple-style ring colors.
 const KAI_COLOR = "#22D3EE"; // inner — cyan
@@ -194,6 +197,7 @@ export function NavyMetricsCard({
   consistencyScore,
   latestScanAt,
   scanCount = 0,
+  scoresUnlocked = false,
   light = false,
   className = "",
 }: NavyMetricsCardProps) {
@@ -254,7 +258,12 @@ export function NavyMetricsCard({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [lockedTip]);
 
-  const centerTextCls = light ? "text-[#18181b]" : "text-white";
+  const centerTextCls = light ? "text-[#2C3E6B]" : "text-white";
+  const kaiLetter = hasScan
+    ? patientGradeFromDisplayScore(kaiSkinScore)
+    : null;
+  /** Light Diagnose mock: lock + letter when clinic scores locked; numeric when unlocked. */
+  const showLockedLetterCenter = light && hasScan && !scoresUnlocked;
   const centerContent = (() => {
     if (!hasScan) {
       return (
@@ -263,6 +272,22 @@ export function NavyMetricsCard({
         >
           No scan yet — take your first AI scan
         </p>
+      );
+    }
+    if (showLockedLetterCenter && kaiLetter) {
+      return (
+        <div className="flex flex-col items-center gap-0.5">
+          <Lock
+            className="h-3.5 w-3.5 text-[#2C3E6B]/55"
+            strokeWidth={2.5}
+            aria-hidden
+          />
+          <span
+            className={`text-[28px] font-extrabold leading-none tracking-tight ${centerTextCls}`}
+          >
+            {kaiLetter}
+          </span>
+        </div>
       );
     }
     return (
@@ -302,14 +327,20 @@ export function NavyMetricsCard({
     </div>
   );
 
+  const kaiLegendValue = !hasScan
+    ? "—"
+    : !scoresUnlocked && kaiLetter
+      ? kaiLetter
+      : `${scoreOutOfTen(kaiSkinScore)}/10`;
+
   const legend = light ? (
-    <div className="flex w-full flex-col gap-2.5">
+    <div className="flex w-full flex-col gap-2.5 sm:gap-3">
       {legendRow(
         KAI_COLOR,
         "kAI Score",
-        hasScan ? `${scoreOutOfTen(kaiSkinScore)}/10` : "—",
-        false,
-        "#ECE9F8",
+        kaiLegendValue,
+        hasScan && !scoresUnlocked,
+        "#E8F4FC",
         "#2C3E6B"
       )}
       {legendRow(
@@ -317,7 +348,7 @@ export function NavyMetricsCard({
         "Consistency",
         `${Math.round(consistencyScore)}%`,
         ringsLocked,
-        `${CONSISTENCY_COLOR}1F`,
+        "#E8F8EC",
         CONSISTENCY_COLOR
       )}
       {legendRow(
@@ -325,7 +356,7 @@ export function NavyMetricsCard({
         "Progress",
         `${Math.round(Math.abs(weeklyDeltaScore))}%`,
         ringsLocked || !weeklyDeltaMeaningful,
-        `${PROGRESS_COLOR}1F`,
+        "#FCE8EF",
         PROGRESS_COLOR
       )}
     </div>

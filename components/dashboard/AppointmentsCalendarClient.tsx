@@ -1405,6 +1405,7 @@ export default function AppointmentsCalendarClient({
             <ChevronRight className="h-4 w-4 shrink-0 text-white" aria-hidden />
           </button>
 
+          {visibleListEvents.length > 0 || archivedListCount > 0 ? (
           <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
             <div className="border-b border-[#E5E7EB] bg-[#F2F9F2]/80 px-3.5 py-2.5">
               <h4 className="text-sm font-extrabold text-[#18181b]">
@@ -1417,9 +1418,7 @@ export default function AppointmentsCalendarClient({
             <div className="max-h-[280px] space-y-2 overflow-y-auto p-2.5 lg:max-h-[360px]">
               {visibleListEvents.length === 0 ? (
                 <p className="py-4 text-center text-sm text-[#6B7280]">
-                  {mergedListEvents.length > 0 && archivedListCount > 0
-                    ? `All ${view === "month" ? "month" : "week"} items are archived.`
-                    : `Nothing scheduled this ${view === "month" ? "month" : "week"}.`}
+                  All {view === "month" ? "month" : "week"} items are archived.
                 </p>
               ) : (
                 visibleListEvents.map((event) => renderScheduleEventCard(event))
@@ -1457,6 +1456,7 @@ export default function AppointmentsCalendarClient({
               ) : null}
             </div>
           </section>
+          ) : null}
 
           <section className="rounded-2xl border border-[#E5E7EB] bg-white px-3.5 py-3 shadow-sm">
             <div className="flex items-center gap-3">

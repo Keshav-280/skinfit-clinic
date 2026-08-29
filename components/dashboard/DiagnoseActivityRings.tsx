@@ -48,7 +48,7 @@ export function DiagnoseActivityRings() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[140px] items-center justify-center">
+      <div className="flex min-h-[160px] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-[#2C3E6B]" />
       </div>
     );
@@ -57,15 +57,17 @@ export function DiagnoseActivityRings() {
   if (!data) return null;
 
   return (
-    <NavyMetricsCard
-      light
-      kaiSkinScore={data.kaiSkinScore}
-      weeklyDeltaScore={data.weeklyDeltaScore}
-      weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
-      latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
-      consistencyScore={data.lifestyleAlignmentScore}
-      scoresUnlocked={data.scoresUnlocked ?? false}
-      scanCount={data.skinScanHistory.length}
-    />
+    <div className="px-0.5 pt-1">
+      <NavyMetricsCard
+        light
+        kaiSkinScore={data.kaiSkinScore}
+        weeklyDeltaScore={data.weeklyDeltaScore}
+        weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
+        latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
+        consistencyScore={data.lifestyleAlignmentScore}
+        scoresUnlocked={data.scoresUnlocked ?? false}
+        scanCount={data.skinScanHistory.length}
+      />
+    </div>
   );
 }

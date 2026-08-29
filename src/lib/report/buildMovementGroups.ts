@@ -6,10 +6,10 @@ import {
   computeMovement,
   intervalDaysForParam,
   isMovementReportable,
-  severityToSubGrade,
   TRACKING_RATIONALE,
   type MovementKind,
 } from "@/src/lib/report/gradeComputation";
+import { severityToScoreOutOfTen } from "@/src/lib/clarityGrade";
 
 export type MovementRow = {
   key: string;
@@ -98,9 +98,9 @@ export function buildMovementGroups(opts: {
     }
 
     const kind = computeMovement(curr.severity, prev.severity);
-    const prevGrade = severityToSubGrade(prev.severity);
-    const currGrade = severityToSubGrade(curr.severity);
-    const mv = arrowTag(prevGrade, currGrade, kind);
+    const prevScore = String(severityToScoreOutOfTen(prev.severity));
+    const currScore = String(severityToScoreOutOfTen(curr.severity));
+    const mv = arrowTag(prevScore, currScore, kind);
     const row: MovementRow = {
       key: curr.key,
       name: curr.name,

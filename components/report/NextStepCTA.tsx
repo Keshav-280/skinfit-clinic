@@ -14,24 +14,34 @@ export function NextStepCTA({
   secondaryAction,
 }: NextStepCTAProps) {
   return (
-    <section className="bg-kai-navy px-6 py-6 text-white">
-      <p className="mb-[9px] text-[10px] font-semibold uppercase tracking-[0.15em] text-white/50">
+    <section className="relative overflow-hidden rounded-[24px] bg-[#2C3E6B] px-5 py-5 text-white shadow-[0_22px_50px_-18px_rgba(44,62,107,0.65)]">
+      <div
+        className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -bottom-16 left-8 h-32 w-32 rounded-full bg-[#C4A056]/20"
+        aria-hidden
+      />
+      <p className="relative mb-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/50">
         Next step
       </p>
-      <h2 className="mb-[7px] font-serif text-[19px] font-light leading-[1.3] tracking-[-0.005em]">
+      <h2 className="relative mb-1.5 text-[18px] font-semibold leading-snug tracking-[-0.02em]">
         {heading}
       </h2>
-      <p className="mb-[17px] text-xs leading-[1.55] text-white/60">{body}</p>
+      <p className="relative mb-4 line-clamp-3 text-[12.5px] leading-[1.45] text-white/65">
+        {body}
+      </p>
       <Link
         href={primaryAction.href}
-        className="block rounded-[11px] bg-white py-3.5 text-center text-[13.5px] font-semibold text-kai-navy"
+        className="report-shine relative block overflow-hidden rounded-2xl bg-white py-3.5 text-center text-[14px] font-semibold text-[#2C3E6B]"
       >
         {primaryAction.label}
       </Link>
       {secondaryAction ? (
         <Link
           href={secondaryAction.href}
-          className="mt-[9px] block rounded-[11px] border border-white/30 bg-transparent py-3.5 text-center text-[13.5px] font-semibold text-white"
+          className="relative mt-2 block py-2 text-center text-[13px] font-semibold text-white/80"
         >
           {secondaryAction.label}
         </Link>

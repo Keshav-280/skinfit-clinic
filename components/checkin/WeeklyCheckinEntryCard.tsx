@@ -92,7 +92,7 @@ export function WeeklyCheckinEntryCard({
         {completed ? (
           <>
             {summary && summary.length > 0 ? (
-              <div className="mb-4 grid grid-cols-2 gap-2.5">
+              <div className="mb-4 grid grid-cols-2 gap-2.5 md:grid-cols-4">
                 {summary.map((s) => {
                   const Icon = SUMMARY_ICONS[s.label] ?? Droplet;
                   return (

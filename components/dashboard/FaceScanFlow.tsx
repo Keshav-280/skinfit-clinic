@@ -1525,30 +1525,21 @@ export function FaceScanFlow({
           <div
             className={
               isDiagnoseHero
-                ? "relative -mx-3 flex h-full min-h-0 flex-col overflow-hidden sm:-mx-4"
+                ? "relative -mx-1 flex h-full min-h-0 flex-col overflow-hidden sm:-mx-2"
                 : "space-y-5"
             }
           >
             {isDiagnoseHero ? (
               <div className="pointer-events-none absolute inset-0" aria-hidden>
-                <svg
-                  viewBox="0 0 500 40"
-                  preserveAspectRatio="none"
-                  className="block h-8 w-full text-[#ECE9F8]"
-                >
-                  <path
-                    d="M0,22 C125,44 375,-4 500,18 L500,40 L0,40 Z"
-                    fill="currentColor"
-                  />
-                </svg>
-                <div className="absolute inset-x-0 top-7 bottom-0 bg-gradient-to-b from-[#ECE9F8] via-[#E3DEF5] to-[#F5F3EF]" />
+                {/* Page-level DiagnosePageAtmosphere supplies the lavender wash;
+                    keep only soft leaves here so the CTA sits in the atmosphere. */}
                 <Leaf
-                  className="leaf-drift absolute bottom-6 left-2 h-10 w-10 text-[#8FAE86]/35"
+                  className="leaf-drift absolute bottom-8 left-1 h-12 w-12 text-[#8FAE86]/40"
                   style={{ ["--leaf-rot" as string]: "-18deg" }}
                   strokeWidth={1.25}
                 />
                 <Leaf
-                  className="leaf-drift absolute right-3 top-1/3 h-6 w-6 text-[#8FAE86]/25"
+                  className="leaf-drift absolute right-2 top-[22%] h-7 w-7 text-[#8FAE86]/30"
                   style={{
                     ["--leaf-rot" as string]: "12deg",
                     animationDelay: "1.4s",
@@ -1560,7 +1551,7 @@ export function FaceScanFlow({
             <div
               className={
                 isDiagnoseHero
-                  ? "relative z-10 flex h-full min-h-0 flex-col space-y-3 px-3 pb-3 pt-1 sm:px-4"
+                  ? "relative z-10 flex h-full min-h-0 flex-col space-y-4 px-1 pb-2 pt-2 sm:px-2"
                   : "contents"
               }
             >
@@ -1573,16 +1564,52 @@ export function FaceScanFlow({
                     : ""
               }`}
             >
-              {!isMobileDevice ? (
+              {!isMobileDevice && isDiagnoseHero ? (
+                <div className="flex h-full min-h-0 flex-col justify-end pt-8 sm:pt-10">
+                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B] shadow-sm">
+                    Recommended
+                  </span>
+                  <div className="relative mt-5 flex items-center gap-4">
+                    <div className="relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-dashed border-[#2C3E6B]/30 bg-white/40 shadow-[0_0_0_8px_rgba(255,255,255,0.45)]">
+                      <div className="camera-icon-breathe flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-12px_rgba(44,62,107,0.45)]">
+                        <Smartphone className="h-6 w-6 text-[#2C3E6B]" />
+                      </div>
+                      <Sparkles
+                        className="absolute -right-0.5 -top-0.5 h-4 w-4 text-[#2C3E6B]/45"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-extrabold tracking-tight leading-tight text-[#2C3E6B]">
+                        Scan with phone camera
+                      </h2>
+                      <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280]">
+                        On laptop, use your phone for the best face-scan quality.
+                        Scan a QR code to continue on mobile.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeviceUpload(false);
+                      setStep("phone-qr");
+                    }}
+                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(44,62,107,0.6)] transition-colors hover:bg-[#354A7A]"
+                  >
+                    Start on phone
+                    <Smartphone className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : !isMobileDevice ? (
                 <button
                   type="button"
                   onClick={() => {
                     setShowDeviceUpload(false);
                     setStep("phone-qr");
                   }}
-                  className={`group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30 ${
-                    isDiagnoseHero ? "flex h-full min-h-[280px] flex-col" : ""
-                  }`}
+                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-110" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1599,7 +1626,7 @@ export function FaceScanFlow({
                       <p className="mt-2 text-xs leading-relaxed text-white/75">
                         On desktop, capture with your phone for the best
                         face-scan quality. Scan the QR code to start on your
-                        phone â€” or upload photos from this device in the next
+                        phone — or upload photos from this device in the next
                         step.
                       </p>
                     </div>
@@ -1610,35 +1637,35 @@ export function FaceScanFlow({
                   </div>
                 </button>
               ) : isDiagnoseHero ? (
-                <div className="flex h-full min-h-0 flex-col justify-end pt-6">
-                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]">
+                <div className="flex h-full min-h-0 flex-col justify-end pt-8 sm:pt-10">
+                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B] shadow-sm">
                     Recommended
                   </span>
-                  <div className="relative mt-4 flex items-center gap-4">
-                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-dashed border-[#2C3E6B]/25">
-                      <div className="camera-icon-breathe flex h-12 w-12 items-center justify-center rounded-full bg-white">
-                        <Camera className="h-5 w-5 text-[#2C3E6B]" />
+                  <div className="relative mt-5 flex items-center gap-4">
+                    <div className="relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-dashed border-[#2C3E6B]/30 bg-white/40 shadow-[0_0_0_8px_rgba(255,255,255,0.45)]">
+                      <div className="camera-icon-breathe flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-12px_rgba(44,62,107,0.45)]">
+                        <Camera className="h-6 w-6 text-[#2C3E6B]" />
                       </div>
                       <Sparkles
-                        className="absolute -right-1 -top-1 h-3.5 w-3.5 text-[#2C3E6B]/40"
+                        className="absolute -right-0.5 -top-0.5 h-4 w-4 text-[#2C3E6B]/45"
                         strokeWidth={2}
                         aria-hidden
                       />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-lg font-extrabold tracking-tight leading-tight text-[#18181b]">
+                      <h2 className="text-xl font-extrabold tracking-tight leading-tight text-[#2C3E6B]">
                         Use device camera
                       </h2>
-                      <p className="mt-1 text-xs leading-relaxed text-[#6B7280]">
-                        Capture using your device camera. Keep angles
-                        aligned with the guide.
+                      <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280]">
+                        Capture using your device camera. Keep angles aligned
+                        with the guide.
                       </p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={requestOpenCamera}
-                    className="cta-pop relative mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-5 py-3 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(44,62,107,0.6)] transition-colors hover:bg-[#354A7A]"
+                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(44,62,107,0.6)] transition-colors hover:bg-[#354A7A]"
                   >
                     Start Camera
                     <Camera className="h-4 w-4" />

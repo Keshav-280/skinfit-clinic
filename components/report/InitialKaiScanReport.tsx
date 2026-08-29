@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import type { ConcernChipId } from "@/components/dashboard/ConcernChips";
 import { dismissUnreadReadyScan } from "@/src/lib/scanJobNotifications";
 import type {
   DetectionRegion,
@@ -10,12 +11,15 @@ import type {
   WrinkleLine,
 } from "@/src/lib/scanDetectionRegions";
 import type { KaiReportParamRow } from "@/src/lib/kaiReportMapping";
+import { ReportShell } from "./ReportShell";
 import { ReportHero } from "./ReportHero";
 import { FaceMapSection } from "./FaceMapSection";
-import { ParameterRow } from "./ParameterRow";
+import { ParameterTiles } from "./ParameterTiles";
+import { TakeawayCard } from "./TakeawayCard";
 import { ActionItem } from "./ActionItem";
 import { NextStepCTA } from "./NextStepCTA";
 import { ReportShareFooter } from "./ReportShareFooter";
+import { REPORT_CARD, REPORT_PILL, watchTitle } from "./reportCopy";
 
 export type InitialKaiScanReportProps = {
   scanId: number;
@@ -61,6 +65,8 @@ export function InitialKaiScanReport({
   doctorName,
 }: InitialKaiScanReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
+  const [concern, setConcern] = useState<ConcernChipId>("all");
+  const [openParam, setOpenParam] = useState<string | null>(null);
 
   useEffect(() => {
     dismissUnreadReadyScan(scanId);
@@ -75,9 +81,31 @@ export function InitialKaiScanReport({
       color: p.gradeColor,
     }));
 
+  const watchChips = [...parameters]
+    .sort((a, b) => b.severity - a.severity)
+    .slice(0, 2)
+    .map((p) => ({
+      name: p.shortName,
+      grade: p.grade,
+      color: p.gradeColor,
+      id: p.concernChipId ?? undefined,
+    }));
+
+  function selectConcern(id: ConcernChipId) {
+    setConcern(id);
+    const match = parameters.find((p) => p.concernChipId === id);
+    setOpenParam(match?.key ?? null);
+  }
+
+  function selectParam(key: string | null) {
+    setOpenParam(key);
+    const p = parameters.find((x) => x.key === key);
+    setConcern(p?.concernChipId ?? "all");
+  }
+
   const primary = isExistingPatient
     ? {
-        label: `Message ${doctorName} about these results`,
+        label: `Message ${doctorName}`,
         href: "/dashboard/chat?assistant=doctor",
       }
     : {
@@ -100,38 +128,26 @@ export function InitialKaiScanReport({
     : "See what the phone can’t reach";
 
   const ctaBody = isExistingPatient
-    ? `${doctorName} can review this baseline with you and decide whether a clinic Medixora pass is useful next.`
-    : "A Medixora scan measures hydration, bacteria and sensitivity the phone can’t reach — and locks a clinic-grade baseline alongside this one.";
+    ? `${doctorName} can review this baseline with you.`
+    : "A clinic Medixora pass measures what the phone can’t — hydration, bacteria, sensitivity.";
 
   return (
-    <div className="min-h-[100dvh] bg-kai-sage">
+    <ReportShell reportRef={reportRef}>
       <div
-        ref={reportRef}
-        className="mx-auto min-h-[100dvh] w-full max-w-[392px] overflow-x-hidden bg-kai-sage shadow-[0_0_0_1px_rgba(43,55,87,0.06)]"
+        data-pdf-screen-only
+        className="mb-3 flex items-center justify-between gap-2"
       >
-        <div
-          data-pdf-screen-only
-          className="flex items-center gap-2 bg-kai-navy-deep px-4 pb-2 pt-3"
+        <Link
+          href="/dashboard/history"
+          className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-[#2C3E6B] shadow-[0_6px_16px_-10px_rgba(44,62,107,0.4)]"
         >
-          <Link
-            href="/dashboard/history"
-            className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[12px] font-medium text-white/70 transition hover:text-white"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-            History
-          </Link>
-        </div>
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          History
+        </Link>
+      </div>
 
-        <ReportHero
-          grade={grade}
-          headline={headline}
-          meta={{ left: "Baseline scan", right: scanDateLabel }}
-          movementBadge={{ label: "Starting line", type: "flat" }}
-          positionBar={{ current: position }}
-          subtitle={subtitle}
-        />
-
-        <div className="bg-kai-paper">
+      <div className="flex flex-col gap-3">
+        <div className="report-enter">
           <FaceMapSection
             scanImages={scanImages}
             detectionRegions={detectionRegions}
@@ -141,70 +157,79 @@ export function InitialKaiScanReport({
             maskExportVersion={maskExportVersion}
             proxyRegions={proxyRegions}
             parameterGrades={chips}
+            activeConcern={concern}
+            onConcernChange={selectConcern}
+            cover={{
+              grade,
+              position,
+              title: watchTitle(parameters),
+              badge: { label: "Starting line", type: "flat" },
+              meta: { left: "Baseline scan", right: scanDateLabel },
+            }}
           />
+        </div>
 
-          <section className="border-b border-kai-rule px-6 py-[26px]">
-            <h2 className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.15em] text-kai-ink-3">
-              What we found
-            </h2>
-            <p className="mb-3 text-[11.5px] leading-[1.45] text-kai-ink-3">
-              Mapped against this capture — not compared to last week.
-            </p>
-            {parameters.map((p) => (
-              <ParameterRow
-                key={p.key}
-                name={p.name}
-                grade={p.grade}
-                gradeColor={p.gradeColor}
-                finding={p.finding}
+        <div className="report-enter report-enter-d1">
+          <ReportHero
+            layout="bar"
+            grade={grade}
+            title={watchTitle(parameters)}
+            headline={headline}
+            meta={{ left: "Baseline scan", right: scanDateLabel }}
+            movementBadge={{ label: "Starting line", type: "flat" }}
+            positionBar={{ current: position }}
+            subtitle={subtitle}
+            watchChips={watchChips}
+            onWatchChip={selectConcern}
+          />
+        </div>
+
+        <div className="report-enter report-enter-d2">
+          <ParameterTiles
+            parameters={parameters}
+            activeKey={openParam}
+            onSelect={selectParam}
+          />
+        </div>
+
+        <div className="report-enter report-enter-d3">
+          <TakeawayCard text={synthesis || baselineBody} />
+        </div>
+
+        <section className={`report-enter report-enter-d4 ${REPORT_CARD} px-3.5 py-3`}>
+          <div className="mb-1 flex items-center justify-between">
+            <span className={REPORT_PILL}>Start with these</span>
+            <span className="text-[11px] font-medium text-[#8B93A4]">
+              Free steps
+            </span>
+          </div>
+          <div>
+            {actions.map((text, i) => (
+              <ActionItem
+                key={i}
+                number={i + 1}
+                text={text}
+                last={i === actions.length - 1}
               />
             ))}
-          </section>
+          </div>
+        </section>
 
-          <section className="border-b border-kai-rule px-6 py-[26px]">
-            <h2 className="mb-3 text-[10.5px] font-semibold uppercase tracking-[0.15em] text-kai-ink-3">
-              What this means
-            </h2>
-            <p className="font-serif text-[15px] font-light leading-[1.55] tracking-[-0.01em] text-kai-ink">
-              {synthesis}
-            </p>
-          </section>
-
-          <section className="border-b border-kai-rule px-6 py-[26px]">
-            <h2 className="mb-3 text-[10.5px] font-semibold uppercase tracking-[0.15em] text-kai-ink-3">
-              Your baseline is set
-            </h2>
-            <p className="text-[12.5px] leading-[1.55] text-kai-ink-2">
-              {baselineBody}
-            </p>
-          </section>
-
-          <section className="border-b border-kai-rule px-6 py-[26px]">
-            <h2 className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.15em] text-kai-ink-3">
-              Start with these three
-            </h2>
-            <p className="mb-2 text-[11.5px] leading-[1.45] text-kai-ink-3">
-              Free steps before your next visit.
-            </p>
-            {actions.map((text, i) => (
-              <ActionItem key={i} number={i + 1} text={text} />
-            ))}
-          </section>
-
+        <div className="report-enter report-enter-d5">
           <NextStepCTA
             heading={ctaHeading}
             body={ctaBody}
             primaryAction={primary}
             secondaryAction={secondary}
           />
-
-          <ReportShareFooter
-            scanId={scanId}
-            shareText={`SkinFit kAI baseline: ${grade}. ${headline}`}
-            reportRef={reportRef}
-          />
         </div>
+
+        <ReportShareFooter
+          scanId={scanId}
+          shareText={`SkinFit kAI baseline: ${grade}/10. ${headline}`}
+          reportRef={reportRef}
+        />
       </div>
-    </div>
+    </ReportShell>
   );
 }

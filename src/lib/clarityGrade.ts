@@ -43,6 +43,23 @@ export function scoreOutOfTen(score0to100: number): number {
   return Math.max(0, Math.min(10, Math.round(score0to100 / 10)));
 }
 
+/** Severity 1–5 (higher = worse) → 0–10 (higher = better). */
+export function severityToScoreOutOfTen(severity: number): number {
+  const s = Math.max(1, Math.min(5, severity));
+  const clarity = ((5 - s) / 4) * 100;
+  return scoreOutOfTen(clarity);
+}
+
+/** Colour band for a 0–10 score (10 is best). */
+export function score10Tone(
+  score10: number
+): "good" | "mid" | "low" {
+  const n = Math.max(0, Math.min(10, score10));
+  if (n >= 8) return "good";
+  if (n >= 5) return "mid";
+  return "low";
+}
+
 function clampClarity(score: number): number {
   if (!Number.isFinite(score)) return 0;
   return Math.min(100, Math.max(0, Math.round(score)));

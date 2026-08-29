@@ -269,7 +269,7 @@ function UpcomingAppointmentsSection() {
 
 export function TopArticlesSection() {
   return (
-    <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
+    <section className="min-w-0">
       <DashboardSectionHeader icon={NotebookPen} title="TOP ARTICLES" />
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 md:mx-0 md:px-0">
         {ARTICLES.map((article) => (
@@ -307,7 +307,7 @@ export function TopArticlesSection() {
   );
 }
 
-function RecommendedVideosSection() {
+export function RecommendedVideosSection() {
   const [active, setActive] = useState<{
     title: string;
     driveId?: string;
@@ -325,7 +325,7 @@ function RecommendedVideosSection() {
   }, [active]);
 
   return (
-    <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
+    <section className="min-w-0">
       <DashboardSectionHeader icon={Play} title="RECOMMENDED VIDEOS" />
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 md:mx-0 md:px-0">
         {RECOMMENDED_VIDEOS.map((video) => (

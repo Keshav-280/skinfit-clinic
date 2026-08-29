@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 type PositionBarProps = {
   currentPosition: number;
   previousPosition?: number;
@@ -18,10 +20,16 @@ export function PositionBar({
   variant = "dark",
   className = "",
 }: PositionBarProps) {
-  const now = clampPct(currentPosition);
+  const target = clampPct(currentPosition);
   const prev =
     previousPosition != null ? clampPct(previousPosition) : undefined;
   const light = variant === "light";
+  const [now, setNow] = useState(0);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setNow(target));
+    return () => cancelAnimationFrame(id);
+  }, [target]);
 
   return (
     <div className={`pbar ${className}`}>
@@ -30,27 +38,26 @@ export function PositionBar({
           light ? "text-kai-ink-3" : "text-white/40"
         }`}
       >
-        <span>D</span>
-        <span>C</span>
-        <span>B</span>
-        <span>A</span>
+        <span>0</span>
+        <span>5</span>
+        <span>10</span>
       </div>
       <div
-        className={`relative h-[3px] rounded-sm ${
+        className={`relative h-[4px] overflow-hidden rounded-full ${
           light ? "bg-kai-track" : "bg-white/15"
         }`}
       >
         <span
-          className={`absolute top-[-3px] h-[9px] w-px ${
-            light ? "bg-kai-track" : "bg-white/15"
+          className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-out ${
+            light ? "bg-[#2C3E6B]/35" : "bg-white/25"
           }`}
-          style={{ left: "33.3%" }}
+          style={{ width: `${now}%` }}
         />
         <span
-          className={`absolute top-[-3px] h-[9px] w-px ${
+          className={`absolute top-[-3px] h-[10px] w-px ${
             light ? "bg-kai-track" : "bg-white/15"
           }`}
-          style={{ left: "66.6%" }}
+          style={{ left: "50%" }}
         />
         {prev != null ? (
           <span
@@ -62,9 +69,9 @@ export function PositionBar({
           />
         ) : null}
         <span
-          className={`absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full ${
+          className={`absolute top-1/2 h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-[left] duration-700 ease-out ${
             light
-              ? "bg-kai-navy shadow-[0_0_0_3px_#EEF3EC]"
+              ? "bg-kai-navy shadow-[0_0_0_3px_rgba(251,248,244,0.9)]"
               : "bg-kai-paper shadow-[0_0_0_3px_#1E2840]"
           }`}
           style={{ left: `${now}%` }}
