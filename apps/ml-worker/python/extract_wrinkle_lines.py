@@ -11,7 +11,7 @@ Output (stdout JSON):
   or { "ok": false, "error": "..." }
 
 Diffs are restricted to the MediaPipe face oval so hair/glasses/background
-edges do not become false wrinkle lines. Tuned for smiling-pose masks.
+edges do not become false wrinkle lines. Tuned for front-pose masks.
 """
 
 from __future__ import annotations

@@ -21,8 +21,8 @@ import {
   runAcneDetector,
   applyAcneDetectorToScanPayload,
 } from "@/src/lib/acneDetectorInference";
-import { runFaceAnalysisServiceV2 } from "@/src/lib/faceAnalysisInferenceV2";
-import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
+import { runFaceAnalysisServiceV2, filesForAnalyzeV2 } from "@/src/lib/faceAnalysisInferenceV2";
+import { FACE_SCAN_CAPTURE_STEPS, type FaceScanCaptureId } from "@/src/lib/faceScanCaptures";
 import {
   inferenceParamsToRows,
   insertParameterScoresForScan,
@@ -317,11 +317,8 @@ export async function POST(request: NextRequest) {
       dataUri: string;
       previewDataUri?: string;
     }> = [];
-    const filesForV2: Record<
-      "centre" | "left" | "right" | "eyes_closed" | "smiling",
-      File
-    > = {} as Record<
-      "centre" | "left" | "right" | "eyes_closed" | "smiling",
+    const filesForV2: Record<FaceScanCaptureId, File> = {} as Record<
+      FaceScanCaptureId,
       File
     >;
 
@@ -455,7 +452,7 @@ export async function POST(request: NextRequest) {
         let merged;
         if (useV2) {
           merged = buildScanPayloadFromAnalyzeV2(
-            await runFaceAnalysisServiceV2(filesForV2, inferenceOpts),
+            await runFaceAnalysisServiceV2(filesForAnalyzeV2(filesForV2), inferenceOpts),
             scanOpts,
           );
         } else if (singleImageMode) {
@@ -466,7 +463,7 @@ export async function POST(request: NextRequest) {
         } else if (legacyAnalyze) {
           const dual = await runFaceAnalysisCentreSmiling(
             filesForV2.centre,
-            filesForV2.smiling,
+            filesForV2.centre,
             inferenceOpts,
           );
           merged = buildScanPayloadFromCentreAndSmiling(
@@ -477,7 +474,7 @@ export async function POST(request: NextRequest) {
         } else {
           const dualScan = await runFaceAnalysisDualScan(
             filesForV2.centre,
-            filesForV2.smiling,
+            filesForV2.centre,
             inferenceOpts,
           );
           merged = buildScanPayloadFromAnalyzeV1(dualScan, scanOpts);
@@ -528,7 +525,6 @@ export async function POST(request: NextRequest) {
         detection_regions = merged.detection_regions;
 
         let centreJpegB64: string | null = null;
-        let smilingJpegB64: string | null = null;
         const ensureCentreJpeg = async () => {
           if (centreJpegB64) return centreJpegB64;
           const { fileToJpegB64 } = await import(
@@ -536,14 +532,6 @@ export async function POST(request: NextRequest) {
           );
           centreJpegB64 = await fileToJpegB64(filesForV2.centre);
           return centreJpegB64;
-        };
-        const ensureSmilingJpeg = async () => {
-          if (smilingJpegB64) return smilingJpegB64;
-          const { fileToJpegB64 } = await import(
-            "@/src/lib/extractWrinkleLines"
-          );
-          smilingJpegB64 = await fileToJpegB64(filesForV2.smiling);
-          return smilingJpegB64;
         };
 
         if (merged.wrinkleMaskDataUri) {
@@ -553,7 +541,7 @@ export async function POST(request: NextRequest) {
             );
             wrinkle_lines = await extractWrinkleLinesFromImages({
               wrinkleMaskDataUriOrB64: merged.wrinkleMaskDataUri,
-              sourceJpegB64: await ensureSmilingJpeg(),
+              sourceJpegB64: await ensureCentreJpeg(),
             });
           } catch (err) {
             console.warn("[mobile-capture] wrinkle line extraction skipped", {
@@ -745,7 +733,7 @@ export async function POST(request: NextRequest) {
           : {}),
         annotation_poses: {
           detection_regions: "centre",
-          wrinkle_lines: "smiling",
+          wrinkle_lines: "centre",
           proxy_regions: "centre",
         },
       },

@@ -78,6 +78,20 @@ export function parseScanSpotAnnotatedUrl(scores: unknown): string | undefined {
   return parseStoredImageRef(scores, "spotAnnotatedUrl", "spotAnnotatedUrl");
 }
 
+export function parseScanSpotAnnotatedByPose(
+  scores: unknown
+): Record<string, string> | undefined {
+  if (!scores || typeof scores !== "object") return undefined;
+  const raw = (scores as Record<string, unknown>).spotAnnotatedByPose;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [pose, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof val !== "string" || !val.trim()) continue;
+    out[pose] = publicFileDisplayUrl(val.trim()) ?? val.trim();
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 /** `2` = title-free JPEG masks from fixed `/analyze_dual_scan`; absent/`1` = legacy matplotlib. */
 export function parseMaskExportVersion(scores: unknown): number | undefined {
   if (!scores || typeof scores !== "object") return undefined;

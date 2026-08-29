@@ -195,7 +195,7 @@ export async function runFaceAnalysisService(
 
 /**
  * Two `/analyze` calls: centre → 7 non-wrinkle params + acne mask;
- * smiling → wrinkle severity + wrinkle mask. Left/right/eyes_closed are not sent.
+ * second image (now the same front photo) → wrinkle severity + wrinkle mask.
  */
 export async function runFaceAnalysisCentreSmiling(
   centre: File,
@@ -214,8 +214,8 @@ export async function runFaceAnalysisCentreSmiling(
 
 /**
  * Production dual-pose: test_local.ipynb pipeline on HF `/analyze_dual_scan`.
- * Centre → acne mask + scalar severities; smiling → wrinkle mask + wrinkle score.
- * Metrics are 0–100 (higher = better). Left/right/eyes_closed are not sent.
+ * Centre → acne mask + scalar severities; second slot → wrinkle mask + wrinkle score
+ * (we send the front photo for both). Metrics are 0–100 (higher = better).
  */
 export async function runFaceAnalysisDualScan(
   centre: File,

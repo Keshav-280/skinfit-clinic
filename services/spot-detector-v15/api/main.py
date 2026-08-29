@@ -14,7 +14,7 @@ from api.detector import analyze
 
 API_KEY = os.getenv("API_KEY", "")
 
-app = FastAPI(title="Spot Detector v15", version="1.0")
+app = FastAPI(title="Spot Detector v18", version="1.8")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,7 +26,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "spot-detector-v15"}
+    return {"status": "ok", "service": "spot-detector-v18"}
 
 
 @app.post("/analyze")

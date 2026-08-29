@@ -313,6 +313,10 @@ export const scans = pgTable("scans", {
     overlayUrl?: string;
     wrinkleMaskUrl?: string;
     acneMaskUrl?: string;
+    /** v18 dashed-circle annotation (centre) */
+    spotAnnotatedUrl?: string;
+    /** v18 dashed-circle annotation per capture pose */
+    spotAnnotatedByPose?: Record<string, string>;
     /** Unclipped inference acne mask — used to re-clip when algorithm changes. */
     acneMaskOriginalUrl?: string;
     acneMaskFaceClipVersion?: number;

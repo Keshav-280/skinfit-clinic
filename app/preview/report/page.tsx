@@ -116,8 +116,8 @@ export default function ReportPreviewPage() {
           detectionRegions={previewDetections}
           detectionRegionsByPose={{
             centre: previewDetections,
-            smiling: [],
             left: [],
+            right: [],
           }}
           wrinkleLines={previewWrinkles}
           proxyRegions={previewProxies}
@@ -144,8 +144,8 @@ export default function ReportPreviewPage() {
           detectionRegions={previewDetections}
           detectionRegionsByPose={{
             centre: previewDetections.slice(0, 3),
-            smiling: [],
             left: [],
+            right: [],
           }}
           wrinkleLines={previewWrinkles}
           proxyRegions={previewProxies}

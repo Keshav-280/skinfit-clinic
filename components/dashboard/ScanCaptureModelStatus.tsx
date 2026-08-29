@@ -93,7 +93,7 @@ export function ScanCaptureModelStatus({
       break;
     case "ready":
       mpState = "ok";
-      mpDetail = "eyes-closed / expression";
+      mpDetail = "face landmarks";
       break;
     case "failed":
       mpState = "warn";

@@ -41,6 +41,8 @@ export type InitialKaiScanReportProps = {
   proxyRegions: ProxyRegion[];
   isExistingPatient: boolean;
   doctorName: string;
+  /** Report photos already have v18 dashed circles baked in. */
+  bakedSpotAnnotations?: boolean;
 };
 
 export function InitialKaiScanReport({
@@ -63,6 +65,7 @@ export function InitialKaiScanReport({
   proxyRegions,
   isExistingPatient,
   doctorName,
+  bakedSpotAnnotations = false,
 }: InitialKaiScanReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [concern, setConcern] = useState<ConcernChipId>("all");
@@ -156,6 +159,7 @@ export function InitialKaiScanReport({
             wrinkleMaskUrl={wrinkleMaskUrl}
             maskExportVersion={maskExportVersion}
             proxyRegions={proxyRegions}
+            bakedSpotAnnotations={bakedSpotAnnotations}
             parameterGrades={chips}
             activeConcern={concern}
             onConcernChange={selectConcern}

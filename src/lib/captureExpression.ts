@@ -13,9 +13,7 @@ export type ExpressionCalibration = {
 };
 
 /**
- * Live eye-closure detection is disabled on web and mobile. The "eyes closed"
- * capture step still exists — users close their eyes manually; we do not run
- * blendshape/classifier checks or block capture on expression.
+ * Live eye-closure detection is disabled. Capture is front + left + right only.
  */
 export function needsExpressionCheck(_stepId: FaceScanCaptureId): boolean {
   return false;
@@ -138,7 +136,7 @@ export function applyCaptureExpression(
     return next;
   }
 
-  if (stepId === "eyes_closed") {
+  if ((stepId as string) === "eyes_closed") {
     const wasOk = expressionOkRef.current === true;
     const { ok, confident } = eyesClosedScore(categories, landmarks, cal, wasOk);
 
@@ -184,7 +182,7 @@ export function applyCaptureExpressionFromClassifier(
     return next;
   }
 
-  if (stepId === "eyes_closed") {
+  if ((stepId as string) === "eyes_closed") {
     const wasOk = expressionOkRef.current === true;
     const closed = wasOk
       ? scores.blink >= CLASSIFIER_BLINK_CLOSED

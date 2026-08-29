@@ -86,4 +86,7 @@ next-env.d.ts
 /tmp/
 mobile/build_log.txt
 
+# MediaPipe FaceLandmarker weights (downloaded at runtime)
+services/spot-detector-v15/api/face_landmarker.task
+
 

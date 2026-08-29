@@ -96,7 +96,7 @@ export function buildFocusActions(
   actions.push({
     rank: r++,
     title: "Upload next weekly scan on Sunday",
-    detail: "Same 5 angles, same lighting where possible — trend lines need comparable photos.",
+    detail: "Same 3 angles, same lighting where possible — trend lines need comparable photos.",
   });
   return actions.slice(0, 3);
 }

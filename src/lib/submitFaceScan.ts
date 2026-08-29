@@ -1,5 +1,5 @@
 /**
- * Submit a five-angle face scan — prefers async queue, falls back to legacy sync API.
+ * Submit a three-angle face scan — prefers async queue, falls back to legacy sync API.
  */
 
 import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";

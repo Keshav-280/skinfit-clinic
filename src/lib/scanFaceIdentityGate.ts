@@ -383,7 +383,7 @@ async function verifyImagesAgainstReference(
 }
 
 /**
- * Verify all five capture angles against the onboarding face reference.
+ * Verify all capture angles against the onboarding face reference.
  * Sets the reference from the front photo on the first onboarding baseline.
  */
 export async function enforceScanFaceIdentity(args: {

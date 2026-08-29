@@ -47,6 +47,7 @@ export type UpdateKaiScanReportProps = {
   wrinkleLines: WrinkleLine[];
   wrinkleMaskUrl?: string | null;
   spotAnnotatedUrl?: string | null;
+  bakedSpotAnnotations?: boolean;
   maskExportVersion?: number | null;
   proxyRegions: ProxyRegion[];
   parameters: KaiReportParamRow[];
@@ -77,6 +78,7 @@ export function UpdateKaiScanReport({
   wrinkleLines,
   wrinkleMaskUrl,
   spotAnnotatedUrl,
+  bakedSpotAnnotations = false,
   maskExportVersion,
   proxyRegions,
   parameters,
@@ -150,6 +152,7 @@ export function UpdateKaiScanReport({
             wrinkleLines={wrinkleLines}
             wrinkleMaskUrl={wrinkleMaskUrl}
             spotAnnotatedUrl={spotAnnotatedUrl}
+            bakedSpotAnnotations={bakedSpotAnnotations}
             maskExportVersion={maskExportVersion}
             proxyRegions={proxyRegions}
             parameterGrades={chips}

@@ -11,7 +11,7 @@ function poseForStep(stepId: FaceScanCaptureId): GuidePose {
   return "front";
 }
 
-/** One thin dash style for all 5 capture steps (centre, left, right, eyes closed, smiling). */
+/** One thin dash style for front and side capture steps. */
 const GUIDE_STROKE = {
   fill: "none",
   stroke: "#FFFFFF",

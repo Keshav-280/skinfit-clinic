@@ -122,7 +122,7 @@ approx(canvasCrop!.x / captureDims.w, guideVfNorm.x, 0.02);
 approx(canvasCrop!.y / captureDims.h, guideVfNorm.y, 0.02);
 
 assert.equal(shouldCropToFaceGuide("centre"), true);
-assert.equal(shouldCropToFaceGuide("smiling"), true);
 assert.equal(shouldCropToFaceGuide("left"), false);
+assert.equal(shouldCropToFaceGuide("right"), false);
 
 console.log("faceGuideCrop.test.ts: all assertions passed");

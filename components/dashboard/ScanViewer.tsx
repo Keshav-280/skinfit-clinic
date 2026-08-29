@@ -356,6 +356,9 @@ export function ScanViewer({
     return index === 0 ? "centre" : "other";
   }
 
+  const hasSmilingPose = photos.some((p, i) => poseIdForPhoto(p, i) === "smiling");
+  const wrinklePose = hasSmilingPose ? "smiling" : "centre";
+
   return (
     <div className="w-full bg-[#F2F9F2]">
       <div className="relative bg-[#0F172A]">
@@ -371,7 +374,7 @@ export function ScanViewer({
             photos.map((photo, i) => {
               const pose = poseIdForPhoto(photo, i);
               const showAcneProxy = pose === "centre";
-              const showWrinkles = pose === "smiling";
+              const showWrinkles = pose === wrinklePose;
               const showWrinkleFallback =
                 showWrinkleMaskFallback && showWrinkles;
               const poseHasOverlay =

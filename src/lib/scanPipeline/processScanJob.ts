@@ -12,7 +12,7 @@ import {
   runFaceAnalysisCentreSmiling,
   runFaceAnalysisService,
 } from "@/src/lib/faceAnalysisInference";
-import { runFaceAnalysisServiceV2 } from "@/src/lib/faceAnalysisInferenceV2";
+import { runFaceAnalysisServiceV2, filesForAnalyzeV2 } from "@/src/lib/faceAnalysisInferenceV2";
 import {
   runAcneDetector,
   applyAcneDetectorToScanPayload,
@@ -46,6 +46,7 @@ import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
 import { cropJpegBufferForMlStep } from "@/src/lib/cropScanImageForMl";
+import type { FaceScanCaptureId } from "@/src/lib/faceScanCaptures";
 import { formatFaceIdentityCheckSummary } from "@/src/lib/faceIdentityCheckDisplay";
 import {
   buildFaceIdentityInputsFromPaths,
@@ -54,7 +55,7 @@ import {
 
 async function pathToMlFile(
   relativePath: string,
-  stepId: "centre" | "left" | "right" | "eyes_closed" | "smiling",
+  stepId: FaceScanCaptureId,
   captureCropContext: ScanJobPayload["captureCropContext"]
 ): Promise<File> {
   const storage = getStorage();
@@ -87,7 +88,7 @@ export async function processScanJob(
     parseInt(process.env.FACE_ANALYSIS_TIMEOUT_MS?.trim() || "120000", 10) || 120_000
   );
 
-  const keys = ["centre", "left", "right", "eyes_closed", "smiling"] as const;
+  const keys = ["centre", "left", "right"] as const;
   const filesForV2 = {} as Record<(typeof keys)[number], File>;
   for (const k of keys) {
     const rel = payload.imagePaths[k];
@@ -148,7 +149,7 @@ export async function processScanJob(
   let merged;
   if (useV2) {
     merged = buildScanPayloadFromAnalyzeV2(
-      await runFaceAnalysisServiceV2(filesForV2, inferenceOpts),
+      await runFaceAnalysisServiceV2(filesForAnalyzeV2(filesForV2), inferenceOpts),
       scanOpts
     );
   } else if (singleImageMode) {
@@ -159,7 +160,7 @@ export async function processScanJob(
   } else if (legacyAnalyze) {
     const dual = await runFaceAnalysisCentreSmiling(
       filesForV2.centre,
-      filesForV2.smiling,
+      filesForV2.centre,
       inferenceOpts
     );
     merged = buildScanPayloadFromCentreAndSmiling(
@@ -170,7 +171,7 @@ export async function processScanJob(
   } else {
     const dualScan = await runFaceAnalysisDualScan(
       filesForV2.centre,
-      filesForV2.smiling,
+      filesForV2.centre,
       inferenceOpts
     );
     merged = buildScanPayloadFromAnalyzeV1(dualScan, scanOpts);
@@ -236,7 +237,7 @@ export async function processScanJob(
     detection_regions_by_pose.centre = merged.detection_regions;
   }
   if (acneDetectorBase && !acneDetectorDisabled) {
-    for (const pose of ["left", "right", "eyes_closed", "smiling"] as const) {
+    for (const pose of ["left", "right"] as const) {
       try {
         const r = await runAcneDetector(filesForV2[pose], {
           baseUrl: acneDetectorBase,
@@ -261,75 +262,75 @@ export async function processScanJob(
     }
   }
 
-  // Spot detector v15 — pigmentation/redness annotated overlay on centre face.
-  let spotAnnotatedDataUri: string | null = null;
+  // v18 zoned detector — dashed-circle annotations on every capture.
+  // Scores still come from face-analysis + acne-detector above.
+  const spotAnnotatedDataUriByPose: Record<string, string> = {};
   const spotDetectorBase = process.env.SPOT_DETECTOR_SERVICE_URL?.trim();
   const spotDetectorDisabled =
     process.env.SPOT_DETECTOR_DISABLED === "1" ||
     process.env.SPOT_DETECTOR_DISABLED === "true";
   if (spotDetectorBase && !spotDetectorDisabled) {
-    try {
-      const { runSpotDetector } = await import("@/src/lib/spotDetectorInference");
-      const spotResult = await runSpotDetector(filesForV2.centre, {
-        baseUrl: spotDetectorBase,
-        apiKey: inferenceSecret,
-        timeoutMs: inferenceTimeoutMs,
-      });
-      spotAnnotatedDataUri = spotResult.annotated_image;
-      logger.info("spot_detector_applied", {
-        jobId,
-        userId: payload.userId,
-        total: spotResult.summary.total,
-        dark: spotResult.summary.dark,
-        red: spotResult.summary.red,
-      });
-    } catch (err) {
-      logger.warn("spot_detector_skipped", {
-        jobId,
-        error: err instanceof Error ? err.message : String(err),
-        hint: "scan continues without spot overlay",
-      });
+    const { runSpotDetector } = await import("@/src/lib/spotDetectorInference");
+    for (const pose of ["centre", "left", "right"] as const) {
+      try {
+        const spotResult = await runSpotDetector(filesForV2[pose], {
+          baseUrl: spotDetectorBase,
+          apiKey: inferenceSecret,
+          timeoutMs: inferenceTimeoutMs,
+        });
+        if (spotResult.annotated_image) {
+          spotAnnotatedDataUriByPose[pose] = spotResult.annotated_image;
+        }
+        logger.info("spot_detector_applied", {
+          jobId,
+          userId: payload.userId,
+          pose,
+          total: spotResult.summary.total,
+          dark: spotResult.summary.dark,
+          red: spotResult.summary.red,
+        });
+      } catch (err) {
+        logger.warn("spot_detector_skipped", {
+          jobId,
+          pose,
+          error: err instanceof Error ? err.message : String(err),
+          hint: "scan continues without this pose's annotation overlay",
+        });
+      }
     }
   }
+  const spotAnnotatedDataUri = spotAnnotatedDataUriByPose.centre ?? null;
 
   let wrinkle_lines: import("@/src/lib/scanDetectionRegions").WrinkleLine[] = [];
   let proxy_regions: import("@/src/lib/scanDetectionRegions").ProxyRegion[] = [];
   let centreJpegB64: string | null = null;
-  let smilingJpegB64: string | null = null;
   const ensureCentreJpeg = async () => {
     if (centreJpegB64) return centreJpegB64;
     const { fileToJpegB64 } = await import("@/src/lib/extractWrinkleLines");
     centreJpegB64 = await fileToJpegB64(filesForV2.centre);
     return centreJpegB64;
   };
-  const ensureSmilingJpeg = async () => {
-    if (smilingJpegB64) return smilingJpegB64;
-    const { fileToJpegB64 } = await import("@/src/lib/extractWrinkleLines");
-    smilingJpegB64 = await fileToJpegB64(filesForV2.smiling);
-    return smilingJpegB64;
-  };
 
-  // Wrinkle mask is from smiling pose — extract polylines against smiling photo only.
+  // Wrinkle mask is from the front capture — extract polylines against that photo.
   if (merged.wrinkleMaskDataUri) {
     try {
       const { extractWrinkleLinesFromImages, clipWrinkleMaskToFace } = await import(
         "@/src/lib/extractWrinkleLines"
       );
-      const smilingB64 = await ensureSmilingJpeg();
-      // Face-clip the wrinkle mask so screen-blend doesn't haze background/hair.
+      const centreB64 = await ensureCentreJpeg();
       merged.wrinkleMaskDataUri = await clipWrinkleMaskToFace({
         wrinkleMaskDataUri: merged.wrinkleMaskDataUri,
-        sourceJpegB64: smilingB64,
+        sourceJpegB64: centreB64,
       });
       wrinkle_lines = await extractWrinkleLinesFromImages({
         wrinkleMaskDataUriOrB64: merged.wrinkleMaskDataUri,
-        sourceJpegB64: smilingB64,
+        sourceJpegB64: centreB64,
       });
       if (wrinkle_lines.length > 0) {
         logger.info("wrinkle_lines_extracted", {
           jobId,
           count: wrinkle_lines.length,
-          pose: "smiling",
+          pose: "centre",
         });
       }
     } catch (err) {
@@ -409,11 +410,18 @@ export async function processScanJob(
     upload
   );
 
-  const spotAnnotatedUrl = await persistDataUriToStorage(
-    spotAnnotatedDataUri ?? undefined,
-    "masks",
-    upload
-  );
+  const spotAnnotatedByPose: Record<string, string> = {};
+  for (const [pose, dataUri] of Object.entries(spotAnnotatedDataUriByPose)) {
+    const url = await persistDataUriToStorage(dataUri, "masks", upload);
+    if (url) spotAnnotatedByPose[pose] = url;
+  }
+  const spotAnnotatedUrl =
+    spotAnnotatedByPose.centre ??
+    (await persistDataUriToStorage(
+      spotAnnotatedDataUri ?? undefined,
+      "masks",
+      upload
+    ));
 
   const wrMaskVersion = maskExportVersionFromDataUri(merged.wrinkleMaskDataUri);
   const acMaskVersion = maskExportVersionFromDataUri(merged.acneMaskDataUri);
@@ -521,6 +529,9 @@ export async function processScanJob(
         ...(wrinkleMaskUrl ? { wrinkleMaskUrl } : {}),
         ...(acneMaskUrl ? { acneMaskUrl } : {}),
         ...(spotAnnotatedUrl ? { spotAnnotatedUrl } : {}),
+        ...(Object.keys(spotAnnotatedByPose).length > 0
+          ? { spotAnnotatedByPose }
+          : {}),
         maskExportVersion,
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
         ...(merged.detection_regions && merged.detection_regions.length > 0
@@ -534,7 +545,7 @@ export async function processScanJob(
         ...(annotation_regions.length > 0 ? { annotation_regions } : {}),
         annotation_poses: {
           detection_regions: "centre",
-          wrinkle_lines: "smiling",
+          wrinkle_lines: "centre",
           proxy_regions: "centre",
         },
       },

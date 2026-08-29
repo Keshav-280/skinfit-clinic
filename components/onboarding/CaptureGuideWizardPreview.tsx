@@ -15,8 +15,6 @@ const REFERENCE_PHOTO_BY_ID: Record<string, string> = {
   centre: "/images/capture-guide/centre.png",
   left: "/images/capture-guide/left.png",
   right: "/images/capture-guide/right.png",
-  eyes_closed: "/images/capture-guide/eyes_closed.png",
-  smiling: "/images/capture-guide/smiling.png",
 };
 
 const DRAG_THRESHOLD = 60;

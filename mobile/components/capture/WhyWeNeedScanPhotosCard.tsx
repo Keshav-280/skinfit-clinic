@@ -57,8 +57,9 @@ export function WhyWeNeedScanPhotosCard({ footer }: Props) {
 
       <View style={styles.diagramRow}>
         <View style={styles.diagramSide}>
-          <LabelBlock {...left[0]} align="right" />
-          <LabelBlock {...left[1]} align="right" />
+          {left.map((item) => (
+            <LabelBlock key={item.title} {...item} align="right" />
+          ))}
         </View>
 
         <View style={styles.faceCenter}>
@@ -66,8 +67,9 @@ export function WhyWeNeedScanPhotosCard({ footer }: Props) {
         </View>
 
         <View style={styles.diagramSide}>
-          <LabelBlock {...right[0]} align="left" />
-          <LabelBlock {...right[1]} align="left" />
+          {right.map((item) => (
+            <LabelBlock key={item.title} {...item} align="left" />
+          ))}
         </View>
       </View>
 

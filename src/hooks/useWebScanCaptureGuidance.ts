@@ -21,7 +21,10 @@ import {
   type NormalizedFaceBox,
   type StableFramingState,
 } from "@/src/lib/scanCaptureGuidance";
-import { isSideProfileCaptureStep } from "@/src/lib/faceScanCaptures";
+import {
+  isSideProfileCaptureStep,
+  type FaceScanCaptureId,
+} from "@/src/lib/faceScanCaptures";
 import { smoothLandmarks } from "@/src/lib/faceMeshOutline";
 import { installMediapipeConsoleFilter } from "@/src/lib/mediapipeConsoleFilter";
 import {
@@ -62,7 +65,7 @@ if (typeof window !== "undefined" && MEDIAPIPE_ACTIVE) {
   installMediapipeConsoleFilter();
 }
 
-type CaptureStepId = "centre" | "left" | "right" | "eyes_closed" | "smiling";
+type CaptureStepId = FaceScanCaptureId;
 
 type BlendshapeCategory = {
   categoryName?: string;

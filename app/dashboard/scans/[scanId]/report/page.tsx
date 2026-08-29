@@ -18,6 +18,7 @@ import {
 import {
   parseMaskExportVersion,
   parseScanSpotAnnotatedUrl,
+  parseScanSpotAnnotatedByPose,
   parseScanWrinkleMaskDataUri,
 } from "../../../../../src/lib/parseClinicalScores";
 import { scanDisplayMetricsFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
@@ -142,21 +143,32 @@ function paramRowsFromMetrics(
   );
 }
 
+function annotatedPhotosForScan(scores: unknown): Record<string, string> | undefined {
+  const byPose = parseScanSpotAnnotatedByPose(scores);
+  if (byPose) return byPose;
+  const centre = parseScanSpotAnnotatedUrl(scores);
+  return centre ? { centre } : undefined;
+}
+
 function galleryImages(
   scanId: number,
-  faceCaptureImages: FaceCaptureRef[] | null | undefined
+  faceCaptureImages: FaceCaptureRef[] | null | undefined,
+  annotatedByPose?: Record<string, string> | null
 ) {
   const gallery = buildFaceCaptureGallery(scanId, faceCaptureImages);
   if (gallery && gallery.length > 0) {
     return gallery.map((g) => ({
-      url: g.imageUrl,
+      url:
+        (g.poseId && annotatedByPose?.[g.poseId]) ||
+        g.imageUrl,
       label: g.label,
       poseId: g.poseId,
     }));
   }
+  const centreAnnotated = annotatedByPose?.centre;
   return [
     {
-      url: patientScanImagePath(scanId),
+      url: centreAnnotated || patientScanImagePath(scanId),
       label: "Front profile",
       poseId: "centre",
     },
@@ -283,7 +295,8 @@ export default async function KaiScanReportPage({
     const paramRows = paramRowsFromMetrics(metrics);
     const gradeInfo = scoreToGrade(metrics.overall_score);
     const topConcern = pickTopConcernName(paramRows);
-    const scanImages = galleryImages(row.id, faceCaptureImages);
+    const annotatedByPose = annotatedPhotosForScan(row.scores);
+    const scanImages = galleryImages(row.id, faceCaptureImages, annotatedByPose);
 
     const { report: llm, aiUnavailable } = await generateInitialReportContent({
       patient: {
@@ -354,6 +367,7 @@ export default async function KaiScanReportPage({
         detectionRegionsByPose={parseScanDetectionRegionsByPose(row.scores)}
         wrinkleLines={parseScanWrinkleLines(row.scores)}
         wrinkleMaskUrl={parseScanWrinkleMaskDataUri(row.scores) ?? null}
+        bakedSpotAnnotations={Boolean(annotatedByPose)}
         maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
         proxyRegions={faceMapProxyRegions(
           row.scores,
@@ -558,12 +572,14 @@ export default async function KaiScanReportPage({
         escalate: Boolean(llm?.escalate),
       });
 
-  const currentImages = galleryImages(row.id, faceCaptureImages);
+  const annotatedByPose = annotatedPhotosForScan(row.scores);
+  const prevAnnotated = annotatedPhotosForScan(previous.scores);
+  const currentImages = galleryImages(row.id, faceCaptureImages, annotatedByPose);
   const prevFace =
     ("faceCaptureImages" in previous ? previous.faceCaptureImages : null) as
       | FaceCaptureRef[]
       | null;
-  const prevImages = galleryImages(previous.id, prevFace);
+  const prevImages = galleryImages(previous.id, prevFace, prevAnnotated);
 
   const shareLine =
     llm?.share_card?.line?.trim() ||
@@ -595,6 +611,7 @@ export default async function KaiScanReportPage({
       wrinkleLines={parseScanWrinkleLines(row.scores)}
       wrinkleMaskUrl={parseScanWrinkleMaskDataUri(row.scores) ?? null}
       spotAnnotatedUrl={parseScanSpotAnnotatedUrl(row.scores) ?? null}
+      bakedSpotAnnotations={Boolean(annotatedByPose)}
       maskExportVersion={parseMaskExportVersion(row.scores) ?? null}
       proxyRegions={faceMapProxyRegions(row.scores, metrics.clinical_scores, {
         hydration: metrics.hydration,

@@ -157,7 +157,7 @@ export function FaceScanUploadScreen({
             </View>
             <Text style={styles.cameraTitle}>Use device camera</Text>
             <Text style={styles.cameraSub}>
-              Guided capture keeps the five angles in order.
+              Guided capture keeps the three angles in order.
             </Text>
             <View style={styles.cameraCta}>
               <Text style={styles.cameraCtaText}>Start camera scan</Text>

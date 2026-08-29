@@ -49,7 +49,7 @@ function clampFaceIdentityThreshold(value: number): number {
   return Math.max(0.2, Math.min(0.95, value));
 }
 
-/** Lower bar for side profiles, eyes closed, and smiling (harder to match a front reference). */
+/** Lower bar for side profiles (harder to match a front reference). */
 export function faceIdentityProfileMatchThreshold(): number {
   const raw = process.env.FACE_IDENTITY_PROFILE_MATCH_THRESHOLD?.trim();
   if (raw) {
@@ -61,12 +61,7 @@ export function faceIdentityProfileMatchThreshold(): number {
   );
 }
 
-const FACE_IDENTITY_PROFILE_LABELS = new Set([
-  "left",
-  "right",
-  "eyes_closed",
-  "smiling",
-]);
+const FACE_IDENTITY_PROFILE_LABELS = new Set(["left", "right"]);
 
 /** Match threshold for a capture step id (front uses the stricter default). */
 export function faceIdentityMatchThresholdForLabel(label: string): number {

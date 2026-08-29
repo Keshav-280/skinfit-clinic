@@ -8,7 +8,7 @@ type Props = {
   compact?: boolean;
 };
 
-/** Five-angle progress — green ticks for done steps, ring for current. */
+/** Capture progress — green ticks for done steps, ring for current. */
 export function ScanCaptureStepTicks({ completedCount, compact }: Props) {
   const current = Math.min(completedCount, FACE_SCAN_CAPTURE_STEPS.length - 1);
 

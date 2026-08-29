@@ -81,15 +81,17 @@ export function WhyWeNeedScanPhotosCard({ footer, className = "" }: Props) {
 
             <div className="mx-auto mt-6 grid w-full max-w-2xl grid-cols-[minmax(5.5rem,1fr)_auto_minmax(5.5rem,1fr)] items-center gap-x-3 sm:max-w-3xl sm:grid-cols-[minmax(6.5rem,1fr)_auto_minmax(6.5rem,1fr)] sm:gap-x-6 md:gap-x-8">
               <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
-                <LabelBlock {...left[0]} align="right" />
-                <LabelBlock {...left[1]} align="right" />
+                {left.map((item) => (
+                  <LabelBlock key={item.title} {...item} align="right" />
+                ))}
               </div>
               <div className="self-center">
                 <FaceDiagram />
               </div>
               <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
-                <LabelBlock {...right[0]} align="left" />
-                <LabelBlock {...right[1]} align="left" />
+                {right.map((item) => (
+                  <LabelBlock key={item.title} {...item} align="left" />
+                ))}
               </div>
             </div>
           </div>

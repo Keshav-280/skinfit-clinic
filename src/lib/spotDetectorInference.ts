@@ -1,6 +1,6 @@
 /**
- * Call the spot-detector-v15 service for pigmentation/redness analysis.
- * Returns the annotated image as a data URI and spot coordinates.
+ * Call the spot-detector service (v18 zoned annotations).
+ * Returns the annotated image as a data URI. Scores stay on the other models.
  */
 
 interface SpotDetectorOpts {

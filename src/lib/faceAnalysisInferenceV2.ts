@@ -1,7 +1,10 @@
 /**
- * kAI five-angle inference — POST /analyze_v2 on the face analysis service.
+ * kAI inference — POST /analyze_v2 on the face analysis service.
+ * Remote API still accepts five form fields; we send the front photo for the
+ * unused eyes-closed / smiling slots so capture stays three photos.
  */
 
+import type { FaceScanCaptureId } from "@/src/lib/faceScanCaptures";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import { parseSpatialOutputsFromApi } from "@/src/lib/spatialOutputs";
 
@@ -47,6 +50,19 @@ const FIELD_ORDER = [
   "eyes_closed",
   "smiling",
 ] as const;
+
+/** Pad the three captured photos into the five-field /analyze_v2 contract. */
+export function filesForAnalyzeV2(
+  files: Record<FaceScanCaptureId, File>
+): Record<(typeof FIELD_ORDER)[number], File> {
+  return {
+    centre: files.centre,
+    left: files.left,
+    right: files.right,
+    eyes_closed: files.centre,
+    smiling: files.centre,
+  };
+}
 
 export async function runFaceAnalysisServiceV2(
   files: Record<(typeof FIELD_ORDER)[number], File>,

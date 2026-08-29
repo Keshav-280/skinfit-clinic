@@ -115,7 +115,7 @@ export const ARTICLES: Article[] = [
       {
         heading: "Why a single photo isn't enough",
         paragraphs: [
-          "Lighting, angle, and even the camera you're using can all shift how skin looks in a single image. That's why the capture flow guides you through five specific angles for every scan — front, both sides, eyes closed, and smiling — so the model is comparing like-for-like data rather than one flattering (or unflattering) shot.",
+          "Lighting, angle, and even the camera you're using can all shift how skin looks in a single image. That's why the capture flow guides you through three specific angles for every scan — front and both sides — so the model is comparing like-for-like data rather than one flattering (or unflattering) shot.",
         ],
       },
       {

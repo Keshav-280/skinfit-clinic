@@ -17,19 +17,9 @@ export const CAPTURE_STEP_TIPS = {
     "Keep your head level",
     "Don't tilt up or down",
   ],
-  smiling: [
-    "Smile naturally",
-    "Show your teeth",
-    "Keep your head straight",
-  ],
-  eyes_closed: [
-    "Don't squeeze your eyes",
-    "Relax your face",
-    "Keep your head straight",
-  ],
 } as const satisfies Record<string, readonly [string, string, string]>;
 
-/** Five-angle protocol for kAI baseline + weekly tracker (order matters for API). */
+/** Three-angle protocol for kAI baseline + weekly tracker (order matters for API). */
 export const FACE_SCAN_CAPTURE_STEPS = [
   {
     id: "centre",
@@ -54,22 +44,6 @@ export const FACE_SCAN_CAPTURE_STEPS = [
     tips: CAPTURE_STEP_TIPS.right,
     instruction:
       "Turn your head ~30° to your left so your right profile faces the camera. Same framing as the previous shot. No spectacles.",
-  },
-  {
-    id: "eyes_closed",
-    title: "Eyes Closed",
-    subtitle: "Close your eyes gently and relax your face.",
-    tips: CAPTURE_STEP_TIPS.eyes_closed,
-    instruction:
-      "Face forward again with eyes gently closed. Remove spectacles, then tap capture.",
-  },
-  {
-    id: "smiling",
-    title: "Smiling Photo",
-    subtitle: "Face the camera and give a natural smile.",
-    tips: CAPTURE_STEP_TIPS.smiling,
-    instruction:
-      "Natural smile — teeth optional. Remove spectacles. Same framing as the front shot.",
   },
 ] as const;
 

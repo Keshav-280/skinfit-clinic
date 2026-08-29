@@ -29,10 +29,10 @@ const OVERLAY_HEIGHT_FRACTION = 3 / 4;
 const OVERLAY_TOP_PAD = (1 - OVERLAY_HEIGHT_FRACTION) / 2;
 
 /**
- * Centre + smiling: tight 3:4 crop around the face guide for ML inference.
+ * Front capture: tight 3:4 crop around the face guide for ML inference.
  * Applied on the server after identity verification — clients upload full-frame.
  */
-const FACE_GUIDE_CROP_STEPS = new Set<FaceScanCaptureId>(["centre", "smiling"]);
+const FACE_GUIDE_CROP_STEPS = new Set<FaceScanCaptureId>(["centre"]);
 
 export function shouldCropToFaceGuide(stepId: FaceScanCaptureId): boolean {
   return FACE_GUIDE_CROP_STEPS.has(stepId);

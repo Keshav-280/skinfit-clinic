@@ -576,7 +576,7 @@ export function FaceScanFlow({
     const nextIdx = firstEmptySlotIndex(slotCaptures);
     if (nextIdx >= N_CAPTURES) {
       setUploadError(
-        "All five angles are filled. Remove one below to retake with the camera, or continue to preview.",
+        "All three angles are filled. Remove one below to retake with the camera, or continue to preview.",
       );
       return;
     }
@@ -1138,7 +1138,7 @@ export function FaceScanFlow({
             Photos sent to your computer
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
-            Your five angles are on the desktop scan page. Name your scan and
+            Your three photos are on the desktop scan page. Name your scan and
             start analysis there when you are ready.
           </p>
           <p className="mt-4 text-xs text-slate-400">
@@ -1271,7 +1271,7 @@ export function FaceScanFlow({
                   </h2>
                   <p className="mt-2 text-sm text-[#64748B]">
                     Point your phone camera at the QR code below to capture all
-                    five angles.
+                    three angles.
                   </p>
                 </div>
               ) : null}

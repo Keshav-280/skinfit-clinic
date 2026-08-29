@@ -95,7 +95,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
     weeklyDeltaMeaningful: true,
     deteriorationAlertThreshold: null,
     indiaNote:
-      "Dynamic vs static lines: smiling vs neutral capture matters for Indian skin ageing patterns.",
+      "Fine lines are scored from the front capture against your own baseline.",
   },
   uniformity: {
     key: "uniformity",

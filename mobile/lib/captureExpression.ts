@@ -39,7 +39,6 @@ export function applyCaptureExpression(
     ...next,
     showExpressionCheck:
       needsExpressionCheck(stepId) &&
-      expressionPipelineActive &&
-      stepId === "eyes_closed",
+      expressionPipelineActive,
   };
 }

@@ -1,6 +1,6 @@
 /**
  * Smoke test: POST /analyze_dual_scan + merge (production scan route default).
- * Run: npx tsx src/scripts/verify-dual-pose-pipeline.ts [centre.jpg] [smiling.jpg]
+ * Run: npx tsx src/scripts/verify-dual-pose-pipeline.ts [centre.jpg] [optional-second.jpg]
  */
 import "dotenv/config";
 import { readFileSync } from "fs";

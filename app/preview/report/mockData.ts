@@ -43,7 +43,7 @@ export const previewParameters: KaiReportParamRow[] = [
     score10: 7,
     gradeColor: "mid",
     finding:
-      "Fine lines around the smile — expected for this capture, not the lead concern.",
+      "Fine lines around the eyes — expected for this capture, not the lead concern.",
     concernChipId: "wrinkles",
   },
   {
@@ -170,8 +170,8 @@ export const previewWrinkles: WrinkleLine[] = [
 
 export const previewScanImages = [
   { url: PREVIEW_FACE, label: "Front profile", poseId: "centre" },
-  { url: PREVIEW_FACE, label: "Smile", poseId: "smiling" },
   { url: PREVIEW_FACE, label: "Left", poseId: "left" },
+  { url: PREVIEW_FACE, label: "Right", poseId: "right" },
 ];
 
 export const previewActions = [

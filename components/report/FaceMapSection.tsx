@@ -43,9 +43,11 @@ type FaceMapSectionProps = {
   /** Per-pose acne detections; falls back to `detectionRegions` (centre) when absent. */
   detectionRegionsByPose?: Record<string, DetectionRegion[]>;
   wrinkleLines?: WrinkleLine[];
-  /** Model wrinkle segmentation heatmap (smiling pose) — only used when no vector lines. */
+  /** Model wrinkle segmentation heatmap (front pose) — only used when no vector lines. */
   wrinkleMaskUrl?: string | null;
   spotAnnotatedUrl?: string | null;
+  /** Photos already include v18 dashed-circle annotations — skip extra acne circles. */
+  bakedSpotAnnotations?: boolean;
   maskExportVersion?: number | null;
   proxyRegions?: ProxyRegion[];
   parameterGrades: FaceMapChip[];
@@ -81,6 +83,7 @@ export function FaceMapSection({
   wrinkleLines = [],
   wrinkleMaskUrl,
   spotAnnotatedUrl,
+  bakedSpotAnnotations = false,
   maskExportVersion,
   proxyRegions = [],
   parameterGrades,
@@ -141,9 +144,10 @@ export function FaceMapSection({
   function selectConcern(id: ConcernChipId) {
     onConcernChange?.(id);
     if (concernProp == null) setInternalConcern(id);
-    // Wrinkles are extracted on the smiling capture — jump there when available.
-    if (id === "wrinkles" && smilingIndex >= 0) {
-      selectIndex(smilingIndex);
+    // Wrinkles are extracted on the front capture — jump there (or smiling on old scans).
+    if (id === "wrinkles") {
+      if (smilingIndex >= 0) selectIndex(smilingIndex);
+      else if (centreIndex >= 0) selectIndex(centreIndex);
       return;
     }
     // Scars / under-eye / acne proxies are centre-aligned.
@@ -164,9 +168,10 @@ export function FaceMapSection({
     ? poseForLabel(photo.label, photo.poseId, activeIndex)
     : "centre";
 
-  const acneForPose =
-    detectionRegionsByPose?.[pose] ??
-    (pose === "centre" ? detectionRegions : []);
+  const acneForPose = bakedSpotAnnotations
+    ? []
+    : detectionRegionsByPose?.[pose] ??
+      (pose === "centre" ? detectionRegions : []);
   const showProxy = pose === "centre";
 
   const hasWrinkleLines = wrinkleLines.length > 0;
@@ -178,7 +183,7 @@ export function FaceMapSection({
     (maskExportVersion === MASK_EXPORT_VERSION_TITLE_FREE ||
       maskExportVersion === 2);
 
-  // Prefer smiling; if that pose isn't in the gallery, still show on centre.
+  // Prefer smiling on older 5-photo scans; new scans show wrinkles on centre.
   const wrinklePoseOk =
     pose === "smiling" || (pose === "centre" && smilingIndex < 0);
   // Heatmap from the model is higher quality than extracted polylines — prefer it.
@@ -222,8 +227,9 @@ export function FaceMapSection({
 
   useEffect(() => {
     if (concernProp == null) return;
-    if (concernProp === "wrinkles" && smilingIndex >= 0) {
-      selectIndex(smilingIndex);
+    if (concernProp === "wrinkles") {
+      if (smilingIndex >= 0) selectIndex(smilingIndex);
+      else if (centreIndex >= 0) selectIndex(centreIndex);
       return;
     }
     if (
@@ -314,7 +320,7 @@ export function FaceMapSection({
             }}
           />
         ) : null}
-        {photo && photoReady && spotAnnotatedUrl?.trim() && pose === "centre" ? (
+        {photo && photoReady && !bakedSpotAnnotations && spotAnnotatedUrl?.trim() && pose === "centre" ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={publicFileDisplayUrl(spotAnnotatedUrl) ?? spotAnnotatedUrl}

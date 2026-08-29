@@ -18,6 +18,6 @@ export const ONBOARDING_BASELINE_FOCUS_ACTIONS: PatientTrackerFocusAction[] = [
     rank: 3,
     title: "Use the same scan setup next time",
     detail:
-      "Soft natural light, eye-level camera, and all five angles keep your next scan easy to read.",
+      "Soft natural light, eye-level camera, and all three angles keep your next scan easy to read.",
   },
 ];

@@ -28,7 +28,7 @@ export type ModelFeatureScores = {
   acne_scars?: number | null;
   skin_quality?: number | null;
   wrinkle_severity?: number | null;
-  /** From smiling /analyze API (mask-aligned). */
+  /** From front-pose /analyze API (mask-aligned). */
   wrinkle_cls_severity?: number | null;
   wrinkle_seg_severity?: number | null;
   wrinkle_mask_severity?: number | null;
@@ -445,7 +445,7 @@ function cleanMaskDataUri(uri: string | undefined): string | undefined {
 
 /**
  * Centre pose: 7 parameters (all except wrinkles) + acne mask.
- * Smiling pose: wrinkle severity + wrinkle mask only.
+ * Second analyze (front photo again): wrinkle severity + wrinkle mask only.
  */
 export function buildScanPayloadFromCentreAndSmiling(
   centre: FaceAnalysisInferenceResult,
@@ -474,7 +474,7 @@ export function buildScanPayloadFromCentreAndSmiling(
       ...params.wrinkles,
       extras: {
         ...(params.wrinkles.extras ?? {}),
-        inference_pose: "smiling",
+        inference_pose: "centre",
         head: "segmentation_pixel_map",
         mask_resolution: "224x224",
         ...(wrDiag.wrinkle_mask_severity != null
@@ -508,12 +508,12 @@ export function buildScanPayloadFromCentreAndSmiling(
   const clinical_scores = clinicalScoresFromModel(mergedMfs);
   // Dual-pose notebook contract:
   // - acne mask MUST come from centre pose
-  // - wrinkle mask MUST come from smiling pose
+  // - wrinkle mask comes from the second slot (front photo, since smiling was removed)
   // We intentionally do not fallback to the opposite pose.
   const acneMaskDataUri = cleanMaskDataUri(centre.acneMaskDataUri);
   const wrinkleMaskDataUri = cleanMaskDataUri(smiling.wrinkleMaskDataUri);
 
-  /** Stored on scan row: clinical merge + smiling wrinkle diagnostics from API. */
+  /** Stored on scan row: clinical merge + front-pose wrinkle diagnostics from API. */
   const modelFeatureScoresForStorage: ModelFeatureScores = {
     ...mergedMfs,
     ...(wrDiag.wrinkle_cls_severity !== undefined
