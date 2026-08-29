@@ -31,13 +31,13 @@ export function DoctorNavLink({
         collapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-3 py-2.5"
       } ${
         active
-          ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
+          ? "bg-[#1E1B31]/10 text-[#1E1B31]"
           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       }`}
     >
       <Icon
         className={`h-[18px] w-[18px] shrink-0 ${
-          active ? "text-[#2C3E6B]" : "text-slate-400 group-hover:text-[#2C3E6B]"
+          active ? "text-[#1E1B31]" : "text-slate-400 group-hover:text-[#1E1B31]"
         }`}
         aria-hidden
       />

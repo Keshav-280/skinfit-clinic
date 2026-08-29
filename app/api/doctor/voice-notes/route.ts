@@ -120,7 +120,7 @@ export async function POST(req: Request) {
         patientId,
         staffId: doctorId,
         text: chatText,
-        pushTitle: "SkinnFit — feedback from your doctor",
+        pushTitle: "SkinFit — feedback from your doctor",
       });
     } else {
       void notifyPatientDoctorVoiceNote(patientId, {

@@ -257,7 +257,7 @@ export function ProfileForm({
           This information appears on your treatment history and reports.
         </p>
         {!hasQuestionnaire ? (
-          <p className="mt-3 rounded-xl border border-dashed border-[#2C3E6B]/20 bg-[#E8EFE6]/50 px-3 py-2 text-xs font-medium text-[#2C3E6B]">
+          <p className="mt-3 rounded-xl border border-dashed border-[#1E1B31]/20 bg-[#F0EAE2]/50 px-3 py-2 text-xs font-medium text-[#1E1B31]">
             Age, gender, skin type, and goals unlock after you complete the{" "}
             <a href="/onboarding/questionnaire?entry=resume" className="font-bold underline">
               onboarding questionnaire
@@ -269,7 +269,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-name"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Full name
             </label>
@@ -285,7 +285,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-email"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Email
             </label>
@@ -302,7 +302,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-phone-cc"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Phone number <span className="text-red-600">*</span>
             </label>
@@ -343,7 +343,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-age"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Age (years)
             </label>
@@ -360,7 +360,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-skin"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Skin type
             </label>
@@ -376,7 +376,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-goal"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Primary goal
             </label>
@@ -392,7 +392,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-gender"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Gender
             </label>
@@ -418,7 +418,7 @@ export function ProfileForm({
             <label className="flex cursor-pointer items-center gap-3 pt-2">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-[#2C3E6B]/30 text-[#2C3E6B] focus:ring-[#2C3E6B]"
+                className="h-4 w-4 rounded border-[#1E1B31]/30 text-[#1E1B31] focus:ring-[#1E1B31]"
                 checked={cycleTrackingEnabled}
                 onChange={(e) => setCycleTrackingEnabled(e.target.checked)}
                 disabled={loading}
@@ -436,14 +436,14 @@ export function ProfileForm({
       <section className={sectionClass}>
         <h2 className={patientSectionTitle}>Visit reminders</h2>
         <p className={`mt-1 ${patientMuted}`}>
-          SkinnFit Clinic can send you a message in{" "}
-          <strong className="font-medium text-[#2C3E6B]">Clinic Support</strong>{" "}
+          SkinFit Wellness can send you a message in{" "}
+          <strong className="font-medium text-[#1E1B31]">Clinic Support</strong>{" "}
           chat before each confirmed appointment.
         </p>
         <div className="mt-6">
           <label
             htmlFor="pf-reminder-hours"
-            className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+            className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
           >
             Remind me how many hours before the visit?
           </label>
@@ -466,8 +466,8 @@ export function ProfileForm({
       <section className={sectionClass}>
         <h2 className={patientSectionTitle}>Daily routine reminders</h2>
         <p className={`mt-1 ${patientMuted}`}>
-          SkinnFit Clinic can message you in{" "}
-          <strong className="font-medium text-[#2C3E6B]">Clinic Support</strong>{" "}
+          SkinFit Wellness can message you in{" "}
+          <strong className="font-medium text-[#1E1B31]">Clinic Support</strong>{" "}
           if your AM or PM checklist still has steps left that day. Times use
           your timezone below.
         </p>
@@ -475,7 +475,7 @@ export function ProfileForm({
           <label className="flex cursor-pointer items-center gap-3">
             <input
               type="checkbox"
-                className="h-4 w-4 rounded border-[#2C3E6B]/30 text-[#2C3E6B] focus:ring-[#2C3E6B]"
+                className="h-4 w-4 rounded border-[#1E1B31]/30 text-[#1E1B31] focus:ring-[#1E1B31]"
                 checked={routineRemindersEnabled}
               onChange={(e) => setRoutineRemindersEnabled(e.target.checked)}
               disabled={loading}
@@ -487,7 +487,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-tz"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Timezone (IANA)
             </label>
@@ -523,7 +523,7 @@ export function ProfileForm({
             <div>
               <label
                 htmlFor="pf-am-rem"
-                className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+                className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
               >
                 Morning reminder
               </label>
@@ -539,7 +539,7 @@ export function ProfileForm({
             <div>
               <label
                 htmlFor="pf-pm-rem"
-                className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+                className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
               >
                 Evening reminder
               </label>
@@ -567,7 +567,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-cur"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Current password
             </label>
@@ -584,7 +584,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-new"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               New password
             </label>
@@ -601,7 +601,7 @@ export function ProfileForm({
           <div>
             <label
               htmlFor="pf-confirm"
-              className="mb-1.5 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-1.5 block text-sm font-medium text-[#1E1B31]"
             >
               Confirm new password
             </label>

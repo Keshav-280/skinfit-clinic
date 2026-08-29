@@ -95,7 +95,7 @@ export function WelcomeModal() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-modal-title"
-        className={`relative mx-4 w-full max-w-[420px] rounded-2xl bg-[#2C3E6B] px-6 py-8 shadow-[0_24px_64px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out ${
+        className={`relative mx-4 w-full max-w-[420px] rounded-2xl bg-[#1E1B31] px-6 py-8 shadow-[0_24px_64px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out ${
           entered ? "scale-100" : "scale-95"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -145,7 +145,7 @@ export function WelcomeModal() {
           <button
             type="button"
             onClick={onPrimaryCta}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-[#2C3E6B] transition hover:bg-white/95"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-[#1E1B31] transition hover:bg-white/95"
           >
             <Camera className="h-4 w-4" aria-hidden />
             Get Your Skin Score in 2 Minutes

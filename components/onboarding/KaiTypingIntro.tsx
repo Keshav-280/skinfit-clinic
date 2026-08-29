@@ -58,7 +58,7 @@ export function KaiTypingIntro({
       {showHeader ? (
         <>
           <p
-            className={`font-extrabold uppercase tracking-[0.28em] text-[#2C3E6B]/60 ${
+            className={`font-extrabold uppercase tracking-[0.28em] text-[#1E1B31]/60 ${
               isSidebar ? "text-[9px]" : "text-center text-[10px]"
             }`}
           >
@@ -69,7 +69,7 @@ export function KaiTypingIntro({
               isSidebar ? "text-xl md:text-2xl" : "text-center text-2xl md:text-3xl"
             }`}
           >
-            Meet <span className="text-[#2C3E6B]">kAI</span>
+            Meet <span className="text-[#1E1B31]">kAI</span>
           </h1>
         </>
       ) : null}
@@ -114,14 +114,14 @@ export function KaiTypingIntro({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.25 }}
-                  className="w-full min-w-0 flex-1 rounded-2xl rounded-tl-md border border-white/75 bg-white/50 px-3.5 py-2.5 shadow-[0_6px_20px_rgba(44,62,107,0.08)] backdrop-blur-sm sm:py-3"
+                  className="w-full min-w-0 flex-1 rounded-2xl rounded-tl-md border border-white/75 bg-white/50 px-3.5 py-2.5 shadow-[0_6px_20px_rgba(30, 27, 49,0.08)] backdrop-blur-sm sm:py-3"
                 >
                   <p className="text-[12px] font-medium leading-relaxed text-[#374151] sm:text-[13px] md:text-sm">
                     {typed}
                     <motion.span
                       animate={{ opacity: [1, 0, 1] }}
                       transition={{ duration: 0.9, repeat: Infinity }}
-                      className="ml-0.5 inline-block text-[#2C3E6B]"
+                      className="ml-0.5 inline-block text-[#1E1B31]"
                       aria-hidden
                     >
                       |
@@ -145,14 +145,14 @@ export function KaiTypingIntro({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.25 }}
-                  className="w-full flex-1 rounded-2xl border border-white/75 bg-white/50 px-3.5 py-3 shadow-[0_6px_20px_rgba(44,62,107,0.08)] backdrop-blur-sm md:rounded-tl-md"
+                  className="w-full flex-1 rounded-2xl border border-white/75 bg-white/50 px-3.5 py-3 shadow-[0_6px_20px_rgba(30, 27, 49,0.08)] backdrop-blur-sm md:rounded-tl-md"
                 >
                   <p className="min-h-[4.5rem] text-sm font-medium leading-relaxed text-[#374151] md:text-[15px]">
                     {typed}
                     <motion.span
                       animate={{ opacity: [1, 0, 1] }}
                       transition={{ duration: 0.9, repeat: Infinity }}
-                      className="ml-0.5 inline-block text-[#2C3E6B]"
+                      className="ml-0.5 inline-block text-[#1E1B31]"
                       aria-hidden
                     >
                       |

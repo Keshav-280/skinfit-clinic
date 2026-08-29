@@ -19,7 +19,7 @@ import { apiJson } from "@/lib/api";
 import { goToDashboard } from "@/lib/dashboardNavigation";
 import { normalizeRoutineSteps, parseRoutineStepItem, routineStepSubtitle } from "@/lib/routine";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const GREEN = "#16a34a";
 const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
@@ -258,9 +258,9 @@ export default function MorningRoutineScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#E8EFE6" },
+  scroll: { flex: 1, backgroundColor: "#F0EAE2" },
   content: { padding: 16, paddingBottom: 48 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6", padding: 24 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F0EAE2", padding: 24 },
   empty: { fontSize: 15, color: "#6B7280", textAlign: "center", lineHeight: 22 },
 
   header: {
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    shadowColor: "#2C3E6B",
+    shadowColor: "#1E1B31",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,

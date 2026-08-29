@@ -64,12 +64,12 @@ export function ReportHero({
                 key={chip.name}
                 type="button"
                 onClick={() => chip.id && onWatchChip?.(chip.id)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#F4F0FA] px-3 py-1.5 text-[12px] font-semibold text-[#1A2035] transition hover:bg-[#E4DFF5]"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#F8EDEE] px-3 py-1.5 text-[12px] font-semibold text-[#1E1B31] transition hover:bg-[#EFCCCE]"
               >
                 <span className={`report-live-dot-on h-1.5 w-1.5 rounded-full ${DOT[chip.color]}`} />
                 {chip.name}
                 <span
-                  className="text-[13px] font-normal text-[#2C3E6B]"
+                  className="text-[13px] font-normal text-[#1E1B31]"
                   style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
                 >
                   {chip.grade}
@@ -91,15 +91,15 @@ export function ReportHero({
       ? "bg-[#4E9B72]/15 text-[#2F6B4A]"
       : badge.type === "declining"
         ? "bg-[#C4694F]/15 text-[#8A3D2C]"
-        : "bg-white/80 text-[#2C3E6B]";
+        : "bg-white/80 text-[#1E1B31]";
 
   return (
     <section className="relative px-1 pb-1 pt-1">
-      <div className="mb-4 flex justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#2C3E6B]/45">
+      <div className="font-meta mb-4 flex justify-between text-[10px] font-semibold uppercase tracking-[0.15em] text-[#1E1B31]/45">
         <span>{meta.left}</span>
         <span>{meta.right}</span>
       </div>
-      <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.03em] text-[#1A2035]">
+      <h1 className="font-headline text-[22px] font-semibold leading-[1.2] tracking-[-0.03em] text-[#1E1B31]">
         {heading}
       </h1>
       {subtitle ? (

@@ -599,7 +599,7 @@ export function SkinScanReportBody({
                   value={shareEmail}
                   onChange={(e) => setShareEmail(e.target.value)}
                   placeholder="name@gmail.com"
-                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/20"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-[#1E1B31]/40 focus:ring-2 focus:ring-[#1E1B31]/20"
                   autoComplete="email"
                 />
               </label>
@@ -617,7 +617,7 @@ export function SkinScanReportBody({
                 <p className="mt-2 text-[11px] text-rose-600">{shareError}</p>
               ) : null}
               {shareDone ? (
-                <p className="mt-2 text-[11px] font-medium text-[#2C3E6B]">
+                <p className="mt-2 text-[11px] font-medium text-[#1E1B31]">
                   Sent. Check the inbox (and spam).
                 </p>
               ) : null}
@@ -669,13 +669,13 @@ export function SkinScanReportBody({
       initial={{ opacity: 0, y: 20, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: easeOut }}
-      className="relative w-full overflow-hidden rounded-[22px] border border-[rgba(44,62,107,0.16)]"
+      className="relative w-full overflow-hidden rounded-[22px] border border-[rgba(30, 27, 49,0.16)]"
       style={{
         background: SCAN_REPORT_PDF_BG.linear,
         boxShadow: `
             0 0 0 1px rgba(255,255,255,0.72) inset,
-            0 36px 72px -14px rgba(44,62,107,0.22),
-            0 14px 28px -10px rgba(44,62,107,0.12)
+            0 36px 72px -14px rgba(30, 27, 49,0.22),
+            0 14px 28px -10px rgba(30, 27, 49,0.12)
           `,
       }}
     >
@@ -691,7 +691,7 @@ export function SkinScanReportBody({
       {/* ─── CLINICAL REPORT HEADER (Top Section on PDF & Screen) ─── */}
       <div
         data-pdf-section
-        className="relative z-[1] w-full break-inside-avoid border-b border-[rgba(44,62,107,0.12)] px-5 py-6 sm:px-9"
+        className="relative z-[1] w-full break-inside-avoid border-b border-[rgba(30, 27, 49,0.12)] px-5 py-6 sm:px-9"
         style={{ background: `linear-gradient(180deg, ${T.pageBg} 0%, #eef4fb 100%)`, color: T.navyDark }}
       >
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -707,31 +707,31 @@ export function SkinScanReportBody({
                 />
               </div>
             </div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#2C3E6B]/80">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#1E1B31]/80">
               AI-Powered Clinical Scan Report
             </p>
 
             {/* Patient metadata table — navy text for readable PDF export */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-xl border border-[rgba(44,62,107,0.14)] bg-white/90 p-3.5 text-xs text-[#1E3264]">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-xl border border-[rgba(30, 27, 49,0.14)] bg-white/90 p-3.5 text-xs text-[#242A5F]">
               <div>
-                <span className="font-semibold text-[#2C3E6B]/65">Patient Name: </span>
-                <span className="font-bold text-[#1E3264]">{userName}</span>
+                <span className="font-semibold text-[#1E1B31]/65">Patient Name: </span>
+                <span className="font-bold text-[#242A5F]">{userName}</span>
               </div>
               <div>
-                <span className="font-semibold text-[#2C3E6B]/65">Age / Sex: </span>
-                <span className="font-bold text-[#1E3264]">{age}yrs / M</span>
+                <span className="font-semibold text-[#1E1B31]/65">Age / Sex: </span>
+                <span className="font-bold text-[#242A5F]">{age}yrs / M</span>
               </div>
               <div>
-                <span className="font-semibold text-[#2C3E6B]/65">Skin Type: </span>
-                <span className="font-bold text-[#1E3264]">{skinType}</span>
+                <span className="font-semibold text-[#1E1B31]/65">Skin Type: </span>
+                <span className="font-bold text-[#242A5F]">{skinType}</span>
               </div>
               <div>
-                <span className="font-semibold text-[#2C3E6B]/65">Report ID: </span>
-                <span className="font-bold text-[#1E3264]">SF-{(scanId || 1024).toString()}</span>
+                <span className="font-semibold text-[#1E1B31]/65">Report ID: </span>
+                <span className="font-bold text-[#242A5F]">SF-{(scanId || 1024).toString()}</span>
               </div>
               <div className="col-span-2">
-                <span className="font-semibold text-[#2C3E6B]/65">Scan Date: </span>
-                <span className="font-bold text-[#1E3264]">
+                <span className="font-semibold text-[#1E1B31]/65">Scan Date: </span>
+                <span className="font-bold text-[#242A5F]">
                   {format(scanDate, "dd MMMM yyyy, hh:mm a")}
                 </span>
               </div>
@@ -746,7 +746,7 @@ export function SkinScanReportBody({
         className="relative z-[1] hidden w-full break-inside-avoid"
       >
       <div className="relative px-5 pb-10 pt-9 sm:px-9 sm:pb-12">
-        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2C3E6B]/70">
+        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#1E1B31]/70">
           {resolvedPhotos.length === 1 ? "Your scan photo" : "Face captures"}
         </p>
         {resolvedPhotos.length === 1 ? (
@@ -974,9 +974,9 @@ export function SkinScanReportBody({
                 ].map((row) => (
                   <div
                     key={row.label}
-                    className="flex min-w-0 max-w-full flex-col items-center gap-1 rounded-xl border border-[rgba(44,62,107,0.1)] bg-white px-1 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-1 sm:rounded-2xl sm:px-2 sm:py-2.5 md:gap-2 md:px-2.5"
+                    className="flex min-w-0 max-w-full flex-col items-center gap-1 rounded-xl border border-[rgba(30, 27, 49,0.1)] bg-white px-1 py-2 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-1 sm:rounded-2xl sm:px-2 sm:py-2.5 md:gap-2 md:px-2.5"
                   >
-                    <span className="line-clamp-2 w-full min-w-0 text-center text-[9px] font-semibold leading-tight tracking-tight text-[#2C3E6B] sm:line-clamp-1 sm:w-auto sm:truncate sm:text-left sm:text-[11px] md:text-[12px]">
+                    <span className="line-clamp-2 w-full min-w-0 text-center text-[9px] font-semibold leading-tight tracking-tight text-[#1E1B31] sm:line-clamp-1 sm:w-auto sm:truncate sm:text-left sm:text-[11px] md:text-[12px]">
                       {row.label}
                     </span>
                     <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
@@ -1060,11 +1060,11 @@ export function SkinScanReportBody({
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.18, duration: 0.45, ease: easeOut }}
-                className="w-full min-w-0 max-w-full rounded-[20px] border border-[rgba(44,62,107,0.12)] bg-white px-4 py-6 shadow-[0_24px_48px_-12px_rgba(44,62,107,0.15)] sm:px-9 sm:py-7"
+                className="w-full min-w-0 max-w-full rounded-[20px] border border-[rgba(30, 27, 49,0.12)] bg-white px-4 py-6 shadow-[0_24px_48px_-12px_rgba(30, 27, 49,0.15)] sm:px-9 sm:py-7"
               >
                 <div className="flex min-w-0 max-w-full flex-col items-stretch gap-5 sm:flex-row sm:items-center sm:gap-6 md:gap-8">
                   <div className="min-w-0 flex-1 overflow-hidden">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2C3E6B]/70">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#1E1B31]/70">
                       Your Skin Health
                     </p>
                     <p
@@ -1102,7 +1102,7 @@ export function SkinScanReportBody({
             </div>
 
             <div
-              className="relative mt-12 break-inside-avoid border-t border-[rgba(44,62,107,0.12)] px-6 py-10 sm:mt-14 sm:px-10 sm:py-12 md:px-14"
+              className="relative mt-12 break-inside-avoid border-t border-[rgba(30, 27, 49,0.12)] px-6 py-10 sm:mt-14 sm:px-10 sm:py-12 md:px-14"
               style={{
                 background: `linear-gradient(180deg, ${T.navy} 0%, ${T.navyMid} 100%)`,
               }}
@@ -1167,7 +1167,7 @@ export function SkinScanReportBody({
           </p>
           <Link
             href="/dashboard/schedules?calendar=appointments#schedules-calendar-root"
-            className="rounded-[14px] px-12 py-3.5 text-[13px] font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(44,62,107,0.35)] transition hover:-translate-y-0.5 hover:bg-[#3d5080] hover:shadow-[0_8px_24px_rgba(44,62,107,0.4)] active:translate-y-0 active:scale-[0.98]"
+            className="rounded-[14px] px-12 py-3.5 text-[13px] font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(30, 27, 49,0.35)] transition hover:-translate-y-0.5 hover:bg-[#5B66A1] hover:shadow-[0_8px_24px_rgba(30, 27, 49,0.4)] active:translate-y-0 active:scale-[0.98]"
             style={{ backgroundColor: T.navy }}
           >
             {showTracker && tracker?.cta.showAppointmentPrep

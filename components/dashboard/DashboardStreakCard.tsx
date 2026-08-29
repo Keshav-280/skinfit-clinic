@@ -32,7 +32,7 @@ export function DashboardStreakCard({
   return (
     <div className={`flex flex-col ${DASHBOARD_SECTION_CARD} ${className}`}>
       <div className="space-y-3">
-        <h3 className="text-lg font-extrabold tracking-tight text-[#2D3E6B] md:text-xl">
+        <h3 className="text-lg font-extrabold tracking-tight text-[#1E1B31] md:text-xl">
           {streakCurrent} day streak
         </h3>
         <p className="text-sm font-semibold text-[#6B7280]">
@@ -44,7 +44,7 @@ export function DashboardStreakCard({
             <span>{weekDoneCount}/7 complete</span>
           </div>
           <div
-            className="h-2.5 overflow-hidden rounded-full bg-[#F2F9F2]"
+            className="h-2.5 overflow-hidden rounded-full bg-[#FAF8F5]"
             role="progressbar"
             aria-valuenow={weekDoneCount}
             aria-valuemin={0}
@@ -81,7 +81,7 @@ export function DashboardStreakCard({
       </div>
       <p
         className={`mt-5 text-center text-sm font-bold ${
-          allRoutineDone ? "text-[#4CAF50]" : "text-[#2D3E6B]"
+          allRoutineDone ? "text-[#4CAF50]" : "text-[#1E1B31]"
         }`}
       >
         {allRoutineDone ? "Done today" : "Complete today's routine"}

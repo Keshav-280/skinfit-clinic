@@ -125,7 +125,7 @@ export function ThenNowCompare({
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute top-1/2 z-[4] flex h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#2C3E6B] shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
+          className="pointer-events-none absolute top-1/2 z-[4] flex h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#1E1B31] shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
           style={{ left: `${position}%` }}
           aria-hidden
         >

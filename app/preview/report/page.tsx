@@ -49,7 +49,7 @@ export default function ReportPreviewPage() {
 
   return (
     <div>
-      <div className="sticky top-0 z-50 border-b border-black/10 bg-[#FBF8F4]/95 px-3 py-2 backdrop-blur-md">
+      <div className="sticky top-0 z-50 border-b border-black/10 bg-[#FAF8F5]/95 px-3 py-2 backdrop-blur-md">
         <p className="mx-auto mb-2 max-w-[460px] text-center text-[11px] text-[#5B6478]">
           Concept lab — not live yet. Pick a direction.
         </p>
@@ -61,8 +61,8 @@ export default function ReportPreviewPage() {
               onClick={() => setDesign(d.id)}
               className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
                 design === d.id
-                  ? "bg-[#2C3E6B] text-white"
-                  : "bg-white/80 text-[#2C3E6B]"
+                  ? "bg-[#1E1B31] text-white"
+                  : "bg-white/80 text-[#1E1B31]"
               }`}
             >
               {d.label}
@@ -78,7 +78,7 @@ export default function ReportPreviewPage() {
               type="button"
               onClick={() => setMode("initial")}
               className={`flex-1 rounded-full py-1.5 text-[12px] font-semibold ${
-                mode === "initial" ? "bg-[#2C3E6B] text-white" : "text-[#2C3E6B]"
+                mode === "initial" ? "bg-[#1E1B31] text-white" : "text-[#1E1B31]"
               }`}
             >
               Baseline
@@ -87,7 +87,7 @@ export default function ReportPreviewPage() {
               type="button"
               onClick={() => setMode("update")}
               className={`flex-1 rounded-full py-1.5 text-[12px] font-semibold ${
-                mode === "update" ? "bg-[#2C3E6B] text-white" : "text-[#2C3E6B]"
+                mode === "update" ? "bg-[#1E1B31] text-white" : "text-[#1E1B31]"
               }`}
             >
               Week 3

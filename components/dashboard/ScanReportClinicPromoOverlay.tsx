@@ -48,12 +48,12 @@ export function ScanReportClinicPromoOverlay({ onDismiss, className = "" }: Prop
           <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </button>
 
-        <p className="pr-10 text-[10px] font-bold uppercase tracking-[0.22em] text-[#2C3E6B]/70">
+        <p className="pr-10 text-[10px] font-bold uppercase tracking-[0.22em] text-[#1E1B31]/70">
           {copy.kicker}
         </p>
         <h2
           id="clinic-promo-title"
-          className="mt-2 pr-6 text-[18px] font-semibold leading-snug tracking-tight text-[#1E3264] sm:text-[19px]"
+          className="mt-2 pr-6 text-[18px] font-semibold leading-snug tracking-tight text-[#242A5F] sm:text-[19px]"
         >
           {copy.title}
         </h2>
@@ -85,7 +85,7 @@ export function ScanReportClinicPromoOverlay({ onDismiss, className = "" }: Prop
         <button
           type="button"
           onClick={onDismiss}
-          className="mt-5 w-full rounded-xl bg-[#2C3E6B] py-3 text-sm font-bold text-white transition hover:bg-[#354A7A]"
+          className="mt-5 w-full rounded-xl bg-[#1E1B31] py-3 text-sm font-bold text-white transition hover:bg-[#354A7A]"
         >
           View my report
         </button>

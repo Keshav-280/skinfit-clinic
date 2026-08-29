@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Button } from "../../components/ui/Button";
+import { PublicBrandMark } from "../../components/nav/PublicBrandMark";
 import {
   Sparkles,
   Target,
@@ -96,29 +97,22 @@ export default function AboutPage() {
       {/* Sticky Navbar */}
       <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-600/25">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-800">
-              SkinnFit
-            </span>
-          </Link>
+          <PublicBrandMark />
 
           <div className="hidden items-center gap-8 md:flex">
-            <Link href="/" className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600">
+            <Link href="/" className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]">
               Home
             </Link>
-            <Link href="/services" className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600">
+            <Link href="/services" className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]">
               Services
             </Link>
-            <Link href="/blog" className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600">
+            <Link href="/blog" className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]">
               Blog/Education
             </Link>
-            <Link href="/about" className="text-sm font-medium text-teal-600 transition-colors hover:text-teal-700">
+            <Link href="/about" className="text-sm font-medium text-[#1E1B31] transition-colors hover:text-[#1E1B31]">
               About Us
             </Link>
-            <Link href="/contact" className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600">
+            <Link href="/contact" className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]">
               Contact
             </Link>
           </div>
@@ -144,7 +138,7 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 gap-12 items-center lg:grid-cols-2 lg:gap-24">
               <div className="space-y-6">
                 <motion.div variants={iconVariant} className="inline-flex">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-teal-200/60 bg-teal-50/80 px-4 py-2 text-sm font-medium text-teal-700 shadow-sm backdrop-blur-sm">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#EFCCCE]/60 bg-[#F8EDEE]/80 px-4 py-2 text-sm font-medium text-[#1E1B31] shadow-sm backdrop-blur-sm">
                     <Eye className="h-4 w-4" />
                     Our Story
                   </span>
@@ -153,7 +147,7 @@ export default function AboutPage() {
                   variants={titleVariant}
                   className="text-4xl font-bold tracking-tight text-slate-900 md:text-5xl"
                 >
-                  The SkinnFit Vision
+                  The SkinFit Vision
                 </motion.h1>
                 <motion.p variants={textVariant} className="text-lg leading-relaxed text-slate-600">
                   We believe that dermatology should be precise, personalized, and
@@ -162,7 +156,7 @@ export default function AboutPage() {
                   to their unique skin, backed by data and delivered with empathy.
                 </motion.p>
                 <motion.p variants={textVariant} className="text-slate-600">
-                  SkinnFit was founded to bridge the gap between traditional
+                  SkinFit was founded to bridge the gap between traditional
                   dermatology and modern technology. We bring together board-certified
                   specialists, proprietary AI analysis, and a patient-first mindset to
                   deliver results that last.
@@ -171,7 +165,7 @@ export default function AboutPage() {
               <div>
                 <TechVisualization
                   icon={Sparkles}
-                  gradient="from-teal-500/90 via-cyan-500/80 to-teal-600/90"
+                  gradient="from-[#5B66A1]/90 via-cyan-500/80 to-[#1E1B31]/90"
                 />
               </div>
             </div>
@@ -191,13 +185,13 @@ export default function AboutPage() {
               <div className="order-2 lg:order-1">
                 <TechVisualization
                   icon={Dna}
-                  gradient="from-emerald-500/90 via-teal-500/80 to-cyan-600/90"
+                  gradient="from-emerald-500/90 via-[#DF9DA4]/80 to-cyan-600/90"
                 />
               </div>
               <div className="order-1 space-y-6 lg:order-2">
                 <motion.div variants={iconVariant} className="inline-flex">
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-teal-50/80 px-3 py-2 text-sm font-semibold text-teal-700 shadow-sm backdrop-blur-sm">
-                    <Target className="h-5 w-5 text-teal-600" />
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-[#F8EDEE]/80 px-3 py-2 text-sm font-semibold text-[#1E1B31] shadow-sm backdrop-blur-sm">
+                    <Target className="h-5 w-5 text-[#1E1B31]" />
                     Our Approach
                   </span>
                 </motion.div>
@@ -235,8 +229,8 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 gap-12 items-center lg:grid-cols-2 lg:gap-24">
               <div className="space-y-6">
                 <motion.div variants={iconVariant} className="inline-flex">
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-teal-50/80 px-3 py-2 text-sm font-semibold text-teal-700 shadow-sm backdrop-blur-sm">
-                    <Cpu className="h-5 w-5 text-teal-600" />
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-[#F8EDEE]/80 px-3 py-2 text-sm font-semibold text-[#1E1B31] shadow-sm backdrop-blur-sm">
+                    <Cpu className="h-5 w-5 text-[#1E1B31]" />
                     Technology
                   </span>
                 </motion.div>
@@ -263,7 +257,7 @@ export default function AboutPage() {
               <div>
                 <TechVisualization
                   icon={Cpu}
-                  gradient="from-cyan-500/90 via-teal-500/80 to-blue-600/90"
+                  gradient="from-cyan-500/90 via-[#DF9DA4]/80 to-blue-600/90"
                 />
               </div>
             </div>
@@ -283,13 +277,13 @@ export default function AboutPage() {
               <div className="order-2 lg:order-1">
                 <TechVisualization
                   icon={LayoutDashboard}
-                  gradient="from-teal-600/90 via-cyan-500/80 to-teal-500/90"
+                  gradient="from-[#1E1B31]/90 via-[#5B66A1]/80 to-[#DF9DA4]/90"
                 />
               </div>
               <div className="order-1 space-y-6 lg:order-2">
                 <motion.div variants={iconVariant} className="inline-flex">
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-teal-50/80 px-3 py-2 text-sm font-semibold text-teal-700 shadow-sm backdrop-blur-sm">
-                    <LayoutDashboard className="h-5 w-5 text-teal-600" />
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-[#F8EDEE]/80 px-3 py-2 text-sm font-semibold text-[#1E1B31] shadow-sm backdrop-blur-sm">
+                    <LayoutDashboard className="h-5 w-5 text-[#1E1B31]" />
                     Personalization
                   </span>
                 </motion.div>
@@ -309,8 +303,8 @@ export default function AboutPage() {
                   daily routines, reminders, and progress at a glance—so you stay
                   accountable and informed without the overwhelm.
                 </motion.p>
-                <motion.div variants={iconVariant} className="inline-flex items-center gap-2 rounded-lg border border-teal-200/60 bg-white/60 px-4 py-2 backdrop-blur-sm">
-                  <Shield className="h-4 w-4 text-teal-600" />
+                <motion.div variants={iconVariant} className="inline-flex items-center gap-2 rounded-lg border border-[#EFCCCE]/60 bg-white/60 px-4 py-2 backdrop-blur-sm">
+                  <Shield className="h-4 w-4 text-[#1E1B31]" />
                   <span className="text-sm font-medium text-slate-700">HIPAA-ready</span>
                 </motion.div>
               </div>
@@ -330,8 +324,8 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 gap-12 items-center lg:grid-cols-2 lg:gap-24">
               <div className="space-y-6">
                 <motion.div variants={iconVariant} className="inline-flex">
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-teal-50/80 px-3 py-2 text-sm font-semibold text-teal-700 shadow-sm backdrop-blur-sm">
-                    <TrendingUp className="h-5 w-5 text-teal-600" />
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-[#F8EDEE]/80 px-3 py-2 text-sm font-semibold text-[#1E1B31] shadow-sm backdrop-blur-sm">
+                    <TrendingUp className="h-5 w-5 text-[#1E1B31]" />
                     Holistic Care
                   </span>
                 </motion.div>
@@ -349,15 +343,15 @@ export default function AboutPage() {
                 </motion.p>
                 <motion.div variants={textVariant} className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-lg shadow-slate-200/50 backdrop-blur-sm">
-                    <Moon className="h-5 w-5 text-teal-600" />
+                    <Moon className="h-5 w-5 text-[#1E1B31]" />
                     <span className="text-sm font-medium text-slate-700">Sleep</span>
                   </div>
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-lg shadow-slate-200/50 backdrop-blur-sm">
-                    <Droplets className="h-5 w-5 text-teal-600" />
+                    <Droplets className="h-5 w-5 text-[#1E1B31]" />
                     <span className="text-sm font-medium text-slate-700">Hydration</span>
                   </div>
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-lg shadow-slate-200/50 backdrop-blur-sm">
-                    <Heart className="h-5 w-5 text-teal-600" />
+                    <Heart className="h-5 w-5 text-[#1E1B31]" />
                     <span className="text-sm font-medium text-slate-700">Stress</span>
                   </div>
                 </motion.div>
@@ -370,7 +364,7 @@ export default function AboutPage() {
               <div>
                 <TechVisualization
                   icon={TrendingUp}
-                  gradient="from-teal-500/90 via-emerald-500/80 to-cyan-600/90"
+                  gradient="from-[#5B66A1]/90 via-emerald-500/80 to-cyan-600/90"
                 />
               </div>
             </div>
@@ -388,12 +382,7 @@ export default function AboutPage() {
           <div className="mx-auto max-w-7xl px-6">
             <div className="grid gap-12 md:grid-cols-4">
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 shadow-lg shadow-teal-600/20">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <span className="text-xl font-bold">SkinnFit</span>
-                </div>
+                <PublicBrandMark invert />
                 <p className="text-sm text-slate-400">
                   Advanced AI-powered dermatology clinic offering personalized skincare
                   solutions.
@@ -403,11 +392,11 @@ export default function AboutPage() {
               <div>
                 <h4 className="mb-4 font-semibold">Quick Links</h4>
                 <ul className="space-y-2 text-sm text-slate-400">
-                  <li><Link href="/" className="hover:text-teal-400">Home</Link></li>
-                  <li><Link href="/services" className="hover:text-teal-400">Services</Link></li>
-                  <li><Link href="/blog" className="hover:text-teal-400">Blog</Link></li>
-                  <li><Link href="/about" className="hover:text-teal-400">About Us</Link></li>
-                  <li><Link href="/contact" className="hover:text-teal-400">Contact</Link></li>
+                  <li><Link href="/" className="hover:text-[#DF9DA4]">Home</Link></li>
+                  <li><Link href="/services" className="hover:text-[#DF9DA4]">Services</Link></li>
+                  <li><Link href="/blog" className="hover:text-[#DF9DA4]">Blog</Link></li>
+                  <li><Link href="/about" className="hover:text-[#DF9DA4]">About Us</Link></li>
+                  <li><Link href="/contact" className="hover:text-[#DF9DA4]">Contact</Link></li>
                 </ul>
               </div>
 
@@ -425,15 +414,15 @@ export default function AboutPage() {
                 <h4 className="mb-4 font-semibold">Contact Us</h4>
                 <ul className="space-y-3 text-sm text-slate-400">
                   <li className="flex items-start gap-2">
-                    <Phone className="h-4 w-4 shrink-0 text-teal-400" />
+                    <Phone className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                     <span>+91 98765 43210</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Mail className="h-4 w-4 shrink-0 text-teal-400" />
+                    <Mail className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                     <span>hello@skinfit.clinic</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 shrink-0 text-teal-400" />
+                    <MapPin className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                     <span>123 Medical Plaza, Bangalore, Karnataka 560001</span>
                   </li>
                 </ul>
@@ -442,7 +431,7 @@ export default function AboutPage() {
 
             <div className="mt-12 border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
               <p>
-                © {new Date().getFullYear()} SkinnFit Clinic. All rights reserved. |
+                © {new Date().getFullYear()} SkinFit Wellness. All rights reserved. |
                 Privacy Policy | Terms of Service
               </p>
             </div>

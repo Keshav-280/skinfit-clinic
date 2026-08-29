@@ -89,7 +89,7 @@ export function SkinParamMetricsCard({
       </div>
       <Link
         href={viewAllHref}
-        className="mt-3.5 block w-full rounded-[12px] bg-[#2D3E6B] py-3 text-center text-sm font-bold text-white transition hover:bg-[#243456]"
+        className="mt-3.5 block w-full rounded-[12px] bg-[#1E1B31] py-3 text-center text-sm font-bold text-white transition hover:bg-[#242A5F]"
       >
         View all Parameters
       </Link>

@@ -12,8 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ONBOARDING_AGE_OPTIONS } from "../../../src/lib/onboardingAgeOptions";
 
-const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
+const NAVY = "#1E1B31";
+const NAVY_DARK = "#242A5F";
 const PLACEHOLDER = "#94a3b8";
 
 type Props = {

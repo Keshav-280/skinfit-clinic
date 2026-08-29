@@ -250,7 +250,7 @@ export function DoctorCalendarPatientSection() {
           <select
             value={doctorId ?? ""}
             onChange={(e) => setDoctorId(e.target.value)}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
             disabled={loading || doctors.length === 0}
           >
             {doctors.map((d) => (
@@ -302,11 +302,11 @@ export function DoctorCalendarPatientSection() {
                         <div className="flex items-center gap-2">
                           {s.status === "available" ? (
                             <>
-                              <Clock3 className="h-4 w-4 text-teal-600" aria-hidden />
+                              <Clock3 className="h-4 w-4 text-[#1E1B31]" aria-hidden />
                               <button
                                 type="button"
                                 onClick={() => openRequest(s)}
-                                className="rounded-full bg-teal-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-teal-500"
+                                className="rounded-full bg-[#1E1B31] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#F8EDEE]0"
                               >
                                 Request
                               </button>
@@ -421,7 +421,7 @@ export function DoctorCalendarPatientSection() {
                           value={bookingPhoneCountryCode}
                           onChange={(e) => setBookingPhoneCountryCode(e.target.value)}
                           disabled={requestSubmitting}
-                          className="w-[5.5rem] shrink-0 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-center text-sm text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                          className="w-[5.5rem] shrink-0 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-center text-sm text-slate-900 outline-none focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
                           placeholder="+91"
                           aria-label="Country code"
                         />
@@ -431,7 +431,7 @@ export function DoctorCalendarPatientSection() {
                           value={bookingPhone}
                           onChange={(e) => setBookingPhone(e.target.value)}
                           disabled={requestSubmitting}
-                          className="min-w-0 flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                          className="min-w-0 flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
                           placeholder="10-digit mobile"
                         />
                       </div>
@@ -447,7 +447,7 @@ export function DoctorCalendarPatientSection() {
                 <input
                   value={issue}
                   onChange={(e) => setIssue(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
                   placeholder="e.g. Acne on cheeks"
                   disabled={requestSubmitting}
                 />
@@ -459,7 +459,7 @@ export function DoctorCalendarPatientSection() {
                 <input
                   value={why}
                   onChange={(e) => setWhy(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
                   placeholder="e.g. Been 2 weeks"
                   disabled={requestSubmitting}
                 />
@@ -475,7 +475,7 @@ export function DoctorCalendarPatientSection() {
                 type="button"
                 onClick={() => void submitRequest()}
                 disabled={requestSubmitting}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-teal-600 px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Send className="h-4 w-4" aria-hidden />
                 {requestSubmitting ? "Sending…" : "Send request"}

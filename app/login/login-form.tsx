@@ -13,13 +13,13 @@ import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-const LABEL = "mb-2 block text-sm font-semibold text-[#1E232C]";
+const LABEL = "mb-2 block text-sm font-semibold text-[#1E1B31]";
 const INPUT =
-  "w-full rounded-lg border border-transparent bg-[#F7F8F9] px-4 py-3.5 text-[15px] text-[#1E232C] outline-none transition placeholder:text-[#8391A1] focus:border-[#525FE1]/30 focus:ring-2 focus:ring-[#525FE1]/15";
+  "w-full rounded-lg border border-transparent bg-[#F0EAE2] px-4 py-3.5 text-[15px] text-[#1E1B31] outline-none transition placeholder:text-[#5B66A1] focus:border-[#1E1B31]/30 focus:ring-2 focus:ring-[#1E1B31]/15";
 const ERROR =
   "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800";
 const EYE_BTN =
-  "absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-[#8391A1] transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-60";
+  "absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-[#5B66A1] transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-60";
 
 type Mode = "signin" | "register";
 type SignInMethod = "password" | "otp";
@@ -371,7 +371,7 @@ export function LoginForm() {
             className="object-cover object-center"
           />
           {/* Scrim for text legibility — top on mobile, bottom on desktop */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#1a2544]/75 via-[#1a2544]/10 to-transparent lg:bg-gradient-to-t lg:from-[#1a2544]/80 lg:via-[#1a2544]/10 lg:to-[#1a2544]/25" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1E1B31]/75 via-[#1E1B31]/10 to-transparent lg:bg-gradient-to-t lg:from-[#1E1B31]/80 lg:via-[#1E1B31]/10 lg:to-[#1E1B31]/25" />
         </motion.div>
 
         {/* Brand + tagline overlay */}
@@ -390,7 +390,7 @@ export function LoginForm() {
             initial={{ opacity: 0, y: 8 }}
             animate={introShowing ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15, ease: easeOut }}
-            className="mt-3 max-w-xs text-sm font-medium text-white/85 lg:mt-4 lg:max-w-md lg:text-xl lg:leading-relaxed"
+            className="font-tenor mt-3 max-w-xs text-sm font-medium text-white/85 lg:mt-4 lg:max-w-md lg:text-xl lg:leading-relaxed"
           >
             Because your skin deserves the best care.
           </motion.p>
@@ -405,18 +405,18 @@ export function LoginForm() {
         initial={{ opacity: 0, y: 16 }}
         animate={introShowing ? {} : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1, ease: easeOut }}
-        className="order-2 flex flex-1 items-center justify-center bg-white px-6 py-10 text-[#1E232C] lg:min-h-screen lg:py-12"
+        className="order-2 flex flex-1 items-center justify-center bg-[#FAF8F5] px-6 py-10 text-[#1E1B31] lg:min-h-screen lg:py-12"
       >
         <div className="w-full max-w-md">
         {isSignIn ? (
           <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-[#1E232C]">
+            <h1 className="font-headline text-3xl font-bold tracking-tight text-[#1E1B31]">
               Welcome back!{" "}
               <span aria-hidden className="inline-block">
                 👋
               </span>
             </h1>
-            <p className="mt-2 text-[15px] text-[#8391A1]">
+            <p className="mt-2 text-[15px] text-[#5B66A1]">
               Glad to see you, Again!
             </p>
           </div>
@@ -425,15 +425,15 @@ export function LoginForm() {
             <button
               type="button"
               onClick={() => switchMode("signin")}
-              className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#1E232C] shadow-sm transition hover:bg-[#F7F8F9]"
+              className="mb-6 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-[#1E1B31] shadow-sm transition hover:bg-[#F0EAE2]"
               aria-label="Back to sign in"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden />
             </button>
-            <h1 className="text-3xl font-bold tracking-tight text-[#1E232C]">
+            <h1 className="font-headline text-3xl font-bold tracking-tight text-[#1E1B31]">
               Hello! Register to get started
             </h1>
-            <p className="mt-2 text-[15px] text-[#8391A1]">
+            <p className="mt-2 text-[15px] text-[#5B66A1]">
               Join the private patient portal
             </p>
           </div>
@@ -484,7 +484,7 @@ export function LoginForm() {
                       disabled={
                         loading || sendOtpLoading || resendSeconds > 0
                       }
-                      className="shrink-0 rounded-lg bg-[#F7F8F9] px-3 py-3 text-sm font-semibold text-[#525FE1] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {sendOtpLoading
                         ? "Sending…"
@@ -573,13 +573,13 @@ export function LoginForm() {
                         resetSignInOtpState();
                         setSignInMethod("otp");
                       }}
-                      className="text-sm font-semibold text-[#525FE1] hover:underline"
+                      className="text-sm font-semibold text-[#1E1B31] hover:underline"
                     >
                       Send a code to your email instead
                     </button>
                     <Link
                       href="/forgot-password"
-                      className="text-sm font-semibold text-[#525FE1] hover:underline"
+                      className="text-sm font-semibold text-[#1E1B31] hover:underline"
                     >
                       Forgot Password?
                     </Link>
@@ -595,7 +595,7 @@ export function LoginForm() {
                     resetSignInOtpState();
                     setSignInMethod("password");
                   }}
-                  className="text-sm font-semibold text-[#525FE1] hover:underline"
+                  className="text-sm font-semibold text-[#1E1B31] hover:underline"
                 >
                   Use password instead
                 </button>
@@ -604,7 +604,7 @@ export function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center rounded-full bg-[#525FE1] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#454ecc] focus:outline-none focus:ring-2 focus:ring-[#525FE1]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center rounded-full bg-[#1E1B31] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading
                   ? "Signing in…"
@@ -665,7 +665,7 @@ export function LoginForm() {
                     type="button"
                     onClick={sendSignupOtp}
                     disabled={loading || sendOtpLoading || resendSeconds > 0}
-                    className="shrink-0 rounded-lg bg-[#F7F8F9] px-3 py-3 text-sm font-semibold text-[#525FE1] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {sendOtpLoading
                       ? "Sending…"
@@ -716,7 +716,7 @@ export function LoginForm() {
                     value={phoneCountryCode}
                     onChange={(e) => setPhoneCountryCode(e.target.value)}
                     disabled={loading}
-                    className="w-[5.5rem] shrink-0 rounded-lg border border-transparent bg-[#F7F8F9] px-3 py-3.5 text-center text-[#1E232C] outline-none transition focus:border-[#525FE1]/30 focus:ring-2 focus:ring-[#525FE1]/15"
+                    className="w-[5.5rem] shrink-0 rounded-lg border border-transparent bg-[#F0EAE2] px-3 py-3.5 text-center text-[#1E1B31] outline-none transition focus:border-[#1E1B31]/30 focus:ring-2 focus:ring-[#1E1B31]/15"
                     placeholder="+91"
                     aria-label="Country code"
                   />
@@ -807,7 +807,7 @@ export function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center rounded-lg bg-[#1E232C] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#2a3038] focus:outline-none focus:ring-2 focus:ring-[#1E232C]/30 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center rounded-lg bg-[#1E1B31] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Creating account…" : "Register"}
               </button>
@@ -818,14 +818,14 @@ export function LoginForm() {
           </>
         )}
 
-        <p className="mt-8 text-center text-sm text-[#8391A1]">
+        <p className="mt-8 text-center text-sm text-[#5B66A1]">
           {isSignIn ? (
             <>
               Don&apos;t have an account?{" "}
               <button
                 type="button"
                 onClick={() => switchMode("register")}
-                className="font-semibold text-[#525FE1] hover:underline"
+                className="font-semibold text-[#1E1B31] hover:underline"
               >
                 Sign up
               </button>
@@ -844,7 +844,7 @@ export function LoginForm() {
           )}
         </p>
 
-        <p className="mt-4 text-center text-xs text-[#8391A1]">
+        <p className="mt-4 text-center text-xs text-[#5B66A1]">
           Clinic staff?{" "}
           <Link
             href="/doctor/login"

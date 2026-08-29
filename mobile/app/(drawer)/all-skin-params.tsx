@@ -27,7 +27,7 @@ import {
 } from "../../../src/lib/clarityGrade";
 import { ClinicScoreUnlockCta } from "@/components/dashboard/ClinicScoreUnlockCta";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const GREEN = "#16a34a";
 const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
@@ -301,8 +301,8 @@ export default function AllSkinParamsScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#E8EFE6" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6" },
+  root: { flex: 1, backgroundColor: "#F0EAE2" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F0EAE2" },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingBottom: 8,
@@ -364,7 +364,7 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 14, color: "#6B7280", textAlign: "center", lineHeight: 20 },
 
   infoCard: {
-    backgroundColor: "rgba(44,62,107,0.08)",
+    backgroundColor: "rgba(30, 27, 49,0.08)",
     borderRadius: 16,
     padding: 16,
     flexDirection: "row",

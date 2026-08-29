@@ -194,7 +194,7 @@ export function DoctorClinicWalletClient({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Name or email…"
-            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#1E1B31]/40 focus:ring-2 focus:ring-[#1E1B31]/10"
           />
         </div>
         {searching ? (
@@ -219,7 +219,7 @@ export function DoctorClinicWalletClient({
                     <span className="font-semibold text-slate-800">{p.name}</span>
                     <span className="block text-xs text-slate-500">{p.email}</span>
                   </span>
-                  <span className="shrink-0 text-xs font-bold text-[#2C3E6B]">
+                  <span className="shrink-0 text-xs font-bold text-[#1E1B31]">
                     {p.balanceCredits} cr
                   </span>
                 </button>
@@ -237,12 +237,12 @@ export function DoctorClinicWalletClient({
 
       {loadingWallet ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
         </div>
       ) : wallet && selected ? (
         <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
           <div className={`${doctorCardClass} overflow-hidden`}>
-            <div className="bg-gradient-to-br from-[#2C3E6B] to-[#1a2544] p-5 text-white">
+            <div className="bg-gradient-to-br from-[#1E1B31] to-[#1E1B31] p-5 text-white">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-white/70">
@@ -360,7 +360,7 @@ export function DoctorClinicWalletClient({
                 type="button"
                 disabled={busy || !confirmDeduct}
                 onClick={() => void deduct()}
-                className="w-full rounded-xl bg-[#2C3E6B] py-2.5 text-sm font-bold text-white transition hover:bg-[#243456] disabled:opacity-50"
+                className="w-full rounded-xl bg-[#1E1B31] py-2.5 text-sm font-bold text-white transition hover:bg-[#242A5F] disabled:opacity-50"
               >
                 {busy ? "Saving…" : "Deduct credits"}
               </button>

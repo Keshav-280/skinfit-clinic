@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: KAI_MEET_CARD.radius,
     overflow: "hidden",
-    shadowColor: "#2C3E6B",
+    shadowColor: "#1E1B31",
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.44,
     shadowRadius: 28,

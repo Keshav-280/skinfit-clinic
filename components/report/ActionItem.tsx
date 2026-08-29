@@ -22,11 +22,11 @@ export function ActionItem({ number, text, last = false }: ActionItemProps) {
     >
       {!last ? (
         <span
-          className="absolute bottom-0 left-[13px] top-8 w-px bg-[#2C3E6B]/15"
+          className="absolute bottom-0 left-[13px] top-8 w-px bg-[#1E1B31]/15"
           aria-hidden
         />
       ) : null}
-      <span className="relative z-[1] mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-[12px] font-bold text-white shadow-[0_8px_18px_-8px_rgba(44,62,107,0.7)]">
+      <span className="relative z-[1] mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E1B31] text-[12px] font-bold text-white shadow-[0_8px_18px_-8px_rgba(30, 27, 49,0.7)]">
         {number}
       </span>
       <span className="min-w-0 pb-1">

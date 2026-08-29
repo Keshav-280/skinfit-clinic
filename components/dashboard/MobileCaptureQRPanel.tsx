@@ -101,7 +101,7 @@ export function MobileCaptureQRPanel({
         width: 280,
         margin: 2,
         color: {
-          dark: "#2C3E6B",
+          dark: "#1E1B31",
           light: "#FFFFFF",
         },
       });
@@ -200,23 +200,23 @@ export function MobileCaptureQRPanel({
   }, [sessionId, status]);
 
   return (
-    <div className="mx-auto w-full rounded-[24px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_32px_rgba(44,62,107,0.07)] md:p-8">
+    <div className="mx-auto w-full rounded-[24px] border border-[#E5E7EB] bg-white p-6 shadow-[0_8px_32px_rgba(30, 27, 49,0.07)] md:p-8">
       <button
         type="button"
         onClick={onBack}
-        className="mb-5 flex items-center gap-2 text-sm font-semibold text-[#64748B] transition hover:text-[#2C3E6B]"
+        className="mb-5 flex items-center gap-2 text-sm font-semibold text-[#64748B] transition hover:text-[#1E1B31]"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to upload
       </button>
 
       {!isOnboardingScan ? (
-        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[#E8F5E9] bg-[#F8FBF8] px-4 py-3">
+        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[#E8F5E9] bg-[#FAF8F5] px-4 py-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F5E9] text-[#2E7D32]">
             <Smartphone className="h-5 w-5" />
           </div>
           <div className="min-w-0 text-left">
-            <p className="text-sm font-bold text-[#2C3E6B]">Phone capture</p>
+            <p className="text-sm font-bold text-[#1E1B31]">Phone capture</p>
             <p className="text-xs leading-relaxed text-[#64748B]">
               Scan the code with your phone camera app — no app install needed.
             </p>
@@ -224,7 +224,7 @@ export function MobileCaptureQRPanel({
         </div>
       ) : (
         <div className="mb-5 text-center">
-          <h2 className="text-xl font-extrabold tracking-tight text-[#2C3E6B]">
+          <h2 className="text-xl font-extrabold tracking-tight text-[#1E1B31]">
             Scan with your phone
           </h2>
           <p className="mt-1.5 text-sm text-[#64748B]">
@@ -233,7 +233,7 @@ export function MobileCaptureQRPanel({
         </div>
       )}
 
-      <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-[#E8EFE6] bg-[#F8FBF8] p-4">
+      <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-[#F0EAE2] bg-[#FAF8F5] p-4">
         <AnimatePresence mode="wait">
           {loading && (
             <motion.div
@@ -243,7 +243,7 @@ export function MobileCaptureQRPanel({
               exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-3"
             >
-              <Loader2 className="h-10 w-10 animate-spin text-[#2C3E6B]" />
+              <Loader2 className="h-10 w-10 animate-spin text-[#1E1B31]" />
               <p className="text-sm font-medium text-[#64748B]">
                 Generating secure link...
               </p>
@@ -265,7 +265,7 @@ export function MobileCaptureQRPanel({
               <button
                 type="button"
                 onClick={fetchSession}
-                className="mt-4 flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#354A7A]"
+                className="mt-4 flex items-center gap-2 rounded-xl bg-[#1E1B31] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#354A7A]"
               >
                 <RefreshCw className="h-3 w-3" />
                 Try again
@@ -282,7 +282,7 @@ export function MobileCaptureQRPanel({
               className="flex flex-col items-center"
             >
               {qrCodeUrl && (
-                <div className="rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(44,62,107,0.08)] ring-1 ring-[#E5E7EB]">
+                <div className="rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(30, 27, 49,0.08)] ring-1 ring-[#E5E7EB]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={qrCodeUrl}
@@ -307,7 +307,7 @@ export function MobileCaptureQRPanel({
               className="flex flex-col items-center text-center"
             >
               <CheckCircle className="h-16 w-16 text-emerald-500" />
-              <h3 className="mt-4 text-lg font-bold text-[#2C3E6B]">
+              <h3 className="mt-4 text-lg font-bold text-[#1E1B31]">
                 Photos received!
               </h3>
               <p className="mt-2 text-sm text-[#64748B]">
@@ -324,7 +324,7 @@ export function MobileCaptureQRPanel({
               className="flex flex-col items-center text-center"
             >
               <CheckCircle className="h-16 w-16 text-emerald-500" />
-              <h3 className="mt-4 text-lg font-bold text-[#2C3E6B]">
+              <h3 className="mt-4 text-lg font-bold text-[#1E1B31]">
                 Scan complete!
               </h3>
               <p className="mt-2 text-sm text-[#64748B]">
@@ -341,7 +341,7 @@ export function MobileCaptureQRPanel({
               className="flex flex-col items-center text-center"
             >
               <AlertTriangle className="h-12 w-12 text-amber-500" />
-              <h3 className="mt-4 text-base font-bold text-[#2C3E6B]">
+              <h3 className="mt-4 text-base font-bold text-[#1E1B31]">
                 QR code expired
               </h3>
               <p className="mt-2 text-xs text-[#64748B]">
@@ -350,7 +350,7 @@ export function MobileCaptureQRPanel({
               <button
                 type="button"
                 onClick={fetchSession}
-                className="mt-4 flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#354A7A]"
+                className="mt-4 flex items-center gap-2 rounded-xl bg-[#1E1B31] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#354A7A]"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Generate new QR
@@ -360,7 +360,7 @@ export function MobileCaptureQRPanel({
         </AnimatePresence>
       </div>
 
-      <div className="mt-5 border-t border-[#E8EFE6] pt-4 text-center">
+      <div className="mt-5 border-t border-[#F0EAE2] pt-4 text-center">
         <p className="text-xs text-[#94A3B8]">
           Secure transfer · session expires in 15 minutes
         </p>

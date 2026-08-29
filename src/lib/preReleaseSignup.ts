@@ -15,10 +15,10 @@ Your email (${email}) has been added to our launch list. We will notify you when
 
   const html = `
 <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:28px 24px">
-  <p style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#3d5080;margin:0 0 8px">
+  <p style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#5B66A1;margin:0 0 8px">
     SkinFit Wellness
   </p>
-  <h1 style="font-size:24px;color:#1E3264;margin:0 0 16px;line-height:1.25">Early access confirmed</h1>
+  <h1 style="font-size:24px;color:#242A5F;margin:0 0 16px;line-height:1.25">Early access confirmed</h1>
   <p style="font-size:15px;line-height:1.55;color:#52525b;margin:0 0 16px">
     Thank you for registering for early access.
   </p>

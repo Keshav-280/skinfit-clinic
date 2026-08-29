@@ -21,15 +21,15 @@ function line(
       : state === "warn"
         ? "bg-amber-500"
         : state === "loading"
-          ? "bg-[#2C3E6B] animate-pulse"
+          ? "bg-[#1E1B31] animate-pulse"
           : "bg-zinc-400";
   const text =
     state === "ok"
-      ? "text-[#2C3E6B]"
+      ? "text-[#1E1B31]"
       : state === "warn"
         ? "text-amber-900"
         : state === "loading"
-          ? "text-[#2C3E6B]"
+          ? "text-[#1E1B31]"
           : "text-[#6B7280]";
   return (
     <li className={`flex min-w-0 flex-col gap-0.5 ${text}`}>
@@ -156,7 +156,7 @@ export function ScanCaptureModelStatus({
 
   return (
     <div
-      className={`rounded-lg border border-[rgba(44,62,107,0.1)] bg-white/45 px-2 py-1.5 ${compact ? "" : "px-2.5 py-2"}`}
+      className={`rounded-lg border border-[rgba(30, 27, 49,0.1)] bg-white/45 px-2 py-1.5 ${compact ? "" : "px-2.5 py-2"}`}
       aria-label="Capture assistant models"
     >
       <p className={`mb-1 font-semibold uppercase tracking-wide text-[#6B7280] ${textSize}`}>

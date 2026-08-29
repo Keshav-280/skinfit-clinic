@@ -24,7 +24,7 @@ import { useDebouncedTrackerAutoSave } from "@/hooks/useDebouncedTrackerAutoSave
 import { apiJson } from "@/lib/api";
 import { goToDashboard } from "@/lib/dashboardNavigation";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
 
@@ -324,8 +324,8 @@ export default function StressTrackerScreen() {
 }
 
 const st = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#E8EFE6" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6" },
+  root: { flex: 1, backgroundColor: "#F0EAE2" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F0EAE2" },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingBottom: 4,

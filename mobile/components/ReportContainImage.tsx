@@ -143,7 +143,7 @@ export function ReportContainImage({
           style,
         ]}
       >
-        <ActivityIndicator color="#2C3E6B" />
+        <ActivityIndicator color="#1E1B31" />
       </View>
     );
   }

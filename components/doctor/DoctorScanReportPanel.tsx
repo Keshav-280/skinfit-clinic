@@ -43,7 +43,7 @@ function ReportSection({
 }) {
   return (
     <section>
-      <h4 className="mb-1.5 text-xs font-semibold text-[#2C3E6B]">{title}</h4>
+      <h4 className="mb-1.5 text-xs font-semibold text-[#1E1B31]">{title}</h4>
       {children}
     </section>
   );
@@ -61,11 +61,11 @@ function DoctorScanImage({
   className?: string;
 }) {
   return (
-    <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
+    <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#1E1B31]/10">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className={className} loading="lazy" />
       {caption ? (
-        <figcaption className="border-t border-[#2C3E6B]/8 px-2 py-1.5 text-center text-[10px] font-medium text-[#2C3E6B]/70">
+        <figcaption className="border-t border-[#1E1B31]/8 px-2 py-1.5 text-center text-[10px] font-medium text-[#1E1B31]/70">
           {caption}
         </figcaption>
       ) : null}
@@ -89,7 +89,7 @@ function DoctorScanMaskImage({
   const cropLegacyTitle = shouldCropLegacyMaskTitle(src, maskExportVersion);
   const fitClass = stretch ? "object-fill" : cropLegacyTitle ? "object-contain" : "object-cover";
   return (
-    <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#2C3E6B]/10">
+    <figure className="overflow-hidden rounded-lg bg-white ring-1 ring-[#1E1B31]/10">
       <div
         className="relative w-full overflow-hidden bg-zinc-50"
         style={{ aspectRatio: scanMaskPanelAspectCss(cropLegacyTitle) }}
@@ -111,7 +111,7 @@ function DoctorScanMaskImage({
           loading="lazy"
         />
       </div>
-      <figcaption className="border-t border-[#2C3E6B]/8 px-2 py-1.5 text-center text-[10px] font-medium text-[#2C3E6B]/70">
+      <figcaption className="border-t border-[#1E1B31]/8 px-2 py-1.5 text-center text-[10px] font-medium text-[#1E1B31]/70">
         {caption}
       </figcaption>
     </figure>
@@ -226,7 +226,7 @@ export function DoctorScanReportPanel({
   return (
     <div className="space-y-4">
       {metaBits.length > 0 || !tracker ? (
-        <p className="text-[11px] text-[#2C3E6B]/55">
+        <p className="text-[11px] text-[#1E1B31]/55">
           {metaBits.join(" · ")}
           {!tracker ? " · scores only (no saved tracker)" : null}
         </p>
@@ -283,7 +283,7 @@ export function DoctorScanReportPanel({
 
       {report.aiSummary?.trim() ? (
         <ReportSection title="Summary">
-          <p className="text-sm leading-relaxed text-[#2C3E6B]/85">
+          <p className="text-sm leading-relaxed text-[#1E1B31]/85">
             {formatAiSummary(report.aiSummary, {
               acne: report.metrics.acne ?? 0,
               pigmentation: report.metrics.pigmentation ?? 0,
@@ -297,15 +297,15 @@ export function DoctorScanReportPanel({
       ) : null}
 
       {tracker ? (
-        <div className="rounded-xl border border-[#2C3E6B]/10 bg-white p-2 sm:p-3">
-          <p className="mb-2 text-[11px] font-medium text-[#2C3E6B]/50">
+        <div className="rounded-xl border border-[#1E1B31]/10 bg-white p-2 sm:p-3">
+          <p className="mb-2 text-[11px] font-medium text-[#1E1B31]/50">
             Same AI report sections the patient sees after clinic unlock
           </p>
           <TrackerReportSections report={tracker} serifClassName="" scoresUnlocked />
         </div>
       ) : (
         <ReportSection title="Report">
-          <p className="text-sm leading-relaxed text-[#2C3E6B]/70">
+          <p className="text-sm leading-relaxed text-[#1E1B31]/70">
             No saved tracker snapshot for this scan. The patient may see legacy fallback
             content until a tracker is generated.
           </p>

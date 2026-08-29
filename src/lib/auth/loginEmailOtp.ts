@@ -162,18 +162,18 @@ export async function sendLoginEmailOtp(rawEmail: string): Promise<SendLoginOtpR
   };
   await writeOtp(email, record);
 
-  const subject = `${code} is your SkinFit sign-in code`;
+  const subject = `${code} is your SkinFit Wellness sign-in code`;
   const text = `Your SkinFit Wellness sign-in code is ${code}. It expires in 10 minutes. If you didn't request this, you can ignore this email.`;
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:420px;margin:0 auto;padding:24px">
-      <p style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#3d5080;margin:0 0 8px">
+      <p style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#5B66A1;margin:0 0 8px">
         SkinFit Wellness
       </p>
-      <h1 style="font-size:22px;color:#1E3264;margin:0 0 12px">Sign in to your account</h1>
+      <h1 style="font-size:22px;color:#242A5F;margin:0 0 12px">Sign in to your account</h1>
       <p style="font-size:15px;line-height:1.5;color:#52525b;margin:0 0 20px">
         Enter this code to sign in:
       </p>
-      <p style="font-size:32px;font-weight:800;letter-spacing:0.35em;color:#2C3E6B;margin:0 0 20px">${code}</p>
+      <p style="font-size:32px;font-weight:800;letter-spacing:0.35em;color:#1E1B31;margin:0 0 20px">${code}</p>
       <p style="font-size:13px;line-height:1.5;color:#71717a;margin:0">
         Expires in 10 minutes. If you didn't request this, ignore this email.
       </p>

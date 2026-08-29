@@ -579,7 +579,7 @@ function matchCustomText(
 function KaiAvatar() {
   return (
     <div
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-[10px] font-bold tracking-tight text-white"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1E1B31] text-[10px] font-bold tracking-tight text-white"
       aria-hidden
     >
       kAI
@@ -622,8 +622,8 @@ function Pill({
       onClick={onClick}
       className={`rounded-full border px-3.5 py-2 text-left text-sm font-medium transition disabled:opacity-50 ${
         active
-          ? "border-[#2C3E6B] bg-[#2C3E6B] text-white"
-          : "border-zinc-300 bg-white text-zinc-800 hover:border-[#2C3E6B]/40"
+          ? "border-[#1E1B31] bg-[#1E1B31] text-white"
+          : "border-zinc-300 bg-white text-zinc-800 hover:border-[#1E1B31]/40"
       }`}
     >
       {children}
@@ -1433,7 +1433,7 @@ export function OnboardingQuestionnaireForm() {
 
   return (
     <div className="flex h-full max-h-full w-full flex-col bg-[#F0F0F0]">
-      <header className="flex shrink-0 items-center gap-3 border-b border-zinc-200/80 bg-[#2C3E6B] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white shadow-sm">
+      <header className="flex shrink-0 items-center gap-3 border-b border-zinc-200/80 bg-[#1E1B31] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white shadow-sm">
         <KaiAvatar />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">kAI</p>
@@ -1505,7 +1505,7 @@ export function OnboardingQuestionnaireForm() {
                       value={draftAge}
                       disabled={optionsDisabled}
                       onChange={(e) => setDraftAge(e.target.value)}
-                      className="w-20 rounded-full border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-[#2C3E6B]"
+                      className="w-20 rounded-full border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-[#1E1B31]"
                     />
                     {GENDER_OPTIONS.map((opt) => (
                       <Pill
@@ -1526,7 +1526,7 @@ export function OnboardingQuestionnaireForm() {
                       !gender
                     }
                     onClick={() => completeProfile(draftAge, gender!)}
-                    className="self-start rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                    className="self-start rounded-full bg-[#1E1B31] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                   >
                     Continue
                   </button>
@@ -1557,7 +1557,7 @@ export function OnboardingQuestionnaireForm() {
                     type="button"
                     disabled={optionsDisabled || pendingConcerns.length === 0}
                     onClick={() => completeConcerns(pendingConcerns)}
-                    className="self-start rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                    className="self-start rounded-full bg-[#1E1B31] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                   >
                     Done
                   </button>
@@ -1602,7 +1602,7 @@ export function OnboardingQuestionnaireForm() {
                     type="button"
                     disabled={optionsDisabled || pendingTriggers.length === 0}
                     onClick={() => completeTriggers(pendingTriggers)}
-                    className="self-start rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                    className="self-start rounded-full bg-[#1E1B31] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                   >
                     Done
                   </button>
@@ -1666,7 +1666,7 @@ export function OnboardingQuestionnaireForm() {
                         disabled={optionsDisabled}
                         placeholder="Tell us how you heard about us"
                         onChange={(e) => setDraftReferralOther(e.target.value)}
-                        className="w-full max-w-sm rounded-full border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 outline-none focus:border-[#2C3E6B]"
+                        className="w-full max-w-sm rounded-full border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 outline-none focus:border-[#1E1B31]"
                       />
                       <button
                         type="button"
@@ -1676,7 +1676,7 @@ export function OnboardingQuestionnaireForm() {
                         onClick={() =>
                           completeReferral("other", draftReferralOther)
                         }
-                        className="self-start rounded-full bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                        className="self-start rounded-full bg-[#1E1B31] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                       >
                         Continue
                       </button>
@@ -1690,7 +1690,7 @@ export function OnboardingQuestionnaireForm() {
                   type="button"
                   disabled={busy}
                   onClick={() => void submit()}
-                  className="self-start rounded-full bg-[#2C3E6B] px-5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50"
+                  className="self-start rounded-full bg-[#1E1B31] px-5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50"
                 >
                   {busy ? "Saving…" : "Let's get started"}
                 </button>
@@ -1727,7 +1727,7 @@ export function OnboardingQuestionnaireForm() {
               !pendingInput ||
               pendingInput.kind === "summary"
             }
-            className="min-w-0 flex-1 rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-[#2C3E6B]/40 disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-[#1E1B31]/40 disabled:opacity-50"
           />
           <button
             type="submit"
@@ -1738,7 +1738,7 @@ export function OnboardingQuestionnaireForm() {
               !pendingInput ||
               pendingInput.kind === "summary"
             }
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white disabled:opacity-40"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1E1B31] text-white disabled:opacity-40"
           >
             <Send className="h-4 w-4" aria-hidden />
           </button>

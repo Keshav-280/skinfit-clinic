@@ -127,7 +127,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient colors={["#E8EFE6", "#DCE8D4"]} style={{ flex: 1 }}>
+    <LinearGradient colors={["#F0EAE2", "#DCCFC0"]} style={{ flex: 1 }}>
     <ScrollView
       style={s.scroll}
       contentContainerStyle={[s.content, { paddingTop: insets.top + 16 }]}
@@ -193,7 +193,7 @@ export default function NotificationsScreen() {
               {(supportCount > 0 || doctorCount > 0) && (
                 <Pressable style={s.card} onPress={() => router.push("/(drawer)/chat")}>
                   <View style={[s.iconCircle, { backgroundColor: "#ccfbf1" }]}>
-                    <Ionicons name="chatbubbles" size={22} color="#2C3E6B" />
+                    <Ionicons name="chatbubbles" size={22} color="#1E1B31" />
                   </View>
                   <View style={s.cardBody}>
                     <View style={s.cardTitleRow}>
@@ -279,7 +279,7 @@ export default function NotificationsScreen() {
 
           <Pressable style={s.card} onPress={() => router.push("/(drawer)/chat")}>
             <View style={[s.iconCircle, { backgroundColor: "#ccfbf1" }]}>
-              <Ionicons name="chatbubbles-outline" size={22} color="#2C3E6B" />
+              <Ionicons name="chatbubbles-outline" size={22} color="#1E1B31" />
             </View>
             <View style={s.cardBody}>
               <Text style={s.cardTitle}>Chat with clinic</Text>
@@ -338,7 +338,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 5,
     borderWidth: 2,
-    borderColor: "#E8EFE6",
+    borderColor: "#F0EAE2",
   },
   badgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
   title: { fontSize: 22, fontWeight: "800", color: "#18181b" },
@@ -379,7 +379,7 @@ const s = StyleSheet.create({
   cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardTitle: { fontSize: 15, fontWeight: "700", color: "#18181b" },
   cardSub: { fontSize: 13, color: "#64748b", marginTop: 3, lineHeight: 18 },
-  cardMeta: { fontSize: 12, color: "#2C3E6B", fontWeight: "600", marginTop: 4 },
+  cardMeta: { fontSize: 12, color: "#1E1B31", fontWeight: "600", marginTop: 4 },
   countBadge: {
     minWidth: 22,
     height: 22,
@@ -389,5 +389,5 @@ const s = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 6,
   },
-  countBadgeText: { fontSize: 11, fontWeight: "800", color: "#2C3E6B" },
+  countBadgeText: { fontSize: 11, fontWeight: "800", color: "#1E1B31" },
 });

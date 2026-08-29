@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"/>
-<title>SkinFit Clinic — AWS Production System Design</title>
+<title>SkinFit Wellness — AWS Production System Design</title>
 <style>
 @page { margin: 18mm 16mm; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; line-height: 1.5; color: #1a1a1a; font-size: 11pt; }
@@ -20,12 +20,12 @@ li { margin: 4px 0; }
 .footer { font-size: 9pt; color: #666; margin-top: 24pt; border-top: 1px solid #ddd; padding-top: 8pt; }
 </style></head><body>
 <p class="note"><strong>Note:</strong> Mermaid diagrams appear as code blocks in PDF/DOCX. View the Markdown file in GitHub or Cursor for interactive diagrams.</p>
-<h1 id="skinfit-clinic-production-system-design-aws">SkinFit Clinic — Production System Design (AWS)</h1>
+<h1 id="skinfit-clinic-production-system-design-aws">SkinFit Wellness — Production System Design (AWS)</h1>
 <p><strong>Date:</strong> May 2026<br />
-<strong>Classification:</strong> Internal — SkinFit Clinic<br />
+<strong>Classification:</strong> Internal — SkinFit Wellness<br />
 <strong>Scope:</strong> Large-scale production architecture and AWS migration plan (<code>skinfit-clinic</code> + <code>face_analysis_tool</code>)</p>
 <hr />
-<p>Below is a <strong>production system design</strong> for SkinFit Clinic based on your actual codebase, written for a <strong>large-scale AWS migration</strong>. Treat this as an architecture baseline; several numbers depend on answers in <strong>Section 12</strong>.</p>
+<p>Below is a <strong>production system design</strong> for SkinFit Wellness based on your actual codebase, written for a <strong>large-scale AWS migration</strong>. Treat this as an architecture baseline; several numbers depend on answers in <strong>Section 12</strong>.</p>
 <hr />
 <h2 id="1-executive-summary">1. Executive summary</h2>
 <p>You currently run a <strong>monolithic Next.js backend</strong> (web + API routes), an <strong>Expo mobile app</strong>, <strong>PostgreSQL</strong> (Neon + Drizzle), <strong>GPU/CPU inference on Hugging Face Spaces</strong> (FastAPI + PyTorch), and <strong>OpenAI + Pinecone</strong> for kAI chat/RAG. Scan images and masks are largely stored as <strong>base64 data URIs inside Postgres</strong> — fine for early product, <strong>not</strong> for large-scale production.</p>
@@ -1070,5 +1070,5 @@ media_objects (
 - target go-live date,</p>
 <p>and I’ll produce <strong>Phase 1 Terraform module outline</strong> and a <strong>week-by-week implementation plan</strong> tailored to your numbers.</p>
 <p>[REDACTED]</p>
-<p class="footer">Internal — SkinFit Clinic · May 2026 · Architecture planning document</p>
+<p class="footer">Internal — SkinFit Wellness · May 2026 · Architecture planning document</p>
 </body></html>

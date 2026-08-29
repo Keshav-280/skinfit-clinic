@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
     borderColor: GLASS_BORDER,
     ...Platform.select({
       ios: {
-        shadowColor: "#2C3E6B",
+        shadowColor: "#1E1B31",
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.1,
         shadowRadius: 20,
@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: "rgba(44,62,107,0.12)",
+    backgroundColor: "rgba(30, 27, 49,0.12)",
     overflow: "hidden",
   },
   clinicalFill: {
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.15)",
+    borderColor: "rgba(30, 27, 49,0.15)",
   },
   tealSection: {
     paddingHorizontal: 20,
@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
   },
   footerRule: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(44,62,107,0.12)",
+    backgroundColor: "rgba(30, 27, 49,0.12)",
     marginBottom: 20,
   },
   knowSkin: {

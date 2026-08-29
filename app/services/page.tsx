@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "../../components/ui/Button";
+import { PublicBrandMark } from "../../components/nav/PublicBrandMark";
 import {
   Sparkles,
   Scan,
@@ -26,8 +27,8 @@ const services = [
   {
     title: "Acne Treatment",
     icon: Target,
-    iconBg: "from-teal-50 to-teal-100",
-    iconColor: "text-teal-600",
+    iconBg: "from-[#F8EDEE] to-[#EFCCCE]",
+    iconColor: "text-[#1E1B31]",
     whatItIs:
       "Medical-grade protocols combining chemical peels, laser therapy, and prescription treatments to clear active breakouts, reduce inflammation, and prevent scarring.",
     whoIsItFor:
@@ -83,43 +84,36 @@ export default function ServicesPage() {
       {/* Sticky Navbar */}
       <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-600/30">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-800">
-              SkinnFit
-            </span>
-          </Link>
+          <PublicBrandMark />
 
           <div className="hidden items-center gap-8 md:flex">
             <Link
               href="/"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               Home
             </Link>
             <Link
               href="/services"
-              className="text-sm font-medium text-teal-600 transition-colors hover:text-teal-700"
+              className="text-sm font-medium text-[#1E1B31] transition-colors hover:text-[#1E1B31]"
             >
               Services
             </Link>
             <Link
               href="/blog"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               Blog/Education
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               About Us
             </Link>
             <Link
               href="/contact"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               Contact
             </Link>
@@ -135,7 +129,7 @@ export default function ServicesPage() {
 
       {/* AI Scan Banner */}
       <motion.section
-        className="relative overflow-hidden bg-gradient-to-r from-teal-600 to-teal-700 py-16 text-white"
+        className="relative overflow-hidden bg-gradient-to-r from-[#1E1B31] to-[#242A5F] py-16 text-white"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -147,7 +141,7 @@ export default function ServicesPage() {
               <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">
                 Discover Your Personalized Treatment Plan
               </h2>
-              <p className="text-lg text-teal-50">
+              <p className="text-lg text-[#F8EDEE]">
                 Know about your skin with our AI-powered analysis. Get a custom
                 roadmap designed for your unique concerns and goals.
               </p>
@@ -155,7 +149,7 @@ export default function ServicesPage() {
             <Link href="/" className="shrink-0">
               <Button
                 size="lg"
-                className="border-white/30 bg-white text-teal-700 shadow-xl hover:bg-white/95"
+                className="border-white/30 bg-white text-[#1E1B31] shadow-xl hover:bg-white/95"
               >
                 <Scan className="mr-2 h-5 w-5" />
                 Start AI Scan
@@ -209,28 +203,28 @@ export default function ServicesPage() {
 
                     <div className="space-y-5">
                       <div>
-                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-teal-600">
+                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-[#1E1B31]">
                           What it is
                         </h4>
                         <p className="text-slate-600">{service.whatItIs}</p>
                       </div>
 
                       <div>
-                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-teal-600">
+                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-[#1E1B31]">
                           Who is it for
                         </h4>
                         <p className="text-slate-600">{service.whoIsItFor}</p>
                       </div>
 
                       <div>
-                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-teal-600">
+                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-[#1E1B31]">
                           How many sessions
                         </h4>
                         <p className="text-slate-600">{service.sessions}</p>
                       </div>
 
                       <div>
-                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-teal-600">
+                        <h4 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-[#1E1B31]">
                           Expected Results
                         </h4>
                         <p className="text-slate-600">{service.expectedResults}</p>
@@ -239,7 +233,7 @@ export default function ServicesPage() {
 
                     <Link
                       href="/contact"
-                      className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-teal-600 transition-colors hover:text-teal-700"
+                      className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-[#1E1B31] transition-colors hover:text-[#1E1B31]"
                     >
                       View Details
                       <ChevronRight className="h-4 w-4" />
@@ -263,12 +257,7 @@ export default function ServicesPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 md:grid-cols-4">
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 shadow-lg">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <span className="text-xl font-bold">SkinnFit</span>
-              </div>
+                <PublicBrandMark invert />
               <p className="text-sm text-slate-400">
                 Advanced AI-powered dermatology clinic offering personalized skincare
                 solutions.
@@ -279,27 +268,27 @@ export default function ServicesPage() {
               <h4 className="mb-4 font-semibold">Quick Links</h4>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li>
-                  <Link href="/" className="hover:text-teal-400">
+                  <Link href="/" className="hover:text-[#DF9DA4]">
                     Home
                   </Link>
                 </li>
                 <li>
-                  <Link href="/services" className="hover:text-teal-400">
+                  <Link href="/services" className="hover:text-[#DF9DA4]">
                     Services
                   </Link>
                 </li>
                 <li>
-                  <Link href="/blog" className="hover:text-teal-400">
+                  <Link href="/blog" className="hover:text-[#DF9DA4]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/about" className="hover:text-teal-400">
+                  <Link href="/about" className="hover:text-[#DF9DA4]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-teal-400">
+                  <Link href="/contact" className="hover:text-[#DF9DA4]">
                     Contact
                   </Link>
                 </li>
@@ -320,15 +309,15 @@ export default function ServicesPage() {
               <h4 className="mb-4 font-semibold">Contact Us</h4>
               <ul className="space-y-3 text-sm text-slate-400">
                 <li className="flex items-start gap-2">
-                  <Phone className="h-4 w-4 shrink-0 text-teal-400" />
+                  <Phone className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                   <span>+91 98765 43210</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Mail className="h-4 w-4 shrink-0 text-teal-400" />
+                  <Mail className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                   <span>hello@skinfit.clinic</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 shrink-0 text-teal-400" />
+                  <MapPin className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                   <span>123 Medical Plaza, Bangalore, Karnataka 560001</span>
                 </li>
               </ul>
@@ -337,7 +326,7 @@ export default function ServicesPage() {
 
           <div className="mt-12 border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
             <p>
-              © {new Date().getFullYear()} SkinnFit Clinic. All rights reserved. |
+              © {new Date().getFullYear()} SkinFit Wellness. All rights reserved. |
               Privacy Policy | Terms of Service
             </p>
           </div>

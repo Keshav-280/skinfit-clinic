@@ -1,4 +1,4 @@
-# SkinnFit Mobile App — Full Audit & Reference
+# SkinFit Mobile App — Full Audit & Reference
 
 > **Generated:** 2026-05-29  
 > **Stack:** Expo SDK 54 · React Native 0.81 · Expo Router 6 · TypeScript  
@@ -337,7 +337,7 @@ Flow in `mobile/lib/pushNotifications.ts`:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| No OS permission prompt on Android | Old build before login-time registration; or permission already denied — check **Settings → Apps → SkinnFit → Notifications** | Reinstall or enable in Settings; sign in again |
+| No OS permission prompt on Android | Old build before login-time registration; or permission already denied — check **Settings → Apps → SkinFit → Notifications** | Reinstall or enable in Settings; sign in again |
 | Permission granted, still no pushes | **FCM credentials missing on EAS** for the Android build profile | Expo dashboard → Project → Credentials → Android → upload **FCM V1 service account JSON**; rebuild APK/AAB |
 | Token never saved on server | `getExpoPushTokenAsync` throws (missing FCM, wrong `google-services.json`, or simulator) | Ensure `mobile/google-services.json` exists (wired in `app.config.js`); rebuild with EAS `preview` / `production` |
 | Server sends but device silent | Expo push receipt errors, expired token, or channel importance | Check server logs for Expo push API errors; user must open app once after install so token re-syncs |

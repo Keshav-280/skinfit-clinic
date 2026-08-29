@@ -155,7 +155,7 @@ export function DoctorSosBell() {
         }}
         className={`${doctorHeaderBellBtnClass} ${
           open || count > 0
-            ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
+            ? "bg-[#1E1B31]/10 text-[#1E1B31]"
             : "text-slate-700 hover:bg-slate-100"
         }`}
         aria-expanded={open}
@@ -178,7 +178,7 @@ export function DoctorSosBell() {
         >
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
                 <AlertTriangle className="h-4 w-4" aria-hidden />
               </span>
               <div>
@@ -219,7 +219,7 @@ export function DoctorSosBell() {
                       <button
                         type="button"
                         disabled={busy}
-                        className="flex shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-0.5 transition hover:bg-[#2C3E6B]/5 disabled:opacity-50"
+                        className="flex shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-0.5 transition hover:bg-[#1E1B31]/5 disabled:opacity-50"
                         aria-label={`Mark alert from ${it.patientName} as reviewed`}
                         title="Mark reviewed"
                         onMouseDown={(e) => e.stopPropagation()}
@@ -229,7 +229,7 @@ export function DoctorSosBell() {
                           void acknowledge(it);
                         }}
                       >
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2C3E6B]/25 bg-white text-[#2C3E6B]">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#1E1B31]/25 bg-white text-[#1E1B31]">
                           {busy ? (
                             <span className="text-xs">…</span>
                           ) : (
@@ -243,11 +243,11 @@ export function DoctorSosBell() {
 
                       <Link
                         href={`/doctor/patients/${it.patientId}`}
-                        className="min-w-0 flex-1 rounded-lg px-1 py-0.5 transition hover:bg-[#2C3E6B]/5"
+                        className="min-w-0 flex-1 rounded-lg px-1 py-0.5 transition hover:bg-[#1E1B31]/5"
                         onClick={() => setOpen(false)}
                         role="menuitem"
                       >
-                        <p className="text-sm font-semibold text-[#2C3E6B]">
+                        <p className="text-sm font-semibold text-[#1E1B31]">
                           {it.patientName}
                         </p>
                         <p className="mt-0.5 text-xs font-medium leading-snug text-slate-800">
@@ -261,7 +261,7 @@ export function DoctorSosBell() {
                                 className="flex gap-1.5 text-xs leading-snug text-slate-600"
                               >
                                 <span
-                                  className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#2C3E6B]/40"
+                                  className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#1E1B31]/40"
                                   aria-hidden
                                 />
                                 <span>{line}</span>
@@ -285,7 +285,7 @@ export function DoctorSosBell() {
           <div className="border-t border-slate-200 bg-white px-4 py-2.5">
             <Link
               href="/doctor/patients?sos=1"
-              className="text-xs font-semibold text-[#2C3E6B] hover:underline"
+              className="text-xs font-semibold text-[#1E1B31] hover:underline"
               onClick={() => setOpen(false)}
             >
               View all patients with alerts →

@@ -8,7 +8,7 @@ import { sanitizeDoctorPortalNext } from "@/src/lib/auth/doctor-portal-next";
 
 function DoctorLoginFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F6F4EB] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#FAF8F5] px-4">
       <p className="text-sm text-slate-500">Loading…</p>
     </div>
   );
@@ -66,14 +66,14 @@ function DoctorLoginForm() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F6F4EB] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#FAF8F5] px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2C3E6B] shadow-lg shadow-[#2C3E6B]/20">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1E1B31] shadow-lg shadow-[#1E1B31]/20">
             <Stethoscope className="h-7 w-7 text-white" />
           </div>
-          <h1 className="mt-4 text-xl font-bold text-slate-900">SkinFit Clinic</h1>
-          <p className="mt-1 text-sm text-slate-500">Staff portal sign-in</p>
+          <h1 className="mt-4 font-headline text-xl font-bold text-[#1E1B31]">SkinFit Wellness</h1>
+          <p className="font-meta mt-1 text-sm uppercase tracking-wide text-[#5B66A1]">Staff portal sign-in</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white p-7 shadow-sm">
@@ -99,7 +99,7 @@ function DoctorLoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 placeholder="doctor@clinic.com"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#1E1B31] focus:bg-white focus:ring-2 focus:ring-[#1E1B31]/15"
               />
             </div>
 
@@ -116,7 +116,7 @@ function DoctorLoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-11 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-11 text-sm text-slate-900 outline-none transition focus:border-[#1E1B31] focus:bg-white focus:ring-2 focus:ring-[#1E1B31]/15"
                 />
                 <button
                   type="button"
@@ -132,7 +132,7 @@ function DoctorLoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50"
+              className="w-full rounded-xl bg-[#1E1B31] py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#242A5F] disabled:opacity-50"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
@@ -140,7 +140,7 @@ function DoctorLoginForm() {
 
           <p className="mt-6 text-center text-sm text-slate-500">
             New clinician?{" "}
-            <Link href="/doctor/signup" className="font-semibold text-[#2C3E6B] hover:underline">
+            <Link href="/doctor/signup" className="font-semibold text-[#1E1B31] hover:underline">
               Create account
             </Link>
           </p>

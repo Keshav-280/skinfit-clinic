@@ -76,7 +76,7 @@ export default function MorningRoutinePage() {
   if (loading) {
     return (
       <section className="mx-auto flex max-w-md items-center justify-center pt-32">
-        <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
       </section>
     );
   }
@@ -90,7 +90,7 @@ export default function MorningRoutinePage() {
         </p>
         <Link
           href="/dashboard"
-          className="text-sm font-semibold text-[#2C3E6B] underline underline-offset-2"
+          className="text-sm font-semibold text-[#1E1B31] underline underline-offset-2"
         >
           Back to dashboard
         </Link>
@@ -106,11 +106,11 @@ export default function MorningRoutinePage() {
           className="flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/35 backdrop-blur-sm"
           aria-label="Back to dashboard"
         >
-          <ArrowLeft className="h-5 w-5 text-[#2C3E6B]" />
+          <ArrowLeft className="h-5 w-5 text-[#1E1B31]" />
         </Link>
         <div className="flex items-center gap-2">
           <Sun className="h-5 w-5 text-amber-500" />
-          <h1 className="text-xl font-bold tracking-tight text-[#2C3E6B]">
+          <h1 className="text-xl font-bold tracking-tight text-[#1E1B31]">
             Morning Routine
           </h1>
         </div>

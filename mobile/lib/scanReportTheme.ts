@@ -3,24 +3,24 @@
 export const INCLUDE_TRACKER_RESOURCES_IN_REPORT = false;
 
 export const SCAN_REPORT_THEME = {
-  navy: "#2C3E6B",
-  navyDark: "#1E3264",
-  navyMid: "#3d5080",
-  navyLight: "#5B7BA8",
-  accent: "#4A6FA5",
-  accentLight: "#E8EFF8",
-  accentTrack: "rgba(44, 62, 107, 0.18)",
-  peach: "#4A6FA5",
-  peachLight: "#E8EFF8",
-  peachTrack: "rgba(44, 62, 107, 0.18)",
-  sage: "#E8EFE6",
-  sageBand: "#E0E8F4",
-  sageBandEnd: "#D4DEEE",
-  pageBg: "#F4F7FB",
-  ink: "#2C3E6B",
-  inkMuted: "#52525b",
+  navy: "#1E1B31",
+  navyDark: "#242A5F",
+  navyMid: "#5B66A1",
+  navyLight: "#A8AECD",
+  accent: "#DF9DA4",
+  accentLight: "#F8EDEE",
+  accentTrack: "rgba(30, 27, 49, 0.18)",
+  peach: "#DF9DA4",
+  peachLight: "#F8EDEE",
+  peachTrack: "rgba(30, 27, 49, 0.18)",
+  sage: "#F0EAE2",
+  sageBand: "#F8EDEE",
+  sageBandEnd: "#EFCCCE",
+  pageBg: "#FAF8F5",
+  ink: "#1E1B31",
+  inkMuted: "#5B66A1",
   card: "#ffffff",
-  cardBorder: "rgba(44, 62, 107, 0.12)",
+  cardBorder: "rgba(30, 27, 49, 0.12)",
 } as const;
 
 export const TRACKER_REPORT_THEME = {
@@ -36,5 +36,5 @@ export const TRACKER_REPORT_THEME = {
   causeMed: SCAN_REPORT_THEME.navy,
   causeLow: SCAN_REPORT_THEME.navyLight,
   cardBorder: SCAN_REPORT_THEME.cardBorder,
-  focusBadgeBg: "rgba(44, 62, 107, 0.1)",
+  focusBadgeBg: "rgba(30, 27, 49, 0.1)",
 } as const;

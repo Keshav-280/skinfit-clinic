@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.7)",
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.12)",
+    borderColor: "rgba(30, 27, 49,0.12)",
   },
   scroll: { flex: 1 },
   scrollContent: {

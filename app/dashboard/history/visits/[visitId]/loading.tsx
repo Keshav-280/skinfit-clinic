@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 export default function VisitDetailLoading() {
   return (
@@ -12,7 +12,7 @@ export default function VisitDetailLoading() {
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(1100px 520px at 50% -10%, rgba(44,62,107,0.10), transparent 60%), linear-gradient(180deg, #F4F7F1 0%, #E8EFE6 60%, #DCE8D4 100%)",
+            "radial-gradient(1100px 520px at 50% -10%, rgba(30, 27, 49,0.10), transparent 60%), linear-gradient(180deg, #FAF8F5 0%, #F0EAE2 60%, #DCCFC0 100%)",
         }}
       />
 
@@ -29,7 +29,7 @@ export default function VisitDetailLoading() {
           Fetching clinic notes and attachments.
         </p>
 
-        <div className="mt-7 h-2 w-full overflow-hidden rounded-full bg-[#2C3E6B]/10">
+        <div className="mt-7 h-2 w-full overflow-hidden rounded-full bg-[#1E1B31]/10">
           <motion.div
             initial={{ x: "-40%" }}
             animate={{ x: "120%" }}
@@ -37,7 +37,7 @@ export default function VisitDetailLoading() {
             className="h-full w-2/5 rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, rgba(44,62,107,0.25) 0%, #2C3E6B 50%, rgba(44,62,107,0.25) 100%)",
+                "linear-gradient(90deg, rgba(30, 27, 49,0.25) 0%, #1E1B31 50%, rgba(30, 27, 49,0.25) 100%)",
             }}
           />
         </div>

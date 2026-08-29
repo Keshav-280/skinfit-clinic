@@ -16,7 +16,7 @@ export function ScanCaptureExtraTipsPanel({
   if (dense) {
     return (
       <section
-        className="rounded-lg border border-[#2C3E6B]/10 bg-white/80 p-3 sm:rounded-xl sm:p-4"
+        className="rounded-lg border border-[#1E1B31]/10 bg-white/80 p-3 sm:rounded-xl sm:p-4"
         aria-label="Extra capture tips"
       >
         <h3 className="text-[10px] font-extrabold uppercase tracking-wide sm:text-[11px]" style={{ color: NAVY }}>
@@ -48,7 +48,7 @@ export function ScanCaptureExtraTipsPanel({
 
   return (
     <section
-      className={`rounded-2xl border border-[#2C3E6B]/10 bg-white/80 shadow-[0_4px_24px_-14px_rgba(44,62,107,0.2)] backdrop-blur-sm ${
+      className={`rounded-2xl border border-[#1E1B31]/10 bg-white/80 shadow-[0_4px_24px_-14px_rgba(30, 27, 49,0.2)] backdrop-blur-sm ${
         compact ? "p-3" : "p-5"
       }`}
       aria-label="Extra capture tips"

@@ -22,7 +22,7 @@ import { apiJson } from "@/lib/api";
 import { getCached, setCached } from "@/lib/apiCache";
 
 const NAVY = "#2B3A67";
-const BG: [string, string] = ["#E8EFE6", "#DCE8D4"];
+const BG: [string, string] = ["#F0EAE2", "#DCCFC0"];
 const TEXT_PRIMARY = "#1A1A2E";
 const TEXT_MUTED = "#52525b";
 
@@ -55,7 +55,7 @@ type VisitPayload = {
 const RATING_COLORS: Record<string, { bg: string; text: string }> = {
   excellent: { bg: "#E8EFF8", text: NAVY },
   good: { bg: "#E8EFF8", text: NAVY },
-  moderate: { bg: "#DCE8F4", text: "#243456" },
+  moderate: { bg: "#DCE8F4", text: "#242A5F" },
   poor: { bg: "#fee2e2", text: "#991b1b" },
 };
 

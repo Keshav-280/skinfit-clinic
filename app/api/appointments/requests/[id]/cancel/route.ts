@@ -15,7 +15,7 @@ import { ymdFromDateOnly } from "@/src/lib/date-only";
 import { notifyPatientAppointmentEmail } from "@/src/lib/email/notifyPatientAppointmentEmail";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 
-const APPOINTMENT_UPDATE_EMAIL_SUBJECT = "SkinnFit Clinic — Appointment update";
+const APPOINTMENT_UPDATE_EMAIL_SUBJECT = "SkinFit Wellness — Appointment update";
 
 export async function POST(
   req: Request,

@@ -59,14 +59,14 @@ export default function DoctorSignupPage() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F6F4EB] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#FAF8F5] px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2C3E6B] shadow-lg shadow-[#2C3E6B]/20">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1E1B31] shadow-lg shadow-[#1E1B31]/20">
             <Stethoscope className="h-7 w-7 text-white" />
           </div>
-          <h1 className="mt-4 text-xl font-bold text-slate-900">SkinFit Clinic</h1>
-          <p className="mt-1 text-sm text-slate-500">Create a staff account</p>
+          <h1 className="mt-4 font-headline text-xl font-bold text-[#1E1B31]">SkinFit Wellness</h1>
+          <p className="font-meta mt-1 text-sm uppercase tracking-wide text-[#5B66A1]">Create a staff account</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white p-7 shadow-sm">
@@ -91,7 +91,7 @@ export default function DoctorSignupPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={loading}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#1E1B31] focus:bg-white focus:ring-2 focus:ring-[#1E1B31]/15"
               />
             </div>
 
@@ -106,7 +106,7 @@ export default function DoctorSignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#1E1B31] focus:bg-white focus:ring-2 focus:ring-[#1E1B31]/15"
               />
             </div>
 
@@ -122,7 +122,7 @@ export default function DoctorSignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-11 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-11 text-sm text-slate-900 outline-none transition focus:border-[#1E1B31] focus:bg-white focus:ring-2 focus:ring-[#1E1B31]/15"
                 />
                 <button
                   type="button"
@@ -147,14 +147,14 @@ export default function DoctorSignupPage() {
                 onChange={(e) => setSecretKey(e.target.value)}
                 disabled={loading}
                 placeholder="Provided by clinic admin"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#2C3E6B] focus:bg-white focus:ring-2 focus:ring-[#2C3E6B]/15"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#1E1B31] focus:bg-white focus:ring-2 focus:ring-[#1E1B31]/15"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50"
+              className="w-full rounded-xl bg-[#1E1B31] py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#242A5F] disabled:opacity-50"
             >
               {loading ? "Creating account…" : "Create account"}
             </button>
@@ -162,7 +162,7 @@ export default function DoctorSignupPage() {
 
           <p className="mt-6 text-center text-sm text-slate-500">
             Already have an account?{" "}
-            <Link href="/doctor/login" className="font-semibold text-[#2C3E6B] hover:underline">
+            <Link href="/doctor/login" className="font-semibold text-[#1E1B31] hover:underline">
               Sign in
             </Link>
           </p>

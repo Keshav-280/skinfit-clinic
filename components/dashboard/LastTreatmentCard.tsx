@@ -56,7 +56,7 @@ export function LastTreatmentCard({
         <DoctorAvatar photoUrl={visit.doctorPhotoUrl} className="h-10 w-10" />
       ) : (
         <SquareCheck
-          className="h-6 w-6 shrink-0 text-[#2C3E6B] sm:h-7 sm:w-7"
+          className="h-6 w-6 shrink-0 text-[#1E1B31] sm:h-7 sm:w-7"
           strokeWidth={2}
           aria-hidden
         />
@@ -76,7 +76,7 @@ export function LastTreatmentCard({
       </div>
       <Link
         href="/dashboard/history/visits"
-        className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#243456]"
+        className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#1E1B31] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#242A5F]"
       >
         View
       </Link>

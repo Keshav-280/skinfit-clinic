@@ -16,13 +16,13 @@ export default async function ArticlePage({
     <div className="mx-auto max-w-2xl">
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#2C3E6B] transition hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1E1B31] transition hover:underline"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden />
         Back
       </Link>
 
-      <div className="relative mt-4 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#2C3E6B] to-[#1E3264]">
+      <div className="relative mt-4 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#1E1B31] to-[#242A5F]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={article.imageSrc}
@@ -68,7 +68,7 @@ export default async function ArticlePage({
       <div className="mb-8 mt-10 border-t border-[#E5E7EB] pt-6">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#2C3E6B] transition hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1E1B31] transition hover:underline"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Back to Build

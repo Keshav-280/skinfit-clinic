@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const TEAL = "#0d9488";
 
 type Props = {
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     maxWidth: 280,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(44,62,107,0.12)",
+    backgroundColor: "rgba(30, 27, 49,0.12)",
     overflow: "hidden",
     marginTop: 12,
   },

@@ -142,7 +142,7 @@ export function InitialKaiScanReport({
       >
         <Link
           href="/dashboard/history"
-          className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-[#2C3E6B] shadow-[0_6px_16px_-10px_rgba(44,62,107,0.4)]"
+          className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-[#1E1B31] shadow-[0_6px_16px_-10px_rgba(30, 27, 49,0.4)]"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
           History

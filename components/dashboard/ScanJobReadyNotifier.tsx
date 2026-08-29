@@ -139,16 +139,16 @@ export function ScanJobReadyNotifier() {
       {toasts.map((toast) => (
         <div
           key={toast.scanId}
-          className="pointer-events-auto rounded-2xl border border-[#2C3E6B]/20 bg-white/95 p-4 shadow-lg backdrop-blur"
+          className="pointer-events-auto rounded-2xl border border-[#1E1B31]/20 bg-white/95 p-4 shadow-lg backdrop-blur"
         >
-          <p className="text-sm font-semibold text-[#2C3E6B]">
+          <p className="text-sm font-semibold text-[#1E1B31]">
             Your report is ready
           </p>
           <p className="mt-1 text-sm text-zinc-600">{toast.title}</p>
           <div className="mt-3 flex items-center gap-3 text-xs font-semibold">
             <Link
               href="/dashboard/history"
-              className="rounded-lg bg-[#2C3E6B] px-3 py-2 text-white transition hover:bg-[#243456] active:scale-[0.97]"
+              className="rounded-lg bg-[#1E1B31] px-3 py-2 text-white transition hover:bg-[#242A5F] active:scale-[0.97]"
               onClick={() => {
                 dismissUnreadReadyScan(toast.scanId);
                 setToasts((prev) =>

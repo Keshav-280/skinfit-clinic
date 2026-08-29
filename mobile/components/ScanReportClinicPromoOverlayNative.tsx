@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 2.2,
-    color: "rgba(44, 62, 107, 0.7)",
+    color: "rgba(30, 27, 49, 0.7)",
     textTransform: "uppercase",
     paddingRight: 36,
   },

@@ -103,7 +103,7 @@ export default function SleepTrackerPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
       </div>
     );
   }
@@ -116,16 +116,16 @@ export default function SleepTrackerPage() {
           href="/dashboard"
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/60 bg-white/35 backdrop-blur-sm transition-colors hover:bg-white/60"
         >
-          <ArrowLeft className="h-5 w-5 text-[#2C3E6B]" />
+          <ArrowLeft className="h-5 w-5 text-[#1E1B31]" />
         </Link>
-        <h1 className="text-xl font-bold tracking-tight text-[#2C3E6B]">
+        <h1 className="text-xl font-bold tracking-tight text-[#1E1B31]">
           Sleep Tracker
         </h1>
         <div className="ml-auto flex items-center gap-2">
           {saveStatus === "saving" && <span className="text-xs text-slate-400">Saving...</span>}
           {saveStatus === "saved" && <span className="text-xs text-emerald-500">Saved ✓</span>}
           {saveStatus === "error" && <span className="text-xs text-amber-600">Could not save</span>}
-          <Moon className="h-5 w-5 text-[#2C3E6B]/60" />
+          <Moon className="h-5 w-5 text-[#1E1B31]/60" />
         </div>
       </div>
 
@@ -145,7 +145,7 @@ export default function SleepTrackerPage() {
             <path
               d={describeArc(cx, cy, radius, startAngle, currentAngle)}
               fill="none"
-              stroke="#2C3E6B"
+              stroke="#1E1B31"
               strokeWidth="18"
               strokeLinecap="round"
             />
@@ -180,14 +180,14 @@ export default function SleepTrackerPage() {
             );
           })}
           {/* Current value dot */}
-          <circle cx={dotPos.x} cy={dotPos.y} r="8" fill="#2C3E6B" />
+          <circle cx={dotPos.x} cy={dotPos.y} r="8" fill="#1E1B31" />
           <circle cx={dotPos.x} cy={dotPos.y} r="4" fill="white" />
           {/* Center text */}
           <text
             x={cx}
             y={cy - 10}
             textAnchor="middle"
-            className="fill-[#2C3E6B] text-[32px] font-bold"
+            className="fill-[#1E1B31] text-[32px] font-bold"
           >
             {hours}
           </text>
@@ -226,7 +226,7 @@ export default function SleepTrackerPage() {
               onClick={() => handleSetQuality(opt)}
               className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-all ${
                 quality === opt
-                  ? "bg-[#2C3E6B] text-white shadow-md"
+                  ? "bg-[#1E1B31] text-white shadow-md"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -246,7 +246,7 @@ export default function SleepTrackerPage() {
               onClick={() => handleSetHours(h)}
               className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all ${
                 hours === h
-                  ? "bg-[#2C3E6B] text-white shadow-md"
+                  ? "bg-[#1E1B31] text-white shadow-md"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >

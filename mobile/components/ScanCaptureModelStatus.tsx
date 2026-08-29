@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { needsMediapipeOnClient, getMobileFaceCaptureConfig } from "@/lib/faceCaptureConfig";
 import type { CaptureAssistModels } from "@/lib/scanCaptureGuidance";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 type Props = {
   models: CaptureAssistModels;
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   wrap: {
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.12)",
+    borderColor: "rgba(30, 27, 49,0.12)",
     backgroundColor: "rgba(255,255,255,0.08)",
     paddingHorizontal: 8,
     paddingVertical: 6,

@@ -104,19 +104,19 @@ function HeroRingsMotif({ className = "" }: { className?: string }) {
       fill="none"
       aria-hidden
     >
-      <circle cx="200" cy="80" r="140" stroke="#2C3E6B" strokeWidth="1" />
-      <circle cx="200" cy="80" r="100" stroke="#2C3E6B" strokeWidth="1" />
-      <circle cx="200" cy="80" r="60" stroke="#2C3E6B" strokeWidth="1" />
-      <circle cx="200" cy="80" r="24" stroke="#2C3E6B" strokeWidth="1" />
+      <circle cx="200" cy="80" r="140" stroke="#1E1B31" strokeWidth="1" />
+      <circle cx="200" cy="80" r="100" stroke="#1E1B31" strokeWidth="1" />
+      <circle cx="200" cy="80" r="60" stroke="#1E1B31" strokeWidth="1" />
+      <circle cx="200" cy="80" r="24" stroke="#1E1B31" strokeWidth="1" />
       <path
         d="M48 220c28-36 72-48 108-28 22 12 40 18 62 16"
-        stroke="#2C3E6B"
+        stroke="#1E1B31"
         strokeWidth="1"
         strokeLinecap="round"
       />
       <path
         d="M70 248c22-28 56-38 86-22"
-        stroke="#2C3E6B"
+        stroke="#1E1B31"
         strokeWidth="1"
         strokeLinecap="round"
       />
@@ -203,11 +203,11 @@ export default function SchedulesPageClient({
 
   return (
     <div className="relative">
-      <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#2C3E6B] to-[#1E3264] px-4 pb-16 pt-8 md:-mx-6 md:px-6 md:pb-20 md:pt-10">
+      <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#1E1B31] to-[#242A5F] px-4 pb-16 pt-8 md:-mx-6 md:px-6 md:pb-20 md:pt-10">
         <svg
           viewBox="0 0 500 40"
           preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-x-0 bottom-0 block h-8 w-full text-[#E8EFE6]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 block h-8 w-full text-[#F0EAE2]"
           aria-hidden
         >
           <path

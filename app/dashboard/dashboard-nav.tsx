@@ -40,7 +40,7 @@ function isActive(href: string, pathname: string | null): boolean {
 }
 
 const linkBase =
-  "rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2C3E6B]/30";
+  "rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E1B31]/30";
 
 export function DashboardNav() {
   const pathname = usePathname();
@@ -141,7 +141,7 @@ export function DashboardNav() {
                 linkBase,
                 "inline-flex items-center gap-1.5 px-3 py-2 lg:px-4",
                 active
-                  ? "bg-[#2C3E6B]/10 text-[#2C3E6B] font-semibold"
+                  ? "bg-[#1E1B31]/10 text-[#1E1B31] font-semibold"
                   : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               )}
               aria-current={active ? "page" : undefined}
@@ -152,7 +152,7 @@ export function DashboardNav() {
               ) : null}
               <span>{label}</span>
               {bell ? (
-                <span className="inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#2C3E6B] px-1 text-[10px] font-bold leading-none text-white">
+                <span className="inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#1E1B31] px-1 text-[10px] font-bold leading-none text-white">
                   {scheduleBellCount > 9 ? "9+" : scheduleBellCount}
                 </span>
               ) : null}
@@ -183,13 +183,13 @@ export function DashboardNav() {
                     <span
                       className={clsx(
                         "flex h-8 w-10 items-center justify-center rounded-xl transition-colors",
-                        active ? "bg-[#2C3E6B]/10" : ""
+                        active ? "bg-[#1E1B31]/10" : ""
                       )}
                     >
                       <Icon
                         className={clsx(
                           "h-5 w-5 shrink-0 transition-colors",
-                          active ? "text-[#2C3E6B]" : "text-[#9CA3AF]"
+                          active ? "text-[#1E1B31]" : "text-[#9CA3AF]"
                         )}
                         aria-hidden
                       />
@@ -197,13 +197,13 @@ export function DashboardNav() {
                     <span
                       className={clsx(
                         "text-[10px] font-medium leading-none",
-                        active ? "text-[#2C3E6B] font-semibold" : "text-[#9CA3AF]"
+                        active ? "text-[#1E1B31] font-semibold" : "text-[#9CA3AF]"
                       )}
                     >
                       {label}
                     </span>
                     {bell ? (
-                      <span className="absolute right-[calc(50%-18px)] top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#2C3E6B] text-[9px] font-bold text-white">
+                      <span className="absolute right-[calc(50%-18px)] top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#1E1B31] text-[9px] font-bold text-white">
                         {scheduleBellCount > 9 ? "9+" : scheduleBellCount}
                       </span>
                     ) : null}

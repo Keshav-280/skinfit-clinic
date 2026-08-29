@@ -21,7 +21,7 @@ import { presentScanReportReadyNotification } from "@/lib/scanReadyLocalNotifica
 import { presentScanReportFailedNotification } from "@/lib/scanFailedLocalNotification";
 
 const POLL_MS = 8_000;
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 type ReadyItem = { scanId: number; title: string };
 
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(44,62,107,0.2)",
+    borderColor: "rgba(30, 27, 49,0.2)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,

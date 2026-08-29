@@ -126,8 +126,8 @@ function Pill({
       whileTap={{ scale: 0.98 }}
       className={`w-full rounded-2xl border px-5 py-4 text-left text-[15px] font-semibold transition-colors ${
         active
-          ? "border-[#2C3E6B] bg-[#2C3E6B] text-white"
-          : "border-[#E5E7EB] bg-white text-[#18181b] hover:border-[#2C3E6B]/30"
+          ? "border-[#1E1B31] bg-[#1E1B31] text-white"
+          : "border-[#E5E7EB] bg-white text-[#18181b] hover:border-[#1E1B31]/30"
       }`}
     >
       {children}
@@ -154,7 +154,7 @@ function CompletionScreen({
   return (
     <motion.div
       className="fixed inset-0 z-50 flex flex-col items-center px-6"
-      animate={{ backgroundColor: settled ? "#F5F3EF" : "#2C3E6B" }}
+      animate={{ backgroundColor: settled ? "#FAF8F5" : "#1E1B31" }}
       transition={{ duration: 0.6, ease: easeOut }}
     >
       <div
@@ -184,7 +184,7 @@ function CompletionScreen({
           >
             <motion.path
               d="M14 27l7 7 17-17"
-              stroke="#2C3E6B"
+              stroke="#1E1B31"
               strokeWidth={5}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -233,7 +233,7 @@ function CompletionScreen({
             <button
               type="button"
               onClick={onTakeScan}
-              className="w-full rounded-2xl bg-[#2C3E6B] py-4 text-[15px] font-bold text-white transition hover:bg-[#243456]"
+              className="w-full rounded-2xl bg-[#1E1B31] py-4 text-[15px] font-bold text-white transition hover:bg-[#242A5F]"
             >
               Take your first scan
             </button>
@@ -243,8 +243,8 @@ function CompletionScreen({
             onClick={onGoDashboard}
             className={
               hasScan
-                ? "w-full rounded-2xl bg-[#2C3E6B] py-4 text-[15px] font-bold text-white transition hover:bg-[#243456]"
-                : "w-full rounded-2xl border border-[#2C3E6B]/25 bg-white py-4 text-[15px] font-bold text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5"
+                ? "w-full rounded-2xl bg-[#1E1B31] py-4 text-[15px] font-bold text-white transition hover:bg-[#242A5F]"
+                : "w-full rounded-2xl border border-[#1E1B31]/25 bg-white py-4 text-[15px] font-bold text-[#1E1B31] transition hover:bg-[#1E1B31]/5"
             }
           >
             Go to dashboard
@@ -327,7 +327,7 @@ export function QuestionnaireWizardPreview() {
       {/* Progress bar */}
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
         <motion.div
-          className="h-full rounded-full bg-[#2C3E6B]"
+          className="h-full rounded-full bg-[#1E1B31]"
           animate={{ width: `${progressPct}%` }}
           transition={{ duration: 0.45, ease: easeOut }}
         />
@@ -339,7 +339,7 @@ export function QuestionnaireWizardPreview() {
           type="button"
           onClick={goBack}
           disabled={stepIndex === 0}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-[#2C3E6B] transition hover:bg-[#2C3E6B]/8 disabled:opacity-0"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[#1E1B31] transition hover:bg-[#1E1B31]/8 disabled:opacity-0"
           aria-label="Back"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -347,7 +347,7 @@ export function QuestionnaireWizardPreview() {
         <button
           type="button"
           onClick={skip}
-          className="text-sm font-semibold text-[#6B7280] transition hover:text-[#2C3E6B]"
+          className="text-sm font-semibold text-[#6B7280] transition hover:text-[#1E1B31]"
         >
           Skip
         </button>
@@ -393,7 +393,7 @@ export function QuestionnaireWizardPreview() {
                     placeholder="Your age"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    className="w-full rounded-2xl border border-[#E5E7EB] bg-white px-5 py-4 text-[15px] font-semibold text-[#18181b] outline-none placeholder:text-[#9CA3AF] focus:border-[#2C3E6B]/40"
+                    className="w-full rounded-2xl border border-[#E5E7EB] bg-white px-5 py-4 text-[15px] font-semibold text-[#18181b] outline-none placeholder:text-[#9CA3AF] focus:border-[#1E1B31]/40"
                   />
                   {GENDER_OPTIONS.map((opt, i) => (
                     <Pill
@@ -453,7 +453,7 @@ export function QuestionnaireWizardPreview() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35, delay: 0.35, ease: easeOut }}
-        className="mt-6 w-full rounded-2xl bg-[#2C3E6B] py-4 text-center text-[15px] font-bold text-white transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+        className="mt-6 w-full rounded-2xl bg-[#1E1B31] py-4 text-center text-[15px] font-bold text-white transition disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
       >
         {isLast ? "Finish" : "Continue"}
       </motion.button>

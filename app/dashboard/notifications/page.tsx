@@ -57,11 +57,11 @@ function AlertRow({
       chevron: "text-rose-500",
     },
     teal: {
-      border: "border-teal-200/60",
+      border: "border-[#EFCCCE]/60",
       bg: "bg-white/35",
-      iconBg: "bg-teal-100/80",
-      iconFg: "text-teal-800",
-      chevron: "text-teal-600",
+      iconBg: "bg-[#F8EDEE]/80",
+      iconFg: "text-[#4A2630]",
+      chevron: "text-[#1E1B31]",
     },
     sky: {
       border: "border-sky-200/60",
@@ -93,8 +93,8 @@ function AlertRow({
       </div>
       <div className="min-w-0 flex-1 text-left">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="font-bold tracking-tight text-[#2C3E6B]">{title}</p>
-          <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-[#2C3E6B] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
+          <p className="font-bold tracking-tight text-[#1E1B31]">{title}</p>
+          <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-[#1E1B31] px-2 py-0.5 text-xs font-bold tabular-nums text-white">
             {count}
           </span>
         </div>
@@ -123,14 +123,14 @@ function ShortcutRow({
       href={href}
       className="flex items-center gap-3.5 rounded-[18px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm transition hover:bg-white/80"
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8EFE6]/60 text-[#2C3E6B]">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F0EAE2]/60 text-[#1E1B31]">
         {icon}
       </div>
       <div className="min-w-0 flex-1 text-left">
-        <p className="font-semibold text-[#2C3E6B]">{title}</p>
+        <p className="font-semibold text-[#1E1B31]">{title}</p>
         <p className="mt-0.5 text-sm text-[#6B7280]">{subtitle}</p>
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-[#2C3E6B]/40" />
+      <ChevronRight className="h-5 w-5 shrink-0 text-[#1E1B31]/40" />
     </Link>
   );
 }
@@ -244,7 +244,7 @@ export default function DashboardNotificationsPage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div className="rounded-[22px] border border-white/70 bg-white/35 px-6 py-5 text-center backdrop-blur-sm">
-        <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B]">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#1E1B31]">
           Notifications
         </h1>
        
@@ -256,16 +256,16 @@ export default function DashboardNotificationsPage() {
         <>
           <section className="space-y-3">
             <div className="flex items-center justify-between px-0.5">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[#2C3E6B]/60">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[#1E1B31]/60">
                 {alertCount > 0 ? "Needs attention" : "Inbox"}
               </h2>
               {alertCount === 0 ? (
-                <span className="flex items-center gap-1 rounded-full bg-[#E8EFE6]/80 px-2.5 py-1 text-xs font-semibold text-[#2C3E6B] backdrop-blur-sm">
+                <span className="flex items-center gap-1 rounded-full bg-[#F0EAE2]/80 px-2.5 py-1 text-xs font-semibold text-[#1E1B31] backdrop-blur-sm">
                   <Sparkles className="h-3.5 w-3.5" aria-hidden />
                   All caught up
                 </span>
               ) : (
-                <span className="text-xs font-semibold tabular-nums text-[#2C3E6B]/60">
+                <span className="text-xs font-semibold tabular-nums text-[#1E1B31]/60">
                   {alertCount} active
                 </span>
               )}
@@ -359,7 +359,7 @@ export default function DashboardNotificationsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="px-0.5 text-xs font-bold uppercase tracking-wider text-[#2C3E6B]/60">
+            <h2 className="px-0.5 text-xs font-bold uppercase tracking-wider text-[#1E1B31]/60">
               More
             </h2>
             <ShortcutRow

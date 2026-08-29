@@ -240,7 +240,7 @@ const CARD_BG = "#FFFFFF";
 
 const cardShadow = Platform.select({
   ios: {
-    shadowColor: "#2C3E6B",
+    shadowColor: "#1E1B31",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(44,62,107,0.1)",
+    backgroundColor: "rgba(30, 27, 49,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },

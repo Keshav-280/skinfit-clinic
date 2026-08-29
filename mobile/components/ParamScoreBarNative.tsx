@@ -6,7 +6,7 @@ import {
   patientClarityToGrade,
 } from "../../src/lib/clarityGrade";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 function valueForBar(n: number | null) {
   if (typeof n !== "number") return 0;
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     height: 22,
     borderRadius: 11,
-    backgroundColor: "rgba(44,62,107,0.1)",
+    backgroundColor: "rgba(30, 27, 49,0.1)",
     paddingHorizontal: 2,
   },
   checkpoint: {
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   barTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(44,62,107,0.12)",
+    backgroundColor: "rgba(30, 27, 49,0.12)",
     overflow: "hidden",
   },
   barFill: {

@@ -110,7 +110,7 @@ function GuideFooter({
           <button
             type="button"
             onClick={onBack}
-            className="order-2 rounded-2xl border border-[#2C3E6B]/20 bg-white/30 px-6 py-3 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/50 sm:order-1"
+            className="order-2 rounded-2xl border border-[#1E1B31]/20 bg-white/30 px-6 py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-white/50 sm:order-1"
           >
             Back
           </button>
@@ -208,9 +208,9 @@ export function FaceScanPhotoGuide({
           {DESKTOP_CARDS.map((card) => (
             <article
               key={card.title}
-              className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/45 bg-white/55 shadow-[0_4px_20px_-12px_rgba(44,62,107,0.25)] backdrop-blur-[2px]"
+              className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/45 bg-white/55 shadow-[0_4px_20px_-12px_rgba(30, 27, 49,0.25)] backdrop-blur-[2px]"
             >
-              <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#D6E4D0]/80">
+              <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#DCCFC0]/80">
                 <Image
                   src={card.image}
                   alt=""

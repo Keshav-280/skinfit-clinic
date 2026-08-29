@@ -1,8 +1,8 @@
 const CARD =
-  "rounded-[22px] border border-white/70 bg-white/40 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm";
+  "rounded-[22px] border border-white/70 bg-white/40 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm";
 
 function Shimmer({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-full bg-[#2C3E6B]/10 ${className}`} />;
+  return <div className={`animate-pulse rounded-full bg-[#1E1B31]/10 ${className}`} />;
 }
 
 function SectionSkeleton() {
@@ -35,7 +35,7 @@ export default function ProfileLoading() {
                   className="rounded-[18px] border border-white/70 bg-white/45 px-3.5 py-3"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 shrink-0 animate-pulse rounded-[11px] bg-[#2C3E6B]/20" />
+                    <div className="h-8 w-8 shrink-0 animate-pulse rounded-[11px] bg-[#1E1B31]/20" />
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <Shimmer className="h-2.5 w-16" />
                       <Shimmer className="h-3.5 w-24" />

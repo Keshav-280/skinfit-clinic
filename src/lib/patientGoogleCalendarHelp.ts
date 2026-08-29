@@ -54,7 +54,7 @@ export function formatPatientAppointmentConfirmationMessage(params: {
   doctorNameRaw?: string | null;
 }): string {
   const dr = doctorDisplayName(params.doctorNameRaw);
-  const title = `SkinnFit Clinic — ${dr}`;
+  const title = `SkinFit Wellness — ${dr}`;
   const endHm = effectiveSlotEndHm(params.slotTimeHm, params.slotEndTimeHm);
   const endUtc =
     ymdHmStringsToUtcInstant(params.slotYmd, endHm) ??
@@ -65,7 +65,7 @@ export function formatPatientAppointmentConfirmationMessage(params: {
     params.slotTimeHm,
     params.slotEndTimeHm
   );
-  const details = `SkinnFit Clinic visit on ${params.slotYmd}, ${timeRangeLabel}.`;
+  const details = `SkinFit Wellness visit on ${params.slotYmd}, ${timeRangeLabel}.`;
   const addToCalendarUrl = buildGoogleCalendarTemplateUrl({
     title,
     startUtc: params.dateTimeUtc,

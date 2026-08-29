@@ -67,7 +67,7 @@ function signed(n: number): string {
 
 function deltaLabel(n: number | null): { text: string; tone: string } {
   if (n == null) return { text: "—", tone: "text-[#9ca3af]" };
-  if (n >= 3) return { text: `${signed(n)} improved`, tone: "text-[#2C3E6B]" };
+  if (n >= 3) return { text: `${signed(n)} improved`, tone: "text-[#1E1B31]" };
   if (n <= -3) return { text: `${signed(n)} softer`, tone: "text-[#5B7BA8]" };
   return { text: `${signed(n)} steady`, tone: "text-[#9ca3af]" };
 }
@@ -113,11 +113,11 @@ function HabitStat({
         compact ? "px-2.5 py-2" : "px-3 py-2.5"
       }`}
     >
-      <p className="text-[10px] font-bold uppercase tracking-wide text-[#3d5080]">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-[#5B66A1]">
         {label}
       </p>
       <p
-        className={`mt-1 font-bold tabular-nums text-[#2C3E6B] ${
+        className={`mt-1 font-bold tabular-nums text-[#1E1B31] ${
           compact ? "text-base" : "text-lg"
         }`}
       >
@@ -164,7 +164,7 @@ function MonthlyDetailBody({
 
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
-      <div className="rounded-xl bg-[#2C3E6B] px-4 py-3.5 text-white shadow-sm">
+      <div className="rounded-xl bg-[#1E1B31] px-4 py-3.5 text-white shadow-sm">
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-white/70">
@@ -223,11 +223,11 @@ function MonthlyDetailBody({
                     </span>
                     <div className="h-2 w-24 overflow-hidden rounded-full bg-[#e5e7eb] sm:w-32">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#2C3E6B]"
+                        className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#1E1B31]"
                         style={{ width: `${bar}%` }}
                       />
                     </div>
-                    <span className="w-8 text-right text-xs font-bold tabular-nums text-[#2C3E6B]">
+                    <span className="w-8 text-right text-xs font-bold tabular-nums text-[#1E1B31]">
                       {p.latest ?? "—"}
                     </span>
                     <span
@@ -361,7 +361,7 @@ function MonthlyDetailBody({
                   className="inline-flex items-center gap-2 rounded-full border border-[#e5e7eb] bg-white px-2.5 py-1 text-[11px]"
                 >
                   <span className="text-[#6B7280]">{s.date}</span>
-                  <span className="font-bold text-[#2C3E6B]">kAI {s.kaiScore}</span>
+                  <span className="font-bold text-[#1E1B31]">kAI {s.kaiScore}</span>
                 </span>
               ))}
             </div>
@@ -397,7 +397,7 @@ function MonthlyDetailBody({
               .map((pill) => (
                 <span
                   key={String(pill)}
-                  className="rounded-full border border-[#e5e7eb] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#2C3E6B]"
+                  className="rounded-full border border-[#e5e7eb] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1E1B31]"
                 >
                   {pill}
                 </span>
@@ -412,7 +412,7 @@ function MonthlyDetailBody({
           <BulletList items={focus} ordered compact={compact} />
           {closingNote ? (
             <p
-              className={`mt-3 font-semibold text-[#2C3E6B] ${
+              className={`mt-3 font-semibold text-[#1E1B31] ${
                 compact ? "text-[12px] leading-snug" : "text-sm leading-relaxed"
               }`}
             >
@@ -469,8 +469,8 @@ export function MonthlyInsightView({
               onClick={() => onSelectMonth?.(h.monthStart)}
               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
                 active
-                  ? "bg-[#2C3E6B] text-white"
-                  : "border border-[#e5e7eb] bg-white text-[#2C3E6B] hover:bg-[#f8fafc]"
+                  ? "bg-[#1E1B31] text-white"
+                  : "border border-[#e5e7eb] bg-white text-[#1E1B31] hover:bg-[#f8fafc]"
               } disabled:cursor-not-allowed disabled:opacity-60`}
             >
               {h.periodLabel}
@@ -532,7 +532,7 @@ export function MonthlyInsightView({
           <p
             className={`inline-flex items-center gap-1.5 ${
               compact && embedded
-                ? "text-[10px] font-bold uppercase tracking-wide text-[#2D3E6B]/60"
+                ? "text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/60"
                 : patientKicker
             }`}
           >
@@ -547,7 +547,7 @@ export function MonthlyInsightView({
             }`}
           >
             Unlocks around{" "}
-            <span className="font-semibold text-[#2C3E6B]">{nextInsightFriendly}</span>.
+            <span className="font-semibold text-[#1E1B31]">{nextInsightFriendly}</span>.
           </p>
         </div>
       ) : historyLoading ? (

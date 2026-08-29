@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   btnPrimary: {
     borderRadius: 10,
-    backgroundColor: "#2C3E6B",
+    backgroundColor: "#1E1B31",
     paddingVertical: 12,
     alignItems: "center",
   },

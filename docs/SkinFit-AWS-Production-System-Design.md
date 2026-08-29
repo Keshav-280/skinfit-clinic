@@ -1,12 +1,12 @@
-# SkinFit Clinic — Production System Design (AWS)
+# SkinFit Wellness — Production System Design (AWS)
 
 **Date:** May 2026  
-**Classification:** Internal — SkinFit Clinic  
+**Classification:** Internal — SkinFit Wellness  
 **Scope:** Large-scale production architecture and AWS migration plan (`skinfit-clinic` + `face_analysis_tool`)
 
 ---
 
-Below is a **production system design** for SkinFit Clinic based on your actual codebase, written for a **large-scale AWS migration**. Treat this as an architecture baseline; several numbers depend on answers in **Section 12**.
+Below is a **production system design** for SkinFit Wellness based on your actual codebase, written for a **large-scale AWS migration**. Treat this as an architecture baseline; several numbers depend on answers in **Section 12**.
 
 ---
 

@@ -13,7 +13,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 import { DoctorCard, DoctorInlineLoader } from "@/components/doctor/DoctorUiPrimitives";
 /** Tailwind needs literal hex in ring-offset — keep in sync with DOCTOR_CALENDAR_BG. */
-const CAL_RING_OFFSET = "ring-offset-[#1A2342]";
+const CAL_RING_OFFSET = "ring-offset-[#1E1B31]";
 
 type ApptItem = {
   appointmentId: string;
@@ -70,40 +70,40 @@ function monthCellClass(
     "font-semibold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2E9D8]/50";
 
   if (opts.selected) {
-    return `${base} bg-[#2C3E6B] text-[#F6F4EB] shadow-[0_0_0_2px_rgba(242,233,216,0.28)] hover:text-[#F6F4EB]`;
+    return `${base} bg-[#1E1B31] text-[#FAF8F5] shadow-[0_0_0_2px_rgba(242,233,216,0.28)] hover:text-[#FAF8F5]`;
   }
 
   if (opts.isToday && !opts.hasVisits) {
-    return `${base} bg-[#243356] text-zinc-50 ring-2 ring-[#F2E9D8]/75 ${CAL_RING_OFFSET} ring-offset-2 hover:text-white`;
+    return `${base} bg-[#242A5F] text-zinc-50 ring-2 ring-[#F2E9D8]/75 ${CAL_RING_OFFSET} ring-offset-2 hover:text-white`;
   }
 
   if (opts.hasVisits && timing === "past") {
-    return `${base} bg-[#F2E9D8] text-[#1A2342] hover:bg-[#E8E7DE] hover:text-[#1A2342]`;
+    return `${base} bg-[#F2E9D8] text-[#1E1B31] hover:bg-[#E8E7DE] hover:text-[#1E1B31]`;
   }
 
   if (opts.hasVisits && timing === "future") {
-    return `${base} bg-[#3d5080] text-[#F6F4EB] hover:bg-[#2C3E6B] hover:text-[#F6F4EB]`;
+    return `${base} bg-[#5B66A1] text-[#FAF8F5] hover:bg-[#1E1B31] hover:text-[#FAF8F5]`;
   }
 
   if (opts.hasVisits && timing === "today") {
-    return `${base} bg-[#F2E9D8] text-[#1A2342] ring-2 ring-[#F6F4EB]/85 ${CAL_RING_OFFSET} ring-offset-2 hover:text-[#1A2342]`;
+    return `${base} bg-[#F2E9D8] text-[#1E1B31] ring-2 ring-[#FAF8F5]/85 ${CAL_RING_OFFSET} ring-offset-2 hover:text-[#1E1B31]`;
   }
 
   if (timing === "today") {
-    return `${base} bg-[#243356]/90 text-zinc-100 ring-2 ring-[#F2E9D8]/55 ${CAL_RING_OFFSET} ring-offset-2 hover:text-white`;
+    return `${base} bg-[#242A5F]/90 text-zinc-100 ring-2 ring-[#F2E9D8]/55 ${CAL_RING_OFFSET} ring-offset-2 hover:text-white`;
   }
 
-  return `${base} bg-[#243356]/35 text-zinc-400 hover:bg-[#243356]/55 hover:text-zinc-200`;
+  return `${base} bg-[#242A5F]/35 text-zinc-400 hover:bg-[#242A5F]/55 hover:text-zinc-200`;
 }
 
 function weekDayShellClass(timing: DayTiming): string {
   if (timing === "today") {
-    return "bg-[#243356]/90 shadow-[0_2px_8px_rgba(0,0,0,0.2)] ring-1 ring-[#F2E9D8]/35";
+    return "bg-[#242A5F]/90 shadow-[0_2px_8px_rgba(0,0,0,0.2)] ring-1 ring-[#F2E9D8]/35";
   }
   if (timing === "past") {
-    return "bg-[#243356]/50 shadow-[0_1px_4px_rgba(0,0,0,0.15)]";
+    return "bg-[#242A5F]/50 shadow-[0_1px_4px_rgba(0,0,0,0.15)]";
   }
-  return "bg-[#243356]/55 shadow-[0_1px_4px_rgba(0,0,0,0.15)]";
+  return "bg-[#242A5F]/55 shadow-[0_1px_4px_rgba(0,0,0,0.15)]";
 }
 
 /** Selected-day header — e.g. FRI 22 MAY · TODAY / SAT 30 MAY · UPCOMING */
@@ -141,7 +141,7 @@ function VisitList({
   const timeClass =
     timing === "past" ? "text-[#F2E9D8]/90" : "text-[#7A9BC4]";
   const nameClass = timing === "past" ? "text-white" : "text-[#F2E9D8]";
-  const hoverClass = "hover:bg-[#2C3E6B]/40";
+  const hoverClass = "hover:bg-[#1E1B31]/40";
 
   return (
     <ul className="mt-1.5 space-y-1">
@@ -177,7 +177,7 @@ function CalendarTimingLegend() {
     >
       <span className="inline-flex items-center gap-1.5">
         <span
-          className="h-3 w-3 rounded-full border-2 border-[#F2E9D8]/80 bg-[#243356]"
+          className="h-3 w-3 rounded-full border-2 border-[#F2E9D8]/80 bg-[#242A5F]"
           aria-hidden
         />
         Today
@@ -187,7 +187,7 @@ function CalendarTimingLegend() {
         Past visit
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-3 w-3 rounded-full bg-[#3d5080]" aria-hidden />
+        <span className="h-3 w-3 rounded-full bg-[#5B66A1]" aria-hidden />
         Upcoming
       </span>
     </div>
@@ -300,20 +300,20 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
   const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const tabShellClass =
-    "mb-3 flex rounded-xl bg-[#243356]/70 p-1 shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]";
+    "mb-3 flex rounded-xl bg-[#242A5F]/70 p-1 shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]";
   const tabActiveClass =
-    "bg-[#2C3E6B] text-[#F6F4EB] shadow-[0_2px_8px_rgba(44,62,107,0.45)]";
+    "bg-[#1E1B31] text-[#FAF8F5] shadow-[0_2px_8px_rgba(30, 27, 49,0.45)]";
   const tabIdleClass = "text-zinc-400 hover:text-[#F2E9D8]";
   const navBtnClass =
-    "inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#243356] text-zinc-300 shadow-[0_1px_4px_rgba(0,0,0,0.2)] transition hover:bg-[#2C3E6B] hover:text-[#F6F4EB]";
+    "inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#242A5F] text-zinc-300 shadow-[0_1px_4px_rgba(0,0,0,0.2)] transition hover:bg-[#1E1B31] hover:text-[#FAF8F5]";
   const navCenterClass =
-    "min-w-0 flex-1 rounded-xl bg-[#243356] px-2 py-2 text-xs font-semibold text-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.2)] transition hover:bg-[#2C3E6B] hover:text-[#F6F4EB]";
+    "min-w-0 flex-1 rounded-xl bg-[#242A5F] px-2 py-2 text-xs font-semibold text-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.2)] transition hover:bg-[#1E1B31] hover:text-[#FAF8F5]";
 
   return (
     <DoctorCard variant="calendar" className={`flex flex-col p-4 ${className}`}>
       <div className="mb-4 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#243356] text-[#F2E9D8] shadow-[0_2px_6px_rgba(0,0,0,0.2)]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#242A5F] text-[#F2E9D8] shadow-[0_2px_6px_rgba(0,0,0,0.2)]">
             <CalendarDays className="h-5 w-5" aria-hidden />
           </span>
           <div>
@@ -328,7 +328,7 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="rounded-xl p-2 text-zinc-400 transition hover:bg-[#243356] hover:text-[#F2E9D8] disabled:opacity-50"
+          className="rounded-xl p-2 text-zinc-400 transition hover:bg-[#242A5F] hover:text-[#F2E9D8] disabled:opacity-50"
           title="Refresh calendar"
           aria-label="Refresh calendar"
         >
@@ -460,7 +460,7 @@ export function DoctorPortalCalendar({ className = "" }: { className?: string })
           </div>
 
           {selectedMonthDay?.inMonth ? (
-            <div className="mt-4 rounded-xl bg-[#243356]/75 px-3 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.22)]">
+            <div className="mt-4 rounded-xl bg-[#242A5F]/75 px-3 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.22)]">
               <p
                 className={`text-[11px] font-bold uppercase tracking-wide ${visitDetailDateClass(
                   dayTiming(selectedYmd, monthData?.todayYmd ?? selectedYmd)

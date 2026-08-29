@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const concern = row.primaryConcern ? ` · ${row.primaryConcern}` : "";
   return {
     title: `${row.name}${concern}`,
-    description: `SkinFit Clinic patient chart for ${row.name}. Review scans, routines, appointments, and clinical notes.`,
+    description: `SkinFit Wellness patient chart for ${row.name}. Review scans, routines, appointments, and clinical notes.`,
   };
 }
 

@@ -11,9 +11,9 @@ import {
 } from "@/src/lib/clinicPublicContact";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — SkinnFit",
+  title: "Privacy Policy — SkinFit",
   description:
-    "How SkinnFit collects, uses, and protects your personal and health-related information.",
+    "How SkinFit collects, uses, and protects your personal and health-related information.",
 };
 
 const { legalName, addressLine, email } = CLINIC_PUBLIC_CONTACT;
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           Questions about your data? Email{" "}
           <a
             href={`mailto:${email}`}
-            className="font-semibold text-[#2C3E6B] underline underline-offset-2"
+            className="font-semibold text-[#1E1B31] underline underline-offset-2"
           >
             {email}
           </a>
@@ -37,9 +37,9 @@ export default function PrivacyPage() {
         </>
       }
     >
-      <LegalSection title="1. Who operates SkinnFit">
+      <LegalSection title="1. Who operates SkinFit">
         <p>
-          {legalName} operates the SkinnFit mobile application and patient web dashboard for
+          {legalName} operates the SkinFit mobile application and patient web dashboard for
           participating dermatology clinics.
         </p>
         <LegalBulletList
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
             "Health & skin data: onboarding questionnaire, AI face-scan photos and analysis results, wellness journals (sleep, hydration, stress), skincare routines, and appointment requests.",
             "Communications: messages, voice notes, and images you send to your doctor or clinic team in chat.",
             "Device data: push notification token, secure session tokens on your device, and limited server logs (such as IP address and timestamps) for security.",
-            "On-device processing: face landmark guidance during capture runs on your device; scan photos are uploaded for AI analysis on SkinnFit servers.",
+            "On-device processing: face landmark guidance during capture runs on your device; scan photos are uploaded for AI analysis on SkinFit servers.",
             "Personal information is not sold and third-party advertising SDKs are not used in the patient app.",
           ]}
         />
@@ -104,7 +104,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           Send requests to{" "}
-          <a href={`mailto:${email}`} className="font-semibold text-[#2C3E6B] underline">
+          <a href={`mailto:${email}`} className="font-semibold text-[#1E1B31] underline">
             {email}
           </a>{" "}
           from your registered email address. Identity will be verified before responding.
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
 
       <LegalSection title="8. Children">
         <p>
-          SkinnFit is intended for users 13 years and older. Users under 18 should use the app with
+          SkinFit is intended for users 13 years and older. Users under 18 should use the app with
           a parent or guardian. Personal data from children under 13 is not knowingly collected.
         </p>
       </LegalSection>
@@ -132,7 +132,7 @@ export default function PrivacyPage() {
       <LegalSection title="9. Changes to this policy">
         <p>
           This policy may be updated from time to time. Revised versions are posted on this page
-          with a new “Last updated” date. Continued use of SkinnFit after changes means acceptance
+          with a new “Last updated” date. Continued use of SkinFit after changes means acceptance
           of the updated policy.
         </p>
         <LegalBulletList

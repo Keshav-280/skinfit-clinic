@@ -4,7 +4,7 @@ import { CaptureGuideWizardPreview } from "@/components/onboarding/CaptureGuideW
 
 export default function CaptureGuidePreviewPage() {
   return (
-    <div className="min-h-dvh bg-[#F5F3EF]">
+    <div className="min-h-dvh bg-[#FAF8F5]">
       <CaptureGuideWizardPreview />
     </div>
   );

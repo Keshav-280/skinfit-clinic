@@ -77,7 +77,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const AI_GREETING =
-    "Hi! I'm SkinnFit AI Assistant. How can I help you today?";
+    "Hi! I'm SkinFit AI Assistant. How can I help you today?";
   const [contactPreviews, setContactPreviews] = useState<
     Record<string, { snippet: string; time: string }>
   >({});
@@ -117,7 +117,7 @@ export default function ChatPage() {
     }));
     return [
       ...(AI_CHATBOT_ENABLED
-        ? [{ key: "ai", kind: "ai" as const, name: "SkinnFit AI Assistant", icon: Bot }]
+        ? [{ key: "ai", kind: "ai" as const, name: "SkinFit AI Assistant", icon: Bot }]
         : []),
       ...doctorRows,
       { key: "support", kind: "support", name: "Clinic Support", icon: User },
@@ -996,7 +996,7 @@ export default function ChatPage() {
 
     setError(null);
 
-    // LLM assistant chat (AI only for SkinnFit AI Assistant).
+    // LLM assistant chat (AI only for SkinFit AI Assistant).
     if (activeAssistant === "ai") {
       if (!text) return;
       const patientMsg: ChatMsg = {
@@ -1133,15 +1133,15 @@ export default function ChatPage() {
         className={`flex w-full min-w-0 flex-col overflow-hidden md:w-[min(100%,320px)] md:shrink-0 ${CARD_SHADOW}`}
       >
         <div className="border-b border-white/40 p-4">
-          <h1 className="mb-3 text-center text-xl font-extrabold text-[#2C3E6B] md:hidden">
+          <h1 className="mb-3 text-center text-xl font-extrabold text-[#1E1B31] md:hidden">
             Chat
           </h1>
           <div className="flex items-center gap-2 rounded-xl border border-white/60 bg-white/30 px-4 py-2.5 backdrop-blur-sm">
-            <Search className="h-4 w-4 shrink-0 text-[#2C3E6B]/50" />
+            <Search className="h-4 w-4 shrink-0 text-[#1E1B31]/50" />
             <input
               type="text"
               placeholder="Search messages or doctors..."
-              className="w-full bg-transparent text-sm text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 focus:outline-none"
+              className="w-full bg-transparent text-sm text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
             />
           </div>
         </div>
@@ -1177,8 +1177,8 @@ export default function ChatPage() {
                   }
                 }}
               >
-                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E8EFE6]/80">
-                  <Icon className="h-5 w-5 text-[#2C3E6B]" />
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F0EAE2]/80">
+                  <Icon className="h-5 w-5 text-[#1E1B31]" />
                   {unreadN > 0 ? (
                     <span className="absolute -right-0.5 -top-0.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-0.5 text-[9px] font-bold leading-none text-white">
                       {unreadN > 9 ? "9+" : unreadN}
@@ -1186,7 +1186,7 @@ export default function ChatPage() {
                   ) : null}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#2C3E6B]">
+                  <p className="truncate text-sm font-semibold text-[#1E1B31]">
                     {contact.name}
                   </p>
                   {(preview?.snippet ?? "").trim() ? (
@@ -1213,16 +1213,16 @@ export default function ChatPage() {
         <div className="flex items-center justify-between border-b border-white/40 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E8EFE6]/80">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F0EAE2]/80">
                 {(() => {
                   const Icon = activeContact.icon;
-                  return <Icon className="h-5 w-5 text-[#2C3E6B]" />;
+                  return <Icon className="h-5 w-5 text-[#1E1B31]" />;
                 })()}
               </div>
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
             </div>
             <div>
-              <p className="font-bold text-[#2C3E6B]">{activeContact.name}</p>
+              <p className="font-bold text-[#1E1B31]">{activeContact.name}</p>
               <p className="text-xs text-emerald-600">Online</p>
             </div>
           </div>
@@ -1231,7 +1231,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 title="Hide past messages on your screen only"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/60 bg-white/30 px-3 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/60 bg-white/30 px-3 text-sm font-medium text-[#1E1B31] backdrop-blur-sm transition-colors hover:bg-white/80"
                 disabled={isLoading}
                 onClick={() => void clearClinicChatView()}
               >
@@ -1242,7 +1242,7 @@ export default function ChatPage() {
             {activeAssistant === "ai" ? (
               <button
                 type="button"
-                className="flex h-9 items-center justify-center rounded-full bg-[#2C3E6B] px-5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080] whitespace-nowrap"
+                className="flex h-9 items-center justify-center rounded-full bg-[#1E1B31] px-5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#5B66A1] whitespace-nowrap"
                 onClick={async () => {
                   setError(null);
                   setIsLoading(true);
@@ -1267,7 +1267,7 @@ export default function ChatPage() {
 
         <div
           ref={messagesScrollRef}
-          className="flex flex-1 flex-col overflow-y-auto bg-[#E8EFE6]/20 p-4 sm:p-6"
+          className="flex flex-1 flex-col overflow-y-auto bg-[#F0EAE2]/20 p-4 sm:p-6"
         >
           <div className="flex flex-col gap-4">
             {messages.map((msg) => {
@@ -1289,8 +1289,8 @@ export default function ChatPage() {
                     <div
                       className={`w-full px-4 py-2.5 ${
                         msg.sender === "patient"
-                          ? "rounded-l-2xl rounded-tr-2xl bg-[#2C3E6B] text-white"
-                          : "rounded-r-2xl rounded-tl-2xl border border-white/60 bg-white/45 text-[#2C3E6B] backdrop-blur-sm"
+                          ? "rounded-l-2xl rounded-tr-2xl bg-[#1E1B31] text-white"
+                          : "rounded-r-2xl rounded-tl-2xl border border-white/60 bg-white/45 text-[#1E1B31] backdrop-blur-sm"
                       }`}
                     >
                       {parseChatAttachments(msg.attachmentUrl).map((uri, idx) =>
@@ -1403,13 +1403,13 @@ export default function ChatPage() {
               {attachments.map((file) => (
                 <span
                   key={file.id}
-                  className="inline-flex max-w-full items-center gap-1 rounded-full border border-teal-100 bg-teal-50/90 py-1 pl-2.5 pr-1 text-xs font-medium text-teal-900"
+                  className="inline-flex max-w-full items-center gap-1 rounded-full border border-[#EFCCCE] bg-[#F8EDEE]/90 py-1 pl-2.5 pr-1 text-xs font-medium text-[#1E1B31]"
                 >
                   <span className="max-w-[140px] truncate">{file.fileName}</span>
                   <button
                     type="button"
                     title="Remove attachment"
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-teal-700 hover:bg-teal-100"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#1E1B31] hover:bg-[#F8EDEE]"
                     onClick={() => removeAttachment(file.id)}
                   >
                     <X className="h-3 w-3" />
@@ -1452,7 +1452,7 @@ export default function ChatPage() {
               />
               <button
                 type="button"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2C3E6B]/50 transition-colors hover:bg-white/60 hover:text-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#1E1B31]/50 transition-colors hover:bg-white/60 hover:text-[#1E1B31] disabled:cursor-not-allowed disabled:opacity-40"
                 title={
                   activeAssistant === "ai"
                     ? "Attachments are disabled for AI chat"
@@ -1465,7 +1465,7 @@ export default function ChatPage() {
               </button>
               <button
                 type="button"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2C3E6B]/50 transition-colors hover:bg-white/60 hover:text-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#1E1B31]/50 transition-colors hover:bg-white/60 hover:text-[#1E1B31] disabled:cursor-not-allowed disabled:opacity-40"
                 title={
                   activeAssistant === "ai"
                     ? "Voice notes are disabled for AI chat"
@@ -1483,7 +1483,7 @@ export default function ChatPage() {
                     ? "Type a message for AI..."
                     : "Type a message (attach with paperclip or mic)..."
                 }
-                className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 focus:outline-none"
+                className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
                 value={inputValue}
                 disabled={isRecording}
                 onChange={(e) => setInputValue(e.target.value)}
@@ -1496,7 +1496,7 @@ export default function ChatPage() {
               />
               <button
                 type="button"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:opacity-40"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1E1B31] text-white shadow-md transition-colors hover:bg-[#5B66A1] disabled:opacity-40"
                 title="Send"
                 disabled={
                   isLoading ||

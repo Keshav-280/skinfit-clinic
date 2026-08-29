@@ -48,14 +48,14 @@ function MockProfileNavBadge({ gender, pct }: { gender: "male" | "female"; pct: 
           cy={NAV_BADGE_SIZE / 2}
           r={NAV_BADGE_RADIUS}
           fill="none"
-          stroke="#2C3E6B"
+          stroke="#1E1B31"
           strokeWidth={NAV_BADGE_STROKE}
           strokeLinecap="round"
           strokeDasharray={NAV_BADGE_CIRCUMFERENCE}
           strokeDashoffset={offset}
         />
       </svg>
-      <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2C3E6B]/10">
+      <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1E1B31]/10">
         <AvatarIcon gender={gender} />
       </span>
     </div>
@@ -71,7 +71,7 @@ function MockDatePicker() {
         type="button"
         onClick={() => setSelected((d) => addDays(d, -1))}
         aria-label="Previous day"
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
       >
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
       </button>
@@ -82,14 +82,14 @@ function MockDatePicker() {
         type="button"
         onClick={() => setSelected((d) => addDays(d, 1))}
         aria-label="Next day"
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
       >
         <ChevronRight className="h-3.5 w-3.5" aria-hidden />
       </button>
       <button
         type="button"
         aria-label="Choose a date from the calendar"
-        className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+        className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
       >
         <Calendar className="h-3.5 w-3.5" aria-hidden />
       </button>
@@ -103,7 +103,7 @@ function FillerSection({ title }: { title: string }) {
       <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">
         {title}
       </p>
-      <div className="mt-3 h-28 rounded-xl bg-[#F5F3EF]" />
+      <div className="mt-3 h-28 rounded-xl bg-[#FAF8F5]" />
     </section>
   );
 }
@@ -118,15 +118,15 @@ export default function BuildPreviewPage() {
   const mockLastScanAt = "2026-08-13T09:00:00.000Z";
 
   return (
-    <div className="min-h-dvh bg-[#F5F3EF]">
+    <div className="min-h-dvh bg-[#FAF8F5]">
       {/* Mock top nav — mirrors app/dashboard/layout.tsx */}
-      <nav className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white/80 shadow-[0_2px_16px_rgba(45,62,107,0.06)] backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white/80 shadow-[0_2px_16px_rgba(30, 27, 49,0.06)] backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 md:px-8 sm:py-4">
           <PatientPortalBrandLogo />
           <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#2D3E6B] transition-colors hover:bg-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#1E1B31] transition-colors hover:bg-white"
               title="Notifications"
             >
               <Bell className="h-4 w-4" />
@@ -162,7 +162,7 @@ export default function BuildPreviewPage() {
         </div>
 
         {/* Everything below rides a solid background over the sticky greeting */}
-        <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#F5F3EF] pt-1">
+        <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#FAF8F5] pt-1">
           {/* 2. Skin DNA — no profileImageUrl, so it falls back to the
               gender-matched avatar icon */}
           <SkinDNACard
@@ -198,7 +198,7 @@ export default function BuildPreviewPage() {
               <Activity className="h-3.5 w-3.5" />
               Monthly Insight
             </div>
-            <div className="mt-3 h-40 rounded-xl bg-[#F5F3EF]" />
+            <div className="mt-3 h-40 rounded-xl bg-[#FAF8F5]" />
           </section>
           <div className="h-64" />
         </div>

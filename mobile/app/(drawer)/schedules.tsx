@@ -1181,9 +1181,9 @@ export default function SchedulesScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: "#E8EFE6" },
+  scroll: { flex: 1, backgroundColor: "#F0EAE2" },
   content: { padding: 16, paddingBottom: 48 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F0EAE2" },
   heroCard: {
     backgroundColor: "#ffffff",
     borderRadius: 20,

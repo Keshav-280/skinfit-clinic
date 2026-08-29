@@ -86,7 +86,7 @@ function CategoryPickerButton({
       aria-pressed={isActive}
       className={`flex h-[7.75rem] w-full flex-col overflow-hidden rounded-xl p-2 transition-colors ${
         isActive
-          ? "bg-teal-500 ring-2 ring-inset ring-teal-200"
+          ? "bg-[#F8EDEE]0 ring-2 ring-inset ring-teal-200"
           : "bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700"
       }`}
     >
@@ -1458,8 +1458,8 @@ export default function AnnotatorPage() {
             compact ? "h-14 w-14" : "aspect-[3/4] w-full"
           } ${
             isActive
-              ? "border-teal-500 ring-2 ring-teal-500/40"
-              : "border-slate-300 hover:border-teal-400 dark:border-zinc-600 dark:hover:border-teal-500"
+              ? "border-[#DF9DA4] ring-2 ring-[#1E1B31]/40"
+              : "border-slate-300 hover:border-teal-400 dark:border-zinc-600 dark:hover:border-[#DF9DA4]"
           }`}
         >
           <img
@@ -1485,7 +1485,7 @@ export default function AnnotatorPage() {
             </span>
           ) : null}
           {lockedByMe ? (
-            <span className="absolute left-1 top-1 rounded bg-teal-500/90 px-1 text-[8px] font-bold text-black">
+            <span className="absolute left-1 top-1 rounded bg-[#F8EDEE]0/90 px-1 text-[8px] font-bold text-black">
               YOU
             </span>
           ) : null}
@@ -1500,7 +1500,7 @@ export default function AnnotatorPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/clinic"
-            className="text-slate-500 transition-colors hover:text-teal-500 dark:text-zinc-500 dark:hover:text-teal-400"
+            className="text-slate-500 transition-colors hover:text-[#F8EDEE]0 dark:text-zinc-500 dark:hover:text-[#DF9DA4]"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -1533,7 +1533,7 @@ export default function AnnotatorPage() {
           <button
             type="button"
             onClick={() => setIsDarkMode((d) => !d)}
-            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-teal-400"
+            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-[#DF9DA4]"
             title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
             {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -1541,7 +1541,7 @@ export default function AnnotatorPage() {
           <button
             type="button"
             onClick={() => setShowTutorial(true)}
-            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-teal-400"
+            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-[#DF9DA4]"
             title="View tutorial"
           >
             <Info className="h-5 w-5" />
@@ -1567,7 +1567,7 @@ export default function AnnotatorPage() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-teal-400"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#F8EDEE]0 px-4 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-teal-400"
           >
             <Upload className="h-4 w-4" />
             Upload Images
@@ -1588,7 +1588,7 @@ export default function AnnotatorPage() {
                   : saveStatus === "dirty"
                     ? "font-medium text-amber-600 dark:text-amber-400"
                     : saveStatus === "saving"
-                      ? "font-medium text-teal-600 dark:text-teal-400"
+                      ? "font-medium text-[#1E1B31] dark:text-[#DF9DA4]"
                       : "text-slate-600 dark:text-zinc-400"
               }
             >
@@ -1618,7 +1618,7 @@ export default function AnnotatorPage() {
                 · {collabMessage.replace("View only — ", "")} (admin override)
               </span>
             ) : canEditCurrentImage && currentUser ? (
-              <span className="text-teal-600 dark:text-teal-400">· You can edit this image</span>
+              <span className="text-[#1E1B31] dark:text-[#DF9DA4]">· You can edit this image</span>
             ) : null}
           </span>
         )}
@@ -1652,7 +1652,7 @@ export default function AnnotatorPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="text-teal-500 hover:text-teal-600 dark:text-teal-400 dark:hover:text-teal-300"
+                className="text-[#F8EDEE]0 hover:text-[#242A5F] dark:text-[#DF9DA4] dark:hover:text-[#DF9DA4]"
               >
                 Click to upload images
               </button>
@@ -1667,7 +1667,7 @@ export default function AnnotatorPage() {
                 <button
                   type="button"
                   onClick={() => setImageZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100))}
-                  className="rounded-lg border border-slate-300 bg-slate-100 p-2 text-slate-900 transition-colors hover:border-teal-500 hover:bg-teal-50 hover:text-teal-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-400 dark:hover:bg-teal-950/80 dark:hover:text-teal-200"
+                  className="rounded-lg border border-slate-300 bg-slate-100 p-2 text-slate-900 transition-colors hover:border-[#DF9DA4] hover:bg-[#F8EDEE] hover:text-[#1E1B31] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-400 dark:hover:bg-teal-950/80 dark:hover:text-teal-200"
                   title="Zoom out"
                 >
                   <ZoomOut className="h-4 w-4 shrink-0 stroke-[2.5]" />
@@ -1678,7 +1678,7 @@ export default function AnnotatorPage() {
                 <button
                   type="button"
                   onClick={() => setImageZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100))}
-                  className="rounded-lg border border-slate-300 bg-slate-100 p-2 text-slate-900 transition-colors hover:border-teal-500 hover:bg-teal-50 hover:text-teal-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-400 dark:hover:bg-teal-950/80 dark:hover:text-teal-200"
+                  className="rounded-lg border border-slate-300 bg-slate-100 p-2 text-slate-900 transition-colors hover:border-[#DF9DA4] hover:bg-[#F8EDEE] hover:text-[#1E1B31] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-400 dark:hover:bg-teal-950/80 dark:hover:text-teal-200"
                   title="Zoom in"
                 >
                   <ZoomIn className="h-4 w-4 shrink-0 stroke-[2.5]" />
@@ -1686,7 +1686,7 @@ export default function AnnotatorPage() {
                 <button
                   type="button"
                   onClick={() => setImageZoom(1)}
-                  className="rounded-lg border border-slate-300 bg-slate-100 p-2 text-slate-900 transition-colors hover:border-teal-500 hover:bg-teal-50 hover:text-teal-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-400 dark:hover:bg-teal-950/80 dark:hover:text-teal-200"
+                  className="rounded-lg border border-slate-300 bg-slate-100 p-2 text-slate-900 transition-colors hover:border-[#DF9DA4] hover:bg-[#F8EDEE] hover:text-[#1E1B31] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-teal-400 dark:hover:bg-teal-950/80 dark:hover:text-teal-200"
                   title="Reset zoom"
                 >
                   <RotateCcw className="h-4 w-4 shrink-0 stroke-[2.5]" />
@@ -1888,7 +1888,7 @@ export default function AnnotatorPage() {
         {/* Right Sidebar — classic layout: tools, category grid, spec (drawable only), score for all */}
         <aside className="flex min-h-0 flex-col overflow-y-auto border-t border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 lg:border-l lg:border-t-0 lg:p-6">
           <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
-            <Crosshair className="h-4 w-4 shrink-0 text-teal-400" />
+            <Crosshair className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
             Annotation Tools
           </h2>
 
@@ -1899,7 +1899,7 @@ export default function AnnotatorPage() {
               disabled={images.length === 0 || !activeIsDrawable || !canDrawOnImage}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                 activeTool === "path"
-                  ? "bg-teal-500 text-zinc-950"
+                  ? "bg-[#F8EDEE]0 text-zinc-950"
                   : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
             >
@@ -1912,7 +1912,7 @@ export default function AnnotatorPage() {
               disabled={images.length === 0 || !activeIsDrawable || !canDrawOnImage}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                 activeTool === "line"
-                  ? "bg-teal-500 text-zinc-950"
+                  ? "bg-[#F8EDEE]0 text-zinc-950"
                   : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
             >
@@ -1925,7 +1925,7 @@ export default function AnnotatorPage() {
               disabled={images.length === 0}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-40 ${
                 activeTool === "eraser"
-                  ? "bg-teal-500 text-zinc-950"
+                  ? "bg-[#F8EDEE]0 text-zinc-950"
                   : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
             >
@@ -1938,7 +1938,7 @@ export default function AnnotatorPage() {
             <div>
               <p className="sr-only">Draw and grade — tap a picture to mark regions on the image</p>
               <div
-                className="mb-2 h-1 rounded-full bg-teal-500/80"
+                className="mb-2 h-1 rounded-full bg-[#F8EDEE]0/80"
                 aria-hidden="true"
               />
               <div className="grid grid-cols-2 gap-2.5 auto-rows-[7.75rem]">
@@ -1979,7 +1979,7 @@ export default function AnnotatorPage() {
           ) : (
             <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400">
               <strong className="text-slate-800 dark:text-zinc-200">Score only</strong> — set severity below. Use{" "}
-              <span className="text-teal-700 dark:text-teal-400">Draw + grade</span> categories to paint regions on the image.
+              <span className="text-[#1E1B31] dark:text-[#DF9DA4]">Draw + grade</span> categories to paint regions on the image.
             </p>
           )}
 
@@ -2088,7 +2088,7 @@ export default function AnnotatorPage() {
               <button
                 type="button"
                 className={`flex w-full items-center justify-center gap-2 rounded py-1.5 text-xs transition-colors ${
-                  activeTool === "path" ? "bg-teal-500 text-zinc-950" : "text-slate-500 hover:bg-slate-200 hover:text-teal-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-teal-400"
+                  activeTool === "path" ? "bg-[#F8EDEE]0 text-zinc-950" : "text-slate-500 hover:bg-slate-200 hover:text-[#F8EDEE]0 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-[#DF9DA4]"
                 }`}
                 onClick={() => setActiveTool("path")}
               >
@@ -2098,7 +2098,7 @@ export default function AnnotatorPage() {
               <button
                 type="button"
                 className={`flex w-full items-center justify-center gap-2 rounded py-1.5 text-xs transition-colors ${
-                  activeTool === "line" ? "bg-teal-500 text-zinc-950" : "text-slate-500 hover:bg-slate-200 hover:text-teal-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-teal-400"
+                  activeTool === "line" ? "bg-[#F8EDEE]0 text-zinc-950" : "text-slate-500 hover:bg-slate-200 hover:text-[#F8EDEE]0 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-[#DF9DA4]"
                 }`}
                 onClick={() => setActiveTool("line")}
               >
@@ -2108,7 +2108,7 @@ export default function AnnotatorPage() {
               <button
                 type="button"
                 className={`flex w-full items-center justify-center gap-2 rounded py-1.5 text-xs transition-colors ${
-                  activeTool === "eraser" ? "bg-teal-500 text-zinc-950" : "text-slate-500 hover:bg-slate-200 hover:text-teal-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-teal-400"
+                  activeTool === "eraser" ? "bg-[#F8EDEE]0 text-zinc-950" : "text-slate-500 hover:bg-slate-200 hover:text-[#F8EDEE]0 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-[#DF9DA4]"
                 }`}
                 onClick={() => setActiveTool("eraser")}
               >
@@ -2126,7 +2126,7 @@ export default function AnnotatorPage() {
                   <button
                     key={cat}
                     type="button"
-                    className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-teal-500/20 hover:text-teal-600 dark:text-zinc-300 dark:hover:text-teal-400"
+                    className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-[#F8EDEE]0/20 hover:text-[#242A5F] dark:text-zinc-300 dark:hover:text-[#DF9DA4]"
                     onClick={() =>
                       setContextMenu((prev) =>
                         prev ? { ...prev, step: "severity", tempCategory: cat } : null
@@ -2155,7 +2155,7 @@ export default function AnnotatorPage() {
                   <button
                     key={grade}
                     type="button"
-                    className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-teal-500/20 hover:text-teal-600 dark:text-zinc-300 dark:hover:text-teal-400"
+                    className="w-full cursor-pointer px-4 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-[#F8EDEE]0/20 hover:text-[#242A5F] dark:text-zinc-300 dark:hover:text-[#DF9DA4]"
                     onClick={() => {
                       const cat = contextMenu.tempCategory as Category;
                       setActiveCategory(cat);

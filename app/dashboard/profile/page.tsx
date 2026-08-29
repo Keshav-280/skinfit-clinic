@@ -93,7 +93,7 @@ function ProfileSnapshot({
   ];
 
   return (
-    <section className="rounded-[22px] border border-white/70 bg-white/40 p-4 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm sm:p-5">
+    <section className="rounded-[22px] border border-white/70 bg-white/40 p-4 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm sm:p-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {items.map(({ label, value, icon: Icon }) => (
           <div
@@ -101,7 +101,7 @@ function ProfileSnapshot({
             className="rounded-[18px] border border-white/70 bg-white/45 px-3.5 py-3"
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] bg-[#2C3E6B] text-white shadow-sm">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] bg-[#1E1B31] text-white shadow-sm">
                 <Icon className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">

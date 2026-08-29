@@ -72,7 +72,7 @@ function BottomTabBar({ pathname }: { pathname: string }) {
               <Ionicons
                 name={active ? item.activeIcon : item.icon}
                 size={22}
-                color={active ? "#2D3E6B" : "#9CA3AF"}
+                color={active ? "#1E1B31" : "#9CA3AF"}
               />
             </View>
             <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
@@ -143,11 +143,11 @@ export default function DrawerLayout() {
       <Drawer
         initialRouteName="index"
         screenOptions={({ route }) => ({
-          drawerActiveTintColor: "#2C3E6B",
+          drawerActiveTintColor: "#1E1B31",
           drawerInactiveTintColor: "#64748b",
-          headerTintColor: "#2C3E6B",
-          headerStyle: { backgroundColor: "#F5F3EF" },
-          headerTitleStyle: { fontWeight: "700", color: "#2C3E6B" },
+          headerTintColor: "#1E1B31",
+          headerStyle: { backgroundColor: "#FAF8F5" },
+          headerTitleStyle: { fontWeight: "700", color: "#1E1B31" },
           headerShadowVisible: false,
           // Drawer navigator only skips its toggle when headerLeft is null/undefined — not when
           // a component returns null. With drawer width 0, the default toggle clips off-screen.
@@ -168,7 +168,7 @@ export default function DrawerLayout() {
             fontWeight: "600",
           },
           sceneContainerStyle: {
-            backgroundColor: "#F5F3EF",
+            backgroundColor: "#FAF8F5",
             paddingBottom: keyboardVisible ? 0 : 88,
           },
           drawerIcon: ({ color, size }) => iconForRoute(route.name, color, size),
@@ -227,7 +227,7 @@ export default function DrawerLayout() {
           options={{
             title: "Profile",
             drawerLabel: "Profile",
-            headerStyle: { backgroundColor: "#F5F3EF" },
+            headerStyle: { backgroundColor: "#FAF8F5" },
           }}
         />
         <Drawer.Screen
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   tabIconWrapActive: {
-    backgroundColor: "rgba(45, 62, 107, 0.1)",
+    backgroundColor: "rgba(30, 27, 49, 0.1)",
   },
   tabLabel: {
     fontSize: 11,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   tabLabelActive: {
-    color: "#2D3E6B",
+    color: "#1E1B31",
     fontWeight: "600",
   },
 });

@@ -43,7 +43,7 @@ import {
   type CaptureGuidanceSnapshot,
 } from "@/lib/scanCaptureGuidance";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 /** One short, human guidance line shown during live capture (also spoken by the voice guide). */
 function humanGuidanceMessage(

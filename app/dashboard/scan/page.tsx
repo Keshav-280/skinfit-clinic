@@ -17,7 +17,7 @@ export default function ScanPage() {
 
   if (flowExpanded) {
     return (
-      <div className="relative left-1/2 flex min-h-[calc(100dvh-5.5rem)] w-screen max-w-[100vw] -translate-x-1/2 flex-col overflow-hidden bg-[#F5F3EF] p-3 sm:p-4">
+      <div className="relative left-1/2 flex min-h-[calc(100dvh-5.5rem)] w-screen max-w-[100vw] -translate-x-1/2 flex-col overflow-hidden bg-[#FAF8F5] p-3 sm:p-4">
         <FaceScanFlow
           variant="dashboard"
           onLayoutExpanded={onLayoutExpanded}

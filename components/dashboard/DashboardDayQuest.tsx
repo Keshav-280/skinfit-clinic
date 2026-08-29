@@ -100,14 +100,14 @@ export function DashboardDayQuestBanner({
               {routineComplete ? (
                 <Check
                   key={checkAnimKey}
-                  className="quest-complete-check h-9 w-9 text-teal-700"
+                  className="quest-complete-check h-9 w-9 text-[#1E1B31]"
                   strokeWidth={2.5}
                   aria-hidden
                 />
               ) : (
                 <Sparkles
                   key="progress"
-                  className={`h-7 w-7 ${bannerUrgent ? "text-amber-600" : "text-teal-700"}`}
+                  className={`h-7 w-7 ${bannerUrgent ? "text-amber-600" : "text-[#1E1B31]"}`}
                   strokeWidth={2}
                   aria-hidden
                 />

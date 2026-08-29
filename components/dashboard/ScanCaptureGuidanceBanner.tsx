@@ -62,15 +62,15 @@ export function ScanCaptureGuidanceBanner({
       <div className="flex flex-col gap-1.5 md:flex-row md:flex-wrap md:gap-x-3 md:gap-y-1">
       <div className={`flex min-w-0 flex-1 items-start gap-1.5 ${textSize}`}>
         {statusIcon(lightingOk)}
-        <Sun className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2C3E6B]/70" aria-hidden />
-        <span className={lightingOk ? "text-[#2C3E6B]" : "font-medium text-amber-900"}>
+        <Sun className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1E1B31]/70" aria-hidden />
+        <span className={lightingOk ? "text-[#1E1B31]" : "font-medium text-amber-900"}>
           {guidance.lightingMessage}
         </span>
       </div>
       <div className={`flex min-w-0 flex-1 items-start gap-1.5 ${textSize}`}>
         {statusIcon(faceOk)}
-        <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2C3E6B]/70" aria-hidden />
-        <span className={faceOk ? "text-[#2C3E6B]" : "font-medium text-amber-900"}>
+        <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1E1B31]/70" aria-hidden />
+        <span className={faceOk ? "text-[#1E1B31]" : "font-medium text-amber-900"}>
           {guidance.faceMessage}
         </span>
       </div>
@@ -80,7 +80,7 @@ export function ScanCaptureGuidanceBanner({
           {statusIcon(guidance.expressionOk)}
           <span
             className={
-              guidance.expressionOk === true ? "text-[#2C3E6B]" : "font-medium text-amber-900"
+              guidance.expressionOk === true ? "text-[#1E1B31]" : "font-medium text-amber-900"
             }
           >
             {guidance.expressionMessage ??

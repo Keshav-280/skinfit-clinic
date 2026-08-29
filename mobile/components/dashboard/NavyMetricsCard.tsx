@@ -14,7 +14,7 @@ import {
 } from "@/lib/dashboardTheme";
 import { lockedWeeklyTrendAria, weeklyTrendDirection } from "../../../src/lib/patientDashboardTheme";
 
-const SUB_CARD_BG = "#E8EFE6";
+const SUB_CARD_BG = "#F0EAE2";
 const VALUE_GREEN = "#1E5E3A";
 const MUTED = "#6B7280";
 const RING_TRACK = "#D8E6DD";
@@ -121,7 +121,7 @@ export function NavyMetricsCard({
               <View style={styles.lockOverlay} />
               <Text style={styles.subLabel}>kAI Skin Score</Text>
               <View style={styles.lockRow}>
-                <Ionicons name="lock-closed" size={18} color="rgba(44,62,107,0.55)" />
+                <Ionicons name="lock-closed" size={18} color="rgba(30, 27, 49,0.55)" />
                 <Text style={styles.subValue}>{kai.gaugeDisplayValue}</Text>
               </View>
               <Text style={styles.subMeta}>

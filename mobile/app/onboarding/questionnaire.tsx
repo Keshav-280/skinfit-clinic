@@ -67,8 +67,8 @@ import {
   type OnboardingConcernId,
 } from "../../../src/lib/onboardingConcerns";
 
-const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
+const NAVY = "#1E1B31";
+const NAVY_DARK = "#242A5F";
 const NAVY_LIGHT = "#E2E8F0";
 
 const TRIGGERS: { id: string; label: string }[] = [
@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
   skipDashboardText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "rgba(44, 62, 107, 0.8)",
+    color: "rgba(30, 27, 49, 0.8)",
   },
   err: { color: "#DC2626", marginBottom: 8, fontSize: 13, fontWeight: "600" },
   q: { fontSize: 20, fontWeight: "800", color: "#1A1A2E", marginBottom: 14, letterSpacing: -0.3 },

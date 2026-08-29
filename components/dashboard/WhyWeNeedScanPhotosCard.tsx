@@ -6,7 +6,7 @@ import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
 const CARD_BG = "#FFFFFF";
-const CARD_BORDER = "rgba(44, 62, 107, 0.12)";
+const CARD_BORDER = "rgba(30, 27, 49, 0.12)";
 
 function FaceDiagram() {
   return (
@@ -99,8 +99,8 @@ export function WhyWeNeedScanPhotosCard({ footer, className = "" }: Props) {
           {/* Divider and Right Column: Status / Footer */}
           {footer ? (
             <>
-              <div className="hidden md:block w-px self-stretch bg-[rgba(44,62,107,0.12)] my-2" />
-              <div className="block md:hidden border-t border-[rgba(44,62,107,0.12)] my-5" />
+              <div className="hidden md:block w-px self-stretch bg-[rgba(30, 27, 49,0.12)] my-2" />
+              <div className="block md:hidden border-t border-[rgba(30, 27, 49,0.12)] my-5" />
               
               <div className="flex-1 flex flex-col justify-center">
                 {footer}

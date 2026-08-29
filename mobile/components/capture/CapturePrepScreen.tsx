@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.2)",
+    borderColor: "rgba(30, 27, 49,0.2)",
     backgroundColor: "rgba(255,255,255,0.55)",
   },
   uploadBtnPressed: { opacity: 0.92 },

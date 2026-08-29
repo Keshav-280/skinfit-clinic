@@ -76,8 +76,8 @@ export async function POST(
 
   const pushTitle =
     phase === "pre"
-      ? `SkinnFit — ${treatment.name} pre-care`
-      : `SkinnFit — ${treatment.name} post-care`;
+      ? `SkinFit — ${treatment.name} pre-care`
+      : `SkinFit — ${treatment.name} post-care`;
 
   await sendDoctorPatientChatMessage({
     patientId,

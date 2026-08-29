@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 
-const BG = "#E8EFE6";
-const NAVY = "#2C3E6B";
+const BG = "#F0EAE2";
+const NAVY = "#1E1B31";
 
 export default function HistoryStackLayout() {
   return (

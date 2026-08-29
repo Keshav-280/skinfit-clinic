@@ -99,7 +99,7 @@ export async function notifyPatientNewClinicChat(
     messagePreview.length > 140
       ? `${messagePreview.slice(0, 137)}…`
       : messagePreview;
-  const title = opts?.title?.trim() || "SkinnFit Clinic";
+  const title = opts?.title?.trim() || "SkinFit Wellness";
 
   await sendExpoPushNotification({
     expoPushToken: token,
@@ -126,8 +126,8 @@ export async function notifyPatientWeeklyInsight(
 
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit — weekly insight ready",
-    body: "Your weekly skin report is ready. Open SkinnFit to see your progress and priority actions.",
+    title: "SkinFit — weekly insight ready",
+    body: "Your weekly skin report is ready. Open SkinFit to see your progress and priority actions.",
     data: { type: "weekly_insight" },
   });
 }
@@ -146,8 +146,8 @@ export async function notifyPatientMonthlyInsight(
 
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit — monthly insight ready",
-    body: "Your monthly skin insight is ready. Open SkinnFit to review the full breakdown.",
+    title: "SkinFit — monthly insight ready",
+    body: "Your monthly skin insight is ready. Open SkinFit to review the full breakdown.",
     data: { type: "monthly_insight" },
   });
 }
@@ -199,8 +199,8 @@ export async function notifyPatientScoresUnlocked(
 
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit — scores unlocked",
-    body: "Your exact kAI score and full scan details are now available. Open SkinnFit to view them.",
+    title: "SkinFit — scores unlocked",
+    body: "Your exact kAI score and full scan details are now available. Open SkinFit to view them.",
     data: { type: "scores_unlocked" },
   });
 }
@@ -221,11 +221,11 @@ export async function notifyPatientScanReportReady(
 
   const body =
     scanName?.trim() ||
-    "Your full scan report is ready — open SkinnFit to view images, masks, and kAI analysis.";
+    "Your full scan report is ready — open SkinFit to view images, masks, and kAI analysis.";
 
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit — report ready",
+    title: "SkinFit — report ready",
     body: body.length > 140 ? `${body.slice(0, 137)}…` : body,
     data: { type: "scan_report_ready", scanId },
   });
@@ -249,7 +249,7 @@ export async function notifyPatientScanReportFailed(
   const body = `${label} couldn't be processed after several retries. Tap to try a new scan.`;
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit — scan didn't finish",
+    title: "SkinFit — scan didn't finish",
     body: body.length > 140 ? `${body.slice(0, 137)}…` : body,
     data: { type: "scan_report_failed", jobId },
   });
@@ -275,7 +275,7 @@ export async function notifyPatientDoctorVoiceNote(
 
   await sendExpoPushNotification({
     expoPushToken: token,
-    title: "SkinnFit — your doctor",
+    title: "SkinFit — your doctor",
     body,
     data: {
       type: "doctor_voice_note",
@@ -308,8 +308,8 @@ export async function notifyPatientRoutinePlanUpdated(
 
   const body =
     opts?.body?.trim() ||
-    `Your AM/PM routine is updated from ${effectiveFromYmd}. Open SkinnFit to view your checklist.`;
-  const title = opts?.title?.trim() || "SkinnFit — routine updated";
+    `Your AM/PM routine is updated from ${effectiveFromYmd}. Open SkinFit to view your checklist.`;
+  const title = opts?.title?.trim() || "SkinFit — routine updated";
   await sendExpoPushNotification({
     expoPushToken: token,
     title: title.length > 56 ? `${title.slice(0, 53)}…` : title,

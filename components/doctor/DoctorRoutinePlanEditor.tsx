@@ -147,14 +147,14 @@ function RoutineColumn({
       onDrop={handleColumnDrop}
     >
       <div className="mb-2 flex items-center justify-between gap-1">
-        <span className="flex items-center gap-1 text-xs font-semibold text-[#2C3E6B]">
+        <span className="flex items-center gap-1 text-xs font-semibold text-[#1E1B31]">
           <Icon className="h-3.5 w-3.5" aria-hidden />
           {title}
         </span>
         <button
           type="button"
           onClick={() => addRow()}
-          className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-[#2C3E6B]/25 px-1.5 text-[10px] font-semibold text-[#2C3E6B]/70 hover:bg-[#F6F4EB]"
+          className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-[#1E1B31]/25 px-1.5 text-[10px] font-semibold text-[#1E1B31]/70 hover:bg-[#FAF8F5]"
         >
           <Plus className="h-3 w-3" aria-hidden />
           Add step
@@ -162,7 +162,7 @@ function RoutineColumn({
       </div>
 
       {rows.length === 0 ? (
-        <p className="mb-2 rounded-md border border-dashed border-[#2C3E6B]/15 px-2 py-3 text-center text-[10px] text-[#2C3E6B]/50">
+        <p className="mb-2 rounded-md border border-dashed border-[#1E1B31]/15 px-2 py-3 text-center text-[10px] text-[#1E1B31]/50">
           Drag a quick phrase here or add a step
         </p>
       ) : null}
@@ -171,7 +171,7 @@ function RoutineColumn({
         <div
           key={`${kind}-row-${i}`}
           className={`grid grid-cols-[1rem_1rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-1 py-1 ${
-            dropRowIndex === i ? "rounded-md bg-[#2C3E6B]/5 ring-1 ring-[#2C3E6B]/20" : ""
+            dropRowIndex === i ? "rounded-md bg-[#1E1B31]/5 ring-1 ring-[#1E1B31]/20" : ""
           }`}
           onDragOver={(e) => {
             if (dragRowIndex != null) {
@@ -205,11 +205,11 @@ function RoutineColumn({
               setDragRowIndex(null);
               setDropRowIndex(null);
             }}
-            className="flex h-5 w-5 cursor-grab items-center justify-center rounded text-[#2C3E6B]/40 hover:bg-[#F6F4EB] active:cursor-grabbing"
+            className="flex h-5 w-5 cursor-grab items-center justify-center rounded text-[#1E1B31]/40 hover:bg-[#FAF8F5] active:cursor-grabbing"
           >
             <GripVertical className="h-3 w-3" aria-hidden />
           </button>
-          <span className="text-center text-[10px] font-bold text-[#2C3E6B]">{i + 1}</span>
+          <span className="text-center text-[10px] font-bold text-[#1E1B31]">{i + 1}</span>
           <input
             value={row.name}
             onChange={(e) => updateRow(i, { name: e.target.value })}
@@ -304,7 +304,7 @@ export function DoctorRoutinePlanEditor({
           columnClassName="md:pr-4"
         />
         <div
-          className="h-px w-full shrink-0 bg-[#2C3E6B]/50 md:h-auto md:w-px md:self-stretch"
+          className="h-px w-full shrink-0 bg-[#1E1B31]/50 md:h-auto md:w-px md:self-stretch"
           role="separator"
           aria-hidden
         />

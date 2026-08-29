@@ -136,7 +136,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     <div className="mx-auto w-full max-w-2xl space-y-5">
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#2C3E6B] transition hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1E1B31] transition hover:underline"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden />
         Dashboard
@@ -162,7 +162,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
 
       <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
-          <LineChart className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+          <LineChart className="h-4 w-4 text-[#1E1B31]" aria-hidden />
           <h2 className="text-sm font-bold text-[#18181b]">Score Trend</h2>
         </div>
         {/* TODO: wire real per-scan history series for this concern */}
@@ -173,7 +173,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
 
       <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+          <Sparkles className="h-4 w-4 text-[#1E1B31]" aria-hidden />
           <h2 className="text-sm font-bold text-[#18181b]">AI Analysis</h2>
         </div>
         {analysisLines.length > 0 ? (
@@ -194,7 +194,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
 
       <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
-          <Lightbulb className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+          <Lightbulb className="h-4 w-4 text-[#1E1B31]" aria-hidden />
           <h2 className="text-sm font-bold text-[#18181b]">Recommendations</h2>
         </div>
         {recommendations.length > 0 ? (
@@ -205,7 +205,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
                 className="flex items-start gap-2 text-sm text-[#6B7280]"
               >
                 <ChevronRight
-                  className="mt-0.5 h-4 w-4 shrink-0 text-[#2C3E6B]"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[#1E1B31]"
                   aria-hidden
                 />
                 <span>{rec}</span>
@@ -221,7 +221,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
 
       <Link
         href={reportHref}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(44,62,107,0.2)] bg-white py-3 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-[#F8FAFC]"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(30, 27, 49,0.2)] bg-white py-3 text-sm font-semibold text-[#1E1B31] shadow-sm transition hover:bg-[#F8FAFC]"
       >
         <FileText className="h-4 w-4" aria-hidden />
         {latestScan ? "View full scan report" : "Take a scan"}

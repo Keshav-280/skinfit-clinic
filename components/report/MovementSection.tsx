@@ -29,7 +29,7 @@ function Chip({
       type="button"
       onClick={onToggle}
       className={`w-full rounded-2xl px-3 py-2.5 text-left transition ${
-        open ? "bg-white ring-2 ring-[#2C3E6B]/20" : "bg-white/70"
+        open ? "bg-white ring-2 ring-[#1E1B31]/20" : "bg-white/70"
       }`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -65,7 +65,7 @@ export function MovementSection({ groups }: MovementSectionProps) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const counts = [
     { label: "Improved", n: groups.improved.length, tone: "text-[#2F6B4A] bg-[#4E9B72]/12" },
-    { label: "Holding", n: groups.holding.length, tone: "text-[#2C3E6B] bg-[#E4DFF5]" },
+    { label: "Holding", n: groups.holding.length, tone: "text-[#1E1B31] bg-[#F8EDEE]" },
     { label: "Tracking", n: groups.tracking.length, tone: "text-[#A87C22] bg-[#D4A03F]/15" },
   ];
 

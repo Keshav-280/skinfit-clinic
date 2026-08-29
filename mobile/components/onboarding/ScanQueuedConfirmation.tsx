@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 type Props = {
   variant?: "dashboard" | "onboarding";
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "rgba(44,62,107,0.1)",
+    backgroundColor: "rgba(30, 27, 49,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },

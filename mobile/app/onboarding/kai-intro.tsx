@@ -14,8 +14,8 @@ import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutS
 import { useAuth } from "@/contexts/AuthContext";
 import { MEDICAL_DISCLAIMER_CAPTURE } from "@/lib/medicalDisclaimer";
 
-const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
+const NAVY = "#1E1B31";
+const NAVY_DARK = "#242A5F";
 const BOUNDARY_ROWS = [
   ["No diagnosis", "No prescriptions"],
   ["Clinic visit when needed", "Doctor guides care"],
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   skipLink: {
     fontSize: 14,
     fontWeight: "600",
-    color: "rgba(44, 62, 107, 0.8)",
+    color: "rgba(30, 27, 49, 0.8)",
     textDecorationLine: "underline",
   },
   boundaryBox: {
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.35)",
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.1)",
+    borderColor: "rgba(30, 27, 49,0.1)",
     marginBottom: 16,
   },
   boundaryHead: {

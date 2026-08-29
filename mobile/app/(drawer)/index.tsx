@@ -2530,7 +2530,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     borderWidth: 0,
-    shadowColor: "#2D3E6B",
+    shadowColor: "#1E1B31",
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.2,
     shadowRadius: 22,
@@ -3268,7 +3268,7 @@ const styles = StyleSheet.create({
   barBg: {
     height: 10,
     borderRadius: 999,
-    backgroundColor: "rgba(44, 62, 107, 0.12)",
+    backgroundColor: "rgba(30, 27, 49, 0.12)",
     marginTop: 10,
     overflow: "hidden",
   },

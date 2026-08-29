@@ -116,7 +116,7 @@ export function DoctorPatientChatBell() {
         onClick={() => setOpen((o) => !o)}
         className={`${doctorHeaderBellBtnClass} ${
           open || count > 0
-            ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
+            ? "bg-[#1E1B31]/10 text-[#1E1B31]"
             : "text-slate-700 hover:bg-slate-100"
         }`}
         aria-expanded={open}
@@ -126,7 +126,7 @@ export function DoctorPatientChatBell() {
         <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
         <span className="hidden sm:inline">Messages</span>
         {count > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#2C3E6B] px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1E1B31] px-1 text-[10px] font-bold text-white">
             {count > 99 ? "99+" : count}
           </span>
         ) : null}
@@ -140,7 +140,7 @@ export function DoctorPatientChatBell() {
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
                   <MessageCircle className="h-4 w-4" aria-hidden />
                 </span>
                 <div className="min-w-0">
@@ -157,7 +157,7 @@ export function DoctorPatientChatBell() {
                   type="button"
                   disabled={markingAll}
                   onClick={() => void markAllSeen()}
-                  className="shrink-0 rounded-lg border border-[#2C3E6B]/25 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5 disabled:opacity-50"
+                  className="shrink-0 rounded-lg border border-[#1E1B31]/25 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1E1B31] transition hover:bg-[#1E1B31]/5 disabled:opacity-50"
                 >
                   {markingAll ? "…" : "Seen all"}
                 </button>
@@ -176,11 +176,11 @@ export function DoctorPatientChatBell() {
                 <li key={it.messageId}>
                   <button
                     type="button"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[#2C3E6B]/25 hover:bg-white"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[#1E1B31]/25 hover:bg-white"
                     role="menuitem"
                     onClick={() => void openThread(it.patientId)}
                   >
-                    <p className="text-sm font-semibold text-[#2C3E6B]">{it.patientName}</p>
+                    <p className="text-sm font-semibold text-[#1E1B31]">{it.patientName}</p>
                     <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-700">
                       {it.preview}
                     </p>

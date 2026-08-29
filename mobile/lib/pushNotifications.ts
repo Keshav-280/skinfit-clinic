@@ -54,7 +54,7 @@ export async function registerForPushAndSyncToken(
 
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
-      name: "SkinnFit",
+      name: "SkinFit",
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#0d9488",

@@ -3,7 +3,8 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Sparkles, Scan } from "lucide-react";
+import { Scan } from "lucide-react";
+import { PublicBrandMark } from "../../components/nav/PublicBrandMark";
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,19 +75,12 @@ export default function Home() {
       {/* Sticky Navbar - dark theme */}
       <nav className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/home" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-600/30">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">
-              SkinnFit
-            </span>
-          </Link>
+          <PublicBrandMark href="/home" invert />
 
           <div className="hidden items-center gap-8 md:flex">
             <Link
               href="/home"
-              className="text-sm font-medium text-teal-400 transition-colors hover:text-teal-300"
+              className="text-sm font-medium text-[#DF9DA4] transition-colors hover:text-[#DF9DA4]"
             >
               Home
             </Link>
@@ -118,7 +112,7 @@ export default function Home() {
 
           <Link
             href="/login"
-            className="rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-all hover:bg-teal-500 hover:shadow-[0_0_30px_rgba(20,184,166,0.4)]"
+            className="rounded-full bg-[#1E1B31] px-4 py-2 text-sm font-medium text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-all hover:bg-[#F8EDEE]0 hover:shadow-[0_0_30px_rgba(20,184,166,0.4)]"
           >
             <Scan className="mr-2 inline-block h-4 w-4" />
             Patient Login
@@ -156,8 +150,8 @@ export default function Home() {
                 <div className="absolute left-1/2 top-0 h-6 w-32 -translate-x-1/2 rounded-b-2xl bg-zinc-900" />
                 <div className="flex h-full items-center justify-center p-6 pt-12">
                   <div className="text-center">
-                    <div className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-teal-500/20" />
-                    <p className="text-sm text-zinc-500">SkinnFit App</p>
+                    <div className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-[#F8EDEE]0/20" />
+                    <p className="text-sm text-zinc-500">SkinFit App</p>
                   </div>
                 </div>
               </div>
@@ -184,7 +178,7 @@ export default function Home() {
             <div className="relative mb-16">
               <div className="relative h-64 w-64 md:h-80 md:w-80">
                 {/* Bounding box */}
-                <div className="absolute inset-0 rounded-3xl border-2 border-teal-500/50 shadow-[0_0_40px_rgba(20,184,166,0.15)]" />
+                <div className="absolute inset-0 rounded-3xl border-2 border-[#DF9DA4]/50 shadow-[0_0_40px_rgba(20,184,166,0.15)]" />
                 {/* Polygon overlays - face mesh simulation */}
                 <svg
                   className="absolute inset-0 h-full w-full"
@@ -229,7 +223,7 @@ export default function Home() {
                 style={{ opacity: acneCardOpacity }}
                 className="w-48 rounded-2xl border border-zinc-700 bg-zinc-900/90 p-6 shadow-[0_0_30px_rgba(20,184,166,0.1)] backdrop-blur-sm"
               >
-                <div className="mb-3 h-10 w-10 rounded-lg bg-teal-500/20" />
+                <div className="mb-3 h-10 w-10 rounded-lg bg-[#F8EDEE]0/20" />
                 <h3 className="mb-1 font-semibold text-white">Acne</h3>
                 <p className="text-sm text-zinc-400">Blemish detection</p>
               </motion.div>
@@ -237,7 +231,7 @@ export default function Home() {
                 style={{ opacity: wrinklesCardOpacity }}
                 className="w-48 rounded-2xl border border-zinc-700 bg-zinc-900/90 p-6 shadow-[0_0_30px_rgba(20,184,166,0.1)] backdrop-blur-sm"
               >
-                <div className="mb-3 h-10 w-10 rounded-lg bg-teal-500/20" />
+                <div className="mb-3 h-10 w-10 rounded-lg bg-[#F8EDEE]0/20" />
                 <h3 className="mb-1 font-semibold text-white">Wrinkles</h3>
                 <p className="text-sm text-zinc-400">Aging analysis</p>
               </motion.div>
@@ -245,7 +239,7 @@ export default function Home() {
                 style={{ opacity: pigmentationCardOpacity }}
                 className="w-48 rounded-2xl border border-zinc-700 bg-zinc-900/90 p-6 shadow-[0_0_30px_rgba(20,184,166,0.1)] backdrop-blur-sm"
               >
-                <div className="mb-3 h-10 w-10 rounded-lg bg-teal-500/20" />
+                <div className="mb-3 h-10 w-10 rounded-lg bg-[#F8EDEE]0/20" />
                 <h3 className="mb-1 font-semibold text-white">Pigmentation</h3>
                 <p className="text-sm text-zinc-400">Tone mapping</p>
               </motion.div>
@@ -273,15 +267,15 @@ export default function Home() {
                   <div className="absolute left-1/2 top-0 h-5 w-24 -translate-x-1/2 rounded-b-xl bg-zinc-900" />
                   <div className="flex h-full items-center justify-center p-4 pt-8">
                     <div className="text-center">
-                      <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-teal-500/20" />
-                      <p className="text-xs text-zinc-500">SkinnFit App</p>
+                      <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-[#F8EDEE]0/20" />
+                      <p className="text-xs text-zinc-500">SkinFit App</p>
                     </div>
                   </div>
                 </div>
               </motion.div>
 
               {/* Center divider */}
-              <div className="hidden h-px flex-1 bg-gradient-to-r from-transparent via-teal-500/30 to-transparent md:block" />
+              <div className="hidden h-px flex-1 bg-gradient-to-r from-transparent via-[#DF9DA4]/30 to-transparent md:block" />
 
               {/* For Providers - iPad */}
               <motion.div
@@ -329,7 +323,7 @@ export default function Home() {
                 </p>
                 <Link
                   href="/contact"
-                  className="inline-flex items-center justify-center rounded-full bg-teal-600 px-8 py-4 text-lg font-semibold text-white shadow-[0_0_40px_rgba(20,184,166,0.4)] transition-all hover:bg-teal-500 hover:shadow-[0_0_60px_rgba(20,184,166,0.5)]"
+                  className="inline-flex items-center justify-center rounded-full bg-[#1E1B31] px-8 py-4 text-lg font-semibold text-white shadow-[0_0_40px_rgba(20,184,166,0.4)] transition-all hover:bg-[#F8EDEE]0 hover:shadow-[0_0_60px_rgba(20,184,166,0.5)]"
                 >
                   Book Inauguration Demo
                 </Link>
@@ -342,20 +336,17 @@ export default function Home() {
       {/* Minimal Footer */}
       <footer className="border-t border-zinc-800 bg-zinc-950 py-12">
         <div className="mx-auto max-w-7xl px-6 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-bold tracking-tight">SkinnFit</span>
+          <div className="mb-4 flex items-center justify-center">
+            <PublicBrandMark href="/home" invert />
           </div>
           <p className="text-sm text-zinc-500">
-            © {new Date().getFullYear()} SkinnFit Clinic. All rights reserved.
+            © {new Date().getFullYear()} SkinFit Wellness. All rights reserved.
           </p>
           <div className="mt-4 flex justify-center gap-6 text-sm">
-            <Link href="/services" className="text-zinc-400 hover:text-teal-400">
+            <Link href="/services" className="text-zinc-400 hover:text-[#DF9DA4]">
               Services
             </Link>
-            <Link href="/contact" className="text-zinc-400 hover:text-teal-400">
+            <Link href="/contact" className="text-zinc-400 hover:text-[#DF9DA4]">
               Contact
             </Link>
           </div>

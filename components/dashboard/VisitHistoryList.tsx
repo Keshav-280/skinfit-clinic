@@ -64,7 +64,7 @@ export function VisitHistoryList({ visits }: { visits: VisitHistoryRow[] }) {
               }`}
             >
               <SquareCheck
-                className="h-[22px] w-[22px] shrink-0 text-[#2C3E6B]"
+                className="h-[22px] w-[22px] shrink-0 text-[#1E1B31]"
                 strokeWidth={2}
                 aria-hidden
               />

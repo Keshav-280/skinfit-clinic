@@ -11,13 +11,13 @@ type Props = {
 export function ScanPhotoGuideDismissCheckbox({ checked, onChange, className = "" }: Props) {
   return (
     <label
-      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#2C3E6B]/15 bg-white/35 px-3.5 py-3.5 text-left text-sm leading-snug text-[#374151] ${className}`}
+      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border border-[#1E1B31]/15 bg-white/35 px-3.5 py-3.5 text-left text-sm leading-snug text-[#374151] ${className}`}
     >
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#2C3E6B]/35 accent-[#2C3E6B]"
+        className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#1E1B31]/35 accent-[#1E1B31]"
       />
       <span>
         I&apos;ve read the photo tips —{" "}

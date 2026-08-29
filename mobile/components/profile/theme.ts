@@ -2,7 +2,7 @@ import { StyleSheet } from "react-native";
 
 export const NAVY = "#2B3A67";
 export const GREEN = "#1B8A4A";
-export const BG_GRADIENT: [string, string] = ["#E8EFE6", "#DCE8D4"];
+export const BG_GRADIENT: [string, string] = ["#F0EAE2", "#DCCFC0"];
 export const TEXT_PRIMARY = "#1A1A2E";
 export const TEXT_MUTED = "#52525b";
 export const TEXT_LIGHT = "#71717a";

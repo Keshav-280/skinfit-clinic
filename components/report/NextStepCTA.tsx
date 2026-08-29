@@ -14,7 +14,7 @@ export function NextStepCTA({
   secondaryAction,
 }: NextStepCTAProps) {
   return (
-    <section className="relative overflow-hidden rounded-[24px] bg-[#2C3E6B] px-5 py-5 text-white shadow-[0_22px_50px_-18px_rgba(44,62,107,0.65)]">
+    <section className="relative overflow-hidden rounded-[24px] bg-[#1E1B31] px-5 py-5 text-white shadow-[0_22px_50px_-18px_rgba(30, 27, 49,0.65)]">
       <div
         className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10"
         aria-hidden
@@ -34,7 +34,7 @@ export function NextStepCTA({
       </p>
       <Link
         href={primaryAction.href}
-        className="report-shine relative block overflow-hidden rounded-2xl bg-white py-3.5 text-center text-[14px] font-semibold text-[#2C3E6B]"
+        className="report-shine relative block overflow-hidden rounded-2xl bg-white py-3.5 text-center text-[14px] font-semibold text-[#1E1B31]"
       >
         {primaryAction.label}
       </Link>

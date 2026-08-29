@@ -44,7 +44,7 @@ export async function notifyPatientRoutinePlanChanged(opts: {
     patientId: opts.patientId,
     staffId: opts.staffId,
     text,
-    pushTitle: `SkinnFit — ${title.toLowerCase()}`,
+    pushTitle: `SkinFit — ${title.toLowerCase()}`,
   });
 }
 

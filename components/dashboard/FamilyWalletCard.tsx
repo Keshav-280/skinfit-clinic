@@ -152,8 +152,8 @@ export function FamilyWalletCard() {
 
   if (loading) {
     return (
-      <section className="flex min-h-[100px] items-center justify-center rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm">
-        <Loader2 className="h-5 w-5 animate-spin text-[#2C3E6B]/60" aria-hidden />
+      <section className="flex min-h-[100px] items-center justify-center rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm">
+        <Loader2 className="h-5 w-5 animate-spin text-[#1E1B31]/60" aria-hidden />
       </section>
     );
   }
@@ -170,9 +170,9 @@ export function FamilyWalletCard() {
   const hasActivity = data.recentTransactions.length > 0;
 
   return (
-    <section className="rounded-[22px] border border-white/70 bg-white/40 p-4 shadow-[0_8px_30px_rgba(44,62,107,0.06)] backdrop-blur-sm sm:p-5">
+    <section className="rounded-[22px] border border-white/70 bg-white/40 p-4 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm sm:p-5">
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[#2C3E6B] text-white shadow-sm">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[#1E1B31] text-white shadow-sm">
           <CreditCard className="h-4 w-4" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
@@ -180,7 +180,7 @@ export function FamilyWalletCard() {
             <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#64748B]">
               Family card
             </p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#2C3E6B]/8 px-2 py-0.5 text-[10px] font-semibold text-[#2C3E6B]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#1E1B31]/8 px-2 py-0.5 text-[10px] font-semibold text-[#1E1B31]">
               <ShieldCheck className="h-3 w-3" aria-hidden />
               Clinic verified
             </span>
@@ -210,7 +210,7 @@ export function FamilyWalletCard() {
         </div>
       )}
 
-      <div className="mt-4 border-t border-[#E8EFE6]/80 pt-4">
+      <div className="mt-4 border-t border-[#F0EAE2]/80 pt-4">
         <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#64748B]">
           Members · {data.members.length}
         </p>
@@ -220,7 +220,7 @@ export function FamilyWalletCard() {
               key={m.userId}
               className="flex items-center gap-2.5 rounded-[14px] border border-white/70 bg-white/45 px-2.5 py-2"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]/10 text-xs font-bold text-[#2C3E6B]">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1E1B31]/10 text-xs font-bold text-[#1E1B31]">
                 {memberInitial(m.name)}
               </span>
               <div className="min-w-0 flex-1">
@@ -259,7 +259,7 @@ export function FamilyWalletCard() {
                 setOtpHint(null);
                 setError(null);
               }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#2C3E6B]/15 bg-white/60 px-3 py-1.5 text-xs font-semibold text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#1E1B31]/15 bg-white/60 px-3 py-1.5 text-xs font-semibold text-[#1E1B31] transition hover:bg-[#1E1B31]/5"
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden />
               {otherMembers.length === 0 ? "Add family member" : "Link another member"}
@@ -278,14 +278,14 @@ export function FamilyWalletCard() {
                 }}
                 placeholder="family@email.com"
                 disabled={inviteBusy}
-                className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2A44] placeholder:text-[#94A3B8] outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
+                className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2A44] placeholder:text-[#94A3B8] outline-none focus:border-[#1E1B31]/40 focus:ring-2 focus:ring-[#1E1B31]/10"
               />
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => void sendOtp()}
                   disabled={inviteBusy || !inviteEmail.trim() || resendSeconds > 0}
-                  className="rounded-lg bg-[#2C3E6B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#243456] disabled:opacity-50"
+                  className="rounded-lg bg-[#1E1B31] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#242A5F] disabled:opacity-50"
                 >
                   {inviteBusy ? "…" : resendSeconds > 0 ? `Resend in ${resendSeconds}s` : "Send code"}
                 </button>
@@ -314,13 +314,13 @@ export function FamilyWalletCard() {
                     }
                     placeholder="6-digit code"
                     disabled={inviteBusy}
-                    className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2A44] placeholder:text-[#94A3B8] outline-none focus:border-[#2C3E6B]/40 focus:ring-2 focus:ring-[#2C3E6B]/10"
+                    className="min-w-0 flex-1 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2A44] placeholder:text-[#94A3B8] outline-none focus:border-[#1E1B31]/40 focus:ring-2 focus:ring-[#1E1B31]/10"
                   />
                   <button
                     type="button"
                     onClick={() => void verifyAndLink()}
                     disabled={inviteBusy || otp.length < 6}
-                    className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-[#2C3E6B] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#243456] disabled:opacity-50"
+                    className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-[#1E1B31] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#242A5F] disabled:opacity-50"
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden />
                     Link
@@ -337,7 +337,7 @@ export function FamilyWalletCard() {
       )}
 
       {hasActivity ? (
-        <div className="mt-3 border-t border-[#E8EFE6]/80 pt-3">
+        <div className="mt-3 border-t border-[#F0EAE2]/80 pt-3">
           <button
             type="button"
             onClick={() => setShowActivity((v) => !v)}

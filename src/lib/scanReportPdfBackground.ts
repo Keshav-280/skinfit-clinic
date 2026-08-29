@@ -58,7 +58,7 @@ export function scanReportPdfBackgroundCss(): string {
       right: 6pt;
       top: 6pt;
       bottom: 6pt;
-      border: 1px solid rgba(44, 62, 107, 0.12);
+      border: 1px solid rgba(30, 27, 49, 0.12);
       border-radius: 18px;
       pointer-events: none;
       z-index: 0;

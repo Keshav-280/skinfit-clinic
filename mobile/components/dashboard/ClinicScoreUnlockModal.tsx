@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CLINIC_SCORE_UNLOCK } from "../../../src/lib/clarityGrade";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 type Props = {
   visible: boolean;
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(44,62,107,0.1)",
+    backgroundColor: "rgba(30, 27, 49,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     lineHeight: 20,
-    color: "#3d5080",
+    color: "#5B66A1",
   },
   cta: {
     marginTop: 16,

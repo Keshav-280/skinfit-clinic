@@ -49,7 +49,7 @@ export function PositionBar({
       >
         <span
           className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-out ${
-            light ? "bg-[#2C3E6B]/35" : "bg-white/25"
+            light ? "bg-[#1E1B31]/35" : "bg-white/25"
           }`}
           style={{ width: `${now}%` }}
         />

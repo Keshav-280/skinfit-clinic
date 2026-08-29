@@ -83,7 +83,7 @@ export async function sendClinicSupportMessage(params: {
       ? "Appointment reminder"
       : notificationType === "routine.reminder"
         ? "Routine reminder"
-        : "SkinnFit Clinic";
+        : "SkinFit Wellness";
 
   // Single push path (worker → Expo); dispatch maps the type to the right title
   // and deep-link. Previously this also sent a direct push, causing duplicates.

@@ -40,7 +40,7 @@ export function ClinicScoreUnlockModal({ open, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]/10 text-[#2C3E6B]">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1E1B31]/10 text-[#1E1B31]">
             <Lock className="h-5 w-5" aria-hidden />
           </div>
           <button
@@ -55,16 +55,16 @@ export function ClinicScoreUnlockModal({ open, onClose }: Props) {
         </div>
         <h2
           id="clinic-score-unlock-title"
-          className="mt-3 text-base font-extrabold text-[#2C3E6B]"
+          className="mt-3 text-base font-extrabold text-[#1E1B31]"
         >
           {CLINIC_SCORE_UNLOCK.title}
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#3d5080]">
+        <p className="mt-2 text-sm leading-relaxed text-[#5B66A1]">
           {CLINIC_SCORE_UNLOCK.message}
         </p>
         <Link
           href={CLINIC_SCORE_UNLOCK.schedulesHref}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#354A7A]"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#1E1B31] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#354A7A]"
         >
           <Calendar className="h-4 w-4" aria-hidden />
           {CLINIC_SCORE_UNLOCK.actionLabel}

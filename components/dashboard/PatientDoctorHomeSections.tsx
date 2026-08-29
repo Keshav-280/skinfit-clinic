@@ -16,7 +16,7 @@ import {
 } from "@/src/lib/clinicSupportInboxClient";
 import { DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE } from "@/src/lib/patientClinicVisitMessages";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 export type DoctorVoiceNoteItem = {
   id: string;
@@ -108,7 +108,7 @@ function FeedbackAckActions({
       <label
         className={`inline-flex max-w-full cursor-pointer items-center gap-3 rounded-[14px] border px-3 py-2.5 transition-colors ${
           listened
-            ? "border-[#2C3E6B]/25 bg-[#E8EFE6]/80"
+            ? "border-[#1E1B31]/25 bg-[#F0EAE2]/80"
             : "border-white/70 bg-white/50 hover:bg-white/80"
         } ${busy ? "pointer-events-none opacity-60" : ""}`}
       >
@@ -131,8 +131,8 @@ function FeedbackAckActions({
         <span
           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-solid transition-colors ${
             listened
-              ? "border-[#2C3E6B] bg-[#2C3E6B]"
-              : "border-slate-300 bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-[#2C3E6B]/30"
+              ? "border-[#1E1B31] bg-[#1E1B31]"
+              : "border-slate-300 bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-[#1E1B31]/30"
           }`}
         >
           <Check
@@ -163,7 +163,7 @@ function FeedbackAckActions({
             ? "Move to archived (still readable / playable)"
             : "Mark as read or listened first"
         }
-        className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#2C3E6B]/20 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100/60 disabled:text-slate-400"
+        className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#1E1B31]/20 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#1E1B31] transition hover:bg-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100/60 disabled:text-slate-400"
       >
         <Archive className="h-4 w-4 opacity-80" aria-hidden />
         Archive
@@ -185,7 +185,7 @@ function DashboardHomeTextBlock({
 
   return (
     <div className="overflow-hidden rounded-[20px] border border-white/80 bg-white/55 backdrop-blur-sm">
-      <div className="flex items-start justify-between gap-3 border-b border-white/60 bg-gradient-to-r from-[#E8EFE6]/50 to-white/40 px-4 py-3.5 sm:px-5">
+      <div className="flex items-start justify-between gap-3 border-b border-white/60 bg-gradient-to-r from-[#F0EAE2]/50 to-white/40 px-4 py-3.5 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px]"
@@ -204,7 +204,7 @@ function DashboardHomeTextBlock({
           dateTime={created.toISOString()}
           className="shrink-0 rounded-[10px] border border-white/70 bg-white/60 px-2.5 py-1 text-center text-[11px] font-semibold leading-tight text-[#64748B] sm:text-xs"
         >
-          <span className="block tabular-nums text-[#2C3E6B]">
+          <span className="block tabular-nums text-[#1E1B31]">
             {format(created, "dd/MM/yy")}
           </span>
           <span className="block text-[10px] font-medium text-[#94A3B8] sm:text-[11px]">
@@ -239,7 +239,7 @@ function DashboardHomeVoiceBlock({
 
   return (
     <div className="overflow-hidden rounded-[20px] border border-white/80 bg-white/55 backdrop-blur-sm">
-      <div className="flex items-start justify-between gap-3 border-b border-white/60 bg-gradient-to-r from-[#E8EFE6]/50 to-white/40 px-4 py-3.5 sm:px-5">
+      <div className="flex items-start justify-between gap-3 border-b border-white/60 bg-gradient-to-r from-[#F0EAE2]/50 to-white/40 px-4 py-3.5 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px]"
@@ -260,7 +260,7 @@ function DashboardHomeVoiceBlock({
           dateTime={created.toISOString()}
           className="shrink-0 rounded-[10px] border border-white/70 bg-white/60 px-2.5 py-1 text-center text-[11px] font-semibold leading-tight text-[#64748B] sm:text-xs"
         >
-          <span className="block tabular-nums text-[#2C3E6B]">
+          <span className="block tabular-nums text-[#1E1B31]">
             {format(created, "dd/MM/yy")}
           </span>
           <span className="block text-[10px] font-medium text-[#94A3B8] sm:text-[11px]">
@@ -276,7 +276,7 @@ function DashboardHomeVoiceBlock({
       ) : null}
 
       <div className="px-4 py-4 sm:px-5">
-        <div className="rounded-[14px] border border-white/60 bg-[#E8EFE6]/40 px-3 py-2.5">
+        <div className="rounded-[14px] border border-white/60 bg-[#F0EAE2]/40 px-3 py-2.5">
           <VoiceNoteAudioPlayer
             src={entry.audioDataUri}
             className="h-9 w-full max-h-9 min-h-[2.25rem] [&::-webkit-media-controls-panel]:rounded-lg"
@@ -407,7 +407,7 @@ export function PatientDoctorHomeSections({ className = "" }: { className?: stri
       {doctorChatEnabled ? (
         <Link
           href="/dashboard/chat?assistant=support"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#242A5F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E1B31] sm:w-auto"
         >
           <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
           Chat with Doctor
@@ -565,12 +565,12 @@ export function DoctorUpdatesCompact({
 
         {archivedEntries.length > 0 ? (
           <details className="group mt-3 overflow-hidden rounded-[14px] border border-[#E5E7EB] bg-[#F8F7F5]">
-            <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-[#2C3E6B] transition hover:bg-white/60 [&::-webkit-details-marker]:hidden">
+            <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-[#1E1B31] transition hover:bg-white/60 [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-1.5">
                   <Archive className="h-3.5 w-3.5 text-[#64748B]" aria-hidden />
                   Archived
-                  <span className="rounded-full bg-[#2C3E6B] px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
+                  <span className="rounded-full bg-[#1E1B31] px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
                     {archivedEntries.length}
                   </span>
                 </span>
@@ -592,7 +592,7 @@ export function DoctorUpdatesCompact({
                     </p>
                   ) : null}
                   {voiceNoteAudioSrc(entry.audioDataUri) ? (
-                    <div className="mt-2 rounded-[12px] bg-[#E8EFE6]/50 px-2.5 py-2">
+                    <div className="mt-2 rounded-[12px] bg-[#F0EAE2]/50 px-2.5 py-2">
                       <VoiceNoteAudioPlayer
                         src={entry.audioDataUri}
                         className="h-8 w-full"

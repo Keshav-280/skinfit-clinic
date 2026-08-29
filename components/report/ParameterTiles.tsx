@@ -49,8 +49,8 @@ export function ParameterTiles({
               type="button"
               onClick={() => toggle(p.key)}
               className={`rounded-2xl bg-white/75 p-3 text-left transition ${
-                watching ? "ring-1 ring-[#2C3E6B]/18" : ""
-              } ${on ? "ring-2 ring-[#2C3E6B]/35 bg-white" : ""}`}
+                watching ? "ring-1 ring-[#1E1B31]/18" : ""
+              } ${on ? "ring-2 ring-[#1E1B31]/35 bg-white" : ""}`}
             >
               <div className="flex items-center gap-2.5">
                 <MiniGradeRing
@@ -62,8 +62,8 @@ export function ParameterTiles({
                     {p.shortName}
                   </span>
                   {watching ? (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#E4DFF5] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[#2C3E6B]">
-                      <span className="report-live-dot-on h-1 w-1 rounded-full bg-[#2C3E6B]" />
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#F8EDEE] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[#1E1B31]">
+                      <span className="report-live-dot-on h-1 w-1 rounded-full bg-[#1E1B31]" />
                       Watch
                     </span>
                   ) : (

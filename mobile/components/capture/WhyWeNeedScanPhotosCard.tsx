@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.1)",
+    borderColor: "rgba(30, 27, 49,0.1)",
     backgroundColor: "#FFFFFF",
     padding: 16,
     overflow: "hidden",
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "rgba(44,62,107,0.1)",
+    borderTopColor: "rgba(30, 27, 49,0.1)",
     alignItems: "center",
   },
 });

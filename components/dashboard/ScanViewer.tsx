@@ -360,7 +360,7 @@ export function ScanViewer({
   const wrinklePose = hasSmilingPose ? "smiling" : "centre";
 
   return (
-    <div className="w-full bg-[#F2F9F2]">
+    <div className="w-full bg-[#FAF8F5]">
       <div className="relative bg-[#0F172A]">
         <div
           ref={scrollerRef}
@@ -501,13 +501,13 @@ export function ScanViewer({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className="rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white px-4 py-3.5 shadow-[0_12px_28px_-18px_rgba(44,62,107,0.35)]"
+                className="rounded-2xl border border-[rgba(30, 27, 49,0.12)] bg-white px-4 py-3.5 shadow-[0_12px_28px_-18px_rgba(30, 27, 49,0.35)]"
               >
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-bold text-[#2C3E6B]">
+                  <p className="text-sm font-bold text-[#1E1B31]">
                     {selectedChip.label}
                   </p>
-                  <p className="text-sm font-extrabold tabular-nums text-[#1E3264]">
+                  <p className="text-sm font-extrabold tabular-nums text-[#242A5F]">
                     {selectedChip.scoreLabel}
                     {selectedDelta != null ? (
                       <span className="ml-1.5 text-xs font-semibold text-[#6B7280]">
@@ -529,7 +529,7 @@ export function ScanViewer({
           <button
             type="button"
             onClick={handleViewFullReport}
-            className="w-full rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-bold text-white shadow-[0_12px_28px_-14px_rgba(44,62,107,0.55)] transition hover:bg-[#354A7A]"
+            className="w-full rounded-xl bg-[#1E1B31] py-3.5 text-sm font-bold text-white shadow-[0_12px_28px_-14px_rgba(30, 27, 49,0.55)] transition hover:bg-[#354A7A]"
           >
             View Full Report
           </button>
@@ -538,7 +538,7 @@ export function ScanViewer({
               type="button"
               onClick={() => onDownloadPdf?.()}
               disabled={pdfLoading || !onDownloadPdf}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[rgba(44,62,107,0.25)] bg-white py-3 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[rgba(30, 27, 49,0.25)] bg-white py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-white/90 disabled:opacity-50"
             >
               <Download className="h-4 w-4" aria-hidden />
               {pdfLoading ? "…" : "Download PDF"}

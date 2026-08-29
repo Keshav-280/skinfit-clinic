@@ -250,14 +250,14 @@ export function FaceMapSection({
     parameterGrades.find((c) => c.id === activeConcern)?.name ?? "All markers";
 
   return (
-    <section className="overflow-hidden rounded-[28px] bg-white/80 p-2 shadow-[0_28px_70px_-28px_rgba(44,62,107,0.55)] backdrop-blur-md">
+    <section className="overflow-hidden rounded-[28px] bg-white/80 p-2 shadow-[0_28px_70px_-28px_rgba(30, 27, 49,0.55)] backdrop-blur-md">
       {cover ? null : (
         <div className="mb-3 flex items-center justify-between gap-3 px-1.5 pt-1.5">
-          <span className="inline-flex w-fit items-center rounded-full bg-[#E4DFF5]/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]">
+          <span className="inline-flex w-fit items-center rounded-full bg-[#F8EDEE]/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#1E1B31]">
             Mapped
           </span>
           {multi ? (
-            <span className="text-[11px] font-semibold text-[#2C3E6B]/70">
+            <span className="text-[11px] font-semibold text-[#1E1B31]/70">
               {activeIndex + 1} / {photos.length}
             </span>
           ) : (
@@ -496,7 +496,7 @@ export function FaceMapSection({
               onClick={() => selectConcern(chip.id)}
               className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-[7px] text-[11px] font-semibold transition ${
                 on
-                  ? "border-[#2C3E6B] bg-[#2C3E6B] text-white"
+                  ? "border-[#1E1B31] bg-[#1E1B31] text-white"
                   : "border-transparent bg-white/90 text-[#5B6478]"
               }`}
             >
@@ -516,7 +516,7 @@ export function FaceMapSection({
       {cover ? (
         <p className="px-2 pb-2 pt-1 text-[11px] font-medium text-[#8B93A4]">
           Watching{" "}
-          <span className="font-semibold text-[#2C3E6B]">{watching}</span>
+          <span className="font-semibold text-[#1E1B31]">{watching}</span>
           {phase === "live" ? ` · ${liveCount} live` : " · mapping"}
         </p>
       ) : null}

@@ -35,10 +35,10 @@ export function firstSentences(text: string, count = 2): string {
 }
 
 export const REPORT_CARD =
-  "rounded-[24px] bg-white/80 shadow-[0_16px_44px_-22px_rgba(44,62,107,0.42)] backdrop-blur-md";
+  "rounded-[24px] bg-white/80 shadow-[0_16px_44px_-22px_rgba(30, 27, 49,0.42)] backdrop-blur-md";
 
 export const REPORT_PILL =
-  "inline-flex w-fit items-center rounded-full bg-[#E4DFF5]/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]";
+  "font-meta inline-flex w-fit items-center rounded-full bg-[#F8EDEE]/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#1E1B31]";
 
 /** Severity 1–5 (worse is higher) → ring fill 0–100. */
 export function severityFill(severity: number): number {
@@ -61,5 +61,5 @@ export function gradeRingColor(grade: string): string {
     return "#C4694F";
   }
   const letter = grade.trim().charAt(0).toUpperCase();
-  return GRADE_RING_COLOR[letter] ?? "#2C3E6B";
+  return GRADE_RING_COLOR[letter] ?? "#1E1B31";
 }

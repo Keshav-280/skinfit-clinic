@@ -45,13 +45,13 @@ import {
 } from "@/src/lib/trackerReportCardSummaries";
 
 const insetCard =
-  "rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/90 px-3.5 py-3.5";
+  "rounded-2xl border border-[rgba(30, 27, 49,0.12)] bg-white/90 px-3.5 py-3.5";
 
 const statCell =
-  "rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]";
+  "rounded-2xl border border-[rgba(30, 27, 49,0.12)] bg-white/90 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]";
 
 function deltaClass(n: number) {
-  if (n > 0) return "text-[#2C3E6B]";
+  if (n > 0) return "text-[#1E1B31]";
   if (n < 0) return "text-[#5B7BA8]";
   return "text-zinc-500";
 }
@@ -75,8 +75,8 @@ function parseFocusDetail(detail: string): Array<{ label: string; body: string }
 }
 
 function causeDotClass(impact: "high" | "medium" | "low") {
-  if (impact === "high") return "bg-[#1E3264]";
-  if (impact === "medium") return "bg-[#2C3E6B]";
+  if (impact === "high") return "bg-[#242A5F]";
+  if (impact === "medium") return "bg-[#1E1B31]";
   return "bg-[#5B7BA8]";
 }
 
@@ -104,7 +104,7 @@ function WeeklyDeltaDisplay({
   if (dir === "up") {
     return (
       <ArrowUp
-        className={`inline h-4 w-4 text-[#2C3E6B] ${className}`}
+        className={`inline h-4 w-4 text-[#1E1B31] ${className}`}
         strokeWidth={2.5}
         aria-label={aria}
       />
@@ -247,9 +247,9 @@ export function TrackerReportSections({
   const nextStagger = () => stagger++;
 
   return (
-    <div className="mx-auto mt-3 w-full max-w-xl space-y-3 break-inside-avoid bg-[#F2F9F2]/40">
+    <div className="mx-auto mt-3 w-full max-w-xl space-y-3 break-inside-avoid bg-[#FAF8F5]/40">
       {/* Compact score strip */}
-      <div className="rounded-[20px] border border-[rgba(44,62,107,0.10)] bg-white/[0.92] px-4 py-4 shadow-[0_12px_32px_-12px_rgba(44,62,107,0.18)]">
+      <div className="rounded-[20px] border border-[rgba(30, 27, 49,0.10)] bg-white/[0.92] px-4 py-4 shadow-[0_12px_32px_-12px_rgba(30, 27, 49,0.18)]">
         <p
           className={`text-[1.35rem] font-medium leading-tight text-zinc-900 ${serifClassName}`}
         >
@@ -257,15 +257,15 @@ export function TrackerReportSections({
         </p>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <div className={statCell}>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#5B66A1]">
               kAI score
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#1E1B31]">
               {scoreLabel}
             </p>
           </div>
           <div className={statCell}>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#5B66A1]">
               Since last scan
             </p>
             <div className="mt-1 flex justify-center">
@@ -277,10 +277,10 @@ export function TrackerReportSections({
             </div>
           </div>
           <div className={statCell}>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-[#3d5080]">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-[#5B66A1]">
               Consistency
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2C3E6B]">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#1E1B31]">
               {report.scores.consistencyScore}%
             </p>
           </div>
@@ -290,7 +290,7 @@ export function TrackerReportSections({
             {report.skinPills.slice(0, 3).map((pill) => (
               <span
                 key={pill}
-                className="rounded-full border border-[rgba(44,62,107,0.14)] bg-white px-3 py-1 text-xs font-semibold text-[#2C3E6B]"
+                className="rounded-full border border-[rgba(30, 27, 49,0.14)] bg-white px-3 py-1 text-xs font-semibold text-[#1E1B31]"
               >
                 {pill}
               </span>
@@ -323,7 +323,7 @@ export function TrackerReportSections({
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
                   {s.label}
                 </p>
-                <p className="mt-0.5 text-sm font-bold text-[#2C3E6B]">{s.value}</p>
+                <p className="mt-0.5 text-sm font-bold text-[#1E1B31]">{s.value}</p>
               </div>
             ))}
           </div>
@@ -334,7 +334,7 @@ export function TrackerReportSections({
         )}
         {environmentCauses.length > 0 ? (
           <div className="mt-3 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#3d5080]">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#5B66A1]">
               How weather met your skin
             </p>
             {environmentCauses.map((line, i) => (
@@ -354,7 +354,7 @@ export function TrackerReportSections({
         icon={TrendingUp}
         title="What shaped your skin"
         summary={causesSummary}
-        accentColor="#2C3E6B"
+        accentColor="#1E1B31"
         staggerIndex={nextStagger()}
       >
         <CausesList causes={displayCauses} />
@@ -398,7 +398,7 @@ export function TrackerReportSections({
             ).map(([label, value, key]) => (
               <div key={label} className={`${insetCard} !py-2.5`}>
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-xs font-semibold text-[#2C3E6B]">{label}</p>
+                  <p className="text-xs font-semibold text-[#1E1B31]">{label}</p>
                   <p className="text-sm font-bold text-zinc-800">
                     {value?.trim() || "—"}
                   </p>
@@ -437,7 +437,7 @@ export function TrackerReportSections({
             <li key={a.rank} className={insetCard}>
               <p className="text-sm font-semibold text-zinc-900">
                 <span
-                  className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-[#2C3E6B]"
+                  className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-[#1E1B31]"
                   style={{ backgroundColor: R.focusBadgeBg }}
                 >
                   {a.rank}
@@ -482,9 +482,9 @@ export function TrackerReportSections({
                 href={r.url}
                 target="_blank"
                 rel="noreferrer"
-                className="group block rounded-2xl border border-[rgba(44,62,107,0.12)] bg-white/92 px-3.5 py-3 transition hover:border-[rgba(44,62,107,0.22)]"
+                className="group block rounded-2xl border border-[rgba(30, 27, 49,0.12)] bg-white/92 px-3.5 py-3 transition hover:border-[rgba(30, 27, 49,0.22)]"
               >
-                <p className="text-sm font-semibold text-[#2C3E6B] group-hover:text-[#1E3264]">
+                <p className="text-sm font-semibold text-[#1E1B31] group-hover:text-[#242A5F]">
                   {r.title}
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-500">
@@ -500,7 +500,7 @@ export function TrackerReportSections({
         icon={Activity}
         title="Skin parameters breakdown"
         summary={paramsSummary}
-        accentColor="#1E3264"
+        accentColor="#242A5F"
         staggerIndex={nextStagger()}
       >
         <div className="space-y-2.5">
@@ -531,7 +531,7 @@ export function TrackerReportSections({
           type="button"
           onClick={() => onDownloadPdf?.()}
           disabled={pdfLoading || !onDownloadPdf}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3.5 text-sm font-bold text-white shadow-[0_12px_28px_-14px_rgba(44,62,107,0.55)] transition hover:bg-[#354A7A] disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] py-3.5 text-sm font-bold text-white shadow-[0_12px_28px_-14px_rgba(30, 27, 49,0.55)] transition hover:bg-[#354A7A] disabled:opacity-50"
         >
           <Download className="h-4 w-4" aria-hidden />
           {pdfLoading ? "Preparing PDF…" : "Download full report as PDF"}
@@ -549,7 +549,7 @@ export function TrackerReportSections({
             type="button"
             onClick={() => onEmailReport?.()}
             disabled={emailBusy || !onEmailReport}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[rgba(44,62,107,0.25)] bg-white py-3 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[rgba(30, 27, 49,0.25)] bg-white py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-white/90 disabled:opacity-50"
           >
             <Mail className="h-4 w-4" aria-hidden />
             {emailBusy ? "Sending…" : "Email report"}

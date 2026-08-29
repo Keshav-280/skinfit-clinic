@@ -16,7 +16,7 @@ import {
   KAI_TYPING_MS_PER_CHAR,
 } from "../../src/lib/kaiIntroScript";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const SCREEN_W = Dimensions.get("window").width;
 const AVATAR_W = Math.min(SCREEN_W * 0.36, 132);
 const AVATAR_H = AVATAR_W * (291 / 132);
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#0f172a",
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.35)",
+    borderColor: "rgba(30, 27, 49,0.35)",
     paddingHorizontal: 18,
     paddingTop: 20,
     paddingBottom: 16,
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 2.2,
-    color: "rgba(44,62,107,0.6)",
+    color: "rgba(30, 27, 49,0.6)",
   },
   sidebarTitle: {
     fontSize: 22,

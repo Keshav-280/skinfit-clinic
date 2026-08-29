@@ -22,7 +22,7 @@ import { apiJson } from "@/lib/api";
 import { getApiBase } from "@/lib/apiBase";
 
 const NAVY = "#2B3A67";
-const BG: [string, string] = ["#E8EFE6", "#DCE8D4"];
+const BG: [string, string] = ["#F0EAE2", "#DCCFC0"];
 const TEXT_PRIMARY = "#1A1A2E";
 const TEXT_MUTED = "#52525b";
 

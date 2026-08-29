@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { CLINIC_SCORE_UNLOCK } from "../../../src/lib/clarityGrade";
 import { dashboardCardShadow } from "@/lib/dashboardTheme";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 type Props = {
   compact?: boolean;
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(44,62,107,0.14)",
+    borderColor: "rgba(30, 27, 49,0.14)",
     ...dashboardCardShadow,
   },
   shellCompact: {
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(44,62,107,0.1)",
+    backgroundColor: "rgba(30, 27, 49,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 13,
     lineHeight: 20,
-    color: "#3d5080",
+    color: "#5B66A1",
   },
   messageCompact: {
     marginTop: 8,

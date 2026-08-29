@@ -153,7 +153,7 @@ function LockedRingOverlay({
         height={18}
         className="pointer-events-none overflow-visible"
       >
-        <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#2D3E6B]">
+        <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#1E1B31]">
           <Lock className="h-2.5 w-2.5 text-white/70" strokeWidth={2.5} aria-hidden />
         </div>
       </foreignObject>
@@ -258,7 +258,7 @@ export function NavyMetricsCard({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [lockedTip]);
 
-  const centerTextCls = light ? "text-[#2C3E6B]" : "text-white";
+  const centerTextCls = light ? "text-[#1E1B31]" : "text-white";
   const kaiLetter = hasScan
     ? patientGradeFromDisplayScore(kaiSkinScore)
     : null;
@@ -278,7 +278,7 @@ export function NavyMetricsCard({
       return (
         <div className="flex flex-col items-center gap-0.5">
           <Lock
-            className="h-3.5 w-3.5 text-[#2C3E6B]/55"
+            className="h-3.5 w-3.5 text-[#1E1B31]/55"
             strokeWidth={2.5}
             aria-hidden
           />
@@ -341,7 +341,7 @@ export function NavyMetricsCard({
         kaiLegendValue,
         hasScan && !scoresUnlocked,
         "#E8F4FC",
-        "#2C3E6B"
+        "#1E1B31"
       )}
       {legendRow(
         CONSISTENCY_COLOR,
@@ -403,7 +403,7 @@ export function NavyMetricsCard({
       className={
         light
           ? `flex h-full flex-row items-center justify-center gap-5 ${className}`
-          : `flex h-full flex-col items-center justify-center rounded-[20px] bg-[#2D3E6B] px-5 py-4 md:flex-row md:items-center md:justify-center md:gap-8 md:px-6 md:py-5 ${className}`
+          : `flex h-full flex-col items-center justify-center rounded-[20px] bg-[#1E1B31] px-5 py-4 md:flex-row md:items-center md:justify-center md:gap-8 md:px-6 md:py-5 ${className}`
       }
     >
       <div className="relative shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>

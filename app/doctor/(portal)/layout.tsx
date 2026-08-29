@@ -19,11 +19,11 @@ import {
 
 export const metadata: Metadata = {
   title: {
-    default: "Doctor Portal | SkinFit Clinic",
-    template: "%s | SkinFit Clinic",
+    default: "Doctor Portal | SkinFit Wellness",
+    template: "%s | SkinFit Wellness",
   },
   description:
-    "SkinFit Clinic staff portal for dermatologists — manage patients, treatment plans, scans, and secure messaging.",
+    "SkinFit Wellness staff portal for dermatologists — manage patients, treatment plans, scans, and secure messaging.",
   robots: { index: false, follow: false },
 };
 

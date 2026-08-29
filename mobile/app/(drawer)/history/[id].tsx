@@ -221,8 +221,8 @@ export default function ScanDetailScreen() {
   );
 }
 
-const BG = "#E8EFE6";
-const NAVY = "#2C3E6B";
+const BG = "#F0EAE2";
+const NAVY = "#1E1B31";
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: BG },

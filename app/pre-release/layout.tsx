@@ -19,7 +19,7 @@ export default function PreReleaseLayout({
   return (
     <div
       data-pre-release-shell
-      className="min-h-dvh bg-[#D6E4D0] bg-gradient-to-b from-[#D6E4D0] via-[#E0EADA] to-[#EAF0E6] text-[#1F2A44] [color-scheme:light]"
+      className="min-h-dvh bg-[#DCCFC0] bg-gradient-to-b from-[#DCCFC0] via-[#E0EADA] to-[#EAF0E6] text-[#1F2A44] [color-scheme:light]"
     >
       {children}
     </div>

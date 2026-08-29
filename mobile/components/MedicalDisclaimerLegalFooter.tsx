@@ -2,7 +2,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { MEDICAL_DISCLAIMER_SHORT, getWebPortalUrl } from "@/lib/medicalDisclaimer";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const MUTED = "#6B7280";
 
 export function MedicalDisclaimerLegalFooter() {
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(44,62,107,0.12)",
+    borderTopColor: "rgba(30, 27, 49,0.12)",
   },
   disclaimer: {
     fontSize: 11,

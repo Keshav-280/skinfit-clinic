@@ -563,7 +563,7 @@ function MetricTile({
 }) {
   const toneCls =
     tone === "teal"
-      ? "text-teal-800"
+      ? "text-[#4A2630]"
       : tone === "violet"
         ? "text-violet-800"
         : tone === "rose"
@@ -854,7 +854,7 @@ function SkinIdentityCardView({
           current={current.hormonalCorrelation}
           rationale={current.signals.hormonalCorrelation}
           icon={Activity}
-          accent="bg-teal-100 text-teal-800"
+          accent="bg-[#F8EDEE] text-[#4A2630]"
         />
       </div>
       {changed.length > 0 ? (
@@ -894,7 +894,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
       >
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-teal-900">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#F8EDEE] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
               <ScanLine className="h-3.5 w-3.5" /> Scan #{report.scanIndex}
             </span>
             <span className="text-xs font-medium text-slate-500">
@@ -936,7 +936,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
       {open ? (
         <div className="space-y-4 border-t border-slate-100 bg-slate-50/40 p-4">
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
               Section 1
             </p>
             <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -962,7 +962,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
               Section 2
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -984,7 +984,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
                         <span
                           className={
                             p.delta >= 0
-                              ? "text-teal-700"
+                              ? "text-[#1E1B31]"
                               : "text-rose-700"
                           }
                         >
@@ -996,7 +996,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
                     <div
-                      className="h-full rounded-full bg-teal-600"
+                      className="h-full rounded-full bg-[#1E1B31]"
                       style={{
                         width: `${Math.max(
                           0,
@@ -1031,7 +1031,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
               Section 3 — Resource Centre
             </p>
             <div className="mt-2 grid gap-2 md:grid-cols-3">
@@ -1061,7 +1061,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
                   href={tracker.section3.video.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-1 inline-block text-[11px] font-semibold text-teal-700 hover:underline"
+                  className="mt-1 inline-block text-[11px] font-semibold text-[#1E1B31] hover:underline"
                 >
                   Open video
                 </a>
@@ -1081,7 +1081,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
               Section 3
             </p>
             <ol className="mt-2 space-y-2">
@@ -1090,7 +1090,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
                   key={a.rank}
                   className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
                 >
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-600 text-xs font-bold text-white">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1E1B31] text-xs font-bold text-white">
                     {a.rank}
                   </span>
                   <div>
@@ -1105,7 +1105,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
               Section 5 — CTA
             </p>
             <div className="mt-2 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -1128,7 +1128,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
 
           {tracker.evidence.length > 0 ? (
             <section className="rounded-xl border border-slate-200 bg-white p-3">
-              <p className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-teal-700">
+              <p className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
                 <Sparkles className="h-3 w-3" />
                 Evidence snippets (BM25 retrieval)
               </p>
@@ -1142,7 +1142,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
                       <p className="text-[10px] font-semibold text-slate-500">
                         {e.source}
                       </p>
-                      <span className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-teal-900">
+                      <span className="rounded-full bg-[#F8EDEE] px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-[#1E1B31]">
                         BM25 {e.score}
                       </span>
                     </div>
@@ -1186,7 +1186,7 @@ function DailyRowItem({ row }: { row: DailyRow }) {
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-700">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1E1B31]">
             Today&apos;s Focus Banner
           </p>
           {row.llmUsed ? (
@@ -1271,7 +1271,7 @@ export default function RagTestKaiPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 text-slate-900">
-      <div className="overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-indigo-50 p-5 shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[#EFCCCE] bg-gradient-to-br from-[#F8EDEE] via-white to-indigo-50 p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
@@ -1283,7 +1283,7 @@ export default function RagTestKaiPage() {
               5-section tracker report.
             </p>
           </div>
-          <span className="inline-flex items-center rounded-full border border-teal-200 bg-teal-100/70 px-3 py-1 text-xs font-semibold text-teal-900">
+          <span className="inline-flex items-center rounded-full border border-[#EFCCCE] bg-[#F8EDEE]/70 px-3 py-1 text-xs font-semibold text-[#1E1B31]">
             Test Mode
           </span>
         </div>
@@ -1307,7 +1307,7 @@ export default function RagTestKaiPage() {
             onClick={() =>
               void hit("/api/rag-test-kai?action=seed", "Demo data seeded")
             }
-            className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-500 disabled:opacity-60"
+            className="rounded-lg bg-[#1E1B31] px-3 py-2 text-sm font-semibold text-white hover:bg-[#F8EDEE]0 disabled:opacity-60"
           >
             Seed demo data
           </button>
@@ -1367,8 +1367,8 @@ export default function RagTestKaiPage() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-teal-700" />
-              <p className="text-xs font-bold uppercase tracking-wide text-teal-700">
+              <Activity className="h-4 w-4 text-[#1E1B31]" />
+              <p className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]">
                 8-Parameter Trend Lines (all scans)
               </p>
             </div>
@@ -1394,8 +1394,8 @@ export default function RagTestKaiPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <ScanLine className="h-4 w-4 text-teal-700" />
-                <p className="text-xs font-bold uppercase tracking-wide text-teal-700">
+                <ScanLine className="h-4 w-4 text-[#1E1B31]" />
+                <p className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]">
                   Per-Scan Tracker Reports · {output.scans.length} scans
                 </p>
               </div>
@@ -1417,8 +1417,8 @@ export default function RagTestKaiPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-teal-700" />
-                <p className="text-xs font-bold uppercase tracking-wide text-teal-700">
+                <CalendarDays className="h-4 w-4 text-[#1E1B31]" />
+                <p className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]">
                   Daily Focus Timeline · {output.totalDays} days (causal)
                 </p>
               </div>

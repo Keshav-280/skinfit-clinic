@@ -33,5 +33,5 @@ export function buildAppointmentReminderChatMessage(params: {
       ? `${params.hoursBefore / 24} day${params.hoursBefore === 24 ? "" : "s"}`
       : `${params.hoursBefore} hour${params.hoursBefore === 1 ? "" : "s"}`;
 
-  return `Reminder from SkinnFit Clinic: your ${kind} with ${dr} is coming up in about ${lead} — scheduled for ${datePart} at ${whenClock}. If you need to reschedule, message us here or call the clinic.`;
+  return `Reminder from SkinFit Wellness: your ${kind} with ${dr} is coming up in about ${lead} — scheduled for ${datePart} at ${whenClock}. If you need to reschedule, message us here or call the clinic.`;
 }

@@ -192,7 +192,7 @@ function AdjustSlider({
   if (compact) {
     return (
       <div className="space-y-0.5">
-        <div className="flex items-center justify-between gap-1 text-[10px] font-semibold text-[#2C3E6B]">
+        <div className="flex items-center justify-between gap-1 text-[10px] font-semibold text-[#1E1B31]">
           <span className="flex min-w-0 items-center gap-1 truncate">
             {icon}
             {label}
@@ -206,7 +206,7 @@ function AdjustSlider({
           step={step}
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="h-1 w-full accent-[#2C3E6B]"
+          className="h-1 w-full accent-[#1E1B31]"
           aria-label={label}
         />
       </div>
@@ -215,7 +215,7 @@ function AdjustSlider({
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex w-24 shrink-0 items-center gap-1.5 text-xs font-semibold text-[#2C3E6B]">
+      <div className="flex w-24 shrink-0 items-center gap-1.5 text-xs font-semibold text-[#1E1B31]">
         {icon}
         {label}
       </div>
@@ -226,10 +226,10 @@ function AdjustSlider({
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="min-w-0 flex-1 accent-[#2C3E6B]"
+        className="min-w-0 flex-1 accent-[#1E1B31]"
         aria-label={label}
       />
-      <span className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums text-[#2C3E6B]">
+      <span className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums text-[#1E1B31]">
         {display}
       </span>
     </div>
@@ -1026,8 +1026,8 @@ export function FaceScanFlow({
   const showUploadChrome = !showPhotoGuide && onboardingPastGuide;
   const navy = SKINFIT_THEME.navy;
   const onboardingSurface =
-    "border-[#2C3E6B]/10 bg-white/25 shadow-none backdrop-blur-sm";
-  const onboardingSurfaceHover = "hover:border-[#2C3E6B]/18 hover:bg-white/35";
+    "border-[#1E1B31]/10 bg-white/25 shadow-none backdrop-blur-sm";
+  const onboardingSurfaceHover = "hover:border-[#1E1B31]/18 hover:bg-white/35";
   const isDiagnoseHero =
     variant === "dashboard" &&
     ((step === "upload" && !cameraOpen && !showPhotoGuide) ||
@@ -1040,7 +1040,7 @@ export function FaceScanFlow({
   const captureSlotsPanel = (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B]/60">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#1E1B31]/60">
           Capture checklist
         </p>
         <p className="text-[11px] font-semibold text-[#4CAF50]">
@@ -1056,7 +1056,7 @@ export function FaceScanFlow({
               className={`relative rounded-2xl border px-2 py-2 text-center transition-colors ${
                 filled
                   ? "border-[#4CAF50]/40 bg-[#E8F5E9]/80"
-                  : "cursor-pointer border-[#2C3E6B]/15 bg-white hover:border-[#2C3E6B]/30 hover:bg-[#F5F3EF]"
+                  : "cursor-pointer border-[#1E1B31]/15 bg-white hover:border-[#1E1B31]/30 hover:bg-[#FAF8F5]"
               }`}
             >
               {filled ? (
@@ -1081,7 +1081,7 @@ export function FaceScanFlow({
                   <button
                     type="button"
                     onClick={() => openUploadForSlot(index)}
-                    className="mt-1 text-[10px] font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
+                    className="mt-1 text-[10px] font-semibold text-[#1E1B31] underline-offset-2 hover:underline"
                   >
                     Replace
                   </button>
@@ -1095,7 +1095,7 @@ export function FaceScanFlow({
                   <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#94A3B8]">
                     {index + 1}
                   </p>
-                  <p className="mt-0.5 text-xs font-bold text-[#2C3E6B]">
+                  <p className="mt-0.5 text-xs font-bold text-[#1E1B31]">
                     {captureStep.title}
                   </p>
                   <p className="mt-1 text-[10px] font-medium text-[#94A3B8]">
@@ -1114,7 +1114,7 @@ export function FaceScanFlow({
             setShowDeviceUpload(false);
             setStep("confirm");
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#2C3E6B] py-3 text-sm font-bold text-white transition hover:bg-[#243456]"
+          className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#1E1B31] py-3 text-sm font-bold text-white transition hover:bg-[#242A5F]"
         >
           <Check className="h-4 w-4" aria-hidden />
           Continue to preview
@@ -1129,12 +1129,12 @@ export function FaceScanFlow({
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="rounded-3xl border border-[#2C3E6B]/10 bg-white p-8 shadow-xl backdrop-blur-md"
+          className="rounded-3xl border border-[#1E1B31]/10 bg-white p-8 shadow-xl backdrop-blur-md"
         >
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20">
             <Check className="h-8 w-8" />
           </div>
-          <h2 className="mt-6 text-2xl font-extrabold text-[#2C3E6B]">
+          <h2 className="mt-6 text-2xl font-extrabold text-[#1E1B31]">
             Photos sent to your computer
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
@@ -1160,12 +1160,12 @@ export function FaceScanFlow({
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="rounded-3xl border border-[#2C3E6B]/10 bg-white p-8 shadow-xl backdrop-blur-md"
+          className="rounded-3xl border border-[#1E1B31]/10 bg-white p-8 shadow-xl backdrop-blur-md"
         >
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20 animate-bounce">
             <Check className="h-8 w-8" />
           </div>
-          <h2 className="mt-6 text-2xl font-extrabold text-[#2C3E6B]">
+          <h2 className="mt-6 text-2xl font-extrabold text-[#1E1B31]">
             Scan complete
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
@@ -1175,7 +1175,7 @@ export function FaceScanFlow({
           {mobileReportHref ? (
             <a
               href={mobileReportHref}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2C3E6B] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#3d5080]"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1E1B31] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#5B66A1]"
             >
               View report
               <ArrowRight className="h-4 w-4" />
@@ -1250,7 +1250,7 @@ export function FaceScanFlow({
                   setShowDeviceUpload(false);
                   setStep("upload");
                 }}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#6B7280] transition hover:bg-[#F5F3EF]"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#6B7280] transition hover:bg-[#FAF8F5]"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -1260,7 +1260,7 @@ export function FaceScanFlow({
             <div className="space-y-5 px-4 py-5 sm:px-5">
               {!isOnboardingScan ? (
                 <div className="text-center sm:text-left">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#1E1B31]/60">
                     Skin analysis
                   </p>
                   <h2
@@ -1309,7 +1309,7 @@ export function FaceScanFlow({
                 <button
                   type="button"
                   onClick={() => setShowDeviceUpload(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/20 bg-[#F2F9F2] px-4 py-3.5 text-sm font-bold text-[#2C3E6B] transition hover:border-[#2C3E6B]/35 hover:bg-[#E8EFE6]"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#1E1B31]/20 bg-[#FAF8F5] px-4 py-3.5 text-sm font-bold text-[#1E1B31] transition hover:border-[#1E1B31]/35 hover:bg-[#F0EAE2]"
                 >
                   <ImagePlus className="h-4 w-4" aria-hidden />
                   Upload photos from this device
@@ -1324,13 +1324,13 @@ export function FaceScanFlow({
                   onDrop={handleDrop}
                   className={`space-y-4 rounded-2xl border-2 border-dashed p-4 transition-colors ${
                     isDragging
-                      ? "border-[#2C3E6B]/40 bg-[#F2F9F2]"
-                      : "border-[#2C3E6B]/15 bg-[#F8FAF8]"
+                      ? "border-[#1E1B31]/40 bg-[#FAF8F5]"
+                      : "border-[#1E1B31]/15 bg-[#F8FAF8]"
                   }`}
                 >
                   <div className="text-center">
-                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E8EFE6]">
-                      <ImagePlus className="h-5 w-5 text-[#2C3E6B]" />
+                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#F0EAE2]">
+                      <ImagePlus className="h-5 w-5 text-[#1E1B31]" />
                     </div>
                     <p className="mt-3 text-sm font-extrabold text-[#18181b]">
                       Upload photos from this device
@@ -1341,7 +1341,7 @@ export function FaceScanFlow({
                     </p>
                     <label
                       htmlFor="scan-file-input"
-                      className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#2C3E6B]/20 bg-white px-5 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition hover:bg-[#F5F3EF]"
+                      className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#1E1B31]/20 bg-white px-5 py-2.5 text-xs font-extrabold text-[#1E1B31] transition hover:bg-[#FAF8F5]"
                     >
                       <ImagePlus className="h-3.5 w-3.5" />
                       Choose files
@@ -1377,7 +1377,7 @@ export function FaceScanFlow({
         >
           <div className="flex items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0 text-left">
-              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B]/60">
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#1E1B31]/60">
                 Skin analysis
               </p>
               <h1
@@ -1390,7 +1390,7 @@ export function FaceScanFlow({
             {step === "upload" && !cameraOpen ? (
               <Link
                 href="/dashboard/history"
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#1E1B31]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#1E1B31] shadow-sm transition hover:border-[#1E1B31]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
               >
                 <History className="h-4 w-4" aria-hidden />
                 See scan history
@@ -1470,14 +1470,14 @@ export function FaceScanFlow({
                 }`}
               >
                 <ScanCaptureExtraTipsPanel compact dense />
-                <div className="shrink-0 rounded-lg border border-[#2C3E6B]/10 bg-white/70 p-2 sm:rounded-xl sm:p-2.5">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#2C3E6B]/60 sm:text-[11px]">
+                <div className="shrink-0 rounded-lg border border-[#1E1B31]/10 bg-white/70 p-2 sm:rounded-xl sm:p-2.5">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#1E1B31]/60 sm:text-[11px]">
                     Zoom
                   </p>
                   <div className="mt-1.5">
                     <AdjustSlider
                       compact
-                      icon={<ZoomIn className="h-3 w-3 text-[#2C3E6B]/70" />}
+                      icon={<ZoomIn className="h-3 w-3 text-[#1E1B31]/70" />}
                       label="Zoom"
                       value={captureZoom}
                       min={CAPTURE_ZOOM_MIN}
@@ -1491,7 +1491,7 @@ export function FaceScanFlow({
                       <button
                         type="button"
                         onClick={() => setCaptureZoomManual(CAPTURE_ZOOM_DEFAULT)}
-                        className="mt-1.5 text-xs font-medium text-[#2C3E6B]/70 underline-offset-2 hover:underline"
+                        className="mt-1.5 text-xs font-medium text-[#1E1B31]/70 underline-offset-2 hover:underline"
                       >
                         Reset zoom
                       </button>
@@ -1566,22 +1566,22 @@ export function FaceScanFlow({
             >
               {!isMobileDevice && isDiagnoseHero ? (
                 <div className="flex h-full min-h-0 flex-col justify-end pt-8 sm:pt-10">
-                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B] shadow-sm">
+                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31] shadow-sm">
                     Recommended
                   </span>
                   <div className="relative mt-5 flex items-center gap-4">
-                    <div className="relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-dashed border-[#2C3E6B]/30 bg-white/40 shadow-[0_0_0_8px_rgba(255,255,255,0.45)]">
-                      <div className="camera-icon-breathe flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-12px_rgba(44,62,107,0.45)]">
-                        <Smartphone className="h-6 w-6 text-[#2C3E6B]" />
+                    <div className="relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-dashed border-[#1E1B31]/30 bg-white/40 shadow-[0_0_0_8px_rgba(255,255,255,0.45)]">
+                      <div className="camera-icon-breathe flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-12px_rgba(30, 27, 49,0.45)]">
+                        <Smartphone className="h-6 w-6 text-[#1E1B31]" />
                       </div>
                       <Sparkles
-                        className="absolute -right-0.5 -top-0.5 h-4 w-4 text-[#2C3E6B]/45"
+                        className="absolute -right-0.5 -top-0.5 h-4 w-4 text-[#1E1B31]/45"
                         strokeWidth={2}
                         aria-hidden
                       />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-xl font-extrabold tracking-tight leading-tight text-[#2C3E6B]">
+                      <h2 className="text-xl font-extrabold tracking-tight leading-tight text-[#1E1B31]">
                         Scan with phone camera
                       </h2>
                       <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280]">
@@ -1596,7 +1596,7 @@ export function FaceScanFlow({
                       setShowDeviceUpload(false);
                       setStep("phone-qr");
                     }}
-                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(44,62,107,0.6)] transition-colors hover:bg-[#354A7A]"
+                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(30, 27, 49,0.6)] transition-colors hover:bg-[#354A7A]"
                   >
                     Start on phone
                     <Smartphone className="h-4 w-4" />
@@ -1609,7 +1609,7 @@ export function FaceScanFlow({
                     setShowDeviceUpload(false);
                     setStep("phone-qr");
                   }}
-                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                  className="group relative overflow-hidden rounded-[24px] bg-[#1E1B31] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(30, 27, 49,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30"
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-110" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1630,7 +1630,7 @@ export function FaceScanFlow({
                         step.
                       </p>
                     </div>
-                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition-colors group-hover:bg-[#F8FAFC]">
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#1E1B31] transition-colors group-hover:bg-[#F8FAFC]">
                       Use Phone Camera
                       <Smartphone className="h-3.5 w-3.5" />
                     </span>
@@ -1638,22 +1638,22 @@ export function FaceScanFlow({
                 </button>
               ) : isDiagnoseHero ? (
                 <div className="flex h-full min-h-0 flex-col justify-end pt-8 sm:pt-10">
-                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#2C3E6B] shadow-sm">
+                  <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31] shadow-sm">
                     Recommended
                   </span>
                   <div className="relative mt-5 flex items-center gap-4">
-                    <div className="relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-dashed border-[#2C3E6B]/30 bg-white/40 shadow-[0_0_0_8px_rgba(255,255,255,0.45)]">
-                      <div className="camera-icon-breathe flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-12px_rgba(44,62,107,0.45)]">
-                        <Camera className="h-6 w-6 text-[#2C3E6B]" />
+                    <div className="relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-dashed border-[#1E1B31]/30 bg-white/40 shadow-[0_0_0_8px_rgba(255,255,255,0.45)]">
+                      <div className="camera-icon-breathe flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_-12px_rgba(30, 27, 49,0.45)]">
+                        <Camera className="h-6 w-6 text-[#1E1B31]" />
                       </div>
                       <Sparkles
-                        className="absolute -right-0.5 -top-0.5 h-4 w-4 text-[#2C3E6B]/45"
+                        className="absolute -right-0.5 -top-0.5 h-4 w-4 text-[#1E1B31]/45"
                         strokeWidth={2}
                         aria-hidden
                       />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-xl font-extrabold tracking-tight leading-tight text-[#2C3E6B]">
+                      <h2 className="text-xl font-extrabold tracking-tight leading-tight text-[#1E1B31]">
                         Use device camera
                       </h2>
                       <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280]">
@@ -1665,7 +1665,7 @@ export function FaceScanFlow({
                   <button
                     type="button"
                     onClick={requestOpenCamera}
-                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(44,62,107,0.6)] transition-colors hover:bg-[#354A7A]"
+                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(30, 27, 49,0.6)] transition-colors hover:bg-[#354A7A]"
                   >
                     Start Camera
                     <Camera className="h-4 w-4" />
@@ -1675,7 +1675,7 @@ export function FaceScanFlow({
                 <button
                   type="button"
                   onClick={requestOpenCamera}
-                  className="group relative overflow-hidden rounded-[24px] bg-[#2C3E6B] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(44,62,107,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/30"
+                  className="group relative overflow-hidden rounded-[24px] bg-[#1E1B31] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(30, 27, 49,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30"
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1694,7 +1694,7 @@ export function FaceScanFlow({
                         with the guide.
                       </p>
                     </div>
-                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#2C3E6B] transition-colors group-hover:bg-[#F8FAFC]">
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#1E1B31] transition-colors group-hover:bg-[#F8FAFC]">
                       Start Camera
                       <Camera className="h-3.5 w-3.5" />
                     </span>
@@ -1712,13 +1712,13 @@ export function FaceScanFlow({
                   onDrop={handleDrop}
                   className={`flex flex-col justify-between rounded-[24px] border-2 border-dashed p-5 text-center transition-colors min-h-[270px] ${
                     isDragging
-                      ? "border-[#2C3E6B]/40 bg-white/40"
-                      : `border-[#2C3E6B]/12 ${onboardingSurface}`
+                      ? "border-[#1E1B31]/40 bg-white/40"
+                      : `border-[#1E1B31]/12 ${onboardingSurface}`
                   }`}
                 >
                   <div>
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8EFE6]">
-                      <ImagePlus className="h-6 w-6 text-[#2C3E6B]" />
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F0EAE2]">
+                      <ImagePlus className="h-6 w-6 text-[#1E1B31]" />
                     </div>
                     <h2
                       className="mt-4 text-base font-extrabold"
@@ -1736,7 +1736,7 @@ export function FaceScanFlow({
                   </div>
                   <label
                     htmlFor="scan-file-input"
-                    className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#2C3E6B] transition border-[#2C3E6B]/12 bg-white/35 hover:bg-white/50`}
+                    className={`mt-6 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-xs font-extrabold text-[#1E1B31] transition border-[#1E1B31]/12 bg-white/35 hover:bg-white/50`}
                   >
                     <ImagePlus className="h-3.5 w-3.5" />
                     Choose files
@@ -1753,16 +1753,16 @@ export function FaceScanFlow({
                     <ScanPhotoGuideDismissCheckbox
                       checked={skipPhotoGuide}
                       onChange={handleSkipPhotoGuideChange}
-                      className="min-w-[min(100%,240px)] flex-1 bg-white/75 shadow-[0_4px_20px_-14px_rgba(44,62,107,0.35)]"
+                      className="min-w-[min(100%,240px)] flex-1 bg-white/75 shadow-[0_4px_20px_-14px_rgba(30, 27, 49,0.35)]"
                     />
                   ) : null}
                   <button
                     type="button"
                     onClick={openPhotoGuideReview}
-                    className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-bold text-[#2C3E6B] transition sm:px-6 ${
+                    className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-bold text-[#1E1B31] transition sm:px-6 ${
                       isOnboardingScan
                         ? `w-full ${onboardingSurface} ${onboardingSurfaceHover}`
-                        : "border-[#2C3E6B]/25 bg-white/60 shadow-sm hover:border-[#2C3E6B]/40 hover:bg-white/80"
+                        : "border-[#1E1B31]/25 bg-white/60 shadow-sm hover:border-[#1E1B31]/40 hover:bg-white/80"
                     }`}
                   >
                     <Sun className="h-4 w-4" aria-hidden />
@@ -1773,7 +1773,7 @@ export function FaceScanFlow({
                 {isOnboardingScan ? (
                   <Link
                     href="/onboarding/questionnaire?entry=start"
-                    className="inline-flex w-full items-center justify-center rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] transition hover:bg-white/90"
+                    className="inline-flex w-full items-center justify-center rounded-xl border border-[#1E1B31]/15 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#1E1B31] transition hover:bg-white/90"
                   >
                     Continue to questionnaire
                   </Link>
@@ -1784,10 +1784,10 @@ export function FaceScanFlow({
                 <button
                   type="button"
                   onClick={openPhotoGuideReview}
-                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(44,62,107,0.5)] transition hover:bg-[#F8F7FC]"
+                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(30, 27, 49,0.5)] transition hover:bg-[#F8F7FC]"
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
-                    <Sun className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+                    <Sun className="h-4 w-4 text-[#1E1B31]" aria-hidden />
                   </span>
                   <span className="flex-1 text-left text-xs font-bold text-[#18181b]">
                     View photo tips
@@ -1796,10 +1796,10 @@ export function FaceScanFlow({
                 </button>
                 <Link
                   href="/dashboard/history"
-                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(44,62,107,0.5)] transition hover:bg-[#F8F7FC]"
+                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(30, 27, 49,0.5)] transition hover:bg-[#F8F7FC]"
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
-                    <History className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+                    <History className="h-4 w-4 text-[#1E1B31]" aria-hidden />
                   </span>
                   <span className="flex-1 text-left text-xs font-bold text-[#18181b]">
                     Scan history
@@ -1839,7 +1839,7 @@ export function FaceScanFlow({
           className="space-y-6"
         >
           <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm sm:p-6">
-            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
+            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-[#1E1B31]/60">
               Preview
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
@@ -1886,7 +1886,7 @@ export function FaceScanFlow({
                   openCameraForMultiCapture();
                 }
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3 text-sm font-medium text-[#2C3E6B] backdrop-blur-sm transition-colors hover:bg-white/80"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 py-3 text-sm font-medium text-[#1E1B31] backdrop-blur-sm transition-colors hover:bg-white/80"
             >
               <RotateCcw className="h-4 w-4" />
               Retake
@@ -1897,7 +1897,7 @@ export function FaceScanFlow({
                   type="button"
                   disabled={handoffSending}
                   onClick={() => void sendPhotosToDesktop()}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080] disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#5B66A1] disabled:opacity-60"
                 >
                   <Smartphone className="h-4 w-4" />
                   {handoffSending ? "Sendingâ€¦" : "Send photos to desktop"}
@@ -1915,7 +1915,7 @@ export function FaceScanFlow({
               <button
                 type="button"
                 onClick={() => setStep("naming")}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080]"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#5B66A1]"
               >
                 <Check className="h-4 w-4" />
                 Looks good
@@ -1934,7 +1934,7 @@ export function FaceScanFlow({
           className="space-y-6"
         >
           <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm sm:p-6">
-            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
+            <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wide text-[#1E1B31]/60">
               Photo in this scan
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
@@ -1967,7 +1967,7 @@ export function FaceScanFlow({
           <div className="rounded-[22px] border border-white/70 bg-white/35 p-6 backdrop-blur-sm">
             <label
               htmlFor="scan-name"
-              className="mb-3 block text-sm font-medium text-[#2C3E6B]"
+              className="mb-3 block text-sm font-medium text-[#1E1B31]"
             >
               Name this scan
             </label>
@@ -1977,13 +1977,13 @@ export function FaceScanFlow({
               placeholder={SCAN_NAME_INPUT_PLACEHOLDER}
               value={scanName}
               onChange={(e) => setScanName(e.target.value)}
-              className="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#2C3E6B] placeholder:text-[#2C3E6B]/40 backdrop-blur-sm focus:border-[#2C3E6B]/40 focus:outline-none focus:ring-2 focus:ring-[#2C3E6B]/10"
+              className="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-[#1E1B31] placeholder:text-[#1E1B31]/40 backdrop-blur-sm focus:border-[#1E1B31]/40 focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/10"
             />
           </div>
           <button
             type="button"
             onClick={runScan}
-            className="w-full rounded-xl bg-[#2C3E6B] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#3d5080]"
+            className="w-full rounded-xl bg-[#1E1B31] py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#5B66A1]"
           >
             Start analysis
           </button>
@@ -2005,13 +2005,13 @@ export function FaceScanFlow({
             <div className="relative mb-10 flex h-48 w-48 items-center justify-center sm:h-56 sm:w-56">
               {/* Ripple ring 1 */}
               <motion.span
-                className="absolute inset-0 rounded-full border border-[#2C3E6B]/25"
+                className="absolute inset-0 rounded-full border border-[#1E1B31]/25"
                 animate={{ scale: [1, 1.35, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               />
               {/* Ripple ring 2 — offset for continuous feel */}
               <motion.span
-                className="absolute inset-0 rounded-full border border-[#2C3E6B]/20"
+                className="absolute inset-0 rounded-full border border-[#1E1B31]/20"
                 animate={{ scale: [1, 1.55, 1], opacity: [0.4, 0, 0.4] }}
                 transition={{
                   duration: 4,
@@ -2026,15 +2026,15 @@ export function FaceScanFlow({
                 animate={{
                   scale: [1, 1.15, 1],
                   boxShadow: [
-                    "0 0 40px 0 rgba(44,62,107,0.15)",
-                    "0 0 80px 8px rgba(44,62,107,0.35)",
-                    "0 0 40px 0 rgba(44,62,107,0.15)",
+                    "0 0 40px 0 rgba(30, 27, 49,0.15)",
+                    "0 0 80px 8px rgba(30, 27, 49,0.35)",
+                    "0 0 40px 0 rgba(30, 27, 49,0.15)",
                   ],
                 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 style={{
                   background:
-                    "radial-gradient(circle at 30% 30%, #4A5F92 0%, #2C3E6B 55%, #1E2A4D 100%)",
+                    "radial-gradient(circle at 30% 30%, #4A5F92 0%, #1E1B31 55%, #1E2A4D 100%)",
                 }}
               >
                 <Sparkles
@@ -2044,7 +2044,7 @@ export function FaceScanFlow({
               </motion.div>
             </div>
 
-            <p className="text-2xl font-bold text-[#2C3E6B] sm:text-3xl">
+            <p className="text-2xl font-bold text-[#1E1B31] sm:text-3xl">
               Take a deep breath.
             </p>
             <p className="mt-3 max-w-xs text-base text-[#6B7280] sm:text-lg">
@@ -2101,14 +2101,14 @@ export function FaceScanFlow({
                 <button
                   type="button"
                   onClick={() => setReportOpen(true)}
-                  className="w-full rounded-xl border border-white/60 bg-white/50 px-6 py-3 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition hover:bg-white/80 sm:w-auto"
+                  className="w-full rounded-xl border border-white/60 bg-white/50 px-6 py-3 text-sm font-semibold text-[#1E1B31] backdrop-blur-sm transition hover:bg-white/80 sm:w-auto"
                 >
                   View report again
                 </button>
                 <button
                   type="button"
                   onClick={resetScan}
-                  className="w-full rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#3d5080] sm:w-auto"
+                  className="w-full rounded-xl bg-[#1E1B31] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#5B66A1] sm:w-auto"
                 >
                   Scan again
                 </button>

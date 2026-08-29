@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 
 const plistPaths = [
-  path.join(__dirname, "../ios/SkinnFit/Info.plist"),
+  path.join(__dirname, "../ios/SkinFit/Info.plist"),
   path.join(__dirname, "../ios/mobile/Info.plist"),
 ];
 

@@ -136,18 +136,18 @@ export function buildMonthlyInsightHtml(monthly: MonthlyInsightExportData): stri
 <meta name="viewport" content="width=device-width"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#2C3E6B;background:#F4F7FB;padding:20px;line-height:1.5}
-  .brand-k{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#3d5080}
-  .brand-t{font-family:Georgia,serif;font-size:26px;font-weight:500;color:#1E3264;margin-top:4px}
+  body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1E1B31;background:#F4F7FB;padding:20px;line-height:1.5}
+  .brand-k{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#5B66A1}
+  .brand-t{font-family:Georgia,serif;font-size:26px;font-weight:500;color:#242A5F;margin-top:4px}
   .meta{margin-top:10px;font-size:12px;color:#52525b}
   .meta strong{color:${NAVY}}
-  .hero{margin-top:16px;padding:16px;border-radius:18px;background:linear-gradient(135deg,#1E3264 0%,#2C3E6B 55%,#3d5080 100%);color:#fff}
+  .hero{margin-top:16px;padding:16px;border-radius:18px;background:linear-gradient(135deg,#242A5F 0%,#1E1B31 55%,#5B66A1 100%);color:#fff}
   .score-k{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72)}
   .score-v{font-size:40px;font-weight:800;line-height:1;margin-top:4px}
   .hero-title{margin-top:14px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.72)}
   .hero-body{margin-top:6px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.94)}
-  .card{margin-top:12px;padding:14px;border-radius:16px;border:1px solid rgba(44,62,107,.12);background:#fff}
-  .kicker{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#3d5080}
+  .card{margin-top:12px;padding:14px;border-radius:16px;border:1px solid rgba(30, 27, 49,.12);background:#fff}
+  .kicker{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#5B66A1}
   .list{margin:10px 0 0 1.1rem;font-size:12px;color:#3f3f46}
   .list li{margin-top:7px}
   .empty{margin-top:8px;font-size:12px;color:#71717a}

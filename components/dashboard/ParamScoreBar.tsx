@@ -21,13 +21,13 @@ export function ParamScoreBar({ value, className = "" }: Props) {
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className="h-2 w-full max-w-[90px] overflow-hidden rounded-full bg-[rgba(44,62,107,0.12)]">
+      <div className="h-2 w-full max-w-[90px] overflow-hidden rounded-full bg-[rgba(30, 27, 49,0.12)]">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#2C3E6B]"
+          className="h-full rounded-full bg-gradient-to-r from-[#5B7BA8] to-[#1E1B31]"
           style={{ width: `${width}%` }}
         />
       </div>
-      <span className="min-w-[28px] text-right text-[11px] font-semibold tabular-nums text-[#2C3E6B]">
+      <span className="min-w-[28px] text-right text-[11px] font-semibold tabular-nums text-[#1E1B31]">
         {typeof value === "number" ? `${scoreOutOfTen(value)}/10` : "–"}
       </span>
     </div>

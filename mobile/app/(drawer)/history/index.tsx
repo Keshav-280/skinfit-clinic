@@ -68,7 +68,7 @@ type HistoryPayload = {
   scoresUnlocked?: boolean;
 };
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const GREEN_ACCENT = "#16a34a";
 const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
@@ -461,7 +461,7 @@ function HistoryAudioPlayButton({ uri }: { uri: string }) {
   );
 }
 
-const BG = "#E8EFE6";
+const BG = "#F0EAE2";
 
 const styles = StyleSheet.create({
   header: {

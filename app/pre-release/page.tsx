@@ -67,7 +67,7 @@ export default function PreReleasePage() {
       {/* Ambient background */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(44,62,107,0.12),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(30, 27, 49,0.12),transparent)]"
       />
       <div
         aria-hidden
@@ -75,7 +75,7 @@ export default function PreReleasePage() {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-16 bottom-1/4 h-64 w-64 rounded-full bg-[#2C3E6B]/10 blur-3xl"
+        className="pointer-events-none absolute -left-16 bottom-1/4 h-64 w-64 rounded-full bg-[#1E1B31]/10 blur-3xl"
       />
 
       <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12 md:py-16">
@@ -103,16 +103,16 @@ export default function PreReleasePage() {
           transition={{ duration: 0.55, delay: 0.08, ease: easeOut }}
           className="mb-8 max-w-lg text-center"
         >
-          <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[#3d5080]">
+          <p className="font-meta mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[#5B66A1]">
             Early access
           </p>
-          <h1 className="text-[1.75rem] font-extrabold leading-[1.15] tracking-tight text-[#1E3264] sm:text-4xl md:text-[2.75rem]">
+          <h1 className="font-headline text-[1.75rem] font-extrabold leading-[1.15] tracking-tight text-[#242A5F] sm:text-4xl md:text-[2.75rem]">
             Be among the{" "}
-            <span className="bg-gradient-to-r from-[#2C3E6B] to-[#1E3264] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#1E1B31] to-[#242A5F] bg-clip-text text-transparent">
               first
             </span>
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-[#3d5080] md:text-base">
+          <p className="mt-4 text-[15px] leading-relaxed text-[#5B66A1] md:text-base">
             Register for early access to SkinFit Wellness. We&apos;ll notify you
             when the app is available.
           </p>
@@ -125,7 +125,7 @@ export default function PreReleasePage() {
           transition={{ duration: 0.55, delay: 0.16, ease: easeOut }}
           className="w-full max-w-md"
         >
-          <div className="overflow-hidden rounded-2xl border border-[#2C3E6B]/8 bg-white shadow-[0_24px_64px_-24px_rgba(30,50,100,0.28)]">
+          <div className="overflow-hidden rounded-2xl border border-[#1E1B31]/8 bg-white shadow-[0_24px_64px_-24px_rgba(30,50,100,0.28)]">
             <AnimatePresence mode="wait">
               {submitted ? (
                 <motion.div
@@ -136,13 +136,13 @@ export default function PreReleasePage() {
                   transition={{ duration: 0.3 }}
                   className="flex flex-col items-center px-8 py-10 text-center"
                 >
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#2C3E6B] text-white shadow-md shadow-[#2C3E6B]/25">
+                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#1E1B31] text-white shadow-md shadow-[#1E1B31]/25">
                     <CheckCircle2 className="h-7 w-7" strokeWidth={2} />
                   </div>
-                  <h2 className="text-lg font-bold text-[#1E3264]">
+                  <h2 className="text-lg font-bold text-[#242A5F]">
                     You&apos;re registered
                   </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-[#3d5080]">
+                  <p className="mt-2 text-sm leading-relaxed text-[#5B66A1]">
                     {successMessage ??
                       `A confirmation has been sent to ${email}. We'll notify you when SkinFit Wellness is available.`}
                   </p>
@@ -169,12 +169,12 @@ export default function PreReleasePage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Email address"
                       disabled={loading}
-                      className="min-w-0 flex-1 rounded-xl border-0 bg-[#F7F8F9] px-4 py-3.5 text-[15px] text-[#1E3264] outline-none transition placeholder:text-[#8391A1] focus:ring-2 focus:ring-[#2C3E6B]/20 disabled:opacity-60"
+                      className="min-w-0 flex-1 rounded-xl border-0 bg-[#F7F8F9] px-4 py-3.5 text-[15px] text-[#242A5F] outline-none transition placeholder:text-[#8391A1] focus:ring-2 focus:ring-[#1E1B31]/20 disabled:opacity-60"
                     />
                     <button
                       type="submit"
                       disabled={loading}
-                      className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1E3264] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B] disabled:cursor-not-allowed disabled:opacity-70 sm:px-6"
+                      className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E1B31] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#242A5F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E1B31] disabled:cursor-not-allowed disabled:opacity-70 sm:px-6"
                     >
                       {loading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -210,10 +210,10 @@ export default function PreReleasePage() {
           {PERKS.map((perk) => (
             <div
               key={perk.label}
-              className="flex items-center gap-2 text-sm text-[#3d5080]"
+              className="flex items-center gap-2 text-sm text-[#5B66A1]"
             >
               <perk.icon
-                className="h-4 w-4 text-[#2C3E6B]/70"
+                className="h-4 w-4 text-[#1E1B31]/70"
                 strokeWidth={2}
                 aria-hidden
               />

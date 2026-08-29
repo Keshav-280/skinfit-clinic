@@ -7,7 +7,7 @@ import {
   routineStepSubtitle,
 } from "@/src/lib/routine";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const GREEN = "#16a34a";
 
 function ProgressRing({
@@ -77,12 +77,12 @@ export function RoutineStepList({
   const isNight = variant === "night";
   const ringAccent = isNight ? "stroke-violet-300" : "stroke-amber-300";
   const stepBadgeDone = "bg-[#16a34a]";
-  const stepBadgeIdle = "bg-[#2C3E6B]";
+  const stepBadgeIdle = "bg-[#1E1B31]";
 
   return (
     <div className="flex flex-col gap-4">
       <div
-        className="rounded-[20px] px-4 py-4 text-white shadow-[0_10px_28px_-8px_rgba(44,62,107,0.35)]"
+        className="rounded-[20px] px-4 py-4 text-white shadow-[0_10px_28px_-8px_rgba(30, 27, 49,0.35)]"
         style={{ backgroundColor: NAVY }}
       >
         <div className="flex items-center gap-3">
@@ -132,7 +132,7 @@ export function RoutineStepList({
                 className={`flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition active:scale-[0.99] ${
                   done
                     ? "border-[#16a34a]/25 bg-[#f0fdf4]/80"
-                    : "border-[#E5E7EB] bg-white shadow-[0_2px_10px_-4px_rgba(44,62,107,0.12)]"
+                    : "border-[#E5E7EB] bg-white shadow-[0_2px_10px_-4px_rgba(30, 27, 49,0.12)]"
                 }`}
               >
                 <span

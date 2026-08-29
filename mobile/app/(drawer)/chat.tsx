@@ -105,7 +105,7 @@ const CONTACTS: {
 }[] = [
   {
     id: "ai",
-    name: "SkinnFit AI Assistant",
+    name: "SkinFit AI Assistant",
     short: "AI",
     subtitle: "Instant answers about skincare & your scans",
     icon: "sparkles",
@@ -132,7 +132,7 @@ const CONTACTS: {
   },
 ];
 
-const AI_GREETING = "Hi! I'm SkinnFit AI Assistant. How can I help you today?";
+const AI_GREETING = "Hi! I'm SkinFit AI Assistant. How can I help you today?";
 
 function visibleHomeRows(rows: HomeConversation[]): HomeConversation[] {
   return AI_CHATBOT_ENABLED ? rows : rows.filter((row) => row.id !== "ai");

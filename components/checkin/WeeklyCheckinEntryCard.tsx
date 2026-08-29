@@ -39,7 +39,7 @@ export function WeeklyCheckinEntryCard({
   summary,
 }: WeeklyCheckinEntryCardProps) {
   return (
-    <div className="relative overflow-hidden rounded-[24px] bg-kai-paper shadow-[0_10px_30px_-16px_rgba(44,62,107,0.25)]">
+    <div className="relative overflow-hidden rounded-[24px] bg-kai-paper shadow-[0_10px_30px_-16px_rgba(30, 27, 49,0.25)]">
       {completed ? (
         <Leaf
           className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 rotate-[15deg] text-[#8FAE86]/25"
@@ -147,9 +147,9 @@ export function WeeklyCheckinEntryCard({
             <motion.div
               animate={{
                 boxShadow: [
-                  "0 4px 14px -4px rgba(45,62,107,0.35)",
-                  "0 4px 22px -2px rgba(45,62,107,0.6)",
-                  "0 4px 14px -4px rgba(45,62,107,0.35)",
+                  "0 4px 14px -4px rgba(30, 27, 49,0.35)",
+                  "0 4px 22px -2px rgba(30, 27, 49,0.6)",
+                  "0 4px 14px -4px rgba(30, 27, 49,0.35)",
                 ],
               }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -157,7 +157,7 @@ export function WeeklyCheckinEntryCard({
             >
               <Link
                 href="/dashboard/maintain/checkin"
-                className="group inline-flex w-full items-center justify-center gap-1 rounded-[12px] bg-kai-navy py-3.5 text-[13.5px] font-semibold text-white transition hover:bg-[#243456]"
+                className="group inline-flex w-full items-center justify-center gap-1 rounded-[12px] bg-kai-navy py-3.5 text-[13.5px] font-semibold text-white transition hover:bg-[#242A5F]"
               >
                 Start check-in
                 <motion.span

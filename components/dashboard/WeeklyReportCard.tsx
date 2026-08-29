@@ -85,7 +85,7 @@ export function WeeklyReportCard({
 
   return (
     <section className={`${DASHBOARD_SECTION_CARD} ${className}`}>
-      <h3 className="text-lg font-bold text-[#2D3E6B]">Weekly insight</h3>
+      <h3 className="text-lg font-bold text-[#1E1B31]">Weekly insight</h3>
       <p className="mt-0.5 text-[13px] text-[#64748B]">
         {locked ? "7 days after your first scan" : dateRange}
       </p>
@@ -98,7 +98,7 @@ export function WeeklyReportCard({
           <p className="text-sm font-semibold text-[#64748B]">
             Your first weekly summary unlocks around
           </p>
-          <p className="mt-1 text-[15px] font-bold text-[#2D3E6B]">
+          <p className="mt-1 text-[15px] font-bold text-[#1E1B31]">
             {nextInsightAt
               ? formatInsightDate(nextInsightAt)
               : "7 days after your first scan"}
@@ -115,7 +115,7 @@ export function WeeklyReportCard({
                 {scoresUnlocked ? "Your skin score" : "Your skin grade"}
               </p>
               <p className="mt-0.5 flex items-end gap-1">
-                <span className="text-[32px] font-extrabold leading-none text-[#2D3E6B]">
+                <span className="text-[32px] font-extrabold leading-none text-[#1E1B31]">
                   {kaiView.kaiPrimary}
                 </span>
               </p>
@@ -168,8 +168,8 @@ export function WeeklyReportCard({
                       className={`rounded-xl border p-3 ${accent.bg} ${accent.border}`}
                     >
                       <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-[#2D3E6B]" aria-hidden />
-                        <span className="text-[13px] font-bold text-[#2D3E6B]">
+                        <Icon className="h-4 w-4 text-[#1E1B31]" aria-hidden />
+                        <span className="text-[13px] font-bold text-[#1E1B31]">
                           {friendlyObservationTitle(item.source)}
                         </span>
                       </div>
@@ -205,10 +205,10 @@ export function WeeklyReportCard({
                     className="rounded-xl border border-[#e2e8f0] bg-white p-3"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e0e7ff] text-[11px] font-bold text-[#2D3E6B]">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e0e7ff] text-[11px] font-bold text-[#1E1B31]">
                         {i + 1}
                       </span>
-                      <p className="text-sm font-bold text-[#2D3E6B]">{action.title}</p>
+                      <p className="text-sm font-bold text-[#1E1B31]">{action.title}</p>
                     </div>
                     {action.do ? (
                       <div className="mt-2 flex items-start gap-2 pl-7">

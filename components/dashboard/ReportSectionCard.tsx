@@ -21,7 +21,7 @@ export function ReportSectionCard({
   icon: Icon,
   title,
   summary,
-  accentColor = "#2C3E6B",
+  accentColor = "#1E1B31",
   children,
   staggerIndex = 0,
   defaultOpen = false,
@@ -38,11 +38,11 @@ export function ReportSectionCard({
         ease: easeOut,
         delay: staggerIndex * 0.05,
       }}
-      className="overflow-hidden rounded-[20px] border border-[rgba(44,62,107,0.10)] bg-white/[0.92] px-4 py-4 shadow-[0_12px_32px_-12px_rgba(44,62,107,0.18)] sm:px-5 sm:py-5"
+      className="overflow-hidden rounded-[20px] border border-[rgba(30, 27, 49,0.10)] bg-white/[0.92] px-4 py-4 shadow-[0_12px_32px_-12px_rgba(30, 27, 49,0.18)] sm:px-5 sm:py-5"
     >
       <button
         type="button"
-        className="flex w-full items-start gap-3 rounded-xl p-1 text-left transition-colors hover:bg-[#F5F3EF] -m-1"
+        className="flex w-full items-start gap-3 rounded-xl p-1 text-left transition-colors hover:bg-[#FAF8F5] -m-1"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
@@ -56,11 +56,11 @@ export function ReportSectionCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-[15px] font-bold leading-snug text-[#2C3E6B]">
+            <h3 className="text-[15px] font-bold leading-snug text-[#1E1B31]">
               {title}
             </h3>
             <ChevronDown
-              className={`mt-0.5 h-4 w-4 shrink-0 text-[#2C3E6B] transition-transform duration-300 ${
+              className={`mt-0.5 h-4 w-4 shrink-0 text-[#1E1B31] transition-transform duration-300 ${
                 open ? "rotate-180" : ""
               }`}
               aria-hidden
@@ -69,7 +69,7 @@ export function ReportSectionCard({
           <p className="mt-1.5 text-[13px] leading-relaxed text-[#6B7280]">
             {summary}
           </p>
-          <span className="mt-2 inline-block text-xs font-semibold text-[#2C3E6B]">
+          <span className="mt-2 inline-block text-xs font-semibold text-[#1E1B31]">
             {open ? "Show less" : "Read more"}
           </span>
         </div>
@@ -86,7 +86,7 @@ export function ReportSectionCard({
             transition={{ duration: 0.3, ease: easeOut }}
             className="overflow-hidden"
           >
-            <div className="mt-4 border-t border-[rgba(44,62,107,0.08)] pt-4">
+            <div className="mt-4 border-t border-[rgba(30, 27, 49,0.08)] pt-4">
               {children}
             </div>
           </motion.div>

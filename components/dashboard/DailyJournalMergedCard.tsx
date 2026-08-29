@@ -118,14 +118,14 @@ export function DailyJournalMergedCard({
                 {formatSleep(sleepHours)}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#2C3E6B]" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#1E1B31]" />
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               aria-label="Decrease sleep"
               onClick={() => adjustSleep(-0.5)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#2C3E6B] transition hover:bg-white/80"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#1E1B31] transition hover:bg-white/80"
             >
               <Minus className="h-4 w-4" />
             </button>
@@ -133,7 +133,7 @@ export function DailyJournalMergedCard({
               type="button"
               aria-label="Increase sleep"
               onClick={() => adjustSleep(0.5)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#2C3E6B] transition hover:bg-white/80"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#1E1B31] transition hover:bg-white/80"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -156,14 +156,14 @@ export function DailyJournalMergedCard({
                 {formatWaterLiters(waterGlasses, 1)} L
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#2C3E6B]" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#1E1B31]" />
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               aria-label="Decrease hydration"
               onClick={() => adjustWater(-1)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#2C3E6B] transition hover:bg-white/80"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#1E1B31] transition hover:bg-white/80"
             >
               <Minus className="h-4 w-4" />
             </button>
@@ -171,7 +171,7 @@ export function DailyJournalMergedCard({
               type="button"
               aria-label="Increase hydration"
               onClick={() => adjustWater(1)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#2C3E6B] transition hover:bg-white/80"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#1E1B31] transition hover:bg-white/80"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -198,14 +198,14 @@ export function DailyJournalMergedCard({
                 {stressLevel}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#2C3E6B]" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-[#1E1B31]" />
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               aria-label="Decrease stress level"
               onClick={() => adjustStress(-1)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#2C3E6B] transition hover:bg-white/80"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#1E1B31] transition hover:bg-white/80"
             >
               <Minus className="h-4 w-4" />
             </button>
@@ -213,7 +213,7 @@ export function DailyJournalMergedCard({
               type="button"
               aria-label="Increase stress level"
               onClick={() => adjustStress(1)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#2C3E6B] transition hover:bg-white/80"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/50 text-[#1E1B31] transition hover:bg-white/80"
             >
               <Plus className="h-4 w-4" />
             </button>

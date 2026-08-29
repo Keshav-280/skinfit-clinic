@@ -3,51 +3,91 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f5;
+  --foreground: #1e1b31;
+  --skinfit-ink: #1e1b31;
+  --skinfit-midnight: #242a5f;
+  --skinfit-blush: #df9da4;
+  --skinfit-canvas: #faf8f5;
+  --skinfit-linen: #f0eae2;
+  --skinfit-sand: #dccfc0;
+  --skinfit-rose-pale: #f8edee;
+  --skinfit-rose-soft: #efccce;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-skinfit-navy: #2c3e6b;
-  --color-skinfit-navy-dark: #1e3264;
-  --color-skinfit-navy-mid: #3d5080;
-  --color-skinfit-mint: #e8efe6;
-  --color-skinfit-mint-deep: #dce8d4;
-  --color-skinfit-sage: #d6e4d0;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-noto-serif), ui-serif, Georgia, "Times New Roman", serif;
+  --font-display: var(--font-tenor), var(--font-noto-serif), ui-serif, Georgia, serif;
+  --font-condensed: var(--font-barlow), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-script: var(--font-birthstone), cursive;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --color-skinfit-navy: #1e1b31;
+  --color-skinfit-navy-dark: #242a5f;
+  --color-skinfit-navy-mid: #5b66a1;
+  --color-skinfit-mint: #f0eae2;
+  --color-skinfit-mint-deep: #dccfc0;
+  --color-skinfit-sage: #f0eae2;
+  --color-skinfit-blush: #df9da4;
+  --color-skinfit-canvas: #faf8f5;
+  --color-skinfit-linen: #f0eae2;
+  --color-skinfit-sand: #dccfc0;
+  --color-skinfit-rose-pale: #f8edee;
 
-  /* kAI report system (Aug 2026) */
-  --color-kai-navy: #2b3757;
-  --color-kai-navy-deep: #1e2840;
-  --color-kai-navy-mid: #3b4a70;
-  --color-kai-sage: #eef3ec;
-  --color-kai-sage-2: #e4ebe1;
-  --color-kai-paper: #fbfcfa;
-  --color-kai-ink: #1a2035;
-  --color-kai-ink-2: #5b6478;
-  --color-kai-ink-3: #8b93a4;
-  --color-kai-rule: #dde3da;
-  --color-kai-accent: #e07a3e;
+  /* kAI report system — brand indigo + rose surfaces */
+  --color-kai-navy: #1e1b31;
+  --color-kai-navy-deep: #242a5f;
+  --color-kai-navy-mid: #5b66a1;
+  --color-kai-sage: #f8edee;
+  --color-kai-sage-2: #efccce;
+  --color-kai-paper: #faf8f5;
+  --color-kai-ink: #1e1b31;
+  --color-kai-ink-2: #5b66a1;
+  --color-kai-ink-3: #a8aecd;
+  --color-kai-rule: #dccfc0;
+  --color-kai-accent: #df9da4;
   --color-kai-good: #4e9b72;
   --color-kai-mid: #d4a03f;
   --color-kai-low: #c4694f;
-  --color-kai-track: #d6dce4;
+  --color-kai-track: #e4e6f0;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #faf8f5;
+    --foreground: #1e1b31;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--skinfit-canvas);
+  color: var(--skinfit-ink);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-noto-serif), ui-serif, Georgia, serif;
+}
+
+.font-headline {
+  font-family: var(--font-noto-serif), ui-serif, Georgia, serif;
+}
+
+.font-tenor {
+  font-family: var(--font-tenor), var(--font-noto-serif), ui-serif, Georgia, serif;
+}
+
+.font-meta {
+  font-family: var(--font-barlow), var(--font-inter), ui-sans-serif, sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.font-script {
+  font-family: var(--font-birthstone), cursive;
 }
 
 /* Doctor portal: soft ivory shell + Inter → Estoire → system fallbacks */
@@ -59,46 +99,46 @@ body {
 
 [data-doctor-portal] {
   color-scheme: light;
-  color: #0f172a;
-  background: linear-gradient(180deg, #f4f2e8 0%, #f6f4eb 50%, #faf8f4 100%);
+  color: #1e1b31;
+  background: linear-gradient(180deg, #f0eae2 0%, #faf8f5 50%, #f8edee 100%);
   min-height: 100vh;
 }
 
 /* Patient onboarding — warm gray, ignore OS dark mode body bleed. */
 [data-onboarding-shell] {
   color-scheme: light;
-  color: #1f2a44;
-  background-color: #f5f3ef;
+  color: #1e1b31;
+  background-color: #faf8f5;
   background-image: none;
   min-height: 100dvh;
 }
 
 [data-pre-release-shell] {
   color-scheme: light;
-  color: #1f2a44;
-  background-color: #d6e4d0;
-  background-image: linear-gradient(180deg, #d6e4d0 0%, #e0eada 45%, #eaf0e6 100%);
+  color: #1e1b31;
+  background-color: #f0eae2;
+  background-image: linear-gradient(180deg, #f8edee 0%, #faf8f5 45%, #f0eae2 100%);
   min-height: 100dvh;
 }
 
 @media (prefers-color-scheme: dark) {
   [data-onboarding-shell] {
-    background-color: #f5f3ef;
+    background-color: #faf8f5;
     background-image: none;
-    color: #1f2a44;
+    color: #1e1b31;
   }
 
   [data-pre-release-shell] {
-    background-color: #d6e4d0;
-    background-image: linear-gradient(180deg, #d6e4d0 0%, #e0eada 45%, #eaf0e6 100%);
-    color: #1f2a44;
+    background-color: #f0eae2;
+    background-image: linear-gradient(180deg, #f8edee 0%, #faf8f5 45%, #f0eae2 100%);
+    color: #1e1b31;
   }
 }
 
 @media (prefers-color-scheme: dark) {
   [data-doctor-portal] {
-    background: linear-gradient(180deg, #f4f2e8 0%, #f6f4eb 50%, #faf8f4 100%);
-    color: #0f172a;
+    background: linear-gradient(180deg, #f0eae2 0%, #faf8f5 50%, #f8edee 100%);
+    color: #1e1b31;
   }
 }
 
@@ -214,10 +254,10 @@ body {
 @keyframes camera-icon-breathe {
   0%,
   100% {
-    box-shadow: 0 8px 20px -10px rgba(44, 62, 107, 0.4), 0 0 0 0 rgba(96, 130, 214, 0.35);
+    box-shadow: 0 8px 20px -10px rgba(30, 27, 49, 0.4), 0 0 0 0 rgba(223, 157, 164, 0.35);
   }
   50% {
-    box-shadow: 0 8px 20px -10px rgba(44, 62, 107, 0.4), 0 0 14px 6px rgba(96, 130, 214, 0.45);
+    box-shadow: 0 8px 20px -10px rgba(30, 27, 49, 0.4), 0 0 14px 6px rgba(223, 157, 164, 0.45);
   }
 }
 .camera-icon-breathe {
@@ -377,15 +417,15 @@ body {
     0 1px 0 #D8DCE3,
     0 2px 0 #D8DCE3,
     0 3px 0 #D8DCE3,
-    0 12px 30px rgba(45, 62, 107, 0.06);
+    0 12px 30px rgba(30, 27, 49, 0.06);
 }
 
 .shadow-3d-navy {
   box-shadow: 
-    0 1px 0 #1D2A4D,
-    0 2px 0 #1D2A4D,
-    0 3px 0 #1D2A4D,
-    0 12px 36px rgba(45, 62, 107, 0.25);
+    0 1px 0 #1E1B31,
+    0 2px 0 #1E1B31,
+    0 3px 0 #1E1B31,
+    0 12px 36px rgba(30, 27, 49, 0.25);
 }
 
 /* Bulletproof responsive camera viewfinder dimensions */

@@ -162,7 +162,7 @@ export default function ForgotPasswordPage() {
                 setSentHint(null);
               }}
               disabled={busy}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
               placeholder="you@example.com"
             />
           </div>
@@ -171,7 +171,7 @@ export default function ForgotPasswordPage() {
             type="button"
             onClick={sendCode}
             disabled={busy || resendSeconds > 0}
-            className="flex w-full items-center justify-center rounded-full border border-[#2C3E6B] px-5 py-3 text-base font-medium text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center rounded-full border border-[#1E1B31] px-5 py-3 text-base font-medium text-[#1E1B31] transition hover:bg-[#1E1B31]/5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sendLoading
               ? "Sending…"
@@ -201,7 +201,7 @@ export default function ForgotPasswordPage() {
                 setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
               }
               disabled={busy}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
               placeholder="6-digit code"
             />
           </div>
@@ -221,7 +221,7 @@ export default function ForgotPasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={busy}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
                 placeholder="At least 8 characters"
               />
               <button
@@ -255,7 +255,7 @@ export default function ForgotPasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={busy}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20"
                 placeholder="Repeat password"
               />
               <button
@@ -281,7 +281,7 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={busy}
-            className="flex w-full items-center justify-center rounded-full bg-[#2C3E6B] px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-[#3d5080] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center rounded-full bg-[#1E1B31] px-5 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-[#5B66A1] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {resetLoading ? "Updating…" : "Reset password"}
           </button>

@@ -17,7 +17,7 @@ export function DashboardPageHeader({
 }) {
   return (
     <header className={`${patientGlassShell} px-6 py-6 text-center`}>
-      <h1 className="text-2xl font-extrabold tracking-tight text-[#2C3E6B] sm:text-3xl">
+      <h1 className="text-2xl font-extrabold tracking-tight text-[#1E1B31] sm:text-3xl">
         {title}
       </h1>
       {subtitle ? (

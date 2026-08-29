@@ -151,7 +151,7 @@ const voiceVolumeStyles = StyleSheet.create({
   trackFill: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(44, 62, 107, 0.18)",
+    backgroundColor: "rgba(30, 27, 49, 0.18)",
   },
   thumb: {
     position: "absolute",

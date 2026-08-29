@@ -7,20 +7,20 @@ export default function OnboardingLayout() {
     <OnboardingResumeGate>
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: "#E8EFE6" },
-          headerTintColor: "#2C3E6B",
-          headerTitleStyle: { fontWeight: "700", color: "#2C3E6B" },
+          headerStyle: { backgroundColor: "#F0EAE2" },
+          headerTintColor: "#1E1B31",
+          headerTitleStyle: { fontWeight: "700", color: "#1E1B31" },
           headerShadowVisible: false,
-          contentStyle: { backgroundColor: "#E8EFE6" },
+          contentStyle: { backgroundColor: "#F0EAE2" },
         }}
       >
         <Stack.Screen
           name="kai-intro"
-          options={{ headerShown: false, contentStyle: { backgroundColor: "#D6E4D0" } }}
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#DCCFC0" } }}
         />
         <Stack.Screen
           name="capture-intro"
-          options={{ headerShown: false, contentStyle: { backgroundColor: "#D6E4D0" } }}
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#DCCFC0" } }}
         />
         <Stack.Screen
           name="capture"
@@ -28,11 +28,11 @@ export default function OnboardingLayout() {
         />
         <Stack.Screen
           name="baseline-report"
-          options={{ headerShown: false, contentStyle: { backgroundColor: "#E8EFE6" } }}
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#F0EAE2" } }}
         />
         <Stack.Screen
           name="questionnaire"
-          options={{ headerShown: false, contentStyle: { backgroundColor: "#E8EFE6" } }}
+          options={{ headerShown: false, contentStyle: { backgroundColor: "#F0EAE2" } }}
         />
       </Stack>
     </OnboardingResumeGate>

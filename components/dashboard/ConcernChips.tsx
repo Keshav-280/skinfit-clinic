@@ -80,8 +80,8 @@ function Chip({
       onClick={onClick}
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition ${
         selected
-          ? "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-sm"
-          : "border-[rgba(44,62,107,0.18)] bg-white text-[#2C3E6B] hover:border-[rgba(44,62,107,0.35)]"
+          ? "border-[#1E1B31] bg-[#1E1B31] text-white shadow-sm"
+          : "border-[rgba(30, 27, 49,0.18)] bg-white text-[#1E1B31] hover:border-[rgba(30, 27, 49,0.35)]"
       }`}
     >
       {dotColor ? (

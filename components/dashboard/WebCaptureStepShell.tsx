@@ -295,7 +295,7 @@ export function WebCaptureStepShell({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/80 shadow-[0_16px_48px_-20px_rgba(44,62,107,0.35)] ring-1 ring-[#2C3E6B]/10 sm:rounded-3xl"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/80 shadow-[0_16px_48px_-20px_rgba(30, 27, 49,0.35)] ring-1 ring-[#1E1B31]/10 sm:rounded-3xl"
       style={{ backgroundColor: CAPTURE_BG }}
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2 sm:px-3 sm:py-2">
@@ -303,7 +303,7 @@ export function WebCaptureStepShell({
           <button
             type="button"
             onClick={onBack}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#2C3E6B] transition hover:bg-white/70"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#1E1B31] transition hover:bg-white/70"
             aria-label="Back to scan options"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -331,7 +331,7 @@ export function WebCaptureStepShell({
                   step={0.04}
                   value={voiceVolume}
                   onChange={(e) => onVoiceVolumeChange(parseFloat(e.target.value))}
-                  className="h-1 min-w-0 flex-1 accent-[#2C3E6B]"
+                  className="h-1 min-w-0 flex-1 accent-[#1E1B31]"
                   aria-label="Voice guide volume"
                 />
               </label>
@@ -341,8 +341,8 @@ export function WebCaptureStepShell({
               onClick={onToggleVoice}
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
                 voiceEnabled
-                  ? "border-[#2C3E6B]/15 bg-[#2C3E6B] text-white"
-                  : "border-[#2C3E6B]/10 bg-white text-[#2C3E6B]"
+                  ? "border-[#1E1B31]/15 bg-[#1E1B31] text-white"
+                  : "border-[#1E1B31]/10 bg-white text-[#1E1B31]"
               }`}
               aria-pressed={voiceEnabled}
               aria-label={voiceEnabled ? "Mute voice guide" : "Enable voice guide"}
@@ -360,7 +360,7 @@ export function WebCaptureStepShell({
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
                   showDebug
                     ? "border-emerald-600/20 bg-emerald-600 text-white"
-                    : "border-[#2C3E6B]/10 bg-white text-[#2C3E6B]"
+                    : "border-[#1E1B31]/10 bg-white text-[#1E1B31]"
                 }`}
                 aria-pressed={showDebug}
                 aria-label={showDebug ? "Hide capture debug" : "Show capture debug"}

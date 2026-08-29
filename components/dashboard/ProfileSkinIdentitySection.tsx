@@ -70,13 +70,13 @@ function EvolvingField({
   return (
     <div className={`${patientInnerCard} p-3`}>
       <div className="flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
           <Icon className="h-4 w-4" />
         </span>
-        <p className="text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/60">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/60">{label}</p>
         <span
           className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-            changed ? "bg-[#2C3E6B]/15 text-[#2C3E6B]" : "bg-white/60 text-[#6B7280]"
+            changed ? "bg-[#1E1B31]/15 text-[#1E1B31]" : "bg-white/60 text-[#6B7280]"
           }`}
         >
           {changed ? "Evolved" : "Stable"}
@@ -87,14 +87,14 @@ function EvolvingField({
           <span className="text-[9px] font-semibold uppercase tracking-wide text-[#6B7280]">Initial</span>
           <span className="text-sm font-semibold text-[#374151]">{fmt(initial, formatter)}</span>
         </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-[#2C3E6B]/40" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-[#1E1B31]/40" />
         <div className="flex flex-col">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-[#2C3E6B]/70">Now</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-[#1E1B31]/70">Now</span>
           <span className="text-sm font-bold text-[#1A1A2E]">{fmt(current, formatter)}</span>
         </div>
       </div>
       <p className="mt-2 text-[11px] leading-snug text-[#6B7280]">
-        <span className="font-semibold text-[#2C3E6B]/80">why:</span> {rationale}
+        <span className="font-semibold text-[#1E1B31]/80">why:</span> {rationale}
       </p>
     </div>
   );
@@ -138,7 +138,7 @@ export function ProfileSkinIdentitySection({ embedded = false }: { embedded?: bo
   if (loading) {
     return (
       <div className="flex items-center gap-3 py-2">
-        <Loader2 className="h-5 w-5 animate-spin text-[#2C3E6B]" />
+        <Loader2 className="h-5 w-5 animate-spin text-[#1E1B31]" />
         <p className={`${patientMuted}`}>Loading skin identity…</p>
       </div>
     );
@@ -164,14 +164,14 @@ export function ProfileSkinIdentitySection({ embedded = false }: { embedded?: bo
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className={patientKicker}>Time-aware</p>
-            <h3 className="text-base font-bold text-[#2C3E6B]">
+            <h3 className="text-base font-bold text-[#1E1B31]">
               {data.user.name}&apos;s evolving profile
             </h3>
             <p className={`mt-0.5 text-xs ${patientMuted}`}>
               Initial {initial.asOfDate} → current {current.asOfDate} · {current.dataDepth.scansConsidered} scans · {current.dataDepth.logsConsidered} logs
             </p>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#2C3E6B]/10 px-2.5 py-1 text-xs font-bold text-[#2C3E6B]">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#1E1B31]/10 px-2.5 py-1 text-xs font-bold text-[#1E1B31]">
             {changed.length} field{changed.length > 1 ? "s" : ""} evolved
           </span>
         </div>
@@ -193,14 +193,14 @@ export function ProfileSkinIdentitySection({ embedded = false }: { embedded?: bo
         <EvolvingField label="Hormonal correlation" initial={initial.hormonalCorrelation} current={current.hormonalCorrelation} rationale={current.signals.hormonalCorrelation} icon={Activity} />
       </div>
       {false && changed.length > 0 ? (
-        <div className="mt-3 rounded-xl border border-[#2C3E6B]/15 bg-[#E8EFE6]/50 p-3">
+        <div className="mt-3 rounded-xl border border-[#1E1B31]/15 bg-[#F0EAE2]/50 p-3">
           <p className={patientKicker}>What changed since initial analysis</p>
           <ul className="mt-1.5 space-y-1 text-sm text-[#374151]">
             {changed.map((c, i) => (
               <li key={i} className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">{c.field}:</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]">{c.field}:</span>
                 <span className="text-[#6B7280]">{String(c.from ?? "—")}</span>
-                <ChevronRight className="h-3.5 w-3.5 text-[#2C3E6B]/40" />
+                <ChevronRight className="h-3.5 w-3.5 text-[#1E1B31]/40" />
                 <span className="font-semibold text-[#1A1A2E]">{String(c.to ?? "—")}</span>
               </li>
             ))}

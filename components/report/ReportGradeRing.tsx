@@ -57,7 +57,7 @@ export function ReportGradeRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={glass ? "rgba(255,255,255,0.28)" : "rgba(44,62,107,0.12)"}
+          stroke={glass ? "rgba(255,255,255,0.28)" : "rgba(30, 27, 49,0.12)"}
           strokeWidth={stroke}
         />
         <circle
@@ -132,7 +132,7 @@ export function MiniGradeRing({ grade, fill, size = 42 }: MiniGradeRingProps) {
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="rgba(44,62,107,0.12)"
+          stroke="rgba(30, 27, 49,0.12)"
           strokeWidth={stroke}
         />
         <circle

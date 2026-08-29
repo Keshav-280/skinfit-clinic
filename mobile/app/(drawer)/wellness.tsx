@@ -2,8 +2,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const NAVY = "#2C3E6B";
-const NAVY_DARK = "#1E3264";
+const NAVY = "#1E1B31";
+const NAVY_DARK = "#242A5F";
 
 export default function WellnessScreen() {
   return (
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    backgroundColor: "#F5F3EF",
+    backgroundColor: "#FAF8F5",
   },
   header: {
     height: 240,
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     flex: 1,
-    backgroundColor: "#F5F3EF",
+    backgroundColor: "#FAF8F5",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     marginTop: -20,

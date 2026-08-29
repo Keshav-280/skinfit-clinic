@@ -717,7 +717,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       padding: 14px 12px 12px;
       border-radius: 22px;
       border: 1px solid rgba(255,255,255,0.72);
-      box-shadow: 0 24px 48px -16px rgba(44,62,107,0.24), inset 0 1px 0 rgba(255,255,255,0.95);
+      box-shadow: 0 24px 48px -16px rgba(30, 27, 49,0.24), inset 0 1px 0 rgba(255,255,255,0.95);
       overflow: hidden;
       background: linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(248,251,255,0.88) 100%);
     }
@@ -733,7 +733,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       font-weight: 600;
       letter-spacing: 0.22em;
       text-transform: uppercase;
-      color: rgba(44,62,107,0.7);
+      color: rgba(30, 27, 49,0.7);
       margin: 0 0 20px;
     }
     .cap-single { text-align: center; margin-top: 8px; }
@@ -898,10 +898,10 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       vertical-align: middle;
       padding: 6px 4px;
       border-radius: 12px;
-      border: 1px solid rgba(44,62,107,0.1);
+      border: 1px solid rgba(30, 27, 49,0.1);
       background: #fff;
     }
-    .six-label { font-size: 9px; font-weight: 600; text-align: center; color: #2C3E6B; line-height: 1.2; margin-bottom: 4px; }
+    .six-label { font-size: 9px; font-weight: 600; text-align: center; color: #1E1B31; line-height: 1.2; margin-bottom: 4px; }
     .six-row { display: flex; align-items: center; justify-content: center; gap: 4px; }
     .six-pct { font-size: 10px; font-weight: 600; color: #27272a; }
 
@@ -951,13 +951,13 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       padding: 12px 14px;
       background: #fff;
       border-radius: 20px;
-      border: 1px solid rgba(44,62,107,0.12);
-      box-shadow: 0 24px 48px -12px rgba(44,62,107,0.15);
+      border: 1px solid rgba(30, 27, 49,0.12);
+      box-shadow: 0 24px 48px -12px rgba(30, 27, 49,0.15);
     }
     .skin-row { display: table; width: 100%; }
     .skin-col-text { display: table-cell; vertical-align: middle; width: 55%; }
     .skin-col-donut { display: table-cell; vertical-align: middle; text-align: right; }
-    .skin-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(44,62,107,0.7); }
+    .skin-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(30, 27, 49,0.7); }
     .skin-big { font-family: Georgia, 'Times New Roman', serif; font-size: 2rem; font-weight: 500; line-height: 1; color: ${T.peach}; margin-top: 4px; }
     .skin-sub { margin-top: 8px; font-size: 12px; font-weight: 500; color: #71717a; }
     .donut-ring {
@@ -972,7 +972,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .teal {
       margin-top: 12px;
       padding: 14px 12px 16px;
-      border-top: 1px solid rgba(44,62,107,0.12);
+      border-top: 1px solid rgba(30, 27, 49,0.12);
       background: linear-gradient(180deg, ${T.navy} 0%, ${T.navyMid} 100%);
     }
     .teal-rule {
@@ -994,9 +994,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       border-radius: 20px;
       border: 1px solid rgba(255,255,255,0.72);
       background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,255,0.92) 52%, rgba(232,239,248,0.88) 100%);
-      box-shadow: 0 16px 36px -18px rgba(44,62,107,0.28), inset 0 1px 0 rgba(255,255,255,0.95);
+      box-shadow: 0 16px 36px -18px rgba(30, 27, 49,0.28), inset 0 1px 0 rgba(255,255,255,0.95);
     }
-    .tr-kicker { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #3d5080; margin: 0; }
+    .tr-kicker { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #5B66A1; margin: 0; }
     .tr-onboarding-focus-intro { font-size: 12px; line-height: 1.5; color: #52525b; margin: 8px 0 0; }
     .tr-hook { font-family: Georgia, 'Times New Roman', serif; font-size: 1.35rem; font-weight: 500; line-height: 1.2; color: #18181b; margin: 8px 0 0; }
     .tr-stats {
@@ -1005,9 +1005,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       gap: 8px;
       margin-top: 12px;
     }
-    .tr-stat { flex: 1; padding: 8px 6px; border-radius: 12px; border: 1px solid rgba(44,62,107,0.12); background: rgba(255,255,255,0.9); }
-    .tr-stat-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: #3d5080; margin: 0; }
-    .tr-stat-v { font-size: 16px; font-weight: 600; color: #2C3E6B; margin: 4px 0 0; }
+    .tr-stat { flex: 1; padding: 8px 6px; border-radius: 12px; border: 1px solid rgba(30, 27, 49,0.12); background: rgba(255,255,255,0.9); }
+    .tr-stat-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: #5B66A1; margin: 0; }
+    .tr-stat-v { font-size: 16px; font-weight: 600; color: #1E1B31; margin: 4px 0 0; }
     .tr-insight, .tr-prediction { margin-top: 10px; font-size: 11px; line-height: 1.45; color: #52525b; }
     .tr-subhead { font-size: 12px; font-weight: 600; color: #18181b; margin: 10px 0 6px; }
     .tr-pills { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1015,17 +1015,17 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       display: inline-block;
       padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(44,62,107,0.14);
+      border: 1px solid rgba(30, 27, 49,0.14);
       background: #fff;
       font-size: 11px;
       font-weight: 600;
-      color: #2C3E6B;
+      color: #1E1B31;
     }
     .tr-inset {
       margin-top: 10px;
       padding: 10px;
       border-radius: 12px;
-      border: 1px solid rgba(44,62,107,0.12);
+      border: 1px solid rgba(30, 27, 49,0.12);
       background: rgba(255,255,255,0.9);
     }
     .tr-param-row {
@@ -1037,11 +1037,11 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       margin-top: 6px;
     }
     .tr-param-label { font-weight: 500; color: #3f3f46; }
-    .tr-param-bar { height: 8px; border-radius: 999px; background: rgba(44,62,107,0.12); overflow: hidden; }
+    .tr-param-bar { height: 8px; border-radius: 999px; background: rgba(30, 27, 49,0.12); overflow: hidden; }
     .tr-param-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, ${R.barFrom}, ${R.barTo}); }
-    .tr-param-val { text-align: right; font-weight: 600; color: #2C3E6B; }
+    .tr-param-val { text-align: right; font-weight: 600; color: #1E1B31; }
     .tr-param-delta { text-align: right; }
-    .tr-delta-up { color: #2C3E6B; }
+    .tr-delta-up { color: #1E1B31; }
     .tr-delta-down { color: #5B7BA8; }
     .tr-delta-flat { color: #a1a1aa; }
     .tr-causes { list-style: none; padding: 0; margin: 0; }
@@ -1051,14 +1051,14 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       margin-top: 8px;
       padding: 10px;
       border-radius: 12px;
-      border: 1px solid rgba(44,62,107,0.12);
+      border: 1px solid rgba(30, 27, 49,0.12);
       background: rgba(255,255,255,0.92);
     }
-    .tr-resource-title, .resource-title { font-size: 12px; font-weight: 600; color: #2C3E6B; margin: 0; }
+    .tr-resource-title, .resource-title { font-size: 12px; font-weight: 600; color: #1E1B31; margin: 0; }
     .tr-resource-meta, .resource-meta { font-size: 10px; color: #71717a; margin: 4px 0 0; }
     .tr-resource-url, .resource-url { font-size: 10px; color: #52525b; word-break: break-all; margin: 4px 0 0; }
     .tr-focus-list { list-style: none; padding: 0; margin: 8px 0 0; }
-    .tr-focus-item { margin-top: 8px; padding: 10px; border-radius: 12px; border: 1px solid rgba(44,62,107,0.12); background: rgba(255,255,255,0.9); }
+    .tr-focus-item { margin-top: 8px; padding: 10px; border-radius: 12px; border: 1px solid rgba(30, 27, 49,0.12); background: rgba(255,255,255,0.9); }
     .tr-focus-title { font-size: 12px; font-weight: 600; color: #18181b; margin: 0; }
     .tr-focus-rank {
       display: inline-flex;
@@ -1067,8 +1067,8 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: rgba(44,62,107,0.1);
-      color: #2C3E6B;
+      background: rgba(30, 27, 49,0.1);
+      color: #1E1B31;
       font-size: 10px;
       font-weight: 700;
       margin-right: 6px;
@@ -1076,7 +1076,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     .tr-focus-detail { font-size: 11px; line-height: 1.45; color: #52525b; margin: 4px 0 0; }
 
     .sec3 { padding: 8px 12px 10px; }
-    .sec3-title { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase; color: #2C3E6B; margin: 0; }
+    .sec3-title { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase; color: #1E1B31; margin: 0; }
     .resource-grid { margin-top: 12px; }
     .vid-box {
       border-radius: 12px;
@@ -1210,7 +1210,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     <div class="foot avoid-break">
       <div class="foot-grid">
         <div class="foot-text">
-          <div class="foot-line1">SkinnFit Wellness Clinic · AI-powered dermatology insights</div>
+          <div class="foot-line1">SkinFit Wellness · AI-powered dermatology insights</div>
           <div class="foot-line2">${esc(clinicAddress)}</div>
           <div class="foot-line2">${esc(clinicPhone)} · ${esc(clinicEmail)}</div>
           <div class="foot-line3">${esc(clinicWebsite)} · Instagram ${esc(clinicInstagram)} · ${esc(clinicLinkedIn)}</div>

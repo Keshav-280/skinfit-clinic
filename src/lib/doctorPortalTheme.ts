@@ -1,12 +1,12 @@
 /** Doctor portal theme (server-safe — no "use client"). */
 
-export const DOCTOR_NAVY = "#2C3E6B";
+export const DOCTOR_NAVY = "#1E1B31";
 
 /** Portal shell background — soft ivory. */
-export const DOCTOR_IVORY = "#F6F4EB";
-export const DOCTOR_IVORY_FROM = "#F4F2E8";
-export const DOCTOR_IVORY_MID = "#F6F4EB";
-export const DOCTOR_IVORY_TO = "#FAF8F4";
+export const DOCTOR_IVORY = "#FAF8F5";
+export const DOCTOR_IVORY_FROM = "#F0EAE2";
+export const DOCTOR_IVORY_MID = "#FAF8F5";
+export const DOCTOR_IVORY_TO = "#FAF8F5";
 
 /** @deprecated use DOCTOR_IVORY_* — kept for imports that still reference sage names. */
 export const DOCTOR_SAGE_FROM = DOCTOR_IVORY_FROM;
@@ -29,7 +29,7 @@ function ivoryDarken(hex: string, percent: number): string {
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** Page shell (#F6F4EB) → panel ~5.5% darker → field ~5.5% darker again. Same hue. */
+/** Page shell (#FAF8F5) → panel ~5.5% darker → field ~5.5% darker again. Same hue. */
 export const DOCTOR_IVORY_PATIENTS_PANEL = ivoryDarken(DOCTOR_IVORY, 5.5); // #e8e7de
 export const DOCTOR_IVORY_FIELD = ivoryDarken(DOCTOR_IVORY_PATIENTS_PANEL, 5.5); // #dbdad2
 export const DOCTOR_IVORY_TILE = "#F2E9D8";
@@ -50,17 +50,17 @@ export const doctorIvoryCardClass =
 
 /** Doctor profile page — labels and hints on ivory card. */
 export const doctorProfileLabelClass =
-  "mb-1.5 block text-sm font-semibold text-[#2C3E6B]";
+  "mb-1.5 block text-sm font-semibold text-[#1E1B31]";
 
-export const doctorProfileHintClass = "text-xs text-[#2C3E6B]/55";
+export const doctorProfileHintClass = "text-xs text-[#1E1B31]/55";
 
 /** Soft-white inputs on darker ivory panels — shadow lift, navy text. */
 export const doctorIvoryFieldSoftClass =
-  "rounded-xl bg-white/95 text-[#2C3E6B] placeholder:text-[#2C3E6B]/50 shadow-[0_1px_2px_rgba(72,64,48,0.06),0_2px_8px_rgba(72,64,48,0.05)]";
+  "rounded-xl bg-white/95 text-[#1E1B31] placeholder:text-[#1E1B31]/50 shadow-[0_1px_2px_rgba(72,64,48,0.06),0_2px_8px_rgba(72,64,48,0.05)]";
 
 /** Inputs on ivory patient-detail cards — semi-transparent white so panel shows through. */
 export const doctorPatientPageFormInputClass =
-  "w-full rounded-lg bg-white/70 px-3 py-2 text-sm text-[#2C3E6B] shadow-[inset_0_0_0_1px_rgba(44,62,107,0.12)] placeholder:text-[#2C3E6B]/40 outline-none focus:bg-white/85 focus:shadow-[inset_0_0_0_1px_rgba(44,62,107,0.35),0_0_0_2px_rgba(44,62,107,0.12)]";
+  "w-full rounded-lg bg-white/70 px-3 py-2 text-sm text-[#1E1B31] shadow-[inset_0_0_0_1px_rgba(30, 27, 49,0.12)] placeholder:text-[#1E1B31]/40 outline-none focus:bg-white/85 focus:shadow-[inset_0_0_0_1px_rgba(30, 27, 49,0.35),0_0_0_2px_rgba(30, 27, 49,0.12)]";
 /** @deprecated use doctorPatientPageFormInputClass */
 export const doctorScheduleFormInputClass = doctorPatientPageFormInputClass;
 
@@ -68,24 +68,24 @@ export const doctorScheduleFormInputClass = doctorPatientPageFormInputClass;
 export const doctorProfileFieldClass = doctorPatientPageFormInputClass;
 
 export const doctorProfileFieldReadOnlyClass =
-  `${doctorPatientPageFormInputClass} cursor-default text-[#2C3E6B]/70`;
+  `${doctorPatientPageFormInputClass} cursor-default text-[#1E1B31]/70`;
 
 /** Patients directory — ~5.5% darker than page ivory, same hue. */
 export const doctorPatientsPanelClass =
   `rounded-2xl bg-[#E8E7DE] ${IVORY_SHADOW_MD}`;
 
 /** Clinic calendar — deep navy panel. */
-export const DOCTOR_CALENDAR_BG = "#1A2342";
-export const DOCTOR_CALENDAR_SURFACE = "#243356";
+export const DOCTOR_CALENDAR_BG = "#1E1B31";
+export const DOCTOR_CALENDAR_SURFACE = "#242A5F";
 export const DOCTOR_CALENDAR_ACCENT = DOCTOR_NAVY;
-export const DOCTOR_CALENDAR_ACCENT_MID = "#3d5080";
+export const DOCTOR_CALENDAR_ACCENT_MID = "#5B66A1";
 export const DOCTOR_CALENDAR_IVORY = DOCTOR_IVORY_TILE;
 
 /** @deprecated use DOCTOR_CALENDAR_BG */
 export const DOCTOR_IVORY_CALENDAR_PANEL = DOCTOR_CALENDAR_BG;
 
 export const doctorCalendarPanelClass =
-  "rounded-2xl bg-[#1A2342] text-zinc-100 shadow-[0_4px_20px_rgba(26,35,66,0.35),0_12px_32px_rgba(26,35,66,0.25)]";
+  "rounded-2xl bg-[#1E1B31] text-zinc-100 shadow-[0_4px_20px_rgba(26,35,66,0.35),0_12px_32px_rgba(26,35,66,0.25)]";
 
 /** Patient grid tile / list row on patients panel. */
 export const doctorPatientTileClass =
@@ -102,7 +102,7 @@ export const doctorPatientListRowUrgentClass =
 
 /** Search / filters inside patients panel. */
 export const doctorIvoryFieldClass =
-  `rounded-xl border border-[#2C3E6B] bg-[#DBDAD2] ${IVORY_SHADOW_SM} text-[#2C3E6B] placeholder:text-[#2C3E6B]/55`;
+  `rounded-xl border border-[#1E1B31] bg-[#DBDAD2] ${IVORY_SHADOW_SM} text-[#1E1B31] placeholder:text-[#1E1B31]/55`;
 
 export const doctorIvoryToggleShellClass =
   "inline-flex rounded-lg bg-[#DBDAD2] p-0.5 shadow-[inset_0_1px_3px_rgba(72,64,48,0.10)]";
@@ -111,7 +111,7 @@ export const doctorIvoryToggleOnClass =
   "bg-[#F2E9D8] text-slate-800 shadow-[0_1px_2px_rgba(72,64,48,0.08)]";
 
 export const doctorPortalShellClass =
-  "min-h-screen bg-[#F6F4EB] bg-gradient-to-b from-[#F4F2E8] via-[#F6F4EB] to-[#FAF8F4]";
+  "min-h-screen bg-[#FAF8F5] bg-gradient-to-b from-[#F0EAE2] via-[#FAF8F5] to-[#FAF8F5]";
 
 /** Compact header icon buttons — icon-only on mobile, label from sm+. */
 export const doctorHeaderBellBtnClass =
@@ -119,21 +119,21 @@ export const doctorHeaderBellBtnClass =
 
 /** Top portal bar — mostly opaque so header controls stay readable. */
 export const doctorGlassHeaderClass =
-  "border-b border-slate-200/70 bg-[#F6F4EB]/90 shadow-[0_4px_20px_rgba(15,23,42,0.05)] backdrop-blur-md";
+  "border-b border-slate-200/70 bg-[#FAF8F5]/90 shadow-[0_4px_20px_rgba(15,23,42,0.05)] backdrop-blur-md";
 
 /** Sticky in-page tab strip — no extra card behind tab buttons. */
 export const doctorStickyTabsClass =
-  "sticky z-10 border-b border-[#2C3E6B]/10 pb-3 pt-1";
+  "sticky z-10 border-b border-[#1E1B31]/10 pb-3 pt-1";
 
 export const doctorGlassSidebarClass =
-  "border-r border-slate-200/60 bg-[#F6F4EB]/88 backdrop-blur-md";
+  "border-r border-slate-200/60 bg-[#FAF8F5]/88 backdrop-blur-md";
 
 /** Main content cards on ivory shell (patient detail, etc.). */
 export const doctorCardClass =
   `rounded-2xl bg-[#E8E7DE] ${IVORY_SHADOW_MD}`;
 
 /** Patient detail hero header — flat navy shell, white stat tiles inside. */
-export const doctorPatientHeaderClass = "rounded-2xl bg-[#2C3E6B] text-white";
+export const doctorPatientHeaderClass = "rounded-2xl bg-[#1E1B31] text-white";
 
 /** Patient detail overview tabs — outer container (~5.5% darker than page ivory). */
 export const DOCTOR_PATIENT_PAGE_BG = DOCTOR_IVORY_PATIENTS_PANEL;
@@ -163,43 +163,43 @@ export const doctorPatientPagePanelClass =
 export const doctorSchedulePanelClass = doctorPatientPagePanelClass;
 
 const NAVY_PANEL_SHADOW =
-  "shadow-[0_4px_20px_rgba(26,35,66,0.28),0_8px_24px_rgba(44,62,107,0.18)]";
+  "shadow-[0_4px_20px_rgba(26,35,66,0.28),0_8px_24px_rgba(30, 27, 49,0.18)]";
 
 /** Navy panels (routine tab, etc.) — less white, portal accent. */
 export const doctorPatientPageNavyPanelClass =
-  `rounded-xl bg-[#2C3E6B] text-white ${NAVY_PANEL_SHADOW}`;
+  `rounded-xl bg-[#1E1B31] text-white ${NAVY_PANEL_SHADOW}`;
 
-export const doctorPatientPageNavyInsetClass = "rounded-lg bg-[#243356] p-2";
+export const doctorPatientPageNavyInsetClass = "rounded-lg bg-[#242A5F] p-2";
 
 export const doctorPatientPageNavyRowClass = "rounded-md bg-[#354878]/55";
 
 /** Primary action on navy panels — ivory pill. */
 export const doctorPatientPageNavyBtnPrimaryClass =
-  "inline-flex items-center gap-1.5 rounded-lg bg-[#F2E9D8] px-2.5 text-xs font-semibold text-[#2C3E6B] transition hover:bg-white disabled:opacity-50";
+  "inline-flex items-center gap-1.5 rounded-lg bg-[#F2E9D8] px-2.5 text-xs font-semibold text-[#1E1B31] transition hover:bg-white disabled:opacity-50";
 
 /** Secondary action on navy panels. */
 export const doctorPatientPageNavyBtnGhostClass =
   "inline-flex items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-2.5 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-50";
 
 /** Light navy tint inset on white patient-detail panels. */
-export const doctorPatientPageAccentInsetClass = "rounded-lg bg-[#2C3E6B]/8 p-2";
+export const doctorPatientPageAccentInsetClass = "rounded-lg bg-[#1E1B31]/8 p-2";
 
-export const doctorPatientPageAccentRowClass = "rounded-md bg-[#F6F4EB]/70";
+export const doctorPatientPageAccentRowClass = "rounded-md bg-[#FAF8F5]/70";
 
 /** AM/PM routine columns — no outer border; divider sits between columns. */
 export const doctorRoutineAmPmColumnClass = "min-w-0 space-y-1.5";
 
 /** Compact primary button (icon + label, no clipped text). */
 export const doctorBtnPrimarySmClass =
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#2C3E6B] px-3 py-2 text-xs font-semibold leading-normal text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#1E1B31] px-3 py-2 text-xs font-semibold leading-normal text-white shadow-sm transition hover:bg-[#242A5F] disabled:opacity-50";
 
 /** Secondary button on ivory / white panels. */
 export const doctorPatientPageGhostBtnClass =
-  "inline-flex items-center gap-1.5 rounded-lg border border-[#2C3E6B]/18 bg-white px-2.5 text-xs font-semibold text-[#2C3E6B] transition hover:bg-[#F6F4EB] disabled:opacity-50";
+  "inline-flex items-center gap-1.5 rounded-lg border border-[#1E1B31]/18 bg-white px-2.5 text-xs font-semibold text-[#1E1B31] transition hover:bg-[#FAF8F5] disabled:opacity-50";
 
 /** Navy chip + white icon (visit notes form, history cards). */
 export const doctorNavyIconChipClass =
-  "flex shrink-0 items-center justify-center rounded-md bg-[#2C3E6B] text-white";
+  "flex shrink-0 items-center justify-center rounded-md bg-[#1E1B31] text-white";
 
 export const doctorVisitNoteFieldIconShellClass =
   `mt-1.5 h-7 w-7 ${doctorNavyIconChipClass}`;
@@ -212,27 +212,27 @@ export const doctorVisitRowClass = doctorPatientPageRowClass;
 
 /** Empty / placeholder blocks on ivory panels. */
 export const doctorEmptyStateClass =
-  "rounded-xl border border-dashed border-[#2C3E6B]/12 bg-[#DBDAD2]/50 text-center text-sm text-slate-600";
+  "rounded-xl border border-dashed border-[#1E1B31]/12 bg-[#DBDAD2]/50 text-center text-sm text-slate-600";
 
 /** Floating menus (alerts, messages) — fully opaque over page content. */
 export const doctorDropdownClass =
   "rounded-2xl border border-slate-200 bg-white shadow-lg";
 
 export const doctorInsetStripClass =
-  "border-t border-[#2C3E6B]/10 bg-[#DBDAD2]/70";
+  "border-t border-[#1E1B31]/10 bg-[#DBDAD2]/70";
 
 export const doctorBtnPrimaryClass =
-  "rounded-lg bg-[#2C3E6B] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243356] disabled:opacity-50";
+  "rounded-lg bg-[#1E1B31] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#242A5F] disabled:opacity-50";
 
 export const doctorFormInputClass =
-  "w-full rounded-lg bg-white/95 px-3 py-2 text-sm text-[#2C3E6B] shadow-[0_1px_2px_rgba(72,64,48,0.06),0_2px_8px_rgba(72,64,48,0.05)] placeholder:text-[#2C3E6B]/40 outline-none focus:ring-2 focus:ring-[#2C3E6B]/20";
+  "w-full rounded-lg bg-white/95 px-3 py-2 text-sm text-[#1E1B31] shadow-[0_1px_2px_rgba(72,64,48,0.06),0_2px_8px_rgba(72,64,48,0.05)] placeholder:text-[#1E1B31]/40 outline-none focus:ring-2 focus:ring-[#1E1B31]/20";
 
 export const doctorFormInputSmClass =
-  "w-full rounded bg-white/95 px-1 py-0.5 text-xs text-[#2C3E6B] shadow-[0_1px_2px_rgba(72,64,48,0.05)] placeholder:text-[#2C3E6B]/40 outline-none focus:ring-1 focus:ring-[#2C3E6B]/20";
+  "w-full rounded bg-white/95 px-1 py-0.5 text-xs text-[#1E1B31] shadow-[0_1px_2px_rgba(72,64,48,0.05)] placeholder:text-[#1E1B31]/40 outline-none focus:ring-1 focus:ring-[#1E1B31]/20";
 
 /** Pre-treatment form panel — navy accent on ivory stack. */
 export const doctorPanelPreClass =
-  `rounded-xl bg-[#2C3E6B]/10 p-4 ${IVORY_SHADOW_SM}`;
+  `rounded-xl bg-[#1E1B31]/10 p-4 ${IVORY_SHADOW_SM}`;
 
 /** Post-treatment form panel. */
 export const doctorPanelPostClass =

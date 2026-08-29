@@ -110,9 +110,9 @@ export default function HydrationTrackerPage() {
           href="/dashboard"
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/60 bg-white/35 backdrop-blur-sm transition-colors hover:bg-white/60"
         >
-          <ArrowLeft className="h-5 w-5 text-[#2C3E6B]" />
+          <ArrowLeft className="h-5 w-5 text-[#1E1B31]" />
         </Link>
-        <h1 className="text-xl font-bold tracking-tight text-[#2C3E6B]">
+        <h1 className="text-xl font-bold tracking-tight text-[#1E1B31]">
           Hydration Tracker
         </h1>
         <div className="ml-auto flex items-center gap-2">
@@ -243,7 +243,7 @@ export default function HydrationTrackerPage() {
             <Minus className="h-4 w-4" />
           </button>
           <div className="text-center">
-            <span className="text-2xl font-bold text-[#2C3E6B]">
+            <span className="text-2xl font-bold text-[#1E1B31]">
               {intake.toFixed(1)}L
             </span>
             <span className="ml-2 text-sm text-gray-400">/ {GOAL}L goal</span>
@@ -262,7 +262,7 @@ export default function HydrationTrackerPage() {
         <div className="flex items-start gap-3">
           <Droplets className="mt-0.5 h-5 w-5 shrink-0 text-[#4F46E5]" />
           <p className="text-sm leading-relaxed text-gray-700">
-            <span className="font-semibold text-[#2C3E6B]">Tip:</span> Aim for 3L
+            <span className="font-semibold text-[#1E1B31]">Tip:</span> Aim for 3L
             daily for optimal skin hydration.
           </p>
         </div>

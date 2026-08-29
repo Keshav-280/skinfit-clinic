@@ -51,7 +51,7 @@ export default function TestAIPage() {
       />
       <label
         htmlFor="sandbox-upload"
-        className={`cursor-pointer bg-teal-500 hover:bg-teal-400 text-zinc-950 font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors ${isAnalyzing ? "pointer-events-none opacity-90" : ""}`}
+        className={`cursor-pointer bg-[#1E1B31] hover:bg-[#242A5F] text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors ${isAnalyzing ? "pointer-events-none opacity-90" : ""}`}
       >
         {isAnalyzing ? (
           <Loader2 className="h-5 w-5 animate-spin" />

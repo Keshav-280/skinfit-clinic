@@ -109,7 +109,7 @@ export function DoctorIconAction({
 }) {
   const styles =
     variant === "navy"
-      ? "bg-[#2C3E6B] text-white hover:bg-[#243356]"
+      ? "bg-[#1E1B31] text-white hover:bg-[#242A5F]"
       : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
   return (
     <button
@@ -130,7 +130,7 @@ export function DoctorIconField({
   label,
   children,
   className = "",
-  iconShellClassName = "mt-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/55 text-[#2C3E6B]",
+  iconShellClassName = "mt-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/55 text-[#1E1B31]",
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
@@ -160,7 +160,7 @@ export function DoctorIconDetail({
 }) {
   return (
     <div className="flex items-start gap-2" title={label}>
-      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[#2C3E6B]">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[#1E1B31]">
         <Icon className={DOCTOR_ICON_SM} aria-hidden />
       </span>
       <div className="min-w-0">
@@ -205,7 +205,7 @@ export function DoctorPageHeader({
   return (
     <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-[#2C3E6B]/70">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#1E1B31]/70">
           Staff portal
         </p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem]">
@@ -254,7 +254,7 @@ export function DoctorInlineLoader({
   const row = (
     <>
       <span
-        className="inline-block shrink-0 animate-spin rounded-full border-2 border-[#2C3E6B] border-t-transparent"
+        className="inline-block shrink-0 animate-spin rounded-full border-2 border-[#1E1B31] border-t-transparent"
         style={{ width: compact ? 14 : 16, height: compact ? 14 : 16 }}
         aria-hidden
       />
@@ -344,7 +344,7 @@ export function DoctorSegmentedTabs<T extends string>({
               iconOnly && iconOnlyCompact ? "flex-none" : "flex-1"
             } ${iconOnly ? "gap-0" : "gap-1.5"} ${
               isActive
-                ? "bg-[#2C3E6B] text-white shadow-sm"
+                ? "bg-[#1E1B31] text-white shadow-sm"
                 : "text-slate-600 hover:bg-white/55 hover:text-slate-900"
             }`}
           >

@@ -18,7 +18,7 @@ export function ScanReportPdfBackdrop() {
           className="absolute -right-20 -top-24 h-[22rem] w-[22rem] rounded-full sm:h-[26rem] sm:w-[26rem]"
           style={{
             background:
-              "radial-gradient(circle, rgba(44,62,107,0.16) 0%, rgba(44,62,107,0.06) 42%, transparent 72%)",
+              "radial-gradient(circle, rgba(30, 27, 49,0.16) 0%, rgba(30, 27, 49,0.06) 42%, transparent 72%)",
           }}
         />
         <div
@@ -39,14 +39,14 @@ export function ScanReportPdfBackdrop() {
           className="absolute inset-x-0 top-0 h-1.5"
           style={{
             background:
-              "linear-gradient(90deg, rgba(30,50,100,0) 0%, rgba(44,62,107,0.22) 50%, rgba(30,50,100,0) 100%)",
+              "linear-gradient(90deg, rgba(30,50,100,0) 0%, rgba(30, 27, 49,0.22) 50%, rgba(30,50,100,0) 100%)",
           }}
         />
         <div
           className="absolute inset-0 opacity-40"
           style={{
             backgroundImage:
-              "radial-gradient(rgba(44,62,107,0.09) 0.55px, transparent 0.55px)",
+              "radial-gradient(rgba(30, 27, 49,0.09) 0.55px, transparent 0.55px)",
             backgroundSize: "20px 20px",
           }}
         />
@@ -68,7 +68,7 @@ export function ScanReportPdfBackdrop() {
         <div
           className="absolute inset-0 opacity-[0.06]"
           style={{
-            backgroundImage: "radial-gradient(#2C3E6B 1.2px, transparent 0)",
+            backgroundImage: "radial-gradient(#1E1B31 1.2px, transparent 0)",
             backgroundSize: "24px 24px",
           }}
         />
@@ -76,7 +76,7 @@ export function ScanReportPdfBackdrop() {
         <div
           className="absolute -right-24 -top-24 h-[26rem] w-[26rem] rounded-full opacity-[0.12]"
           style={{
-            background: "radial-gradient(circle, #2C3E6B 0%, transparent 70%)",
+            background: "radial-gradient(circle, #1E1B31 0%, transparent 70%)",
           }}
         />
         <div
@@ -88,7 +88,7 @@ export function ScanReportPdfBackdrop() {
         <div
           className="absolute -bottom-16 right-[10%] h-[20rem] w-[20rem] rounded-full opacity-[0.1]"
           style={{
-            background: "radial-gradient(circle, #2C3E6B 0%, transparent 70%)",
+            background: "radial-gradient(circle, #1E1B31 0%, transparent 70%)",
           }}
         />
       </div>

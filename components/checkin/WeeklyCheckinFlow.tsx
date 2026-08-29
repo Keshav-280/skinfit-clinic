@@ -297,7 +297,7 @@ function CheckinCompletion({
   return (
     <motion.div
       className="fixed inset-0 z-50 flex flex-col items-center px-6"
-      animate={{ backgroundColor: settled ? "#F5F3EF" : "#2C3E6B" }}
+      animate={{ backgroundColor: settled ? "#FAF8F5" : "#1E1B31" }}
       transition={{ duration: 0.6, ease: easeOut }}
     >
       <div
@@ -326,7 +326,7 @@ function CheckinCompletion({
           >
             <motion.path
               d="M14 27l7 7 17-17"
-              stroke="#2C3E6B"
+              stroke="#1E1B31"
               strokeWidth={5}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -390,14 +390,14 @@ function CheckinCompletion({
           <button
             type="button"
             onClick={onBackToMaintain}
-            className="w-full rounded-2xl bg-[#2C3E6B] py-4 text-center text-[15px] font-bold text-white transition hover:bg-[#243456]"
+            className="w-full rounded-2xl bg-[#1E1B31] py-4 text-center text-[15px] font-bold text-white transition hover:bg-[#242A5F]"
           >
             Back to Maintain
           </button>
           <button
             type="button"
             onClick={onEdit}
-            className="w-full rounded-2xl border border-[#2C3E6B]/25 bg-white py-4 text-center text-[15px] font-bold text-[#2C3E6B] transition hover:bg-[#2C3E6B]/5"
+            className="w-full rounded-2xl border border-[#1E1B31]/25 bg-white py-4 text-center text-[15px] font-bold text-[#1E1B31] transition hover:bg-[#1E1B31]/5"
           >
             Edit answers
           </button>

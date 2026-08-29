@@ -12,14 +12,14 @@ export interface ButtonProps
 }
 
 const baseStyles =
-  "inline-flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-600 disabled:opacity-50 disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1E1B31] disabled:opacity-50 disabled:cursor-not-allowed";
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    "bg-teal-600 text-white hover:bg-teal-700 shadow-sm ring-offset-slate-50",
+    "bg-[#1E1B31] text-white hover:bg-[#242A5F] shadow-sm ring-offset-[#FAF8F5]",
   secondary:
-    "bg-white text-teal-700 border border-teal-100 hover:bg-teal-50 ring-offset-slate-50",
-  ghost: "bg-transparent text-teal-700 hover:bg-teal-50 ring-offset-slate-50",
+    "bg-white text-[#1E1B31] border border-[#EFCCCE] hover:bg-[#F8EDEE] ring-offset-[#FAF8F5]",
+  ghost: "bg-transparent text-[#1E1B31] hover:bg-[#F8EDEE] ring-offset-[#FAF8F5]",
 };
 
 const sizeStyles: Record<Size, string> = {

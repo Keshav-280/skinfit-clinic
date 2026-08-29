@@ -485,16 +485,16 @@ function appointmentStatusTone(status: string): string {
     return "bg-emerald-50 text-emerald-800 ring-emerald-200/70";
   }
   if (s === "confirmed" || s === "scheduled") {
-    return "bg-[#2C3E6B]/12 text-[#2C3E6B] ring-[#2C3E6B]/25";
+    return "bg-[#1E1B31]/12 text-[#1E1B31] ring-[#1E1B31]/25";
   }
-  return "bg-[#DBDAD2] text-[#2C3E6B] ring-[#2C3E6B]/15";
+  return "bg-[#DBDAD2] text-[#1E1B31] ring-[#1E1B31]/15";
 }
 
 type CareScheduleEvent = NonNullable<DetailJson["scheduleEvents"]>[number];
 
 function CareReminderRow({ event }: { event: CareScheduleEvent }) {
   const kind = event.eventKind ?? "general";
-  const badge = "bg-[#2C3E6B] text-white";
+  const badge = "bg-[#1E1B31] text-white";
 
   return (
     <li
@@ -607,17 +607,17 @@ function MonthlyReportPointList({
 
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold text-[#2C3E6B]">{title}</p>
+      <p className="mb-2 text-xs font-semibold text-[#1E1B31]">{title}</p>
       <ol className="space-y-2">
         {points.map((text, idx) => (
           <li key={`${listKey}-${idx}`} className="flex gap-2">
             <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#2C3E6B] text-[10px] font-bold tabular-nums text-white"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#1E1B31] text-[10px] font-bold tabular-nums text-white"
               aria-hidden
             >
               {idx + 1}
             </span>
-            <span className="min-w-0 flex-1 text-xs leading-relaxed text-[#2C3E6B]/85">
+            <span className="min-w-0 flex-1 text-xs leading-relaxed text-[#1E1B31]/85">
               {text}
             </span>
           </li>
@@ -651,7 +651,7 @@ function WellnessMetricPill({
 }) {
   return (
     <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/60 bg-white/75 px-2.5 py-2">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#2C3E6B]/8 text-[#2C3E6B]">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#1E1B31]/8 text-[#1E1B31]">
         <Icon className="h-3.5 w-3.5" aria-hidden />
       </span>
       <div className="min-w-0">
@@ -686,9 +686,9 @@ function WellnessRoutineBlock({
 
   const shell =
     tone === "am"
-      ? "border-[#2C3E6B]/15 bg-[#2C3E6B]/5"
+      ? "border-[#1E1B31]/15 bg-[#1E1B31]/5"
       : "border-white/50 bg-white/55";
-  const heading = "text-[#2C3E6B]";
+  const heading = "text-[#1E1B31]";
 
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${shell}`}>
@@ -739,14 +739,14 @@ function QuestionnaireAnswerCard({ row }: { row: QuestionnaireAnswerRow }) {
         isAlert
           ? "rounded-xl border border-rose-200/80 bg-rose-50/90 shadow-[0_1px_4px_rgba(72,64,48,0.06)]"
           : isNote
-            ? `${doctorPatientPagePanelClass} ring-1 ring-[#2C3E6B]/15`
+            ? `${doctorPatientPagePanelClass} ring-1 ring-[#1E1B31]/15`
             : doctorPatientPagePanelClass
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p
           className={`text-sm font-semibold ${
-            isAlert ? "text-rose-900" : "text-[#2C3E6B]"
+            isAlert ? "text-rose-900" : "text-[#1E1B31]"
           }`}
         >
           {display.title}
@@ -765,7 +765,7 @@ function QuestionnaireAnswerCard({ row }: { row: QuestionnaireAnswerRow }) {
           {display.tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full bg-[#2C3E6B]/8 px-2.5 py-0.5 text-xs font-medium text-slate-800"
+              className="rounded-full bg-[#1E1B31]/8 px-2.5 py-0.5 text-xs font-medium text-slate-800"
             >
               {tag}
             </li>
@@ -802,8 +802,8 @@ function WellnessLogCard({
 
   return (
     <li className={`overflow-hidden ${doctorPatientPagePanelClass}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/50 bg-[#2C3E6B]/5 px-4 py-2.5">
-        <p className="text-sm font-bold text-[#2C3E6B]">{formatWellnessDateYmd(log.dateYmd)}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/50 bg-[#1E1B31]/5 px-4 py-2.5">
+        <p className="text-sm font-bold text-[#1E1B31]">{formatWellnessDateYmd(log.dateYmd)}</p>
         <span
           className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
             routineDone
@@ -878,8 +878,8 @@ function WellnessLogCard({
         </div>
 
         {log.journalEntry?.trim() ? (
-          <div className="rounded-xl border border-[#2C3E6B]/10 bg-[#2C3E6B]/5 px-3 py-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/70">
+          <div className="rounded-xl border border-[#1E1B31]/10 bg-[#1E1B31]/5 px-3 py-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/70">
               Journal
             </p>
             <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
@@ -2012,7 +2012,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         <nav aria-label="Breadcrumb">
           <Link
             href="/doctor/patients"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2C3E6B] hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#1E1B31] hover:underline"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             All patients
@@ -2031,7 +2031,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         <nav aria-label="Breadcrumb">
           <Link
             href="/doctor/patients"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2C3E6B] hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#1E1B31] hover:underline"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             All patients
@@ -2143,7 +2143,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           <li>
             <Link
               href="/doctor/patients"
-              className="inline-flex items-center gap-1 font-medium text-[#2C3E6B] hover:underline"
+              className="inline-flex items-center gap-1 font-medium text-[#1E1B31] hover:underline"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Patients
@@ -2174,7 +2174,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
       <header className={`overflow-hidden ${doctorPatientHeaderClass}`}>
         <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-[#2C3E6B] shadow-sm">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-[#1E1B31] shadow-sm">
             {p.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
@@ -2294,7 +2294,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 aria-label={`${streakRatio}% of personal best streak`}
               >
                 <div
-                  className="h-full rounded-full bg-[#F6F4EB]/90 transition-[width]"
+                  className="h-full rounded-full bg-[#FAF8F5]/90 transition-[width]"
                   style={{ width: `${streakRatio}%` }}
                 />
               </div>
@@ -2404,7 +2404,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       {overviewSubTab === "schedule" && (
       <div className={`${doctorPatientPageCardClass} p-5`}>
         <div className="mb-4 flex items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
             <CalendarDays className="h-4 w-4" aria-hidden />
           </span>
           <h2 className="text-base font-semibold text-slate-900">Schedule</h2>
@@ -2412,7 +2412,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
         <div className="mb-6 grid gap-4 lg:grid-cols-2 lg:items-start">
         <div className={`space-y-3 ${doctorSchedulePanelClass} p-4`}>
-          <h3 className="text-sm font-semibold text-[#2C3E6B]">Book visit</h3>
+          <h3 className="text-sm font-semibold text-[#1E1B31]">Book visit</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -2526,7 +2526,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               {doctorApptBusy ? "Booking…" : "Book"}
             </button>
             {doctorApptFlash ? (
-              <p className="text-xs font-medium text-[#2C3E6B]" role="status">
+              <p className="text-xs font-medium text-[#1E1B31]" role="status">
                 {doctorApptFlash}
               </p>
             ) : null}
@@ -2534,10 +2534,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-[#2C3E6B]">Pre / post reminders</h3>
+            <h3 className="text-sm font-semibold text-[#1E1B31]">Pre / post reminders</h3>
             <div className="grid gap-4 sm:grid-cols-2">
           <div className={`${doctorSchedulePanelClass} p-3`}>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]">
               Pre
             </p>
             <div className="grid gap-2">
@@ -2597,14 +2597,14 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               {carePreBusy ? "…" : "Add pre"}
             </button>
             {carePreFlash ? (
-              <p className="mt-1 text-[10px] font-medium text-[#2C3E6B]" role="status">
+              <p className="mt-1 text-[10px] font-medium text-[#1E1B31]" role="status">
                 {carePreFlash}
               </p>
             ) : null}
           </div>
 
           <div className={`${doctorSchedulePanelClass} p-3`}>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]">
               Post
             </p>
             <div className="grid gap-2">
@@ -2664,7 +2664,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               {carePostBusy ? "…" : "Add post"}
             </button>
             {carePostFlash ? (
-              <p className="mt-1 text-[10px] font-medium text-[#2C3E6B]" role="status">
+              <p className="mt-1 text-[10px] font-medium text-[#1E1B31]" role="status">
                 {carePostFlash}
               </p>
             ) : null}
@@ -2674,7 +2674,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </div>
 
         <div className="mb-6">
-          <h3 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Visits</h3>
+          <h3 className="mb-3 text-sm font-semibold text-[#1E1B31]">Visits</h3>
           {(data.appointments ?? []).length === 0 ? (
             <p className="text-sm text-slate-500">No appointments on file.</p>
           ) : (
@@ -2685,7 +2685,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   className={`flex flex-wrap items-center justify-between gap-2 text-sm ${doctorVisitRowClass}`}
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <Calendar className="h-4 w-4 shrink-0 text-[#2C3E6B]" aria-hidden />
+                    <Calendar className="h-4 w-4 shrink-0 text-[#1E1B31]" aria-hidden />
                     <span className="font-medium tabular-nums text-slate-900">
                       {new Date(a.dateTime).toLocaleString()}
                     </span>
@@ -2705,13 +2705,13 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           )}
         </div>
 
-        <h3 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Reminders</h3>
+        <h3 className="mb-3 text-sm font-semibold text-[#1E1B31]">Reminders</h3>
         {scheduleEvents.length === 0 ? (
           <p className="text-sm text-slate-500">None yet.</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]">
                 Pre
               </p>
               {preCareEvents.length === 0 ? (
@@ -2725,7 +2725,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               )}
             </div>
             <div>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]">
                 Post
               </p>
               {postCareEvents.length === 0 ? (
@@ -2758,7 +2758,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       {overviewSubTab === "wellness" && (
       <div className={`${doctorPatientPageCardClass} p-5`}>
         <div className="mb-4 flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
             <HeartPulse className="h-5 w-5" aria-hidden />
           </span>
           <div>
@@ -2793,7 +2793,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
       {overviewSubTab === "scans" && (
       <div className={`${doctorPatientPageCardClass} space-y-4 p-5`}>
-        <div className="flex items-center justify-between gap-2 border-b border-[#2C3E6B]/10 pb-3">
+        <div className="flex items-center justify-between gap-2 border-b border-[#1E1B31]/10 pb-3">
           <button
             type="button"
             className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -2803,14 +2803,14 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             <span className={`h-7 w-7 rounded-lg ${doctorNavyIconChipClass}`}>
               <ScanFace className="h-3.5 w-3.5" aria-hidden />
             </span>
-            <span className="text-sm font-semibold text-[#2C3E6B]">Scans</span>
+            <span className="text-sm font-semibold text-[#1E1B31]">Scans</span>
             {scansLoaded && (data.scans ?? []).length > 0 ? (
-              <span className="rounded-full bg-[#2C3E6B] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
+              <span className="rounded-full bg-[#1E1B31] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
                 {(data.scans ?? []).length}
               </span>
             ) : null}
             <ChevronDown
-              className={`ml-auto h-4 w-4 shrink-0 text-[#2C3E6B]/60 transition ${scansSectionExpanded ? "rotate-180" : ""}`}
+              className={`ml-auto h-4 w-4 shrink-0 text-[#1E1B31]/60 transition ${scansSectionExpanded ? "rotate-180" : ""}`}
               aria-hidden
             />
           </button>
@@ -2827,7 +2827,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           ) : null}
           <button
             type="button"
-            className="shrink-0 text-xs font-semibold text-[#2C3E6B]/70 hover:text-[#2C3E6B]"
+            className="shrink-0 text-xs font-semibold text-[#1E1B31]/70 hover:text-[#1E1B31]"
             onClick={() => {
               setScansSectionExpanded((v) => {
                 if (v) setOpenScanReportId(null);
@@ -2840,7 +2840,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </div>
         {!scansSectionExpanded ? (
           scansLoaded && (data.scans ?? []).length > 0 ? (
-            <p className="text-xs text-[#2C3E6B]/50">
+            <p className="text-xs text-[#1E1B31]/50">
               {(data.scans ?? []).length} scan{(data.scans ?? []).length === 1 ? "" : "s"} hidden.
             </p>
           ) : null
@@ -2855,7 +2855,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         ) : (
           <>
             <p className="text-sm text-slate-600">
-              Latest scans — open <button type="button" onClick={() => setActiveTab("reports")} className="font-semibold text-[#2C3E6B] underline">Reports</button> for full detail and kAI parameters.
+              Latest scans — open <button type="button" onClick={() => setActiveTab("reports")} className="font-semibold text-[#1E1B31] underline">Reports</button> for full detail and kAI parameters.
             </p>
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {(data.scans ?? []).slice(0, 6).map((s) => (
@@ -2876,7 +2876,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     <p className="text-[10px] text-slate-500">
                       {new Date(s.createdAt).toLocaleString()}
                     </p>
-                    <p className="mt-0.5 text-[10px] font-medium text-[#2C3E6B]">
+                    <p className="mt-0.5 text-[10px] font-medium text-[#1E1B31]">
                       Overall {s.overallScore}
                       <span className="text-slate-400"> · </span>
                       Acne {s.acne} · Pigment {s.pigmentation}
@@ -2894,7 +2894,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       <div className={`${doctorPatientPageCardClass} space-y-5 p-5`}>
       <div className="space-y-4">
         <div className="mb-4 flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
             <ClipboardList className="h-5 w-5" aria-hidden />
           </span>
           <div>
@@ -2921,7 +2921,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
       <div className="space-y-4">
         <div className="mb-4 flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
             <Sparkles className="h-5 w-5" aria-hidden />
           </span>
           <div>
@@ -2979,16 +2979,16 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       <section className={`${doctorPatientPagePanelClass} p-4`}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
               <ListChecks className="h-3.5 w-3.5" aria-hidden />
             </span>
-            <h2 className="text-sm font-semibold text-[#2C3E6B]">AM/PM checklist</h2>
+            <h2 className="text-sm font-semibold text-[#1E1B31]">AM/PM checklist</h2>
           </div>
           {p.onboardingComplete ? (
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 p.routinePlanClinicianLocked
-                  ? "bg-[#2C3E6B]/10 text-[#2C3E6B]"
+                  ? "bg-[#1E1B31]/10 text-[#1E1B31]"
                   : "bg-amber-50 text-amber-900"
               }`}
             >
@@ -3010,9 +3010,9 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               onPmRowsChange={setRoutinePlanPmRows}
               onDirty={() => setRoutinePlanTextDirty(true)}
             />
-            <div className="mt-3 rounded-lg border border-[#2C3E6B]/10 bg-[#F6F4EB]/60 px-3 py-2">
+            <div className="mt-3 rounded-lg border border-[#1E1B31]/10 bg-[#FAF8F5]/60 px-3 py-2">
               <label className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                <span className="text-xs font-semibold text-[#2C3E6B]">Effective from</span>
+                <span className="text-xs font-semibold text-[#1E1B31]">Effective from</span>
                 <input
                   type="date"
                   value={routinePlanEffectiveFromYmd}
@@ -3020,10 +3020,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setRoutinePlanTextDirty(true);
                     setRoutinePlanEffectiveFromYmd(e.target.value);
                   }}
-                  className="h-8 rounded-md border border-[#2C3E6B]/15 bg-white px-2 text-xs text-[#2C3E6B]"
+                  className="h-8 rounded-md border border-[#1E1B31]/15 bg-white px-2 text-xs text-[#1E1B31]"
                 />
               </label>
-              <p className="mt-1.5 text-[10px] leading-snug text-[#2C3E6B]/70">
+              <p className="mt-1.5 text-[10px] leading-snug text-[#1E1B31]/70">
                 Journal days before this date keep their previous AM/PM checklist and consistency scores.
               </p>
             </div>
@@ -3146,23 +3146,23 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       <div className="grid min-w-0 gap-3 lg:grid-cols-2">
       <section className={`${doctorPatientPagePanelClass} min-w-0 p-4`}>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
             <Bell className="h-3.5 w-3.5" aria-hidden />
           </span>
-          <h2 className="text-sm font-semibold text-[#2C3E6B]">Reminders</h2>
+          <h2 className="text-sm font-semibold text-[#1E1B31]">Reminders</h2>
         </div>
-        <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs font-medium text-[#2C3E6B]/90">
+        <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs font-medium text-[#1E1B31]/90">
           <input
             type="checkbox"
             checked={routineEnabled}
             onChange={(e) => setRoutineEnabled(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-[#2C3E6B]/30 text-[#2C3E6B] focus:ring-[#2C3E6B]/25"
+            className="h-3.5 w-3.5 rounded border-[#1E1B31]/30 text-[#1E1B31] focus:ring-[#1E1B31]/25"
           />
           <span>Chat nudges</span>
         </label>
         <div className="grid grid-cols-3 gap-3">
           <label className="block min-w-0">
-            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#2C3E6B]">
+            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#1E1B31]">
               <Sunrise className="h-3 w-3" aria-hidden />
               AM
             </span>
@@ -3174,7 +3174,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             />
           </label>
           <label className="block min-w-0">
-            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#2C3E6B]">
+            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#1E1B31]">
               <Sunset className="h-3 w-3" aria-hidden />
               PM
             </span>
@@ -3186,7 +3186,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             />
           </label>
           <label className="block min-w-0">
-            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#2C3E6B]">
+            <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-[#1E1B31]">
               <Globe2 className="h-3 w-3" aria-hidden />
               TZ
             </span>
@@ -3324,13 +3324,13 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       <section className={`${doctorPatientPagePanelClass} min-w-0 p-4`}>
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-[#2C3E6B]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-[#1E1B31]">
               <Mic className="h-3.5 w-3.5" aria-hidden />
             </span>
-            <h2 className="text-sm font-semibold text-[#2C3E6B]">Feedback</h2>
+            <h2 className="text-sm font-semibold text-[#1E1B31]">Feedback</h2>
           </div>
           {data.recentVoiceNotes && data.recentVoiceNotes.length > 0 ? (
-            <span className="text-[10px] font-medium text-[#2C3E6B]/50">
+            <span className="text-[10px] font-medium text-[#1E1B31]/50">
               {data.recentVoiceNotes.length} voice
             </span>
           ) : null}
@@ -3353,7 +3353,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           />
 
           {!scansLoaded ? (
-            <p className="text-xs text-[#2C3E6B]/55">
+            <p className="text-xs text-[#1E1B31]/55">
               {sectionBusy("scans") ? (
                 "Loading scans…"
               ) : (
@@ -3361,7 +3361,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   <button
                     type="button"
                     onClick={loadScans}
-                    className="font-medium text-[#2C3E6B] underline decoration-[#2C3E6B]/30 underline-offset-2 hover:decoration-[#2C3E6B]"
+                    className="font-medium text-[#1E1B31] underline decoration-[#1E1B31]/30 underline-offset-2 hover:decoration-[#1E1B31]"
                   >
                     Load scans
                   </button>{" "}
@@ -3490,7 +3490,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           <p
             className={`mt-2 text-xs font-medium ${
               voiceMsg.includes("sent") || voiceMsg.includes("Sent")
-                ? "text-[#2C3E6B]"
+                ? "text-[#1E1B31]"
                 : "text-red-600"
             }`}
             role="status"
@@ -3499,7 +3499,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           </p>
         ) : null}
         {generalFeedbackFlash ? (
-          <p className="mt-1 text-xs font-medium text-[#2C3E6B]" role="status">
+          <p className="mt-1 text-xs font-medium text-[#1E1B31]" role="status">
             {generalFeedbackFlash}
           </p>
         ) : null}
@@ -3508,7 +3508,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       </div>
 
       {clinicianMsg ? (
-        <p className="text-xs font-medium text-[#2C3E6B]" role="status">
+        <p className="text-xs font-medium text-[#1E1B31]" role="status">
           {clinicianMsg}
         </p>
       ) : null}
@@ -3519,7 +3519,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       {activeTab === "reports" && (
       <div className="space-y-4">
       <section className={`${doctorPatientPageCardClass} p-4`}>
-        <div className="mb-3 flex items-center justify-between gap-2 border-b border-[#2C3E6B]/10 pb-3">
+        <div className="mb-3 flex items-center justify-between gap-2 border-b border-[#1E1B31]/10 pb-3">
           <button
             type="button"
             className="flex min-w-0 flex-1 items-center gap-2 text-left"
@@ -3534,14 +3534,14 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             <span className={`h-7 w-7 rounded-lg ${doctorNavyIconChipClass}`}>
               <ScanFace className="h-3.5 w-3.5" aria-hidden />
             </span>
-            <span className="text-sm font-semibold text-[#2C3E6B]">Scans</span>
+            <span className="text-sm font-semibold text-[#1E1B31]">Scans</span>
             {scansLoaded && (data.scans ?? []).length > 0 ? (
-              <span className="rounded-full bg-[#2C3E6B] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
+              <span className="rounded-full bg-[#1E1B31] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
                 {(data.scans ?? []).length}
               </span>
             ) : null}
             <ChevronDown
-              className={`ml-auto h-4 w-4 shrink-0 text-[#2C3E6B]/60 transition ${scansSectionExpanded ? "rotate-180" : ""}`}
+              className={`ml-auto h-4 w-4 shrink-0 text-[#1E1B31]/60 transition ${scansSectionExpanded ? "rotate-180" : ""}`}
               aria-hidden
             />
           </button>
@@ -3558,7 +3558,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           ) : null}
           <button
             type="button"
-            className="shrink-0 text-xs font-semibold text-[#2C3E6B]/70 hover:text-[#2C3E6B]"
+            className="shrink-0 text-xs font-semibold text-[#1E1B31]/70 hover:text-[#1E1B31]"
             onClick={() => {
               setScansSectionExpanded((v) => {
                 if (v) setOpenScanReportId(null);
@@ -3571,7 +3571,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         </div>
         {!scansSectionExpanded ? (
           scansLoaded && (data.scans ?? []).length > 0 ? (
-            <p className="text-xs text-[#2C3E6B]/50">
+            <p className="text-xs text-[#1E1B31]/50">
               {(data.scans ?? []).length} scan{(data.scans ?? []).length === 1 ? "" : "s"} hidden.
             </p>
           ) : null
@@ -3601,7 +3601,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           onClick={() => setOpenScanReportId(null)}
                           aria-expanded
                         >
-                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#F6F4EB] ring-1 ring-[#2C3E6B]/8">
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[#FAF8F5] ring-1 ring-[#1E1B31]/8">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={withQueryParam(
@@ -3614,10 +3614,10 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                             />
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-[#2C3E6B]">
+                            <p className="truncate text-sm font-semibold text-[#1E1B31]">
                               {scanLabel}
                             </p>
-                            <p className="text-xs tabular-nums text-[#2C3E6B]/55">
+                            <p className="text-xs tabular-nums text-[#1E1B31]/55">
                               {s.overallScore} · {scanDate.toLocaleString()}
                             </p>
                           </div>
@@ -3631,7 +3631,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           )}
                           <button
                             type="button"
-                            className="inline-flex h-6 w-6 rotate-180 items-center justify-center rounded-lg text-[#2C3E6B]/60 hover:bg-[#F6F4EB] hover:text-[#2C3E6B]"
+                            className="inline-flex h-6 w-6 rotate-180 items-center justify-center rounded-lg text-[#1E1B31]/60 hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
                             onClick={() => setOpenScanReportId(null)}
                             aria-label="Collapse report"
                           >
@@ -3639,7 +3639,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                           </button>
                         </div>
                       </div>
-                      <div className="border-t border-[#2C3E6B]/8 px-3 pb-3 pt-1">
+                      <div className="border-t border-[#1E1B31]/8 px-3 pb-3 pt-1">
                         <DoctorScanReportPanel
                           patientId={patientId}
                           scanId={s.id}
@@ -3655,7 +3655,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         onClick={() => setOpenScanReportId(s.id)}
                         aria-expanded={false}
                       >
-                        <div className="relative h-20 w-full overflow-hidden rounded-md bg-[#F6F4EB] ring-1 ring-[#2C3E6B]/8">
+                        <div className="relative h-20 w-full overflow-hidden rounded-md bg-[#FAF8F5] ring-1 ring-[#1E1B31]/8">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={withQueryParam(
@@ -3667,20 +3667,20 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                             className="h-full w-full object-cover"
                           />
                           {s.faceCaptureCount > 1 ? (
-                            <span className="absolute bottom-0.5 right-0.5 rounded bg-[#2C3E6B]/80 px-0.5 text-[8px] font-medium text-white">
+                            <span className="absolute bottom-0.5 right-0.5 rounded bg-[#1E1B31]/80 px-0.5 text-[8px] font-medium text-white">
                               {s.faceCaptureCount}×
                             </span>
                           ) : null}
                         </div>
                         <div className="mt-1 flex items-baseline justify-between gap-1">
-                          <p className="min-w-0 truncate text-[10px] font-semibold text-[#2C3E6B]">
+                          <p className="min-w-0 truncate text-[10px] font-semibold text-[#1E1B31]">
                             {scanLabel}
                           </p>
-                          <span className="shrink-0 text-xs font-bold tabular-nums text-[#2C3E6B]">
+                          <span className="shrink-0 text-xs font-bold tabular-nums text-[#1E1B31]">
                             {s.overallScore}
                           </span>
                         </div>
-                        <p className="text-[10px] text-[#2C3E6B]/45">
+                        <p className="text-[10px] text-[#1E1B31]/45">
                           {scanDate.toLocaleDateString(undefined, {
                             day: "numeric",
                             month: "short",
@@ -3697,7 +3697,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                         )}
                         <button
                           type="button"
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-[#2C3E6B]/60 hover:bg-[#F6F4EB] hover:text-[#2C3E6B]"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-[#1E1B31]/60 hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
                           onClick={() => setOpenScanReportId(s.id)}
                           aria-label={`Open ${scanLabel}`}
                         >
@@ -3733,23 +3733,23 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
         {(data.weeklyReports ?? []).length > 0 ? (
           <details className={`${doctorPatientPageCardClass} p-4`}>
-            <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
+            <summary className="cursor-pointer text-[11px] font-medium text-[#1E1B31]/50">
               Internal cron archive ({(data.weeklyReports ?? []).length})
             </summary>
-            <p className="mt-2 text-[11px] leading-relaxed text-[#2C3E6B]/45">
+            <p className="mt-2 text-[11px] leading-relaxed text-[#1E1B31]/45">
               These database rows are not shown to patients.
             </p>
             <ul className="mt-2 space-y-2 text-sm">
               {(data.weeklyReports ?? []).map((w) => (
                 <li key={w.id} className={`${doctorPatientPagePanelClass} px-3 py-2`}>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-semibold text-[#2C3E6B]">
+                    <p className="text-xs font-semibold text-[#1E1B31]">
                       {w.weekStartYmd}
                       {w.kaiScore != null ? (
                         <span className="ml-2 font-bold tabular-nums">{w.kaiScore}</span>
                       ) : null}
                       {w.weeklyDelta != null ? (
-                        <span className="ml-1 font-medium text-[#2C3E6B]/55">
+                        <span className="ml-1 font-medium text-[#1E1B31]/55">
                           Δ{w.weeklyDelta}
                         </span>
                       ) : null}
@@ -3788,7 +3788,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
         {(data.monthlyReports ?? []).length > 0 ? (
           <details className={`${doctorPatientPageCardClass} p-4`} open={(data.monthlyReports ?? []).length <= 3}>
-            <summary className="cursor-pointer text-[11px] font-medium text-[#2C3E6B]/50">
+            <summary className="cursor-pointer text-[11px] font-medium text-[#1E1B31]/50">
               Stored monthly reports ({(data.monthlyReports ?? []).length})
             </summary>
             <ul className="mt-2 space-y-2 text-sm">
@@ -3798,8 +3798,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   <li key={m.id} className={`${doctorPatientPagePanelClass} px-3 py-3`}>
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-[#2C3E6B]">{m.monthStartYmd}</p>
-                        <p className="text-[11px] text-[#2C3E6B]/50">
+                        <p className="font-semibold text-[#1E1B31]">{m.monthStartYmd}</p>
+                        <p className="text-[11px] text-[#1E1B31]/50">
                           {new Date(m.createdAt).toLocaleDateString()}
                           {summary.kind === "placeholder"
                             ? " · cron placeholder (patient sees locked)"
@@ -3817,36 +3817,36 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
                     <div className="mt-2 grid grid-cols-3 gap-1.5">
                       <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
-                        <p className="text-[10px] font-medium text-[#2C3E6B]/50">Scans</p>
-                        <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
+                        <p className="text-[10px] font-medium text-[#1E1B31]/50">Scans</p>
+                        <p className="text-sm font-bold tabular-nums text-[#1E1B31]">
                           {summary.scans ?? "—"}
                         </p>
                       </div>
                       <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
-                        <p className="text-[10px] font-medium text-[#2C3E6B]/50">Days</p>
-                        <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
+                        <p className="text-[10px] font-medium text-[#1E1B31]/50">Days</p>
+                        <p className="text-sm font-bold tabular-nums text-[#1E1B31]">
                           {summary.loggedDays ?? "—"}
                         </p>
                       </div>
                       <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
-                        <p className="text-[10px] font-medium text-[#2C3E6B]/50">Month kAI</p>
-                        <p className="text-sm font-bold tabular-nums text-[#2C3E6B]">
+                        <p className="text-[10px] font-medium text-[#1E1B31]/50">Month kAI</p>
+                        <p className="text-sm font-bold tabular-nums text-[#1E1B31]">
                           {summary.kaiMonthAvg ?? "—"}
                         </p>
                       </div>
                     </div>
 
                     {summary.summaryTitle ? (
-                      <p className="mt-2 text-xs font-semibold text-[#2C3E6B]">
+                      <p className="mt-2 text-xs font-semibold text-[#1E1B31]">
                         {summary.summaryTitle}
                       </p>
                     ) : null}
                     {summary.summaryBody ? (
-                      <p className="mt-1 text-sm leading-relaxed text-[#2C3E6B]/85">
+                      <p className="mt-1 text-sm leading-relaxed text-[#1E1B31]/85">
                         {summary.summaryBody}
                       </p>
                     ) : summary.kind === "placeholder" ? (
-                      <p className="mt-2 text-sm italic text-[#2C3E6B]/55">
+                      <p className="mt-2 text-sm italic text-[#1E1B31]/55">
                         Cron placeholder — not shown to patients.
                       </p>
                     ) : null}
@@ -3888,7 +3888,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       <DoctorClinicTreatmentsPanel patientId={patientId} />
       <div className={`${doctorPatientPageCardClass} p-4`}>
         <h2
-          className="mb-4 flex items-center gap-2 border-b border-[#2C3E6B]/15 pb-3 text-[#2C3E6B]"
+          className="mb-4 flex items-center gap-2 border-b border-[#1E1B31]/15 pb-3 text-[#1E1B31]"
           title="Clinic visit notes"
         >
           <span className={`h-8 w-8 rounded-lg ${doctorNavyIconChipClass}`}>
@@ -3903,7 +3903,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               label="Visit date"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Visit date</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Visit date</p>
               <input
                 type="date"
                 value={visitNoteDateYmd}
@@ -3916,7 +3916,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               label="Response to treatment"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Response rating</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Response rating</p>
               <select
                 value={visitNoteResponseRating}
                 onChange={(e) => setVisitNoteResponseRating(e.target.value)}
@@ -3935,7 +3935,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               className="sm:col-span-2"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Purpose of visit</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Purpose of visit</p>
               <input
                 type="text"
                 value={visitNotePurpose}
@@ -3950,7 +3950,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               className="sm:col-span-2"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Findings / note text</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Findings / note text</p>
               <textarea
                 value={visitNoteText}
                 onChange={(e) => setVisitNoteText(e.target.value)}
@@ -3964,7 +3964,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               label="Treatments completed"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Treatments completed</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Treatments completed</p>
               <DoctorSnippetTextarea
                 value={visitNoteTreatments}
                 onChange={setVisitNoteTreatments}
@@ -3980,7 +3980,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               label="Pre-treatment advice"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Pre-treatment advice</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Pre-treatment advice</p>
               <DoctorSnippetTextarea
                 value={visitNotePreAdvice}
                 onChange={setVisitNotePreAdvice}
@@ -3996,7 +3996,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               label="Post-treatment advice"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Post-treatment advice</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Post-treatment advice</p>
               <DoctorSnippetTextarea
                 value={visitNotePostAdvice}
                 onChange={setVisitNotePostAdvice}
@@ -4012,7 +4012,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               label="Prescription"
               iconShellClassName={doctorVisitNoteFieldIconShellClass}
             >
-              <p className="mb-1 text-[11px] font-semibold text-[#2C3E6B]">Prescription / routine changes</p>
+              <p className="mb-1 text-[11px] font-semibold text-[#1E1B31]">Prescription / routine changes</p>
               <textarea
                 value={visitNotePrescription}
                 onChange={(e) => setVisitNotePrescription(e.target.value)}
@@ -4029,13 +4029,13 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 >
                   <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 </span>
-                <p className="text-[11px] font-semibold text-[#2C3E6B]">Attachments (max 5)</p>
+                <p className="text-[11px] font-semibold text-[#1E1B31]">Attachments (max 5)</p>
               </div>
               <div
                 className="flex flex-col gap-2"
                 title="PDF, images, or plain text — up to 5 files"
               >
-                <label className="inline-flex w-fit cursor-pointer items-center rounded-md border border-[#2C3E6B]/18 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[#2C3E6B] hover:bg-white/85">
+                <label className="inline-flex w-fit cursor-pointer items-center rounded-md border border-[#1E1B31]/18 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[#1E1B31] hover:bg-white/85">
                   Choose Files
                   <input
                     type="file"
@@ -4055,12 +4055,12 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     {visitNoteFiles.map((f) => (
                       <li
                         key={`${f.name}-${f.size}`}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-[#2C3E6B]/12 bg-[#F6F4EB]/60 px-2 py-1 text-[10px] font-medium text-[#2C3E6B]"
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-[#1E1B31]/12 bg-[#FAF8F5]/60 px-2 py-1 text-[10px] font-medium text-[#1E1B31]"
                         title={f.name}
                       >
-                        <Paperclip className="h-3 w-3 shrink-0 text-[#2C3E6B]/55" aria-hidden />
+                        <Paperclip className="h-3 w-3 shrink-0 text-[#1E1B31]/55" aria-hidden />
                         <span className="truncate">{f.name}</span>
-                        <span className="shrink-0 tabular-nums text-[#2C3E6B]/50">
+                        <span className="shrink-0 tabular-nums text-[#1E1B31]/50">
                           {Math.round(f.size / 1024)} KB
                         </span>
                       </li>
@@ -4145,7 +4145,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             <span>{visitNoteBusy ? "Saving…" : "Save note"}</span>
           </button>
           {visitNoteFlash ? (
-            <p className="inline-flex items-center gap-1 text-xs font-medium text-[#2C3E6B]" role="status" title={visitNoteFlash}>
+            <p className="inline-flex items-center gap-1 text-xs font-medium text-[#1E1B31]" role="status" title={visitNoteFlash}>
               <Check className="h-3.5 w-3.5" aria-hidden />
               <span>{visitNoteFlash}</span>
             </p>
@@ -4160,16 +4160,16 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
             );
           }
           return (
-            <div className="mt-4 border-t border-[#2C3E6B]/12 pt-4">
+            <div className="mt-4 border-t border-[#1E1B31]/12 pt-4">
               <h3
-                className="mb-3 flex items-center gap-2 text-[#2C3E6B]"
+                className="mb-3 flex items-center gap-2 text-[#1E1B31]"
                 title={`Past visit notes (${visits.length})`}
               >
                 <span className={`h-7 w-7 rounded-lg ${doctorNavyIconChipClass}`}>
                   <History className="h-4 w-4 shrink-0" aria-hidden />
                 </span>
                 <span className="text-xs font-semibold">History</span>
-                <span className="rounded-full bg-[#2C3E6B] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                <span className="rounded-full bg-[#1E1B31] px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">
                   {visits.length}
                 </span>
               </h3>
@@ -4194,21 +4194,21 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       key={v.id}
                       className={`${doctorPatientPagePanelClass} flex min-w-0 flex-col p-2.5`}
                     >
-                      <div className="flex items-start justify-between gap-2 border-b border-[#2C3E6B]/10 pb-1.5">
+                      <div className="flex items-start justify-between gap-2 border-b border-[#1E1B31]/10 pb-1.5">
                         <div className="flex min-w-0 items-start gap-1.5">
                           <span className={`h-6 w-6 ${doctorNavyIconChipClass}`}>
                             <CalendarDays className="h-3.5 w-3.5" aria-hidden />
                           </span>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-[#2C3E6B]">
+                            <p className="text-xs font-semibold text-[#1E1B31]">
                               {formatVisitDateLabel(v.visitDate)}
                             </p>
                             <p
-                              className="truncate text-[10px] text-[#2C3E6B]/55"
+                              className="truncate text-[10px] text-[#1E1B31]/55"
                               title={v.doctorName}
                             >
                               <Stethoscope
-                                className="mr-0.5 inline h-3 w-3 align-[-2px] text-[#2C3E6B]/40"
+                                className="mr-0.5 inline h-3 w-3 align-[-2px] text-[#1E1B31]/40"
                                 aria-hidden
                               />
                               {v.doctorName}
@@ -4228,7 +4228,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
 
                       {v.notes.trim() ? (
                         <p
-                          className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-xs leading-snug text-[#2C3E6B]/80"
+                          className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-xs leading-snug text-[#1E1B31]/80"
                           title={v.notes}
                         >
                           {v.notes}
@@ -4242,11 +4242,11 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                             return (
                               <li
                                 key={row.label}
-                                className="flex items-start gap-1.5 text-[10px] leading-snug text-[#2C3E6B]/70"
+                                className="flex items-start gap-1.5 text-[10px] leading-snug text-[#1E1B31]/70"
                                 title={`${row.label}: ${row.value}`}
                               >
                                 <MetaIcon
-                                  className="mt-0.5 h-3 w-3 shrink-0 text-[#2C3E6B]"
+                                  className="mt-0.5 h-3 w-3 shrink-0 text-[#1E1B31]"
                                   aria-hidden
                                 />
                                 <span className="line-clamp-2">{row.value}</span>
@@ -4257,7 +4257,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       ) : null}
 
                       {v.attachments && v.attachments.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap gap-1 border-t border-[#2C3E6B]/10 pt-2">
+                        <div className="mt-2 flex flex-wrap gap-1 border-t border-[#1E1B31]/10 pt-2">
                           {v.attachments.map((att, idx) => (
                             <a
                               key={`${v.id}-a-${idx}`}
@@ -4266,7 +4266,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                               rel="noopener noreferrer"
                               download={att.fileName}
                               title={att.fileName}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[#2C3E6B]/10 text-[#2C3E6B] hover:bg-[#2C3E6B]/20"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[#1E1B31]/10 text-[#1E1B31] hover:bg-[#1E1B31]/20"
                             >
                               <FileText className="h-3.5 w-3.5" aria-hidden />
                               <span className="sr-only">View document attached</span>
@@ -4401,7 +4401,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setDoctorChatHint(null);
                     scrollDoctorChatToBottom();
                   }}
-                  className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#2C3E6B] hover:bg-white/80"
+                  className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#1E1B31] hover:bg-white/80"
                 >
                   Show history
                 </button>
@@ -4453,7 +4453,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                   <div
                     className={`max-w-[min(100%,20rem)] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm ${
                       m.sender === "doctor"
-                        ? "bg-[#2C3E6B] text-white"
+                        ? "bg-[#1E1B31] text-white"
                         : "border border-slate-200/90 bg-white text-slate-800"
                     }`}
                   >
@@ -4545,7 +4545,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     type="button"
                     disabled={doctorChatBusy}
                     onClick={() => void sendChatVoiceBlob(chatVoicePreview.blob)}
-                    className="rounded-lg bg-[#2C3E6B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#243356] disabled:opacity-50"
+                    className="rounded-lg bg-[#1E1B31] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#242A5F] disabled:opacity-50"
                   >
                     Send voice
                   </button>
@@ -4625,7 +4625,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 }}
                 placeholder="Message…"
                 disabled={doctorChatBusy || chatIsRecording}
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/15 disabled:bg-slate-50"
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/15 disabled:bg-slate-50"
               />
               <button
                 type="button"
@@ -4636,7 +4636,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 }
                 title="Send message"
                 onClick={() => void sendDoctorChatMessage()}
-                className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B] p-2.5 text-white hover:bg-[#243356] disabled:opacity-50"
+                className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#1E1B31] p-2.5 text-white hover:bg-[#242A5F] disabled:opacity-50"
                 aria-label="Send message"
               >
                 <Send className="h-4 w-4" aria-hidden />
@@ -4657,7 +4657,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               className={`fixed bottom-10 right-5 z-[2147483647] inline-flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition hover:scale-105 sm:right-8 ${
                 chatPanelOpen
                   ? "bg-slate-700 text-white hover:bg-slate-800"
-                  : "bg-[#2C3E6B] text-white hover:bg-[#243356]"
+                  : "bg-[#1E1B31] text-white hover:bg-[#242A5F]"
               }`}
               style={{ pointerEvents: "auto" }}
               aria-label={chatPanelOpen ? "Close patient chat" : "Open patient chat"}

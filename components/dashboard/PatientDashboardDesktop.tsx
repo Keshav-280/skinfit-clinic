@@ -186,7 +186,7 @@ function UpcomingAppointmentsSection() {
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#6B7280]">
-          <Loader2 className="h-4 w-4 animate-spin text-[#2C3E6B]" aria-hidden />
+          <Loader2 className="h-4 w-4 animate-spin text-[#1E1B31]" aria-hidden />
           Loading appointments…
         </div>
       ) : rows.length === 0 ? (
@@ -196,7 +196,7 @@ function UpcomingAppointmentsSection() {
           </p>
           <Link
             href="/dashboard/schedules"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#243456]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#1E1B31] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#242A5F]"
           >
             Book an Appointment
             <ArrowRight className="h-4 w-4" aria-hidden />
@@ -226,11 +226,11 @@ function UpcomingAppointmentsSection() {
             return (
               <div
                 key={row.id}
-                className="flex flex-col gap-2 rounded-xl border border-[#E5E7EB] bg-[#F2F9F2]/60 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-[#E5E7EB] bg-[#FAF8F5]/60 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-extrabold text-[#2C3E6B]">
+                    <p className="text-sm font-extrabold text-[#1E1B31]">
                       {dateLabel}
                     </p>
                     <span className="text-xs font-semibold text-[#6B7280]">
@@ -256,7 +256,7 @@ function UpcomingAppointmentsSection() {
           })}
           <Link
             href="/dashboard/schedules"
-            className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#2C3E6B] transition hover:underline"
+            className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-[#1E1B31] transition hover:underline"
           >
             View All Appointments
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -276,9 +276,9 @@ export function TopArticlesSection() {
           <Link
             key={article.slug}
             href={`/dashboard/articles/${article.slug}`}
-            className="w-[min(240px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-[calc((100%-1.5rem)/3)]"
+            className="w-[min(240px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#1E1B31]/25 hover:shadow-sm md:w-[calc((100%-1.5rem)/3)]"
           >
-            <div className="relative flex aspect-video items-center justify-center bg-gradient-to-br from-[#2C3E6B] to-[#1E3264]">
+            <div className="relative flex aspect-video items-center justify-center bg-gradient-to-br from-[#1E1B31] to-[#242A5F]">
               <NotebookPen className="h-7 w-7 text-white/25" aria-hidden />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -290,7 +290,7 @@ export function TopArticlesSection() {
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-black/0" />
-              <span className="absolute bottom-2 left-2.5 inline-flex rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-[#2C3E6B] backdrop-blur-sm">
+              <span className="absolute bottom-2 left-2.5 inline-flex rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-[#1E1B31] backdrop-blur-sm">
                 {article.category}
               </span>
               <span className="absolute bottom-2 right-2.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-white">
@@ -333,14 +333,14 @@ export function RecommendedVideosSection() {
             key={video.title}
             type="button"
             onClick={() => setActive(video)}
-            className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#2C3E6B]/25 hover:shadow-sm md:w-[calc((100%-1.5rem)/3)]"
+            className="w-[min(220px,78vw)] shrink-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white text-left transition hover:border-[#1E1B31]/25 hover:shadow-sm md:w-[calc((100%-1.5rem)/3)]"
           >
             <div
-              className="relative flex aspect-video items-center justify-center bg-[#2C3E6B] bg-cover bg-center"
+              className="relative flex aspect-video items-center justify-center bg-[#1E1B31] bg-cover bg-center"
               style={
                 video.youtubeId
                   ? {
-                      backgroundImage: `linear-gradient(rgba(44,62,107,0.35), rgba(44,62,107,0.35)), url(https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg)`,
+                      backgroundImage: `linear-gradient(rgba(30, 27, 49,0.35), rgba(30, 27, 49,0.35)), url(https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg)`,
                     }
                   : undefined
               }
@@ -374,7 +374,7 @@ export function RecommendedVideosSection() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] px-4 py-3">
-              <p className="min-w-0 truncate text-sm font-bold text-[#2C3E6B]">
+              <p className="min-w-0 truncate text-sm font-bold text-[#1E1B31]">
                 {active.title}
               </p>
               <button
@@ -538,7 +538,7 @@ function DashboardDatePicker({
         <button
           type="button"
           onClick={() => setViewMonth((m) => subMonths(m, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#F5F3EF]"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#FAF8F5]"
           aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -549,7 +549,7 @@ function DashboardDatePicker({
         <button
           type="button"
           onClick={() => setViewMonth((m) => addMonths(m, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#F5F3EF]"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#6B7280] transition hover:bg-[#FAF8F5]"
           aria-label="Next month"
         >
           <ChevronRight className="h-4 w-4" aria-hidden />
@@ -583,14 +583,14 @@ function DashboardDatePicker({
               }}
               className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition ${
                 d.isSelected
-                  ? "bg-[#2D3E6B] text-white"
+                  ? "bg-[#1E1B31] text-white"
                   : disabled
                     ? "cursor-not-allowed text-slate-300"
                     : d.isToday
-                      ? "bg-white text-[#18181b] ring-2 ring-[#4CAF50] ring-offset-1 hover:bg-[#F5F3EF]"
+                      ? "bg-white text-[#18181b] ring-2 ring-[#4CAF50] ring-offset-1 hover:bg-[#FAF8F5]"
                       : d.inMonth
-                        ? "text-[#18181b] hover:bg-[#F5F3EF]"
-                        : "text-[#9CA3AF] hover:bg-[#F5F3EF]"
+                        ? "text-[#18181b] hover:bg-[#FAF8F5]"
+                        : "text-[#9CA3AF] hover:bg-[#FAF8F5]"
               }`}
             >
               {format(d.date, "d")}
@@ -602,7 +602,7 @@ function DashboardDatePicker({
       <button
         type="button"
         onClick={() => selectDay(todayYmd)}
-        className="mt-3 w-full rounded-xl bg-[#F2F9F2] py-2.5 text-sm font-bold text-[#2C3E6B] transition hover:bg-[#E8EFE6]"
+        className="mt-3 w-full rounded-xl bg-[#FAF8F5] py-2.5 text-sm font-bold text-[#1E1B31] transition hover:bg-[#F0EAE2]"
       >
         Today
       </button>
@@ -618,7 +618,7 @@ function DashboardDatePicker({
           type="button"
           onClick={() => onSelectYmd(format(addDays(selectedDate, -7), "yyyy-MM-dd"))}
           aria-label="Previous week"
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
         >
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
         </button>
@@ -640,7 +640,7 @@ function DashboardDatePicker({
           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition ${
             weekAheadDisabled
               ? "cursor-not-allowed text-slate-300"
-              : "text-[#9CA3AF] hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+              : "text-[#9CA3AF] hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
           }`}
         >
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
@@ -652,7 +652,7 @@ function DashboardDatePicker({
           aria-haspopup="dialog"
           aria-label="Choose a date from the calendar"
           onClick={() => setOpen((v) => !v)}
-          className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+          className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[#9CA3AF] transition hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
         >
           <Calendar className="h-3.5 w-3.5" aria-hidden />
         </button>
@@ -775,7 +775,7 @@ export function PatientDashboardDesktop({
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
       </div>
     );
   }
@@ -793,7 +793,7 @@ export function PatientDashboardDesktop({
             setError(null);
             void loadHome();
           }}
-          className="rounded-xl bg-[#2C3E6B] px-6 py-2.5 text-sm font-bold text-white"
+          className="rounded-xl bg-[#1E1B31] px-6 py-2.5 text-sm font-bold text-white"
         >
           Retry
         </button>
@@ -831,7 +831,7 @@ export function PatientDashboardDesktop({
 
       {/* Everything below rides a solid background over the sticky greeting
           above, so scrolling visually tucks the greeting behind this card. */}
-      <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#F5F3EF] pt-1">
+      <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#FAF8F5] pt-1">
         {/* 2. Skin DNA */}
         <SkinDNACard
           patientName={data.userName?.trim() || greetingName}
@@ -896,7 +896,7 @@ export function PatientDashboardDesktop({
                   onClick={() => setMonthlyInsightOpen((v) => !v)}
                   aria-expanded={monthlyInsightOpen}
                   aria-label={monthlyInsightOpen ? "Minimize" : "Expand"}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6B7280] transition hover:bg-[#F5F3EF] hover:text-[#2C3E6B]"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6B7280] transition hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
                 >
                   {monthlyInsightOpen ? (
                     <ChevronUp className="h-4 w-4" aria-hidden />

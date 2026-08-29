@@ -17,7 +17,7 @@ export function PatientMobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-1 flex-col items-center gap-1 rounded-full px-2 py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-teal-600"
+              className="flex flex-1 flex-col items-center gap-1 rounded-full px-2 py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-[#242A5F]"
             >
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>

@@ -934,7 +934,7 @@ export default function AppointmentsCalendarClient({
               type="button"
               onClick={() => unarchiveListEvent(event.id)}
               title="Restore to this list"
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#2C3E6B]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2B3A67]/25 hover:bg-[#e8eef6]"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#1E1B31]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2B3A67]/25 hover:bg-[#e8eef6]"
             >
               <ArchiveRestore className="h-3 w-3 opacity-80" aria-hidden />
               Restore
@@ -944,7 +944,7 @@ export default function AppointmentsCalendarClient({
               type="button"
               onClick={() => archiveListEvent(event.id)}
               title="Archive â€” hide from this list"
-              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#2C3E6B]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#2C3E6B]/25 hover:bg-[#e8eef6]"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#1E1B31]/15 bg-[#f8fafc] px-2 py-1 text-[10px] font-semibold text-[#2B3A67] transition hover:border-[#1E1B31]/25 hover:bg-[#e8eef6]"
             >
               <Archive className="h-3 w-3 opacity-80" aria-hidden />
               Archive
@@ -1029,13 +1029,13 @@ export default function AppointmentsCalendarClient({
   return (
     <div className="w-full space-y-4">
       {requestFormUrl ? (
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-center text-sm text-[#2C3E6B] shadow-sm">
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-center text-sm text-[#1E1B31] shadow-sm">
           <p>If your clinic uses a Google Form, you can complete it here:</p>
           <a
             href={requestFormUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-block font-semibold text-[#2C3E6B] underline decoration-[#2C3E6B]/40"
+            className="mt-2 inline-block font-semibold text-[#1E1B31] underline decoration-[#1E1B31]/40"
           >
             Open clinic appointment form
           </a>
@@ -1082,10 +1082,10 @@ export default function AppointmentsCalendarClient({
             <button
               type="button"
               onClick={() => setCalendarPopupOpen(true)}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-[#E5E7EB] bg-[#F2F9F2] px-3.5 py-3 text-left transition hover:bg-[#E8EFE6]"
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-[#E5E7EB] bg-[#FAF8F5] px-3.5 py-3 text-left transition hover:bg-[#F0EAE2]"
             >
               <span className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 shrink-0 text-[#2C3E6B]" aria-hidden />
+                <Calendar className="h-4 w-4 shrink-0 text-[#1E1B31]" aria-hidden />
                 <span className="text-sm font-semibold text-[#18181b]">
                   View calendar
                 </span>
@@ -1113,14 +1113,14 @@ export default function AppointmentsCalendarClient({
               type="button"
               onClick={() => setCalendarPopupOpen(false)}
               aria-label="Close calendar"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6B7280] transition hover:bg-[#F5F3EF]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6B7280] transition hover:bg-[#FAF8F5]"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <div
-              className="flex min-w-0 shrink gap-1 rounded-xl border border-[#E5E7EB] bg-[#F2F9F2] p-1"
+              className="flex min-w-0 shrink gap-1 rounded-xl border border-[#E5E7EB] bg-[#FAF8F5] p-1"
               role="group"
               aria-label="Calendar view"
             >
@@ -1129,7 +1129,7 @@ export default function AppointmentsCalendarClient({
                 onClick={() => setView("month")}
                 className={`flex items-center rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-shadow ${
                   view === "month"
-                    ? "bg-white font-bold text-[#2C3E6B] shadow-sm"
+                    ? "bg-white font-bold text-[#1E1B31] shadow-sm"
                     : "text-[#6B7280]"
                 }`}
               >
@@ -1145,7 +1145,7 @@ export default function AppointmentsCalendarClient({
                 onClick={() => setView("week")}
                 className={`flex items-center rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-shadow ${
                   view === "week"
-                    ? "bg-white font-bold text-[#2C3E6B] shadow-sm"
+                    ? "bg-white font-bold text-[#1E1B31] shadow-sm"
                     : "text-[#6B7280]"
                 }`}
               >
@@ -1162,7 +1162,7 @@ export default function AppointmentsCalendarClient({
                 type="button"
                 onClick={() => void refreshSchedulesPage()}
                 disabled={scheduleRefreshing}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#2C3E6B] transition hover:bg-[#F5F3EF] disabled:opacity-50"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#1E1B31] transition hover:bg-[#FAF8F5] disabled:opacity-50"
                 aria-label="Refresh calendar"
                 aria-busy={scheduleRefreshing}
               >
@@ -1179,7 +1179,7 @@ export default function AppointmentsCalendarClient({
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F5F3EF]"
+                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#FAF8F5]"
                   aria-label="Previous month or week"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -1188,7 +1188,7 @@ export default function AppointmentsCalendarClient({
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#F5F3EF]"
+                  className="flex h-9 w-9 items-center justify-center text-[#6B7280] transition hover:bg-[#FAF8F5]"
                   aria-label="Next month or week"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -1198,7 +1198,7 @@ export default function AppointmentsCalendarClient({
           </div>
 
           <div className="w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#FAFAFA]">
-            <div className="grid grid-cols-7 border-b border-[#E5E7EB] bg-[#F2F9F2]">
+            <div className="grid grid-cols-7 border-b border-[#E5E7EB] bg-[#FAF8F5]">
               {DAYS.map((d) => (
                 <div
                   key={d}
@@ -1230,7 +1230,7 @@ export default function AppointmentsCalendarClient({
                         <div
                           className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${
                             isSelected
-                              ? "bg-[#2D3E6B] text-white"
+                              ? "bg-[#1E1B31] text-white"
                               : isToday
                                 ? "ring-2 ring-[#4CAF50] ring-offset-1"
                                 : ""
@@ -1241,9 +1241,9 @@ export default function AppointmentsCalendarClient({
                               isSelected
                                 ? "text-white"
                                 : hasContent
-                                  ? "text-[#2C3E6B]"
+                                  ? "text-[#1E1B31]"
                                   : "text-[#6B7280]"
-                            } ${isToday && !isSelected ? "font-extrabold text-[#2C3E6B]" : ""}`}
+                            } ${isToday && !isSelected ? "font-extrabold text-[#1E1B31]" : ""}`}
                           >
                             {getDate(day)}
                           </span>
@@ -1282,14 +1282,14 @@ export default function AppointmentsCalendarClient({
                                 ? "border-blue-800/45 bg-blue-50/95"
                                 : isPost
                                   ? "border-violet-700/45 bg-violet-50/95"
-                                  : "border-[rgba(44,62,107,0.3)] bg-[#E8EFE6]/80";
+                                  : "border-[rgba(30, 27, 49,0.3)] bg-[#F0EAE2]/80";
                             const tone = done
                               ? "text-sky-950"
                               : isPre
                                 ? "text-blue-900"
                                 : isPost
                                   ? "text-violet-900"
-                                  : "text-[#2C3E6B]";
+                                  : "text-[#1E1B31]";
                             return (
                               <div
                                 key={event.id}
@@ -1322,7 +1322,7 @@ export default function AppointmentsCalendarClient({
                     ) : null;
 
                   const wrapCls = `${borderLast} border-b border-[#E5E7EB] px-0.5 py-1.5 ${
-                    isSelected ? "bg-[#2D3E6B]/5" : day ? "bg-white" : "bg-[#F8FAFC]"
+                    isSelected ? "bg-[#1E1B31]/5" : day ? "bg-white" : "bg-[#F8FAFC]"
                   } ${cellMin}`;
 
                   if (day !== null && cellYmd) {
@@ -1330,7 +1330,7 @@ export default function AppointmentsCalendarClient({
                       <button
                         key={day.toISOString()}
                         type="button"
-                        className={`${wrapCls} w-full min-w-0 cursor-pointer text-center align-top transition hover:bg-[#F5F3EF]`}
+                        className={`${wrapCls} w-full min-w-0 cursor-pointer text-center align-top transition hover:bg-[#FAF8F5]`}
                         onClick={() => setSelectedYmd(cellYmd)}
                         aria-label={format(day, "EEEE, MMMM d, yyyy")}
                         aria-current={isSelected ? "date" : undefined}
@@ -1355,7 +1355,7 @@ export default function AppointmentsCalendarClient({
               Appointments
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
-              <span className="h-2 w-2 rounded-full bg-[#2C3E6B]" /> Upcoming
+              <span className="h-2 w-2 rounded-full bg-[#1E1B31]" /> Upcoming
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-[#6B7280]">
               <span className="h-2 w-2 rounded-full bg-[#d97706]" /> Requested
@@ -1390,7 +1390,7 @@ export default function AppointmentsCalendarClient({
         <aside className="flex min-w-0 flex-col gap-3">
           <button
             type="button"
-            className="flex w-full items-center gap-3 rounded-2xl bg-[#2C3E6B] px-4 py-3.5 text-left shadow-md shadow-[#2C3E6B]/20 transition hover:bg-[#243456]"
+            className="flex w-full items-center gap-3 rounded-2xl bg-[#1E1B31] px-4 py-3.5 text-left shadow-md shadow-[#1E1B31]/20 transition hover:bg-[#242A5F]"
             onClick={openRequestModal}
           >
             <Calendar className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
@@ -1407,7 +1407,7 @@ export default function AppointmentsCalendarClient({
 
           {visibleListEvents.length > 0 || archivedListCount > 0 ? (
           <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
-            <div className="border-b border-[#E5E7EB] bg-[#F2F9F2]/80 px-3.5 py-2.5">
+            <div className="border-b border-[#E5E7EB] bg-[#FAF8F5]/80 px-3.5 py-2.5">
               <h4 className="text-sm font-extrabold text-[#18181b]">
                 This {view === "month" ? "month" : "week"}
               </h4>
@@ -1429,7 +1429,7 @@ export default function AppointmentsCalendarClient({
                     <button
                       type="button"
                       onClick={() => setShowArchivedList((open) => !open)}
-                      className="text-xs font-semibold text-[#2C3E6B] underline decoration-[#2C3E6B]/40 underline-offset-2"
+                      className="text-xs font-semibold text-[#1E1B31] underline decoration-[#1E1B31]/40 underline-offset-2"
                     >
                       {showArchivedList
                         ? "Hide archived"
@@ -1439,7 +1439,7 @@ export default function AppointmentsCalendarClient({
                       <button
                         type="button"
                         onClick={unarchiveAllListEvents}
-                        className="text-xs font-semibold text-[#2C3E6B] underline decoration-[#2C3E6B]/40 underline-offset-2"
+                        className="text-xs font-semibold text-[#1E1B31] underline decoration-[#1E1B31]/40 underline-offset-2"
                       >
                         Restore all
                       </button>
@@ -1509,7 +1509,7 @@ export default function AppointmentsCalendarClient({
             <div className="flex items-start justify-between gap-2">
               <h3
                 id="clinic-msg-title"
-                className="text-base font-bold text-[#2C3E6B]"
+                className="text-base font-bold text-[#1E1B31]"
               >
                 Message the clinic
               </h3>
@@ -1520,7 +1520,7 @@ export default function AppointmentsCalendarClient({
                   setClinicMsgOpen(false);
                   setClinicMsgApptId(null);
                 }}
-                className="rounded-lg p-1 text-[#6B7280] hover:bg-white/80 hover:text-[#2C3E6B]"
+                className="rounded-lg p-1 text-[#6B7280] hover:bg-white/80 hover:text-[#1E1B31]"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -1530,7 +1530,7 @@ export default function AppointmentsCalendarClient({
               If the time does not work or you have a question, please write it down here and the clinic will be notified.
             </p>
             <textarea
-              className="mt-3 w-full min-h-[120px] rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-sm text-[#2C3E6B] outline-none backdrop-blur-sm ring-[#2C3E6B]/20 focus:ring-2"
+              className="mt-3 w-full min-h-[120px] rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-sm text-[#1E1B31] outline-none backdrop-blur-sm ring-[#1E1B31]/20 focus:ring-2"
               placeholder="e.g. I need a different time on this dayâ€¦"
               value={clinicMsgText}
               onChange={(e) => setClinicMsgText(e.target.value)}
@@ -1547,7 +1547,7 @@ export default function AppointmentsCalendarClient({
                   setClinicMsgOpen(false);
                   setClinicMsgApptId(null);
                 }}
-                className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#6B7280] transition hover:bg-[#F5F3EF]"
+                className="inline-flex items-center justify-center rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#6B7280] transition hover:bg-[#FAF8F5]"
               >
                 Cancel
               </button>
@@ -1620,7 +1620,7 @@ export default function AppointmentsCalendarClient({
                     setClinicMsgBusy(false);
                   }
                 }}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#2C3E6B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#1E1B31] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {clinicMsgBusy ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1645,7 +1645,7 @@ export default function AppointmentsCalendarClient({
             <div className="flex items-start justify-between gap-3">
               <h3
                 id="attachment-viewer-title"
-                className="text-base font-bold text-[#2C3E6B]"
+                className="text-base font-bold text-[#1E1B31]"
               >
                 Request photos
               </h3>
@@ -1656,14 +1656,14 @@ export default function AppointmentsCalendarClient({
                   setAttachmentViewerItems([]);
                   setAttachmentViewerError(null);
                 }}
-                className="rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-sm font-semibold text-[#2C3E6B] backdrop-blur-sm transition hover:bg-white/80"
+                className="rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-sm font-semibold text-[#1E1B31] backdrop-blur-sm transition hover:bg-white/80"
               >
                 Close
               </button>
             </div>
             {attachmentViewerLoading ? (
               <div className="mt-10 flex flex-col items-center justify-center gap-3 py-8 text-sm text-[#6B7280]">
-                <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" aria-hidden />
+                <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" aria-hidden />
                 Loading photosâ€¦
               </div>
             ) : attachmentViewerError ? (
@@ -2021,7 +2021,7 @@ export default function AppointmentsCalendarClient({
                   type="button"
                   onClick={() => void submitVisitRequest()}
                   disabled={requestSubmitting}
-                  className="flex flex-[1.2] items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex flex-[1.2] items-center justify-center gap-2 rounded-xl bg-[#1E1B31] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {requestSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

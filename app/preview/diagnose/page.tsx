@@ -32,11 +32,11 @@ export default function DiagnosePreviewPage() {
         <header className="mb-5 flex items-center justify-between gap-3">
           <PatientPortalBrandLogo className="min-w-0 [&_img]:h-9 [&_img]:max-w-[13.5rem] sm:[&_img]:h-10 sm:[&_img]:max-w-[15rem]" />
           <div className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-[0_6px_18px_-8px_rgba(44,62,107,0.45)]">
-              <RefreshCw className="h-4 w-4 text-[#2C3E6B]" strokeWidth={2.25} />
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-[0_6px_18px_-8px_rgba(30, 27, 49,0.45)]">
+              <RefreshCw className="h-4 w-4 text-[#1E1B31]" strokeWidth={2.25} />
             </span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-[0_6px_18px_-8px_rgba(44,62,107,0.45)]">
-              <Bell className="h-4 w-4 text-[#2C3E6B]" strokeWidth={2.25} />
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-[0_6px_18px_-8px_rgba(30, 27, 49,0.45)]">
+              <Bell className="h-4 w-4 text-[#1E1B31]" strokeWidth={2.25} />
             </span>
           </div>
         </header>
@@ -73,23 +73,23 @@ export default function DiagnosePreviewPage() {
             aria-hidden
           />
 
-          <span className="relative z-10 mb-4 inline-flex w-fit items-center rounded-full bg-[#E4DFF5]/90 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#2C3E6B] shadow-sm">
+          <span className="relative z-10 mb-4 inline-flex w-fit items-center rounded-full bg-[#F8EDEE]/90 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#1E1B31] shadow-sm">
             Recommended
           </span>
 
           <div className="relative z-10 flex items-center gap-4">
             <div className="relative flex h-[5.25rem] w-[5.25rem] shrink-0 items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-white/50 shadow-[0_0_0_10px_rgba(255,255,255,0.35),0_0_40px_12px_rgba(180,170,230,0.45)]" />
-              <div className="camera-icon-breathe relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_10px_28px_-10px_rgba(44,62,107,0.5)]">
-                <Camera className="h-7 w-7 text-[#2C3E6B]" strokeWidth={1.75} />
+              <div className="camera-icon-breathe relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[0_10px_28px_-10px_rgba(30, 27, 49,0.5)]">
+                <Camera className="h-7 w-7 text-[#1E1B31]" strokeWidth={1.75} />
               </div>
               <Sparkles
-                className="absolute -right-1 top-1 h-4 w-4 text-[#2C3E6B]/50"
+                className="absolute -right-1 top-1 h-4 w-4 text-[#1E1B31]/50"
                 strokeWidth={2}
                 aria-hidden
               />
               <Sparkles
-                className="absolute -left-1 bottom-3 h-3 w-3 text-[#2C3E6B]/35"
+                className="absolute -left-1 bottom-3 h-3 w-3 text-[#1E1B31]/35"
                 strokeWidth={2}
                 aria-hidden
               />
@@ -107,7 +107,7 @@ export default function DiagnosePreviewPage() {
 
           <button
             type="button"
-            className="cta-pop relative z-10 mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#2C3E6B] px-5 py-3.5 text-[15px] font-extrabold text-white shadow-[0_12px_28px_-10px_rgba(44,62,107,0.65)]"
+            className="cta-pop relative z-10 mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3.5 text-[15px] font-extrabold text-white shadow-[0_12px_28px_-10px_rgba(30, 27, 49,0.65)]"
           >
             Start Camera
             <Camera className="h-4 w-4" />
@@ -116,10 +116,10 @@ export default function DiagnosePreviewPage() {
           <div className="relative z-10 mt-4 flex gap-3">
             <button
               type="button"
-              className="inline-flex flex-1 items-center gap-2.5 rounded-[18px] bg-white/95 px-3 py-3.5 shadow-[0_8px_24px_-12px_rgba(44,62,107,0.4)]"
+              className="inline-flex flex-1 items-center gap-2.5 rounded-[18px] bg-white/95 px-3 py-3.5 shadow-[0_8px_24px_-12px_rgba(30, 27, 49,0.4)]"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
-                <Sun className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+                <Sun className="h-4 w-4 text-[#1E1B31]" aria-hidden />
               </span>
               <span className="flex-1 text-left text-[12px] font-bold text-[#1E2A4A]">
                 View photo tips
@@ -128,10 +128,10 @@ export default function DiagnosePreviewPage() {
             </button>
             <button
               type="button"
-              className="inline-flex flex-1 items-center gap-2.5 rounded-[18px] bg-white/95 px-3 py-3.5 shadow-[0_8px_24px_-12px_rgba(44,62,107,0.4)]"
+              className="inline-flex flex-1 items-center gap-2.5 rounded-[18px] bg-white/95 px-3 py-3.5 shadow-[0_8px_24px_-12px_rgba(30, 27, 49,0.4)]"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
-                <History className="h-4 w-4 text-[#2C3E6B]" aria-hidden />
+                <History className="h-4 w-4 text-[#1E1B31]" aria-hidden />
               </span>
               <span className="flex-1 text-left text-[12px] font-bold text-[#1E2A4A]">
                 Scan history
@@ -160,25 +160,25 @@ export default function DiagnosePreviewPage() {
             >
               <span
                 className={`flex h-9 w-11 items-center justify-center rounded-xl ${
-                  active ? "bg-[#2C3E6B]/12" : ""
+                  active ? "bg-[#1E1B31]/12" : ""
                 }`}
               >
                 <Icon
-                  className={`h-5 w-5 ${active ? "text-[#2C3E6B]" : "text-[#9CA3AF]"}`}
+                  className={`h-5 w-5 ${active ? "text-[#1E1B31]" : "text-[#9CA3AF]"}`}
                   strokeWidth={active ? 2.25 : 2}
                 />
               </span>
               <span
                 className={`text-[10px] ${
                   active
-                    ? "font-semibold text-[#2C3E6B]"
+                    ? "font-semibold text-[#1E1B31]"
                     : "font-medium text-[#9CA3AF]"
                 }`}
               >
                 {label}
               </span>
               {active ? (
-                <span className="h-0.5 w-6 rounded-full bg-[#2C3E6B]" />
+                <span className="h-0.5 w-6 rounded-full bg-[#1E1B31]" />
               ) : (
                 <span className="h-0.5 w-6" />
               )}

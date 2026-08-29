@@ -468,7 +468,7 @@ const s = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: "#E8EFE6",
+    backgroundColor: "#F0EAE2",
     marginTop: 14,
     marginBottom: 12,
   },
@@ -487,7 +487,7 @@ const s = StyleSheet.create({
     gap: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E8EFE6",
+    borderColor: "#F0EAE2",
     backgroundColor: "#FAFCFA",
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -566,7 +566,7 @@ const s = StyleSheet.create({
 
   memberNote: { marginTop: 8, fontSize: 12, color: TEXT_MUTED, lineHeight: 18 },
 
-  activitySection: { marginTop: 12, borderTopWidth: 1, borderTopColor: "#E8EFE6", paddingTop: 10 },
+  activitySection: { marginTop: 12, borderTopWidth: 1, borderTopColor: "#F0EAE2", paddingTop: 10 },
   activityToggle: {
     flexDirection: "row",
     alignItems: "center",

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "../../components/ui/Button";
+import { PublicBrandMark } from "../../components/nav/PublicBrandMark";
 import {
-  Sparkles,
   Phone,
   Mail,
   MapPin,
@@ -42,43 +42,36 @@ export default function ContactPage() {
       {/* Sticky Navbar */}
       <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-600/30">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-800">
-              SkinnFit
-            </span>
-          </Link>
+          <PublicBrandMark />
 
           <div className="hidden items-center gap-8 md:flex">
             <Link
               href="/"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               Home
             </Link>
             <Link
               href="/services"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               Services
             </Link>
             <Link
               href="/blog"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               Blog/Education
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-600"
+              className="text-sm font-medium text-slate-600 transition-colors hover:text-[#242A5F]"
             >
               About Us
             </Link>
             <Link
               href="/contact"
-              className="text-sm font-medium text-teal-600 transition-colors hover:text-teal-700"
+              className="text-sm font-medium text-[#1E1B31] transition-colors hover:text-[#1E1B31]"
             >
               Contact
             </Link>
@@ -107,7 +100,7 @@ export default function ContactPage() {
               <motion.div variants={itemVariant} className="relative">
                 {/* Premium Image Placeholder */}
                 <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/5 shadow-xl backdrop-blur-xl">
-                  <div className="absolute inset-0 bg-gradient-to-br from-teal-500/80 via-cyan-500/60 to-teal-600/80" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#5B66A1]/80 via-cyan-500/60 to-[#1E1B31]/80" />
                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(15,23,42,0.3)_100%)]" />
                   <div className="relative flex aspect-[4/3] min-h-[280px] items-center justify-center p-8">
                     <Building2 className="h-24 w-24 text-white/20 md:h-32 md:w-32" strokeWidth={0.75} />
@@ -130,8 +123,8 @@ export default function ContactPage() {
                     variants={itemVariant}
                     className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/60 p-4 backdrop-blur-sm"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50">
-                      <MapPin className="h-5 w-5 text-teal-600" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F8EDEE]">
+                      <MapPin className="h-5 w-5 text-[#1E1B31]" />
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -147,8 +140,8 @@ export default function ContactPage() {
                     variants={itemVariant}
                     className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/60 p-4 backdrop-blur-sm"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50">
-                      <Phone className="h-5 w-5 text-teal-600" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F8EDEE]">
+                      <Phone className="h-5 w-5 text-[#1E1B31]" />
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -162,8 +155,8 @@ export default function ContactPage() {
                     variants={itemVariant}
                     className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/60 p-4 backdrop-blur-sm"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50">
-                      <Clock className="h-5 w-5 text-teal-600" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F8EDEE]">
+                      <Clock className="h-5 w-5 text-[#1E1B31]" />
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -197,7 +190,7 @@ export default function ContactPage() {
                       id="name"
                       type="text"
                       required
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#F8EDEE]"
                       placeholder="Enter your full name"
                     />
                   </div>
@@ -213,7 +206,7 @@ export default function ContactPage() {
                       id="email"
                       type="email"
                       required
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#F8EDEE]"
                       placeholder="you@example.com"
                     />
                   </div>
@@ -229,7 +222,7 @@ export default function ContactPage() {
                       id="phone"
                       type="tel"
                       required
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#F8EDEE]"
                       placeholder="+91 98765 43210"
                     />
                   </div>
@@ -244,7 +237,7 @@ export default function ContactPage() {
                     <select
                       id="service"
                       required
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-[#1E1B31] focus:ring-2 focus:ring-[#F8EDEE]"
                     >
                       <option value="">Select a service</option>
                       {services.map((service) => (
@@ -265,7 +258,7 @@ export default function ContactPage() {
                     <textarea
                       id="message"
                       rows={4}
-                      className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                      className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#1E1B31] focus:ring-2 focus:ring-[#F8EDEE]"
                       placeholder="Share any specific concerns or questions..."
                     />
                   </div>
@@ -273,7 +266,7 @@ export default function ContactPage() {
                   <Button
                     type="submit"
                     size="lg"
-                    className="w-full shadow-lg shadow-teal-600/20"
+                    className="w-full shadow-lg shadow-[#1E1B31]/20"
                   >
                     Request Appointment
                   </Button>
@@ -295,12 +288,7 @@ export default function ContactPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 md:grid-cols-4">
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-teal-600 shadow-lg">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <span className="text-xl font-bold">SkinnFit</span>
-              </div>
+              <PublicBrandMark invert />
               <p className="text-sm text-slate-400">
                 Advanced AI-powered dermatology clinic offering personalized skincare
                 solutions.
@@ -311,27 +299,27 @@ export default function ContactPage() {
               <h4 className="mb-4 font-semibold">Quick Links</h4>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li>
-                  <Link href="/" className="hover:text-teal-400">
+                  <Link href="/" className="hover:text-[#DF9DA4]">
                     Home
                   </Link>
                 </li>
                 <li>
-                  <Link href="/services" className="hover:text-teal-400">
+                  <Link href="/services" className="hover:text-[#DF9DA4]">
                     Services
                   </Link>
                 </li>
                 <li>
-                  <Link href="/blog" className="hover:text-teal-400">
+                  <Link href="/blog" className="hover:text-[#DF9DA4]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/about" className="hover:text-teal-400">
+                  <Link href="/about" className="hover:text-[#DF9DA4]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-teal-400">
+                  <Link href="/contact" className="hover:text-[#DF9DA4]">
                     Contact
                   </Link>
                 </li>
@@ -352,15 +340,15 @@ export default function ContactPage() {
               <h4 className="mb-4 font-semibold">Contact Us</h4>
               <ul className="space-y-3 text-sm text-slate-400">
                 <li className="flex items-start gap-2">
-                  <Phone className="h-4 w-4 shrink-0 text-teal-400" />
+                  <Phone className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                   <span>+91 98765 43210</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Mail className="h-4 w-4 shrink-0 text-teal-400" />
+                  <Mail className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                   <span>hello@skinfit.clinic</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 shrink-0 text-teal-400" />
+                  <MapPin className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
                   <span>123 Medical Plaza, Bangalore, Karnataka 560001</span>
                 </li>
               </ul>
@@ -369,7 +357,7 @@ export default function ContactPage() {
 
           <div className="mt-12 border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
             <p>
-              © {new Date().getFullYear()} SkinnFit Clinic. All rights reserved. |
+              © {new Date().getFullYear()} SkinFit Wellness. All rights reserved. |
               Privacy Policy | Terms of Service
             </p>
           </div>

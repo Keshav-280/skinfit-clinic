@@ -29,7 +29,7 @@ import {
   waterGlassesToMl,
 } from "@/lib/hydrationUnits";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const BLUE = "#4F46E5";
 const GLASS = "rgba(255,255,255,0.55)";
 const GLASS_BORDER = "rgba(255,255,255,0.7)";
@@ -378,8 +378,8 @@ export default function HydrationTrackerScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#E8EFE6" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E8EFE6" },
+  root: { flex: 1, backgroundColor: "#F0EAE2" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F0EAE2" },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingBottom: 4,

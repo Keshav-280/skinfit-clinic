@@ -123,7 +123,7 @@ export async function PATCH(
       patientId,
       staffId,
       text: `Your clinic updated routine reminders: AM ${nextAm}, PM ${nextPm} (${nextTz}). Reminders are ${nextEnabled ? "on" : "off"}.`,
-      pushTitle: "SkinnFit — routine reminders updated",
+      pushTitle: "SkinFit — routine reminders updated",
     });
   } catch (e) {
     console.warn("[routine-settings] notify failed", patientId, e);

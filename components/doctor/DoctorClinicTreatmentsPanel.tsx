@@ -45,7 +45,7 @@ type FormMode = "add" | "edit" | null;
 function CareList({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) {
     return (
-      <p className="text-[11px] text-[#2C3E6B]/45">
+      <p className="text-[11px] text-[#1E1B31]/45">
         No {title.toLowerCase()} items yet.
       </p>
     );
@@ -55,9 +55,9 @@ function CareList({ title, items }: { title: string; items: string[] }) {
       {items.map((item) => (
         <li
           key={`${title}-${item}`}
-          className="flex gap-2 text-[11px] leading-snug text-[#2C3E6B]/85"
+          className="flex gap-2 text-[11px] leading-snug text-[#1E1B31]/85"
         >
-          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#2C3E6B]/35" aria-hidden />
+          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#1E1B31]/35" aria-hidden />
           <span>{item}</span>
         </li>
       ))}
@@ -133,7 +133,7 @@ function TreatmentForm({
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex items-center gap-1 rounded-lg border border-[#2C3E6B]/15 px-3 py-1.5 text-xs font-semibold text-[#2C3E6B]/70 hover:bg-[#F8F9FC]"
+          className="inline-flex items-center gap-1 rounded-lg border border-[#1E1B31]/15 px-3 py-1.5 text-xs font-semibold text-[#1E1B31]/70 hover:bg-[#F8F9FC]"
         >
           <X className="h-3.5 w-3.5" aria-hidden />
           Cancel
@@ -300,14 +300,14 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
 
   return (
     <div className={`${doctorPatientPageCardClass} mt-4 p-4`}>
-      <h2 className="mb-4 flex items-center gap-2 border-b border-[#2C3E6B]/15 pb-3 text-[#2C3E6B]">
+      <h2 className="mb-4 flex items-center gap-2 border-b border-[#1E1B31]/15 pb-3 text-[#1E1B31]">
         <span className={`h-8 w-8 rounded-lg ${doctorNavyIconChipClass}`}>
           <HeartPulse className="h-4 w-4 shrink-0" aria-hidden />
         </span>
         <span className="text-sm font-semibold">Clinic treatments</span>
       </h2>
 
-      <p className="mb-3 text-[11px] leading-snug text-[#2C3E6B]/55">
+      <p className="mb-3 text-[11px] leading-snug text-[#1E1B31]/55">
         Send offline in-clinic treatment pre- and post-care guides to the patient chat.
       </p>
 
@@ -319,7 +319,7 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-[11px] font-semibold text-[#2C3E6B]">
+              <label className="mb-1 block text-[11px] font-semibold text-[#1E1B31]">
                 Treatment
               </label>
               <select
@@ -341,7 +341,7 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
                 <button
                   type="button"
                   onClick={() => startEdit(selected)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#2C3E6B]/15 px-2.5 py-1 text-[10px] font-semibold text-[#2C3E6B] hover:bg-[#F8F9FC]"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#1E1B31]/15 px-2.5 py-1 text-[10px] font-semibold text-[#1E1B31] hover:bg-[#F8F9FC]"
                 >
                   <Pencil className="h-3 w-3" aria-hidden />
                   Edit
@@ -365,8 +365,8 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
                   onClick={() => setPreviewPhase(phase)}
                   className={`rounded-full px-3 py-1 text-[10px] font-semibold transition ${
                     previewPhase === phase
-                      ? "bg-[#2C3E6B] text-white"
-                      : "bg-[#F1F4FA] text-[#2C3E6B]/70 hover:bg-[#E8EDF6]"
+                      ? "bg-[#1E1B31] text-white"
+                      : "bg-[#F1F4FA] text-[#1E1B31]/70 hover:bg-[#E8EDF6]"
                   }`}
                 >
                   {phase === "pre" ? "Pre-care" : "Post-care"}
@@ -381,13 +381,13 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
                 ) : (
                   <div className="space-y-3">
                     <div>
-                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/50">
+                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/50">
                         Do
                       </p>
                       <CareList title="Do" items={selected.postCareDos} />
                     </div>
                     <div>
-                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/50">
+                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/50">
                         Avoid
                       </p>
                       <CareList title="Avoid" items={selected.postCareDonts} />
@@ -419,7 +419,7 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
             </div>
 
             {flash ? (
-              <p className="inline-flex items-center gap-1 text-xs font-medium text-[#2C3E6B]" role="status">
+              <p className="inline-flex items-center gap-1 text-xs font-medium text-[#1E1B31]" role="status">
                 <Check className="h-3.5 w-3.5" aria-hidden />
                 <span>{flash}</span>
               </p>
@@ -427,24 +427,24 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
           </div>
 
           <div className={`${doctorPatientPagePanelClass} flex min-h-[12rem] flex-col p-3`}>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/50">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/50">
               Chat preview
             </p>
-            <pre className="flex-1 whitespace-pre-wrap break-words font-sans text-[11px] leading-relaxed text-[#2C3E6B]/85">
+            <pre className="flex-1 whitespace-pre-wrap break-words font-sans text-[11px] leading-relaxed text-[#1E1B31]/85">
               {previewText}
             </pre>
           </div>
         </div>
       )}
 
-      <div className="mt-4 border-t border-[#2C3E6B]/10 pt-3">
+      <div className="mt-4 border-t border-[#1E1B31]/10 pt-3">
         <button
           type="button"
           onClick={() => {
             if (manageOpen && formMode) resetForm();
             setManageOpen((v) => !v);
           }}
-          className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left text-xs font-semibold text-[#2C3E6B] hover:bg-[#F8F9FC]"
+          className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left text-xs font-semibold text-[#1E1B31] hover:bg-[#F8F9FC]"
           aria-expanded={manageOpen}
         >
           <span className="inline-flex items-center gap-1.5">
@@ -452,7 +452,7 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
             Manage treatments
           </span>
           <ChevronDown
-            className={`h-4 w-4 text-[#2C3E6B]/45 transition ${manageOpen ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-[#1E1B31]/45 transition ${manageOpen ? "rotate-180" : ""}`}
             aria-hidden
           />
         </button>
@@ -461,7 +461,7 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
           <div className="mt-3 space-y-4">
             {formMode ? (
               <div className={`${doctorPatientPagePanelClass} p-3`}>
-                <p className="mb-2 text-[11px] font-semibold text-[#2C3E6B]">
+                <p className="mb-2 text-[11px] font-semibold text-[#1E1B31]">
                   {formMode === "add" ? "Add treatment" : "Edit treatment"}
                 </p>
                 <TreatmentForm
@@ -491,19 +491,19 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
 
             {allTreatments.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/50">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/50">
                   Your treatments
                 </p>
                 {allTreatments.map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-[#2C3E6B]/10 bg-[#FAFBFD] px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-[#1E1B31]/10 bg-[#FAFBFD] px-2.5 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-[11px] font-semibold text-[#2C3E6B]">
+                      <p className="truncate text-[11px] font-semibold text-[#1E1B31]">
                         {t.name}
                       </p>
-                      <p className="text-[10px] text-[#2C3E6B]/45">
+                      <p className="text-[10px] text-[#1E1B31]/45">
                         {t.isBuiltIn ? "Preset" : "Custom"} · {t.preCare.length} pre ·{" "}
                         {t.postCareDos.length + t.postCareDonts.length} post
                       </p>
@@ -512,7 +512,7 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
                       <button
                         type="button"
                         onClick={() => startEdit(t)}
-                        className="rounded-md p-1.5 text-[#2C3E6B]/70 hover:bg-white"
+                        className="rounded-md p-1.5 text-[#1E1B31]/70 hover:bg-white"
                         title="Edit"
                       >
                         <Pencil className="h-3.5 w-3.5" aria-hidden />
@@ -533,15 +533,15 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
 
             {hiddenBuiltIn.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#2C3E6B]/50">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/50">
                   Hidden presets
                 </p>
                 {hiddenBuiltIn.map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-[#2C3E6B]/15 px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-[#1E1B31]/15 px-2.5 py-2"
                   >
-                    <span className="text-[11px] text-[#2C3E6B]/70">{t.name}</span>
+                    <span className="text-[11px] text-[#1E1B31]/70">{t.name}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -549,7 +549,7 @@ export function DoctorClinicTreatmentsPanel({ patientId }: DoctorClinicTreatment
                         setSelectedId(t.id);
                         setFlash(`${t.name} restored.`);
                       }}
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#2C3E6B] hover:underline"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#1E1B31] hover:underline"
                     >
                       <RotateCcw className="h-3 w-3" aria-hidden />
                       Restore

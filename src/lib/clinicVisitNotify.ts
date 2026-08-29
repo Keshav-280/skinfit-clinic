@@ -2,7 +2,7 @@ import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import { notifyPatientScoresUnlocked } from "@/src/lib/expoPush";
 
 export const SCORES_UNLOCKED_PATIENT_MESSAGE =
-  "Your clinic visit is complete. Your exact kAI score and full scan details are now unlocked — open SkinnFit to view them on your dashboard and scan reports.";
+  "Your clinic visit is complete. Your exact kAI score and full scan details are now unlocked — open SkinFit to view them on your dashboard and scan reports.";
 
 /** In-app doctor chat + Expo push when clinic marks the patient visited. */
 export async function notifyPatientClinicVisitScoresUnlocked(

@@ -37,7 +37,7 @@ function SnippetChip({
           writeDoctorSnippetToDataTransfer(e.dataTransfer, item);
         }}
         onClick={() => onInsert?.(item)}
-        className="max-w-full cursor-grab truncate rounded-full bg-[#EEF1F8] px-2.5 py-1 text-left text-[11px] font-medium text-[#2C3E6B] transition hover:bg-[#E2E8F4] active:cursor-grabbing"
+        className="max-w-full cursor-grab truncate rounded-full bg-[#EEF1F8] px-2.5 py-1 text-left text-[11px] font-medium text-[#1E1B31] transition hover:bg-[#E2E8F4] active:cursor-grabbing"
       >
         {item}
       </button>
@@ -45,7 +45,7 @@ function SnippetChip({
         <button
           type="button"
           onClick={onRemove}
-          className="-ml-1 rounded-full p-0.5 text-[#2C3E6B]/40 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover/chip:opacity-100"
+          className="-ml-1 rounded-full p-0.5 text-[#1E1B31]/40 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover/chip:opacity-100"
           aria-label={`Remove ${item}`}
           title="Remove"
         >
@@ -86,7 +86,7 @@ function PhraseAddRow({
         type="button"
         onClick={onSubmit}
         disabled={!draft.trim()}
-        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#2C3E6B] px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-[#243456] disabled:opacity-40"
+        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#1E1B31] px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-[#242A5F] disabled:opacity-40"
       >
         <Plus className="h-3 w-3" aria-hidden />
         Add
@@ -176,7 +176,7 @@ export function DoctorQuickSnippetPalette({
 
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-[#2C3E6B]/10 bg-white/90 shadow-[0_1px_3px_rgba(44,62,107,0.06)] ${className}`}
+      className={`overflow-hidden rounded-xl border border-[#1E1B31]/10 bg-white/90 shadow-[0_1px_3px_rgba(30, 27, 49,0.06)] ${className}`}
     >
       <button
         type="button"
@@ -185,19 +185,19 @@ export function DoctorQuickSnippetPalette({
         aria-expanded={open}
       >
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-[#2C3E6B]">Quick phrases</p>
-          <p className="truncate text-[10px] text-[#2C3E6B]/50">
+          <p className="text-xs font-semibold text-[#1E1B31]">Quick phrases</p>
+          <p className="truncate text-[10px] text-[#1E1B31]/50">
             {open ? "Click to collapse" : summary}
           </p>
         </div>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[#2C3E6B]/45 transition ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-[#1E1B31]/45 transition ${open ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>
 
       {open ? (
-        <div className="border-t border-[#2C3E6B]/8 px-2 pb-2 pt-1.5">
+        <div className="border-t border-[#1E1B31]/8 px-2 pb-2 pt-1.5">
           {tabs.length > 1 ? (
             <div
               className="mb-2 flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -212,8 +212,8 @@ export function DoctorQuickSnippetPalette({
                   onClick={() => setActiveTabId(tab.id)}
                   className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition ${
                     activeTab?.id === tab.id
-                      ? "bg-[#2C3E6B] text-white"
-                      : "bg-[#F1F4FA] text-[#2C3E6B]/70 hover:bg-[#E8EDF6]"
+                      ? "bg-[#1E1B31] text-white"
+                      : "bg-[#F1F4FA] text-[#1E1B31]/70 hover:bg-[#E8EDF6]"
                   }`}
                 >
                   {tab.label}
@@ -239,7 +239,7 @@ export function DoctorQuickSnippetPalette({
                   ))}
                 </div>
               ) : (
-                <p className="px-1 py-2 text-[11px] text-[#2C3E6B]/45">
+                <p className="px-1 py-2 text-[11px] text-[#1E1B31]/45">
                   Save phrases you use often — they appear here.
                 </p>
               )}
@@ -263,7 +263,7 @@ export function DoctorQuickSnippetPalette({
                     />
                   ))
                 ) : (
-                  <p className="px-1 py-2 text-[11px] text-[#2C3E6B]/45">
+                  <p className="px-1 py-2 text-[11px] text-[#1E1B31]/45">
                     No phrases in this list — add one below.
                   </p>
                 )}
@@ -281,7 +281,7 @@ export function DoctorQuickSnippetPalette({
           )}
 
           {hint ? (
-            <p className="mt-2 border-t border-[#2C3E6B]/6 pt-1.5 text-[10px] leading-snug text-[#2C3E6B]/45">
+            <p className="mt-2 border-t border-[#1E1B31]/6 pt-1.5 text-[10px] leading-snug text-[#1E1B31]/45">
               {hint}
             </p>
           ) : null}

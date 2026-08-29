@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Button } from "../ui/Button";
+import { PublicBrandMark } from "./PublicBrandMark";
 
 const links = [
   { href: "/", label: "Home" },
@@ -12,28 +13,16 @@ const links = [
 
 export function PublicNavbar() {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-slate-50/80 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-[#E4E6F0] bg-[#FAF8F5]/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-teal-600 text-sm font-semibold text-white">
-            SF
-          </span>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold text-slate-900">
-              SkinnFit Clinic
-            </span>
-            <span className="text-xs text-slate-500">
-              Skin · Aesthetics · Wellness
-            </span>
-          </div>
-        </Link>
+        <PublicBrandMark />
 
-        <nav className="hidden items-center gap-6 text-sm font-medium text-slate-700 md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-medium text-[#1E1B31] md:flex">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="transition-colors hover:text-teal-600"
+              className="transition-colors hover:text-[#242A5F]"
             >
               {link.label}
             </Link>
@@ -45,7 +34,7 @@ export function PublicNavbar() {
             Login
           </Button>
           <button
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 md:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E4E6F0] bg-white text-[#1E1B31] hover:bg-[#F0EAE2] md:hidden"
             aria-label="Open navigation"
           >
             <Menu className="h-4 w-4" />
@@ -55,4 +44,3 @@ export function PublicNavbar() {
     </header>
   );
 }
-

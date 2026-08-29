@@ -7,7 +7,7 @@ import { SKINFIT_THEME } from "@/lib/skinfitTheme";
 
 const NAVY = SKINFIT_THEME.navy;
 const NAVY_DARK = SKINFIT_THEME.navyDark;
-const BG = "#E8EFE6";
+const BG = "#F0EAE2";
 
 type OnboardingProps = {
   mode: "onboarding";

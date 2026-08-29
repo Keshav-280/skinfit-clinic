@@ -1,61 +1,61 @@
-/** Patient dashboard — exact mockup palette (web + mobile). */
-export const PATIENT_MINT_BG = "#F5F3EF";
-export const PATIENT_NAVY = "#2D3E6B";
-export const PATIENT_NAVY_HOVER = "#243456";
+/** Patient dashboard — SkinFit Wellness brand tokens. */
+export const PATIENT_MINT_BG = "#FAF8F5";
+export const PATIENT_NAVY = "#1E1B31";
+export const PATIENT_NAVY_HOVER = "#242A5F";
 export const PATIENT_GREEN = "#4CAF50";
 export const PATIENT_CARD_BG = "#FFFFFF";
-export const PATIENT_CARD_BORDER = "#E5E7EB";
-export const PATIENT_TEXT = "#18181b";
-export const PATIENT_MUTED = "#6B7280";
+export const PATIENT_CARD_BORDER = "#E4E6F0";
+export const PATIENT_TEXT = "#1E1B31";
+export const PATIENT_MUTED = "#5B66A1";
 
 /** @deprecated use PATIENT_MINT_BG */
-export const PATIENT_SAGE = "#E8EFE6";
+export const PATIENT_SAGE = "#F0EAE2";
 /** @deprecated */
-export const PATIENT_SAGE_MUTED = "#e0e5df";
+export const PATIENT_SAGE_MUTED = "#F8EDEE";
 
 export const patientDashboardCard =
-  "rounded-[20px] border border-[#E5E7EB] bg-white p-5 md:p-6";
+  "rounded-[20px] border border-[#E4E6F0] bg-white p-5 md:p-6";
 
 export const patientDashboardNavyCard =
-  "rounded-[20px] bg-[#2D3E6B] p-5 md:p-6";
+  "rounded-[20px] bg-[#1E1B31] p-5 md:p-6";
 
 export const patientGlassShell = patientDashboardCard;
 
 export const patientInnerCard =
-  "rounded-xl border border-[#E5E7EB] bg-white";
+  "rounded-xl border border-[#E4E6F0] bg-white";
 
 export const patientSectionIcon =
-  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#2D3E6B]/10 text-[#2D3E6B]";
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1E1B31]/10 text-[#1E1B31]";
 
 export const patientPageTitle =
-  "text-2xl font-extrabold tracking-tight text-[#18181b] sm:text-3xl";
+  "font-headline text-2xl font-extrabold tracking-tight text-[#1E1B31] sm:text-3xl";
 
-export const patientSectionTitle = "text-lg font-bold text-[#2D3E6B]";
+export const patientSectionTitle = "font-headline text-lg font-bold text-[#1E1B31]";
 
 export const patientKicker =
-  "text-[11px] font-bold uppercase tracking-wide text-[#2D3E6B]/60";
+  "font-meta text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]/60";
 
-export const patientMuted = "text-sm text-[#6B7280]";
+export const patientMuted = "text-sm text-[#5B66A1]";
 
 export const patientPrimaryBtn =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#2D3E6B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#1E1B31] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:opacity-50";
 
 export const patientSecondaryBtn =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D3E6B] transition hover:bg-[#F5F3EF]";
+  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#1E1B31] transition hover:bg-[#FAF8F5]";
 
 export const patientInputBase =
-  "rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 text-[#2D3E6B] placeholder:text-[#6B7280]/60 outline-none focus:border-[#2D3E6B]/40 focus:ring-2 focus:ring-[#2D3E6B]/10 disabled:opacity-60";
+  "rounded-xl border border-[#E4E6F0] bg-white px-4 py-3 text-[#1E1B31] placeholder:text-[#5B66A1]/60 outline-none focus:border-[#1E1B31]/40 focus:ring-2 focus:ring-[#1E1B31]/10 disabled:opacity-60";
 
 export const patientInput = `w-full max-w-full ${patientInputBase}`;
 
 export const patientFormSection =
-  "min-w-0 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-5 sm:p-6";
+  "min-w-0 overflow-hidden rounded-xl border border-[#E4E6F0] bg-white p-5 sm:p-6";
 
 export const patientStatTile =
-  "rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-3";
+  "rounded-xl border border-[#E4E6F0] bg-white px-3.5 py-3";
 
 export const patientScoreChip =
-  "rounded-md bg-[#F5F3EF] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#2D3E6B]";
+  "rounded-md bg-[#FAF8F5] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#1E1B31]";
 
 /** Locked weekly trend glyph (↑ / ↓ / —). */
 export function lockedWeeklyProgressSymbol(weeklyDeltaScore: number): string {

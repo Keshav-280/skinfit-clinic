@@ -15,7 +15,7 @@ export default async function SchedulesPreviewPage({
   const usePlaceholderPhoto = resolvedSearchParams.photo !== "0";
 
   return (
-    <div className="min-h-dvh bg-[#E8EFE6] px-4 py-5 pb-12 md:px-6">
+    <div className="min-h-dvh bg-[#F0EAE2] px-4 py-5 pb-12 md:px-6">
       <SchedulesPageClient
         initialTreatmentEvents={[]}
         initialAppointmentEvents={[]}

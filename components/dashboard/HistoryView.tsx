@@ -113,7 +113,7 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
     <div className={`overflow-hidden ${patientInnerCard}`}>
       <div className="flex items-start justify-between gap-3 border-b border-white/50 px-4 pb-3 pt-4 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/10 text-[#2C3E6B] shadow-sm">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1E1B31]/10 text-[#1E1B31] shadow-sm">
             <Mic className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0 pt-0.5">
@@ -125,20 +125,20 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
         </div>
         <time
           dateTime={new Date(vn.createdAt).toISOString()}
-          className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-xs font-medium tabular-nums text-[#2C3E6B]/70 shadow-sm"
+          className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-xs font-medium tabular-nums text-[#1E1B31]/70 shadow-sm"
         >
           {format(new Date(vn.createdAt), "MMM d, yyyy")}
         </time>
       </div>
 
       <div className="px-4 py-4 sm:px-5">
-        <div className="rounded-xl bg-[#E8EFE6]/50 px-3 py-2.5">
+        <div className="rounded-xl bg-[#F0EAE2]/50 px-3 py-2.5">
           {vn.audioDataUri?.trim() ? (
             <audio
               controls
               preload="metadata"
               className="h-9 w-full max-h-9 min-h-[2.25rem] [&::-webkit-media-controls-panel]:rounded-lg"
-              style={{ accentColor: "#2C3E6B" }}
+              style={{ accentColor: "#1E1B31" }}
               src={vn.audioDataUri.trim()}
             >
               Your browser does not support audio.
@@ -155,8 +155,8 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
             <label
               className={`inline-flex min-h-[44px] max-w-full cursor-pointer items-center gap-3 rounded-xl border border-solid px-3 py-2.5 shadow-sm transition-colors ${
                 vn.listened
-                  ? "border-[#2C3E6B]/25 bg-[#E8EFE6]/80"
-                  : "border-white/60 bg-white/60 hover:border-[#2C3E6B]/20"
+                  ? "border-[#1E1B31]/25 bg-[#F0EAE2]/80"
+                  : "border-white/60 bg-white/60 hover:border-[#1E1B31]/20"
               } ${busy ? "pointer-events-none opacity-60" : ""}`}
             >
               <input
@@ -169,8 +169,8 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-solid transition-colors ${
                   vn.listened
-                    ? "border-[#2C3E6B] bg-[#2C3E6B]"
-                    : "border-[#2C3E6B]/30 bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-[#2C3E6B]/30"
+                    ? "border-[#1E1B31] bg-[#1E1B31]"
+                    : "border-[#1E1B31]/30 bg-white peer-focus-visible:ring-2 peer-focus-visible:ring-[#1E1B31]/30"
                 }`}
               >
                 <Check
@@ -192,7 +192,7 @@ function HistoryReportVoiceCard({ vn }: { vn: ReportVoiceNoteRecord }) {
                   ? "Move to archived (still playable)"
                   : "Mark as listened first"
               }
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 px-4 py-2.5 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/60 bg-white/50 px-4 py-2.5 text-sm font-semibold text-[#1E1B31] shadow-sm transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Archive className="h-4 w-4 opacity-70" aria-hidden />
               Archive
@@ -294,7 +294,7 @@ export function HistoryView({
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/dashboard/scan"
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#2C3E6B]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#2C3E6B] shadow-sm transition hover:border-[#2C3E6B]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#1E1B31]/15 bg-white/60 px-3 py-2 text-sm font-semibold text-[#1E1B31] shadow-sm transition hover:border-[#1E1B31]/30 hover:bg-white/80 sm:px-4 sm:py-2.5"
             >
               <Camera className="h-4 w-4" aria-hidden />
               Take scan
@@ -331,7 +331,7 @@ export function HistoryView({
                 transition={{ duration: 0.3 }}
                 className={`overflow-hidden ${patientInnerCard}`}
               >
-                <div className="relative h-48 overflow-hidden rounded-t-xl bg-[#E8EFE6]/40">
+                <div className="relative h-48 overflow-hidden rounded-t-xl bg-[#F0EAE2]/40">
                   <img
                     src={scan.imageUrl}
                     alt={scan.scanName || "AI scan"}
@@ -340,7 +340,7 @@ export function HistoryView({
                     decoding="async"
                     fetchPriority="low"
                   />
-                  <div className="absolute right-2 top-2 rounded-lg bg-[#2C3E6B] px-2.5 py-1 text-lg font-bold text-white shadow-sm">
+                  <div className="absolute right-2 top-2 rounded-lg bg-[#1E1B31] px-2.5 py-1 text-lg font-bold text-white shadow-sm">
                     {scoreLabel(scan.overallScore)}
                   </div>
                 </div>
@@ -351,7 +351,7 @@ export function HistoryView({
                   <p className="mt-0.5 text-xs text-[#6B7280]">
                     {format(new Date(scan.createdAt), "MMM d, yyyy · h:mm a")}
                   </p>
-                  <p className="mt-1 text-lg font-bold text-[#2C3E6B]">
+                  <p className="mt-1 text-lg font-bold text-[#1E1B31]">
                     Overall {scoreLabel(scan.overallScore)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -372,7 +372,7 @@ export function HistoryView({
               </motion.div>
             ))
           ) : (
-            <div className="col-span-full flex flex-col items-center gap-5 rounded-2xl border border-dashed border-[#2C3E6B]/20 bg-white/60 px-6 py-14 text-center">
+            <div className="col-span-full flex flex-col items-center gap-5 rounded-2xl border border-dashed border-[#1E1B31]/20 bg-white/60 px-6 py-14 text-center">
               <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
                 <Camera className="h-8 w-8 text-slate-400" aria-hidden />
               </span>

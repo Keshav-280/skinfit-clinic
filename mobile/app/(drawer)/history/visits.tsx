@@ -19,7 +19,7 @@ import { apiJson } from "@/lib/api";
 import { getCached, setCached } from "@/lib/apiCache";
 
 const NAVY = "#2B3A67";
-const BG: [string, string] = ["#E8EFE6", "#DCE8D4"];
+const BG: [string, string] = ["#F0EAE2", "#DCCFC0"];
 
 type VisitRow = {
   id: string;

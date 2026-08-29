@@ -56,7 +56,7 @@ export function ProfileNavBadge() {
   return (
     <Link
       href="/dashboard/profile"
-      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2C3E6B]/40"
+      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E1B31]/40"
       title={pct != null ? `Profile ${pct}% complete` : "Profile"}
       aria-label={pct != null ? `Profile, ${pct}% complete` : "Profile"}
     >
@@ -80,7 +80,7 @@ export function ProfileNavBadge() {
             cy={SIZE / 2}
             r={RADIUS}
             fill="none"
-            stroke="#2C3E6B"
+            stroke="#1E1B31"
             strokeWidth={STROKE}
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
@@ -89,7 +89,7 @@ export function ProfileNavBadge() {
           />
         ) : null}
       </svg>
-      <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2C3E6B]/10">
+      <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1E1B31]/10">
         {data?.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -103,13 +103,13 @@ export function ProfileNavBadge() {
             return resolvedGender ? (
               <AvatarIcon gender={resolvedGender} />
             ) : (
-              <span className="text-[10px] font-bold tracking-wide text-[#2C3E6B]">
+              <span className="text-[10px] font-bold tracking-wide text-[#1E1B31]">
                 {initialsFromName(data.name || "Patient")}
               </span>
             );
           })()
         ) : (
-          <User className="h-3.5 w-3.5 text-[#2C3E6B]" aria-hidden />
+          <User className="h-3.5 w-3.5 text-[#1E1B31]" aria-hidden />
         )}
       </span>
     </Link>

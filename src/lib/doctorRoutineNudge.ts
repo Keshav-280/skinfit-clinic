@@ -87,7 +87,7 @@ export async function sendDoctorRoutineNudge(
     patientId,
     staffId,
     text,
-    pushTitle: kind === "am" ? "SkinnFit — morning routine" : "SkinnFit — night routine",
+    pushTitle: kind === "am" ? "SkinFit — morning routine" : "SkinFit — night routine",
   });
   return { ok: true };
 }

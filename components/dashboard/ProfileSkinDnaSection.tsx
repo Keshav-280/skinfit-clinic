@@ -59,11 +59,11 @@ function ProfileSkinDnaSkeleton() {
   return (
     <div className="space-y-6">
       <div
-        className="overflow-hidden rounded-[22px] bg-gradient-to-b from-white to-[#FAF8F4]/90 p-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)]"
+        className="overflow-hidden rounded-[22px] bg-gradient-to-b from-white to-[#FAF8F5]/90 p-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)]"
         style={{ border: "1px solid #eee7dc" }}
       >
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 animate-pulse rounded-2xl bg-teal-100/60" />
+          <div className="h-12 w-12 animate-pulse rounded-2xl bg-[#F8EDEE]/60" />
           <div className="flex-1 space-y-2">
             <div className="h-5 w-40 animate-pulse rounded bg-zinc-200/80" />
             <div className="h-3 w-full max-w-md animate-pulse rounded bg-zinc-100" />
@@ -99,7 +99,7 @@ function DnaStat({
 }) {
   return (
     <div className={patientStatTile}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2C3E6B]/60">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1E1B31]/60">
         {label}
       </p>
       <p className="mt-1 text-sm font-semibold leading-snug text-[#1A1A2E]">{value}</p>
@@ -122,7 +122,7 @@ function MetricTile({
 
   return (
     <div className={patientStatTile}>
-      <p className="text-[11px] font-bold uppercase tracking-wide text-[#2C3E6B]/60">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]/60">
         {label}
       </p>
       {pendingOnly || n == null ? (
@@ -131,12 +131,12 @@ function MetricTile({
         </p>
       ) : (
         <>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-[#2C3E6B]">
+          <p className="mt-1 text-2xl font-bold tabular-nums text-[#1E1B31]">
             {n}
           </p>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E8EFE6]">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#F0EAE2]">
             <div
-              className="h-full rounded-full bg-[#2C3E6B] transition-[width] duration-500"
+              className="h-full rounded-full bg-[#1E1B31] transition-[width] duration-500"
               style={{ width: `${Math.min(100, Math.max(0, n))}%` }}
             />
           </div>
@@ -239,7 +239,7 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
           </div>
 
           {data.keyObservations?.items?.length ? (
-            <div className={`${patientInnerCard} bg-[#E8EFE6]/40 px-4 py-3`}>
+            <div className={`${patientInnerCard} bg-[#F0EAE2]/40 px-4 py-3`}>
               <p className={patientKicker}>Key observations</p>
               <p className="mt-1 text-xs text-[#6B7280]">
                 {data.keyObservations.modeLabel}
@@ -247,7 +247,7 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
               <ul className="mt-3 space-y-3">
                 {data.keyObservations.items.map((item, i) => (
                   <li key={i} className="flex gap-2">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]/10 text-xs font-bold text-[#2C3E6B]">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1E1B31]/10 text-xs font-bold text-[#1E1B31]">
                       {i + 1}
                     </span>
                     <div>
@@ -262,7 +262,7 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
               </ul>
             </div>
           ) : data.lastWeekObservations ? (
-            <div className={`${patientInnerCard} bg-[#E8EFE6]/40 px-4 py-3`}>
+            <div className={`${patientInnerCard} bg-[#F0EAE2]/40 px-4 py-3`}>
               <p className={patientKicker}>Last check-in</p>
               <p className="mt-2 text-sm text-[#374151]">{data.lastWeekObservations}</p>
             </div>
@@ -270,8 +270,8 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
 
           <div>
             <div className="mb-3 flex items-center gap-2">
-              <ListChecks className="h-5 w-5 text-[#2C3E6B]" aria-hidden />
-              <h3 className="text-sm font-bold text-[#2C3E6B]">
+              <ListChecks className="h-5 w-5 text-[#1E1B31]" aria-hidden />
+              <h3 className="text-sm font-bold text-[#1E1B31]">
                 3 things to focus on
               </h3>
             </div>
@@ -281,7 +281,7 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
                   key={i}
                   className={`flex gap-3 ${patientInnerCard} px-4 py-3`}
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#2C3E6B]/10 text-sm font-bold text-[#2C3E6B]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1E1B31]/10 text-sm font-bold text-[#1E1B31]">
                     {i + 1}
                   </span>
                   <p className="pt-1 text-sm leading-snug text-[#374151]">
@@ -297,8 +297,8 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
           <div>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Microscope className="h-5 w-5 text-[#2C3E6B]" aria-hidden />
-                <h3 className="text-sm font-bold text-[#2C3E6B]">
+                <Microscope className="h-5 w-5 text-[#1E1B31]" aria-hidden />
+                <h3 className="text-sm font-bold text-[#1E1B31]">
                   Last scans (up to 4)
                 </h3>
               </div>

@@ -370,7 +370,7 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
     border-radius: 18px;
     border: 1px solid rgba(255,255,255,0.72);
     background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.94) 55%, rgba(232,239,248,0.9) 100%);
-    box-shadow: 0 14px 32px -18px rgba(44,62,107,0.28), inset 0 1px 0 rgba(255,255,255,0.95);
+    box-shadow: 0 14px 32px -18px rgba(30, 27, 49,0.28), inset 0 1px 0 rgba(255,255,255,0.95);
   }
   .kicker {
     font-size: 10px;
@@ -411,7 +411,7 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
   .habit {
     padding: 10px 10px 12px;
     border-radius: 14px;
-    border: 1px solid rgba(44,62,107,0.12);
+    border: 1px solid rgba(30, 27, 49,0.12);
     background: rgba(255,255,255,0.92);
   }
   .habit-k {
@@ -447,7 +447,7 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
   .param-bar {
     height: 8px;
     border-radius: 999px;
-    background: rgba(44,62,107,0.12);
+    background: rgba(30, 27, 49,0.12);
     overflow: hidden;
   }
   .param-fill {
@@ -477,7 +477,7 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
     gap: 8px;
     padding: 6px 10px;
     border-radius: 999px;
-    border: 1px solid rgba(44,62,107,0.14);
+    border: 1px solid rgba(30, 27, 49,0.14);
     background: #fff;
     font-size: 11px;
   }
@@ -488,7 +488,7 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
     display: inline-block;
     padding: 4px 10px;
     border-radius: 999px;
-    border: 1px solid rgba(44,62,107,0.14);
+    border: 1px solid rgba(30, 27, 49,0.14);
     background: #fff;
     font-size: 11px;
     font-weight: 600;

@@ -130,7 +130,7 @@ export function KaiMeetIntroCard() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22 }}
-                className="inline-block max-w-sm rounded-2xl bg-white/70 px-4 py-3 text-base font-medium leading-relaxed shadow-[0_4px_18px_-6px_rgba(44,62,107,0.25)] backdrop-blur-sm md:max-w-md md:text-lg lg:text-xl"
+                className="inline-block max-w-sm rounded-2xl bg-white/70 px-4 py-3 text-base font-medium leading-relaxed shadow-[0_4px_18px_-6px_rgba(30, 27, 49,0.25)] backdrop-blur-sm md:max-w-md md:text-lg lg:text-xl"
                 style={{ color: KAI_MEET_CARD.text.desc }}
               >
                 {typed}
@@ -156,7 +156,7 @@ export function KaiMeetIntroCard() {
           >
             <Link
               href="/preview/capture-guide"
-              className="group inline-flex items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-8px_rgba(44,62,107,0.4)] transition hover:bg-[#243456] hover:shadow-[0_14px_30px_-10px_rgba(44,62,107,0.45)]"
+              className="group inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E1B31] px-5 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-8px_rgba(30, 27, 49,0.4)] transition hover:bg-[#242A5F] hover:shadow-[0_14px_30px_-10px_rgba(30, 27, 49,0.45)]"
             >
               <Camera className="h-4 w-4" aria-hidden />
               Take scan first
@@ -164,7 +164,7 @@ export function KaiMeetIntroCard() {
             </Link>
             <Link
               href="/preview/questionnaire"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2C3E6B]/25 bg-white/70 px-5 py-3.5 text-sm font-bold text-[#2C3E6B] backdrop-blur-sm transition hover:border-[#2C3E6B]/40 hover:bg-white"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#1E1B31]/25 bg-white/70 px-5 py-3.5 text-sm font-bold text-[#1E1B31] backdrop-blur-sm transition hover:border-[#1E1B31]/40 hover:bg-white"
             >
               <ClipboardList className="h-4 w-4" aria-hidden />
               Fill questionnaire first
@@ -208,7 +208,7 @@ export function KaiMeetIntroCard() {
                 alt="kAI — your SkinFit AI skin companion"
                 width={835}
                 height={1600}
-                className="relative z-10 block h-[min(70vw,340px)] w-auto object-contain object-bottom drop-shadow-[0_20px_30px_rgba(44,62,107,0.25)] sm:h-[400px] md:h-[560px] lg:h-[640px]"
+                className="relative z-10 block h-[min(70vw,340px)] w-auto object-contain object-bottom drop-shadow-[0_20px_30px_rgba(30, 27, 49,0.25)] sm:h-[400px] md:h-[560px] lg:h-[640px]"
                 priority
               />
             </motion.div>

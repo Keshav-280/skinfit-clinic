@@ -163,8 +163,8 @@ export default function DoctorProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <h1 className="text-xl font-bold text-[#2C3E6B]">Doctor Profile</h1>
-      <p className="mt-0.5 text-sm text-[#2C3E6B]/60">
+      <h1 className="text-xl font-bold text-[#1E1B31]">Doctor Profile</h1>
+      <p className="mt-0.5 text-sm text-[#1E1B31]/60">
         Manage your display name, specialty, and avatar for patient-facing chat.
       </p>
 
@@ -253,7 +253,7 @@ export default function DoctorProfilePage() {
 
       <section className={`mt-6 p-6 ${doctorIvoryCardClass}`}>
         <h2 className="text-sm font-bold text-red-700">Danger zone</h2>
-        <p className="mt-1 text-sm text-[#2C3E6B]/65">
+        <p className="mt-1 text-sm text-[#1E1B31]/65">
           Permanently delete your doctor portal account, profile photo, slots, and patient
           care links. Patient records stay in the system.
         </p>

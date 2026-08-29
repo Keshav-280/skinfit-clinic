@@ -29,9 +29,9 @@ export const VISIT_RESPONSE_RATING_STYLES: Record<
   string,
   { bg: string; text: string }
 > = {
-  excellent: { bg: "#E8EFF8", text: "#2C3E6B" },
-  good: { bg: "#E8EFF8", text: "#2C3E6B" },
-  moderate: { bg: "#DCE8F4", text: "#243456" },
+  excellent: { bg: "#E8EFF8", text: "#1E1B31" },
+  good: { bg: "#E8EFF8", text: "#1E1B31" },
+  moderate: { bg: "#DCE8F4", text: "#242A5F" },
   poor: { bg: "#fee2e2", text: "#991b1b" },
 };
 

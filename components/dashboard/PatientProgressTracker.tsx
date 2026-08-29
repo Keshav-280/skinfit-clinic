@@ -7,7 +7,7 @@ import type {
   ProgressMilestone,
 } from "@/src/lib/patientProgressMilestones";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 const GREEN = "#4CAF50";
 const MUTED = "#9CA3AF";
 
@@ -85,7 +85,7 @@ export function PatientProgressTracker({
             const labelClass = done
               ? "text-[#4CAF50]"
               : active
-                ? "text-[#2C3E6B]"
+                ? "text-[#1E1B31]"
                 : "text-[#9CA3AF]";
 
             return (
@@ -145,13 +145,13 @@ export function PatientProgressTracker({
       {questionnaireUnlocks.length > 0 ? (
         <p className="mt-2 text-[10px] leading-snug text-[#6B7280] sm:text-[11px]">
           Complete questionnaire to unlock{" "}
-          <span className="font-semibold text-[#2C3E6B]">
+          <span className="font-semibold text-[#1E1B31]">
             {formatUnlockList(questionnaireUnlocks)}
           </span>
           .{" "}
           <Link
             href="/onboarding/questionnaire?entry=resume"
-            className="font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
+            className="font-semibold text-[#1E1B31] underline-offset-2 hover:underline"
           >
             Continue
           </Link>
@@ -159,13 +159,13 @@ export function PatientProgressTracker({
       ) : skippedCount > 0 ? (
         <p className="mt-2 text-[10px] leading-snug text-[#6B7280] sm:text-[11px]">
           You skipped{" "}
-          <span className="font-semibold text-[#2C3E6B]">
+          <span className="font-semibold text-[#1E1B31]">
             {skippedCount} survey {skippedCount === 1 ? "question" : "questions"}
           </span>
           .{" "}
           <Link
             href="/onboarding/questionnaire?entry=resume"
-            className="font-semibold text-[#2C3E6B] underline-offset-2 hover:underline"
+            className="font-semibold text-[#1E1B31] underline-offset-2 hover:underline"
           >
             Finish them
           </Link>

@@ -30,7 +30,7 @@ export function ScanCaptureStepTicks({ completedCount, compact }: Props) {
               done
                 ? "border-emerald-200/80 bg-emerald-50/90"
                 : active
-                  ? "border-[#2C3E6B]/35 bg-white/70"
+                  ? "border-[#1E1B31]/35 bg-white/70"
                   : "border-white/50 bg-white/40"
             } ${compact ? "text-[9px]" : "text-[10px]"}`}
             title={step.title}
@@ -43,7 +43,7 @@ export function ScanCaptureStepTicks({ completedCount, compact }: Props) {
             ) : (
               <Circle
                 className={`shrink-0 ${
-                  active ? "text-[#2C3E6B]" : "text-zinc-400"
+                  active ? "text-[#1E1B31]" : "text-zinc-400"
                 } ${compact ? "h-3 w-3" : "h-3.5 w-3.5"}`}
                 aria-hidden
               />
@@ -53,7 +53,7 @@ export function ScanCaptureStepTicks({ completedCount, compact }: Props) {
                 done
                   ? "font-medium text-emerald-800"
                   : active
-                    ? "font-semibold text-[#2C3E6B]"
+                    ? "font-semibold text-[#1E1B31]"
                     : "text-zinc-500"
               }
             >

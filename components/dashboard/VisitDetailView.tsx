@@ -17,7 +17,7 @@ function formatVisitDate(ymd: string): string {
 function VisitSection({ title, body }: { title: string; body: string }) {
   return (
     <section className="rounded-[18px] border border-zinc-100 bg-white/95 p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-      <h2 className="text-xs font-bold uppercase tracking-wide text-[#2C3E6B]">
+      <h2 className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]">
         {title}
       </h2>
       <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-800">
@@ -66,7 +66,7 @@ export function VisitDetailView({ visit }: { visit: PatientVisitDetail }) {
 
       {visit.attachments && visit.attachments.length > 0 ? (
         <section className="rounded-[18px] border border-zinc-100 bg-white/95 p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#2C3E6B]">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]">
             Attachments
           </h2>
           <div className="mt-4 space-y-4">
@@ -89,7 +89,7 @@ export function VisitDetailView({ visit }: { visit: PatientVisitDetail }) {
                       <a
                         href={att.dataUri}
                         download={att.fileName}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#e8ede6] px-3 py-1.5 text-sm font-semibold text-[#2C3E6B] hover:bg-[#dce5da]"
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#e8ede6] px-3 py-1.5 text-sm font-semibold text-[#1E1B31] hover:bg-[#dce5da]"
                       >
                         <Download className="h-4 w-4" aria-hidden />
                         Download
@@ -103,14 +103,14 @@ export function VisitDetailView({ visit }: { visit: PatientVisitDetail }) {
                   key={`${visit.id}-att-${idx}`}
                   className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3"
                 >
-                  <FileText className="h-5 w-5 shrink-0 text-[#2C3E6B]" aria-hidden />
+                  <FileText className="h-5 w-5 shrink-0 text-[#1E1B31]" aria-hidden />
                   <p className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800">
                     {att.fileName}
                   </p>
                   <a
                     href={att.dataUri}
                     download={att.fileName}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#e8ede6] px-3 py-1.5 text-sm font-semibold text-[#2C3E6B] hover:bg-[#dce5da]"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#e8ede6] px-3 py-1.5 text-sm font-semibold text-[#1E1B31] hover:bg-[#dce5da]"
                   >
                     <Download className="h-4 w-4" aria-hidden />
                     Download

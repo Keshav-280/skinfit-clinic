@@ -14,12 +14,12 @@ export function ScanReportClinicPromoNote({ className = "" }: { className?: stri
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: easeOut }}
       aria-label="In-clinic services"
-      className={`rounded-[20px] border border-[rgba(44,62,107,0.14)] bg-white/90 px-5 py-5 shadow-[0_8px_28px_-8px_rgba(44,62,107,0.18)] backdrop-blur-md sm:px-6 sm:py-6 ${className}`}
+      className={`rounded-[20px] border border-[rgba(30, 27, 49,0.14)] bg-white/90 px-5 py-5 shadow-[0_8px_28px_-8px_rgba(30, 27, 49,0.18)] backdrop-blur-md sm:px-6 sm:py-6 ${className}`}
     >
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#2C3E6B]/70">
+      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1E1B31]/70">
         {copy.kicker}
       </p>
-      <h3 className="mt-2 text-[17px] font-semibold leading-snug tracking-tight text-[#1E3264] sm:text-[18px]">
+      <h3 className="mt-2 text-[17px] font-semibold leading-snug tracking-tight text-[#242A5F] sm:text-[18px]">
         {copy.title}
       </h3>
       <p className="mt-2.5 text-[13px] leading-[1.65] text-zinc-600">{copy.intro}</p>

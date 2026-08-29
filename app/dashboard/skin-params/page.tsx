@@ -85,7 +85,7 @@ function ProgressRing({
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS} fill="none" stroke="#e5e7eb" strokeWidth={STROKE_WIDTH} />
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS} fill="none" stroke={color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" strokeDasharray={CIRCUMFERENCE} strokeDashoffset={offset} className="transition-all duration-700 ease-out" />
       </svg>
-      <span className="absolute text-lg font-bold text-[#2C3E6B]">{displayLabel}</span>
+      <span className="absolute text-lg font-bold text-[#1E1B31]">{displayLabel}</span>
     </div>
   );
 }
@@ -217,7 +217,7 @@ function TrendIndicator({
   }
   if (history.length === 1) {
     return (
-      <span className="text-[11px] font-semibold text-[#2C3E6B]">
+      <span className="text-[11px] font-semibold text-[#1E1B31]">
         {label(history[0].value)}
       </span>
     );
@@ -261,7 +261,7 @@ function ParamCard({ param }: { param: SkinParam }) {
       <div className="w-full">
         <MiniLineChart data={param.history} color={color} paramName={param.name} />
       </div>
-      <span className="inline-flex items-center gap-0.5 text-sm font-semibold text-[#2C3E6B] underline-offset-2 group-hover:underline">
+      <span className="inline-flex items-center gap-0.5 text-sm font-semibold text-[#1E1B31] underline-offset-2 group-hover:underline">
         {param.name}
         <ChevronRight className="h-3.5 w-3.5 text-[#6B7280]" aria-hidden />
       </span>
@@ -340,7 +340,7 @@ export default function SkinParamsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
       </div>
     );
   }
@@ -353,9 +353,9 @@ export default function SkinParamsPage() {
           href="/dashboard"
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/60 bg-white/35 backdrop-blur-sm"
         >
-          <ArrowLeft className="h-5 w-5 text-[#2C3E6B]" />
+          <ArrowLeft className="h-5 w-5 text-[#1E1B31]" />
         </Link>
-        <h1 className="text-xl font-bold text-[#2C3E6B]">Skin Parameters</h1>
+        <h1 className="text-xl font-bold text-[#1E1B31]">Skin Parameters</h1>
       </div>
 
       {/* Parameter grid */}
@@ -369,14 +369,14 @@ export default function SkinParamsPage() {
       {lastScanDate && (
         <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500">
           <span>Last Scan:</span>
-          <span className="font-medium text-[#2C3E6B]">{lastScanDate}</span>
+          <span className="font-medium text-[#1E1B31]">{lastScanDate}</span>
         </div>
       )}
 
       {/* Take New Scan button */}
       <Link
         href="/dashboard/scan"
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] py-4 text-base font-semibold text-white shadow-lg transition-transform active:scale-[0.98]"
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] py-4 text-base font-semibold text-white shadow-lg transition-transform active:scale-[0.98]"
       >
         <Camera className="h-5 w-5" />
         Take New Scan

@@ -32,7 +32,7 @@ export default async function VisitDetailPage({
       <div className={`${patientGlassShell} p-5 md:p-6`}>
         <Link
           href="/dashboard/history/visits"
-          className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-[#2C3E6B] hover:text-[#3d5080]"
+          className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-[#1E1B31] hover:text-[#5B66A1]"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
           History &amp; notes

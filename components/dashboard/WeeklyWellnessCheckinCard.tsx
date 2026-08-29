@@ -63,9 +63,9 @@ function stressDescriptor(level: number): { label: string; color: string; bg: st
 }
 
 const PILL_SELECTED =
-  "border-[#2C3E6B] bg-[#2C3E6B] text-white shadow-[0_4px_14px_-4px_rgba(44,62,107,0.45)] ring-2 ring-[#2C3E6B]/20 ring-offset-1";
+  "border-[#1E1B31] bg-[#1E1B31] text-white shadow-[0_4px_14px_-4px_rgba(30, 27, 49,0.45)] ring-2 ring-[#1E1B31]/20 ring-offset-1";
 const PILL_IDLE =
-  "border-[#E5E7EB] bg-white text-[#2C3E6B] hover:border-[#2C3E6B]/25 hover:bg-[#F5F3EF]";
+  "border-[#E5E7EB] bg-white text-[#1E1B31] hover:border-[#1E1B31]/25 hover:bg-[#FAF8F5]";
 
 function SectionBlock({
   label,
@@ -87,7 +87,7 @@ function SectionBlock({
       className={`${showDivider ? "border-t border-[#E8EBE8] pt-8" : ""} ${className}`}
     >
       <div className="mb-6 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2C3E6B]/8 text-[#2C3E6B]">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1E1B31]/8 text-[#1E1B31]">
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </span>
         <div className="min-w-0 pt-0.5">
@@ -170,7 +170,7 @@ function IconTextField({
       </label>
       <div className="relative">
         <Icon
-          className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#2C3E6B]/40"
+          className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#1E1B31]/40"
           aria-hidden
         />
         <input
@@ -178,7 +178,7 @@ function IconTextField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAF8] py-3.5 pl-12 pr-4 text-[15px] text-[#18181b] outline-none transition placeholder:text-[#9CA3AF] focus:border-[#2C3E6B]/25 focus:bg-white focus:shadow-[inset_0_0_0_3px_rgba(44,62,107,0.08)]"
+          className="w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAF8] py-3.5 pl-12 pr-4 text-[15px] text-[#18181b] outline-none transition placeholder:text-[#9CA3AF] focus:border-[#1E1B31]/25 focus:bg-white focus:shadow-[inset_0_0_0_3px_rgba(30, 27, 49,0.08)]"
         />
       </div>
       <p className="mt-2 text-xs text-[#9CA3AF]">{helper}</p>
@@ -297,7 +297,7 @@ export function WeeklyWellnessCheckinCard({
   }
 
   return (
-    <section className="rounded-3xl border border-[#E5E7EB]/90 bg-white p-6 shadow-[0_8px_40px_-12px_rgba(44,62,107,0.18)] md:p-9">
+    <section className="rounded-3xl border border-[#E5E7EB]/90 bg-white p-6 shadow-[0_8px_40px_-12px_rgba(30, 27, 49,0.18)] md:p-9">
       <div className="space-y-0">
         <SectionBlock
           label="Lifestyle"
@@ -345,7 +345,7 @@ export function WeeklyWellnessCheckinCard({
           <div>
             <div className="mb-3 flex items-center justify-between gap-2">
               <FieldLabel>Level of Stress</FieldLabel>
-              <span className="text-sm font-extrabold tabular-nums text-[#2C3E6B]">
+              <span className="text-sm font-extrabold tabular-nums text-[#1E1B31]">
                 {stressTouched ? `${stressLevel}/10` : "â€”/10"}
               </span>
             </div>
@@ -459,7 +459,7 @@ export function WeeklyWellnessCheckinCard({
         {savedHint ? (
           <p
             role="status"
-            className="inline-flex w-full items-start gap-2 rounded-2xl border border-[#30D158]/30 bg-[#F2F9F2] px-4 py-3.5 text-sm leading-relaxed text-[#18181b] shadow-sm"
+            className="inline-flex w-full items-start gap-2 rounded-2xl border border-[#30D158]/30 bg-[#FAF8F5] px-4 py-3.5 text-sm leading-relaxed text-[#18181b] shadow-sm"
           >
             <Check
               className="mt-0.5 h-4 w-4 shrink-0 text-[#30D158]"
@@ -473,7 +473,7 @@ export function WeeklyWellnessCheckinCard({
           type="button"
           disabled={!hasAny || saving}
           onClick={() => void onSave()}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E6B] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243456] hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#242A5F] hover:-translate-y-0.5 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
         >
           {saving ? (
             <>

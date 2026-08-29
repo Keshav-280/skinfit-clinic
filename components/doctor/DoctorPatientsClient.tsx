@@ -76,7 +76,7 @@ function PatientBadges({ p }: { p: PatientRow }) {
         </span>
       ) : null}
       {p.clinicVisited ? (
-        <span className="rounded-full border border-[#2C3E6B]/20 bg-[#2C3E6B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#2C3E6B]">
+        <span className="rounded-full border border-[#1E1B31]/20 bg-[#1E1B31]/10 px-2 py-0.5 text-[10px] font-semibold text-[#1E1B31]">
           Visited
         </span>
       ) : null}
@@ -100,20 +100,20 @@ function PatientCardLink({ p }: { p: PatientRow }) {
       }`}
     >
       <div className="flex items-start justify-between gap-2.5">
-        <p className="min-w-0 pr-1 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-slate-900 group-hover:text-[#2C3E6B]">
+        <p className="min-w-0 pr-1 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-slate-900 group-hover:text-[#1E1B31]">
           <span className="line-clamp-2">{p.name}</span>
         </p>
         <ChevronRight
-          className="mt-0.5 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#2C3E6B]"
+          className="mt-0.5 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#1E1B31]"
           aria-hidden
         />
       </div>
       {p.email ? (
         <p
-          className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-[#2C3E6B]"
+          className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-[#1E1B31]"
           title={p.email}
         >
-          <Mail className="h-3 w-3 shrink-0 text-[#2C3E6B]/70" aria-hidden />
+          <Mail className="h-3 w-3 shrink-0 text-[#1E1B31]/70" aria-hidden />
           <span className="truncate font-medium">{p.email}</span>
         </p>
       ) : null}
@@ -139,11 +139,11 @@ function PatientListRow({ p }: { p: PatientRow }) {
         isUrgent ? doctorPatientListRowUrgentClass : doctorPatientListRowClass
       }`}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]/10 text-[#2C3E6B]">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1E1B31]/10 text-[#1E1B31]">
         <User className="h-4 w-4" aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-[#2C3E6B]">
+        <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-[#1E1B31]">
           {p.name}
         </p>
         {p.email ? (
@@ -159,7 +159,7 @@ function PatientListRow({ p }: { p: PatientRow }) {
       ) : null}
       <PatientBadges p={p} />
       <ChevronRight
-        className="h-4 w-4 shrink-0 text-slate-300 group-hover:text-[#2C3E6B]"
+        className="h-4 w-4 shrink-0 text-slate-300 group-hover:text-[#1E1B31]"
         aria-hidden
       />
     </Link>
@@ -326,7 +326,7 @@ export function DoctorPatientsClient({
             Search patients
           </label>
           <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#2C3E6B]/70"
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#1E1B31]/70"
             aria-hidden
           />
           <input
@@ -334,13 +334,13 @@ export function DoctorPatientsClient({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Name or email…"
-            className={`w-full ${doctorIvoryFieldClass} py-2 pl-8 pr-3 text-sm outline-none focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20`}
+            className={`w-full ${doctorIvoryFieldClass} py-2 pl-8 pr-3 text-sm outline-none focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20`}
           />
         </div>
         <select
           value={concern}
           onChange={(e) => setConcern(e.target.value)}
-          className={`${doctorIvoryFieldClass} px-2.5 py-2 text-sm outline-none focus:border-[#2C3E6B] focus:ring-2 focus:ring-[#2C3E6B]/20`}
+          className={`${doctorIvoryFieldClass} px-2.5 py-2 text-sm outline-none focus:border-[#1E1B31] focus:ring-2 focus:ring-[#1E1B31]/20`}
           aria-label="Filter by concern"
         >
           {CONCERNS.map((c) => (
@@ -354,14 +354,14 @@ export function DoctorPatientsClient({
             type="checkbox"
             checked={sosOnly}
             onChange={(e) => setSosOnly(e.target.checked)}
-            className="accent-[#2C3E6B]"
+            className="accent-[#1E1B31]"
           />
           Alerts
         </label>
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex items-center justify-center rounded-lg bg-[#2C3E6B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#243356] disabled:opacity-50"
+          className="inline-flex items-center justify-center rounded-lg bg-[#1E1B31] px-3 py-2 text-xs font-semibold text-white hover:bg-[#242A5F] disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
         </button>

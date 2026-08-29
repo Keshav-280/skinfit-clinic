@@ -29,7 +29,7 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-const SPLASH_GREEN = "#D6E4D0";
+const SPLASH_GREEN = "#DCCFC0";
 const SPLASH_LOGO = require("../assets/images/splash-logo-transparent.png");
 const SPLASH_LOGO_WIDTH = Dimensions.get("window").width * 0.84;
 const SPLASH_LOGO_HEIGHT = SPLASH_LOGO_WIDTH * (217 / 900);
@@ -80,8 +80,8 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-const NAVY = "#2D3E6B";
-const DASHBOARD_BG = "#F2F9F2";
+const NAVY = "#1E1B31";
+const DASHBOARD_BG = "#FAF8F5";
 
 const skinfitNavigationTheme = {
   ...DefaultTheme,

@@ -23,7 +23,7 @@ export function LogoutButton({ compact = false, className = "" }: Props) {
       <button
         type="button"
         onClick={() => void logout()}
-        className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/50 text-[#2C3E6B]/70 backdrop-blur-sm transition-colors hover:bg-white/80 hover:text-[#2C3E6B] ${className}`}
+        className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/50 text-[#1E1B31]/70 backdrop-blur-sm transition-colors hover:bg-white/80 hover:text-[#1E1B31] ${className}`}
         title="Log out"
       >
         <LogOut className="h-4 w-4" aria-hidden />

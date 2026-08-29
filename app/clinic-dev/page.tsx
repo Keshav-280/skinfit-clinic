@@ -433,7 +433,7 @@ export default function ClinicDevPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#1E1B31]">
               Internal
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
@@ -449,7 +449,7 @@ export default function ClinicDevPage() {
               value={doctorId}
               onChange={(e) => setDoctorId(e.target.value)}
               disabled={loading}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 shadow-sm outline-none ring-teal-500/0 transition focus:border-teal-300 focus:ring-2 focus:ring-teal-500/20"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 shadow-sm outline-none ring-[#1E1B31]/0 transition focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/20"
             >
               {doctors.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -463,7 +463,7 @@ export default function ClinicDevPage() {
         <p className="mb-4 text-sm text-slate-600">
           <Link
             href="/doctor/login"
-            className="font-semibold text-teal-700 underline-offset-2 hover:underline"
+            className="font-semibold text-[#1E1B31] underline-offset-2 hover:underline"
           >
             Doctor portal
           </Link>{" "}
@@ -492,14 +492,14 @@ export default function ClinicDevPage() {
                 onClick={() => setSection(s.id)}
                 className={`flex min-w-[7rem] flex-1 flex-col items-start rounded-xl px-3 py-2 text-left transition sm:flex-none sm:min-w-[9rem] ${
                   on
-                    ? "bg-teal-600 text-white shadow-md shadow-teal-600/20"
+                    ? "bg-[#1E1B31] text-white shadow-md shadow-[#1E1B31]/20"
                     : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 <span className="text-sm font-semibold">{s.label}</span>
                 <span
                   className={`mt-0.5 text-[11px] leading-tight ${
-                    on ? "text-teal-100" : "text-slate-500"
+                    on ? "text-[#F8EDEE]" : "text-slate-500"
                   }`}
                 >
                   {s.hint}
@@ -513,7 +513,7 @@ export default function ClinicDevPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 text-slate-900">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F8EDEE] text-[#1E1B31]">
                   <Plus className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
@@ -534,7 +534,7 @@ export default function ClinicDevPage() {
                       value={slotDate}
                       onChange={(e) => setSlotDate(e.target.value)}
                       disabled={loading}
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/15"
                     />
                   </label>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -544,7 +544,7 @@ export default function ClinicDevPage() {
                       value={slotTimeHm}
                       onChange={(e) => setSlotTimeHm(e.target.value)}
                       disabled={loading}
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/15"
                     />
                   </label>
                 </div>
@@ -557,7 +557,7 @@ export default function ClinicDevPage() {
                       value={slotEndTimeHm}
                       onChange={(e) => setSlotEndTimeHm(e.target.value)}
                       disabled={loading}
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/15"
                     />
                   </label>
                   <button
@@ -578,7 +578,7 @@ export default function ClinicDevPage() {
                     onChange={(e) => setSlotTitle(e.target.value)}
                     disabled={loading}
                     placeholder="Consultation"
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/15"
                   />
                 </label>
 
@@ -586,13 +586,13 @@ export default function ClinicDevPage() {
                   type="button"
                   onClick={() => void upsertSlot()}
                   disabled={loading || !doctorId}
-                  className="w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-xl bg-[#1E1B31] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? "Saving…" : "Save slot"}
                 </button>
 
                 {slotResult ? (
-                  <p className="text-xs text-teal-800">{slotResult}</p>
+                  <p className="text-xs text-[#4A2630]">{slotResult}</p>
                 ) : null}
               </div>
             </section>
@@ -629,7 +629,7 @@ export default function ClinicDevPage() {
                   disabled={!!deletingId || !doctorId}
                   rows={2}
                   placeholder="e.g. Doctor unavailable — we’ll reopen this week."
-                  className="mt-1.5 w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
+                  className="mt-1.5 w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/15"
                 />
                 <span className="mt-1 block font-normal normal-case text-slate-400">
                   Sent in Clinic Support when the slot had a booking or request. Leave blank for a default message.
@@ -725,7 +725,7 @@ export default function ClinicDevPage() {
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-semibold text-teal-900">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F8EDEE] px-2.5 py-0.5 text-xs font-semibold text-[#1E1B31]">
                         <FileText className="h-3.5 w-3.5" aria-hidden />
                         Pending
                       </span>
@@ -777,7 +777,7 @@ export default function ClinicDevPage() {
             <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F8EDEE] text-[#1E1B31]">
                     <MessageCircle className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0">
@@ -813,7 +813,7 @@ export default function ClinicDevPage() {
                           type="button"
                           onClick={() => setRubyPatientId(t.patientId)}
                           className={`w-full px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${
-                            rubyPatientId === t.patientId ? "bg-teal-50/80" : ""
+                            rubyPatientId === t.patientId ? "bg-[#F8EDEE]/80" : ""
                           }`}
                         >
                           <p className="truncate font-medium text-slate-900">{t.patientName}</p>
@@ -862,7 +862,7 @@ export default function ClinicDevPage() {
                         <div
                           className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm ${
                             m.sender === "patient"
-                              ? "bg-teal-600 text-white"
+                              ? "bg-[#1E1B31] text-white"
                               : m.sender === "doctor"
                                 ? "border border-slate-200 bg-white text-slate-800 shadow-sm"
                                 : "border border-slate-200 bg-white text-slate-600 shadow-sm"
@@ -878,7 +878,7 @@ export default function ClinicDevPage() {
                           <p className="whitespace-pre-wrap">{m.text}</p>
                           <p
                             className={`mt-1 text-[10px] ${
-                              m.sender === "patient" ? "text-teal-100" : "text-slate-400"
+                              m.sender === "patient" ? "text-[#F8EDEE]" : "text-slate-400"
                             }`}
                           >
                             {format(new Date(m.createdAt), "MMM d, yyyy · h:mm a")}
@@ -899,13 +899,13 @@ export default function ClinicDevPage() {
                     placeholder={
                       rubyPatientId ? "Type a reply as Dr. Ruby…" : "Select a patient first"
                     }
-                    className="min-h-[44px] flex-1 resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
+                    className="min-h-[44px] flex-1 resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/15"
                   />
                   <button
                     type="button"
                     onClick={() => void sendRubyReply()}
                     disabled={!rubyPatientId || !rubyReply.trim() || rubySending}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50 sm:min-w-[6rem]"
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#1E1B31] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#242A5F] disabled:opacity-50 sm:min-w-[6rem]"
                   >
                     <Send className="h-4 w-4" aria-hidden />
                     {rubySending ? "Sending…" : "Send"}
@@ -967,7 +967,7 @@ export default function ClinicDevPage() {
             </button>
             <button
               type="button"
-              className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white"
+              className="rounded-lg bg-[#1E1B31] px-3 py-2 text-sm font-semibold text-white"
               disabled={kaiLoading || kaiRows.length === 0}
               onClick={async () => {
                 const id = Number.parseInt(kaiScanId, 10);
@@ -1016,7 +1016,7 @@ export default function ClinicDevPage() {
                         ? "bg-slate-100 text-slate-600"
                         : r.source === "pending"
                           ? "bg-amber-100 text-amber-900"
-                          : "bg-teal-100 text-teal-900"
+                          : "bg-[#F8EDEE] text-[#1E1B31]"
                     }`}
                   >
                     {r.source}

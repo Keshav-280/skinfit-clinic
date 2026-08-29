@@ -50,8 +50,8 @@ export function SocialLoginButtons({
       aria-disabled={disabled}
       className={`flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3.5 text-[15px] font-semibold shadow-sm transition focus:outline-none focus:ring-2 aria-disabled:pointer-events-none aria-disabled:opacity-50 ${
         isDark
-          ? "border-white/20 bg-white text-[#1E232C] hover:bg-white/95 focus:ring-[#E8EFE6]/25 focus:ring-offset-2 focus:ring-offset-[#2C3E6B]"
-          : "border-[#E8ECF4] bg-white text-[#1E232C] hover:border-slate-300 hover:bg-[#F7F8F9] focus:ring-[#525FE1]/20 focus:ring-offset-2"
+          ? "border-white/20 bg-white text-[#1E232C] hover:bg-white/95 focus:ring-[#F0EAE2]/25 focus:ring-offset-2 focus:ring-offset-[#1E1B31]"
+          : "border-[#E8ECF4] bg-white text-[#1E232C] hover:border-slate-300 hover:bg-[#F7F8F9] focus:ring-[#1E1B31]/20 focus:ring-offset-2"
       }`}
       onClick={(e) => {
         if (disabled) e.preventDefault();

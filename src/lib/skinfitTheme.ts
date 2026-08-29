@@ -1,23 +1,40 @@
-/** SkinFit patient app brand — navy + soft mint (web + mobile). */
+/**
+ * SkinFit Wellness brand — from the 2026 style guide.
+ * Indigo carries type; rose is surface; warm neutrals are ~80% of every screen.
+ * Sage is reserved — do not use as a default fill.
+ */
 export const SKINFIT_THEME = {
-  navy: "#2C3E6B",
-  navyDark: "#1E3264",
-  navyMid: "#3d5080",
-  navyLight: "#E2E8F0",
-  mint: "#E8EFE6",
-  mintDeep: "#DCE8D4",
-  sage: "#D6E4D0",
-  sageMid: "#E0EADA",
-  sageLight: "#EAF0E6",
-  whiteGlass: "rgba(255,255,255,0.92)",
-  text: "#0f172a",
-  textMuted: "#64748b",
-  error: "#b91c1c",
+  /** Wordmark, nav, headings, body ink */
+  navy: "#1E1B31",
+  navyDark: "#242A5F",
+  navyMid: "#5B66A1",
+  navyLight: "#A8AECD",
+  ink: "#1E1B31",
+  midnight: "#242A5F",
+  indigoMid: "#5B66A1",
+  indigoSoft: "#A8AECD",
+  indigoPale: "#E4E6F0",
+  blush: "#DF9DA4",
+  roseInk: "#4A2630",
+  roseMid: "#A05E6D",
+  roseSoft: "#EFCCCE",
+  rosePale: "#F8EDEE",
+  canvas: "#FAF8F5",
+  linen: "#F0EAE2",
+  sand: "#DCCFC0",
+  /** Held in reserve — one product line only */
+  sage: "#7F8A83",
+  mint: "#F0EAE2",
+  mintDeep: "#DCCFC0",
+  sageMid: "#F0EAE2",
+  sageLight: "#FAF8F5",
+  whiteGlass: "rgba(250,248,245,0.92)",
+  text: "#1E1B31",
+  textMuted: "#5B66A1",
+  error: "#4A2630",
 } as const;
 
 export const SKINFIT_GRADIENT = {
-  /** Login, questionnaire, dashboard-adjacent screens */
-  patient: ["#E8EFE6", "#DCE8D4"] as const,
-  /** Scan / capture flows */
-  scan: ["#D6E4D0", "#E0EADA", "#EAF0E6"] as const,
+  patient: ["#FAF8F5", "#F0EAE2"] as const,
+  scan: ["#F8EDEE", "#FAF8F5", "#F0EAE2"] as const,
 } as const;

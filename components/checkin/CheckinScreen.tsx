@@ -34,12 +34,12 @@ export function CheckinScreen({
   const pct = (step / totalSteps) * 100;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-[#F5F3EF]">
-      <div className="mx-auto flex w-full max-w-[430px] flex-1 flex-col bg-[#F5F3EF] px-6 pt-6">
+    <div className="flex min-h-[100dvh] flex-col bg-[#FAF8F5]">
+      <div className="mx-auto flex w-full max-w-[430px] flex-1 flex-col bg-[#FAF8F5] px-6 pt-6">
         {/* Progress bar */}
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
           <motion.div
-            className="h-full rounded-full bg-[#2C3E6B]"
+            className="h-full rounded-full bg-[#1E1B31]"
             animate={{ width: `${pct}%` }}
             transition={{ duration: 0.4, ease: easeOut }}
           />
@@ -51,7 +51,7 @@ export function CheckinScreen({
             type="button"
             onClick={onBack}
             disabled={step <= 1}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#2C3E6B] transition hover:bg-[#2C3E6B]/8 disabled:opacity-0"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#1E1B31] transition hover:bg-[#1E1B31]/8 disabled:opacity-0"
             aria-label="Back"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -95,12 +95,12 @@ export function CheckinScreen({
         </motion.div>
 
         {/* Sticky footer */}
-        <div className="sticky bottom-0 -mx-6 border-t border-[#E5E7EB] bg-[#F5F3EF]/95 px-6 pb-8 pt-4 backdrop-blur-sm">
+        <div className="sticky bottom-0 -mx-6 border-t border-[#E5E7EB] bg-[#FAF8F5]/95 px-6 pb-8 pt-4 backdrop-blur-sm">
           <button
             type="button"
             onClick={onNext}
             disabled={nextDisabled || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2C3E6B] py-4 text-[15px] font-bold text-white transition hover:bg-[#243456] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1E1B31] py-4 text-[15px] font-bold text-white transition hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
           >
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

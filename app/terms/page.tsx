@@ -12,8 +12,8 @@ import {
 } from "@/src/lib/clinicPublicContact";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — SkinnFit",
-  description: "Terms governing your use of the SkinnFit patient app and dashboard.",
+  title: "Terms of Service — SkinFit",
+  description: "Terms governing your use of the SkinFit patient app and dashboard.",
 };
 
 const { legalName, addressLine, email, jurisdiction } = CLINIC_PUBLIC_CONTACT;
@@ -24,27 +24,27 @@ export default function TermsPage() {
       kicker="Legal"
       title="Terms of Service"
       lastUpdated={TERMS_OF_SERVICE_LAST_UPDATED}
-      intro="These Terms govern your use of the SkinnFit mobile app and patient web dashboard used with participating dermatology clinics in India."
+      intro="These Terms govern your use of the SkinFit mobile app and patient web dashboard used with participating dermatology clinics in India."
       footer={
         <>
           See also{" "}
           <Link
             href="/privacy"
-            className="font-semibold text-[#2C3E6B] underline underline-offset-2"
+            className="font-semibold text-[#1E1B31] underline underline-offset-2"
           >
             Privacy Policy
           </Link>{" "}
           and{" "}
           <Link
             href="/contact"
-            className="font-semibold text-[#2C3E6B] underline underline-offset-2"
+            className="font-semibold text-[#1E1B31] underline underline-offset-2"
           >
             Contact
           </Link>
           . Questions? Email{" "}
           <a
             href={`mailto:${email}`}
-            className="font-semibold text-[#2C3E6B] underline underline-offset-2"
+            className="font-semibold text-[#1E1B31] underline underline-offset-2"
           >
             {email}
           </a>
@@ -52,9 +52,9 @@ export default function TermsPage() {
         </>
       }
     >
-      <LegalSection title="1. Who operates SkinnFit">
+      <LegalSection title="1. Who operates SkinFit">
         <p>
-          {legalName} operates the SkinnFit mobile application and patient web dashboard for
+          {legalName} operates the SkinFit mobile application and patient web dashboard for
           participating dermatology clinics.
         </p>
         <LegalBulletList
@@ -68,12 +68,12 @@ export default function TermsPage() {
 
       <LegalSection title="2. The Service">
         <p>
-          SkinnFit helps patients of participating clinics capture AI-assisted skin scans, view
+          SkinFit helps patients of participating clinics capture AI-assisted skin scans, view
           reports, chat with their care team, track wellness habits, and coordinate appointments.
         </p>
         <LegalBulletList
           items={[
-            "SkinnFit is a care coordination and education tool.",
+            "SkinFit is a care coordination and education tool.",
             "It is not a substitute for professional medical advice, diagnosis, emergency care, or in-person examination.",
             "Features may vary by clinic and may change as the platform is improved.",
           ]}
@@ -94,7 +94,7 @@ export default function TermsPage() {
       <LegalSection title="4. Medical disclaimer">
         <p>
           Always consult a qualified healthcare professional for medical advice, diagnosis, or
-          treatment. Do not delay seeking professional care because of information in SkinnFit.
+          treatment. Do not delay seeking professional care because of information in SkinFit.
         </p>
         <LegalBulletList
           items={[
@@ -102,7 +102,7 @@ export default function TermsPage() {
             "Scan results, scores, and AI responses are informational and educational only.",
             "Only your licensed healthcare provider can diagnose conditions and prescribe treatment.",
             "Using chat or AI features alone does not create a doctor–patient relationship.",
-            "SkinnFit does not provide emergency or urgent care services.",
+            "SkinFit does not provide emergency or urgent care services.",
           ]}
         />
       </LegalSection>
@@ -113,7 +113,7 @@ export default function TermsPage() {
             "Do not upload unlawful, harassing, misleading, or abusive content.",
             "Do not attempt to disrupt, reverse engineer, scrape, or misuse the Service.",
             "Do not share another person’s health images or data without their consent.",
-            "Do not use SkinnFit to impersonate a clinician or misrepresent medical qualifications.",
+            "Do not use SkinFit to impersonate a clinician or misrepresent medical qualifications.",
             "We may suspend or terminate access for violations or risks to users, clinics, or the platform.",
           ]}
         />
@@ -143,11 +143,11 @@ export default function TermsPage() {
       <LegalSection title="8. Privacy">
         <p>
           Our{" "}
-          <Link href="/privacy" className="font-semibold text-[#2C3E6B] underline underline-offset-2">
+          <Link href="/privacy" className="font-semibold text-[#1E1B31] underline underline-offset-2">
             Privacy Policy
           </Link>{" "}
           explains how we collect, use, store, and protect personal and health-related information.
-          By using SkinnFit, you also agree to that policy.
+          By using SkinFit, you also agree to that policy.
         </p>
       </LegalSection>
 
@@ -165,7 +165,7 @@ export default function TermsPage() {
       <LegalSection title="10. Changes to these Terms">
         <p>
           We may update these Terms from time to time. Revised versions are posted on this page with
-          a new “Last updated” date. Continued use of SkinnFit after changes means you accept the
+          a new “Last updated” date. Continued use of SkinFit after changes means you accept the
           updated Terms.
         </p>
       </LegalSection>

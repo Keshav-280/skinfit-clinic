@@ -28,7 +28,7 @@ function googleCalendarRemovalHintForConfirmedVisitMarkdown(
   const dayUrl = googleCalendarDayViewUrlFromYmd(slotYmd);
   const openDay =
     dayUrl && slotYmd
-      ? `1. [**Open this day in Google Calendar**](${dayUrl}) — goes to **${slotYmd}** so you can spot the visit fast.\n2. Open the event (often **SkinnFit Clinic** or your doctor’s name), then tap **Delete** / trash or **Remove** so you won’t get reminders.\n\n`
+      ? `1. [**Open this day in Google Calendar**](${dayUrl}) — goes to **${slotYmd}** so you can spot the visit fast.\n2. Open the event (often **SkinFit Wellness** or your doctor’s name), then tap **Delete** / trash or **Remove** so you won’t get reminders.\n\n`
       : `1. Open [Google Calendar](https://calendar.google.com) (same Google account you used for **Add to Google Calendar**, if applicable).\n2. Find the event for this visit and **delete** or **remove** it.\n\n`;
 
   return `\n\n**Remove from Google Calendar (if you added it)**\n\n${openDay}[Google Calendar home](https://calendar.google.com) · On the phone app, open Calendar and delete the event for that day.`;

@@ -69,8 +69,8 @@ export function ScrollHero() {
               {/* App preview placeholder */}
               <div className="flex h-full items-center justify-center p-6 pt-12">
                 <div className="text-center">
-                  <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-teal-500/20" />
-                  <p className="text-sm text-zinc-500">SkinnFit App</p>
+                  <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-[#F8EDEE]0/20" />
+                  <p className="text-sm text-zinc-500">SkinFit App</p>
                 </div>
               </div>
             </div>
@@ -97,7 +97,7 @@ export function ScrollHero() {
               {[1, 2, 3, 4, 5].map((i) => (
                 <div
                   key={i}
-                  className="h-24 w-20 rounded-xl border border-teal-500/30 bg-zinc-900/80 backdrop-blur-sm"
+                  className="h-24 w-20 rounded-xl border border-[#DF9DA4]/30 bg-zinc-900/80 backdrop-blur-sm"
                   style={{
                     background: `linear-gradient(135deg, rgba(20,184,166,0.1) 0%, rgba(20,184,166,0.02) 100%)`,
                   }}
@@ -105,11 +105,11 @@ export function ScrollHero() {
               ))}
             </div>
             <div className="flex items-center gap-6">
-              <div className="h-32 w-32 rounded-2xl border-2 border-teal-400/40 bg-zinc-900/90 backdrop-blur-md" />
+              <div className="h-32 w-32 rounded-2xl border-2 border-[#DF9DA4]/40 bg-[#1E1B31]/90 backdrop-blur-md" />
               <div className="flex flex-col gap-2">
-                <div className="h-4 w-48 rounded bg-teal-500/30" />
-                <div className="h-4 w-36 rounded bg-teal-500/20" />
-                <div className="h-4 w-40 rounded bg-teal-500/20" />
+                <div className="h-4 w-48 rounded bg-[#F8EDEE]0/30" />
+                <div className="h-4 w-36 rounded bg-[#F8EDEE]0/20" />
+                <div className="h-4 w-40 rounded bg-[#F8EDEE]0/20" />
               </div>
             </div>
             <motion.h2

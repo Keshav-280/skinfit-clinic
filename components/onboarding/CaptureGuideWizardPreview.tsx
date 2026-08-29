@@ -94,7 +94,7 @@ export function CaptureGuideWizardPreview() {
             type="button"
             onClick={() => goTo(index - 1)}
             disabled={index === 0}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#2C3E6B] transition hover:bg-[#2C3E6B]/8 disabled:opacity-0"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#1E1B31] transition hover:bg-[#1E1B31]/8 disabled:opacity-0"
             aria-label="Previous angle"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -111,7 +111,7 @@ export function CaptureGuideWizardPreview() {
               >
                 <span
                   className={`block rounded-full transition-all ${
-                    i === index ? "h-2 w-6 bg-[#2C3E6B]" : "h-2 w-2 bg-[#E5E7EB]"
+                    i === index ? "h-2 w-6 bg-[#1E1B31]" : "h-2 w-2 bg-[#E5E7EB]"
                   }`}
                 />
               </button>
@@ -122,7 +122,7 @@ export function CaptureGuideWizardPreview() {
             type="button"
             onClick={() => goTo(index + 1)}
             disabled={index === steps.length - 1}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#2C3E6B] transition hover:bg-[#2C3E6B]/8 disabled:opacity-0"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#1E1B31] transition hover:bg-[#1E1B31]/8 disabled:opacity-0"
             aria-label="Next angle"
           >
             <ChevronRight className="h-5 w-5" />
@@ -179,7 +179,7 @@ export function CaptureGuideWizardPreview() {
                         key={tip}
                         className="flex items-center gap-2.5 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2"
                       >
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2C3E6B]/10 text-[10px] font-bold text-[#2C3E6B]">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1E1B31]/10 text-[10px] font-bold text-[#1E1B31]">
                           {i + 1}
                         </span>
                         <span className="text-sm font-medium text-[#18181b]">{tip}</span>
@@ -195,7 +195,7 @@ export function CaptureGuideWizardPreview() {
 
       {/* Pinned bottom capture bar */}
       <div
-        className="sticky bottom-0 flex flex-col items-center gap-3 bg-[#F5F3EF]/95 px-6 pb-8 pt-4 backdrop-blur-sm"
+        className="sticky bottom-0 flex flex-col items-center gap-3 bg-[#FAF8F5]/95 px-6 pb-8 pt-4 backdrop-blur-sm"
         style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
@@ -205,9 +205,9 @@ export function CaptureGuideWizardPreview() {
           type="button"
           onClick={takePicture}
           aria-label="Take picture"
-          className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-[#2C3E6B]/15 bg-white shadow-lg transition active:scale-95"
+          className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-[#1E1B31]/15 bg-white shadow-lg transition active:scale-95"
         >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#2C3E6B]">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1E1B31]">
             <Camera className="h-6 w-6 text-white" />
           </span>
         </button>

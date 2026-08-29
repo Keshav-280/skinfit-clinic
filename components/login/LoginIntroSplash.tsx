@@ -81,7 +81,7 @@ export function LoginIntroSplash({ onDone }: { onDone: () => void }) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#2C3E6B]"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#1E1B31]"
       initial={{ opacity: 1 }}
       animate={{ opacity: stage === "leaving" ? 0 : 1 }}
       transition={{ duration: 1.1, ease: easeOut, delay: stage === "leaving" ? 0.4 : 0 }}
@@ -115,7 +115,7 @@ export function LoginIntroSplash({ onDone }: { onDone: () => void }) {
             so the sweep always exactly clears the full width regardless of
             rendered size. */}
         <motion.div
-          className="pointer-events-none absolute inset-y-0 left-0 w-full bg-[#2C3E6B]"
+          className="pointer-events-none absolute inset-y-0 left-0 w-full bg-[#1E1B31]"
           initial={{ x: "0%" }}
           animate={{ x: "100%" }}
           transition={{ duration: 2, ease: easeOut }}

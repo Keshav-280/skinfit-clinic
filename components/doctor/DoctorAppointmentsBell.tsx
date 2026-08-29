@@ -79,7 +79,7 @@ export function DoctorAppointmentsBell() {
         <Calendar className="h-4 w-4 shrink-0" aria-hidden />
         <span className="hidden sm:inline">Upcoming</span>
         {count > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#2C3E6B] px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1E1B31] px-1 text-[10px] font-bold text-white">
             {count > 99 ? "99+" : count}
           </span>
         ) : null}
@@ -111,7 +111,7 @@ export function DoctorAppointmentsBell() {
                 >
                   <Link
                     href={`/doctor/patients/${it.patientId}`}
-                    className="block rounded-md px-1 py-0.5 hover:bg-teal-50"
+                    className="block rounded-md px-1 py-0.5 hover:bg-[#F8EDEE]"
                     onClick={() => setOpen(false)}
                     role="menuitem"
                   >

@@ -22,7 +22,7 @@ export function OAuthLoginDivider({
         <span
           className={`px-3 ${
             isDark
-              ? "bg-[#2C3E6B] text-white/50"
+              ? "bg-[#1E1B31] text-white/50"
               : "bg-white text-[#8391A1]"
           }`}
         >

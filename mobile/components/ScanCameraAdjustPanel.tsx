@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   toggleBtnOpen: {
-    backgroundColor: "rgba(44,62,107,0.88)",
+    backgroundColor: "rgba(30, 27, 49,0.88)",
   },
   toggleBtnActive: {
     borderWidth: 1,

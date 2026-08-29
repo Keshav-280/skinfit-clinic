@@ -83,7 +83,7 @@ export default function StressTrackerPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#2C3E6B]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
       </div>
     );
   }
@@ -96,9 +96,9 @@ export default function StressTrackerPage() {
           href="/dashboard"
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/60 bg-white/35 backdrop-blur-sm"
         >
-          <ArrowLeft className="h-5 w-5 text-[#2C3E6B]" />
+          <ArrowLeft className="h-5 w-5 text-[#1E1B31]" />
         </Link>
-        <h1 className="text-xl font-bold text-[#2C3E6B]">Stress Level</h1>
+        <h1 className="text-xl font-bold text-[#1E1B31]">Stress Level</h1>
         <div className="ml-auto flex items-center gap-2">
           {saveStatus === "saving" && <span className="text-xs text-slate-400">Saving...</span>}
           {saveStatus === "saved" && <span className="text-xs text-emerald-500">Saved ✓</span>}
@@ -129,15 +129,15 @@ export default function StressTrackerPage() {
             <button
               onClick={decrement}
               disabled={level === 0}
-              className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2C3E6B] text-white shadow-md transition-opacity disabled:opacity-30"
+              className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1E1B31] text-white shadow-md transition-opacity disabled:opacity-30"
             >
               <Minus className="h-5 w-5" />
             </button>
-            <div className="w-12 text-center text-2xl font-bold text-[#2C3E6B]">{level}/10</div>
+            <div className="w-12 text-center text-2xl font-bold text-[#1E1B31]">{level}/10</div>
             <button
               onClick={increment}
               disabled={level === 10}
-              className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2C3E6B] text-white shadow-md transition-opacity disabled:opacity-30"
+              className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1E1B31] text-white shadow-md transition-opacity disabled:opacity-30"
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -147,7 +147,7 @@ export default function StressTrackerPage() {
 
       {/* Mood selector */}
       <div className="mt-6 rounded-2xl border border-white/60 bg-white/35 p-5 backdrop-blur-sm">
-        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">How are you feeling?</h2>
+        <h2 className="mb-3 text-sm font-semibold text-[#1E1B31]">How are you feeling?</h2>
         <div className="flex flex-wrap gap-2">
           {moods.map((mood) => (
             <button
@@ -155,7 +155,7 @@ export default function StressTrackerPage() {
               onClick={() => handleSetMood(mood)}
               className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
                 selectedMood === mood
-                  ? "bg-[#2C3E6B] text-white shadow-md"
+                  ? "bg-[#1E1B31] text-white shadow-md"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -167,13 +167,13 @@ export default function StressTrackerPage() {
 
       {/* Notes */}
       <div className="mt-6 rounded-2xl border border-white/60 bg-white/35 p-5 backdrop-blur-sm">
-        <h2 className="mb-3 text-sm font-semibold text-[#2C3E6B]">Notes</h2>
+        <h2 className="mb-3 text-sm font-semibold text-[#1E1B31]">Notes</h2>
         <textarea
           value={notes}
           onChange={(e) => handleNotesChange(e.target.value)}
           placeholder="Add any additional context about how you're feeling..."
           rows={4}
-          className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#2C3E6B] focus:outline-none focus:ring-1 focus:ring-[#2C3E6B]"
+          className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#1E1B31] focus:outline-none focus:ring-1 focus:ring-[#1E1B31]"
         />
       </div>
 

@@ -4,7 +4,7 @@ import { QuestionnaireWizardPreview } from "@/components/onboarding/Questionnair
 
 export default function QuestionnaireWizardPreviewPage() {
   return (
-    <div className="min-h-dvh bg-[#F5F3EF]">
+    <div className="min-h-dvh bg-[#FAF8F5]">
       <QuestionnaireWizardPreview />
     </div>
   );

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { FACE_SCAN_CAPTURE_STEPS } from "@/lib/faceScanCaptures";
 
-const NAVY = "#2C3E6B";
+const NAVY = "#1E1B31";
 
 type Props = {
   completedCount: number;
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(16,185,129,0.18)",
   },
   chipActive: {
-    borderColor: "rgba(44,62,107,0.5)",
+    borderColor: "rgba(30, 27, 49,0.5)",
     backgroundColor: "rgba(255,255,255,0.22)",
   },
   num: {
