@@ -3,10 +3,7 @@
 import { Lock } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import {
-  patientGradeFromDisplayScore,
-  scoreOutOfTen,
-} from "@/src/lib/clarityGrade";
+import { scoreOutOfTen } from "@/src/lib/clarityGrade";
 
 // Three distinct Apple-style ring colors.
 const KAI_COLOR = "#22D3EE"; // inner — cyan
@@ -197,7 +194,7 @@ export function NavyMetricsCard({
   consistencyScore,
   latestScanAt,
   scanCount = 0,
-  scoresUnlocked = false,
+  scoresUnlocked: _scoresUnlocked = false,
   light = false,
   className = "",
 }: NavyMetricsCardProps) {
@@ -259,11 +256,6 @@ export function NavyMetricsCard({
   }, [lockedTip]);
 
   const centerTextCls = light ? "text-[#1E1B31]" : "text-white";
-  const kaiLetter = hasScan
-    ? patientGradeFromDisplayScore(kaiSkinScore)
-    : null;
-  /** Light Diagnose mock: lock + letter when clinic scores locked; numeric when unlocked. */
-  const showLockedLetterCenter = light && hasScan && !scoresUnlocked;
   const centerContent = (() => {
     if (!hasScan) {
       return (
@@ -272,22 +264,6 @@ export function NavyMetricsCard({
         >
           No scan yet — take your first AI scan
         </p>
-      );
-    }
-    if (showLockedLetterCenter && kaiLetter) {
-      return (
-        <div className="flex flex-col items-center gap-0.5">
-          <Lock
-            className="h-3.5 w-3.5 text-[#1E1B31]/55"
-            strokeWidth={2.5}
-            aria-hidden
-          />
-          <span
-            className={`text-[28px] font-extrabold leading-none tracking-tight ${centerTextCls}`}
-          >
-            {kaiLetter}
-          </span>
-        </div>
       );
     }
     return (
@@ -329,9 +305,7 @@ export function NavyMetricsCard({
 
   const kaiLegendValue = !hasScan
     ? "—"
-    : !scoresUnlocked && kaiLetter
-      ? kaiLetter
-      : `${scoreOutOfTen(kaiSkinScore)}/10`;
+    : `${scoreOutOfTen(kaiSkinScore)}/10`;
 
   const legend = light ? (
     <div className="flex w-full flex-col gap-2.5 sm:gap-3">
@@ -339,7 +313,7 @@ export function NavyMetricsCard({
         KAI_COLOR,
         "kAI Score",
         kaiLegendValue,
-        hasScan && !scoresUnlocked,
+        false,
         "#E8F4FC",
         "#1E1B31"
       )}

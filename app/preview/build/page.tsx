@@ -148,7 +148,7 @@ export default function BuildPreviewPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="truncate text-2xl font-extrabold text-[#18181b] md:text-3xl">
-                Hi {name} 👋
+                Hi {name}
               </h1>
               <p className="mt-0.5 truncate text-sm text-[#6B7280]">
                 Your skin improved 4% this week.
@@ -172,11 +172,12 @@ export default function BuildPreviewPage() {
             kaiSkinScore={72}
             scoresUnlocked
             params={{
-              acne: 78,
+              active_acne: 78,
+              acne_scar: 70,
               pigmentation: 55,
               wrinkles: 88,
-              hydration: 62,
-              texture: 70,
+              under_eye: 62,
+              sagging_volume: 64,
             }}
             skinType="Oily"
             primaryConcern="Acne"

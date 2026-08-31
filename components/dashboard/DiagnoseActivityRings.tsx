@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 
 type RingsHome = {
   kaiSkinScore: number;
@@ -65,7 +66,7 @@ export function DiagnoseActivityRings() {
         weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
         latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
         consistencyScore={data.lifestyleAlignmentScore}
-        scoresUnlocked={data.scoresUnlocked ?? false}
+        scoresUnlocked={webPatientScoresUnlocked(data.scoresUnlocked)}
         scanCount={data.skinScanHistory.length}
       />
     </div>

@@ -11,6 +11,7 @@ import {
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
 import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 
 const SKIN_PARAM_INNER_CELL =
   "flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-[14px] border border-[#E8EBE8] bg-[#F5F7F5] px-2 py-3 transition hover:opacity-80";
@@ -34,9 +35,10 @@ type Props = {
 export function SkinParamMetricsCard({
   metrics,
   viewAllHref,
-  scoresUnlocked = false,
+  scoresUnlocked: scoresUnlockedFromServer = false,
   className = "",
 }: Props) {
+  const scoresUnlocked = webPatientScoresUnlocked(scoresUnlockedFromServer);
   return (
     <div
       className={`w-full self-start rounded-[20px] border border-[#E5E7EB] bg-white p-4 md:p-5 ${className}`}

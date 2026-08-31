@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   format,
   addMonths,
@@ -456,6 +457,7 @@ export default function AppointmentsCalendarClient({
   const searchParams = useSearchParams();
   const [view, setView] = useState<"month" | "week">("month");
   const [calendarPopupOpen, setCalendarPopupOpen] = useState(false);
+  const [calendarPortalReady, setCalendarPortalReady] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [selectedYmd, setSelectedYmd] = useState(() => localYmd(new Date()));
   const [scheduleRefreshing, setScheduleRefreshing] = useState(false);
@@ -591,6 +593,10 @@ export default function AppointmentsCalendarClient({
 
   useEffect(() => {
     setArchivedListIds(loadScheduleListArchivedIds());
+  }, []);
+
+  useEffect(() => {
+    setCalendarPortalReady(true);
   }, []);
 
   useEffect(() => {
@@ -1066,7 +1072,7 @@ export default function AppointmentsCalendarClient({
         {/* Main calendar column */}
         <section
           id="schedules-calendar-root"
-          className="min-w-0 overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm sm:p-4"
+          className="min-w-0 overflow-visible rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm sm:p-4"
         >
           <div className="mb-2">
             <h3 className="text-[17px] font-extrabold tracking-tight text-[#18181b]">
@@ -1094,17 +1100,18 @@ export default function AppointmentsCalendarClient({
             </button>
           ) : null}
 
-          {calendarPopupOpen ? (
+          {calendarPopupOpen && calendarPortalReady
+            ? createPortal(
             <>
               <div
-                className="fixed inset-0 z-40 bg-black/30"
+                className="fixed inset-0 z-[200] bg-[#1E1B31]/40"
                 aria-hidden
                 onClick={() => setCalendarPopupOpen(false)}
               />
               <div
                 role="dialog"
                 aria-label="Calendar"
-                className="fixed inset-x-0 bottom-0 z-50 max-h-[88vh] overflow-y-auto rounded-t-2xl bg-white p-3 shadow-lg sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:w-[min(92vw,640px)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:p-4"
+                className="fixed inset-x-0 bottom-0 z-[201] max-h-[88vh] overflow-y-auto rounded-t-2xl bg-white p-3 shadow-lg sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:w-[min(92vw,640px)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:p-4"
               >
           <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-[#E5E7EB] sm:hidden" />
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -1377,8 +1384,10 @@ export default function AppointmentsCalendarClient({
             </span>
           </div>
               </div>
-            </>
-          ) : null}
+            </>,
+              document.body
+            )
+          : null}
 
           {/* Doctor's Feedback + Voice Notes — fills the space the old
               "selected day" / "upcoming" recap used to take, since that

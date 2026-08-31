@@ -117,6 +117,10 @@ export function concernLabelToSlug(label: string): SkinConcernSlug | null {
  * Returns empty string when the key is unknown (falsy for conditional Links).
  */
 export function scoreDetailHref(paramKey: string): string {
+  const raw = paramKey.trim().toLowerCase();
+  if (raw === "overall" || raw === "kai" || raw === "overall skin score") {
+    return "/dashboard/score/overall";
+  }
   const slug = resolveConcernSlug(paramKey);
   return slug ? `/dashboard/score/${slug}` : "";
 }

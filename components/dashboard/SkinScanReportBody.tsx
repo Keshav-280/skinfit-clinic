@@ -31,6 +31,7 @@ import type {
 } from "@/src/lib/scanDetectionRegions";
 import { SCAN_REPORT_THEME as T } from "@/src/lib/scanReportTheme";
 import { patientDisplayClarity, scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 import {
   SCAN_REPORT_PDF_BG,
   SCAN_REPORT_PDF_PAGE_BG,
@@ -249,7 +250,8 @@ export interface SkinScanReportBodyProps {
    * Omit on the client to load `/api/patient/tracker` when `scanId` is set.
    */
   serverTracker?: PatientTrackerReport | null;
-  /** When false (default), patient sees letter grades until clinic visit unlocks exact scores. */
+  /** Ignored on patient web — my.skinfitwellness.in always shows 0–10. */
+  scoresUnlocked?: boolean;
   scoresUnlocked?: boolean;
   /**
    * How "View Full Report" behaves from the immersive ScanViewer.
@@ -285,9 +287,10 @@ export function SkinScanReportBody({
   scanId,
   defaultShareEmail = null,
   serverTracker,
-  scoresUnlocked = false,
+  scoresUnlocked: scoresUnlockedFromServer = false,
   reportMode = "scroll",
 }: SkinScanReportBodyProps) {
+  const scoresUnlocked = webPatientScoresUnlocked(scoresUnlockedFromServer);
   const reportRef = useRef<HTMLDivElement>(null);
   const fullReportRef = useRef<HTMLDivElement>(null);
   const [pdfLoading, setPdfLoading] = useState(false);

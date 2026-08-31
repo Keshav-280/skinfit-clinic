@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   ChevronRight,
@@ -12,42 +13,35 @@ import {
 import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
-import { classifySkinParamMetric, scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { classifySkinParamMetric } from "@/src/lib/clarityGrade";
 import { presentTrackerReportNarrative } from "@/src/lib/patientTrackerLockedCopy";
-import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 import {
-  isSkinConcernSlug,
-  slugToDisplayName,
   textMentionsConcern,
   type SkinConcernSlug,
 } from "@/src/lib/skinConcernSlug";
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
+import { isOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
+import { ScoreTrendChart } from "@/components/dashboard/ScoreTrendChart";
+import {
+  buildScoreAnalysis,
+  concernRawScore,
+  defaultConcernRecommendations,
+  isScorePageSlug,
+  scorePageTitle,
+  toTen,
+  trendDeltaLabel,
+  type ScorePageSlug,
+} from "@/src/lib/scoreConcernPage";
 
 type PageProps = {
   params: Promise<{ concern: string }>;
 };
 
 function scorePillClass(score: number): string {
-  if (score >= 7) return "bg-green-100 text-green-800 border-green-200";
-  if (score >= 4) return "bg-amber-100 text-amber-800 border-amber-200";
-  return "bg-red-100 text-red-800 border-red-200";
-}
-
-function valueForConcern(
-  slug: SkinConcernSlug,
-  displayName: string,
-  scoresJson: unknown,
-  columns: {
-    hydration: number;
-    texture: number;
-  }
-): number | null {
-  const rows = analysisResultsToParams(scoresJson);
-  const hit = rows.find((r) => r.label === displayName);
-  if (hit && typeof hit.value === "number") return hit.value;
-  if (slug === "hydration") return columns.hydration;
-  if (slug === "texture") return columns.texture;
-  return null;
+  if (score >= 7) return "border-[#242A5F]/20 bg-[#242A5F]/10 text-[#242A5F]";
+  if (score >= 4) return "border-[#DF9DA4]/50 bg-[#F8EDEE] text-[#1E1B31]";
+  return "border-[#4A2630]/20 bg-[#F8EDEE] text-[#4A2630]";
 }
 
 export default async function ScoreConcernPage({ params }: PageProps) {
@@ -55,22 +49,29 @@ export default async function ScoreConcernPage({ params }: PageProps) {
   if (!userId) redirect("/login");
 
   const { concern } = await params;
-  if (!isSkinConcernSlug(concern)) notFound();
+  if (!isScorePageSlug(concern)) notFound();
 
-  const displayName = slugToDisplayName(concern);
-  const slug = concern;
+  const slug = concern as ScorePageSlug;
+  const displayName = scorePageTitle(slug);
+  const isOverall = slug === "overall";
 
-  const [user, latestScan] = await Promise.all([
+  const [user, history] = await Promise.all([
     db.query.users.findFirst({
       where: eq(users.id, userId),
       columns: { clinicVisitedAt: true },
     }),
-    db.query.scans.findFirst({
+    db.query.scans.findMany({
       where: eq(scans.userId, userId),
       orderBy: [desc(scans.createdAt), desc(scans.id)],
+      limit: 12,
       columns: {
         id: true,
+        createdAt: true,
         scores: true,
+        overallScore: true,
+        acne: true,
+        wrinkles: true,
+        pigmentation: true,
         hydration: true,
         texture: true,
         trackerSnapshot: true,
@@ -78,18 +79,37 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     }),
   ]);
 
-  const scoresUnlocked = (user?.clinicVisitedAt ?? null) != null;
+  const scoresUnlocked = webPatientScoresUnlocked(
+    (user?.clinicVisitedAt ?? null) != null
+  );
 
-  const currentValue = latestScan
-    ? valueForConcern(slug, displayName, latestScan.scores, {
-        hydration: latestScan.hydration,
-        texture: latestScan.texture,
-      })
+  const latestScan = history[0] ?? null;
+  const previousScan = history[1] ?? null;
+
+  const currentRaw = latestScan
+    ? concernRawScore(slug, latestScan)
     : null;
-
+  const previousRaw = previousScan
+    ? concernRawScore(slug, previousScan)
+    : null;
+  const current10 = toTen(currentRaw);
+  const previous10 = toTen(previousRaw);
   const gradeInfo =
-    currentValue != null ? classifySkinParamMetric(currentValue) : null;
-  const scoreValue = currentValue != null ? scoreOutOfTen(currentValue) : null;
+    currentRaw != null ? classifySkinParamMetric(currentRaw) : null;
+  const deltaLabel = trendDeltaLabel(current10, previous10);
+
+  const chartPoints = [...history]
+    .reverse()
+    .map((scan) => {
+      const raw = concernRawScore(slug, scan);
+      const score10 = toTen(raw);
+      if (score10 == null) return null;
+      return {
+        label: format(scan.createdAt, "d MMM"),
+        score10,
+      };
+    })
+    .filter((p): p is { label: string; score10: number } => p != null);
 
   const tracker = latestScan
     ? await loadScanTrackerReport(
@@ -103,34 +123,54 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     ? presentTrackerReportNarrative(tracker, scoresUnlocked)
     : null;
 
-  const analysisLines = (() => {
-    if (!narrative) return [] as string[];
+  const extraLines = (() => {
+    if (!narrative || isOverall) {
+      return isOverall && narrative?.insightText
+        ? [narrative.insightText]
+        : [];
+    }
     const fromCauses = narrative.causes
       .map((c) => c.text.replace(/^(Win|Drag|Watch|Environment):\s*/i, ""))
-      .filter((t) => textMentionsConcern(t, slug));
-    if (fromCauses.length > 0) return fromCauses;
-    if (narrative.predictionText) return [narrative.predictionText];
-    if (narrative.insightText) return [narrative.insightText];
-    return [] as string[];
+      .filter((t) => textMentionsConcern(t, slug as SkinConcernSlug));
+    return fromCauses;
   })();
 
+  const analysisLines = buildScoreAnalysis({
+    title: displayName,
+    slug,
+    current10,
+    previous10,
+    scanCount: history.length,
+    lastScanLabel: latestScan
+      ? format(latestScan.createdAt, "d MMM")
+      : null,
+    extraLines,
+  });
+
   const recommendations = (() => {
-    if (!narrative) return [] as string[];
+    const fallback = defaultConcernRecommendations(slug);
+    if (!narrative) return fallback;
+    if (isOnboardingBaselineFocusActions(narrative.focusActions)) {
+      return fallback;
+    }
+    if (isOverall) {
+      const titles = narrative.focusActions.slice(0, 3).map((a) => a.title);
+      return titles.length > 0 ? titles : fallback;
+    }
     const matched = narrative.focusActions
       .filter(
         (a) =>
-          textMentionsConcern(a.title, slug) ||
-          textMentionsConcern(a.detail, slug)
+          textMentionsConcern(a.title, slug as SkinConcernSlug) ||
+          textMentionsConcern(a.detail, slug as SkinConcernSlug)
       )
       .map((a) => a.title);
     if (matched.length > 0) return matched;
-    return narrative.focusActions.slice(0, 3).map((a) => a.title);
+    return fallback;
   })();
 
-  const reportHref =
-    latestScan != null
-      ? `/dashboard/history/scans/${latestScan.id}`
-      : "/dashboard/scan";
+  const reportHref = latestScan
+    ? `/dashboard/scans/${latestScan.id}/report`
+    : "/dashboard/scan";
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
@@ -143,69 +183,69 @@ export default async function ScoreConcernPage({ params }: PageProps) {
       </Link>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight text-[#18181b] md:text-[28px]">
+        <h1 className="font-headline text-2xl font-bold tracking-tight text-[#1E1B31] md:text-[28px]">
           {displayName}
         </h1>
-        {scoreValue != null && gradeInfo ? (
-          <span
-            className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-bold ${scorePillClass(scoreValue)}`}
-          >
-            {scoreValue}/10
-            <span className="ml-1.5 font-semibold opacity-80">
-              · {gradeInfo.sublabel}
+        {current10 != null && gradeInfo ? (
+          <div className="flex flex-col items-end gap-1">
+            <span
+              className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-bold ${scorePillClass(current10)}`}
+            >
+              {current10}/10
+              <span className="ml-1.5 font-semibold opacity-80">
+                · {gradeInfo.sublabel}
+              </span>
             </span>
-          </span>
+            {deltaLabel ? (
+              <span className="text-[11px] font-semibold text-[#6B7280]">
+                {deltaLabel}
+              </span>
+            ) : null}
+          </div>
         ) : (
           <span className="text-sm text-[#6B7280]">No score yet</span>
         )}
       </div>
 
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-2xl border border-[#E4E6F0] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
           <LineChart className="h-4 w-4 text-[#1E1B31]" aria-hidden />
-          <h2 className="text-sm font-bold text-[#18181b]">Score Trend</h2>
+          <h2 className="text-sm font-bold text-[#1E1B31]">Score trend</h2>
         </div>
-        {/* TODO: wire real per-scan history series for this concern */}
-        <div className="flex h-36 items-center justify-center rounded-lg bg-[#F3F4F6] px-4 text-center text-sm text-[#6B7280]">
-          Score history chart — coming soon
-        </div>
+        <ScoreTrendChart
+          points={chartPoints}
+          emptyHint={`No scan history for ${displayName.toLowerCase()} yet. Take a scan to start this trend.`}
+        />
       </section>
 
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-2xl border border-[#E4E6F0] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#1E1B31]" aria-hidden />
-          <h2 className="text-sm font-bold text-[#18181b]">AI Analysis</h2>
+          <h2 className="text-sm font-bold text-[#1E1B31]">What’s moving</h2>
         </div>
-        {analysisLines.length > 0 ? (
-          <div className="space-y-2">
-            {analysisLines.map((line, i) => (
-              <p key={i} className="text-sm leading-relaxed text-[#6B7280]">
-                {line}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-[#6B7280]">
-            Complete a scan to unlock kAI analysis for {displayName.toLowerCase()}
-            .
-          </p>
-        )}
+        <div className="space-y-2.5">
+          {analysisLines.map((line, i) => (
+            <p key={i} className="text-sm leading-relaxed text-[#6B7280]">
+              {line}
+            </p>
+          ))}
+        </div>
       </section>
 
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-2xl border border-[#E4E6F0] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-[#1E1B31]" aria-hidden />
-          <h2 className="text-sm font-bold text-[#18181b]">Recommendations</h2>
+          <h2 className="text-sm font-bold text-[#1E1B31]">Recommendations</h2>
         </div>
         {recommendations.length > 0 ? (
           <ul className="space-y-2">
             {recommendations.map((rec, i) => (
               <li
                 key={i}
-                className="flex items-start gap-2 text-sm text-[#6B7280]"
+                className="flex items-start gap-2 text-sm text-[#1E1B31]"
               >
                 <ChevronRight
-                  className="mt-0.5 h-4 w-4 shrink-0 text-[#1E1B31]"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[#242A5F]"
                   aria-hidden
                 />
                 <span>{rec}</span>
@@ -221,7 +261,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
 
       <Link
         href={reportHref}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(30, 27, 49,0.2)] bg-white py-3 text-sm font-semibold text-[#1E1B31] shadow-sm transition hover:bg-[#F8FAFC]"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] py-3 text-sm font-semibold text-white transition hover:bg-[#242A5F]"
       >
         <FileText className="h-4 w-4" aria-hidden />
         {latestScan ? "View full scan report" : "Take a scan"}

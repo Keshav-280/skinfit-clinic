@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { WeeklyReportCard } from "@/components/dashboard/WeeklyReportCard";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 import {
   buildWeeklyInsightViewModel,
   type SkinProfileForWeekly,
@@ -55,7 +56,9 @@ export function WeeklyInsightSection({ home, className = "", reloadNonce = 0 }: 
       priorityActions={model.card.priorityActions}
       observationsUnavailable={model.card.observationsUnavailable}
       actionsUnavailable={model.card.actionsUnavailable}
-      scoresUnlocked={home?.scoresUnlocked ?? skinExtra?.scoresUnlocked ?? false}
+      scoresUnlocked={webPatientScoresUnlocked(
+        home?.scoresUnlocked ?? skinExtra?.scoresUnlocked
+      )}
     />
   );
 }

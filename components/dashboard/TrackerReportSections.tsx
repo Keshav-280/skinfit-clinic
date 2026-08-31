@@ -33,6 +33,7 @@ import {
 import { ParamScoreBar } from "@/components/dashboard/ParamScoreBar";
 import { ReportSectionCard } from "@/components/dashboard/ReportSectionCard";
 import { presentTrackerReportNarrative } from "@/src/lib/patientTrackerLockedCopy";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 import {
   parseCauseTag,
   summarizeCausesCard,
@@ -180,7 +181,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
 export function TrackerReportSections({
   report,
   serifClassName,
-  scoresUnlocked = false,
+  scoresUnlocked: scoresUnlockedFromServer = false,
   scanId,
   onDownloadPdf,
   onEmailReport,
@@ -196,6 +197,7 @@ export function TrackerReportSections({
   pdfLoading?: boolean;
   emailBusy?: boolean;
 }) {
+  const scoresUnlocked = webPatientScoresUnlocked(scoresUnlockedFromServer);
   const presented = presentTrackerReportNarrative(report, scoresUnlocked);
   const weeklyDelta = trackerWeeklyDeltaDisplay(report);
   const isOnboardingBaseline = report.scanContext.kind === "onboarding_first_scan";

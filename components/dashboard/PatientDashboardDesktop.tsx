@@ -52,6 +52,7 @@ import {
 import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 import { ARTICLES } from "@/src/lib/articles";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 
 /* ─── Build-tab content: appointments / articles / videos ─── */
 
@@ -734,7 +735,7 @@ export function PatientDashboardDesktop({
 
   const todayYmd = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
 
-  const scoresUnlocked = data?.scoresUnlocked ?? false;
+  const scoresUnlocked = webPatientScoresUnlocked(data?.scoresUnlocked);
 
   const greetingName = useMemo(() => {
     const raw = data?.userName?.trim();
@@ -812,7 +813,7 @@ export function PatientDashboardDesktop({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-extrabold text-[#18181b] md:text-3xl">
-              Hi {greetingName} 👋
+              Hi {greetingName}
             </h1>
             <p className="mt-0.5 truncate text-sm text-[#6B7280]">
               {greetingSubtitle}
@@ -832,31 +833,31 @@ export function PatientDashboardDesktop({
       {/* Everything below rides a solid background over the sticky greeting
           above, so scrolling visually tucks the greeting behind this card. */}
       <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#FAF8F5] pt-1">
-        {/* 2. Skin DNA */}
-        <SkinDNACard
-          patientName={data.userName?.trim() || greetingName}
-          profileImageUrl={data.profilePhotoUrl}
-          gender={data.gender}
-          kaiSkinScore={data.kaiSkinScore}
-          scoresUnlocked={scoresUnlocked}
-          analysisResults={latestScan?.analysisResults}
-          skinSummary={skinSummary}
-          skinType={data.skinType}
-          primaryConcern={data.primaryConcern}
-          fitzpatrick={data.fitzpatrick}
-          weeklyDeltaScore={data.weeklyDeltaScore ?? 0}
-          weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
-          streakCurrent={data.streakCurrent}
-          lastScanAt={latestScan?.createdAt ?? null}
-          scanCount={data.skinScanHistory.length}
-          href={reportHref}
-          hasScan={Boolean(latestScan)}
-        />
+        {/* 2. Skin DNA — keep below calendar overlays */}
+        <div className="relative z-0">
+          <SkinDNACard
+            patientName={data.userName?.trim() || greetingName}
+            profileImageUrl={data.profilePhotoUrl}
+            gender={data.gender}
+            kaiSkinScore={data.kaiSkinScore}
+            scoresUnlocked={scoresUnlocked}
+            analysisResults={latestScan?.analysisResults}
+            skinSummary={skinSummary}
+            skinType={data.skinType}
+            primaryConcern={data.primaryConcern}
+            fitzpatrick={data.fitzpatrick}
+            weeklyDeltaScore={data.weeklyDeltaScore ?? 0}
+            weeklyDeltaMeaningful={Boolean(data.weeklyDeltaMeaningful)}
+            streakCurrent={data.streakCurrent}
+            lastScanAt={latestScan?.createdAt ?? null}
+            scanCount={data.skinScanHistory.length}
+            href={reportHref}
+            hasScan={Boolean(latestScan)}
+          />
+        </div>
 
-        {/* 3. Calendar — full appointments calendar with booking. Doctor's
-            Feedback / Voice Notes are injected as a compact sidebar slot,
-            right below the assigned-doctor card, rather than as their own
-            full-width sections. */}
+        {/* 3. Calendar — overlays must sit above the DNA card */}
+        <div className="relative z-20">
         {isValidElement(calendarSlot)
           ? cloneElement(
               calendarSlot as React.ReactElement<{ doctorUpdatesSlot?: ReactNode }>,
@@ -877,6 +878,7 @@ export function PatientDashboardDesktop({
               }
             )
           : calendarSlot}
+        </div>
 
         {/* 5. Top Articles */}
         <TopArticlesSection />

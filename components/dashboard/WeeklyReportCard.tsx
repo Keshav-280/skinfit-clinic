@@ -24,6 +24,7 @@ import {
 } from "@/src/lib/weeklyInsightFormat";
 import { PATIENT_GREEN } from "@/src/lib/patientDashboardTheme";
 import { patientKaiScoreView } from "@/src/lib/clarityGrade";
+import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 
 type Props = {
   locked?: boolean;
@@ -74,9 +75,10 @@ export function WeeklyReportCard({
   priorityActions,
   observationsUnavailable,
   actionsUnavailable,
-  scoresUnlocked = false,
+  scoresUnlocked: scoresUnlockedFromServer = false,
   className = "",
 }: Props) {
+  const scoresUnlocked = webPatientScoresUnlocked(scoresUnlockedFromServer);
   const trend = trendSummary(weeklyDelta, scoresUnlocked);
   const kaiView = patientKaiScoreView(kaiScore, scoresUnlocked);
   const parsedActions = priorityActions.map((act) => parsePriorityAction(act, scoresUnlocked));

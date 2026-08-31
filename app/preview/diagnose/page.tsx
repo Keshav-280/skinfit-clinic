@@ -50,7 +50,7 @@ export default function DiagnosePreviewPage() {
             weeklyDeltaMeaningful
             latestScanAt={new Date().toISOString()}
             consistencyScore={72}
-            scoresUnlocked={false}
+            scoresUnlocked
             scanCount={1}
           />
         </div>

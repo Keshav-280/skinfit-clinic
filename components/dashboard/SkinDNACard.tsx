@@ -6,30 +6,29 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   CircleDot,
-  Droplets,
+  Eye,
   FileText,
-  Fingerprint,
+  Layers,
   Leaf,
   Palette,
-  Sparkles,
+  ScanLine,
   Target,
   Waves,
 } from "lucide-react";
 import { differenceInCalendarDays, formatDistanceToNow, parseISO } from "date-fns";
 import {
   classifySkinParamMetric,
-  patientKaiScoreView,
   scoreOutOfTen,
 } from "@/src/lib/clarityGrade";
+import { RAG_KAI_PARAM_LABELS, type RagKaiParamKey } from "@/src/lib/ragEightParams";
 import { resolveScanDisplayScores } from "@/src/lib/resolveScanDisplayScores";
 import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
 
-export type SkinDNAParamKey =
-  | "acne"
-  | "pigmentation"
-  | "wrinkles"
-  | "hydration"
-  | "texture";
+/** The six patient-facing kAI parameters shown on the DNA card. */
+export type SkinDNAParamKey = Exclude<
+  RagKaiParamKey,
+  "hair_health" | "skin_quality"
+>;
 
 const PARAM_TILES: {
   key: SkinDNAParamKey;
@@ -39,48 +38,68 @@ const PARAM_TILES: {
   Icon: LucideIcon;
 }[] = [
   {
-    key: "acne",
+    key: "active_acne",
     label: "Acne",
-    fullLabel: "Acne",
-    slugKey: "acne",
+    fullLabel: RAG_KAI_PARAM_LABELS.active_acne,
+    slugKey: "active_acne",
     Icon: CircleDot,
+  },
+  {
+    key: "acne_scar",
+    label: "Scars",
+    fullLabel: RAG_KAI_PARAM_LABELS.acne_scar,
+    slugKey: "acne_scar",
+    Icon: ScanLine,
   },
   {
     key: "pigmentation",
     label: "Pigment",
-    fullLabel: "Pigmentation",
+    fullLabel: RAG_KAI_PARAM_LABELS.pigmentation,
     slugKey: "pigmentation",
     Icon: Palette,
   },
   {
     key: "wrinkles",
     label: "Wrinkles",
-    fullLabel: "Wrinkles",
+    fullLabel: RAG_KAI_PARAM_LABELS.wrinkles,
     slugKey: "wrinkles",
     Icon: Waves,
   },
   {
-    key: "hydration",
-    label: "Hydration",
-    fullLabel: "Hydration",
-    slugKey: "hydration",
-    Icon: Droplets,
+    key: "under_eye",
+    label: "Under-eye",
+    fullLabel: RAG_KAI_PARAM_LABELS.under_eye,
+    slugKey: "under_eye",
+    Icon: Eye,
   },
   {
-    key: "texture",
-    label: "Texture",
-    fullLabel: "Texture",
-    slugKey: "texture",
-    Icon: Fingerprint,
+    key: "sagging_volume",
+    label: "Volume",
+    fullLabel: RAG_KAI_PARAM_LABELS.sagging_volume,
+    slugKey: "sagging_volume",
+    Icon: Layers,
   },
 ];
+
+function clampParamScore(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+/** Brand ring colors — ink / blush / deep rose, no neon glow. */
+function dnaRingColor(raw: number): string {
+  const grade = classifySkinParamMetric(raw).grade;
+  if (grade === "A" || grade === "B") return "#242A5F";
+  if (grade === "C") return "#A05E6D";
+  return "#4A2630";
+}
 
 function readNum(obj: Record<string, unknown>, key: string): number | null {
   const v = obj[key];
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-/** Pull Acne / Pigmentation / Wrinkles / Hydration / Texture from latest scan JSON. */
+/** Pull the six patient-facing kAI parameters from latest scan JSON. */
 export function skinDnaParamsFromAnalysis(
   analysis: unknown
 ): Record<SkinDNAParamKey, number> {
@@ -99,13 +118,15 @@ export function skinDnaParamsFromAnalysis(
       texture: readNum(a, "texture") ?? 0,
     },
   });
+  const rag = resolved.resolvedRagParamValues;
   const m = resolved.metrics;
   return {
-    acne: Math.min(100, Math.max(0, Math.round(m.acne))),
-    pigmentation: Math.min(100, Math.max(0, Math.round(m.pigmentation))),
-    wrinkles: Math.min(100, Math.max(0, Math.round(m.wrinkles))),
-    hydration: Math.min(100, Math.max(0, Math.round(m.hydration))),
-    texture: Math.min(100, Math.max(0, Math.round(m.texture))),
+    active_acne: clampParamScore(rag.active_acne ?? m.acne),
+    acne_scar: clampParamScore(rag.acne_scar ?? m.texture),
+    pigmentation: clampParamScore(rag.pigmentation ?? m.pigmentation),
+    wrinkles: clampParamScore(rag.wrinkles ?? m.wrinkles),
+    under_eye: clampParamScore(rag.under_eye ?? m.hydration),
+    sagging_volume: clampParamScore(rag.sagging_volume ?? 0),
   };
 }
 
@@ -397,7 +418,7 @@ export function AvatarIcon({ gender }: { gender: "male" | "female" }) {
   );
 }
 
-/** Last-scan recency, color-coded: fresh (0–6d) green, ageing (7–10d) amber, stale (11d+) red. */
+/** Last-scan recency on light brand surfaces. */
 function lastScanRecency(
   iso: string | null | undefined
 ): { colorClass: string } | null {
@@ -408,9 +429,47 @@ function lastScanRecency(
   } catch {
     return null;
   }
-  if (days <= 6) return { colorClass: "text-emerald-300" };
-  if (days <= 10) return { colorClass: "text-amber-300" };
-  return { colorClass: "text-red-300" };
+  if (days <= 6) return { colorClass: "text-[#242A5F]" };
+  if (days <= 10) return { colorClass: "text-[#A05E6D]" };
+  return { colorClass: "text-[#4A2630]" };
+}
+
+/** Visible “vs last scan” copy on the 0–10 scale used everywhere else on this card. */
+function lastScanImprovementCopy(
+  weeklyDeltaScore: number,
+  weeklyDeltaMeaningful: boolean,
+  hasScan: boolean,
+  scanCount?: number
+): { value: string; detail: string } {
+  if (!hasScan) {
+    return { value: "—", detail: "Take a scan to start tracking change." };
+  }
+  if (!weeklyDeltaMeaningful || (typeof scanCount === "number" && scanCount < 2)) {
+    return {
+      value: "First scan",
+      detail: "A second scan will show how your scores moved.",
+    };
+  }
+  const onTen = Math.round(weeklyDeltaScore / 10);
+  if (onTen > 0) {
+    return {
+      value: `+${onTen}`,
+      detail: `Improved +${onTen} from last scan`,
+    };
+  }
+  if (onTen < 0) {
+    return {
+      value: `${onTen}`,
+      detail: `${onTen} from last scan`,
+    };
+  }
+  if (weeklyDeltaScore > 0) {
+    return { value: "Holding", detail: "Slight improvement from last scan" };
+  }
+  if (weeklyDeltaScore < 0) {
+    return { value: "Holding", detail: "Slightly down from last scan" };
+  }
+  return { value: "No change", detail: "No change from last scan" };
 }
 
 /** Cycles through a list of strings every `intervalMs`, fading between them. */
@@ -457,14 +516,13 @@ function buildInsightMessages(input: {
   return messages;
 }
 
-/** Reusable animated SVG ring: sweeps 0 -> pct on mount, then settles into a slow breathing pulse. */
+/** SVG progress ring — stroke only, no glow, particles, or breathing scale. */
 function CircleRing({
   pct,
   size,
   strokeWidth,
   color,
-  trackColor = "rgba(255,255,255,0.12)",
-  animateKick,
+  trackColor = "#E4E6F0",
   children,
 }: {
   pct: number;
@@ -472,8 +530,6 @@ function CircleRing({
   strokeWidth: number;
   color: string;
   trackColor?: string;
-  /** True to re-trigger a brief pulse (e.g. while hovered). */
-  animateKick?: boolean;
   children?: ReactNode;
 }) {
   const r = (size - strokeWidth) / 2;
@@ -481,21 +537,7 @@ function CircleRing({
   const clamped = Math.max(0, Math.min(100, pct));
 
   return (
-    <motion.div
-      className="relative shrink-0"
-      style={{ width: size, height: size }}
-      animate={
-        animateKick
-          ? { scale: [1, 1.06, 1] }
-          : { scale: [1, 1.015, 1] }
-      }
-      transition={
-        animateKick
-          ? { duration: 0.45, ease: "easeInOut" }
-          : { duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1.4 }
-      }
-      key={animateKick ? "kick" : "breathe"}
-    >
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
         <circle
           cx={size / 2}
@@ -518,27 +560,13 @@ function CircleRing({
           animate={{
             strokeDashoffset: circumference * (1 - clamped / 100),
           }}
-          transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
         />
       </svg>
-      {/* Two small particles orbiting the ring on mount, fading out after a couple of loops. */}
-      <div
-        className="pointer-events-none absolute inset-0 animate-[dna-ring-orbit_1.4s_linear_2_forwards]"
-        style={{ opacity: 1 }}
-      >
-        <span
-          className="absolute h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_6px_2px_rgba(255,255,255,0.6)]"
-          style={{ left: "50%", top: 0, transform: "translate(-50%, -50%)" }}
-        />
-        <span
-          className="absolute h-1 w-1 rounded-full bg-white/80"
-          style={{ left: "50%", bottom: 0, transform: "translate(-50%, 50%)" }}
-        />
-      </div>
       <div className="absolute inset-0 flex items-center justify-center">
         {children}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -589,15 +617,14 @@ function InteractiveParamTile({
         scale: isActive ? 1.06 : 1,
       }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-0 flex w-[76px] shrink-0 flex-col items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-2.5 text-center sm:w-auto"
+      className="relative z-0 flex w-[76px] shrink-0 flex-col items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2.5 text-center sm:w-auto"
       style={isActive ? { zIndex: 10 } : undefined}
     >
       <CircleRing
         pct={hasScan ? tile.raw : 0}
         size={44}
         strokeWidth={4}
-        color={hasScan ? tile.color : "#4B5563"}
-        animateKick={isActive}
+        color={hasScan ? tile.color : "#C8C4BC"}
       >
         <span
           className="text-sm font-extrabold leading-none tabular-nums"
@@ -606,7 +633,7 @@ function InteractiveParamTile({
           {hasScan ? tile.score : "—"}
         </span>
       </CircleRing>
-      <span className="text-[9px] font-semibold uppercase tracking-wide text-white/60">
+      <span className="text-[9px] font-semibold uppercase tracking-wide text-[#6B7280]">
         {tile.label}
       </span>
       <AnimatePresence>
@@ -618,10 +645,10 @@ function InteractiveParamTile({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <p className="text-[9.5px] font-semibold leading-snug text-white/80">
+            <p className="text-[9.5px] font-semibold leading-snug text-[#1E1B31]">
               {tile.sublabel}
             </p>
-            <p className="text-[9px] leading-snug text-white/50">{statusLine}</p>
+            <p className="text-[9px] leading-snug text-[#6B7280]">{statusLine}</p>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -656,17 +683,18 @@ export function SkinDNACard({
   hasScan = true,
 }: SkinDNACardProps) {
   // Scores are always shown as numbers — never gated behind clinic-visit unlock.
-  const kai = patientKaiScoreView(kaiSkinScore, true);
   const fromAnalysis =
     hasScan && analysisResults
       ? skinDnaParamsFromAnalysis(analysisResults)
       : null;
   const params: Record<SkinDNAParamKey, number> = {
-    acne: paramsProp?.acne ?? fromAnalysis?.acne ?? 0,
+    active_acne: paramsProp?.active_acne ?? fromAnalysis?.active_acne ?? 0,
+    acne_scar: paramsProp?.acne_scar ?? fromAnalysis?.acne_scar ?? 0,
     pigmentation: paramsProp?.pigmentation ?? fromAnalysis?.pigmentation ?? 0,
     wrinkles: paramsProp?.wrinkles ?? fromAnalysis?.wrinkles ?? 0,
-    hydration: paramsProp?.hydration ?? fromAnalysis?.hydration ?? 0,
-    texture: paramsProp?.texture ?? fromAnalysis?.texture ?? 0,
+    under_eye: paramsProp?.under_eye ?? fromAnalysis?.under_eye ?? 0,
+    sagging_volume:
+      paramsProp?.sagging_volume ?? fromAnalysis?.sagging_volume ?? 0,
   };
   const identityFacts: { label: string; value: string; icon?: ReactNode }[] = [];
   const typeVal = skinType?.trim();
@@ -685,6 +713,16 @@ export function SkinDNACard({
   identityFacts.push({
     label: "Last scan",
     value: hasScan ? relativeScanLabel(lastScanAt) : "No scan yet",
+  });
+  const improvement = lastScanImprovementCopy(
+    weeklyDeltaScore,
+    weeklyDeltaMeaningful,
+    hasScan,
+    scanCount
+  );
+  identityFacts.push({
+    label: "Since last scan",
+    value: improvement.value,
   });
   if (typeof streakCurrent === "number" && streakCurrent > 0) {
     identityFacts.push({
@@ -736,7 +774,7 @@ export function SkinDNACard({
       raw,
       score: scoreOutOfTen(raw),
       sublabel: toTitleCase(metric.sublabel),
-      color: metric.color,
+      color: dnaRingColor(raw),
       href: scoreDetailHref(t.slugKey),
     };
   });
@@ -760,26 +798,13 @@ export function SkinDNACard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className={`overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B1330] via-[#0F1A3D] to-[#0B1330] shadow-lg ring-1 ring-white/[0.06] transition-shadow duration-200 hover:shadow-xl ${className}`}
+      className={`relative z-0 overflow-hidden rounded-2xl border border-[#E4E6F0] bg-white shadow-sm ${className}`}
     >
       {/* 1. Header */}
-      <div className="relative overflow-hidden px-4 pb-4 pt-4 sm:px-5">
-        <svg
-          className="pointer-events-none absolute -right-6 -top-8 h-40 w-40 opacity-[0.08]"
-          viewBox="0 0 200 200"
-          fill="none"
-          aria-hidden
-        >
-          <circle cx="100" cy="100" r="99" stroke="white" strokeWidth="1.5" />
-          <circle cx="100" cy="100" r="70" stroke="white" strokeWidth="1.5" />
-          <circle cx="100" cy="100" r="41" stroke="white" strokeWidth="1.5" />
-        </svg>
-
+      <div className="relative px-4 pb-3 pt-4 sm:px-5">
         <div className="relative flex items-start gap-3 sm:gap-3.5">
-          {/* Title + rotating insight line */}
           <div className="min-w-0 flex-1 pt-0.5">
-            <p className="flex items-center gap-1.5 truncate text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">
-              <Sparkles className="h-3 w-3 shrink-0 text-white/40" aria-hidden />
+            <p className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-[#6B7280]">
               Your Skin DNA
             </p>
             <AnimatePresence mode="wait">
@@ -789,7 +814,7 @@ export function SkinDNACard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.35 }}
-                className="mt-1 truncate text-[13px] font-semibold text-white"
+                className="mt-1 truncate text-[13px] font-semibold text-[#1E1B31]"
               >
                 {hasScan
                   ? headlineMessage
@@ -798,10 +823,9 @@ export function SkinDNACard({
             </AnimatePresence>
           </div>
 
-          {/* View report action */}
           <Link
             href={href}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/15"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#1E1B31] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#242A5F]"
           >
             <FileText className="h-3.5 w-3.5" aria-hidden />
             View Report
@@ -811,24 +835,24 @@ export function SkinDNACard({
 
       {/* 2. Identity strip */}
       {identityFacts.length > 0 ? (
-        <div className="mx-4 flex gap-0 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] scrollbar-hide sm:mx-5">
+        <div className="mx-4 flex gap-0 overflow-x-auto rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] scrollbar-hide sm:mx-5">
           {identityFacts.map((fact, i) => (
             <div
               key={fact.label}
               className={`flex min-w-[4.5rem] flex-1 items-center gap-2 px-3 py-2.5 ${
-                i > 0 ? "border-l border-white/10" : ""
+                i > 0 ? "border-l border-[#E4E6F0]" : ""
               }`}
             >
               {fact.icon}
               <div className="flex min-w-0 flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
                   {fact.label}
                 </span>
                 <span
                   className={`mt-0.5 truncate text-[13px] font-bold ${
                     fact.label === "Last scan" && recency
                       ? recency.colorClass
-                      : "text-white"
+                      : "text-[#1E1B31]"
                   }`}
                 >
                   {fact.value}
@@ -841,21 +865,21 @@ export function SkinDNACard({
 
       {/* 3. Strongest / overall ring / needs focus */}
       {hasScan ? (
-        <div className="mx-4 mt-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-4 sm:mx-5 sm:px-6">
+        <div className="mx-4 mt-3 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-4 sm:mx-5 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           {strongest ? (
             <div className="flex min-w-0 shrink-0 items-center gap-2.5">
-              <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300 sm:flex">
+              <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#242A5F]/10 text-[#242A5F] sm:flex">
                 <Leaf className="h-4 w-4" aria-hidden />
               </span>
               <div className="w-24 min-w-0 sm:w-28">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/80">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#242A5F]">
                   Strongest
                 </p>
-                <p className="mt-0.5 truncate text-[13px] font-bold leading-snug text-white">
+                <p className="mt-0.5 truncate text-[13px] font-bold leading-snug text-[#1E1B31]">
                   {strongest.name}
                 </p>
-                <p className="text-[11px] font-medium text-white/40">
+                <p className="text-[11px] font-medium text-[#6B7280]">
                   {strongest.gradeLabel}
                 </p>
               </div>
@@ -864,43 +888,49 @@ export function SkinDNACard({
             <div className="w-24 sm:w-28" />
           )}
 
+          <Link
+            href="/dashboard/score/overall"
+            className="rounded-full outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#1E1B31]/30"
+            aria-label="View overall skin score"
+          >
           <CircleRing
             pct={kaiSkinScore}
             size={84}
             strokeWidth={6}
-            color={kai.color}
-            trackColor="rgba(255,255,255,0.1)"
+            color="#1E1B31"
+            trackColor="#E4E6F0"
           >
             <div className="flex flex-col items-center justify-center">
               <motion.span
                 initial={{ opacity: 0, scale: 0.6 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.9, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                className="text-2xl font-extrabold leading-none text-white"
+                className="text-2xl font-extrabold leading-none text-[#1E1B31]"
               >
                 {scoreOutOfTen(kaiSkinScore)}
                 <span className="text-xs font-bold opacity-60">/10</span>
               </motion.span>
-              <span className="mt-1 text-[8px] font-bold uppercase tracking-wide text-white/50">
+              <span className="mt-1 text-[8px] font-bold uppercase tracking-wide text-[#6B7280]">
                 Overall
               </span>
             </div>
           </CircleRing>
+          </Link>
 
           {needsFocus ? (
             <div className="flex min-w-0 shrink-0 items-center gap-2.5">
               <div className="w-24 min-w-0 text-right sm:w-28">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-amber-300/80">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#A05E6D]">
                   Needs focus
                 </p>
-                <p className="mt-0.5 truncate text-[13px] font-bold leading-snug text-white">
+                <p className="mt-0.5 truncate text-[13px] font-bold leading-snug text-[#1E1B31]">
                   {needsFocus.name}
                 </p>
-                <p className="text-[11px] font-medium text-white/40">
+                <p className="text-[11px] font-medium text-[#6B7280]">
                   {needsFocus.gradeLabel}
                 </p>
               </div>
-              <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300 sm:flex">
+              <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DF9DA4]/25 text-[#A05E6D] sm:flex">
                 <Target className="h-4 w-4" aria-hidden />
               </span>
             </div>
@@ -909,6 +939,10 @@ export function SkinDNACard({
           )}
         </div>
 
+        <p className="mt-3 text-center text-[12px] font-semibold text-[#1E1B31]">
+          {improvement.detail}
+        </p>
+
         <AnimatePresence mode="wait">
           <motion.p
             key={ringInsight}
@@ -916,7 +950,7 @@ export function SkinDNACard({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.35 }}
-            className="mt-4 border-t border-white/10 pt-3 text-center text-[12px] font-medium text-white/45"
+            className="mt-2 border-t border-[#E4E6F0] pt-3 text-center text-[12px] font-medium text-[#6B7280]"
           >
             {ringInsight}
           </motion.p>
@@ -925,20 +959,20 @@ export function SkinDNACard({
       ) : null}
 
       {!hasScan ? (
-        <div className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-3.5 py-3 sm:mx-5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10">
-            <svg className="h-4 w-4 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        <div className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-dashed border-[#E4E6F0] bg-[#FAF8F5] px-3.5 py-3 sm:mx-5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F0EAE2]">
+            <svg className="h-4 w-4 text-[#1E1B31]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-white">Complete your Skin DNA</p>
-            <p className="text-xs text-white/50">Take a 2-min scan to unlock your score &amp; insights</p>
+            <p className="text-xs font-semibold text-[#1E1B31]">Complete your Skin DNA</p>
+            <p className="text-xs text-[#6B7280]">Take a 2-min scan to unlock your score &amp; insights</p>
           </div>
         </div>
       ) : null}
 
       {/* 4. Interactive param tiles */}
       <div
-        className="mt-4 flex gap-2 overflow-x-auto px-4 pb-4 scrollbar-hide sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-5"
+        className="mt-4 flex gap-2 overflow-x-auto px-4 pb-4 scrollbar-hide sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-5 lg:grid-cols-6"
         onMouseLeave={() => setActiveParam(null)}
       >
         {paramTiles.map((tile) => (
