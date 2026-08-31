@@ -252,7 +252,6 @@ export interface SkinScanReportBodyProps {
   serverTracker?: PatientTrackerReport | null;
   /** Ignored on patient web — my.skinfitwellness.in always shows 0–10. */
   scoresUnlocked?: boolean;
-  scoresUnlocked?: boolean;
   /**
    * How "View Full Report" behaves from the immersive ScanViewer.
    * - scroll: expand tracker sections below (default)
