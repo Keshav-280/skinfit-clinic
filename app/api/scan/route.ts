@@ -354,6 +354,11 @@ export async function POST(request: NextRequest) {
       ReturnType<typeof runFaceAnalysisServiceV2>
     >["spatialOutputs"];
     let detection_regions: import("@/src/lib/scanDetectionRegions").DetectionRegion[] | undefined;
+    let detection_regions_by_pose: Record<
+      string,
+      import("@/src/lib/scanDetectionRegions").DetectionRegion[]
+    > | undefined;
+    let spotAnnotatedDataUriByPose: Record<string, string> | undefined;
     let wrinkle_lines: import("@/src/lib/scanDetectionRegions").WrinkleLine[] | undefined;
     let proxy_regions: import("@/src/lib/scanDetectionRegions").ProxyRegion[] | undefined;
     let annotation_regions: unknown[] | undefined;
@@ -438,6 +443,29 @@ export async function POST(request: NextRequest) {
               error: err instanceof Error ? err.message : String(err),
             });
           }
+        }
+
+        const { annotateScanPoses } = await import(
+          "@/src/lib/spotDetectorInference"
+        );
+        const spotAnn = await annotateScanPoses({
+          files: {
+            centre: filesForV2.centre,
+            left: filesForV2.left,
+            right: filesForV2.right,
+          },
+          apiKey: inferenceSecret,
+          timeoutMs: inferenceTimeoutMs,
+        });
+        merged.detection_regions = spotAnn.centreRegions;
+        if (spotAnn.detectedRegions.length > 0) {
+          merged.detected_regions = spotAnn.detectedRegions;
+        }
+        if (Object.keys(spotAnn.regionsByPose).length > 0) {
+          detection_regions_by_pose = spotAnn.regionsByPose;
+        }
+        if (Object.keys(spotAnn.annotatedByPose).length > 0) {
+          spotAnnotatedDataUriByPose = spotAnn.annotatedByPose;
         }
 
         overallKaiScore = merged.overallKaiScore;
@@ -658,6 +686,17 @@ export async function POST(request: NextRequest) {
         ...(detection_regions && detection_regions.length > 0
           ? { detection_regions }
           : {}),
+        ...(detection_regions_by_pose &&
+        Object.keys(detection_regions_by_pose).length > 0
+          ? { detection_regions_by_pose }
+          : {}),
+        ...(spotAnnotatedDataUriByPose?.centre
+          ? { spotAnnotatedUrl: spotAnnotatedDataUriByPose.centre }
+          : {}),
+        ...(spotAnnotatedDataUriByPose &&
+        Object.keys(spotAnnotatedDataUriByPose).length > 0
+          ? { spotAnnotatedByPose: spotAnnotatedDataUriByPose }
+          : {}),
         ...(wrinkle_lines && wrinkle_lines.length > 0
           ? { wrinkle_lines }
           : {}),
@@ -762,6 +801,17 @@ export async function POST(request: NextRequest) {
       ...(detection_regions && detection_regions.length > 0
         ? { detection_regions }
         : {}),
+      ...(detection_regions_by_pose &&
+      Object.keys(detection_regions_by_pose).length > 0
+        ? { detection_regions_by_pose }
+        : {}),
+      ...(spotAnnotatedDataUriByPose?.centre
+        ? { spotAnnotatedUrl: spotAnnotatedDataUriByPose.centre }
+        : {}),
+      ...(spotAnnotatedDataUriByPose &&
+      Object.keys(spotAnnotatedDataUriByPose).length > 0
+        ? { spotAnnotatedByPose: spotAnnotatedDataUriByPose }
+        : {}),
       ...(wrinkle_lines && wrinkle_lines.length > 0 ? { wrinkle_lines } : {}),
       ...(proxy_regions && proxy_regions.length > 0 ? { proxy_regions } : {}),
       ...(annotation_regions && annotation_regions.length > 0
@@ -797,6 +847,17 @@ export async function POST(request: NextRequest) {
         ...(spatialOutputs ? { spatialOutputs } : {}),
         ...(detection_regions && detection_regions.length > 0
           ? { detection_regions }
+          : {}),
+        ...(detection_regions_by_pose &&
+        Object.keys(detection_regions_by_pose).length > 0
+          ? { detection_regions_by_pose }
+          : {}),
+        ...(spotAnnotatedDataUriByPose?.centre
+          ? { spotAnnotatedUrl: spotAnnotatedDataUriByPose.centre }
+          : {}),
+        ...(spotAnnotatedDataUriByPose &&
+        Object.keys(spotAnnotatedDataUriByPose).length > 0
+          ? { spotAnnotatedByPose: spotAnnotatedDataUriByPose }
           : {}),
         ...(wrinkle_lines && wrinkle_lines.length > 0
           ? { wrinkle_lines }

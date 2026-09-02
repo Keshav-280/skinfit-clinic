@@ -67,8 +67,30 @@ export function buildAttributionCards(opts: {
   recentTreatmentTitle?: string | null;
   recentTreatmentDate?: string | null;
   llm?: GeneratedUpdateReport | null;
+  /** Real, number-grounded patterns computed from full scan/check-in history — see multiWeekPatternAnalysis.ts. */
+  multiWeekInsights?: Array<{ kind: string; text: string }>;
 }): Array<{ label: string; text: string }> {
   const cards: Array<{ label: string; text: string }> = [];
+
+  // Computed multi-week patterns are strictly more specific than the LLM's
+  // generic weekly attribution — lead with them when we have any.
+  if (opts.multiWeekInsights?.length) {
+    const kindLabel: Record<string, string> = {
+      baseline: "Since your first scan",
+      trend: "What's moving (or not)",
+      checkin_correlation: "What the data shows",
+      comovement: "Pattern across parameters",
+      consistency: "Check-ins vs. stability",
+    };
+    for (const insight of opts.multiWeekInsights) {
+      cards.push({
+        label: kindLabel[insight.kind] ?? "Your pattern so far",
+        text: insight.text,
+      });
+      if (cards.length >= 3) break;
+    }
+    if (cards.length >= 3) return cards;
+  }
 
   if (opts.llm?.attribution?.length) {
     for (const a of opts.llm.attribution) {

@@ -8,9 +8,9 @@ import { NightScanReport } from "@/components/report/concepts/NightScanReport";
 import { OrbitReport } from "@/components/report/concepts/OrbitReport";
 import {
   PREVIEW_FACE,
-  previewActions,
   previewConceptData,
   previewDetections,
+  previewFocusActions,
   previewParameters,
   previewProxies,
   previewScanImages,
@@ -110,7 +110,7 @@ export default function ReportPreviewPage() {
           subtitle="6 markers mapped"
           synthesis={previewConceptData.takeaway}
           baselineBody="Six markers are now fixed against this capture. Next week measures the same points."
-          actions={previewActions}
+          actions={previewFocusActions}
           parameters={previewParameters}
           scanImages={previewScanImages}
           detectionRegions={previewDetections}
@@ -218,7 +218,7 @@ export default function ReportPreviewPage() {
             { label: "Routine", value: "5/7" },
           ]}
           weekHighlight="Sunscreen streak is the likely reason acne eased."
-          actions={previewActions}
+          actions={previewFocusActions}
           nextStep={{
             heading: "Keep this plan for one more week",
             body: "No new actives. Dr. Ruby can look at pigment if it still holds after week 4.",

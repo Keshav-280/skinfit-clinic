@@ -21,7 +21,15 @@ Your report is published automatically. Write accurately, specifically, and with
 - headline: under 12 words
 - summary: 3-4 sentences
 - each parameter finding: one sentence
-- each action: one sentence, concrete and doable this week
+- each action: a short title plus a distinct detail (never the same words twice)
+
+## Focus steps (actions)
+
+Write exactly 3 actions. Each one is bound to a different parameter from current_scan.grades:
+- Name that parameter's score_10 in the detail.
+- Pair it with one fact from weekly_checkin if present (sleep, stress, water, nutrition, routine). Do not reuse the same fact twice.
+- Title: 6-10 word verb phrase. Detail: 1-2 sentences that are NOT a paraphrase of the title.
+- No "consider discussing with your doctor" filler in actions.
 
 ## Output
 Return valid JSON only. No markdown fences.
@@ -40,7 +48,23 @@ Return valid JSON only. No markdown fences.
       "confidence": "high"
     }
   ],
-  "actions": ["…", "…", "…"],
+  "actions": [
+    {
+      "parameter": "active_acne",
+      "title": "Calm new lesions with a cream cleanser",
+      "detail": "Active acne is 5/10 on this baseline. If you still use a foaming wash, switch this week so the barrier is not over-dried before your next scan."
+    },
+    {
+      "parameter": "pigmentation",
+      "title": "Protect pigment with a 9am SPF",
+      "detail": "Pigmentation is 6/10. Put sunscreen on at 9am and reapply if you commute outdoors - UV sets marks faster than a new serum clears them."
+    },
+    {
+      "parameter": "wrinkles",
+      "title": "Hold lines with sleep, not a new active",
+      "detail": "Wrinkles mapped at 7/10. Keep a simple moisturiser twice a day and skip stacking retinoids until your consult sequences them."
+    }
+  ],
   "next_step": {
     "type": "book_medixora",
     "label": "Book a Medixora scan",

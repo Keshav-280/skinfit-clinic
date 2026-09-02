@@ -177,9 +177,7 @@ export async function processScanJob(
     merged = buildScanPayloadFromAnalyzeV1(dualScan, scanOpts);
   }
 
-  // Replace ONLY the acne score + acne annotated image with the dedicated
-  // YOLO acne detector (services/acne-detector-v1). Everything else stays from
-  // the DINOv2 model. Soft-fail: if the detector is down, keep DINO acne.
+  // Replace ONLY the acne score. Face-map circles come from v18 below.
   const acneDetectorBase = process.env.ACNE_DETECTOR_SERVICE_URL?.trim();
   const acneDetectorDisabled =
     process.env.ACNE_DETECTOR_DISABLED === "1" ||
@@ -199,105 +197,36 @@ export async function processScanJob(
         score: acneResult.grade.score,
         lesions: acneResult.grade.f1?.active_lesion_count ?? null,
       });
-      logger.info("acne_detector_result_debug", {
-        jobId,
-        rawDetectionRegionsCount: Array.isArray(acneResult.detection_regions)
-          ? acneResult.detection_regions.length
-          : 0,
-        activeDetectionsCount: acneResult.detections?.active?.length ?? 0,
-        hasDetectionRegions: Boolean(
-          merged.detection_regions && merged.detection_regions.length > 0
-        ),
-        detectionRegionsCount: merged.detection_regions?.length ?? 0,
-        sampleRegion: merged.detection_regions?.[0] ?? null,
-        gradeInfo: acneResult.grade ?? null,
-      });
-      logger.info("acne_detection_regions", {
-        jobId,
-        count: merged.detection_regions?.length ?? 0,
-        sample: merged.detection_regions?.[0],
-      });
     } catch (err) {
       logger.warn("acne_detector_skipped", {
         jobId,
         error: err instanceof Error ? err.message : String(err),
-        hint: "scan continues with DINO acne score/mask",
+        hint: "scan continues with DINO acne score",
       });
     }
   }
 
-  // Acne detector on every pose. Grade/score stays from the centre pose above;
-  // the other poses contribute detection markers only, so spots show on all
-  // photos (a lesion on the left cheek is only visible in the left profile).
-  const detection_regions_by_pose: Record<
-    string,
-    import("@/src/lib/scanDetectionRegions").DetectionRegion[]
-  > = {};
-  if (merged.detection_regions && merged.detection_regions.length > 0) {
-    detection_regions_by_pose.centre = merged.detection_regions;
+  // v18 annotations model - dashed circles on every capture.
+  // Scores stay from face-analysis + acne-detector above.
+  const { annotateScanPoses } = await import("@/src/lib/spotDetectorInference");
+  const spotAnn = await annotateScanPoses({
+    files: filesForV2,
+    apiKey: inferenceSecret,
+    timeoutMs: inferenceTimeoutMs,
+  });
+  const spotAnnotatedDataUriByPose = spotAnn.annotatedByPose;
+  const detection_regions_by_pose = spotAnn.regionsByPose;
+  merged.detection_regions = spotAnn.centreRegions;
+  if (spotAnn.detectedRegions.length > 0) {
+    merged.detected_regions = spotAnn.detectedRegions;
   }
-  if (acneDetectorBase && !acneDetectorDisabled) {
-    for (const pose of ["left", "right"] as const) {
-      try {
-        const r = await runAcneDetector(filesForV2[pose], {
-          baseUrl: acneDetectorBase,
-          apiKey: inferenceSecret,
-          timeoutMs: inferenceTimeoutMs,
-        });
-        if (Array.isArray(r.detection_regions) && r.detection_regions.length > 0) {
-          detection_regions_by_pose[pose] = r.detection_regions;
-          logger.info("acne_detection_regions_pose", {
-            jobId,
-            pose,
-            count: r.detection_regions.length,
-          });
-        }
-      } catch (err) {
-        logger.warn("acne_detector_pose_skipped", {
-          jobId,
-          pose,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
-  }
-
-  // v18 zoned detector - dashed-circle annotations on every capture.
-  // Scores still come from face-analysis + acne-detector above.
-  const spotAnnotatedDataUriByPose: Record<string, string> = {};
-  const spotDetectorBase = process.env.SPOT_DETECTOR_SERVICE_URL?.trim();
-  const spotDetectorDisabled =
-    process.env.SPOT_DETECTOR_DISABLED === "1" ||
-    process.env.SPOT_DETECTOR_DISABLED === "true";
-  if (spotDetectorBase && !spotDetectorDisabled) {
-    const { runSpotDetector } = await import("@/src/lib/spotDetectorInference");
-    for (const pose of ["centre", "left", "right"] as const) {
-      try {
-        const spotResult = await runSpotDetector(filesForV2[pose], {
-          baseUrl: spotDetectorBase,
-          apiKey: inferenceSecret,
-          timeoutMs: inferenceTimeoutMs,
-        });
-        if (spotResult.annotated_image) {
-          spotAnnotatedDataUriByPose[pose] = spotResult.annotated_image;
-        }
-        logger.info("spot_detector_applied", {
-          jobId,
-          userId: payload.userId,
-          pose,
-          total: spotResult.summary.total,
-          dark: spotResult.summary.dark,
-          red: spotResult.summary.red,
-        });
-      } catch (err) {
-        logger.warn("spot_detector_skipped", {
-          jobId,
-          pose,
-          error: err instanceof Error ? err.message : String(err),
-          hint: "scan continues without this pose's annotation overlay",
-        });
-      }
-    }
+  for (const [pose, regions] of Object.entries(detection_regions_by_pose)) {
+    logger.info("spot_detector_applied", {
+      jobId,
+      userId: payload.userId,
+      pose,
+      count: regions.length,
+    });
   }
   const spotAnnotatedDataUri = spotAnnotatedDataUriByPose.centre ?? null;
 

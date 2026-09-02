@@ -20,6 +20,7 @@ import { ActionItem } from "./ActionItem";
 import { NextStepCTA } from "./NextStepCTA";
 import { ReportShareFooter } from "./ReportShareFooter";
 import { REPORT_CARD, REPORT_PILL, watchTitle } from "./reportCopy";
+import type { ReportFocusAction } from "@/src/lib/report/reportFocusActions";
 
 export type InitialKaiScanReportProps = {
   scanId: number;
@@ -30,7 +31,7 @@ export type InitialKaiScanReportProps = {
   subtitle: string;
   synthesis: string;
   baselineBody: string;
-  actions: string[];
+  actions: ReportFocusAction[];
   parameters: KaiReportParamRow[];
   scanImages: Array<{ url: string; label: string; poseId?: string }>;
   detectionRegions: DetectionRegion[];
@@ -200,11 +201,12 @@ export function InitialKaiScanReport({
             </span>
           </div>
           <div>
-            {actions.map((text, i) => (
+            {actions.map((action, i) => (
               <ActionItem
                 key={i}
                 number={i + 1}
-                text={text}
+                title={action.title}
+                detail={action.detail}
                 last={i === actions.length - 1}
               />
             ))}

@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import { subDays } from "date-fns";
 import { db } from "@/src/db";
-import { dailyLogs, scans, skinScans, users } from "@/src/db/schema";
+import {
+  dailyLogs,
+  questionnaireAnswers,
+  scans,
+  skinScans,
+  users,
+  wellnessCheckins,
+} from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { dateOnlyFromYmd, parseYmdToDateOnly, ymdFromDateOnly } from "@/src/lib/date-only";
 import { getPatientDoctorSection } from "@/src/lib/patientDoctorSection";
@@ -28,6 +35,10 @@ import {
   getPatientFirstScanAt,
 } from "@/src/lib/patientInsightSchedule";
 import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
+import {
+  computeLifestyleAlignmentScore,
+  weeksOnApp,
+} from "@/src/lib/lifestyleAlignmentScore";
 
 function clampPct(n: number) {
   return Math.min(100, Math.max(0, Math.round(n)));
@@ -79,6 +90,7 @@ async function buildPatientHomePayload(
       streakLongest: true,
       cycleTrackingEnabled: true,
       onboardingComplete: true,
+      createdAt: true,
       timezone: true,
       routinePlanAmItems: true,
       routinePlanPmItems: true,
@@ -136,6 +148,10 @@ async function buildPatientHomePayload(
     streakLogs,
     doctorSection,
     firstScanAt,
+    scanTotals,
+    skinScanTotals,
+    checkinTotals,
+    questionnaireRow,
   ] = await Promise.all([
     db.query.skinScans.findMany({
       where: eq(skinScans.userId, userId),
@@ -196,6 +212,22 @@ async function buildPatientHomePayload(
       ),
     getPatientDoctorSection(userId),
     getPatientFirstScanAt(userId),
+    db
+      .select({ n: count() })
+      .from(scans)
+      .where(eq(scans.userId, userId)),
+    db
+      .select({ n: count() })
+      .from(skinScans)
+      .where(eq(skinScans.userId, userId)),
+    db
+      .select({ n: count() })
+      .from(wellnessCheckins)
+      .where(eq(wellnessCheckins.userId, userId)),
+    db.query.questionnaireAnswers.findFirst({
+      where: eq(questionnaireAnswers.userId, userId),
+      columns: { id: true },
+    }),
   ]);
 
   const weeklyInsightSchedule = computePatientInsightSchedule(firstScanAt);
@@ -243,20 +275,10 @@ async function buildPatientHomePayload(
     todayDateOnly
   );
 
-  let amPmDays = 0;
-  let sleepSum = 0;
-  let waterSum = 0;
-  let highSun = 0;
   const completedDatesSet = new Set<string>();
   for (const l of recentLogs) {
     if (isFullRoutineDay(l)) {
-      amPmDays += 1;
       completedDatesSet.add(ymdFromDateOnly(l.date instanceof Date ? l.date : String(l.date)));
-    }
-    sleepSum += l.sleepHours ?? 0;
-    waterSum += l.waterGlasses ?? 0;
-    if (l.sunExposure === "high" || l.sunExposure === "moderate") {
-      highSun += 1;
     }
   }
   const weekCompletedDates = Array.from(completedDatesSet).sort();
@@ -270,16 +292,26 @@ async function buildPatientHomePayload(
     userRow.streakLongest ?? 0,
     streakStats.longest
   );
-  const n = Math.max(1, recentLogs.length);
-  const routineCompletion7d = amPmDays / 7;
-  const avgSleep = sleepSum / n;
-  const avgWater = waterSum / n;
-  const lifestyleAlignmentScore = clampPct(
-    routineCompletion7d * 42 +
-      Math.min(28, (avgSleep / 8) * 28) +
-      Math.min(30, (avgWater / 8) * 30) -
-      (highSun >= 4 ? 14 : highSun >= 2 ? 6 : 0)
+  const startYmds = [
+    localYmdAndHm(userRow.createdAt, tz).ymd,
+    firstScanAt ? localYmdAndHm(firstScanAt, tz).ymd : null,
+  ].filter((d): d is string => Boolean(d));
+  startYmds.sort();
+  const weeksUsingApp = weeksOnApp(
+    startYmds[0] ?? todayYmdFromProfile,
+    todayYmdFromProfile
   );
+  const totalScans = Math.max(
+    Number(scanTotals[0]?.n ?? 0),
+    Number(skinScanTotals[0]?.n ?? 0)
+  );
+  const questionnaireCount =
+    Number(checkinTotals[0]?.n ?? 0) + (questionnaireRow ? 1 : 0);
+  const lifestyleAlignmentScore = computeLifestyleAlignmentScore({
+    weeksOnApp: weeksUsingApp,
+    scanCount: totalScans,
+    questionnaireCount,
+  });
 
   const onboardingComplete = userRow.onboardingComplete;
   const [progress, scoresUnlocked] = await Promise.all([
@@ -311,6 +343,8 @@ async function buildPatientHomePayload(
     pmItems,
     routinePlanReady,
     latestScanReportId: latestScan?.id ?? null,
+    latestScanCreatedAt: latestScan?.createdAt.toISOString() ?? null,
+    scanCount: totalScans,
     kaiSkinScore: clampPct(kaiSkinScore),
     weeklyDeltaScore: Math.round(weeklyDeltaScore),
     weeklyDeltaMeaningful,

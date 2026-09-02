@@ -24,6 +24,14 @@ export function toLlmWellness(
       : null,
     activeIngredients: row.activeIngredients ?? null,
     weekYmd: row.weekYmd,
+    water: row.water ?? null,
+    stressAnchor: row.stressAnchor ?? null,
+    nutritionMulti: Array.isArray(row.nutritionMulti) ? row.nutritionMulti : null,
+    supplementsList: Array.isArray(row.supplementsList)
+      ? row.supplementsList
+      : null,
+    concernSpecific: row.concernSpecific ?? null,
+    flags: Array.isArray(row.flags) ? row.flags : null,
   };
 }
 

@@ -12,6 +12,8 @@ type RingsHome = {
   weeklyDeltaMeaningful?: boolean;
   lifestyleAlignmentScore: number;
   scoresUnlocked?: boolean;
+  scanCount?: number;
+  latestScanCreatedAt?: string | null;
   skinScanHistory: Array<{ createdAt: string; analysisResults?: unknown }>;
 };
 
@@ -28,6 +30,7 @@ export function DiagnoseActivityRings() {
     const ymd = format(new Date(), "yyyy-MM-dd");
     void fetch(`/api/patient/home?date=${encodeURIComponent(ymd)}`, {
       credentials: "include",
+      cache: "no-store",
     })
       .then(async (r) => {
         if (!r.ok) throw new Error("home");
@@ -64,10 +67,12 @@ export function DiagnoseActivityRings() {
         kaiSkinScore={data.kaiSkinScore}
         weeklyDeltaScore={data.weeklyDeltaScore}
         weeklyDeltaMeaningful={data.weeklyDeltaMeaningful !== false}
-        latestScanAt={data.skinScanHistory[0]?.createdAt ?? null}
+        latestScanAt={
+          data.skinScanHistory[0]?.createdAt ?? data.latestScanCreatedAt ?? null
+        }
         consistencyScore={data.lifestyleAlignmentScore}
         scoresUnlocked={webPatientScoresUnlocked(data.scoresUnlocked)}
-        scanCount={data.skinScanHistory.length}
+        scanCount={Math.max(data.skinScanHistory.length, data.scanCount ?? 0)}
       />
     </div>
   );

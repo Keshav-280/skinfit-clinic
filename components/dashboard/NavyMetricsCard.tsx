@@ -197,7 +197,7 @@ type NavyMetricsCardProps = {
   latestScanAt: string | null;
   consistencyScore: number;
   scoresUnlocked?: boolean;
-  /** Number of scans the patient has taken - rings unlock from the 2nd scan. */
+  /** Number of scans the patient has taken - Progress unlocks from the 2nd scan. */
   scanCount?: number;
   className?: string;
   /** Light-on-white theme (rings + a label/value legend) instead of the filled navy card. */
@@ -221,8 +221,10 @@ export function NavyMetricsCard({
 
   const hasScan = Boolean(latestScanAt?.trim());
 
-  // Consistency + Progress rings unlock from the patient's 2nd scan onward.
-  const ringsLocked = scanCount < 2;
+  // Progress needs a 2nd scan for a real week-over-week delta.
+  // Consistency fills from weeks on the app, scans, and questionnaires.
+  const progressLocked = scanCount < 2;
+  const consistencyLocked = !hasScan && consistencyScore <= 0;
 
   const { outerR, middleR, innerR } = ringGeometry();
   const cx = RING_SIZE / 2;
@@ -239,13 +241,13 @@ export function NavyMetricsCard({
     return () => cancelAnimationFrame(id);
   }, [skinFillTarget]);
 
-  // Consistency ring = weekly check-in consistency; Progress ring = this week's
-  // improvement. Both stay empty while locked (behind the lock overlay).
-  const consistencyFillTarget = ringsLocked
+  // Consistency ring = scans + questionnaires over weeks on the app.
+  // Progress ring = this week's improvement (locked until a 2nd scan).
+  const consistencyFillTarget = consistencyLocked
     ? 0
     : Math.min(100, Math.max(0, Math.round(consistencyScore)));
   const progressFillTarget =
-    ringsLocked || !weeklyDeltaMeaningful
+    progressLocked || !weeklyDeltaMeaningful
       ? 0
       : Math.min(100, Math.max(0, Math.round(weeklyDeltaScore)));
   const [consistencyFill, setConsistencyFill] = useState(0);
@@ -339,7 +341,7 @@ export function NavyMetricsCard({
         rings.consistency,
         "Consistency",
         `${Math.round(consistencyScore)}%`,
-        ringsLocked,
+        consistencyLocked,
         LIGHT_BADGES.consistency.bg,
         LIGHT_BADGES.consistency.color
       )}
@@ -347,7 +349,7 @@ export function NavyMetricsCard({
         rings.progress,
         "Progress",
         `${Math.round(Math.abs(weeklyDeltaScore))}%`,
-        ringsLocked || !weeklyDeltaMeaningful,
+        progressLocked || !weeklyDeltaMeaningful,
         LIGHT_BADGES.progress.bg,
         LIGHT_BADGES.progress.color
       )}
@@ -429,31 +431,31 @@ export function NavyMetricsCard({
             />
           </g>
 
-          {ringsLocked && (
-            <>
-              <LockedRingOverlay
-                radius={outerR}
-                active={lockedTip === "progress"}
-                tipId={tipId}
-                onHoverIn={() => setLockedTip("progress")}
-                onHoverOut={() => setLockedTip(null)}
-                onToggle={() =>
-                  setLockedTip((t) => (t === "progress" ? null : "progress"))
-                }
-              />
-              <LockedRingOverlay
-                radius={middleR}
-                active={lockedTip === "consistency"}
-                tipId={tipId}
-                onHoverIn={() => setLockedTip("consistency")}
-                onHoverOut={() => setLockedTip(null)}
-                onToggle={() =>
-                  setLockedTip((t) =>
-                    t === "consistency" ? null : "consistency"
-                  )
-                }
-              />
-            </>
+          {progressLocked && (
+            <LockedRingOverlay
+              radius={outerR}
+              active={lockedTip === "progress"}
+              tipId={tipId}
+              onHoverIn={() => setLockedTip("progress")}
+              onHoverOut={() => setLockedTip(null)}
+              onToggle={() =>
+                setLockedTip((t) => (t === "progress" ? null : "progress"))
+              }
+            />
+          )}
+          {consistencyLocked && (
+            <LockedRingOverlay
+              radius={middleR}
+              active={lockedTip === "consistency"}
+              tipId={tipId}
+              onHoverIn={() => setLockedTip("consistency")}
+              onHoverOut={() => setLockedTip(null)}
+              onToggle={() =>
+                setLockedTip((t) =>
+                  t === "consistency" ? null : "consistency"
+                )
+              }
+            />
           )}
         </svg>
 

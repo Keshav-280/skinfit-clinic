@@ -25,7 +25,6 @@ import { scanDisplayResolvedFromRow } from "../../../../../src/lib/resolveScanDi
 import {
   buildKaiReportParamRowsFromRag,
   clarityToSeverity,
-  defaultInitialActions,
   initialReportHeadline,
   pickTopConcernName,
 } from "../../../../../src/lib/kaiReportMapping";
@@ -43,13 +42,14 @@ import {
 import {
   buildAttributionCards,
   defaultNextStep,
-  defaultUpdateActions,
   defaultUpdateHeadline,
   formatScanDateShort,
   formatShareLine,
   templateWeekHighlight,
   weekRecapFromWellness,
 } from "../../../../../src/lib/report/updateReportTemplates";
+import { coalesceFocusActions } from "../../../../../src/lib/report/reportFocusActions";
+import { computeMultiWeekInsights } from "../../../../../src/lib/multiWeekPatternAnalysis";
 import { InitialKaiScanReport } from "../../../../../components/report/InitialKaiScanReport";
 import { UpdateKaiScanReport } from "../../../../../components/report/UpdateKaiScanReport";
 
@@ -281,6 +281,11 @@ export default async function KaiScanReportPage({
     const annotatedByPose = annotatedPhotosForScan(row.scores);
     const scanImages = galleryImages(row.id, faceCaptureImages, annotatedByPose);
 
+    const { wellness, cityWeather } = await loadWellnessAndWeatherForScan({
+      userId,
+      scanDate: row.createdAt,
+    });
+
     const { report: llm, aiUnavailable } = await generateInitialReportContent({
       patient: {
         first_name: user.name?.split(/\s+/)[0] ?? null,
@@ -302,6 +307,23 @@ export default async function KaiScanReportPage({
         ),
         overall: gradeInfo,
       },
+      weekly_checkin: wellness,
+      environment: cityWeather
+        ? {
+            city: cityWeather.city,
+            detected: true,
+            uv_index_peak: cityWeather.uvIndex,
+            humidity_pct_avg: cityWeather.humidity,
+            aqi_avg: cityWeather.aqi,
+            temp_c_avg: cityWeather.tempC,
+            condition: cityWeather.condition,
+          }
+        : null,
+      focus_parameters: paramRows.map((p) => ({
+        key: p.key,
+        name: p.name,
+        score_10: p.score10,
+      })),
     });
 
     const parameters = paramRows;
@@ -314,12 +336,11 @@ export default async function KaiScanReportPage({
       llm?.summary?.trim() ||
       row.aiSummary?.trim() ||
       `This baseline centres on ${topConcern.toLowerCase()}. On Indian skin, that pattern is often driven by a mix of UV, barrier stress and routine inconsistency - your next scans will show whether the plan is holding.`;
-    const actions =
-      llm?.actions?.filter((a) => typeof a === "string" && a.trim()).slice(0, 3) ??
-      defaultInitialActions(topConcern);
-    while (actions.length < 3) {
-      actions.push(defaultInitialActions(topConcern)[actions.length]!);
-    }
+    const actions = coalesceFocusActions({
+      llmActions: llm?.actions,
+      rows: paramRows,
+      wellness,
+    });
 
     const markerCount = Math.max(parameters.length, 1);
     const grade = String(gradeInfo.score10);
@@ -335,7 +356,7 @@ export default async function KaiScanReportPage({
         subtitle={`${markerCount} marker${markerCount === 1 ? "" : "s"} mapped`}
         synthesis={synthesis}
         baselineBody={`${markerCount} marker${markerCount === 1 ? "" : "s"} ${markerCount === 1 ? "is" : "are"} now fixed against this capture. Next week’s scan measures the same points. Stability in week one is a good result - it means the baseline held.`}
-        actions={actions.slice(0, 3)}
+        actions={actions}
         parameters={parameters}
         scanImages={scanImages}
         detectionRegions={parseScanDetectionRegions(row.scores)}
@@ -443,7 +464,23 @@ export default async function KaiScanReportPage({
       overall: prevGradeInfo,
       narrative_summary: previous.aiSummary,
     },
-    weekly_checkin: wellness ?? {},
+    weekly_checkin: wellness,
+    focus_parameters: paramRows.map((p) => {
+      const prev = prevParamRows.find((x) => x.key === p.key);
+      return {
+        key: p.key,
+        name: p.name,
+        score_10: p.score10,
+        previous_score_10: prev?.score10 ?? null,
+        movement: prev
+          ? prev.score10 < p.score10
+            ? "improved"
+            : prev.score10 > p.score10
+              ? "declined"
+              : "holding"
+          : "baseline",
+      };
+    }),
     environment: cityWeather
       ? {
           city: cityWeather.city,
@@ -491,6 +528,8 @@ export default async function KaiScanReportPage({
   const badge = movementToHeroBadge(mvKind);
   const subtitle = subtitleFromGrades(score10, prevScore10, mvKind);
 
+  const multiWeekInsights = await computeMultiWeekInsights(userId);
+
   const attributionCards = buildAttributionCards({
     cityWeather,
     wellness,
@@ -499,6 +538,7 @@ export default async function KaiScanReportPage({
       ? format(treatmentish.eventDate, "d MMM")
       : null,
     llm,
+    multiWeekInsights,
   });
 
   const weekRecap =
@@ -521,13 +561,13 @@ export default async function KaiScanReportPage({
   const weekHighlight =
     llm?.week_recap?.highlight?.trim() || templateWeekHighlight(wellness);
 
-  const actionsRaw =
-    llm?.actions?.filter((a) => typeof a === "string" && a.trim()).slice(0, 3) ??
-    [];
-  const actions =
-    actionsRaw.length >= 3
-      ? actionsRaw
-      : defaultUpdateActions({ topConcern });
+  const actions = coalesceFocusActions({
+    llmActions: llm?.actions,
+    rows: paramRows,
+    previousRows: prevParamRows,
+    wellness,
+    multiWeekInsights,
+  });
 
   const nextStep = llm?.next_step?.reason
     ? {

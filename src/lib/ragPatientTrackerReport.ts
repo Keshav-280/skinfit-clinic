@@ -23,6 +23,7 @@ import {
   correlateBehaviorToDelta,
   summarizeBehavior,
 } from "@/src/lib/ragCorrelationStats";
+import { computeMultiWeekInsights } from "@/src/lib/multiWeekPatternAnalysis";
 import { analyzeTrackerReport, isLlmEnabled } from "@/src/lib/ragLlmAnalysis";
 import { productionTextbookRetrieve } from "@/src/lib/ragRetrieve";
 import {
@@ -313,13 +314,14 @@ export async function buildRagPatientTrackerNarrative(input: {
     topK: 8,
   });
 
-  const [visits, chatMsgs, wellnessCtx] = await Promise.all([
+  const [visits, chatMsgs, wellnessCtx, multiWeekInsights] = await Promise.all([
     loadVisitNotesUpTo(userId, scanRow.createdAt),
     loadRecentChatUpTo(userId, scanRow.createdAt),
     loadWellnessAndWeatherForScan({
       userId,
       scanDate: scanRow.createdAt,
     }),
+    computeMultiWeekInsights(userId),
   ]);
 
   const scanContextNote = scanContextNoteForLlm(scanContextKind);
@@ -359,12 +361,26 @@ export async function buildRagPatientTrackerNarrative(input: {
       scoresUnlocked: user?.clinicVisitedAt != null,
       wellness: wellnessCtx.wellness,
       cityWeather: wellnessCtx.cityWeather,
+      multiWeekInsights: multiWeekInsights.map((i) => i.text),
     });
   }
 
   const winsAgg = Array.from(new Set(correlations.flatMap((c) => c.wins))).slice(0, 3);
   const dragsAgg = Array.from(new Set(correlations.flatMap((c) => c.drags))).slice(0, 3);
   const fallbackCauseLines: string[] = [];
+  // Computed multi-week patterns are real, number-grounded findings - lead
+  // the fallback causes with them ahead of the single-week rule-based ones.
+  const multiWeekPrefix: Record<string, "Win" | "Drag" | "Watch"> = {
+    baseline: "Win",
+    trend: "Drag",
+    checkin_correlation: "Watch",
+    comovement: "Watch",
+    consistency: "Win",
+  };
+  for (const insight of multiWeekInsights.slice(0, 2)) {
+    const prefix = multiWeekPrefix[insight.kind] ?? "Watch";
+    fallbackCauseLines.push(`${prefix}: ${insight.text}`);
+  }
   if (winsAgg[0]) fallbackCauseLines.push(`Win: ${winsAgg[0]}`);
   if (dragsAgg[0]) fallbackCauseLines.push(`Drag: ${dragsAgg[0]}`);
   if (winsAgg[1]) fallbackCauseLines.push(`Win: ${winsAgg[1]}`);

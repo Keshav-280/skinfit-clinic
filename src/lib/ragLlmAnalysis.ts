@@ -125,6 +125,12 @@ export type LlmWellnessCheckinInput = {
   skincareRoutine: string[] | null;
   activeIngredients: string | null;
   weekYmd: string;
+  water?: string | null;
+  stressAnchor?: string | null;
+  nutritionMulti?: string[] | null;
+  supplementsList?: string[] | null;
+  concernSpecific?: Record<string, string | string[] | number | null> | null;
+  flags?: string[] | null;
 };
 
 export type LlmCityWeatherInput = {
@@ -140,15 +146,28 @@ function formatWellnessBlock(
   wellness: LlmWellnessCheckinInput | null | undefined
 ): string {
   if (!wellness) return "No wellness check-in submitted this week.";
+  const concern =
+    wellness.concernSpecific && Object.keys(wellness.concernSpecific).length > 0
+      ? JSON.stringify(wellness.concernSpecific)
+      : "not reported";
   return `
-Nutrition: ${wellness.nutritionLevel ?? "not reported"}
+Nutrition: ${wellness.nutritionLevel ?? "not reported"}${
+    wellness.nutritionMulti?.length ? ` (${wellness.nutritionMulti.join(", ")})` : ""
+  }
 Exercise: ${wellness.exerciseHours ?? "not reported"} hours/week
 Sleep pattern: ${wellness.sleepHours ?? "not reported"} hours/day
-Supplements: ${wellness.supplements ?? "none reported"}
-Self-reported stress: ${wellness.stressLevel ?? "not reported"}/10
+Water: ${wellness.water ?? "not reported"}
+Supplements: ${
+    wellness.supplementsList?.length
+      ? wellness.supplementsList.join(", ")
+      : wellness.supplements ?? "none reported"
+  }
+Self-reported stress: ${wellness.stressAnchor ?? (wellness.stressLevel != null ? `${wellness.stressLevel}/10` : "not reported")}
 City: ${wellness.city ?? "not reported"}
 Skincare routine: ${wellness.skincareRoutine?.join(", ") ?? "not reported"}
 Active ingredients: ${wellness.activeIngredients ?? "none reported"}
+Concern-specific answers: ${concern}
+Flags: ${wellness.flags?.join(", ") || "none"}
 `.trim();
 }
 
@@ -217,6 +236,8 @@ export async function analyzeTrackerReport(input: {
   scoresUnlocked: boolean;
   wellness?: LlmWellnessCheckinInput | null;
   cityWeather?: LlmCityWeatherInput | null;
+  /** Real patterns computed across the patient's full history — see multiWeekPatternAnalysis.ts. Verbatim-safe. */
+  multiWeekInsights?: string[];
 }): Promise<LlmTrackerAnalysis | null> {
   const signalPack = buildNarrativeSignalPack(input.correlations, input.behavior);
   const hasWellnessOrWeather = Boolean(input.wellness || input.cityWeather);
@@ -271,6 +292,9 @@ Routine intensity (granular): avg AM checklist ${input.behavior.avgAmRoutineStep
 Avg sleep: ${input.behavior.avgSleepHours}h, Avg water: ${input.behavior.avgWaterGlasses} glasses
 Avg stress: ${input.behavior.avgStress}/10, High-stress days: ${input.behavior.highStressDays}
 Journal entries: ${input.behavior.journalEntriesCount}/${input.behavior.windowDays} (${input.behavior.journalCompliancePct}%) • missed journaling on ${input.behavior.journalMissedDays} days
+
+MULTI-WEEK PATTERNS (computed from this patient's full scan/check-in history — already verified true, prefer these over generic observations when writing causes/insight)
+${input.multiWeekInsights?.length ? input.multiWeekInsights.map((t) => `- ${t}`).join("\n") : "None available yet - not enough history."}
 
 WEEKLY WELLNESS CHECK-IN
 ${formatWellnessBlock(input.wellness)}

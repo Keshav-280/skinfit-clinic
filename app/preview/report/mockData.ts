@@ -186,6 +186,22 @@ export const previewActions = [
   "Don't start a new active before your consult - sequencing matters more than stacking.",
 ];
 
+/** Same three steps as {@link previewActions}, shaped for the poster-design report (title/detail). */
+export const previewFocusActions = [
+  {
+    title: "Switch to a cream cleanser if you use a foaming wash",
+    detail: "Over-drying often worsens breakouts.",
+  },
+  {
+    title: "Sunscreen at 9am, reapply by early afternoon",
+    detail: "UV drives post-acne marks as much as new lesions.",
+  },
+  {
+    title: "Don't start a new active before your consult",
+    detail: "Sequencing matters more than stacking.",
+  },
+];
+
 export const previewConceptData: ConceptReportData = {
   grade: "6",
   position: 62,

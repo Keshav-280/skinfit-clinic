@@ -5,6 +5,7 @@ import { db } from "@/src/db";
 import { scans, wellnessCheckins } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { fetchCityWeather } from "@/src/lib/cityWeather";
+import { invalidateUserHomeCache } from "@/src/lib/infra";
 import {
   nutritionKeysToLegacyLabel,
   stressAnchorToLegacyLevel,
@@ -287,6 +288,7 @@ export async function POST(req: Request) {
       .set({ ...rowValues, payload })
       .where(eq(wellnessCheckins.id, existing.id))
       .returning();
+    await invalidateUserHomeCache(userId);
     return NextResponse.json({
       ok: true,
       updated: true,
@@ -329,6 +331,7 @@ export async function POST(req: Request) {
     .where(eq(wellnessCheckins.id, created.id))
     .returning();
 
+  await invalidateUserHomeCache(userId);
   return NextResponse.json({
     ok: true,
     updated: false,

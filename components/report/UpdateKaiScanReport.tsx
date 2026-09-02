@@ -22,7 +22,8 @@ import { WeekRecap } from "./WeekRecap";
 import { ActionItem } from "./ActionItem";
 import { NextStepCTA } from "./NextStepCTA";
 import { ReportShareFooter } from "./ReportShareFooter";
-import { REPORT_CARD, REPORT_PILL, shortHeadline } from "./reportCopy";
+import { REPORT_CARD, REPORT_PILL, coverHeadline, shortHeadline } from "./reportCopy";
+import type { ReportFocusAction } from "@/src/lib/report/reportFocusActions";
 
 export type UpdateKaiScanReportProps = {
   scanId: number;
@@ -55,7 +56,7 @@ export type UpdateKaiScanReportProps = {
   attributionCards: Array<{ label: string; text: string }>;
   weekRecap: Array<{ label: string; value: string }>;
   weekHighlight?: string | null;
-  actions: string[];
+  actions: ReportFocusAction[];
   nextStep: { heading: string; body: string };
   doctorName: string;
   aiUnavailable?: boolean;
@@ -140,7 +141,7 @@ export function UpdateKaiScanReport({
         cover={{
           grade,
           position: position.current,
-          title: shortHeadline(headline),
+          title: coverHeadline(headline, grade),
           badge: movementBadge,
           meta: { left: metaLeft, right: metaRight },
         }}
@@ -206,11 +207,12 @@ export function UpdateKaiScanReport({
             </span>
           </div>
           <div>
-            {actions.map((text, i) => (
+            {actions.map((action, i) => (
               <ActionItem
                 key={i}
                 number={i + 1}
-                text={text}
+                title={action.title}
+                detail={action.detail}
                 last={i === actions.length - 1}
               />
             ))}
@@ -221,12 +223,12 @@ export function UpdateKaiScanReport({
           heading={nextStep.heading}
           body={nextStep.body}
           primaryAction={{
-            label: `Message ${doctorName}`,
-            href: "/dashboard/chat?assistant=doctor",
+            label: "Book your visit",
+            href: "/dashboard?book=1",
           }}
           secondaryAction={{
-            label: "Book your next visit",
-            href: "/dashboard?book=1",
+            label: `Message ${doctorName}`,
+            href: "/dashboard/chat?assistant=doctor",
           }}
         />
 

@@ -74,7 +74,7 @@ const DOT: Record<KaiGradeTone, string> = {
   low: "bg-kai-low",
 };
 
-/** Size an image box so it covers the stage while keeping overlay % coords. */
+/** Size an image box so the full photo fits in the stage (letterbox) and overlay % coords stay true. */
 function useCoverFrame(aspect: number | null) {
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -89,9 +89,9 @@ function useCoverFrame(aspect: number | null) {
       const ar = aspect && aspect > 0 ? aspect : 3 / 4;
       const stageAr = sw / sh;
       if (ar > stageAr) {
-        setBox({ h: sh, w: sh * ar });
-      } else {
         setBox({ w: sw, h: sw / ar });
+      } else {
+        setBox({ h: sh, w: sh * ar });
       }
     };
     measure();
@@ -142,6 +142,7 @@ export function FaceMapSection({
   const [aspect, setAspect] = useState<number | null>(null);
   const [photoReady, setPhotoReady] = useState(false);
   const swipeStartX = useRef<number | null>(null);
+  const pointerDownRef = useRef(false);
   const { ref: stageRef, box: coverBox } = useCoverFrame(aspect);
 
   const photos = scanImages.length > 0 ? scanImages : [];
@@ -174,8 +175,10 @@ export function FaceMapSection({
 
   function onSwipeStart(e: PointerEvent<HTMLDivElement>) {
     swipeStartX.current = e.clientX;
+    pointerDownRef.current = true;
   }
   function onSwipeEnd(e: PointerEvent<HTMLDivElement>) {
+    pointerDownRef.current = false;
     const start = swipeStartX.current;
     swipeStartX.current = null;
     if (start == null || !multi) return;
@@ -269,6 +272,21 @@ export function FaceMapSection({
   }, [photoReady, photoKey]);
 
   useEffect(() => {
+    if (!multi || activeConcern !== "all") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      if (pointerDownRef.current) return;
+      if (document.visibilityState === "hidden") return;
+      const n = photos.length;
+      if (n <= 1) return;
+      setActiveIndex((activeIndex + 1) % n);
+      setAspect(null);
+      setPhotoReady(false);
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [multi, activeConcern, activeIndex, photos.length]);
+
+  useEffect(() => {
     if (concernProp == null) return;
     if (concernProp === "wrinkles") {
       if (smilingIndex >= 0) selectIndex(smilingIndex);
@@ -309,6 +327,7 @@ export function FaceMapSection({
           onPointerUp={onSwipeEnd}
           onPointerCancel={() => {
             swipeStartX.current = null;
+            pointerDownRef.current = false;
           }}
         >
           <div
@@ -330,7 +349,7 @@ export function FaceMapSection({
                 }}
                 onError={() => setPhotoReady(true)}
                 draggable={false}
-                className={`absolute inset-0 h-full w-full object-fill transition-opacity duration-150 ${
+                className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-150 ${
                   photoReady ? "opacity-100" : "opacity-0"
                 }`}
               />
@@ -347,7 +366,7 @@ export function FaceMapSection({
                 alt=""
                 aria-hidden
                 draggable={false}
-                className="pointer-events-none absolute inset-0 h-full w-full object-fill transition-opacity duration-300 ease-out"
+                className="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ease-out"
                 style={{
                   opacity: wrinkleMaskVisible ? 0.75 : 0,
                   mixBlendMode: "screen",
@@ -369,7 +388,7 @@ export function FaceMapSection({
                 alt=""
                 aria-hidden
                 draggable={false}
-                className="pointer-events-none absolute inset-0 h-full w-full object-fill transition-opacity duration-300 ease-out"
+                className="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ease-out"
                 style={{
                   opacity:
                     activeConcern === "all" || activeConcern === "pigmentation"
@@ -437,31 +456,33 @@ export function FaceMapSection({
                   {cover.meta.right}
                 </span>
               ) : null}
-              <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-3 pb-5">
-                <ReportGradeRing
-                  grade={cover.grade}
-                  position={cover.position}
-                  size={92}
-                  variant="glass"
-                />
-                <div className="min-w-0 pb-1">
-                  <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] ${
-                      cover.badge.type === "improving"
-                        ? "bg-[#4E9B72]/80 text-white"
-                        : cover.badge.type === "declining"
-                          ? "bg-[#C4694F]/80 text-white"
-                          : "bg-white/20 text-white"
-                    }`}
-                  >
-                    {cover.badge.label}
-                  </span>
-                  <p
-                    className="mt-1.5 text-[18px] font-semibold leading-[1.15] tracking-[-0.03em] text-white"
-                    style={{ textShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
-                  >
-                    {cover.title}
-                  </p>
+              <div className="absolute inset-x-0 bottom-0 px-3.5 pb-8 pt-10">
+                <div className="flex items-center gap-3">
+                  <ReportGradeRing
+                    grade={cover.grade}
+                    position={cover.position}
+                    size={72}
+                    variant="glass"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] ${
+                        cover.badge.type === "improving"
+                          ? "bg-[#4E9B72]/80 text-white"
+                          : cover.badge.type === "declining"
+                            ? "bg-[#C4694F]/80 text-white"
+                            : "bg-white/20 text-white"
+                      }`}
+                    >
+                      {cover.badge.label}
+                    </span>
+                    <p
+                      className="mt-1.5 line-clamp-2 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-white"
+                      style={{ textShadow: "0 2px 12px rgba(0,0,0,0.65)" }}
+                    >
+                      {cover.title}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

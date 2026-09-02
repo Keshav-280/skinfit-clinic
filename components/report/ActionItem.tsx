@@ -5,14 +5,39 @@ import { actionLead } from "./reportCopy";
 
 type ActionItemProps = {
   number: number;
-  text: string;
+  text?: string;
+  title?: string;
+  detail?: string;
   last?: boolean;
 };
 
-export function ActionItem({ number, text, last = false }: ActionItemProps) {
+function sameLine(a: string, b: string): boolean {
+  const na = a.replace(/\s+/g, " ").trim().toLowerCase();
+  const nb = b.replace(/\s+/g, " ").trim().toLowerCase();
+  if (!na || !nb) return true;
+  if (na === nb) return true;
+  return na.startsWith(nb) || nb.startsWith(na);
+}
+
+export function ActionItem({
+  number,
+  text,
+  title,
+  detail,
+  last = false,
+}: ActionItemProps) {
   const [open, setOpen] = useState(false);
-  const lead = actionLead(text);
-  const hasMore = text.trim().length > lead.length;
+  const resolvedTitle = (title ?? actionLead(text ?? "")).trim();
+  let resolvedDetail = (detail ?? "").trim();
+  if (!resolvedDetail && text?.trim()) {
+    const parts = text
+      .trim()
+      .split(/(?<=[.!?])\s+/)
+      .filter(Boolean);
+    resolvedDetail = parts.slice(1).join(" ").trim();
+  }
+  const hasMore =
+    resolvedDetail.length > 0 && !sameLine(resolvedTitle, resolvedDetail);
 
   return (
     <button
@@ -31,11 +56,11 @@ export function ActionItem({ number, text, last = false }: ActionItemProps) {
       </span>
       <span className="min-w-0 pb-1">
         <span className="block text-[14px] font-semibold leading-snug text-[#1A2035]">
-          {lead}
+          {resolvedTitle}
         </span>
         {open && hasMore ? (
           <span className="mt-1 block text-[12px] leading-[1.5] text-[#5B6478]">
-            {text}
+            {resolvedDetail}
           </span>
         ) : hasMore ? (
           <span className="mt-0.5 block text-[11px] font-medium text-[#8B93A4]">

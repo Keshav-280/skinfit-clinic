@@ -40,7 +40,7 @@ export function ReportGradeRing({
         className={`absolute inset-[10%] rounded-full ${glass ? "report-glow bg-white/15 backdrop-blur-md" : ""}`}
         style={
           glass
-            ? { boxShadow: `0 0 32px -2px ${color}99` }
+            ? { boxShadow: `0 0 18px -4px ${color}66` }
             : { boxShadow: `0 0 28px -4px ${color}66` }
         }
         aria-hidden

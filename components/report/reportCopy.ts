@@ -14,8 +14,20 @@ export function watchTitle(parameters: KaiReportParamRow[]): string {
 
 export function shortHeadline(headline: string, max = 56): string {
   const first = headline.trim().split(/[.!?]/)[0]?.trim() || headline.trim();
-  if (first.length <= max) return first;
-  return `${first.slice(0, max - 1).trimEnd()}…`;
+  const cleaned = first.replace(/\u2014|\u2013/g, "-");
+  if (cleaned.length <= max) return cleaned;
+  return `${cleaned.slice(0, max - 1).trimEnd()}…`;
+}
+
+/** Overlay line next to the grade ring - drop a leading "8/10 -" so it is not shown twice. */
+export function coverHeadline(headline: string, grade: string): string {
+  const raw = shortHeadline(headline, 72);
+  const g = grade.trim();
+  if (!g) return raw;
+  return raw
+    .replace(new RegExp(`^${g}\\s*/\\s*10\\s*[-:]\\s*`, "i"), "")
+    .replace(/^\d+\s*\/\s*10\s*[-:]\s*/, "")
+    .trim() || raw;
 }
 
 /** First clause of an action - card title, not the essay. */

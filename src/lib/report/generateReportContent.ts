@@ -49,7 +49,7 @@ async function chatJson(
     const completion = await client.chat.completions.create(
       {
         model: model(),
-        temperature: 0.4,
+        temperature: 0.55,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
@@ -97,7 +97,10 @@ export type GeneratedUpdateReport = {
     routine_adherence?: string;
     highlight?: string;
   };
-  actions?: string[];
+  actions?: Array<
+    | string
+    | { title?: string; detail?: string; parameter?: string; key?: string }
+  >;
   next_step?: { label?: string; reason?: string; type?: string };
   share_card?: { grade?: string; line?: string };
   escalate?: boolean;
@@ -109,7 +112,10 @@ export type GeneratedInitialReport = {
   summary?: string;
   overall?: { letter?: string; position?: number; headline?: string };
   parameters?: Array<{ key?: string; finding?: string; letter?: string }>;
-  actions?: string[];
+  actions?: Array<
+    | string
+    | { title?: string; detail?: string; parameter?: string; key?: string }
+  >;
   next_step?: { label?: string; reason?: string; type?: string };
   status?: string;
 };

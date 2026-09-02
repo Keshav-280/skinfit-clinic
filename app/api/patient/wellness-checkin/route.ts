@@ -4,6 +4,7 @@ import { format, startOfWeek } from "date-fns";
 import { db } from "@/src/db";
 import { wellnessCheckins } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
+import { invalidateUserHomeCache } from "@/src/lib/infra";
 
 const NUTRITION = new Set([
   "High Protein",
@@ -225,6 +226,7 @@ export async function POST(req: Request) {
       })
       .where(eq(wellnessCheckins.id, existing.id))
       .returning();
+    await invalidateUserHomeCache(userId);
     return NextResponse.json({
       success: true,
       updated: true,
@@ -244,6 +246,7 @@ export async function POST(req: Request) {
     })
     .returning();
 
+  await invalidateUserHomeCache(userId);
   return NextResponse.json({
     success: true,
     updated: false,
