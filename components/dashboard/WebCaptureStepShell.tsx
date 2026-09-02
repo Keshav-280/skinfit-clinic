@@ -150,6 +150,42 @@ function GuidanceRow({
   );
 }
 
+function GuidanceOverlayPills({
+  guidance,
+}: {
+  guidance: CaptureGuidanceSnapshot | null;
+}) {
+  if (!guidance) {
+    return (
+      <p className="rounded-full bg-black/55 px-3 py-1.5 text-center text-[11px] font-semibold text-white backdrop-blur-sm">
+        {CAPTURE_GUIDANCE_WARMUP_MESSAGE}
+      </p>
+    );
+  }
+
+  const lightingOk = guidance.lighting === "good" || guidance.lightingScore >= 60;
+  const faceOk = guidance.face === "good";
+
+  return (
+    <div className="flex gap-1.5">
+      <span
+        className={`min-w-0 flex-1 truncate rounded-full px-2.5 py-1 text-center text-[10px] font-bold backdrop-blur-sm ${
+          lightingOk ? "bg-emerald-600/85 text-white" : "bg-black/60 text-white"
+        }`}
+      >
+        Light · {lightingOk ? "good" : "check"}
+      </span>
+      <span
+        className={`min-w-0 flex-1 truncate rounded-full px-2.5 py-1 text-center text-[10px] font-bold backdrop-blur-sm ${
+          faceOk ? "bg-emerald-600/85 text-white" : "bg-black/60 text-white"
+        }`}
+      >
+        Distance · {faceOk ? "ok" : "adjust"}
+      </span>
+    </div>
+  );
+}
+
 function StepTipsOverlay({
   tips,
   open,
@@ -395,7 +431,7 @@ export function WebCaptureStepShell({
               </p>
             </div>
 
-            <div className="relative h-[min(52vh,420px)] w-[min(72vw,280px)] shrink-0 overflow-hidden rounded-xl bg-zinc-900 shadow-inner sm:h-[320px] sm:w-[240px] sm:rounded-2xl md:h-[384px] md:w-[288px] lg:h-[440px] lg:w-[330px] xl:h-[520px] xl:w-[390px]">
+            <div className="relative h-[min(calc(100dvh-14.5rem),520px)] w-[min(84vw,300px)] shrink-0 overflow-hidden rounded-xl bg-zinc-900 shadow-inner sm:h-[320px] sm:w-[240px] sm:rounded-2xl md:h-[384px] md:w-[288px] lg:h-[440px] lg:w-[330px] xl:h-[520px] xl:w-[390px]">
               {viewfinder}
               {!reviewingCapture ? (
                 <>
@@ -410,26 +446,14 @@ export function WebCaptureStepShell({
                     onOpen={() => setExtraTipsOpen(true)}
                     onClose={() => setExtraTipsOpen(false)}
                   />
+                  <div className="absolute inset-x-2 bottom-[4.75rem] z-20 md:hidden">
+                    <GuidanceOverlayPills guidance={guidance} />
+                  </div>
                 </>
               ) : null}
-            </div>
-
-            {!reviewingCapture ? (
-              <div className="w-full max-w-[min(72vw,280px)] shrink-0 sm:max-w-[240px] md:hidden">
-                <GuidanceStatusBoxes guidance={guidance} />
+              <div className="absolute inset-x-0 bottom-3 z-20 flex justify-center px-3">
+                {controls}
               </div>
-            ) : null}
-
-            <div className="w-full max-w-[min(72vw,280px)] shrink-0 sm:max-w-[240px] md:max-w-[288px]">
-              {reviewingCapture ? (
-                <p
-                  className="mb-2 text-center text-xs font-semibold leading-snug md:hidden"
-                  style={{ color: NAVY }}
-                >
-                  Review this photo. Use it or retake.
-                </p>
-              ) : null}
-              {controls}
             </div>
           </div>
 
@@ -461,11 +485,11 @@ export function WebCaptureShutterControls({
 }) {
   if (reviewingCapture) {
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex w-full max-w-[240px] flex-col gap-1.5">
         <button
           type="button"
           onClick={onConfirm}
-          className="flex w-full items-center justify-center rounded-lg py-2 text-xs font-bold text-white transition hover:opacity-95 sm:rounded-xl sm:py-2.5 sm:text-sm"
+          className="flex w-full items-center justify-center rounded-full py-2.5 text-xs font-bold text-white shadow-lg transition hover:opacity-95"
           style={{ backgroundColor: ACCENT }}
         >
           {isLastStep ? "Use photo & finish" : "Use photo & next"}
@@ -473,8 +497,7 @@ export function WebCaptureShutterControls({
         <button
           type="button"
           onClick={onRetake}
-          className="flex w-full items-center justify-center rounded-lg border py-2 text-xs font-bold transition hover:bg-white/80 sm:rounded-xl sm:py-2.5 sm:text-sm"
-          style={{ borderColor: ACCENT, color: ACCENT }}
+          className="flex w-full items-center justify-center rounded-full bg-black/55 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-black/70"
         >
           Retake
         </button>
@@ -487,12 +510,15 @@ export function WebCaptureShutterControls({
       type="button"
       onClick={onShutter}
       disabled={shutterDisabled || shooting}
-      className="flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-extrabold text-white shadow-md transition enabled:hover:opacity-95 disabled:opacity-45 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
-      style={{ backgroundColor: ACCENT }}
+      className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-[3px] border-white/90 bg-white/30 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-[2px] transition enabled:active:scale-95 disabled:opacity-45"
       aria-label="Capture photo"
     >
-      <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-      Capture
+      <span
+        className="flex h-[52px] w-[52px] items-center justify-center rounded-full"
+        style={{ backgroundColor: shutterDisabled || shooting ? "#9CA3AF" : NAVY }}
+      >
+        <Camera className="h-5 w-5 text-white" aria-hidden />
+      </span>
     </button>
   );
 }

@@ -96,6 +96,37 @@ function buildDoctorInsights(
   return messages;
 }
 
+function DoctorInsightBubble({
+  message,
+  className = "",
+}: {
+  message: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`relative rounded-2xl bg-white/90 px-3 py-2 shadow-[0_10px_24px_-8px_rgba(0,0,0,0.3)] backdrop-blur-sm ${className}`}
+    >
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={message}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="text-[10.5px] font-medium leading-snug text-[#1E293B] sm:text-[11px]"
+        >
+          {message}
+        </motion.p>
+      </AnimatePresence>
+      <span
+        className="absolute -right-1 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 rounded-[1px] bg-white/90"
+        aria-hidden
+      />
+    </div>
+  );
+}
+
 function HeroRingsMotif({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -222,33 +253,16 @@ export default function SchedulesPageClient({
           }`}
         >
           {assignedDoctor ? (
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-[44%] sm:w-[42%] md:relative md:inset-auto md:h-[340px] md:w-[280px] md:shrink-0 lg:h-[380px] lg:w-[320px]">
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-[40%] sm:w-[38%] md:relative md:inset-auto md:h-[340px] md:w-[280px] md:shrink-0 lg:h-[380px] lg:w-[320px]">
               <img
                 src={assignedDoctor.photoUrl ?? DEFAULT_DOCTOR_PHOTO}
                 alt={assignedDoctor.name}
                 className="h-full w-full object-contain object-right-bottom md:object-bottom"
               />
-
-              <div className="absolute left-[10%] right-[6%] top-[6%] z-10 sm:top-[8%] md:left-[8%] md:right-[4%] md:top-[10%]">
-                <div className="relative rounded-2xl rounded-br-sm bg-white/90 px-3 py-2 shadow-[0_10px_24px_-8px_rgba(0,0,0,0.3)] backdrop-blur-sm">
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={doctorInsight}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="text-[10.5px] font-medium leading-snug text-[#1E293B] sm:text-[11px]"
-                    >
-                      {doctorInsight}
-                    </motion.p>
-                  </AnimatePresence>
-                  <span
-                    className="absolute -bottom-[5px] right-8 h-2.5 w-2.5 rotate-45 rounded-[1px] bg-white/90"
-                    aria-hidden
-                  />
-                </div>
-              </div>
+              <DoctorInsightBubble
+                message={doctorInsight}
+                className="absolute top-[18%] right-full z-10 mr-3 hidden w-[13.5rem] md:block lg:w-[15rem]"
+              />
             </div>
           ) : (
             <HeroRingsMotif className="pointer-events-none absolute -right-8 -top-6 h-64 w-64 opacity-[0.06] md:-right-4 md:h-80 md:w-80" />
@@ -257,7 +271,7 @@ export default function SchedulesPageClient({
           <header
             className={`relative z-10 text-left ${
               assignedDoctor
-                ? "max-w-[56%] md:max-w-xl md:flex-1 md:pb-6"
+                ? "max-w-[58%] md:max-w-xl md:flex-1 md:pb-6"
                 : ""
             }`}
           >
@@ -266,47 +280,56 @@ export default function SchedulesPageClient({
               <span className="text-[#AEB9E8]">Within.</span>
             </h1>
 
-            <div className="mt-4 flex items-center gap-2">
-              <span className="text-xl leading-none" aria-hidden>
-                🔥
-              </span>
-              <p className="text-[15px] font-bold text-white sm:text-base">
-                {weeklyCheckinStreak > 0
-                  ? `${weeklyCheckinStreak} week${weeklyCheckinStreak === 1 ? "" : "s"} streak`
-                  : "Start your weekly streak"}
-              </p>
+            <div className="mt-4 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl leading-none" aria-hidden>
+                  🔥
+                </span>
+                <p className="text-[15px] font-bold text-white sm:text-base">
+                  {weeklyCheckinStreak > 0
+                    ? `${weeklyCheckinStreak} week${weeklyCheckinStreak === 1 ? "" : "s"} streak`
+                    : "Start your weekly streak"}
+                </p>
+              </div>
+
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+                  Week of {weekOfLabel}
+                </span>
+                {completed ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3EC] px-3.5 py-1.5 text-xs font-bold text-kai-good">
+                    <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Completed
+                  </span>
+                ) : (
+                  <motion.span
+                    animate={{
+                      boxShadow: [
+                        "0 0 0 0 rgba(251,191,36,0.35)",
+                        "0 0 0 6px rgba(251,191,36,0)",
+                      ],
+                    }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-3.5 py-1.5 text-xs font-semibold text-amber-200 backdrop-blur-sm"
+                  >
+                    <motion.span
+                      animate={{ opacity: [1, 0.35, 1] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300"
+                      aria-hidden
+                    />
+                    Pending
+                  </motion.span>
+                )}
+              </div>
             </div>
 
-            <div className="mt-7 flex flex-wrap items-center justify-start gap-2.5">
-              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                Week of {weekOfLabel}
-              </span>
-              {completed ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3EC] px-3.5 py-1.5 text-xs font-bold text-kai-good">
-                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  Completed
-                </span>
-              ) : (
-                <motion.span
-                  animate={{
-                    boxShadow: [
-                      "0 0 0 0 rgba(251,191,36,0.35)",
-                      "0 0 0 6px rgba(251,191,36,0)",
-                    ],
-                  }}
-                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-3.5 py-1.5 text-xs font-semibold text-amber-200 backdrop-blur-sm"
-                >
-                  <motion.span
-                    animate={{ opacity: [1, 0.35, 1] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300"
-                    aria-hidden
-                  />
-                  Pending
-                </motion.span>
-              )}
-            </div>
+            {assignedDoctor ? (
+              <DoctorInsightBubble
+                message={doctorInsight}
+                className="mt-3 max-w-[16.5rem] md:hidden"
+              />
+            ) : null}
           </header>
         </div>
       </div>
@@ -316,7 +339,6 @@ export default function SchedulesPageClient({
           weekYmd={wellnessWeekYmd}
           weekOfLabel={weekOfLabel}
           completed={completed}
-          concern={checkinConcern}
           summary={summary}
         />
       </div>

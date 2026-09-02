@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   Barlow_Condensed,
   Birthstone,
@@ -44,6 +44,15 @@ const birthstone = Birthstone({
 export const metadata: Metadata = {
   title: "SkinFit Wellness",
   description: "Clinical indigo, softened by rose — AI-guided skin care with your doctor.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SkinFit",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1E1B31",
 };
 
 export default function RootLayout({

@@ -21,6 +21,7 @@ import {
   SCAN_READY_CHANGED_EVENT,
   type ReadyScanNotification,
 } from "@/src/lib/scanJobNotifications";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 
 function countLabel(n: number, one: string, many: string) {
   return n === 1 ? one : many.replace("{n}", String(n));
@@ -251,7 +252,7 @@ export default function DashboardNotificationsPage() {
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-[#6B7280]">Loading…</p>
+        <SkinFitLoader size="section" title="Loading notifications" />
       ) : (
         <>
           <section className="space-y-3">

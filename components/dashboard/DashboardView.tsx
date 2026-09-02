@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight,
-  Loader2,
   Moon,
   Sun,
   SunMoon,

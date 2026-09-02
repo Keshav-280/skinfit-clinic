@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Droplets, Plus, Minus, Loader2 } from "lucide-react";
+import { ArrowLeft, Droplets, Plus, Minus } from "lucide-react";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 
@@ -96,9 +97,10 @@ export default function HydrationTrackerPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
-      </div>
+      <SkinFitLoader
+        title="Opening hydration"
+        subtitle="kAI is pulling today’s water log."
+      />
     );
   }
 

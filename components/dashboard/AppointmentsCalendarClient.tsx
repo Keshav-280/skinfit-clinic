@@ -48,6 +48,7 @@ import {
   type LastTreatmentVisit,
 } from "@/components/dashboard/LastTreatmentCard";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { patientDoctorLabel } from "@/src/lib/doctorDisplayName";
 import {
   patientKicker,
@@ -1032,6 +1033,12 @@ export default function AppointmentsCalendarClient({
     );
   }
 
+  const showScheduleAside =
+    visibleListEvents.length > 0 ||
+    archivedListCount > 0 ||
+    Boolean(latestVisit) ||
+    showKaiInsights;
+
   return (
     <div className="w-full space-y-4">
       {requestFormUrl ? (
@@ -1068,20 +1075,43 @@ export default function AppointmentsCalendarClient({
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.85fr)] lg:items-start">
+      <div
+        className={`grid gap-4 lg:items-start ${
+          showScheduleAside
+            ? "lg:grid-cols-[minmax(0,1.65fr)_minmax(240px,0.85fr)]"
+            : ""
+        }`}
+      >
         {/* Main calendar column */}
         <section
           id="schedules-calendar-root"
           className="min-w-0 overflow-visible rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm sm:p-4"
         >
-          <div className="mb-2">
+          <div className="mb-3">
             <h3 className="text-[17px] font-extrabold tracking-tight text-[#18181b]">
               Your schedule
             </h3>
             <p className="mt-0.5 text-[12px] leading-snug text-[#6B7280]">
               {headerLabel}
-              <span className="text-[#9CA3AF]"> Â· Tap a day to view appointments</span>
+              <span className="text-[#9CA3AF]"> · Tap a day to view appointments</span>
             </p>
+          </div>
+
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#FAF8F5] px-3 py-2.5">
+            <ManageGridDoctorAvatar
+              photoUrl={
+                featuredUpcoming?.doctorPhotoUrl ?? assignedDoctor?.photoUrl
+              }
+              className="h-10 w-10"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-[#18181b]">
+                {patientDoctorLabel(
+                  featuredUpcoming?.doctorName ?? assignedDoctor?.name
+                )}
+              </p>
+              <p className="text-[11px] text-[#6B7280]">Your clinic doctor</p>
+            </div>
           </div>
 
           {!calendarPopupOpen ? (
@@ -1099,6 +1129,23 @@ export default function AppointmentsCalendarClient({
               <ChevronRight className="h-4 w-4 shrink-0 text-[#6B7280]" aria-hidden />
             </button>
           ) : null}
+
+          <button
+            type="button"
+            className="mt-2 flex w-full items-center gap-3 rounded-xl bg-[#1E1B31] px-4 py-3 text-left transition hover:bg-[#242A5F]"
+            onClick={openRequestModal}
+          >
+            <Calendar className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold leading-tight text-white">
+                Request an Appointment
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-white/80">
+                Pick a date and preferred time
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-white" aria-hidden />
+          </button>
 
           {calendarPopupOpen && calendarPortalReady
             ? createPortal(
@@ -1395,25 +1442,8 @@ export default function AppointmentsCalendarClient({
           {doctorUpdatesSlot ? <div className="mt-3">{doctorUpdatesSlot}</div> : null}
         </section>
 
-        {/* Right sidebar */}
+        {showScheduleAside ? (
         <aside className="flex min-w-0 flex-col gap-3">
-          <button
-            type="button"
-            className="flex w-full items-center gap-3 rounded-2xl bg-[#1E1B31] px-4 py-3.5 text-left shadow-md shadow-[#1E1B31]/20 transition hover:bg-[#242A5F]"
-            onClick={openRequestModal}
-          >
-            <Calendar className="h-5 w-5 shrink-0 text-white" strokeWidth={2} aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold leading-tight text-white">
-                Request an Appointment
-              </p>
-              <p className="mt-0.5 text-[11px] leading-snug text-white/80">
-                Pick a date and preferred time
-              </p>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-white" aria-hidden />
-          </button>
-
           {visibleListEvents.length > 0 || archivedListCount > 0 ? (
           <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
             <div className="border-b border-[#E5E7EB] bg-[#FAF8F5]/80 px-3.5 py-2.5">
@@ -1467,25 +1497,6 @@ export default function AppointmentsCalendarClient({
           </section>
           ) : null}
 
-          <section className="rounded-2xl border border-[#E5E7EB] bg-white px-3.5 py-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <ManageGridDoctorAvatar
-                photoUrl={
-                  featuredUpcoming?.doctorPhotoUrl ?? assignedDoctor?.photoUrl
-                }
-                className="h-10 w-10"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-[#18181b]">
-                  {patientDoctorLabel(
-                    featuredUpcoming?.doctorName ?? assignedDoctor?.name
-                  )}
-                </p>
-                <p className="text-[11px] text-[#6B7280]">Your clinic doctor</p>
-              </div>
-            </div>
-          </section>
-
           {latestVisit ? (
             <section className="rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm">
               <ManageGridSectionHeader
@@ -1505,6 +1516,7 @@ export default function AppointmentsCalendarClient({
             </section>
           ) : null}
         </aside>
+        ) : null}
       </div>
 
       {clinicMsgOpen && clinicMsgApptId ? (
@@ -1671,10 +1683,11 @@ export default function AppointmentsCalendarClient({
               </button>
             </div>
             {attachmentViewerLoading ? (
-              <div className="mt-10 flex flex-col items-center justify-center gap-3 py-8 text-sm text-[#6B7280]">
-                <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" aria-hidden />
-                Loading photosâ€¦
-              </div>
+              <SkinFitLoader
+                size="section"
+                title="Loading photos"
+                subtitle="kAI is fetching the images from this request."
+              />
             ) : attachmentViewerError ? (
               <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
                 {attachmentViewerError}

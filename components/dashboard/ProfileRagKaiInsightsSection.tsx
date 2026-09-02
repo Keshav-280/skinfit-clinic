@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import {
   MonthlyInsightView,
   MonthlyInsightViewError,
@@ -54,20 +54,18 @@ export function ProfileRagKaiInsightsSection({
   if (loading) {
     if (embedded && compact) {
       return (
-        <div className="flex items-center gap-2 py-1 text-xs text-zinc-600" aria-busy="true">
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-600" />
-          Loading monthly insight…
+        <div className="py-1" aria-busy="true">
+          <SkinFitLoader size="mark" title="Loading monthly insight" />
         </div>
       );
     }
     return (
       <section
-        className="flex items-center gap-3 rounded-[22px] bg-gradient-to-b from-indigo-50/80 to-white px-5 py-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)] sm:px-6"
-        style={{ border: "1px solid #e0e7ff" }}
+        className="rounded-[22px] bg-white/50 px-5 py-6 shadow-[0_8px_28px_-4px_rgba(15,23,42,0.07)] sm:px-6"
+        style={{ border: "1px solid #F0EAE2" }}
         aria-busy="true"
       >
-        <Loader2 className="h-6 w-6 shrink-0 animate-spin text-indigo-600" />
-        <p className="text-sm text-zinc-700">Loading monthly insight…</p>
+        <SkinFitLoader size="section" title="Loading monthly insight" />
       </section>
     );
   }

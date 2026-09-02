@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, CloudMoon, Loader2 } from "lucide-react";
+import { ArrowLeft, CloudMoon } from "lucide-react";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 import { RoutineStepList } from "@/components/dashboard/RoutineStepList";
 import { normalizeRoutineSteps } from "@/src/lib/routine";
@@ -75,9 +76,10 @@ export default function NightRoutinePage() {
 
   if (loading) {
     return (
-      <section className="mx-auto flex max-w-md items-center justify-center pt-32">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
-      </section>
+      <SkinFitLoader
+        title="Opening night routine"
+        subtitle="kAI is fetching tonight’s steps."
+      />
     );
   }
 

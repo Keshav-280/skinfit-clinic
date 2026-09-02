@@ -1,5 +1,5 @@
 /**
- * Full-page Diagnose atmosphere: canvas → rose pale wash, organic waves, rings.
+ * Full-page Diagnose atmosphere: canvas, linen, a hint of blush.
  * Shared by /preview/diagnose and /dashboard/scan.
  */
 export function DiagnosePageAtmosphere({
@@ -15,49 +15,57 @@ export function DiagnosePageAtmosphere({
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(140% 90% at 50% 18%, #FFFEFB 0%, #FAF8F5 22%, #F8EDEE 48%, #EFCCCE 72%, #F0EAE2 100%)",
+            "radial-gradient(130% 85% at 50% 8%, #FFFEFB 0%, #FAF8F5 38%, #F0EAE2 100%)",
         }}
       />
 
       <div
-        className="absolute inset-x-[-10%] top-[32%] h-[55%]"
+        className="absolute right-[-15%] top-[12%] h-[42%] w-[70%]"
         style={{
           background:
-            "radial-gradient(ellipse 90% 70% at 50% 40%, rgba(223,157,164,0.35) 0%, rgba(248,237,238,0.25) 45%, transparent 75%)",
+            "radial-gradient(ellipse 80% 70% at 50% 50%, rgba(223,157,164,0.14) 0%, transparent 72%)",
+        }}
+      />
+
+      <div
+        className="absolute left-[-20%] top-[8%] h-[36%] w-[55%]"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(36,42,95,0.06) 0%, transparent 70%)",
         }}
       />
 
       <svg
-        className="absolute left-0 top-[26%] h-[22%] w-[140%] -translate-x-[8%]"
+        className="absolute left-0 top-[28%] h-[22%] w-[140%] -translate-x-[8%]"
         viewBox="0 0 600 120"
         preserveAspectRatio="none"
       >
         <path
           d="M0,70 C80,20 160,100 260,55 C360,10 440,95 600,40 L600,120 L0,120 Z"
-          fill="rgba(250,248,245,0.72)"
+          fill="rgba(250,248,245,0.78)"
         />
       </svg>
       <svg
-        className="absolute left-0 top-[34%] h-[28%] w-[130%] -translate-x-[5%]"
+        className="absolute left-0 top-[36%] h-[28%] w-[130%] -translate-x-[5%]"
         viewBox="0 0 600 140"
         preserveAspectRatio="none"
       >
         <path
           d="M0,50 C120,110 220,10 340,70 C460,130 520,30 600,80 L600,140 L0,140 Z"
-          fill="rgba(255,252,250,0.55)"
+          fill="rgba(240,234,226,0.55)"
         />
       </svg>
 
       <div
-        className="absolute inset-x-0 top-[42%] bottom-0"
+        className="absolute inset-x-0 top-[48%] bottom-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(239,204,206,0.35) 0%, rgba(248,237,238,0.7) 35%, rgba(250,248,245,0.95) 100%)",
+            "linear-gradient(180deg, rgba(240,234,226,0.35) 0%, rgba(250,248,245,0.92) 55%, #FAF8F5 100%)",
         }}
       />
 
       <svg
-        className="absolute -bottom-8 -right-16 h-[320px] w-[320px] text-[#1E1B31]/[0.07]"
+        className="absolute -bottom-8 -right-16 h-[320px] w-[320px] text-[#1E1B31]/[0.08]"
         viewBox="0 0 320 320"
         fill="none"
       >
@@ -73,7 +81,7 @@ export function DiagnosePageAtmosphere({
         ))}
       </svg>
       <svg
-        className="absolute bottom-16 left-[-40px] h-[180px] w-[180px] text-[#1E1B31]/[0.05]"
+        className="absolute bottom-16 left-[-40px] h-[180px] w-[180px] text-[#242A5F]/[0.07]"
         viewBox="0 0 180 180"
         fill="none"
       >

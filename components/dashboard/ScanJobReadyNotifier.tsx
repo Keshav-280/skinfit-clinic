@@ -108,7 +108,7 @@ export function ScanJobReadyNotifier() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-5 right-5 z-[90] flex w-[min(92vw,380px)] flex-col gap-3"
+      className="pointer-events-none fixed bottom-24 right-5 z-[110] flex w-[min(92vw,380px)] flex-col gap-3 md:bottom-5"
       role="region"
       aria-label="Scan report notifications"
     >

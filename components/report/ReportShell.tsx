@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode, Ref } from "react";
-import { DiagnosePageAtmosphere } from "@/components/dashboard/DiagnosePageAtmosphere";
 
 type ReportShellProps = {
   children: ReactNode;
@@ -10,11 +9,11 @@ type ReportShellProps = {
 
 export function ReportShell({ children, reportRef }: ReportShellProps) {
   return (
-    <div ref={reportRef} className="relative min-h-[100dvh] overflow-x-hidden">
-      <DiagnosePageAtmosphere className="fixed inset-0" />
-      <div className="relative z-10 mx-auto w-full max-w-[430px] px-4 pb-10 pt-3 sm:max-w-[460px]">
-        {children}
-      </div>
+    <div
+      ref={reportRef}
+      className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 -mt-6 min-h-[calc(100dvh-4rem)] bg-[#1E1B31]"
+    >
+      {children}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { addDays, differenceInCalendarDays, format, isSameDay, parseISO } from "date-fns";
+import { addDays, differenceInCalendarDays, parseISO } from "date-fns";
 import {
   Check,
   ChevronRight,
@@ -14,12 +14,10 @@ import {
   Moon,
 } from "lucide-react";
 import {
-  CONCERN_PATH_LABELS,
   EXERCISE_OPTIONS,
   SLEEP_OPTIONS,
   STRESS_OPTIONS,
   WATER_OPTIONS,
-  type CheckinConcernPath,
   type FieldOption,
 } from "@/src/lib/checkin/definitions";
 
@@ -31,13 +29,10 @@ const SUMMARY_ICONS: Record<string, typeof Moon> = {
   Fuel: Droplet,
 };
 
-const WEEKDAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"] as const;
-
 type WeeklyCheckinEntryCardProps = {
   weekYmd: string;
   weekOfLabel: string;
   completed: boolean;
-  concern: CheckinConcernPath;
   summary?: Array<{ label: string; value: string }> | null;
 };
 
@@ -66,23 +61,10 @@ function meterPct(label: string, value: string): number {
   return (rank / n) * 100;
 }
 
-function weekDaysFromMonday(weekYmd: string) {
-  try {
-    const start = parseISO(`${weekYmd}T00:00:00`);
-    return WEEKDAY_LETTERS.map((letter, i) => {
-      const day = addDays(start, i);
-      return { letter, day, ymd: format(day, "yyyy-MM-dd") };
-    });
-  } catch {
-    return [];
-  }
-}
-
 export function WeeklyCheckinEntryCard({
   weekYmd,
   weekOfLabel,
   completed,
-  concern,
   summary,
 }: WeeklyCheckinEntryCardProps) {
   const [today, setToday] = useState<Date | null>(null);
@@ -90,13 +72,15 @@ export function WeeklyCheckinEntryCard({
     setToday(new Date());
   }, []);
 
-  const days = useMemo(() => weekDaysFromMonday(weekYmd), [weekYmd]);
-
   const daysLeft = useMemo(() => {
-    if (!today || days.length === 0) return null;
-    const end = days[days.length - 1]!.day;
-    return Math.max(0, differenceInCalendarDays(end, today));
-  }, [days, today]);
+    if (!today) return null;
+    try {
+      const end = addDays(parseISO(`${weekYmd}T00:00:00`), 6);
+      return Math.max(0, differenceInCalendarDays(end, today));
+    } catch {
+      return null;
+    }
+  }, [today, weekYmd]);
 
   return (
     <motion.div
@@ -113,9 +97,6 @@ export function WeeklyCheckinEntryCard({
             </p>
             <p className="font-headline mt-1 text-xl font-bold tracking-tight text-[#1E1B31]">
               Week of {weekOfLabel}
-            </p>
-            <p className="mt-0.5 text-[12.5px] text-[#6B7280]">
-              {CONCERN_PATH_LABELS[concern]} path · five screens, about a minute
             </p>
           </div>
 
@@ -135,44 +116,6 @@ export function WeeklyCheckinEntryCard({
             </span>
           )}
         </div>
-
-        {days.length === 7 ? (
-          <div
-            className="mt-4 grid grid-cols-7 gap-1.5"
-            role="list"
-            aria-label="This week"
-          >
-            {days.map((d, i) => {
-              const isToday = today ? isSameDay(d.day, today) : false;
-              const isPast = today ? d.day < today && !isToday : false;
-              const filled = completed || isPast || isToday;
-              return (
-                <div key={d.ymd} className="flex flex-col items-center gap-1" role="listitem">
-                  <span className="text-[9px] font-bold uppercase tracking-wide text-[#6B7280]">
-                    {d.letter}
-                  </span>
-                  <motion.span
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.04 * i, duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold tabular-nums ${
-                      completed
-                        ? "bg-[#1E1B31] text-white"
-                        : isToday
-                          ? "bg-[#DF9DA4] text-[#1E1B31] ring-2 ring-[#1E1B31]/15"
-                          : filled
-                            ? "bg-[#F0EAE2] text-[#1E1B31]"
-                            : "border border-[#E4E6F0] bg-[#FAF8F5] text-[#9CA3AF]"
-                    }`}
-                    aria-current={isToday ? "date" : undefined}
-                  >
-                    {format(d.day, "d")}
-                  </motion.span>
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
 
         <div className="mt-4 border-t border-[#E4E6F0]" />
       </div>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { animate, motion, useMotionValue } from "framer-motion";
-import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 
@@ -18,9 +18,18 @@ const REFERENCE_PHOTO_BY_ID: Record<string, string> = {
 };
 
 const DRAG_THRESHOLD = 60;
+const AUTO_SWIPE_MS = 5000;
 
-export function CaptureGuideWizardPreview() {
-  const router = useRouter();
+export function CaptureGuideWizard({
+  onTakePicture,
+  onBack,
+  embedded = false,
+}: {
+  onTakePicture: () => void;
+  onBack?: () => void;
+  /** Sit between dashboard header + bottom nav instead of a full-screen page. */
+  embedded?: boolean;
+}) {
   const steps = FACE_SCAN_CAPTURE_STEPS;
   const [index, setIndex] = useState(0);
   const [width, setWidth] = useState(0);
@@ -28,9 +37,6 @@ export function CaptureGuideWizardPreview() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragX = useMotionValue(0);
 
-  // Measure the visible viewport so the track can be positioned in real pixels
-  // instead of percentages (percentages don't resolve reliably against an
-  // auto-width flex track, which was silently breaking the swipe entirely).
   useEffect(() => {
     function measure() {
       if (viewportRef.current) setWidth(viewportRef.current.offsetWidth);
@@ -45,10 +51,6 @@ export function CaptureGuideWizardPreview() {
     setIndex(wrapped);
   }
 
-  // `drag="x"` takes ownership of its own internal x motion value unless one is
-  // shared explicitly — so position must be driven through `dragX` (via the
-  // imperative `animate()` function), not a declarative `animate` JSX prop,
-  // or programmatic snapping silently gets ignored.
   useEffect(() => {
     if (width === 0) return;
     const controls = animate(dragX, -index * width, {
@@ -58,12 +60,9 @@ export function CaptureGuideWizardPreview() {
     return () => controls.stop();
   }, [index, width, dragX]);
 
-  // Auto-advance every 1s, looping back to the first photo after the last.
-  // Resets whenever `index` changes (manual swipe/click also restarts the timer).
-  // Paused entirely while the current photo is pressed/held.
   useEffect(() => {
     if (width === 0 || held) return;
-    const t = window.setTimeout(() => goTo(index + 1), 1000);
+    const t = window.setTimeout(() => goTo(index + 1), AUTO_SWIPE_MS);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, width, held]);
@@ -74,21 +73,30 @@ export function CaptureGuideWizardPreview() {
     } else if (info.offset.x > DRAG_THRESHOLD && index > 0) {
       goTo(index - 1);
     } else {
-      // Snap back — index is unchanged so the effect above won't re-fire.
       animate(dragX, -index * width, { duration: 0.3, ease: easeOut });
     }
   }
 
-  /** Hands off to the real camera + AI pipeline (FaceScanFlow), picking up
-   * at the next empty angle — same flow as tapping "Use Phone Camera". */
-  function takePicture() {
-    router.push("/onboarding/capture/photos?autoCamera=1");
-  }
-
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      <div className="flex flex-1 flex-col px-6 pt-6">
-        {/* Top row: back + dot pagination + skip */}
+    <div
+      className={`mx-auto flex w-full max-w-md flex-col ${
+        embedded
+          ? "min-h-[calc(100dvh-8.5rem)]"
+          : "min-h-dvh"
+      }`}
+    >
+      <div className="flex flex-1 flex-col px-6 pt-4">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-2 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-[#1E1B31]"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Back
+          </button>
+        ) : null}
+
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -129,7 +137,6 @@ export function CaptureGuideWizardPreview() {
           </button>
         </div>
 
-        {/* Swipeable carousel — each page bundles illustration + title + subtitle + tips */}
         <div ref={viewportRef} className="mt-2 flex-1 overflow-hidden">
           <motion.div
             className="flex h-full"
@@ -182,7 +189,9 @@ export function CaptureGuideWizardPreview() {
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1E1B31]/10 text-[10px] font-bold text-[#1E1B31]">
                           {i + 1}
                         </span>
-                        <span className="text-sm font-medium text-[#18181b]">{tip}</span>
+                        <span className="text-sm font-medium text-[#18181b]">
+                          {tip}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -193,17 +202,20 @@ export function CaptureGuideWizardPreview() {
         </div>
       </div>
 
-      {/* Pinned bottom capture bar */}
       <div
-        className="sticky bottom-0 flex flex-col items-center gap-3 bg-[#FAF8F5]/95 px-6 pb-8 pt-4 backdrop-blur-sm"
-        style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}
+        className="sticky bottom-0 flex flex-col items-center gap-3 bg-[#FAF8F5]/95 px-6 pt-4 backdrop-blur-sm"
+        style={{
+          paddingBottom: embedded
+            ? "max(1.25rem, env(safe-area-inset-bottom))"
+            : "max(2rem, env(safe-area-inset-bottom))",
+        }}
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
           Ready? Tap to open the camera
         </p>
         <button
           type="button"
-          onClick={takePicture}
+          onClick={onTakePicture}
           aria-label="Take picture"
           className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-[#1E1B31]/15 bg-white shadow-lg transition active:scale-95"
         >
@@ -213,5 +225,17 @@ export function CaptureGuideWizardPreview() {
         </button>
       </div>
     </div>
+  );
+}
+
+export function CaptureGuideWizardPreview() {
+  const router = useRouter();
+  return (
+    <CaptureGuideWizard
+      onTakePicture={() =>
+        router.push("/onboarding/capture/photos?autoCamera=1")
+      }
+      onBack={() => router.back()}
+    />
   );
 }

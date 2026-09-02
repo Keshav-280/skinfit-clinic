@@ -4,8 +4,8 @@ import { KaiMeetIntroCard } from "@/components/onboarding/KaiMeetIntroCard";
 
 export default function KaiIntroPreviewPage() {
   return (
-    <div className="min-h-dvh bg-[#FAF8F5] text-[#1F2A44]">
-      <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-3 md:px-6 md:pt-4">
+    <div className="h-dvh max-h-dvh overflow-hidden bg-[#FAF8F5] text-[#1F2A44]">
+      <main className="h-full min-h-0 w-full overflow-hidden">
         <KaiMeetIntroCard />
       </main>
     </div>

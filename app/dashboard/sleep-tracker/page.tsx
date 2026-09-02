@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Moon, Loader2 } from "lucide-react";
+import { ArrowLeft, Moon } from "lucide-react";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 import {
@@ -102,9 +103,10 @@ export default function SleepTrackerPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
-      </div>
+      <SkinFitLoader
+        title="Opening sleep tracker"
+        subtitle="kAI is pulling last night’s rest."
+      />
     );
   }
 

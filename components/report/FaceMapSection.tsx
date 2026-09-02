@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { useCountUp } from "./useCountUp";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ScanDetectionOverlay } from "@/components/dashboard/ScanDetectionOverlay";
@@ -55,6 +62,10 @@ type FaceMapSectionProps = {
   cover?: FaceMapCover;
   activeConcern?: ConcernChipId;
   onConcernChange?: (id: ConcernChipId) => void;
+  /** History / back control, overlaid on the photo. */
+  toolbar?: ReactNode;
+  /** Report body — scrolls up over the sticky face. */
+  children?: ReactNode;
 };
 
 const DOT: Record<KaiGradeTone, string> = {
@@ -62,6 +73,35 @@ const DOT: Record<KaiGradeTone, string> = {
   mid: "bg-kai-mid",
   low: "bg-kai-low",
 };
+
+/** Size an image box so it covers the stage while keeping overlay % coords. */
+function useCoverFrame(aspect: number | null) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const sw = el.clientWidth;
+      const sh = el.clientHeight;
+      if (sw < 2 || sh < 2) return;
+      const ar = aspect && aspect > 0 ? aspect : 3 / 4;
+      const stageAr = sw / sh;
+      if (ar > stageAr) {
+        setBox({ h: sh, w: sh * ar });
+      } else {
+        setBox({ w: sw, h: sw / ar });
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [aspect]);
+
+  return { ref, box };
+}
 
 function poseForLabel(label: string, poseId: string | undefined, index: number): string {
   if (poseId) return poseId;
@@ -90,6 +130,8 @@ export function FaceMapSection({
   cover,
   activeConcern: concernProp,
   onConcernChange,
+  toolbar,
+  children,
 }: FaceMapSectionProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [internalConcern, setInternalConcern] = useState<ConcernChipId>("all");
@@ -100,6 +142,7 @@ export function FaceMapSection({
   const [aspect, setAspect] = useState<number | null>(null);
   const [photoReady, setPhotoReady] = useState(false);
   const swipeStartX = useRef<number | null>(null);
+  const { ref: stageRef, box: coverBox } = useCoverFrame(aspect);
 
   const photos = scanImages.length > 0 ? scanImages : [];
   const multi = photos.length > 1;
@@ -249,277 +292,314 @@ export function FaceMapSection({
   const watching =
     parameterGrades.find((c) => c.id === activeConcern)?.name ?? "All markers";
 
+  const coverStyle =
+    coverBox.w > 0
+      ? { width: coverBox.w, height: coverBox.h }
+      : { width: "100%", height: "100%" };
+
   return (
-    <section className="overflow-hidden rounded-[28px] bg-white/80 p-2 shadow-[0_28px_70px_-28px_rgba(30, 27, 49,0.55)] backdrop-blur-md">
-      {cover ? null : (
-        <div className="mb-3 flex items-center justify-between gap-3 px-1.5 pt-1.5">
-          <span className="inline-flex w-fit items-center rounded-full bg-[#F8EDEE]/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#1E1B31]">
-            Mapped
-          </span>
-          {multi ? (
-            <span className="text-[11px] font-semibold text-[#1E1B31]/70">
-              {activeIndex + 1} / {photos.length}
-            </span>
-          ) : (
-            <span className="text-[10.5px] font-medium text-[#8B93A4]">
-              Front · add angles for wrinkles
-            </span>
-          )}
-        </div>
-      )}
-
+    <div>
       <div
-        className="relative mb-2.5 touch-pan-y select-none overflow-hidden rounded-[22px] bg-gradient-to-br from-[#EDE6F7] to-[#D4CBEB]"
-        style={{ aspectRatio: aspect ?? 3 / 4 }}
-        onPointerDown={onSwipeStart}
-        onPointerUp={onSwipeEnd}
-        onPointerCancel={() => {
-          swipeStartX.current = null;
-        }}
+        className="sticky top-[3.6rem] z-0 h-[calc(100dvh-3.6rem-5.85rem)] w-full sm:top-[4.15rem] sm:h-[calc(100dvh-4.15rem-5.85rem)] md:top-[4.5rem] md:h-[calc(100dvh-4.5rem)]"
       >
-        {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={photoKey}
-            src={photo.url}
-            alt={photo.label}
-            onLoad={(e) => {
-              const el = e.currentTarget;
-              if (el.naturalWidth > 0 && el.naturalHeight > 0) {
-                setAspect(el.naturalWidth / el.naturalHeight);
-              }
-              setPhotoReady(true);
-            }}
-            onError={() => setPhotoReady(true)}
-            draggable={false}
-            className={`absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-150 ${
-              photoReady ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold uppercase tracking-[0.14em] text-kai-navy/30">
-            Capture with AI overlay
-          </div>
-        )}
-        {photo && showWrinkleMask ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`mask-${photoKey}`}
-            src={maskSrc}
-            alt=""
-            aria-hidden
-            draggable={false}
-            className="pointer-events-none absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300 ease-out"
-            style={{
-              opacity: wrinkleMaskVisible ? 0.75 : 0,
-              mixBlendMode: "screen",
-              filter: "contrast(2.2) brightness(0.85)",
-              ...(shouldCropLegacyMaskTitle(maskSrc, maskExportVersion)
-                ? legacyMaskTitleCropStyle()
-                : null),
-            }}
-          />
-        ) : null}
-        {photo && photoReady && !bakedSpotAnnotations && spotAnnotatedUrl?.trim() && pose === "centre" ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={publicFileDisplayUrl(spotAnnotatedUrl) ?? spotAnnotatedUrl}
-            alt=""
-            aria-hidden
-            draggable={false}
-            className="pointer-events-none absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300 ease-out"
-            style={{
-              opacity:
-                activeConcern === "all" || activeConcern === "pigmentation"
-                  ? 0.85
-                  : 0,
-            }}
-          />
-        ) : null}
-        {photo && photoReady ? (
-          <ScanDetectionOverlay
-            regions={acneForPose}
-            wrinkleLines={showWrinkles ? wrinkleLines : []}
-            proxyRegions={showProxy ? proxyRegions : []}
-            activeConcern={activeConcern}
-            live={Boolean(cover)}
-          />
-        ) : null}
-
-        {cover && sweepOn ? (
+        <div
+          ref={stageRef}
+          className="relative h-full w-full touch-pan-y select-none overflow-hidden bg-[#1E1B31]"
+          onPointerDown={onSwipeStart}
+          onPointerUp={onSwipeEnd}
+          onPointerCancel={() => {
+            swipeStartX.current = null;
+          }}
+        >
           <div
-            data-pdf-screen-only
-            className="report-scan-sweep pointer-events-none absolute inset-x-0 z-[2] h-16"
-            aria-hidden
-          />
-        ) : null}
-
-        {cover ? (
-          <div className="pointer-events-none absolute inset-0 z-[2]">
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/45 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-[38%] bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
-            <div className="absolute inset-x-0 top-0 flex items-start justify-between px-3.5 pt-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    phase === "live"
-                      ? "bg-[#5EE0A0] report-live-dot-on"
-                      : "bg-[#7EE0F2] report-live-dot"
-                  }`}
-                />
-                {phase === "live"
-                  ? `Live · ${liveCount} mark${liveCount === 1 ? "" : "s"}`
-                  : "Mapping…"}
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/80">
-                {cover.meta.right}
-              </span>
-            </div>
-            <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-3 pb-3.5">
-              <ReportGradeRing
-                grade={cover.grade}
-                position={cover.position}
-                size={92}
-                variant="glass"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={coverStyle}
+          >
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={photoKey}
+                src={photo.url}
+                alt={photo.label}
+                onLoad={(e) => {
+                  const el = e.currentTarget;
+                  if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+                    setAspect(el.naturalWidth / el.naturalHeight);
+                  }
+                  setPhotoReady(true);
+                }}
+                onError={() => setPhotoReady(true)}
+                draggable={false}
+                className={`absolute inset-0 h-full w-full object-fill transition-opacity duration-150 ${
+                  photoReady ? "opacity-100" : "opacity-0"
+                }`}
               />
-              <div className="min-w-0 pb-1">
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] ${
-                    cover.badge.type === "improving"
-                      ? "bg-[#4E9B72]/80 text-white"
-                      : cover.badge.type === "declining"
-                        ? "bg-[#C4694F]/80 text-white"
-                        : "bg-white/20 text-white"
-                  }`}
-                >
-                  {cover.badge.label}
-                </span>
-                <p
-                  className="mt-1.5 text-[18px] font-semibold leading-[1.15] tracking-[-0.03em] text-white"
-                  style={{ textShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
-                >
-                  {cover.title}
-                </p>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30">
+                Capture with AI overlay
               </div>
-            </div>
+            )}
+            {photo && showWrinkleMask ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={`mask-${photoKey}`}
+                src={maskSrc}
+                alt=""
+                aria-hidden
+                draggable={false}
+                className="pointer-events-none absolute inset-0 h-full w-full object-fill transition-opacity duration-300 ease-out"
+                style={{
+                  opacity: wrinkleMaskVisible ? 0.75 : 0,
+                  mixBlendMode: "screen",
+                  filter: "contrast(2.2) brightness(0.85)",
+                  ...(shouldCropLegacyMaskTitle(maskSrc, maskExportVersion)
+                    ? legacyMaskTitleCropStyle()
+                    : null),
+                }}
+              />
+            ) : null}
+            {photo &&
+            photoReady &&
+            !bakedSpotAnnotations &&
+            spotAnnotatedUrl?.trim() &&
+            pose === "centre" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={publicFileDisplayUrl(spotAnnotatedUrl) ?? spotAnnotatedUrl}
+                alt=""
+                aria-hidden
+                draggable={false}
+                className="pointer-events-none absolute inset-0 h-full w-full object-fill transition-opacity duration-300 ease-out"
+                style={{
+                  opacity:
+                    activeConcern === "all" || activeConcern === "pigmentation"
+                      ? 0.85
+                      : 0,
+                }}
+              />
+            ) : null}
+            {photo && photoReady ? (
+              <ScanDetectionOverlay
+                regions={acneForPose}
+                wrinkleLines={showWrinkles ? wrinkleLines : []}
+                proxyRegions={showProxy ? proxyRegions : []}
+                activeConcern={activeConcern}
+                live={Boolean(cover)}
+              />
+            ) : null}
           </div>
-        ) : (
-          <p className="pointer-events-none absolute bottom-[11px] left-3 z-[2] rounded-md bg-black/35 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-white/95">
-            {photo?.label ?? "Front profile"}
-          </p>
-        )}
 
-        {cover ? (
-          <p className="pointer-events-none absolute right-3.5 top-9 z-[2] rounded-full bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/90">
-            {photo?.label ?? "Front"}
-          </p>
-        ) : null}
-
-        {multi ? (
-          <>
-            <button
-              type="button"
-              aria-label="Previous photo"
-              onClick={() => selectIndex(activeIndex - 1)}
-              className="absolute left-2 top-1/2 z-[3] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/55"
-            >
-              <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              aria-label="Next photo"
-              onClick={() => selectIndex(activeIndex + 1)}
-              className="absolute right-2 top-1/2 z-[3] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/55"
-            >
-              <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
-            </button>
+          {cover && sweepOn ? (
             <div
-              className={`absolute z-[3] flex gap-1.5 rounded-full bg-black/35 px-2 py-1 ${
-                cover
-                  ? "left-1/2 top-[42px] -translate-x-1/2"
-                  : "bottom-[11px] left-1/2 -translate-x-1/2"
-              }`}
-            >
-              {photos.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`Photo ${i + 1}`}
-                  onClick={() => selectIndex(i)}
-                  className={`block rounded-full transition-all ${
-                    i === activeIndex
-                      ? "h-1.5 w-4 rounded-sm bg-white"
-                      : "h-1.5 w-1.5 bg-white/45"
-                  }`}
-                />
-              ))}
-            </div>
-          </>
-        ) : null}
-      </div>
+              data-pdf-screen-only
+              className="report-scan-sweep pointer-events-none absolute inset-x-0 z-[2] h-16"
+              aria-hidden
+            />
+          ) : null}
 
-      {multi ? (
-        <div className="-mx-0.5 mb-2.5 flex gap-2 overflow-x-auto px-1.5 pb-0.5 scrollbar-hide">
-          {photos.map((p, i) => {
-            const on = i === activeIndex;
-            return (
-              <button
-                key={`${p.poseId ?? p.label}-${i}`}
-                type="button"
-                onClick={() => selectIndex(i)}
-                className={`relative h-[58px] w-[46px] shrink-0 overflow-hidden rounded-lg border-2 transition ${
-                  on
-                    ? "border-kai-navy ring-1 ring-kai-navy/30"
-                    : "border-transparent opacity-80"
+          {toolbar ? (
+            <div className="absolute left-3 top-3 z-[4]" data-pdf-screen-only>
+              {toolbar}
+            </div>
+          ) : null}
+
+          {cover ? (
+            <div className="pointer-events-none absolute inset-0 z-[2]">
+              <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/50 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
+              <div
+                className={`absolute inset-x-0 top-0 flex items-start justify-between px-3.5 ${
+                  toolbar ? "pt-12" : "pt-3"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={p.url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  draggable={false}
-                />
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
-      <div className="-mx-0.5 flex gap-[7px] overflow-x-auto px-1.5 pb-1 scrollbar-hide">
-        {chips.map((chip) => {
-          const on = activeConcern === chip.id;
-          return (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => selectConcern(chip.id)}
-              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-[7px] text-[11px] font-semibold transition ${
-                on
-                  ? "border-[#1E1B31] bg-[#1E1B31] text-white"
-                  : "border-transparent bg-white/90 text-[#5B6478]"
-              }`}
-            >
-              {chip.id !== "all" ? (
-                <span className={`block h-1.5 w-1.5 rounded-full ${DOT[chip.color]}`} />
-              ) : null}
-              {chip.name}
-              {chip.grade ? (
-                <span className="text-[10px] font-bold opacity-75">
-                  {chip.grade}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      phase === "live"
+                        ? "bg-[#5EE0A0] report-live-dot-on"
+                        : "bg-[#7EE0F2] report-live-dot"
+                    }`}
+                  />
+                  {phase === "live"
+                    ? `Live · ${liveCount} mark${liveCount === 1 ? "" : "s"}`
+                    : "Mapping…"}
+                </span>
+                {toolbar ? (
+                  <span />
+                ) : (
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/80">
+                    {cover.meta.right}
+                  </span>
+                )}
+              </div>
+              {toolbar ? (
+                <span className="absolute right-3.5 top-3.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/80">
+                  {cover.meta.right}
                 </span>
               ) : null}
-            </button>
-          );
-        })}
+              <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-3 pb-5">
+                <ReportGradeRing
+                  grade={cover.grade}
+                  position={cover.position}
+                  size={92}
+                  variant="glass"
+                />
+                <div className="min-w-0 pb-1">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.04em] ${
+                      cover.badge.type === "improving"
+                        ? "bg-[#4E9B72]/80 text-white"
+                        : cover.badge.type === "declining"
+                          ? "bg-[#C4694F]/80 text-white"
+                          : "bg-white/20 text-white"
+                    }`}
+                  >
+                    {cover.badge.label}
+                  </span>
+                  <p
+                    className="mt-1.5 text-[18px] font-semibold leading-[1.15] tracking-[-0.03em] text-white"
+                    style={{ textShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
+                  >
+                    {cover.title}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="pointer-events-none absolute bottom-4 left-3 z-[2] rounded-md bg-black/35 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-white/95">
+              {photo?.label ?? "Front profile"}
+            </p>
+          )}
+
+          {cover ? (
+            <p
+              className={`pointer-events-none absolute right-3.5 z-[2] rounded-full bg-black/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/90 ${
+                toolbar ? "top-[4.75rem]" : "top-9"
+              }`}
+            >
+              {photo?.label ?? "Front"}
+            </p>
+          ) : null}
+
+          {multi ? (
+            <>
+              <button
+                type="button"
+                aria-label="Previous photo"
+                onClick={() => selectIndex(activeIndex - 1)}
+                className="absolute left-2 top-1/2 z-[3] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/55"
+              >
+                <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+              </button>
+              <button
+                type="button"
+                aria-label="Next photo"
+                onClick={() => selectIndex(activeIndex + 1)}
+                className="absolute right-2 top-1/2 z-[3] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/55"
+              >
+                <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
+              </button>
+              <div
+                className={`absolute left-1/2 z-[3] flex -translate-x-1/2 gap-1.5 rounded-full bg-black/35 px-2 py-1 ${
+                  toolbar ? "top-[4.75rem]" : "top-[42px]"
+                }`}
+              >
+                {photos.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Photo ${i + 1}`}
+                    onClick={() => selectIndex(i)}
+                    className={`block rounded-full transition-all ${
+                      i === activeIndex
+                        ? "h-1.5 w-4 rounded-sm bg-white"
+                        : "h-1.5 w-1.5 bg-white/45"
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-2 z-[4] flex justify-center"
+            aria-hidden
+          >
+            <span className="h-1 w-10 rounded-full bg-white/50" />
+          </div>
+        </div>
       </div>
-      {cover ? (
-        <p className="px-2 pb-2 pt-1 text-[11px] font-medium text-[#8B93A4]">
-          Watching{" "}
-          <span className="font-semibold text-[#1E1B31]">{watching}</span>
-          {phase === "live" ? ` · ${liveCount} live` : " · mapping"}
-        </p>
-      ) : null}
-    </section>
+
+      <div className="relative z-10 rounded-t-[28px] bg-[#FAF8F5] px-4 pb-24 pt-4 shadow-[0_-18px_40px_-20px_rgba(30,27,49,0.35)] md:pb-10">
+        <div className="mx-auto w-full max-w-[430px] sm:max-w-[460px]">
+          {multi ? (
+            <div className="-mx-0.5 mb-2.5 flex gap-2 overflow-x-auto px-0.5 pb-0.5 scrollbar-hide">
+              {photos.map((p, i) => {
+                const on = i === activeIndex;
+                return (
+                  <button
+                    key={`${p.poseId ?? p.label}-${i}`}
+                    type="button"
+                    onClick={() => selectIndex(i)}
+                    className={`relative h-[58px] w-[46px] shrink-0 overflow-hidden rounded-lg border-2 transition ${
+                      on
+                        ? "border-kai-navy ring-1 ring-kai-navy/30"
+                        : "border-transparent opacity-80"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      draggable={false}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className="-mx-0.5 flex gap-[7px] overflow-x-auto px-0.5 pb-1 scrollbar-hide">
+            {chips.map((chip) => {
+              const on = activeConcern === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => selectConcern(chip.id)}
+                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-[7px] text-[11px] font-semibold transition ${
+                    on
+                      ? "border-[#1E1B31] bg-[#1E1B31] text-white"
+                      : "border-transparent bg-white text-[#5B6478] ring-1 ring-[#E4E6F0]"
+                  }`}
+                >
+                  {chip.id !== "all" ? (
+                    <span className={`block h-1.5 w-1.5 rounded-full ${DOT[chip.color]}`} />
+                  ) : null}
+                  {chip.name}
+                  {chip.grade ? (
+                    <span className="text-[10px] font-bold opacity-75">
+                      {chip.grade}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+          {cover ? (
+            <p className="px-1 pb-3 pt-1 text-[11px] font-medium text-[#8B93A4]">
+              Watching{" "}
+              <span className="font-semibold text-[#1E1B31]">{watching}</span>
+              {phase === "live" ? ` · ${liveCount} live` : " · mapping"}
+            </p>
+          ) : null}
+
+          {children ? (
+            <div className="flex flex-col gap-3">{children}</div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }

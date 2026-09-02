@@ -6,7 +6,7 @@ import { DiagnoseActivityRings } from "@/components/dashboard/DiagnoseActivityRi
 import { DiagnosePageAtmosphere } from "@/components/dashboard/DiagnosePageAtmosphere";
 
 /**
- * Diagnose tab — full lavender atmosphere from the product mock.
+ * Diagnose tab — canvas / linen atmosphere from the brand palette.
  *
  * FaceScanFlow must stay mounted when the layout expands (photo guide, camera).
  * Switching between two different trees used to remount it and reset

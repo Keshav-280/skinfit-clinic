@@ -47,8 +47,10 @@ import {
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 import { FaceScanPhotoGuide } from "@/components/dashboard/FaceScanPhotoGuide";
+import { CaptureGuideWizard } from "@/components/onboarding/CaptureGuideWizardPreview";
 import { FaceIdentityCheckResults } from "@/components/onboarding/FaceIdentityCheckResults";
 import { ScanQueuedConfirmation } from "@/components/dashboard/ScanQueuedConfirmation";
+import { ScanAnalysingBreath } from "@/components/dashboard/ScanAnalysingBreath";
 import { MobileCaptureQRPanel } from "@/components/dashboard/MobileCaptureQRPanel";
 import { addPendingScanJob } from "@/src/lib/scanJobNotifications";
 import { submitFaceScan } from "@/src/lib/submitFaceScan";
@@ -282,6 +284,7 @@ export function FaceScanFlow({
     null,
   );
   const slotUploadInputRef = useRef<HTMLInputElement>(null);
+  const [queuedJobId, setQueuedJobId] = useState<string | null>(null);
   const [scanName, setScanName] = useState(() =>
     variant === "onboarding" ? BASELINE_ONBOARDING_SCAN_NAME : "",
   );
@@ -981,6 +984,7 @@ export function FaceScanFlow({
 
       if (outcome.mode === "queued") {
         addPendingScanJob(outcome.jobId, finalScanName);
+        setQueuedJobId(outcome.jobId);
         setStep("queued");
         return;
       }
@@ -1192,8 +1196,10 @@ export function FaceScanFlow({
         cameraOpen
           ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
           : step === "scanning"
-            ? "mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-4 py-8 md:px-8"
-            : isDiagnoseHero
+            ? "relative flex min-h-[calc(100dvh-8.5rem)] w-full flex-1 flex-col overflow-hidden"
+            : step === "queued"
+              ? "relative flex min-h-[calc(100dvh-10.5rem)] w-full flex-1 flex-col items-center justify-center"
+              : isDiagnoseHero
               ? "flex h-full min-h-0 w-full flex-col"
               : variant === "dashboard"
                 ? "mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-6 md:px-8"
@@ -1218,14 +1224,22 @@ export function FaceScanFlow({
       />
 
       {showPhotoGuide ? (
-        <FaceScanPhotoGuide
-          mode={photoGuideIntent}
-          dontRemind={skipPhotoGuide}
-          onDontRemindChange={handleSkipPhotoGuideChange}
-          onContinue={completePhotoGuide}
-          onBack={handlePhotoGuideBack}
-          showDismissOption={!isOnboardingScan}
-        />
+        photoGuideIntent === "camera" ? (
+          <CaptureGuideWizard
+            embedded
+            onTakePicture={completePhotoGuide}
+            onBack={handlePhotoGuideBack}
+          />
+        ) : (
+          <FaceScanPhotoGuide
+            mode={photoGuideIntent}
+            dontRemind={skipPhotoGuide}
+            onDontRemindChange={handleSkipPhotoGuideChange}
+            onContinue={completePhotoGuide}
+            onBack={handlePhotoGuideBack}
+            showDismissOption={!isOnboardingScan}
+          />
+        )
       ) : null}
 
       {step === "phone-qr" && (
@@ -1365,6 +1379,7 @@ export function FaceScanFlow({
 
       {showUploadChrome &&
       step !== "scanning" &&
+      step !== "queued" &&
       step !== "phone-qr" &&
       !(step === "upload" && cameraOpen) &&
       !isOnboardingScan &&
@@ -1531,15 +1546,14 @@ export function FaceScanFlow({
           >
             {isDiagnoseHero ? (
               <div className="pointer-events-none absolute inset-0" aria-hidden>
-                {/* Page-level DiagnosePageAtmosphere supplies the lavender wash;
-                    keep only soft leaves here so the CTA sits in the atmosphere. */}
+                {/* Page-level DiagnosePageAtmosphere supplies the canvas wash. */}
                 <Leaf
-                  className="leaf-drift absolute bottom-8 left-1 h-12 w-12 text-[#8FAE86]/40"
+                  className="leaf-drift absolute bottom-8 left-1 h-12 w-12 text-[#1E1B31]/15"
                   style={{ ["--leaf-rot" as string]: "-18deg" }}
                   strokeWidth={1.25}
                 />
                 <Leaf
-                  className="leaf-drift absolute right-2 top-[22%] h-7 w-7 text-[#8FAE86]/30"
+                  className="leaf-drift absolute right-2 top-[22%] h-7 w-7 text-[#DF9DA4]/40"
                   style={{
                     ["--leaf-rot" as string]: "12deg",
                     animationDelay: "1.4s",
@@ -1596,7 +1610,7 @@ export function FaceScanFlow({
                       setShowDeviceUpload(false);
                       setStep("phone-qr");
                     }}
-                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(30, 27, 49,0.6)] transition-colors hover:bg-[#354A7A]"
+                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(30, 27, 49,0.6)] transition-colors hover:bg-[#242A5F]"
                   >
                     Start on phone
                     <Smartphone className="h-4 w-4" />
@@ -1609,7 +1623,7 @@ export function FaceScanFlow({
                     setShowDeviceUpload(false);
                     setStep("phone-qr");
                   }}
-                  className="group relative overflow-hidden rounded-[24px] bg-[#1E1B31] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(30, 27, 49,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30"
+                  className="group relative overflow-hidden rounded-[24px] bg-[#1E1B31] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(30, 27, 49,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30"
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-110" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1630,7 +1644,7 @@ export function FaceScanFlow({
                         step.
                       </p>
                     </div>
-                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#1E1B31] transition-colors group-hover:bg-[#F8FAFC]">
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#1E1B31] transition-colors group-hover:bg-[#FAF8F5]">
                       Use Phone Camera
                       <Smartphone className="h-3.5 w-3.5" />
                     </span>
@@ -1665,7 +1679,7 @@ export function FaceScanFlow({
                   <button
                     type="button"
                     onClick={requestOpenCamera}
-                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(30, 27, 49,0.6)] transition-colors hover:bg-[#354A7A]"
+                    className="cta-pop relative mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1E1B31] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-10px_rgba(30, 27, 49,0.6)] transition-colors hover:bg-[#242A5F]"
                   >
                     Start Camera
                     <Camera className="h-4 w-4" />
@@ -1675,7 +1689,7 @@ export function FaceScanFlow({
                 <button
                   type="button"
                   onClick={requestOpenCamera}
-                  className="group relative overflow-hidden rounded-[24px] bg-[#1E1B31] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(30, 27, 49,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#354A7A] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30"
+                  className="group relative overflow-hidden rounded-[24px] bg-[#1E1B31] p-6 text-left text-white shadow-[0_18px_40px_-22px_rgba(30, 27, 49,0.8)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30"
                 >
                   <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
                   <div className="relative flex h-full flex-col justify-between">
@@ -1694,7 +1708,7 @@ export function FaceScanFlow({
                         with the guide.
                       </p>
                     </div>
-                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#1E1B31] transition-colors group-hover:bg-[#F8FAFC]">
+                    <span className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#1E1B31] transition-colors group-hover:bg-[#FAF8F5]">
                       Start Camera
                       <Camera className="h-3.5 w-3.5" />
                     </span>
@@ -1784,9 +1798,9 @@ export function FaceScanFlow({
                 <button
                   type="button"
                   onClick={openPhotoGuideReview}
-                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(30, 27, 49,0.5)] transition hover:bg-[#F8F7FC]"
+                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(30, 27, 49,0.5)] transition hover:bg-[#F0EAE2]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F0EAE2]">
                     <Sun className="h-4 w-4 text-[#1E1B31]" aria-hidden />
                   </span>
                   <span className="flex-1 text-left text-xs font-bold text-[#18181b]">
@@ -1796,9 +1810,9 @@ export function FaceScanFlow({
                 </button>
                 <Link
                   href="/dashboard/history"
-                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(30, 27, 49,0.5)] transition hover:bg-[#F8F7FC]"
+                  className="inline-flex flex-1 items-center gap-2.5 rounded-2xl bg-white px-3 py-3 shadow-[0_6px_18px_-14px_rgba(30, 27, 49,0.5)] transition hover:bg-[#F0EAE2]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ECE9F8]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F0EAE2]">
                     <History className="h-4 w-4 text-[#1E1B31]" aria-hidden />
                   </span>
                   <span className="flex-1 text-left text-xs font-bold text-[#18181b]">
@@ -1991,68 +2005,23 @@ export function FaceScanFlow({
       )}
 
       {/* Step: Scanning */}
-      {step === "queued" && <ScanQueuedConfirmation variant={variant} />}
-
-      {step === "scanning" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto flex w-full max-w-lg items-center justify-center"
-        >
-          <div className="relative flex w-full flex-col items-center overflow-hidden rounded-[22px] border border-white/70 bg-white/40 px-8 py-20 text-center backdrop-blur-sm sm:px-12 sm:py-24">
-            {/* Breathing orb + ripple rings */}
-            <div className="relative mb-10 flex h-48 w-48 items-center justify-center sm:h-56 sm:w-56">
-              {/* Ripple ring 1 */}
-              <motion.span
-                className="absolute inset-0 rounded-full border border-[#1E1B31]/25"
-                animate={{ scale: [1, 1.35, 1], opacity: [0.5, 0, 0.5] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              />
-              {/* Ripple ring 2 — offset for continuous feel */}
-              <motion.span
-                className="absolute inset-0 rounded-full border border-[#1E1B31]/20"
-                animate={{ scale: [1, 1.55, 1], opacity: [0.4, 0, 0.4] }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 1,
-                }}
-              />
-              {/* Breathing orb */}
-              <motion.div
-                className="relative flex h-32 w-32 items-center justify-center rounded-full sm:h-36 sm:w-36"
-                animate={{
-                  scale: [1, 1.15, 1],
-                  boxShadow: [
-                    "0 0 40px 0 rgba(30, 27, 49,0.15)",
-                    "0 0 80px 8px rgba(30, 27, 49,0.35)",
-                    "0 0 40px 0 rgba(30, 27, 49,0.15)",
-                  ],
-                }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                  background:
-                    "radial-gradient(circle at 30% 30%, #4A5F92 0%, #1E1B31 55%, #1E2A4D 100%)",
-                }}
-              >
-                <Sparkles
-                  className="h-10 w-10 text-white/85 sm:h-12 sm:w-12"
-                  aria-hidden
-                />
-              </motion.div>
-            </div>
-
-            <p className="text-2xl font-bold text-[#1E1B31] sm:text-3xl">
-              Take a deep breath.
-            </p>
-            <p className="mt-3 max-w-xs text-base text-[#6B7280] sm:text-lg">
-              kAI is analysing your skin. This takes about 20 seconds.
-            </p>
-          </div>
-        </motion.div>
+      {step === "queued" && (
+        <ScanQueuedConfirmation
+          variant={variant}
+          jobId={queuedJobId}
+          onReady={(scanId) => {
+            if (isOnboardingScan) {
+              router.push(
+                `/onboarding/baseline-report?scanId=${encodeURIComponent(String(scanId))}`,
+              );
+              return;
+            }
+            router.push(`/dashboard/scans/${scanId}/report`);
+          }}
+        />
       )}
+
+      {step === "scanning" && <ScanAnalysingBreath />}
 
       {/* Step: Results â€” full report modal */}
       {step === "results" && scanResults && primaryPreview && (

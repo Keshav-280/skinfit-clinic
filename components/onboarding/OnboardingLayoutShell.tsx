@@ -76,7 +76,22 @@ export function OnboardingLayoutShell({
   }
 
   const isKaiIntro = pathname === "/onboarding/kai-intro";
-  const maxWidthClass = isKaiIntro ? "max-w-5xl" : "max-w-3xl";
+
+  if (isKaiIntro) {
+    return (
+      <div
+        data-onboarding-shell
+        className="relative h-dvh max-h-dvh overflow-hidden bg-[#FAF8F5] text-[#1F2A44] [color-scheme:light]"
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex justify-end pt-[max(0.35rem,env(safe-area-inset-top))]">
+          <div className="pointer-events-auto pr-3 pt-1 md:pr-5">
+            <OnboardingSignOutLink />
+          </div>
+        </div>
+        <main className="h-full min-h-0 w-full overflow-hidden">{children}</main>
+      </div>
+    );
+  }
 
   return (
     <div data-onboarding-shell className={`relative ${onboardingShellClass}`}>
@@ -85,9 +100,7 @@ export function OnboardingLayoutShell({
           <OnboardingSignOutLink />
         </div>
       </div>
-      <main
-        className={`mx-auto w-full ${maxWidthClass} px-4 pb-16 pt-3 md:px-6 md:pt-4`}
-      >
+      <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-3 md:px-6 md:pt-4">
         {children}
       </main>
     </div>

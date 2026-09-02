@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 
 type RingsHome = {
@@ -50,7 +50,7 @@ export function DiagnoseActivityRings() {
   if (loading) {
     return (
       <div className="flex min-h-[160px] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-[#1E1B31]" />
+        <SkinFitLoader size="mark" title="Loading scores" />
       </div>
     );
   }

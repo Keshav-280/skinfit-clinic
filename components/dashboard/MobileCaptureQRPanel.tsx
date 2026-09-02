@@ -8,9 +8,9 @@ import {
   Smartphone,
   CheckCircle,
   AlertTriangle,
-  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 
 type MobileCaptureImageRef = {
   label: string;
@@ -243,10 +243,10 @@ export function MobileCaptureQRPanel({
               exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-3"
             >
-              <Loader2 className="h-10 w-10 animate-spin text-[#1E1B31]" />
-              <p className="text-sm font-medium text-[#64748B]">
-                Generating secure link...
-              </p>
+              <SkinFitLoader
+                size="section"
+                title="Generating secure link"
+              />
             </motion.div>
           )}
 

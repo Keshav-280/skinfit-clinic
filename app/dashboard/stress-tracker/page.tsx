@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Minus, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Minus, Plus } from "lucide-react";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 
@@ -82,9 +83,10 @@ export default function StressTrackerPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
-      </div>
+      <SkinFitLoader
+        title="Opening stress tracker"
+        subtitle="kAI is pulling today’s check-in."
+      />
     );
   }
 

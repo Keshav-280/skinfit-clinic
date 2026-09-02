@@ -136,43 +136,35 @@ export function InitialKaiScanReport({
 
   return (
     <ReportShell reportRef={reportRef}>
-      <div
-        data-pdf-screen-only
-        className="mb-3 flex items-center justify-between gap-2"
+      <FaceMapSection
+        scanImages={scanImages}
+        detectionRegions={detectionRegions}
+        detectionRegionsByPose={detectionRegionsByPose}
+        wrinkleLines={wrinkleLines}
+        wrinkleMaskUrl={wrinkleMaskUrl}
+        maskExportVersion={maskExportVersion}
+        proxyRegions={proxyRegions}
+        bakedSpotAnnotations={bakedSpotAnnotations}
+        parameterGrades={chips}
+        activeConcern={concern}
+        onConcernChange={selectConcern}
+        cover={{
+          grade,
+          position,
+          title: watchTitle(parameters),
+          badge: { label: "Starting line", type: "flat" },
+          meta: { left: "Baseline scan", right: scanDateLabel },
+        }}
+        toolbar={
+          <Link
+            href="/dashboard/history"
+            className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur-sm"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+            History
+          </Link>
+        }
       >
-        <Link
-          href="/dashboard/history"
-          className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[12px] font-semibold text-[#1E1B31] shadow-[0_6px_16px_-10px_rgba(30, 27, 49,0.4)]"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-          History
-        </Link>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <div className="report-enter">
-          <FaceMapSection
-            scanImages={scanImages}
-            detectionRegions={detectionRegions}
-            detectionRegionsByPose={detectionRegionsByPose}
-            wrinkleLines={wrinkleLines}
-            wrinkleMaskUrl={wrinkleMaskUrl}
-            maskExportVersion={maskExportVersion}
-            proxyRegions={proxyRegions}
-            bakedSpotAnnotations={bakedSpotAnnotations}
-            parameterGrades={chips}
-            activeConcern={concern}
-            onConcernChange={selectConcern}
-            cover={{
-              grade,
-              position,
-              title: watchTitle(parameters),
-              badge: { label: "Starting line", type: "flat" },
-              meta: { left: "Baseline scan", right: scanDateLabel },
-            }}
-          />
-        </div>
-
         <div className="report-enter report-enter-d1">
           <ReportHero
             layout="bar"
@@ -233,7 +225,7 @@ export function InitialKaiScanReport({
           shareText={`SkinFit kAI baseline: ${grade}/10. ${headline}`}
           reportRef={reportRef}
         />
-      </div>
+      </FaceMapSection>
     </ReportShell>
   );
 }

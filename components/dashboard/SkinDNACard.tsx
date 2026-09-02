@@ -814,7 +814,7 @@ export function SkinDNACard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.35 }}
-                className="mt-1 truncate text-[13px] font-semibold text-[#1E1B31]"
+                className="mt-1 text-[13px] font-semibold leading-snug text-[#1E1B31]"
               >
                 {hasScan
                   ? headlineMessage
@@ -835,21 +835,22 @@ export function SkinDNACard({
 
       {/* 2. Identity strip */}
       {identityFacts.length > 0 ? (
-        <div className="mx-4 flex gap-0 overflow-x-auto rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] scrollbar-hide sm:mx-5">
+        <div className="mx-4 overflow-x-auto rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] sm:mx-5">
+          <div className="flex w-max min-w-full">
           {identityFacts.map((fact, i) => (
             <div
               key={fact.label}
-              className={`flex min-w-[4.5rem] flex-1 items-center gap-2 px-3 py-2.5 ${
+              className={`flex shrink-0 items-center gap-2 px-3 py-2.5 ${
                 i > 0 ? "border-l border-[#E4E6F0]" : ""
               }`}
             >
               {fact.icon}
-              <div className="flex min-w-0 flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
+              <div className="flex flex-col">
+                <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
                   {fact.label}
                 </span>
                 <span
-                  className={`mt-0.5 truncate text-[13px] font-bold ${
+                  className={`mt-0.5 whitespace-nowrap text-[13px] font-bold ${
                     fact.label === "Last scan" && recency
                       ? recency.colorClass
                       : "text-[#1E1B31]"
@@ -860,6 +861,7 @@ export function SkinDNACard({
               </div>
             </div>
           ))}
+          </div>
         </div>
       ) : null}
 

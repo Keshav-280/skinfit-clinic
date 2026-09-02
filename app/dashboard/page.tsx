@@ -4,6 +4,7 @@ import { getSessionUserId } from "../../src/lib/auth/get-session";
 import { loadSchedulePageData } from "../../src/lib/loadSchedulePageData";
 import { PatientDashboardDesktop } from "../../components/dashboard/PatientDashboardDesktop";
 import AppointmentsCalendarClient from "../../components/dashboard/AppointmentsCalendarClient";
+import { SkinFitLoader } from "../../components/dashboard/SkinFitLoader";
 
 export default async function DashboardPage() {
   const userId = await getSessionUserId();
@@ -17,7 +18,9 @@ export default async function DashboardPage() {
     <PatientDashboardDesktop
       calendarSlot={
         <Suspense
-          fallback={<div className="min-h-[240px] rounded-2xl bg-white/60" />}
+          fallback={
+            <SkinFitLoader size="section" title="Loading calendar" />
+          }
         >
           <AppointmentsCalendarClient
             initialTreatmentEvents={schedule.initialTreatmentEvents}

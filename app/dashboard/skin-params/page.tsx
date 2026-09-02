@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Camera, ChevronRight, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowLeft, Camera, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import {
   RAG_KAI_PARAM_KEYS,
@@ -339,9 +340,10 @@ export default function SkinParamsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
-      </div>
+      <SkinFitLoader
+        title="Opening skin parameters"
+        subtitle="kAI is lining up your latest scan scores."
+      />
     );
   }
 

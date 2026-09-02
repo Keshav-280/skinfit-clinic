@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Sun, Loader2 } from "lucide-react";
+import { ArrowLeft, Sun } from "lucide-react";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 import { RoutineStepList } from "@/components/dashboard/RoutineStepList";
 import { normalizeRoutineSteps } from "@/src/lib/routine";
@@ -75,9 +76,10 @@ export default function MorningRoutinePage() {
 
   if (loading) {
     return (
-      <section className="mx-auto flex max-w-md items-center justify-center pt-32">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
-      </section>
+      <SkinFitLoader
+        title="Opening morning routine"
+        subtitle="kAI is fetching today’s steps."
+      />
     );
   }
 

@@ -5,13 +5,13 @@ import {
   Activity,
   ChevronRight,
   Dna,
-  Loader2,
   Sun,
   Target,
   Waves,
   type LucideIcon,
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import {
   patientGlassShell,
   patientInnerCard,
@@ -136,12 +136,7 @@ export function ProfileSkinIdentitySection({ embedded = false }: { embedded?: bo
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 py-2">
-        <Loader2 className="h-5 w-5 animate-spin text-[#1E1B31]" />
-        <p className={`${patientMuted}`}>Loading skin identity…</p>
-      </div>
-    );
+    return <SkinFitLoader size="section" title="Loading skin identity" />;
   }
   if (err) {
     return (

@@ -77,6 +77,14 @@ h3 {
   font-family: var(--font-noto-serif), ui-serif, Georgia, serif;
 }
 
+/* kAI wordmark — Noto Serif at the logo’s medium serif weight, not extra-bold. */
+.font-kai {
+  font-family: var(--font-noto-serif), ui-serif, Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
 .font-tenor {
   font-family: var(--font-tenor), var(--font-noto-serif), ui-serif, Georgia, serif;
 }

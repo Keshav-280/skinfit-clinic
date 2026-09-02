@@ -10,6 +10,7 @@ import {
   isValidElement,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   format,
@@ -31,7 +32,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Loader2,
   Calendar,
   Play,
   Activity,
@@ -41,6 +41,7 @@ import {
 import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { DoctorUpdatesCompact } from "@/components/dashboard/PatientDoctorHomeSections";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 import {
   DASHBOARD_SECTION_CARD,
   DashboardSectionHeader,
@@ -186,10 +187,7 @@ function UpcomingAppointmentsSection() {
       <DashboardSectionHeader icon={Calendar} title="UPCOMING APPOINTMENTS" />
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#6B7280]">
-          <Loader2 className="h-4 w-4 animate-spin text-[#1E1B31]" aria-hidden />
-          Loading appointments…
-        </div>
+        <SkinFitLoader size="section" title="Loading appointments" />
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <p className="text-sm font-medium text-[#6B7280]">
@@ -268,11 +266,101 @@ function UpcomingAppointmentsSection() {
   );
 }
 
+function useHorizontalScroll() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setCanLeft(el.scrollLeft > 8);
+    setCanRight(max > 8 && el.scrollLeft < max - 8);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [update]);
+
+  const scrollByPage = useCallback((dir: -1 | 1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({
+      left: dir * Math.min(el.clientWidth * 0.8, 280),
+      behavior: "smooth",
+    });
+  }, []);
+
+  return { ref, canLeft, canRight, scrollByPage };
+}
+
+function HorizontalScrollArrows({
+  canLeft,
+  canRight,
+  onLeft,
+  onRight,
+}: {
+  canLeft: boolean;
+  canRight: boolean;
+  onLeft: () => void;
+  onRight: () => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <button
+        type="button"
+        onClick={onLeft}
+        disabled={!canLeft}
+        aria-label="Scroll left"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#1E1B31] transition hover:bg-[#FAF8F5] disabled:cursor-default disabled:text-[#D1D5DB]"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={onRight}
+        disabled={!canRight}
+        aria-label="Scroll right"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#1E1B31] transition hover:bg-[#FAF8F5] disabled:cursor-default disabled:text-[#D1D5DB]"
+      >
+        <ChevronRight className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 export function TopArticlesSection() {
+  const { ref, canLeft, canRight, scrollByPage } = useHorizontalScroll();
+
   return (
     <section className="min-w-0">
-      <DashboardSectionHeader icon={NotebookPen} title="TOP ARTICLES" />
-      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 md:mx-0 md:px-0">
+      <DashboardSectionHeader
+        icon={NotebookPen}
+        title="TOP ARTICLES"
+        action={
+          <HorizontalScrollArrows
+            canLeft={canLeft}
+            canRight={canRight}
+            onLeft={() => scrollByPage(-1)}
+            onRight={() => scrollByPage(1)}
+          />
+        }
+      />
+      <div className="relative">
+        <div
+          ref={ref}
+          className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 scrollbar-thin md:mx-0 md:px-0"
+        >
         {ARTICLES.map((article) => (
           <Link
             key={article.slug}
@@ -301,8 +389,18 @@ export function TopArticlesSection() {
             <p className="px-3 py-2.5 text-sm font-semibold leading-snug text-[#18181b]">
               {article.title}
             </p>
+            <p className="line-clamp-2 px-3 pb-3 text-[12px] leading-relaxed text-[#6B7280]">
+              {article.excerpt}
+            </p>
           </Link>
         ))}
+        </div>
+        {canRight ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#FAF8F5] to-transparent"
+            aria-hidden
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -315,6 +413,7 @@ export function RecommendedVideosSection() {
     youtubeId?: string;
     duration?: string;
   } | null>(null);
+  const { ref, canLeft, canRight, scrollByPage } = useHorizontalScroll();
 
   useEffect(() => {
     if (!active) return;
@@ -327,8 +426,23 @@ export function RecommendedVideosSection() {
 
   return (
     <section className="min-w-0">
-      <DashboardSectionHeader icon={Play} title="RECOMMENDED VIDEOS" />
-      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 md:mx-0 md:px-0">
+      <DashboardSectionHeader
+        icon={Play}
+        title="RECOMMENDED VIDEOS"
+        action={
+          <HorizontalScrollArrows
+            canLeft={canLeft}
+            canRight={canRight}
+            onLeft={() => scrollByPage(-1)}
+            onRight={() => scrollByPage(1)}
+          />
+        }
+      />
+      <div className="relative">
+        <div
+          ref={ref}
+          className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 scrollbar-thin md:mx-0 md:px-0"
+        >
         {RECOMMENDED_VIDEOS.map((video) => (
           <button
             key={video.title}
@@ -360,6 +474,13 @@ export function RecommendedVideosSection() {
             </p>
           </button>
         ))}
+        </div>
+        {canRight ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#FAF8F5] to-transparent"
+            aria-hidden
+          />
+        ) : null}
       </div>
 
       {active ? (
@@ -472,12 +593,18 @@ function DashboardDatePicker({
   onSelectYmd: (ymd: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
   const selectedDate = useMemo(
     () => parseISO(`${selectedYmd}T00:00:00`),
     [selectedYmd]
   );
   const [viewMonth, setViewMonth] = useState(selectedDate);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     if (open) setViewMonth(selectedDate);
@@ -486,11 +613,12 @@ function DashboardDatePicker({
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: MouseEvent | TouchEvent) {
-      const el = rootRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) {
-        setOpen(false);
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) {
+        return;
       }
+      setOpen(false);
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -659,33 +787,27 @@ function DashboardDatePicker({
         </button>
       </div>
 
-      {open ? (
-        <>
-          {/* Mobile bottom sheet */}
-          <div
-            className="fixed inset-0 z-40 bg-black/30 md:hidden"
-            aria-hidden
-            onClick={() => setOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-label="Choose date"
-            className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-white shadow-lg md:hidden"
-          >
-            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-[#E5E7EB]" />
-            {calendarPanel}
-          </div>
-
-          {/* Desktop dropdown */}
-          <div
-            role="dialog"
-            aria-label="Choose date"
-            className="absolute right-0 top-full z-50 mt-2 hidden overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-lg md:block"
-          >
-            {calendarPanel}
-          </div>
-        </>
-      ) : null}
+      {open && portalReady
+        ? createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[200] bg-[#1E1B31]/40"
+                aria-hidden
+                onClick={() => setOpen(false)}
+              />
+              <div
+                ref={panelRef}
+                role="dialog"
+                aria-label="Choose date"
+                className="fixed inset-x-0 bottom-0 z-[201] rounded-t-2xl bg-white p-1 shadow-lg md:inset-auto md:bottom-auto md:right-4 md:top-20 md:w-[300px] md:rounded-2xl md:border md:border-[#E5E7EB]"
+              >
+                <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-[#E5E7EB] md:hidden" />
+                {calendarPanel}
+              </div>
+            </>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
@@ -775,9 +897,10 @@ export function PatientDashboardDesktop({
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
-      </div>
+      <SkinFitLoader
+        title="Opening your home"
+        subtitle="kAI is gathering your scores, visits, and next steps."
+      />
     );
   }
 

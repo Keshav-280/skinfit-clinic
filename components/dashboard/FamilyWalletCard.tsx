@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ChevronDown,
   CreditCard,
-  Loader2,
   Plus,
   ShieldCheck,
   Trash2,
   UserPlus,
 } from "lucide-react";
 import type { FamilyWalletSnapshot } from "@/src/lib/familyWallet";
+import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
 
 function formatCredits(n: number) {
   return new Intl.NumberFormat("en-IN").format(n);
@@ -152,8 +152,8 @@ export function FamilyWalletCard() {
 
   if (loading) {
     return (
-      <section className="flex min-h-[100px] items-center justify-center rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm">
-        <Loader2 className="h-5 w-5 animate-spin text-[#1E1B31]/60" aria-hidden />
+      <section className="rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm">
+        <SkinFitLoader size="section" title="Loading family card" />
       </section>
     );
   }
