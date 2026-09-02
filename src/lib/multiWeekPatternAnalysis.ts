@@ -132,7 +132,10 @@ function baselineInsight(scanPoints: ScanPoint[]): MultiWeekInsight | null {
 function trendInsights(scanPoints: ScanPoint[]): MultiWeekInsight[] {
   if (scanPoints.length < 3) return [];
   const recent = scanPoints.slice(-4);
-  const out: MultiWeekInsight[] = [];
+  const scanCount = recent.length;
+
+  const decliners: { key: RagKaiParamKey; series: number[] }[] = [];
+  const plateaued: { key: RagKaiParamKey; series: number[] }[] = [];
 
   for (const key of RAG_KAI_PARAM_KEYS) {
     const series = recent
@@ -147,22 +150,36 @@ function trendInsights(scanPoints: ScanPoint[]): MultiWeekInsight[] {
     const shift = secondHalfAvg - firstHalfAvg;
 
     const lastTwo = series.slice(-2);
-    const plateaued =
+    const isPlateaued =
       lastTwo.length === 2 && Math.abs(lastTwo[1]! - lastTwo[0]!) < 2 && Math.abs(shift) < 3;
 
-    if (plateaued && series.length >= 3) {
-      out.push({
-        kind: "trend",
-        param: key,
-        text: `${RAG_KAI_PARAM_LABELS[key]} has held flat across your last ${series.length} scans (${series.map((v) => scoreOutOfTen(v)).join(" → ")} out of 10) — if you want movement here, this is the parameter worth changing your routine for, not waiting out.`,
-      });
-    } else if (shift <= -MEANINGFUL_DELTA) {
-      out.push({
-        kind: "trend",
-        param: key,
-        text: `${RAG_KAI_PARAM_LABELS[key]} has been trending down over your last ${series.length} scans (${series.map((v) => scoreOutOfTen(v)).join(" → ")} out of 10) — worth a closer look before your next visit.`,
-      });
+    if (shift <= -MEANINGFUL_DELTA) {
+      decliners.push({ key, series });
+    } else if (isPlateaued) {
+      plateaued.push({ key, series });
     }
+  }
+
+  // Decliners are the most actionable signal - surface up to 2, one card each.
+  const out: MultiWeekInsight[] = decliners.slice(0, 2).map(({ key, series }) => ({
+    kind: "trend",
+    param: key,
+    text: `${RAG_KAI_PARAM_LABELS[key]} has been trending down over your last ${series.length} scans (${series.map((v) => scoreOutOfTen(v)).join(" → ")} out of 10) — worth a closer look before your next visit.`,
+  }));
+
+  // Plateaued params rarely need a separate card each - fold them into one
+  // sentence so the report doesn't repeat the same template phrasing.
+  if (out.length < 2 && plateaued.length > 0) {
+    const names = plateaued.map((p) => RAG_KAI_PARAM_LABELS[p.key]);
+    const nameList =
+      names.length === 1
+        ? names[0]
+        : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    out.push({
+      kind: "trend",
+      param: plateaued.length === 1 ? plateaued[0]!.key : undefined,
+      text: `${nameList} ${names.length === 1 ? "has" : "have"} held flat across your last ${scanCount} scans — if you want movement here, this is where changing your routine matters, not waiting it out.`,
+    });
   }
 
   return out.slice(0, 2);

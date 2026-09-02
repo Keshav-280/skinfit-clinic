@@ -71,9 +71,11 @@ export function buildAttributionCards(opts: {
   multiWeekInsights?: Array<{ kind: string; text: string }>;
 }): Array<{ label: string; text: string }> {
   const cards: Array<{ label: string; text: string }> = [];
+  const MAX_CARDS = 3;
 
   // Computed multi-week patterns are strictly more specific than the LLM's
-  // generic weekly attribution — lead with them when we have any.
+  // generic weekly attribution — lead with them, but always leave a slot
+  // free for live weather so that context isn't silently dropped.
   if (opts.multiWeekInsights?.length) {
     const kindLabel: Record<string, string> = {
       baseline: "Since your first scan",
@@ -82,34 +84,42 @@ export function buildAttributionCards(opts: {
       comovement: "Pattern across parameters",
       consistency: "Check-ins vs. stability",
     };
+    const maxInsightCards = opts.cityWeather ? MAX_CARDS - 1 : MAX_CARDS;
     for (const insight of opts.multiWeekInsights) {
+      if (cards.length >= maxInsightCards) break;
       cards.push({
         label: kindLabel[insight.kind] ?? "Your pattern so far",
         text: insight.text,
       });
-      if (cards.length >= 3) break;
     }
-    if (cards.length >= 3) return cards;
   }
 
-  if (opts.llm?.attribution?.length) {
+  if (opts.cityWeather && cards.length < MAX_CARDS) {
+    const w = opts.cityWeather;
+    const aqiBit = w.aqi != null ? ` AQI around ${w.aqi}.` : "";
+    cards.push({
+      label: `${w.city} this week`,
+      text: `${w.city} is reading about ${w.tempC}°C with ${w.humidity}% humidity and UV index ${w.uvIndex} (${w.condition}).${aqiBit} Dry or humid swings often show up as tightness or oiliness before they show as breakouts.`,
+    });
+  }
+
+  if (opts.llm?.attribution?.length && cards.length < MAX_CARDS) {
     for (const a of opts.llm.attribution) {
+      if (cards.length >= MAX_CARDS) break;
       if (!a?.text?.trim()) continue;
       const factor = (a.factor ?? "").toLowerCase();
+      // Weather is already covered above with live, sourced numbers — skip
+      // the LLM's own (unsourced) take on it to avoid a duplicate card.
+      if (factor.includes("environ") || factor.includes("weather")) continue;
       const label =
         factor.includes("clinic") || factor.includes("treatment")
           ? "Your clinic record"
-          : factor.includes("environ") || factor.includes("weather")
-            ? opts.cityWeather
-              ? `${opts.cityWeather.city} this week`
-              : "Environment this week"
-            : "Your pattern so far";
+          : "Your pattern so far";
       cards.push({ label, text: a.text.trim() });
     }
-    if (cards.length > 0) return cards.slice(0, 3);
   }
 
-  if (opts.recentTreatmentTitle) {
+  if (opts.recentTreatmentTitle && cards.length < MAX_CARDS) {
     const when = opts.recentTreatmentDate
       ? ` (${opts.recentTreatmentDate})`
       : "";
@@ -119,33 +129,25 @@ export function buildAttributionCards(opts: {
     });
   }
 
-  if (opts.cityWeather) {
-    const w = opts.cityWeather;
-    const aqiBit =
-      w.aqi != null ? ` AQI around ${w.aqi}.` : "";
-    cards.push({
-      label: `${w.city} this week`,
-      text: `${w.city} is reading about ${w.tempC}°C with ${w.humidity}% humidity and UV index ${w.uvIndex} (${w.condition}).${aqiBit} Dry or humid swings often show up as tightness or oiliness before they show as breakouts.`,
-    });
-  }
-
-  if (opts.wellness) {
+  if (opts.wellness && cards.length < MAX_CARDS) {
     const sleep = opts.wellness.sleepHours?.trim();
     const stress = stressLabel(opts.wellness.stressLevel);
-    cards.push({
-      label: "Your pattern so far",
-      text: sleep
-        ? `This week you logged ${sleep} of sleep and stress as ${stress.toLowerCase()}. We'll keep pairing these with the markers that move on a weekly cycle - it's a pattern to watch, not a conclusion.`
-        : "Complete your weekly check-ins to see patterns here.",
-    });
-  } else {
+    if (sleep) {
+      cards.push({
+        label: "Your pattern so far",
+        text: `This week you logged ${sleep} of sleep and stress as ${stress.toLowerCase()}. We'll keep pairing these with the markers that move on a weekly cycle - it's a pattern to watch, not a conclusion.`,
+      });
+    }
+  }
+
+  if (cards.length === 0) {
     cards.push({
       label: "Your pattern so far",
       text: "Complete your weekly check-ins to see patterns here.",
     });
   }
 
-  return cards.slice(0, 3);
+  return cards.slice(0, MAX_CARDS);
 }
 
 export function defaultUpdateActions(opts: {

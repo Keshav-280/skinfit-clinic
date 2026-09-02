@@ -635,6 +635,37 @@ type ParamTileData = {
   href: string | null;
 };
 
+function paramHoverLine(key: SkinDNAParamKey, score: number): string {
+  const high = score >= 7;
+  const mid = score >= 4;
+  switch (key) {
+    case "active_acne":
+      if (high) return "Breakouts are quiet - keep one gentle cleanser, skip a new active";
+      if (mid) return "A few lesions still show - same night step beats stacking products";
+      return "New breakouts are the focus - cream cleanser only until the next scan";
+    case "acne_scar":
+      if (high) return "Marks are fading slowly - same lighting next week keeps this honest";
+      if (mid) return "Scars move on a longer cycle - hold the current night step steady";
+      return "Texture here needs time - don't switch actives before the next capture";
+    case "pigmentation":
+      if (high) return "Tone is holding - midday SPF is what keeps this score up";
+      if (mid) return "Marks still pick up UV - SPF at 9am, reapply if you're outdoors";
+      return "Pigment is the one to watch - sunscreen every morning before anything else";
+    case "wrinkles":
+      if (high) return "Lines are quiet - sleep and a simple moisturiser matter more than a new cream";
+      if (mid) return "Fine lines read here first - a fixed bedtime is the weekly lever";
+      return "This marker moves slowly - 7 hours in bed beats adding another serum";
+    case "under_eye":
+      if (high) return "Under-eyes look settled - keep sleep hours in the same window";
+      if (mid) return "Shadow still shows - one cool-hour bedtime beats a new eye cream";
+      return "Puff and darkness need rest first - skip stacking another eye product";
+    case "sagging_volume":
+      if (high) return "Volume is holding - protein at meals supports this more than extra cream";
+      if (mid) return "Firmness moves slowly - two short resistance sessions beat extra product";
+      return "This marker needs months - keep protein in and the same scan setup";
+  }
+}
+
 /** One param tile - expands and shows a qualitative status on hover/tap; dims when a sibling is active. */
 function InteractiveParamTile({
   tile,
@@ -651,12 +682,7 @@ function InteractiveParamTile({
   onActivate: () => void;
   onDeactivate: () => void;
 }) {
-  const statusLine =
-    tile.score >= 7
-      ? "Tracking well"
-      : tile.score >= 4
-        ? "Worth watching"
-        : "Needs attention";
+  const hoverLine = paramHoverLine(tile.key, tile.score);
 
   const inner = (
     <motion.div
@@ -700,7 +726,7 @@ function InteractiveParamTile({
             <p className="text-[9.5px] font-semibold leading-snug text-[#1E1B31]">
               {tile.sublabel}
             </p>
-            <p className="text-[9px] leading-snug text-[#6B7280]">{statusLine}</p>
+            <p className="text-[9px] leading-snug text-[#6B7280]">{hoverLine}</p>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -860,7 +886,7 @@ export function SkinDNACard({
     >
       {/* 1. Header */}
       <div className="relative px-4 pb-3 pt-4 sm:px-5">
-        <div className="relative flex items-center gap-3">
+        <div className="relative flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-[#6B7280]">
               Your Skin DNA
@@ -883,7 +909,7 @@ export function SkinDNACard({
 
           <Link
             href={href}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 self-center rounded-full bg-[#1E1B31] px-3 text-xs font-bold text-white transition hover:bg-[#242A5F]"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[#1E1B31] px-3 text-xs font-bold text-white transition hover:bg-[#242A5F]"
           >
             <FileText className="h-3.5 w-3.5" aria-hidden />
             View Report
@@ -894,17 +920,28 @@ export function SkinDNACard({
       {/* 2. Identity strip */}
       {identityFacts.length > 0 ? (
         <div className="mx-4 overflow-hidden rounded-xl border border-[#E4E6F0] bg-[#E4E6F0] sm:mx-5">
-          <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-5">
-          {identityFacts.map((fact) => (
+          <div
+            className={`grid grid-cols-2 gap-px ${
+              identityFacts.length <= 4
+                ? "lg:grid-cols-4"
+                : identityFacts.length === 5
+                  ? "lg:grid-cols-5"
+                  : "lg:grid-cols-3"
+            }`}
+          >
+          {identityFacts.map((fact, i) => {
+            const lastOddOnTwoCol =
+              identityFacts.length % 2 === 1 && i === identityFacts.length - 1;
+            return (
             <div
               key={fact.label}
-              className="flex min-w-0 items-center gap-2 bg-[#FAF8F5] px-3 py-2.5"
+              className={`flex min-w-0 items-center gap-2 bg-[#FAF8F5] px-3 py-2.5 ${
+                lastOddOnTwoCol ? "col-span-2 lg:col-span-1" : ""
+              }`}
             >
-              {fact.icon ? (
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center">
-                  {fact.icon}
-                </span>
-              ) : null}
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+                {fact.icon ?? null}
+              </span>
               <div className="flex min-w-0 flex-col justify-center">
                 <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
                   {fact.label}
@@ -920,7 +957,8 @@ export function SkinDNACard({
                 </span>
               </div>
             </div>
-          ))}
+            );
+          })}
           </div>
         </div>
       ) : null}

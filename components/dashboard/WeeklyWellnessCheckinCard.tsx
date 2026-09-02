@@ -151,6 +151,7 @@ function IconTextField({
   placeholder,
   helper,
   Icon,
+  action,
 }: {
   id: string;
   label: string;
@@ -159,15 +160,16 @@ function IconTextField({
   placeholder: string;
   helper: string;
   Icon: LucideIcon;
+  action?: ReactNode;
 }) {
   return (
     <div>
-      <label
-        htmlFor={id}
-        className="mb-3 block text-sm font-semibold text-[#18181b]"
-      >
-        {label}
-      </label>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <label htmlFor={id} className="block text-sm font-semibold text-[#18181b]">
+          {label}
+        </label>
+        {action}
+      </div>
       <div className="relative">
         <Icon
           className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#1E1B31]/40"
@@ -214,6 +216,48 @@ export function WeeklyWellnessCheckinCard({
     initialCheckin?.stressLevel != null
   );
   const [city, setCity] = useState(initialCheckin?.city ?? "");
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  const useMyLocation = () => {
+    if (!("geolocation" in navigator)) {
+      setLocationError("Location isn't available in this browser");
+      return;
+    }
+    setLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          if (!res.ok) throw new Error("reverse geocode failed");
+          const data = (await res.json()) as {
+            city?: string;
+            locality?: string;
+            principalSubdivision?: string;
+          };
+          const detected = data.city || data.locality || data.principalSubdivision;
+          if (detected) {
+            setCity(detected);
+          } else {
+            setLocationError("Couldn't detect your city - type it in instead");
+          }
+        } catch {
+          setLocationError("Couldn't detect your city - type it in instead");
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocationError("Location permission denied - type your city instead");
+        setLocating(false);
+      },
+      { timeout: 8000 }
+    );
+  };
   const [routine, setRoutine] = useState<string[]>(
     initialCheckin?.skincareRoutine ?? []
   );
@@ -401,8 +445,23 @@ export function WeeklyWellnessCheckinCard({
             value={city}
             onChange={setCity}
             placeholder="e.g. Mumbai, Delhiâ€¦"
-            helper="Helps kAI factor in your local climate"
+            helper={locationError ?? "Helps kAI factor in your local climate"}
             Icon={MapPin}
+            action={
+              <button
+                type="button"
+                onClick={useMyLocation}
+                disabled={locating}
+                className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#1E1B31]/70 transition hover:text-[#1E1B31] disabled:opacity-50"
+              >
+                {locating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <MapPin className="h-3.5 w-3.5" aria-hidden />
+                )}
+                {locating ? "Locating…" : "Use my location"}
+              </button>
+            }
           />
         </SectionBlock>
 

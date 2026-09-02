@@ -386,11 +386,8 @@ export function TopArticlesSection() {
                 {article.readTime}
               </span>
             </div>
-            <p className="px-3 py-2.5 text-sm font-semibold leading-snug text-[#18181b]">
+            <p className="px-3 py-2.5 pb-3 text-sm font-semibold leading-snug text-[#18181b]">
               {article.title}
-            </p>
-            <p className="line-clamp-2 px-3 pb-3 text-[12px] leading-relaxed text-[#6B7280]">
-              {article.excerpt}
             </p>
           </Link>
         ))}

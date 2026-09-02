@@ -258,10 +258,6 @@ export default function SchedulesPageClient({
                 alt={assignedDoctor.name}
                 className="h-full w-full object-contain object-right-bottom md:object-bottom"
               />
-              <DoctorInsightBubble
-                message={doctorInsight}
-                className="absolute top-[18%] right-full z-10 mr-3 hidden w-[13.5rem] md:block lg:w-[15rem]"
-              />
             </div>
           ) : (
             <HeroRingsMotif className="pointer-events-none absolute -right-8 -top-6 h-64 w-64 opacity-[0.06] md:-right-4 md:h-80 md:w-80" />
@@ -305,7 +301,7 @@ export default function SchedulesPageClient({
             {assignedDoctor ? (
               <DoctorInsightBubble
                 message={doctorInsight}
-                className="mt-3 max-w-[16.5rem] md:hidden"
+                className="mt-3 max-w-[16.5rem] md:max-w-[22rem]"
               />
             ) : null}
           </header>
@@ -318,6 +314,7 @@ export default function SchedulesPageClient({
           weekOfLabel={weekOfLabel}
           completed={completed}
           summary={summary}
+          insight={completed ? doctorInsight : null}
         />
       </div>
     </div>

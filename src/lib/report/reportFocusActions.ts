@@ -156,7 +156,14 @@ function templateForParam(
 ): ReportFocusAction {
   const base = baseTemplateForParam(row, prev, w);
   if (!multiWeekInsight?.text) return base;
-  return { ...base, detail: `${multiWeekInsight.text} ${base.detail}` };
+  // base.detail always opens with "X is N/10 (trend)." — the insight already
+  // states the score/trend with more evidence, so drop that clause instead
+  // of saying the same number twice in one card.
+  const withoutScoreLine = base.detail.replace(/^[^.]+\.\s*/, "");
+  return {
+    ...base,
+    detail: `${multiWeekInsight.text} ${withoutScoreLine}`.trim(),
+  };
 }
 
 function baseTemplateForParam(

@@ -34,6 +34,7 @@ type WeeklyCheckinEntryCardProps = {
   weekOfLabel: string;
   completed: boolean;
   summary?: Array<{ label: string; value: string }> | null;
+  insight?: string | null;
 };
 
 function optionIndex(options: FieldOption[], raw: string): number {
@@ -66,6 +67,7 @@ export function WeeklyCheckinEntryCard({
   weekOfLabel,
   completed,
   summary,
+  insight,
 }: WeeklyCheckinEntryCardProps) {
   const [today, setToday] = useState<Date | null>(null);
   useEffect(() => {
@@ -169,6 +171,11 @@ export function WeeklyCheckinEntryCard({
                   );
                 })}
               </div>
+            ) : null}
+            {insight?.trim() ? (
+              <p className="mb-4 rounded-xl bg-[#F8EDEE]/80 px-3 py-2.5 text-[13px] leading-snug text-[#1E1B31]">
+                {insight.trim()}
+              </p>
             ) : null}
             <Link
               href="/dashboard/maintain/checkin?edit=1"
