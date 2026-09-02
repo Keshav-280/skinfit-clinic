@@ -318,7 +318,7 @@ export function TrackerReportSections({
               { label: "UV Index", value: String(weather.uvIndex) },
               {
                 label: "AQI",
-                value: weather.aqi != null ? String(weather.aqi) : "—",
+                value: weather.aqi != null ? String(weather.aqi) : "-",
               },
             ].map((s) => (
               <div key={s.label} className={`${insetCard} !py-2.5`}>
@@ -402,7 +402,7 @@ export function TrackerReportSections({
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="text-xs font-semibold text-[#1E1B31]">{label}</p>
                   <p className="text-sm font-bold text-zinc-800">
-                    {value?.trim() || "—"}
+                    {value?.trim() || "-"}
                   </p>
                 </div>
                 {value?.trim() && key !== "city" ? (
@@ -430,7 +430,7 @@ export function TrackerReportSections({
       >
         {isOnboardingBaseline ? (
           <p className="mb-3 text-sm leading-relaxed text-zinc-600">
-            Follow these habits over the next week — your first scan is the
+            Follow these habits over the next week - your first scan is the
             starting point, not a comparison.
           </p>
         ) : null}

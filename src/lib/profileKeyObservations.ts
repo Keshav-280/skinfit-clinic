@@ -1,5 +1,5 @@
 /**
- * Profile key observations — LLM + RAG only (see profileRagInsights.ts).
+ * Profile key observations - LLM + RAG only (see profileRagInsights.ts).
  * Context gathering lives in profileInsightContext.ts.
  */
 
@@ -37,7 +37,7 @@ export type ProfileKeyObservationsPayload = {
   llmUnavailable: boolean;
 };
 
-/** @deprecated Use buildProfileKeyObservationsLlm — kept as alias for imports. */
+/** @deprecated Use buildProfileKeyObservationsLlm - kept as alias for imports. */
 export async function buildProfileKeyObservations(
   userId: string
 ): Promise<ProfileKeyObservationsPayload> {

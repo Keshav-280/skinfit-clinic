@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     }
     if (isMissingDoctorSosAckTable(e)) {
       console.error(
-        "[doctor/sos-summary/ack] doctor_sos_acknowledgements missing — run drizzle/0015_doctor_sos_acknowledgements.sql"
+        "[doctor/sos-summary/ack] doctor_sos_acknowledgements missing - run drizzle/0015_doctor_sos_acknowledgements.sql"
       );
       return NextResponse.json(
         { error: "ACK_TABLE_MISSING" },

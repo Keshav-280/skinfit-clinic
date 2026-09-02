@@ -371,7 +371,7 @@ type Props = {
   onboardingComplete?: boolean;
   onRefresh: () => void;
   className?: string;
-  /** Side-by-side on sm+ screens instead of stacked — for wide layout slots. */
+  /** Side-by-side on sm+ screens instead of stacked - for wide layout slots. */
   twoColumn?: boolean;
 };
 
@@ -398,7 +398,7 @@ function useDoctorChatEnabled(): boolean {
   return doctorChatEnabled;
 }
 
-/** "Chat with Doctor" CTA — shown near the top of the Build page regardless of layout. */
+/** "Chat with Doctor" CTA - shown near the top of the Build page regardless of layout. */
 export function PatientDoctorHomeSections({ className = "" }: { className?: string }) {
   const doctorChatEnabled = useDoctorChatEnabled();
 
@@ -422,7 +422,7 @@ export function PatientDoctorHomeSections({ className = "" }: { className?: stri
 }
 
 /**
- * Compact Doctor's Feedback + Voice Notes cards — sized for the appointments
+ * Compact Doctor's Feedback + Voice Notes cards - sized for the appointments
  * sidebar, directly under the assigned-doctor card rather than as full-width
  * sections at the top of the page.
  */
@@ -558,7 +558,7 @@ export function DoctorUpdatesCompact({
         ) : (
           <p className="py-1 text-xs text-[#6B7280]">
             {!onboardingComplete
-              ? "Sent after your baseline review — the bell will notify you."
+              ? "Sent after your baseline review - the bell will notify you."
               : "Voice notes from your doctor will appear here."}
           </p>
         )}

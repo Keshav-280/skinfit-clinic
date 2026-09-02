@@ -15,7 +15,7 @@ export function isSeverityGrade(v: unknown): v is SeverityGrade {
   return typeof v === "string" && (SEVERITY_GRADES as readonly string[]).includes(v);
 }
 
-/** Map legacy numeric 1–5 (1 = A, 5 = E) to a letter grade. */
+/** Map legacy numeric 1-5 (1 = A, 5 = E) to a letter grade. */
 export function numericToSeverityGrade(n: number): SeverityGrade {
   const s = Math.max(1, Math.min(5, Math.round(n)));
   return SEVERITY_GRADE_OPTIONS.find((o) => o.score === s)?.grade ?? "E";
@@ -30,7 +30,7 @@ export function normalizeSeverityGrade(
   return fallback;
 }
 
-/** Letter grade → numeric severity 1–5 (A=1 … E=5) for export / eval. */
+/** Letter grade → numeric severity 1-5 (A=1 … E=5) for export / eval. */
 export function severityGradeToScore(grade: SeverityGrade): number {
   return SEVERITY_GRADE_OPTIONS.find((o) => o.grade === grade)?.score ?? 1;
 }

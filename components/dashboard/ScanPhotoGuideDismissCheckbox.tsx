@@ -20,7 +20,7 @@ export function ScanPhotoGuideDismissCheckbox({ checked, onChange, className = "
         className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#1E1B31]/35 accent-[#1E1B31]"
       />
       <span>
-        I&apos;ve read the photo tips —{" "}
+        I&apos;ve read the photo tips -{" "}
         <span className="font-semibold" style={{ color: SKINFIT_THEME.navy }}>
           skip them next time
         </span>

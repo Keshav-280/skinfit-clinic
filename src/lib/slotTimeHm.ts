@@ -59,7 +59,7 @@ export function isValidSlotEndAfterStart(startHm: string, endHm: string): boolea
   return b > a;
 }
 
-/** "10:30" + optional end → "10:30 – 11:00" or "10:30". */
+/** "10:30" + optional end → "10:30 - 11:00" or "10:30". */
 export function formatSlotTimeRange(
   slotStartHm: string,
   slotEndTimeHm: string | null | undefined
@@ -67,5 +67,5 @@ export function formatSlotTimeRange(
   const startNorm = normalizeSlotHm(slotStartHm) ?? slotStartHm.trim();
   const end = effectiveSlotEndHm(slotStartHm, slotEndTimeHm);
   if (end === startNorm) return startNorm;
-  return `${startNorm} – ${end}`;
+  return `${startNorm} - ${end}`;
 }

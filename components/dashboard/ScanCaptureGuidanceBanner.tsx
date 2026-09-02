@@ -86,7 +86,7 @@ export function ScanCaptureGuidanceBanner({
             {guidance.expressionMessage ??
               (models.mediapipe === "loading"
                 ? "Loading expression model…"
-                : "Hold still — checking expression…")}
+                : "Hold still - checking expression…")}
           </span>
         </div>
       ) : null}

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s | SkinFit Wellness",
   },
   description:
-    "SkinFit Wellness staff portal for dermatologists — manage patients, treatment plans, scans, and secure messaging.",
+    "SkinFit Wellness staff portal for dermatologists - manage patients, treatment plans, scans, and secure messaging.",
   robots: { index: false, follow: false },
 };
 

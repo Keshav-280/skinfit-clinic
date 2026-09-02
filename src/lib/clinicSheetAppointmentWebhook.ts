@@ -46,7 +46,7 @@ export type ClinicSheetAppointmentUpdate = {
   patientMessage?: string | null;
   /** CRM sheet column `doctorId` (UUID). */
   doctorId?: string | null;
-  /** CRM sheet column `doctorName` — resolved when id missing or stale. */
+  /** CRM sheet column `doctorName` - resolved when id missing or stale. */
   doctorName?: string | null;
 };
 

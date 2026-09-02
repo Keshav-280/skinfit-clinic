@@ -15,7 +15,7 @@ function makeBaseMetrics() {
 }
 
 function run() {
-  // severity 1–5 values (modelFeatureScores scale).
+  // severity 1-5 values (modelFeatureScores scale).
   const modelFeatureScores = {
     active_acne: 2, // -> 75 clarity
     acne_scars: 3, // -> 50 clarity
@@ -44,7 +44,7 @@ function run() {
     assert.equal(res.metrics.clinical_scores?.wrinkle_severity, 4);
   }
 
-  // Case 2: doctor param overrides via modelFeatureScores — kAI follows weighted params.
+  // Case 2: doctor param overrides via modelFeatureScores - kAI follows weighted params.
   {
     const res = resolveScanDisplayScores({
       scoresJson: {

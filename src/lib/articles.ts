@@ -32,12 +32,12 @@ export const ARTICLES: Article[] = [
     readTime: "5 min",
     imageSrc: "/images/articles/skin-type-guide.png",
     excerpt:
-      "Every product recommendation assumes you know your skin type. Here's how to actually know — and why a one-time guess rarely holds up.",
+      "Every product recommendation assumes you know your skin type. Here's how to actually know - and why a one-time guess rarely holds up.",
     sections: [
       {
         heading: "Why skin type is the first thing to get right",
         paragraphs: [
-          "Every skincare recommendation you'll ever get — from a cleanser to a sunscreen — assumes you know your skin type. Get it wrong, and even expensive products can leave you worse off: a heavy cream on oily skin clogs pores, while a foaming cleanser on dry skin strips it further.",
+          "Every skincare recommendation you'll ever get - from a cleanser to a sunscreen - assumes you know your skin type. Get it wrong, and even expensive products can leave you worse off: a heavy cream on oily skin clogs pores, while a foaming cleanser on dry skin strips it further.",
           "Skin type isn't fixed either. It can shift with the seasons, your age, stress levels, and even the water you use to wash your face. That's part of why a one-time guess rarely holds up.",
         ],
       },
@@ -46,7 +46,7 @@ export const ARTICLES: Article[] = [
         figures: [
           {
             title: "Oily",
-            body: "Produces more sebum than it needs, showing up as shine, enlarged pores, and a tendency toward breakouts — especially around the T-zone.",
+            body: "Produces more sebum than it needs, showing up as shine, enlarged pores, and a tendency toward breakouts - especially around the T-zone.",
           },
           {
             title: "Dry",
@@ -54,7 +54,7 @@ export const ARTICLES: Article[] = [
           },
           {
             title: "Combination",
-            body: "Oily in some areas (usually forehead, nose, chin) and normal-to-dry in others (cheeks) — the most common type, and often the most confusing to shop for.",
+            body: "Oily in some areas (usually forehead, nose, chin) and normal-to-dry in others (cheeks) - the most common type, and often the most confusing to shop for.",
           },
           {
             title: "Normal",
@@ -62,7 +62,7 @@ export const ARTICLES: Article[] = [
           },
           {
             title: "Sensitive",
-            body: "Reacts easily — redness, stinging, or irritation from products, weather, or fabrics — and can overlap with any of the four types above.",
+            body: "Reacts easily - redness, stinging, or irritation from products, weather, or fabrics - and can overlap with any of the four types above.",
           },
         ],
       },
@@ -75,7 +75,7 @@ export const ARTICLES: Article[] = [
           },
           {
             title: "Wait 30 minutes",
-            body: "No products, no touching — just give your skin time to settle into its natural state.",
+            body: "No products, no touching - just give your skin time to settle into its natural state.",
           },
           {
             title: "Read the signs",
@@ -83,14 +83,14 @@ export const ARTICLES: Article[] = [
           },
         ],
         after: [
-          "This test is a decent starting point, but it doesn't account for the deeper patterns a proper scan can pick up — pore size, hydration levels beneath the surface, and how your skin is actually behaving over time rather than in one 30-minute window.",
+          "This test is a decent starting point, but it doesn't account for the deeper patterns a proper scan can pick up - pore size, hydration levels beneath the surface, and how your skin is actually behaving over time rather than in one 30-minute window.",
         ],
       },
       {
         heading: "Where kAI fits in",
         callout: {
           label: "On your Build tab",
-          body: "Your kAI scan measures skin type alongside acne, pigmentation, wrinkles, hydration, and texture — so instead of a guess, you get a reading that's tracked scan over scan. That's what powers the personalized routine suggestions you see on your Build tab.",
+          body: "Your kAI scan measures skin type alongside acne, pigmentation, wrinkles, hydration, and texture - so instead of a guess, you get a reading that's tracked scan over scan. That's what powers the personalized routine suggestions you see on your Build tab.",
         },
       },
     ],
@@ -115,7 +115,7 @@ export const ARTICLES: Article[] = [
         figures: [
           {
             title: "Summer",
-            body: "Prolonged heat increases sweat and sebum production, which can trigger breakouts and clogged pores even in people who don't normally struggle with acne. India's UV index also runs high for much of the year, accelerating pigmentation and early signs of ageing if sunscreen isn't a daily habit — not just an occasional one.",
+            body: "Prolonged heat increases sweat and sebum production, which can trigger breakouts and clogged pores even in people who don't normally struggle with acne. India's UV index also runs high for much of the year, accelerating pigmentation and early signs of ageing if sunscreen isn't a daily habit - not just an occasional one.",
           },
           {
             title: "Monsoon",
@@ -131,7 +131,7 @@ export const ARTICLES: Article[] = [
         heading: "Adjusting instead of guessing",
         callout: {
           label: "Weekly check-in",
-          body: "The core lesson isn't to buy more products — it's to adjust the same routine's weight and frequency with the season. kAI's weekly check-in factors in your city and the season when it reviews your scan trends, which is why routine suggestions sometimes shift even when your underlying skin type hasn't changed.",
+          body: "The core lesson isn't to buy more products - it's to adjust the same routine's weight and frequency with the season. kAI's weekly check-in factors in your city and the season when it reviews your scan trends, which is why routine suggestions sometimes shift even when your underlying skin type hasn't changed.",
         },
       },
     ],
@@ -161,7 +161,7 @@ export const ARTICLES: Article[] = [
       {
         heading: "Why a single photo isn't enough",
         paragraphs: [
-          "Lighting, angle, and even the camera you're using can all shift how skin looks in a single image. That's why the capture flow guides you through three specific angles for every scan — front and both sides — so the model is comparing like-for-like data rather than one flattering (or unflattering) shot.",
+          "Lighting, angle, and even the camera you're using can all shift how skin looks in a single image. That's why the capture flow guides you through three specific angles for every scan - front and both sides - so the model is comparing like-for-like data rather than one flattering (or unflattering) shot.",
         ],
       },
       {
@@ -191,7 +191,7 @@ export const ARTICLES: Article[] = [
       {
         heading: "Start smaller than you think",
         paragraphs: [
-          "A ten-step routine you abandon in two weeks does less for your skin than a three-step routine you actually stick to. The evidence for consistency mattering more than complexity is strong — most visible improvement comes from a small number of habits repeated daily, not from stacking actives.",
+          "A ten-step routine you abandon in two weeks does less for your skin than a three-step routine you actually stick to. The evidence for consistency mattering more than complexity is strong - most visible improvement comes from a small number of habits repeated daily, not from stacking actives.",
         ],
       },
       {
@@ -199,7 +199,7 @@ export const ARTICLES: Article[] = [
         figures: [
           {
             title: "Cleanser",
-            body: "Removes the day's buildup without stripping skin — the reset every routine starts from.",
+            body: "Removes the day's buildup without stripping skin - the reset every routine starts from.",
           },
           {
             title: "Moisturizer",
@@ -207,7 +207,7 @@ export const ARTICLES: Article[] = [
           },
           {
             title: "Sunscreen",
-            body: "On its own, the single highest-impact step for preventing pigmentation and early ageing — and the step most people skip.",
+            body: "On its own, the single highest-impact step for preventing pigmentation and early ageing - and the step most people skip.",
           },
         ],
         after: [
@@ -217,18 +217,18 @@ export const ARTICLES: Article[] = [
       {
         heading: "Adding actives without overdoing it",
         paragraphs: [
-          "Once the base routine is a genuine daily habit, targeted actives — like a retinoid for texture and fine lines, or a niacinamide serum for oil control and tone — can be layered in one at a time, not all at once. Introducing several new actives simultaneously makes it hard to tell what's working, and increases the risk of irritation.",
+          "Once the base routine is a genuine daily habit, targeted actives - like a retinoid for texture and fine lines, or a niacinamide serum for oil control and tone - can be layered in one at a time, not all at once. Introducing several new actives simultaneously makes it hard to tell what's working, and increases the risk of irritation.",
         ],
       },
       {
         heading: "Morning vs. evening, briefly",
         split: [
           {
-            title: "Morning — protect",
+            title: "Morning - protect",
             body: "A gentle cleanse, lightweight moisturizer, and sunscreen as the non-negotiable final step.",
           },
           {
-            title: "Evening — repair",
+            title: "Evening - repair",
             body: "A proper cleanse to remove the day's buildup, then any actives, followed by a slightly richer moisturizer since skin does more of its repair work overnight.",
           },
         ],
@@ -237,7 +237,7 @@ export const ARTICLES: Article[] = [
         heading: "Letting your data decide what's next",
         callout: {
           label: "Personalized on Build",
-          body: "Your Build tab's routine suggestions are generated from your actual scan history, not a generic template — so what's recommended for oily, acne-prone skin will look different from what's recommended for dry, sensitive skin, and it'll keep adjusting as your weekly trends shift.",
+          body: "Your Build tab's routine suggestions are generated from your actual scan history, not a generic template - so what's recommended for oily, acne-prone skin will look different from what's recommended for dry, sensitive skin, and it'll keep adjusting as your weekly trends shift.",
         },
       },
     ],

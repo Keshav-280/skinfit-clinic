@@ -5,7 +5,7 @@ import {
   type FaceCaptureRef,
 } from "@/src/lib/resolveScanImageUrl";
 
-/** Gallery entries for report UI — prefers scan image API by index (stable auth). */
+/** Gallery entries for report UI - prefers scan image API by index (stable auth). */
 export function buildFaceCaptureGallery(
   scanId: number,
   captures: FaceCaptureRef[] | null | undefined

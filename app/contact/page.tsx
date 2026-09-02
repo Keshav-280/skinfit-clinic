@@ -163,7 +163,7 @@ export default function ContactPage() {
                         Working Hours
                       </p>
                       <p className="text-slate-800">
-                        Mon–Sat, 10:00 AM – 7:00 PM
+                        Mon-Sat, 10:00 AM - 7:00 PM
                       </p>
                     </div>
                   </motion.div>

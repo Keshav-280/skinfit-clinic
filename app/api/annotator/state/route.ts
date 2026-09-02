@@ -60,7 +60,7 @@ async function loadCollaborationRow() {
   return row ?? null;
 }
 
-/** Lightweight row for background polls — avoids loading ~80MB of shape JSON. */
+/** Lightweight row for background polls - avoids loading ~80MB of shape JSON. */
 async function loadCollaborationSyncRow() {
   const [row] = await db
     .select({
@@ -92,7 +92,7 @@ type PeerShapeSqlRow = {
   shape: AnnotatorShape;
 };
 
-/** Peer shapes for one image — filtered in Postgres, never loads the full per_user_shapes blob into Node. */
+/** Peer shapes for one image - filtered in Postgres, never loads the full per_user_shapes blob into Node. */
 async function loadPeerShapesForImageFromDb(userId: string, imageIndex: number) {
   const result = await db.execute<PeerShapeSqlRow>(sql`
     SELECT
@@ -111,7 +111,7 @@ async function loadPeerShapesForImageFromDb(userId: string, imageIndex: number) 
   }));
 }
 
-/** Distinct peer image indices — DB-side scan, no multi-MB json transfer to Node. */
+/** Distinct peer image indices - DB-side scan, no multi-MB json transfer to Node. */
 async function loadPeerImageIndicesFromDb(userId: string): Promise<number[]> {
   const result = await db.execute<{ image_index: number }>(sql`
     SELECT DISTINCT (shape->>'imageIndex')::int AS image_index
@@ -144,7 +144,7 @@ type UserLabelsSliceRow = {
   user_labels: Record<string, Record<string, { spec?: string; grade?: string }>> | null;
 };
 
-/** Read only one user's slice — avoids loading the full ~80MB perUserShapes blob. */
+/** Read only one user's slice - avoids loading the full ~80MB perUserShapes blob. */
 async function loadCollaborationUserRow(userId: string) {
   const result = await db.execute<UserSliceRow>(sql`
     SELECT
@@ -161,7 +161,7 @@ async function loadCollaborationUserRow(userId: string) {
   return result.rows[0] ?? null;
 }
 
-/** Labels + locks only — fast first paint (no shape JSON). */
+/** Labels + locks only - fast first paint (no shape JSON). */
 async function loadCollaborationUserLabelsRow(userId: string) {
   const result = await db.execute<UserLabelsSliceRow>(sql`
     SELECT
@@ -206,7 +206,7 @@ function peerSyncAtForUser(
   return out;
 }
 
-/** Merged annotator grades for admin review — labels + sync only, no shape JSON transfer. */
+/** Merged annotator grades for admin review - labels + sync only, no shape JSON transfer. */
 async function loadMergedLabelsForAdmin() {
   const labelsResult = await db.execute<{
     per_user_labels: Record<
@@ -283,7 +283,7 @@ async function persistCollaborationStore(
  * Persist ONLY one user's slice via a jsonb_set upsert.
  *
  * The previous save path loaded the full ~5MB row into Node, parsed it (blocking
- * the single event loop — the OOM stack traces were inside V8's JSON parser),
+ * the single event loop - the OOM stack traces were inside V8's JSON parser),
  * mutated one user's slice, then serialized and wrote the whole row back. That
  * was a top crash driver AND a lost-update race: two users saving concurrently
  * each wrote a full row, so the second writer clobbered the first user's slice

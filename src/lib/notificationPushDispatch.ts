@@ -9,7 +9,7 @@ import {
   notifyPatientWeeklyInsight,
 } from "@/src/lib/expoPush";
 
-/** BullMQ notification worker — sends Expo pushes per event type. */
+/** BullMQ notification worker - sends Expo pushes per event type. */
 export async function dispatchNotificationPush(
   event: NotificationEvent
 ): Promise<void> {

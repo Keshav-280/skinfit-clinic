@@ -15,11 +15,11 @@ export function ScrollHero() {
     offset: ["start start", "end end"],
   });
 
-  // Scene 1: The Hook – text fading in early and fading out
+  // Scene 1: The Hook - text fading in early and fading out
   const text1Opacity = useTransform(scrollYProgress, [0, 0.1, 0.2], [1, 1, 0]);
   const text1Y = useTransform(scrollYProgress, [0, 0.2], [0, -50]);
 
-  // Scene 2: The App Reveal – glowing phone mockup scales up from bottom
+  // Scene 2: The App Reveal - glowing phone mockup scales up from bottom
   const phoneScale = useTransform(scrollYProgress, [0.15, 0.3, 0.5], [0.8, 1, 1]);
   const phoneY = useTransform(
     scrollYProgress,
@@ -28,7 +28,7 @@ export function ScrollHero() {
   );
   const text2Opacity = useTransform(scrollYProgress, [0.3, 0.4, 0.5], [0, 1, 0]);
 
-  // Scene 3: The AI Brain – complex UI element fades in as phone leaves
+  // Scene 3: The AI Brain - complex UI element fades in as phone leaves
   const brainOpacity = useTransform(scrollYProgress, [0.6, 0.7, 0.9], [0, 1, 1]);
   const brainScale = useTransform(scrollYProgress, [0.6, 0.8], [0.8, 1.2]);
   const text3Opacity = useTransform(scrollYProgress, [0.7, 0.8, 0.9], [0, 1, 1]);
@@ -51,7 +51,7 @@ export function ScrollHero() {
           Clinical AI, in your pocket.
         </motion.h1>
 
-        {/* Scene 2: The App Reveal – Phone mockup */}
+        {/* Scene 2: The App Reveal - Phone mockup */}
         <motion.div
           style={{
             scale: phoneScale,
@@ -83,7 +83,7 @@ export function ScrollHero() {
           </div>
         </motion.div>
 
-        {/* Scene 3: The AI Brain – Metrics UI */}
+        {/* Scene 3: The AI Brain - Metrics UI */}
         <motion.div
           style={{
             opacity: brainOpacity,

@@ -434,7 +434,7 @@ export async function POST(request: NextRequest) {
             });
             merged = applyAcneDetectorToScanPayload(merged, acneResult);
           } catch (err) {
-            console.warn("[scan] acne detector skipped — using ML acne score", {
+            console.warn("[scan] acne detector skipped - using ML acne score", {
               error: err instanceof Error ? err.message : String(err),
             });
           }
@@ -586,21 +586,21 @@ export async function POST(request: NextRequest) {
                 "You are an empathetic, professional dermatological AI assistant.",
                 "Write exactly ONE short sentence summarizing skin health and one gentle, non-medical lifestyle tip.",
                 "",
-                "Patient-facing output must use letter grades A–E only (A is best). Never include raw numbers, percentages, or /100.",
-                "You only have this single snapshot — no prior week, no deltas. Never imply something got worse, slipped, or declined over time.",
-                "If you mention an area to refine, it must be justified by it being among the **lowest** grades vs the others — frame it as a *relative* gap versus stronger areas (e.g. under-eye area), not as an acute problem.",
+                "Patient-facing output must use letter grades A-E only (A is best). Never include raw numbers, percentages, or /100.",
+                "You only have this single snapshot - no prior week, no deltas. Never imply something got worse, slipped, or declined over time.",
+                "If you mention an area to refine, it must be justified by it being among the **lowest** grades vs the others - frame it as a *relative* gap versus stronger areas (e.g. under-eye area), not as an acute problem.",
                 "If a grade is mid-range or strong (B or A), do not talk about it as if it were a major concern.",
                 "",
-                "Internal context uses 0–100 scores mapped to grades and optional 1–5 clinical severities (higher = worse on 1–5). Use grades in your sentence; ignore conflicting 1–5 hints if they disagree with the grade story.",
-                "Never mention UV, sun exposure, or sunscreen habits — this app does not collect sun-exposure data.",
+                "Internal context uses 0-100 scores mapped to grades and optional 1-5 clinical severities (higher = worse on 1-5). Use grades in your sentence; ignore conflicting 1-5 hints if they disagree with the grade story.",
+                "Never mention UV, sun exposure, or sunscreen habits - this app does not collect sun-exposure data.",
                 "No clinical jargon, no diagnosis.",
               ].join("\n"),
             },
             {
               role: "user",
               content: [
-                `Letter grades (A is best) — use these in your reply: acne ${patientClarityToGrade(metrics.acne)}, pigmentation ${patientClarityToGrade(metrics.pigmentation)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, under-eye area ${patientClarityToGrade(metrics.hydration)}, acne scars ${patientClarityToGrade(metrics.texture)}, overall ${patientClarityToGrade(metrics.overall_score)}.`,
-                `Optional internal context — 1–5 severity (higher is worse); do not quote numbers to the patient: active acne ${modelFeatureScores.active_acne}, skin quality ${modelFeatureScores.skin_quality}, wrinkle severity ${modelFeatureScores.wrinkle_severity}, sagging/volume ${modelFeatureScores.sagging_volume}, under-eye ${modelFeatureScores.under_eye}, hair ${modelFeatureScores.hair_health}.`,
+                `Letter grades (A is best) - use these in your reply: acne ${patientClarityToGrade(metrics.acne)}, pigmentation ${patientClarityToGrade(metrics.pigmentation)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, under-eye area ${patientClarityToGrade(metrics.hydration)}, acne scars ${patientClarityToGrade(metrics.texture)}, overall ${patientClarityToGrade(metrics.overall_score)}.`,
+                `Optional internal context - 1-5 severity (higher is worse); do not quote numbers to the patient: active acne ${modelFeatureScores.active_acne}, skin quality ${modelFeatureScores.skin_quality}, wrinkle severity ${modelFeatureScores.wrinkle_severity}, sagging/volume ${modelFeatureScores.sagging_volume}, under-eye ${modelFeatureScores.under_eye}, hair ${modelFeatureScores.hair_health}.`,
               ].join("\n"),
             },
           ],
@@ -673,7 +673,7 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    /** Only `id` — avoids RETURNING on `tracker_snapshot` before migration 0030. */
+    /** Only `id` - avoids RETURNING on `tracker_snapshot` before migration 0030. */
     const scanInsertReturning = { id: scans.id };
 
     let inserted: { id: number } | undefined;
@@ -719,7 +719,7 @@ export async function POST(request: NextRequest) {
         const saved = await persistScanTrackerSnapshot(user.id, inserted.id);
         if (!saved) {
           console.warn(
-            "[scan] tracker snapshot not saved — report will backfill on first view",
+            "[scan] tracker snapshot not saved - report will backfill on first view",
             { scanId: inserted.id, userId: user.id }
           );
         }

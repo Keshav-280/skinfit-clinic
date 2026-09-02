@@ -40,35 +40,35 @@ const TRIGGER_LABELS: Record<string, string> = {
   stress: "Stress & poor sleep",
   environmental: "Environment (sun, pollution, humidity)",
   products: "Products or ingredients",
-  unsure: "Not sure — kAI will learn from journal",
+  unsure: "Not sure - kAI will learn from journal",
 };
 
 const GENERIC_VALUE_LABELS: Record<string, string> = {
   mild: "Mild",
   moderate: "Moderate",
   severe: "Severe",
-  recent: "Recent — under 3 months",
-  ongoing: "Ongoing — 3 months to 1 year",
-  chronic: "Chronic — over 1 year",
-  yes: "Yes — tried treatments or seen a doctor",
-  no: "No — first time seeking treatment",
-  high: "High — frequent redness or reactions",
+  recent: "Recent - under 3 months",
+  ongoing: "Ongoing - 3 months to 1 year",
+  chronic: "Chronic - over 1 year",
+  yes: "Yes - tried treatments or seen a doctor",
+  no: "No - first time seeking treatment",
+  high: "High - frequent redness or reactions",
   under5: "Under 5 hours",
-  "5to6": "5–6 hours",
-  "7to8": "7–8 hours",
+  "5to6": "5-6 hours",
+  "7to8": "7-8 hours",
   "8plus": "8+ hours",
   under1l: "Under 1L",
-  "1to1_5l": "1–1.5L",
-  "1_5to2l": "1.5–2L",
+  "1to1_5l": "1-1.5L",
+  "1_5to2l": "1.5-2L",
   "2lplus": "2L+",
   vegetarian: "Vegetarian",
   vegan: "Vegan",
   nonveg: "Non-vegetarian",
   mixed: "Mixed",
   under1m: "Under 1 month",
-  "1to3m": "1–3 months",
-  "3to6m": "3–6 months",
-  "6to12m": "6–12 months",
+  "1to3m": "1-3 months",
+  "3to6m": "3-6 months",
+  "6to12m": "6-12 months",
   over1y: "Over 1 year",
   female: "Female",
   male: "Male",
@@ -110,15 +110,15 @@ export type QuestionnaireDisplay = {
 };
 
 const SENSITIVITY_LABELS: Record<string, string> = {
-  low: "Low — rarely reacts",
-  moderate: "Moderate — occasional irritation",
-  high: "High — frequent redness or reactions",
+  low: "Low - rarely reacts",
+  moderate: "Moderate - occasional irritation",
+  high: "High - frequent redness or reactions",
 };
 
 const SUN_LABELS: Record<string, string> = {
   minimal: "Minimal (mostly indoors)",
   low: "Low (~30 min)",
-  moderate: "Moderate (1–2 hrs)",
+  moderate: "Moderate (1-2 hrs)",
   high: "High (2+ hrs)",
 };
 
@@ -174,7 +174,7 @@ export function formatOnboardingAnswer(
     return {
       title,
       kind: "text",
-      body: parts.length ? parts.join(" · ") : "—",
+      body: parts.length ? parts.join(" · ") : "-",
       tags: [],
     };
   }
@@ -183,7 +183,7 @@ export function formatOnboardingAnswer(
     const rec = asRecord(answer);
     const source = typeof rec?.source === "string" ? rec.source : null;
     if (!source) {
-      return { title, kind: "text", body: "—", tags: [] };
+      return { title, kind: "text", body: "-", tags: [] };
     }
     const other = typeof rec?.other === "string" ? rec.other : undefined;
     return {
@@ -205,7 +205,7 @@ export function formatOnboardingAnswer(
         ? labelValue(rec.duration, questionId)
         : "";
     const parts = [text, dur].filter(Boolean);
-    return { title, kind: "text", body: parts.join(" · ") || "—", tags: [] };
+    return { title, kind: "text", body: parts.join(" · ") || "-", tags: [] };
   }
 
   if (questionId === "CONCERN_01" && Array.isArray(answer)) {
@@ -215,7 +215,7 @@ export function formatOnboardingAnswer(
     return {
       title,
       kind: "tags",
-      body: tags.length ? "" : "—",
+      body: tags.length ? "" : "-",
       tags,
     };
   }
@@ -227,7 +227,7 @@ export function formatOnboardingAnswer(
     return {
       title,
       kind: "tags",
-      body: tags.length ? "" : "—",
+      body: tags.length ? "" : "-",
       tags,
     };
   }
@@ -257,10 +257,10 @@ export function formatOnboardingAnswer(
     const parts = Object.entries(rec)
       .map(([k, v]) => `${k}: ${typeof v === "string" ? labelValue(v, questionId) : String(v)}`)
       .join(" · ");
-    return { title, kind: "text", body: parts || "—", tags: [] };
+    return { title, kind: "text", body: parts || "-", tags: [] };
   }
 
-  return { title, kind: "text", body: "—", tags: [] };
+  return { title, kind: "text", body: "-", tags: [] };
 }
 
 export function sortQuestionnaireAnswers<T extends { questionId: string }>(
@@ -290,5 +290,5 @@ export function referralSourceFromQuestionnaireAnswers(
   const row = rows.find((r) => r.questionId === "REF_01");
   if (!row) return null;
   const display = formatOnboardingAnswer("REF_01", row.answer);
-  return display.body && display.body !== "—" ? display.body : null;
+  return display.body && display.body !== "-" ? display.body : null;
 }

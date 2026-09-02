@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Early Access — SkinFit Wellness",
+  title: "Early Access - SkinFit Wellness",
   description:
     "Register for early access to SkinFit Wellness and be notified when the app launches.",
   openGraph: {
-    title: "Early Access — SkinFit Wellness",
+    title: "Early Access - SkinFit Wellness",
     description:
       "Register for early access to SkinFit Wellness.",
   },

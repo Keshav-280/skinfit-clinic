@@ -15,10 +15,10 @@ function mergePatient(
   const masked = (value: string) => value.includes("*");
   return {
     name: masked(apiPatient.name) && !masked(pdfPatient.name) ? pdfPatient.name : apiPatient.name,
-    gender: apiPatient.gender !== "—" ? apiPatient.gender : pdfPatient.gender,
+    gender: apiPatient.gender !== "-" ? apiPatient.gender : pdfPatient.gender,
     age: apiPatient.age || pdfPatient.age,
     phone: masked(apiPatient.phone) && !masked(pdfPatient.phone) ? pdfPatient.phone : apiPatient.phone,
-    reportDate: pdfPatient.reportDate !== "—" ? pdfPatient.reportDate : apiPatient.reportDate,
+    reportDate: pdfPatient.reportDate !== "-" ? pdfPatient.reportDate : apiPatient.reportDate,
     scanFrequency: pdfPatient.scanFrequency || apiPatient.scanFrequency,
   };
 }
@@ -47,11 +47,11 @@ function isLowConfidenceParse(state: {
   inDepthAnalysis: SdetectMetric[];
 }): boolean {
   if (isGarbledPatientName(state.patient.name)) return true;
-  if (state.classification === "—") return true;
+  if (state.classification === "-") return true;
   if (state.comprehensiveScore === 0) return true;
   if (state.radar.length < 8) return true;
   if (state.generalAnalysis.length < 4) return true;
-  if (state.classification !== "—" && state.comprehensiveScore === 0) return true;
+  if (state.classification !== "-" && state.comprehensiveScore === 0) return true;
   const totalMetrics =
     state.radar.length + state.generalAnalysis.length + state.inDepthAnalysis.length;
   const totalExpected =
@@ -116,7 +116,7 @@ export async function buildSdetectReportFromPdf(
   }
 
   // Vision-OCR fallback: scanned/photocopy PDFs often have a broken text layer that
-  // parses partially — trigger vision when fields are empty or the parse looks unreliable.
+  // parses partially - trigger vision when fields are empty or the parse looks unreliable.
   const lowConfidence = isLowConfidenceParse({
     patient,
     classification,

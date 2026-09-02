@@ -1,5 +1,5 @@
 /**
- * Resolve scan image references — supports legacy data URIs and new file URLs.
+ * Resolve scan image references - supports legacy data URIs and new file URLs.
  */
 
 export type FaceCaptureRef = {

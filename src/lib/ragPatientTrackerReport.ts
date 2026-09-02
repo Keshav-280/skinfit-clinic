@@ -146,7 +146,7 @@ function summarizeVisitNotes(notes: Array<typeof visitNotes.$inferSelect>) {
   return notes
     .map(
       (v) =>
-        `• ${ymd(v.visitDate)} Dr.${v.doctorName} — ${v.purpose ?? "visit"}; ${
+        `• ${ymd(v.visitDate)} Dr.${v.doctorName} - ${v.purpose ?? "visit"}; ${
           v.treatments ?? ""
         }; response=${v.responseRating ?? "n/a"}; notes=${v.notes.slice(0, 200)}`
     )
@@ -371,7 +371,7 @@ export async function buildRagPatientTrackerNarrative(input: {
   if (dragsAgg[1]) fallbackCauseLines.push(`Drag: ${dragsAgg[1]}`);
   if (fallbackCauseLines.length < 2) {
     fallbackCauseLines.push(
-      `Watch: ${behavior.fullRoutineDays}/${behavior.windowDays} full-routine days — aim for 5+ next week`
+      `Watch: ${behavior.fullRoutineDays}/${behavior.windowDays} full-routine days - aim for 5+ next week`
     );
     fallbackCauseLines.push(
       `Watch: avg sleep ${behavior.avgSleepHours}h and water ${behavior.avgWaterGlasses} glasses shape recovery`

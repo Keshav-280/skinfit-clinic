@@ -1,12 +1,5 @@
-"use client";
-
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { ScorePageSkeleton } from "@/components/dashboard/PageSkeletons";
 
 export default function ScoreConcernLoading() {
-  return (
-    <SkinFitLoader
-      title="Preparing your score"
-      subtitle="kAI is lining up this concern against your recent scans."
-    />
-  );
+  return <ScorePageSkeleton />;
 }

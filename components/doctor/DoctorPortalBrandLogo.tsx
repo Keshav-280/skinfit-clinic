@@ -5,13 +5,13 @@ type Props = {
   className?: string;
 };
 
-/** Navbar brand mark — SVG for crisp rendering at all sizes. */
+/** Navbar brand mark - SVG for crisp rendering at all sizes. */
 export function DoctorPortalBrandLogo({ className = "" }: Props) {
   return (
     <Link
       href="/doctor/patients"
       className={`inline-flex shrink-0 items-center ${className}`}
-      aria-label="SkinFit Wellness — doctor portal home"
+      aria-label="SkinFit Wellness - doctor portal home"
     >
       <Image
         src="/branding/skinfit-wellness-logo.svg"

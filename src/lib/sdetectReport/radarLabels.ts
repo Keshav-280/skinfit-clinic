@@ -1,5 +1,5 @@
 /**
- * Comprehensive Analysis radar axes — 11 parameters on newer Medixora reports.
+ * Comprehensive Analysis radar axes - 11 parameters on newer Medixora reports.
  * Clockwise from top (matches dr.pdf / ka.pdf layout).
  */
 export const SDETECT_RADAR_LABELS = [

@@ -1,7 +1,7 @@
 /**
  * Suppress benign MediaPipe / TFLite WASM stderr that gets routed to
  * console.error (and therefore surfaces in Next.js dev overlay as a fake
- * Console Error). Only filters strictly known-benign patterns — real errors
+ * Console Error). Only filters strictly known-benign patterns - real errors
  * still pass through untouched.
  *
  * Patterns covered:

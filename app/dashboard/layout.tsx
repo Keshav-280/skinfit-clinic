@@ -6,6 +6,7 @@ import { DashboardClinicSupportBell } from "@/components/dashboard/DashboardClin
 import { DashboardInboxProvider } from "@/components/dashboard/DashboardInboxContext";
 import { ScanJobReadyNotifier } from "@/components/dashboard/ScanJobReadyNotifier";
 import { ProfileNavBadge } from "@/components/dashboard/ProfileNavBadge";
+import { AddToHomeScreenPrompt } from "@/components/dashboard/AddToHomeScreenPrompt";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
 import { runAppointmentReminders } from "@/src/lib/runAppointmentReminders";
@@ -49,6 +50,7 @@ export default async function DashboardLayout({
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 pb-24 md:pb-12 md:px-8">
+        <AddToHomeScreenPrompt />
         {children}
       </main>
       <ScanJobReadyNotifier />

@@ -10,7 +10,7 @@ import { FACE_SCAN_CAPTURE_STEPS } from "@/src/lib/faceScanCaptures";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-/** Reference photos for each capture angle — same person, same lighting/background. */
+/** Reference photos for each capture angle - same person, same lighting/background. */
 const REFERENCE_PHOTO_BY_ID: Record<string, string> = {
   centre: "/images/capture-guide/centre.png",
   left: "/images/capture-guide/left.png",

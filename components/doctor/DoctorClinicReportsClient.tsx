@@ -74,7 +74,7 @@ function PatientEmailSelect({
       </option>
       {patients.map((p) => (
         <option key={p.email} value={p.email}>
-          {p.name} — {p.email}
+          {p.name} - {p.email}
         </option>
       ))}
     </select>
@@ -90,7 +90,7 @@ function statusLabel(row: ClinicReportRow): { text: string; className: string } 
   }
   if (row.status === "draft" && row.hasPdf && !row.hasEmail) {
     return {
-      text: "Saved — assign patient to send",
+      text: "Saved - assign patient to send",
       className: "bg-violet-50 text-violet-800 border border-violet-200",
     };
   }
@@ -99,7 +99,7 @@ function statusLabel(row: ClinicReportRow): { text: string; className: string } 
   }
   if (row.status === "pending_account") {
     return {
-      text: "Sent — account not created",
+      text: "Sent - account not created",
       className: "bg-amber-50 text-amber-800 border border-amber-200",
     };
   }

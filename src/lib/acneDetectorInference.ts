@@ -1,12 +1,11 @@
 /**
  * Client for the YOLO-based AcneDet v1 service (services/acne-detector-v1).
  *
- * Replaces ONLY the acne score + acne annotated image in a scan report.
- * Everything else (wrinkles, pigmentation, skin quality, sagging, …) still
- * comes from the DINOv2 face_analysis model.
+ * Replaces ONLY the acne score. Face-map circles come from the v18
+ * annotations model. Everything else still comes from DINOv2.
  *
- * The detector returns a doctor-weighted severity `grade.score` on a 1–5 scale
- * (higher = worse) plus a base64 JPEG with per-lesion boxes drawn on the face.
+ * The detector returns a doctor-weighted severity `grade.score` on a 1-5 scale
+ * (higher = worse).
  */
 
 import {
@@ -14,14 +13,11 @@ import {
   severityToClarity,
   type ScanInferencePayload,
 } from "@/src/lib/modelClinicalMetrics";
-import {
-  parseDetectionRegion,
-  type DetectionRegion,
-} from "@/src/lib/scanDetectionRegions";
+import type { DetectionRegion } from "@/src/lib/scanDetectionRegions";
 
 export type AcneDetectorGrade = {
-  final_grade: string; // A–E
-  score: number; // 1–5 severity (higher = worse)
+  final_grade: string; // A-E
+  score: number; // 1-5 severity (higher = worse)
   f1?: { letter: string; numeric: number; active_lesion_count: number };
   f2?: { letter: string; numeric: number; worst_type: string };
   f3?: { letter: string; numeric: number; area_percent: number };
@@ -129,19 +125,13 @@ export async function runAcneDetector(
   return body as AcneDetectorResult;
 }
 
-function acneAnnotatedDataUri(result: AcneDetectorResult): string | undefined {
-  const b64 = result.annotated_image_jpeg_base64;
-  if (typeof b64 !== "string" || b64.length < 16) return undefined;
-  return `data:image/jpeg;base64,${b64}`;
-}
-
 /**
- * Override ONLY the acne fields of a scan payload with the YOLO detector output.
+ * Override ONLY the acne scores of a scan payload with the YOLO detector output.
  * Wrinkles / pigmentation / skin quality / sagging / etc. are untouched.
+ * Face-map circles come from the v18 annotations model, not this detector.
  *
- * - acne severity (1–5) ← detector `grade.score`
- * - acne clarity (0–100) ← severityToClarity(grade.score)
- * - acne annotated image ← detector base64 JPEG (shown in the report's acne panel)
+ * - acne severity (1-5) ← detector `grade.score`
+ * - acne clarity (0-100) ← severityToClarity(grade.score)
  */
 export function applyAcneDetectorToScanPayload(
   payload: ScanInferencePayload,
@@ -149,7 +139,6 @@ export function applyAcneDetectorToScanPayload(
 ): ScanInferencePayload {
   const severity = Math.max(1, Math.min(5, result.grade.score));
   const clarity = severityToClarity(severity);
-  const annotated = acneAnnotatedDataUri(result);
 
   const acneExtras = {
     source: "acne_detector_v1",
@@ -174,61 +163,7 @@ export function applyAcneDetectorToScanPayload(
     };
   }
 
-  // detected_regions: replace acne markers with detector lesion centers; keep wrinkles.
-  const nonAcneRegions = payload.detected_regions.filter(
-    (r) => !/acne/i.test(r.issue)
-  );
-  const imgW = result.meta?.image_size?.[0] ?? 0;
-  const imgH = result.meta?.image_size?.[1] ?? 0;
-  const activeDets = Array.isArray(result.detections?.active)
-    ? result.detections.active
-    : [];
-  const acneRegions =
-    imgW > 0 && imgH > 0
-      ? activeDets.slice(0, 8).map((d) => ({
-          issue: "Acne",
-          coordinates: {
-            x: Math.round((d.center[0] / imgW) * 1000) / 10,
-            y: Math.round((d.center[1] / imgH) * 1000) / 10,
-          },
-        }))
-      : [];
-
   const modelEight = { ...payload.modelEight, activeAcne: clarity };
-
-  // Prefer percentage regions from the detector; fall back to pixel bboxes.
-  let detectionRegions: DetectionRegion[] = [];
-  if (Array.isArray(result.detection_regions)) {
-    for (const raw of result.detection_regions) {
-      const parsed = parseDetectionRegion(raw);
-      if (parsed) detectionRegions.push(parsed);
-    }
-  }
-  if (detectionRegions.length === 0 && imgW > 0 && imgH > 0 && activeDets.length > 0) {
-    const maxDim = Math.max(imgW, imgH);
-    detectionRegions = activeDets.map((d) => {
-      const [x1, y1, x2, y2] = d.bbox;
-      const cx = ((x1 + x2) / 2 / imgW) * 100;
-      const cy = ((y1 + y2) / 2 / imgH) * 100;
-      const radius = (Math.max(x2 - x1, y2 - y1) / 2 / maxDim) * 100;
-      return {
-        class: d.class,
-        display_class: d.display_class || d.class,
-        confidence: d.confidence,
-        center_pct: [
-          Math.round(cx * 100) / 100,
-          Math.round(cy * 100) / 100,
-        ] as [number, number],
-        radius_pct: Math.round(Math.max(0.15, radius) * 100) / 100,
-        bbox_pct: [
-          Math.round((x1 / imgW) * 10000) / 100,
-          Math.round((y1 / imgH) * 10000) / 100,
-          Math.round((x2 / imgW) * 10000) / 100,
-          Math.round((y2 / imgH) * 10000) / 100,
-        ] as [number, number, number, number],
-      };
-    });
-  }
 
   return canonicalizeScanInferencePayload({
     ...payload,
@@ -240,10 +175,5 @@ export function applyAcneDetectorToScanPayload(
     },
     modelEight,
     params,
-    detected_regions: [...acneRegions, ...nonAcneRegions],
-    // Always set explicitly so a prior empty/undefined value cannot stick around.
-    detection_regions: detectionRegions,
-    // Keep annotated JPEG for backwards compatibility (legacy mask panel).
-    ...(annotated ? { acneMaskDataUri: annotated } : {}),
   });
 }

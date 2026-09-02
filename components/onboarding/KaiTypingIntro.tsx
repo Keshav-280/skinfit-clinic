@@ -88,7 +88,7 @@ export function KaiTypingIntro({
         >
           <Image
             src="/images/kai-avatar.png"
-            alt="kAI — your SkinFit AI skin companion"
+            alt="kAI - your SkinFit AI skin companion"
             width={132}
             height={291}
             className={

@@ -28,7 +28,8 @@ export function humanizeReportLine(text: string): string {
     s = s.replace(pattern, "");
   }
   s = s
-    .replace(/\s*[—–]\s*/g, ". ")
+    .replace(/\s*[\u2014\u2013]\s*/g, ". ")
+    .replace(/[\u2014\u2013]/g, "-")
     .replace(/([.!?])\s*([A-Z])/g, "$1 $2")
     .replace(/\s+/g, " ")
     .replace(/\.\s*\./g, ".")

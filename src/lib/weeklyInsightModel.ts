@@ -36,9 +36,9 @@ export type WeeklyHomeSnapshot = {
   kaiSkinScore: number;
   weeklyDeltaScore: number;
   kaiInsightsEnabled?: boolean;
-  /** Available immediately from `/api/patient/home` — do not wait for skin-profile LLM. */
+  /** Available immediately from `/api/patient/home` - do not wait for skin-profile LLM. */
   weeklyInsight?: WeeklyInsightScheduleSnapshot;
-  /** Oldest scan in home payload — fallback to derive unlock date client-side. */
+  /** Oldest scan in home payload - fallback to derive unlock date client-side. */
   firstScanAt?: string | null;
   scoresUnlocked?: boolean;
 };
@@ -95,7 +95,7 @@ export function buildWeeklyInsightViewModel(
     (() => {
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - 7);
-      return `${weekStart.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
+      return `${weekStart.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} - ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
     })();
 
   const observations: ObservationRow[] =

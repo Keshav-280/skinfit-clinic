@@ -21,7 +21,7 @@ import {
   SCAN_READY_CHANGED_EVENT,
   type ReadyScanNotification,
 } from "@/src/lib/scanJobNotifications";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { SectionSkeleton } from "@/components/dashboard/PageSkeletons";
 
 function countLabel(n: number, one: string, many: string) {
   return n === 1 ? one : many.replace("{n}", String(n));
@@ -252,7 +252,7 @@ export default function DashboardNotificationsPage() {
       </div>
 
       {loading ? (
-        <SkinFitLoader size="section" title="Loading notifications" />
+        <SectionSkeleton label="Loading notifications" />
       ) : (
         <>
           <section className="space-y-3">
@@ -280,7 +280,7 @@ export default function DashboardNotificationsPage() {
                   onClick={() => dismissUnreadReadyScan(scan.scanId)}
                   icon={<Sparkles className="h-5 w-5" aria-hidden />}
                   title="Scan report ready"
-                  subtitle={`${scan.title} — open treatment history to view.`}
+                  subtitle={`${scan.title} - open treatment history to view.`}
                   count={1}
                   tone="teal"
                 />

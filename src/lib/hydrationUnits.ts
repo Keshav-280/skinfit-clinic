@@ -1,4 +1,4 @@
-/** One journal “glass” — keep mobile + web display/save in sync. */
+/** One journal “glass” - keep mobile + web display/save in sync. */
 export const ML_PER_WATER_GLASS = 250;
 
 export function snapHydrationMl(ml: number): number {

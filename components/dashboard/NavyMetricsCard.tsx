@@ -4,11 +4,28 @@ import { Lock } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 
-// Three distinct Apple-style ring colors.
-const KAI_COLOR = "#22D3EE"; // inner — cyan
-const CONSISTENCY_COLOR = "#30D158"; // middle — green
-const PROGRESS_COLOR = "#FA114F"; // outer — red
+/** Rings: kAI (inner) · consistency (middle) · progress (outer). */
+const LIGHT_RINGS = {
+  kai: SKINFIT_THEME.ink,
+  consistency: SKINFIT_THEME.navyMid,
+  progress: SKINFIT_THEME.blush,
+} as const;
+
+/** On the filled navy card, use lighter brand tints so arcs stay visible. */
+const NAVY_RINGS = {
+  kai: SKINFIT_THEME.indigoSoft,
+  consistency: SKINFIT_THEME.sand,
+  progress: SKINFIT_THEME.blush,
+} as const;
+
+const LIGHT_BADGES = {
+  kai: { bg: SKINFIT_THEME.linen, color: SKINFIT_THEME.ink },
+  consistency: { bg: SKINFIT_THEME.indigoPale, color: SKINFIT_THEME.midnight },
+  progress: { bg: SKINFIT_THEME.rosePale, color: SKINFIT_THEME.roseMid },
+} as const;
+
 const UNLOCK_HINT = "Complete your 2nd week scan to unlock";
 
 /**
@@ -180,7 +197,7 @@ type NavyMetricsCardProps = {
   latestScanAt: string | null;
   consistencyScore: number;
   scoresUnlocked?: boolean;
-  /** Number of scans the patient has taken — rings unlock from the 2nd scan. */
+  /** Number of scans the patient has taken - rings unlock from the 2nd scan. */
   scanCount?: number;
   className?: string;
   /** Light-on-white theme (rings + a label/value legend) instead of the filled navy card. */
@@ -262,7 +279,7 @@ export function NavyMetricsCard({
         <p
           className={`px-1 text-center text-[10px] font-semibold leading-snug ${light ? "text-[#6B7280]" : "text-white/70"}`}
         >
-          No scan yet — take your first AI scan
+          No scan yet - take your first AI scan
         </p>
       );
     }
@@ -289,7 +306,7 @@ export function NavyMetricsCard({
           style={{ backgroundColor: color }}
           aria-hidden
         />
-        <span className="text-sm font-semibold text-[#18181b]">{label}</span>
+        <span className="text-sm font-semibold text-[#1E1B31]">{label}</span>
         {locked ? (
           <Lock className="h-3 w-3 text-[#9CA3AF]" strokeWidth={2.5} aria-hidden />
         ) : null}
@@ -303,35 +320,36 @@ export function NavyMetricsCard({
     </div>
   );
 
+  const rings = light ? LIGHT_RINGS : NAVY_RINGS;
   const kaiLegendValue = !hasScan
-    ? "—"
+    ? "-"
     : `${scoreOutOfTen(kaiSkinScore)}/10`;
 
   const legend = light ? (
     <div className="flex w-full flex-col gap-2.5 sm:gap-3">
       {legendRow(
-        KAI_COLOR,
+        rings.kai,
         "kAI Score",
         kaiLegendValue,
         false,
-        "#E8F4FC",
-        "#1E1B31"
+        LIGHT_BADGES.kai.bg,
+        LIGHT_BADGES.kai.color
       )}
       {legendRow(
-        CONSISTENCY_COLOR,
+        rings.consistency,
         "Consistency",
         `${Math.round(consistencyScore)}%`,
         ringsLocked,
-        "#E8F8EC",
-        CONSISTENCY_COLOR
+        LIGHT_BADGES.consistency.bg,
+        LIGHT_BADGES.consistency.color
       )}
       {legendRow(
-        PROGRESS_COLOR,
+        rings.progress,
         "Progress",
         `${Math.round(Math.abs(weeklyDeltaScore))}%`,
         ringsLocked || !weeklyDeltaMeaningful,
-        "#FCE8EF",
-        PROGRESS_COLOR
+        LIGHT_BADGES.progress.bg,
+        LIGHT_BADGES.progress.color
       )}
     </div>
   ) : (
@@ -340,7 +358,7 @@ export function NavyMetricsCard({
         <span
           className="h-2.5 w-2.5 shrink-0 rounded-full"
           style={{
-            backgroundColor: hasScan ? KAI_COLOR : "rgba(255,255,255,0.35)",
+            backgroundColor: hasScan ? rings.kai : "rgba(255,255,255,0.35)",
           }}
           aria-hidden
         />
@@ -349,7 +367,7 @@ export function NavyMetricsCard({
       <div className="flex items-center gap-1.5">
         <span
           className="h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: CONSISTENCY_COLOR }}
+          style={{ backgroundColor: rings.consistency }}
           aria-hidden
         />
         <span className="flex items-center gap-0.5 text-sm font-semibold text-white/55">
@@ -360,7 +378,7 @@ export function NavyMetricsCard({
       <div className="flex items-center gap-1.5">
         <span
           className="h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: PROGRESS_COLOR }}
+          style={{ backgroundColor: rings.progress }}
           aria-hidden
         />
         <span className="flex items-center gap-0.5 text-sm font-semibold text-white/55">
@@ -390,24 +408,24 @@ export function NavyMetricsCard({
               cy={cy}
               radius={outerR}
               fill={progressFill}
-              color={PROGRESS_COLOR}
-              track={dimRingColor(PROGRESS_COLOR)}
+              color={rings.progress}
+              track={dimRingColor(rings.progress, light ? 0.28 : 0.25)}
             />
             <RingCircle
               cx={cx}
               cy={cy}
               radius={middleR}
               fill={consistencyFill}
-              color={CONSISTENCY_COLOR}
-              track={dimRingColor(CONSISTENCY_COLOR)}
+              color={rings.consistency}
+              track={dimRingColor(rings.consistency, light ? 0.22 : 0.25)}
             />
             <RingCircle
               cx={cx}
               cy={cy}
               radius={innerR}
               fill={skinFill}
-              color={KAI_COLOR}
-              track={dimRingColor(KAI_COLOR)}
+              color={rings.kai}
+              track={dimRingColor(rings.kai, light ? 0.16 : 0.25)}
             />
           </g>
 

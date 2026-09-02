@@ -1,12 +1,5 @@
-"use client";
-
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { MaintainPageSkeleton } from "@/components/dashboard/PageSkeletons";
 
 export default function SchedulesLoading() {
-  return (
-    <SkinFitLoader
-      title="Opening your calendar"
-      subtitle="kAI is fetching visits, treatments, and requests."
-    />
-  );
+  return <MaintainPageSkeleton />;
 }

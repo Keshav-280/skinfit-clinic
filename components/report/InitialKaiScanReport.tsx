@@ -132,7 +132,7 @@ export function InitialKaiScanReport({
 
   const ctaBody = isExistingPatient
     ? `${doctorName} can review this baseline with you.`
-    : "A clinic Medixora pass measures what the phone can’t — hydration, bacteria, sensitivity.";
+    : "A clinic Medixora pass measures what the phone can’t - hydration, bacteria, sensitivity.";
 
   return (
     <ReportShell reportRef={reportRef}>

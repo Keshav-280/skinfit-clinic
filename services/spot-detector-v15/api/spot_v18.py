@@ -16,6 +16,8 @@ Changes from v16 (carried over):
 """
 
 import argparse
+import base64
+import json
 import os
 import sys
 import urllib.request
@@ -43,7 +45,7 @@ def _get_landmarker():
     if _landmarker is not None:
         return _landmarker
     if not os.path.exists(MODEL_PATH):
-        print("Downloading face landmarker model...")
+        print("Downloading face landmarker model...", file=sys.stderr)
         urllib.request.urlretrieve(_LANDMARKER_URL, MODEL_PATH)
     base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
     options = vision.FaceLandmarkerOptions(base_options=base_options, num_faces=1)
@@ -473,8 +475,9 @@ def draw_dashed_circle(img, center, radius, color, thickness=3, dash_px=7, gap_p
 # 6. Service + CLI
 # -------------------------------------------------------------------------
 def analyze(bgr):
-    """FastAPI contract: (annotated BGR image, spot dicts). Scores are not produced here."""
+    """FastAPI / CLI contract: (annotated BGR image, spot dicts). No kAI scores."""
     h, w = bgr.shape[:2]
+    dim = max(1, min(h, w))
     zones, _skin_mask, pts = build_zone_masks(bgr)
     if zones is None or pts is None:
         return bgr.copy(), []
@@ -487,7 +490,7 @@ def analyze(bgr):
     spots = []
     for d in dets:
         stype = d["type"]
-        api_type = "red" if stype == "acne" else ("dark" if stype == "dark" else "dark")
+        api_type = "red" if stype == "acne" else "dark"
         spots.append(
             {
                 "x": int(d["cx"]),
@@ -495,12 +498,35 @@ def analyze(bgr):
                 "r": int(d["r"]),
                 "x_pct": round(d["cx"] / w * 100, 2),
                 "y_pct": round(d["cy"] / h * 100, 2),
+                "r_pct": round(d["r"] / dim * 100, 2),
                 "type": api_type,
                 "kind": stype,
                 "severity": round(float(d["score"]), 2),
             }
         )
     return out, spots
+
+
+def analyze_from_b64(image_b64: str):
+    """Decode a JPEG/PNG base64 photo, run v18, return JSON-safe dict."""
+    raw = base64.b64decode(image_b64)
+    buf = np.frombuffer(raw, np.uint8)
+    bgr = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    if bgr is None:
+        return {"ok": False, "error": "could_not_decode_image"}
+    annotated, spots = analyze(bgr)
+    _, jpeg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    return {
+        "ok": True,
+        "annotated_b64": base64.b64encode(jpeg.tobytes()).decode(),
+        "spots": spots,
+        "summary": {
+            "total": len(spots),
+            "dark": sum(1 for s in spots if s.get("kind") == "dark"),
+            "red": sum(1 for s in spots if s.get("kind") == "acne"),
+            "scar": sum(1 for s in spots if s.get("kind") == "scar"),
+        },
+    }
 
 
 def main():
@@ -562,4 +588,17 @@ def main():
 
 
 if __name__ == "__main__":
+    if not sys.stdin.isatty() and (
+        len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1] == "--stdin")
+    ):
+        try:
+            payload = json.loads(sys.stdin.read() or "{}")
+            b64 = payload.get("image_b64") or payload.get("source_b64")
+            if not b64:
+                print(json.dumps({"ok": False, "error": "missing_image_b64"}))
+                sys.exit(0)
+            print(json.dumps(analyze_from_b64(str(b64))))
+        except Exception as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}))
+        sys.exit(0)
     main()

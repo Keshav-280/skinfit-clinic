@@ -170,7 +170,7 @@ export default function Home() {
               Proprietary 8-Engine Analysis
             </h2>
             <p className="mb-12 max-w-xl px-4 text-center text-sm leading-relaxed text-zinc-400 md:text-base">
-              One front-face photo in the app — multi-metric scores, clinical 1–5 readouts, and
+              One front-face photo in the app - multi-metric scores, clinical 1-5 readouts, and
               annotated findings on your report.
             </p>
 

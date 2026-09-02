@@ -9,7 +9,7 @@ const unreadVoiceBase = (userId: string) =>
     isNull(doctorFeedbackVoiceNotes.patientListenedAt)
   );
 
-/** Dashboard voice note (no scan) — unread = not listened, not archived. */
+/** Dashboard voice note (no scan) - unread = not listened, not archived. */
 async function countUnreadGeneralVoiceNotes(userId: string): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
@@ -20,7 +20,7 @@ async function countUnreadGeneralVoiceNotes(userId: string): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
-/** Scan / report voice notes — unread count. */
+/** Scan / report voice notes - unread count. */
 async function countUnreadReportVoiceNotes(userId: string): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })

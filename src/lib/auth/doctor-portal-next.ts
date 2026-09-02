@@ -1,6 +1,6 @@
 const DOCTOR_PORTAL_DEFAULT = "/doctor/patients";
 
-/** Safe post–doctor-login path: must be an in-app `/doctor/…` route (not login/signup). */
+/** Safe post-doctor-login path: must be an in-app `/doctor/…` route (not login/signup). */
 export function sanitizeDoctorPortalNext(
   next: string | null | undefined
 ): string {

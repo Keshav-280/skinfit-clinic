@@ -20,7 +20,7 @@ export async function DELETE(req: Request) {
         eq(scans.userId, userId),
         or(
           eq(scans.scanName, TEST_SCAN_NAME),
-          // Matches titles like "AI skin scan – test_scan3"
+          // Matches titles like "AI skin scan - test_scan3"
           ilike(scans.scanName, "AI skin scan%test%")
         )
       )

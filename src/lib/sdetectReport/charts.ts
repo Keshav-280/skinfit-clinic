@@ -9,11 +9,11 @@ export const SKINFIT_REPORT_THEME = {
   ink: [45, 45, 55] as [number, number, number],
   muted: [120, 120, 130] as [number, number, number],
   grid: [210, 214, 224] as [number, number, number],
-  /** Radar polygon fill — ~75% of [76,175,80] over white. */
+  /** Radar polygon fill - ~75% of [76,175,80] over white. */
   fill: [121, 195, 124] as [number, number, number],
   pageBg: [255, 255, 255] as [number, number, number],
   card: [255, 255, 255] as [number, number, number],
-  /** Visible grey panel — matches design mockup patient/chart cards. */
+  /** Visible grey panel - matches design mockup patient/chart cards. */
   cardGrey: [236, 239, 245] as [number, number, number],
   cardBorder: [210, 216, 228] as [number, number, number],
   lineDot: [130, 130, 140] as [number, number, number],
@@ -50,7 +50,7 @@ function gaugeColorAt(t: number): RGB {
 
 /**
  * Semicircular SkinFit score gauge (speedometer style). Fills a red->green
- * rainbow arc up to `score`, greys the remainder. Draws no text — the caller
+ * rainbow arc up to `score`, greys the remainder. Draws no text - the caller
  * positions the number/label to keep layout control.
  */
 export function drawScoreGauge(

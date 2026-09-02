@@ -21,12 +21,11 @@ import {
   parseScanSpotAnnotatedByPose,
   parseScanWrinkleMaskDataUri,
 } from "../../../../../src/lib/parseClinicalScores";
-import { scanDisplayMetricsFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
+import { scanDisplayResolvedFromRow } from "../../../../../src/lib/resolveScanDisplayScores";
 import {
-  buildKaiReportParamRows,
+  buildKaiReportParamRowsFromRag,
   clarityToSeverity,
   defaultInitialActions,
-  filterScoredReportParams,
   initialReportHeadline,
   pickTopConcernName,
 } from "../../../../../src/lib/kaiReportMapping";
@@ -106,7 +105,7 @@ async function loadScanRow(userId: string, id: number) {
   }
 }
 
-function metricsFromRow(row: {
+function resolvedFromRow(row: {
   overallScore: number;
   acne: number;
   wrinkles: number;
@@ -115,7 +114,7 @@ function metricsFromRow(row: {
   texture: number;
   scores: unknown;
 }) {
-  return scanDisplayMetricsFromRow({
+  return scanDisplayResolvedFromRow({
     overallScore: row.overallScore,
     acne: row.acne,
     wrinkles: row.wrinkles,
@@ -124,23 +123,6 @@ function metricsFromRow(row: {
     texture: row.texture,
     scores: row.scores,
   });
-}
-
-function paramRowsFromMetrics(
-  metrics: ReturnType<typeof metricsFromRow>
-) {
-  return filterScoredReportParams(
-    buildKaiReportParamRows({
-      clinical: metrics.clinical_scores ?? null,
-      legacy: {
-        acne: metrics.acne,
-        wrinkles: metrics.wrinkles,
-        pigmentation: metrics.pigmentation ?? 0,
-        hydration: metrics.hydration,
-        texture: metrics.texture ?? 0,
-      },
-    })
-  );
 }
 
 function annotatedPhotosForScan(scores: unknown): Record<string, string> | undefined {
@@ -270,7 +252,7 @@ export default async function KaiScanReportPage({
 
   // Compare against the most recent scan from a PRIOR calendar day. Two scans
   // taken the same day carry no meaningful weekly movement, so same-day scans
-  // are excluded — with only same-day data the Initial report is shown instead.
+  // are excluded - with only same-day data the Initial report is shown instead.
   const previousMeta = await db.query.scans.findFirst({
     where: and(
       eq(scans.userId, userId),
@@ -291,8 +273,9 @@ export default async function KaiScanReportPage({
 
   // ── Initial Report ──────────────────────────────────────────────
   if (!previous) {
-    const metrics = metricsFromRow(row);
-    const paramRows = paramRowsFromMetrics(metrics);
+    const resolved = resolvedFromRow(row);
+    const metrics = resolved.metrics;
+    const paramRows = buildKaiReportParamRowsFromRag(resolved.resolvedRagParamValues);
     const gradeInfo = scoreToGrade(metrics.overall_score);
     const topConcern = pickTopConcernName(paramRows);
     const annotatedByPose = annotatedPhotosForScan(row.scores);
@@ -314,22 +297,14 @@ export default async function KaiScanReportPage({
         grades: Object.fromEntries(
           paramRows.map((p) => [
             p.key,
-            { score_10: p.score10, severity: p.severity },
+            { score_10: p.score10, position: Math.round(p.clarity), severity: p.severity },
           ])
         ),
         overall: gradeInfo,
       },
     });
 
-    const findingsByKey = new Map(
-      (llm?.parameters ?? [])
-        .filter((p) => p?.key && p.finding)
-        .map((p) => [p.key!, p.finding!.trim()])
-    );
-    const parameters = paramRows.map((p) => ({
-      ...p,
-      finding: findingsByKey.get(p.key) || p.finding,
-    }));
+    const parameters = paramRows;
 
     const headline =
       llm?.overall?.headline?.trim() ||
@@ -338,7 +313,7 @@ export default async function KaiScanReportPage({
     const synthesis =
       llm?.summary?.trim() ||
       row.aiSummary?.trim() ||
-      `This baseline centres on ${topConcern.toLowerCase()}. On Indian skin, that pattern is often driven by a mix of UV, barrier stress and routine inconsistency — your next scans will show whether the plan is holding.`;
+      `This baseline centres on ${topConcern.toLowerCase()}. On Indian skin, that pattern is often driven by a mix of UV, barrier stress and routine inconsistency - your next scans will show whether the plan is holding.`;
     const actions =
       llm?.actions?.filter((a) => typeof a === "string" && a.trim()).slice(0, 3) ??
       defaultInitialActions(topConcern);
@@ -348,7 +323,7 @@ export default async function KaiScanReportPage({
 
     const markerCount = Math.max(parameters.length, 1);
     const grade = String(gradeInfo.score10);
-    const position = llm?.overall?.position ?? gradeInfo.position;
+    const position = gradeInfo.position;
 
     return (
       <InitialKaiScanReport
@@ -359,7 +334,7 @@ export default async function KaiScanReportPage({
         position={position}
         subtitle={`${markerCount} marker${markerCount === 1 ? "" : "s"} mapped`}
         synthesis={synthesis}
-        baselineBody={`${markerCount} marker${markerCount === 1 ? "" : "s"} ${markerCount === 1 ? "is" : "are"} now fixed against this capture. Next week’s scan measures the same points. Stability in week one is a good result — it means the baseline held.`}
+        baselineBody={`${markerCount} marker${markerCount === 1 ? "" : "s"} ${markerCount === 1 ? "is" : "are"} now fixed against this capture. Next week’s scan measures the same points. Stability in week one is a good result - it means the baseline held.`}
         actions={actions.slice(0, 3)}
         parameters={parameters}
         scanImages={scanImages}
@@ -392,10 +367,14 @@ export default async function KaiScanReportPage({
   const firstScanAt = allScans[0]?.createdAt ?? row.createdAt;
   const { weekNumber, streak } = weekMeta(allScans, row.id);
 
-  const metrics = metricsFromRow(row);
-  const prevMetrics = metricsFromRow(previous);
-  const paramRows = paramRowsFromMetrics(metrics);
-  const prevParamRows = paramRowsFromMetrics(prevMetrics);
+  const resolved = resolvedFromRow(row);
+  const prevResolved = resolvedFromRow(previous);
+  const metrics = resolved.metrics;
+  const prevMetrics = prevResolved.metrics;
+  const paramRows = buildKaiReportParamRowsFromRag(resolved.resolvedRagParamValues);
+  const prevParamRows = buildKaiReportParamRowsFromRag(
+    prevResolved.resolvedRagParamValues
+  );
 
   const gradeInfo = scoreToGrade(metrics.overall_score);
   const prevGradeInfo = scoreToGrade(prevMetrics.overall_score);
@@ -436,24 +415,31 @@ export default async function KaiScanReportPage({
       scan_id: String(row.id),
       captured_at: row.createdAt.toISOString(),
       week_number: weekNumber,
-      grades: Object.fromEntries(
-        paramRows.map((p) => [
-          p.key,
-          {
-            score_10: p.score10,
-            position: Math.round(100 - ((p.severity - 1) / 4) * 100),
-            severity: p.severity,
-          },
-        ])
-      ),
+        grades: Object.fromEntries(
+          paramRows.map((p) => [
+            p.key,
+            {
+              score_10: p.score10,
+              position: Math.round(p.clarity),
+              severity: p.severity,
+            },
+          ])
+        ),
       overall: gradeInfo,
     },
     previous_scan: {
       scan_id: String(previous.id),
       captured_at: previous.createdAt.toISOString(),
-      grades: Object.fromEntries(
-        prevParamRows.map((p) => [p.key, { score_10: p.score10, severity: p.severity }])
-      ),
+        grades: Object.fromEntries(
+          prevParamRows.map((p) => [
+            p.key,
+            {
+              score_10: p.score10,
+              position: Math.round(p.clarity),
+              severity: p.severity,
+            },
+          ])
+        ),
       overall: prevGradeInfo,
       narrative_summary: previous.aiSummary,
     },
@@ -483,35 +469,20 @@ export default async function KaiScanReportPage({
     },
   });
 
-  const llmFindings: Record<string, { finding?: string; movement?: string }> =
-    {};
-  for (const p of llm?.parameters ?? []) {
-    if (!p?.key) continue;
-    llmFindings[p.key] = {
-      finding: p.finding,
-      movement: p.movement,
-    };
-  }
-
   const movementGroups = buildMovementGroups({
     current: paramRows,
     previous: prevParamRows,
     firstScanAt,
     currentScanAt: row.createdAt,
-    llmFindings,
   });
 
   const score10 = String(gradeInfo.score10);
   const position = {
-    current: llm?.overall?.position ?? gradeInfo.position,
-    previous: llm?.overall?.previous_position ?? prevGradeInfo.position,
+    current: gradeInfo.position,
+    previous: prevGradeInfo.position,
   };
   const prevScore10 = String(prevGradeInfo.score10);
-  const mvKind =
-    (llm?.overall?.movement as typeof overallMv | undefined) &&
-    ["improved", "holding", "declined"].includes(String(llm?.overall?.movement))
-      ? (llm!.overall!.movement as typeof overallMv)
-      : overallMv;
+  const mvKind = overallMv;
 
   const topConcern = pickTopConcernName(paramRows);
   const headline =
@@ -534,15 +505,15 @@ export default async function KaiScanReportPage({
     llm?.week_recap &&
     (llm.week_recap.sleep || llm.week_recap.stress || llm.week_recap.water)
       ? [
-          { label: "Sleep", value: llm.week_recap.sleep || "—" },
-          { label: "Stress", value: llm.week_recap.stress || "—" },
+          { label: "Sleep", value: llm.week_recap.sleep || "-" },
+          { label: "Stress", value: llm.week_recap.stress || "-" },
           {
             label: "Water",
-            value: llm.week_recap.water || "—",
+            value: llm.week_recap.water || "-",
           },
           {
             label: "Routine",
-            value: llm.week_recap.routine_adherence || "—",
+            value: llm.week_recap.routine_adherence || "-",
           },
         ]
       : weekRecapFromWellness(wellness);

@@ -1,6 +1,6 @@
 /**
  * Whether auth/OAuth cookies use the Secure flag.
- * Docker runs NODE_ENV=production but local access is often http://localhost —
+ * Docker runs NODE_ENV=production but local access is often http://localhost -
  * Secure cookies are dropped on HTTP and OAuth shows "session expired".
  */
 export function authCookieSecure(): boolean {

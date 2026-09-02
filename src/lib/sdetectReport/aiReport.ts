@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { SDETECT_RADAR_LABELS } from "./radarLabels";
 import type { SdetectMetric, SdetectReportData } from "./types";
 
-/** Grade band metadata — matches Medixora's own colour system (see prompt SECTION 2). */
+/** Grade band metadata - matches Medixora's own colour system (see prompt SECTION 2). */
 export type KaiGrade = "A" | "B" | "C" | "D" | "E";
 
 export type KaiObservationColor = "red" | "amber" | "green";
@@ -30,14 +30,14 @@ export type KaiReportContent = {
 };
 
 /**
- * Senior-dermatologist kAI report prompt — FLO Santé 2026 brief.
+ * Senior-dermatologist kAI report prompt - FLO Santé 2026 brief.
  * Output is JSON (mapped from the SECTION fields in the brief).
  */
 function buildSystemPrompt(eventName: string): string {
   const event = eventName.trim() || "FLO Santé 2026";
   return `You are a senior dermatologist and skin expert with 20+ years of experience treating Indian skin across all age groups, skin tones (Fitzpatrick types III-VI), and climates. You have deep familiarity with the specific challenges of Indian skin: high melanin reactivity, tendency toward post-inflammatory hyperpigmentation (PIH), melasma triggered by sun + hormones, humidity-driven oiliness, pollution-accelerated ageing, and dietary influences (high-glycemic, dairy-heavy, spicy food culture) on acne and sebum.
 
-You are generating a personalised skin report for someone who has just completed a free AI skin analysis at ${event} — a premium women's lifestyle exhibition in Bangalore, India. The audience is primarily urban, educated women between 25–55, many of whom are aware of skincare but have never received a clinically-scored skin analysis before. They are curious, slightly skeptical of being sold to, and will respond strongly to accurate, specific, non-generic observations about their own skin. This report may be the first time they see their skin described in data — make it feel worth reading.
+You are generating a personalised skin report for someone who has just completed a free AI skin analysis at ${event} - a premium women's lifestyle exhibition in Bangalore, India. The audience is primarily urban, educated women between 25-55, many of whom are aware of skincare but have never received a clinically-scored skin analysis before. They are curious, slightly skeptical of being sold to, and will respond strongly to accurate, specific, non-generic observations about their own skin. This report may be the first time they see their skin described in data - make it feel worth reading.
 
 Your tone is warm, direct and intelligent. You sound like the most knowledgeable person in the room who also happens to be easy to talk to. Never clinical, never patronising, never vague. No filler phrases like "it is important to note" or "as a reminder". No product recommendations by brand name. No mention of SkinFit, Dr Ruby, or any clinic.
 
@@ -48,28 +48,28 @@ Output ONLY a single JSON object with EXACTLY these keys and no others:
 {
   "skinTypeCode": "Baumann code from report e.g. ORNW",
   "skinTypePlain": "Full plain English expansion of each letter. O=Oily D=Dry, S=Sensitive R=Resistant, P=Pigmented N=Non-pigmented, W=Wrinkle-prone T=Tight. Format as: Oily · Sensitive · Pigmented · Tight",
-  "skinTypeSummary": "1 sentence. Must feel like you looked at THIS specific person — not a textbook definition. Reference day-to-day experience: how skin feels by afternoon, recurring problems, Bangalore humidity.",
+  "skinTypeSummary": "1 sentence. Must feel like you looked at THIS specific person - not a textbook definition. Reference day-to-day experience: how skin feels by afternoon, recurring problems, Bangalore humidity.",
   "kaiScoreContext": "1 sentence only. Put their comprehensive score in perspective without being alarming or falsely reassuring. Reference their age where relevant.",
   "observations": [
     {
       "title": "Max 4 words, plain English. Never use a clinical Medixora parameter name directly (e.g. Porphyrin -> Clogged pores and bacteria; Heat Map of Sensitivity -> Skin sensitivity and redness).",
       "score": 0,
       "color": "red if below 40 / amber if 40-59 / green if 60+",
-      "commentary": "Exactly 2 complete sentences — every sentence must end with a full stop; never truncate or leave a sentence unfinished. For observation 1 (highest score): celebrate the strength — what is working well and why it matters to protect. For observations 2–3 (lowest scores): sentence 1 explains the mechanism; sentence 2 why it matters for their age and skin type, with Indian context where data supports it. No products or treatments."
+      "commentary": "Exactly 2 complete sentences - every sentence must end with a full stop; never truncate or leave a sentence unfinished. For observation 1 (highest score): celebrate the strength - what is working well and why it matters to protect. For observations 2-3 (lowest scores): sentence 1 explains the mechanism; sentence 2 why it matters for their age and skin type, with Indian context where data supports it. No products or treatments."
     }
   ],
-  "insight": "MANDATORY: write exactly 5 complete sentences (minimum 4, never 3 or fewer), 500-580 characters total — this is the user's personalised guidance section. Every sentence must end with a full stop. Structure: (1-2) connect the 2 concern observations (positions 2–3) into one root-cause story; (3) one concrete day-to-day focus for this week; (4) age-intelligent guidance; (5) reinforce the strength from observation 1 and what it means. Use Indian context where data supports (PIH, humidity, UV, diet). No clinic, treatment, or product names."
+  "insight": "MANDATORY: write exactly 5 complete sentences (minimum 4, never 3 or fewer), 500-580 characters total - this is the user's personalised guidance section. Every sentence must end with a full stop. Structure: (1-2) connect the 2 concern observations (positions 2-3) into one root-cause story; (3) one concrete day-to-day focus for this week; (4) age-intelligent guidance; (5) reinforce the strength from observation 1 and what it means. Use Indian context where data supports (PIH, humidity, UV, diet). No clinic, treatment, or product names."
 }
 
-SECTION 3 — TOP 3 OBSERVATIONS rules:
+SECTION 3 - TOP 3 OBSERVATIONS rules:
 - ONLY use parameters from the Comprehensive Analysis radar chart (the green spider chart axes) for all 3 observations. Never use General Analysis or In-depth Analysis parameters or scores.
 - Return exactly 3 observations in this fixed order:
-  1) FIRST — the single highest-scoring radar-chart parameter. Lead with a genuine positive (green tone). Celebrate what is working; frame as a strength to protect and build on.
-  2) SECOND and THIRD — the two lowest-scoring radar-chart parameters. Primary concerns (red/amber tone). Explain mechanism and why each matters.
-- EXCEPTION: if under 30, do not use Wrinkle as a concern observation (positions 2–3) unless it is genuinely among the 2 lowest on the radar chart — mention wrinkles briefly in insight as prevention instead.
+  1) FIRST - the single highest-scoring radar-chart parameter. Lead with a genuine positive (green tone). Celebrate what is working; frame as a strength to protect and build on.
+  2) SECOND and THIRD - the two lowest-scoring radar-chart parameters. Primary concerns (red/amber tone). Explain mechanism and why each matters.
+- EXCEPTION: if under 30, do not use Wrinkle as a concern observation (positions 2-3) unless it is genuinely among the 2 lowest on the radar chart - mention wrinkles briefly in insight as prevention instead.
 - EXCEPTION: if two low radar parameters are closely related (Sebum+Pores, Superficial+Brown pigment), group into one observation using the lower score and pick the next-lowest radar parameter for the third slot.
 - Use the exact numeric score from the Comprehensive Analysis radar chart for each observation.
-- Moisture % is a hydration reading only — never use it as an observation score.
+- Moisture % is a hydration reading only - never use it as an observation score.
 - Return exactly 3 observations. Each commentary must be exactly 2 complete sentences (not 1, not 3).
 
 Return ONLY the JSON. No markdown fences, no commentary outside the JSON.`;
@@ -106,7 +106,7 @@ function colorForScore(score: number): KaiObservationColor {
   return "green";
 }
 
-/** Fixed Baumann letter map (position-independent — each letter is unambiguous). */
+/** Fixed Baumann letter map (position-independent - each letter is unambiguous). */
 const BAUMANN_MAP: Record<string, string> = {
   O: "Oily",
   D: "Dry",
@@ -121,7 +121,7 @@ const BAUMANN_MAP: Record<string, string> = {
 /**
  * Expand a Baumann skin-type code (e.g. ORNW) into its plain-English descriptors
  * deterministically. The mapping is fixed, so we never rely on the model for this
- * — guarantees all four descriptors always render.
+ * - guarantees all four descriptors always render.
  */
 export function expandBaumannCode(code: string): string {
   const letters = code.trim().toUpperCase().replace(/[^A-Z]/g, "").split("");
@@ -165,11 +165,11 @@ function buildRawDataBlock(data: SdetectReportData): string {
     `Gender: ${p.gender}`,
     `Baumann skin type code: ${data.classification}`,
     `Comprehensive score: ${data.comprehensiveScore}`,
-    `Moisture level: ${data.moisture}% (hydration reading — not a scored skin parameter)`,
+    `Moisture level: ${data.moisture}% (hydration reading - not a scored skin parameter)`,
     "",
     `Comprehensive Analysis / radar chart parameters ONLY (use these for observations): ${metricLine(data.radar)}`,
-    `General Analysis parameters (context only — do NOT use for observation scores): ${metricLine(data.generalAnalysis)}`,
-    `In-depth Analysis parameters (context only — do NOT use for observation scores): ${metricLine(data.inDepthAnalysis)}`,
+    `General Analysis parameters (context only - do NOT use for observation scores): ${metricLine(data.generalAnalysis)}`,
+    `In-depth Analysis parameters (context only - do NOT use for observation scores): ${metricLine(data.inDepthAnalysis)}`,
   ];
   if (data.issueAnalysis.trim()) {
     lines.push("", `Issue analysis text: ${data.issueAnalysis.trim()}`);
@@ -235,12 +235,12 @@ function ensureTwoSentences(commentary: string, title: string, score: number): s
 
   const topic = title.toLowerCase();
   if (countSentences(cleaned) === 1) {
-    return `${cleaned} At a score of ${score}, this matters more for long-term tone and texture than a single good or bad week — notice when ${topic} feels worse after heat, stress, or skipped care.`;
+    return `${cleaned} At a score of ${score}, this matters more for long-term tone and texture than a single good or bad week - notice when ${topic} feels worse after heat, stress, or skipped care.`;
   }
   return cleaned;
 }
 
-/** Comprehensive Analysis radar chart metrics only — observations must match this chart. */
+/** Comprehensive Analysis radar chart metrics only - observations must match this chart. */
 function radarChartMetrics(data: SdetectReportData): SdetectMetric[] {
   if (!data.radar.length) return [];
   const byLabel = new Map(data.radar.map((m) => [m.label, m]));
@@ -288,7 +288,7 @@ function strongestMetric(data: SdetectReportData): SdetectMetric | null {
   return highestScoredMetric(data);
 }
 
-/** Pad short AI insight to 4–5 guiding sentences — observations card already has detail. */
+/** Pad short AI insight to 4-5 guiding sentences - observations card already has detail. */
 function ensureInsightGuidance(
   insight: string,
   observations: KaiObservation[],
@@ -305,9 +305,9 @@ function ensureInsightGuidance(
   if (!text) {
     const focus = concernTitles.length ? concernTitles.join(" and ") : "your priority concerns";
     text =
-      `Your scan shows ${focus} linked together — this pattern is common and very manageable with steady focus. ` +
+      `Your scan shows ${focus} linked together - this pattern is common and very manageable with steady focus. ` +
       `Protect your barrier daily and keep hydration consistent so your skin can recover between stressors. ` +
-      `Prioritise sun protection every morning — Bangalore UV is year-round and drives most pigmentation flare-ups. ` +
+      `Prioritise sun protection every morning - Bangalore UV is year-round and drives most pigmentation flare-ups. ` +
       `This week, keep your routine simple: cleanse gently, moisturise while skin is damp, and do not skip SPF.`;
     if (age) {
       text += ` At ${age}, the habits you build now matter more than quick fixes for long-term tone and texture.`;
@@ -315,7 +315,7 @@ function ensureInsightGuidance(
       text += ` Small, consistent daily habits will move these scores faster than occasional intensive care.`;
     }
     if (strong) {
-      text += ` Your ${strong.label} at ${strong.score} is already a strength — use that as your foundation.`;
+      text += ` Your ${strong.label} at ${strong.score} is already a strength - use that as your foundation.`;
     }
     return text;
   }
@@ -324,15 +324,15 @@ function ensureInsightGuidance(
   const pads: Array<() => string | null> = [
     () =>
       strong && labelHint && !text.toLowerCase().includes(labelHint)
-        ? `Your ${strong.label} at ${strong.score} is a genuine asset — build on that strength while you address the priority areas above.`
+        ? `Your ${strong.label} at ${strong.score} is a genuine asset - build on that strength while you address the priority areas above.`
         : null,
     () =>
       !/sun|spf|uv|morning protect/i.test(text)
-        ? `Make broad-spectrum sun protection non-negotiable every morning — Bangalore UV accelerates pigmentation and collagen loss.`
+        ? `Make broad-spectrum sun protection non-negotiable every morning - Bangalore UV accelerates pigmentation and collagen loss.`
         : null,
     () =>
       !/this week|daily|habit|consistent|focus on|priorit/i.test(text)
-        ? `This week, prioritise barrier support and steady hydration — that alone reduces sensitivity and helps everything else work better.`
+        ? `This week, prioritise barrier support and steady hydration - that alone reduces sensitivity and helps everything else work better.`
         : null,
     () =>
       age && !/steady|habit|consistent/i.test(text)
@@ -351,7 +351,7 @@ function ensureInsightGuidance(
 
   while (countSentences(text) < INSIGHT_MIN_SENTENCES) {
     text +=
-      " Focus on consistency this week — gentle cleansing, daily hydration, and morning sun protection support everything else.";
+      " Focus on consistency this week - gentle cleansing, daily hydration, and morning sun protection support everything else.";
   }
 
   return text;
@@ -437,7 +437,7 @@ function fallbackObservations(data: SdetectReportData): KaiObservation[] {
     color: colorForScore(m.score),
     commentary:
       index === 0
-        ? `Your ${m.label} scored ${m.score}% — one of your strongest areas on this scan. This is a solid foundation your skin is already doing well, and protecting it matters while you work on other priorities.`
+        ? `Your ${m.label} scored ${m.score}% - one of your strongest areas on this scan. This is a solid foundation your skin is already doing well, and protecting it matters while you work on other priorities.`
         : `Your ${m.label} scored ${m.score}% on this scan, placing it among your lowest-scoring parameters. At this level, the skin is working harder than ideal to stay balanced in this area.`,
   }));
 }

@@ -116,7 +116,7 @@ function setUnreadReadyScans(items: ReadyScanNotification[]) {
   dispatchReadyChanged();
 }
 
-/** Bell + notifications page — returns true if newly added. */
+/** Bell + notifications page - returns true if newly added. */
 export function addUnreadReadyScan(
   scanId: number,
   title?: string

@@ -67,7 +67,7 @@ function PatientBadges({ p }: { p: PatientRow }) {
           className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-rose-700"
           title={
             p.onboardingClinicalAlert
-              ? "kAI onboarding clinical flag — review questionnaire"
+              ? "kAI onboarding clinical flag - review questionnaire"
               : "Urgent patient message"
           }
         >
@@ -260,7 +260,7 @@ export function DoctorPatientsClient({
         setErr(
           data.error ??
             (res.status === 401
-              ? "Session expired — sign in again."
+              ? "Session expired - sign in again."
               : "Could not load patients.")
         );
         setRows([]);

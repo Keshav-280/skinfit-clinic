@@ -132,7 +132,7 @@ export function peerShapes(
   return out;
 }
 
-/** Peer shapes for a single image only — keeps poll payloads tiny (avoids ~12MB full history). */
+/** Peer shapes for a single image only - keeps poll payloads tiny (avoids ~12MB full history). */
 export function peerShapesForImage(
   store: AnnotatorCollaborationStore,
   userId: string,
@@ -148,7 +148,7 @@ export function peerShapesForImage(
   return out;
 }
 
-/** Image indices that any peer has shapes on — small number list for thumbnail "has work" hints. */
+/** Image indices that any peer has shapes on - small number list for thumbnail "has work" hints. */
 export function peerImageIndices(
   store: AnnotatorCollaborationStore,
   userId: string
@@ -401,7 +401,7 @@ export function applyUserSync(
     };
     didWrite = true;
   }
-  // Only bump sync time when data actually changed — otherwise polls see a newer
+  // Only bump sync time when data actually changed - otherwise polls see a newer
   // timestamp with stale shapes and overwrite the client's saved annotations.
   if (didWrite) {
     next.userSyncAt = { ...next.userSyncAt, [userId]: syncedAt };

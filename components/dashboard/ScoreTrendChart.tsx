@@ -122,7 +122,7 @@ export function ScoreTrendChart({
       </div>
       {points.length === 1 ? (
         <p className="mt-2 text-center text-[11px] text-[#6B7280]">
-          One scan so far — the next one will draw a trend.
+          One scan so far - the next one will draw a trend.
         </p>
       ) : null}
     </div>

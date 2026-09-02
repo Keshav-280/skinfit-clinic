@@ -35,7 +35,7 @@ export function formatReferralSourceAnswer(
   answer: ReferralSourceAnswer
 ): string {
   if (answer.source === "other" && answer.other?.trim()) {
-    return `Other — ${answer.other.trim()}`;
+    return `Other - ${answer.other.trim()}`;
   }
   return referralSourceLabel(answer.source);
 }

@@ -608,7 +608,7 @@ export function FaceScanFlow({
   }, [skipPhotoGuide, openCameraForMultiCapture]);
 
   /** `?autoCamera=1` (e.g. from the capture-guide carousel's shutter button)
-   * jumps straight into the normal camera-open flow — same guard/photo-guide
+   * jumps straight into the normal camera-open flow - same guard/photo-guide
    * behavior as tapping "Use Phone Camera" manually. */
   const autoStartedCameraRef = useRef(false);
   useEffect(() => {
@@ -1498,7 +1498,7 @@ export function FaceScanFlow({
                       min={CAPTURE_ZOOM_MIN}
                       max={CAPTURE_ZOOM_MAX}
                       step={CAPTURE_ZOOM_STEP}
-                      suffix="Ã—"
+                      suffix="×"
                       format={(v) => v.toFixed(1)}
                       onChange={setCaptureZoomManual}
                     />
@@ -1640,7 +1640,7 @@ export function FaceScanFlow({
                       <p className="mt-2 text-xs leading-relaxed text-white/75">
                         On desktop, capture with your phone for the best
                         face-scan quality. Scan the QR code to start on your
-                        phone — or upload photos from this device in the next
+                        phone - or upload photos from this device in the next
                         step.
                       </p>
                     </div>

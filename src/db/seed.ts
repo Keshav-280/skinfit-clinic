@@ -30,9 +30,9 @@ import { AM_ROUTINE_ITEMS, PM_ROUTINE_ITEMS } from "../lib/routine";
 
 const DEMO_PATIENT_EMAIL = DEMO_LOGIN_EMAIL;
 const DEMO_PATIENT_PASSWORD = "SkinFitDemo2024!";
-/** Fresh onboarding patient — no baseline/questionnaire data. */
+/** Fresh onboarding patient - no baseline/questionnaire data. */
 const SECOND_DEMO_PATIENT_EMAIL = "skinfit.patient2@gmail.com";
-/** Second clinic doctor — same demo password as primary doctor seed. */
+/** Second clinic doctor - same demo password as primary doctor seed. */
 const ADDITIONAL_DOCTOR_EMAIL = "iamdalves@gmail.com";
 async function seed() {
   console.log("🌱 Seeding database...");
@@ -292,7 +292,7 @@ async function seed() {
       console.log("✓ Appointments already present; skipping");
     }
 
-    // 4. Daily log for today (once) — UTC-noon Date so PG `date` matches calendar day
+    // 4. Daily log for today (once) - UTC-noon Date so PG `date` matches calendar day
     const today = dateOnlyFromYmd(localCalendarYmd());
 
     const existingLog = await db
@@ -448,8 +448,8 @@ async function seed() {
 
     console.log("\n✅ Seeding completed successfully!");
     console.log("\nPatient demo logins (password: SkinFitDemo2024!):");
-    console.log(`  ${DEMO_PATIENT_EMAIL} — full dashboard demo data`);
-    console.log(`  ${SECOND_DEMO_PATIENT_EMAIL} — fresh onboarding (no scan/questionnaire)`);
+    console.log(`  ${DEMO_PATIENT_EMAIL} - full dashboard demo data`);
+    console.log(`  ${SECOND_DEMO_PATIENT_EMAIL} - fresh onboarding (no scan/questionnaire)`);
   } catch (error) {
     console.error("❌ Error seeding database:", error);
     throw error;

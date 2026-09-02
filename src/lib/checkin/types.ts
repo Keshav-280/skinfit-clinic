@@ -93,7 +93,7 @@ export function computeCheckinFlags(opts: {
     if (downWeeks >= 4) flags.add("rapid_loss_review");
   }
 
-  // Soft flag from build brief: painful/deep + many — map cystic already covered;
+  // Soft flag from build brief: painful/deep + many - map cystic already covered;
   // also flag painful + 10+
   if (cs.lesion_type === "painful" && cs.new_lesions === "10+") {
     flags.add("possible_cystic_acne");

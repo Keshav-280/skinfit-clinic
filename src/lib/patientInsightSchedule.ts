@@ -39,7 +39,7 @@ export async function getPatientFirstScanAt(userId: string): Promise<Date | null
 }
 
 /**
- * Insight timing is per patient from their first scan — not a shared calendar week/month.
+ * Insight timing is per patient from their first scan - not a shared calendar week/month.
  * - Weekly: unlocks 7 days after first scan, then every 7 days.
  * - Monthly: unlocks 1 calendar month after first scan, then every month.
  */
@@ -88,7 +88,7 @@ export function computePatientInsightSchedule(
 
   if (!monthlyLocked) {
     // Unlock index m (1, 2, …): period m covers [addMonths(anchor, m-1), addMonths(anchor, m)).
-    // First unlock (m=1) is the month after onboarding scan — period start is the first-scan day
+    // First unlock (m=1) is the month after onboarding scan - period start is the first-scan day
     // (e.g. scan Jun 4 → unlock Jul 4 → report for June, monthStart = Jun 4).
     let m = MONTHLY_INSIGHT_MONTHS_AFTER_FIRST_SCAN;
     while (addMonths(anchor, m + 1) <= today) {

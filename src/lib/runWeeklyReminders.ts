@@ -23,7 +23,7 @@ export type WeeklyRemindersResult = {
   failed: Record<WeeklyReminderChannel, number>;
 };
 
-/** Monday YYYY-MM-DD — same convention as wellness check-in API. */
+/** Monday YYYY-MM-DD - same convention as wellness check-in API. */
 export function currentWeekMondayYmd(now = new Date()): string {
   return format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
 }

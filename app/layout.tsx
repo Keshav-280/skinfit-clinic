@@ -43,7 +43,7 @@ const birthstone = Birthstone({
 
 export const metadata: Metadata = {
   title: "SkinFit Wellness",
-  description: "Clinical indigo, softened by rose — AI-guided skin care with your doctor.",
+  description: "Clinical indigo, softened by rose - AI-guided skin care with your doctor.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

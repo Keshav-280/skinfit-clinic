@@ -392,7 +392,7 @@ export async function enforceScanFaceIdentity(args: {
   centreImagePath?: string;
   centreImageJpeg?: Buffer;
   images?: FaceIdentityImageInput[];
-  /** ISO timestamp from submit route — skip duplicate worker-side verification. */
+  /** ISO timestamp from submit route - skip duplicate worker-side verification. */
   skipWhenVerifiedAt?: string;
 }): Promise<ScanFaceIdentityGateResult> {
   const logBase = { userId: args.userId, scanName: args.scanName };

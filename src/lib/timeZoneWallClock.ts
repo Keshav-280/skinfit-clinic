@@ -48,7 +48,7 @@ export function inReminderMinuteWindow(
 }
 
 /**
- * Hourly cron fires at H:00 — match targets from (H-1):00 through H:00 inclusive.
+ * Hourly cron fires at H:00 - match targets from (H-1):00 through H:00 inclusive.
  * Example: cron at 09:00 catches an 08:30 AM reminder (narrow 8-minute windows miss this).
  */
 export function inHourlyCronReminderWindow(

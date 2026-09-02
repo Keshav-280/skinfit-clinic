@@ -52,7 +52,7 @@ type ApiReportPayload = {
 const WHITE_LIGHT = "White light";
 const WHITE_MAP = "White map";
 
-/** Diagnostic overlays — never used for left/right profile slots. */
+/** Diagnostic overlays - never used for left/right profile slots. */
 const NON_NATURAL_LIGHT_RE =
   /map|uv|wood|polari|heat|red map|brown|pigment|porphyrin|collagen/i;
 
@@ -232,7 +232,7 @@ export async function fetchSdetectApiReport(
     skincareAdvice,
     moisture: moistureScore ?? 0,
     comprehensiveScore: Number.parseInt(report.Score ?? "0", 10) || 0,
-    classification: report.LevelName ?? "—",
+    classification: report.LevelName ?? "-",
   };
 }
 
@@ -242,14 +242,14 @@ export function customerFromApi(
 ) {
   const c = report?.Customer;
   return {
-    name: customer?.name ?? c?.Name ?? "—",
-    gender: customer?.sex ?? c?.Sex ?? "—",
+    name: customer?.name ?? c?.Name ?? "-",
+    gender: customer?.sex ?? c?.Sex ?? "-",
     age: Number.parseInt(customer?.age ?? c?.Age ?? "0", 10) || 0,
-    phone: customer?.phone ?? c?.Phone ?? "—",
+    phone: customer?.phone ?? c?.Phone ?? "-",
     reportDate:
       customer?.updateTime?.slice(0, 10) ??
       report?.ServerCreateTime?.slice(0, 10) ??
-      "—",
+      "-",
     scanFrequency:
       Number.parseInt(c?.Count ?? customer?.count ?? "0", 10) || 0,
   };

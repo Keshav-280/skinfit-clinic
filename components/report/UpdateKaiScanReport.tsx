@@ -156,7 +156,7 @@ export function UpdateKaiScanReport({
       >
         {aiUnavailable ? (
           <p className="rounded-full bg-white px-3 py-1.5 text-center text-[10.5px] tracking-[0.04em] text-[#8B93A4] ring-1 ring-[#E4E6F0]">
-            Score-based draft — AI summary unavailable
+            Score-based draft - AI summary unavailable
           </p>
         ) : null}
 

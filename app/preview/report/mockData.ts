@@ -15,11 +15,12 @@ export const previewParameters: KaiReportParamRow[] = [
     name: "Active acne",
     shortName: "Acne",
     severity: 3.2,
+    clarity: 45,
     grade: "5",
     score10: 5,
     gradeColor: "mid",
     finding:
-      "Scattered papules on the cheeks and chin — this is the marker to treat first.",
+      "Scattered papules on the cheeks and chin - this is the marker to treat first.",
     concernChipId: "acne",
   },
   {
@@ -27,6 +28,7 @@ export const previewParameters: KaiReportParamRow[] = [
     name: "Pigmentation",
     shortName: "Pigment",
     severity: 2.8,
+    clarity: 55,
     grade: "6",
     score10: 6,
     gradeColor: "mid",
@@ -36,14 +38,15 @@ export const previewParameters: KaiReportParamRow[] = [
   },
   {
     key: "wrinkles",
-    name: "Fine lines",
+    name: "Wrinkles",
     shortName: "Wrinkles",
     severity: 2.1,
+    clarity: 73,
     grade: "7",
     score10: 7,
     gradeColor: "mid",
     finding:
-      "Fine lines around the eyes — expected for this capture, not the lead concern.",
+      "Fine lines around the eyes - expected for this capture, not the lead concern.",
     concernChipId: "wrinkles",
   },
   {
@@ -51,6 +54,7 @@ export const previewParameters: KaiReportParamRow[] = [
     name: "Under-eye",
     shortName: "Under-eye",
     severity: 2.4,
+    clarity: 65,
     grade: "7",
     score10: 7,
     gradeColor: "mid",
@@ -59,14 +63,15 @@ export const previewParameters: KaiReportParamRow[] = [
   },
   {
     key: "acne_scars",
-    name: "Acne scarring",
+    name: "Acne Scar",
     shortName: "Scars",
     severity: 2.0,
+    clarity: 75,
     grade: "8",
     score10: 8,
     gradeColor: "good",
     finding:
-      "Shallow texture on the mid-cheek. Clinic options later — not this week.",
+      "Shallow texture on the mid-cheek. Clinic options later - not this week.",
     concernChipId: "acne_scars",
   },
   {
@@ -74,6 +79,7 @@ export const previewParameters: KaiReportParamRow[] = [
     name: "Skin quality",
     shortName: "Quality",
     severity: 1.6,
+    clarity: 85,
     grade: "9",
     score10: 9,
     gradeColor: "good",
@@ -175,9 +181,9 @@ export const previewScanImages = [
 ];
 
 export const previewActions = [
-  "Switch to a cream cleanser if you use a foaming wash — over-drying often worsens breakouts.",
+  "Switch to a cream cleanser if you use a foaming wash - over-drying often worsens breakouts.",
   "Sunscreen at 9am, reapply by early afternoon. UV drives post-acne marks as much as new lesions.",
-  "Don't start a new active before your consult — sequencing matters more than stacking.",
+  "Don't start a new active before your consult - sequencing matters more than stacking.",
 ];
 
 export const previewConceptData: ConceptReportData = {
@@ -186,7 +192,7 @@ export const previewConceptData: ConceptReportData = {
   dateLabel: "28 Aug 2026",
   title: watchTitle(previewParameters),
   takeaway:
-    "Acne and pigment are the two to watch. On Indian skin that mix is often UV plus a dry barrier — keep the routine simple until the next scan.",
+    "Acne and pigment are the two to watch. On Indian skin that mix is often UV plus a dry barrier - keep the routine simple until the next scan.",
   actions: previewActions,
   parameters: previewParameters,
   faceUrl: PREVIEW_FACE,

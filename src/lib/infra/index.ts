@@ -1,5 +1,5 @@
 /**
- * Infrastructure layer — re-exported for Next.js API routes and workers.
+ * Infrastructure layer - re-exported for Next.js API routes and workers.
  * Source of truth: services/shared (local-first, cloud-ready abstractions).
  */
 

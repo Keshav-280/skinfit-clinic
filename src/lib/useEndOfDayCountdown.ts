@@ -10,7 +10,7 @@ export type EndOfDayCountdown = {
   hours: number;
   minutes: number;
   seconds: number;
-  /** Local calendar day elapsed 0–1 (midnight → 11:59:59.999 PM). */
+  /** Local calendar day elapsed 0-1 (midnight → 11:59:59.999 PM). */
   dayProgress: number;
   msLeft: number;
   formatted: string;

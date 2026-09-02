@@ -27,15 +27,15 @@ export async function buildSosContextPrefix(patientUserId: string): Promise<stri
     .orderBy(desc(scans.createdAt))
     .limit(1);
 
-  const lines: string[] = ["🚨 SOS — auto context for doctors"];
+  const lines: string[] = ["🚨 SOS - auto context for doctors"];
   lines.push("\n**Last visits (up to 3)**");
   if (visits.length === 0) {
     lines.push("- (none on file)");
   } else {
     for (const v of visits) {
       const d = v.visitDate.toISOString().slice(0, 10);
-      const p = v.purpose?.trim() || "—";
-      const t = v.treatments?.trim() || "—";
+      const p = v.purpose?.trim() || "-";
+      const t = v.treatments?.trim() || "-";
       lines.push(`- ${d}: ${p} | Treatments: ${t}`);
       if (v.notes?.trim()) {
         lines.push(`  Notes: ${v.notes.trim().slice(0, 280)}`);

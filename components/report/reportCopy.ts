@@ -18,9 +18,9 @@ export function shortHeadline(headline: string, max = 56): string {
   return `${first.slice(0, max - 1).trimEnd()}…`;
 }
 
-/** First clause of an action — card title, not the essay. */
+/** First clause of an action - card title, not the essay. */
 export function actionLead(text: string): string {
-  const cut = text.split(/[.—]/)[0]?.trim() || text.trim();
+  const cut = text.split(/[.\u2014]/)[0]?.trim() || text.trim();
   if (cut.length <= 52) return cut;
   return `${cut.slice(0, 50).trimEnd()}…`;
 }
@@ -40,7 +40,7 @@ export const REPORT_CARD =
 export const REPORT_PILL =
   "font-meta inline-flex w-fit items-center rounded-full bg-[#F8EDEE]/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#1E1B31]";
 
-/** Severity 1–5 (worse is higher) → ring fill 0–100. */
+/** Severity 1-5 (worse is higher) → ring fill 0-100. */
 export function severityFill(severity: number): number {
   if (!Number.isFinite(severity)) return 50;
   return Math.round(Math.max(0, Math.min(100, 100 - ((severity - 1) / 4) * 100)));

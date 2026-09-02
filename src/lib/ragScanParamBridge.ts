@@ -27,7 +27,7 @@ function doctorUsesPatientDisplayScale(scoresJson: unknown): boolean {
   );
 }
 
-/** Map clinical 1–5 severity to 0–100 clarity (higher is better), same as `/api/scan`. */
+/** Map clinical 1-5 severity to 0-100 clarity (higher is better), same as `/api/scan`. */
 function severityToClarity(s: number) {
   const x = Math.max(1, Math.min(5, s));
   return Math.round(100 - ((x - 1) / 4) * 100);
@@ -69,13 +69,13 @@ function kaiParamClarity(kaiParams: unknown, paramKey: string): number | null {
 }
 
 /**
- * Build RAG six-parameter 0–100 scores for one scan.
+ * Build RAG six-parameter 0-100 scores for one scan.
  *
  * Priority (highest first):
  * 1. `parameter_scores` rows (demo seeds)
  * 2. Denormalized `scans.acne` / `wrinkles` / `pigmentation` columns (acne detector + pipeline)
  * 3. `scores.kaiParams.*.value` clarity rows from inference
- * 4. `modelFeatureScores` 1–5 severities (legacy ML only — must not override columns)
+ * 4. `modelFeatureScores` 1-5 severities (legacy ML only - must not override columns)
  */
 export function mergeRagParamValuesFromScan(input: {
   dbByKey: Record<string, number | null | undefined>;
@@ -148,7 +148,7 @@ export function mergeRagParamValuesFromScan(input: {
   setFromDoctorOverride("sagging_volume", "sagging_volume");
   setFromDoctorOverride("under_eye", "under_eye");
 
-  // Canonical clarity columns — written at scan time; beat stale modelFeatureScores.
+  // Canonical clarity columns - written at scan time; beat stale modelFeatureScores.
   setIfMissing("active_acne", input.acneColumn > 0 ? input.acneColumn : null);
   setIfMissing("wrinkles", input.wrinklesColumn > 0 ? input.wrinklesColumn : null);
   setIfMissing(

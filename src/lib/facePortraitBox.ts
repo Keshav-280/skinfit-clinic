@@ -1,5 +1,5 @@
 /**
- * Portrait face bounds from MediaPipe landmarks — hairline to chin, cheek width (no shoulders).
+ * Portrait face bounds from MediaPipe landmarks - hairline to chin, cheek width (no shoulders).
  */
 
 export type NormalizedFaceBox = {
@@ -11,7 +11,7 @@ export type NormalizedFaceBox = {
 
 /** Face mesh indices (468-point) for a tight head portrait crop. */
 const PORTRAIT_TOP = [10, 338, 297, 332, 284, 251];
-/** Chin / lower jaw only — avoid neck landmarks that trigger false "shoulders" warnings. */
+/** Chin / lower jaw only - avoid neck landmarks that trigger false "shoulders" warnings. */
 const PORTRAIT_BOTTOM = [152, 175, 199, 200];
 const PORTRAIT_LEFT = [234, 127, 162, 21, 54, 93];
 const PORTRAIT_RIGHT = [454, 356, 389, 251, 284, 323, 361];

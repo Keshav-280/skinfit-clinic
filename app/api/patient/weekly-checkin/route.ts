@@ -200,7 +200,7 @@ export async function POST(req: Request) {
     })),
   });
 
-  // City from latest prior check-in or null — weather auto-detect when city known.
+  // City from latest prior check-in or null - weather auto-detect when city known.
   const [priorCity] = await db
     .select({ city: wellnessCheckins.city })
     .from(wellnessCheckins)

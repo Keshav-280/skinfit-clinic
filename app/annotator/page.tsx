@@ -34,7 +34,7 @@ import {
 } from "@/src/lib/annotatorAnnotations";
 import { ANNOTATOR_LOCK_HEARTBEAT_MS } from "@/src/lib/annotatorCollaboration";
 
-/** Background sync poll — lightweight ?sync=1 avoids downloading multi-MB shape JSON. */
+/** Background sync poll - lightweight ?sync=1 avoids downloading multi-MB shape JSON. */
 const ANNOTATOR_STATE_POLL_MS = 15_000;
 
 const ALL_CATEGORIES = [
@@ -91,7 +91,7 @@ function CategoryPickerButton({
       }`}
     >
       <div className="h-[5.25rem] w-full shrink-0 overflow-hidden rounded-lg bg-zinc-900/30">
-        {/* Static public assets — plain img avoids optimizer/layout issues */}
+        {/* Static public assets - plain img avoids optimizer/layout issues */}
         <img
           src={CATEGORY_ICONS[category]}
           alt=""
@@ -136,9 +136,9 @@ function defaultEntry(cat: Category): CategoryEntry {
 
 function annotationDisplayLabel(ann: Annotation): string {
   if (DRAWABLE_CATEGORIES.includes(ann.category as Category)) {
-    return `${ann.category} — ${ann.severity}`;
+    return `${ann.category} - ${ann.severity}`;
   }
-  return ann.spec ? `${ann.spec} — ${ann.severity}` : ann.severity;
+  return ann.spec ? `${ann.spec} - ${ann.severity}` : ann.severity;
 }
 
 function normalizeCategoryEntry(raw: {
@@ -376,7 +376,7 @@ export default function AnnotatorPage() {
   const [perImageByCategory, setPerImageByCategory] = useState<
     Record<number, Partial<Record<Category, Partial<CategoryEntry>>>>
   >({});
-  /** Annotators' merged grades — admin review only (same logic as export). */
+  /** Annotators' merged grades - admin review only (same logic as export). */
   const [mergedPerImageByCategory, setMergedPerImageByCategory] = useState<
     Record<number, Partial<Record<Category, Partial<CategoryEntry>>>>
   >({});
@@ -612,7 +612,7 @@ export default function AnnotatorPage() {
           applyPersistedState(hydrateJson.state, nextMeta, false);
         }
 
-        // Show UI immediately — annotations load in background.
+        // Show UI immediately - annotations load in background.
         setIsHydrating(false);
         saveDirtyRef.current = false;
         lastPersistedRef.current = null;
@@ -710,7 +710,7 @@ export default function AnnotatorPage() {
       if (cancelled) return;
       if (json.imageLocks) setImageLocks(json.imageLocks);
       if (res.status === 409 && json.lock && !currentUser?.isAnnotatorAdmin) {
-        setCollabMessage(`View only — ${json.lock.userName} is annotating this image`);
+        setCollabMessage(`View only - ${json.lock.userName} is annotating this image`);
       } else {
         setCollabMessage("");
       }
@@ -813,7 +813,7 @@ export default function AnnotatorPage() {
     };
 
     const timer = window.setInterval(async () => {
-      // Never apply a poll while local edits are pending or a save is in flight —
+      // Never apply a poll while local edits are pending or a save is in flight -
       // stale responses were overwriting freshly saved annotations.
       if (saveDirtyRef.current || saveInFlightRef.current) return;
       try {
@@ -835,7 +835,7 @@ export default function AnnotatorPage() {
 
         if (serverSyncAt && serverTs > localTs) {
           // My own state changed on the server (e.g. my save landed, or admin edit).
-          // Fetch my shapes + only the current image's peers — never full peer history.
+          // Fetch my shapes + only the current image's peers - never full peer history.
           const fullRes = await fetch(
             `/api/annotator/state?imageIndex=${imgIdx}`,
             { cache: "no-store" }
@@ -963,7 +963,7 @@ export default function AnnotatorPage() {
       } catch (err) {
         console.error("Failed to save annotator state", err);
         setSaveStatus("error");
-        setLastPersistMessage("Save failed — retry by making a small edit");
+        setLastPersistMessage("Save failed - retry by making a small edit");
       } finally {
         saveInFlightRef.current = false;
       }
@@ -1287,7 +1287,7 @@ export default function AnnotatorPage() {
       app: "skinnfit-clinical-annotator",
       exportedAt: new Date().toISOString(),
       note:
-        "Images are not embedded. Match `images[].fileName` to files on disk. Points are normalized 0–1 vs image width/height. `grade` is A–E (A=least severe); `score` is numeric 1–5 for eval pipelines. Merged export includes all collaborators' shapes and labels.",
+        "Images are not embedded. Match `images[].fileName` to files on disk. Points are normalized 0-1 vs image width/height. `grade` is A-E (A=least severe); `score` is numeric 1-5 for eval pipelines. Merged export includes all collaborators' shapes and labels.",
       imageCount: images.length,
       images: images.map((_, i) => ({
         index: i,
@@ -1347,7 +1347,7 @@ export default function AnnotatorPage() {
             setLastPersistMessage(`Deleted peer annotation · ${new Date().toLocaleTimeString()}`);
           } catch (err) {
             console.error("Failed to delete peer annotation", err);
-            setLastPersistMessage("Failed to delete peer annotation — refresh to resync");
+            setLastPersistMessage("Failed to delete peer annotation - refresh to resync");
             const stateRes = await fetch(
               `/api/annotator/state?peers=1&imageIndex=${currentIndex}`,
               { cache: "no-store" }
@@ -1449,9 +1449,9 @@ export default function AnnotatorPage() {
           onClick={() => setCurrentIndex(i)}
           title={
             lockedByOther
-              ? `${label} — ${lock!.userName} is annotating`
+              ? `${label} - ${lock!.userName} is annotating`
               : lockedByMe
-                ? `${label} — you are annotating`
+                ? `${label} - you are annotating`
                 : label
           }
           className={`group relative shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
@@ -1559,7 +1559,7 @@ export default function AnnotatorPage() {
             onClick={exportAnnotationsJson}
             disabled={images.length === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
-            title="Download all labels and shapes as JSON (images not included — keep your files)"
+            title="Download all labels and shapes as JSON (images not included - keep your files)"
           >
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Export JSON</span>
@@ -1615,7 +1615,7 @@ export default function AnnotatorPage() {
               <span className="font-medium text-amber-600 dark:text-amber-400">· {collabMessage}</span>
             ) : isAnnotatorAdmin && collabMessage ? (
               <span className="text-slate-500 dark:text-zinc-500">
-                · {collabMessage.replace("View only — ", "")} (admin override)
+                · {collabMessage.replace("View only - ", "")} (admin override)
               </span>
             ) : canEditCurrentImage && currentUser ? (
               <span className="text-[#1E1B31] dark:text-[#DF9DA4]">· You can edit this image</span>
@@ -1626,7 +1626,7 @@ export default function AnnotatorPage() {
 
       {/* Main Content */}
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(160px,42vh)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[5.75rem_1fr_minmax(360px,26rem)] lg:grid-rows-1">
-        {/* Thumbnail strip — desktop */}
+        {/* Thumbnail strip - desktop */}
         {images.length > 0 ? (
           <aside className="hidden min-h-0 flex-col border-r border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:flex">
             <div className="shrink-0 border-b border-slate-200 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-zinc-800 dark:text-zinc-400">
@@ -1885,7 +1885,7 @@ export default function AnnotatorPage() {
           )}
         </div>
 
-        {/* Right Sidebar — classic layout: tools, category grid, spec (drawable only), score for all */}
+        {/* Right Sidebar - classic layout: tools, category grid, spec (drawable only), score for all */}
         <aside className="flex min-h-0 flex-col overflow-y-auto border-t border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 lg:border-l lg:border-t-0 lg:p-6">
           <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
             <Crosshair className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
@@ -1936,7 +1936,7 @@ export default function AnnotatorPage() {
 
           <div className="mb-4 space-y-4">
             <div>
-              <p className="sr-only">Draw and grade — tap a picture to mark regions on the image</p>
+              <p className="sr-only">Draw and grade - tap a picture to mark regions on the image</p>
               <div
                 className="mb-2 h-1 rounded-full bg-[#F8EDEE]0/80"
                 aria-hidden="true"
@@ -1953,7 +1953,7 @@ export default function AnnotatorPage() {
               </div>
             </div>
             <div>
-              <p className="sr-only">Score only — tap a picture to set severity without drawing</p>
+              <p className="sr-only">Score only - tap a picture to set severity without drawing</p>
               <div
                 className="mb-2 h-1 rounded-full bg-slate-400/60 dark:bg-zinc-600"
                 aria-hidden="true"
@@ -1978,14 +1978,14 @@ export default function AnnotatorPage() {
             </p>
           ) : (
             <p className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-400">
-              <strong className="text-slate-800 dark:text-zinc-200">Score only</strong> — set severity below. Use{" "}
+              <strong className="text-slate-800 dark:text-zinc-200">Score only</strong> - set severity below. Use{" "}
               <span className="text-[#1E1B31] dark:text-[#DF9DA4]">Draw + grade</span> categories to paint regions on the image.
             </p>
           )}
 
           <div className="mb-6">
             <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-500">
-              Severity grade (A–E) · {activeCategory}
+              Severity grade (A-E) · {activeCategory}
             </label>
             <p className="mb-2 text-[11px] text-slate-500 dark:text-zinc-500">
               A = least severe (1), E = most severe (5). Applies to this category on the current image.
@@ -2032,7 +2032,7 @@ export default function AnnotatorPage() {
               {currentAnnotations.length === 0 ? (
                 <p className="py-4 text-center text-xs text-slate-500 dark:text-zinc-500">
                   {!canEditCurrentImage
-                    ? collabMessage || "View only on this image — pick another or wait"
+                    ? collabMessage || "View only on this image - pick another or wait"
                     : canDrawOnImage
                       ? "Use Path or Line on a drawable category to draw on the image"
                       : "Wait for the image to finish loading before drawing"}
@@ -2196,12 +2196,12 @@ export default function AnnotatorPage() {
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">1. Upload &amp; navigate:</span>{" "}
                 Load images; horizontal two-finger swipe changes the photo. Scroll the image area to see the full
-                picture. Use zoom buttons or Ctrl/Cmd+scroll on the image to zoom (25%–400%).
+                picture. Use zoom buttons or Ctrl/Cmd+scroll on the image to zoom (25%-400%).
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">2. Categories:</span>{" "}
                 <strong>Draw + grade</strong> lists the four you can annotate on the image (grade + regions only).{" "}
-                <strong>Score only</strong> lists the other two (severity grades A–E; A = least severe, E = most severe).
+                <strong>Score only</strong> lists the other two (severity grades A-E; A = least severe, E = most severe).
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">3. Drawing:</span>{" "}
@@ -2214,13 +2214,13 @@ export default function AnnotatorPage() {
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">5. Undo / redo:</span>{" "}
-                Top bar — restore or replay the last change to drawn shapes (add or erase).
+                Top bar - restore or replay the last change to drawn shapes (add or erase).
               </li>
               <li>
                 <span className="font-semibold text-slate-900 dark:text-white">6. Save / download:</span>{" "}
                 Use <strong>Export JSON</strong> in the top bar. It downloads grades and scores for every image index,
-                all drawn shapes (coordinates 0–1 vs image size), and original file names from upload. Pixel images are
-                not inside the file — keep those files on disk and match by name/index.
+                all drawn shapes (coordinates 0-1 vs image size), and original file names from upload. Pixel images are
+                not inside the file - keep those files on disk and match by name/index.
               </li>
             </ol>
           </div>

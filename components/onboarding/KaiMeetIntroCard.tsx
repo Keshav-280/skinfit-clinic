@@ -11,10 +11,8 @@ import {
   KAI_LINE_PAUSE_MS,
   KAI_TYPING_MS_PER_CHAR,
 } from "@/src/lib/kaiIntroScript";
-import {
-  KAI_MEET_CARD,
-  meetCardHaloDots,
-} from "@/src/lib/kaiMeetIntroCardVisual";
+import { OnboardingSignOutLink } from "@/components/onboarding/OnboardingLayoutShell";
+import { KAI_MEET_CARD, meetCardHaloDots } from "@/src/lib/kaiMeetIntroCardVisual";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -83,22 +81,27 @@ export function KaiMeetIntroCard() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: easeOut }}
-      className="relative mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col overflow-hidden md:flex-row md:items-stretch"
+      className="relative mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col overflow-hidden"
     >
-      <div className="relative z-10 flex shrink-0 flex-col px-6 pt-[3.15rem] sm:px-8 md:max-w-[54%] md:flex-1 md:justify-center md:px-10 md:pt-8 lg:pl-14">
+      <div className="relative z-20 flex min-h-10 shrink-0 items-center justify-between px-6 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-8 md:px-10 lg:pl-14 lg:pr-10">
+        <p
+          className="text-base font-semibold leading-none tracking-tight sm:text-lg"
+          style={{ color: KAI_MEET_CARD.text.meet }}
+        >
+          Meet
+        </p>
+        <OnboardingSignOutLink />
+      </div>
+
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row md:items-stretch">
+      <div className="relative z-10 flex shrink-0 flex-col px-6 pt-1 sm:px-8 md:max-w-[54%] md:flex-1 md:justify-center md:px-10 md:pt-2 lg:pl-14">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.35, ease: easeOut }}
         >
-          <p
-            className="text-base font-semibold tracking-tight sm:text-lg"
-            style={{ color: KAI_MEET_CARD.text.meet }}
-          >
-            Meet
-          </p>
           <h1
-            className="font-kai mt-0.5 text-[clamp(2.85rem,16vw,4.75rem)] leading-[0.92] md:text-[clamp(4.25rem,8vw,6.5rem)]"
+            className="font-kai text-[clamp(2.85rem,16vw,4.75rem)] leading-[0.92] md:text-[clamp(4.25rem,8vw,6.5rem)]"
             style={{ color: KAI_MEET_CARD.text.meet }}
           >
             kAI
@@ -204,7 +207,7 @@ export function KaiMeetIntroCard() {
             </div>
             <Image
               src="/images/kai-avatar-smile.png"
-              alt="kAI — your SkinFit AI skin companion"
+              alt="kAI - your SkinFit AI skin companion"
               width={835}
               height={1600}
               className="relative z-10 block h-full max-h-full w-auto object-contain object-bottom drop-shadow-[0_16px_24px_rgba(30,27,49,0.22)]"
@@ -212,6 +215,7 @@ export function KaiMeetIntroCard() {
             />
           </motion.div>
         </motion.div>
+      </div>
       </div>
     </motion.section>
   );

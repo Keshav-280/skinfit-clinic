@@ -14,7 +14,7 @@ export const SCAN_MASK_LEGACY_FRAME_ASPECT = 1;
 export const SCAN_MASK_LEGACY_FRAME_ASPECT_CSS = "1 / 1";
 
 /**
- * Title-free mask JPEGs are 3:4 portrait exports — fill the panel with object-cover.
+ * Title-free mask JPEGs are 3:4 portrait exports - fill the panel with object-cover.
  */
 export const SCAN_MASK_FRAME_ASPECT = SCAN_FACE_FRAME_ASPECT;
 export const SCAN_MASK_FRAME_ASPECT_CSS = SCAN_FACE_FRAME_ASPECT_CSS;

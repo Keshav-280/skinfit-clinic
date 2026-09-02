@@ -27,7 +27,7 @@ export type ScanScoreRow = {
   scores: unknown;
 };
 
-/** Raw 0–100 display score for a concern (or overall kAI). Null if missing. */
+/** Raw 0-100 display score for a concern (or overall kAI). Null if missing. */
 export function concernRawScore(
   slug: ScorePageSlug,
   row: ScanScoreRow
@@ -66,7 +66,7 @@ const CONCERN_CONTEXT: Record<ScorePageSlug, string> = {
   overall:
     "Overall is a weighted mix of the six visible parameters. The lowest two usually move this number fastest.",
   "active-acne":
-    "Breakouts respond to routine consistency and scan lighting — keep AM/PM logs so the next scan has context.",
+    "Breakouts respond to routine consistency and scan lighting - keep AM/PM logs so the next scan has context.",
   pigmentation:
     "Tone reads best in the same light each scan. Daily SPF is the habit most tightly tied to this score.",
   wrinkles:
@@ -74,7 +74,7 @@ const CONCERN_CONTEXT: Record<ScorePageSlug, string> = {
   "under-eye":
     "Under-eye reads puffiness and shadow. Sleep and salt the night before a scan can swing this more than skincare.",
   "acne-scar":
-    "Scars change slowly. Look at months, not days — and keep the same angle so texture isn’t mistaken for lighting.",
+    "Scars change slowly. Look at months, not days - and keep the same angle so texture isn’t mistaken for lighting.",
   "sagging-volume":
     "Firmness is a slow metric. Jaw and cheek angle matter; match your last capture pose as closely as you can.",
   hydration:
@@ -91,7 +91,7 @@ const CONCERN_RECS: Record<ScorePageSlug, string[]> = {
   ],
   "active-acne": [
     "Log AM and PM routine days in the app",
-    "Avoid picking — it confuses the next acne read",
+    "Avoid picking - it confuses the next acne read",
     "Note high-stress weeks in your check-in",
   ],
   pigmentation: [
@@ -101,7 +101,7 @@ const CONCERN_RECS: Record<ScorePageSlug, string[]> = {
   ],
   wrinkles: [
     "Protect sleep the two nights before a scan",
-    "Hold a relaxed face in the capture — no squint",
+    "Hold a relaxed face in the capture - no squint",
     "Keep the camera at the same distance as last time",
   ],
   "under-eye": [
@@ -116,7 +116,7 @@ const CONCERN_RECS: Record<ScorePageSlug, string[]> = {
   ],
   "sagging-volume": [
     "Match jaw and cheek pose to your last scan",
-    "Look at a 4–8 week window, not week-to-week noise",
+    "Look at a 4-8 week window, not week-to-week noise",
     "Stay consistent with your AM/PM routine",
   ],
   hydration: [
@@ -171,7 +171,7 @@ export function buildScoreAnalysis(input: {
       lines.push(
         `${title} moved from ${previous10}/10 to ${current10}/10${
           lastScanLabel ? ` since ${lastScanLabel}` : ""
-        } — this is the metric to watch.`
+        } - this is the metric to watch.`
       );
     } else {
       lines.push(

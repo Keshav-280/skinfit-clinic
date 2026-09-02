@@ -14,7 +14,7 @@ export type ConcernChipId =
 export type ConcernChipItem = {
   id: ConcernChipId;
   label: string;
-  /** Raw clarity 0–100 for color + display. */
+  /** Raw clarity 0-100 for color + display. */
   score: number | null;
   scoreLabel: string;
 };

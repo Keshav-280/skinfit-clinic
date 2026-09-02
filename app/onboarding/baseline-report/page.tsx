@@ -25,14 +25,14 @@ export default function OnboardingBaselineReportPage() {
           </h1>
           <p className="text-sm leading-relaxed text-[#6B7280]">
             Your kAI baseline scan is saved. You can open the full report from Treatment
-            History anytime. Answer a few questions when you&apos;re ready — or explore the
+            History anytime. Answer a few questions when you&apos;re ready - or explore the
             dashboard first.
           </p>
         </div>
 
         <p className="flex items-center justify-center gap-1.5 text-xs font-medium text-[#6B7280]">
           <Sparkles className="h-3.5 w-3.5 text-[#1E1B31]" aria-hidden />
-          Report builds in the background — no need to wait here.
+          Report builds in the background - no need to wait here.
         </p>
 
         <div className="flex flex-col gap-3 pt-1">

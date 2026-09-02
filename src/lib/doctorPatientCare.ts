@@ -15,7 +15,7 @@ export function getDoctorRegistrationSecret(): string | null {
   return raw && raw.length > 0 ? raw : null;
 }
 
-/** Ensures a doctor–patient care row exists; optionally sets the patient's assigned doctor. */
+/** Ensures a doctor-patient care row exists; optionally sets the patient's assigned doctor. */
 export async function linkDoctorPatientCare(
   doctorId: string,
   patientId: string,

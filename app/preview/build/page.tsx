@@ -1,4 +1,4 @@
-// TEMPORARY — no-auth preview of the redesigned Build page top section: nav
+// TEMPORARY - no-auth preview of the redesigned Build page top section: nav
 // with the profile-completion ring badge, "Hi [Name]" greeting with a
 // dynamic subtitle, the compact single-line date picker, and the redesigned
 // Skin DNA card header. Mock data, no DB needed. Safe to delete once
@@ -23,7 +23,7 @@ const NAV_BADGE_RADIUS = (NAV_BADGE_SIZE - NAV_BADGE_STROKE) / 2;
 const NAV_BADGE_CIRCUMFERENCE = 2 * Math.PI * NAV_BADGE_RADIUS;
 
 /**
- * Mirrors ProfileNavBadge's markup exactly, but with a hardcoded fill —
+ * Mirrors ProfileNavBadge's markup exactly, but with a hardcoded fill -
  * the real component needs a login session to fetch photo/completion %,
  * which this no-auth preview doesn't have.
  */
@@ -119,7 +119,7 @@ export default function BuildPreviewPage() {
 
   return (
     <div className="min-h-dvh bg-[#FAF8F5]">
-      {/* Mock top nav — mirrors app/dashboard/layout.tsx */}
+      {/* Mock top nav - mirrors app/dashboard/layout.tsx */}
       <nav className="sticky top-0 z-50 border-b border-[#E5E7EB] bg-white/80 shadow-[0_2px_16px_rgba(30, 27, 49,0.06)] backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 md:px-8 sm:py-4">
           <PatientPortalBrandLogo />
@@ -138,12 +138,12 @@ export default function BuildPreviewPage() {
 
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:px-6">
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Preview only — mock Build page, no login. Articles and videos sit
+          Preview only - mock Build page, no login. Articles and videos sit
           on the page background (no outer boxes). Try{" "}
           <code>?gender=female</code> for the other avatar.
         </p>
 
-        {/* 1. Greeting + date strip — sticks below the nav */}
+        {/* 1. Greeting + date strip - sticks below the nav */}
         <div className="sticky top-14 z-0 sm:top-16">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -163,7 +163,7 @@ export default function BuildPreviewPage() {
 
         {/* Everything below rides a solid background over the sticky greeting */}
         <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#FAF8F5] pt-1">
-          {/* 2. Skin DNA — no profileImageUrl, so it falls back to the
+          {/* 2. Skin DNA - no profileImageUrl, so it falls back to the
               gender-matched avatar icon */}
           <SkinDNACard
             patientName={gender === "female" ? "Priya Sharma" : "Keshav Goyal"}

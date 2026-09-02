@@ -105,7 +105,7 @@ export async function compressChatImageDataUri(
     }
     return best;
   } catch {
-    // HEIC / unsupported decode — keep original if small enough, else fail upstream.
+    // HEIC / unsupported decode - keep original if small enough, else fail upstream.
     return original;
   }
 }

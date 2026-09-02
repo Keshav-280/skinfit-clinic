@@ -81,7 +81,7 @@ export type DoctorScanReportPayload = {
   maskExportVersion: number | null;
   spatialOutputs: ScanSpatialOutputs | null;
   scanDateIso: string;
-  /** Saved at scan time in `scans.tracker_snapshot` — same content as patient AI report. */
+  /** Saved at scan time in `scans.tracker_snapshot` - same content as patient AI report. */
   trackerReport: PatientTrackerReport | null;
   /** AI baseline + override flag for doctor score editing UI. */
   scoreEdit: DoctorScoreEditMeta;

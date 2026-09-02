@@ -117,7 +117,7 @@ export function AutocompleteMultiField({
           ))}
           {filtered.length === 0 ? (
             <li className="px-3.5 py-2.5 text-[12px] text-kai-ink-3">
-              No matches — try Another option from the list.
+              No matches - try Another option from the list.
             </li>
           ) : null}
         </ul>

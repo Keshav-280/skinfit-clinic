@@ -25,7 +25,7 @@ export const RAG_KAI_ALL_PARAM_KEYS: RagKaiParamKey[] = [
   "pigmentation",
 ];
 
-/** Patient-facing kAI keys — excludes {@link PATIENT_HIDDEN_KAI_PARAM_KEYS}. */
+/** Patient-facing kAI keys - excludes {@link PATIENT_HIDDEN_KAI_PARAM_KEYS}. */
 export const RAG_KAI_PARAM_KEYS: RagKaiParamKey[] = filterPatientVisibleKaiKeys(
   RAG_KAI_ALL_PARAM_KEYS
 );

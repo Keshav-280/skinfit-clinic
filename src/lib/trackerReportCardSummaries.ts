@@ -1,5 +1,5 @@
 /**
- * Auto-generated 1–2 sentence summaries for progressive report cards.
+ * Auto-generated 1-2 sentence summaries for progressive report cards.
  */
 
 import type {
@@ -115,7 +115,7 @@ export function summarizeWellnessCard(
   }
   if (wellness.exerciseHours) bits.push(`${wellness.exerciseHours}h exercise`);
   if (bits.length === 0) {
-    return "Wellness check-in submitted — open for the full lifestyle snapshot.";
+    return "Wellness check-in submitted - open for the full lifestyle snapshot.";
   }
   return `${bits.slice(0, 4).join(", ")}.`;
 }
@@ -179,7 +179,7 @@ export function wellnessImpactLine(
   if (field === "stress") {
     const n = Number(value);
     if (Number.isFinite(n) && n >= 7) return "High stress often tracks with flares.";
-    return "Moderate stress — keep wind-down habits.";
+    return "Moderate stress - keep wind-down habits.";
   }
   if (field === "routine") {
     return "Consistent steps compound week to week.";

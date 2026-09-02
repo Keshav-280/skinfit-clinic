@@ -198,7 +198,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
     message += " Report was also delivered in the patient's account.";
   } else if (result.inAppDelivery === "pending_account") {
     message +=
-      " No SkinFit account yet — ask them to sign up at my.skinfitwellness.in/login with the same email, then tap Send to finish delivery.";
+      " No SkinFit account yet - ask them to sign up at my.skinfitwellness.in/login with the same email, then tap Send to finish delivery.";
   }
 
   return Response.json({

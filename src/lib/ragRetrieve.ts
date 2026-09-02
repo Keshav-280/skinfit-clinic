@@ -95,7 +95,7 @@ export async function productionTextbookRetrieve(params: {
   }
 
   if (vector.length === 0) {
-    console.log("[rag] No vector matches — using BM25 keyword search only.");
+    console.log("[rag] No vector matches - using BM25 keyword search only.");
     return bm25.slice(0, topK);
   }
 

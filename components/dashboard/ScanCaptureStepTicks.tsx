@@ -8,7 +8,7 @@ type Props = {
   compact?: boolean;
 };
 
-/** Capture progress — green ticks for done steps, ring for current. */
+/** Capture progress - green ticks for done steps, ring for current. */
 export function ScanCaptureStepTicks({ completedCount, compact }: Props) {
   const current = Math.min(completedCount, FACE_SCAN_CAPTURE_STEPS.length - 1);
 
@@ -22,7 +22,6 @@ export function ScanCaptureStepTicks({ completedCount, compact }: Props) {
       {FACE_SCAN_CAPTURE_STEPS.map((step, i) => {
         const done = i < completedCount;
         const active = i === current && !done;
-        const label = step.title.split("—")[0]?.trim() ?? step.id;
         return (
           <li
             key={step.id}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, CloudMoon } from "lucide-react";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { RoutinePageSkeleton } from "@/components/dashboard/PageSkeletons";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 import { RoutineStepList } from "@/components/dashboard/RoutineStepList";
 import { normalizeRoutineSteps } from "@/src/lib/routine";
@@ -76,10 +76,7 @@ export default function NightRoutinePage() {
 
   if (loading) {
     return (
-      <SkinFitLoader
-        title="Opening night routine"
-        subtitle="kAI is fetching tonight’s steps."
-      />
+      <RoutinePageSkeleton />
     );
   }
 

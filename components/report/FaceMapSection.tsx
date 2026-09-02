@@ -50,10 +50,10 @@ type FaceMapSectionProps = {
   /** Per-pose acne detections; falls back to `detectionRegions` (centre) when absent. */
   detectionRegionsByPose?: Record<string, DetectionRegion[]>;
   wrinkleLines?: WrinkleLine[];
-  /** Model wrinkle segmentation heatmap (front pose) — only used when no vector lines. */
+  /** Model wrinkle segmentation heatmap (front pose) - only used when no vector lines. */
   wrinkleMaskUrl?: string | null;
   spotAnnotatedUrl?: string | null;
-  /** Photos already include v18 dashed-circle annotations — skip extra acne circles. */
+  /** Photos already include v18 dashed-circle annotations - skip extra acne circles. */
   bakedSpotAnnotations?: boolean;
   maskExportVersion?: number | null;
   proxyRegions?: ProxyRegion[];
@@ -64,7 +64,7 @@ type FaceMapSectionProps = {
   onConcernChange?: (id: ConcernChipId) => void;
   /** History / back control, overlaid on the photo. */
   toolbar?: ReactNode;
-  /** Report body — scrolls up over the sticky face. */
+  /** Report body - scrolls up over the sticky face. */
   children?: ReactNode;
 };
 
@@ -187,7 +187,7 @@ export function FaceMapSection({
   function selectConcern(id: ConcernChipId) {
     onConcernChange?.(id);
     if (concernProp == null) setInternalConcern(id);
-    // Wrinkles are extracted on the front capture — jump there (or smiling on old scans).
+    // Wrinkles are extracted on the front capture - jump there (or smiling on old scans).
     if (id === "wrinkles") {
       if (smilingIndex >= 0) selectIndex(smilingIndex);
       else if (centreIndex >= 0) selectIndex(centreIndex);
@@ -229,7 +229,7 @@ export function FaceMapSection({
   // Prefer smiling on older 5-photo scans; new scans show wrinkles on centre.
   const wrinklePoseOk =
     pose === "smiling" || (pose === "centre" && smilingIndex < 0);
-  // Heatmap from the model is higher quality than extracted polylines — prefer it.
+  // Heatmap from the model is higher quality than extracted polylines - prefer it.
   const showWrinkleMask = wrinklePoseOk && safeHeatmap;
   const showWrinkles = wrinklePoseOk && !showWrinkleMask && hasWrinkleLines;
   const wrinkleMaskVisible =

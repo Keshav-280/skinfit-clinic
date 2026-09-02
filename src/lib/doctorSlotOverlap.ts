@@ -31,7 +31,7 @@ function slotToHalfOpenMinutes(
 
 /**
  * True if the proposed slot overlaps any existing row for the same doctor+day.
- * @param ignoreSlotStartHm — same as proposed start: skip that row (upsert same slot).
+ * @param ignoreSlotStartHm - same as proposed start: skip that row (upsert same slot).
  */
 export async function doctorSlotOverlapsExisting(params: {
   doctorId: string;

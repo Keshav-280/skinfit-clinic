@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Camera, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { SkinParamsPageSkeleton } from "@/components/dashboard/PageSkeletons";
 import { analysisResultsToParams } from "@/src/lib/skinScanAnalysis";
 import {
   RAG_KAI_PARAM_KEYS,
@@ -95,14 +95,14 @@ function slugForChartId(name: string) {
   return name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() || "param";
 }
 
-/** Grade band thresholds on the calibrated 0–80 display scale. */
+/** Grade band thresholds on the calibrated 0-80 display scale. */
 const GRADE_BAND_LINES: { grade: ClarityGrade; at: number }[] = [
   { grade: "B", at: 60 },
   { grade: "C", at: 40 },
   { grade: "D", at: 20 },
 ];
 
-/** Sparkline uses calibrated display scores on a fixed 0–80 axis (grade-aware variation). */
+/** Sparkline uses calibrated display scores on a fixed 0-80 axis (grade-aware variation). */
 function MiniLineChart({
   data,
   color,
@@ -214,7 +214,7 @@ function TrendIndicator({
 }) {
   const label = (v: number) => `${scoreOutOfTen(v)}/10`;
   if (history.length === 0) {
-    return <span className="text-[11px] font-medium text-[#6B7280]">—</span>;
+    return <span className="text-[11px] font-medium text-[#6B7280]"> - </span>;
   }
   if (history.length === 1) {
     return (
@@ -340,10 +340,7 @@ export default function SkinParamsPage() {
 
   if (loading) {
     return (
-      <SkinFitLoader
-        title="Opening skin parameters"
-        subtitle="kAI is lining up your latest scan scores."
-      />
+      <SkinParamsPageSkeleton />
     );
   }
 

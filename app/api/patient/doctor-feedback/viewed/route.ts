@@ -7,7 +7,7 @@ import { invalidateUserHistoryCache, invalidateUserHomeCache } from "@/src/lib/i
 
 type Scope = "dashboard" | "report" | "all";
 
-/** Mark voice notes as listened (bulk) — e.g. from Notifications shortcuts. */
+/** Mark voice notes as listened (bulk) - e.g. from Notifications shortcuts. */
 export async function POST(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
   if (!userId) {

@@ -49,14 +49,14 @@ export const FACE_SCAN_CAPTURE_STEPS = [
 
 export type FaceScanCaptureId = (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
 
-/** Left/right profile shots — one cheek faces away, so frame-half brightness differs by design. */
+/** Left/right profile shots - one cheek faces away, so frame-half brightness differs by design. */
 export function isSideProfileCaptureStep(
   stepId: FaceScanCaptureId | string | null | undefined
 ): boolean {
   return stepId === "left" || stepId === "right";
 }
 
-/** @deprecated use buildAutoScanName — kept for legacy rows/labels */
+/** @deprecated use buildAutoScanName - kept for legacy rows/labels */
 export const DEFAULT_SCAN_NAME = "Untitled Scan";
 
 export type BuildAutoScanNameOptions = {
@@ -65,7 +65,7 @@ export type BuildAutoScanNameOptions = {
   at?: Date;
 };
 
-/** `Scan-3-06-06-2026-14-30` — number, date, and time for easy sorting. */
+/** `Scan-3-06-06-2026-14-30` - number, date, and time for easy sorting. */
 export function buildAutoScanName(options: BuildAutoScanNameOptions = {}): string {
   const at = options.at ?? new Date();
   const datePart = format(at, "dd-MM-yyyy");

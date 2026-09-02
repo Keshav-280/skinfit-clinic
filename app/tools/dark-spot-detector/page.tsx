@@ -78,7 +78,7 @@ export default function DarkSpotDetectorPage() {
         <p className="mb-6 text-sm leading-relaxed text-[#64748B]">
           Upload a face photo. Each small skin tile is compared to its neighbors;
           sudden dark or brown shifts are circled in red. This tool is separate
-          from the main kAI face scan — it does not change your existing models.
+          from the main kAI face scan - it does not change your existing models.
         </p>
 
         <div className="mb-6 rounded-2xl border border-[#DCE4DA] bg-white p-4">

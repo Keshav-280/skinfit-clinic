@@ -1,4 +1,4 @@
-// TEMPORARY — no-auth preview of the redesigned questionnaire wizard, for local design review only.
+// TEMPORARY - no-auth preview of the redesigned questionnaire wizard, for local design review only.
 // Safe to delete before/after this is confirmed; not linked from anywhere in the app.
 import { QuestionnaireWizardPreview } from "@/components/onboarding/QuestionnaireWizardPreview";
 

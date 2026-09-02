@@ -1,12 +1,5 @@
-"use client";
-
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { ListPageSkeleton } from "@/components/dashboard/PageSkeletons";
 
 export default function VisitDetailLoading() {
-  return (
-    <SkinFitLoader
-      title="Opening visit details"
-      subtitle="kAI is fetching clinic notes and attachments."
-    />
-  );
+  return <ListPageSkeleton label="Loading visit details" rows={4} />;
 }

@@ -9,7 +9,7 @@ import {
   SCAN_REPORT_PDF_PAGE_BG,
 } from "@/src/lib/scanReportPdfBackground";
 
-/** Desktop viewport for PDF capture — Tailwind sm/md/lg apply regardless of device or zoom. */
+/** Desktop viewport for PDF capture - Tailwind sm/md/lg apply regardless of device or zoom. */
 const SCAN_REPORT_PDF_DESKTOP_WINDOW = {
   width: 1280,
   height: 900,
@@ -49,7 +49,7 @@ function fullResolutionPatientScanImageSrc(raw: string): string {
   }
 }
 
-/** html2canvas often misses cookie-authenticated same-origin `/api/.../image` URLs — inline as data URLs first. */
+/** html2canvas often misses cookie-authenticated same-origin `/api/.../image` URLs - inline as data URLs first. */
 async function inlinePatientScanFaceForPdf(root: HTMLElement): Promise<
   Array<{ img: HTMLImageElement; previousSrc: string; hadCrossOrigin: boolean }>
 > {

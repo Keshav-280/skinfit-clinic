@@ -26,7 +26,7 @@ import {
 } from "@/src/lib/scanFaceIdentityGate";
 
 /**
- * Async scan submission — uploads (multipart or pre-signed R2 paths), enqueues BullMQ.
+ * Async scan submission - uploads (multipart or pre-signed R2 paths), enqueues BullMQ.
  * Enable with SCAN_ASYNC_MODE=1
  */
 export async function POST(request: NextRequest) {

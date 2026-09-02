@@ -71,9 +71,9 @@ export function clinicReportGmailShareHref(params: {
     patientEmail: email,
     appBaseUrl: params.appBaseUrl,
   });
-  const subject = encodeURIComponent(`Your SkinFit skin analysis report — ${params.title}`);
+  const subject = encodeURIComponent(`Your SkinFit skin analysis report - ${params.title}`);
   const body = encodeURIComponent(
-    `Hi ${name},\n\nYour skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.\n\n${access.text}\n\n— SkinFit Wellness`
+    `Hi ${name},\n\nYour skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.\n\n${access.text}\n\n- SkinFit Wellness`
   );
   return `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
 }
@@ -186,7 +186,7 @@ export async function sendClinicExternalReport(params: {
   return { ok: true, status: "sent", patientUserId: patient.id };
 }
 
-/** Store a generated clinic PDF — attaches to a matching name/email draft when one exists. */
+/** Store a generated clinic PDF - attaches to a matching name/email draft when one exists. */
 export async function saveClinicExternalReportPdf(params: {
   doctorId: string;
   patientName: string;
@@ -381,20 +381,20 @@ function clinicReportEmailCopy(params: {
     patientEmail: params.patientEmail,
     appBaseUrl: params.appBaseUrl,
   });
-  const subject = `Your SkinFit skin analysis report — ${params.title}`;
+  const subject = `Your SkinFit skin analysis report - ${params.title}`;
   const text = `Hi ${name},
 
 Your skin analysis report from SkinFit Wellness is ready. The PDF is attached to this email.
 
 ${access.text}
 
-— SkinFit Wellness`;
+- SkinFit Wellness`;
 
   const html = `
 <p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">Hi ${escapeHtml(name)},</p>
 <p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">Your skin analysis report from <strong>SkinFit Wellness</strong> is ready. The PDF is attached to this email.</p>
 ${access.html}
-<p style="font-family:system-ui,sans-serif;font-size:14px;color:#71717a;margin:16px 0 0">— SkinFit Wellness</p>`;
+<p style="font-family:system-ui,sans-serif;font-size:14px;color:#71717a;margin:16px 0 0">- SkinFit Wellness</p>`;
 
   return { subject, text, html, filename: `${params.title.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80)}.pdf` };
 }
@@ -478,7 +478,7 @@ export type ClinicReportPatientPick = {
   lastUsedAt: string;
 };
 
-/** Recent patients for clinic report assignment — report history first, then platform signups. */
+/** Recent patients for clinic report assignment - report history first, then platform signups. */
 export async function listRecentClinicReportPatients(
   doctorId: string
 ): Promise<ClinicReportPatientPick[]> {

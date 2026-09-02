@@ -60,7 +60,7 @@ describe("patientGradeFromDisplayScore", () => {
 });
 
 describe("clarityToGrade", () => {
-  it("maps display clarity bands A–E", () => {
+  it("maps display clarity bands A-E", () => {
     expect(clarityToGrade(100)).toBe("A");
     expect(clarityToGrade(80)).toBe("A");
     expect(clarityToGrade(79)).toBe("B");

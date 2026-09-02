@@ -115,7 +115,7 @@ export async function POST(
     } catch (e) {
       if (!endHm || !isMissingSlotEndColumn(e)) throw e;
       console.warn(
-        "[doctor/patients/appointments POST] slot_end_time missing — booking without end time; run drizzle/0023_appointments_slot_end_patient_clinic_note.sql"
+        "[doctor/patients/appointments POST] slot_end_time missing - booking without end time; run drizzle/0023_appointments_slot_end_patient_clinic_note.sql"
       );
       [row] = await db
         .insert(appointments)

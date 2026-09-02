@@ -30,9 +30,9 @@ export type ProxyEllipse = {
   rx_pct: number;
   ry_pct: number;
   score: number;
-  /** Conservative display opacity from extractor (0.3–0.9). */
+  /** Conservative display opacity from extractor (0.3-0.9). */
   opacity?: number;
-  /** Evenly spread issue — full-face subtle outline. */
+  /** Evenly spread issue - full-face subtle outline. */
   diffuse?: boolean;
   /** Tooltip / title, e.g. "Diffuse pigmentation". */
   label?: string;

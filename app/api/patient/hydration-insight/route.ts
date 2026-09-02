@@ -87,7 +87,7 @@ async function buildHydrationInsightForUser(
   const logSummary = waterRecords
     .map(
       (r) =>
-        `${r.date}: ${r.ml}ml (${r.glasses} glasses), sleep=${r.sleep ?? "—"}h, stress=${r.stress ?? "—"}, sun=${r.sun ?? "—"}`
+        `${r.date}: ${r.ml}ml (${r.glasses} glasses), sleep=${r.sleep ?? "-"}h, stress=${r.stress ?? "-"}, sun=${r.sun ?? "-"}`
     )
     .join("\n");
 

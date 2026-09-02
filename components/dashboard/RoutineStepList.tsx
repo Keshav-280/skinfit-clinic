@@ -98,8 +98,8 @@ export function RoutineStepList({
             <p className="mt-1 text-sm font-semibold leading-snug text-white">
               {allDone
                 ? isNight
-                  ? "All done — sweet dreams."
-                  : "All done — great start today."
+                  ? "All done - sweet dreams."
+                  : "All done - great start today."
                 : `${remaining} step${remaining === 1 ? "" : "s"} remaining`}
             </p>
             <p className="mt-1.5 text-xs italic leading-snug text-white/65">

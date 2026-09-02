@@ -161,7 +161,7 @@ export function DashboardNav() {
         })}
       </nav>
 
-      {/* Mobile bottom tab bar — portaled to body so it sits above all content */}
+      {/* Mobile bottom tab bar - portaled to body so it sits above all content */}
       {mounted
         ? createPortal(
             <nav

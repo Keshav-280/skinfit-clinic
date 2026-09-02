@@ -24,7 +24,7 @@ type ReportHeroProps = {
   positionBar: { current: number; previous?: number };
   subtitle?: string;
   watchChips?: WatchChip[];
-  /** Cover already shows grade + title — only the scale remains. */
+  /** Cover already shows grade + title - only the scale remains. */
   layout?: "full" | "bar";
   onWatchChip?: (id: ConcernChipId) => void;
 };

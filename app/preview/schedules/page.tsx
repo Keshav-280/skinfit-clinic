@@ -1,4 +1,4 @@
-// TEMPORARY — no-auth preview of the Maintain page hero with the new doctor
+// TEMPORARY - no-auth preview of the Maintain page hero with the new doctor
 // avatar, for local design review only. Uses mock data (no DB needed).
 // Safe to delete once confirmed; not linked from anywhere in the app.
 import SchedulesPageClient from "@/components/dashboard/SchedulesPageClient";

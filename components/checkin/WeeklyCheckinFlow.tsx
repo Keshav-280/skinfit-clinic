@@ -60,12 +60,12 @@ function screenComplete(
 
 function summaryLines(answers: CheckinAnswers): Array<{ label: string; value: string }> {
   return [
-    { label: "Sleep", value: answers.sleep_hours ?? "—" },
-    { label: "Stress", value: answers.stress?.replace(/_/g, " ") ?? "—" },
-    { label: "Water", value: answers.water ?? "—" },
+    { label: "Sleep", value: answers.sleep_hours ?? "-" },
+    { label: "Stress", value: answers.stress?.replace(/_/g, " ") ?? "-" },
+    { label: "Water", value: answers.water ?? "-" },
     {
       label: "Exercise",
-      value: answers.exercise_hours ?? "—",
+      value: answers.exercise_hours ?? "-",
     },
   ];
 }
@@ -272,7 +272,7 @@ export function WeeklyCheckinFlow({
   );
 }
 
-/** UPI-style success animation — big centered tick, then shrinks and docks
+/** UPI-style success animation - big centered tick, then shrinks and docks
  * to the top before revealing the summary + next-step buttons. */
 function CheckinCompletion({
   weekYmd,

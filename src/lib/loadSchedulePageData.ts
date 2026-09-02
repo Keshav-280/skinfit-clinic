@@ -296,8 +296,8 @@ export async function loadSchedulePageData(userId: string) {
       eventTimeHm: hm,
       eventSlotEndTimeHm: r.slotEndTimeHm ?? null,
       title: tip
-        ? `${isCancelled ? "Cancelled — " : ""}${baseTitle} · ${tip.slice(0, 120)}${tip.length > 120 ? "…" : ""}`
-        : `${isCancelled ? "Cancelled — " : ""}${baseTitle}`,
+        ? `${isCancelled ? "Cancelled - " : ""}${baseTitle} · ${tip.slice(0, 120)}${tip.length > 120 ? "…" : ""}`
+        : `${isCancelled ? "Cancelled - " : ""}${baseTitle}`,
       completed: isDone,
       cancelled: isCancelled,
       crmPatientMessage: tip,
@@ -412,15 +412,15 @@ export async function loadSchedulePageData(userId: string) {
   );
   const checkinSummary = payload?.universal
     ? [
-        { label: "Sleep", value: payload.universal.sleep_hours || "—" },
+        { label: "Sleep", value: payload.universal.sleep_hours || "-" },
         {
           label: "Stress",
-          value: (payload.universal.stress || "—").replace(/_/g, " "),
+          value: (payload.universal.stress || "-").replace(/_/g, " "),
         },
-        { label: "Water", value: payload.universal.water || "—" },
+        { label: "Water", value: payload.universal.water || "-" },
         {
           label: "Exercise",
-          value: payload.universal.exercise_hours || "—",
+          value: payload.universal.exercise_hours || "-",
         },
       ]
     : null;

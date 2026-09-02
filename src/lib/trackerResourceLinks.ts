@@ -34,7 +34,7 @@ function isAllowedArticleHost(hostname: string): boolean {
   return ALLOWED_ARTICLE_HOSTS.has(normalizeHost(hostname));
 }
 
-/** Old hardcoded fallback that pointed at a unrelated music video — never reuse. */
+/** Old hardcoded fallback that pointed at a unrelated music video - never reuse. */
 const BLOCKED_YOUTUBE_VIDEO_IDS = new Set(["9pg-OybGGCc"]);
 const YOUTUBE_VIDEO_ID = /^[\w-]{6,12}$/;
 

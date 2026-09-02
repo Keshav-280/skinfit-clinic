@@ -13,11 +13,11 @@ export type SdetectPatient = {
 };
 
 export type SdetectFaceImages = {
-  /** Natural left profile — FaceType 1, White light. */
+  /** Natural left profile - FaceType 1, White light. */
   left: Buffer | null;
-  /** Front centre diagnostic map — FaceType 2, White map. */
+  /** Front centre diagnostic map - FaceType 2, White map. */
   front: Buffer | null;
-  /** Natural right profile — FaceType 3, White light. */
+  /** Natural right profile - FaceType 3, White light. */
   right: Buffer | null;
 };
 

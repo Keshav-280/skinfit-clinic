@@ -235,9 +235,9 @@ function consistencyFromLogs(logs: Array<typeof dailyLogs.$inferSelect>) {
 }
 
 function hookFallback(delta: number) {
-  if (delta >= 4) return "Your skin improved this week — your consistency is paying off.";
-  if (delta <= -4) return "Tough week — here is what likely drove the dip and what to fix first.";
-  return "Steady week — your trend is stable, now let's sharpen your highest-impact actions.";
+  if (delta >= 4) return "Your skin improved this week - your consistency is paying off.";
+  if (delta <= -4) return "Tough week - here is what likely drove the dip and what to fix first.";
+  return "Steady week - your trend is stable, now let's sharpen your highest-impact actions.";
 }
 
 type MonthParamMove = {
@@ -258,8 +258,8 @@ function buildMonthParamHighlights(
     .slice(0, 5)
     .map((m) =>
       scoresUnlocked
-        ? `${RAG_KAI_PARAM_LABELS[m.key]} improved from ${m.from} to ${m.to} (Δ+${m.delta}) — a clear win to protect next month.`
-        : `${RAG_KAI_PARAM_LABELS[m.key]} improved this month — protect that momentum.`
+        ? `${RAG_KAI_PARAM_LABELS[m.key]} improved from ${m.from} to ${m.to} (Δ+${m.delta}) - a clear win to protect next month.`
+        : `${RAG_KAI_PARAM_LABELS[m.key]} improved this month - protect that momentum.`
     );
 }
 
@@ -274,8 +274,8 @@ function buildMonthParamRisks(
     .slice(0, 4)
     .map((m) =>
       scoresUnlocked
-        ? `${RAG_KAI_PARAM_LABELS[m.key]} declined from ${m.from} to ${m.to} (Δ${m.delta}) — prioritise recovery here.`
-        : `${RAG_KAI_PARAM_LABELS[m.key]} softened this month — prioritise recovery here.`
+        ? `${RAG_KAI_PARAM_LABELS[m.key]} declined from ${m.from} to ${m.to} (Δ${m.delta}) - prioritise recovery here.`
+        : `${RAG_KAI_PARAM_LABELS[m.key]} softened this month - prioritise recovery here.`
     );
 }
 
@@ -306,7 +306,7 @@ function buildMonthParamNotes(
         p.vsPrior != null
           ? ` Versus the prior scan: ${signedDelta(p.vsPrior)}.`
           : "";
-      return `${p.label} ${dir} across the month (${signedDelta(d)} from open to latest; latest ${p.latest ?? "—"}).${mean}${prior}`;
+      return `${p.label} ${dir} across the month (${signedDelta(d)} from open to latest; latest ${p.latest ?? "-"}).${mean}${prior}`;
     });
 }
 
@@ -320,7 +320,7 @@ function buildMonthHabitNotes(
   ];
   if (ad.avgWaterGlasses > 0) {
     notes.push(
-      `Hydration averaged ${ad.avgWaterGlasses} glasses daily — steady water intake supports barrier recovery.`
+      `Hydration averaged ${ad.avgWaterGlasses} glasses daily - steady water intake supports barrier recovery.`
     );
   }
   return notes;
@@ -338,7 +338,7 @@ function buildMonthScanStory(
     return `You completed ${scans.length} scan${scans.length === 1 ? "" : "s"} this month. Your headline month score blends parameter averages across those visits.`;
   }
   const series = scans.map((s) => s.kaiScore).join(" → ");
-  return `You completed ${scans.length} scan${scans.length === 1 ? "" : "s"} this month. Per-scan kAI moved ${series}. Your headline month kAI is ${kaiMonthAvg ?? "—"}, which blends parameter averages across those scans rather than simply averaging the per-scan scores.`;
+  return `You completed ${scans.length} scan${scans.length === 1 ? "" : "s"} this month. Per-scan kAI moved ${series}. Your headline month kAI is ${kaiMonthAvg ?? "-"}, which blends parameter averages across those scans rather than simply averaging the per-scan scores.`;
 }
 
 function mergeUniqueStrings(...groups: Array<string[] | undefined>): string[] {
@@ -548,7 +548,7 @@ async function buildMonthlyForCalendarMonth(
     monthlyLlm?.summaryTitle ?? "kAI monthly progress";
   const summaryBody =
     monthlyLlm?.summaryBody ??
-    `Your headline month kAI is ${displayKaiMonthAvgFromParams ?? "—"}. That score blends each skin parameter across ${scansForMonthAvg.length} scan${scansForMonthAvg.length === 1 ? "" : "s"} this month, rather than simply averaging per-scan totals. Per-scan kAI moved ${displayScoreTrend.join(" → ")}. Full AM+PM routine landed on ${monthBehavior.fullRoutineDays}/${windowDays} days, with checklist consistency at ${monthBehavior.routineWeightedConsistencyPct}% and journal coverage at ${monthBehavior.journalCompliancePct}%.`;
+    `Your headline month kAI is ${displayKaiMonthAvgFromParams ?? "-"}. That score blends each skin parameter across ${scansForMonthAvg.length} scan${scansForMonthAvg.length === 1 ? "" : "s"} this month, rather than simply averaging per-scan totals. Per-scan kAI moved ${displayScoreTrend.join(" → ")}. Full AM+PM routine landed on ${monthBehavior.fullRoutineDays}/${windowDays} days, with checklist consistency at ${monthBehavior.routineWeightedConsistencyPct}% and journal coverage at ${monthBehavior.journalCompliancePct}%.`;
   const ruleHighlights = buildMonthParamHighlights(
     monthParamMoves,
     scoresUnlocked
@@ -557,7 +557,7 @@ async function buildMonthlyForCalendarMonth(
     monthlyLlm?.highlights,
     ruleHighlights,
     [
-      `Headline month kAI: ${displayKaiMonthAvgFromParams ?? "—"} across ${scansForMonthAvg.length} scan${scansForMonthAvg.length === 1 ? "" : "s"} in ${periodLabel}.`,
+      `Headline month kAI: ${displayKaiMonthAvgFromParams ?? "-"} across ${scansForMonthAvg.length} scan${scansForMonthAvg.length === 1 ? "" : "s"} in ${periodLabel}.`,
       `Full-routine days: ${monthBehavior.fullRoutineDays}/${windowDays} · sleep avg ${monthBehavior.avgSleepHours}h · journal ${monthBehavior.journalCompliancePct}%.`,
     ]
   ).slice(0, 8);
@@ -567,7 +567,7 @@ async function buildMonthlyForCalendarMonth(
   ];
   if (monthBehavior.journalCompliancePct < 46) {
     ruleRisks.push(
-      `Skin journal only on ${monthBehavior.journalEntriesCount}/${monthBehavior.windowDays} days (${monthBehavior.journalCompliancePct}%) — flare triggers and texture shifts are invisible without quick notes.`
+      `Skin journal only on ${monthBehavior.journalEntriesCount}/${monthBehavior.windowDays} days (${monthBehavior.journalCompliancePct}%) - flare triggers and texture shifts are invisible without quick notes.`
     );
   }
   if (
@@ -575,7 +575,7 @@ async function buildMonthlyForCalendarMonth(
     monthBehavior.routineWeightedConsistencyPct < 60
   ) {
     ruleRisks.push(
-      `Checklist completion averaged ${monthBehavior.routineWeightedConsistencyPct}% (many partial AM/PM days) — incomplete routines usually drag acne and pigmentation response.`
+      `Checklist completion averaged ${monthBehavior.routineWeightedConsistencyPct}% (many partial AM/PM days) - incomplete routines usually drag acne and pigmentation response.`
     );
   }
   const risks = mergeUniqueStrings(ruleRisks, monthlyLlm?.risks).slice(0, 8);
@@ -583,7 +583,7 @@ async function buildMonthlyForCalendarMonth(
   const ruleFocus: string[] = [];
   if (monthBehavior.journalCompliancePct < 46) {
     ruleFocus.push(
-      "Log a tiny nightly skin note on at least 4 nights weekly (sting, itch, breakout map, sleep) even when you skip routines — patterns only show up with notes."
+      "Log a tiny nightly skin note on at least 4 nights weekly (sting, itch, breakout map, sleep) even when you skip routines - patterns only show up with notes."
     );
   }
   if (
@@ -591,7 +591,7 @@ async function buildMonthlyForCalendarMonth(
     monthBehavior.routineWeightedConsistencyPct < 65
   ) {
     ruleFocus.push(
-      "Finish one tier fully (for example PM cleanse + moisturizer) instead of ticking every bottle halfway — complete steps beat partial checklists."
+      "Finish one tier fully (for example PM cleanse + moisturizer) instead of ticking every bottle halfway - complete steps beat partial checklists."
     );
   }
   ruleFocus.push(
@@ -695,7 +695,7 @@ async function buildMonthlyForCalendarMonth(
     );
   const closingNote =
     monthlyLlm?.closingNote?.trim() ||
-    "Carry the wins, fix the soft spots early, and keep your check-ins honest — next month’s insight gets sharper with every scan and note.";
+    "Carry the wins, fix the soft spots early, and keep your check-ins honest - next month’s insight gets sharper with every scan and note.";
   const environmentNote =
     monthlyLlm?.environmentNote?.trim() || null;
 
@@ -788,7 +788,7 @@ function summarizeVisitNotes(notes: Array<typeof visitNotes.$inferSelect>) {
   return notes
     .map(
       (v) =>
-        `• ${ymd(v.visitDate)} Dr.${v.doctorName} — ${v.purpose ?? "visit"}; ${
+        `• ${ymd(v.visitDate)} Dr.${v.doctorName} - ${v.purpose ?? "visit"}; ${
           v.treatments ?? ""
         }; response=${v.responseRating ?? "n/a"}; notes=${v.notes.slice(0, 200)}`
     )
@@ -1086,7 +1086,7 @@ export async function generateRagKaiOutput(input: {
     if (dragsAgg[1]) fallbackCauses.push(`Drag: ${dragsAgg[1]}`);
     if (fallbackCauses.length < 2) {
       fallbackCauses.push(
-        `Watch: ${behavior.fullRoutineDays}/${behavior.windowDays} full-routine days — aim for 5+ next week`
+        `Watch: ${behavior.fullRoutineDays}/${behavior.windowDays} full-routine days - aim for 5+ next week`
       );
       fallbackCauses.push(
         `Watch: avg sleep ${behavior.avgSleepHours}h and hydration ${behavior.avgWaterGlasses} glasses shape barrier recovery`
@@ -1158,7 +1158,7 @@ export async function generateRagKaiOutput(input: {
             : fallbackCauses,
         empathyParagraph:
           llmOut?.empathyParagraph ??
-          "Your trend is still forming. Keep uploads weekly and AM/PM logs complete — that's what lets kAI tie behaviour to outcomes with real confidence.",
+          "Your trend is still forming. Keep uploads weekly and AM/PM logs complete - that's what lets kAI tie behaviour to outcomes with real confidence.",
       },
       section3: {
         article: {
@@ -1194,13 +1194,13 @@ export async function generateRagKaiOutput(input: {
                   rank: 3,
                   title: "Keep scan conditions consistent",
                   detail:
-                    "Same lighting, same time band, full 5-angle capture — makes trend lines trustworthy.",
+                    "Same lighting, same time band, full 5-angle capture - makes trend lines trustworthy.",
                 },
               ],
       },
       section5: {
         shareLine:
-          "Share this week's progress with a friend or family — accountability accelerates results.",
+          "Share this week's progress with a friend or family - accountability accelerates results.",
       },
       evidence: evidence.map((e) => ({
         id: e.chunk.id,
@@ -1373,7 +1373,7 @@ export async function generateRagKaiOutput(input: {
         : null;
       const fallbackMessage = d.weakestParamLabel
         ? `${d.weakestParamLabel} is your top focus today. Keep AM + PM complete and avoid new actives until your next scan.`
-        : "Stay consistent with AM + PM today — weekly gains compound from daily execution.";
+        : "Stay consistent with AM + PM today - weekly gains compound from daily execution.";
       const fallbackGoals: string[] = [];
       if (d.weakestParamLabel) {
         fallbackGoals.push(
@@ -1384,12 +1384,12 @@ export async function generateRagKaiOutput(input: {
       }
       if (!d.pmRoutine)
         fallbackGoals.push(
-          "Complete PM routine tonight — it's been skipped recently."
+          "Complete PM routine tonight - it's been skipped recently."
         );
       else fallbackGoals.push("Keep PM routine steady; don't add new products this week.");
       if (d.routineConsistencyPct < 60)
         fallbackGoals.push(
-          "Log your AM+PM checklist — weekly consistency is under 60%."
+          "Log your AM+PM checklist - weekly consistency is under 60%."
         );
       else fallbackGoals.push("Log sleep and water tonight to keep causes accurate.");
 

@@ -4,7 +4,7 @@ import { getSessionUserId } from "../../src/lib/auth/get-session";
 import { loadSchedulePageData } from "../../src/lib/loadSchedulePageData";
 import { PatientDashboardDesktop } from "../../components/dashboard/PatientDashboardDesktop";
 import AppointmentsCalendarClient from "../../components/dashboard/AppointmentsCalendarClient";
-import { SkinFitLoader } from "../../components/dashboard/SkinFitLoader";
+import { CalendarSkeleton } from "../../components/dashboard/PageSkeletons";
 
 export default async function DashboardPage() {
   const userId = await getSessionUserId();
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
       calendarSlot={
         <Suspense
           fallback={
-            <SkinFitLoader size="section" title="Loading calendar" />
+            <CalendarSkeleton />
           }
         >
           <AppointmentsCalendarClient

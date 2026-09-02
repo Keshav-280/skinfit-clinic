@@ -1,15 +1,15 @@
 import { format } from "date-fns";
 import type { KaiGradeTone, KaiReportParamRow } from "@/src/lib/kaiReportMapping";
-import { subGradeTone, templateFinding } from "@/src/lib/kaiReportMapping";
+import { scoreFinding, subGradeTone } from "@/src/lib/kaiReportMapping";
 import {
   addDays,
-  computeMovement,
+  computeScore10Movement,
   intervalDaysForParam,
   isMovementReportable,
   TRACKING_RATIONALE,
   type MovementKind,
 } from "@/src/lib/report/gradeComputation";
-import { severityToScoreOutOfTen } from "@/src/lib/clarityGrade";
+import { scoreOutOfTen } from "@/src/lib/clarityGrade";
 
 export type MovementRow = {
   key: string;
@@ -50,7 +50,6 @@ export function buildMovementGroups(opts: {
   previous: KaiReportParamRow[];
   firstScanAt: Date;
   currentScanAt: Date;
-  llmFindings?: Record<string, { finding?: string; movement?: string }>;
 }): MovementGroups {
   const prevByKey = new Map(opts.previous.map((p) => [p.key, p]));
   const daysSinceFirst = Math.floor(
@@ -63,21 +62,18 @@ export function buildMovementGroups(opts: {
   const tracking: MovementRow[] = [];
 
   for (const curr of opts.current) {
-    const llm = opts.llmFindings?.[curr.key];
-    const finding = llm?.finding?.trim() || curr.finding;
-
     if (!isMovementReportable(curr.key, daysSinceFirst)) {
       const next = addDays(opts.firstScanAt, intervalDaysForParam(curr.key));
       const nextLabel = format(next, "d MMM");
       const rationale =
         TRACKING_RATIONALE[curr.key] ??
-        "This marker reports on a longer cycle — keep scanning so we have a clean comparison.";
+        "This marker reports on a longer cycle - keep scanning so we have a clean comparison.";
       tracking.push({
         key: curr.key,
         name: curr.name,
         grade: curr.grade,
         gradeColor: curr.gradeColor,
-        finding,
+        finding: scoreFinding(curr.name, curr.score10),
         movement: { tag: nextLabel, type: "track" },
         note: rationale,
       });
@@ -91,24 +87,20 @@ export function buildMovementGroups(opts: {
         name: curr.name,
         grade: curr.grade,
         gradeColor: curr.gradeColor,
-        finding,
+        finding: scoreFinding(curr.name, curr.score10),
         movement: { tag: "Mapped", type: "hold" },
       });
       continue;
     }
 
-    const kind = computeMovement(curr.severity, prev.severity);
-    const prevScore = String(severityToScoreOutOfTen(prev.severity));
-    const currScore = String(severityToScoreOutOfTen(curr.severity));
-    const mv = arrowTag(prevScore, currScore, kind);
+    const kind = computeScore10Movement(curr.score10, prev.score10);
+    const mv = arrowTag(String(prev.score10), String(curr.score10), kind);
     const row: MovementRow = {
       key: curr.key,
       name: curr.name,
       grade: curr.grade,
       gradeColor: curr.gradeColor,
-      finding:
-        finding ||
-        templateFinding(curr.name, curr.severity),
+      finding: scoreFinding(curr.name, curr.score10, prev.score10),
       movement: mv,
     };
 
@@ -127,11 +119,10 @@ export function overallMovementFromScores(
   currentScore: number,
   previousScore: number
 ): MovementKind {
-  // Higher clarity score = better skin.
-  const delta = currentScore - previousScore;
-  if (delta > 3) return "improved";
-  if (delta < -3) return "declined";
-  return "holding";
+  return computeScore10Movement(
+    scoreOutOfTen(currentScore),
+    scoreOutOfTen(previousScore)
+  );
 }
 
 export function toneFromLetter(letter: string): KaiGradeTone {

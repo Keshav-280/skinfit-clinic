@@ -2,7 +2,7 @@
 
 export const KAI_MEET_CARD = {
   radius: 20,
-  /** Desktop min height — taller hero card. */
+  /** Desktop min height - taller hero card. */
   minHeightWide: 460,
   minHeightPhone: 340,
   gradient: {

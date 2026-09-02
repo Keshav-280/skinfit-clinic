@@ -106,7 +106,7 @@ export function WeeklyReportCard({
               : "7 days after your first scan"}
           </p>
           <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-[#64748B]">
-            Keep scanning and logging daily — we&apos;ll build your week-one recap.
+            Keep scanning and logging daily - we&apos;ll build your week-one recap.
           </p>
         </div>
       ) : (
@@ -157,7 +157,7 @@ export function WeeklyReportCard({
             <h4 className="text-[15px] font-bold text-[#1A1A2E]">What we noticed</h4>
             <p className="mt-0.5 text-xs text-[#64748B]">
               Short highlights from your scans and logs
-              {!scoresUnlocked ? " — letter grades only until your clinic visit" : ""}
+              {!scoresUnlocked ? " - letter grades only until your clinic visit" : ""}
             </p>
             {observations.length > 0 ? (
               <ul className="mt-3 space-y-2.5">
@@ -198,7 +198,7 @@ export function WeeklyReportCard({
 
           <div>
             <h4 className="text-[15px] font-bold text-[#1A1A2E]">Your focus this week</h4>
-            <p className="mt-0.5 text-xs text-[#64748B]">Three simple steps — one at a time</p>
+            <p className="mt-0.5 text-xs text-[#64748B]">Three simple steps - one at a time</p>
             {parsedActions.length > 0 ? (
               <ul className="mt-3 space-y-2.5">
                 {parsedActions.map((action, i) => (

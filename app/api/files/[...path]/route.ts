@@ -14,7 +14,7 @@ const MIME: Record<string, string> = {
 };
 
 /**
- * GET /api/files/scans/<id>.jpg — serves uploads from local disk or R2 (auth required).
+ * GET /api/files/scans/<id>.jpg - serves uploads from local disk or R2 (auth required).
  */
 export async function GET(
   request: NextRequest,

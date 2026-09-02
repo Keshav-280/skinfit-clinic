@@ -82,18 +82,18 @@ function kaiFromParameterScores(
 function formatDoctorScoreSaveError(code: string | undefined): string {
   switch (code) {
     case "UNAUTHORIZED":
-      return "Session expired — sign in again.";
+      return "Session expired - sign in again.";
     case "NOT_FOUND":
       return "Scan not found for this patient.";
     case "kaiScore_REQUIRED":
-      return "Enter a kAI score (0–100) before saving.";
+      return "Enter a kAI score (0-100) before saving.";
     case "INVALID_SEVERITY_VALUE":
       return "One of the severity values is invalid.";
     case "INVALID_PARAM_SCORE_VALUE":
       return "One of the parameter score values is invalid.";
     case "INVALID_JSON":
     case "INVALID_BODY":
-      return "Invalid save request — refresh and try again.";
+      return "Invalid save request - refresh and try again.";
     default:
       return code?.trim() ? code.replace(/_/g, " ") : "Could not save scores.";
   }
@@ -204,7 +204,7 @@ export function DoctorScanScoreEditor({
 
       <div className={`${doctorPatientPageRowClass} flex flex-wrap items-center gap-3 py-2`}>
         <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
-          <span className="text-xs text-[#1E1B31]/70">kAI score (0–100)</span>
+          <span className="text-xs text-[#1E1B31]/70">kAI score (0-100)</span>
           <div className="flex items-center gap-2">
             <output
               className={`${doctorPatientPageFormInputClass} w-24 tabular-nums`}

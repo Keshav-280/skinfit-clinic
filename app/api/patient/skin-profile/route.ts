@@ -109,7 +109,7 @@ async function resolveInsightSections(
     return { keyObservations, priorityKnowDo, scanCount, generatedAt: new Date(), reused: false };
   }
 
-  // Regeneration produced nothing usable — serve the last-good stored copy if we have one.
+  // Regeneration produced nothing usable - serve the last-good stored copy if we have one.
   if (stored && storedPayloadHasContent(stored.payload)) {
     return {
       keyObservations: stored.payload.keyObservations,

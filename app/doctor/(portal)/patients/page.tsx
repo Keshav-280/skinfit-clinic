@@ -5,7 +5,7 @@ import { DoctorPortalCalendar } from "@/components/doctor/DoctorPortalCalendar";
 export const metadata: Metadata = {
   title: "Patients",
   description:
-    "Browse patients and your clinic calendar — visits, alerts, and profiles in one view.",
+    "Browse patients and your clinic calendar - visits, alerts, and profiles in one view.",
 };
 
 export default async function PatientsPage({

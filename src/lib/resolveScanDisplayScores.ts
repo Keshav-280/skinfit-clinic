@@ -8,7 +8,7 @@ import {
 } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 
-/** Model feature keys doctors may override via the portal (severity 1–5). */
+/** Model feature keys doctors may override via the portal (severity 1-5). */
 export const DOCTOR_EDITABLE_MFS_KEYS = [
   "active_acne",
   "acne_scars",
@@ -22,12 +22,12 @@ export type DoctorEditableMfsKey = (typeof DOCTOR_EDITABLE_MFS_KEYS)[number];
 
 export type DoctorOverrides = {
   /**
-   * Doctor-entered kAI score (0–100 clarity scale).
+   * Doctor-entered kAI score (0-100 clarity scale).
    * When present, this overrides the computed weighted kAI score.
    */
   kaiScore?: number;
   /**
-   * Doctor-entered severity scores (1–5) for the model feature score keys
+   * Doctor-entered severity scores (1-5) for the model feature score keys
    * (e.g. `active_acne`, `acne_scars`, `wrinkle_severity`, ...).
    */
   modelFeatureScores?: Record<string, number | null | undefined> | null;
@@ -120,7 +120,7 @@ export type ResolvedScanDisplayScores = {
    */
   effectiveScoresJson: unknown;
   /**
-   * Resolved RAG 0–100 parameter values (subset + hidden keys).
+   * Resolved RAG 0-100 parameter values (subset + hidden keys).
    * Tracker builder uses visible values.
    */
   resolvedRagParamValues: Partial<Record<RagKaiParamKey, number>>;
@@ -136,7 +136,7 @@ export function resolveScanDisplayScores(input: {
 
   const clinical_scores = parseClinicalScores(effectiveScoresJson);
 
-  // Compute resolved RAG parameter values (0–100 clarity scale).
+  // Compute resolved RAG parameter values (0-100 clarity scale).
   const resolvedRagParamValues = ragParamValuesFromScanRow({
     overallScore: input.baseMetricsColumns.overallScore,
     acne: input.baseMetricsColumns.acne,
@@ -333,7 +333,7 @@ export type ScanRowForScoreResolution = ScanBaseMetricsColumns & {
   scores: unknown;
 };
 
-/** RAG 0–100 param values (acne detector, doctor overrides, clinical_scores). */
+/** RAG 0-100 param values (acne detector, doctor overrides, clinical_scores). */
 export function ragParamValuesFromScanRow(
   row: ScanRowForScoreResolution,
   dbByKey: Record<string, number | null | undefined> = {}
@@ -392,7 +392,7 @@ export function syncResolvedScoresToScoresJson(
   };
 }
 
-/** Weighted kAI score — same resolution path as patient/doctor scan metrics. */
+/** Weighted kAI score - same resolution path as patient/doctor scan metrics. */
 export function kaiScoreFromScanRow(row: ScanRowForScoreResolution): number {
   return resolveScanDisplayScores({
     scoresJson: row.scores,
@@ -408,7 +408,7 @@ export function kaiScoreFromScanRow(row: ScanRowForScoreResolution): number {
 }
 
 /** Effective patient/doctor metrics with `doctorOverrides` merged into clinical scores. */
-export function scanDisplayMetricsFromRow(row: {
+export function scanDisplayResolvedFromRow(row: {
   overallScore: number;
   acne: number;
   wrinkles: number;
@@ -416,7 +416,7 @@ export function scanDisplayMetricsFromRow(row: {
   hydration: number;
   texture: number;
   scores: unknown;
-}): ResolvedScanDisplayScores["metrics"] {
+}): ResolvedScanDisplayScores {
   return resolveScanDisplayScores({
     scoresJson: row.scores,
     baseMetricsColumns: {
@@ -427,6 +427,19 @@ export function scanDisplayMetricsFromRow(row: {
       hydration: row.hydration,
       texture: row.texture,
     },
-  }).metrics;
+  });
+}
+
+/** Effective patient/doctor metrics with `doctorOverrides` merged into clinical scores. */
+export function scanDisplayMetricsFromRow(row: {
+  overallScore: number;
+  acne: number;
+  wrinkles: number;
+  pigmentation: number;
+  hydration: number;
+  texture: number;
+  scores: unknown;
+}): ResolvedScanDisplayScores["metrics"] {
+  return scanDisplayResolvedFromRow(row).metrics;
 }
 

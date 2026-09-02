@@ -54,7 +54,7 @@ function MaskPanel({
   caption: string;
   fallbackSrc?: string;
   maskExportVersion?: number | null;
-  /** Fill the frame (distort if needed) — wrinkle mask only. */
+  /** Fill the frame (distort if needed) - wrinkle mask only. */
   stretch?: boolean;
   visible?: boolean;
 }) {
@@ -134,7 +134,7 @@ function OverlayMaskImage({
 }
 
 /**
- * Face-photo overlay for the immersive ScanViewer — fades masks by active concern.
+ * Face-photo overlay for the immersive ScanViewer - fades masks by active concern.
  */
 export function ScanFaceOverlay({
   imageUrl: _imageUrl,

@@ -181,7 +181,7 @@ export async function POST(req: Request) {
       ? "New secure patient message"
       : patientText.slice(0, 140);
     void notifyDoctorUsers({
-      title: isUrgent ? "SOS — patient message" : "New patient message",
+      title: isUrgent ? "SOS - patient message" : "New patient message",
       body: pushBody,
       data: isUrgent
         ? { type: "sos_chat", patientId: userId }

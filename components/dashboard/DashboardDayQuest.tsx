@@ -23,7 +23,7 @@ export function DashboardDayQuestBanner({
   focusMessage,
   questSubtext,
 }: {
-  /** 0–1: completed AM/PM steps over total steps. */
+  /** 0-1: completed AM/PM steps over total steps. */
   routineProgress: number;
   /** Single daily AI recommendation shown as primary focus text. */
   focusMessage?: string | null;
@@ -150,7 +150,7 @@ export function DashboardDayQuestBanner({
           </p>
           {finalHour ? (
             <p className="mt-1 text-center text-xs font-semibold text-amber-700">
-              Final hour — finish strong
+              Final hour - finish strong
             </p>
           ) : null}
         </div>

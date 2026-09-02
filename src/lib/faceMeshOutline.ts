@@ -31,7 +31,7 @@ export function smoothLandmarks(
   return out;
 }
 
-/** Map landmark coords (on zoom-cropped analysis frame) to full preview 0–1 space. */
+/** Map landmark coords (on zoom-cropped analysis frame) to full preview 0-1 space. */
 export function landmarkToPreviewNormalized(
   x: number,
   y: number,

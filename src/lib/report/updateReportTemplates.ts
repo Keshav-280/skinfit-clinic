@@ -22,7 +22,7 @@ const STRESS_ANCHORS: Record<number, string> = {
 };
 
 export function stressLabel(level: number | null | undefined): string {
-  if (level == null || !Number.isFinite(level)) return "—";
+  if (level == null || !Number.isFinite(level)) return "-";
   const n = Math.max(1, Math.min(10, Math.round(level)));
   return STRESS_ANCHORS[n] ?? "Mixed";
 }
@@ -32,24 +32,24 @@ export function weekRecapFromWellness(
 ): Array<{ label: string; value: string }> {
   if (!wellness) {
     return [
-      { label: "Sleep", value: "—" },
-      { label: "Stress", value: "—" },
-      { label: "Routine", value: "—" },
-      { label: "Fuel", value: "—" },
+      { label: "Sleep", value: "-" },
+      { label: "Stress", value: "-" },
+      { label: "Routine", value: "-" },
+      { label: "Fuel", value: "-" },
     ];
   }
   const routine = Array.isArray(wellness.skincareRoutine)
     ? wellness.skincareRoutine.length > 0
       ? `${wellness.skincareRoutine.length} steps`
-      : "—"
-    : "—";
+      : "-"
+    : "-";
   return [
-    { label: "Sleep", value: wellness.sleepHours?.trim() || "—" },
+    { label: "Sleep", value: wellness.sleepHours?.trim() || "-" },
     { label: "Stress", value: stressLabel(wellness.stressLevel) },
     { label: "Routine", value: routine },
     {
       label: "Fuel",
-      value: wellness.nutritionLevel?.trim() || "—",
+      value: wellness.nutritionLevel?.trim() || "-",
     },
   ];
 }
@@ -58,7 +58,7 @@ export function templateWeekHighlight(
   wellness: LlmWellnessCheckinInput | null
 ): string | null {
   if (!wellness?.sleepHours?.trim()) return null;
-  return `You logged ${wellness.sleepHours.trim()} of sleep this week — we'll keep watching how that sits with your markers.`;
+  return `You logged ${wellness.sleepHours.trim()} of sleep this week - we'll keep watching how that sits with your markers.`;
 }
 
 export function buildAttributionCards(opts: {
@@ -113,7 +113,7 @@ export function buildAttributionCards(opts: {
     cards.push({
       label: "Your pattern so far",
       text: sleep
-        ? `This week you logged ${sleep} of sleep and stress as ${stress.toLowerCase()}. We'll keep pairing these with the markers that move on a weekly cycle — it's a pattern to watch, not a conclusion.`
+        ? `This week you logged ${sleep} of sleep and stress as ${stress.toLowerCase()}. We'll keep pairing these with the markers that move on a weekly cycle - it's a pattern to watch, not a conclusion.`
         : "Complete your weekly check-ins to see patterns here.",
     });
   } else {
@@ -133,7 +133,7 @@ export function defaultUpdateActions(opts: {
   const base = defaultInitialActions(opts.topConcern).slice(0, 2);
   const third = opts.hasCaptureNote
     ? "Next capture: same distance, face the light (don't stand with a bright window behind you)."
-    : "Keep capture conditions consistent — same lighting and distance — so next week's then/now stays reliable.";
+    : "Keep capture conditions consistent - same lighting and distance - so next week's then/now stays reliable.";
   return [...base, third];
 }
 
@@ -145,12 +145,12 @@ export function defaultUpdateHeadline(
   const top = pickTopConcernName(rows).toLowerCase();
   const label = /\/10$/.test(score10) ? score10 : `${score10}/10`;
   if (movement === "improved") {
-    return `${label} — ${top} easing, rest holding`;
+    return `${label} - ${top} easing, rest holding`;
   }
   if (movement === "declined") {
-    return `${label} — watch ${top}, rest holding`;
+    return `${label} - watch ${top}, rest holding`;
   }
-  return `${label} — holding steady on ${top}`;
+  return `${label} - holding steady on ${top}`;
 }
 
 export function defaultNextStep(opts: {
@@ -161,12 +161,12 @@ export function defaultNextStep(opts: {
   if (opts.escalate) {
     return {
       heading: `${opts.doctorName} should review this scan`,
-      body: `Something on this week's capture is worth a direct look — message ${opts.doctorName} with this report open so they can advise next steps.`,
+      body: `Something on this week's capture is worth a direct look - message ${opts.doctorName} with this report open so they can advise next steps.`,
     };
   }
   return {
     heading: `${opts.doctorName} should see your ${opts.topConcern.toLowerCase()} progress`,
-    body: `A quick message keeps your plan aligned with what this week actually shows — not just how it feels day to day.`,
+    body: `A quick message keeps your plan aligned with what this week actually shows - not just how it feels day to day.`,
   };
 }
 

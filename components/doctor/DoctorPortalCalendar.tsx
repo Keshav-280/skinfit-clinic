@@ -12,7 +12,7 @@ import {
 import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 import { DoctorCard, DoctorInlineLoader } from "@/components/doctor/DoctorUiPrimitives";
-/** Tailwind needs literal hex in ring-offset — keep in sync with DOCTOR_CALENDAR_BG. */
+/** Tailwind needs literal hex in ring-offset - keep in sync with DOCTOR_CALENDAR_BG. */
 const CAL_RING_OFFSET = "ring-offset-[#1E1B31]";
 
 type ApptItem = {
@@ -61,7 +61,7 @@ function dayTiming(ymd: string, todayYmd: string): DayTiming {
   return ymd < todayYmd ? "past" : "future";
 }
 
-/** Month grid cell — dark navy theme with ivory / navy visit states. */
+/** Month grid cell - dark navy theme with ivory / navy visit states. */
 function monthCellClass(
   timing: DayTiming,
   opts: { selected: boolean; hasVisits: boolean; isToday: boolean }
@@ -106,7 +106,7 @@ function weekDayShellClass(timing: DayTiming): string {
   return "bg-[#242A5F]/55 shadow-[0_1px_4px_rgba(0,0,0,0.15)]";
 }
 
-/** Selected-day header — e.g. FRI 22 MAY · TODAY / SAT 30 MAY · UPCOMING */
+/** Selected-day header - e.g. FRI 22 MAY · TODAY / SAT 30 MAY · UPCOMING */
 function visitDetailDateClass(timing: DayTiming): string {
   if (timing === "past") return "text-[#E8E7DE]";
   return "text-white/90";

@@ -3,16 +3,16 @@ export interface ReportRegion {
   coordinates: { x: number; y: number };
 }
 
-/** 1–5 style severity scores (e.g. from FaceAnalyzer-style models). */
+/** 1-5 style severity scores (e.g. from FaceAnalyzer-style models). */
 export interface ClinicalScores {
   active_acne?: number;
   acne_scars?: number;
   skin_quality?: number;
-  /** Model wrinkle severity 1–5 (distinct from 0–100 “clarity” donut). */
+  /** Model wrinkle severity 1-5 (distinct from 0-100 “clarity” donut). */
   wrinkle_severity?: number;
-  /** ISGD/CelebA classification head (1–5). */
+  /** ISGD/CelebA classification head (1-5). */
   wrinkle_cls_severity?: number;
-  /** Segmentation-head severity from mask coverage (1–5). */
+  /** Segmentation-head severity from mask coverage (1-5). */
   wrinkle_seg_severity?: number;
   sagging_volume?: number;
   under_eye?: number;

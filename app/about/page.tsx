@@ -152,7 +152,7 @@ export default function AboutPage() {
                 <motion.p variants={textVariant} className="text-lg leading-relaxed text-slate-600">
                   We believe that dermatology should be precise, personalized, and
                   accessible. Our mission is to combine expert clinical care with
-                  cutting-edge AI—so every patient receives a treatment plan tailored
+                  cutting-edge AI - so every patient receives a treatment plan tailored
                   to their unique skin, backed by data and delivered with empathy.
                 </motion.p>
                 <motion.p variants={textVariant} className="text-slate-600">
@@ -205,7 +205,7 @@ export default function AboutPage() {
                   Every consultation starts with listening. We take time to understand
                   your concerns, lifestyle, and goals before recommending any treatment.
                   Our clinical methodology is evidence-based, transparent, and designed
-                  for long-term skin health—not quick fixes.
+                  for long-term skin health - not quick fixes.
                 </motion.p>
                 <motion.p variants={textVariant} className="text-slate-600">
                   We combine diagnostic precision with a compassionate approach. Our
@@ -244,12 +244,12 @@ export default function AboutPage() {
                   Our proprietary face-scanning AI analyzes skin parameters with
                   clinically validated accuracy. It detects and quantifies acne
                   severity, pigmentation patterns, fine lines, wrinkles, and texture
-                  concerns—giving you and your dermatologist a clear baseline for
+                  concerns - giving you and your dermatologist a clear baseline for
                   treatment planning.
                 </motion.p>
                 <motion.p variants={textVariant} className="text-slate-600">
                   The AI is trained on diverse skin types and conditions, ensuring
-                  reliable results across populations. It supports—not replaces—our
+                  reliable results across populations. It supports - not replaces - our
                   human expertise, helping clinicians make faster, more informed
                   decisions while you see exactly how your skin is changing over time.
                 </motion.p>
@@ -296,11 +296,11 @@ export default function AboutPage() {
                 <motion.p variants={textVariant} className="text-lg leading-relaxed text-slate-600">
                   Every patient gets a secure, HIPAA-ready private dashboard. Your
                   personalized routine, treatment history, and skin scan results live
-                  in one place—accessible only to you and your care team.
+                  in one place - accessible only to you and your care team.
                 </motion.p>
                 <motion.p variants={textVariant} className="text-slate-600">
                   Your dashboard is customized to your treatment plan. You&apos;ll see your
-                  daily routines, reminders, and progress at a glance—so you stay
+                  daily routines, reminders, and progress at a glance - so you stay
                   accountable and informed without the overwhelm.
                 </motion.p>
                 <motion.div variants={iconVariant} className="inline-flex items-center gap-2 rounded-lg border border-[#EFCCCE]/60 bg-white/60 px-4 py-2 backdrop-blur-sm">
@@ -357,7 +357,7 @@ export default function AboutPage() {
                 </motion.div>
                 <motion.p variants={textVariant} className="text-slate-600">
                   Regular follow-ups and wellness targets keep you on track. Your
-                  dermatologist reviews your progress and refines your plan—so you
+                  dermatologist reviews your progress and refines your plan - so you
                   achieve sustainable, lasting results.
                 </motion.p>
               </div>

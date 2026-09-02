@@ -1,12 +1,5 @@
-"use client";
-
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { ProfilePageSkeleton } from "@/components/dashboard/PageSkeletons";
 
 export default function ProfileLoading() {
-  return (
-    <SkinFitLoader
-      title="Opening your profile"
-      subtitle="kAI is gathering your skin identity and care notes."
-    />
-  );
+  return <ProfilePageSkeleton />;
 }

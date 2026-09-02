@@ -77,7 +77,7 @@ export function NightScanReport({ data }: { data: ConceptReportData }) {
                 </p>
               </div>
               <div className="mb-1 rounded-sm border border-[#7EE0F2]/40 bg-[#070A12]/70 px-2 py-1 font-mono text-[10px] tracking-[0.14em] text-[#E8C37A]">
-                PRI · {watch?.shortName.toUpperCase() ?? "—"} {watch?.grade}
+                PRI · {watch?.shortName.toUpperCase() ?? "-"} {watch?.grade}
               </div>
             </div>
           </div>

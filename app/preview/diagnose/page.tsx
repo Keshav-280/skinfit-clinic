@@ -1,4 +1,4 @@
-// No-auth preview of the Diagnose redesign — canvas / linen atmosphere, header chrome, bottom nav. Mock data only.
+// No-auth preview of the Diagnose redesign - canvas / linen atmosphere, header chrome, bottom nav. Mock data only.
 import {
   ArrowRight,
   Bell,
@@ -24,10 +24,10 @@ export default function DiagnosePreviewPage() {
 
       <div className="relative z-10 mx-auto flex min-h-dvh max-w-md flex-col px-4 pb-28 pt-3">
         <p className="mb-3 rounded-lg border border-amber-300/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-900 backdrop-blur-sm">
-          Preview — redesigned Diagnose mock (canvas / linen atmosphere). Port 3005.
+          Preview - redesigned Diagnose mock (canvas / linen atmosphere). Port 3005.
         </p>
 
-        {/* Header — company logo + circular actions */}
+        {/* Header - company logo + circular actions */}
         <header className="mb-5 flex items-center justify-between gap-3">
           <PatientPortalBrandLogo className="min-w-0 [&_img]:h-9 [&_img]:max-w-[13.5rem] sm:[&_img]:h-10 sm:[&_img]:max-w-[15rem]" />
           <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ export default function DiagnosePreviewPage() {
           />
         </div>
 
-        {/* Camera CTA — sits on the canvas / linen wash */}
+        {/* Camera CTA - sits on the canvas / linen wash */}
         <div className="relative mt-6 flex flex-1 flex-col">
           <Leaf
             className="leaf-drift pointer-events-none absolute -left-1 bottom-24 h-14 w-14 text-[#1E1B31]/15"
@@ -141,7 +141,7 @@ export default function DiagnosePreviewPage() {
         </div>
       </div>
 
-      {/* Mock bottom nav — matches design frame */}
+      {/* Mock bottom nav - matches design frame */}
       <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-white/60 bg-white/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md">
         <div className="mx-auto flex max-w-md items-end justify-between px-2 pt-2 pb-2">
           {(

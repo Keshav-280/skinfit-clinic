@@ -88,7 +88,7 @@ function fmtDay(ymd: string): string {
 }
 
 function fmtRange(startYmd: string, endYmd: string): string {
-  return `${fmtDay(startYmd)} – ${fmtDay(endYmd)}`;
+  return `${fmtDay(startYmd)} - ${fmtDay(endYmd)}`;
 }
 
 function deltaTrendLabel(delta: number): string {
@@ -424,7 +424,7 @@ export function profileContextForLlm(
   const paramsLine = (s: ProfileScanSummary | null) => {
     if (!s) return "none";
     if (scoresUnlocked) {
-      return `kAI ${s.kaiScore ?? "—"}/100 · ${s.params
+      return `kAI ${s.kaiScore ?? "-"}/100 · ${s.params
         .map((p) => {
           const d =
             p.delta == null
@@ -432,18 +432,18 @@ export function profileContextForLlm(
               : p.delta >= 0
                 ? ` Δ+${p.delta} (${deltaTrendLabel(p.delta)})`
                 : ` Δ${p.delta} (${deltaTrendLabel(p.delta)})`;
-          return `${RAG_KAI_PARAM_LABELS[p.key]}=${p.value ?? "—"}${d}`;
+          return `${RAG_KAI_PARAM_LABELS[p.key]}=${p.value ?? "-"}${d}`;
         })
         .join(" · ")}`;
     }
     const kai =
       s.kaiScore != null
         ? `kAI grade ${patientClarityToGrade(s.kaiScore)}`
-        : "kAI —";
+        : "kAI -";
     const params = s.params
       .map((p) => {
         const grade =
-          p.value == null ? "—" : patientClarityToGrade(p.value);
+          p.value == null ? "-" : patientClarityToGrade(p.value);
         const trend =
           p.delta == null
             ? ""
@@ -458,24 +458,24 @@ export function profileContextForLlm(
     return `${kai} · ${params}`;
   };
 
-  return `SCORE_SCALE: All parameters are 0–100 clarity scores — HIGHER is healthier/better, LOWER is worse. Positive Δ = improvement, negative Δ = worsening. Letter grades: A (best) → E (worst).
+  return `SCORE_SCALE: All parameters are 0-100 clarity scores - HIGHER is healthier/better, LOWER is worse. Positive Δ = improvement, negative Δ = worsening. Letter grades: A (best) → E (worst).
 WINDOW: ${ctx.modeLabel}
 Data policy: ${ctx.mode === "last_7_days" ? "Use only last 7 calendar days of logs and scans." : ctx.mode === "first_week" ? "Use all days from baseline scan through today (first week)." : "Baseline scan only; no week trend yet."}
 Log days in window (${ctx.logDaysUsed.length}): ${ctx.logDaysUsed.join(", ") || "none"}
 Scan days in window (${ctx.scanDaysUsed.length}): ${ctx.scanDaysUsed.join(", ") || "none"}
-Baseline scan (${ctx.baselineScanDateYmd ?? "—"}): ${paramsLine(ctx.baselineScan)}
+Baseline scan (${ctx.baselineScanDateYmd ?? "-"}): ${paramsLine(ctx.baselineScan)}
 Latest scan: ${paramsLine(ctx.latestScan)}
 
 PATIENT
 Name: ${ctx.patientName}
-Skin: ${ctx.identity.skinType ?? "unknown"} · Concern: ${ctx.identity.primaryConcern ?? "unknown"} · Sensitivity: ${ctx.identity.sensitivityIndex ?? "—"}/10
-UV: ${ctx.identity.uvSensitivity ?? "—"} · Hormonal: ${ctx.identity.hormonalCorrelation ?? "—"} · Goal: ${ctx.identity.primaryGoal ?? "—"}
+Skin: ${ctx.identity.skinType ?? "unknown"} · Concern: ${ctx.identity.primaryConcern ?? "unknown"} · Sensitivity: ${ctx.identity.sensitivityIndex ?? "-"}/10
+UV: ${ctx.identity.uvSensitivity ?? "-"} · Hormonal: ${ctx.identity.hormonalCorrelation ?? "-"} · Goal: ${ctx.identity.primaryGoal ?? "-"}
 
 BEHAVIOR (${ctx.behavior.windowDays}d window, ${ctx.behavior.logCount} log rows)
 Sleep avg ${ctx.behavior.avgSleepHours}h · Water ${ctx.behavior.avgWaterGlasses} glasses · Stress ${ctx.behavior.avgStress}/10
 Full AM+PM routine days ${ctx.behavior.fullRoutineDays}/${ctx.behavior.windowDays} · High UV days ${ctx.behavior.highSunDays} · High stress days ${ctx.behavior.highStressDays}
 
-${ctx.weeklyReportSnippets.length ? `RECENT WEEKLY REPORTS\n${ctx.weeklyReportSnippets.map((w) => `${w.dateYmd} (Δ${w.delta ?? "—"}): ${w.narrative}`).join("\n")}\n` : ""}${ctx.visitNotesSummary ? `VISIT NOTES\n${ctx.visitNotesSummary}\n` : ""}${ctx.recentChatSummary ? `RECENT AI CHAT\n${ctx.recentChatSummary}\n` : ""}`;
+${ctx.weeklyReportSnippets.length ? `RECENT WEEKLY REPORTS\n${ctx.weeklyReportSnippets.map((w) => `${w.dateYmd} (Δ${w.delta ?? "-"}): ${w.narrative}`).join("\n")}\n` : ""}${ctx.visitNotesSummary ? `VISIT NOTES\n${ctx.visitNotesSummary}\n` : ""}${ctx.recentChatSummary ? `RECENT AI CHAT\n${ctx.recentChatSummary}\n` : ""}`;
 }
 
 export function profileCorrelations(ctx: ProfileInsightContext) {

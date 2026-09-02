@@ -85,8 +85,8 @@ export async function POST(
 
   const who = u?.name?.trim() || "A patient";
   const subject = "Your kAI skin scan report";
-  const text = `${who} shared their AI skin scan report with you.\n\nThe report is attached as a PDF.\n\n— SkinFit Wellness`;
-  const html = `<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">${escapeHtml(who)} shared their AI skin scan report with you.</p><p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">The report is attached as a PDF.</p><p style="font-family:system-ui,sans-serif;font-size:14px;color:#71717a">— SkinFit Wellness</p>`;
+  const text = `${who} shared their AI skin scan report with you.\n\nThe report is attached as a PDF.\n\n- SkinFit Wellness`;
+  const html = `<p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">${escapeHtml(who)} shared their AI skin scan report with you.</p><p style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#18181b">The report is attached as a PDF.</p><p style="font-family:system-ui,sans-serif;font-size:14px;color:#71717a">- SkinFit Wellness</p>`;
 
   const clinic = getClinicNotificationEmail();
   const bcc =

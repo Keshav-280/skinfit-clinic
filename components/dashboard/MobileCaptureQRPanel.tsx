@@ -10,7 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { QrSkeleton } from "@/components/dashboard/PageSkeletons";
 
 type MobileCaptureImageRef = {
   label: string;
@@ -218,7 +218,7 @@ export function MobileCaptureQRPanel({
           <div className="min-w-0 text-left">
             <p className="text-sm font-bold text-[#1E1B31]">Phone capture</p>
             <p className="text-xs leading-relaxed text-[#64748B]">
-              Scan the code with your phone camera app — no app install needed.
+              Scan the code with your phone camera app - no app install needed.
             </p>
           </div>
         </div>
@@ -243,10 +243,7 @@ export function MobileCaptureQRPanel({
               exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-3"
             >
-              <SkinFitLoader
-                size="section"
-                title="Generating secure link"
-              />
+              <QrSkeleton />
             </motion.div>
           )}
 

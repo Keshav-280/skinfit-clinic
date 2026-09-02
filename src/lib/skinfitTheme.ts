@@ -1,7 +1,7 @@
 /**
- * SkinFit Wellness brand — from the 2026 style guide.
+ * SkinFit Wellness brand - from the 2026 style guide.
  * Indigo carries type; rose is surface; warm neutrals are ~80% of every screen.
- * Sage is reserved — do not use as a default fill.
+ * Sage is reserved - do not use as a default fill.
  */
 export const SKINFIT_THEME = {
   /** Wordmark, nav, headings, body ink */
@@ -22,7 +22,7 @@ export const SKINFIT_THEME = {
   canvas: "#FAF8F5",
   linen: "#F0EAE2",
   sand: "#DCCFC0",
-  /** Held in reserve — one product line only */
+  /** Held in reserve - one product line only */
   sage: "#7F8A83",
   mint: "#F0EAE2",
   mintDeep: "#DCCFC0",

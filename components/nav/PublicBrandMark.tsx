@@ -8,7 +8,7 @@ type Props = {
   className?: string;
 };
 
-/** Public wordmark — isolation space lives in the link padding. Never SF. */
+/** Public wordmark - isolation space lives in the link padding. Never SF. */
 export function PublicBrandMark({
   href = "/",
   invert = false,
@@ -18,7 +18,7 @@ export function PublicBrandMark({
     <Link
       href={href}
       className={`inline-flex shrink-0 items-center p-2 ${className}`}
-      aria-label="SkinFit Wellness — home"
+      aria-label="SkinFit Wellness - home"
     >
       <Image
         src="/branding/skinfit-wellness-logo.svg"

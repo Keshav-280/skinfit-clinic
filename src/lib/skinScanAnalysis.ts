@@ -4,7 +4,7 @@ import {
   type ScanBaseMetricsColumns,
 } from "./resolveScanDisplayScores";
 
-/** Stored in `skin_scans.analysis_results` JSON — higher = better for each metric. */
+/** Stored in `skin_scans.analysis_results` JSON - higher = better for each metric. */
 export type SkinAnalysisResults = {
   acne?: number;
   wrinkles?: number;
@@ -59,7 +59,7 @@ function firstDefined(...vals: (number | undefined)[]): number | undefined {
 /** Build the 6-parameter dashboard rows from `skin_scans.analysis_results`. */
 export function analysisResultsToParams(
   analysis: unknown,
-  /** Denormalized scan columns — beat stale values inside `scans.scores` JSON. */
+  /** Denormalized scan columns - beat stale values inside `scans.scores` JSON. */
   columnOverrides?: Partial<
     Pick<ScanBaseMetricsColumns, "texture" | "pigmentation">
   >,

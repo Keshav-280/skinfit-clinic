@@ -21,8 +21,8 @@ import { formatPatientAppointmentConfirmationMessage } from "@/src/lib/patientGo
 import { notifyPatientAppointmentEmail } from "@/src/lib/email/notifyPatientAppointmentEmail";
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 
-const APPOINTMENT_CONFIRM_EMAIL_SUBJECT = "SkinFit Wellness — Appointment confirmed";
-const APPOINTMENT_UPDATE_EMAIL_SUBJECT = "SkinFit Wellness — Appointment update";
+const APPOINTMENT_CONFIRM_EMAIL_SUBJECT = "SkinFit Wellness - Appointment confirmed";
+const APPOINTMENT_UPDATE_EMAIL_SUBJECT = "SkinFit Wellness - Appointment update";
 import { CLINIC_DOCTOR_EMAIL } from "@/src/lib/clinicDoctor";
 import { slotDateAndHmToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
 import { doctorSlotOverlapsExisting } from "@/src/lib/doctorSlotOverlap";

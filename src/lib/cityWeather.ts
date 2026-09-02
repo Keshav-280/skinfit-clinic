@@ -82,7 +82,7 @@ function cacheKey(city: string): string {
 async function fetchWeatherApi(city: string): Promise<CityWeatherData | null> {
   const key = process.env.WEATHER_API_KEY?.trim();
   if (!key) {
-    console.info("[cityWeather] skipped — WEATHER_API_KEY not set");
+    console.info("[cityWeather] skipped - WEATHER_API_KEY not set");
     return null;
   }
 

@@ -100,7 +100,7 @@ function formatScanCreatedForContext(createdAt: Date): string {
   return `${ymd} ${hm}`;
 }
 
-/** Compact text for chat context; 1–5 clinical = higher is more concern. */
+/** Compact text for chat context; 1-5 clinical = higher is more concern. */
 function formatClinicalScoresLine(scoresJson: unknown, maxLen: number): string {
   const c = parseClinicalScores(scoresJson);
   if (!c) return "";
@@ -115,7 +115,7 @@ function formatClinicalScoresLine(scoresJson: unknown, maxLen: number): string {
   else if (typeof c.pigmentation_model === "number")
     parts.push(`pigmentation_model ${c.pigmentation_model}`);
   if (!parts.length) return "";
-  const line = `Clinical model (1–5, higher = more concern): ${parts.join(", ")}`;
+  const line = `Clinical model (1-5, higher = more concern): ${parts.join(", ")}`;
   return truncate(line, maxLen);
 }
 
@@ -179,7 +179,7 @@ function buildPatientContext(params: {
     : "";
 
   const latestScanLine = latestScan
-    ? `Latest scan (${formatScanCreatedForContext(latestScan.createdAt)} clinic local, id ${latestScan.id}${latestScan.scanName ? ` "${truncate(latestScan.scanName, 40)}"` : ""}): summary scores 0–100 (higher = better) — overall ${latestScan.overallScore}, acne ${latestScan.acne}, pigmentation ${latestScan.pigmentation}, wrinkles ${latestScan.wrinkles}, hydration ${latestScan.hydration}, texture ${latestScan.texture}. AI summary: ${truncate(latestScan.aiSummary ?? "N/A", 220)}${latestExtra ? ` ${latestExtra}` : ""}`
+    ? `Latest scan (${formatScanCreatedForContext(latestScan.createdAt)} clinic local, id ${latestScan.id}${latestScan.scanName ? ` "${truncate(latestScan.scanName, 40)}"` : ""}): summary scores 0-100 (higher = better) - overall ${latestScan.overallScore}, acne ${latestScan.acne}, pigmentation ${latestScan.pigmentation}, wrinkles ${latestScan.wrinkles}, hydration ${latestScan.hydration}, texture ${latestScan.texture}. AI summary: ${truncate(latestScan.aiSummary ?? "N/A", 220)}${latestExtra ? ` ${latestExtra}` : ""}`
     : `No scans found yet.`;
 
   const recentScansLines =
@@ -258,7 +258,7 @@ function buildPatientContext(params: {
     ``,
     latestScanLine,
     ``,
-    `Recent scans: 0–100 summary metrics below mean better skin; separate "Clinical model (1–5)" means higher = more concern. Lines may include findings map (approximate face positions).\n${recentScansLines}`,
+    `Recent scans: 0-100 summary metrics below mean better skin; separate "Clinical model (1-5)" means higher = more concern. Lines may include findings map (approximate face positions).\n${recentScansLines}`,
     ``,
     `Visit / treatment notes:\n${visitNotesLines}`,
     ``,
@@ -279,8 +279,8 @@ const ASSISTANT_SYSTEM: Record<AssistantId, string> = {
     "You must not diagnose. Provide general educational guidance and conservative next steps.",
     "You should explain what is normal vs not normal after routines/procedures and when to contact the clinic.",
     "Use the patient's daily journal (AM/PM routines, mood, sleep, stress, water, journal text) to make your guidance context-aware.",
-    "Treat higher 0–100 scan summary scores as better skin health.",
-    "When clinical model scores (1–5) appear in context, higher = more severe; do not confuse with 0–100 metrics.",
+    "Treat higher 0-100 scan summary scores as better skin health.",
+    "When clinical model scores (1-5) appear in context, higher = more severe; do not confuse with 0-100 metrics.",
     "Findings map lines (e.g. Acne~45%,52%) describe where the last scan flagged issues on the face image.",
     "Scan timestamps in patient context are clinic local date and time (24h, e.g. India IST unless the deployment sets CLINIC_SLOT_UTC_OFFSET_MINUTES). Use them verbatim when the user asks when a scan was taken.",
     "Keep your answer short (max ~180 words). Always end with a complete sentence. If you are near the output limit, stop early but do not leave an unfinished phrase.",
@@ -297,8 +297,8 @@ const ASSISTANT_SYSTEM: Record<AssistantId, string> = {
     "Use the patient's daily journal (AM/PM routines, mood, sleep, stress, water, journal text) to provide safer, personalized after-care suggestions.",
     "Keep your answer short (max ~180 words). Always end with a complete sentence. If you are near the output limit, stop early but do not leave an unfinished phrase.",
     "If the user asks to book or discuss appointments, refer to the clinic support flow and suggest what details to share.",
-    "Treat higher 0–100 scan summary scores as better skin health.",
-    "When clinical model scores (1–5) appear, higher = more severe; findings map lines show approximate face locations flagged on scans.",
+    "Treat higher 0-100 scan summary scores as better skin health.",
+    "When clinical model scores (1-5) appear, higher = more severe; findings map lines show approximate face locations flagged on scans.",
     "Scan timestamps in context are clinic local (24h); use them when the patient asks when a scan was taken.",
     "If severe symptoms are described, recommend urgent medical care.",
     "Output format: (1) Assessment (non-diagnostic), (2) Plan, (3) Red flags & contact timing.",
@@ -310,7 +310,7 @@ const ASSISTANT_SYSTEM: Record<AssistantId, string> = {
     "Be concise. Ask follow-up questions needed for scheduling (preferred date/time, treatment type).",
     "Use the patient's daily journal to tailor follow-up questions and routine reminders.",
     "Use provided upcoming schedule events and next appointment details when possible.",
-    "Patient context may include recent AI face scans (0–100 summaries, optional 1–5 clinical scores, and findings map). Use them only to guide scheduling or general encouragement, not diagnosis.",
+    "Patient context may include recent AI face scans (0-100 summaries, optional 1-5 clinical scores, and findings map). Use them only to guide scheduling or general encouragement, not diagnosis.",
     "Scan timestamps in context are clinic local (24h).",
     "If the user asks for costs or insurance details and you don't have information, say you don't know and suggest contacting the clinic.",
     "Keep your answer short (max ~160 words). Always end with a complete sentence. If you are near the output limit, stop early but do not leave an unfinished phrase.",

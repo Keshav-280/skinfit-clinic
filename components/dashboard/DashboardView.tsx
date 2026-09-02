@@ -171,7 +171,7 @@ function ParamCell({ label, value, deltaFromPrev, prevWeekAvg }: SkinParam) {
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium tabular-nums text-zinc-600">{grade}</span>
           <span className={`text-xs font-semibold tabular-nums ${deltaTone}`}>
-            {delta == null ? "Δ —" : `Δ ${delta > 0 ? "+" : ""}${delta}`}
+            {delta == null ? "Δ -" : `Δ ${delta > 0 ? "+" : ""}${delta}`}
           </span>
         </div>
       </div>
@@ -187,7 +187,7 @@ function ParamCell({ label, value, deltaFromPrev, prevWeekAvg }: SkinParam) {
       <p className="mt-1.5 text-[11px] text-zinc-500">
         Prev week avg:{" "}
         <span className="font-semibold tabular-nums text-zinc-700">
-          {weekAvg == null ? "—" : patientClarityToGrade(weekAvg)}
+          {weekAvg == null ? "-" : patientClarityToGrade(weekAvg)}
         </span>
       </p>
     </div>
@@ -228,7 +228,7 @@ export function DashboardView({
     [amItems, pmItems]
   );
 
-  /** Align today's log with the browser calendar (PATCH already uses this). Server SSR uses UTC on Vercel — sync fixes wrong row. */
+  /** Align today's log with the browser calendar (PATCH already uses this). Server SSR uses UTC on Vercel - sync fixes wrong row. */
   type TodaySync = TodayJournalLog | "pending" | "error";
   const [syncedTodayLog, setSyncedTodayLog] = useState<TodaySync>("pending");
   useEffect(() => {
@@ -661,7 +661,7 @@ export function DashboardView({
         )}
       </section>
 
-      {/* Daily Journal — title outside card */}
+      {/* Daily Journal - title outside card */}
       <section>
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <h2 className="text-lg font-bold text-zinc-900">Daily Journal</h2>
@@ -701,7 +701,7 @@ export function DashboardView({
                 >
                   {skinScanHistory.map((s, i) => (
                     <option key={s.id} value={i}>
-                      {format(new Date(s.createdAt), "MMM d, yyyy")} — score{" "}
+                      {format(new Date(s.createdAt), "MMM d, yyyy")} - score{" "}
                       {s.skinScore}
                     </option>
                   ))}
@@ -711,7 +711,7 @@ export function DashboardView({
             <span className="text-sm font-medium text-zinc-500 sm:text-right">
               {skinScanHistory.length > 0
                 ? `Scan date: ${skinParamsDate}`
-                : "No scans yet — showing sample targets"}
+                : "No scans yet - showing sample targets"}
             </span>
           </div>
         </div>

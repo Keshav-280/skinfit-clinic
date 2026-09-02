@@ -1,4 +1,4 @@
-/** Patient dashboard — SkinFit Wellness brand tokens. */
+/** Patient dashboard - SkinFit Wellness brand tokens. */
 export const PATIENT_MINT_BG = "#FAF8F5";
 export const PATIENT_NAVY = "#1E1B31";
 export const PATIENT_NAVY_HOVER = "#242A5F";
@@ -57,11 +57,11 @@ export const patientStatTile =
 export const patientScoreChip =
   "rounded-md bg-[#FAF8F5] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#1E1B31]";
 
-/** Locked weekly trend glyph (↑ / ↓ / —). */
+/** Locked weekly trend glyph (↑ / ↓ / -). */
 export function lockedWeeklyProgressSymbol(weeklyDeltaScore: number): string {
   if (weeklyDeltaScore > 0) return "↑";
   if (weeklyDeltaScore < 0) return "↓";
-  return "—";
+  return "-";
 }
 
 /** @deprecated Prefer icons via weeklyTrendDirection; kept for string fallbacks. */

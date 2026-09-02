@@ -9,11 +9,11 @@ export function deriveKaiOnboardingClinical(row: {
   const notes: string[] = [];
 
   if (row.concernDuration === "chronic") {
-    flags.push("Chronic concern — duration over one year (clinician review).");
+    flags.push("Chronic concern - duration over one year (clinician review).");
   }
   if (row.skinSensitivity === "high") {
     flags.push(
-      "High skin sensitivity — clinician to review product prescription."
+      "High skin sensitivity - clinician to review product prescription."
     );
   }
 
@@ -22,7 +22,7 @@ export function deriveKaiOnboardingClinical(row: {
     : [];
   if (trig.includes("unsure")) {
     notes.push(
-      "Triggers: patient selected “I'm not sure” — kAI will identify patterns from journal data."
+      "Triggers: patient selected “I'm not sure” - kAI will identify patterns from journal data."
     );
   }
   if (row.baselineSleep === "under5") {

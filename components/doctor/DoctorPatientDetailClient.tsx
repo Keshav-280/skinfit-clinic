@@ -377,7 +377,7 @@ type DoctorThreadMessage = {
   text: string;
   attachmentUrl: string | null;
   createdAt: string;
-  /** Local UI only — outbound doctor message delivery */
+  /** Local UI only - outbound doctor message delivery */
   deliveryStatus?: DoctorChatDeliveryStatus;
   /** Plaintext shown while server row is still encrypted / decrypt pending */
   pendingPlainText?: string;
@@ -585,7 +585,7 @@ function flattenReportPoints(items: string[]): string[] {
   const out: string[] = [];
   for (const item of items) {
     const parts = item
-      .split(/\n+|(?:^|\s)[•\-–]\s+/)
+      .split(/\n+|(?:^|\s)[•\--]\s+/)
       .map((s) => s.trim())
       .filter(Boolean);
     out.push(...(parts.length ? parts : [item.trim()].filter(Boolean)));
@@ -819,7 +819,7 @@ function WellnessLogCard({
 
       <div className="space-y-3 p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          <WellnessMetricPill icon={HeartPulse} label="Mood" value={log.mood || "—"} />
+          <WellnessMetricPill icon={HeartPulse} label="Mood" value={log.mood || "-"} />
           <WellnessMetricPill
             icon={Moon}
             label="Sleep"
@@ -1772,7 +1772,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         }
         setChatRecordElapsed(0);
         if (blob.size < 800) {
-          setDoctorChatHint("Recording too short — try again.");
+          setDoctorChatHint("Recording too short - try again.");
           return;
         }
         void commitChatVoicePreview(blob);
@@ -1817,7 +1817,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     if (!file) return;
     setVoiceMsg(null);
     if (file.size < 800) {
-      setVoiceMsg("File too small — choose another clip.");
+      setVoiceMsg("File too small - choose another clip.");
       return;
     }
     commitVoicePreview(file);
@@ -1870,7 +1870,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         setRecordElapsed(0);
 
         if (blob.size < 800) {
-          setVoiceMsg("Recording too short — try again.");
+          setVoiceMsg("Recording too short - try again.");
           return;
         }
         commitVoicePreview(blob);
@@ -2103,7 +2103,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
     );
   };
 
-  const profileLine = [p.skinType, p.primaryGoal].filter(Boolean).join(" · ") || "—";
+  const profileLine = [p.skinType, p.primaryGoal].filter(Boolean).join(" · ") || "-";
   const referralLine = referralSourceFromQuestionnaireAnswers(
     data?.questionnaireAnswers ?? []
   );
@@ -2715,7 +2715,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 Pre
               </p>
               {preCareEvents.length === 0 ? (
-                <p className="text-xs text-slate-500">—</p>
+                <p className="text-xs text-slate-500"> - </p>
               ) : (
                 <ul className="space-y-2">
                   {preCareEvents.map((s) => (
@@ -2729,7 +2729,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 Post
               </p>
               {postCareEvents.length === 0 ? (
-                <p className="text-xs text-slate-500">—</p>
+                <p className="text-xs text-slate-500"> - </p>
               ) : (
                 <ul className="space-y-2">
                   {postCareEvents.map((s) => (
@@ -2766,7 +2766,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               Daily wellness &amp; journal
             </h2>
             <p className="mt-0.5 text-sm text-slate-600">
-              Mood, habits, and routine check-ins from the patient app — newest first.
+              Mood, habits, and routine check-ins from the patient app - newest first.
             </p>
           </div>
         </div>
@@ -2855,7 +2855,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
         ) : (
           <>
             <p className="text-sm text-slate-600">
-              Latest scans — open <button type="button" onClick={() => setActiveTab("reports")} className="font-semibold text-[#1E1B31] underline">Reports</button> for full detail and kAI parameters.
+              Latest scans - open <button type="button" onClick={() => setActiveTab("reports")} className="font-semibold text-[#1E1B31] underline">Reports</button> for full detail and kAI parameters.
             </p>
             <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {(data.scans ?? []).slice(0, 6).map((s) => (
@@ -2900,7 +2900,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Onboarding questionnaire</h2>
             <p className="mt-0.5 text-sm text-slate-600">
-              Answers from kAI onboarding — plain language, same order patients completed.
+              Answers from kAI onboarding - plain language, same order patients completed.
             </p>
           </div>
         </div>
@@ -2939,27 +2939,27 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
           <dl className={`grid gap-2 sm:grid-cols-2 ${doctorPatientPagePanelClass} p-4`}>
             <DoctorMetaCell
               label="Skin type"
-              value={data.skinDnaCard.skinType ?? "—"}
+              value={data.skinDnaCard.skinType ?? "-"}
             />
             <DoctorMetaCell
               label="Primary concern"
-              value={data.skinDnaCard.primaryConcern ?? "—"}
+              value={data.skinDnaCard.primaryConcern ?? "-"}
             />
             <DoctorMetaCell
               label="Sensitivity index"
               value={
                 data.skinDnaCard.sensitivityIndex != null
                   ? String(data.skinDnaCard.sensitivityIndex)
-                  : "—"
+                  : "-"
               }
             />
             <DoctorMetaCell
               label="UV sensitivity"
-              value={data.skinDnaCard.uvSensitivity ?? "—"}
+              value={data.skinDnaCard.uvSensitivity ?? "-"}
             />
             <DoctorMetaCell
               label="Hormonal link"
-              value={data.skinDnaCard.hormonalCorrelation ?? "—"}
+              value={data.skinDnaCard.hormonalCorrelation ?? "-"}
             />
             <DoctorMetaCell
               label="Last updated"
@@ -3266,7 +3266,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setClinicianMsg(j.message ?? j.error ?? "Could not send AM nudge.");
                     return;
                   }
-                  setClinicianMsg("AM routine reminder sent — patient notified in Doctor chat.");
+                  setClinicianMsg("AM routine reminder sent - patient notified in Doctor chat.");
                 } catch {
                   setClinicianMsg("Network error.");
                 } finally {
@@ -3305,7 +3305,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                     setClinicianMsg(j.message ?? j.error ?? "Could not send PM nudge.");
                     return;
                   }
-                  setClinicianMsg("PM routine reminder sent — patient notified in Doctor chat.");
+                  setClinicianMsg("PM routine reminder sent - patient notified in Doctor chat.");
                 } catch {
                   setClinicianMsg("Network error.");
                 } finally {
@@ -3819,19 +3819,19 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
                         <p className="text-[10px] font-medium text-[#1E1B31]/50">Scans</p>
                         <p className="text-sm font-bold tabular-nums text-[#1E1B31]">
-                          {summary.scans ?? "—"}
+                          {summary.scans ?? "-"}
                         </p>
                       </div>
                       <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
                         <p className="text-[10px] font-medium text-[#1E1B31]/50">Days</p>
                         <p className="text-sm font-bold tabular-nums text-[#1E1B31]">
-                          {summary.loggedDays ?? "—"}
+                          {summary.loggedDays ?? "-"}
                         </p>
                       </div>
                       <div className={`${doctorPatientPageRowClass} py-2 text-center`}>
                         <p className="text-[10px] font-medium text-[#1E1B31]/50">Month kAI</p>
                         <p className="text-sm font-bold tabular-nums text-[#1E1B31]">
-                          {summary.kaiMonthAvg ?? "—"}
+                          {summary.kaiMonthAvg ?? "-"}
                         </p>
                       </div>
                     </div>
@@ -3847,7 +3847,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                       </p>
                     ) : summary.kind === "placeholder" ? (
                       <p className="mt-2 text-sm italic text-[#1E1B31]/55">
-                        Cron placeholder — not shown to patients.
+                        Cron placeholder - not shown to patients.
                       </p>
                     ) : null}
 
@@ -3922,7 +3922,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 onChange={(e) => setVisitNoteResponseRating(e.target.value)}
                 className={`${doctorPatientPageFormInputClass} py-1.5`}
               >
-                <option value="">—</option>
+                <option value=""> - </option>
                 <option value="excellent">Excellent</option>
                 <option value="good">Good</option>
                 <option value="moderate">Moderate</option>
@@ -4033,7 +4033,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
               </div>
               <div
                 className="flex flex-col gap-2"
-                title="PDF, images, or plain text — up to 5 files"
+                title="PDF, images, or plain text - up to 5 files"
               >
                 <label className="inline-flex w-fit cursor-pointer items-center rounded-md border border-[#1E1B31]/18 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[#1E1B31] hover:bg-white/85">
                   Choose Files
@@ -4517,7 +4517,7 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
                 input.value = "";
                 if (!f) return;
                 if (!isChatImageFile(f)) {
-                  setDoctorChatHint("Images only for file attach — use mic for voice.");
+                  setDoctorChatHint("Images only for file attach - use mic for voice.");
                   return;
                 }
                 void (async () => {

@@ -162,7 +162,7 @@ function CompletionScreen({
           settled ? "justify-start pt-16" : "justify-center"
         }`}
       >
-        {/* Tick badge — big + centered first, then shrinks and docks to top via layout animation */}
+        {/* Tick badge - big + centered first, then shrinks and docks to top via layout animation */}
         <motion.div
           layout
           initial={{ scale: 0, opacity: 0 }}
@@ -215,7 +215,7 @@ function CompletionScreen({
               You&apos;re all set!
             </h1>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[#6B7280]">
-              Thanks for sharing — kAI now has what it needs to personalise
+              Thanks for sharing - kAI now has what it needs to personalise
               your care.
             </p>
           </motion.div>
@@ -353,7 +353,7 @@ export function QuestionnaireWizardPreview() {
         </button>
       </div>
 
-      {/* Question content — slides left on exit, blank gap, then fades in */}
+      {/* Question content - slides left on exit, blank gap, then fades in */}
       <div className="mt-8 flex flex-1 flex-col">
         <AnimatePresence mode="wait">
           <motion.div

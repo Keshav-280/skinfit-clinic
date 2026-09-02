@@ -33,7 +33,7 @@ function fullResolutionPatientScanImageSrc(raw: string): string {
   }
 }
 
-/** Cookie-auth scan images often fail in html2canvas — inline as data URLs first. */
+/** Cookie-auth scan images often fail in html2canvas - inline as data URLs first. */
 async function inlinePatientScanImages(
   root: HTMLElement
 ): Promise<

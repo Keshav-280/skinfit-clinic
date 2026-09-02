@@ -20,7 +20,7 @@ function parseAppsScriptBody(txt: string): AppsScriptResponseBody | null {
 
 export type ClinicSheetMirrorResult = {
   ok: boolean;
-  /** True when URL/secret/row ref missing — nothing was sent. */
+  /** True when URL/secret/row ref missing - nothing was sent. */
   skipped: boolean;
   httpStatus?: number;
   detail?: string;
@@ -31,13 +31,13 @@ export type ClinicSheetMirrorResult = {
  * Deploy the same Apps Script web app with `kind: "skinfit_row_sync"` handler, then set on Render:
  *   CLINIC_SHEET_SYNC_WEBHOOK_URL=https://script.google.com/macros/s/.../exec?secret=...
  * (same secret as `CLINIC_SHEET_WEBHOOK_SECRET`). Without this URL, column **status** stays `pending`
- * after confirm because only Skinfit DB updates — the sheet never receives the write-back.
+ * after confirm because only Skinfit DB updates - the sheet never receives the write-back.
  *
  * If `CLINIC_SHEET_SYNC_WEBHOOK_URL` is unset, falls back to `CLINIC_SHEET_REQUEST_WEBHOOK_URL` (same `doPost` handler).
  */
 export async function notifyClinicSheetRowMirrored(opts: {
   externalRef: string | null | undefined;
-  /** `patient_schedule_requests.id` (sheet column `requestId`) — Apps Script can find the row if `sheet-row-N` drifted. */
+  /** `patient_schedule_requests.id` (sheet column `requestId`) - Apps Script can find the row if `sheet-row-N` drifted. */
   scheduleRequestId?: string | null;
   skinfitStatus: "pending" | "confirmed" | "cancelled" | "declined";
   confirmedIso?: string | null;
@@ -133,7 +133,7 @@ export async function notifyClinicSheetRowMirrored(opts: {
       const looksLikeHtml = /<html|<!doctype/i.test(txt);
       if (looksLikeHtml) {
         console.warn(
-          "[clinicSheetRowSync] mirror returned HTML instead of JSON — wrong web-app URL or stale deployment",
+          "[clinicSheetRowSync] mirror returned HTML instead of JSON - wrong web-app URL or stale deployment",
           txt.slice(0, 300)
         );
         return {

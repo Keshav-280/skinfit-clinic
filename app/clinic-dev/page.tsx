@@ -178,7 +178,7 @@ export default function ClinicDevPage() {
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Failed to upsert slot");
       }
-      setSlotResult(`Slot saved · id ${data.doctorSlotId ?? "—"}`);
+      setSlotResult(`Slot saved · id ${data.doctorSlotId ?? "-"}`);
       await refreshSlots();
       await refreshPending();
     } catch (e) {
@@ -211,7 +211,7 @@ export default function ClinicDevPage() {
         throw new Error(data.error || "Failed to clear end time");
       }
       setSlotEndTimeHm("");
-      setSlotResult(`Custom end cleared · id ${data.doctorSlotId ?? "—"}`);
+      setSlotResult(`Custom end cleared · id ${data.doctorSlotId ?? "-"}`);
       await refreshSlots();
       await refreshPending();
     } catch (e) {
@@ -467,7 +467,7 @@ export default function ClinicDevPage() {
           >
             Doctor portal
           </Link>{" "}
-          — patients, SOS filter, scans, and voice notes (sign in as clinic staff).
+          - patients, SOS filter, scans, and voice notes (sign in as clinic staff).
         </p>
 
         {error ? (
@@ -628,7 +628,7 @@ export default function ClinicDevPage() {
                   onChange={(e) => setDeleteSlotReason(e.target.value)}
                   disabled={!!deletingId || !doctorId}
                   rows={2}
-                  placeholder="e.g. Doctor unavailable — we’ll reopen this week."
+                  placeholder="e.g. Doctor unavailable - we’ll reopen this week."
                   className="mt-1.5 w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#A8AECD] focus:ring-2 focus:ring-[#1E1B31]/15"
                 />
                 <span className="mt-1 block font-normal normal-case text-slate-400">
@@ -847,7 +847,7 @@ export default function ClinicDevPage() {
                   <p className="text-sm text-slate-500">Loading messages…</p>
                 ) : rubyMessages.length === 0 ? (
                   <p className="text-sm text-slate-500">
-                    No messages yet. You can still send a first reply — it will create the thread for
+                    No messages yet. You can still send a first reply - it will create the thread for
                     this patient.
                   </p>
                 ) : (
@@ -1022,7 +1022,7 @@ export default function ClinicDevPage() {
                     {r.source}
                   </span>
                   {r.source === "ai" ? (
-                    <span className="text-slate-800">{r.value ?? "—"}</span>
+                    <span className="text-slate-800">{r.value ?? "-"}</span>
                   ) : (
                     <input
                       className="w-20 rounded border border-slate-200 px-2 py-1 text-sm"

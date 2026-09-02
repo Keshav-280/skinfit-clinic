@@ -6,7 +6,7 @@ import type { CaptureAssistModels } from "@/src/lib/scanCaptureGuidance";
 type Props = {
   models: CaptureAssistModels;
   compact?: boolean;
-  /** When true, expression steps need MediaPipe — highlight if it failed. */
+  /** When true, expression steps need MediaPipe - highlight if it failed. */
   needsExpressionModel?: boolean;
 };
 
@@ -56,8 +56,8 @@ export function ScanCaptureModelStatus({
     models.faceDetector === "ready"
       ? "loaded (experimental browser API)"
       : mpEnabled
-        ? "not in Chrome stable — use MediaPipe below for face position"
-        : "optional — basic skin-tone framing when unavailable"
+        ? "not in Chrome stable - use MediaPipe below for face position"
+        : "optional - basic skin-tone framing when unavailable"
   );
 
   let blazeState: "ok" | "warn" | "muted" | "loading" = "muted";
@@ -73,7 +73,7 @@ export function ScanCaptureModelStatus({
       break;
     case "failed":
       blazeState = "warn";
-      blazeDetail = "failed — using landmark fallback";
+      blazeDetail = "failed - using landmark fallback";
       break;
     default:
       blazeDetail = models.blazeFace === "off" ? "off" : "waiting for camera";
@@ -99,7 +99,7 @@ export function ScanCaptureModelStatus({
       mpState = "warn";
       mpDetail = models.mediapipeError
         ? `failed: ${models.mediapipeError}`
-        : "failed to load — run npm run mediapipe:sync-wasm";
+        : "failed to load - run npm run mediapipe:sync-wasm";
       break;
     default:
       mpDetail = "waiting for camera";
@@ -144,7 +144,7 @@ export function ScanCaptureModelStatus({
       clfDetail = "blink classifier (server)";
     } else if (models.expressionClassifier === "failed") {
       clfState = "warn";
-      clfDetail = "classifier unavailable — blendshapes fallback";
+      clfDetail = "classifier unavailable - blendshapes fallback";
     } else {
       clfDetail = "waiting";
     }

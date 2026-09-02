@@ -224,7 +224,7 @@ export async function loadDoctorPatientDetailSections(
         });
       } catch (e) {
         console.warn(
-          "[doctorPatientDetail] parameter_scores unavailable — scans list still returned",
+          "[doctorPatientDetail] parameter_scores unavailable - scans list still returned",
           e
         );
       }

@@ -14,7 +14,7 @@ export type DoctorPatientChatAlertRow = {
 /**
  * Patients whose most recent doctor-thread message is from the patient (awaiting staff reply).
  * Threads with `doctorPortalLastReadAt` at or after that message time are excluded (opened from inbox / #chat).
- * Excludes urgent SOS rows — those appear in the SOS alerts flow.
+ * Excludes urgent SOS rows - those appear in the SOS alerts flow.
  */
 export async function loadUnrepliedDoctorChatAlerts(
   limit = 25

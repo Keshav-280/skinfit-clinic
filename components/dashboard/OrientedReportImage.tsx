@@ -2,7 +2,7 @@
 
 /**
  * @deprecated Model mask JPEGs are upright; use a plain `<img>` instead.
- * Kept for backwards compatibility — no auto-rotation.
+ * Kept for backwards compatibility - no auto-rotation.
  */
 export function OrientedReportImage({
   src,

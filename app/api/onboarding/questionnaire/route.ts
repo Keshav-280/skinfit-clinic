@@ -288,7 +288,7 @@ export async function POST(req: Request) {
   if (skinSensitivity === "high") {
     audit.FLAG_HIGH_SENSITIVITY = {
       code: "high_sensitivity",
-      label: "High sensitivity — review product prescription",
+      label: "High sensitivity - review product prescription",
       doctorNotified: true,
     };
   }

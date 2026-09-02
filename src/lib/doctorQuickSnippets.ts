@@ -34,14 +34,14 @@ export const DOCTOR_ROUTINE_DOSAGE_SNIPPETS = [
   "Once daily",
   "Twice daily",
   "Pea-sized amount",
-  "2–3 drops",
+  "2-3 drops",
   "Apply to damp skin",
   "Wait 1 minute between layers",
 ] as const;
 
 export const DOCTOR_FEEDBACK_SNIPPETS = [
-  "Good progress — keep your AM/PM routine consistent.",
-  "Barrier looks stressed — simplify actives for 1–2 weeks.",
+  "Good progress - keep your AM/PM routine consistent.",
+  "Barrier looks stressed - simplify actives for 1-2 weeks.",
   "Increase moisturiser if dryness or tightness persists.",
   "Use SPF every morning, even indoors near windows.",
   "Book a follow-up if redness or burning continues.",
@@ -49,9 +49,9 @@ export const DOCTOR_FEEDBACK_SNIPPETS = [
 ] as const;
 
 export const DOCTOR_PRE_ADVICE_SNIPPETS = [
-  "Avoid retinol and strong acids 3–5 days before treatment.",
+  "Avoid retinol and strong acids 3-5 days before treatment.",
   "No waxing or threading 48 hours prior.",
-  "Come with clean skin — no makeup on treatment area.",
+  "Come with clean skin - no makeup on treatment area.",
   "Patch test new products at least 48 hours before procedure.",
   "Stay well hydrated the day before.",
   "Inform clinic of any new medicines or supplements.",
@@ -59,15 +59,15 @@ export const DOCTOR_PRE_ADVICE_SNIPPETS = [
 
 export const DOCTOR_POST_ADVICE_SNIPPETS = [
   "Apply SPF 50 daily for 2 weeks.",
-  "Avoid active acids and retinol for 5–7 days.",
-  "Use gentle cleanser only — no scrubs.",
+  "Avoid active acids and retinol for 5-7 days.",
+  "Use gentle cleanser only - no scrubs.",
   "Keep skin moisturised; avoid picking or rubbing.",
   "Skip gym/sauna for 24 hours if advised after procedure.",
   "Contact clinic if unusual swelling, pain, or blistering.",
 ] as const;
 
 export const DOCTOR_TREATMENT_SNIPPETS = [
-  "Chemical peel — superficial",
+  "Chemical peel - superficial",
   "Microneedling",
   "Laser toning",
   "Comedone extraction",

@@ -54,8 +54,9 @@ async def analyze_endpoint(
     _, jpeg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 92])
     annotated_b64 = base64.b64encode(jpeg.tobytes()).decode()
 
-    dark_count = sum(1 for s in spots if s["type"] == "dark")
-    red_count = sum(1 for s in spots if s["type"] == "red")
+    dark_count = sum(1 for s in spots if s.get("kind") == "dark")
+    red_count = sum(1 for s in spots if s.get("kind") == "acne")
+    scar_count = sum(1 for s in spots if s.get("kind") == "scar")
 
     return {
         "annotated_image": f"data:image/jpeg;base64,{annotated_b64}",
@@ -64,5 +65,6 @@ async def analyze_endpoint(
             "total": len(spots),
             "dark": dark_count,
             "red": red_count,
+            "scar": scar_count,
         },
     }

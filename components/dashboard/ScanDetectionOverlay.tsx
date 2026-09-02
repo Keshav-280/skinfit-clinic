@@ -338,7 +338,7 @@ export function ScanDetectionOverlay({
   activeConcern?: ConcernChipId;
   imageWidth?: number;
   imageHeight?: number;
-  /** Staggered appear + soft breathe — report cover only. */
+  /** Staggered appear + soft breathe - report cover only. */
   live?: boolean;
 }) {
   const circles = useMemo(

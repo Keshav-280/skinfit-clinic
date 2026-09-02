@@ -214,15 +214,15 @@ function buildSummaryText(answers: AnswerSnapshot): string {
     `Age & gender: ${answers.ageInput} · ${genderLabel(answers.gender!)}`,
     `Concerns: ${formatOnboardingConcernLabels(answers.concerns)}`,
     `Duration: ${
-      answers.duration ? durationLabel(answers.duration) : "—"
+      answers.duration ? durationLabel(answers.duration) : "-"
     }`,
     `Triggers: ${
-      answers.triggers.length > 0 ? triggerLabelList(answers.triggers) : "—"
+      answers.triggers.length > 0 ? triggerLabelList(answers.triggers) : "-"
     }`,
-    `Skin type: ${answers.skinType ?? "—"}`,
+    `Skin type: ${answers.skinType ?? "-"}`,
     `Sensitivity: ${
       SENSITIVITY_OPTIONS.find((o) => o.value === answers.sensitivity)?.label ??
-      "—"
+      "-"
     }`,
     `Heard about us: ${
       answers.referralSource
@@ -230,7 +230,7 @@ function buildSummaryText(answers: AnswerSnapshot): string {
             source: answers.referralSource,
             other: answers.referralOther,
           })
-        : "—"
+        : "-"
     }`,
   ];
   return `Perfect, here's what I've got:\n\n${lines.join("\n")}`;
@@ -317,7 +317,7 @@ function buildHistoryMessages(answers: AnswerSnapshot): ChatMessage[] {
 
   push(
     "kai",
-    "Hey! Before we get started, tell me a bit about yourself — how old are you and how do you identify?"
+    "Hey! Before we get started, tell me a bit about yourself - how old are you and how do you identify?"
   );
   if (answers.gender && parseOnboardingAge(answers.ageInput) != null) {
     push("user", `${answers.ageInput} · ${genderLabel(answers.gender)}`);
@@ -390,7 +390,7 @@ function buildHistoryMessages(answers: AnswerSnapshot): ChatMessage[] {
 
   push(
     "kai",
-    `${onboardingChatFallbackAck("SENS_01", answers.sensitivity)} One last thing — how did you hear about SkinFit?`
+    `${onboardingChatFallbackAck("SENS_01", answers.sensitivity)} One last thing - how did you hear about SkinFit?`
   );
   if (answers.referralSource) {
     push(
@@ -923,7 +923,7 @@ export function OnboardingQuestionnaireForm() {
       try {
         message = await getMessage();
       } catch {
-        message = "Got it — thanks for sharing.";
+        message = "Got it - thanks for sharing.";
       }
       const elapsed = Date.now() - started;
       if (elapsed < minMs) {
@@ -1338,7 +1338,7 @@ export function OnboardingQuestionnaireForm() {
     if (!matched.ok) {
       appendUser(text);
       pushKaiThen(
-        "Got it — could you tap one of the options below so I can log it correctly?",
+        "Got it - could you tap one of the options below so I can log it correctly?",
         () => setPendingInput(pendingInput)
       );
       return;
@@ -1379,7 +1379,7 @@ export function OnboardingQuestionnaireForm() {
       return;
     }
     if (q === "DUR_TRIG" && matched.phase === "duration" && apply.duration) {
-      // undo appendUser above path — completeDuration also appends; we already appended
+      // undo appendUser above path - completeDuration also appends; we already appended
       // so call the mid-turn flow without double-appending
       const previousAnswers = currentPreviousAnswers();
       applyAnswerPatch({ duration: apply.duration });

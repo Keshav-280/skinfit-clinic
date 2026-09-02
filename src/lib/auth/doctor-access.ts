@@ -59,7 +59,7 @@ export async function getDoctorPortalStaff(): Promise<DoctorPortalStaff | null> 
       role = row.role;
     }
   } catch {
-    // DB unavailable — fall through to JWT role
+    // DB unavailable - fall through to JWT role
   }
 
   if (!role) {

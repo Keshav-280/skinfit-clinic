@@ -4,7 +4,7 @@ import { isSmtpConfigured, sendSmtpMessage } from "@/src/lib/email/smtpMail";
  * Patient email notifications.
  *
  * Uses SMTP (Nodemailer) when SMTP_* env vars are set.
- * TODO — optional Resend/SES adapter:
+ * TODO - optional Resend/SES adapter:
  *   - RESEND_API_KEY → POST https://api.resend.com/emails
  *   - or AWS SES via @aws-sdk/client-ses
  * Keep `sendEmailNotification` as the single entry point for both.
@@ -97,7 +97,7 @@ export async function sendEmailNotification(opts: {
 
   if (!isSmtpConfigured()) {
     console.info(
-      "[emailNotification] skipped — configure SMTP_* (or Resend/SES — see TODO)"
+      "[emailNotification] skipped - configure SMTP_* (or Resend/SES - see TODO)"
     );
     return { ok: false, skipped: true, reason: "NOT_CONFIGURED" };
   }

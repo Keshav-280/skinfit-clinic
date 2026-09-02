@@ -62,7 +62,7 @@ export async function POST(
       patientId,
       staffId,
       text: preview,
-      pushTitle: "SkinFit — feedback from your doctor",
+      pushTitle: "SkinFit - feedback from your doctor",
     });
   }
 

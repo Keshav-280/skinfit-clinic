@@ -262,7 +262,7 @@ export async function processScanJob(
     }
   }
 
-  // v18 zoned detector — dashed-circle annotations on every capture.
+  // v18 zoned detector - dashed-circle annotations on every capture.
   // Scores still come from face-analysis + acne-detector above.
   const spotAnnotatedDataUriByPose: Record<string, string> = {};
   const spotDetectorBase = process.env.SPOT_DETECTOR_SERVICE_URL?.trim();
@@ -311,7 +311,7 @@ export async function processScanJob(
     return centreJpegB64;
   };
 
-  // Wrinkle mask is from the front capture — extract polylines against that photo.
+  // Wrinkle mask is from the front capture - extract polylines against that photo.
   if (merged.wrinkleMaskDataUri) {
     try {
       const { extractWrinkleLinesFromImages, clipWrinkleMaskToFace } = await import(
@@ -451,7 +451,7 @@ export async function processScanJob(
           {
             role: "user",
             content: [
-              "Write one short patient-facing sentence about this skin scan using ONLY the letter grades given below (A–E, A is best).",
+              "Write one short patient-facing sentence about this skin scan using ONLY the letter grades given below (A-E, A is best).",
               "STRICT RULES: never include raw numbers, percentages, or '/100'; never invent grades not listed; never mention UV, sun exposure, or sunscreen habits (this app does not collect sun-exposure data).",
               "Warm, plain language. No em dashes.",
               `Grades: overall ${patientClarityToGrade(metrics.overall_score)}, acne ${patientClarityToGrade(metrics.acne)}, wrinkles ${patientClarityToGrade(metrics.wrinkles)}, under-eye ${patientClarityToGrade(metrics.hydration)}.`,
@@ -475,7 +475,7 @@ export async function processScanJob(
         code: code ?? "unknown",
         hint:
           code === "insufficient_quota"
-            ? "OpenAI billing/quota — scan continues with default summary"
+            ? "OpenAI billing/quota - scan continues with default summary"
             : undefined,
         error: String(err),
       });
@@ -574,7 +574,7 @@ export async function processScanJob(
     );
     if (!snapshotOk) {
       throw new Error(
-        "Tracker report (kAI RAG snapshot) could not be built — scan not marked ready"
+        "Tracker report (kAI RAG snapshot) could not be built - scan not marked ready"
       );
     }
   }

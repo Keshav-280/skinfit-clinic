@@ -1,5 +1,5 @@
 /**
- * Patient-facing tracker copy when clinic scores are locked — strip exact
+ * Patient-facing tracker copy when clinic scores are locked - strip exact
  * numeric scores/deltas so UI shows qualitative language only.
  */
 
@@ -247,7 +247,7 @@ export function stripUvExposureClaims(text: string): string {
 }
 
 /**
- * Patient-facing scores are always within [floor, cap] (currently 20–79).
+ * Patient-facing scores are always within [floor, cap] (currently 20-79).
  * Rewrite hallucinated out-of-range claims like "100", "95/100", "perfect score"
  * into safe qualitative language instead of fabricated exact numbers.
  */
@@ -290,12 +290,15 @@ export function sanitizeOverflowScoreClaims(text: string): string {
 
 /** Hard guards applied to ALL AI prose regardless of lock state. */
 function applyUniversalProseGuards(text: string): string {
-  return sanitizeOverflowScoreClaims(stripUvExposureClaims(text));
+  const stripped = (text ?? "")
+    .replace(/\s*[\u2014\u2013]\s*/g, ". ")
+    .replace(/[\u2014\u2013]/g, "-");
+  return sanitizeOverflowScoreClaims(stripUvExposureClaims(stripped));
 }
 
 /**
- * Remove letter-grade language (A–E) from AI prose. Unlocked patients see exact
- * numbers, locked patients see qualitative words — neither should read like
+ * Remove letter-grade language (A-E) from AI prose. Unlocked patients see exact
+ * numbers, locked patients see qualitative words - neither should read like
  * "you're a solid B". Conservative patterns to avoid hitting "vitamin C" etc.
  */
 export function stripLetterGradeLanguage(text: string): string {
@@ -305,7 +308,7 @@ export function stripLetterGradeLanguage(text: string): string {
     "in good shape"
   );
   s = s.replace(/\bgrade[ds]?\s+[A-E]\b/gi, "this level");
-  s = s.replace(/\b[A-E][-–]\s*grade\b/gi, "this level");
+  s = s.replace(/\b[A-E][-\u2013\u2014]\s*grade\b/gi, "this level");
   s = s.replace(
     /\b(?:sitting at|rated|scored|came in at|landed at)\s+(?:a |an )?[A-E]\b/gi,
     "steady"
@@ -362,7 +365,7 @@ export function presentTrackerReportNarrative(
       : sanitizeFocusActionsForLockedPatient(report.focusActions)
   ).map((a: PatientTrackerFocusAction) => ({
     ...a,
-    // Guard line by line — detail is "\n"-separated Why/Do/Target rows.
+    // Guard line by line - detail is "\n"-separated Why/Do/Target rows.
     detail: a.detail
       .split(/\n+/)
       .map((line) => {

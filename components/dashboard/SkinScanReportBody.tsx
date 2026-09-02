@@ -220,7 +220,7 @@ export interface SkinScanReportBodyProps {
   age?: number;
   skinType?: string;
   imageUrl: string;
-  /** Multi–face-capture scans: show every pose below the hero (included in PDF). */
+  /** Multi-face-capture scans: show every pose below the hero (included in PDF). */
   faceCaptureGallery?: Array<{ label: string; imageUrl: string }>;
   regions: ReportRegion[];
   detectionRegions?: DetectionRegion[];
@@ -250,7 +250,7 @@ export interface SkinScanReportBodyProps {
    * Omit on the client to load `/api/patient/tracker` when `scanId` is set.
    */
   serverTracker?: PatientTrackerReport | null;
-  /** Ignored on patient web — my.skinfitwellness.in always shows 0–10. */
+  /** Ignored on patient web - my.skinfitwellness.in always shows 0-10. */
   scoresUnlocked?: boolean;
   /**
    * How "View Full Report" behaves from the immersive ScanViewer.
@@ -387,7 +387,7 @@ export function SkinScanReportBody({
   const row2Photos = resolvedPhotos.slice(0, 2);
   const row3Photos = resolvedPhotos.slice(2, 5);
 
-  /** Primary report scores — same eight axes as `test_local.ipynb` / `predict_all`. */
+  /** Primary report scores - same eight axes as `test_local.ipynb` / `predict_all`. */
   const eightClinicalDonuts = useMemo(() => {
     const cs = metrics.clinical_scores;
     if (!cs) return null;
@@ -713,7 +713,7 @@ export function SkinScanReportBody({
               AI-Powered Clinical Scan Report
             </p>
 
-            {/* Patient metadata table — navy text for readable PDF export */}
+            {/* Patient metadata table - navy text for readable PDF export */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-xl border border-[rgba(30, 27, 49,0.14)] bg-white/90 p-3.5 text-xs text-[#242A5F]">
               <div>
                 <span className="font-semibold text-[#1E1B31]/65">Patient Name: </span>
@@ -904,7 +904,7 @@ export function SkinScanReportBody({
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
                 {eightClinicalDonuts
-                  ? "FaceAnalyzer v13 — six parameters (scored out of 10)"
+                  ? "FaceAnalyzer v13 - six parameters (scored out of 10)"
                   : "AI model summary (scored out of 10)"}
               </p>
               {eightClinicalDonuts ? (
@@ -1017,7 +1017,7 @@ export function SkinScanReportBody({
                 className="mx-auto mt-8 w-full max-w-xl break-inside-avoid"
               >
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  FaceAnalyzer v13 — eight clinical axes (scored out of 10)
+                  FaceAnalyzer v13 - eight clinical axes (scored out of 10)
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {CLINICAL_ROWS.map(({ key, label }) => {
@@ -1121,7 +1121,7 @@ export function SkinScanReportBody({
                   </h3>
                   <p className="mt-5 text-[14px] leading-[1.75] text-white/90">
                     {aiSummary?.trim()
-                      ? "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends—this is educational, not a medical diagnosis."
+                      ? "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends - this is educational, not a medical diagnosis."
                       : "Your skin shows a balanced profile with room to optimize hydration and maintain clarity. Continue tracking changes after each scan to spot trends early."}
                   </p>
                   <p className="mt-5 text-[14px] leading-[1.75] text-white/90">

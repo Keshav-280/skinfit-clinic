@@ -144,12 +144,12 @@ export function applyCaptureExpression(
       expressionOkRef.current = ok;
       next.expressionOk = ok;
       next.expressionMessage = ok
-        ? "Eyes closed — looks good"
+        ? "Eyes closed - looks good"
         : "Gently close both eyes";
       if (ok) next.readyToCapture = next.readyToCapture && ok;
     } else if (expressionPipelineActive) {
       next.expressionOk = null;
-      next.expressionMessage = "Hold still — checking eyes…";
+      next.expressionMessage = "Hold still - checking eyes…";
     }
     return next;
   }
@@ -177,7 +177,7 @@ export function applyCaptureExpressionFromClassifier(
   if (!scores) {
     if (pipelineActive) {
       next.expressionOk = null;
-      next.expressionMessage = "Hold still — checking eyes…";
+      next.expressionMessage = "Hold still - checking eyes…";
     }
     return next;
   }
@@ -190,7 +190,7 @@ export function applyCaptureExpressionFromClassifier(
     expressionOkRef.current = closed;
     next.expressionOk = closed;
     next.expressionMessage = closed
-      ? "Eyes closed — looks good"
+      ? "Eyes closed - looks good"
       : "Gently close both eyes";
     if (closed) next.readyToCapture = next.readyToCapture && closed;
     return next;

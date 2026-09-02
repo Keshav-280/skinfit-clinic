@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Sun } from "lucide-react";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { RoutinePageSkeleton } from "@/components/dashboard/PageSkeletons";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 import { RoutineStepList } from "@/components/dashboard/RoutineStepList";
 import { normalizeRoutineSteps } from "@/src/lib/routine";
@@ -76,10 +76,7 @@ export default function MorningRoutinePage() {
 
   if (loading) {
     return (
-      <SkinFitLoader
-        title="Opening morning routine"
-        subtitle="kAI is fetching today’s steps."
-      />
+      <RoutinePageSkeleton />
     );
   }
 

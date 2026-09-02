@@ -1,6 +1,6 @@
 import type { FaceScanCaptureId } from "@/src/lib/faceScanCaptures";
 
-/** Front-face guide ellipse — shared with `CaptureFaceGuideOverlayWeb`. */
+/** Front-face guide ellipse - shared with `CaptureFaceGuideOverlayWeb`. */
 export const FRONT_GUIDE_ELLIPSE = {
   cx: 50,
   cy: 50,
@@ -8,7 +8,7 @@ export const FRONT_GUIDE_ELLIPSE = {
   ry: 52,
 } as const;
 
-/** Mobile dashed guide — now matches web proportions (rx=42, ry=52) for consistent framing. */
+/** Mobile dashed guide - now matches web proportions (rx=42, ry=52) for consistent framing. */
 export const MOBILE_FRONT_GUIDE_ELLIPSE = {
   cx: 50,
   cy: 50,
@@ -30,7 +30,7 @@ const OVERLAY_TOP_PAD = (1 - OVERLAY_HEIGHT_FRACTION) / 2;
 
 /**
  * Front capture: tight 3:4 crop around the face guide for ML inference.
- * Applied on the server after identity verification — clients upload full-frame.
+ * Applied on the server after identity verification - clients upload full-frame.
  */
 const FACE_GUIDE_CROP_STEPS = new Set<FaceScanCaptureId>(["centre"]);
 
@@ -111,7 +111,7 @@ export function viewfinderCaptureDimensions(
 
 /**
  * Crop on a capture canvas that exactly matches the viewfinder (post-mirror draw).
- * Maps the inscribed 3:4 ellipse rect 1:1 from viewfinder coords — no video remapping.
+ * Maps the inscribed 3:4 ellipse rect 1:1 from viewfinder coords - no video remapping.
  */
 export function computeFaceGuideCropOnViewfinderCanvas(
   canvasW: number,

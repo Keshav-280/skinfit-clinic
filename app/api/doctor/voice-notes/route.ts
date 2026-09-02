@@ -113,14 +113,14 @@ export async function POST(req: Request) {
     const chatText =
       feedbackText ||
       (audioDataUri
-        ? "Your doctor sent a new voice note — open Home to listen."
+        ? "Your doctor sent a new voice note - open Home to listen."
         : "");
     if (chatText) {
       await sendDoctorPatientChatMessage({
         patientId,
         staffId: doctorId,
         text: chatText,
-        pushTitle: "SkinFit — feedback from your doctor",
+        pushTitle: "SkinFit - feedback from your doctor",
       });
     } else {
       void notifyPatientDoctorVoiceNote(patientId, {

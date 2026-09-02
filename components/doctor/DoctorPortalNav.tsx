@@ -3,7 +3,7 @@
 import { CreditCard, FileStack, UserRound, Users } from "lucide-react";
 import { DoctorNavLink } from "@/components/doctor/DoctorNavLink";
 
-/** Sidebar nav — client-only so Lucide icons are not passed from a Server Component. */
+/** Sidebar nav - client-only so Lucide icons are not passed from a Server Component. */
 export function DoctorPortalNav({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <>

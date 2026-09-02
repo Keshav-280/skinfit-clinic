@@ -31,7 +31,7 @@ export type DoctorFeedbackEntry = {
 
 export type PatientDoctorSection = {
   doctorFeedback: string;
-  /** General (dashboard) voice notes — newest first; not archived. */
+  /** General (dashboard) voice notes - newest first; not archived. */
   doctorVoiceNotes: DoctorVoiceNoteRow[];
   /** Recently archived general notes (still playable). */
   doctorArchivedVoiceNotes: DoctorVoiceNoteRow[];

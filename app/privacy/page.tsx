@@ -11,7 +11,7 @@ import {
 } from "@/src/lib/clinicPublicContact";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — SkinFit",
+  title: "Privacy Policy - SkinFit",
   description:
     "How SkinFit collects, uses, and protects your personal and health-related information.",
 };
@@ -114,10 +114,10 @@ export default function PrivacyPage() {
       <LegalSection title="7. App permissions">
         <LegalBulletList
           items={[
-            "Camera — multi-angle face scans and profile photos.",
-            "Photo library — choose images for scans, profile, or chat.",
-            "Microphone — optional voice notes to your doctor in chat.",
-            "Notifications — optional alerts for clinic messages and scan results.",
+            "Camera - multi-angle face scans and profile photos.",
+            "Photo library - choose images for scans, profile, or chat.",
+            "Microphone - optional voice notes to your doctor in chat.",
+            "Notifications - optional alerts for clinic messages and scan results.",
           ]}
         />
       </LegalSection>

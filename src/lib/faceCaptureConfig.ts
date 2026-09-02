@@ -2,7 +2,7 @@
  * Face capture guidance backends.
  *
  * **Default web framing:** MediaPipe BlazeFace (bbox) + Face Landmarker (eyes / expression).
- * **Best quality:** server RetinaFace ONNX — set FACE_DETECTOR=retinaface and add
+ * **Best quality:** server RetinaFace ONNX - set FACE_DETECTOR=retinaface and add
  * `models/capture/retinaface.onnx` (see `npm run capture:setup-models`).
  *
  * Disable client MediaPipe with DISABLE_MEDIAPIPE / NEXT_PUBLIC_DISABLE_MEDIAPIPE (=1).
@@ -104,7 +104,7 @@ function mediapipeExplicitlyDisabled(): boolean {
   );
 }
 
-/** Global MediaPipe toggle — on unless explicitly disabled. */
+/** Global MediaPipe toggle - on unless explicitly disabled. */
 export function isMediapipeEnabled(): boolean {
   if (mediapipeExplicitlyDisabled()) return false;
   if (mediapipeExplicitlyEnabled()) return true;

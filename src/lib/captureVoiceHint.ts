@@ -9,7 +9,7 @@ export type CaptureVoiceHint = {
   key: string;
 };
 
-/** One spoken line at a time — never light + distance separately. */
+/** One spoken line at a time - never light + distance separately. */
 export function resolveCaptureVoiceHint(
   guidance: CaptureGuidanceSnapshot | null | undefined
 ): CaptureVoiceHint | null {

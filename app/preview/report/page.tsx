@@ -21,17 +21,17 @@ const DESIGNS = [
   {
     id: "poster" as const,
     label: "Poster",
-    blurb: "Current — grade on the photo, lavender cards.",
+    blurb: "Current - grade on the photo, lavender cards.",
   },
   {
     id: "swiss" as const,
     label: "Swiss",
-    blurb: "Print clinic — giant letter, sharp edges, almost no chrome.",
+    blurb: "Print clinic - giant letter, sharp edges, almost no chrome.",
   },
   {
     id: "night" as const,
     label: "Night scan",
-    blurb: "HUD — dark, brackets, readout. A device, not a brochure.",
+    blurb: "HUD - dark, brackets, readout. A device, not a brochure.",
   },
   {
     id: "orbit" as const,
@@ -51,7 +51,7 @@ export default function ReportPreviewPage() {
     <div>
       <div className="sticky top-0 z-50 border-b border-black/10 bg-[#FAF8F5]/95 px-3 py-2 backdrop-blur-md">
         <p className="mx-auto mb-2 max-w-[460px] text-center text-[11px] text-[#5B6478]">
-          Concept lab — not live yet. Pick a direction.
+          Concept lab - not live yet. Pick a direction.
         </p>
         <div className="mx-auto flex max-w-[460px] gap-1 overflow-x-auto pb-1 scrollbar-hide">
           {DESIGNS.map((d) => (
@@ -177,7 +177,7 @@ export default function ReportPreviewPage() {
                 name: "Pigmentation",
                 grade: "6",
                 gradeColor: "mid",
-                finding: "Malar pigment is steady — keep the UV habit.",
+                finding: "Malar pigment is steady - keep the UV habit.",
                 movement: { tag: "Steady", type: "hold" },
               },
               {
@@ -204,7 +204,7 @@ export default function ReportPreviewPage() {
           attributionCards={[
             {
               label: "Weather",
-              text: "UV peaked at 9 in Bengaluru — pigment holding is a win.",
+              text: "UV peaked at 9 in Bengaluru - pigment holding is a win.",
             },
             {
               label: "Habits",

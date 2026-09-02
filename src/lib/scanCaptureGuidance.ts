@@ -1,6 +1,6 @@
 /**
  * Real-time scan capture guidance (lighting + face framing).
- * No server round-trip — runs on preview frames in browser / mobile.
+ * No server round-trip - runs on preview frames in browser / mobile.
  */
 
 export type LightingQuality =
@@ -19,7 +19,7 @@ export type FaceFramingQuality =
 
 /** Browser capture assistants (web only). */
 export type CaptureAssistModels = {
-  /** Experimental Shape Detection API — not in Chrome stable / Safari. */
+  /** Experimental Shape Detection API - not in Chrome stable / Safari. */
   faceDetector: "ready" | "unsupported";
   /** MediaPipe BlazeFace short-range (primary bbox). */
   blazeFace: "off" | "idle" | "loading" | "ready" | "failed";
@@ -52,7 +52,7 @@ export type CaptureGuidanceSnapshot = {
   faceMessage: string;
   expressionOk: boolean | null;
   expressionMessage: string | null;
-  /** Instant face∩frame area (0–1) — used for framing and auto-zoom */
+  /** Instant face∩frame area (0-1) - used for framing and auto-zoom */
   faceFill: number | null;
   /** Suggested digital crop zoom for web (1 = full frame) */
   suggestedZoom: number | null;
@@ -60,7 +60,7 @@ export type CaptureGuidanceSnapshot = {
   readyToCapture: boolean;
 };
 
-/** Normalized face box in frame coordinates (0–1), origin top-left. */
+/** Normalized face box in frame coordinates (0-1), origin top-left. */
 export type NormalizedFaceBox = {
   x: number;
   y: number;
@@ -68,7 +68,7 @@ export type NormalizedFaceBox = {
   height: number;
 };
 
-/** Full camera preview — guidance uses entire frame (no cutout region). */
+/** Full camera preview - guidance uses entire frame (no cutout region). */
 export const CAPTURE_FRAME = {
   x0: 0,
   y0: 0,
@@ -87,34 +87,34 @@ const FACE_TARGET = {
  * Ideal face bbox area as fraction of full frame (portrait box ∩ frame).
  *
  * The whole face must sit INSIDE the guide ellipse (cx=50%, cy=50%, rx=42%, ry=52%)
- * with margin — hairline, both cheeks and chin all visible, not clipped.
+ * with margin - hairline, both cheeks and chin all visible, not clipped.
  *
  * The face portrait box (hairline→chin, cheek-to-cheek) should be clearly smaller
  * than the frame so it fits within the ellipse. Empirically a face fill of
- * ~18–32% places the whole head inside the ellipse with comfortable margin.
+ * ~18-32% places the whole head inside the ellipse with comfortable margin.
  * Higher than this and the face gets cropped at the forehead/chin.
  *
- * Target band: **12–42%** with **±3%** hysteresis. Auto-zoom converges to ~27%.
- * Widened from 18–32% so the user does not have to move uncomfortably close
+ * Target band: **12-42%** with **±3%** hysteresis. Auto-zoom converges to ~27%.
+ * Widened from 18-32% so the user does not have to move uncomfortably close
  * (or back) to land in the "good" band.
  */
 export const IDEAL_FACE_FILL_MIN = 0.12;
 export const IDEAL_FACE_FILL_MAX = 0.42;
-/** ±3 percentage points — enter/exit "move closer" / "ease back" outside the band. */
+/** ±3 percentage points - enter/exit "move closer" / "ease back" outside the band. */
 export const CAPTURE_FRAMING_TOLERANCE = 0.03;
-/** Center of ideal band — auto-zoom converges here. */
+/** Center of ideal band - auto-zoom converges here. */
 export const IDEAL_FACE_FILL_AREA =
   (IDEAL_FACE_FILL_MIN + IDEAL_FACE_FILL_MAX) / 2;
 
-/** Hysteresis — too-small / too-large bands around the 18–32% ideal band. */
+/** Hysteresis - too-small / too-large bands around the 18-32% ideal band. */
 export const CAPTURE_FRAMING_THRESHOLDS = {
-  /** Below 15% — enter "move closer" */
+  /** Below 15% - enter "move closer" */
   tooSmallEnter: IDEAL_FACE_FILL_MIN - CAPTURE_FRAMING_TOLERANCE,
-  /** At or above 18% — exit "too small" / framing size OK (lower bound) */
+  /** At or above 18% - exit "too small" / framing size OK (lower bound) */
   tooSmallExit: IDEAL_FACE_FILL_MIN,
-  /** Above 35% — enter "ease back" */
+  /** Above 35% - enter "ease back" */
   tooLargeEnter: IDEAL_FACE_FILL_MAX + CAPTURE_FRAMING_TOLERANCE,
-  /** At or below 32% — exit "too large" (upper bound of good band) */
+  /** At or below 32% - exit "too large" (upper bound of good band) */
   tooLargeExit: IDEAL_FACE_FILL_MAX,
   /** Centering: keep face within the ellipse guide. */
   centerEnterX: 0.15,
@@ -132,14 +132,14 @@ const CENTER_EXIT_X = CAPTURE_FRAMING_THRESHOLDS.centerExitX;
 const CENTER_ENTER_Y = CAPTURE_FRAMING_THRESHOLDS.centerEnterY;
 const CENTER_EXIT_Y = CAPTURE_FRAMING_THRESHOLDS.centerExitY;
 
-/** Auto-zoom converges toward center of the 18–32% ideal band (25%). */
+/** Auto-zoom converges toward center of the 18-32% ideal band (25%). */
 export function captureAutoZoomTargetFill(): number {
   return IDEAL_FACE_FILL_AREA;
 }
 
 export const CAPTURE_ZOOM_AUTO = {
   min: 1,
-  /** Manual zoom headroom — let the user crop in closer when they want to. */
+  /** Manual zoom headroom - let the user crop in closer when they want to. */
   max: 3,
   /** Start at full frame; auto-zoom nudges toward the ideal face area. */
   default: 1,
@@ -166,17 +166,17 @@ export const CAPTURE_GUIDANCE_WARMUP_MESSAGE =
 
 /**
  * Minimum lighting score required for `readyToCapture`.
- * Stricter than before (was 55) — for dermatological analysis the model needs
+ * Stricter than before (was 55) - for dermatological analysis the model needs
  * even illumination with enough detail visibility.
  */
 export const LIGHTING_SCORE_READY_THRESHOLD = 60;
 
 /**
- * Brightness warning thresholds — tuned for "clear and bright" indoor capture.
+ * Brightness warning thresholds - tuned for "clear and bright" indoor capture.
  * Previous values (mean 185 / 18% hot pixels) flagged normal skin highlights too often.
  */
 export const CAPTURE_LIGHTING_THRESHOLDS = {
-  /** Mean frame luma above this → too bright (0–255). */
+  /** Mean frame luma above this → too bright (0-255). */
   meanTooBright: 200,
   /** Fraction of pixels above `brightPixelLuma` → too bright. */
   brightRatioTooBright: 0.32,
@@ -185,8 +185,8 @@ export const CAPTURE_LIGHTING_THRESHOLDS = {
 } as const;
 
 /**
- * EMA for portrait bbox — higher alpha = faster response to movement.
- * Increased from 0.14 to 0.35 so guidance reacts within 1–2 frames on both web and mobile.
+ * EMA for portrait bbox - higher alpha = faster response to movement.
+ * Increased from 0.14 to 0.35 so guidance reacts within 1-2 frames on both web and mobile.
  */
 export const FACE_BOX_SMOOTH_ALPHA = 0.35;
 /** Reject sudden bbox area jumps (skin fallback vs landmarks). */
@@ -197,7 +197,7 @@ const FRAME_WIDTH = FRAME_REGION.x1 - FRAME_REGION.x0;
 const FRAME_HEIGHT = FRAME_REGION.y1 - FRAME_REGION.y0;
 const FRAME_AREA = FRAME_WIDTH * FRAME_HEIGHT;
 
-/** How much of the frame region the face box covers by area (0–1). */
+/** How much of the frame region the face box covers by area (0-1). */
 export function effectiveFaceFill(box: NormalizedFaceBox): number {
   const x0 = Math.max(box.x, FRAME_REGION.x0);
   const y0 = Math.max(box.y, FRAME_REGION.y0);
@@ -242,7 +242,7 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 
-/** Relative luminance 0–255 from sRGB bytes. */
+/** Relative luminance 0-255 from sRGB bytes. */
 function luma(r: number, g: number, b: number) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
@@ -251,7 +251,7 @@ function luma(r: number, g: number, b: number) {
  * Analyze lighting inside the central capture frame of RGBA pixels.
  */
 export type AnalyzeLightingOptions = {
-  /** Side profiles turn one cheek away — skip left/right half brightness comparison. */
+  /** Side profiles turn one cheek away - skip left/right half brightness comparison. */
   skipUnevenLighting?: boolean;
 };
 
@@ -296,7 +296,7 @@ export function analyzeLightingFromRgba(
       n++;
       if (L < 45) dark++;
       if (L > CAPTURE_LIGHTING_THRESHOLDS.brightPixelLuma) bright++;
-      // Per-pixel chroma (max−min) — covered cameras are near-grayscale.
+      // Per-pixel chroma (max−min) - covered cameras are near-grayscale.
       satSum += Math.max(r, g, b) - Math.min(r, g, b);
       if (x < midX) {
         leftSum += L;
@@ -332,7 +332,7 @@ export function analyzeLightingFromRgba(
   const skipUnevenLighting = Boolean(opts?.skipUnevenLighting);
 
   // Covered lens / near-black: very low brightness OR a flat near-grayscale frame
-  // (webcam auto-gain often brightens a covered lens to gray noise — catch that too).
+  // (webcam auto-gain often brightens a covered lens to gray noise - catch that too).
   const coveredOrDark =
     mean < 90 ||
     darkRatio > 0.25 ||
@@ -340,19 +340,19 @@ export function analyzeLightingFromRgba(
 
   if (coveredOrDark) {
     quality = "too_dark";
-    message = "Too dark — uncover the camera and face a window or soft light";
+    message = "Too dark - uncover the camera and face a window or soft light";
   } else if (
     mean > CAPTURE_LIGHTING_THRESHOLDS.meanTooBright ||
     brightRatio > CAPTURE_LIGHTING_THRESHOLDS.brightRatioTooBright
   ) {
     quality = "too_bright";
-    message = "Too bright — step back from direct sun or harsh lamp";
+    message = "Too bright - step back from direct sun or harsh lamp";
   } else if (!skipUnevenLighting && sideDelta > 30) {
     quality = "uneven";
-    message = "Uneven light — rotate so both sides of your face are lit";
+    message = "Uneven light - rotate so both sides of your face are lit";
   } else if (std < 25) {
     quality = "low_contrast";
-    message = "Flat lighting — add a soft light source in front of you";
+    message = "Flat lighting - add a soft light source in front of you";
   }
 
   const rawScore = clamp(
@@ -513,7 +513,7 @@ export function isUsableFaceBox(
   );
 }
 
-/** Average recent face boxes for stable guidance (1–1.5s window). */
+/** Average recent face boxes for stable guidance (1-1.5s window). */
 export function averageFaceBoxes(
   boxes: Array<NormalizedFaceBox | null>
 ): NormalizedFaceBox | null {
@@ -556,7 +556,7 @@ export function analyzeFaceFraming(
       };
     }
     if (isSideProfile) {
-      // Frontal face detectors often miss true side profiles — don't alarm the user.
+      // Frontal face detectors often miss true side profiles - don't alarm the user.
       return {
         quality: "good",
         message: "Hold your side profile in the oval",
@@ -607,7 +607,7 @@ export function suggestCaptureZoom(
   ) {
     return null;
   }
-  // Face area ~ 1/zoom² for center crop — adjust zoom toward target fill.
+  // Face area ~ 1/zoom² for center crop - adjust zoom toward target fill.
   const ratio = Math.sqrt(targetFill / Math.max(faceFill, 0.04));
   const raw = clamp(
     currentZoom * ratio,
@@ -686,7 +686,7 @@ export function sampleVideoFrame(
   return ctx.getImageData(0, 0, sampleWidth, sampleHeight);
 }
 
-/** Browser FaceDetector (Chrome/Edge) — no extra model download. */
+/** Browser FaceDetector (Chrome/Edge) - no extra model download. */
 export type BrowserFaceDetector = {
   detect: (source: ImageBitmapSource) => Promise<
     Array<{ boundingBox: DOMRectReadOnly }>

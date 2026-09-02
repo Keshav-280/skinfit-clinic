@@ -1,6 +1,6 @@
 import type { PatientTrackerFocusAction } from "@/src/lib/patientTrackerReport.types";
 
-/** Instructional habits for first baseline scan — no past-behavior comparisons. */
+/** Instructional habits for first baseline scan - no past-behavior comparisons. */
 export const ONBOARDING_BASELINE_FOCUS_ACTIONS: PatientTrackerFocusAction[] = [
   {
     rank: 1,
@@ -12,7 +12,7 @@ export const ONBOARDING_BASELINE_FOCUS_ACTIONS: PatientTrackerFocusAction[] = [
     rank: 2,
     title: "Drink water through the day",
     detail:
-      "Steady hydration supports your skin barrier — sip water across the day when you can.",
+      "Steady hydration supports your skin barrier - sip water across the day when you can.",
   },
   {
     rank: 3,

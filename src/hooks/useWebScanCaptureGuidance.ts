@@ -108,7 +108,7 @@ async function createFaceLandmarker(): Promise<FaceLandmarkerLike> {
       modelAssetPath: LANDMARKER_MODEL,
       delegate: "CPU" as const,
     },
-    /** IMAGE mode: per-frame detect() — no VIDEO timestamps (avoids mismatch errors). */
+    /** IMAGE mode: per-frame detect() - no VIDEO timestamps (avoids mismatch errors). */
     runningMode: "IMAGE" as const,
     numFaces: 1,
     /** Lower-confidence thresholds = more robust with specs / reflections. */
@@ -180,7 +180,7 @@ export function useWebScanCaptureGuidance(
   const blazeDetectorRef = useRef<BlazeFaceDetectorLike | null>(null);
   const loadingLandmarkerRef = useRef(false);
   const loadingBlazeRef = useRef(false);
-  const [bboxSource, setBboxSource] = useState<string>("—");
+  const [bboxSource, setBboxSource] = useState<string>("-");
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const smoothedBoxRef = useRef<NormalizedFaceBox | null>(null);
   const faceMissRef = useRef(0);
@@ -379,7 +379,7 @@ export function useWebScanCaptureGuidance(
       const blazeReady = models.blazeFace === "ready";
       let faceBox: NormalizedFaceBox | null = null;
       let landmarkBox: NormalizedFaceBox | null = null;
-      let source = "—";
+      let source = "-";
 
       let serverPreview: Awaited<ReturnType<typeof fetchFacePreviewInference>> =
         null;
@@ -627,7 +627,7 @@ export function useWebScanCaptureGuidance(
         ) {
           next.expressionOk = null;
           next.expressionMessage =
-            "Expression check unavailable right now — capture can continue";
+            "Expression check unavailable right now - capture can continue";
         } else if (needsExpressionModel && models.mediapipe === "loading") {
           next.expressionOk = null;
           next.expressionMessage = "Loading expression model…";

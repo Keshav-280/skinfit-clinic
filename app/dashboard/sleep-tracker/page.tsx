@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Moon } from "lucide-react";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { TrackerPageSkeleton } from "@/components/dashboard/PageSkeletons";
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 import {
@@ -103,10 +103,7 @@ export default function SleepTrackerPage() {
 
   if (loading) {
     return (
-      <SkinFitLoader
-        title="Opening sleep tracker"
-        subtitle="kAI is pulling last night’s rest."
-      />
+      <TrackerPageSkeleton />
     );
   }
 

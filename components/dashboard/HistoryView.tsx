@@ -45,7 +45,7 @@ export interface ScanRecord {
 export type { VisitNoteAttachment };
 export type VisitNoteRecord = PatientVisitDetail;
 
-/** Voice note attached to a specific scan (report) — shown on treatment history, not the dashboard card. */
+/** Voice note attached to a specific scan (report) - shown on treatment history, not the dashboard card. */
 export interface ReportVoiceNoteRecord {
   id: string;
   scanId: number;
@@ -287,7 +287,7 @@ export function HistoryView({
             <h2 className={patientSectionTitle}>Your reports</h2>
             <p className={`mt-1 ${patientMuted}`}>
               {scans.length > 0
-                ? `${scans.length} scan${scans.length === 1 ? "" : "s"} — newest first`
+                ? `${scans.length} scan${scans.length === 1 ? "" : "s"} - newest first`
                 : "Complete your first scan to start tracking progress."}
             </p>
           </div>

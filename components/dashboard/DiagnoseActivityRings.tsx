@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { NavyMetricsCard } from "@/components/dashboard/NavyMetricsCard";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { InlineSkeleton } from "@/components/dashboard/PageSkeletons";
 import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
 
 type RingsHome = {
@@ -50,7 +50,7 @@ export function DiagnoseActivityRings() {
   if (loading) {
     return (
       <div className="flex min-h-[160px] items-center justify-center">
-        <SkinFitLoader size="mark" title="Loading scores" />
+        <InlineSkeleton label="Loading scores" />
       </div>
     );
   }

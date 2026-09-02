@@ -16,7 +16,7 @@ export type HeadPoseDegrees = {
   roll: number;
 };
 
-/** Tiny blink / smile classifier outputs (0–1). */
+/** Tiny blink / smile classifier outputs (0-1). */
 export type ExpressionClassifierScores = {
   blink: number;
   smile: number;
@@ -28,7 +28,7 @@ export type FacePreviewInferenceResult = {
   expression: ExpressionClassifierScores | null;
   detector: "mediapipe" | "retinaface";
   expressionBackend: "blendshapes" | "classifier";
-  /** False when ONNX weights are missing — client should fall back to MediaPipe. */
+  /** False when ONNX weights are missing - client should fall back to MediaPipe. */
   detectorAvailable: boolean;
   expressionAvailable: boolean;
   warning?: string;

@@ -1,11 +1,11 @@
 /**
- * Sagging & volume: composite 1–5 severity (higher = worse laxity / contour concern).
+ * Sagging & volume: composite 1-5 severity (higher = worse laxity / contour concern).
  *
  * Raw ML `sagging_volume` is chubby/double-chin (facial fullness), which poorly
  * matches clinical sagging. We blend contour with under-eye hollowing and wrinkle
- * laxity — signals that track structural ageing more reliably on 2D scans.
+ * laxity - signals that track structural ageing more reliably on 2D scans.
  *
- * Age adjustment (0–100 clarity) compares observed composite severity to
+ * Age adjustment (0-100 clarity) compares observed composite severity to
  * age-expected norms from facial ageing literature:
  * - Collagen/elastin decline accelerates from ~35 (Johns Hopkins Medicine)
  * - Cheek sagging becomes morphologically distinct in the ~40s (photonumeric scale, PMC)
@@ -36,7 +36,7 @@ function clampSeverity(s: number): number {
   return Math.round(Math.max(1, Math.min(5, s)) * 100) / 100;
 }
 
-/** Weighted mean of available 1–5 severities; renormalizes when a signal is missing. */
+/** Weighted mean of available 1-5 severities; renormalizes when a signal is missing. */
 export function compositeSaggingVolumeSeverity(
   inputs: SaggingCompositeInputs
 ): number | null {
@@ -84,7 +84,7 @@ export function applyCompositeSaggingVolume<T extends SaggingCompositeModelScore
   };
 }
 
-/** Expected composite sagging severity for chronological age (1–5, higher = more laxity). */
+/** Expected composite sagging severity for chronological age (1-5, higher = more laxity). */
 export function ageExpectedSaggingSeverity(age: number): number {
   const a = Math.max(18, Math.min(90, age));
   if (a < 30) return 1.75;
@@ -101,7 +101,7 @@ function severityToClarity(severity: number): number {
   return Math.round(100 - ((s - 1) / 4) * 100);
 }
 
-/** 0–100 clarity vs age-matched peers; without age, falls back to raw severity mapping. */
+/** 0-100 clarity vs age-matched peers; without age, falls back to raw severity mapping. */
 export function ageAdjustedSaggingClarity(
   observedSeverity: number,
   age: number | null | undefined

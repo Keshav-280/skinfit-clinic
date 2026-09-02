@@ -103,7 +103,7 @@ function TreatmentForm({
         value={draftPre}
         onChange={(e) => onPreChange(e.target.value)}
         rows={3}
-        placeholder={"Pre-care (one item per line)\nStop retinol 2–3 days before…"}
+        placeholder={"Pre-care (one item per line)\nStop retinol 2-3 days before…"}
         className={`${doctorFormInputClass} min-h-[4.5rem] resize-y text-xs`}
       />
       <textarea

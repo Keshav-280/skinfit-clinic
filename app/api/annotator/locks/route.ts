@@ -20,7 +20,7 @@ type LocksMap = Record<string, AnnotatorImageLock>;
  * Locks live in the same row as annotation shapes, but lock traffic is by far the
  * hottest path (acquire on every image switch, heartbeat every 10s/user, release
  * on leave). Reading/writing the full row would pull and rewrite the multi-MB
- * `per_user_shapes` blob on every one of those calls — the dominant cause of CPU
+ * `per_user_shapes` blob on every one of those calls - the dominant cause of CPU
  * pinning, 504s and OOM under load. These helpers touch ONLY the `image_locks`
  * column, which also removes the lost-update race where a lock write would clobber
  * a concurrent shape save.

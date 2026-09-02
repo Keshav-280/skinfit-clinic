@@ -1,5 +1,5 @@
 /**
- * Weekly check-in field definitions — stable enum keys for correlation.
+ * Weekly check-in field definitions - stable enum keys for correlation.
  * Display labels may change; keys must not.
  */
 
@@ -45,8 +45,8 @@ export type CheckinScreenDef = {
 
 export const SLEEP_OPTIONS: FieldOption[] = [
   { key: "<4", label: "<4" },
-  { key: "4-6", label: "4–6" },
-  { key: "6-8", label: "6–8" },
+  { key: "4-6", label: "4-6" },
+  { key: "6-8", label: "6-8" },
   { key: "8+", label: "8+" },
 ];
 
@@ -60,8 +60,8 @@ export const STRESS_OPTIONS: FieldOption[] = [
 
 export const WATER_OPTIONS: FieldOption[] = [
   { key: "<1L", label: "<1L" },
-  { key: "1-2L", label: "1–2L" },
-  { key: "2-3L", label: "2–3L" },
+  { key: "1-2L", label: "1-2L" },
+  { key: "2-3L", label: "2-3L" },
   { key: "3L+", label: "3L+" },
 ];
 
@@ -75,9 +75,9 @@ export const NUTRITION_OPTIONS: FieldOption[] = [
 ];
 
 export const EXERCISE_OPTIONS: FieldOption[] = [
-  { key: "0-2", label: "0–2" },
-  { key: "2-4", label: "2–4" },
-  { key: "4-6", label: "4–6" },
+  { key: "0-2", label: "0-2" },
+  { key: "2-4", label: "2-4" },
+  { key: "4-6", label: "4-6" },
   { key: "6+", label: "6+" },
 ];
 
@@ -125,7 +125,7 @@ export const UNIVERSAL_SCREENS: CheckinScreenDef[] = [
   },
   {
     title: "Fuel and movement",
-    subtitle: "How you ate and moved — multi-select where both can be true.",
+    subtitle: "How you ate and moved - multi-select where both can be true.",
     fields: [
       {
         key: "nutrition",
@@ -253,8 +253,8 @@ const ACNE_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "none", label: "None" },
-          { key: "1-3", label: "1–3" },
-          { key: "4-10", label: "4–10" },
+          { key: "1-3", label: "1-3" },
+          { key: "4-10", label: "4-10" },
           { key: "10+", label: "10+" },
         ],
       },
@@ -336,12 +336,12 @@ const PIGMENT_SCREENS: CheckinScreenDef[] = [
     fields: [
       {
         key: "peak_sun_hours",
-        label: "Hours outdoors 10am–4pm",
+        label: "Hours outdoors 10am-4pm",
         type: "single",
         options: [
           { key: "<1", label: "<1" },
-          { key: "1-3", label: "1–3" },
-          { key: "3-5", label: "3–5" },
+          { key: "1-3", label: "1-3" },
+          { key: "3-5", label: "3-5" },
           { key: "5+", label: "5+" },
         ],
       },
@@ -469,8 +469,8 @@ const WRINKLES_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "<4", label: "<4" },
-          { key: "4-8", label: "4–8" },
-          { key: "8-12", label: "8–12" },
+          { key: "4-8", label: "4-8" },
+          { key: "8-12", label: "8-12" },
           { key: "12+", label: "12+" },
         ],
       },
@@ -480,8 +480,8 @@ const WRINKLES_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "none", label: "None" },
-          { key: "1-2", label: "1–2 drinks" },
-          { key: "3-5", label: "3–5" },
+          { key: "1-2", label: "1-2 drinks" },
+          { key: "3-5", label: "3-5" },
           { key: "6+", label: "6+" },
         ],
       },
@@ -553,8 +553,8 @@ const HAIR_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "<20", label: "<20" },
-          { key: "20-50", label: "20–50" },
-          { key: "50-100", label: "50–100" },
+          { key: "20-50", label: "20-50" },
+          { key: "50-100", label: "50-100" },
           { key: "100+", label: "100+" },
         ],
       },
@@ -576,7 +576,7 @@ const HAIR_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "daily", label: "Daily" },
-          { key: "every_2_3_days", label: "Every 2–3 days" },
+          { key: "every_2_3_days", label: "Every 2-3 days" },
           { key: "weekly", label: "Weekly" },
           { key: "less", label: "Less" },
         ],
@@ -677,7 +677,7 @@ const HAIR_SCREENS: CheckinScreenDef[] = [
 const WEIGHT_SCREENS: CheckinScreenDef[] = [
   {
     title: "Your numbers",
-    subtitle: "Change bands only — no target weight, no BMI.",
+    subtitle: "Change bands only - no target weight, no BMI.",
     fields: [
       {
         key: "weight_change",
@@ -718,9 +718,9 @@ const WEIGHT_SCREENS: CheckinScreenDef[] = [
         label: "Meals per day",
         type: "single",
         options: [
-          { key: "1-2", label: "1–2" },
+          { key: "1-2", label: "1-2" },
           { key: "3", label: "3" },
-          { key: "4-5", label: "4–5" },
+          { key: "4-5", label: "4-5" },
           { key: "grazing", label: "Grazing all day" },
         ],
       },
@@ -760,8 +760,8 @@ const WEIGHT_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "0", label: "0" },
-          { key: "1-2", label: "1–2" },
-          { key: "3-4", label: "3–4" },
+          { key: "1-2", label: "1-2" },
+          { key: "3-4", label: "3-4" },
           { key: "5+", label: "5+" },
         ],
       },
@@ -771,8 +771,8 @@ const WEIGHT_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "0", label: "0" },
-          { key: "1-2", label: "1–2" },
-          { key: "3-4", label: "3–4" },
+          { key: "1-2", label: "1-2" },
+          { key: "3-4", label: "3-4" },
           { key: "5+", label: "5+" },
         ],
       },
@@ -782,8 +782,8 @@ const WEIGHT_SCREENS: CheckinScreenDef[] = [
         type: "single",
         options: [
           { key: "<4k", label: "<4k" },
-          { key: "4-8k", label: "4–8k" },
-          { key: "8-12k", label: "8–12k" },
+          { key: "4-8k", label: "4-8k" },
+          { key: "8-12k", label: "8-12k" },
           { key: "12k+", label: "12k+" },
         ],
       },

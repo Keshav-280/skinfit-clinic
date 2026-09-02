@@ -35,7 +35,7 @@ const categories = [
       {
         title: "Skin Types Explained: Finding Your Fit",
         description:
-          "Oily, dry, combination—understand your skin type and tailor your products accordingly.",
+          "Oily, dry, combination - understand your skin type and tailor your products accordingly.",
       },
       {
         title: "Ingredients 101: Retinol, Vitamin C, Niacinamide",
@@ -60,7 +60,7 @@ const categories = [
       {
         title: "Acne vs. Rosacea: How to Tell the Difference",
         description:
-          "Similar symptoms, different treatments—learn when to see a specialist.",
+          "Similar symptoms, different treatments - learn when to see a specialist.",
       },
       {
         title: "The Science Behind Breakouts and Healing",

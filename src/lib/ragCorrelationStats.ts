@@ -13,11 +13,11 @@ export type BehaviorSnapshot = {
   pmRoutineDays: number;
   fullRoutineDays: number;
   routineConsistencyPct: number;
-  /** Mean AM checklist completion (0–100) across logged rows in-window. */
+  /** Mean AM checklist completion (0-100) across logged rows in-window. */
   avgAmRoutineStepPct: number;
-  /** Mean PM checklist completion (0–100). */
+  /** Mean PM checklist completion (0-100). */
   avgPmRoutineStepPct: number;
-  /** Blend of AM+PM step completion per day then averaged across logs (0–100). */
+  /** Blend of AM+PM step completion per day then averaged across logs (0-100). */
   routineWeightedConsistencyPct: number;
   /** Journal rows ÷ calendar window × 100 when window describes a month-span. */
   journalCompliancePct: number;
@@ -143,7 +143,7 @@ export type BehaviorParamCorrelation = {
   polarity: "improvement" | "drag" | "stable" | "unknown";
   wins: string[]; // drivers that plausibly helped this param
   drags: string[]; // drivers that plausibly hurt this param
-  /** Combined view, kept for backwards compat — we now also surface wins/drags separately. */
+  /** Combined view, kept for backwards compat - we now also surface wins/drags separately. */
   likelyDrivers: string[];
 };
 
@@ -156,7 +156,7 @@ function polarityOf(delta: number | null): BehaviorParamCorrelation["polarity"] 
 
 /**
  * Rule-augmented correlation for ONE parameter. Produces two parallel
- * lists — wins and drags — so the downstream narrative can balance
+ * lists - wins and drags - so the downstream narrative can balance
  * what went well vs what hurt, regardless of delta sign.
  */
 export function correlateBehaviorToDelta(
@@ -204,7 +204,7 @@ export function correlateBehaviorToDelta(
     behavior.routineWeightedConsistencyPct < 55
   ) {
     drags.push(
-      `checklist completion averaged ~${behavior.routineWeightedConsistencyPct}% (lots of partial AM/PM finishes) — that usually drags pigment/acne pacing`
+      `checklist completion averaged ~${behavior.routineWeightedConsistencyPct}% (lots of partial AM/PM finishes) - that usually drags pigment/acne pacing`
     );
   }
   if (behavior.avgPmRoutineStepPct > 0 && behavior.avgPmRoutineStepPct < 50) {
@@ -214,7 +214,7 @@ export function correlateBehaviorToDelta(
   }
   if (behavior.journalCompliancePct > 0 && behavior.journalCompliancePct < 40) {
     drags.push(
-      `journal only landed on ~${behavior.journalCompliancePct}% of days (${behavior.journalEntriesCount}/${behavior.windowDays}) — missing triggers/link to flares`
+      `journal only landed on ~${behavior.journalCompliancePct}% of days (${behavior.journalEntriesCount}/${behavior.windowDays}) - missing triggers/link to flares`
     );
   }
 
@@ -241,7 +241,7 @@ export function correlateBehaviorToDelta(
     );
   }
 
-  // Sun exposure intentionally excluded — the app does not collect UV data,
+  // Sun exposure intentionally excluded - the app does not collect UV data,
   // so AI narratives must never cite it as a measured signal.
 
   // ---- Stress ----

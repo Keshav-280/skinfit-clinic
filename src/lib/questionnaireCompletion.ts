@@ -56,7 +56,7 @@ export async function isQuestionnaireMilestoneComplete(
 }
 
 export type QuestionnaireCompletionState = {
-  /** At least one successful submit — unlocks features and dashboard. */
+  /** At least one successful submit - unlocks features and dashboard. */
   submitted: boolean;
   /** Submitted with every question answered (no skips). Legacy submits count as full. */
   fullyComplete: boolean;

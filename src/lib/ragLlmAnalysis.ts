@@ -46,7 +46,7 @@ function chunkLines(chunks: Array<{ chunk: TextbookChunk; score: number }>) {
 
 /**
  * Qualitative band for already-calibrated patient display scores (no numbers in prose).
- * Callers pass already-calibrated patient display scores —
+ * Callers pass already-calibrated patient display scores -
  * do not re-apply the saturation curve here.
  */
 function lockedQualitativeBand(displayScore: number): string {
@@ -70,8 +70,8 @@ function paramsLine(
   return params
     .map((p) => {
       const v =
-        p.value == null ? "—" : displayScoreForPrompt(p.value, scoresUnlocked);
-      const d = p.delta == null ? "—" : p.delta >= 0 ? `+${p.delta}` : String(p.delta);
+        p.value == null ? "-" : displayScoreForPrompt(p.value, scoresUnlocked);
+      const d = p.delta == null ? "-" : p.delta >= 0 ? `+${p.delta}` : String(p.delta);
       const direction =
         p.delta == null
           ? "unknown"
@@ -230,18 +230,18 @@ IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentat
 STRICT DATA RULES:
 - Every number you write MUST appear verbatim in the data below. Never invent, estimate, round up, or extrapolate a score.
 - Patient scores are ALWAYS between ${PATIENT_DISPLAY_SCORE_FLOOR} and ${PATIENT_DISPLAY_SCORE_CAP}. Never write a skin score above ${PATIENT_DISPLAY_SCORE_CAP}, never write "100", never write "X/100", and never describe a score as perfect or maxed out.
-- Do NOT say "UV exposure" or "sun exposure hours" as something we measured — this app does NOT collect sun-exposure habit data. You MAY mention UV Index from CITY WEATHER as an environmental factor when that data is provided.
+- Do NOT say "UV exposure" or "sun exposure hours" as something we measured - this app does NOT collect sun-exposure habit data. You MAY mention UV Index from CITY WEATHER as an environmental factor when that data is provided.
 ${
   !input.scoresUnlocked
     ? `- The patient's exact scores are LOCKED. You MUST NOT output any score numbers or deltas (no "72", no "+5"), and you MUST NOT use letter grades (A/B/C/D/E) either. Describe every parameter only with qualitative words already given in the data (e.g. "good", "moderate", "improving", "held steady").`
-    : `- The patient's exact scores are UNLOCKED. Use ONLY the exact score numbers and deltas provided below. Do NOT use letter grades (A/B/C/D/E) anywhere — the patient sees numbers, not grades.`
+    : `- The patient's exact scores are UNLOCKED. Use ONLY the exact score numbers and deltas provided below. Do NOT use letter grades (A/B/C/D/E) anywhere - the patient sees numbers, not grades.`
 }
 WELLNESS & ENVIRONMENT INTEGRATION:
 - When wellness check-in data is available, correlate lifestyle choices with skin outcomes. For example: "Your high-protein diet this week likely supported collagen production" or "Eating outside frequently can mean higher sodium and oil intake, which may contribute to breakouts."
 - When city weather data is available, ALWAYS mention it naturally in the analysis. Examples:
-  - "Mumbai's humidity at 85% this week means your skin is retaining more moisture — great for hydration, but watch for clogged pores."
+  - "Mumbai's humidity at 85% this week means your skin is retaining more moisture - great for hydration, but watch for clogged pores."
   - "Delhi's AQI of 180 means pollution particles are settling on your skin daily. Double-cleansing at night is non-negotiable right now."
-  - "Bangalore's mild 24°C weather is kind to your skin — your hydration scores reflect that."
+  - "Bangalore's mild 24°C weather is kind to your skin - your hydration scores reflect that."
 - Connect weather + skincare routine: if humidity is high and they're using heavy moisturiser, suggest switching to a lighter one. If it's dry and cold and they skipped moisturiser, flag it.
 - Connect supplements + active ingredients to skin parameters: if they're using Retinol, mention its effect on wrinkles/texture. If taking Vitamin C supplements, connect to pigmentation.
 - Make the environmental insights feel like a smart friend who checked the weather for them, not a textbook. Keep it conversational and specific to THEIR city.
@@ -299,7 +299,7 @@ ${signalPack.draggers.length
       .join("\n")
   : "  (none)"}
 
-STABLE (|Δ| < 3): ${signalPack.stables.map((s) => `${s.label}(Δ${s.delta ?? "—"})`).join(", ") || "none"}
+STABLE (|Δ| < 3): ${signalPack.stables.map((s) => `${s.label}(Δ${s.delta ?? "-"})`).join(", ") || "none"}
 
 AGGREGATED WINS SIGNALS:
 ${signalPack.topWins.map((w) => `  + ${w}`).join("\n") || "  (none)"}
@@ -314,7 +314,7 @@ ${chunkLines(input.evidence)}
 
 TASK
 Produce the weekly tracker report for this scan. Be concrete and tied to data above.
-- CAUSES: exactly 5 bullets. At least 2 "wins", at least 1 "drag", and at least 1 must reference either wellness check-in data or city weather/environment if available${hasWellnessOrWeather ? " (it is available below — use it)" : " (skip Environment tag if neither is available)"}. ${input.scoresUnlocked ? "Only cite numbers that appear verbatim in the data above." : "Use qualitative words only, never numbers or letter grades."}
+- CAUSES: exactly 5 bullets. At least 2 "wins", at least 1 "drag", and at least 1 must reference either wellness check-in data or city weather/environment if available${hasWellnessOrWeather ? " (it is available below - use it)" : " (skip Environment tag if neither is available)"}. ${input.scoresUnlocked ? "Only cite numbers that appear verbatim in the data above." : "Use qualitative words only, never numbers or letter grades."}
   - Tag each with "Win:", "Drag:", "Watch:", or "Environment:" so the UI can tag it.
   - Never claim measured UV exposure or sun-exposure hours; weather UV Index is OK when provided.
 - EMPATHY: max 2 short warm sentences. Plain language. Forward looking. No dashes as punctuation.
@@ -377,10 +377,10 @@ export async function analyzeDailyFocusBatch(input: {
 }): Promise<LlmDailyFocusItem[] | null> {
   if (input.dailyFacts.length === 0) return [];
   const system = `You are kAI, a dermatology-aware AI beauty counselor.
-Produce ONE sharp, personalized nudge per day — like Amorepacific AI Beauty Counselor.
-Temporal rule: each row's date D is the day you are advising FOR. Log fields (AM/PM, sleep, mood, water) describe the LAST COMPLETED day before D (behaviorAsOfDate), not D itself — treat them as "what we know through yesterday". Scans/kAI/weakest are also only through that same cutoff. Write the message and goals as guidance FOR calendar day D (today forward), and when you cite routine or sleep, phrase it as based on what happened through behaviorAsOfDate (e.g. "your last few nights") not as if the patient already logged D.
+Produce ONE sharp, personalized nudge per day - like Amorepacific AI Beauty Counselor.
+Temporal rule: each row's date D is the day you are advising FOR. Log fields (AM/PM, sleep, mood, water) describe the LAST COMPLETED day before D (behaviorAsOfDate), not D itself - treat them as "what we know through yesterday". Scans/kAI/weakest are also only through that same cutoff. Write the message and goals as guidance FOR calendar day D (today forward), and when you cite routine or sleep, phrase it as based on what happened through behaviorAsOfDate (e.g. "your last few nights") not as if the patient already logged D.
 Do not repeat yourself across days; each day must name something specific from that row's facts.
-NEVER mention UV or sun exposure — this app does not collect sun-exposure data.
+NEVER mention UV or sun exposure - this app does not collect sun-exposure data.
 IMPORTANT SCALE DIRECTION: All parameter scores (e.g. Active Acne, etc.) are clarity/health scores where higher is better/clearer skin and lower is worse. Only cite numbers that appear in the data.
 Return ONLY valid JSON. No preamble.`;
 
@@ -389,15 +389,15 @@ ${input.patient.name} · Skin: ${input.patient.skinType ?? "unknown"} · Concern
 
 WEEK ${input.weekStartDate} → ${input.weekEndDate}
 
-PER-DAY FACTS — each line: target day D, then signals through behaviorAsOfDate (day before D). Do not treat AM/PM/mood as same-calendar-day-as-D.
+PER-DAY FACTS - each line: target day D, then signals through behaviorAsOfDate (day before D). Do not treat AM/PM/mood as same-calendar-day-as-D.
 ${input.dailyFacts
   .map(
     (d) =>
-      `D=${d.date} (signals through ${d.behaviorAsOfDate ?? "—"}) | AM=${d.amRoutine ? "Y" : "N"} PM=${d.pmRoutine ? "Y" : "N"} sleep=${
-        d.sleepHours ?? "—"
-      }h stress=${d.stressLevel ?? "—"} water=${d.waterGlasses ?? "—"} mood=${d.mood ?? "—"} | scans=${d.scansUpToDate} kAI=${
-        d.latestKaiScore == null ? "—" : patientUnlockedDisplayScore(d.latestKaiScore)
-      } weakest=${d.weakestParamLabel ?? "—"} consistency7d=${d.routineConsistencyPct}%`
+      `D=${d.date} (signals through ${d.behaviorAsOfDate ?? "-"}) | AM=${d.amRoutine ? "Y" : "N"} PM=${d.pmRoutine ? "Y" : "N"} sleep=${
+        d.sleepHours ?? "-"
+      }h stress=${d.stressLevel ?? "-"} water=${d.waterGlasses ?? "-"} mood=${d.mood ?? "-"} | scans=${d.scansUpToDate} kAI=${
+        d.latestKaiScore == null ? "-" : patientUnlockedDisplayScore(d.latestKaiScore)
+      } weakest=${d.weakestParamLabel ?? "-"} consistency7d=${d.routineConsistencyPct}%`
   )
   .join("\n")}
 
@@ -431,7 +431,7 @@ export type LlmMonthlyAnalysis = {
   highlights: string[];
   risks: string[];
   nextMonthFocus: string[];
-  /** Deep notes on notable parameter moves (1–2 sentences each). */
+  /** Deep notes on notable parameter moves (1-2 sentences each). */
   parameterNotes?: string[];
   /** How habits likely shaped skin outcomes this month. */
   habitNotes?: string[];
@@ -439,7 +439,7 @@ export type LlmMonthlyAnalysis = {
   scanStory?: string;
   /** Warm closing line for next month. */
   closingNote?: string;
-  /** 1–2 sentences on how city/weather/lifestyle shaped this month's skin. */
+  /** 1-2 sentences on how city/weather/lifestyle shaped this month's skin. */
   environmentNote?: string;
 };
 
@@ -507,32 +507,32 @@ export async function analyzeMonthly(input: {
 
   const system = `You are kAI. Write a rich, super-detailed monthly progress report grounded in data.
 No hype, no generic filler. Speak directly to the patient like a caring clinic coordinator who studied their month closely. Return ONLY JSON.
-The headline month kAI is the ONLY overall month score. It is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Per-scan trajectory is supporting context only — never substitute a per-scan kAI for the headline month score.
-IMPORTANT SCALE DIRECTION: Every parameter (Active Acne, Wrinkles, Pigmentation, etc.) and overall kAI is a clarity/health score where HIGHER is BETTER and LOWER is WORSE. Active Acne is NOT an acne-severity count — a drop from 57 to 20 means acne clarity got WORSE, not better. Only call a change "improved" / "win" when the score ROSE. Only call it "declined" / "risk" when the score FELL. Use the BETTER/WORSE labels in the data — never invert them.
+The headline month kAI is the ONLY overall month score. It is NOT an average of per-scan kAIs. It is computed by averaging each of the 6 parameter scores across all scans in the month, then applying the same weighted kAI formula. Per-scan trajectory is supporting context only - never substitute a per-scan kAI for the headline month score.
+IMPORTANT SCALE DIRECTION: Every parameter (Active Acne, Wrinkles, Pigmentation, etc.) and overall kAI is a clarity/health score where HIGHER is BETTER and LOWER is WORSE. Active Acne is NOT an acne-severity count - a drop from 57 to 20 means acne clarity got WORSE, not better. Only call a change "improved" / "win" when the score ROSE. Only call it "declined" / "risk" when the score FELL. Use the BETTER/WORSE labels in the data - never invert them.
 STRICT DATA RULES:
 - Every number you write MUST appear verbatim in the data provided. Never invent, estimate, or extrapolate a score.
 - When stating overall / month kAI, write exactly the HEADLINE MONTH kAI value. Do not use any other number from the per-scan series as the overall score.
 - Patient scores are ALWAYS between ${PATIENT_DISPLAY_SCORE_FLOOR} and ${PATIENT_DISPLAY_SCORE_CAP}. Never write a skin score above ${PATIENT_DISPLAY_SCORE_CAP}, never write "100" or "X/100", and never describe a score as perfect or maxed out.
-- Do NOT say "UV exposure" or "sun exposure hours" as something we measured — this app does not collect sun-exposure habit data. You MAY mention UV Index from city weather when provided.
+- Do NOT say "UV exposure" or "sun exposure hours" as something we measured - this app does not collect sun-exposure habit data. You MAY mention UV Index from city weather when provided.
 - Be DETAILED: connect parameter moves to habits (sleep, stress, routine, journal), explain what likely helped or hurt, and give concrete next-month actions. Prefer specific numbers and day counts over vague praise.
 WELLNESS & ENVIRONMENT INTEGRATION:
-- When wellness data spans multiple weeks, identify trends: "You reported eating outside 3 of 4 weeks — your pigmentation dipped each time."
-- Reference cumulative city weather patterns: "Delhi stayed above AQI 150 for most of the month — your skin barrier scores reflect the pollution load."
+- When wellness data spans multiple weeks, identify trends: "You reported eating outside 3 of 4 weeks - your pigmentation dipped each time."
+- Reference cumulative city weather patterns: "Delhi stayed above AQI 150 for most of the month - your skin barrier scores reflect the pollution load."
 - Connect skincare routine / actives / supplements from wellness check-ins to parameter moves when relevant.
 - Keep environmental notes conversational and city-specific.
 ${
   !input.scoresUnlocked
     ? `- The patient's exact scores are LOCKED. You MUST NOT output any score numbers or deltas, and you MUST NOT use letter grades (A/B/C/D/E) either. Describe parameters only with qualitative words (e.g. "good", "moderate", "improving", "held steady").`
-    : `- The patient's exact scores are UNLOCKED. Use ONLY the exact score numbers provided. Do NOT use letter grades (A/B/C/D/E) anywhere — the patient sees numbers, not grades.`
+    : `- The patient's exact scores are UNLOCKED. Use ONLY the exact score numbers provided. Do NOT use letter grades (A/B/C/D/E) anywhere - the patient sees numbers, not grades.`
 }
-Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) — tell them to reboot that habit next month — and cite partial checklist completion percentages when blended routine intensity is weak.`;
+Explicitly acknowledge poor outcomes when journaling compliance is low (<45%) - tell them to reboot that habit next month - and cite partial checklist completion percentages when blended routine intensity is weak.`;
 
   const user = `PATIENT
 ${input.patient.name} · Skin: ${input.patient.skinType ?? "unknown"} · Concern: ${input.patient.primaryConcern ?? "unknown"}
 
 MONTH STARTING ${input.monthStart}
 HEADLINE MONTH kAI (cite this exact value as overall month score; mean parameters across ${input.scansAveragedForMonthKai} scan(s)): ${headlineForPrompt}
-Per-scan kAI series in this month (${input.scoreTrend.length} pts, supporting only — do NOT use these as overall month score): ${trendForPrompt}
+Per-scan kAI series in this month (${input.scoreTrend.length} pts, supporting only - do NOT use these as overall month score): ${trendForPrompt}
 
 MONTH PARAMETER MOVES (first scan in month → latest)
 ${monthMovesLine}

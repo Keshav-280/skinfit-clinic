@@ -59,11 +59,11 @@ function sectionLoadErrorMessage(
 ): string {
   if (parsed?.error) {
     const code = parsed.error;
-    if (code === "UNAUTHORIZED") return "Session expired — sign in again.";
+    if (code === "UNAUTHORIZED") return "Session expired - sign in again.";
     if (code === "NOT_FOUND") return "Patient not found.";
     if (code === "LOAD_FAILED") return `Could not load ${SECTION_LABEL[section]}.`;
   }
-  if (res.status === 401) return "Session expired — sign in again.";
+  if (res.status === 401) return "Session expired - sign in again.";
   if (res.status === 404) return "Patient not found.";
   if (res.status >= 500) return `Could not load ${SECTION_LABEL[section]} (server error).`;
   return `Could not load ${SECTION_LABEL[section]}.`;

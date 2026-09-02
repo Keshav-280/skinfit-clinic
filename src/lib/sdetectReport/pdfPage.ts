@@ -1,4 +1,4 @@
-/** ISO 216 A4 — 210 × 297 mm (print standard). */
+/** ISO 216 A4 - 210 × 297 mm (print standard). */
 export const A4_WIDTH_MM = 210;
 export const A4_HEIGHT_MM = 297;
 

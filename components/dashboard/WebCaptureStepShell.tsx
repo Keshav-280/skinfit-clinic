@@ -58,7 +58,7 @@ type Props = {
 };
 
 /**
- * Two independent guidance rows — light and distance/framing — so fixing one
+ * Two independent guidance rows - light and distance/framing - so fixing one
  * never hides or "interrupts" the other. Each shows its own pass/warn state.
  */
 function GuidanceStatusBoxes({
@@ -104,7 +104,7 @@ function GuidanceStatusBoxes({
       ) : null}
       {guidance.readyToCapture ? (
         <p className="text-center text-xs font-semibold text-emerald-700">
-          Ready — tap Capture when you're set.
+          Ready - tap Capture when you're set.
         </p>
       ) : null}
     </div>
@@ -331,7 +331,7 @@ export function WebCaptureStepShell({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/80 shadow-[0_16px_48px_-20px_rgba(30, 27, 49,0.35)] ring-1 ring-[#1E1B31]/10 sm:rounded-3xl"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-t-none rounded-b-2xl border-x border-b border-white/80 shadow-[0_16px_48px_-20px_rgba(30,27,49,0.35)] ring-1 ring-[#1E1B31]/10 sm:rounded-b-3xl"
       style={{ backgroundColor: CAPTURE_BG }}
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2 sm:px-3 sm:py-2">

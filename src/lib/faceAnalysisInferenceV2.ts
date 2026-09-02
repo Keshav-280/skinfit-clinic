@@ -1,5 +1,5 @@
 /**
- * kAI inference — POST /analyze_v2 on the face analysis service.
+ * kAI inference - POST /analyze_v2 on the face analysis service.
  * Remote API still accepts five form fields; we send the front photo for the
  * unused eyes-closed / smiling slots so capture stays three photos.
  */
@@ -121,7 +121,7 @@ export async function runFaceAnalysisServiceV2(
         ? (json as { detail: string }).detail
         : text.slice(0, 300);
     throw new Error(
-      `Face analysis v2 HTTP ${res.status}: ${err} — requested POST ${url}`
+      `Face analysis v2 HTTP ${res.status}: ${err} - requested POST ${url}`
     );
   }
 

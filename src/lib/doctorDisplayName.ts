@@ -4,7 +4,7 @@ export function doctorDisplayName(raw: string | null | undefined): string {
   return n.length > 0 ? n : "Doctor";
 }
 
-/** Patient-facing label — normalizes “Doctor Ruby”, “Dr Ruby”, etc. to “Dr. Ruby”. */
+/** Patient-facing label - normalizes “Doctor Ruby”, “Dr Ruby”, etc. to “Dr. Ruby”. */
 export function patientDoctorLabel(
   raw: string | null | undefined,
   fallback = "Doctor"

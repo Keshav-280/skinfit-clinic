@@ -10,7 +10,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { FamilyWalletSnapshot } from "@/src/lib/familyWallet";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { SectionSkeleton } from "@/components/dashboard/PageSkeletons";
 
 function formatCredits(n: number) {
   return new Intl.NumberFormat("en-IN").format(n);
@@ -151,11 +151,7 @@ export function FamilyWalletCard() {
   }
 
   if (loading) {
-    return (
-      <section className="rounded-[22px] border border-white/70 bg-white/40 p-5 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm">
-        <SkinFitLoader size="section" title="Loading family card" />
-      </section>
-    );
+    return <SectionSkeleton label="Loading family card" />;
   }
 
   if (!data) {
@@ -332,7 +328,7 @@ export function FamilyWalletCard() {
         </div>
       ) : (
         <p className="mt-3 text-xs leading-relaxed text-[#64748B]">
-          Visit the clinic to use shared credits — staff deduct after your visit.
+          Visit the clinic to use shared credits - staff deduct after your visit.
         </p>
       )}
 

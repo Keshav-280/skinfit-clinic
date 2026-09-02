@@ -33,7 +33,7 @@ const services = [
       "Medical-grade protocols combining chemical peels, laser therapy, and prescription treatments to clear active breakouts, reduce inflammation, and prevent scarring.",
     whoIsItFor:
       "Adults and teens with mild to severe acne, including hormonal acne, cystic acne, and post-acne scarring.",
-    sessions: "6–12 sessions over 3–6 months, depending on severity. Maintenance sessions available.",
+    sessions: "6-12 sessions over 3-6 months, depending on severity. Maintenance sessions available.",
     expectedResults:
       "Clearer skin, reduced scarring, improved texture, and long-term prevention with personalized aftercare.",
   },
@@ -46,7 +46,7 @@ const services = [
       "Advanced laser and light-based treatments targeting melasma, sun damage, post-inflammatory hyperpigmentation, and uneven skin tone.",
     whoIsItFor:
       "Anyone with dark spots, melasma, sun damage, or uneven skin tone seeking a more even complexion.",
-    sessions: "4–8 sessions spaced 2–4 weeks apart. Some conditions may require ongoing maintenance.",
+    sessions: "4-8 sessions spaced 2-4 weeks apart. Some conditions may require ongoing maintenance.",
     expectedResults:
       "Significantly lighter pigmentation, more even skin tone, and a brighter, more radiant complexion.",
   },
@@ -59,7 +59,7 @@ const services = [
       "Non-surgical solutions including injectables, thread lifts, RF microneedling, and collagen-boosting therapies for natural, youthful results.",
     whoIsItFor:
       "Adults 25+ looking to prevent or reduce fine lines, wrinkles, volume loss, and skin laxity.",
-    sessions: "Varies by treatment. Injectables: 2–4 times/year. Threads: 12–18 months. Lasers: 3–6 sessions.",
+    sessions: "Varies by treatment. Injectables: 2-4 times/year. Threads: 12-18 months. Lasers: 3-6 sessions.",
     expectedResults:
       "Smoother skin, restored volume, lifted contours, and a refreshed, natural-looking appearance.",
   },
@@ -72,9 +72,9 @@ const services = [
       "Trichology-focused care combining PRP, mesotherapy, laser therapy, and medical treatments for hair fall, thinning, and scalp conditions.",
     whoIsItFor:
       "Men and women experiencing hair thinning, pattern baldness, scalp conditions, or post-treatment hair loss.",
-    sessions: "6–12 sessions for PRP/mesotherapy. Maintenance every 3–6 months. Laser: ongoing use at home or in-clinic.",
+    sessions: "6-12 sessions for PRP/mesotherapy. Maintenance every 3-6 months. Laser: ongoing use at home or in-clinic.",
     expectedResults:
-      "Reduced shedding, thicker hair, improved density, and healthier scalp. Results typically visible in 3–6 months.",
+      "Reduced shedding, thicker hair, improved density, and healthier scalp. Results typically visible in 3-6 months.",
   },
 ];
 

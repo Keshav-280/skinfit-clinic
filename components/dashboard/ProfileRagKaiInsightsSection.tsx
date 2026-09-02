@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { InlineSkeleton, SectionSkeleton } from "@/components/dashboard/PageSkeletons";
 import {
   MonthlyInsightView,
   MonthlyInsightViewError,
@@ -55,7 +55,7 @@ export function ProfileRagKaiInsightsSection({
     if (embedded && compact) {
       return (
         <div className="py-1" aria-busy="true">
-          <SkinFitLoader size="mark" title="Loading monthly insight" />
+          <InlineSkeleton label="Loading monthly insight" />
         </div>
       );
     }
@@ -65,7 +65,7 @@ export function ProfileRagKaiInsightsSection({
         style={{ border: "1px solid #F0EAE2" }}
         aria-busy="true"
       >
-        <SkinFitLoader size="section" title="Loading monthly insight" />
+        <SectionSkeleton label="Loading monthly insight" />
       </section>
     );
   }

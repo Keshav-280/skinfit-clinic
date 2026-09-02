@@ -1,6 +1,6 @@
 /**
  * Reference AM/PM labels for seeds, tests, and doctor UI placeholders only.
- * Patient apps do not auto-apply this list — the clinic saves plans per patient.
+ * Patient apps do not auto-apply this list - the clinic saves plans per patient.
  */
 export const AM_ROUTINE_ITEMS = [
   "Gentle Cleanser",
@@ -21,7 +21,7 @@ export const PM_ROUTINE_ITEMS = [
 export const AM_ROUTINE_LEN = AM_ROUTINE_ITEMS.length;
 export const PM_ROUTINE_LEN = PM_ROUTINE_ITEMS.length;
 
-/** Snapshot for seeds / tooling — not applied to live patients automatically. */
+/** Snapshot for seeds / tooling - not applied to live patients automatically. */
 export function defaultRoutinePlanSnapshot(): { am: string[]; pm: string[] } {
   return {
     am: [...AM_ROUTINE_ITEMS],
@@ -130,13 +130,13 @@ export function parseRoutineStepItem(raw: string): ParsedRoutineStep {
   };
 }
 
-/** Secondary line under step title — product and dosage when present. */
+/** Secondary line under step title - product and dosage when present. */
 export function routineStepSubtitle(parsed: ParsedRoutineStep): string | null {
   const bits = [parsed.product, parsed.dosage].filter(Boolean);
   return bits.length > 0 ? bits.join(" · ") : null;
 }
 
-/** Fraction of AM + PM routine steps checked (0–1). */
+/** Fraction of AM + PM routine steps checked (0-1). */
 export function routineStepsProgress(am: boolean[], pm: boolean[]): number {
   const n = am.length + pm.length;
   if (n === 0) return 0;

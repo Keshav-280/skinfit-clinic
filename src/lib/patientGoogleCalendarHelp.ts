@@ -54,7 +54,7 @@ export function formatPatientAppointmentConfirmationMessage(params: {
   doctorNameRaw?: string | null;
 }): string {
   const dr = doctorDisplayName(params.doctorNameRaw);
-  const title = `SkinFit Wellness — ${dr}`;
+  const title = `SkinFit Wellness - ${dr}`;
   const endHm = effectiveSlotEndHm(params.slotTimeHm, params.slotEndTimeHm);
   const endUtc =
     ymdHmStringsToUtcInstant(params.slotYmd, endHm) ??
@@ -73,7 +73,7 @@ export function formatPatientAppointmentConfirmationMessage(params: {
     details,
   });
 
-  const timePhrase = timeRangeLabel.includes(" – ")
+  const timePhrase = timeRangeLabel.includes(" - ")
     ? `from **${timeRangeLabel}**`
     : `at **${timeRangeLabel}**`;
   const base = `Your appointment on **${params.slotYmd}** ${timePhrase} is confirmed. We look forward to seeing you.`;

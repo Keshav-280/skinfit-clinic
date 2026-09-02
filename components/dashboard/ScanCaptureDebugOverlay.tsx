@@ -16,7 +16,7 @@ type Props = {
   faceTracked?: boolean;
   /** Optional extra lines (e.g. countdown, stable ticks). */
   extra?: Record<string, string | number | boolean | null | undefined>;
-  /** Explicit toggle — overrides env default when provided. */
+  /** Explicit toggle - overrides env default when provided. */
   visible?: boolean;
   /** overlay = on preview; panel = sidebar debugger card */
   variant?: "overlay" | "panel";
@@ -41,27 +41,27 @@ function buildCaptureDebugRows(
     ["area", `${fmtPct(area)}  (${fmtNum(area, 3)})`],
     [
       "ideal area",
-      `${fmtPct(IDEAL_FACE_FILL_MIN)}–${fmtPct(IDEAL_FACE_FILL_MAX)}`,
+      `${fmtPct(IDEAL_FACE_FILL_MIN)}-${fmtPct(IDEAL_FACE_FILL_MAX)}`,
     ],
     ["too small", `< ${fmtPct(t.tooSmallEnter)}  ·  ok ≥ ${fmtPct(t.tooSmallExit)}`],
     ["too large", `> ${fmtPct(t.tooLargeEnter)}  ·  ok ≤ ${fmtPct(t.tooLargeExit)}`],
     ["zoom target fill", fmtPct(targetFill)],
-    ["face", guidance?.face ?? "—"],
-    ["light", guidance ? `${guidance.lighting} (${guidance.lightingScore})` : "—"],
+    ["face", guidance?.face ?? "-"],
+    ["light", guidance ? `${guidance.lighting} (${guidance.lightingScore})` : "-"],
     ["zoom", `${fmtNum(captureZoom, 1)}×`],
     [
       "sugg zoom",
-      guidance?.suggestedZoom != null ? `${fmtNum(guidance.suggestedZoom, 1)}×` : "—",
+      guidance?.suggestedZoom != null ? `${fmtNum(guidance.suggestedZoom, 1)}×` : "-",
     ],
     ["ready", guidance?.readyToCapture ? "yes" : "no"],
     ["area in band", areaOk ? "yes" : "no"],
-    ["mediapipe", models?.mediapipe ?? "—"],
+    ["mediapipe", models?.mediapipe ?? "-"],
     ["face tracked", faceTracked ? "yes" : "no"],
   ];
 
   if (extra) {
     for (const [k, v] of Object.entries(extra)) {
-      rows.push([k, v == null ? "—" : String(v)]);
+      rows.push([k, v == null ? "-" : String(v)]);
     }
   }
 
@@ -69,12 +69,12 @@ function buildCaptureDebugRows(
 }
 
 function fmtPct(fill: number | null | undefined): string {
-  if (fill == null || !Number.isFinite(fill)) return "—";
+  if (fill == null || !Number.isFinite(fill)) return "-";
   return `${(fill * 100).toFixed(1)}%`;
 }
 
 function fmtNum(n: number | null | undefined, digits = 2): string {
-  if (n == null || !Number.isFinite(n)) return "—";
+  if (n == null || !Number.isFinite(n)) return "-";
   return n.toFixed(digits);
 }
 

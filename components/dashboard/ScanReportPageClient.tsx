@@ -82,7 +82,7 @@ export function ScanReportPageClient({
     const raw = scanTitle.trim();
     // Remove "AI skin ..." prefixes to keep UI consistent ("AI scan" only).
     const stripped = raw
-      .replace(/^ai\s*skin\s*scan\s*[–-]\s*/i, "")
+      .replace(/^ai\s*skin\s*scan\s*[--]\s*/i, "")
       .replace(/^ai\s*skin\s*analysis\s*$/i, "");
     return stripped || null;
   })();

@@ -55,7 +55,7 @@ export async function GET(req: Request) {
   const staff = await getDoctorPortalStaff();
   if (!staff) {
     return NextResponse.json(
-      { success: false, error: "Session expired — sign in again." },
+      { success: false, error: "Session expired - sign in again." },
       { status: 401 }
     );
   }
@@ -165,7 +165,7 @@ export async function GET(req: Request) {
     success: true,
     view: "week" as const,
     weekStartYmd: format(weekStart, "yyyy-MM-dd"),
-    periodLabel: `${format(weekStart, "d MMM")} – ${format(weekEnd, "d MMM yyyy")}`,
+    periodLabel: `${format(weekStart, "d MMM")} - ${format(weekEnd, "d MMM yyyy")}`,
     todayYmd,
     days: Array.from({ length: 7 }, (_, i) => {
       const d = addDays(weekStart, i);

@@ -1,7 +1,7 @@
 /**
  * WhatsApp Business API notifications (Twilio / Gupshup / Meta Cloud API).
  *
- * TODO — wire a real provider:
+ * TODO - wire a real provider:
  * 1. Choose a provider (Twilio WhatsApp, Gupshup, or Meta Cloud API).
  * 2. Set env vars, e.g.:
  *    - WHATSAPP_PROVIDER=twilio|gupshup|meta
@@ -54,7 +54,7 @@ export async function sendWhatsAppMessage(opts: {
 
   if (!apiUrl || !apiKey) {
     console.info(
-      "[whatsappNotification] skipped — set WHATSAPP_API_URL + WHATSAPP_API_KEY (or WHATSAPP_AUTH_TOKEN)"
+      "[whatsappNotification] skipped - set WHATSAPP_API_URL + WHATSAPP_API_KEY (or WHATSAPP_AUTH_TOKEN)"
     );
     return { ok: false, skipped: true, reason: "NOT_CONFIGURED" };
   }
@@ -76,7 +76,7 @@ export async function sendWhatsAppMessage(opts: {
   });
 
   try {
-    // Placeholder fetch — fails safely until you fill in provider payload.
+    // Placeholder fetch - fails safely until you fill in provider payload.
     // Remove `return { ok: false, skipped: true }` once the body matches your API.
     void apiUrl;
     void apiKey;

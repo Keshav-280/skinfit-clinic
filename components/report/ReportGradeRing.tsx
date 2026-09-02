@@ -5,7 +5,7 @@ import { gradeRingColor } from "./reportCopy";
 
 type ReportGradeRingProps = {
   grade: string;
-  /** 0–100, A-side is 100. */
+  /** 0-100, A-side is 100. */
   position: number;
   size?: number;
   variant?: "light" | "glass";

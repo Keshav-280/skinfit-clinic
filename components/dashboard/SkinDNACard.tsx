@@ -86,7 +86,7 @@ function clampParamScore(n: number): number {
   return Math.min(100, Math.max(0, Math.round(n)));
 }
 
-/** Brand ring colors — ink / blush / deep rose, no neon glow. */
+/** Brand ring colors - ink / blush / deep rose, no neon glow. */
 function dnaRingColor(raw: number): string {
   const grade = classifySkinParamMetric(raw).grade;
   if (grade === "A" || grade === "B") return "#242A5F";
@@ -198,9 +198,9 @@ export type SkinDNACardProps = {
   gender?: string | null;
   kaiSkinScore: number;
   scoresUnlocked: boolean;
-  /** Latest scan `analysisResults` — used when `params` is omitted. */
+  /** Latest scan `analysisResults` - used when `params` is omitted. */
   analysisResults?: unknown;
-  /** Optional pre-extracted raw param scores (0–100). */
+  /** Optional pre-extracted raw param scores (0-100). */
   params?: Partial<Record<SkinDNAParamKey, number>>;
   /** @deprecated Prefer structured identity props; still used as fallback line. */
   skinSummary?: string | null;
@@ -214,7 +214,7 @@ export type SkinDNACardProps = {
   scanCount?: number;
   href?: string;
   className?: string;
-  /** When false, param tiles render as — without requiring a scan. */
+  /** When false, param tiles render as - without requiring a scan. */
   hasScan?: boolean;
 };
 
@@ -239,7 +239,7 @@ function resolveSkinTypeKey(skinType: string | null | undefined): SkinTypeKey | 
   return null;
 }
 
-/** Cute blob-face icon for a skin type — small decorative marker next to the "Skin Type" fact. */
+/** Cute blob-face icon for a skin type - small decorative marker next to the "Skin Type" fact. */
 function SkinTypeIcon({ type }: { type: SkinTypeKey }) {
   const { fill, stroke } = SKIN_TYPE_PALETTE[type];
   const blobPath =
@@ -306,7 +306,7 @@ export function resolveGender(gender: string | null | undefined): ResolvedGender
 }
 
 /**
- * Human tech-avatar — a friendly person with skin tone, hair, and visible
+ * Human tech-avatar - a friendly person with skin tone, hair, and visible
  * eyes behind translucent smart glasses, used in place of initials/photo.
  * Gender tweaks hair style + a hue for the glow accents. The glasses lenses
  * pulse with a soft glow and a hand gives an occasional wave.
@@ -349,13 +349,13 @@ export function AvatarIcon({ gender }: { gender: "male" | "female" }) {
       <circle cx="18.5" cy="30" r="2.6" fill={skin} />
       <circle cx="45.5" cy="30" r="2.6" fill={skin} />
 
-      {/* head — tapered jaw reads as an adult face rather than a round baby face */}
+      {/* head - tapered jaw reads as an adult face rather than a round baby face */}
       <path
         d="M32 12.5c6.9 0 11.7 5.4 11.7 12.7 0 4.2-1 7.8-2.7 10.4-1.9 3-5.2 5.6-9 5.6s-7.1-2.6-9-5.6c-1.7-2.6-2.7-6.2-2.7-10.4 0-7.3 4.8-12.7 11.7-12.7Z"
         fill={skin}
       />
 
-      {/* hair — mature, side-parted styles rather than a blunt helmet shape */}
+      {/* hair - mature, side-parted styles rather than a blunt helmet shape */}
       {gender === "female" ? (
         <path
           d="M17.3 25.5c-.7-9.4 5.8-15.5 14.7-15.5s15.4 6.1 14.7 15.5c-.2 2.9-1 5-1.9 6.4-.4-2.8-1.5-4.6-3-5.4.3-1.3.2-2.5-.4-3.4-3.4 1.9-7.9 1.9-11.4-.3-3.2-2-6.9-1.8-9.3.9-.5 2-.4 4.4 0 6.2-.9-1.4-1.7-3.4-1.9-4.4Zm-.6 3c1.2 6.4 3.4 11.6 4.7 13.7.7-2 .6-4.6.3-6-1.6-1.4-3.1-3.7-4.3-6.7-.3-.3-.5-.6-.7-1Zm29.6 0c-.2.4-.4.7-.7 1-1.2 3-2.7 5.3-4.3 6.7-.3 1.4-.4 4 .3 6 1.3-2.1 3.5-7.3 4.7-13.7Z"
@@ -372,7 +372,7 @@ export function AvatarIcon({ gender }: { gender: "male" | "female" }) {
       <path d="M23.7 27.8c1.3-.7 2.7-.7 3.8-.1" stroke={hair} strokeWidth="1.2" strokeLinecap="round" fill="none" />
       <path d="M36.5 27.7c1.1-.6 2.5-.6 3.8.1" stroke={hair} strokeWidth="1.2" strokeLinecap="round" fill="none" />
 
-      {/* smart glasses — translucent lenses so the eyes read through */}
+      {/* smart glasses - translucent lenses so the eyes read through */}
       <rect x="19.5" y="29.6" width="25" height="2.4" rx="1.2" fill="#1E232C" />
       <circle cx="24.7" cy="32.8" r="4.7" fill="#1E232C" fillOpacity="0.12" />
       <circle cx="39.3" cy="32.8" r="4.7" fill="#1E232C" fillOpacity="0.12" />
@@ -434,7 +434,7 @@ function lastScanRecency(
   return { colorClass: "text-[#4A2630]" };
 }
 
-/** Visible “vs last scan” copy on the 0–10 scale used everywhere else on this card. */
+/** Visible “vs last scan” copy on the 0-10 scale used everywhere else on this card. */
 function lastScanImprovementCopy(
   weeklyDeltaScore: number,
   weeklyDeltaMeaningful: boolean,
@@ -442,7 +442,7 @@ function lastScanImprovementCopy(
   scanCount?: number
 ): { value: string; detail: string } {
   if (!hasScan) {
-    return { value: "—", detail: "Take a scan to start tracking change." };
+    return { value: "-", detail: "Take a scan to start tracking change." };
   }
   if (!weeklyDeltaMeaningful || (typeof scanCount === "number" && scanCount < 2)) {
     return {
@@ -485,38 +485,90 @@ function useRotatingMessage(messages: string[], intervalMs = 4500): string {
   return messages[index % messages.length] ?? "";
 }
 
-/** Data-driven insight lines — no fabricated numbers, only what the props actually give us. */
+function daysSinceScan(iso: string | null | undefined): number | null {
+  if (!iso?.trim()) return null;
+  try {
+    return differenceInCalendarDays(new Date(), parseISO(iso));
+  } catch {
+    return null;
+  }
+}
+
+/** Six rotating insight lines - grounded in the scores and profile we actually have. */
 function buildInsightMessages(input: {
   strongest: { name: string } | null;
   needsFocus: { name: string } | null;
-  weeklyDeltaScore: number;
-  weeklyDeltaMeaningful: boolean;
   streakCurrent?: number;
+  scanCount?: number;
+  lastScanAt?: string | null;
+  skinType?: string | null;
+  primaryConcern?: string | null;
+  overallTen: number;
+  improvementDetail: string;
 }): string[] {
-  const messages: string[] = [];
-  if (input.weeklyDeltaMeaningful && input.weeklyDeltaScore > 0) {
-    messages.push(
-      `Your skin score improved ${Math.abs(Math.round(input.weeklyDeltaScore))} points this week`
-    );
+  const lines: string[] = [];
+
+  if (input.needsFocus) {
+    lines.push(`${input.needsFocus.name} is your biggest opportunity`);
   }
   if (input.strongest) {
-    messages.push(`${input.strongest.name} is your most stable metric`);
+    lines.push(`${input.strongest.name} is your most stable metric`);
   }
-  if (input.needsFocus) {
-    messages.push(`${input.needsFocus.name} is your biggest opportunity`);
+  if (input.improvementDetail) {
+    lines.push(input.improvementDetail);
   }
+  lines.push(
+    `Overall sits at ${input.overallTen}/10 - steady routine moves this more than a single scan`
+  );
+
+  const days = daysSinceScan(input.lastScanAt);
+  if (days != null && days > 10) {
+    lines.push(
+      `Last scan was ${days} days ago - a weekly capture keeps the trend honest`
+    );
+  } else if (typeof input.scanCount === "number" && input.scanCount > 0) {
+    lines.push(
+      `${input.scanCount} scan${input.scanCount === 1 ? "" : "s"} on file - each one makes the next report sharper`
+    );
+  } else {
+    lines.push("Weekly scans help kAI tell real change from a one-off day");
+  }
+
   if (typeof input.streakCurrent === "number" && input.streakCurrent > 0) {
-    messages.push(
-      `You're on a ${input.streakCurrent}-day streak — keep it going`
+    lines.push(
+      `You're on a ${input.streakCurrent}-day streak - keep it going`
     );
   }
-  if (messages.length === 0) {
-    messages.push("You're maintaining your progress well");
+  const concern = input.primaryConcern?.trim();
+  if (concern) {
+    lines.push(
+      `Your focus is ${toTitleCase(concern)} - kAI watches that across scans`
+    );
   }
-  return messages;
+  const skin = input.skinType?.trim();
+  if (skin) {
+    lines.push(
+      `${toTitleCase(skin)} skin: keep AM and PM steps steady so scores can move`
+    );
+  }
+  lines.push(
+    "Keep AM and PM steps going so kAI can read the pattern, not a one-off day"
+  );
+
+  const unique: string[] = [];
+  for (const line of lines) {
+    if (line && !unique.includes(line)) unique.push(line);
+  }
+  while (unique.length < 6) {
+    unique.push("Small, consistent habits show up here before big jumps do");
+    if (unique.length < 6) {
+      unique.push("Same angles, same lighting - that's how kAI compares week to week");
+    }
+  }
+  return unique.slice(0, 6);
 }
 
-/** SVG progress ring — stroke only, no glow, particles, or breathing scale. */
+/** SVG progress ring - stroke only, no glow, particles, or breathing scale. */
 function CircleRing({
   pct,
   size,
@@ -583,7 +635,7 @@ type ParamTileData = {
   href: string | null;
 };
 
-/** One param tile — expands and shows a qualitative status on hover/tap; dims when a sibling is active. */
+/** One param tile - expands and shows a qualitative status on hover/tap; dims when a sibling is active. */
 function InteractiveParamTile({
   tile,
   hasScan,
@@ -617,7 +669,7 @@ function InteractiveParamTile({
         scale: isActive ? 1.06 : 1,
       }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-0 flex w-[76px] shrink-0 flex-col items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2.5 text-center sm:w-auto"
+      className="relative z-0 flex w-full flex-col items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2.5 text-center"
       style={isActive ? { zIndex: 10 } : undefined}
     >
       <CircleRing
@@ -630,7 +682,7 @@ function InteractiveParamTile({
           className="text-sm font-extrabold leading-none tabular-nums"
           style={{ color: hasScan ? tile.color : "#9CA3AF" }}
         >
-          {hasScan ? tile.score : "—"}
+          {hasScan ? tile.score : "-"}
         </span>
       </CircleRing>
       <span className="text-[9px] font-semibold uppercase tracking-wide text-[#6B7280]">
@@ -657,7 +709,7 @@ function InteractiveParamTile({
 
   if (tile.href && hasScan) {
     return (
-      <Link href={tile.href} className="contents">
+      <Link href={tile.href} className="block h-full min-w-0">
         {inner}
       </Link>
     );
@@ -682,7 +734,7 @@ export function SkinDNACard({
   className = "",
   hasScan = true,
 }: SkinDNACardProps) {
-  // Scores are always shown as numbers — never gated behind clinic-visit unlock.
+  // Scores are always shown as numbers - never gated behind clinic-visit unlock.
   const fromAnalysis =
     hasScan && analysisResults
       ? skinDnaParamsFromAnalysis(analysisResults)
@@ -782,14 +834,20 @@ export function SkinDNACard({
   const insightMessages = buildInsightMessages({
     strongest,
     needsFocus,
-    weeklyDeltaScore,
-    weeklyDeltaMeaningful,
     streakCurrent,
+    scanCount,
+    lastScanAt,
+    skinType,
+    primaryConcern,
+    overallTen: scoreOutOfTen(kaiSkinScore),
+    improvementDetail: improvement.detail,
   });
   const headlineMessage = useRotatingMessage(insightMessages, 5000);
   const ringInsight = useRotatingMessage(
-    insightMessages.length > 1 ? [...insightMessages.slice(1), insightMessages[0]!] : insightMessages,
-    5000
+    insightMessages.length > 1
+      ? [...insightMessages.slice(1), insightMessages[0]!]
+      : insightMessages,
+    6500
   );
   const [activeParam, setActiveParam] = useState<SkinDNAParamKey | null>(null);
 
@@ -802,8 +860,8 @@ export function SkinDNACard({
     >
       {/* 1. Header */}
       <div className="relative px-4 pb-3 pt-4 sm:px-5">
-        <div className="relative flex items-start gap-3 sm:gap-3.5">
-          <div className="min-w-0 flex-1 pt-0.5">
+        <div className="relative flex items-center gap-3">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-[#6B7280]">
               Your Skin DNA
             </p>
@@ -814,7 +872,7 @@ export function SkinDNACard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.35 }}
-                className="mt-1 text-[13px] font-semibold leading-snug text-[#1E1B31]"
+                className="font-headline mt-1 text-[15px] font-semibold leading-snug text-[#1E1B31] sm:text-base"
               >
                 {hasScan
                   ? headlineMessage
@@ -825,7 +883,7 @@ export function SkinDNACard({
 
           <Link
             href={href}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#1E1B31] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#242A5F]"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 self-center rounded-full bg-[#1E1B31] px-3 text-xs font-bold text-white transition hover:bg-[#242A5F]"
           >
             <FileText className="h-3.5 w-3.5" aria-hidden />
             View Report
@@ -835,22 +893,24 @@ export function SkinDNACard({
 
       {/* 2. Identity strip */}
       {identityFacts.length > 0 ? (
-        <div className="mx-4 overflow-x-auto rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] sm:mx-5">
-          <div className="flex w-max min-w-full">
-          {identityFacts.map((fact, i) => (
+        <div className="mx-4 overflow-hidden rounded-xl border border-[#E4E6F0] bg-[#E4E6F0] sm:mx-5">
+          <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-5">
+          {identityFacts.map((fact) => (
             <div
               key={fact.label}
-              className={`flex shrink-0 items-center gap-2 px-3 py-2.5 ${
-                i > 0 ? "border-l border-[#E4E6F0]" : ""
-              }`}
+              className="flex min-w-0 items-center gap-2 bg-[#FAF8F5] px-3 py-2.5"
             >
-              {fact.icon}
-              <div className="flex flex-col">
-                <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
+              {fact.icon ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+                  {fact.icon}
+                </span>
+              ) : null}
+              <div className="flex min-w-0 flex-col justify-center">
+                <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
                   {fact.label}
                 </span>
                 <span
-                  className={`mt-0.5 whitespace-nowrap text-[13px] font-bold ${
+                  className={`mt-0.5 truncate text-[13px] font-bold leading-tight ${
                     fact.label === "Last scan" && recency
                       ? recency.colorClass
                       : "text-[#1E1B31]"
@@ -867,14 +927,14 @@ export function SkinDNACard({
 
       {/* 3. Strongest / overall ring / needs focus */}
       {hasScan ? (
-        <div className="mx-4 mt-3 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-4 sm:mx-5 sm:px-6">
-        <div className="flex items-center justify-between gap-3">
+        <div className="mx-4 mt-3 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-4 sm:mx-5 sm:px-5">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
           {strongest ? (
-            <div className="flex min-w-0 shrink-0 items-center gap-2.5">
-              <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#242A5F]/10 text-[#242A5F] sm:flex">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#242A5F]/10 text-[#242A5F]">
                 <Leaf className="h-4 w-4" aria-hidden />
               </span>
-              <div className="w-24 min-w-0 sm:w-28">
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-[#242A5F]">
                   Strongest
                 </p>
@@ -887,12 +947,12 @@ export function SkinDNACard({
               </div>
             </div>
           ) : (
-            <div className="w-24 sm:w-28" />
+            <div />
           )}
 
           <Link
             href="/dashboard/score/overall"
-            className="rounded-full outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#1E1B31]/30"
+            className="justify-self-center rounded-full outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#1E1B31]/30"
             aria-label="View overall skin score"
           >
           <CircleRing
@@ -920,8 +980,8 @@ export function SkinDNACard({
           </Link>
 
           {needsFocus ? (
-            <div className="flex min-w-0 shrink-0 items-center gap-2.5">
-              <div className="w-24 min-w-0 text-right sm:w-28">
+            <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-2.5">
+              <div className="min-w-0 text-right">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-[#A05E6D]">
                   Needs focus
                 </p>
@@ -932,18 +992,14 @@ export function SkinDNACard({
                   {needsFocus.gradeLabel}
                 </p>
               </div>
-              <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DF9DA4]/25 text-[#A05E6D] sm:flex">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DF9DA4]/25 text-[#A05E6D]">
                 <Target className="h-4 w-4" aria-hidden />
               </span>
             </div>
           ) : (
-            <div className="w-24 sm:w-28" />
+            <div />
           )}
         </div>
-
-        <p className="mt-3 text-center text-[12px] font-semibold text-[#1E1B31]">
-          {improvement.detail}
-        </p>
 
         <AnimatePresence mode="wait">
           <motion.p
@@ -952,7 +1008,7 @@ export function SkinDNACard({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.35 }}
-            className="mt-2 border-t border-[#E4E6F0] pt-3 text-center text-[12px] font-medium text-[#6B7280]"
+            className="mt-3 min-h-[2.75rem] border-t border-[#E4E6F0] pt-3 text-center text-[12px] font-medium leading-relaxed text-[#6B7280]"
           >
             {ringInsight}
           </motion.p>
@@ -974,7 +1030,7 @@ export function SkinDNACard({
 
       {/* 4. Interactive param tiles */}
       <div
-        className="mt-4 flex gap-2 overflow-x-auto px-4 pb-4 scrollbar-hide sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-5 lg:grid-cols-6"
+        className="mt-4 grid grid-cols-3 gap-2 px-4 pb-4 lg:grid-cols-6 sm:px-5"
         onMouseLeave={() => setActiveParam(null)}
       >
         {paramTiles.map((tile) => (

@@ -1,6 +1,6 @@
 /**
- * Maps FaceAnalyzer v13 `modelFeatureScores` (1–5 severity, higher = worse)
- * to clinic UI metrics (0–100 clarity, higher = better).
+ * Maps FaceAnalyzer v13 `modelFeatureScores` (1-5 severity, higher = worse)
+ * to clinic UI metrics (0-100 clarity, higher = better).
  */
 
 import type { ClinicalScores } from "@/components/dashboard/scanReportTypes";
@@ -33,7 +33,7 @@ export type ModelFeatureScores = {
   wrinkle_seg_severity?: number | null;
   wrinkle_mask_severity?: number | null;
   sagging_volume?: number | null;
-  /** Raw ISGD chubby/double-chin contour before composite blend (1–5). */
+  /** Raw ISGD chubby/double-chin contour before composite blend (1-5). */
   sagging_contour_severity?: number | null;
   under_eye?: number | null;
   hair_health?: number | null;
@@ -108,7 +108,7 @@ function overallKaiFromModelClarity(
   );
 }
 
-/** Eight dashboard dimensions (0–100) derived only from model severities. */
+/** Eight dashboard dimensions (0-100) derived only from model severities. */
 export function modelEightClarityScores(
   mfs: ModelFeatureScores,
   patientAge?: number | null
@@ -252,7 +252,7 @@ function isPlaceholderSeverity(s: number | null | undefined): boolean {
   return typeof s === "number" && Math.abs(s - 2.5) < 0.01;
 }
 
-/** kAI param rows from raw 1–5 severities (same mapping as Python `/analyze`). */
+/** kAI param rows from raw 1-5 severities (same mapping as Python `/analyze`). */
 export function buildKaiParamsFromModelSeverities(
   mfs: ModelFeatureScores,
   patientAge?: number | null
@@ -570,7 +570,7 @@ export function buildScanPayloadFromAnalyzeV1(
   });
 }
 
-/** Pass through `/analyze_v2` params unchanged (already 0–100 from Python). */
+/** Pass through `/analyze_v2` params unchanged (already 0-100 from Python). */
 export function buildScanPayloadFromAnalyzeV2(
   inf: FaceAnalysisInferenceV2Result,
   opts?: ScanPayloadOptions

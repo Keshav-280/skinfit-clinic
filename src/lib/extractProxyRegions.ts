@@ -54,7 +54,7 @@ export async function extractProxyRegionsFromImage(input: {
   scores: ProxyRegionScores;
   /**
    * Optional 16×16 (or flat 256) patch activation map from the scoring
-   * DINOv2 forward — preferred over loading the backbone again.
+   * DINOv2 forward - preferred over loading the backbone again.
    */
   patchActivations?: number[] | number[][] | null;
   timeoutMs?: number;

@@ -24,7 +24,7 @@ export const SCAN_REPORT_THEME = {
 /** Resource picks hidden in tracker reports until curation is ready (web, PDF, mobile). */
 export const INCLUDE_TRACKER_RESOURCES_IN_REPORT = false;
 
-/** Weekly tracker sections (Section 1–3) — indigo accents. */
+/** Weekly tracker sections (Section 1-3) - indigo accents. */
 export const TRACKER_REPORT_THEME = {
   navy: SCAN_REPORT_THEME.navy,
   navyDark: SCAN_REPORT_THEME.navyDark,

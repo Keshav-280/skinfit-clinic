@@ -14,7 +14,7 @@ import { invalidateUserScanDerivedCaches } from "@/src/lib/infra";
 import { normalizeTrackerReportNarrative } from "@/src/lib/trackerReportNarrative";
 import { sanitizeTrackerResources } from "@/src/lib/trackerResourceLinks";
 
-/** Bump when score/delta resolution logic changes — triggers one-time repair on load. */
+/** Bump when score/delta resolution logic changes - triggers one-time repair on load. */
 export const TRACKER_SCORE_FORMAT_VERSION = 4;
 
 function isMissingTrackerSnapshotColumn(error: unknown): boolean {
@@ -44,7 +44,7 @@ async function writeTrackerSnapshot(
   } catch (e) {
     if (isMissingTrackerSnapshotColumn(e)) {
       console.warn(
-        "[scanTrackerSnapshot] tracker_snapshot column missing — run drizzle/0030_scan_tracker_snapshot.sql"
+        "[scanTrackerSnapshot] tracker_snapshot column missing - run drizzle/0030_scan_tracker_snapshot.sql"
       );
       return false;
     }
@@ -131,7 +131,7 @@ export async function loadScanTrackerReport(
     }
   }
 
-  // No snapshot yet — full build (includes RAG + LLM narrative).
+  // No snapshot yet - full build (includes RAG + LLM narrative).
   try {
     const built = await buildPatientTrackerReport({ userId, scanId });
     if (!built.ok) {

@@ -200,7 +200,7 @@ function drawPageHeader(doc: jsPDF, logo: LogoAsset) {
 
 function formatPatientPhone(phone: string): string {
   const trimmed = phone.trim();
-  if (!trimmed || trimmed === "—") return trimmed;
+  if (!trimmed || trimmed === "-") return trimmed;
   if (trimmed.startsWith("+")) return trimmed;
   const digits = trimmed.replace(/\D/g, "");
   if (digits.length === 10) return `+91 ${digits}`;

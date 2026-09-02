@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       const title =
         typeof titleRaw === "string" && titleRaw.trim()
           ? titleRaw.trim().slice(0, 255)
-          : `${patientName} — skin report`;
+          : `${patientName} - skin report`;
 
       const [row] = await db
         .insert(clinicExternalReports)

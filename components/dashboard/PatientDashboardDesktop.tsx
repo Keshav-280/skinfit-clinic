@@ -41,7 +41,7 @@ import {
 import type { PatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 import { DoctorUpdatesCompact } from "@/components/dashboard/PatientDoctorHomeSections";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { CalendarSkeleton, HomePageSkeleton } from "@/components/dashboard/PageSkeletons";
 import {
   DASHBOARD_SECTION_CARD,
   DashboardSectionHeader,
@@ -187,7 +187,7 @@ function UpcomingAppointmentsSection() {
       <DashboardSectionHeader icon={Calendar} title="UPCOMING APPOINTMENTS" />
 
       {loading ? (
-        <SkinFitLoader size="section" title="Loading appointments" />
+        <CalendarSkeleton />
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <p className="text-sm font-medium text-[#6B7280]">
@@ -897,10 +897,7 @@ export function PatientDashboardDesktop({
 
   if (loading) {
     return (
-      <SkinFitLoader
-        title="Opening your home"
-        subtitle="kAI is gathering your scores, visits, and next steps."
-      />
+      <HomePageSkeleton />
     );
   }
 
@@ -929,7 +926,7 @@ export function PatientDashboardDesktop({
     <div className="space-y-5">
       <WelcomeModal />
 
-      {/* 1. Greeting + date strip — sticks below the nav so the content
+      {/* 1. Greeting + date strip - sticks below the nav so the content
           below (starting with the Skin DNA card) scrolls up and over it,
           rather than the greeting simply scrolling away. */}
       <div className="sticky top-14 z-0 sm:top-16">
@@ -956,7 +953,7 @@ export function PatientDashboardDesktop({
       {/* Everything below rides a solid background over the sticky greeting
           above, so scrolling visually tucks the greeting behind this card. */}
       <div className="relative z-10 space-y-5 rounded-t-3xl bg-[#FAF8F5] pt-1">
-        {/* 2. Skin DNA — keep below calendar overlays */}
+        {/* 2. Skin DNA - keep below calendar overlays */}
         <div className="relative z-0">
           <SkinDNACard
             patientName={data.userName?.trim() || greetingName}
@@ -979,7 +976,7 @@ export function PatientDashboardDesktop({
           />
         </div>
 
-        {/* 3. Calendar — overlays must sit above the DNA card */}
+        {/* 3. Calendar - overlays must sit above the DNA card */}
         <div className="relative z-20">
         {isValidElement(calendarSlot)
           ? cloneElement(

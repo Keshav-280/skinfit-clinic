@@ -28,7 +28,7 @@ export type KaiParamDef = {
   weeklyDeltaMeaningful: boolean;
   /** Score drop (points) week-on-week that triggers doctor alert (null = use global 10%) */
   deteriorationAlertThreshold: number | null;
-  /** India / Fitzpatrick IV–VI calibration note for UI copy */
+  /** India / Fitzpatrick IV-VI calibration note for UI copy */
   indiaNote: string;
 };
 
@@ -66,7 +66,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
     weeklyDeltaMeaningful: false,
     deteriorationAlertThreshold: null,
     indiaNote:
-      "PIH is common on Indian skin — separate from textural scars; keloid risk in Fitzpatrick V–VI.",
+      "PIH is common on Indian skin - separate from textural scars; keloid risk in Fitzpatrick V-VI.",
   },
   pores: {
     key: "pores",
@@ -105,7 +105,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
     weeklyDeltaMeaningful: true,
     deteriorationAlertThreshold: null,
     indiaNote:
-      "Natural melanin variation across zones is normal — pathological unevenness is scored vs your baseline.",
+      "Natural melanin variation across zones is normal - pathological unevenness is scored vs your baseline.",
   },
   sebum: {
     key: "sebum",
@@ -123,7 +123,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
     category: "Structural integrity",
     weeklyDeltaMeaningful: false,
     deteriorationAlertThreshold: null,
-    indiaNote: "Collagen response is slow — monthly trends often matter more than weekly.",
+    indiaNote: "Collagen response is slow - monthly trends often matter more than weekly.",
   },
   hydration: {
     key: "hydration",
@@ -133,7 +133,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
     weeklyDeltaMeaningful: true,
     deteriorationAlertThreshold: null,
     indiaNote:
-      "Dehydrated oily skin is common in Indian clinics — barrier vs oil must be distinguished.",
+      "Dehydrated oily skin is common in Indian clinics - barrier vs oil must be distinguished.",
   },
   redness: {
     key: "redness",
@@ -143,7 +143,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
     weeklyDeltaMeaningful: true,
     deteriorationAlertThreshold: null,
     indiaNote:
-      "Erythema on Fitzpatrick IV–VI may appear warm/orange — recalibrate vs Caucasian redness models.",
+      "Erythema on Fitzpatrick IV-VI may appear warm/orange - recalibrate vs Caucasian redness models.",
   },
   tone_evenness: {
     key: "tone_evenness",
@@ -153,7 +153,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
     weeklyDeltaMeaningful: true,
     deteriorationAlertThreshold: null,
     indiaNote:
-      "Periorbital darkness baseline differs — avoid scoring normal variation as pathology.",
+      "Periorbital darkness baseline differs - avoid scoring normal variation as pathology.",
   },
   uv_damage: {
     key: "uv_damage",
@@ -167,7 +167,7 @@ export const KAI_PARAMETERS: Record<KaiParamKey, KaiParamDef> = {
   },
 };
 
-/** Parameters that the current PyTorch model cannot score — always pending until clinic/doctor. */
+/** Parameters that the current PyTorch model cannot score - always pending until clinic/doctor. */
 export const KAI_PENDING_PARAM_KEYS: ReadonlySet<KaiParamKey> = new Set([
   "acne_scars",
   "pores",

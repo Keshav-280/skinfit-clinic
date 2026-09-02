@@ -3,13 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format, parseISO } from "date-fns";
-import { Check } from "lucide-react";
 import type { LastTreatmentVisit } from "@/components/dashboard/LastTreatmentCard";
 import { WeeklyCheckinEntryCard } from "@/components/checkin/WeeklyCheckinEntryCard";
 import type { CheckinConcernPath } from "@/src/lib/checkin/definitions";
 import type { WellnessCheckinData } from "@/components/dashboard/WeeklyWellnessCheckinCard";
 
-/** Kept for page.tsx / mobile type compatibility — calendar UI removed from Maintain. */
+/** Kept for page.tsx / mobile type compatibility - calendar UI removed from Maintain. */
 export type ScheduleEventRow = {
   id: string;
   eventDateYmd: string;
@@ -156,7 +155,7 @@ function HeroRingsMotif({ className = "" }: { className?: string }) {
 }
 
 /**
- * Maintain tab — weekly check-in entry (5-screen flow).
+ * Maintain tab - weekly check-in entry (5-screen flow).
  */
 export default function SchedulesPageClient({
   initialWellnessCheckin = null,
@@ -234,7 +233,7 @@ export default function SchedulesPageClient({
 
   return (
     <div className="relative">
-      <div className="relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-b from-[#1E1B31] to-[#242A5F] px-4 pb-16 pt-8 md:-mx-6 md:px-6 md:pb-20 md:pt-10">
+      <div className="relative -mx-4 -mt-6 overflow-hidden bg-gradient-to-b from-[#1E1B31] to-[#242A5F] px-4 pb-10 pt-5 md:-mx-8 md:px-8 md:pb-12 md:pt-6">
         <svg
           viewBox="0 0 500 40"
           preserveAspectRatio="none"
@@ -249,11 +248,11 @@ export default function SchedulesPageClient({
 
         <div
           className={`relative mx-auto w-full max-w-5xl ${
-            assignedDoctor ? "md:flex md:flex-row-reverse md:items-end md:justify-between md:gap-10 lg:gap-14" : ""
+            assignedDoctor ? "md:flex md:flex-row-reverse md:items-center md:justify-between md:gap-10 lg:gap-14" : ""
           }`}
         >
           {assignedDoctor ? (
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-[40%] sm:w-[38%] md:relative md:inset-auto md:h-[340px] md:w-[280px] md:shrink-0 lg:h-[380px] lg:w-[320px]">
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-[40%] sm:w-[38%] md:relative md:inset-auto md:h-[240px] md:w-[220px] md:shrink-0 lg:h-[280px] lg:w-[260px]">
               <img
                 src={assignedDoctor.photoUrl ?? DEFAULT_DOCTOR_PHOTO}
                 alt={assignedDoctor.name}
@@ -271,57 +270,36 @@ export default function SchedulesPageClient({
           <header
             className={`relative z-10 text-left ${
               assignedDoctor
-                ? "max-w-[58%] md:max-w-xl md:flex-1 md:pb-6"
+                ? "max-w-[58%] md:max-w-xl md:flex-1"
                 : ""
             }`}
           >
-            <h1 className="text-2xl font-extrabold leading-[1.14] tracking-tight text-white sm:text-3xl md:text-4xl md:leading-[1.12]">
+            <h1 className="font-headline text-2xl font-semibold leading-[1.14] tracking-tight text-white sm:text-3xl md:text-[2.15rem] md:leading-[1.15]">
               Beautiful Skin Is Built From{" "}
               <span className="text-[#AEB9E8]">Within.</span>
             </h1>
 
-            <div className="mt-4 space-y-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xl leading-none" aria-hidden>
-                  🔥
-                </span>
-                <p className="text-[15px] font-bold text-white sm:text-base">
-                  {weeklyCheckinStreak > 0
-                    ? `${weeklyCheckinStreak} week${weeklyCheckinStreak === 1 ? "" : "s"} streak`
-                    : "Start your weekly streak"}
-                </p>
-              </div>
+            <p className="mt-2 text-sm font-medium leading-snug text-white/80 sm:text-[15px]">
+              Week of {weekOfLabel}
+              <span className="mx-2 text-white/35" aria-hidden>
+                ·
+              </span>
+              {completed ? (
+                <span className="text-[#C5E0CC]">Completed</span>
+              ) : (
+                <span className="text-amber-200">Pending</span>
+              )}
+            </p>
 
-              <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-                  Week of {weekOfLabel}
-                </span>
-                {completed ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3EC] px-3.5 py-1.5 text-xs font-bold text-kai-good">
-                    <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    Completed
-                  </span>
-                ) : (
-                  <motion.span
-                    animate={{
-                      boxShadow: [
-                        "0 0 0 0 rgba(251,191,36,0.35)",
-                        "0 0 0 6px rgba(251,191,36,0)",
-                      ],
-                    }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-3.5 py-1.5 text-xs font-semibold text-amber-200 backdrop-blur-sm"
-                  >
-                    <motion.span
-                      animate={{ opacity: [1, 0.35, 1] }}
-                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300"
-                      aria-hidden
-                    />
-                    Pending
-                  </motion.span>
-                )}
-              </div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-lg leading-none" aria-hidden>
+                🔥
+              </span>
+              <p className="text-sm font-semibold text-white/90 sm:text-[15px]">
+                {weeklyCheckinStreak > 0
+                  ? `${weeklyCheckinStreak} week${weeklyCheckinStreak === 1 ? "" : "s"} streak`
+                  : "Start your weekly streak"}
+              </p>
             </div>
 
             {assignedDoctor ? (
@@ -334,7 +312,7 @@ export default function SchedulesPageClient({
         </div>
       </div>
 
-      <div className="relative mx-auto mt-8 max-w-md pb-4 md:mt-10 md:max-w-2xl">
+      <div className="relative mx-auto mt-5 max-w-md px-4 pb-4 md:mt-6 md:max-w-2xl md:px-8">
         <WeeklyCheckinEntryCard
           weekYmd={wellnessWeekYmd}
           weekOfLabel={weekOfLabel}

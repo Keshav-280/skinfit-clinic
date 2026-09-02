@@ -43,14 +43,14 @@ export function DoctorSosBell() {
       case "UNAUTHORIZED":
         return "Sign in again to mark alerts done.";
       case "STAFF_USER_NOT_IN_DB":
-        return "Your doctor account is not in the database — use a seeded doctor login.";
+        return "Your doctor account is not in the database - use a seeded doctor login.";
       case "ACK_TABLE_MISSING":
-        return "Alerts database table missing — run migration 0015 on the server.";
+        return "Alerts database table missing - run migration 0015 on the server.";
       case "ALERT_NOT_FOUND":
       case "MESSAGE_NOT_FOUND_OR_NOT_SOS":
         return "This alert is no longer active.";
       case "ACK_FAILED":
-        return "Could not save — check server logs.";
+        return "Could not save - check server logs.";
       default:
         return "Could not mark done. Try again.";
     }
@@ -112,7 +112,7 @@ export function DoctorSosBell() {
             )
         );
       } catch {
-        setAckError("Network error — could not reach the server.");
+        setAckError("Network error - could not reach the server.");
       } finally {
         setAckingId(null);
       }

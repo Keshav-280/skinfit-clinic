@@ -6,12 +6,12 @@ import {
 } from "@/src/lib/email/smtpMail";
 
 export function preReleaseSignupEmailCopy(email: string) {
-  const subject = "SkinFit Wellness — early access confirmed";
+  const subject = "SkinFit Wellness - early access confirmed";
   const text = `Thank you for registering for early access to SkinFit Wellness.
 
 Your email (${email}) has been added to our launch list. We will notify you when the app is available.
 
-— SkinFit Wellness`;
+- SkinFit Wellness`;
 
   const html = `
 <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:28px 24px">
@@ -26,7 +26,7 @@ Your email (${email}) has been added to our launch list. We will notify you when
     <strong>${escapeHtml(email)}</strong> has been added to our launch list.
     We will notify you when SkinFit Wellness is available.
   </p>
-  <p style="font-size:14px;color:#71717a;margin:0">— SkinFit Wellness</p>
+  <p style="font-size:14px;color:#71717a;margin:0">- SkinFit Wellness</p>
 </div>`;
 
   return { subject, text, html };

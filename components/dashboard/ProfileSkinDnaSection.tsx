@@ -218,23 +218,23 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
 
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            <DnaStat label="Skin type" value={data.skinDna.skinType ?? "—"} />
+            <DnaStat label="Skin type" value={data.skinDna.skinType ?? "-"} />
             <DnaStat
               label="Primary concern"
-              value={data.skinDna.primaryConcern ?? "—"}
+              value={data.skinDna.primaryConcern ?? "-"}
             />
             <DnaStat
               label="Sensitivity index"
               value={
                 data.skinDna.sensitivityIndex != null
                   ? `${data.skinDna.sensitivityIndex}/10`
-                  : "—"
+                  : "-"
               }
             />
-            <DnaStat label="UV sensitivity" value={data.skinDna.uvSensitivity ?? "—"} />
+            <DnaStat label="UV sensitivity" value={data.skinDna.uvSensitivity ?? "-"} />
             <DnaStat
               label="Hormonal correlation"
-              value={data.skinDna.hormonalCorrelation ?? "—"}
+              value={data.skinDna.hormonalCorrelation ?? "-"}
             />
           </div>
 
@@ -293,7 +293,7 @@ export function ProfileSkinDnaSection({ embedded = false }: { embedded?: boolean
           </div>
 
           {/*
-          Last scans (up to 4) — hidden per profile layout request.
+          Last scans (up to 4) - hidden per profile layout request.
           <div>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">

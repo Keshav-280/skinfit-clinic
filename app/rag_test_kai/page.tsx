@@ -454,11 +454,11 @@ function MonthlyReportBlock({
                       {p.label}
                     </td>
                     <td className="px-4 py-2.5 tabular-nums text-slate-700">
-                      {p.latest ?? "—"}
+                      {p.latest ?? "-"}
                     </td>
                     <td className="px-4 py-2.5 tabular-nums">
                       {p.vsPrior == null ? (
-                        "—"
+                        "-"
                       ) : p.vsPrior >= 0 ? (
                         <span className="text-emerald-700">+{p.vsPrior}</span>
                       ) : (
@@ -467,7 +467,7 @@ function MonthlyReportBlock({
                     </td>
                     <td className="px-4 py-2.5 tabular-nums">
                       {p.vsMonthStart == null ? (
-                        "—"
+                        "-"
                       ) : p.vsMonthStart >= 0 ? (
                         <span className="text-emerald-700">+{p.vsMonthStart}</span>
                       ) : (
@@ -475,7 +475,7 @@ function MonthlyReportBlock({
                       )}
                     </td>
                     <td className="px-4 py-2.5 tabular-nums text-slate-700">
-                      {mu ?? "—"}
+                      {mu ?? "-"}
                     </td>
                   </tr>
                   );
@@ -524,7 +524,7 @@ function MonthlyReportBlock({
       <footer className="border-t border-slate-100 bg-slate-50/40 px-5 py-4">
         <MonthSectionHeading
           kicker="Trajectory"
-          title={`Per-scan kAI (${mo.scoreTrend.length} pts) — month headline uses μ-parameters (${mo.detail.kaiMonthAvgFromParams ?? "—"})`}
+          title={`Per-scan kAI (${mo.scoreTrend.length} pts) - month headline uses μ-parameters (${mo.detail.kaiMonthAvgFromParams ?? "-"})`}
         />
         <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
           <MiniSparkline
@@ -534,11 +534,11 @@ function MonthlyReportBlock({
           />
           <p className="mt-2 text-xs tabular-nums text-slate-500">
             <span className="font-medium text-slate-700">
-              {mo.scoreTrend[0] ?? "—"}
+              {mo.scoreTrend[0] ?? "-"}
             </span>
             <span className="mx-1.5 text-slate-300">→</span>
             <span className="font-semibold text-indigo-700">
-              {mo.scoreTrend[mo.scoreTrend.length - 1] ?? "—"}
+              {mo.scoreTrend[mo.scoreTrend.length - 1] ?? "-"}
             </span>
             <span className="ml-2 text-slate-400">scan first → scan latest</span>
           </p>
@@ -721,7 +721,7 @@ function EvolvingField({
 }) {
   const fmt = (v: string | number | null) =>
     v == null || v === ""
-      ? "—"
+      ? "-"
       : formatter
         ? formatter(v)
         : String(v);
@@ -868,10 +868,10 @@ function SkinIdentityCardView({
                 <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-700">
                   {c.field}:
                 </span>
-                <span className="text-slate-500">{String(c.from ?? "—")}</span>
+                <span className="text-slate-500">{String(c.from ?? "-")}</span>
                 <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                 <span className="font-semibold text-slate-900">
-                  {String(c.to ?? "—")}
+                  {String(c.to ?? "-")}
                 </span>
               </li>
             ))}
@@ -979,7 +979,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
                   <div className="flex items-center justify-between text-sm">
                     <p className="font-medium text-slate-800">{p.label}</p>
                     <p className="text-xs tabular-nums text-slate-600">
-                      {p.value ?? "—"}{" "}
+                      {p.value ?? "-"}{" "}
                       {p.delta != null ? (
                         <span
                           className={
@@ -1012,7 +1012,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
               <div className="rounded-lg border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Causes — what helped & what hurt
+                    Causes - what helped & what hurt
                   </p>
                 </div>
                 <div className="mt-2">
@@ -1032,7 +1032,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
-              Section 3 — Resource Centre
+              Section 3 - Resource Centre
             </p>
             <div className="mt-2 grid gap-2 md:grid-cols-3">
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -1106,7 +1106,7 @@ function ScanReportCard({ report }: { report: ScanReport }) {
 
           <section className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#1E1B31]">
-              Section 5 — CTA
+              Section 5 - CTA
             </p>
             <div className="mt-2 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div>
@@ -1180,7 +1180,7 @@ function DailyRowItem({ row }: { row: DailyRow }) {
         <div className="mt-2 flex flex-wrap gap-1">
           <Pill>{row.contextSnapshot.scansUpToDate} scans</Pill>
           <Pill>
-            kAI {row.contextSnapshot.latestKaiScore ?? "—"}
+            kAI {row.contextSnapshot.latestKaiScore ?? "-"}
           </Pill>
         </div>
       </div>
@@ -1204,7 +1204,7 @@ function DailyRowItem({ row }: { row: DailyRow }) {
         </p>
         <p className="mt-1 text-[11px] text-slate-500">
           Source param: {row.sourceParam ?? "none"} · Consistency (7d through{" "}
-          {row.signalsThroughDate ?? "—"}) {row.contextSnapshot.routineCompletionPct}% ·
+          {row.signalsThroughDate ?? "-"}) {row.contextSnapshot.routineCompletionPct}% ·
           Log rows in window: {row.contextSnapshot.logsInLast7d}
         </p>
         <p className="mt-1 text-[10px] leading-snug text-slate-400">

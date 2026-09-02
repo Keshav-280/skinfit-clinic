@@ -43,7 +43,7 @@ export type OnboardingQuestionnaireDraftV2 = {
   referralSource?: string | null;
   referralOther?: string;
   skippedSteps?: number[];
-  /** Unix ms — used to merge local vs server drafts without losing back navigation. */
+  /** Unix ms - used to merge local vs server drafts without losing back navigation. */
   updatedAt?: number;
 };
 

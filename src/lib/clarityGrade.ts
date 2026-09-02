@@ -1,13 +1,13 @@
 /**
- * Patient-facing clarity grades (raw 0–100 model score → calibrated display → A–E).
+ * Patient-facing clarity grades (raw 0-100 model score → calibrated display → A-E).
  * Storage/DB keeps raw resolved scores (doctor parity); patient UI always shows
  * calibrated display scores (floor 20, cap ≤79) when unlocked, letter grades when locked.
- * Grade E is never shown to patients — floored to D (score ≥ 20).
+ * Grade E is never shown to patients - floored to D (score ≥ 20).
  */
 
 export type ClarityGrade = "A" | "B" | "C" | "D" | "E";
 
-/** Worst → best — locked checkpoint bars (E slot kept for layout; patients never get E). */
+/** Worst → best - locked checkpoint bars (E slot kept for layout; patients never get E). */
 export const CLARITY_GRADES_ASCENDING: readonly ClarityGrade[] = [
   "E",
   "D",
@@ -30,27 +30,27 @@ export const CLARITY_GRADE_BANDS: ReadonlyArray<{
 
 /** Upper bound of patient display clarity (gamma saturation asymptote). */
 export const PATIENT_DISPLAY_SCORE_MAX = 80;
-/** Hard cap on patient-facing numeric scores — strictly below 80 so grade A is never shown. */
+/** Hard cap on patient-facing numeric scores - strictly below 80 so grade A is never shown. */
 export const PATIENT_DISPLAY_SCORE_CAP = 79;
-/** Floor on patient-facing numeric scores — grade E is never shown (minimum D = 20). */
+/** Floor on patient-facing numeric scores - grade E is never shown (minimum D = 20). */
 export const PATIENT_DISPLAY_SCORE_FLOOR = 20;
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
 
-/** Formats a 0–100 patient-facing score as a whole number on a 0–10 scale. */
+/** Formats a 0-100 patient-facing score as a whole number on a 0-10 scale. */
 export function scoreOutOfTen(score0to100: number): number {
   if (!Number.isFinite(score0to100)) return 0;
   return Math.max(0, Math.min(10, Math.round(score0to100 / 10)));
 }
 
-/** Severity 1–5 (higher = worse) → 0–10 (higher = better). */
+/** Severity 1-5 (higher = worse) → 0-10 (higher = better). */
 export function severityToScoreOutOfTen(severity: number): number {
   const s = Math.max(1, Math.min(5, severity));
   const clarity = ((5 - s) / 4) * 100;
   return scoreOutOfTen(clarity);
 }
 
-/** Colour band for a 0–10 score (10 is best). */
+/** Colour band for a 0-10 score (10 is best). */
 export function score10Tone(
   score10: number
 ): "good" | "mid" | "low" {
@@ -65,7 +65,7 @@ function clampClarity(score: number): number {
   return Math.min(100, Math.max(0, Math.round(score)));
 }
 
-/** Final patient-facing display score — always in [20, 79]. */
+/** Final patient-facing display score - always in [20, 79]. */
 export function clampPatientFacingDisplayScore(score: number): number {
   if (!Number.isFinite(score)) return PATIENT_DISPLAY_SCORE_FLOOR;
   return Math.max(
@@ -74,13 +74,13 @@ export function clampPatientFacingDisplayScore(score: number): number {
   );
 }
 
-/** Unlocked UI — resolved scores are already patient-facing; clamp only. */
+/** Unlocked UI - resolved scores are already patient-facing; clamp only. */
 export function patientUnlockedDisplayScore(resolvedScore: number): number {
   return clampPatientFacingDisplayScore(resolvedScore);
 }
 
 /**
- * Smooth saturation curve for patient-facing clarity (0–~80).
+ * Smooth saturation curve for patient-facing clarity (0-~80).
  * f(x) = CAP · (1 − exp(−λ · (x/100)^γ))
  */
 export function patientDisplayClarity(rawScore: number): number {
@@ -91,7 +91,7 @@ export function patientDisplayClarity(rawScore: number): number {
   return clampPatientFacingDisplayScore(saturated);
 }
 
-/** Map display clarity to letter grade (>=80 A … >=20 D). Internal only — use patientGradeFromDisplayScore for UI. */
+/** Map display clarity to letter grade (>=80 A … >=20 D). Internal only - use patientGradeFromDisplayScore for UI. */
 export function clarityToGrade(displayScore: number): ClarityGrade {
   const s = clampClarity(displayScore);
   if (s >= 80) return "A";
@@ -165,11 +165,11 @@ export function clarityGradeLabel(rawScore: number): string {
   return patientClarityToGrade(rawScore);
 }
 
-/** Optional range hint for tooltips, e.g. "80–100". */
+/** Optional range hint for tooltips, e.g. "80-100". */
 export function gradeRangeLabel(grade: ClarityGrade): string {
   const band = CLARITY_GRADE_BANDS.find((b) => b.grade === grade);
   if (!band) return grade;
-  return `${band.min}–${band.max}`;
+  return `${band.min}-${band.max}`;
 }
 
 /** Patient CTA when exact scores are locked (home scans before clinic analysis). */
@@ -195,7 +195,7 @@ export type PatientScoreView = {
   displayScore: number;
   color: string;
   sublabel: string;
-  /** Primary label — exact calibrated score when unlocked, letter grade when locked. */
+  /** Primary label - exact calibrated score when unlocked, letter grade when locked. */
   label: string;
   rangeLabel: string;
   locked: boolean;
@@ -232,7 +232,7 @@ export type PatientKaiScoreView = PatientScoreView & {
   showLock: boolean;
 };
 
-/** kAI card / donut — exact number when unlocked; lock + letter grade when locked. */
+/** kAI card / donut - exact number when unlocked; lock + letter grade when locked. */
 export function patientKaiScoreView(
   rawScore: number,
   scoresUnlocked: boolean
@@ -266,7 +266,7 @@ export function patientParamGaugeLabel(
     : patientClarityToGrade(rawScore);
 }
 
-/** Sparkline Y-axis — exact calibrated score when unlocked; grade band steps when locked. */
+/** Sparkline Y-axis - exact calibrated score when unlocked; grade band steps when locked. */
 const GRADE_CHART_Y: Record<ClarityGrade, number> = {
   A: 80,
   B: 60,

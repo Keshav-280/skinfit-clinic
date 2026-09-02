@@ -138,21 +138,21 @@ export async function generateProfileKeyObservationsRag(
 
   const system = `You are kAI, a dermatology-informed skin health counselor for SkinFit.
 Ground clinical claims in TEXTBOOK EVIDENCE blocks when you explain mechanisms.
-Use ONLY the patient data in the user message — never invent scan scores, dates, or log days.
+Use ONLY the patient data in the user message - never invent scan scores, dates, or log days.
 Output ONLY valid JSON. No markdown.
 
 IMPORTANT SCALE DIRECTION: All skin parameters (Active Acne, Wrinkles, Pigmentation, etc.) are clarity/health scores from 0 to 100, where 100 is the best (clearest/healthiest skin, e.g. zero active acne) and 0 is the worst (most severe acne). Thus, a lower score is WORSE and a higher score is BETTER. E.g., if Active Acne went from 35 down to 29, it means the acne got worse, NOT better. Always evaluate and describe these score trends correctly (increasing score is improvement, decreasing score is worsening).
 
-LETTER GRADES: A is best, E is worst. When describing grade movement, say "slipped from grade C to D" (worse) or "improved from grade D to C" (better). Never write awkward phrases like "grade D is worse than grade C" — describe the movement instead. If two readings share the same grade but the score dipped, say "held around grade D with a small dip".
+LETTER GRADES: A is best, E is worst. When describing grade movement, say "slipped from grade C to D" (worse) or "improved from grade D to C" (better). Never write awkward phrases like "grade D is worse than grade C" - describe the movement instead. If two readings share the same grade but the score dipped, say "held around grade D with a small dip".
 
 ${
   !scoresUnlocked
-    ? `IMPORTANT: The patient's exact scores are currently locked/hidden until their clinic visit. They ONLY see letter grades (A–E). You MUST NEVER output any exact score numbers (e.g. 72, 32, 29, 35) in observation text. Describe parameters using letter grades and plain language (e.g. "Active Acne slipped from grade C to D", "held around grade D").`
+    ? `IMPORTANT: The patient's exact scores are currently locked/hidden until their clinic visit. They ONLY see letter grades (A-E). You MUST NEVER output any exact score numbers (e.g. 72, 32, 29, 35) in observation text. Describe parameters using letter grades and plain language (e.g. "Active Acne slipped from grade C to D", "held around grade D").`
     : `SCORES: The patient's exact scores are unlocked. You can refer to exact score numbers (e.g. "Active Acne is 32").`
 }
 
 Rules for observations:
-- Return 2–4 observations, ordered: (1) baseline/onboarding scan insight, (2) lifestyle from logged days in the stated window, (3) scan trend if 2+ scans exist in window, optional (4) tie-in from weekly report snippet if provided.
+- Return 2-4 observations, ordered: (1) baseline/onboarding scan insight, (2) lifestyle from logged days in the stated window, (3) scan trend if 2+ scans exist in window, optional (4) tie-in from weekly report snippet if provided.
 - Each observation must cite which data you used in dateLabel (e.g. "Baseline · 12 May", "4 days logged", "19 May vs 12 May").
 - source must be one of: baseline_scan, daily_logs, scan_trend, weekly_report.
 - Respect WINDOW data policy exactly (first week vs rolling 7 days).
@@ -215,7 +215,7 @@ know: exactly 3 short facts about THIS patient (concern, sensitivity/UV, one dat
 actions: exactly 3 priority actions. Each detail MUST be 3 lines:
 Why: <1 sentence with their grades/trends when locked, or numbers when unlocked>
 Do: <specific instruction with timing>
-Target: <measurable checkpoint before next scan — no exact score targets when locked>`;
+Target: <measurable checkpoint before next scan - no exact score targets when locked>`;
 
   const user = `${profileContextForLlm(ctx, scoresUnlocked)}
 
@@ -223,7 +223,7 @@ Weakest parameter: ${
     weak
       ? scoresUnlocked
         ? `${RAG_KAI_PARAM_LABELS[weak.key]} (${weak.value}/100)`
-        : `${RAG_KAI_PARAM_LABELS[weak.key]} — grade ${patientClarityToGrade(weak.value ?? 0)} (lowest this week)`
+        : `${RAG_KAI_PARAM_LABELS[weak.key]} - grade ${patientClarityToGrade(weak.value ?? 0)} (lowest this week)`
       : "unknown"
   }
 Wins: ${signalPack.topWins.join("; ") || "none"}
@@ -252,7 +252,7 @@ Return JSON:
       const title = (a.title ?? "").trim();
       const detail = (a.detail ?? "").trim();
       if (!title) return "";
-      const raw = detail ? `${title} — ${detail}` : title;
+      const raw = detail ? `${title} - ${detail}` : title;
       return softenPatientText(raw, scoresUnlocked);
     })
     .filter((t) => t.length >= 12)

@@ -1,5 +1,5 @@
 /**
- * Patient-facing parameter visibility — hide selected axes in UI only.
+ * Patient-facing parameter visibility - hide selected axes in UI only.
  * Underlying inference, DB fields, and clinical_scores JSON are unchanged.
  */
 
@@ -41,7 +41,7 @@ export function filterPatientVisibleParamRows<T extends { key?: string; label?: 
   });
 }
 
-/** Full clinical donut / bar rows — filtered for patient scan reports (web, mobile, PDF). */
+/** Full clinical donut / bar rows - filtered for patient scan reports (web, mobile, PDF). */
 export const ALL_PATIENT_CLINICAL_DISPLAY_ROWS = [
   { key: "active_acne", label: "Active acne" },
   { key: "acne_scars", label: "Acne scars" },

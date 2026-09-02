@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-/** SkinFit wordmark + swoosh — navy paths from the real logo, recolored white for the navy splash. */
+/** SkinFit wordmark + swoosh - navy paths from the real logo, recolored white for the navy splash. */
 function SkinFitPaths() {
   return (
     <>
@@ -22,7 +22,7 @@ function SkinFitPaths() {
   );
 }
 
-/** "Wellness" wordmark paths, kept in white — pops in after SkinFit finishes. */
+/** "Wellness" wordmark paths, kept in white - pops in after SkinFit finishes. */
 function WellnessPaths() {
   return (
     <>
@@ -109,7 +109,7 @@ export function LoginIntroSplash({ onDone }: { onDone: () => void }) {
             <WellnessPaths />
           </motion.g>
         </svg>
-        {/* Covering slab, same color as the splash background — slides off to
+        {/* Covering slab, same color as the splash background - slides off to
             the right, progressively uncovering the (always-rendered, already
             white) SkinFit wordmark underneath, left edge first. Percentage-based
             so the sweep always exactly clears the full width regardless of

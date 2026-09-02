@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { TrackerPageSkeleton } from "@/components/dashboard/PageSkeletons";
 import { useDebouncedTrackerAutoSave } from "@/src/hooks/useDebouncedTrackerAutoSave";
 import { useJournalTrackerDate } from "@/src/hooks/useJournalTrackerDate";
 
@@ -83,10 +83,7 @@ export default function StressTrackerPage() {
 
   if (loading) {
     return (
-      <SkinFitLoader
-        title="Opening stress tracker"
-        subtitle="kAI is pulling today’s check-in."
-      />
+      <TrackerPageSkeleton />
     );
   }
 

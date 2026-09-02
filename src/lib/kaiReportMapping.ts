@@ -1,8 +1,17 @@
-import { score10Tone, severityToScoreOutOfTen } from "@/src/lib/clarityGrade";
+import {
+  score10Tone,
+  scoreOutOfTen,
+  severityToScoreOutOfTen,
+} from "@/src/lib/clarityGrade";
+import {
+  RAG_KAI_PARAM_KEYS,
+  RAG_KAI_PARAM_LABELS,
+  type RagKaiParamKey,
+} from "@/src/lib/ragEightParams";
 
 /**
- * kAI Initial/Update report helpers — severity ↔ 0–10 score, findings templates.
- * Internal 0–100 clarity drives the Position Bar; patients see 0–10.
+ * kAI Initial/Update report helpers - severity ↔ 0-10 score, findings templates.
+ * Internal 0-100 clarity drives the Position Bar; patients see 0-10.
  */
 
 export type KaiGradeTone = "good" | "mid" | "low";
@@ -18,7 +27,7 @@ export type KaiSubGrade =
   | "D+"
   | "D";
 
-/** Severity 1–5 (higher = worse) → sub-grade letter. */
+/** Severity 1-5 (higher = worse) → sub-grade letter. */
 export function severityToSubGrade(severity: number): KaiSubGrade {
   const s = Math.max(1, Math.min(5, severity));
   if (s <= 1.0) return "A";
@@ -32,7 +41,7 @@ export function severityToSubGrade(severity: number): KaiSubGrade {
   return "D";
 }
 
-/** Clarity 0–100 (higher = better) → approximate severity for sub-grade. */
+/** Clarity 0-100 (higher = better) → approximate severity for sub-grade. */
 export function clarityToSeverity(clarity: number): number {
   const c = Math.max(0, Math.min(100, clarity));
   return 1 + ((100 - c) / 100) * 4;
@@ -54,13 +63,13 @@ export function subGradeTone(grade: string): KaiGradeTone {
   return "low";
 }
 
-/** Map clarity 0–100 → Position Bar % (0 = D end, 100 = A end). */
+/** Map clarity 0-100 → Position Bar % (0 = D end, 100 = A end). */
 export function clarityToPosition(clarity: number): number {
   if (!Number.isFinite(clarity)) return 50;
   return Math.max(0, Math.min(100, Math.round(clarity)));
 }
 
-/** Overall letter for hero (coarse A–D from clarity). */
+/** Overall letter for hero (coarse A-D from clarity). */
 export function clarityToHeroGrade(clarity: number): string {
   const s = Math.max(0, Math.min(100, clarity));
   if (s >= 80) return "A";
@@ -110,7 +119,7 @@ export const REPORT_PARAMETER_META: Array<{
   },
   {
     key: "wrinkles",
-    name: "Fine lines",
+    name: "Wrinkles",
     shortName: "Wrinkles",
     mfsKey: "wrinkle_severity",
     legacyKey: "wrinkles",
@@ -124,7 +133,7 @@ export const REPORT_PARAMETER_META: Array<{
   },
   {
     key: "acne_scars",
-    name: "Acne scarring",
+    name: "Acne Scar",
     shortName: "Scars",
     mfsKey: "acne_scars",
     legacyKey: "texture",
@@ -148,7 +157,7 @@ export function templateFinding(name: string, severity: number): string {
   const score10 = severityToScoreOutOfTen(severity);
   const label = `${score10}/10`;
   if (severity <= 1.2) {
-    return `${name} looks clear on this capture — mapped as a clean baseline (${label}).`;
+    return `${name} looks clear on this capture - mapped as a clean baseline (${label}).`;
   }
   if (severity <= 2.5) {
     return `Mild ${name.toLowerCase()} signal on this scan (${label}). We'll watch this marker week to week.`;
@@ -163,27 +172,27 @@ export function defaultInitialActions(topConcern: string): string[] {
   const c = topConcern.toLowerCase();
   if (c.includes("acne")) {
     return [
-      "Switch to a cream cleanser if you use a foaming wash — over-drying often worsens breakouts on dry or combination skin.",
+      "Switch to a cream cleanser if you use a foaming wash - over-drying often worsens breakouts on dry or combination skin.",
       "Sunscreen at 9am, reapply by early afternoon. UV drives post-acne marks as much as new lesions.",
-      "Don't start a new active before your consult — sequencing matters more than stacking.",
+      "Don't start a new active before your consult - sequencing matters more than stacking.",
     ];
   }
   if (c.includes("pigment") || c.includes("melasma")) {
     return [
-      "Sunscreen every morning and a midday reapply on outdoor days — pigmentation tracking depends on UV control.",
+      "Sunscreen every morning and a midday reapply on outdoor days - pigmentation tracking depends on UV control.",
       "Keep your current brightening routine steady this week; changing products muddies the next scan.",
-      "Note heat exposure (commute, kitchen) — it matters as much as sun for melasma in Indian conditions.",
+      "Note heat exposure (commute, kitchen) - it matters as much as sun for melasma in Indian conditions.",
     ];
   }
   if (c.includes("wrinkle") || c.includes("line")) {
     return [
-      "Daily sunscreen and a simple moisturiser twice a day — barrier care is the foundation before actives.",
+      "Daily sunscreen and a simple moisturiser twice a day - barrier care is the foundation before actives.",
       "Limit late screens where you can; sleep position and screen hours show up on fine lines over months.",
       "Hold off on stacking new retinoids until your consult sequences them with your skin type.",
     ];
   }
   return [
-    "Keep capture conditions consistent next week — same lighting, no glasses, same distance.",
+    "Keep capture conditions consistent next week - same lighting, no glasses, same distance.",
     "Sunscreen daily; it's the highest-leverage free step across most concerns.",
     "Bring this baseline to your consult so sequencing starts from real markers, not guesswork.",
   ];
@@ -215,7 +224,9 @@ export type KaiReportParamRow = {
   name: string;
   shortName: string;
   severity: number;
-  /** Patient-facing 0–10 score, stored as a string for display. */
+  /** Patient-facing 0-100 clarity from the analysis model. */
+  clarity: number;
+  /** Patient-facing 0-10 score, stored as a string for display. */
   grade: string;
   score10: number;
   gradeColor: KaiGradeTone;
@@ -251,7 +262,66 @@ function concernChipForKey(
   }
 }
 
-/** Build parameter rows from clinical severities + legacy 0–100 clarity columns. */
+const RAG_TO_REPORT_KEY: Record<RagKaiParamKey, ReportParameterKey | null> = {
+  active_acne: "active_acne",
+  acne_scar: "acne_scars",
+  pigmentation: "pigmentation",
+  wrinkles: "wrinkles",
+  under_eye: "under_eye",
+  sagging_volume: "sagging_volume",
+  hair_health: null,
+  skin_quality: null,
+};
+
+/** Factual score line - never invents analysis copy. */
+export function scoreFinding(
+  name: string,
+  score10: number,
+  prevScore10?: number
+): string {
+  if (prevScore10 == null) {
+    return `${name} scored ${score10}/10 on this scan.`;
+  }
+  if (score10 === prevScore10) {
+    return `${name} held at ${score10}/10.`;
+  }
+  return `${name} moved from ${prevScore10}/10 to ${score10}/10.`;
+}
+
+/**
+ * Build report rows from the same resolved RAG 0-100 scores Skin DNA uses.
+ * Skips parameters the model did not score. Does not invent extras.
+ */
+export function buildKaiReportParamRowsFromRag(
+  rag: Partial<Record<RagKaiParamKey, number>>
+): KaiReportParamRow[] {
+  const rows: KaiReportParamRow[] = [];
+  for (const ragKey of RAG_KAI_PARAM_KEYS) {
+    const clarity = rag[ragKey];
+    if (typeof clarity !== "number" || !Number.isFinite(clarity)) continue;
+    const reportKey = RAG_TO_REPORT_KEY[ragKey];
+    if (!reportKey) continue;
+    const meta = REPORT_PARAMETER_META.find((m) => m.key === reportKey);
+    if (!meta) continue;
+    const score10 = scoreOutOfTen(clarity);
+    const name = RAG_KAI_PARAM_LABELS[ragKey];
+    rows.push({
+      key: reportKey,
+      name,
+      shortName: meta.shortName,
+      severity: clarityToSeverity(clarity),
+      clarity,
+      grade: String(score10),
+      score10,
+      gradeColor: score10Tone(score10),
+      finding: scoreFinding(name, score10),
+      concernChipId: concernChipForKey(reportKey),
+    });
+  }
+  return rows;
+}
+
+/** Build parameter rows from clinical severities + legacy 0-100 clarity columns. */
 export function buildKaiReportParamRows(input: {
   clinical?: {
     active_acne?: number | null;
@@ -284,15 +354,17 @@ export function buildKaiReportParamRows(input: {
     if (severity == null || !Number.isFinite(severity)) continue;
     const score10 = severityToScoreOutOfTen(severity);
     const grade = String(score10);
+    const clarity = Math.round(100 - ((severity - 1) / 4) * 100);
     rows.push({
       key: meta.key,
       name: meta.name,
       shortName: meta.shortName,
       severity,
+      clarity,
       grade,
       score10,
       gradeColor: score10Tone(score10),
-      finding: templateFinding(meta.name, severity),
+      finding: scoreFinding(meta.name, score10),
       concernChipId: concernChipForKey(meta.key),
     });
   }

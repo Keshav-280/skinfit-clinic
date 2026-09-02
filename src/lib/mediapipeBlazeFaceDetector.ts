@@ -1,5 +1,5 @@
 /**
- * MediaPipe BlazeFace short-range — dedicated face detector (stabler bbox than
+ * MediaPipe BlazeFace short-range - dedicated face detector (stabler bbox than
  * deriving a box from 468 landmarks).
  */
 

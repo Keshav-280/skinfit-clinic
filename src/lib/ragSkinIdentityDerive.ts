@@ -181,7 +181,7 @@ function deriveHormonalCorrelation(
   if (acne.length < 4) {
     return {
       value: baseline ?? "Monitoring",
-      rationale: `only ${acne.length} acne data points — need 4+ to confirm a pattern`,
+      rationale: `only ${acne.length} acne data points - need 4+ to confirm a pattern`,
     };
   }
   // Look for repeating dips (period ~3-5 scans assuming weekly scans ~ monthly cycle)

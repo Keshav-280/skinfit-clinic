@@ -11,7 +11,7 @@ export function WeekRecap({
   highlight,
   emptyMessage = "Complete your weekly check-in to see habits here.",
 }: WeekRecapProps) {
-  const hasData = data.some((d) => d.value.trim() && d.value !== "—");
+  const hasData = data.some((d) => d.value.trim() && d.value !== "-");
 
   return (
     <section className={`${REPORT_CARD} px-3.5 py-4`}>

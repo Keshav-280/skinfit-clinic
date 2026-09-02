@@ -28,7 +28,7 @@ function parseThumbWidth(raw: string | null): number | null {
  * GET /api/annotator/files/annotator/<uuid>.jpg
  * Serves annotator library images from R2 or local storage.
  *
- * `?w=<px>` returns a downscaled WebP — the thumbnail strip uses this so a
+ * `?w=<px>` returns a downscaled WebP - the thumbnail strip uses this so a
  * 56-150px thumbnail no longer downloads a 0.5-1.4MB full-res PNG. With ~526
  * images that turns a ~400MB cold load into a few MB.
  */

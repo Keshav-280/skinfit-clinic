@@ -240,7 +240,7 @@ export function DoctorQuickSnippetPalette({
                 </div>
               ) : (
                 <p className="px-1 py-2 text-[11px] text-[#1E1B31]/45">
-                  Save phrases you use often — they appear here.
+                  Save phrases you use often - they appear here.
                 </p>
               )}
               <PhraseAddRow
@@ -264,7 +264,7 @@ export function DoctorQuickSnippetPalette({
                   ))
                 ) : (
                   <p className="px-1 py-2 text-[11px] text-[#1E1B31]/45">
-                    No phrases in this list — add one below.
+                    No phrases in this list - add one below.
                   </p>
                 )}
               </div>

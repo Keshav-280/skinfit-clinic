@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { QuestionnaireLockedCard } from "@/components/dashboard/QuestionnaireLockedCard";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { SectionSkeleton } from "@/components/dashboard/PageSkeletons";
 import {
   patientGlassShell,
   patientInnerCard,
@@ -47,7 +47,7 @@ type IdentityPayload = {
 };
 
 function fmt(v: string | number | null, formatter?: (v: string | number) => string) {
-  if (v == null || (typeof v === "string" && !v.trim())) return "—";
+  if (v == null || (typeof v === "string" && !v.trim())) return "-";
   return formatter ? formatter(v) : String(v);
 }
 
@@ -136,7 +136,7 @@ export function ProfileSkinIdentitySection({ embedded = false }: { embedded?: bo
   }, []);
 
   if (loading) {
-    return <SkinFitLoader size="section" title="Loading skin identity" />;
+    return <SectionSkeleton label="Loading skin identity" />;
   }
   if (err) {
     return (
@@ -194,9 +194,9 @@ export function ProfileSkinIdentitySection({ embedded = false }: { embedded?: bo
             {changed.map((c, i) => (
               <li key={i} className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]">{c.field}:</span>
-                <span className="text-[#6B7280]">{String(c.from ?? "—")}</span>
+                <span className="text-[#6B7280]">{String(c.from ?? "-")}</span>
                 <ChevronRight className="h-3.5 w-3.5 text-[#1E1B31]/40" />
-                <span className="font-semibold text-[#1A1A2E]">{String(c.to ?? "—")}</span>
+                <span className="font-semibold text-[#1A1A2E]">{String(c.to ?? "-")}</span>
               </li>
             ))}
           </ul>

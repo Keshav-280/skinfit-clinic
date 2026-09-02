@@ -23,16 +23,16 @@ export async function notifyStaffQuestionnaireRedFlags(opts: {
   const lines: string[] = [];
   if (opts.chronicConcern) {
     lines.push(
-      "Chronic concern (>1 year) — “Chronic concern” flag on kAI report; please review."
+      "Chronic concern (>1 year) - “Chronic concern” flag on kAI report; please review."
     );
   }
   if (opts.highSensitivity) {
     lines.push(
-      "High skin sensitivity — flag on kAI report; please review product prescription."
+      "High skin sensitivity - flag on kAI report; please review product prescription."
     );
   }
 
-  const text = `📋 kAI questionnaire alert — ${opts.patientName}\n${lines.join("\n")}`;
+  const text = `📋 kAI questionnaire alert - ${opts.patientName}\n${lines.join("\n")}`;
 
   await postPatientDoctorThreadMessage(opts.patientId, text, true);
 

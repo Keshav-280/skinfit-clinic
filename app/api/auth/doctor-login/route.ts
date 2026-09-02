@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     normalizedEmail === DOCTOR_FALLBACK_EMAIL &&
     password === DOCTOR_FALLBACK_PASSWORD;
 
-  // Emergency fallback doctor — still persist a `users` row when DB is reachable.
+  // Emergency fallback doctor - still persist a `users` row when DB is reachable.
   if (isFallbackDoctorLogin) {
     const secret = getSessionSecret();
     if (!secret) {

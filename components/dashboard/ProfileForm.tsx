@@ -148,7 +148,7 @@ export function ProfileForm({
         rh > APPOINTMENT_REMINDER_HOURS_MAX
       ) {
         setError(
-          `Reminder time must be 0 (off) or 1–${APPOINTMENT_REMINDER_HOURS_MAX} hours before your visit.`
+          `Reminder time must be 0 (off) or 1-${APPOINTMENT_REMINDER_HOURS_MAX} hours before your visit.`
         );
         setLoading(false);
         return;

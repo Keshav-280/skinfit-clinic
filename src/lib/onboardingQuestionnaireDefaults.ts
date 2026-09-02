@@ -53,7 +53,7 @@ export const QUESTIONNAIRE_STEPS_ALL = [
 
 /**
  * Parent step → dependent follow-ups that should be skipped together.
- * - 1: concern follow-ups (severity, duration, triggers) — not overall skin health (step 2)
+ * - 1: concern follow-ups (severity, duration, triggers) - not overall skin health (step 2)
  * - 6: treatment details (only when prior treatment = no / skipped)
  */
 export const QUESTIONNAIRE_SKIP_CASCADE: Record<number, readonly number[]> = {
@@ -200,7 +200,7 @@ export function prevOnboardingQuestionnaireStep(
  *
  * A skipped parent step (e.g. concerns) cascades to its dependents (severity,
  * duration, triggers). Those dependents are not independently answerable, so
- * they should NOT be counted as separate "remaining questions" — otherwise one
+ * they should NOT be counted as separate "remaining questions" - otherwise one
  * skip action inflates the count (e.g. skipping concerns shows "4 questions").
  * We count each skipped step once, minus dependents whose parent was also skipped.
  */

@@ -81,7 +81,7 @@ function signed(n: number): string {
 }
 
 function deltaTone(n: number | null): { label: string; cls: string } {
-  if (n == null) return { label: "—", cls: "delta-flat" };
+  if (n == null) return { label: "-", cls: "delta-flat" };
   if (n >= 3) return { label: `${signed(n)} improved`, cls: "delta-up" };
   if (n <= -3) return { label: `${signed(n)} softer`, cls: "delta-down" };
   return { label: `${signed(n)} steady`, cls: "delta-flat" };
@@ -132,7 +132,7 @@ function fallbackParamNotes(
         p.vsPrior != null
           ? ` Versus the prior scan: ${signed(p.vsPrior)}.`
           : "";
-      return `${p.label} ${dir} across the month (${signed(d)} from open to latest; latest ${p.latest ?? "—"}).${mean}${prior}`;
+      return `${p.label} ${dir} across the month (${signed(d)} from open to latest; latest ${p.latest ?? "-"}).${mean}${prior}`;
     });
 }
 
@@ -146,7 +146,7 @@ function fallbackHabitNotes(
   ];
   if (ad.avgWaterGlasses > 0) {
     notes.push(
-      `Hydration averaged ${ad.avgWaterGlasses} glasses daily — steady water intake supports barrier recovery.`
+      `Hydration averaged ${ad.avgWaterGlasses} glasses daily - steady water intake supports barrier recovery.`
     );
   }
   return notes;
@@ -157,7 +157,7 @@ function fallbackScanStory(data: MonthlyReportDetail): string {
     return "No scans were logged in this month window, so this recap leans on your latest available scan and daily check-ins.";
   }
   const series = data.scans.map((s) => s.kaiScore).join(" → ");
-  return `You completed ${data.scans.length} scan${data.scans.length === 1 ? "" : "s"} this month. Per-scan kAI moved ${series}. Your headline month kAI is ${data.kaiMonthAvgFromParams ?? "—"}, which blends parameter averages across those scans rather than simply averaging the per-scan scores.`;
+  return `You completed ${data.scans.length} scan${data.scans.length === 1 ? "" : "s"} this month. Per-scan kAI moved ${series}. Your headline month kAI is ${data.kaiMonthAvgFromParams ?? "-"}, which blends parameter averages across those scans rather than simply averaging the per-scan scores.`;
 }
 
 /** Fill missing deep-dive fields for older stored monthly payloads. */
@@ -177,7 +177,7 @@ export function enrichMonthlyReportDetail(
     data.scanStory?.trim() || fallbackScanStory(data);
   const closingNote =
     data.closingNote?.trim() ||
-    "Carry the wins, fix the soft spots early, and keep your check-ins honest — next month’s insight gets sharper with every scan and note.";
+    "Carry the wins, fix the soft spots early, and keep your check-ins honest - next month’s insight gets sharper with every scan and note.";
 
   return {
     ...data,
@@ -201,22 +201,22 @@ export function buildMonthlyReportHtml(raw: MonthlyReportDetail): string {
   const monthKai =
     data.kaiMonthAvgFromParams != null
       ? String(data.kaiMonthAvgFromParams)
-      : "—";
+      : "-";
   const generated = formatGeneratedAt(data.generatedAt);
   const ad = data.adherence30d;
 
   const paramRows = data.parameters
     .map((p) => {
-      const latest = p.latest != null ? String(p.latest) : "—";
+      const latest = p.latest != null ? String(p.latest) : "-";
       const bar = p.latest != null ? Math.max(0, Math.min(100, p.latest)) : 0;
       const move = deltaTone(p.vsMonthStart);
-      const mean = p.monthMean != null ? String(p.monthMean) : "—";
+      const mean = p.monthMean != null ? String(p.monthMean) : "-";
       const prior =
         p.vsPrior != null
           ? p.vsPrior >= 0
             ? `+${p.vsPrior}`
             : String(p.vsPrior)
-          : "—";
+          : "-";
       return `<div class="param-block">
         <div class="param-row">
           <span class="param-label">${esc(p.label)}</span>

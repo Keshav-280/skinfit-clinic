@@ -15,7 +15,7 @@ import { formatPatientAppointmentConfirmationMessage } from "@/src/lib/patientGo
 import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
 import { linkDoctorPatientCare } from "@/src/lib/doctorPatientCare";
 
-const APPOINTMENT_CONFIRM_EMAIL_SUBJECT = "SkinFit Wellness — Appointment confirmed";
+const APPOINTMENT_CONFIRM_EMAIL_SUBJECT = "SkinFit Wellness - Appointment confirmed";
 
 export async function POST(
   req: Request,

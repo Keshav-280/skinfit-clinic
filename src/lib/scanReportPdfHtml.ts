@@ -209,7 +209,7 @@ function buildEightClinicalDonuts(cs: ClinicalScores) {
 }
 
 function estimatePdfScale(p: ScanReportPdfPayload): number {
-  /** Rough content height (px at scale 1) — matched to web single-page A4 fit. */
+  /** Rough content height (px at scale 1) - matched to web single-page A4 fit. */
   let heightPx = 920;
   if (p.photos.length > 1) heightPx += 210;
   if (p.wrinkleMaskDataUri?.trim() || p.acneMaskDataUri?.trim()) heightPx += 270;
@@ -457,7 +457,7 @@ function buildTrackerSectionsHtml(
 
       <section class="tr-card">
         <p class="tr-kicker">${isOnboardingBaseline ? "Getting started" : "Section 3"}</p>
-        ${isOnboardingBaseline ? `<p class="tr-onboarding-focus-intro">Follow these habits over the next week — your first scan is the starting point, not a comparison.</p>` : ""}
+        ${isOnboardingBaseline ? `<p class="tr-onboarding-focus-intro">Follow these habits over the next week - your first scan is the starting point, not a comparison.</p>` : ""}
         <ol class="tr-focus-list">${focusHtml}</ol>
       </section>
     </div>`;
@@ -474,7 +474,7 @@ function buildLegacyMetricsHtml(
 
   let metricsBlock = "";
   if (eightClinicalDonuts) {
-    metricsBlock += `<p class="metrics-kicker">FaceAnalyzer v13 — six parameters (grades A–E · A is best)</p>`;
+    metricsBlock += `<p class="metrics-kicker">FaceAnalyzer v13 - six parameters (grades A-E · A is best)</p>`;
     metricsBlock += `<div class="eight-grid">`;
     for (const row of eightClinicalDonuts) {
       metricsBlock += `
@@ -496,7 +496,7 @@ function buildLegacyMetricsHtml(
       { label: "Texture", value: p.metrics.texture ?? p.metrics.hydration, fill: T.navyMid, track: "rgba(61, 80, 128, 0.2)" },
       { label: "Overall", value: p.metrics.overall_score, fill: T.peach, track: T.peachTrack },
     ];
-    metricsBlock += `<p class="metrics-kicker">AI model summary (grades A–E · A is best)</p>`;
+    metricsBlock += `<p class="metrics-kicker">AI model summary (grades A-E · A is best)</p>`;
     metricsBlock += `<div class="six-grid">`;
     for (const m of sixDonuts) {
       metricsBlock += `
@@ -511,7 +511,7 @@ function buildLegacyMetricsHtml(
   let clinicalHtml = "";
   if (cs && !eightClinicalDonuts) {
     clinicalHtml = `<div class="clinical-block avoid-break">
-      <p class="clinical-k">FaceAnalyzer v13 — six clinical axes (grades A–E)</p>
+      <p class="clinical-k">FaceAnalyzer v13 - six clinical axes (grades A-E)</p>
       <div class="clinical-grid">`;
     for (const { key, label } of CLINICAL_ROWS) {
       const v = cs[key];
@@ -532,7 +532,7 @@ function buildLegacyMetricsHtml(
 
   const overview =
     p.aiSummary?.trim()
-      ? "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends—this is educational, not a medical diagnosis."
+      ? "Use the clinical bars and photo markers to see what this scan emphasized. Compare future scans for trends - this is educational, not a medical diagnosis."
       : "Your skin shows a balanced profile with room to optimize hydration and maintain clarity. Continue tracking changes after each scan to spot trends early.";
 
   return `
@@ -586,7 +586,7 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     const raw = p.scanTitle?.trim() ?? "";
     if (!raw) return "";
     const stripped = raw
-      .replace(/^ai\s*skin\s*scan\s*[–-]\s*/i, "")
+      .replace(/^ai\s*skin\s*scan\s*[--]\s*/i, "")
       .replace(/^ai\s*skin\s*analysis\s*$/i, "");
     return stripped || "";
   })();

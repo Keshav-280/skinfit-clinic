@@ -23,18 +23,18 @@ export function buildDummyAiSummary(m: DummyScanMetrics): string {
   const acneScar = patientClarityToGrade(m.texture);
   const pigmentation = patientClarityToGrade(m.pigmentation);
   const templates = [
-    `Today's overall skin grade is ${overall} — your under-eye area (${underEye}) and acne scars (${acneScar}) are helping keep things balanced; stay consistent with gentle cleansing and hydration.`,
+    `Today's overall skin grade is ${overall} - your under-eye area (${underEye}) and acne scars (${acneScar}) are helping keep things balanced; stay consistent with gentle cleansing and hydration.`,
     `We're seeing an overall grade of ${overall}. Acne clarity is ${acne} and fine-line smoothness is ${wrinkles}; a steady routine usually nudges these grades up over time.`,
-    `Grade check: ${overall} overall. Pigmentation is ${pigmentation} and under-eye area is ${underEye} — prioritize barrier care and a consistent routine this week.`,
+    `Grade check: ${overall} overall. Pigmentation is ${pigmentation} and under-eye area is ${underEye} - prioritize barrier care and a consistent routine this week.`,
     `Your snapshot shows overall grade ${overall} with acne scars at ${acneScar} and wrinkles at ${wrinkles}. Nothing alarming for a home check-in; keep sleep and water steady.`,
-    `Overall ${overall}: acne ${acne}, under-eye ${underEye}. Small day-to-day swings are normal — log how your skin feels alongside these grades.`,
+    `Overall ${overall}: acne ${acne}, under-eye ${underEye}. Small day-to-day swings are normal - log how your skin feels alongside these grades.`,
     `Reading of ${overall} today, with acne scars ${acneScar} and pigmentation ${pigmentation}. Consider lighter actives if anything feels tight or irritated.`,
     `Nice baseline: ${overall} overall. Under-eye ${underEye} and wrinkle grade ${wrinkles} suggest your skin is responding; repeat this scan in a week to track the trend.`,
   ];
   return templates[randomInt(0, templates.length - 1)];
 }
 
-/** The app does not collect sun-exposure data — drop sentences claiming UV influenced results. */
+/** The app does not collect sun-exposure data - drop sentences claiming UV influenced results. */
 function stripUvClaimSentences(text: string): string {
   const kept = text
     .split(/(?<=[.!?])\s+/)
@@ -111,7 +111,7 @@ export function formatAiSummary(
       const escapedKeys = mapping.keys.map((k) => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")).join("|");
       
       // Parameter name BEFORE grade letter, e.g. "hydration is A", "wrinkle grade B"
-      const regexStr = `\\b(${escapedKeys})\\b(?:\\s+(?:is|of|score|grade|grades|clarity|health|smoothness|level|levels|profile|at|rate|rated)){0,3}\\s*[:\\-—–~]?\\s*\\(?\\b([A-E])[+-]?\\b\\)?`;
+      const regexStr = `\\b(${escapedKeys})\\b(?:\\s+(?:is|of|score|grade|grades|clarity|health|smoothness|level|levels|profile|at|rate|rated)){0,3}\\s*[:\\- - -~]?\\s*\\(?\\b([A-E])[+-]?\\b\\)?`;
       const regex = new RegExp(regexStr, "gi");
 
       formatted = formatted.replace(regex, (match, paramName, gradeLetter) => {
@@ -172,7 +172,7 @@ export function formatAiSummary(
 
     for (const mapping of paramMappings) {
       const escapedKeys = mapping.keys.map((k) => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")).join("|");
-      const regexStr = `\\b(${escapedKeys})\\b(?:\\s+(?:is|of|score|clarity|health|smoothness|level|levels|profile|at|rate|rated)){0,3}\\s*[:\\-—–~]?\\s*\\(?\\b(\\d{1,3})\\b\\)?`;
+      const regexStr = `\\b(${escapedKeys})\\b(?:\\s+(?:is|of|score|clarity|health|smoothness|level|levels|profile|at|rate|rated)){0,3}\\s*[:\\- - -~]?\\s*\\(?\\b(\\d{1,3})\\b\\)?`;
       const regex = new RegExp(regexStr, "gi");
 
       formatted = formatted.replace(regex, (match, paramName, numberStr) => {
@@ -191,7 +191,7 @@ export function formatAiSummary(
     });
   }
 
-  // Final hard guards — patient-facing scores are always 20–79, never "/100".
+  // Final hard guards - patient-facing scores are always 20-79, never "/100".
   formatted = formatted.replace(/\b(\d{1,3})\s*(?:\/\s*100|out of 100)\b/gi, (_m, n: string) => {
     const v = Number(n);
     if (scoresUnlocked) {
@@ -200,7 +200,7 @@ export function formatAiSummary(
     return patientClarityToGrade(metrics.overall_score);
   });
   if (scoresUnlocked) {
-    // 80–199 can never be a valid patient score — replace with the real calibrated overall.
+    // 80-199 can never be a valid patient score - replace with the real calibrated overall.
     formatted = formatted.replace(
       /\b(?:1\d\d|[89]\d)\b(?!\s*%)/g,
       String(calibratedMetrics.overall_score)

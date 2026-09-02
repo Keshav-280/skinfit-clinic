@@ -19,10 +19,10 @@ export const ONBOARDING_CHAT_SYSTEM_PROMPT = `You are kAI, an AI skin advisor at
 
 Rules:
 - Write 1-2 SHORT sentences max. Be concise like a text message, not an essay.
-- Sound like a real person texting — casual, direct, no filler. Use contractions.
+- Sound like a real person texting - casual, direct, no filler. Use contractions.
 - NEVER start with "That's great", "That's good", "I appreciate", "Thank you for sharing", "Thanks for letting me know", or any generic praise. Jump straight into a specific observation or reaction.
 - NEVER use emojis.
-- Reference something specific about their answer — don't give a response that could apply to any answer.
+- Reference something specific about their answer - don't give a response that could apply to any answer.
 - Then transition into the next question naturally (provided in the prompt). Paraphrase it slightly so it doesn't sound scripted.
 - Don't repeat their answer back to them.
 
@@ -31,9 +31,9 @@ Bad examples (DO NOT write like this):
 - "Thank you for letting me know. It's good that you're aware of this."
 
 Good examples:
-- "Acne since your teens — pretty common, and honestly one of the easier things to get under control."
-- "Hormonal flares track with a lot of patients — we'll keep that on the radar."
-- "Combination skin is common — means we balance oil and dryness instead of treating one extreme."`;
+- "Acne since your teens - pretty common, and honestly one of the easier things to get under control."
+- "Hormonal flares track with a lot of patients - we'll keep that on the radar."
+- "Combination skin is common - means we balance oil and dryness instead of treating one extreme."`;
 
 export type OnboardingChatQuestionId =
   | "PROFILE_01"
@@ -149,7 +149,7 @@ export function onboardingChatNextQuestionText(
 ): string {
   if (!nextQuestionId) return "";
   if (nextQuestionId === "PROFILE_01") {
-    return "Hey! Before we get started, tell me a bit about yourself — how old are you and how do you identify?";
+    return "Hey! Before we get started, tell me a bit about yourself - how old are you and how do you identify?";
   }
   if (nextQuestionId === "CONCERN_01") {
     return "So what's been bugging you about your skin lately? Pick everything that applies.";
@@ -163,7 +163,7 @@ export function onboardingChatNextQuestionText(
   if (nextQuestionId === "SENS_01") {
     return "Does your skin react easily to new products or weather changes?";
   }
-  return "One last thing — how did you hear about SkinFit?";
+  return "One last thing - how did you hear about SkinFit?";
 }
 
 export function onboardingChatQuestionAfter(
@@ -243,7 +243,7 @@ export function onboardingChatFallbackAck(
 ): string {
   if (questionId === "PROFILE_01" && answer && typeof answer === "object") {
     const label = formatAnswerLabel(questionId, answer);
-    if (label) return `Thanks — ${label}.`;
+    if (label) return `Thanks - ${label}.`;
     return "Thanks for sharing that.";
   }
 
@@ -251,19 +251,19 @@ export function onboardingChatFallbackAck(
     const concerns = asConcerns(answer);
     const primary = primaryOnboardingConcern(concerns);
     const tips: Record<OnboardingConcernId, string> = {
-      acne: "Acne, got it — that's actually really common and super treatable.",
+      acne: "Acne, got it - that's actually really common and super treatable.",
       pigmentation:
-        "Pigmentation noted — with consistency, tone can even out nicely.",
+        "Pigmentation noted - with consistency, tone can even out nicely.",
       ageing:
-        "Ageing concerns noted — we can focus on prevention and repair together.",
-      hair: "Hair and scalp — got it. We'll factor that into your plan.",
-      general: "General skin health — perfect place to start.",
+        "Ageing concerns noted - we can focus on prevention and repair together.",
+      hair: "Hair and scalp - got it. We'll factor that into your plan.",
+      general: "General skin health - perfect place to start.",
     };
     if (concerns.length === 1) return tips[primary];
     if (concerns.length > 1) {
-      return `${formatOnboardingConcernLabels(concerns)} — got it. We'll keep all of that in mind.`;
+      return `${formatOnboardingConcernLabels(concerns)} - got it. We'll keep all of that in mind.`;
     }
-    return "Got it — thanks for sharing what you're dealing with.";
+    return "Got it - thanks for sharing what you're dealing with.";
   }
 
   if (questionId === "DUR_TRIG" && answer && typeof answer === "object") {
@@ -274,58 +274,58 @@ export function onboardingChatFallbackAck(
     };
     if (a.phase === "duration" || (a.duration && a.triggers == null)) {
       const dur = typeof a.duration === "string" ? a.duration : "";
-      if (dur === "recent") return "Under 3 months — still early, good timing.";
-      if (dur === "ongoing") return "A few months in — enough history to spot patterns.";
+      if (dur === "recent") return "Under 3 months - still early, good timing.";
+      if (dur === "ongoing") return "A few months in - enough history to spot patterns.";
       if (dur === "chronic")
-        return "Over a year — we'll treat this as something that needs a steady plan.";
+        return "Over a year - we'll treat this as something that needs a steady plan.";
       return "Got the timeline.";
     }
     const triggers = Array.isArray(a.triggers) ? a.triggers : [];
     if (triggers.includes("unsure") && triggers.length === 1) {
-      return "Not sure is fine — we'll learn more from your routine and scans.";
+      return "Not sure is fine - we'll learn more from your routine and scans.";
     }
     if (triggers.includes("hormonal")) {
-      return "Hormonal triggers noted — that changes how we pace treatment.";
+      return "Hormonal triggers noted - that changes how we pace treatment.";
     }
     if (triggers.includes("stress")) {
-      return "Stress and sleep often show up on skin — useful to know.";
+      return "Stress and sleep often show up on skin - useful to know.";
     }
-    return "Triggers noted — that helps narrow what to watch.";
+    return "Triggers noted - that helps narrow what to watch.";
   }
 
   if (questionId === "SKIN_TYPE" && typeof answer === "string") {
-    if (answer === "Dry") return "Dry skin — we'll prioritize barrier support.";
-    if (answer === "Oily") return "Oily skin — we'll keep oil control in the mix.";
+    if (answer === "Dry") return "Dry skin - we'll prioritize barrier support.";
+    if (answer === "Oily") return "Oily skin - we'll keep oil control in the mix.";
     if (answer === "Combination")
-      return "Combination skin is common — balance over extremes.";
+      return "Combination skin is common - balance over extremes.";
     if (answer === "Sensitive")
-      return "Sensitive type — we'll keep the routine gentle.";
-    return "Normal skin — solid baseline to work from.";
+      return "Sensitive type - we'll keep the routine gentle.";
+    return "Normal skin - solid baseline to work from.";
   }
 
   if (questionId === "SENS_01") {
     const s = typeof answer === "string" ? (answer as SkinSensitivity) : null;
     if (s === "low")
-      return "Okay, not very reactive — that gives us more product flexibility.";
+      return "Okay, not very reactive - that gives us more product flexibility.";
     if (s === "moderate")
-      return "Sometimes reactive — we'll introduce actives carefully.";
+      return "Sometimes reactive - we'll introduce actives carefully.";
     if (s === "high")
-      return "Okay, sensitive skin — we'll keep that in mind when building your routine.";
-    return "Thanks — we'll keep sensitivity in mind.";
+      return "Okay, sensitive skin - we'll keep that in mind when building your routine.";
+    return "Thanks - we'll keep sensitivity in mind.";
   }
 
   if (questionId === "REF_01" && answer && typeof answer === "object") {
     const a = answer as { source?: string; other?: string };
     if (typeof a.source === "string") {
       if (a.source === "other" && a.other?.trim()) {
-        return "Got it — thanks for telling us how you found SkinFit.";
+        return "Got it - thanks for telling us how you found SkinFit.";
       }
-      return `Nice — ${referralSourceLabel(a.source)} is how a lot of people find us.`;
+      return `Nice - ${referralSourceLabel(a.source)} is how a lot of people find us.`;
     }
   }
 
   void previousAnswers;
-  return "Got it — thanks for sharing.";
+  return "Got it - thanks for sharing.";
 }
 
 export function onboardingChatFallbackMessage(

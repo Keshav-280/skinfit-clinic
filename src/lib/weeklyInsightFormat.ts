@@ -24,16 +24,16 @@ const GRADE_RANK: Record<ClarityGrade, number> = {
 /** Shown under weekly score/grade so patients know higher = healthier. */
 export function scoresUnlockedHint(scoresUnlocked: boolean): string {
   if (scoresUnlocked) {
-    return "Higher scores mean healthier skin (0–100).";
+    return "Higher scores mean healthier skin (0-100).";
   }
-  return "Grades A–E: A is best, E needs the most care.";
+  return "Grades A-E: A is best, E needs the most care.";
 }
 
 function collapseWhitespace(text: string): string {
   return text.replace(/\s+/g, " ").replace(/\s+([,.])/g, "$1").trim();
 }
 
-/** A is best, E is worst — patient-facing trend between two letter grades. */
+/** A is best, E is worst - patient-facing trend between two letter grades. */
 export function clarityGradeTrendPhrase(
   from: ClarityGrade,
   to: ClarityGrade
@@ -44,7 +44,7 @@ export function clarityGradeTrendPhrase(
   return `held around grade ${to}`;
 }
 
-/** Higher raw clarity (0–100) is better skin health. */
+/** Higher raw clarity (0-100) is better skin health. */
 export function clarityRawTrendPhrase(from: number, to: number): string {
   const gFrom = patientClarityToGrade(from);
   const gTo = patientClarityToGrade(to);
@@ -79,7 +79,7 @@ function protectNonScoreTokens(text: string): {
 function fixClarityComparisons(text: string): string {
   let res = text;
 
-  // Fix inverted "improved from 35 to 29" — higher clarity is better.
+  // Fix inverted "improved from 35 to 29" - higher clarity is better.
   res = res.replace(
     /\b(improv(?:ed|ing)|better|stronger|gained|increased|rose)\b([^,.]{0,50}?)\bfrom\s+(\d{1,3})\s+(?:to|down to|into)\s+(\d{1,3})\b/gi,
     (_m, _verb, _mid, a, b) => {
@@ -121,7 +121,7 @@ function fixClarityComparisons(text: string): string {
     }
   );
 
-  // Letter-grade comparisons — rewrite awkward "D is worse than C" phrasing.
+  // Letter-grade comparisons - rewrite awkward "D is worse than C" phrasing.
   res = res.replace(
     /\bfrom\s+grade\s+([A-E])\s+(?:to|down to|into)\s+grade\s+([A-E])\b/gi,
     (_m, from, to) =>
@@ -130,12 +130,12 @@ function fixClarityComparisons(text: string): string {
   res = res.replace(
     /\bgrade\s+([A-E])\s+is\s+(?:worse|lower|poorer|weaker)\s+than\s+(?:grade\s+)?([A-E])\b/gi,
     (_m, worse, better) =>
-      `grade ${worse as string} — a step below grade ${better as string}`
+      `grade ${worse as string} - a step below grade ${better as string}`
   );
   res = res.replace(
     /\bgrade\s+([A-E])\b[^.]{0,24}\bworse\s+than\s+grade\s+([A-E])\b/gi,
     (_m, worse, better) =>
-      `grade ${worse as string} — a step below grade ${better as string}`
+      `grade ${worse as string} - a step below grade ${better as string}`
   );
   res = res.replace(
     /\b(?:slipped|moved|fell)\s+to\s+grade\s+([A-E])\s+from\s+grade\s+([A-E])\b/gi,
@@ -299,7 +299,7 @@ export function parsePriorityAction(
   scoresUnlocked = false
 ): ParsedPriorityAction {
   const cleaned = raw.replace(/\s+/g, " ").trim();
-  const dashSplit = cleaned.match(/^(.+?)\s*[—–-]\s*(.+)$/);
+  const dashSplit = cleaned.match(/^(.+?)\s*[\u2014\u2013-]\s*(.+)$/);
   const title = softenPatientText((dashSplit?.[1] ?? cleaned).trim(), scoresUnlocked);
   const body = (dashSplit?.[2] ?? "").trim();
 

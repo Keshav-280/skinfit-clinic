@@ -1,7 +1,7 @@
 const MAX_NATIONAL_DIGITS = 15;
 const MIN_NATIONAL_DIGITS = 10;
 
-/** E.164 country code: + then 1–3 digits (common cases). */
+/** E.164 country code: + then 1-3 digits (common cases). */
 const COUNTRY_CODE_REGEX = /^\+[1-9]\d{0,3}$/;
 
 /**
@@ -27,7 +27,7 @@ export type PhoneValidation =
   | { ok: false; message: string };
 
 /**
- * Validates national (local) phone digits — at least {@link MIN_NATIONAL_DIGITS} digits.
+ * Validates national (local) phone digits - at least {@link MIN_NATIONAL_DIGITS} digits.
  */
 export function validateNationalPhone(input: string): PhoneValidation {
   const nationalDigits = normalizeNationalPhoneDigits(input);

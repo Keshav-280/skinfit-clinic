@@ -215,7 +215,7 @@ export async function runFaceAnalysisCentreSmiling(
 /**
  * Production dual-pose: test_local.ipynb pipeline on HF `/analyze_dual_scan`.
  * Centre → acne mask + scalar severities; second slot → wrinkle mask + wrinkle score
- * (we send the front photo for both). Metrics are 0–100 (higher = better).
+ * (we send the front photo for both). Metrics are 0-100 (higher = better).
  */
 export async function runFaceAnalysisDualScan(
   centre: File,

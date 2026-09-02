@@ -1,12 +1,5 @@
-"use client";
-
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { HistoryPageSkeleton } from "@/components/dashboard/PageSkeletons";
 
 export default function HistoryLoading() {
-  return (
-    <SkinFitLoader
-      title="Assembling your timeline"
-      subtitle="kAI is pulling your progress, visits, and care notes."
-    />
-  );
+  return <HistoryPageSkeleton />;
 }

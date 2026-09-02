@@ -10,7 +10,7 @@ import type { SdetectFaceImages, SdetectReportData } from "./types";
 
 type RGB = [number, number, number];
 
-/** SkinFit kAI report palette — tuned to the design mockup. */
+/** SkinFit kAI report palette - tuned to the design mockup. */
 const KAI = {
   cream: [245, 242, 234] as RGB,
   navy: [43, 45, 92] as RGB,
@@ -76,7 +76,7 @@ const IDENTITY_PROFILE_W = ptToMm(46);
 
 function formatPatientPhone(phone: string): string {
   const trimmed = phone.trim();
-  if (!trimmed || trimmed === "—") return trimmed;
+  if (!trimmed || trimmed === "-") return trimmed;
   if (trimmed.startsWith("+")) return trimmed;
   const digits = trimmed.replace(/\D/g, "");
   if (digits.length === 10) return `+91 ${digits}`;
@@ -209,8 +209,8 @@ function measureIdentityTextHeight(data: SdetectReportData): number {
   let h = ptToMm(22) + ptToMm(20) + ptToMm(6);
   if (data.patient.age > 0) h += ptToMm(13);
   const phone = formatPatientPhone(data.patient.phone);
-  if (phone && phone !== "—") h += ptToMm(13);
-  if (data.patient.reportDate && data.patient.reportDate !== "—") h += ptToMm(13);
+  if (phone && phone !== "-") h += ptToMm(13);
+  if (data.patient.reportDate && data.patient.reportDate !== "-") h += ptToMm(13);
   if (data.patient.scanFrequency > 0) h += ptToMm(13);
   return h + ptToMm(10);
 }
@@ -263,7 +263,7 @@ async function drawHeader(
   doc.addImage(logo.dataUrl, "PNG", MARGIN, logoY, logo.displayW, logo.displayH);
 
   const subtitle = [eventLabel.trim(), data.patient.reportDate]
-    .filter((s) => s && s !== "—")
+    .filter((s) => s && s !== "-")
     .join("  ·  ");
   const midY = h / 2;
   const titleY = midY - (subtitle ? ptToMm(5.5) : 0);
@@ -323,11 +323,11 @@ async function drawIdentityRow(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...KAI.navy);
-  doc.text(data.patient.name || "—", textX, ty);
+  doc.text(data.patient.name || "-", textX, ty);
 
   const gender = data.patient.gender?.trim();
-  if (gender && gender !== "—") {
-    const nameW = doc.getTextWidth(data.patient.name || "—");
+  if (gender && gender !== "-") {
+    const nameW = doc.getTextWidth(data.patient.name || "-");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(...KAI.muted);
@@ -335,7 +335,7 @@ async function drawIdentityRow(
   }
 
   const detailLine = (label: string, value: string) => {
-    if (!value || value === "—") return;
+    if (!value || value === "-") return;
     ty += ptToMm(13);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
@@ -473,7 +473,7 @@ function drawSkinTypeCard(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(...KAI.navy);
-  doc.text(content.skinTypeCode || "—", x + pad, y + SKIN_TYPE_CODE_BASELINE);
+  doc.text(content.skinTypeCode || "-", x + pad, y + SKIN_TYPE_CODE_BASELINE);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
@@ -555,9 +555,9 @@ function drawScoreCard(
 function observationCommentary(obs: KaiReportContent["observations"][number]): string {
   if (obs.commentary.trim()) return obs.commentary.trim();
   if (obs.score >= 60) {
-    return `Scored ${obs.score}% on your comprehensive analysis — one of your strongest areas and a solid foundation to protect.`;
+    return `Scored ${obs.score}% on your comprehensive analysis - one of your strongest areas and a solid foundation to protect.`;
   }
-  return `Scored ${obs.score}% on your comprehensive analysis — one of the areas that needs the most attention right now.`;
+  return `Scored ${obs.score}% on your comprehensive analysis - one of the areas that needs the most attention right now.`;
 }
 
 const OBS_HEADER_H = ptToMm(28);

@@ -12,7 +12,7 @@ import {
 } from "@/src/lib/clinicPublicContact";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — SkinFit",
+  title: "Terms of Service - SkinFit",
   description: "Terms governing your use of the SkinFit patient app and dashboard.",
 };
 
@@ -101,7 +101,7 @@ export default function TermsPage() {
             "For emergencies, call your local emergency number immediately.",
             "Scan results, scores, and AI responses are informational and educational only.",
             "Only your licensed healthcare provider can diagnose conditions and prescribe treatment.",
-            "Using chat or AI features alone does not create a doctor–patient relationship.",
+            "Using chat or AI features alone does not create a doctor-patient relationship.",
             "SkinFit does not provide emergency or urgent care services.",
           ]}
         />

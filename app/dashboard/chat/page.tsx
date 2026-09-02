@@ -410,7 +410,7 @@ export default function ChatPage() {
     if (aid !== "support" && aid !== "doctor") return;
     if (
       !window.confirm(
-        "Hide all messages in this chat on your side? Nothing is deleted — the clinic still has the full history. New messages will show up as usual."
+        "Hide all messages in this chat on your side? Nothing is deleted - the clinic still has the full history. New messages will show up as usual."
       )
     ) {
       return;
@@ -942,7 +942,7 @@ export default function ChatPage() {
         }
         setRecordElapsed(0);
         if (blob.size < 800) {
-          setError("Recording too short — try again.");
+          setError("Recording too short - try again.");
           return;
         }
         void (async () => {

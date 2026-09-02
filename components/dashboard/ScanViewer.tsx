@@ -31,7 +31,7 @@ import {
 const CONCERN_META: Array<{
   id: Exclude<ConcernChipId, "all">;
   label: string;
-  /** Legacy 0–100 metric fallback when no tracker param row is present. */
+  /** Legacy 0-100 metric fallback when no tracker param row is present. */
   metricKey?: keyof ReportMetrics;
   /** RAG kAI param keys (primary score source, via tracker.paramRows). */
   paramKeys: string[];
@@ -161,7 +161,7 @@ function insightLine(
 
   if (score != null && delta != null && Math.abs(delta) >= 1) {
     const dir = delta > 0 ? "up" : "down";
-    return `${scoreOutOfTen(score)}/10 this scan — ${dir === "up" ? "+" : ""}${delta} vs last. Keep focusing here.`;
+    return `${scoreOutOfTen(score)}/10 this scan - ${dir === "up" ? "+" : ""}${delta} vs last. Keep focusing here.`;
   }
   if (score != null) {
     const sublabel = classifySkinParamMetric(score).sublabel;
@@ -237,13 +237,13 @@ export function ScanViewer({
 
   const chips: ConcernChipItem[] = useMemo(() => {
     return CONCERN_META.flatMap((meta) => {
-      // Primary source: RAG kAI param score (0–100) from the tracker report.
+      // Primary source: RAG kAI param score (0-100) from the tracker report.
       const row = tracker?.paramRows?.find((r) =>
         meta.paramKeys.includes(r.key)
       );
       let raw: number | null =
         row && typeof row.value === "number" ? row.value : null;
-      // Fallback: legacy 0–100 metric (only for params that have one).
+      // Fallback: legacy 0-100 metric (only for params that have one).
       if (raw == null && meta.metricKey) {
         const m = metrics[meta.metricKey];
         if (typeof m === "number") raw = m;
@@ -307,7 +307,7 @@ export function ScanViewer({
 
   function handleWhatsAppShare() {
     const scoreBit = `kAI score ${scoreOutOfTen(overall)}/10`;
-    const text = `My SkinFit Wellness scan — ${scoreBit}. Track your skin with AI at SkinFit.`;
+    const text = `My SkinFit Wellness scan - ${scoreBit}. Track your skin with AI at SkinFit.`;
     const url =
       typeof scanId === "number" && scanId > 0 && typeof window !== "undefined"
         ? `${window.location.origin}/dashboard/history/${scanId}`

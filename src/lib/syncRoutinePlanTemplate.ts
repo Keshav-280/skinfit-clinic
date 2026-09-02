@@ -1,6 +1,6 @@
 /**
  * Previously copied a default AM/PM template into unlocked patient rows on load/cron.
- * Plans are now clinician-authored only — no automatic default checklist.
+ * Plans are now clinician-authored only - no automatic default checklist.
  */
 
 /** @deprecated No-op; retained for call-site stability. */

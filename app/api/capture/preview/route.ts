@@ -12,7 +12,7 @@ import { checkRateLimit } from "@/src/lib/security/rateLimit";
 
 const MAX_BYTES = 900_000;
 
-/** GET /api/capture/preview — whether RetinaFace ONNX is available on the server. */
+/** GET /api/capture/preview - whether RetinaFace ONNX is available on the server. */
 export const GET = withApiHandler("capture.preview.status", async () => {
   const onDisk = isRetinaFaceModelOnDisk();
   return NextResponse.json({
@@ -22,7 +22,7 @@ export const GET = withApiHandler("capture.preview.status", async () => {
 });
 
 /**
- * POST /api/capture/preview — RetinaFace box/pose + blink/smile classifier (ONNX).
+ * POST /api/capture/preview - RetinaFace box/pose + blink/smile classifier (ONNX).
  * Multipart field: `file` (JPEG). Requires auth. Heavier than on-device MediaPipe.
  */
 export const POST = withApiHandler("capture.preview", async (request) => {

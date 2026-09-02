@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { removePendingScanJob } from "@/src/lib/scanJobNotifications";
+import { ReportPageSkeleton } from "@/components/dashboard/PageSkeletons";
 
 type ScanQueuedConfirmationProps = {
   variant?: "dashboard" | "onboarding";
@@ -12,41 +13,9 @@ type ScanQueuedConfirmationProps = {
   onReady?: (scanId: number) => void;
 };
 
-const FACE = "#FAF8F5";
 const POLL_MS = 4000;
 
 type JobPhase = "waiting" | "failed" | "opening";
-
-function KaiSmileMark() {
-  return (
-    <div
-      className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#1E1B31]"
-      aria-hidden
-    >
-      <svg width="42" height="32" viewBox="0 0 64 50" fill="none">
-        <path
-          d="M12 20 Q20 27 28 20"
-          stroke={FACE}
-          strokeWidth="3.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M36 20 Q44 27 52 20"
-          stroke={FACE}
-          strokeWidth="3.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M18 33 Q32 44 46 33"
-          stroke={FACE}
-          strokeWidth="3.4"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </svg>
-    </div>
-  );
-}
 
 export function ScanQueuedConfirmation({
   variant = "dashboard",
@@ -109,37 +78,23 @@ export function ScanQueuedConfirmation({
 
   const waitingCopy =
     waitedMs > 120_000
-      ? "Still analysing — this can take a few minutes when the queue is busy."
+      ? "Still analysing - this can take a few minutes when the queue is busy."
       : "Photos received. kAI is analysing them now. This usually takes about a minute.";
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-1 py-4"
-    >
-      <section
-        className="w-full rounded-[22px] border border-[#1E1B31]/12 bg-white px-6 py-8 text-center shadow-[0_8px_30px_rgba(30,27,49,0.06)]"
-        aria-live="polite"
-        aria-label={phase === "failed" ? "Scan could not finish" : "Scan in progress"}
+  if (phase !== "failed") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mx-auto w-full max-w-md px-1 py-2"
       >
-        <KaiSmileMark />
-        <h2 className="font-headline mt-5 text-2xl font-bold tracking-tight text-[#1E1B31]">
-          {phase === "failed"
-            ? "Scan did not finish"
-            : phase === "opening"
-              ? "Opening your report"
-              : "Analysing your scan"}
-        </h2>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#6B7280]">
-          {phase === "failed"
-            ? errorDetail
-            : phase === "opening"
-              ? "kAI just finished. Taking you to the report."
-              : waitingCopy}
+        <ReportPageSkeleton contained />
+        <p className="mt-3 text-center text-sm text-[#6B7280]">
+          {phase === "opening"
+            ? "kAI just finished. Taking you to the report."
+            : waitingCopy}
         </p>
-
-        <div className="mx-auto mt-6 flex w-full max-w-[240px] flex-col gap-2.5">
+        <div className="mx-auto mt-4 flex w-full max-w-[240px] flex-col gap-2.5">
           {isOnboarding ? (
             <>
               <Link
@@ -169,12 +124,49 @@ export function ScanQueuedConfirmation({
               <Link
                 href="/dashboard"
                 onClick={onDone}
-                className="text-sm font-semibold text-[#1E1B31] underline-offset-4 transition hover:underline"
+                className="text-center text-sm font-semibold text-[#1E1B31] underline-offset-4 transition hover:underline"
               >
                 Back to dashboard
               </Link>
             </>
           )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-1 py-4"
+    >
+      <section
+        className="w-full rounded-[22px] border border-[#1E1B31]/12 bg-white px-6 py-8 text-center shadow-[0_8px_30px_rgba(30,27,49,0.06)]"
+        aria-live="polite"
+        aria-label="Scan could not finish"
+      >
+        <h2 className="font-headline text-2xl font-bold tracking-tight text-[#1E1B31]">
+          Scan did not finish
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#6B7280]">
+          {errorDetail}
+        </p>
+        <div className="mx-auto mt-6 flex w-full max-w-[240px] flex-col gap-2.5">
+          <Link
+            href="/dashboard/scan"
+            onClick={onDone}
+            className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#1E1B31] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#242A5F]"
+          >
+            Try another scan
+          </Link>
+          <Link
+            href="/dashboard"
+            onClick={onDone}
+            className="text-sm font-semibold text-[#1E1B31] underline-offset-4 transition hover:underline"
+          >
+            Back to dashboard
+          </Link>
         </div>
       </section>
     </motion.div>

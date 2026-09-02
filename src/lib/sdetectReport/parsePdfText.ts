@@ -103,15 +103,15 @@ function cleanNarrativeText(text: string): string {
 
 function parsePatient(text: string): SdetectPatient {
   const flat = text.replace(/\s+/g, " ");
-  const name = flat.match(/Name[：:]\s*([^\t]+?)(?:\s+Gender|$)/)?.[1]?.trim() ?? "—";
-  const gender = flat.match(/Gender[：:]\s*(\w+)/i)?.[1] ?? "—";
+  const name = flat.match(/Name[：:]\s*([^\t]+?)(?:\s+Gender|$)/)?.[1]?.trim() ?? "-";
+  const gender = flat.match(/Gender[：:]\s*(\w+)/i)?.[1] ?? "-";
   const age = Number.parseInt(flat.match(/Age[：:]\s*(\d+)/)?.[1] ?? "0", 10);
   const phone =
     flat.match(/Contact Information[：:]\s*([\d*]+)/)?.[1] ??
     flat.match(/Phone[：:]\s*([\d*]+)/)?.[1] ??
-    "—";
+    "-";
   const reportDate =
-    flat.match(/Date of report[：:]\s*([\d-]+)/)?.[1] ?? "—";
+    flat.match(/Date of report[：:]\s*([\d-]+)/)?.[1] ?? "-";
   const scanFrequency = Number.parseInt(
     flat.match(/Skin Analysis Frequency[：:]\s*(\d+)/)?.[1] ?? "0",
     10
@@ -123,7 +123,7 @@ function parseClassification(text: string): string {
   const match = text.match(
     /Skin Classification\s*([A-Z]{4})|(?:^|\n)\s*([A-Z]{4})\s*\n\s*Skin Classification|([A-Z]{4})\s+Skin Classification/m
   );
-  return match?.[1] ?? match?.[2] ?? match?.[3] ?? "—";
+  return match?.[1] ?? match?.[2] ?? match?.[3] ?? "-";
 }
 
 function parseMoisture(text: string): number {

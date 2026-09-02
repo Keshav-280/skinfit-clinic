@@ -66,7 +66,7 @@ function signed(n: number): string {
 }
 
 function deltaLabel(n: number | null): { text: string; tone: string } {
-  if (n == null) return { text: "—", tone: "text-[#9ca3af]" };
+  if (n == null) return { text: "-", tone: "text-[#9ca3af]" };
   if (n >= 3) return { text: `${signed(n)} improved`, tone: "text-[#1E1B31]" };
   if (n <= -3) return { text: `${signed(n)} softer`, tone: "text-[#5B7BA8]" };
   return { text: `${signed(n)} steady`, tone: "text-[#9ca3af]" };
@@ -175,7 +175,7 @@ function MonthlyDetailBody({
                 compact ? "text-3xl" : "text-4xl"
               }`}
             >
-              {monthKai != null ? monthKai : "—"}
+              {monthKai != null ? monthKai : "-"}
             </p>
             {detail?.periodLabel ? (
               <p className="mt-1.5 text-[11px] text-white/70">{detail.periodLabel}</p>
@@ -228,7 +228,7 @@ function MonthlyDetailBody({
                       />
                     </div>
                     <span className="w-8 text-right text-xs font-bold tabular-nums text-[#1E1B31]">
-                      {p.latest ?? "—"}
+                      {p.latest ?? "-"}
                     </span>
                     <span
                       className={`hidden w-24 text-right text-[10px] font-semibold sm:block ${move.tone}`}
@@ -237,7 +237,7 @@ function MonthlyDetailBody({
                     </span>
                   </div>
                   <p className="mt-0.5 text-[10px] text-[#6B7280]">
-                    Month avg {p.monthMean ?? "—"}
+                    Month avg {p.monthMean ?? "-"}
                     {p.vsPrior != null ? ` · vs prior ${signed(p.vsPrior)}` : ""}
                     <span className={`sm:hidden`}> · {move.text}</span>
                   </p>
@@ -425,7 +425,7 @@ function MonthlyDetailBody({
   );
 }
 
-/** Patient-themed monthly insight body — shared by dashboard and doctor portal. */
+/** Patient-themed monthly insight body - shared by dashboard and doctor portal. */
 export function MonthlyInsightView({
   data,
   embedded = false,

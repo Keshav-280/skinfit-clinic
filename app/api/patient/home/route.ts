@@ -322,7 +322,7 @@ async function buildPatientHomePayload(
     doctorFeedback,
     doctorVoiceNotes,
     doctorArchivedVoiceNotes,
-    /** @deprecated first active note only — use doctorVoiceNotes */
+    /** @deprecated first active note only - use doctorVoiceNotes */
     doctorVoiceNote: doctorVoiceNotes[0] ?? null,
     doctorVoiceNoteIsNew,
     /** Calendar date used for today’s log (patient profile timezone when `date` query omitted). */

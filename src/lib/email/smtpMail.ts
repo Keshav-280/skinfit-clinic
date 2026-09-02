@@ -11,7 +11,7 @@ import nodemailer from "nodemailer";
  *   SMTP_PORT (default 587)
  *   SMTP_SECURE=true for implicit TLS (e.g. port 465)
  *   SMTP_TLS_REJECT_UNAUTHORIZED=false (dev only; weakens TLS)
- *   CLINIC_NOTIFICATION_EMAIL — BCC on patient appointment mail when distinct from patient
+ *   CLINIC_NOTIFICATION_EMAIL - BCC on patient appointment mail when distinct from patient
  */
 
 export function isSmtpConfigured(): boolean {

@@ -145,7 +145,7 @@ export async function GET(
         userName: user.name?.trim() || "there",
         userEmail: user.email?.trim() ?? null,
         userAge: user.age ?? 18,
-        userSkinType: user.skinType?.trim() || "—",
+        userSkinType: user.skinType?.trim() || "-",
         scanTitle: row.scanName,
         imageUrl: patientScanImagePath(row.id),
         faceCaptureGallery,

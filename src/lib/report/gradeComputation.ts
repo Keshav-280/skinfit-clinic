@@ -1,6 +1,6 @@
 /**
  * kAI report grade + movement helpers (Update Report).
- * Position 0–100 drives the Position Bar; patients see 0–10.
+ * Position 0-100 drives the Position Bar; patients see 0-10.
  */
 
 import { scoreOutOfTen } from "@/src/lib/clarityGrade";
@@ -9,7 +9,7 @@ export type MovementKind = "improved" | "holding" | "declined";
 
 export type HeroMovementType = "improving" | "flat" | "declining";
 
-/** Map overall kAI score (0–100) to 0–10 display + Position Bar position. */
+/** Map overall kAI score (0-100) to 0-10 display + Position Bar position. */
 export function scoreToGrade(score: number): {
   letter: string;
   position: number;
@@ -20,7 +20,7 @@ export function scoreToGrade(score: number): {
   return { letter: String(score10), position, score10 };
 }
 
-/** Map severity (1–5, higher = worse) to sub-grade. */
+/** Map severity (1-5, higher = worse) to sub-grade. */
 export function severityToSubGrade(severity: number): string {
   if (severity <= 1.2) return "A";
   if (severity <= 1.7) return "A-";
@@ -41,6 +41,16 @@ export function computeMovement(
   const delta = previous - current;
   if (delta > 0.3) return "improved";
   if (delta < -0.3) return "declined";
+  return "holding";
+}
+
+/** Compare patient-facing 0-10 scores so 9→9 is Holding, never Improved. */
+export function computeScore10Movement(
+  current: number,
+  previous: number
+): MovementKind {
+  if (current > previous) return "improved";
+  if (current < previous) return "declined";
   return "holding";
 }
 
@@ -93,7 +103,7 @@ export const MOVEMENT_INTERVAL_DAYS: Record<string, number> = {
 export const TRACKING_RATIONALE: Record<string, string> = {
   active_acne: "Acne can shift week to week once a full cycle of data is in.",
   texture: "Skin turnover runs on a roughly two-week cycle.",
-  under_eye: "Under-eye change is slow and confounded by sleep and fluid — four weeks of data before this reports.",
+  under_eye: "Under-eye change is slow and confounded by sleep and fluid - four weeks of data before this reports.",
   pigmentation:
     "Melanin turnover runs on a four-week cycle. More weeks of data before this reports.",
   acne_scars: "Scar remodelling is measured on an eight-week cycle.",
@@ -127,7 +137,7 @@ export function isMovementReportable(
   return daysSinceFirstScan >= intervalDaysForParam(paramKey);
 }
 
-/** Clarity 0–100 → severity 1–5 for movement compare. */
+/** Clarity 0-100 → severity 1-5 for movement compare. */
 export function clarityToSeverityApprox(clarity: number): number {
   const c = Math.max(0, Math.min(100, clarity));
   return 1 + ((100 - c) / 100) * 4;

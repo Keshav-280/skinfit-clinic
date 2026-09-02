@@ -1,5 +1,5 @@
 /**
- * In-memory rate limit stub — replace with Cloudflare WAF / Redis sliding window in production.
+ * In-memory rate limit stub - replace with Cloudflare WAF / Redis sliding window in production.
  */
 
 const buckets = new Map<string, { count: number; resetAt: number }>();

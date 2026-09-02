@@ -19,12 +19,12 @@ export const HYDRAFACIAL_TREATMENT: ClinicTreatment = {
     "Avoid laser treatments, medium/deep chemical peels 1 week before.",
   ],
   postCareDos: [
-    "Avoid Active Ingredients. Reintroduce them gradually after 2–3 days.",
+    "Avoid Active Ingredients. Reintroduce them gradually after 2-3 days.",
     "Keep your skin hydrated with a gentle moisturizer.",
     "Use a broad-spectrum sunscreen (SPF 30 or higher) and reapply if you're outdoors.",
   ],
   postCareDonts: [
-    "Avoid Heavy makeup for at least 6–24 hours, if possible.",
+    "Avoid Heavy makeup for at least 6-24 hours, if possible.",
     "Avoid Hot showers, steam rooms, saunas, and hot yoga.",
     "Strenuous exercise that causes excessive sweating.",
     "Exfoliating scrubs, cleansing brushes, or harsh skincare products.",
@@ -101,8 +101,8 @@ export function formatClinicTreatmentCareMessage(
 ): string {
   const title =
     phase === "pre"
-      ? `${treatment.name} — Pre-care instructions`
-      : `${treatment.name} — Post-care instructions`;
+      ? `${treatment.name} - Pre-care instructions`
+      : `${treatment.name} - Post-care instructions`;
 
   if (phase === "pre") {
     const lines = [

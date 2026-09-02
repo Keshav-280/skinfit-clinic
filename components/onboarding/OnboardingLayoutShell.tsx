@@ -17,7 +17,7 @@ function isQuestionnaireChatRoute(pathname: string | null): boolean {
   return pathname === "/onboarding/questionnaire";
 }
 
-function OnboardingSignOutLink() {
+export function OnboardingSignOutLink() {
   const router = useRouter();
 
   const handleLogout = useCallback(async () => {
@@ -83,11 +83,6 @@ export function OnboardingLayoutShell({
         data-onboarding-shell
         className="relative h-dvh max-h-dvh overflow-hidden bg-[#FAF8F5] text-[#1F2A44] [color-scheme:light]"
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex justify-end pt-[max(0.35rem,env(safe-area-inset-top))]">
-          <div className="pointer-events-auto pr-3 pt-1 md:pr-5">
-            <OnboardingSignOutLink />
-          </div>
-        </div>
         <main className="h-full min-h-0 w-full overflow-hidden">{children}</main>
       </div>
     );

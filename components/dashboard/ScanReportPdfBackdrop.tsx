@@ -1,4 +1,4 @@
-/** Decorative layers on screen only — omitted from PDF capture (`data-pdf-screen-only`). */
+/** Decorative layers on screen only - omitted from PDF capture (`data-pdf-screen-only`). */
 export function ScanReportPdfBackdrop() {
   return (
     <>

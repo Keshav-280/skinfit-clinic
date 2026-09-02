@@ -119,7 +119,7 @@ export async function sendFamilyLinkOtp(args: {
   if (isFamilyLinkOtpRequired()) {
     await sendSmtpMessage({
       to: email,
-      subject: "SkinFit — family card link verification",
+      subject: "SkinFit - family card link verification",
       text: `${args.inviterName} wants to add you to their SkinFit family card.\n\nYour verification code is: ${code}\n\nThis code expires in 10 minutes.`,
       html: `<p><strong>${args.inviterName}</strong> wants to add you to their SkinFit family card.</p><p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`,
     });

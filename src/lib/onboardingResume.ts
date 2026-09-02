@@ -19,7 +19,7 @@ export type OnboardingResumeSnapshot = {
   hasQuestionnaire: boolean;
   /** Matches profile progress tracker questionnaire step. */
   questionnaireMilestoneComplete: boolean;
-  /** Submitted with zero skipped questions — gates may close the questionnaire. */
+  /** Submitted with zero skipped questions - gates may close the questionnaire. */
   questionnaireFullyComplete: boolean;
   hasBaselineScan: boolean;
   /** True while baseline scan job is queued or processing (photos already submitted). */

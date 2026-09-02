@@ -17,7 +17,7 @@ const ALLOWED_KINDS: StorageObjectKind[] = [
 /**
  * POST /api/uploads?kind=scans
  * Multipart field: file
- * Returns { path, url } — store path/URL in DB only.
+ * Returns { path, url } - store path/URL in DB only.
  */
 export async function POST(request: NextRequest) {
   const userId = await getSessionUserIdFromRequest(request);

@@ -48,7 +48,7 @@ import {
   type LastTreatmentVisit,
 } from "@/components/dashboard/LastTreatmentCard";
 import { ProfileRagKaiInsightsSection } from "@/components/dashboard/ProfileRagKaiInsightsSection";
-import { SkinFitLoader } from "@/components/dashboard/SkinFitLoader";
+import { PhotoGridSkeleton } from "@/components/dashboard/PageSkeletons";
 import { patientDoctorLabel } from "@/src/lib/doctorDisplayName";
 import {
   patientKicker,
@@ -1436,7 +1436,7 @@ export default function AppointmentsCalendarClient({
             )
           : null}
 
-          {/* Doctor's Feedback + Voice Notes — fills the space the old
+          {/* Doctor's Feedback + Voice Notes - fills the space the old
               "selected day" / "upcoming" recap used to take, since that
               info already duplicates the calendar grid above. */}
           {doctorUpdatesSlot ? <div className="mt-3">{doctorUpdatesSlot}</div> : null}
@@ -1683,11 +1683,7 @@ export default function AppointmentsCalendarClient({
               </button>
             </div>
             {attachmentViewerLoading ? (
-              <SkinFitLoader
-                size="section"
-                title="Loading photos"
-                subtitle="kAI is fetching the images from this request."
-              />
+              <PhotoGridSkeleton />
             ) : attachmentViewerError ? (
               <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
                 {attachmentViewerError}

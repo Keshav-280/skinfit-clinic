@@ -1,6 +1,6 @@
 /**
  * Lightweight head pose from five facial points (RetinaFace-style landmarks).
- * Normalized image coordinates (0–1), origin top-left.
+ * Normalized image coordinates (0-1), origin top-left.
  */
 
 import type { HeadPoseDegrees } from "@/src/lib/faceCaptureTypes";

@@ -37,15 +37,15 @@ type WeeklyCheckinEntryCardProps = {
 };
 
 function optionIndex(options: FieldOption[], raw: string): number {
-  const n = raw.trim().toLowerCase().replace(/–/g, "-").replace(/\s+/g, "_");
+  const n = raw.trim().toLowerCase().replace(/[\u2013\u2014]/g, "-").replace(/\s+/g, "_");
   return options.findIndex(
-    (o) => o.key === n || o.label.toLowerCase().replace(/–/g, "-") === raw.trim().toLowerCase()
+    (o) => o.key === n || o.label.toLowerCase().replace(/[\u2013\u2014]/g, "-") === raw.trim().toLowerCase()
   );
 }
 
-/** 0–100 fill: sleep/water/exercise rise with the scale; stress is inverted (calm = fuller). */
+/** 0-100 fill: sleep/water/exercise rise with the scale; stress is inverted (calm = fuller). */
 function meterPct(label: string, value: string): number {
-  if (!value || value === "—") return 0;
+  if (!value || value === "-") return 0;
   const map: Record<string, { options: FieldOption[]; invert?: boolean }> = {
     Sleep: { options: SLEEP_OPTIONS },
     Water: { options: WATER_OPTIONS },

@@ -10,7 +10,7 @@ import {
 } from "@/src/lib/faceGuideCrop";
 import { SCAN_UPLOAD_JPEG_QUALITY } from "@/src/lib/scanImagePreview";
 
-/** How the client framed the upload — drives tight ML crop math on the server. */
+/** How the client framed the upload - drives tight ML crop math on the server. */
 export type CaptureCropContext = {
   source: "mobile" | "web";
   viewfinderW?: number;

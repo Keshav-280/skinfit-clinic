@@ -354,7 +354,7 @@ export function LoginForm() {
         <LoginIntroSplash onDone={() => setIntroShowing(false)} />
       ) : null}
 
-      {/* Visual panel — photo. Mobile: hero on top with curved base. Desktop: right half. */}
+      {/* Visual panel - photo. Mobile: hero on top with curved base. Desktop: right half. */}
       <div className="relative order-1 h-[60vh] min-h-[380px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, scale: 1.04 }}
@@ -370,7 +370,7 @@ export function LoginForm() {
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover object-center"
           />
-          {/* Scrim for text legibility — top on mobile, bottom on desktop */}
+          {/* Scrim for text legibility - top on mobile, bottom on desktop */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#1E1B31]/75 via-[#1E1B31]/10 to-transparent lg:bg-gradient-to-t lg:from-[#1E1B31]/80 lg:via-[#1E1B31]/10 lg:to-[#1E1B31]/25" />
         </motion.div>
 
@@ -396,11 +396,11 @@ export function LoginForm() {
           </motion.p>
         </div>
 
-        {/* Concave white base — mobile only, echoes the reference curve */}
+        {/* Concave white base - mobile only, echoes the reference curve */}
         <div className="pointer-events-none absolute -bottom-2 left-1/2 z-20 h-14 w-[160%] -translate-x-1/2 rounded-[100%] bg-white lg:hidden" />
       </div>
 
-      {/* Form panel — left on desktop, below the hero on mobile */}
+      {/* Form panel - left on desktop, below the hero on mobile */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={introShowing ? {} : { opacity: 1, y: 0 }}

@@ -1,4 +1,4 @@
-// TEMPORARY — no-auth preview of the kAI intro hero, for local design review only.
+// TEMPORARY - no-auth preview of the kAI intro hero, for local design review only.
 // Safe to delete before/after this is confirmed; not linked from anywhere in the app.
 import { KaiMeetIntroCard } from "@/components/onboarding/KaiMeetIntroCard";
 

@@ -30,7 +30,7 @@ export function FaceIdentityCheckResults({
               }`}
               aria-hidden
             >
-              {matched ? "✓" : detected ? "✗" : "—"}
+              {matched ? "✓" : detected ? "✗" : "-"}
             </span>
             <span>{formatFaceIdentityCheckLine(check)}</span>
           </li>

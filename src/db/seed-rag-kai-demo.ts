@@ -22,14 +22,14 @@ import {
 } from "@/src/db/schema";
 import { RAG_KAI_PARAM_KEYS, type RagKaiParamKey, computeRagKaiScore } from "@/src/lib/ragEightParams";
 
-/** 5 steps each side — matches seeded checklist granularity. */
+/** 5 steps each side - matches seeded checklist granularity. */
 const STEP_N = 5;
 
 function clamp(v: number) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-/** Deterministic-ish sparse journal (~22–26% overall; higher in slump weeks when pattern hits). */
+/** Deterministic-ish sparse journal (~22-26% overall; higher in slump weeks when pattern hits). */
 function shouldJournal(daysAgo: number, bad: boolean): boolean {
   const h = (((daysAgo * 31) ^ ((daysAgo >> 3) + 91)) >>> 0) % 113;
   if (bad && h % 13 < 6) return h % 2 === 0;
@@ -167,7 +167,7 @@ export async function seedRagKaiDemoData() {
   ]);
 
   const now = new Date();
-  /** Scan every ~3d → typically 23–26 scans inside 75-day window (>10/month over two billing months). */
+  /** Scan every ~3d → typically 23-26 scans inside 75-day window (>10/month over two billing months). */
   const scanDaysAgoDescending: number[] = [];
   for (let d = 73; d >= 0; d -= 3) {
     scanDaysAgoDescending.push(d);
@@ -273,9 +273,9 @@ export async function seedRagKaiDemoData() {
       journalEntry =
         inBadStretch
           ? [
-              "New papules jawline — skipped cleanser two nights.",
+              "New papules jawline - skipped cleanser two nights.",
               "Hated texture in mirror; wiped halfway through checklist.",
-              "Slept 4–5h, stress high, forehead felt congested.",
+              "Slept 4-5h, stress high, forehead felt congested.",
             ][d % 3]
           : ["Light sting after serum", "Tiny bump near chin", "Felt dehydrated AM"][
               d % 3

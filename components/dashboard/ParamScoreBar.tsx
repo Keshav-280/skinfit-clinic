@@ -9,7 +9,7 @@ function valueForBar(n: number | null) {
 
 type Props = {
   value: number | null;
-  /** @deprecated scores are never locked anymore — kept for caller compatibility. */
+  /** @deprecated scores are never locked anymore - kept for caller compatibility. */
   scoresUnlocked?: boolean;
   className?: string;
 };
@@ -28,7 +28,7 @@ export function ParamScoreBar({ value, className = "" }: Props) {
         />
       </div>
       <span className="min-w-[28px] text-right text-[11px] font-semibold tabular-nums text-[#1E1B31]">
-        {typeof value === "number" ? `${scoreOutOfTen(value)}/10` : "–"}
+        {typeof value === "number" ? `${scoreOutOfTen(value)}/10` : "-"}
       </span>
     </div>
   );

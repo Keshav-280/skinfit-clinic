@@ -41,7 +41,7 @@ function FrontGuide() {
   );
 }
 
-/** Profile face outline — scaled from original to match front guide size. */
+/** Profile face outline - scaled from original to match front guide size. */
 const LEFT_PROFILE_FACE =
   "M 62 34 C 54 24 40 26 34 38 C 30 48 31 58 36 66 C 41 74 50 76 56 70 C 61 64 64 52 62 34 Z";
 
