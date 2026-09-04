@@ -38,12 +38,16 @@ export function CaptureGuideWizard({
   const dragX = useMotionValue(0);
 
   useEffect(() => {
-    function measure() {
-      if (viewportRef.current) setWidth(viewportRef.current.offsetWidth);
-    }
+    const el = viewportRef.current;
+    if (!el) return;
+    const measure = () => {
+      const next = el.clientWidth;
+      if (next > 0) setWidth(next);
+    };
     measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   function goTo(next: number) {
@@ -79,13 +83,13 @@ export function CaptureGuideWizard({
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-md flex-col ${
+      className={`mx-auto flex w-full min-w-0 max-w-md flex-col overflow-x-hidden ${
         embedded
           ? "min-h-[calc(100dvh-8.5rem)]"
           : "min-h-dvh"
       }`}
     >
-      <div className="flex flex-1 flex-col px-6 pt-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col px-4 pt-4 sm:px-6">
         {onBack ? (
           <button
             type="button"
@@ -137,7 +141,7 @@ export function CaptureGuideWizard({
           </button>
         </div>
 
-        <div ref={viewportRef} className="mt-2 flex-1 overflow-hidden">
+        <div ref={viewportRef} className="mt-2 min-h-0 min-w-0 w-full flex-1 overflow-hidden">
           <motion.div
             className="flex h-full"
             drag="x"
@@ -151,15 +155,18 @@ export function CaptureGuideWizard({
               return (
                 <div
                   key={s.id}
-                  style={{ width: width || "100%" }}
-                  className="flex h-full shrink-0 flex-col items-center justify-center"
+                  style={{
+                    width: width || "100%",
+                    flex: width ? `0 0 ${width}px` : "0 0 100%",
+                  }}
+                  className="box-border flex h-full min-w-0 flex-col items-center justify-center overflow-hidden px-1"
                 >
                   <div
                     onPointerDown={() => setHeld(true)}
                     onPointerUp={() => setHeld(false)}
                     onPointerLeave={() => setHeld(false)}
                     onPointerCancel={() => setHeld(false)}
-                    className="relative h-64 w-52 touch-none select-none overflow-hidden rounded-[28px] border border-[#E5E7EB] bg-white shadow-sm"
+                    className="relative h-64 w-52 max-w-full shrink-0 touch-none select-none overflow-hidden rounded-[28px] border border-[#E5E7EB] bg-white shadow-sm"
                   >
                     {photoSrc ? (
                       <Image
@@ -173,23 +180,23 @@ export function CaptureGuideWizard({
                     ) : null}
                   </div>
 
-                  <h1 className="mt-3 text-center text-[22px] font-extrabold leading-tight tracking-tight text-[#18181b]">
+                  <h1 className="mt-3 w-full text-center text-[22px] font-extrabold leading-tight tracking-tight text-[#18181b]">
                     {s.title}
                   </h1>
-                  <p className="mt-1.5 max-w-xs text-center text-sm leading-relaxed text-[#6B7280]">
+                  <p className="mt-1.5 w-full px-1 text-center text-sm leading-relaxed text-pretty text-[#6B7280]">
                     {s.subtitle}
                   </p>
 
-                  <div className="mt-4 flex w-full flex-col gap-2 px-2">
+                  <div className="mt-4 flex w-full min-w-0 flex-col gap-2">
                     {s.tips.map((tip, i) => (
                       <div
                         key={tip}
-                        className="flex items-center gap-2.5 rounded-xl border border-[#E5E7EB] bg-white px-4 py-2"
+                        className="flex min-w-0 items-center gap-2.5 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 sm:px-4"
                       >
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1E1B31]/10 text-[10px] font-bold text-[#1E1B31]">
                           {i + 1}
                         </span>
-                        <span className="text-sm font-medium text-[#18181b]">
+                        <span className="min-w-0 text-sm font-medium leading-snug text-[#18181b]">
                           {tip}
                         </span>
                       </div>
@@ -203,21 +210,20 @@ export function CaptureGuideWizard({
       </div>
 
       <div
-        className="sticky bottom-0 flex flex-col items-center gap-3 bg-[#FAF8F5]/95 px-6 pt-4 backdrop-blur-sm"
-        style={{
-          paddingBottom: embedded
-            ? "max(1.25rem, env(safe-area-inset-bottom))"
-            : "max(2rem, env(safe-area-inset-bottom))",
-        }}
+        className={`flex shrink-0 flex-col items-center gap-3 bg-[#FAF8F5]/95 px-4 pt-4 sm:px-6 ${
+          embedded
+            ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:pb-8"
+            : "pb-[max(2rem,env(safe-area-inset-bottom,0px))]"
+        }`}
       >
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
+        <p className="w-full text-center text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
           Ready? Tap to open the camera
         </p>
         <button
           type="button"
           onClick={onTakePicture}
           aria-label="Take picture"
-          className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-[#1E1B31]/15 bg-white shadow-lg transition active:scale-95"
+          className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full border-4 border-[#1E1B31]/15 bg-white shadow-lg transition active:scale-95"
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1E1B31]">
             <Camera className="h-6 w-6 text-white" />

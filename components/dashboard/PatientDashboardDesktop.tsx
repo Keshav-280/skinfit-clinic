@@ -304,58 +304,67 @@ function useHorizontalScroll() {
   return { ref, canLeft, canRight, scrollByPage };
 }
 
-function HorizontalScrollArrows({
+function OverlayScrollArrows({
   canLeft,
   canRight,
   onLeft,
   onRight,
+  cardWidthClass,
 }: {
   canLeft: boolean;
   canRight: boolean;
   onLeft: () => void;
   onRight: () => void;
+  /** Card width; aspect-video of this sets arrow height to the photo strip. */
+  cardWidthClass: string;
 }) {
+  const btnClass =
+    "pointer-events-auto absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/50 bg-white/90 text-[#1E1B31] shadow-md backdrop-blur-sm transition hover:bg-white disabled:pointer-events-none disabled:opacity-0";
+
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <button
-        type="button"
-        onClick={onLeft}
-        disabled={!canLeft}
-        aria-label="Scroll left"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#1E1B31] transition hover:bg-[#FAF8F5] disabled:cursor-default disabled:text-[#D1D5DB]"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={onRight}
-        disabled={!canRight}
-        aria-label="Scroll right"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#1E1B31] transition hover:bg-[#FAF8F5] disabled:cursor-default disabled:text-[#D1D5DB]"
-      >
-        <ChevronRight className="h-4 w-4" aria-hidden />
-      </button>
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+      <div className="relative w-full">
+        <div className={`aspect-video ${cardWidthClass}`} aria-hidden />
+        {canRight ? (
+          <div
+            className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#FAF8F5] to-transparent"
+            aria-hidden
+          />
+        ) : null}
+        <button
+          type="button"
+          onClick={onLeft}
+          disabled={!canLeft}
+          aria-label="Scroll left"
+          className={`${btnClass} left-1.5`}
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={onRight}
+          disabled={!canRight}
+          aria-label="Scroll right"
+          className={`${btnClass} right-1.5`}
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }
+
+const ARTICLE_CARD_WIDTH =
+  "w-[min(240px,78vw)] md:w-[calc((100%-1.5rem)/3)]";
+const VIDEO_CARD_WIDTH =
+  "w-[min(220px,78vw)] md:w-[calc((100%-1.5rem)/3)]";
 
 export function TopArticlesSection() {
   const { ref, canLeft, canRight, scrollByPage } = useHorizontalScroll();
 
   return (
     <section className="min-w-0">
-      <DashboardSectionHeader
-        icon={NotebookPen}
-        title="TOP ARTICLES"
-        action={
-          <HorizontalScrollArrows
-            canLeft={canLeft}
-            canRight={canRight}
-            onLeft={() => scrollByPage(-1)}
-            onRight={() => scrollByPage(1)}
-          />
-        }
-      />
+      <DashboardSectionHeader icon={NotebookPen} title="TOP ARTICLES" />
       <div className="relative">
         <div
           ref={ref}
@@ -392,12 +401,13 @@ export function TopArticlesSection() {
           </Link>
         ))}
         </div>
-        {canRight ? (
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#FAF8F5] to-transparent"
-            aria-hidden
-          />
-        ) : null}
+        <OverlayScrollArrows
+          canLeft={canLeft}
+          canRight={canRight}
+          onLeft={() => scrollByPage(-1)}
+          onRight={() => scrollByPage(1)}
+          cardWidthClass={ARTICLE_CARD_WIDTH}
+        />
       </div>
     </section>
   );
@@ -423,18 +433,7 @@ export function RecommendedVideosSection() {
 
   return (
     <section className="min-w-0">
-      <DashboardSectionHeader
-        icon={Play}
-        title="RECOMMENDED VIDEOS"
-        action={
-          <HorizontalScrollArrows
-            canLeft={canLeft}
-            canRight={canRight}
-            onLeft={() => scrollByPage(-1)}
-            onRight={() => scrollByPage(1)}
-          />
-        }
-      />
+      <DashboardSectionHeader icon={Play} title="RECOMMENDED VIDEOS" />
       <div className="relative">
         <div
           ref={ref}
@@ -472,12 +471,13 @@ export function RecommendedVideosSection() {
           </button>
         ))}
         </div>
-        {canRight ? (
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#FAF8F5] to-transparent"
-            aria-hidden
-          />
-        ) : null}
+        <OverlayScrollArrows
+          canLeft={canLeft}
+          canRight={canRight}
+          onLeft={() => scrollByPage(-1)}
+          onRight={() => scrollByPage(1)}
+          cardWidthClass={VIDEO_CARD_WIDTH}
+        />
       </div>
 
       {active ? (

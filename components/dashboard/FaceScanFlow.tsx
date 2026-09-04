@@ -1199,6 +1199,8 @@ export function FaceScanFlow({
             ? "relative flex min-h-[calc(100dvh-8.5rem)] w-full flex-1 flex-col overflow-hidden"
             : step === "queued"
               ? "relative flex min-h-[calc(100dvh-10.5rem)] w-full flex-1 flex-col items-center justify-center"
+              : showPhotoGuide
+              ? "flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden"
               : isDiagnoseHero
               ? "flex h-full min-h-0 w-full flex-col"
               : variant === "dashboard"

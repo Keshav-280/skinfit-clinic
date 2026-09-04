@@ -666,6 +666,56 @@ function paramHoverLine(key: SkinDNAParamKey, score: number): string {
   }
 }
 
+function SnapStrip({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain touch-pan-x pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function IdentityFactCell({
+  fact,
+  recency,
+  className = "",
+}: {
+  fact: { label: string; value: string; icon?: ReactNode };
+  recency: { colorClass: string } | null;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex min-w-0 items-center gap-2.5 bg-[#FAF8F5] px-3.5 py-3 ${className}`}
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+        {fact.icon ?? null}
+      </span>
+      <div className="flex min-w-0 flex-col justify-center">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
+          {fact.label}
+        </span>
+        <span
+          className={`mt-0.5 truncate text-[13px] font-bold leading-tight ${
+            fact.label === "Last scan" && recency
+              ? recency.colorClass
+              : "text-[#1E1B31]"
+          }`}
+        >
+          {fact.value}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** One param tile - expands and shows a qualitative status on hover/tap; dims when a sibling is active. */
 function InteractiveParamTile({
   tile,
@@ -686,7 +736,6 @@ function InteractiveParamTile({
 
   const inner = (
     <motion.div
-      layout
       onMouseEnter={onActivate}
       onMouseLeave={onDeactivate}
       onClick={onActivate}
@@ -695,7 +744,7 @@ function InteractiveParamTile({
         scale: isActive ? 1.06 : 1,
       }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-0 flex w-full flex-col items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2.5 text-center"
+      className="relative z-0 flex h-full w-full flex-col items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2.5 text-center"
       style={isActive ? { zIndex: 10 } : undefined}
     >
       <CircleRing
@@ -735,7 +784,7 @@ function InteractiveParamTile({
 
   if (tile.href && hasScan) {
     return (
-      <Link href={tile.href} className="block h-full min-w-0">
+      <Link href={tile.href} className="block h-full w-full min-w-0">
         {inner}
       </Link>
     );
@@ -917,50 +966,41 @@ export function SkinDNACard({
         </div>
       </div>
 
-      {/* 2. Identity strip */}
+      {/* 2. Identity strip — swipe on phone, row on desktop */}
       {identityFacts.length > 0 ? (
-        <div className="mx-4 overflow-hidden rounded-xl border border-[#E4E6F0] bg-[#E4E6F0] sm:mx-5">
-          <div
-            className={`grid grid-cols-2 gap-px ${
-              identityFacts.length <= 4
-                ? "lg:grid-cols-4"
-                : identityFacts.length === 5
-                  ? "lg:grid-cols-5"
-                  : "lg:grid-cols-3"
-            }`}
-          >
-          {identityFacts.map((fact, i) => {
-            const lastOddOnTwoCol =
-              identityFacts.length % 2 === 1 && i === identityFacts.length - 1;
-            return (
+        <>
+          <div className="lg:hidden">
+            <SnapStrip className="px-4">
+              {identityFacts.map((fact) => (
+                <IdentityFactCell
+                  key={fact.label}
+                  fact={fact}
+                  recency={recency}
+                  className="w-[min(78%,16.5rem)] shrink-0 snap-start rounded-xl border border-[#E4E6F0]"
+                />
+              ))}
+            </SnapStrip>
+          </div>
+          <div className="mx-5 hidden overflow-hidden rounded-xl border border-[#E4E6F0] bg-[#E4E6F0] lg:block">
             <div
-              key={fact.label}
-              className={`flex min-w-0 items-center gap-2 bg-[#FAF8F5] px-3 py-2.5 ${
-                lastOddOnTwoCol ? "col-span-2 lg:col-span-1" : ""
+              className={`grid gap-px ${
+                identityFacts.length <= 4
+                  ? "grid-cols-4"
+                  : identityFacts.length === 5
+                    ? "grid-cols-5"
+                    : "grid-cols-3"
               }`}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center">
-                {fact.icon ?? null}
-              </span>
-              <div className="flex min-w-0 flex-col justify-center">
-                <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
-                  {fact.label}
-                </span>
-                <span
-                  className={`mt-0.5 truncate text-[13px] font-bold leading-tight ${
-                    fact.label === "Last scan" && recency
-                      ? recency.colorClass
-                      : "text-[#1E1B31]"
-                  }`}
-                >
-                  {fact.value}
-                </span>
-              </div>
+              {identityFacts.map((fact) => (
+                <IdentityFactCell
+                  key={fact.label}
+                  fact={fact}
+                  recency={recency}
+                />
+              ))}
             </div>
-            );
-          })}
           </div>
-        </div>
+        </>
       ) : null}
 
       {/* 3. Strongest / overall ring / needs focus */}
@@ -1066,24 +1106,45 @@ export function SkinDNACard({
         </div>
       ) : null}
 
-      {/* 4. Interactive param tiles */}
+      {/* 4. Parameter tiles — swipe on phone, full row on desktop */}
       <div
-        className="mt-4 grid grid-cols-3 gap-2 px-4 pb-4 lg:grid-cols-6 sm:px-5"
+        className="mt-4 pb-4"
         onMouseLeave={() => setActiveParam(null)}
       >
-        {paramTiles.map((tile) => (
-          <InteractiveParamTile
-            key={tile.key}
-            tile={tile}
-            hasScan={hasScan}
-            isActive={activeParam === tile.key}
-            isDimmed={activeParam !== null && activeParam !== tile.key}
-            onActivate={() => setActiveParam(tile.key)}
-            onDeactivate={() =>
-              setActiveParam((cur) => (cur === tile.key ? null : cur))
-            }
-          />
-        ))}
+        <SnapStrip className="px-4 lg:hidden">
+          {paramTiles.map((tile) => (
+            <div
+              key={tile.key}
+              className="w-[44%] shrink-0 snap-start sm:w-[32%]"
+            >
+              <InteractiveParamTile
+                tile={tile}
+                hasScan={hasScan}
+                isActive={activeParam === tile.key}
+                isDimmed={activeParam !== null && activeParam !== tile.key}
+                onActivate={() => setActiveParam(tile.key)}
+                onDeactivate={() =>
+                  setActiveParam((cur) => (cur === tile.key ? null : cur))
+                }
+              />
+            </div>
+          ))}
+        </SnapStrip>
+        <div className="hidden grid-cols-6 gap-2 px-5 lg:grid">
+          {paramTiles.map((tile) => (
+            <InteractiveParamTile
+              key={tile.key}
+              tile={tile}
+              hasScan={hasScan}
+              isActive={activeParam === tile.key}
+              isDimmed={activeParam !== null && activeParam !== tile.key}
+              onActivate={() => setActiveParam(tile.key)}
+              onDeactivate={() =>
+                setActiveParam((cur) => (cur === tile.key ? null : cur))
+              }
+            />
+          ))}
+        </div>
       </div>
     </motion.div>
   );
