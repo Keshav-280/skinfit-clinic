@@ -22,6 +22,29 @@ import {
   getClinicDoctorDisplayName,
 } from "@/src/lib/resolveClinicDoctor";
 import { normalizeSlotHm } from "@/src/lib/slotTimeHm";
+import {
+  CLINIC_STAFF_EMAIL,
+  ensureClinicStaffDoctorInDb,
+} from "@/src/lib/auth/ensureFallbackDoctor";
+
+async function staffSeesAllScheduleRequests(
+  staffId: string,
+  role: "doctor" | "admin"
+): Promise<boolean> {
+  if (role === "admin") return true;
+  try {
+    const clinicId = await ensureClinicStaffDoctorInDb();
+    if (clinicId === staffId) return true;
+  } catch {
+    /* continue */
+  }
+  const [row] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, staffId))
+    .limit(1);
+  return (row?.email ?? "").toLowerCase() === CLINIC_STAFF_EMAIL;
+}
 
 export type DoctorScheduleRequestRow = {
   id: string;
@@ -73,15 +96,15 @@ export async function listDoctorScheduleRequests(opts: {
     .from(patientScheduleRequests)
     .innerJoin(users, eq(patientScheduleRequests.patientId, users.id));
 
-  const scoped =
-    opts.role === "admin"
-      ? query
-      : query.where(
-          or(
-            eq(patientScheduleRequests.doctorId, opts.staffId),
-            isNull(patientScheduleRequests.doctorId)
-          )
-        );
+  const seeAll = await staffSeesAllScheduleRequests(opts.staffId, opts.role);
+  const scoped = seeAll
+    ? query
+    : query.where(
+        or(
+          eq(patientScheduleRequests.doctorId, opts.staffId),
+          isNull(patientScheduleRequests.doctorId)
+        )
+      );
 
   const rows = await scoped
     .orderBy(desc(patientScheduleRequests.createdAt))
@@ -126,7 +149,8 @@ export async function confirmDoctorScheduleRequest(opts: {
     where: eq(patientScheduleRequests.id, opts.requestId),
   });
   if (!reqRow) return { ok: false, error: "NOT_FOUND", status: 404 };
-  if (opts.role !== "admin" && reqRow.doctorId && reqRow.doctorId !== opts.staffId) {
+  const seeAll = await staffSeesAllScheduleRequests(opts.staffId, opts.role);
+  if (!seeAll && reqRow.doctorId && reqRow.doctorId !== opts.staffId) {
     return { ok: false, error: "FORBIDDEN", status: 403 };
   }
   if (reqRow.status !== "pending") {
@@ -137,7 +161,7 @@ export async function confirmDoctorScheduleRequest(opts: {
   const dateTime = slotDateAndHmToUtcInstant(reqRow.preferredDate, slotHm);
   if (!dateTime) return { ok: false, error: "INVALID_TIME", status: 400 };
 
-  const doctorId = reqRow.doctorId ?? opts.staffId;
+  const doctorId = seeAll ? opts.staffId : (reqRow.doctorId ?? opts.staffId);
   const now = new Date();
   const note = opts.note?.trim() || null;
 
@@ -222,7 +246,8 @@ export async function rejectDoctorScheduleRequest(opts: {
     where: eq(patientScheduleRequests.id, opts.requestId),
   });
   if (!reqRow) return { ok: false, error: "NOT_FOUND", status: 404 };
-  if (opts.role !== "admin" && reqRow.doctorId && reqRow.doctorId !== opts.staffId) {
+  const seeAll = await staffSeesAllScheduleRequests(opts.staffId, opts.role);
+  if (!seeAll && reqRow.doctorId && reqRow.doctorId !== opts.staffId) {
     return { ok: false, error: "FORBIDDEN", status: 403 };
   }
   if (reqRow.status !== "pending") {

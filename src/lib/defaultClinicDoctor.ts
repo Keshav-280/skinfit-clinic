@@ -1,9 +1,19 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
+import { ensureClinicStaffDoctorInDb } from "@/src/lib/auth/ensureFallbackDoctor";
 
-/** First configured doctor, or `CLINIC_DEFAULT_DOCTOR_ID` if valid. */
+/**
+ * Clinic inbox doctor: always `info@skinfitwellness.in`.
+ * Patient visit requests and confirmations land on that account.
+ */
 export async function getDefaultClinicDoctorId(): Promise<string | null> {
+  try {
+    return await ensureClinicStaffDoctorInDb();
+  } catch (e) {
+    console.error("[getDefaultClinicDoctorId] clinic staff", e);
+  }
+
   const envId = process.env.CLINIC_DEFAULT_DOCTOR_ID?.trim();
   if (envId) {
     const row = await db.query.users.findFirst({

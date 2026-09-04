@@ -4,11 +4,8 @@ import { db } from "@/src/db";
 import { patientScheduleRequests, users } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorsNewScheduleRequest } from "@/src/lib/clinicSheetAppointmentWebhook";
-import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
-import {
-  getClinicDoctorDisplayName,
-  resolveClinicDoctorForAppointment,
-} from "@/src/lib/resolveClinicDoctor";
+import { getDefaultClinicDoctorId } from "@/src/lib/defaultClinicDoctor";
+import { getClinicDoctorDisplayName } from "@/src/lib/resolveClinicDoctor";
 import { dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/date-only";
 import { clinicSheetAppointmentApiUrlFromEnv } from "@/src/lib/clinicSheetAppointmentApiUrl";
 import { postGoogleAppsScriptWebAppJson } from "@/src/lib/googleAppsScriptWebAppFetch";
@@ -135,7 +132,6 @@ export async function POST(req: Request) {
     daysAffected?: unknown;
     timePreferences?: unknown;
     attachments?: unknown;
-    doctorId?: unknown;
     phone?: unknown;
     phoneCountryCode?: unknown;
   };
@@ -150,8 +146,6 @@ export async function POST(req: Request) {
       ? Math.max(0, Math.min(3650, Math.round(b.daysAffected)))
       : null;
   const attachments = normalizeAttachments(b.attachments);
-  const doctorIdRaw =
-    typeof b.doctorId === "string" ? b.doctorId.trim() : "";
 
   if (!isYmd(preferredDateYmd)) {
     return NextResponse.json({ error: "INVALID_PREFERRED_DATE" }, { status: 400 });
@@ -169,12 +163,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "ISSUE_REQUIRED" }, { status: 400 });
   }
 
-  const assignedDoctorId = await getAssignedDoctorIdForPatient(userId);
-  const doctorId = await resolveClinicDoctorForAppointment({
-    doctorId: doctorIdRaw || null,
-    doctorName: null,
-    fallbackDoctorId: assignedDoctorId,
-  });
+  const doctorId = await getDefaultClinicDoctorId();
   if (!doctorId) {
     return NextResponse.json({ error: "NO_CLINIC_DOCTOR" }, { status: 503 });
   }
