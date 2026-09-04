@@ -584,13 +584,13 @@ export default async function KaiScanReportPage({
       });
 
   const annotatedByPose = annotatedPhotosForScan(row.scores);
-  const prevAnnotated = annotatedPhotosForScan(previous.scores);
   const currentImages = galleryImages(row.id, faceCaptureImages, annotatedByPose);
   const prevFace =
     ("faceCaptureImages" in previous ? previous.faceCaptureImages : null) as
       | FaceCaptureRef[]
       | null;
-  const prevImages = galleryImages(previous.id, prevFace, prevAnnotated);
+  const prevRawImages = galleryImages(previous.id, prevFace);
+  const currentRawImages = galleryImages(row.id, faceCaptureImages);
 
   const shareLine =
     llm?.share_card?.line?.trim() ||
@@ -608,11 +608,11 @@ export default async function KaiScanReportPage({
       position={position}
       thenNow={{
         previous: {
-          url: centreImageUrl(previous.id, prevImages),
+          url: centreImageUrl(previous.id, prevRawImages),
           date: formatScanDateShort(previous.createdAt),
         },
         current: {
-          url: centreImageUrl(row.id, currentImages),
+          url: centreImageUrl(row.id, currentRawImages),
           date: formatScanDateShort(row.createdAt),
         },
       }}

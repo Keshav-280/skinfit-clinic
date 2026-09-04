@@ -171,6 +171,7 @@ export default function ReportPreviewPage() {
                 movement: { tag: "↑ 5→6", type: "up" },
               },
             ],
+            declined: [],
             holding: [
               {
                 key: "pigmentation",

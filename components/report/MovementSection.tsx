@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import type { MovementGroups, MovementRow } from "@/src/lib/report/buildMovementGroups";
 import type { KaiGradeTone } from "@/src/lib/kaiReportMapping";
+import { resolveConcernSlug } from "@/src/lib/skinConcernSlug";
 import { REPORT_CARD, REPORT_PILL } from "./reportCopy";
 
 type MovementSectionProps = {
@@ -15,28 +16,25 @@ const DOT: Record<KaiGradeTone, string> = {
   low: "bg-kai-low",
 };
 
-function Chip({
-  row,
-  open,
-  onToggle,
-}: {
-  row: MovementRow;
-  open: boolean;
-  onToggle: () => void;
-}) {
+function Chip({ row }: { row: MovementRow }) {
+  const slug = resolveConcernSlug(row.key);
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={`w-full rounded-2xl px-3 py-2.5 text-left transition ${
-        open ? "bg-white ring-2 ring-[#1E1B31]/20" : "bg-white/70"
-      }`}
-    >
+    <div className="w-full rounded-2xl bg-white/70 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-[#1A2035]">
-          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT[row.gradeColor]}`} />
-          <span className="truncate">{row.name}</span>
-        </span>
+        {slug ? (
+          <Link
+            href={`/dashboard/score/${slug}`}
+            className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-[#1A2035] underline decoration-[#1A2035]/20 decoration-1 underline-offset-2 transition hover:decoration-[#1A2035]/50"
+          >
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT[row.gradeColor]}`} />
+            <span className="truncate">{row.name}</span>
+          </Link>
+        ) : (
+          <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-[#1A2035]">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT[row.gradeColor]}`} />
+            <span className="truncate">{row.name}</span>
+          </span>
+        )}
         <span className="flex shrink-0 items-center gap-1.5">
           <span className="text-[9.5px] font-bold uppercase tracking-[0.06em] text-[#8B93A4]">
             {row.movement.tag}
@@ -49,27 +47,23 @@ function Chip({
           </span>
         </span>
       </div>
-      {open ? (
-        <p className="mt-2 text-[12px] leading-[1.45] text-[#5B6478]">
-          {row.finding}
-          {row.note ? (
-            <span className="mt-1 block text-[11px] text-[#8B93A4]">{row.note}</span>
-          ) : null}
-        </p>
+      {row.note ? (
+        <p className="mt-2 text-[12px] leading-[1.45] text-[#5B6478]">{row.note}</p>
       ) : null}
-    </button>
+    </div>
   );
 }
 
 export function MovementSection({ groups }: MovementSectionProps) {
-  const [openKey, setOpenKey] = useState<string | null>(null);
   const counts = [
     { label: "Improved", n: groups.improved.length, tone: "text-[#2F6B4A] bg-[#4E9B72]/12" },
+    { label: "Declined", n: groups.declined.length, tone: "text-[#8B3A3A] bg-[#8B3A3A]/12" },
     { label: "Holding", n: groups.holding.length, tone: "text-[#1E1B31] bg-[#F8EDEE]" },
     { label: "Tracking", n: groups.tracking.length, tone: "text-[#A87C22] bg-[#D4A03F]/15" },
   ];
 
   const blocks: Array<{ label: string; rows: MovementRow[] }> = [
+    { label: "Declined", rows: groups.declined },
     { label: "Improved", rows: groups.improved },
     { label: "Holding", rows: groups.holding },
     { label: "Tracking", rows: groups.tracking },
@@ -79,16 +73,16 @@ export function MovementSection({ groups }: MovementSectionProps) {
     <section className={`${REPORT_CARD} px-3.5 py-4`}>
       <div className="mb-3 flex items-center justify-between">
         <span className={REPORT_PILL}>What moved</span>
-        <span className="text-[11px] font-medium text-[#8B93A4]">Tap a row</span>
+        <span className="text-[11px] font-medium text-[#8B93A4]">Tap a name to view it</span>
       </div>
-      <div className="mb-3 grid grid-cols-3 gap-2">
+      <div className="mb-3 grid grid-cols-4 gap-2">
         {counts.map((c) => (
           <div
             key={c.label}
-            className={`rounded-2xl px-2 py-2.5 text-center ${c.tone}`}
+            className={`rounded-2xl px-1.5 py-2.5 text-center ${c.tone}`}
           >
-            <p className="text-[20px] font-semibold leading-none tracking-tight">{c.n}</p>
-            <p className="mt-1 text-[9.5px] font-bold uppercase tracking-[0.1em] opacity-80">
+            <p className="text-[18px] font-semibold leading-none tracking-tight">{c.n}</p>
+            <p className="mt-1 text-[8.5px] font-bold uppercase tracking-[0.08em] opacity-80">
               {c.label}
             </p>
           </div>
@@ -103,12 +97,7 @@ export function MovementSection({ groups }: MovementSectionProps) {
               </p>
               <div className="flex flex-col gap-1.5">
                 {block.rows.map((r) => (
-                  <Chip
-                    key={r.key}
-                    row={r}
-                    open={openKey === r.key}
-                    onToggle={() => setOpenKey(openKey === r.key ? null : r.key)}
-                  />
+                  <Chip key={r.key} row={r} />
                 ))}
               </div>
             </div>

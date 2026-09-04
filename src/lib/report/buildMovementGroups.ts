@@ -23,6 +23,7 @@ export type MovementRow = {
 
 export type MovementGroups = {
   improved: MovementRow[];
+  declined: MovementRow[];
   holding: MovementRow[];
   tracking: MovementRow[];
 };
@@ -58,6 +59,7 @@ export function buildMovementGroups(opts: {
   );
 
   const improved: MovementRow[] = [];
+  const declined: MovementRow[] = [];
   const holding: MovementRow[] = [];
   const tracking: MovementRow[] = [];
 
@@ -106,13 +108,14 @@ export function buildMovementGroups(opts: {
 
     if (kind === "holding") {
       holding.push(row);
+    } else if (kind === "declined") {
+      declined.push(row);
     } else {
-      // Improved group also hosts declined rows (with ↓ tag).
       improved.push(row);
     }
   }
 
-  return { improved, holding, tracking };
+  return { improved, declined, holding, tracking };
 }
 
 export function overallMovementFromScores(

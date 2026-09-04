@@ -246,7 +246,10 @@ export function FaceScanFlow({
 }: {
   variant: FaceScanFlowVariant;
   /** When true, parent should expand to full-width flow (camera / confirm / etc.). */
-  onLayoutExpanded?: (expanded: boolean) => void;
+  onLayoutExpanded?: (
+    expanded: boolean,
+    options?: { edgeToEdge?: boolean },
+  ) => void;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1038,8 +1041,10 @@ export function FaceScanFlow({
       step === "phone-qr");
 
   useEffect(() => {
-    onLayoutExpanded?.(!isDiagnoseHero);
-  }, [isDiagnoseHero, onLayoutExpanded]);
+    onLayoutExpanded?.(!isDiagnoseHero, {
+      edgeToEdge: step === "scanning",
+    });
+  }, [isDiagnoseHero, onLayoutExpanded, step]);
 
   const captureSlotsPanel = (
     <div className="space-y-3">
@@ -1196,7 +1201,7 @@ export function FaceScanFlow({
         cameraOpen
           ? "mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col"
           : step === "scanning"
-            ? "relative flex min-h-[calc(100dvh-8.5rem)] w-full flex-1 flex-col overflow-hidden"
+            ? "relative left-1/2 flex min-h-[calc(100dvh-8.5rem)] w-screen max-w-[100vw] -translate-x-1/2 flex-1 flex-col overflow-hidden"
             : step === "queued"
               ? "relative flex min-h-[calc(100dvh-10.5rem)] w-full flex-1 flex-col items-center justify-center"
               : showPhotoGuide
