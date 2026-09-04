@@ -81,6 +81,8 @@ import {
   DOCTOR_ICON_SM,
 } from "@/components/doctor/DoctorUiPrimitives";
 import { DoctorClinicTreatmentsPanel } from "@/components/doctor/DoctorClinicTreatmentsPanel";
+import { DoctorPatientCareSchedulePanel } from "@/components/doctor/DoctorPatientCareSchedulePanel";
+import { DoctorPatientTreatmentsPanel } from "@/components/doctor/DoctorPatientTreatmentsPanel";
 import { DoctorRoutinePlanEditor } from "@/components/doctor/DoctorRoutinePlanEditor";
 import { DoctorScanReportPanel } from "@/components/doctor/DoctorScanReportPanel";
 import { WeeklyReportCard } from "@/components/dashboard/WeeklyReportCard";
@@ -3885,6 +3887,8 @@ export function DoctorPatientDetailClient({ patientId }: { patientId: string }) 
       {/* ══════════════════════ TAB: NOTES ══════════════════════ */}
       {activeTab === "notes" && (
       <>
+      <DoctorPatientTreatmentsPanel patientId={patientId} />
+      <DoctorPatientCareSchedulePanel patientId={patientId} />
       <DoctorClinicTreatmentsPanel patientId={patientId} />
       <div className={`${doctorPatientPageCardClass} p-4`}>
         <h2

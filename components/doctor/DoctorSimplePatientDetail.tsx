@@ -8,6 +8,9 @@ import {
   formatOnboardingAnswer,
   sortQuestionnaireAnswers,
 } from "@/src/lib/onboardingQuestionnaireDisplay";
+import { ClinicPatientReportUploads } from "@/components/doctor/ClinicPatientReportUploads";
+import { DoctorPatientCareSchedulePanel } from "@/components/doctor/DoctorPatientCareSchedulePanel";
+import { DoctorPatientTreatmentsPanel } from "@/components/doctor/DoctorPatientTreatmentsPanel";
 
 type Patient = {
   id: string;
@@ -258,6 +261,10 @@ export function DoctorSimplePatientDetail({ patientId }: { patientId: string }) 
           <Info label="Fitzpatrick" value={patient.fitzpatrick || "—"} />
         </dl>
       </section>
+
+      <DoctorPatientTreatmentsPanel patientId={patientId} variant="simple" />
+      <DoctorPatientCareSchedulePanel patientId={patientId} variant="simple" />
+      <ClinicPatientReportUploads patientId={patientId} />
 
       <section className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(72,64,48,0.07)]">
         <h2 className="text-sm font-bold uppercase tracking-wide text-[#1E1B31]/50">

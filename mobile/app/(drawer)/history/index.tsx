@@ -59,6 +59,7 @@ type HistoryPayload = {
     id: string;
     title: string;
     kind: "external_clinic_report";
+    reportKind?: "medixora" | "inbody";
     status: string;
     createdAt: string;
     downloadUrl: string;
@@ -272,7 +273,11 @@ export default function HistoryListScreen() {
             <View key={report.id} style={[styles.visitCard, CARD, { marginBottom: 12 }]}>
               <View style={styles.visitHeader}>
                 <Text style={styles.visitDate} numberOfLines={2}>
-                  {report.title}
+                  {report.reportKind === "inbody"
+                    ? "InBody report"
+                    : report.reportKind === "medixora"
+                      ? "Medixora report"
+                      : report.title}
                 </Text>
               </View>
               <Text style={styles.visitDoc}>

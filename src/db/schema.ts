@@ -637,6 +637,36 @@ export const visitNotes = pgTable("visit_notes", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Treatments a clinician recorded on a patient profile, tagged to kAI parameters. */
+export const patientTreatments = pgTable(
+  "patient_treatments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    patientId: uuid("patient_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    doctorId: uuid("doctor_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    title: varchar("title", { length: 200 }).notNull(),
+    treatedOn: date("treated_on", { mode: "date" }).notNull(),
+    notes: text("notes"),
+    affectedParams: jsonb("affected_params")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    patientIdx: index("patient_treatments_patient_idx").on(
+      table.patientId,
+      table.treatedOn
+    ),
+  })
+);
+
 /** Dashboard “Priority reminders” checklist (per user, ordered). */
 export const priorityReminders = pgTable(
   "priority_reminders",
@@ -1190,6 +1220,11 @@ export const clinicExternalReports = pgTable(
       onDelete: "set null",
     }),
     title: varchar("title", { length: 255 }).notNull(),
+    /** `medixora` | `inbody` — clinic device report type. */
+    reportKind: varchar("report_kind", { length: 32 })
+      .notNull()
+      .default("medixora"),
+    mimeType: varchar("mime_type", { length: 120 }),
     /** Null until PDF is attached (email may be saved before the scan). */
     storagePath: text("storage_path"),
     shareToken: uuid("share_token").notNull().defaultRandom().unique(),

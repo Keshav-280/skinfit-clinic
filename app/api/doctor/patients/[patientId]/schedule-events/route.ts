@@ -1,12 +1,80 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scheduleEvents, users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
-import { parseYmdToDateOnly } from "@/src/lib/date-only";
+import { parseYmdToDateOnly, ymdFromDateOnly } from "@/src/lib/date-only";
 import { normalizeSlotHm } from "@/src/lib/slotTimeHm";
+import { sendClinicSupportMessage } from "@/src/lib/clinicSupportChat";
+import { notifyPatientScheduleAppointment } from "@/src/lib/expoPush";
+import { invalidateUserHomeCache } from "@/src/lib/infra";
 
 const KINDS = ["pre_treatment", "post_treatment"] as const;
+
+function serializeEvent(row: {
+  id: string;
+  eventDate: Date;
+  eventTimeHm: string | null;
+  title: string;
+  eventKind: string;
+}) {
+  return {
+    id: row.id,
+    eventDateYmd: ymdFromDateOnly(row.eventDate),
+    eventTimeHm: row.eventTimeHm ?? null,
+    title: row.title,
+    eventKind: row.eventKind,
+  };
+}
+
+export async function GET(
+  _req: Request,
+  ctx: { params: Promise<{ patientId: string }> }
+) {
+  const staffId = await getDoctorPortalUserId();
+  if (!staffId) {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  const { patientId } = await ctx.params;
+  if (!patientId) {
+    return NextResponse.json({ error: "INVALID" }, { status: 400 });
+  }
+
+  const patient = await db.query.users.findFirst({
+    where: and(eq(users.id, patientId), eq(users.role, "patient")),
+    columns: { id: true },
+  });
+  if (!patient) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
+
+  const rows = await db.query.scheduleEvents.findMany({
+    where: eq(scheduleEvents.userId, patientId),
+    orderBy: [
+      asc(scheduleEvents.eventDate),
+      asc(scheduleEvents.eventTimeHm),
+      asc(scheduleEvents.title),
+    ],
+    columns: {
+      id: true,
+      eventDate: true,
+      eventTimeHm: true,
+      title: true,
+      eventKind: true,
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    items: rows
+      .filter(
+        (r) =>
+          r.eventKind === "pre_treatment" || r.eventKind === "post_treatment"
+      )
+      .map(serializeEvent),
+  });
+}
 
 export async function POST(
   req: Request,
@@ -89,16 +157,28 @@ export async function POST(
       eventKind: scheduleEvents.eventKind,
     });
 
+  if (row) {
+    const label =
+      eventKind === "pre_treatment" ? "Pre-treatment" : "Post-treatment";
+    const when = timeOut ? `${eventDateYmd} at ${timeOut}` : eventDateYmd;
+    void invalidateUserHomeCache(patientId).catch(() => undefined);
+    void notifyPatientScheduleAppointment(
+      patientId,
+      `${label} added to your calendar`,
+      `${title.trim()} · ${when}`
+    ).catch((err) =>
+      console.warn("[schedule-events] calendar push failed", err)
+    );
+    void sendClinicSupportMessage({
+      patientId,
+      text: `${label} was added to your calendar: ${title.trim()} (${when}).`,
+    }).catch((err) =>
+      console.warn("[schedule-events] calendar chat notice failed", err)
+    );
+  }
+
   return NextResponse.json({
     ok: true,
-    event: row
-      ? {
-          id: row.id,
-          eventDateYmd: row.eventDate.toISOString().slice(0, 10),
-          eventTimeHm: row.eventTimeHm ?? null,
-          title: row.title,
-          eventKind: row.eventKind,
-        }
-      : null,
+    event: row ? serializeEvent(row) : null,
   });
 }

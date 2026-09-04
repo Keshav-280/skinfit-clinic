@@ -590,19 +590,9 @@ export async function notifyDoctorsNewScheduleRequest(opts: {
   doctorId?: string | null;
 }): Promise<void> {
   const body = `${opts.patientName} · ${opts.preferredDateYmd} · ${opts.preview.slice(0, 100)}`;
-  const data = { type: "patient_schedule_request" };
-  if (opts.doctorId?.trim()) {
-    notifyAssignedDoctorFromSheet(
-      opts.doctorId.trim(),
-      "New patient visit request",
-      body,
-      data
-    );
-    return;
-  }
   void notifyDoctorUsers({
     title: "New patient visit request",
     body,
-    data,
+    data: { type: "patient_schedule_request" },
   });
 }

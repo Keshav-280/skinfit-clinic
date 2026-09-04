@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { DoctorSimpleNav } from "@/components/doctor/DoctorSimpleNav";
+import { ClinicRequestAlertController } from "@/components/doctor/ClinicRequestAlertController";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
 import {
   doctorGlassHeaderClass,
@@ -55,7 +56,11 @@ export default async function ClinicPortalLayout({
           />
         </Link>
         <DoctorSimpleNav />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <ClinicRequestAlertController
+            inboxHref="/clinic/requests"
+            compact
+          />
           <DoctorLogoutButton compact loginHref="/clinic/login" />
         </div>
       </header>

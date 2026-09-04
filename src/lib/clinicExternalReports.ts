@@ -11,7 +11,47 @@ import {
 import { getStorage } from "@/src/lib/infra";
 import { invalidateUserHistoryCache } from "@/src/lib/infra";
 
+import {
+  clinicDeviceReportLabel,
+  type ClinicDeviceReportKind,
+  type PatientDeviceReportRow,
+} from "@/src/lib/clinicDeviceReportKind";
+
+export type { ClinicDeviceReportKind, PatientDeviceReportRow };
+export { clinicDeviceReportLabel, parseClinicDeviceReportKind } from "@/src/lib/clinicDeviceReportKind";
+
 export type ClinicExternalReportStatus = "draft" | "pending_account" | "sent";
+
+let reportKindEnsured: Promise<void> | null = null;
+
+export async function ensureClinicDeviceReportColumns(): Promise<void> {
+  if (!reportKindEnsured) {
+    reportKindEnsured = db
+      .execute(
+        sql`
+ALTER TABLE "clinic_external_reports"
+  ADD COLUMN IF NOT EXISTS "report_kind" varchar(32) NOT NULL DEFAULT 'medixora';
+ALTER TABLE "clinic_external_reports"
+  ADD COLUMN IF NOT EXISTS "mime_type" varchar(120);
+`
+      )
+      .then(() => undefined)
+      .catch((e) => {
+        reportKindEnsured = null;
+        throw e;
+      });
+  }
+  await reportKindEnsured;
+}
+
+function inferReportKind(row: {
+  reportKind?: string | null;
+  title?: string | null;
+}): ClinicDeviceReportKind {
+  if (row.reportKind === "inbody") return "inbody";
+  if (row.reportKind === "medixora") return "medixora";
+  return /inbody/i.test(row.title ?? "") ? "inbody" : "medixora";
+}
 
 export function normalizePatientEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -559,6 +599,7 @@ export function serializeClinicReportRow(
     patientName: row.patientName,
     patientUserId: row.patientUserId,
     title: row.title,
+    reportKind: inferReportKind(row),
     status: row.status,
     hasPdf,
     hasEmail,
@@ -573,5 +614,135 @@ export function serializeClinicReportRow(
       ? (opts?.shareUrl ?? clinicReportShareUrl(row.shareToken))
       : null,
     kind: "external_clinic_report" as const,
+  };
+}
+
+const DEVICE_REPORT_MAX_BYTES = 20 * 1024 * 1024;
+const DEVICE_REPORT_MIMES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+function normalizeUploadMime(file: File): string | null {
+  const raw = (file.type || "").toLowerCase();
+  if (DEVICE_REPORT_MIMES.has(raw)) return raw;
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  return null;
+}
+
+export async function listPatientDeviceReports(
+  patientId: string
+): Promise<PatientDeviceReportRow[]> {
+  await ensureClinicDeviceReportColumns();
+  const rows = await db.query.clinicExternalReports.findMany({
+    where: eq(clinicExternalReports.patientUserId, patientId),
+    orderBy: [desc(clinicExternalReports.createdAt)],
+    limit: 40,
+  });
+  return rows
+    .filter((r) => r.storagePath?.trim())
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      reportKind: inferReportKind(r),
+      createdAt: (r.sentAt ?? r.createdAt).toISOString(),
+      downloadUrl: `/api/patient/clinic-reports/${r.id}?download=1`,
+    }));
+}
+
+export async function publishDeviceReportForPatient(params: {
+  doctorId: string;
+  patientId: string;
+  patientName: string;
+  patientEmail: string | null;
+  kind: ClinicDeviceReportKind;
+  file: File;
+}): Promise<
+  | { ok: true; report: PatientDeviceReportRow }
+  | { ok: false; error: string; status: number }
+> {
+  const mime = normalizeUploadMime(params.file);
+  if (!mime) {
+    return { ok: false, error: "FILE_TYPE", status: 400 };
+  }
+  if (params.file.size > DEVICE_REPORT_MAX_BYTES) {
+    return { ok: false, error: "FILE_TOO_LARGE", status: 400 };
+  }
+
+  await ensureClinicDeviceReportColumns();
+
+  const label = clinicDeviceReportLabel(params.kind);
+  const title = `${params.patientName.trim() || "Patient"} - ${label}`.slice(
+    0,
+    255
+  );
+  const pdfBuffer = Buffer.from(await params.file.arrayBuffer());
+  if (!pdfBuffer.length) {
+    return { ok: false, error: "EMPTY_FILE", status: 400 };
+  }
+
+  const ext =
+    mime === "application/pdf"
+      ? "pdf"
+      : mime === "image/png"
+        ? "png"
+        : mime === "image/webp"
+          ? "webp"
+          : "jpg";
+  const storage = getStorage();
+  const uploaded = await storage.upload(
+    "reports",
+    `${title.replace(/[^a-zA-Z0-9._-]/g, "_")}.${ext}`,
+    pdfBuffer,
+    mime
+  );
+
+  const now = new Date();
+  const [row] = await db
+    .insert(clinicExternalReports)
+    .values({
+      doctorId: params.doctorId,
+      patientEmail: params.patientEmail
+        ? normalizePatientEmail(params.patientEmail)
+        : null,
+      patientName: params.patientName.trim().slice(0, 255) || "Patient",
+      patientUserId: params.patientId,
+      title,
+      reportKind: params.kind,
+      mimeType: mime,
+      storagePath: uploaded.path,
+      status: "sent",
+      sentAt: now,
+    })
+    .returning();
+
+  if (!row) return { ok: false, error: "INSERT_FAILED", status: 500 };
+
+  await invalidateUserHistoryCache(params.patientId);
+
+  void sendClinicSupportMessage({
+    patientId: params.patientId,
+    text: `Your ${label} is ready. Open History in the app to view it.`,
+    assistantId: "support",
+    doctorId: params.doctorId,
+  }).catch((err) =>
+    console.warn("[clinicExternalReports] device report chat failed", err)
+  );
+
+  return {
+    ok: true,
+    report: {
+      id: row.id,
+      title: row.title,
+      reportKind: params.kind,
+      createdAt: (row.sentAt ?? row.createdAt).toISOString(),
+      downloadUrl: `/api/patient/clinic-reports/${row.id}?download=1`,
+    },
   };
 }

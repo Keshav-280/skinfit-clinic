@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
@@ -682,7 +682,7 @@ function IdentityFactChip({
   recency: { colorClass: string } | null;
 }) {
   return (
-    <div className="flex shrink-0 snap-start items-center gap-1.5 rounded-lg border border-[#E4E6F0] bg-[#FAF8F5] px-2 py-1">
+    <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-2.5 py-2">
       {fact.icon ? (
         <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           {fact.icon}
@@ -956,12 +956,17 @@ export function SkinDNACard({
       </div>
 
       {identityFacts.length > 0 ? (
-        <div className="px-4 pb-2 sm:px-5">
-          <SnapStrip className="!gap-1.5">
-            {identityFacts.map((fact) => (
-              <IdentityFactChip key={fact.label} fact={fact} recency={recency} />
-            ))}
-          </SnapStrip>
+        <div
+          className="grid w-full grid-cols-2 gap-1.5 px-4 pb-2 sm:grid-cols-[repeat(var(--facts),minmax(0,1fr))] sm:px-5"
+          style={
+            {
+              "--facts": identityFacts.length,
+            } as CSSProperties
+          }
+        >
+          {identityFacts.map((fact) => (
+            <IdentityFactChip key={fact.label} fact={fact} recency={recency} />
+          ))}
         </div>
       ) : null}
 

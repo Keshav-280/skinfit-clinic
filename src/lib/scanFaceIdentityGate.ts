@@ -383,8 +383,9 @@ async function verifyImagesAgainstReference(
 }
 
 /**
- * Verify all capture angles against the onboarding face reference.
- * Sets the reference from the front photo on the first onboarding baseline.
+ * Verify all capture angles against the stored face reference.
+ * The first scan (onboarding or Diagnose) sets that reference from the
+ * front photo so skipping the onboarding scan does not block analysis.
  */
 export async function enforceScanFaceIdentity(args: {
   userId: string;
@@ -437,24 +438,10 @@ export async function enforceScanFaceIdentity(args: {
   const centrePath =
     referenceImage?.path ?? args.centreImagePath ?? "";
   const priorScanCount = await countUserScans(args.userId);
+  const shouldSetReference = !reference.embedding?.length;
   const establishingBaseline =
-    !reference.embedding?.length && isBaselineOnboardingScan(args.scanName);
-  const legacyBootstrap =
-    !reference.embedding?.length &&
-    !establishingBaseline &&
-    priorScanCount > 0;
-
-  if (!reference.embedding?.length && !establishingBaseline && !legacyBootstrap) {
-    logger.warn("face_identity_blocked", {
-      ...logBase,
-      code: FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED,
-    });
-    return {
-      ok: false,
-      code: FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED,
-      message: USER_MESSAGES[FACE_IDENTITY_ERROR_CODES.REFERENCE_REQUIRED],
-    };
-  }
+    shouldSetReference &&
+    (isBaselineOnboardingScan(args.scanName) || priorScanCount === 0);
 
   if (!referenceImage) {
     logger.error("face_identity_image_read_failed", {
@@ -544,7 +531,7 @@ export async function enforceScanFaceIdentity(args: {
     };
   }
 
-  if (establishingBaseline || legacyBootstrap) {
+  if (shouldSetReference) {
     await saveUserFaceReference({
       userId: args.userId,
       embedding: extracted.embedding,

@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CalendarClock, Users } from "lucide-react";
+import {
+  CLINIC_REQUEST_INBOX_EVENT,
+  type ClinicRequestInboxDetail,
+} from "@/src/lib/clinicRequestAlert";
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 
 function navClass(active: boolean) {
@@ -35,10 +39,18 @@ export function DoctorSimpleNav() {
     void load();
     const id = window.setInterval(() => void load(), 30_000);
     const onRefresh = () => void load();
+    const onInbox = (event: Event) => {
+      const detail = (event as CustomEvent<ClinicRequestInboxDetail>).detail;
+      if (typeof detail?.pendingCount === "number") {
+        setPending(detail.pendingCount);
+      }
+    };
     window.addEventListener(GLOBAL_LIVE_REFRESH_EVENT, onRefresh);
+    window.addEventListener(CLINIC_REQUEST_INBOX_EVENT, onInbox);
     return () => {
       window.clearInterval(id);
       window.removeEventListener(GLOBAL_LIVE_REFRESH_EVENT, onRefresh);
+      window.removeEventListener(CLINIC_REQUEST_INBOX_EVENT, onInbox);
     };
   }, [load]);
 

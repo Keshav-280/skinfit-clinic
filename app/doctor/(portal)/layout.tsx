@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { ClinicRequestAlertController } from "@/components/doctor/ClinicRequestAlertController";
 import { DoctorAppointmentsBell } from "@/components/doctor/DoctorAppointmentsBell";
 import { DoctorPatientChatBell } from "@/components/doctor/DoctorPatientChatBell";
 import { DoctorScanBell } from "@/components/doctor/DoctorScanBell";
@@ -54,6 +55,7 @@ export default async function DoctorPortalLayout({
           <DoctorPortalBrandLogo className="min-w-0" />
 
           <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+            <ClinicRequestAlertController inboxHref="/clinic/requests" />
             <DoctorAppointmentsBell />
             <DoctorScanBell />
             <DoctorPatientChatBell />

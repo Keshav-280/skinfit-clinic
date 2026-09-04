@@ -32,12 +32,21 @@ export async function GET(
       return Response.json({ error: "PDF_NOT_ATTACHED" }, { status: 404 });
     }
     const buf = await getStorage().read(row.storagePath);
+    const mime = row.mimeType?.trim() || "application/pdf";
+    const ext =
+      mime === "image/png"
+        ? "png"
+        : mime === "image/webp"
+          ? "webp"
+          : mime.startsWith("image/")
+            ? "jpg"
+            : "pdf";
     const safeName = row.title.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
     return new Response(new Uint8Array(buf), {
       status: 200,
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${safeName}.pdf"`,
+        "Content-Type": mime,
+        "Content-Disposition": `inline; filename="${safeName}.${ext}"`,
         "Cache-Control": "private, no-store",
       },
     });

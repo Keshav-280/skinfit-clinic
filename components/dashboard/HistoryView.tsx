@@ -20,6 +20,7 @@ import {
 import { useRouter } from "next/navigation";
 import { CLINIC_SUPPORT_INBOX_REFRESH_EVENT } from "@/src/lib/clinicSupportInboxClient";
 import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { clinicDeviceReportLabel } from "@/src/lib/clinicDeviceReportKind";
 import {
   patientGlassShell,
   patientInnerCard,
@@ -68,6 +69,7 @@ type ClinicReportRecord = {
   id: string;
   title: string;
   kind: "external_clinic_report";
+  reportKind?: "medixora" | "inbody";
   status: string;
   createdAt: string;
   downloadUrl: string;
@@ -239,6 +241,20 @@ export function HistoryView({
     }).length;
   }, [scans]);
 
+  const historyItems = useMemo(() => {
+    const scansItems = scans.map((scan) => ({
+      type: "scan" as const,
+      at: new Date(scan.createdAt).getTime(),
+      scan,
+    }));
+    const reportItems = clinicReports.map((report) => ({
+      type: "clinic" as const,
+      at: new Date(report.createdAt).getTime(),
+      report,
+    }));
+    return [...scansItems, ...reportItems].sort((a, b) => b.at - a.at);
+  }, [scans, clinicReports]);
+
   async function onDeleteTestScans() {
     if (deleteLoading || testScansCount === 0) return;
 
@@ -286,8 +302,8 @@ export function HistoryView({
             <p className={patientKicker}>AI face scans</p>
             <h2 className={patientSectionTitle}>Your reports</h2>
             <p className={`mt-1 ${patientMuted}`}>
-              {scans.length > 0
-                ? `${scans.length} scan${scans.length === 1 ? "" : "s"} - newest first`
+              {historyItems.length > 0
+                ? `${historyItems.length} report${historyItems.length === 1 ? "" : "s"} - newest first`
                 : "Complete your first scan to start tracking progress."}
             </p>
           </div>
@@ -322,55 +338,92 @@ export function HistoryView({
           </div>
         ) : null}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {scans.length > 0 ? (
-            scans.map((scan) => (
-              <motion.div
-                key={scan.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`overflow-hidden ${patientInnerCard}`}
-              >
-                <div className="relative h-48 overflow-hidden rounded-t-xl bg-[#F0EAE2]/40">
-                  <img
-                    src={scan.imageUrl}
-                    alt={scan.scanName || "AI scan"}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                    fetchPriority="low"
-                  />
-                  <div className="absolute right-2 top-2 rounded-lg bg-[#1E1B31] px-2.5 py-1 text-lg font-bold text-white shadow-sm">
-                    {scoreLabel(scan.overallScore)}
+          {historyItems.length > 0 ? (
+            historyItems.map((item) =>
+              item.type === "clinic" ? (
+                <motion.div
+                  key={`clinic-${item.report.id}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`overflow-hidden ${patientInnerCard}`}
+                >
+                  <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-t-xl bg-[#F0EAE2]/40">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1E1B31]/10 text-[#1E1B31]">
+                      <FileText className="h-6 w-6" aria-hidden />
+                    </span>
+                    <p className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]/50">
+                      Clinic report
+                    </p>
                   </div>
-                </div>
-                <div className="border-t border-white/50 px-4 py-3">
-                  <p className="font-semibold text-[#1A1A2E]">
-                    {scan.scanName || "Untitled Scan"}
-                  </p>
-                  <p className="mt-0.5 text-xs text-[#6B7280]">
-                    {format(new Date(scan.createdAt), "MMM d, yyyy · h:mm a")}
-                  </p>
-                  <p className="mt-1 text-lg font-bold text-[#1E1B31]">
-                    Overall {scoreLabel(scan.overallScore)}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {scan.params.map((p) => (
-                      <span key={p.label} className={patientScoreChip}>
-                        {p.label === "Active Acne" ? "Acne" : p.label === "Pigmentation" ? "Pigment." : p.label} {scoreLabel(p.value)}
-                      </span>
-                    ))}
+                  <div className="border-t border-white/50 px-4 py-3">
+                    <p className="font-semibold text-[#1A1A2E]">
+                      {item.report.reportKind
+                        ? clinicDeviceReportLabel(item.report.reportKind)
+                        : item.report.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#6B7280]">
+                      {format(new Date(item.report.createdAt), "MMM d, yyyy · h:mm a")}
+                    </p>
+                    <a
+                      href={item.report.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`mt-3 flex w-full items-center justify-center py-2.5 ${patientPrimaryBtn}`}
+                    >
+                      View report
+                    </a>
                   </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`scan-${item.scan.id}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`overflow-hidden ${patientInnerCard}`}
+                >
+                  <div className="relative h-48 overflow-hidden rounded-t-xl bg-[#F0EAE2]/40">
+                    <img
+                      src={item.scan.imageUrl}
+                      alt={item.scan.scanName || "AI scan"}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      fetchPriority="low"
+                    />
+                    <div className="absolute right-2 top-2 rounded-lg bg-[#1E1B31] px-2.5 py-1 text-lg font-bold text-white shadow-sm">
+                      {scoreLabel(item.scan.overallScore)}
+                    </div>
+                  </div>
+                  <div className="border-t border-white/50 px-4 py-3">
+                    <p className="font-semibold text-[#1A1A2E]">
+                      {item.scan.scanName || "Untitled Scan"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#6B7280]">
+                      {format(new Date(item.scan.createdAt), "MMM d, yyyy · h:mm a")}
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-[#1E1B31]">
+                      Overall {scoreLabel(item.scan.overallScore)}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {item.scan.params.map((p) => (
+                        <span key={p.label} className={patientScoreChip}>
+                          {p.label === "Active Acne" ? "Acne" : p.label === "Pigmentation" ? "Pigment." : p.label} {scoreLabel(p.value)}
+                        </span>
+                      ))}
+                    </div>
 
-                  <Link
-                    href={`/dashboard/history/scans/${scan.id}`}
-                    className={`mt-3 flex w-full items-center justify-center py-2.5 ${patientPrimaryBtn}`}
-                  >
-                    View details
-                  </Link>
-                </div>
-              </motion.div>
-            ))
+                    <Link
+                      href={`/dashboard/history/scans/${item.scan.id}`}
+                      className={`mt-3 flex w-full items-center justify-center py-2.5 ${patientPrimaryBtn}`}
+                    >
+                      View details
+                    </Link>
+                  </div>
+                </motion.div>
+              )
+            )
           ) : (
             <div className="col-span-full flex flex-col items-center gap-5 rounded-2xl border border-dashed border-[#1E1B31]/20 bg-white/60 px-6 py-14 text-center">
               <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
@@ -393,47 +446,6 @@ export function HistoryView({
           )}
         </div>
       </motion.section>
-
-      {clinicReports.length > 0 ? (
-        <motion.section
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12, duration: 0.4 }}
-          className={CARD}
-        >
-          <h2 className={patientSectionTitle}>Clinic skin reports</h2>
-          <div className="mt-4 space-y-3">
-            {clinicReports.map((report) => (
-              <div key={report.id} className={`overflow-hidden ${patientInnerCard}`}>
-                <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-800">
-                      <FileText className="h-5 w-5" aria-hidden />
-                    </span>
-                    <div>
-                      <p className="font-semibold text-[#1A1A2E]">{report.title}</p>
-                      <time
-                        dateTime={report.createdAt}
-                        className="mt-1 block text-xs text-[#6B7280]"
-                      >
-                        {format(new Date(report.createdAt), "MMM d, yyyy")}
-                      </time>
-                    </div>
-                  </div>
-                  <a
-                    href={report.downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`shrink-0 ${patientPrimaryBtn} px-4 py-2 text-sm`}
-                  >
-                    View PDF
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.section>
-      ) : null}
 
       {reportVoiceNotes.length > 0 ? (
         <motion.section

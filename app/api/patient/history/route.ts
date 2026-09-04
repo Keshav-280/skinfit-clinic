@@ -15,6 +15,8 @@ import { CacheKeys, cacheAside } from "@/src/lib/infra";
 import { patientScanImagePath } from "@/src/lib/patientScanImagePath";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
+import { ensureClinicDeviceReportColumns } from "@/src/lib/clinicExternalReports";
+import { clinicDeviceReportLabel } from "@/src/lib/clinicDeviceReportKind";
 export async function GET(request: Request) {
   const userId = await getSessionUserIdFromRequest(request);
   if (!userId) {
@@ -141,18 +143,21 @@ export async function GET(request: Request) {
           )
         )
         .orderBy(desc(doctorFeedbackVoiceNotes.createdAt)),
-      db.query.clinicExternalReports.findMany({
-        where: eq(clinicExternalReports.patientUserId, user.id),
-        columns: {
-          id: true,
-          title: true,
-          status: true,
-          sentAt: true,
-          createdAt: true,
-          shareToken: true,
-        },
-        orderBy: [desc(clinicExternalReports.sentAt), desc(clinicExternalReports.createdAt)],
-      }),
+      ensureClinicDeviceReportColumns().then(() =>
+        db.query.clinicExternalReports.findMany({
+          where: eq(clinicExternalReports.patientUserId, user.id),
+          columns: {
+            id: true,
+            title: true,
+            reportKind: true,
+            status: true,
+            sentAt: true,
+            createdAt: true,
+            shareToken: true,
+          },
+          orderBy: [desc(clinicExternalReports.sentAt), desc(clinicExternalReports.createdAt)],
+        })
+      ),
     ]);
 
   const scanRecords = scansList.map((s) => {
@@ -221,14 +226,19 @@ export async function GET(request: Request) {
 
   const clinicReports = clinicReportRows
     .filter((r) => r.status === "sent")
-    .map((r) => ({
-      id: r.id,
-      title: r.title,
-      kind: "external_clinic_report" as const,
-      status: r.status,
-      createdAt: (r.sentAt ?? r.createdAt).toISOString(),
-      downloadUrl: `/api/patient/clinic-reports/${r.id}?download=1`,
-    }));
+    .map((r) => {
+      const reportKind =
+        r.reportKind === "inbody" ? ("inbody" as const) : ("medixora" as const);
+      return {
+        id: r.id,
+        title: clinicDeviceReportLabel(reportKind),
+        reportKind,
+        kind: "external_clinic_report" as const,
+        status: r.status,
+        createdAt: (r.sentAt ?? r.createdAt).toISOString(),
+        downloadUrl: `/api/patient/clinic-reports/${r.id}?download=1`,
+      };
+    });
 
     const basePayload = {
       patient,
