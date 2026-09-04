@@ -15,7 +15,7 @@ import {
   Target,
   Waves,
 } from "lucide-react";
-import { differenceInCalendarDays, parseISO } from "date-fns";
+import { differenceInCalendarDays, formatDistanceToNow, parseISO } from "date-fns";
 import {
   classifySkinParamMetric,
   scoreOutOfTen,
@@ -173,6 +173,101 @@ export function formatSkinDnaSummary(input: {
   const tone = fitzpatrickToneLabel(input.fitzpatrick);
   if (tone) parts.push(tone);
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/** Short tone for the identity strip, e.g. "Medium". */
+function shortToneLabel(fitz: string | null | undefined): string | null {
+  const full = fitzpatrickToneLabel(fitz);
+  if (!full) return null;
+  return full.replace(/\s+tone$/i, "").trim() || full;
+}
+
+function relativeScanLabel(iso: string | null | undefined): string {
+  if (!iso?.trim()) return "No scan yet";
+  try {
+    const rel = formatDistanceToNow(parseISO(iso), { addSuffix: true });
+    return rel ? rel[0]!.toUpperCase() + rel.slice(1) : rel;
+  } catch {
+    return "No scan yet";
+  }
+}
+
+function lastScanRecency(
+  iso: string | null | undefined
+): { colorClass: string } | null {
+  if (!iso?.trim()) return null;
+  let days: number;
+  try {
+    days = differenceInCalendarDays(new Date(), parseISO(iso));
+  } catch {
+    return null;
+  }
+  if (days <= 6) return { colorClass: "text-[#242A5F]" };
+  if (days <= 10) return { colorClass: "text-[#A05E6D]" };
+  return { colorClass: "text-[#4A2630]" };
+}
+
+type SkinTypeKey = "oily" | "dry" | "combination" | "normal" | "sensitive";
+
+const SKIN_TYPE_PALETTE: Record<SkinTypeKey, { fill: string; stroke: string }> = {
+  oily: { fill: "#F6C453", stroke: "#C4892B" },
+  dry: { fill: "#BEEAE4", stroke: "#2E9B8F" },
+  combination: { fill: "#BEEAE4", stroke: "#2E9B8F" },
+  normal: { fill: "#FBF6EA", stroke: "#8B8680" },
+  sensitive: { fill: "#F7C3C3", stroke: "#D25C5C" },
+};
+
+function resolveSkinTypeKey(skinType: string | null | undefined): SkinTypeKey | null {
+  const s = skinType?.trim().toLowerCase();
+  if (!s) return null;
+  if (s.includes("oily")) return "oily";
+  if (s.includes("dry")) return "dry";
+  if (s.includes("combo") || s.includes("combination")) return "combination";
+  if (s.includes("sensitiv")) return "sensitive";
+  if (s.includes("normal")) return "normal";
+  return null;
+}
+
+function SkinTypeIcon({ type }: { type: SkinTypeKey }) {
+  const { fill, stroke } = SKIN_TYPE_PALETTE[type];
+  const blobPath =
+    "M16 2.5c2.6 0 4.3 2.1 4.9 2.9 1.3 1.1 6.6 3.8 6.6 10.4 0 6.4-5.2 11.7-11.5 11.7S4.5 22.2 4.5 15.8c0-6.6 5.3-9.3 6.6-10.4.6-.8 2.3-2.9 4.9-2.9Z";
+
+  return (
+    <svg viewBox="0 0 32 32" className="h-5 w-5 shrink-0" aria-hidden>
+      <path d={blobPath} fill={fill} stroke={stroke} strokeWidth="1.4" strokeLinejoin="round" />
+      {type === "combination" ? (
+        <path
+          d="M16 2.5c2.6 0 4.3 2.1 4.9 2.9.9.7 3.6 2.4 5.3 5.7-2.7-1.1-6-1.2-8.6.2-1.9 1-4 1-5.9.1-2.7-1.3-6.1-1.2-8.9-.1 1.7-3.2 4.3-4.9 5.2-5.9.6-.8 2.3-2.9 4.9-2.9Z"
+          fill="#F6C453"
+          stroke="#C4892B"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
+      ) : null}
+      {type === "oily" ? (
+        <path
+          d="M23 18.5c1.3 1.4 2 2.6 2 3.7 0 1.5-1.1 2.5-2.4 2.5s-2.3-1-2.3-2.5c0-1.1.7-2.3 1.9-3.7.3-.3.6-.3.8 0Z"
+          fill="#F6C453"
+          stroke="#C4892B"
+          strokeWidth="1.1"
+          strokeLinejoin="round"
+        />
+      ) : null}
+      {type === "dry" ? (
+        <path d="M9.5 12.5c-.8 1.4-1.3 2.5-1.1 3.4" stroke={stroke} strokeWidth="1.3" strokeLinecap="round" />
+      ) : null}
+      {type === "normal" || type === "sensitive" ? (
+        <>
+          <circle cx="10.5" cy="18.5" r="1.9" fill={type === "sensitive" ? "#E88888" : "#F3B8B8"} opacity="0.75" />
+          <circle cx="21.5" cy="18.5" r="1.9" fill={type === "sensitive" ? "#E88888" : "#F3B8B8"} opacity="0.75" />
+        </>
+      ) : null}
+      <circle cx="12.3" cy="16" r="1.15" fill="#2A2420" />
+      <circle cx="19.7" cy="16" r="1.15" fill="#2A2420" />
+      <path d="M12.3 19.3c1 1.1 6.4 1.1 7.4 0" stroke="#2A2420" strokeWidth="1.3" strokeLinecap="round" fill="none" />
+    </svg>
+  );
 }
 
 export type SkinDNACardProps = {
@@ -579,6 +674,38 @@ function SnapStrip({
   );
 }
 
+function IdentityFactChip({
+  fact,
+  recency,
+}: {
+  fact: { label: string; value: string; icon?: ReactNode };
+  recency: { colorClass: string } | null;
+}) {
+  return (
+    <div className="flex shrink-0 snap-start items-center gap-1.5 rounded-lg border border-[#E4E6F0] bg-[#FAF8F5] px-2 py-1">
+      {fact.icon ? (
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+          {fact.icon}
+        </span>
+      ) : null}
+      <div className="min-w-0 leading-none">
+        <p className="text-[8px] font-semibold uppercase tracking-wide text-[#6B7280]">
+          {fact.label}
+        </p>
+        <p
+          className={`mt-0.5 truncate text-[12px] font-bold ${
+            fact.label === "Last scan" && recency
+              ? recency.colorClass
+              : "text-[#1E1B31]"
+          }`}
+        >
+          {fact.value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** One param tile - expands and shows a qualitative status on hover/tap; dims when a sibling is active. */
 function InteractiveParamTile({
   tile,
@@ -662,6 +789,7 @@ export function SkinDNACard({
   skinSummary = null,
   skinType = null,
   primaryConcern = null,
+  fitzpatrick = null,
   weeklyDeltaScore = 0,
   weeklyDeltaMeaningful = false,
   streakCurrent,
@@ -685,12 +813,47 @@ export function SkinDNACard({
     sagging_volume:
       paramsProp?.sagging_volume ?? fromAnalysis?.sagging_volume ?? 0,
   };
+  const identityFacts: { label: string; value: string; icon?: ReactNode }[] = [];
+  const typeVal = skinType?.trim();
+  const skinTypeKey = resolveSkinTypeKey(typeVal);
+  if (typeVal)
+    identityFacts.push({
+      label: "Skin Type",
+      value: toTitleCase(typeVal),
+      icon: skinTypeKey ? <SkinTypeIcon type={skinTypeKey} /> : undefined,
+    });
+  const toneVal = shortToneLabel(fitzpatrick);
+  if (toneVal) identityFacts.push({ label: "Tone", value: toTitleCase(toneVal) });
+  const concernVal = primaryConcern?.trim();
+  if (concernVal)
+    identityFacts.push({ label: "Focus", value: toTitleCase(concernVal) });
+  identityFacts.push({
+    label: "Last scan",
+    value: hasScan ? relativeScanLabel(lastScanAt) : "No scan yet",
+  });
   const improvement = lastScanImprovementCopy(
     weeklyDeltaScore,
     weeklyDeltaMeaningful,
     hasScan,
     scanCount
   );
+  identityFacts.push({
+    label: "Since last scan",
+    value: improvement.value,
+  });
+  if (typeof streakCurrent === "number" && streakCurrent > 0) {
+    identityFacts.push({
+      label: "Streak",
+      value: `${streakCurrent} day${streakCurrent === 1 ? "" : "s"}`,
+    });
+  }
+  if (typeof scanCount === "number" && scanCount > 0) {
+    identityFacts.push({
+      label: "Scans",
+      value: String(scanCount),
+    });
+  }
+  const recency = lastScanRecency(lastScanAt);
 
   let strongest: { name: string; gradeLabel: string } | null = null;
   let needsFocus: { name: string; gradeLabel: string } | null = null;
@@ -791,6 +954,16 @@ export function SkinDNACard({
           </Link>
         </div>
       </div>
+
+      {identityFacts.length > 0 ? (
+        <div className="px-4 pb-2 sm:px-5">
+          <SnapStrip className="!gap-1.5">
+            {identityFacts.map((fact) => (
+              <IdentityFactChip key={fact.label} fact={fact} recency={recency} />
+            ))}
+          </SnapStrip>
+        </div>
+      ) : null}
 
       {hasScan ? (
         <div className="mx-4 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-3 sm:mx-5 sm:px-5">
