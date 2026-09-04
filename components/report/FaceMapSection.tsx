@@ -11,11 +11,6 @@ import {
 import { useCountUp } from "./useCountUp";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ScanDetectionOverlay } from "@/components/dashboard/ScanDetectionOverlay";
-import {
-  legacyMaskTitleCropStyle,
-  MASK_EXPORT_VERSION_TITLE_FREE,
-  shouldCropLegacyMaskTitle,
-} from "@/src/lib/maskImageCrop";
 import { publicFileDisplayUrl } from "@/src/lib/publicFileUrl";
 import type { ConcernChipId } from "@/components/dashboard/ConcernChips";
 import type {
@@ -220,23 +215,10 @@ export function FaceMapSection({
       (pose === "centre" ? detectionRegions : []);
   const showProxy = pose === "centre";
 
-  const hasWrinkleLines = wrinkleLines.length > 0;
-  const maskSrc = wrinkleMaskUrl?.trim()
-    ? publicFileDisplayUrl(wrinkleMaskUrl) ?? wrinkleMaskUrl
-    : "";
-  const safeHeatmap =
-    Boolean(maskSrc) &&
-    (maskExportVersion === MASK_EXPORT_VERSION_TITLE_FREE ||
-      maskExportVersion === 2);
-
-  // Prefer smiling on older 5-photo scans; new scans show wrinkles on centre.
-  const wrinklePoseOk =
-    pose === "smiling" || (pose === "centre" && smilingIndex < 0);
-  // Heatmap from the model is higher quality than extracted polylines - prefer it.
-  const showWrinkleMask = wrinklePoseOk && safeHeatmap;
-  const showWrinkles = wrinklePoseOk && !showWrinkleMask && hasWrinkleLines;
-  const wrinkleMaskVisible =
-    activeConcern === "all" || activeConcern === "wrinkles";
+  // Patient wants raw capture photos here - no wrinkle heatmap or vector
+  // overlay on this card, even when the model produced one.
+  const showWrinkleMask = false;
+  const showWrinkles = false;
 
   const chips = useMemo(
     () => [
@@ -358,25 +340,6 @@ export function FaceMapSection({
                 Capture with AI overlay
               </div>
             )}
-            {photo && showWrinkleMask ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={`mask-${photoKey}`}
-                src={maskSrc}
-                alt=""
-                aria-hidden
-                draggable={false}
-                className="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ease-out"
-                style={{
-                  opacity: wrinkleMaskVisible ? 0.75 : 0,
-                  mixBlendMode: "screen",
-                  filter: "contrast(2.2) brightness(0.85)",
-                  ...(shouldCropLegacyMaskTitle(maskSrc, maskExportVersion)
-                    ? legacyMaskTitleCropStyle()
-                    : null),
-                }}
-              />
-            ) : null}
             {photo &&
             photoReady &&
             !bakedSpotAnnotations &&

@@ -63,6 +63,33 @@ def get_landmarks(bgr_img):
     return [(int(lm.x * w), int(lm.y * h)) for lm in results.face_landmarks[0]]
 
 
+# Average adult interpupillary distance - used to convert this photo's pixel
+# scale to real-world centimeters so circle sizes are capped in cm, not just
+# pixels (a close-up phone selfie and a farther one shouldn't cap differently).
+_AVG_INTERPUPILLARY_CM = 6.3
+
+
+def estimate_px_per_cm(pts):
+    """Iris-center distance (landmarks 468/473 from the Tasks API's 478-point
+    mesh) as a physical ruler for this photo. Falls back to a face-width
+    heuristic (~14cm average adult face width) if iris points are missing."""
+    P = np.array(pts, dtype=np.float32)
+    if P.shape[0] >= 474:
+        left_iris = P[468]
+        right_iris = P[473]
+        interpupillary_px = float(np.hypot(*(left_iris - right_iris)))
+        if interpupillary_px > 1:
+            return interpupillary_px / _AVG_INTERPUPILLARY_CM
+
+    FACE_OVAL = [
+        10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+        397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+        172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
+    ]
+    face_width_px = float(P[FACE_OVAL][:, 0].max() - P[FACE_OVAL][:, 0].min())
+    return max(1.0, face_width_px) / 14.0
+
+
 # -------------------------------------------------------------------------
 # 2. Adaptive Skin Color Model
 # -------------------------------------------------------------------------
@@ -268,6 +295,8 @@ def detect_blemishes_zoned(
     min_cluster=2,             # was 3 — lets tiny pinpoint marks through
     max_spots_per_zone=8,      # soft cap, was a hard 5
     merge_factor=0.55,         # was 0.7 — stops distinct blemishes fusing
+    max_radius_px=65,          # circle radius cap, e.g. from a 1cm-diameter limit
+    max_total_spots=15,        # global cap across the whole face, by confidence
 ):
     h, w = bgr.shape[:2]
     lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
@@ -428,7 +457,7 @@ def detect_blemishes_zoned(
 
                 equiv_radius = np.sqrt(area / np.pi) * cell_size
                 computed_r = max(14, int(equiv_radius * 1.15))
-                computed_r = min(computed_r, 65)  # was 50 — let melasma patches size up
+                computed_r = min(computed_r, max_radius_px)
 
                 zone_candidates.append({"cx": cx, "cy": cy, "r": computed_r, "score": severity, "type": stype})
 
@@ -441,7 +470,7 @@ def detect_blemishes_zoned(
                 if dist < (c["r"] + m["r"]) * merge_factor:
                     m["cx"] = int((m["cx"] + c["cx"]) / 2)
                     m["cy"] = int((m["cy"] + c["cy"]) / 2)
-                    m["r"] = min(55, max(m["r"], c["r"]))
+                    m["r"] = min(max_radius_px, max(m["r"], c["r"]))
                     m["score"] = max(m["score"], c["score"])
                     matched = True
                     break
@@ -450,7 +479,10 @@ def detect_blemishes_zoned(
 
         final_detections.extend(merged[:max_spots_per_zone])
 
-    return final_detections
+    # Global cap by confidence across the whole face - a per-zone cap alone
+    # still let a busy face show 4 zones x 8 = up to 32 circles.
+    final_detections.sort(key=lambda d: d["score"], reverse=True)
+    return final_detections[:max_total_spots]
 
 
 # -------------------------------------------------------------------------
@@ -474,6 +506,10 @@ def draw_dashed_circle(img, center, radius, color, thickness=3, dash_px=7, gap_p
 # -------------------------------------------------------------------------
 # 6. Service + CLI
 # -------------------------------------------------------------------------
+MAX_SPOT_DIAMETER_CM = 1.0
+MAX_TOTAL_SPOTS = 15
+
+
 def analyze(bgr):
     """FastAPI / CLI contract: (annotated BGR image, spot dicts). No kAI scores."""
     h, w = bgr.shape[:2]
@@ -482,7 +518,15 @@ def analyze(bgr):
     if zones is None or pts is None:
         return bgr.copy(), []
 
-    dets = detect_blemishes_zoned(bgr, zones)
+    px_per_cm = estimate_px_per_cm(pts)
+    max_radius_px = max(14, int(px_per_cm * MAX_SPOT_DIAMETER_CM / 2))
+
+    dets = detect_blemishes_zoned(
+        bgr,
+        zones,
+        max_radius_px=max_radius_px,
+        max_total_spots=MAX_TOTAL_SPOTS,
+    )
     out = bgr.copy()
     for d in dets:
         draw_dashed_circle(out, (d["cx"], d["cy"]), d["r"], (0, 0, 255), 3, 7, 5)
@@ -541,6 +585,8 @@ def main():
     ap.add_argument("--chroma-thresh", type=float, default=3.2)
     ap.add_argument("--black-floor", type=float, default=42.0)
     ap.add_argument("--max-per-zone", type=int, default=8)
+    ap.add_argument("--max-total", type=int, default=MAX_TOTAL_SPOTS)
+    ap.add_argument("--max-diameter-cm", type=float, default=MAX_SPOT_DIAMETER_CM)
     ap.add_argument("--thickness", type=int, default=3)
     ap.add_argument("--dash-px", type=int, default=7)
     ap.add_argument("--gap-px", type=int, default=5)
@@ -564,6 +610,9 @@ def main():
         cv2.imwrite(mask_out, vis)
         print(f"Debug mask saved: {mask_out}")
 
+    px_per_cm = estimate_px_per_cm(pts)
+    max_radius_px = max(14, int(px_per_cm * args.max_diameter_cm / 2))
+
     dets = detect_blemishes_zoned(
         bgr,
         zones,
@@ -575,6 +624,8 @@ def main():
         chroma_threshold=args.chroma_thresh,
         black_l_floor=args.black_floor,
         max_spots_per_zone=args.max_per_zone,
+        max_radius_px=max_radius_px,
+        max_total_spots=args.max_total,
     )
 
     out = bgr.copy()
