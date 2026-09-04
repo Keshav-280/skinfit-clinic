@@ -55,11 +55,16 @@ function Chip({ row }: { row: MovementRow }) {
 }
 
 export function MovementSection({ groups }: MovementSectionProps) {
+  // "Tracking" only ever holds markers not old enough yet for a clean
+  // comparison (see TRACKING_RATIONALE) - a permanently-zero tile just
+  // reads as a confusing dead stat, so only show it once it has something.
   const counts = [
     { label: "Improved", n: groups.improved.length, tone: "text-[#2F6B4A] bg-[#4E9B72]/12" },
     { label: "Declined", n: groups.declined.length, tone: "text-[#8B3A3A] bg-[#8B3A3A]/12" },
     { label: "Holding", n: groups.holding.length, tone: "text-[#1E1B31] bg-[#F8EDEE]" },
-    { label: "Tracking", n: groups.tracking.length, tone: "text-[#A87C22] bg-[#D4A03F]/15" },
+    ...(groups.tracking.length > 0
+      ? [{ label: "Tracking", n: groups.tracking.length, tone: "text-[#A87C22] bg-[#D4A03F]/15" }]
+      : []),
   ];
 
   const blocks: Array<{ label: string; rows: MovementRow[] }> = [
@@ -75,7 +80,9 @@ export function MovementSection({ groups }: MovementSectionProps) {
         <span className={REPORT_PILL}>What moved</span>
         <span className="text-[11px] font-medium text-[#8B93A4]">Tap a name to view it</span>
       </div>
-      <div className="mb-3 grid grid-cols-4 gap-2">
+      <div
+        className={`mb-3 grid gap-2 ${counts.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}
+      >
         {counts.map((c) => (
           <div
             key={c.label}

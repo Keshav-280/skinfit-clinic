@@ -149,40 +149,61 @@ function trendInsights(scanPoints: ScanPoint[]): MultiWeekInsight[] {
       series.slice(mid).reduce((a, b) => a + b, 0) / (series.length - mid);
     const shift = secondHalfAvg - firstHalfAvg;
 
+    // Ground "plateaued"/"declined" in the same /10 numbers the rest of the
+    // report shows (e.g. the single-scan Improved/Declined badge) - a raw
+    // 0-100 check alone can call something "flat" while its rounded /10
+    // score visibly moved, which reads as the report contradicting itself.
+    const series10 = series.map((v) => scoreOutOfTen(v));
+    const lastTwo10 = series10.slice(-2);
+    const lastTwoUnchanged10 = lastTwo10.length === 2 && lastTwo10[0] === lastTwo10[1];
+    const lastTwoDeclined10 = lastTwo10.length === 2 && lastTwo10[1]! < lastTwo10[0]!;
+
     const lastTwo = series.slice(-2);
     const isPlateaued =
-      lastTwo.length === 2 && Math.abs(lastTwo[1]! - lastTwo[0]!) < 2 && Math.abs(shift) < 3;
+      lastTwo.length === 2 &&
+      Math.abs(lastTwo[1]! - lastTwo[0]!) < 2 &&
+      Math.abs(shift) < 3 &&
+      lastTwoUnchanged10;
 
-    if (shift <= -MEANINGFUL_DELTA) {
+    if (shift <= -MEANINGFUL_DELTA && lastTwoDeclined10) {
       decliners.push({ key, series });
     } else if (isPlateaued) {
       plateaued.push({ key, series });
     }
   }
 
-  // Decliners are the most actionable signal - surface up to 2, one card each.
-  const out: MultiWeekInsight[] = decliners.slice(0, 2).map(({ key, series }) => ({
-    kind: "trend",
-    param: key,
-    text: `${RAG_KAI_PARAM_LABELS[key]} has been trending down over your last ${series.length} scans (${series.map((v) => scoreOutOfTen(v)).join(" → ")} out of 10) — worth a closer look before your next visit.`,
-  }));
+  // Only surface ONE trend card, not one per decliner/plateau group - the
+  // report has 2-3 total insight slots, and hogging most of them with trend
+  // variants leaves no room for the other insight kinds (check-in
+  // correlation, co-movement, consistency) to ever be seen.
+  if (decliners.length > 0) {
+    const { key, series } = decliners[0]!;
+    return [
+      {
+        kind: "trend",
+        param: key,
+        text: `${RAG_KAI_PARAM_LABELS[key]} has been trending down over your last ${series.length} scans (${series.map((v) => scoreOutOfTen(v)).join(" → ")} out of 10) — worth a closer look before your next visit.`,
+      },
+    ];
+  }
 
-  // Plateaued params rarely need a separate card each - fold them into one
-  // sentence so the report doesn't repeat the same template phrasing.
-  if (out.length < 2 && plateaued.length > 0) {
-    const names = plateaued.map((p) => RAG_KAI_PARAM_LABELS[p.key]);
+  if (plateaued.length > 0) {
+    const names = plateaued.slice(0, 2).map((p) => RAG_KAI_PARAM_LABELS[p.key]);
+    const extra = plateaued.length - names.length;
     const nameList =
       names.length === 1
         ? names[0]
-        : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-    out.push({
-      kind: "trend",
-      param: plateaued.length === 1 ? plateaued[0]!.key : undefined,
-      text: `${nameList} ${names.length === 1 ? "has" : "have"} held flat across your last ${scanCount} scans — if you want movement here, this is where changing your routine matters, not waiting it out.`,
-    });
+        : `${names.join(" and ")}${extra > 0 ? ` (and ${extra} more)` : ""}`;
+    return [
+      {
+        kind: "trend",
+        param: plateaued.length === 1 ? plateaued[0]!.key : undefined,
+        text: `${nameList} ${names.length === 1 && extra === 0 ? "has" : "have"} held flat across your last ${scanCount} scans — if you want movement here, this is where changing your routine matters, not waiting it out.`,
+      },
+    ];
   }
 
-  return out.slice(0, 2);
+  return [];
 }
 
 /** 3. Check-in correlation: bucket weeks by an actual logged answer, compare average score movement. */
