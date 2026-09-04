@@ -249,6 +249,15 @@ def build_zone_masks(bgr):
     # Clean up small holes/specks left by the hair knockout.
     base = cv2.morphologyEx(base, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
 
+    # Pull the eligible area in from the face-oval/hairline/jaw boundary -
+    # cells right at that edge often carry shadow/hair-fringe gradients that
+    # the detector misreads as a mark.
+    edge_erode_px = max(2, int(face_height * 0.012))
+    base = cv2.erode(
+        base,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (edge_erode_px * 2 + 1, edge_erode_px * 2 + 1)),
+    )
+
     # Zone partitioning
     brow_top = int(min(P[i][1] for i in [70, 63, 105, 66, 107, 336, 296, 334, 293, 300]))
     lip_bottom = int(max(P[i][1] for i in [17, 84, 181, 91, 314, 405, 321]))
@@ -312,6 +321,7 @@ def detect_blemishes_zoned(
 
     rows, cols = h // cell_size, w // cell_size
     final_detections = []
+    rank_threshold = {"dark": dark_threshold, "acne": red_threshold, "scar": scar_threshold}
 
     for zone_name, zone_mask in zones.items():
         if np.count_nonzero(zone_mask) < 200:
@@ -361,6 +371,17 @@ def detect_blemishes_zoned(
         # melasma/pigmentation moves both.
         zone_ref_A = float(np.median(cell_A[cell_ok])) if zone_L_vals.size > 20 else None
         zone_ref_B = float(np.median(cell_B[cell_ok])) if zone_L_vals.size > 20 else None
+        # Cutoff for "notably redder/browner than the rest of this zone" -
+        # a percentile of this zone's own A/B spread, not a fixed absolute
+        # LAB number, since that range shifts a lot with camera/lighting.
+        # Only the top slice of the zone's own redness variation counts, and
+        # a floor keeps a very uniform (flat) zone from flagging noise.
+        zone_dev_cutoff = None
+        if zone_ref_A is not None:
+            _a = cell_A[cell_ok] - zone_ref_A
+            _b = cell_B[cell_ok] - zone_ref_B
+            zone_dev_all = _a + np.maximum(0.0, _b) * 0.4
+            zone_dev_cutoff = max(2.0, float(np.percentile(zone_dev_all, 88)))
 
         dark_score = np.zeros((rows, cols), np.float32)
         red_score = np.zeros((rows, cols), np.float32)
@@ -399,6 +420,22 @@ def detect_blemishes_zoned(
 
                 na = np.nanmean(cell_A[r1:r2, c1:c2][nm_s])
                 diff_a = cell_A[r, c] - na
+
+                # Zone-wide redness/pigmentation baseline - same idea as the
+                # melasma check above, but for the A channel. A local-only
+                # comparison misses a broad flush or a wide brown patch
+                # because its own neighborhood is elevated too; comparing
+                # against the zone's own top-decile redness spread instead
+                # still catches it, and bumping diff_a (not overwriting with
+                # raw zone_dev) keeps the severity on the same scale as
+                # locally-detected marks so it isn't out-ranked by them.
+                if zone_dev_cutoff is not None:
+                    diff_a_zone = cell_A[r, c] - zone_ref_A
+                    diff_b_zone = cell_B[r, c] - zone_ref_B
+                    zone_dev = diff_a_zone + max(0.0, diff_b_zone) * 0.4
+                    if zone_dev > zone_dev_cutoff:
+                        diff_a = max(diff_a, red_threshold + (zone_dev - zone_dev_cutoff))
+
                 if diff_a > red_threshold:
                     red_score[r, c] = diff_a
 
@@ -459,9 +496,17 @@ def detect_blemishes_zoned(
                 computed_r = max(14, int(equiv_radius * 1.15))
                 computed_r = min(computed_r, max_radius_px)
 
-                zone_candidates.append({"cx": cx, "cy": cy, "r": computed_r, "score": severity, "type": stype})
+                # Rank relative to that type's own threshold, not raw
+                # magnitude - dark/scar scores run several times larger than
+                # redness (LAB A-channel) scores by nature, so comparing raw
+                # severity across types would always crowd out redness/acne.
+                rank = severity / rank_threshold[stype]
 
-        zone_candidates.sort(key=lambda d: d["score"], reverse=True)
+                zone_candidates.append(
+                    {"cx": cx, "cy": cy, "r": computed_r, "score": severity, "rank": rank, "type": stype}
+                )
+
+        zone_candidates.sort(key=lambda d: d["rank"], reverse=True)
         merged = []
         for c in zone_candidates:
             matched = False
@@ -471,7 +516,9 @@ def detect_blemishes_zoned(
                     m["cx"] = int((m["cx"] + c["cx"]) / 2)
                     m["cy"] = int((m["cy"] + c["cy"]) / 2)
                     m["r"] = min(max_radius_px, max(m["r"], c["r"]))
-                    m["score"] = max(m["score"], c["score"])
+                    if c["rank"] > m["rank"]:
+                        m["score"] = c["score"]
+                        m["rank"] = c["rank"]
                     matched = True
                     break
             if not matched:
@@ -481,8 +528,38 @@ def detect_blemishes_zoned(
 
     # Global cap by confidence across the whole face - a per-zone cap alone
     # still let a busy face show 4 zones x 8 = up to 32 circles.
-    final_detections.sort(key=lambda d: d["score"], reverse=True)
-    return final_detections[:max_total_spots]
+    #
+    # "scar" severity (Laplacian edge response) naturally runs to much
+    # higher multiples of its own threshold than "dark"/"acne" (LAB-channel
+    # diffs) do of theirs, so ranking every candidate on one shared scale
+    # would let scar detections crowd out redness/pigmentation entirely even
+    # after per-type threshold normalization. Reserve a minimum number of
+    # slots per type (when that type has any candidates) before filling the
+    # rest by rank, so a busy face still shows its redness, not just texture.
+    MIN_SLOTS_PER_TYPE = 3
+    by_type: dict = {}
+    for d in final_detections:
+        by_type.setdefault(d["type"], []).append(d)
+    for lst in by_type.values():
+        lst.sort(key=lambda d: d["rank"], reverse=True)
+
+    selected = []
+    for lst in by_type.values():
+        selected.extend(lst[:MIN_SLOTS_PER_TYPE])
+
+    selected_ids = {id(d) for d in selected}
+    remaining_pool = sorted(
+        (d for d in final_detections if id(d) not in selected_ids),
+        key=lambda d: d["rank"],
+        reverse=True,
+    )
+    for d in remaining_pool:
+        if len(selected) >= max_total_spots:
+            break
+        selected.append(d)
+
+    selected.sort(key=lambda d: d["rank"], reverse=True)
+    return selected[:max_total_spots]
 
 
 # -------------------------------------------------------------------------
