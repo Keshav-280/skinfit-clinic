@@ -15,7 +15,7 @@ import {
   Target,
   Waves,
 } from "lucide-react";
-import { differenceInCalendarDays, formatDistanceToNow, parseISO } from "date-fns";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 import {
   classifySkinParamMetric,
   scoreOutOfTen,
@@ -143,13 +143,6 @@ export function fitzpatrickToneLabel(
   return `Type ${t}`;
 }
 
-/** Short tone for identity strip, e.g. "Medium". */
-function shortToneLabel(fitz: string | null | undefined): string | null {
-  const full = fitzpatrickToneLabel(fitz);
-  if (!full) return null;
-  return full.replace(/\s+tone$/i, "").trim() || full;
-}
-
 /** Capitalize the first letter of each word (values often arrive lowercase). */
 function toTitleCase(s: string): string {
   return s
@@ -182,16 +175,6 @@ export function formatSkinDnaSummary(input: {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-function relativeScanLabel(iso: string | null | undefined): string {
-  if (!iso?.trim()) return "No scan yet";
-  try {
-    const rel = formatDistanceToNow(parseISO(iso), { addSuffix: true });
-    return rel ? rel[0]!.toUpperCase() + rel.slice(1) : rel;
-  } catch {
-    return "No scan yet";
-  }
-}
-
 export type SkinDNACardProps = {
   patientName: string;
   profileImageUrl?: string | null;
@@ -217,76 +200,6 @@ export type SkinDNACardProps = {
   /** When false, param tiles render as - without requiring a scan. */
   hasScan?: boolean;
 };
-
-type SkinTypeKey = "oily" | "dry" | "combination" | "normal" | "sensitive";
-
-const SKIN_TYPE_PALETTE: Record<SkinTypeKey, { fill: string; stroke: string }> = {
-  oily: { fill: "#F6C453", stroke: "#C4892B" },
-  dry: { fill: "#BEEAE4", stroke: "#2E9B8F" },
-  combination: { fill: "#BEEAE4", stroke: "#2E9B8F" },
-  normal: { fill: "#FBF6EA", stroke: "#8B8680" },
-  sensitive: { fill: "#F7C3C3", stroke: "#D25C5C" },
-};
-
-function resolveSkinTypeKey(skinType: string | null | undefined): SkinTypeKey | null {
-  const s = skinType?.trim().toLowerCase();
-  if (!s) return null;
-  if (s.includes("oily")) return "oily";
-  if (s.includes("dry")) return "dry";
-  if (s.includes("combo") || s.includes("combination")) return "combination";
-  if (s.includes("sensitiv")) return "sensitive";
-  if (s.includes("normal")) return "normal";
-  return null;
-}
-
-/** Cute blob-face icon for a skin type - small decorative marker next to the "Skin Type" fact. */
-function SkinTypeIcon({ type }: { type: SkinTypeKey }) {
-  const { fill, stroke } = SKIN_TYPE_PALETTE[type];
-  const blobPath =
-    "M16 2.5c2.6 0 4.3 2.1 4.9 2.9 1.3 1.1 6.6 3.8 6.6 10.4 0 6.4-5.2 11.7-11.5 11.7S4.5 22.2 4.5 15.8c0-6.6 5.3-9.3 6.6-10.4.6-.8 2.3-2.9 4.9-2.9Z";
-
-  return (
-    <svg viewBox="0 0 32 32" className="h-7 w-7 shrink-0" aria-hidden>
-      <path d={blobPath} fill={fill} stroke={stroke} strokeWidth="1.4" strokeLinejoin="round" />
-
-      {type === "combination" ? (
-        <path
-          d="M16 2.5c2.6 0 4.3 2.1 4.9 2.9.9.7 3.6 2.4 5.3 5.7-2.7-1.1-6-1.2-8.6.2-1.9 1-4 1-5.9.1-2.7-1.3-6.1-1.2-8.9-.1 1.7-3.2 4.3-4.9 5.2-5.9.6-.8 2.3-2.9 4.9-2.9Z"
-          fill="#F6C453"
-          stroke="#C4892B"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
-      ) : null}
-
-      {type === "oily" ? (
-        <path
-          d="M23 18.5c1.3 1.4 2 2.6 2 3.7 0 1.5-1.1 2.5-2.4 2.5s-2.3-1-2.3-2.5c0-1.1.7-2.3 1.9-3.7.3-.3.6-.3.8 0Z"
-          fill="#F6C453"
-          stroke="#C4892B"
-          strokeWidth="1.1"
-          strokeLinejoin="round"
-        />
-      ) : null}
-
-      {type === "dry" ? (
-        <path d="M9.5 12.5c-.8 1.4-1.3 2.5-1.1 3.4" stroke={stroke} strokeWidth="1.3" strokeLinecap="round" />
-      ) : null}
-
-      {type === "normal" || type === "sensitive" ? (
-        <>
-          <circle cx="10.5" cy="18.5" r="1.9" fill={type === "sensitive" ? "#E88888" : "#F3B8B8"} opacity="0.75" />
-          <circle cx="21.5" cy="18.5" r="1.9" fill={type === "sensitive" ? "#E88888" : "#F3B8B8"} opacity="0.75" />
-        </>
-      ) : null}
-
-      {/* face */}
-      <circle cx="12.3" cy="16" r="1.15" fill="#2A2420" />
-      <circle cx="19.7" cy="16" r="1.15" fill="#2A2420" />
-      <path d="M12.3 19.3c1 1.1 6.4 1.1 7.4 0" stroke="#2A2420" strokeWidth="1.3" strokeLinecap="round" fill="none" />
-    </svg>
-  );
-}
 
 export function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -416,22 +329,6 @@ export function AvatarIcon({ gender }: { gender: "male" | "female" }) {
       </motion.g>
     </svg>
   );
-}
-
-/** Last-scan recency on light brand surfaces. */
-function lastScanRecency(
-  iso: string | null | undefined
-): { colorClass: string } | null {
-  if (!iso?.trim()) return null;
-  let days: number;
-  try {
-    days = differenceInCalendarDays(new Date(), parseISO(iso));
-  } catch {
-    return null;
-  }
-  if (days <= 6) return { colorClass: "text-[#242A5F]" };
-  if (days <= 10) return { colorClass: "text-[#A05E6D]" };
-  return { colorClass: "text-[#4A2630]" };
 }
 
 /** Visible “vs last scan” copy on the 0-10 scale used everywhere else on this card. */
@@ -682,40 +579,6 @@ function SnapStrip({
   );
 }
 
-function IdentityFactCell({
-  fact,
-  recency,
-  className = "",
-}: {
-  fact: { label: string; value: string; icon?: ReactNode };
-  recency: { colorClass: string } | null;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`flex min-w-0 items-center gap-2.5 bg-[#FAF8F5] px-3.5 py-3 ${className}`}
-    >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center">
-        {fact.icon ?? null}
-      </span>
-      <div className="flex min-w-0 flex-col justify-center">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
-          {fact.label}
-        </span>
-        <span
-          className={`mt-0.5 truncate text-[13px] font-bold leading-tight ${
-            fact.label === "Last scan" && recency
-              ? recency.colorClass
-              : "text-[#1E1B31]"
-          }`}
-        >
-          {fact.value}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 /** One param tile - expands and shows a qualitative status on hover/tap; dims when a sibling is active. */
 function InteractiveParamTile({
   tile,
@@ -799,7 +662,6 @@ export function SkinDNACard({
   skinSummary = null,
   skinType = null,
   primaryConcern = null,
-  fitzpatrick = null,
   weeklyDeltaScore = 0,
   weeklyDeltaMeaningful = false,
   streakCurrent,
@@ -823,46 +685,12 @@ export function SkinDNACard({
     sagging_volume:
       paramsProp?.sagging_volume ?? fromAnalysis?.sagging_volume ?? 0,
   };
-  const identityFacts: { label: string; value: string; icon?: ReactNode }[] = [];
-  const typeVal = skinType?.trim();
-  const skinTypeKey = resolveSkinTypeKey(typeVal);
-  if (typeVal)
-    identityFacts.push({
-      label: "Skin Type",
-      value: toTitleCase(typeVal),
-      icon: skinTypeKey ? <SkinTypeIcon type={skinTypeKey} /> : undefined,
-    });
-  const toneVal = shortToneLabel(fitzpatrick);
-  if (toneVal) identityFacts.push({ label: "Tone", value: toTitleCase(toneVal) });
-  const concernVal = primaryConcern?.trim();
-  if (concernVal)
-    identityFacts.push({ label: "Focus", value: toTitleCase(concernVal) });
-  identityFacts.push({
-    label: "Last scan",
-    value: hasScan ? relativeScanLabel(lastScanAt) : "No scan yet",
-  });
   const improvement = lastScanImprovementCopy(
     weeklyDeltaScore,
     weeklyDeltaMeaningful,
     hasScan,
     scanCount
   );
-  identityFacts.push({
-    label: "Since last scan",
-    value: improvement.value,
-  });
-  if (typeof streakCurrent === "number" && streakCurrent > 0) {
-    identityFacts.push({
-      label: "Streak",
-      value: `${streakCurrent} day${streakCurrent === 1 ? "" : "s"}`,
-    });
-  }
-  if (typeof scanCount === "number" && scanCount > 0) {
-    identityFacts.push({
-      label: "Scans",
-      value: String(scanCount),
-    });
-  }
 
   let strongest: { name: string; gradeLabel: string } | null = null;
   let needsFocus: { name: string; gradeLabel: string } | null = null;
@@ -886,8 +714,6 @@ export function SkinDNACard({
       };
     }
   }
-
-  const recency = lastScanRecency(lastScanAt);
 
   const paramTiles: ParamTileData[] = PARAM_TILES.map((t) => {
     const raw = params[t.key];
@@ -966,46 +792,8 @@ export function SkinDNACard({
         </div>
       </div>
 
-      {/* 2. Identity strip — swipe on phone, row on desktop */}
-      {identityFacts.length > 0 ? (
-        <>
-          <div className="lg:hidden">
-            <SnapStrip className="px-4">
-              {identityFacts.map((fact) => (
-                <IdentityFactCell
-                  key={fact.label}
-                  fact={fact}
-                  recency={recency}
-                  className="w-[min(78%,16.5rem)] shrink-0 snap-start rounded-xl border border-[#E4E6F0]"
-                />
-              ))}
-            </SnapStrip>
-          </div>
-          <div className="mx-5 hidden overflow-hidden rounded-xl border border-[#E4E6F0] bg-[#E4E6F0] lg:block">
-            <div
-              className={`grid gap-px ${
-                identityFacts.length <= 4
-                  ? "grid-cols-4"
-                  : identityFacts.length === 5
-                    ? "grid-cols-5"
-                    : "grid-cols-3"
-              }`}
-            >
-              {identityFacts.map((fact) => (
-                <IdentityFactCell
-                  key={fact.label}
-                  fact={fact}
-                  recency={recency}
-                />
-              ))}
-            </div>
-          </div>
-        </>
-      ) : null}
-
-      {/* 3. Strongest / overall ring / needs focus */}
       {hasScan ? (
-        <div className="mx-4 mt-2 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-3 sm:mx-5 sm:px-5">
+        <div className="mx-4 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-3 sm:mx-5 sm:px-5">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1.5 sm:items-center sm:gap-4">
           {strongest ? (
             <div className="flex min-w-0 flex-col items-start gap-1">
