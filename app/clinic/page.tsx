@@ -1,5 +1,8 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
+import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 
-export default function ClinicPage() {
-  notFound();
+export default async function ClinicIndexPage() {
+  const id = await getDoctorPortalUserId();
+  if (id) redirect("/clinic/requests");
+  redirect("/clinic/login");
 }

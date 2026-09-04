@@ -10,10 +10,14 @@ import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 import { createSessionToken } from "@/src/lib/auth/session";
 
 import {
+  CLINIC_STAFF_EMAIL,
+  CLINIC_STAFF_NAME,
+  CLINIC_STAFF_PASSWORD,
   DOCTOR_FALLBACK_EMAIL,
   DOCTOR_FALLBACK_ID,
   DOCTOR_FALLBACK_NAME,
   DOCTOR_FALLBACK_PASSWORD,
+  ensureClinicStaffDoctorInDb,
   ensureFallbackDoctorInDb,
 } from "@/src/lib/auth/ensureFallbackDoctor";
 
@@ -44,9 +48,12 @@ export async function POST(req: Request) {
   const isFallbackDoctorLogin =
     normalizedEmail === DOCTOR_FALLBACK_EMAIL &&
     password === DOCTOR_FALLBACK_PASSWORD;
+  const isClinicStaffLogin =
+    normalizedEmail === CLINIC_STAFF_EMAIL &&
+    password === CLINIC_STAFF_PASSWORD;
 
-  // Emergency fallback doctor - still persist a `users` row when DB is reachable.
-  if (isFallbackDoctorLogin) {
+  // Known clinic staff / emergency fallback - persist a `users` row when DB is reachable.
+  if (isFallbackDoctorLogin || isClinicStaffLogin) {
     const secret = getSessionSecret();
     if (!secret) {
       return NextResponse.json(
@@ -55,19 +62,33 @@ export async function POST(req: Request) {
       );
     }
 
-    let staffId = DOCTOR_FALLBACK_ID;
+    const staffName = isClinicStaffLogin
+      ? CLINIC_STAFF_NAME
+      : DOCTOR_FALLBACK_NAME;
+    const staffEmail = isClinicStaffLogin
+      ? CLINIC_STAFF_EMAIL
+      : DOCTOR_FALLBACK_EMAIL;
+    let staffId = isClinicStaffLogin ? "" : DOCTOR_FALLBACK_ID;
     try {
-      staffId = await ensureFallbackDoctorInDb();
+      staffId = isClinicStaffLogin
+        ? await ensureClinicStaffDoctorInDb()
+        : await ensureFallbackDoctorInDb();
     } catch (e) {
-      console.warn("[auth/doctor-login] fallback doctor not persisted:", e);
+      console.warn("[auth/doctor-login] staff doctor not persisted:", e);
+      if (!staffId) {
+        return NextResponse.json(
+          { error: "DB_UNAVAILABLE", message: "Could not create clinic staff login." },
+          { status: 503 }
+        );
+      }
     }
 
     const token = await createSessionToken(
       {
         id: staffId,
-        email: DOCTOR_FALLBACK_EMAIL,
+        email: staffEmail,
         role: "doctor",
-        name: DOCTOR_FALLBACK_NAME,
+        name: staffName,
       },
       secret
     );
@@ -84,8 +105,8 @@ export async function POST(req: Request) {
       success: true,
       user: {
         id: staffId,
-        name: DOCTOR_FALLBACK_NAME,
-        email: DOCTOR_FALLBACK_EMAIL,
+        name: staffName,
+        email: staffEmail,
         role: "doctor",
       },
     });

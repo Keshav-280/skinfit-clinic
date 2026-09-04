@@ -24,6 +24,7 @@
     "db:bootstrap-aws": "tsx src/scripts/bootstrap-aws-rds.ts",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
+    "db:upsert-clinic-staff": "tsx src/scripts/upsert-clinic-staff-doctor.ts",
     "db:delete-all-doctors": "tsx src/scripts/delete-all-doctors.ts",
     "db:seed:rag-demo": "tsx src/db/seed-rag-kai-demo.ts",
     "rag:index:textbook": "tsx src/scripts/build-rag-textbook-index.ts",

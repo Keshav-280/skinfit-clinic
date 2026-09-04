@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
+import { clinicPortalLoginUrl } from "@/src/lib/auth/clinic-portal-next";
 import { doctorPortalLoginUrl } from "@/src/lib/auth/doctor-portal-next";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 
@@ -15,6 +16,12 @@ function isDoctorProtectedPath(pathname: string): boolean {
   if (!pathname.startsWith("/doctor/")) return false;
   if (pathname === "/doctor/login" || pathname === "/doctor/signup") return false;
   if (pathname === "/doctor") return false;
+  return true;
+}
+
+function isClinicProtectedPath(pathname: string): boolean {
+  if (!pathname.startsWith("/clinic/")) return false;
+  if (pathname === "/clinic/login") return false;
   return true;
 }
 
@@ -44,6 +51,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const annotatorPage = isAnnotatorPage(pathname);
+  const clinicProtected = isClinicProtectedPath(pathname);
   const doctorProtected = isDoctorProtectedPath(pathname);
   const patientProtected =
     pathname === "/dashboard" ||
@@ -51,6 +59,23 @@ export async function middleware(request: NextRequest) {
     annotatorPage;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const secret = getSessionSecret();
+
+  if (clinicProtected) {
+    if (!token || !secret) {
+      return NextResponse.redirect(clinicPortalLoginUrl(request.url, pathname));
+    }
+    try {
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+        algorithms: ["HS256"],
+      });
+      if (!isStaffRole(payload.role)) {
+        return NextResponse.redirect(clinicPortalLoginUrl(request.url, pathname));
+      }
+      return forwardWithPathname(request, pathname);
+    } catch {
+      return NextResponse.redirect(clinicPortalLoginUrl(request.url, pathname));
+    }
+  }
 
   if (doctorProtected) {
     const returnPath = doctorProtectedReturnPath(pathname);
@@ -106,6 +131,7 @@ export const config = {
     "/annotator",
     "/annotator/:path*",
     "/doctor/:path*",
+    "/clinic/:path*",
     "/skinfit-report-generator",
   ],
 };

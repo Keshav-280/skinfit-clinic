@@ -1,8 +1,11 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import { users } from "@/src/db/schema";
 import {
+  CLINIC_STAFF_EMAIL,
+  CLINIC_STAFF_NAME,
+  CLINIC_STAFF_PASSWORD,
   DOCTOR_FALLBACK_EMAIL,
   DOCTOR_FALLBACK_ID,
   DOCTOR_FALLBACK_NAME,
@@ -10,6 +13,9 @@ import {
 } from "@/src/lib/auth/fallbackDoctorIdentity";
 
 export {
+  CLINIC_STAFF_EMAIL,
+  CLINIC_STAFF_NAME,
+  CLINIC_STAFF_PASSWORD,
   DOCTOR_FALLBACK_EMAIL,
   DOCTOR_FALLBACK_ID,
   DOCTOR_FALLBACK_NAME,
@@ -58,6 +64,46 @@ export async function ensureFallbackDoctorInDb(): Promise<string> {
     });
 
   return DOCTOR_FALLBACK_ID;
+}
+
+/** Ensures info@skinfitwellness.in exists as a doctor and returns that user id. */
+export async function ensureClinicStaffDoctorInDb(): Promise<string> {
+  const hash = await bcrypt.hash(CLINIC_STAFF_PASSWORD, 10);
+  const email = CLINIC_STAFF_EMAIL.toLowerCase();
+
+  const [byEmail] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`lower(${users.email}) = ${email}`)
+    .limit(1);
+
+  if (byEmail) {
+    await db
+      .update(users)
+      .set({
+        role: "doctor",
+        name: CLINIC_STAFF_NAME,
+        email,
+        passwordHash: hash,
+      })
+      .where(eq(users.id, byEmail.id));
+    return byEmail.id;
+  }
+
+  const [created] = await db
+    .insert(users)
+    .values({
+      name: CLINIC_STAFF_NAME,
+      email,
+      passwordHash: hash,
+      role: "doctor",
+    })
+    .returning({ id: users.id });
+
+  if (!created?.id) {
+    throw new Error("CLINIC_STAFF_CREATE_FAILED");
+  }
+  return created.id;
 }
 
 export async function resolveStaffUserIdInDb(

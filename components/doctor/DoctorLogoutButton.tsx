@@ -7,9 +7,11 @@ import { LogOut } from "lucide-react";
 export function DoctorLogoutButton({
   collapsed = false,
   compact = false,
+  loginHref = "/doctor/login",
 }: {
   collapsed?: boolean;
   compact?: boolean;
+  loginHref?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -18,12 +20,12 @@ export function DoctorLogoutButton({
     setBusy(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/doctor/login");
+      router.push(loginHref);
       router.refresh();
     } finally {
       setBusy(false);
     }
-  }, [router]);
+  }, [router, loginHref]);
 
   return (
     <button

@@ -32,7 +32,7 @@ export function OnboardingSignOutLink() {
       onClick={() => void handleLogout()}
       aria-label="Sign out"
       title="Sign out"
-      className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#1E1B31] transition hover:bg-[#1E1B31]/8 focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/25 focus:ring-offset-2 focus:ring-offset-[#FAF8F5]"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#1E1B31] transition hover:bg-[#1E1B31]/8 focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/25 focus:ring-offset-2 focus:ring-offset-transparent"
     >
       <LogOut className="h-[1.125rem] w-[1.125rem]" strokeWidth={2.25} aria-hidden />
     </button>
@@ -81,7 +81,7 @@ export function OnboardingLayoutShell({
     return (
       <div
         data-onboarding-shell
-        className="relative h-dvh max-h-dvh overflow-hidden bg-[#FAF8F5] text-[#1F2A44] [color-scheme:light]"
+        className="relative h-dvh max-h-dvh overflow-hidden bg-[#6E81C6] text-[#1F2A44] [color-scheme:light]"
       >
         <main className="h-full min-h-0 w-full overflow-hidden">{children}</main>
       </div>

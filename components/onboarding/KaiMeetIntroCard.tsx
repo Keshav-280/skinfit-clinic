@@ -12,11 +12,15 @@ import {
   KAI_TYPING_MS_PER_CHAR,
 } from "@/src/lib/kaiIntroScript";
 import { OnboardingSignOutLink } from "@/components/onboarding/OnboardingLayoutShell";
-import { KAI_MEET_CARD, meetCardHaloDots } from "@/src/lib/kaiMeetIntroCardVisual";
+import {
+  KAI_INTRO_ATMOSPHERE,
+  KAI_MEET_CARD,
+  meetCardAuraField,
+} from "@/src/lib/kaiMeetIntroCardVisual";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-const HALO_DOTS = meetCardHaloDots();
+const AURA_DOTS = meetCardAuraField();
 
 function DotFieldSvg({
   dots,
@@ -25,7 +29,7 @@ function DotFieldSvg({
   glow = false,
   preserveAspectRatio = "none",
 }: {
-  dots: typeof HALO_DOTS;
+  dots: typeof AURA_DOTS;
   className?: string;
   color?: string;
   glow?: boolean;
@@ -81,8 +85,15 @@ export function KaiMeetIntroCard() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: easeOut }}
-      className="relative mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col overflow-hidden"
+      className="relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden"
     >
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `linear-gradient(90deg, ${KAI_INTRO_ATMOSPHERE.left} 0%, ${KAI_INTRO_ATMOSPHERE.mid} 48%, ${KAI_INTRO_ATMOSPHERE.right} 100%)`,
+        }}
+        aria-hidden
+      />
       <div className="relative z-20 flex min-h-10 shrink-0 items-center justify-between px-6 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-8 md:px-10 lg:pl-14 lg:pr-10">
         <p
           className="text-base font-semibold leading-none tracking-tight sm:text-lg"
@@ -192,16 +203,23 @@ export function KaiMeetIntroCard() {
             className="relative flex h-full max-h-full w-full items-end justify-center"
           >
             <div
-              className="pointer-events-none absolute bottom-[10%] left-1/2 aspect-square w-[min(100%,22rem)] -translate-x-1/2 rounded-full blur-[2px] md:w-[130%]"
+              className="pointer-events-none absolute bottom-[8%] left-1/2 aspect-square w-[min(145%,34rem)] -translate-x-1/2 rounded-full md:w-[175%]"
               style={{
-                background: `radial-gradient(circle, ${KAI_MEET_CARD.gradient.mid}40 0%, ${KAI_MEET_CARD.gradient.edge}1A 40%, transparent 70%)`,
+                background: `radial-gradient(circle, ${KAI_INTRO_ATMOSPHERE.glow} 0%, rgba(196, 210, 255, 0.22) 38%, transparent 70%)`,
               }}
             />
-            <div className="pointer-events-none absolute bottom-[6%] left-1/2 aspect-square w-[min(110%,24rem)] -translate-x-1/2 md:w-[135%]">
+            <div className="pointer-events-none absolute bottom-[2%] left-1/2 aspect-square w-[min(155%,36rem)] -translate-x-1/2 md:w-[185%]">
               <DotFieldSvg
-                dots={HALO_DOTS}
-                className="h-full w-full"
-                color={KAI_MEET_CARD.gradient.edge}
+                dots={AURA_DOTS}
+                className="h-full w-full blur-[0.6px]"
+                color={KAI_INTRO_ATMOSPHERE.particleSoft}
+                glow
+                preserveAspectRatio="xMidYMid meet"
+              />
+              <DotFieldSvg
+                dots={AURA_DOTS}
+                className="absolute inset-0 h-full w-full"
+                color={KAI_INTRO_ATMOSPHERE.particle}
                 preserveAspectRatio="xMidYMid meet"
               />
             </div>

@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import { and, count, eq, isNull } from "drizzle-orm";
 import { DEMO_LOGIN_EMAIL } from "../lib/auth/demo-login";
 import {
+  CLINIC_STAFF_EMAIL,
+  CLINIC_STAFF_NAME,
+  CLINIC_STAFF_PASSWORD,
   DOCTOR_FALLBACK_EMAIL,
   DOCTOR_FALLBACK_ID,
   DOCTOR_FALLBACK_NAME,
@@ -40,6 +43,7 @@ async function seed() {
   try {
     const patientHash = await bcrypt.hash(DEMO_PATIENT_PASSWORD, 10);
     const doctorHash = await bcrypt.hash("12345678", 10);
+    const clinicStaffHash = await bcrypt.hash(CLINIC_STAFF_PASSWORD, 10);
 
     // 1. Ensure demo users exist (safe to run multiple times)
     await db
@@ -128,6 +132,23 @@ async function seed() {
     await db
       .insert(users)
       .values({
+        name: CLINIC_STAFF_NAME,
+        email: CLINIC_STAFF_EMAIL,
+        passwordHash: clinicStaffHash,
+        role: "doctor",
+      })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: {
+          passwordHash: clinicStaffHash,
+          name: CLINIC_STAFF_NAME,
+          role: "doctor",
+        },
+      });
+
+    await db
+      .insert(users)
+      .values({
         name: "Alex Patient",
         email: SECOND_DEMO_PATIENT_EMAIL,
         passwordHash: patientHash,
@@ -188,6 +209,7 @@ async function seed() {
     console.log("✓ Second patient (fresh onboarding):", SECOND_DEMO_PATIENT_EMAIL);
     console.log("✓ Demo doctor:", doctor.email);
     console.log("✓ Additional doctor:", ADDITIONAL_DOCTOR_EMAIL);
+    console.log("✓ Clinic staff doctor:", CLINIC_STAFF_EMAIL);
 
     // 2. Sample skin_scans (up to 3 rows, staggered dates; higher metric = healthier)
     const [{ n: skinScanCount }] = await db

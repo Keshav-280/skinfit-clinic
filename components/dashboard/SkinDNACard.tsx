@@ -744,7 +744,7 @@ function InteractiveParamTile({
         scale: isActive ? 1.06 : 1,
       }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-0 flex h-full w-full flex-col items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2.5 text-center"
+      className="relative z-0 flex w-full flex-col items-center gap-1 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2 text-center"
       style={isActive ? { zIndex: 10 } : undefined}
     >
       <CircleRing
@@ -1005,24 +1005,22 @@ export function SkinDNACard({
 
       {/* 3. Strongest / overall ring / needs focus */}
       {hasScan ? (
-        <div className="mx-4 mt-3 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-4 sm:mx-5 sm:px-5">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
+        <div className="mx-4 mt-2 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-3 sm:mx-5 sm:px-5">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1.5 sm:items-center sm:gap-4">
           {strongest ? (
-            <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#242A5F]/10 text-[#242A5F]">
-                <Leaf className="h-4 w-4" aria-hidden />
+            <div className="flex min-w-0 flex-col items-start gap-1">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#242A5F]/10 text-[#242A5F]">
+                <Leaf className="h-3.5 w-3.5" aria-hidden />
               </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#242A5F]">
-                  Strongest
-                </p>
-                <p className="mt-0.5 truncate text-[13px] font-bold leading-snug text-[#1E1B31]">
-                  {strongest.name}
-                </p>
-                <p className="text-[11px] font-medium text-[#6B7280]">
-                  {strongest.gradeLabel}
-                </p>
-              </div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#242A5F]">
+                Strongest
+              </p>
+              <p className="text-[12px] font-bold leading-tight text-[#1E1B31] sm:text-[13px]">
+                {strongest.name}
+              </p>
+              <p className="text-[11px] font-medium text-[#6B7280]">
+                {strongest.gradeLabel}
+              </p>
             </div>
           ) : (
             <div />
@@ -1030,7 +1028,7 @@ export function SkinDNACard({
 
           <Link
             href="/dashboard/score/overall"
-            className="justify-self-center rounded-full outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#1E1B31]/30"
+            className="justify-self-center self-center rounded-full outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#1E1B31]/30"
             aria-label="View overall skin score"
           >
           <CircleRing
@@ -1058,21 +1056,19 @@ export function SkinDNACard({
           </Link>
 
           {needsFocus ? (
-            <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-2.5">
-              <div className="min-w-0 text-right">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#A05E6D]">
-                  Needs focus
-                </p>
-                <p className="mt-0.5 truncate text-[13px] font-bold leading-snug text-[#1E1B31]">
-                  {needsFocus.name}
-                </p>
-                <p className="text-[11px] font-medium text-[#6B7280]">
-                  {needsFocus.gradeLabel}
-                </p>
-              </div>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#DF9DA4]/25 text-[#A05E6D]">
-                <Target className="h-4 w-4" aria-hidden />
+            <div className="flex min-w-0 flex-col items-end gap-1 text-right">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#DF9DA4]/25 text-[#A05E6D]">
+                <Target className="h-3.5 w-3.5" aria-hidden />
               </span>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#A05E6D]">
+                Needs focus
+              </p>
+              <p className="text-[12px] font-bold leading-tight text-[#1E1B31] sm:text-[13px]">
+                {needsFocus.name}
+              </p>
+              <p className="text-[11px] font-medium text-[#6B7280]">
+                {needsFocus.gradeLabel}
+              </p>
             </div>
           ) : (
             <div />
@@ -1086,7 +1082,7 @@ export function SkinDNACard({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.35 }}
-            className="mt-3 min-h-[2.75rem] border-t border-[#E4E6F0] pt-3 text-center text-[12px] font-medium leading-relaxed text-[#6B7280]"
+            className="mt-2 border-t border-[#E4E6F0] pt-2 text-center text-[12px] font-medium leading-snug text-[#6B7280]"
           >
             {ringInsight}
           </motion.p>
@@ -1108,7 +1104,7 @@ export function SkinDNACard({
 
       {/* 4. Parameter tiles — swipe on phone, full row on desktop */}
       <div
-        className="mt-4 pb-4"
+        className="mt-2 pb-2"
         onMouseLeave={() => setActiveParam(null)}
       >
         <SnapStrip className="px-4 lg:hidden">
