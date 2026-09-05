@@ -32,12 +32,24 @@ export function parseYmdToDateOnly(s: string): Date | null {
   return dt;
 }
 
+const YMD_PREFIX = /^(\d{4}-\d{2}-\d{2})/;
+
 /** Serialize a PG `date` (or our UTC-noon Date) back to YYYY-MM-DD. */
-export function ymdFromDateOnly(value: Date | string): string {
+export function ymdFromDateOnly(
+  value: Date | string | null | undefined
+): string {
+  if (value == null) return "";
   if (typeof value === "string") {
-    return value.slice(0, 10);
+    const m = YMD_PREFIX.exec(value.trim());
+    return m?.[1] ?? "";
   }
-  return value.toISOString().slice(0, 10);
+  try {
+    if (value instanceof Date && Number.isNaN(value.getTime())) return "";
+    const iso = value.toISOString();
+    return iso.slice(0, 10);
+  } catch {
+    return "";
+  }
 }
 
 /**

@@ -358,9 +358,10 @@ export function HistoryView({
                   </div>
                   <div className="border-t border-white/50 px-4 py-3">
                     <p className="font-semibold text-[#1A1A2E]">
-                      {item.report.reportKind
-                        ? clinicDeviceReportLabel(item.report.reportKind)
-                        : item.report.title}
+                      {item.report.title?.trim() ||
+                        (item.report.reportKind
+                          ? clinicDeviceReportLabel(item.report.reportKind)
+                          : "Clinic report")}
                     </p>
                     <p className="mt-0.5 text-xs text-[#6B7280]">
                       {format(new Date(item.report.createdAt), "MMM d, yyyy · h:mm a")}

@@ -273,11 +273,10 @@ export default function HistoryListScreen() {
             <View key={report.id} style={[styles.visitCard, CARD, { marginBottom: 12 }]}>
               <View style={styles.visitHeader}>
                 <Text style={styles.visitDate} numberOfLines={2}>
-                  {report.reportKind === "inbody"
-                    ? "InBody report"
-                    : report.reportKind === "medixora"
-                      ? "Medixora report"
-                      : report.title}
+                  {report.title?.trim() ||
+                    (report.reportKind === "inbody"
+                      ? "InBody report"
+                      : "Medixora report")}
                 </Text>
               </View>
               <Text style={styles.visitDoc}>

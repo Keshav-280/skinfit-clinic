@@ -12,7 +12,9 @@ import { getStorage } from "@/src/lib/infra";
 import { invalidateUserHistoryCache } from "@/src/lib/infra";
 
 import {
+  clinicDeviceReportDisplayTitle,
   clinicDeviceReportLabel,
+  sanitizeClinicReportFileName,
   type ClinicDeviceReportKind,
   type PatientDeviceReportRow,
 } from "@/src/lib/clinicDeviceReportKind";
@@ -636,10 +638,22 @@ function normalizeUploadMime(file: File): string | null {
   return null;
 }
 
+function deviceReportDownloadUrl(
+  reportId: string,
+  patientId: string,
+  viewer: "patient" | "staff"
+): string {
+  return viewer === "staff"
+    ? `/api/doctor/patients/${patientId}/clinic-reports/${reportId}`
+    : `/api/patient/clinic-reports/${reportId}?download=1`;
+}
+
 export async function listPatientDeviceReports(
-  patientId: string
+  patientId: string,
+  opts?: { viewer?: "patient" | "staff" }
 ): Promise<PatientDeviceReportRow[]> {
   await ensureClinicDeviceReportColumns();
+  const viewer = opts?.viewer ?? "patient";
   const rows = await db.query.clinicExternalReports.findMany({
     where: eq(clinicExternalReports.patientUserId, patientId),
     orderBy: [desc(clinicExternalReports.createdAt)],
@@ -647,13 +661,41 @@ export async function listPatientDeviceReports(
   });
   return rows
     .filter((r) => r.storagePath?.trim())
-    .map((r) => ({
-      id: r.id,
-      title: r.title,
-      reportKind: inferReportKind(r),
-      createdAt: (r.sentAt ?? r.createdAt).toISOString(),
-      downloadUrl: `/api/patient/clinic-reports/${r.id}?download=1`,
-    }));
+    .map((r) => {
+      const reportKind = inferReportKind(r);
+      return {
+        id: r.id,
+        title: clinicDeviceReportDisplayTitle(r.title, reportKind),
+        reportKind,
+        createdAt: (r.sentAt ?? r.createdAt).toISOString(),
+        downloadUrl: deviceReportDownloadUrl(r.id, patientId, viewer),
+      };
+    });
+}
+
+export async function readClinicDeviceReportFile(row: {
+  storagePath: string | null;
+  mimeType: string | null;
+  title: string;
+}): Promise<{ body: Uint8Array<ArrayBuffer>; mime: string; fileName: string } | null> {
+  if (!row.storagePath?.trim()) return null;
+  const buf = await getStorage().read(row.storagePath);
+  const mime = row.mimeType?.trim() || "application/pdf";
+  const ext =
+    mime === "image/png"
+      ? "png"
+      : mime === "image/webp"
+        ? "webp"
+        : mime.startsWith("image/")
+          ? "jpg"
+          : "pdf";
+  const titled = row.title.trim();
+  const hasExt = /\.[a-z0-9]{2,8}$/i.test(titled);
+  const fileName = sanitizeClinicReportFileName(
+    hasExt ? titled : `${titled || "report"}.${ext}`,
+    ext
+  );
+  return { body: new Uint8Array(buf), mime, fileName };
 }
 
 export async function publishDeviceReportForPatient(params: {
@@ -678,15 +720,6 @@ export async function publishDeviceReportForPatient(params: {
   await ensureClinicDeviceReportColumns();
 
   const label = clinicDeviceReportLabel(params.kind);
-  const title = `${params.patientName.trim() || "Patient"} - ${label}`.slice(
-    0,
-    255
-  );
-  const pdfBuffer = Buffer.from(await params.file.arrayBuffer());
-  if (!pdfBuffer.length) {
-    return { ok: false, error: "EMPTY_FILE", status: 400 };
-  }
-
   const ext =
     mime === "application/pdf"
       ? "pdf"
@@ -695,10 +728,16 @@ export async function publishDeviceReportForPatient(params: {
         : mime === "image/webp"
           ? "webp"
           : "jpg";
+  const title = sanitizeClinicReportFileName(params.file.name, ext);
+  const pdfBuffer = Buffer.from(await params.file.arrayBuffer());
+  if (!pdfBuffer.length) {
+    return { ok: false, error: "EMPTY_FILE", status: 400 };
+  }
+
   const storage = getStorage();
   const uploaded = await storage.upload(
     "reports",
-    `${title.replace(/[^a-zA-Z0-9._-]/g, "_")}.${ext}`,
+    title.replace(/[^a-zA-Z0-9._-]/g, "_") || `report.${ext}`,
     pdfBuffer,
     mime
   );
@@ -742,7 +781,7 @@ export async function publishDeviceReportForPatient(params: {
       title: row.title,
       reportKind: params.kind,
       createdAt: (row.sentAt ?? row.createdAt).toISOString(),
-      downloadUrl: `/api/patient/clinic-reports/${row.id}?download=1`,
+      downloadUrl: deviceReportDownloadUrl(row.id, params.patientId, "staff"),
     },
   };
 }

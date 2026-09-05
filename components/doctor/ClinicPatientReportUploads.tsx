@@ -123,9 +123,10 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-[#1E1B31]">
-                  {clinicDeviceReportLabel(item.reportKind)}
+                  {item.title}
                 </p>
                 <p className="text-[11px] text-[#1E1B31]/50">
+                  {clinicDeviceReportLabel(item.reportKind)} ·{" "}
                   {format(parseISO(item.createdAt), "d MMM yyyy")}
                 </p>
               </div>
@@ -133,7 +134,7 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
                 href={item.downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 text-xs font-semibold text-[#1E1B31] underline"
+                className="shrink-0 rounded-lg border border-[#1E1B31] px-3 py-1.5 text-xs font-semibold text-[#1E1B31] hover:bg-[#1E1B31] hover:text-white"
               >
                 View
               </a>

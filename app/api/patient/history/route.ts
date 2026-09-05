@@ -231,7 +231,7 @@ export async function GET(request: Request) {
         r.reportKind === "inbody" ? ("inbody" as const) : ("medixora" as const);
       return {
         id: r.id,
-        title: clinicDeviceReportLabel(reportKind),
+        title: r.title?.trim() || clinicDeviceReportLabel(reportKind),
         reportKind,
         kind: "external_clinic_report" as const,
         status: r.status,

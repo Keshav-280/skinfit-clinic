@@ -29,6 +29,26 @@ export function archiveScheduleListItem(eventId: string): Set<string> {
   return next;
 }
 
+export function archiveScheduleListItems(eventIds: string[]): Set<string> {
+  const next = readSet();
+  for (const id of eventIds) {
+    if (id) next.add(id);
+  }
+  writeSet(next);
+  return next;
+}
+
+export function isScheduleEventDatePassed(
+  eventDateYmd: string | null | undefined,
+  todayYmd: string
+): boolean {
+  return Boolean(
+    eventDateYmd &&
+      /^\d{4}-\d{2}-\d{2}$/.test(eventDateYmd) &&
+      eventDateYmd < todayYmd
+  );
+}
+
 export function unarchiveScheduleListItem(eventId: string): Set<string> {
   const next = readSet();
   next.delete(eventId);

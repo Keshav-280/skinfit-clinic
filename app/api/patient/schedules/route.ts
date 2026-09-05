@@ -191,14 +191,20 @@ export async function GET(request: Request) {
     cancellationReason: cancelReasonByAppt.get(r.id) ?? null,
   }));
 
-  const fromSchedule = eventRows.map((r) => ({
-    id: r.id,
-    eventDateYmd: ymdFromDateOnly(r.eventDate),
-    eventTimeHm: r.eventTimeHm ?? null,
-    title: r.title,
-    completed: r.completed,
-    eventKind: r.eventKind,
-  }));
+  const fromSchedule = eventRows.flatMap((r) => {
+    const eventDateYmd = ymdFromDateOnly(r.eventDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDateYmd)) return [];
+    return [
+      {
+        id: r.id,
+        eventDateYmd,
+        eventTimeHm: r.eventTimeHm ?? null,
+        title: r.title ?? "Care reminder",
+        completed: Boolean(r.completed),
+        eventKind: r.eventKind ?? "general",
+      },
+    ];
+  });
 
   const fromBookings = bookedRows.map((r) => {
     const { ymd, hm } = utcInstantToClinicWallYmdHm(r.dateTime);

@@ -35,7 +35,7 @@ export async function GET(
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  const items = await listPatientDeviceReports(patient.id);
+  const items = await listPatientDeviceReports(patient.id, { viewer: "staff" });
   return NextResponse.json({ ok: true, items });
 }
 

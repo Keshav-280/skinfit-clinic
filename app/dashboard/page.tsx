@@ -12,7 +12,31 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const schedule = await loadSchedulePageData(userId);
+  let schedule: Awaited<ReturnType<typeof loadSchedulePageData>>;
+  try {
+    schedule = await loadSchedulePageData(userId);
+  } catch (e) {
+    console.error("[dashboard] loadSchedulePageData failed", e);
+    schedule = {
+      initialTreatmentEvents: [],
+      initialAppointmentEvents: [],
+      pendingScheduleRequests: [],
+      closedScheduleRequests: [],
+      initialScheduleUnreadCount: 0,
+      latestVisit: null,
+      assignedDoctor: null,
+      showKaiInsights: false,
+      patientHasPhone: true,
+      initialPhoneCountryCode: "+91",
+      initialPhone: null,
+      initialWellnessCheckin: null,
+      wellnessWeekYmd: "",
+      checkinConcern: null,
+      checkinSummary: null,
+      checkinCompleted: false,
+      weeklyCheckinStreak: 0,
+    } as unknown as Awaited<ReturnType<typeof loadSchedulePageData>>;
+  }
 
   return (
     <PatientDashboardDesktop

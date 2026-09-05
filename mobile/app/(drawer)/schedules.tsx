@@ -49,6 +49,8 @@ import {
 } from "@/lib/schedulesCalendar";
 import {
   archiveScheduleListItem,
+  archiveScheduleListItems,
+  isScheduleEventDatePassed,
   loadScheduleListArchivedIds,
   unarchiveScheduleListItem,
   unarchiveScheduleListItems,
@@ -281,21 +283,49 @@ export default function SchedulesScreen() {
     [view, mergedCalendarEvents, currentDate]
   );
 
+  const listTodayYmd = localYmd(new Date());
+
   const visibleListEvents = useMemo(
-    () => listEventsCal.filter((event) => !archivedListIds.has(event.id)),
-    [listEventsCal, archivedListIds]
+    () =>
+      listEventsCal.filter(
+        (event) =>
+          !archivedListIds.has(event.id) &&
+          !isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd)
+      ),
+    [listEventsCal, archivedListIds, listTodayYmd]
   );
 
   const archivedListEvents = useMemo(
-    () => listEventsCal.filter((event) => archivedListIds.has(event.id)),
-    [listEventsCal, archivedListIds]
+    () =>
+      listEventsCal.filter(
+        (event) =>
+          archivedListIds.has(event.id) ||
+          isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd)
+      ),
+    [listEventsCal, archivedListIds, listTodayYmd]
   );
 
   const archivedListCount = archivedListEvents.length;
+  const restorableArchivedCount = archivedListEvents.filter(
+    (event) => !isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd)
+  ).length;
 
   useEffect(() => {
     void loadScheduleListArchivedIds().then(setArchivedListIds);
   }, []);
+
+  useEffect(() => {
+    const todayYmd = localYmd(new Date());
+    const pastIds = listEventsCal
+      .filter(
+        (event) =>
+          isScheduleEventDatePassed(event.eventDateYmd, todayYmd) &&
+          !archivedListIds.has(event.id)
+      )
+      .map((event) => event.id);
+    if (pastIds.length === 0) return;
+    void archiveScheduleListItems(pastIds).then(setArchivedListIds);
+  }, [listEventsCal, archivedListIds]);
 
   const archiveListEvent = useCallback((eventId: string) => {
     void archiveScheduleListItem(eventId).then(setArchivedListIds);
@@ -306,7 +336,15 @@ export default function SchedulesScreen() {
   }, []);
 
   const unarchiveAllListEvents = useCallback(() => {
-    void unarchiveScheduleListItems(archivedListEvents.map((event) => event.id)).then((next) => {
+    const todayYmd = localYmd(new Date());
+    const restorable = archivedListEvents
+      .filter((event) => !isScheduleEventDatePassed(event.eventDateYmd, todayYmd))
+      .map((event) => event.id);
+    if (restorable.length === 0) {
+      setShowArchivedList(false);
+      return;
+    }
+    void unarchiveScheduleListItems(restorable).then((next) => {
       setArchivedListIds(next);
       setShowArchivedList(false);
     });
@@ -476,23 +514,28 @@ export default function SchedulesScreen() {
               {event.eventKind === "pre_treatment" ? "Pre" : "Post"}
             </Text>
           ) : null}
-          <Pressable
-            onPress={() =>
-              isArchivedView ? unarchiveListEvent(event.id) : archiveListEvent(event.id)
-            }
-            style={styles.listArchiveBtn}
-            hitSlop={8}
-            accessibilityLabel={isArchivedView ? "Restore meeting to list" : "Archive meeting"}
-          >
-            <Ionicons
-              name={isArchivedView ? "archive-outline" : "archive"}
-              size={12}
-              color="#2B3A67"
-            />
-            <Text style={styles.listArchiveBtnText}>
-              {isArchivedView ? "Restore" : "Archive"}
-            </Text>
-          </Pressable>
+          {isArchivedView &&
+          isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd) ? (
+            <Text style={styles.listPastPill}>Past</Text>
+          ) : (
+            <Pressable
+              onPress={() =>
+                isArchivedView ? unarchiveListEvent(event.id) : archiveListEvent(event.id)
+              }
+              style={styles.listArchiveBtn}
+              hitSlop={8}
+              accessibilityLabel={isArchivedView ? "Restore meeting to list" : "Archive meeting"}
+            >
+              <Ionicons
+                name={isArchivedView ? "archive-outline" : "archive"}
+                size={12}
+                color="#2B3A67"
+              />
+              <Text style={styles.listArchiveBtnText}>
+                {isArchivedView ? "Restore" : "Archive"}
+              </Text>
+            </Pressable>
+          )}
         </View>
         <View style={styles.listRowBody}>
           <Text
@@ -849,7 +892,7 @@ export default function SchedulesScreen() {
                       : `Show ${archivedListCount} archived`}
                   </Text>
                 </Pressable>
-                {showArchivedList ? (
+                {showArchivedList && restorableArchivedCount > 0 ? (
                   <Pressable onPress={unarchiveAllListEvents} hitSlop={8}>
                     <Text style={styles.archivedToggleText}>Restore all</Text>
                   </Pressable>
@@ -1627,6 +1670,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     color: "#2B3A67",
+  },
+  listPastPill: {
+    marginLeft: "auto",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: "#F0EAE2",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(30, 27, 49, 0.55)",
+    textTransform: "uppercase",
   },
   archivedSection: {
     marginTop: 4,

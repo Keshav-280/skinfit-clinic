@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { clinicExternalReports } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
-import { getStorage } from "@/src/lib/infra";
+import { readClinicDeviceReportFile } from "@/src/lib/clinicExternalReports";
 
 export const runtime = "nodejs";
 
@@ -28,25 +28,15 @@ export async function GET(
 
   const url = new URL(req.url);
   if (url.searchParams.get("download") === "1") {
-    if (!row.storagePath?.trim()) {
+    const file = await readClinicDeviceReportFile(row);
+    if (!file) {
       return Response.json({ error: "PDF_NOT_ATTACHED" }, { status: 404 });
     }
-    const buf = await getStorage().read(row.storagePath);
-    const mime = row.mimeType?.trim() || "application/pdf";
-    const ext =
-      mime === "image/png"
-        ? "png"
-        : mime === "image/webp"
-          ? "webp"
-          : mime.startsWith("image/")
-            ? "jpg"
-            : "pdf";
-    const safeName = row.title.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
-    return new Response(new Uint8Array(buf), {
+    return new Response(file.body, {
       status: 200,
       headers: {
-        "Content-Type": mime,
-        "Content-Disposition": `inline; filename="${safeName}.${ext}"`,
+        "Content-Type": file.mime,
+        "Content-Disposition": `inline; filename="${file.fileName.replace(/"/g, "")}"`,
         "Cache-Control": "private, no-store",
       },
     });

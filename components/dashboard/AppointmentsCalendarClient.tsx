@@ -61,6 +61,8 @@ import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 import { SCHEDULE_BELL_REFRESH_EVENT } from "@/src/lib/scheduleBellEvents";
 import {
   archiveScheduleListItem,
+  archiveScheduleListItems,
+  isScheduleEventDatePassed,
   loadScheduleListArchivedIds,
   unarchiveScheduleListItem,
   unarchiveScheduleListItems,
@@ -223,6 +225,9 @@ function localYmd(d: Date): string {
 }
 
 function parseLocalYmd(ymd: string): Date {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+    return new Date(NaN);
+  }
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
@@ -250,7 +255,14 @@ function formatScheduleWhen(
   endHm?: string | null
 ): string {
   const d = parseLocalYmd(ymd);
-  const dateStr = format(d, "MMM d, yyyy");
+  let dateStr = ymd || "Date TBD";
+  try {
+    if (!Number.isNaN(d.getTime())) {
+      dateStr = format(d, "MMM d, yyyy");
+    }
+  } catch {
+    /* keep fallback */
+  }
   const chip = formatEventTimeChip(timeHm, endHm);
   if (!chip) {
     return `${dateStr} Â· All day`;
@@ -259,7 +271,7 @@ function formatScheduleWhen(
 }
 
 function compareScheduleEvents(a: ScheduleEventRow, b: ScheduleEventRow): number {
-  const c = a.eventDateYmd.localeCompare(b.eventDateYmd);
+  const c = (a.eventDateYmd ?? "").localeCompare(b.eventDateYmd ?? "");
   if (c !== 0) return c;
   const ta =
     a.eventTimeHm && /^\d{2}:\d{2}$/.test(a.eventTimeHm)
@@ -271,7 +283,7 @@ function compareScheduleEvents(a: ScheduleEventRow, b: ScheduleEventRow): number
       : "99:99";
   const ct = ta.localeCompare(tb);
   if (ct !== 0) return ct;
-  return a.title.localeCompare(b.title);
+  return (a.title ?? "").localeCompare(b.title ?? "");
 }
 
 function getCellEvents(
@@ -288,7 +300,7 @@ function eventsInMonth(events: ScheduleEventRow[], ref: Date): ScheduleEventRow[
   const mo = String(ref.getMonth() + 1).padStart(2, "0");
   const prefix = `${y}-${mo}-`;
   return events
-    .filter((e) => e.eventDateYmd.startsWith(prefix))
+    .filter((e) => typeof e.eventDateYmd === "string" && e.eventDateYmd.startsWith(prefix))
     .sort(compareScheduleEvents);
 }
 
@@ -298,7 +310,12 @@ function eventsInWeek(events: ScheduleEventRow[], ref: Date): ScheduleEventRow[]
   return events
     .filter((e) => {
       const d = parseLocalYmd(e.eventDateYmd);
-      return isWithinInterval(d, { start, end });
+      if (Number.isNaN(d.getTime())) return false;
+      try {
+        return isWithinInterval(d, { start, end });
+      } catch {
+        return false;
+      }
     })
     .sort(compareScheduleEvents);
 }
@@ -461,6 +478,7 @@ export default function AppointmentsCalendarClient({
   const [calendarPortalReady, setCalendarPortalReady] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [selectedYmd, setSelectedYmd] = useState(() => localYmd(new Date()));
+  const [dayDetailYmd, setDayDetailYmd] = useState<string | null>(null);
   const [scheduleRefreshing, setScheduleRefreshing] = useState(false);
   const [treatmentEvents, setTreatmentEvents] = useState(initialTreatmentEvents);
   const [appointmentEvents, setAppointmentEvents] = useState(
@@ -580,21 +598,61 @@ export default function AppointmentsCalendarClient({
     [view, mergedCalendarEvents, currentDate]
   );
 
+  const listTodayYmd = localYmd(new Date());
+
   const visibleListEvents = useMemo(
-    () => mergedListEvents.filter((event) => !archivedListIds.has(event.id)),
-    [mergedListEvents, archivedListIds]
+    () =>
+      mergedListEvents.filter(
+        (event) =>
+          !archivedListIds.has(event.id) &&
+          !isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd)
+      ),
+    [mergedListEvents, archivedListIds, listTodayYmd]
   );
 
   const archivedListEvents = useMemo(
-    () => mergedListEvents.filter((event) => archivedListIds.has(event.id)),
-    [mergedListEvents, archivedListIds]
+    () =>
+      mergedListEvents.filter(
+        (event) =>
+          archivedListIds.has(event.id) ||
+          isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd)
+      ),
+    [mergedListEvents, archivedListIds, listTodayYmd]
   );
 
   const archivedListCount = archivedListEvents.length;
+  const restorableArchivedCount = archivedListEvents.filter(
+    (event) => !isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd)
+  ).length;
+
+  const dayDetailEvents = useMemo(() => {
+    if (!dayDetailYmd) return [];
+    return mergedCalendarEvents
+      .filter((e) => e.eventDateYmd === dayDetailYmd)
+      .sort(compareScheduleEvents);
+  }, [dayDetailYmd, mergedCalendarEvents]);
+
+  const openDayDetail = useCallback((ymd: string) => {
+    setSelectedYmd(ymd);
+    setDayDetailYmd(ymd);
+  }, []);
 
   useEffect(() => {
     setArchivedListIds(loadScheduleListArchivedIds());
   }, []);
+
+  useEffect(() => {
+    const todayYmd = localYmd(new Date());
+    const pastIds = mergedListEvents
+      .filter(
+        (event) =>
+          isScheduleEventDatePassed(event.eventDateYmd, todayYmd) &&
+          !archivedListIds.has(event.id)
+      )
+      .map((event) => event.id);
+    if (pastIds.length === 0) return;
+    setArchivedListIds(archiveScheduleListItems(pastIds));
+  }, [mergedListEvents, archivedListIds]);
 
   useEffect(() => {
     setCalendarPortalReady(true);
@@ -605,6 +663,15 @@ export default function AppointmentsCalendarClient({
     setSelectedYmd(localYmd(new Date()));
   }, []);
 
+  useEffect(() => {
+    if (!dayDetailYmd) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDayDetailYmd(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dayDetailYmd]);
+
   const archiveListEvent = useCallback((eventId: string) => {
     setArchivedListIds(archiveScheduleListItem(eventId));
   }, []);
@@ -614,9 +681,15 @@ export default function AppointmentsCalendarClient({
   }, []);
 
   const unarchiveAllListEvents = useCallback(() => {
-    setArchivedListIds(
-      unarchiveScheduleListItems(archivedListEvents.map((event) => event.id))
-    );
+    const todayYmd = localYmd(new Date());
+    const restorable = archivedListEvents
+      .filter((event) => !isScheduleEventDatePassed(event.eventDateYmd, todayYmd))
+      .map((event) => event.id);
+    if (restorable.length === 0) {
+      setShowArchivedList(false);
+      return;
+    }
+    setArchivedListIds(unarchiveScheduleListItems(restorable));
     setShowArchivedList(false);
   }, [archivedListEvents]);
 
@@ -896,9 +969,10 @@ export default function AppointmentsCalendarClient({
 
   function renderScheduleEventCard(
     event: ScheduleEventRow,
-    opts?: { archived?: boolean }
+    opts?: { archived?: boolean; readOnly?: boolean }
   ) {
     const isArchivedView = opts?.archived === true;
+    const readOnly = opts?.readOnly === true;
     const pending = event.id.startsWith("req:");
     const cancelled = event.cancelled === true;
     const done = event.completed;
@@ -936,7 +1010,12 @@ export default function AppointmentsCalendarClient({
               </span>
             ) : null}
           </div>
-          {isArchivedView ? (
+          {readOnly ? null : isArchivedView &&
+          isScheduleEventDatePassed(event.eventDateYmd, listTodayYmd) ? (
+            <span className="rounded-full bg-[#F0EAE2] px-2 py-0.5 text-[10px] font-bold uppercase text-[#1E1B31]/55">
+              Past
+            </span>
+          ) : isArchivedView ? (
             <button
               type="button"
               onClick={() => unarchiveListEvent(event.id)}
@@ -1385,7 +1464,7 @@ export default function AppointmentsCalendarClient({
                         key={day.toISOString()}
                         type="button"
                         className={`${wrapCls} w-full min-w-0 cursor-pointer text-center align-top transition hover:bg-[#FAF8F5]`}
-                        onClick={() => setSelectedYmd(cellYmd)}
+                        onClick={() => openDayDetail(cellYmd)}
                         aria-label={format(day, "EEEE, MMMM d, yyyy")}
                         aria-current={isSelected ? "date" : undefined}
                       >
@@ -1436,6 +1515,63 @@ export default function AppointmentsCalendarClient({
             )
           : null}
 
+          {dayDetailYmd && calendarPortalReady
+            ? createPortal(
+                <>
+                  <div
+                    className="fixed inset-0 z-[220] bg-[#1E1B31]/45"
+                    aria-hidden
+                    onClick={() => setDayDetailYmd(null)}
+                  />
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="day-detail-title"
+                    className="fixed inset-x-3 bottom-4 z-[221] max-h-[80vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(92vw,440px)] sm:-translate-x-1/2 sm:-translate-y-1/2"
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-[#1E1B31]/45">
+                          On this day
+                        </p>
+                        <h3
+                          id="day-detail-title"
+                          className="mt-0.5 text-base font-extrabold text-[#1E1B31]"
+                        >
+                          {(() => {
+                            const d = parseLocalYmd(dayDetailYmd);
+                            return Number.isNaN(d.getTime())
+                              ? dayDetailYmd
+                              : format(d, "EEEE, d MMMM yyyy");
+                          })()}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDayDetailYmd(null)}
+                        className="rounded-lg p-1 text-[#6B7280] hover:bg-[#FAF8F5] hover:text-[#1E1B31]"
+                        aria-label="Close day details"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                    {dayDetailEvents.length === 0 ? (
+                      <p className="rounded-xl bg-[#FAF8F5] px-3 py-6 text-center text-sm text-[#1E1B31]/55">
+                        Nothing scheduled on this day.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {dayDetailEvents.map((event) =>
+                          renderScheduleEventCard(event, { readOnly: true })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>,
+                document.body
+              )
+            : null}
+
           {/* Doctor's Feedback + Voice Notes - fills the space the old
               "selected day" / "upcoming" recap used to take, since that
               info already duplicates the calendar grid above. */}
@@ -1474,7 +1610,7 @@ export default function AppointmentsCalendarClient({
                         ? "Hide archived"
                         : `Show ${archivedListCount} archived`}
                     </button>
-                    {showArchivedList ? (
+                    {showArchivedList && restorableArchivedCount > 0 ? (
                       <button
                         type="button"
                         onClick={unarchiveAllListEvents}

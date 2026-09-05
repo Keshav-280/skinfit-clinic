@@ -863,7 +863,7 @@ export function PatientDashboardDesktop({
   }, [data?.userName]);
 
   const greetingSubtitle = useMemo(() => {
-    if (!data?.skinScanHistory.length) {
+    if (!data?.skinScanHistory?.length) {
       return "Let's get your first scan started.";
     }
     const delta = data.weeklyDeltaScore ?? 0;
@@ -874,7 +874,7 @@ export function PatientDashboardDesktop({
       return "Let's turn things around this week.";
     }
     return "Your skin is holding steady.";
-  }, [data?.skinScanHistory.length, data?.weeklyDeltaMeaningful, data?.weeklyDeltaScore]);
+  }, [data?.skinScanHistory?.length, data?.weeklyDeltaMeaningful, data?.weeklyDeltaScore]);
 
   const skinSummary = useMemo(
     () =>

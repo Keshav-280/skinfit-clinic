@@ -30,6 +30,26 @@ export async function archiveScheduleListItem(eventId: string): Promise<Set<stri
   return next;
 }
 
+export async function archiveScheduleListItems(eventIds: string[]): Promise<Set<string>> {
+  const next = await readSet();
+  for (const id of eventIds) {
+    if (id) next.add(id);
+  }
+  await writeSet(next);
+  return next;
+}
+
+export function isScheduleEventDatePassed(
+  eventDateYmd: string | null | undefined,
+  todayYmd: string
+): boolean {
+  return Boolean(
+    eventDateYmd &&
+      /^\d{4}-\d{2}-\d{2}$/.test(eventDateYmd) &&
+      eventDateYmd < todayYmd
+  );
+}
+
 export async function unarchiveScheduleListItem(eventId: string): Promise<Set<string>> {
   const next = await readSet();
   next.delete(eventId);

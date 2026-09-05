@@ -51,6 +51,53 @@ function computeWeeklyCheckinStreak(
   return streak;
 }
 
+async function loadScheduleEventRows(userId: string) {
+  try {
+    return await db.query.scheduleEvents.findMany({
+      where: eq(scheduleEvents.userId, userId),
+      orderBy: [
+        asc(scheduleEvents.eventDate),
+        asc(scheduleEvents.eventTimeHm),
+        asc(scheduleEvents.title),
+      ],
+      columns: {
+        id: true,
+        eventDate: true,
+        eventTimeHm: true,
+        title: true,
+        eventKind: true,
+        completed: true,
+      },
+    });
+  } catch (e) {
+    console.warn(
+      "[loadSchedulePageData] schedule events with event_kind failed",
+      e
+    );
+    try {
+      const rows = await db.query.scheduleEvents.findMany({
+        where: eq(scheduleEvents.userId, userId),
+        orderBy: [
+          asc(scheduleEvents.eventDate),
+          asc(scheduleEvents.eventTimeHm),
+          asc(scheduleEvents.title),
+        ],
+        columns: {
+          id: true,
+          eventDate: true,
+          eventTimeHm: true,
+          title: true,
+          completed: true,
+        },
+      });
+      return rows.map((r) => ({ ...r, eventKind: "general" }));
+    } catch (e2) {
+      console.warn("[loadSchedulePageData] schedule events failed", e2);
+      return [];
+    }
+  }
+}
+
 function cmpCalendarEventRows(
   a: {
     eventDateYmd: string;
@@ -137,22 +184,7 @@ export async function loadSchedulePageData(userId: string) {
     latestVisit,
     assignedDoctorId,
   ] = await Promise.all([
-    db.query.scheduleEvents.findMany({
-      where: eq(scheduleEvents.userId, userId),
-      orderBy: [
-        asc(scheduleEvents.eventDate),
-        asc(scheduleEvents.eventTimeHm),
-        asc(scheduleEvents.title),
-      ],
-      columns: {
-        id: true,
-        eventDate: true,
-        eventTimeHm: true,
-        title: true,
-        eventKind: true,
-        completed: true,
-      },
-    }),
+    loadScheduleEventRows(userId),
     db
       .select({
         id: appointments.id,
@@ -271,14 +303,20 @@ export async function loadSchedulePageData(userId: string) {
     cancellationReason: cancelReasonByAppt.get(r.id) ?? null,
   }));
 
-  const fromSchedule = eventRows.map((r) => ({
-    id: r.id,
-    eventDateYmd: ymdFromDateOnly(r.eventDate),
-    eventTimeHm: r.eventTimeHm ?? null,
-    title: r.title,
-    completed: r.completed,
-    eventKind: r.eventKind,
-  }));
+  const fromSchedule = eventRows.flatMap((r) => {
+    const eventDateYmd = ymdFromDateOnly(r.eventDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDateYmd)) return [];
+    return [
+      {
+        id: r.id,
+        eventDateYmd,
+        eventTimeHm: r.eventTimeHm ?? null,
+        title: r.title ?? "Care reminder",
+        completed: Boolean(r.completed),
+        eventKind: r.eventKind ?? "general",
+      },
+    ];
+  });
 
   const fromBookings = bookedRows.map((r) => {
     const { ymd, hm } = utcInstantToClinicWallYmdHm(r.dateTime);
