@@ -8,35 +8,18 @@ import {
   wellnessCheckins,
 } from "@/src/db/schema";
 import { opsIso } from "@/src/lib/ops/opsDates";
+import {
+  hasReturnedToPortal,
+  type OpsOverview,
+  type OpsPatientRow,
+} from "@/src/lib/ops/opsOverviewShared";
 
-export type OpsPatientRow = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  signedUpAt: string;
-  lastLoginAt: string | null;
-  loginAtList: string[];
-  hasScan: boolean;
-  scanCount: number;
-  lastScanAt: string | null;
-  scanAtList: string[];
-  questionnaireDone: boolean;
-  questionnaireAt: string | null;
-};
-
-export type OpsOverview = {
-  totals: {
-    signedUp: number;
-    loggedIn: number;
-    loggedInLast7Days: number;
-    tookScan: number;
-    filledQuestionnaire: number;
-    waitlist: number;
-    weeklyCheckins: number;
-  };
-  patients: OpsPatientRow[];
-};
+export type { OpsOverview, OpsPatientRow } from "@/src/lib/ops/opsOverviewShared";
+export {
+  hasReturnedToPortal,
+  inferLastSeenAt,
+  latestIso,
+} from "@/src/lib/ops/opsOverviewShared";
 
 function missingColumn(error: unknown, column: string): boolean {
   const err = error as { code?: string; message?: string };
@@ -144,19 +127,14 @@ export async function loadOpsOverview(): Promise<OpsOverview> {
         createdAt: loginEvents.createdAt,
       })
       .from(loginEvents);
-    const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const weekUsers = new Set<string>();
     for (const row of loginStampRows) {
       const iso = stamp(row.createdAt);
-      const instant = iso ? new Date(iso) : null;
       if (iso) {
         const list = loginByUser.get(row.userId) ?? [];
         list.push(iso);
         loginByUser.set(row.userId, list);
       }
-      if (instant && instant.getTime() >= since) weekUsers.add(row.userId);
     }
-    loggedInLast7Days = weekUsers.size;
   } catch (error) {
     if (!missingColumn(error, "login_events")) {
       console.warn("[ops] login_events query skipped", error);
@@ -193,7 +171,22 @@ export async function loadOpsOverview(): Promise<OpsOverview> {
   });
 
   const signedUp = patients.length;
-  const loggedIn = patients.filter((p) => p.lastLoginAt).length;
+  const loggedIn = patients.filter((p) => hasReturnedToPortal(p)).length;
+  const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekUsers = new Set<string>();
+  for (const patient of patients) {
+    const stamps = [
+      patient.lastLoginAt,
+      patient.lastScanAt,
+      patient.questionnaireAt,
+      ...patient.loginAtList,
+      ...patient.scanAtList,
+    ];
+    if (stamps.some((stamp) => stamp && Date.parse(stamp) >= since)) {
+      weekUsers.add(patient.id);
+    }
+  }
+  loggedInLast7Days = weekUsers.size;
   const tookScan = patients.filter((p) => p.hasScan).length;
   const filledQuestionnaire = patients.filter((p) => p.questionnaireDone).length;
 

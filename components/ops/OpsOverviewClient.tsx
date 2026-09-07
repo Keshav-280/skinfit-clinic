@@ -9,7 +9,12 @@ import {
   Search,
   UserPlus,
 } from "lucide-react";
-import type { OpsOverview, OpsPatientRow } from "@/src/lib/ops/loadOpsOverview";
+import {
+  hasReturnedToPortal,
+  inferLastSeenAt,
+  type OpsOverview,
+  type OpsPatientRow,
+} from "@/src/lib/ops/opsOverviewShared";
 import {
   formatOpsDateTime,
   formatOpsDayLabel,
@@ -55,17 +60,18 @@ function latestActivityAt(row: OpsPatientRow): number {
 
 function activityOnDay(row: OpsPatientRow, ymd: string) {
   const signedUp = opsYmd(row.signedUpAt) === ymd;
-  const loggedIn =
+  const recordedLogin =
     opsYmd(row.lastLoginAt) === ymd ||
     row.loginAtList.some((stamp) => opsYmd(stamp) === ymd);
   const scanned = row.scanAtList.some((stamp) => opsYmd(stamp) === ymd);
   const questionnaire = opsYmd(row.questionnaireAt) === ymd;
+  const usedPortal = recordedLogin || scanned || questionnaire;
   return {
     signedUp,
-    loggedIn,
+    loggedIn: !signedUp && usedPortal,
     scanned,
     questionnaire,
-    any: signedUp || loggedIn || scanned || questionnaire,
+    any: signedUp || usedPortal,
   };
 }
 
@@ -203,7 +209,9 @@ export function OpsOverviewClient({ data }: { data: OpsOverview }) {
             : row.questionnaireDone;
         }
         if (filter === "no-login") {
-          return dayYmd ? !activityOnDay(row, dayYmd).loggedIn : !row.lastLoginAt;
+          if (!dayYmd) return !hasReturnedToPortal(row);
+          const activity = activityOnDay(row, dayYmd);
+          return activity.signedUp && !activity.scanned && !activity.questionnaire;
         }
         return true;
       })
@@ -228,8 +236,9 @@ export function OpsOverviewClient({ data }: { data: OpsOverview }) {
           Patient activity
         </h1>
         <p className="mt-1 text-sm text-[#6B7280]">
-          Daily signups, logins, scans, and questionnaires. Newest activity is
-          at the top.
+          Daily signups, returning visits, scans, and questionnaires. Last seen
+          is the latest time they used the website. Newest activity is at the
+          top.
         </p>
       </div>
 
@@ -331,7 +340,7 @@ export function OpsOverviewClient({ data }: { data: OpsOverview }) {
           value={dayTotals.loggedIn}
           hint={
             dayYmd
-              ? `Logins on ${dayLabel}`
+              ? `Existing patients who used the site on ${dayLabel}`
               : `${data.totals.loggedInLast7Days} in last 7 days · ${pct(data.totals.loggedIn, data.totals.signedUp)} of signups`
           }
           Icon={LogIn}
@@ -376,7 +385,7 @@ export function OpsOverviewClient({ data }: { data: OpsOverview }) {
                 ["all", "All"],
                 ["scan", "Scanned"],
                 ["questionnaire", "Questionnaire"],
-                ["no-login", "Never logged in"],
+                ["no-login", "Signed up only"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -401,7 +410,7 @@ export function OpsOverviewClient({ data }: { data: OpsOverview }) {
               <tr>
                 <th className="px-4 py-2.5">Patient</th>
                 <th className="px-4 py-2.5">Signed up</th>
-                <th className="px-4 py-2.5">Last login</th>
+                <th className="px-4 py-2.5">Last seen</th>
                 <th className="px-4 py-2.5">Scan</th>
                 <th className="px-4 py-2.5">Questionnaire</th>
               </tr>
@@ -419,6 +428,7 @@ export function OpsOverviewClient({ data }: { data: OpsOverview }) {
               ) : (
                 rows.map((row: OpsPatientRow) => {
                   const day = dayYmd ? activityOnDay(row, dayYmd) : null;
+                  const lastSeenAt = inferLastSeenAt(row);
                   return (
                     <tr
                       key={row.id}
@@ -447,10 +457,10 @@ export function OpsOverviewClient({ data }: { data: OpsOverview }) {
                         {formatWhen(row.signedUpAt)}
                       </td>
                       <td className="px-4 py-3 text-[#1E1B31]">
-                        <p>{formatAgo(row.lastLoginAt)}</p>
-                        {row.lastLoginAt ? (
+                        <p>{formatAgo(lastSeenAt)}</p>
+                        {lastSeenAt ? (
                           <p className="text-xs text-[#6B7280]">
-                            {formatWhen(row.lastLoginAt)}
+                            {formatWhen(lastSeenAt)}
                           </p>
                         ) : null}
                       </td>
