@@ -38,7 +38,13 @@ import { loadWellnessAndWeatherForScan } from "../../../../../src/lib/wellnessWe
 import {
   generateInitialReportContent,
   generateUpdateReportContent,
+  type GeneratedInitialReport,
+  type GeneratedUpdateReport,
 } from "../../../../../src/lib/report/generateReportContent";
+import {
+  readKaiReportSnapshot,
+  writeKaiReportSnapshot,
+} from "../../../../../src/lib/report/kaiReportSnapshot";
 import {
   buildAttributionCards,
   defaultNextStep,
@@ -253,17 +259,24 @@ export default async function KaiScanReportPage({
   // Compare against the most recent scan from a PRIOR calendar day. Two scans
   // taken the same day carry no meaningful weekly movement, so same-day scans
   // are excluded - with only same-day data the Initial report is shown instead.
-  const previousMeta = await db.query.scans.findFirst({
-    where: and(
-      eq(scans.userId, userId),
-      lt(scans.createdAt, startOfDay(row.createdAt))
-    ),
-    orderBy: [desc(scans.createdAt), desc(scans.id)],
-    columns: { id: true },
-  });
+  const [previousMeta, wellnessWeather] = await Promise.all([
+    db.query.scans.findFirst({
+      where: and(
+        eq(scans.userId, userId),
+        lt(scans.createdAt, startOfDay(row.createdAt))
+      ),
+      orderBy: [desc(scans.createdAt), desc(scans.id)],
+      columns: { id: true },
+    }),
+    loadWellnessAndWeatherForScan({
+      userId,
+      scanDate: row.createdAt,
+    }),
+  ]);
   const previous = previousMeta
     ? await loadScanRow(userId, previousMeta.id)
     : null;
+  const { wellness, cityWeather } = wellnessWeather;
 
   const doctorName = "Dr. Ruby";
   const faceCaptureImages =
@@ -281,12 +294,15 @@ export default async function KaiScanReportPage({
     const annotatedByPose = annotatedPhotosForScan(row.scores);
     const scanImages = galleryImages(row.id, faceCaptureImages, annotatedByPose);
 
-    const { wellness, cityWeather } = await loadWellnessAndWeatherForScan({
-      userId,
-      scanDate: row.createdAt,
-    });
+    const cachedInitial = readKaiReportSnapshot(row.scores);
+    let llm: GeneratedInitialReport | null =
+      cachedInitial?.kind === "initial"
+        ? (cachedInitial.report as GeneratedInitialReport)
+        : null;
+    let aiUnavailable = cachedInitial?.kind === "initial" ? cachedInitial.aiUnavailable : false;
 
-    const { report: llm, aiUnavailable } = await generateInitialReportContent({
+    if (!llm) {
+    const generated = await generateInitialReportContent({
       patient: {
         first_name: user.name?.split(/\s+/)[0] ?? null,
         age: user.age,
@@ -325,6 +341,17 @@ export default async function KaiScanReportPage({
         score_10: p.score10,
       })),
     });
+      llm = generated.report;
+      aiUnavailable = generated.aiUnavailable;
+      if (generated.report) {
+        void writeKaiReportSnapshot(userId, row.id, {
+          kind: "initial",
+          generatedAt: new Date().toISOString(),
+          aiUnavailable: generated.aiUnavailable,
+          report: generated.report,
+        });
+      }
+    }
 
     const parameters = paramRows;
 
@@ -380,11 +407,19 @@ export default async function KaiScanReportPage({
   }
 
   // ── Update Report ───────────────────────────────────────────────
-  const allScans = await db.query.scans.findMany({
-    where: eq(scans.userId, userId),
-    orderBy: [asc(scans.createdAt), asc(scans.id)],
-    columns: { id: true, createdAt: true },
-  });
+  const [allScans, recentEvent, multiWeekInsights] = await Promise.all([
+    db.query.scans.findMany({
+      where: eq(scans.userId, userId),
+      orderBy: [asc(scans.createdAt), asc(scans.id)],
+      columns: { id: true, createdAt: true },
+    }),
+    db.query.scheduleEvents.findFirst({
+      where: and(eq(scheduleEvents.userId, userId)),
+      orderBy: [desc(scheduleEvents.eventDate)],
+      columns: { title: true, eventDate: true, eventKind: true },
+    }),
+    computeMultiWeekInsights(userId),
+  ]);
   const firstScanAt = allScans[0]?.createdAt ?? row.createdAt;
   const { weekNumber, streak } = weekMeta(allScans, row.id);
 
@@ -404,16 +439,6 @@ export default async function KaiScanReportPage({
     prevMetrics.overall_score
   );
 
-  const { wellness, cityWeather } = await loadWellnessAndWeatherForScan({
-    userId,
-    scanDate: row.createdAt,
-  });
-
-  const recentEvent = await db.query.scheduleEvents.findFirst({
-    where: and(eq(scheduleEvents.userId, userId)),
-    orderBy: [desc(scheduleEvents.eventDate)],
-    columns: { title: true, eventDate: true, eventKind: true },
-  });
   const treatmentish =
     recentEvent &&
     (recentEvent.eventKind === "pre_treatment" ||
@@ -422,7 +447,15 @@ export default async function KaiScanReportPage({
       ? recentEvent
       : null;
 
-  const { report: llm, aiUnavailable } = await generateUpdateReportContent({
+  const cachedUpdate = readKaiReportSnapshot(row.scores);
+  let llm: GeneratedUpdateReport | null =
+    cachedUpdate?.kind === "update"
+      ? (cachedUpdate.report as GeneratedUpdateReport)
+      : null;
+  let aiUnavailable = cachedUpdate?.kind === "update" ? cachedUpdate.aiUnavailable : false;
+
+  if (!llm) {
+  const generated = await generateUpdateReportContent({
     patient: {
       first_name: user.name?.split(/\s+/)[0] ?? null,
       age: user.age,
@@ -505,6 +538,17 @@ export default async function KaiScanReportPage({
         : [],
     },
   });
+    llm = generated.report;
+    aiUnavailable = generated.aiUnavailable;
+    if (generated.report) {
+      void writeKaiReportSnapshot(userId, row.id, {
+        kind: "update",
+        generatedAt: new Date().toISOString(),
+        aiUnavailable: generated.aiUnavailable,
+        report: generated.report,
+      });
+    }
+  }
 
   const movementGroups = buildMovementGroups({
     current: paramRows,
@@ -527,8 +571,6 @@ export default async function KaiScanReportPage({
     defaultUpdateHeadline(score10, paramRows, mvKind);
   const badge = movementToHeroBadge(mvKind);
   const subtitle = subtitleFromGrades(score10, prevScore10, mvKind);
-
-  const multiWeekInsights = await computeMultiWeekInsights(userId);
 
   const attributionCards = buildAttributionCards({
     cityWeather,

@@ -277,25 +277,27 @@ export async function annotateScanPoses(input: {
   const regionsByPose: Record<string, DetectionRegion[]> = {};
   let centreSpots: SpotCoordinate[] = [];
 
-  for (const pose of ["centre", "left", "right"] as const) {
-    const file = input.files[pose];
-    if (!file) continue;
-    try {
-      const result = await runSpotDetector(file, {
-        apiKey: input.apiKey,
-        timeoutMs: input.timeoutMs,
-      });
-      if (result.annotated_image) {
-        annotatedByPose[pose] = result.annotated_image;
+  await Promise.all(
+    (["centre", "left", "right"] as const).map(async (pose) => {
+      const file = input.files[pose];
+      if (!file) return;
+      try {
+        const result = await runSpotDetector(file, {
+          apiKey: input.apiKey,
+          timeoutMs: input.timeoutMs,
+        });
+        if (result.annotated_image) {
+          annotatedByPose[pose] = result.annotated_image;
+        }
+        const regions = spotsToDetectionRegions(result.spots ?? []);
+        if (regions.length > 0) regionsByPose[pose] = regions;
+        if (pose === "centre") centreSpots = result.spots ?? [];
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn("[spot-v18] skipped", { pose, error: message });
       }
-      const regions = spotsToDetectionRegions(result.spots ?? []);
-      if (regions.length > 0) regionsByPose[pose] = regions;
-      if (pose === "centre") centreSpots = result.spots ?? [];
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.warn("[spot-v18] skipped", { pose, error: message });
-    }
-  }
+    })
+  );
 
   return {
     annotatedByPose,

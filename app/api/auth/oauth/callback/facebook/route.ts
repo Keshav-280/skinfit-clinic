@@ -118,7 +118,9 @@ export async function GET(req: Request) {
     return NextResponse.redirect(handoff.toString());
   }
 
-  const session = await establishPatientSessionCookie(resolved.user);
+  const session = await establishPatientSessionCookie(resolved.user, {
+    method: "facebook",
+  });
   if ("error" in session) {
     return NextResponse.redirect(
       oauthLoginRedirectUrl({

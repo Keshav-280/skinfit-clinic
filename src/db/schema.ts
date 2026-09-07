@@ -194,8 +194,32 @@ export const users = pgTable("users", {
   assignedDoctorId: uuid("assigned_doctor_id").references((): AnyPgColumn => users.id, {
     onDelete: "set null",
   }),
+  /** Last successful patient website/app login (password, OTP, or OAuth). */
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Patient login history for the Ops portal (DAU / last-seen). */
+export const loginEvents = pgTable(
+  "login_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    method: varchar("method", { length: 32 }).notNull().default("password"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userCreatedIdx: index("login_events_user_created_idx").on(
+      table.userId,
+      table.createdAt
+    ),
+  })
+);
 
 export const oauthProviderEnum = pgEnum("oauth_provider", [
   "google",
@@ -346,6 +370,13 @@ export const scans = pgTable("scans", {
       detection_regions?: string;
       wrinkle_lines?: string;
       proxy_regions?: string;
+    };
+    /** Frozen Kai report narrative — written once so the page skips OpenAI. */
+    kaiReportSnapshot?: {
+      kind: "initial" | "update";
+      generatedAt: string;
+      aiUnavailable: boolean;
+      report: Record<string, unknown>;
     };
   }>(),
   /** Bounding-box annotations from Roboflow (optional) */

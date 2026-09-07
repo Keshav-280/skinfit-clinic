@@ -42,6 +42,7 @@ import {
 } from "@/src/lib/maskImageCrop";
 import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
+import { generateAndPersistKaiReport } from "@/src/lib/report/generateAndPersistKaiReport";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
@@ -90,11 +91,13 @@ export async function processScanJob(
 
   const keys = ["centre", "left", "right"] as const;
   const filesForV2 = {} as Record<(typeof keys)[number], File>;
-  for (const k of keys) {
-    const rel = payload.imagePaths[k];
-    if (!rel) throw new Error(`Missing image path for ${k}`);
-    filesForV2[k] = await pathToMlFile(rel, k, payload.captureCropContext);
-  }
+  await Promise.all(
+    keys.map(async (k) => {
+      const rel = payload.imagePaths[k];
+      if (!rel) throw new Error(`Missing image path for ${k}`);
+      filesForV2[k] = await pathToMlFile(rel, k, payload.captureCropContext);
+    })
+  );
 
   const identity = await enforceScanFaceIdentity({
     userId: payload.userId,
@@ -323,27 +326,22 @@ export async function processScanJob(
 
   logger.inference(Date.now() - started, { jobId, userId: payload.userId });
 
-  const overlayUrl = await persistDataUriToStorage(
-    merged.overlayDataUri,
-    "masks",
-    upload
-  );
-  const wrinkleMaskUrl = await persistDataUriToStorage(
-    merged.wrinkleMaskDataUri,
-    "masks",
-    upload
-  );
-  const acneMaskUrl = await persistDataUriToStorage(
-    merged.acneMaskDataUri,
-    "masks",
-    upload
-  );
-
-  const spotAnnotatedByPose: Record<string, string> = {};
-  for (const [pose, dataUri] of Object.entries(spotAnnotatedDataUriByPose)) {
-    const url = await persistDataUriToStorage(dataUri, "masks", upload);
-    if (url) spotAnnotatedByPose[pose] = url;
-  }
+  const [overlayUrl, wrinkleMaskUrl, acneMaskUrl, spotAnnotatedByPose] =
+    await Promise.all([
+      persistDataUriToStorage(merged.overlayDataUri, "masks", upload),
+      persistDataUriToStorage(merged.wrinkleMaskDataUri, "masks", upload),
+      persistDataUriToStorage(merged.acneMaskDataUri, "masks", upload),
+      (async () => {
+        const byPose: Record<string, string> = {};
+        await Promise.all(
+          Object.entries(spotAnnotatedDataUriByPose).map(async ([pose, dataUri]) => {
+            const url = await persistDataUriToStorage(dataUri, "masks", upload);
+            if (url) byPose[pose] = url;
+          })
+        );
+        return byPose;
+      })(),
+    ]);
   const spotAnnotatedUrl =
     spotAnnotatedByPose.centre ??
     (await persistDataUriToStorage(
@@ -496,15 +494,37 @@ export async function processScanJob(
         >
       )
     );
-    const snapshotOk = await persistScanTrackerSnapshot(
-      user.id,
-      inserted.id,
-      database
-    );
+    const [snapshotOk, kaiOk] = await Promise.all([
+      persistScanTrackerSnapshot(user.id, inserted.id, database).catch((err) => {
+        logger.warn("tracker_snapshot_skipped", {
+          jobId,
+          scanId: inserted.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return false;
+      }),
+      generateAndPersistKaiReport(user.id, inserted.id).catch((err) => {
+        logger.warn("kai_report_pregenerate_skipped", {
+          jobId,
+          scanId: inserted.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return false;
+      }),
+    ]);
     if (!snapshotOk) {
-      throw new Error(
-        "Tracker report (kAI RAG snapshot) could not be built - scan not marked ready"
-      );
+      logger.warn("tracker_snapshot_missing", {
+        jobId,
+        scanId: inserted.id,
+        hint: "scan marked ready; tracker can rebuild on view",
+      });
+    }
+    if (!kaiOk) {
+      logger.warn("kai_report_not_cached", {
+        jobId,
+        scanId: inserted.id,
+        hint: "report page will generate on first open",
+      });
     }
   }
 

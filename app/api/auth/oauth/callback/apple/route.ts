@@ -99,7 +99,9 @@ async function handleAppleCallback(params: {
     );
   }
 
-  const session = await establishPatientSessionCookie(resolved.user);
+  const session = await establishPatientSessionCookie(resolved.user, {
+    method: "apple",
+  });
   if ("error" in session) {
     return NextResponse.redirect(
       oauthLoginRedirectUrl({

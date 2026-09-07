@@ -1849,9 +1849,9 @@ export default function AppointmentsCalendarClient({
       ) : null}
 
       {requestModalOpen && requestYmd ? (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4">
-          <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-[20px] border border-[#e5e7eb] bg-white shadow-2xl sm:rounded-[22px]">
-            <div className="p-5 pb-9">
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/40 p-0 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] backdrop-blur-[2px] sm:items-center md:p-4">
+          <div className="max-h-[calc(100dvh-5.75rem-env(safe-area-inset-bottom,0px))] w-full max-w-md overflow-y-auto rounded-t-[20px] border border-[#e5e7eb] bg-white shadow-2xl sm:rounded-[22px] md:max-h-[92vh]">
+            <div className="p-5 pb-[max(2.25rem,env(safe-area-inset-bottom,0px))]">
               <h3 className="text-center text-[22px] font-extrabold text-[#18181b]">
                 Request Appointment
               </h3>

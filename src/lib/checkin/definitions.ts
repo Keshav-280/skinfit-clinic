@@ -82,6 +82,7 @@ export const EXERCISE_OPTIONS: FieldOption[] = [
 ];
 
 export const SUPPLEMENT_VOCAB: FieldOption[] = [
+  { key: "none", label: "None" },
   { key: "vitamin_d3", label: "Vitamin D3" },
   { key: "vitamin_c", label: "Vitamin C" },
   { key: "biotin", label: "Biotin" },
@@ -95,7 +96,6 @@ export const SUPPLEMENT_VOCAB: FieldOption[] = [
   { key: "magnesium", label: "Magnesium" },
   { key: "folate", label: "Folate" },
   { key: "other", label: "Other" },
-  { key: "none", label: "None" },
 ];
 
 export const UNIVERSAL_SCREENS: CheckinScreenDef[] = [

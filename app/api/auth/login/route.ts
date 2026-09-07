@@ -142,6 +142,15 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
+    const { recordPatientLogin } = await import(
+      "@/src/lib/auth/recordPatientLogin"
+    );
+    void recordPatientLogin({
+      userId: user.id,
+      method: "password",
+      userAgent: req.headers.get("user-agent"),
+    });
+
     const { getOnboardingAccessForUser } = await import(
       "@/src/lib/onboardingAccess"
     );

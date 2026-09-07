@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { removePendingScanJob } from "@/src/lib/scanJobNotifications";
 import { ReportPageSkeleton } from "@/components/dashboard/PageSkeletons";
 
@@ -13,7 +14,7 @@ type ScanQueuedConfirmationProps = {
   onReady?: (scanId: number) => void;
 };
 
-const POLL_MS = 4000;
+const POLL_MS = 2000;
 
 type JobPhase = "waiting" | "failed" | "opening";
 
@@ -24,6 +25,7 @@ export function ScanQueuedConfirmation({
   onReady,
 }: ScanQueuedConfirmationProps) {
   const isOnboarding = variant === "onboarding";
+  const router = useRouter();
   const [phase, setPhase] = useState<JobPhase>("waiting");
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [waitedMs, setWaitedMs] = useState(0);
@@ -47,6 +49,7 @@ export function ScanQueuedConfirmation({
       if (status === "completed" && scanId) {
         removePendingScanJob(jobId);
         setPhase("opening");
+        router.prefetch(`/dashboard/scans/${scanId}/report`);
         onReady?.(scanId);
         return;
       }
@@ -78,8 +81,37 @@ export function ScanQueuedConfirmation({
 
   const waitingCopy =
     waitedMs > 120_000
-      ? "Still analysing - this can take a few minutes when the queue is busy."
-      : "Photos received. kAI is analysing them now. This usually takes about a minute.";
+      ? "Still analysing — this can take a few minutes when the queue is busy."
+      : waitedMs > 45_000
+        ? "Writing your personal insights and focus for the week."
+        : "Photos received. kAI is reading markers and scoring parameters.";
+
+  const heading =
+    phase === "opening" ? "Report ready" : "Building your Skin DNA";
+  const subtitle =
+    phase === "opening"
+      ? "kAI just finished. Taking you to the report."
+      : waitedMs > 120_000
+        ? "Still analysing — hang tight"
+        : waitedMs > 45_000
+          ? "Drafting insights from your scan"
+          : "Mapping scores, markers, and insights";
+
+  const steps = [
+    { label: "Photos received", done: true },
+    {
+      label: "Reading skin markers",
+      done: phase === "opening" || waitedMs > 12_000,
+    },
+    {
+      label: "Scoring parameters",
+      done: phase === "opening" || waitedMs > 28_000,
+    },
+    {
+      label: "Writing your report",
+      done: phase === "opening" || waitedMs > 50_000,
+    },
+  ];
 
   if (phase !== "failed") {
     return (
@@ -88,7 +120,34 @@ export function ScanQueuedConfirmation({
         animate={{ opacity: 1, y: 0 }}
         className="mx-auto w-full max-w-md px-1 py-2"
       >
-        <ReportPageSkeleton contained />
+        <ReportPageSkeleton
+          contained
+          heading={heading}
+          subtitle={subtitle}
+        />
+        <ol className="mt-4 space-y-2 rounded-2xl border border-[#E4E6F0] bg-white px-4 py-3 shadow-sm">
+          {steps.map((step) => (
+            <li key={step.label} className="flex items-center gap-2.5">
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                  step.done
+                    ? "bg-[#1E1B31] text-white"
+                    : "border border-[#E4E6F0] bg-[#FAF8F5] text-[#1E1B31]/40"
+                }`}
+                aria-hidden
+              >
+                {step.done ? "✓" : ""}
+              </span>
+              <span
+                className={`text-sm ${
+                  step.done ? "font-semibold text-[#1E1B31]" : "text-[#6B7280]"
+                }`}
+              >
+                {step.label}
+              </span>
+            </li>
+          ))}
+        </ol>
         <p className="mt-3 text-center text-sm text-[#6B7280]">
           {phase === "opening"
             ? "kAI just finished. Taking you to the report."

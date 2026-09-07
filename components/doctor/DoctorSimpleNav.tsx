@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Users } from "lucide-react";
+import { BarChart3, CalendarClock, Users } from "lucide-react";
 import {
   CLINIC_REQUEST_INBOX_EVENT,
   type ClinicRequestInboxDetail,
@@ -73,6 +73,10 @@ export function DoctorSimpleNav() {
       <Link href="/clinic/patients" className={navClass(patientsActive)}>
         <Users className="h-4 w-4" aria-hidden />
         Patients
+      </Link>
+      <Link href="/ops/overview" className={navClass(false)}>
+        <BarChart3 className="h-4 w-4" aria-hidden />
+        Ops
       </Link>
     </nav>
   );

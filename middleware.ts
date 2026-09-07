@@ -4,6 +4,7 @@ import { jwtVerify } from "jose";
 import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { clinicPortalLoginUrl } from "@/src/lib/auth/clinic-portal-next";
 import { doctorPortalLoginUrl } from "@/src/lib/auth/doctor-portal-next";
+import { opsPortalLoginUrl } from "@/src/lib/auth/ops-portal-next";
 import { getSessionSecret } from "@/src/lib/auth/session-secret";
 
 function isAnnotatorPage(pathname: string): boolean {
@@ -22,6 +23,13 @@ function isDoctorProtectedPath(pathname: string): boolean {
 function isClinicProtectedPath(pathname: string): boolean {
   if (!pathname.startsWith("/clinic/")) return false;
   if (pathname === "/clinic/login") return false;
+  return true;
+}
+
+function isOpsProtectedPath(pathname: string): boolean {
+  if (pathname === "/ops") return true;
+  if (!pathname.startsWith("/ops/")) return false;
+  if (pathname === "/ops/login") return false;
   return true;
 }
 
@@ -52,6 +60,7 @@ export async function middleware(request: NextRequest) {
 
   const annotatorPage = isAnnotatorPage(pathname);
   const clinicProtected = isClinicProtectedPath(pathname);
+  const opsProtected = isOpsProtectedPath(pathname);
   const doctorProtected = isDoctorProtectedPath(pathname);
   const patientProtected =
     pathname === "/dashboard" ||
@@ -59,6 +68,23 @@ export async function middleware(request: NextRequest) {
     annotatorPage;
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const secret = getSessionSecret();
+
+  if (opsProtected) {
+    if (!token || !secret) {
+      return NextResponse.redirect(opsPortalLoginUrl(request.url, pathname));
+    }
+    try {
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+        algorithms: ["HS256"],
+      });
+      if (!isStaffRole(payload.role)) {
+        return NextResponse.redirect(opsPortalLoginUrl(request.url, pathname));
+      }
+      return forwardWithPathname(request, pathname);
+    } catch {
+      return NextResponse.redirect(opsPortalLoginUrl(request.url, pathname));
+    }
+  }
 
   if (clinicProtected) {
     if (!token || !secret) {
@@ -132,6 +158,8 @@ export const config = {
     "/annotator/:path*",
     "/doctor/:path*",
     "/clinic/:path*",
+    "/ops",
+    "/ops/:path*",
     "/skinfit-report-generator",
   ],
 };

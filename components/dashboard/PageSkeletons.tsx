@@ -163,12 +163,27 @@ export function MaintainPageSkeleton({ className = "" }: { className?: string })
   );
 }
 
+const REPORT_SKELETON_PARAMS = [
+  "Acne",
+  "Scars",
+  "Volume",
+  "Wrinkles",
+  "Under eye",
+  "Pigment",
+] as const;
+
 export function ReportPageSkeleton({
   className = "",
   contained = false,
+  kicker = "kAI report",
+  heading = "Building your Skin DNA",
+  subtitle = "Mapping scores, markers, and insights",
 }: {
   className?: string;
   contained?: boolean;
+  kicker?: string;
+  heading?: string;
+  subtitle?: string;
 }) {
   return (
     <SkeletonFrame
@@ -179,25 +194,108 @@ export function ReportPageSkeleton({
           : `relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 -mt-6 min-h-[calc(100dvh-4rem)] bg-[#1E1B31] ${className}`
       }
     >
-      <div className="relative mx-auto max-w-lg px-4 pb-8 pt-4 sm:max-w-xl">
-        <Bone onInk className="h-8 w-20 rounded-full" />
-        <div className="relative mt-6">
-          <Bone onInk className="aspect-[3/4] w-full rounded-[28px]" delay={50} />
-          <div className="pointer-events-none absolute inset-x-0 bottom-8 flex flex-col items-center gap-2">
-            <Bone onInk className="h-20 w-20 rounded-full" delay={90} />
-            <Bone onInk className="h-4 w-40 rounded-full" delay={140} />
+      <div className="relative mx-auto max-w-lg px-4 pb-10 pt-4 sm:max-w-xl">
+        <div className="flex items-center justify-between gap-3">
+          <Bone onInk className="h-8 w-20 rounded-full" />
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/55">
+            {kicker}
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <p className="font-headline text-[22px] font-bold leading-tight tracking-tight text-white">
+            {heading}
+          </p>
+          <p className="mt-1 text-sm leading-snug text-white/65">{subtitle}</p>
+          <div className="skel-progress mt-3 h-1.5 w-full rounded-full" aria-hidden>
+            <span />
           </div>
         </div>
-      </div>
-      <div className="relative -mt-16 space-y-3 rounded-t-[28px] bg-[#FAF8F5] px-4 pb-10 pt-6">
-        <Bone className="h-16 w-full rounded-2xl" delay={80} />
-        <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Bone key={i} className="h-20 rounded-xl" delay={100 + i * 50} />
-          ))}
+
+        <div className="relative mx-auto mt-6 h-[248px] w-[248px]">
+          <div className="absolute inset-6 rounded-full border border-white/15" />
+          <div className="absolute inset-[58px] overflow-hidden rounded-full border-2 border-white/25 bg-white/10 shadow-[0_16px_40px_-18px_rgba(0,0,0,0.45)]">
+            <Bone onInk className="h-full w-full" delay={50} />
+          </div>
+          {REPORT_SKELETON_PARAMS.map((label, i) => {
+            const angle = (-90 + i * 60) * (Math.PI / 180);
+            const radius = 40;
+            const x = 50 + Math.cos(angle) * radius;
+            const y = 50 + Math.sin(angle) * radius;
+            return (
+              <div
+                key={label}
+                className="absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-white/20 bg-white/12 shadow-sm backdrop-blur-[2px]"
+                style={{ left: `${x}%`, top: `${y}%` }}
+              >
+                <Bone onInk className="h-2.5 w-2.5 rounded-full" delay={80 + i * 40} />
+                <span className="mt-0.5 max-w-[40px] truncate text-[7px] font-bold uppercase tracking-wide text-white/70">
+                  {label}
+                </span>
+              </div>
+            );
+          })}
         </div>
-        <Bone className="h-28 w-full rounded-2xl" delay={200} />
-        <Bone className="h-24 w-full rounded-2xl" delay={260} />
+
+        <div className="mt-2 flex flex-col items-center gap-2">
+          <Bone onInk className="h-[72px] w-[72px] rounded-full" delay={90} />
+          <p className="text-xs font-semibold text-white/70">Scoring your skin parameters</p>
+        </div>
+      </div>
+
+      <div className="relative -mt-10 space-y-3 rounded-t-[28px] bg-[#FAF8F5] px-4 pb-10 pt-6">
+        <div className="rounded-2xl border border-[#E4E6F0] bg-white p-3.5 shadow-sm">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31]/50">
+            Your insights
+          </p>
+          <Bone className="mt-2 h-3.5 w-[88%] rounded-full" delay={80} />
+          <Bone className="mt-2 h-3 w-full rounded-full" delay={120} />
+          <Bone className="mt-2 h-3 w-[72%] rounded-full" delay={160} />
+        </div>
+
+        <div>
+          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31]/50">
+            Skin parameters
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {REPORT_SKELETON_PARAMS.map((label, i) => (
+              <div
+                key={label}
+                className="rounded-xl border border-[#E4E6F0] bg-white px-2 py-2.5 text-center shadow-sm"
+              >
+                <Bone className="mx-auto h-8 w-8 rounded-full" delay={100 + i * 45} />
+                <p className="mt-1.5 text-[10px] font-bold text-[#1E1B31]/70">{label}</p>
+                <Bone className="mx-auto mt-1 h-2 w-10 rounded-full" delay={130 + i * 45} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#E4E6F0] bg-white p-3.5 shadow-sm">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31]/50">
+            This week&apos;s focus
+          </p>
+          <Bone className="mt-2 h-4 w-[70%] rounded-full" delay={200} />
+          <Bone className="mt-2 h-3 w-full rounded-full" delay={230} />
+          <Bone className="mt-2 h-3 w-[62%] rounded-full" delay={260} />
+        </div>
+
+        <div className="rounded-2xl border border-[#E4E6F0] bg-white p-3.5 shadow-sm">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31]/50">
+            Routine preview
+          </p>
+          <div className="mt-2.5 space-y-2">
+            {["Morning", "Evening", "Weekly"].map((row, i) => (
+              <div key={row} className="flex items-center gap-3">
+                <Bone className="h-8 w-8 rounded-lg" delay={220 + i * 40} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-bold text-[#1E1B31]/65">{row}</p>
+                  <Bone className="mt-1 h-2.5 w-[80%] rounded-full" delay={250 + i * 40} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </SkeletonFrame>
   );

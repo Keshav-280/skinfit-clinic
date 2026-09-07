@@ -5,6 +5,10 @@ import { createSessionToken } from "@/src/lib/auth/session";
 import { getAppBaseUrl } from "@/src/lib/auth/oauth/config";
 import { authCookieSecure } from "@/src/lib/auth/cookieSecure";
 import { sanitizeOAuthNext } from "@/src/lib/auth/oauth/state";
+import {
+  recordPatientLogin,
+  type PatientLoginMethod,
+} from "@/src/lib/auth/recordPatientLogin";
 
 /** Next.js Route Handler redirects require an absolute URL. */
 export function absoluteAppUrl(path: string): string {
@@ -22,12 +26,15 @@ export function postAuthPath(params: {
   return "/dashboard";
 }
 
-export async function establishPatientSessionCookie(user: {
-  id: string;
-  email: string;
-  role: string;
-  name: string;
-}): Promise<{ token: string } | { error: string }> {
+export async function establishPatientSessionCookie(
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    name: string;
+  },
+  extras?: { method?: PatientLoginMethod; userAgent?: string | null }
+): Promise<{ token: string } | { error: string }> {
   const secret = getSessionSecret();
   if (!secret) {
     return { error: "Server configuration error." };
@@ -49,6 +56,13 @@ export async function establishPatientSessionCookie(user: {
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
+  if (user.role === "patient") {
+    void recordPatientLogin({
+      userId: user.id,
+      method: extras?.method ?? "session",
+      userAgent: extras?.userAgent,
+    });
+  }
   return { token };
 }
 

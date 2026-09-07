@@ -171,8 +171,20 @@ def _hair_texture_mask(bgr):
     edge_density = cv2.boxFilter(edge_mag, -1, (9, 9))
 
     # High local edge energy + not bright (rules out specular highlights) -> hair.
-    hair_like = (edge_density > 55.0) & (L < 150.0)
-    return (hair_like.astype(np.uint8)) * 255
+    # A compact dark spot (mole, deep acne, a scar) has exactly this signature
+    # too - sharp edge at its boundary, dark inside - so on its own this
+    # would misclassify it as hair and cut it from detection entirely before
+    # the mark detector ever runs. Real hair is anisotropic and covers a
+    # sizable contiguous patch (a strand, a cluster of strands); a mole is an
+    # isolated small blob. Drop small connected components so only genuinely
+    # hair-sized regions get excluded.
+    hair_like = ((edge_density > 55.0) & (L < 150.0)).astype(np.uint8) * 255
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(hair_like, connectivity=8)
+    MIN_HAIR_BLOB_AREA = 120  # px - bigger than a typical mole/acne mark cross-section
+    for i in range(1, n):
+        if stats[i, cv2.CC_STAT_AREA] < MIN_HAIR_BLOB_AREA:
+            hair_like[labels == i] = 0
+    return hair_like
 
 
 # -------------------------------------------------------------------------
@@ -211,34 +223,89 @@ def build_zone_masks(bgr):
         0, 180, 360, 255, -1,
     )
 
-    # Eyebrow/eye exclusion
+    # Pull the eligible area in from the OUTER face-oval/hairline/jaw
+    # silhouette only, before any internal cutouts exist yet - cells right
+    # at that outer edge often carry shadow/hair-fringe gradients that the
+    # detector misreads as a mark. Eroding this early (rather than the whole
+    # mask at the end) means it can't also eat into skin sitting close to an
+    # internal cutout (e.g. a mole a few px below the lip exclusion), since
+    # those cutouts haven't been carved out yet.
+    edge_erode_px = max(2, int(face_height * 0.016))
+    base = cv2.erode(
+        base,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (edge_erode_px * 2 + 1, edge_erode_px * 2 + 1)),
+    )
+
+    # Eyebrow/eye exclusion - just enough padding to clear eyelashes/brow
+    # hair, not the whole under-eye/upper-cheek area around it.
     l_eye_brow = [70, 63, 105, 66, 107, 55, 193, 245, 128, 114, 217, 236, 130, 247, 30, 29, 27, 56, 46, 53, 52, 65]
     r_eye_brow = [336, 296, 334, 293, 300, 276, 283, 417, 465, 357, 343, 437, 456, 359, 467, 260, 259, 257, 285, 295, 282]
     eyes_mask = np.zeros((h, w), dtype=np.uint8)
     cv2.fillPoly(eyes_mask, [cv2.convexHull(P[l_eye_brow])], 255)
     cv2.fillPoly(eyes_mask, [cv2.convexHull(P[r_eye_brow])], 255)
-    eyes_mask = cv2.dilate(eyes_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 2.4) + 1, int(pad * 2.4) + 1)))
+    eyes_mask = cv2.dilate(eyes_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 1.1) + 1, int(pad * 1.1) + 1)))
     base[eyes_mask > 0] = 0
 
-    # Nose exclusion
-    nose_pts = [168, 6, 197, 195, 5, 4, 1, 19, 94, 2, 98, 97, 327, 326, 278, 48, 219, 439, 238, 458]
+    # Nose exclusion - only the nostril openings themselves (genuinely not
+    # skin), not the whole nose bridge/tip/sides. That surface is common
+    # ground for blackheads/oiliness and should stay eligible for detection.
+    nostril_pts = [98, 97, 2, 326, 327, 439, 219]
     nose_mask = np.zeros((h, w), dtype=np.uint8)
-    cv2.fillPoly(nose_mask, [cv2.convexHull(P[nose_pts])], 255)
-    nose_mask = cv2.dilate(nose_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 2.2) + 1, int(pad * 2.2) + 1)))
+    cv2.fillPoly(nose_mask, [cv2.convexHull(P[nostril_pts])], 255)
+    # Enough padding to also swallow the shadow ring right around the
+    # nostril opening - too little (1.1x pad measured ~24px) still left
+    # detections landing 5-20px past the boundary, right where the nostril
+    # shadow gradient fades into normal nose-tip skin.
+    nose_mask = cv2.dilate(nose_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 2.0) + 1, int(pad * 2.0) + 1)))
     base[nose_mask > 0] = 0
 
     # Lip exclusion
     outer_lips = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
     lip_mask = np.zeros((h, w), dtype=np.uint8)
     cv2.fillPoly(lip_mask, [cv2.convexHull(P[outer_lips])], 255)
-    lip_mask = cv2.dilate(lip_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 2.2) + 1, int(pad * 2.2) + 1)))
+    lip_mask = cv2.dilate(lip_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 1.1) + 1, int(pad * 1.1) + 1)))
     base[lip_mask > 0] = 0
 
     # Trim sideburns/temple hair
-    l_border = int(P[FACE_OVAL][:, 0].min()) + int(face_width * 0.06)  # was 0.05
-    r_border = int(P[FACE_OVAL][:, 0].max()) - int(face_width * 0.06)
+    l_border = int(P[FACE_OVAL][:, 0].min()) + int(face_width * 0.045)
+    r_border = int(P[FACE_OVAL][:, 0].max()) - int(face_width * 0.045)
     base[:, :l_border] = 0
     base[:, r_border:] = 0
+
+    # Beard exclusion: the generic hair-texture rejector (edge density + not
+    # bright) misses gray/patchy/well-lit facial hair, which then gets read
+    # as skin texture full of "marks". Rather than trying to out-tune that
+    # heuristic, cut the whole mustache/chin/jaw region out - but only when
+    # this photo actually shows facial hair growth there, so clean-shaven
+    # users keep chin/jaw detection.
+    mustache_top_y = int(P[2][1]) - int(face_height * 0.02)  # just above the upper lip
+    beard_face_pts = np.array(
+        [pt for pt in P[FACE_OVAL] if pt[1] >= mustache_top_y], dtype=np.int32
+    )
+    if beard_face_pts.shape[0] >= 3:
+        beard_region = np.zeros((h, w), dtype=np.uint8)
+        cv2.fillPoly(beard_region, [cv2.convexHull(beard_face_pts)], 255)
+
+        # Facial hair detector relaxed vs. the scalp-hair one: gray/white
+        # beard hair is desaturated but not necessarily dark, so gate on low
+        # saturation (any lightness) in addition to plain edge density.
+        hsv_full = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+        sat_full = hsv_full[:, :, 1].astype(np.float32)
+        gray_full = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        gx_f = cv2.Sobel(gray_full, cv2.CV_32F, 1, 0, ksize=3)
+        gy_f = cv2.Sobel(gray_full, cv2.CV_32F, 0, 1, ksize=3)
+        edge_density_full = cv2.boxFilter(cv2.magnitude(gx_f, gy_f), -1, (9, 9))
+        beard_hair_like = ((edge_density_full > 40.0) & (sat_full < 60.0)).astype(np.uint8) * 255
+
+        beard_area_px = int(np.count_nonzero(beard_region))
+        if beard_area_px > 200:
+            beard_hair_px = int(
+                np.count_nonzero(cv2.bitwise_and(beard_region, beard_hair_like))
+            )
+            # A clean-shaven chin still has some texture (stubble shadow,
+            # jaw contour) - require a clear majority before calling it beard.
+            if beard_hair_px / beard_area_px > 0.22:
+                base[beard_region > 0] = 0
 
     # Apply adaptive skin color model, then knock out anything texture-flagged as hair.
     skin_color = _adaptive_skin_mask(bgr, P)
@@ -248,15 +315,6 @@ def build_zone_masks(bgr):
 
     # Clean up small holes/specks left by the hair knockout.
     base = cv2.morphologyEx(base, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
-
-    # Pull the eligible area in from the face-oval/hairline/jaw boundary -
-    # cells right at that edge often carry shadow/hair-fringe gradients that
-    # the detector misreads as a mark.
-    edge_erode_px = max(2, int(face_height * 0.012))
-    base = cv2.erode(
-        base,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (edge_erode_px * 2 + 1, edge_erode_px * 2 + 1)),
-    )
 
     # Zone partitioning
     brow_top = int(min(P[i][1] for i in [70, 63, 105, 66, 107, 336, 296, 334, 293, 300]))
@@ -300,7 +358,7 @@ def detect_blemishes_zoned(
     scar_threshold=4.5,
     melasma_threshold=6.0,     # new — diffuse-patch detection vs zone baseline
     chroma_threshold=3.2,      # new — min A/B color shift to confirm pigmentation vs shadow
-    black_l_floor=42.0,
+    black_l_floor=15.0,  # was 42 - excluded genuinely dark moles/pigmentation from scoring entirely
     min_cluster=2,             # was 3 — lets tiny pinpoint marks through
     max_spots_per_zone=8,      # soft cap, was a hard 5
     merge_factor=0.55,         # was 0.7 — stops distinct blemishes fusing
@@ -346,6 +404,11 @@ def detect_blemishes_zoned(
                 mean_l = L[y1:y2, x1:x2][sw].mean()
                 mean_s = S[y1:y2, x1:x2][sw].mean()
 
+                # black_l_floor only exists to drop near-black leftovers
+                # (deep shadow crease, hair residue that survived the earlier
+                # masks) - it must NOT reject genuinely dark pigmented skin
+                # (moles, deep melasma), or those never get a chance to be
+                # scored as a "dark" mark at all. Keep it low.
                 if mean_l < black_l_floor or (mean_s < 20.0 and mean_l > 120.0):
                     continue
 
@@ -526,6 +589,16 @@ def detect_blemishes_zoned(
 
         final_detections.extend(merged[:max_spots_per_zone])
 
+    # Confidence floor - max_total_spots is a CEILING, not a target. Normal
+    # skin texture (pores, faint stubble shadow) routinely clears the raw
+    # per-cell thresholds by a small margin, especially on the edge-response
+    # ("scar") channel - a rank of ~1.0-1.5x threshold is not a reliable mark,
+    # it's just texture. Empirically (checked against real capture photos),
+    # candidates only start meaningfully thinning out past ~2.5x threshold,
+    # so that's the bar for "confident enough to circle."
+    MIN_CONFIDENT_RANK = 2.5
+    final_detections = [d for d in final_detections if d["rank"] >= MIN_CONFIDENT_RANK]
+
     # Global cap by confidence across the whole face - a per-zone cap alone
     # still let a busy face show 4 zones x 8 = up to 32 circles.
     #
@@ -536,6 +609,9 @@ def detect_blemishes_zoned(
     # after per-type threshold normalization. Reserve a minimum number of
     # slots per type (when that type has any candidates) before filling the
     # rest by rank, so a busy face still shows its redness, not just texture.
+    # This no longer forces weak candidates in just to hit the reservation -
+    # the confidence floor above already ran, so a type with nothing solid
+    # simply contributes 0 slots here.
     MIN_SLOTS_PER_TYPE = 3
     by_type: dict = {}
     for d in final_detections:
@@ -660,7 +736,7 @@ def main():
     ap.add_argument("--scar-thresh", type=float, default=4.5)
     ap.add_argument("--melasma-thresh", type=float, default=6.0)
     ap.add_argument("--chroma-thresh", type=float, default=3.2)
-    ap.add_argument("--black-floor", type=float, default=42.0)
+    ap.add_argument("--black-floor", type=float, default=15.0)
     ap.add_argument("--max-per-zone", type=int, default=8)
     ap.add_argument("--max-total", type=int, default=MAX_TOTAL_SPOTS)
     ap.add_argument("--max-diameter-cm", type=float, default=MAX_SPOT_DIAMETER_CM)

@@ -26,7 +26,11 @@ export function AutocompleteMultiField({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return vocabulary.slice(0, 8);
+    const noneOpt = vocabulary.find((v) => v.key === noneKey);
+    const rest = vocabulary.filter((v) => v.key !== noneKey);
+    if (!q) {
+      return [...(noneOpt ? [noneOpt] : []), ...rest].slice(0, 8);
+    }
     return vocabulary
       .filter(
         (v) =>
@@ -34,7 +38,7 @@ export function AutocompleteMultiField({
           v.key.toLowerCase().includes(q.replace(/\s+/g, "_"))
       )
       .slice(0, 8);
-  }, [query, vocabulary]);
+  }, [query, vocabulary, noneKey]);
 
   const labelFor = (key: string) => {
     if (key.startsWith("other:")) return key.slice(6);

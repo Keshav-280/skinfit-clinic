@@ -51,7 +51,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const session = await establishPatientSessionCookie(user);
+  const session = await establishPatientSessionCookie(user, {
+    method: "otp",
+    userAgent: req.headers.get("user-agent"),
+  });
   if ("error" in session) {
     return NextResponse.json(
       { error: "SERVER_MISCONFIGURED", message: session.error },
