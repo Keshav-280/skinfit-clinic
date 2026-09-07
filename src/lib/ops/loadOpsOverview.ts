@@ -7,6 +7,7 @@ import {
   users,
   wellnessCheckins,
 } from "@/src/db/schema";
+import { opsIso } from "@/src/lib/ops/opsDates";
 
 export type OpsPatientRow = {
   id: string;
@@ -15,9 +16,11 @@ export type OpsPatientRow = {
   phone: string | null;
   signedUpAt: string;
   lastLoginAt: string | null;
+  loginAtList: string[];
   hasScan: boolean;
   scanCount: number;
   lastScanAt: string | null;
+  scanAtList: string[];
   questionnaireDone: boolean;
   questionnaireAt: string | null;
 };
@@ -44,8 +47,8 @@ function missingColumn(error: unknown, column: string): boolean {
   );
 }
 
-function iso(d: Date | null | undefined): string | null {
-  return d instanceof Date ? d.toISOString() : null;
+function stamp(value: unknown): string | null {
+  return opsIso(value);
 }
 
 export async function loadOpsOverview(): Promise<OpsOverview> {
@@ -97,15 +100,13 @@ export async function loadOpsOverview(): Promise<OpsOverview> {
     patientRows = fallback.map((row) => ({ ...row, lastLoginAt: null }));
   }
 
-  const [scanRows, waitlistRows, checkinRows] = await Promise.all([
+  const [scanStampRows, waitlistRows, checkinRows] = await Promise.all([
     db
       .select({
         userId: scans.userId,
-        scanCount: sql<number>`count(*)::int`,
-        lastScanAt: sql<Date>`max(${scans.createdAt})`,
+        createdAt: scans.createdAt,
       })
-      .from(scans)
-      .groupBy(scans.userId),
+      .from(scans),
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(preReleaseSignups),
@@ -114,26 +115,48 @@ export async function loadOpsOverview(): Promise<OpsOverview> {
       .from(wellnessCheckins),
   ]);
 
-  const scanByUser = new Map(
-    scanRows.map((row) => [
-      row.userId,
-      {
-        scanCount: Number(row.scanCount) || 0,
-        lastScanAt: row.lastScanAt ?? null,
-      },
-    ])
-  );
+  const scanByUser = new Map<
+    string,
+    { scanCount: number; lastScanAt: Date | null; scanAtList: string[] }
+  >();
+  for (const row of scanStampRows) {
+    const iso = stamp(row.createdAt);
+    const instant = iso ? new Date(iso) : null;
+    const current = scanByUser.get(row.userId) ?? {
+      scanCount: 0,
+      lastScanAt: null as Date | null,
+      scanAtList: [] as string[],
+    };
+    current.scanCount += 1;
+    if (iso) current.scanAtList.push(iso);
+    if (instant && (!current.lastScanAt || instant > current.lastScanAt)) {
+      current.lastScanAt = instant;
+    }
+    scanByUser.set(row.userId, current);
+  }
 
+  const loginByUser = new Map<string, string[]>();
   let loggedInLast7Days = 0;
   try {
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [week] = await db
+    const loginStampRows = await db
       .select({
-        n: sql<number>`count(distinct ${loginEvents.userId})::int`,
+        userId: loginEvents.userId,
+        createdAt: loginEvents.createdAt,
       })
-      .from(loginEvents)
-      .where(sql`${loginEvents.createdAt} >= ${since}`);
-    loggedInLast7Days = Number(week?.n) || 0;
+      .from(loginEvents);
+    const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const weekUsers = new Set<string>();
+    for (const row of loginStampRows) {
+      const iso = stamp(row.createdAt);
+      const instant = iso ? new Date(iso) : null;
+      if (iso) {
+        const list = loginByUser.get(row.userId) ?? [];
+        list.push(iso);
+        loginByUser.set(row.userId, list);
+      }
+      if (instant && instant.getTime() >= since) weekUsers.add(row.userId);
+    }
+    loggedInLast7Days = weekUsers.size;
   } catch (error) {
     if (!missingColumn(error, "login_events")) {
       console.warn("[ops] login_events query skipped", error);
@@ -142,6 +165,7 @@ export async function loadOpsOverview(): Promise<OpsOverview> {
 
   const patients: OpsPatientRow[] = patientRows.map((row) => {
     const scan = scanByUser.get(row.id);
+    const loginAtList = loginByUser.get(row.id) ?? [];
     const questionnaireDone = Boolean(row.primaryConcern?.trim());
     const phone =
       row.phone?.trim()
@@ -152,13 +176,19 @@ export async function loadOpsOverview(): Promise<OpsOverview> {
       name: row.name,
       email: row.email,
       phone,
-      signedUpAt: row.createdAt.toISOString(),
-      lastLoginAt: iso(row.lastLoginAt),
+      signedUpAt: stamp(row.createdAt) ?? "",
+      lastLoginAt:
+        stamp(row.lastLoginAt) ??
+        (loginAtList.length > 0
+          ? [...loginAtList].sort().at(-1) ?? null
+          : null),
+      loginAtList,
       hasScan: Boolean(scan && scan.scanCount > 0),
       scanCount: scan?.scanCount ?? 0,
-      lastScanAt: iso(scan?.lastScanAt ?? null),
+      lastScanAt: stamp(scan?.lastScanAt ?? null),
+      scanAtList: scan?.scanAtList ?? [],
       questionnaireDone,
-      questionnaireAt: iso(row.onboardingCompletedAt),
+      questionnaireAt: stamp(row.onboardingCompletedAt),
     };
   });
 

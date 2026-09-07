@@ -34,8 +34,8 @@ export function CheckinScreen({
   const pct = (step / totalSteps) * 100;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-[#FAF8F5]">
-      <div className="mx-auto flex w-full max-w-[430px] flex-1 flex-col bg-[#FAF8F5] px-6 pt-6">
+    <div className="flex flex-col bg-[#FAF8F5]">
+      <div className="mx-auto flex w-full max-w-[430px] flex-col bg-[#FAF8F5] px-6 pt-3">
         {/* Progress bar */}
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
           <motion.div
@@ -46,7 +46,7 @@ export function CheckinScreen({
         </div>
 
         {/* Back + step counter */}
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between">
           <button
             type="button"
             onClick={onBack}
@@ -67,7 +67,7 @@ export function CheckinScreen({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.05, ease: easeOut }}
-          className="mt-4 text-[26px] font-extrabold leading-tight tracking-tight text-[#18181b]"
+          className="mt-3 text-[22px] font-extrabold leading-tight tracking-tight text-[#18181b]"
         >
           {title}
         </motion.h1>
@@ -77,7 +77,7 @@ export function CheckinScreen({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.1, ease: easeOut }}
-            className="mt-2 text-sm leading-relaxed text-[#6B7280]"
+            className="mt-1.5 text-sm leading-relaxed text-[#6B7280]"
           >
             {subtitle}
           </motion.p>
@@ -89,18 +89,17 @@ export function CheckinScreen({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.18, ease: easeOut }}
-          className="mt-6 flex-1 space-y-6 pb-6"
+          className="mt-4 space-y-5"
         >
           {children}
         </motion.div>
 
-        {/* Sticky footer */}
-        <div className="sticky bottom-0 -mx-6 border-t border-[#E5E7EB] bg-[#FAF8F5]/95 px-6 pb-8 pt-4 backdrop-blur-sm">
+        <div className="mt-5 border-t border-[#E5E7EB] pt-3 pb-2">
           <button
             type="button"
             onClick={onNext}
             disabled={nextDisabled || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1E1B31] py-4 text-[15px] font-bold text-white transition hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1E1B31] py-3.5 text-[15px] font-bold text-white transition hover:bg-[#242A5F] disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
           >
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
