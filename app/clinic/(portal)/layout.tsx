@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { ClinicPortalMain } from "@/components/doctor/ClinicPortalMain";
 import { DoctorSimpleNav } from "@/components/doctor/DoctorSimpleNav";
 import { ClinicRequestAlertController } from "@/components/doctor/ClinicRequestAlertController";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
@@ -15,11 +16,11 @@ import { sanitizeClinicPortalNext } from "@/src/lib/auth/clinic-portal-next";
 
 export const metadata: Metadata = {
   title: {
-    default: "Clinic Portal | SkinFit Wellness",
+    default: "Clinic | SkinFit Wellness",
     template: "%s | SkinFit Wellness",
   },
   description:
-    "Minimal SkinFit clinic portal — appointment requests, patients, chat, and reports.",
+    "SkinFit clinic and ops — appointment requests, patients, and website activity.",
   robots: { index: false, follow: false },
 };
 
@@ -39,12 +40,12 @@ export default async function ClinicPortalLayout({
   return (
     <div data-clinic-portal className={doctorPortalShellClass}>
       <header
-        className={`sticky top-0 z-40 flex w-full items-center gap-3 px-3 py-2 sm:px-6 ${doctorGlassHeaderClass}`}
+        className={`sticky top-0 z-40 flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-6 ${doctorGlassHeaderClass}`}
       >
         <Link
           href="/clinic/requests"
           className="inline-flex shrink-0 items-center"
-          aria-label="SkinFit Wellness clinic portal"
+          aria-label="SkinFit Wellness"
         >
           <Image
             src="/branding/skinfit-wellness-logo.svg"
@@ -64,9 +65,7 @@ export default async function ClinicPortalLayout({
           <DoctorLogoutButton compact loginHref="/clinic/login" />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-10 pt-6 sm:px-6">
-        {children}
-      </main>
+      <ClinicPortalMain>{children}</ClinicPortalMain>
     </div>
   );
 }

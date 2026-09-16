@@ -7,9 +7,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY services/spot-detector-v15/api/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+# CPU-only torch/torchvision first - default pip pulls ~2GB+ CUDA wheels
+# and fills small VM disks, same reasoning as the ml-worker/acne-detector images.
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+  && pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY services/spot-detector-v15/api /app/api
+
+# Bake the face-parsing model weights into the image at build time, not on
+# first request - a cold container hitting Hugging Face on every restart
+# would add real latency (and a hard failure if the network hiccups) to
+# the first scan after every deploy.
+RUN python -c "from transformers import SegformerImageProcessor, SegformerForSemanticSegmentation; \
+SegformerImageProcessor.from_pretrained('jonathandinu/face-parsing'); \
+SegformerForSemanticSegmentation.from_pretrained('jonathandinu/face-parsing')"
 
 EXPOSE 8002
 

@@ -5,3 +5,7 @@ mediapipe>=0.10.0
 numpy>=1.24.0
 Pillow>=10.0.0
 python-multipart>=0.0.6
+transformers>=4.40.0
+# CPU torch/torchvision are installed separately in the Dockerfile (pinned
+# to the CPU wheel index) so a default install doesn't pull ~2GB of CUDA
+# wheels onto this VM.

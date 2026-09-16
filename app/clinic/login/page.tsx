@@ -74,7 +74,10 @@ function ClinicLoginForm() {
             SkinFit Wellness
           </h1>
           <p className="font-meta mt-1 text-sm uppercase tracking-wide text-[#5B66A1]">
-            Clinic portal
+            Clinic & Ops
+          </p>
+          <p className="mt-2 text-center text-sm text-slate-500">
+            One login for clinic work and website activity.
           </p>
         </div>
 

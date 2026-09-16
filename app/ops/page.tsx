@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
-import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
+import { OPS_IN_CLINIC_PATH } from "@/src/lib/auth/ops-portal-next";
 
-export default async function OpsIndexPage() {
-  const id = await getDoctorPortalUserId();
-  if (id) redirect("/ops/overview");
-  redirect("/ops/login");
+export default function OpsIndexPage() {
+  redirect(OPS_IN_CLINIC_PATH);
 }

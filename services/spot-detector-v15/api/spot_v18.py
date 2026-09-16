@@ -19,6 +19,7 @@ import argparse
 import base64
 import json
 import os
+
 import sys
 import urllib.request
 from pathlib import Path
@@ -26,8 +27,11 @@ from pathlib import Path
 import cv2
 import mediapipe as mp
 import numpy as np
+import torch
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from PIL import Image
+from transformers import SegformerImageProcessor, SegformerForSemanticSegmentation
 
 # -------------------------------------------------------------------------
 # 1. MediaPipe Model Setup & Landmark Extraction
@@ -63,6 +67,54 @@ def get_landmarks(bgr_img):
     return [(int(lm.x * w), int(lm.y * h)) for lm in results.face_landmarks[0]]
 
 
+# -------------------------------------------------------------------------
+# 1b. Face-parsing model (skin/hair/eyebrows/eyes/lips/ears/nose classes)
+# -------------------------------------------------------------------------
+# Replaces the old hand-tuned polygon+dilation cutouts and the adaptive-
+# skin-color/hair-texture heuristics for everything except facial hair (see
+# the beard-exclusion block below) - a trained model classifying real pixels
+# is far more precise at the eyebrow/eye/lip/hairline boundary than anything
+# we can hand-tune, and unlike a generative model it can't hallucinate,
+# since it only ever labels pixels that already exist in the photo.
+_FACE_PARSE_MODEL_ID = "jonathandinu/face-parsing"
+_face_parse_processor = None
+_face_parse_model = None
+
+# CelebAMask-HQ class ids this model was trained on.
+FACE_PARSE_SKIN = 1
+FACE_PARSE_NOSE = 2
+# "Skin-eligible" = skin + nose (the nose is real skin, just a separate
+# class in this model's labeling - the nostril holes get a small, precise
+# manual cut below, same as before).
+FACE_PARSE_SKIN_CLASSES = (FACE_PARSE_SKIN, FACE_PARSE_NOSE)
+
+
+def _get_face_parser():
+    global _face_parse_processor, _face_parse_model
+    if _face_parse_model is not None:
+        return _face_parse_processor, _face_parse_model
+    print("Loading face-parsing model...", file=sys.stderr)
+    _face_parse_processor = SegformerImageProcessor.from_pretrained(_FACE_PARSE_MODEL_ID)
+    _face_parse_model = SegformerForSemanticSegmentation.from_pretrained(_FACE_PARSE_MODEL_ID)
+    _face_parse_model.eval()
+    return _face_parse_processor, _face_parse_model
+
+
+def parse_face_classes(bgr):
+    """Per-pixel CelebAMask-HQ class id map, same H x W as the input photo."""
+    processor, model = _get_face_parser()
+    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(rgb)
+    inputs = processor(images=image, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model(**inputs)
+    h, w = bgr.shape[:2]
+    upsampled = torch.nn.functional.interpolate(
+        outputs.logits, size=(h, w), mode="bilinear", align_corners=False
+    )
+    return upsampled.argmax(dim=1)[0].numpy()
+
+
 # Average adult interpupillary distance - used to convert this photo's pixel
 # scale to real-world centimeters so circle sizes are capped in cm, not just
 # pixels (a close-up phone selfie and a farther one shouldn't cap differently).
@@ -88,103 +140,6 @@ def estimate_px_per_cm(pts):
     ]
     face_width_px = float(P[FACE_OVAL][:, 0].max() - P[FACE_OVAL][:, 0].min())
     return max(1.0, face_width_px) / 14.0
-
-
-# -------------------------------------------------------------------------
-# 2. Adaptive Skin Color Model
-# -------------------------------------------------------------------------
-def _sample_skin_patches(bgr, P):
-    """Grab small patches from spots that are reliably skin (not brow/eye/nose/lip)
-    regardless of the person's skin tone, and use them to build a model for THIS photo."""
-    h, w = bgr.shape[:2]
-    ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
-    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-
-    # Landmark indices that sit on flat, unambiguous skin.
-    sample_idx = {
-        "forehead": 151,
-        "left_cheek": 50,
-        "right_cheek": 280,
-        "chin": 175,
-        "left_cheek2": 137,
-        "right_cheek2": 366,
-    }
-
-    samples_ycrcb, samples_hsv = [], []
-    half = max(3, int(min(h, w) * 0.012))
-    for idx in sample_idx.values():
-        cx, cy = P[idx]
-        y1, y2 = max(0, cy - half), min(h, cy + half)
-        x1, x2 = max(0, cx - half), min(w, cx + half)
-        if y2 <= y1 or x2 <= x1:
-            continue
-        samples_ycrcb.append(ycrcb[y1:y2, x1:x2].reshape(-1, 3))
-        samples_hsv.append(hsv[y1:y2, x1:x2].reshape(-1, 3))
-
-    samples_ycrcb = np.concatenate(samples_ycrcb, axis=0).astype(np.float32)
-    samples_hsv = np.concatenate(samples_hsv, axis=0).astype(np.float32)
-    return samples_ycrcb, samples_hsv
-
-
-def _adaptive_skin_mask(bgr, P):
-    """Build a skin range from patches sampled off THIS face instead of a fixed
-    global threshold. Generalizes across skin tones (light to deep brown) far
-    better than a hardcoded hue band."""
-    ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
-    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-
-    s_ycrcb, s_hsv = _sample_skin_patches(bgr, P)
-
-    cr_mean, cb_mean = s_ycrcb[:, 1].mean(), s_ycrcb[:, 2].mean()
-    cr_std, cb_std = s_ycrcb[:, 1].std(), s_ycrcb[:, 2].std()
-    h_mean = s_hsv[:, 0].mean()
-    h_std = max(s_hsv[:, 0].std(), 4.0)
-
-    k = 3.2  # widened band around the sampled mean
-    cr_lo, cr_hi = cr_mean - k * cr_std - 4, cr_mean + k * cr_std + 4
-    cb_lo, cb_hi = cb_mean - k * cb_std - 4, cb_mean + k * cb_std + 4
-
-    cr = ycrcb[:, :, 1].astype(np.float32)
-    cb = ycrcb[:, :, 2].astype(np.float32)
-    mask_ycrcb = ((cr >= cr_lo) & (cr <= cr_hi) & (cb >= cb_lo) & (cb <= cb_hi)).astype(np.uint8) * 255
-
-    hue = hsv[:, :, 0].astype(np.float32)
-    sat = hsv[:, :, 1].astype(np.float32)
-    mask_hue = ((np.abs(hue - h_mean) <= k * h_std) & (sat >= 15)).astype(np.uint8) * 255
-
-    skin = cv2.bitwise_or(mask_ycrcb, mask_hue)
-    kern = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    return cv2.morphologyEx(skin, cv2.MORPH_CLOSE, kern, iterations=2)
-
-
-def _hair_texture_mask(bgr):
-    """Hair (any color) has much higher local edge density than skin. Flags
-    high-texture, mid/low-lightness regions as hair regardless of hue — this is
-    what catches dark brown/black hair the color model alone lets through."""
-    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
-    L = lab[:, :, 0].astype(np.float32)
-
-    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
-    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
-    edge_mag = cv2.magnitude(gx, gy)
-    edge_density = cv2.boxFilter(edge_mag, -1, (9, 9))
-
-    # High local edge energy + not bright (rules out specular highlights) -> hair.
-    # A compact dark spot (mole, deep acne, a scar) has exactly this signature
-    # too - sharp edge at its boundary, dark inside - so on its own this
-    # would misclassify it as hair and cut it from detection entirely before
-    # the mark detector ever runs. Real hair is anisotropic and covers a
-    # sizable contiguous patch (a strand, a cluster of strands); a mole is an
-    # isolated small blob. Drop small connected components so only genuinely
-    # hair-sized regions get excluded.
-    hair_like = ((edge_density > 55.0) & (L < 150.0)).astype(np.uint8) * 255
-    n, labels, stats, _ = cv2.connectedComponentsWithStats(hair_like, connectivity=8)
-    MIN_HAIR_BLOB_AREA = 120  # px - bigger than a typical mole/acne mark cross-section
-    for i in range(1, n):
-        if stats[i, cv2.CC_STAT_AREA] < MIN_HAIR_BLOB_AREA:
-            hair_like[labels == i] = 0
-    return hair_like
 
 
 # -------------------------------------------------------------------------
@@ -236,19 +191,30 @@ def build_zone_masks(bgr):
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (edge_erode_px * 2 + 1, edge_erode_px * 2 + 1)),
     )
 
-    # Eyebrow/eye exclusion - just enough padding to clear eyelashes/brow
-    # hair, not the whole under-eye/upper-cheek area around it.
-    l_eye_brow = [70, 63, 105, 66, 107, 55, 193, 245, 128, 114, 217, 236, 130, 247, 30, 29, 27, 56, 46, 53, 52, 65]
-    r_eye_brow = [336, 296, 334, 293, 300, 276, 283, 417, 465, 357, 343, 437, 456, 359, 467, 260, 259, 257, 285, 295, 282]
-    eyes_mask = np.zeros((h, w), dtype=np.uint8)
-    cv2.fillPoly(eyes_mask, [cv2.convexHull(P[l_eye_brow])], 255)
-    cv2.fillPoly(eyes_mask, [cv2.convexHull(P[r_eye_brow])], 255)
-    eyes_mask = cv2.dilate(eyes_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 1.1) + 1, int(pad * 1.1) + 1)))
-    base[eyes_mask > 0] = 0
+    # Skin/hair/eyebrows/eyes/lips/ears classification from the trained
+    # face-parsing model, replacing the old hand-tuned eyebrow/eye/lip
+    # polygons and the crude sideburn x-trim - the model's own hairline/
+    # sideburn boundary is pixel-accurate per photo instead of a flat 4.5%
+    # face-width guess, and eyebrows/eyes/lips are simply never "skin" in
+    # its output, so no dilation padding needs tuning for them at all.
+    parsed = parse_face_classes(bgr)
+    skin_eligible = np.isin(parsed, FACE_PARSE_SKIN_CLASSES).astype(np.uint8) * 255
+    # A small buffer around every non-skin boundary (eyes, eyebrows, lips,
+    # hairline) - the model's own edge is precise, but the real photo still
+    # has a shadow/highlight transition right at that edge (e.g. the
+    # under-eye tear-trough shadow butting up against the eye) that reads as
+    # a mark with zero margin. Shrink the eligible mask in from every class
+    # boundary instead of just the outer face-oval one.
+    non_skin = cv2.bitwise_not(skin_eligible)
+    parse_buffer_px = max(8, int(pad * 0.55))
+    non_skin = cv2.dilate(non_skin, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (parse_buffer_px * 2 + 1, parse_buffer_px * 2 + 1)))
+    skin_eligible = cv2.bitwise_not(non_skin)
+    base = cv2.bitwise_and(base, skin_eligible)
 
     # Nose exclusion - only the nostril openings themselves (genuinely not
-    # skin), not the whole nose bridge/tip/sides. That surface is common
-    # ground for blackheads/oiliness and should stay eligible for detection.
+    # skin), not the whole nose bridge/tip/sides. The parsing model's "nose"
+    # class includes the nostril holes as part of the same blob, so this
+    # still needs its own precise cut - same as before.
     nostril_pts = [98, 97, 2, 326, 327, 439, 219]
     nose_mask = np.zeros((h, w), dtype=np.uint8)
     cv2.fillPoly(nose_mask, [cv2.convexHull(P[nostril_pts])], 255)
@@ -259,25 +225,13 @@ def build_zone_masks(bgr):
     nose_mask = cv2.dilate(nose_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 2.0) + 1, int(pad * 2.0) + 1)))
     base[nose_mask > 0] = 0
 
-    # Lip exclusion
-    outer_lips = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95]
-    lip_mask = np.zeros((h, w), dtype=np.uint8)
-    cv2.fillPoly(lip_mask, [cv2.convexHull(P[outer_lips])], 255)
-    lip_mask = cv2.dilate(lip_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(pad * 1.1) + 1, int(pad * 1.1) + 1)))
-    base[lip_mask > 0] = 0
-
-    # Trim sideburns/temple hair
-    l_border = int(P[FACE_OVAL][:, 0].min()) + int(face_width * 0.045)
-    r_border = int(P[FACE_OVAL][:, 0].max()) - int(face_width * 0.045)
-    base[:, :l_border] = 0
-    base[:, r_border:] = 0
-
-    # Beard exclusion: the generic hair-texture rejector (edge density + not
-    # bright) misses gray/patchy/well-lit facial hair, which then gets read
-    # as skin texture full of "marks". Rather than trying to out-tune that
-    # heuristic, cut the whole mustache/chin/jaw region out - but only when
-    # this photo actually shows facial hair growth there, so clean-shaven
-    # users keep chin/jaw detection.
+    # Beard exclusion: the face-parsing model's training data (CelebAMask-HQ)
+    # skews clean-shaven, so it reliably calls facial hair "skin" instead of
+    # "hair" - unlike scalp hair/sideburns, which it handles well. Keep our
+    # own landmark-region + texture density check for this one gap, cutting
+    # the whole mustache/chin/jaw region out - but only when this photo
+    # actually shows facial hair growth there, so clean-shaven users keep
+    # chin/jaw detection.
     mustache_top_y = int(P[2][1]) - int(face_height * 0.02)  # just above the upper lip
     beard_face_pts = np.array(
         [pt for pt in P[FACE_OVAL] if pt[1] >= mustache_top_y], dtype=np.int32
@@ -307,13 +261,7 @@ def build_zone_masks(bgr):
             if beard_hair_px / beard_area_px > 0.22:
                 base[beard_region > 0] = 0
 
-    # Apply adaptive skin color model, then knock out anything texture-flagged as hair.
-    skin_color = _adaptive_skin_mask(bgr, P)
-    hair_tex = _hair_texture_mask(bgr)
-    base = cv2.bitwise_and(base, skin_color)
-    base[hair_tex > 0] = 0
-
-    # Clean up small holes/specks left by the hair knockout.
+    # Clean up small holes/specks left by the cutouts above.
     base = cv2.morphologyEx(base, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
 
     # Zone partitioning

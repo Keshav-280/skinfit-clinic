@@ -1,9 +1,6 @@
-import { OpsOverviewClient } from "@/components/ops/OpsOverviewClient";
-import { loadOpsOverview } from "@/src/lib/ops/loadOpsOverview";
+import { redirect } from "next/navigation";
+import { OPS_IN_CLINIC_PATH } from "@/src/lib/auth/ops-portal-next";
 
-export const dynamic = "force-dynamic";
-
-export default async function OpsOverviewPage() {
-  const data = await loadOpsOverview();
-  return <OpsOverviewClient data={data} />;
+export default function OpsOverviewPage() {
+  redirect(OPS_IN_CLINIC_PATH);
 }

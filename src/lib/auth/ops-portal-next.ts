@@ -1,19 +1,14 @@
-const OPS_PORTAL_DEFAULT = "/ops";
+import { clinicPortalLoginUrl } from "@/src/lib/auth/clinic-portal-next";
 
-/** Safe post-login path for the ops portal. */
-export function sanitizeOpsPortalNext(next: string | null | undefined): string {
-  if (!next || typeof next !== "string") return OPS_PORTAL_DEFAULT;
-  const trimmed = next.trim();
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
-    return OPS_PORTAL_DEFAULT;
-  }
-  if (trimmed === "/ops/login") return OPS_PORTAL_DEFAULT;
-  if (trimmed === "/ops" || trimmed.startsWith("/ops/")) return trimmed;
-  return OPS_PORTAL_DEFAULT;
+export const OPS_IN_CLINIC_PATH = "/clinic/ops";
+
+/** Ops now lives under the clinic site. Old /ops paths map here. */
+export function sanitizeOpsPortalNext(
+  _next?: string | null | undefined
+): string {
+  return OPS_IN_CLINIC_PATH;
 }
 
-export function opsPortalLoginUrl(origin: string, returnPath: string): URL {
-  const login = new URL("/ops/login", origin);
-  login.searchParams.set("next", sanitizeOpsPortalNext(returnPath));
-  return login;
+export function opsPortalLoginUrl(origin: string, _returnPath?: string): URL {
+  return clinicPortalLoginUrl(origin, OPS_IN_CLINIC_PATH);
 }
