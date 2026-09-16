@@ -19,6 +19,7 @@ import argparse
 import base64
 import json
 import os
+import tempfile
 
 import sys
 import urllib.request
@@ -589,6 +590,69 @@ def detect_blemishes_zoned(
 # -------------------------------------------------------------------------
 # 5. Dashed Circle Drawing
 # -------------------------------------------------------------------------
+def _smooth_curve(points, num=200):
+    """Interpolate points into a smooth curve."""
+    pts = np.array(points, dtype=np.float64)
+    if len(pts) < 2:
+        return pts.astype(np.int32)
+    from scipy.interpolate import make_interp_spline
+    t = np.linspace(0, 1, len(pts))
+    t_smooth = np.linspace(0, 1, num)
+    try:
+        k = min(3, len(pts) - 1)
+        sx = make_interp_spline(t, pts[:, 0], k=k)
+        sy = make_interp_spline(t, pts[:, 1], k=k)
+        return np.column_stack([sx(t_smooth), sy(t_smooth)]).astype(np.int32)
+    except Exception:
+        return pts.astype(np.int32)
+
+
+def _draw_dashed_polyline(img, smooth_pts, color, thickness, dash_px, gap_px):
+    """Walk along a polyline drawing dashes."""
+    drawing = True
+    seg_start = 0
+    budget = float(dash_px)
+    for i in range(1, len(smooth_pts)):
+        dist = np.hypot(float(smooth_pts[i][0] - smooth_pts[i-1][0]),
+                        float(smooth_pts[i][1] - smooth_pts[i-1][1]))
+        budget -= dist
+        if budget <= 0:
+            if drawing:
+                cv2.polylines(img, [smooth_pts[seg_start:i+1]], False, color, thickness, cv2.LINE_AA)
+            seg_start = i
+            drawing = not drawing
+            budget = float(gap_px if not drawing else dash_px)
+    if drawing and seg_start < len(smooth_pts) - 1:
+        cv2.polylines(img, [smooth_pts[seg_start:]], False, color, thickness, cv2.LINE_AA)
+
+
+def draw_dashed_crescent(img, upper_pts, color, thickness=3, dash_px=7, gap_px=5):
+    """Draw a dashed crescent shape: upper eyelid curve + a lower arc bulging down."""
+    upper = _smooth_curve(upper_pts, 200)
+    if len(upper) < 2:
+        return
+
+    # Build lower arc: same start/end as upper curve but bowed downward
+    start = upper[0].astype(np.float64)
+    end = upper[-1].astype(np.float64)
+    mid_x = (start[0] + end[0]) / 2
+    mid_y = (start[1] + end[1]) / 2
+    # Sag = how far below the midpoint the arc dips
+    span = np.hypot(end[0] - start[0], end[1] - start[1])
+    sag = max(18, span * 0.4)
+    lower_ctrl = np.array([
+        start,
+        [start[0] * 0.6 + mid_x * 0.4, mid_y + sag * 0.7],
+        [mid_x, mid_y + sag],
+        [end[0] * 0.6 + mid_x * 0.4, mid_y + sag * 0.7],
+        end,
+    ])
+    lower = _smooth_curve(lower_ctrl, 200)
+
+    _draw_dashed_polyline(img, upper, color, thickness, dash_px, gap_px)
+    _draw_dashed_polyline(img, lower, color, thickness, dash_px, gap_px)
+
+
 def draw_dashed_circle(img, center, radius, color, thickness=3, dash_px=7, gap_px=5):
     """Draw a circle outline as arc dashes instead of a solid stroke.
     Dash count scales with radius so dash length stays visually consistent
@@ -605,7 +669,243 @@ def draw_dashed_circle(img, center, radius, color, thickness=3, dash_px=7, gap_p
 
 
 # -------------------------------------------------------------------------
-# 6. Service + CLI
+# 6. ML-based Detection (YOLO acne + Roboflow mole/scar workflow)
+# -------------------------------------------------------------------------
+_YOLO_MODEL_PATH = str(Path(__file__).resolve().parent / "best.pt")
+_yolo_model = None
+
+_ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", "ejZGvesMl2RGypEhgjO8")
+_ROBOFLOW_WORKSPACE = "keshav-goyal-bjss4"
+_ROBOFLOW_WORKFLOW = "face-skin-findings"
+
+
+def _get_yolo_model():
+    global _yolo_model
+    if _yolo_model is not None:
+        return _yolo_model
+    if not os.path.exists(_YOLO_MODEL_PATH):
+        print(f"YOLO model not found at {_YOLO_MODEL_PATH}, skipping", file=sys.stderr)
+        return None
+    try:
+        from ultralytics import YOLO
+        _yolo_model = YOLO(_YOLO_MODEL_PATH)
+        print("Loaded YOLO acne model", file=sys.stderr)
+        return _yolo_model
+    except Exception as e:
+        print(f"Failed to load YOLO model: {e}", file=sys.stderr)
+        return None
+
+
+def detect_with_yolo(bgr, conf=0.15):
+    model = _get_yolo_model()
+    if model is None:
+        return []
+    results = model.predict(bgr, conf=conf, verbose=False)
+    detections = []
+    for r in results:
+        for box in r.boxes:
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            cx = (x1 + x2) / 2
+            cy = (y1 + y2) / 2
+            bw = x2 - x1
+            bh = y2 - y1
+            radius = max(20, int(max(bw, bh) / 2 * 1.6))
+            detections.append({
+                "cx": int(cx), "cy": int(cy), "r": radius,
+                "score": float(box.conf[0]),
+                "rank": float(box.conf[0]) * 10,
+                "type": "acne",
+                "kind": "acne",
+                "source": "yolo",
+            })
+    return detections
+
+
+def detect_with_roboflow(bgr, conf=0.15):
+    try:
+        from inference_sdk import InferenceHTTPClient, InferenceConfiguration
+    except ImportError:
+        print("inference-sdk not installed, skipping Roboflow", file=sys.stderr)
+        return []
+
+    tmp_path = os.path.join(tempfile.gettempdir(), f"rf_{os.getpid()}.jpg")
+    try:
+        cv2.imwrite(tmp_path, bgr)
+        client = InferenceHTTPClient(
+            api_url="https://serverless.roboflow.com",
+            api_key=_ROBOFLOW_API_KEY,
+        ).configure(InferenceConfiguration(api_key_transport="header"))
+
+        result = client.run_workflow(
+            workspace_name=_ROBOFLOW_WORKSPACE,
+            workflow_id=_ROBOFLOW_WORKFLOW,
+            images={"image": tmp_path},
+            parameters={
+                "confidence": conf,
+                "iou_threshold": 0.3,
+                "class_agnostic_nms": False,
+                "max_detections": 100,
+            },
+            use_cache=True,
+        )
+    except Exception as e:
+        print(f"Roboflow API error: {e}", file=sys.stderr)
+        return []
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+    detections = []
+    if not result or "predictions" not in result[0]:
+        return detections
+
+    preds = result[0]["predictions"].get("predictions", [])
+    class_map = {
+        "acne scar": ("scar", "acne_scar"),
+        "mole on face": ("dark", "mole"),
+        "dark spot": ("dark", "dark_spot"),
+        "dark circle": ("dark", "dark_circle"),
+        "scar": ("scar", "scar"),
+        "mole": ("dark", "mole"),
+    }
+    img_h, img_w = bgr.shape[:2]
+    max_box = min(img_h, img_w) * 0.15
+    for p in preds:
+        bw = int(p["width"])
+        bh = int(p["height"])
+        if max(bw, bh) > max_box:
+            continue
+        cls_name = p.get("class", "").lower()
+        api_type, kind = class_map.get(cls_name, ("dark", cls_name.replace(" ", "_")))
+        cx = int(p["x"])
+        cy = int(p["y"])
+        radius = max(20, int(max(bw, bh) / 2 * 1.6))
+        detections.append({
+            "cx": cx, "cy": cy, "r": radius,
+            "score": float(p["confidence"]),
+            "rank": float(p["confidence"]) * 10,
+            "type": api_type,
+            "kind": kind,
+            "source": "roboflow",
+        })
+    return detections
+
+
+def detect_dark_circles(bgr, pts):
+    """Detect dark circles by comparing under-eye luminance to forehead/upper-cheek baseline."""
+    if pts is None or len(pts) < 474:
+        return []
+    P = np.array(pts, dtype=np.int32)
+    h, w = bgr.shape[:2]
+    lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
+    L = lab[:, :, 0].astype(np.float32)
+
+    # Lower eyelid contour landmarks (ordered left-to-right for smooth curve)
+    LEFT_LOWER_LID = [33, 7, 163, 144, 145, 153, 154, 155, 133]
+    RIGHT_LOWER_LID = [263, 249, 390, 373, 374, 380, 381, 382, 362]
+    # Under-eye area landmarks for luminance sampling
+    LEFT_UNDER = [111, 117, 118, 119, 120, 121, 128, 245]
+    RIGHT_UNDER = [340, 346, 347, 348, 349, 350, 357, 465]
+    # Reference: nose bridge + forehead center (well-lit, consistent)
+    REF_IDS = [8, 9, 10, 151, 108, 337, 69, 299]
+
+    ref_mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.fillPoly(ref_mask, [cv2.convexHull(P[REF_IDS])], 255)
+    ref_L = L[ref_mask > 0].mean() if np.count_nonzero(ref_mask) > 50 else 0
+    if ref_L <= 0:
+        return []
+
+    detections = []
+    for side, under_ids, lid_ids in [
+        ("left", LEFT_UNDER, LEFT_LOWER_LID),
+        ("right", RIGHT_UNDER, RIGHT_LOWER_LID),
+    ]:
+        under_pts = P[under_ids]
+        under_mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.fillPoly(under_mask, [cv2.convexHull(under_pts)], 255)
+        under_mask = cv2.dilate(under_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15)))
+
+        under_L = L[under_mask > 0].mean() if np.count_nonzero(under_mask) > 50 else 0
+        darkness = ref_L - under_L
+        if darkness > 5:
+            lid_contour = P[lid_ids].copy()
+            # Shift contour down to sit under the eye
+            eye_height = int(lid_contour[:, 1].max() - lid_contour[:, 1].min())
+            offset = max(8, int(eye_height * 0.6))
+            lid_contour[:, 1] += offset
+
+            cx = int(under_pts[:, 0].mean())
+            cy = int(under_pts[:, 1].mean())
+            spread = int(np.hypot(
+                under_pts[:, 0].max() - under_pts[:, 0].min(),
+                under_pts[:, 1].max() - under_pts[:, 1].min(),
+            ) / 2)
+            radius = max(25, int(spread * 1.5))
+            conf = min(0.95, darkness / 25.0)
+            detections.append({
+                "cx": cx, "cy": cy, "r": radius,
+                "score": round(conf, 2),
+                "rank": conf * 10,
+                "type": "dark",
+                "kind": "dark_circle",
+                "source": "landmark",
+                "contour": lid_contour.tolist(),
+            })
+    return detections
+
+
+def detect_ml(bgr, skin_mask=None, max_radius_px=65, pts=None):
+    yolo_dets = detect_with_yolo(bgr)
+    roboflow_dets = detect_with_roboflow(bgr)
+    dc_dets = detect_dark_circles(bgr, pts)
+
+    all_dets = yolo_dets + roboflow_dets + dc_dets
+    h, w = bgr.shape[:2]
+
+    # Filter to skin-only regions if mask available
+    # Skip filtering for dark_circle/acne_scar — they sit near eyes where
+    # the face-parsing model marks non-skin
+    if skin_mask is not None:
+        filtered = []
+        for d in all_dets:
+            kind = d.get("kind", "")
+            if kind in ("dark_circle", "acne_scar"):
+                filtered.append(d)
+                continue
+            cx, cy = d["cx"], d["cy"]
+            if 0 <= cy < h and 0 <= cx < w:
+                y1 = max(0, cy - d["r"])
+                y2 = min(h, cy + d["r"])
+                x1 = max(0, cx - d["r"])
+                x2 = min(w, cx + d["r"])
+                region = skin_mask[y1:y2, x1:x2]
+                if region.size > 0 and region.mean() > 30:
+                    filtered.append(d)
+        all_dets = filtered
+
+    # Cap radius
+    for d in all_dets:
+        d["r"] = min(d["r"], max_radius_px)
+
+    # Merge overlapping detections
+    merged = []
+    for d in sorted(all_dets, key=lambda x: x["score"], reverse=True):
+        overlap = False
+        for m in merged:
+            dist = np.hypot(d["cx"] - m["cx"], d["cy"] - m["cy"])
+            if dist < (d["r"] + m["r"]) * 0.5:
+                overlap = True
+                break
+        if not overlap:
+            merged.append(d)
+
+    return merged
+
+
+# -------------------------------------------------------------------------
+# 7. Service + CLI
 # -------------------------------------------------------------------------
 MAX_SPOT_DIAMETER_CM = 1.0
 MAX_TOTAL_SPOTS = 15
@@ -615,27 +915,39 @@ def analyze(bgr):
     """FastAPI / CLI contract: (annotated BGR image, spot dicts). No kAI scores."""
     h, w = bgr.shape[:2]
     dim = max(1, min(h, w))
-    zones, _skin_mask, pts = build_zone_masks(bgr)
+    zones, skin_mask, pts = build_zone_masks(bgr)
     if zones is None or pts is None:
         return bgr.copy(), []
 
     px_per_cm = estimate_px_per_cm(pts)
     max_radius_px = max(14, int(px_per_cm * MAX_SPOT_DIAMETER_CM / 2))
 
-    dets = detect_blemishes_zoned(
-        bgr,
-        zones,
-        max_radius_px=max_radius_px,
-        max_total_spots=MAX_TOTAL_SPOTS,
-    )
+    # ML detection (YOLO acne + Roboflow mole/scar) as primary
+    ml_dets = detect_ml(bgr, skin_mask=skin_mask, max_radius_px=max_radius_px, pts=pts)
+
+    if ml_dets:
+        dets = ml_dets[:MAX_TOTAL_SPOTS]
+    else:
+        # Fallback to heuristic if both ML models fail
+        dets = detect_blemishes_zoned(
+            bgr, zones,
+            max_radius_px=max_radius_px,
+            max_total_spots=MAX_TOTAL_SPOTS,
+        )
+
     out = bgr.copy()
     for d in dets:
-        draw_dashed_circle(out, (d["cx"], d["cy"]), d["r"], (0, 0, 255), 3, 7, 5)
+        if d.get("kind") == "dark_circle" and "contour" in d:
+            draw_dashed_crescent(out, d["contour"], (0, 0, 255), 3, 7, 5)
+        else:
+            draw_dashed_circle(out, (d["cx"], d["cy"]), d["r"], (0, 0, 255), 3, 7, 5)
 
     spots = []
     for d in dets:
-        stype = d["type"]
-        api_type = "red" if stype == "acne" else "dark"
+        kind = d.get("kind", d.get("type", "unknown"))
+        api_type = d.get("type", "dark")
+        if api_type == "acne":
+            api_type = "red"
         spots.append(
             {
                 "x": int(d["cx"]),
@@ -645,8 +957,9 @@ def analyze(bgr):
                 "y_pct": round(d["cy"] / h * 100, 2),
                 "r_pct": round(d["r"] / dim * 100, 2),
                 "type": api_type,
-                "kind": stype,
+                "kind": kind,
                 "severity": round(float(d["score"]), 2),
+                "source": d.get("source", "heuristic"),
             }
         )
     return out, spots
@@ -667,9 +980,13 @@ def analyze_from_b64(image_b64: str):
         "spots": spots,
         "summary": {
             "total": len(spots),
-            "dark": sum(1 for s in spots if s.get("kind") == "dark"),
-            "red": sum(1 for s in spots if s.get("kind") == "acne"),
+            "acne": sum(1 for s in spots if s.get("kind") == "acne"),
+            "mole": sum(1 for s in spots if s.get("kind") == "mole"),
+            "dark_spot": sum(1 for s in spots if s.get("kind") == "dark_spot"),
+            "acne_scar": sum(1 for s in spots if s.get("kind") == "acne_scar"),
             "scar": sum(1 for s in spots if s.get("kind") == "scar"),
+            "dark_circle": sum(1 for s in spots if s.get("kind") == "dark_circle"),
+            "dark": sum(1 for s in spots if s.get("kind") == "dark"),
         },
     }
 
