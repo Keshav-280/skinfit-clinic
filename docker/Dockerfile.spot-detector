@@ -10,7 +10,8 @@ COPY services/spot-detector-v15/api/requirements.txt /tmp/requirements.txt
 # CPU-only torch/torchvision first - default pip pulls ~2GB+ CUDA wheels
 # and fills small VM disks, same reasoning as the ml-worker/acne-detector images.
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
-  && pip install --no-cache-dir -r /tmp/requirements.txt
+  && pip install --no-cache-dir -r /tmp/requirements.txt \
+  && pip install --no-cache-dir scipy
 
 COPY services/spot-detector-v15/api /app/api
 
@@ -21,6 +22,9 @@ COPY services/spot-detector-v15/api /app/api
 RUN python -c "from transformers import SegformerImageProcessor, SegformerForSemanticSegmentation; \
 SegformerImageProcessor.from_pretrained('jonathandinu/face-parsing'); \
 SegformerForSemanticSegmentation.from_pretrained('jonathandinu/face-parsing')"
+
+# Pre-download YOLO base assets so first inference doesn't hit the network
+RUN python -c "from ultralytics import YOLO; YOLO('/app/api/best.pt')" 2>/dev/null || true
 
 EXPOSE 8002
 
