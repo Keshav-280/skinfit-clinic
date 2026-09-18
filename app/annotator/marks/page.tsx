@@ -391,7 +391,9 @@ export default function MarksAnnotatorPage() {
 
         <div className="min-h-0 flex-1 overflow-auto bg-black" onWheel={onWheel}>
           <div className="flex min-h-full min-w-full items-center justify-center p-4">
-            <div className="relative" style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? "100%" : undefined }}>
+            {/* The wrapper shrink-wraps the <img> so the SVG overlay covers exactly the
+                rendered picture — no letterboxing, otherwise clicks land offset. */}
+            <div className="relative inline-block" style={zoom > 1 ? { width: `${zoom * 100}%` } : undefined}>
               {current?.imageUrl ? (
                 <img
                   src={current.imageUrl}
@@ -401,8 +403,12 @@ export default function MarksAnnotatorPage() {
                     const im = e.currentTarget;
                     setDims({ w: im.naturalWidth, h: im.naturalHeight });
                   }}
-                  className="block h-auto w-full select-none"
-                  style={{ maxHeight: zoom === 1 ? "calc(100vh - 11rem)" : undefined, objectFit: "contain" }}
+                  className="block select-none"
+                  style={
+                    zoom > 1
+                      ? { width: "100%", height: "auto" }
+                      : { width: "auto", height: "auto", maxWidth: "100%", maxHeight: "calc(100vh - 11rem)" }
+                  }
                 />
               ) : null}
               {dims ? (
