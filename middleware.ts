@@ -65,6 +65,13 @@ export async function middleware(request: NextRequest) {
   }
 
   const annotatorPage = isAnnotatorPage(pathname);
+  if (
+    annotatorPage &&
+    process.env.NODE_ENV !== "production" &&
+    process.env.ANNOTATOR_DEV_BYPASS === "1"
+  ) {
+    return NextResponse.next();
+  }
   const clinicProtected = isClinicProtectedPath(pathname);
   const doctorProtected = isDoctorProtectedPath(pathname);
   const patientProtected =
