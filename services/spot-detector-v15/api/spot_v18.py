@@ -818,20 +818,21 @@ def detect_dark_circles(bgr, pts):
         return []
 
     detections = []
-    for side, under_ids, lid_ids in [
+    sides_info = [
         ("left", LEFT_UNDER, LEFT_LOWER_LID),
         ("right", RIGHT_UNDER, RIGHT_LOWER_LID),
-    ]:
+    ]
+    detected_sides = []
+    for side, under_ids, lid_ids in sides_info:
         under_pts = P[under_ids]
         under_mask = np.zeros((h, w), dtype=np.uint8)
         cv2.fillPoly(under_mask, [cv2.convexHull(under_pts)], 255)
         under_mask = cv2.dilate(under_mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15)))
 
-        under_L = L[under_mask > 0].mean() if np.count_nonzero(under_mask) > 50 else 0
+        under_L = L[under_mask > 0].mean() if np.count_nonzero(under_mask) > 20 else 0
         darkness = ref_L - under_L
         if darkness > 5:
             lid_contour = P[lid_ids].copy()
-            # Shift contour down to sit under the eye
             eye_height = int(lid_contour[:, 1].max() - lid_contour[:, 1].min())
             offset = max(8, int(eye_height * 0.6))
             lid_contour[:, 1] += offset
@@ -853,6 +854,32 @@ def detect_dark_circles(bgr, pts):
                 "source": "landmark",
                 "contour": lid_contour.tolist(),
             })
+            detected_sides.append(side)
+
+    # Bilateral mirror: if only one eye detected, add the other eye too
+    if len(detected_sides) == 1:
+        missing_side = "right" if detected_sides[0] == "left" else "left"
+        for side, under_ids, lid_ids in sides_info:
+            if side != missing_side:
+                continue
+            under_pts = P[under_ids]
+            lid_contour = P[lid_ids].copy()
+            eye_height = int(lid_contour[:, 1].max() - lid_contour[:, 1].min())
+            offset = max(8, int(eye_height * 0.6))
+            lid_contour[:, 1] += offset
+            cx = int(under_pts[:, 0].mean())
+            cy = int(under_pts[:, 1].mean())
+            existing = detections[0]
+            detections.append({
+                "cx": cx, "cy": cy, "r": existing["r"],
+                "score": round(existing["score"] * 0.85, 2),
+                "rank": existing["rank"] * 0.85,
+                "type": "dark",
+                "kind": "dark_circle",
+                "source": "landmark_mirror",
+                "contour": lid_contour.tolist(),
+            })
+
     return detections
 
 

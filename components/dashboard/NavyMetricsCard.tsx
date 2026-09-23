@@ -249,7 +249,7 @@ export function NavyMetricsCard({
   const progressFillTarget =
     progressLocked || !weeklyDeltaMeaningful
       ? 0
-      : Math.min(100, Math.max(0, Math.round(weeklyDeltaScore)));
+      : Math.min(100, Math.max(0, Math.round(Math.abs(weeklyDeltaScore))));
   const [consistencyFill, setConsistencyFill] = useState(0);
   const [progressFill, setProgressFill] = useState(0);
 

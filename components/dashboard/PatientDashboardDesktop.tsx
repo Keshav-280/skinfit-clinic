@@ -35,6 +35,9 @@ import {
   Calendar,
   Play,
   Activity,
+  Facebook,
+  Instagram,
+  MapPin,
   NotebookPen,
   X,
 } from "lucide-react";
@@ -1003,7 +1006,7 @@ export function PatientDashboardDesktop({
         {/* 6. Recommended Videos */}
         <RecommendedVideosSection />
 
-        {/* 7. Monthly Insight */}
+        {/* 7. Monthly Insight — hidden for now
         {data.kaiInsightsEnabled ? (
           <section className={`${DASHBOARD_SECTION_CARD} min-w-0`}>
             <DashboardSectionHeader
@@ -1032,6 +1035,48 @@ export function PatientDashboardDesktop({
             ) : null}
           </section>
         ) : null}
+        */}
+
+        {/* 8. Clinic Locations Footer */}
+        <footer className="flex flex-col gap-3 rounded-2xl border border-[#E4E6F0] bg-white px-5 py-4 sm:flex-row sm:gap-6">
+          <a
+            href="https://maps.app.goo.gl/d8AmXbAYpyf1QYhs6"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
+          >
+            <MapPin className="h-4 w-4 shrink-0 text-[#A05E6D]" />
+            <span><strong className="text-[#1E1B31]">Flagship Clinic</strong> — Sector 8, Chandigarh</span>
+          </a>
+          <a
+            href="https://maps.app.goo.gl/DdcHZnJ2JEGiXhdJ7"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
+          >
+            <MapPin className="h-4 w-4 shrink-0 text-[#A05E6D]" />
+            <span><strong className="text-[#1E1B31]">CBD Centre</strong> — Sector 9, Chandigarh</span>
+          </a>
+          <span className="hidden sm:block text-[#E4E6F0]">|</span>
+          <a
+            href="https://www.instagram.com/skinfitwellness.in/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
+          >
+            <Instagram className="h-4 w-4 shrink-0 text-[#A05E6D]" />
+            <span>Instagram</span>
+          </a>
+          <a
+            href="https://www.facebook.com/p/SkinFit-Wellness-100085051173773/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
+          >
+            <Facebook className="h-4 w-4 shrink-0 text-[#A05E6D]" />
+            <span>Facebook</span>
+          </a>
+        </footer>
       </div>
     </div>
   );
