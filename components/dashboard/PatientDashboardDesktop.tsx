@@ -1038,7 +1038,9 @@ export function PatientDashboardDesktop({
         */}
 
         {/* 8. Clinic Locations Footer */}
-        <footer className="flex flex-col gap-3 rounded-2xl border border-[#E4E6F0] bg-white px-5 py-4 sm:flex-row sm:gap-6">
+        <footer className="flex flex-col gap-3 rounded-2xl border border-[#E4E6F0] bg-white px-5 py-4">
+          <h3 className="text-sm font-semibold text-[#1E1B31]">Find more about us</h3>
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
           <a
             href="https://maps.app.goo.gl/d8AmXbAYpyf1QYhs6"
             target="_blank"
@@ -1046,7 +1048,7 @@ export function PatientDashboardDesktop({
             className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
           >
             <MapPin className="h-4 w-4 shrink-0 text-[#A05E6D]" />
-            <span><strong className="text-[#1E1B31]">Flagship Clinic</strong> — Sector 8, Chandigarh</span>
+            <span><strong className="text-[#1E1B31]">Flagship Clinic</strong> — Koramangala, Bangalore</span>
           </a>
           <a
             href="https://maps.app.goo.gl/DdcHZnJ2JEGiXhdJ7"
@@ -1055,7 +1057,7 @@ export function PatientDashboardDesktop({
             className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
           >
             <MapPin className="h-4 w-4 shrink-0 text-[#A05E6D]" />
-            <span><strong className="text-[#1E1B31]">CBD Centre</strong> — Sector 9, Chandigarh</span>
+            <span><strong className="text-[#1E1B31]">CBD Centre</strong> — Ashok Nagar, Bangalore</span>
           </a>
           <span className="hidden sm:block text-[#E4E6F0]">|</span>
           <a
@@ -1076,6 +1078,7 @@ export function PatientDashboardDesktop({
             <Facebook className="h-4 w-4 shrink-0 text-[#A05E6D]" />
             <span>Facebook</span>
           </a>
+          </div>
         </footer>
       </div>
     </div>
