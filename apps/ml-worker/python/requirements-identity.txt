@@ -1,5 +1,7 @@
 # Face identity verification (InsightFace buffalo_sc embeddings)
 insightface>=0.7.3,<2.0
 onnxruntime>=1.19.0
+# Pin onnx<1.17 to stay on protobuf 4.x (mediapipe 0.10.14 requires protobuf<5)
+onnx>=1.14,<1.17
 opencv-python-headless>=4.10.0
 numpy>=1.26.0
