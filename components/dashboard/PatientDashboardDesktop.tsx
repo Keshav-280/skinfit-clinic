@@ -53,7 +53,6 @@ import {
   SkinDNACard,
   formatSkinDnaSummary,
 } from "@/components/dashboard/SkinDNACard";
-import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 import { ARTICLES } from "@/src/lib/articles";
 import { webPatientScoresUnlocked } from "@/src/lib/webPatientScores";
@@ -924,8 +923,6 @@ export function PatientDashboardDesktop({
 
   return (
     <div className="space-y-5">
-      <WelcomeModal />
-
       {/* 1. Greeting + date strip - sticks below the nav so the content
           below (starting with the Skin DNA card) scrolls up and over it,
           rather than the greeting simply scrolling away. */}

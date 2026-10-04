@@ -200,7 +200,7 @@ export function WeeklyCheckinEntryCard({
                   scan report has real context.
                 </p>
                 <div className="mt-3 flex gap-1.5" aria-hidden>
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {Array.from({ length: 2 }).map((_, i) => (
                     <span
                       key={i}
                       className="h-1.5 flex-1 rounded-full bg-[#E4E6F0]"
@@ -208,7 +208,7 @@ export function WeeklyCheckinEntryCard({
                   ))}
                 </div>
                 <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
-                  0 of 5 screens
+                  0 of 2 screens · 7 questions
                 </p>
               </div>
             </div>

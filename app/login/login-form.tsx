@@ -355,7 +355,7 @@ export function LoginForm() {
       ) : null}
 
       {/* Visual panel - photo. Mobile: hero on top with curved base. Desktop: right half. */}
-      <div className="relative order-1 h-[60vh] min-h-[380px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
+      <div className="relative order-1 h-[24vh] min-h-[170px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, scale: 1.04 }}
           animate={introShowing ? {} : { opacity: 1, scale: 1 }}
@@ -368,14 +368,14 @@ export function LoginForm() {
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover object-center"
+            className="object-cover object-[center_40%] lg:object-center"
           />
           {/* Scrim for text legibility - top on mobile, bottom on desktop */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#1E1B31]/75 via-[#1E1B31]/10 to-transparent lg:bg-gradient-to-t lg:from-[#1E1B31]/80 lg:via-[#1E1B31]/10 lg:to-[#1E1B31]/25" />
         </motion.div>
 
         {/* Brand + tagline overlay */}
-        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center px-6 pt-8 text-center lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:items-start lg:p-12 lg:text-left">
+        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center px-6 pt-5 text-center lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:items-start lg:p-12 lg:text-left">
           <motion.div layoutId="app-logo" transition={{ duration: 0.6, ease: easeOut }}>
             <Image
               src="/branding/skinfit-wellness-logo.svg"
@@ -397,7 +397,7 @@ export function LoginForm() {
         </div>
 
         {/* Concave white base - mobile only, echoes the reference curve */}
-        <div className="pointer-events-none absolute -bottom-2 left-1/2 z-20 h-14 w-[160%] -translate-x-1/2 rounded-[100%] bg-white lg:hidden" />
+        <div className="pointer-events-none absolute -bottom-2 left-1/2 z-20 h-8 w-[160%] -translate-x-1/2 rounded-[100%] bg-white lg:hidden" />
       </div>
 
       {/* Form panel - left on desktop, below the hero on mobile */}
@@ -405,12 +405,12 @@ export function LoginForm() {
         initial={{ opacity: 0, y: 16 }}
         animate={introShowing ? {} : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1, ease: easeOut }}
-        className="order-2 flex flex-1 items-center justify-center bg-[#FAF8F5] px-6 py-10 text-[#1E1B31] lg:min-h-screen lg:py-12"
+        className="order-2 flex flex-1 items-center justify-center bg-[#FAF8F5] px-6 py-5 text-[#1E1B31] lg:min-h-screen lg:py-12"
       >
         <div className="w-full max-w-md">
         {isSignIn ? (
-          <div className="mb-8">
-            <h1 className="font-headline text-3xl font-bold tracking-tight text-[#1E1B31]">
+          <div className="mb-4 lg:mb-8">
+            <h1 className="font-headline text-2xl font-bold tracking-tight text-[#1E1B31] lg:text-3xl">
               Welcome back!{" "}
               <span aria-hidden className="inline-block">
                 👋

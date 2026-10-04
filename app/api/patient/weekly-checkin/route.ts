@@ -159,10 +159,7 @@ export async function POST(req: Request) {
   if (!answers?.sleep_hours || !answers.stress || !answers.water) {
     return NextResponse.json({ error: "INCOMPLETE_UNIVERSAL" }, { status: 400 });
   }
-  if (!answers.exercise_hours) {
-    return NextResponse.json({ error: "INCOMPLETE_UNIVERSAL" }, { status: 400 });
-  }
-  if (!answers.nutrition.length || !answers.supplements.length) {
+  if (!answers.nutrition.length) {
     return NextResponse.json({ error: "INCOMPLETE_UNIVERSAL" }, { status: 400 });
   }
 

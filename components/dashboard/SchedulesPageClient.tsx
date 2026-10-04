@@ -233,11 +233,11 @@ export default function SchedulesPageClient({
 
   return (
     <div className="relative">
-      <div className="relative -mx-4 -mt-6 overflow-hidden bg-gradient-to-b from-[#1E1B31] to-[#242A5F] px-4 pb-10 pt-5 md:-mx-8 md:px-8 md:pb-12 md:pt-6">
+      <div className="relative -mx-4 -mt-6 overflow-hidden bg-gradient-to-b from-[#1E1B31] to-[#242A5F] px-4 pb-10 pt-5 md:mx-0 md:mt-0 md:rounded-3xl md:px-10 md:pb-10 md:pt-8">
         <svg
           viewBox="0 0 500 40"
           preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-x-0 bottom-0 block h-8 w-full text-[#F0EAE2]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 block h-8 w-full text-[#F0EAE2] md:hidden"
           aria-hidden
         >
           <path
@@ -247,7 +247,7 @@ export default function SchedulesPageClient({
         </svg>
 
         <div
-          className={`relative mx-auto w-full max-w-5xl ${
+          className={`relative mx-auto w-full md:max-w-3xl ${
             assignedDoctor ? "md:flex md:flex-row-reverse md:items-center md:justify-between md:gap-10 lg:gap-14" : ""
           }`}
         >
@@ -308,7 +308,7 @@ export default function SchedulesPageClient({
         </div>
       </div>
 
-      <div className="relative mx-auto mt-5 max-w-md px-4 pb-4 md:mt-6 md:max-w-2xl md:px-8">
+      <div className="relative mx-auto mt-5 max-w-md px-4 pb-4 md:mt-6 md:max-w-[53rem] md:px-10">
         <WeeklyCheckinEntryCard
           weekYmd={wellnessWeekYmd}
           weekOfLabel={weekOfLabel}

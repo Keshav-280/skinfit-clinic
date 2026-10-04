@@ -33,7 +33,7 @@ export type WeeklyCheckInPayload = {
     stress: string;
     water: string;
     nutrition: string[];
-    exercise_hours: string;
+    exercise_hours: string | null;
     supplements: string[];
   };
   concern_specific: Record<string, string | string[] | number | null>;

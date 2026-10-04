@@ -7,6 +7,10 @@ import { DashboardInboxProvider } from "@/components/dashboard/DashboardInboxCon
 import { ScanJobReadyNotifier } from "@/components/dashboard/ScanJobReadyNotifier";
 import { ProfileNavBadge } from "@/components/dashboard/ProfileNavBadge";
 import { AddToHomeScreenPrompt } from "@/components/dashboard/AddToHomeScreenPrompt";
+import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
+import { db } from "@/src/db";
+import { scans } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
 import { runAppointmentReminders } from "@/src/lib/runAppointmentReminders";
@@ -17,6 +21,15 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const userId = await getSessionUserId();
+  let hasScans = true;
+  if (userId) {
+    const [firstScan] = await db
+      .select({ id: scans.id })
+      .from(scans)
+      .where(eq(scans.userId, userId))
+      .limit(1);
+    hasScans = Boolean(firstScan);
+  }
   if (userId) {
     // Don’t block HTML: run after response (uses platform waitUntil on Vercel).
     after(async () => {
@@ -54,6 +67,7 @@ export default async function DashboardLayout({
         {children}
       </main>
       <ScanJobReadyNotifier />
+      {userId ? <WelcomeModal hasScans={hasScans} /> : null}
     </div>
     </DashboardInboxProvider>
   );

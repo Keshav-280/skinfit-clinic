@@ -10,7 +10,7 @@ export default async function SchedulesPage() {
   const data = await loadSchedulePageData(userId);
 
   return (
-    <div className="min-h-full bg-[#F0EAE2] pb-12">
+    <div className="min-h-full bg-[#F0EAE2] pb-12 md:bg-transparent">
       <SchedulesPageClient
         initialTreatmentEvents={data.initialTreatmentEvents}
         initialAppointmentEvents={data.initialAppointmentEvents}

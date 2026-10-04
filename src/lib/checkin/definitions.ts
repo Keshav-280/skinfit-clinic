@@ -121,31 +121,11 @@ export const UNIVERSAL_SCREENS: CheckinScreenDef[] = [
         type: "anchored",
         options: WATER_OPTIONS,
       },
-    ],
-  },
-  {
-    title: "Fuel and movement",
-    subtitle: "How you ate and moved - multi-select where both can be true.",
-    fields: [
       {
         key: "nutrition",
         label: "How you ate",
         type: "multi",
         options: NUTRITION_OPTIONS,
-        noneKey: "none",
-      },
-      {
-        key: "exercise_hours",
-        label: "Exercise hours / week",
-        type: "anchored",
-        options: EXERCISE_OPTIONS,
-      },
-      {
-        key: "supplements",
-        label: "Supplements",
-        type: "autocomplete_multi",
-        options: SUPPLEMENT_VOCAB,
-        vocabulary: SUPPLEMENT_VOCAB,
         noneKey: "none",
       },
     ],
@@ -807,10 +787,30 @@ export const CONCERN_PATH_LABELS: Record<CheckinConcernPath, string> = {
   weight_loss: "Weight loss & sculpting",
 };
 
+/** The 3 highest-signal questions per concern (keeps the check-in to 7 total). */
+const CONCERN_QUESTION_KEYS: Record<CheckinConcernPath, string[]> = {
+  acne: ["new_lesions", "lesion_type", "adherence"],
+  pigmentation: ["spf_use", "self_assessment", "hormonal"],
+  wrinkles: ["spf_use", "actives", "skin_feel"],
+  hair_loss: ["shed_rate", "hair_treatments", "deficiencies"],
+  weight_loss: ["weight_change", "portions", "steps"],
+};
+
 export function screensForConcern(
   concern: CheckinConcernPath
 ): CheckinScreenDef[] {
-  return [...UNIVERSAL_SCREENS, ...CONCERN_SCREENS[concern]];
+  const allFields = CONCERN_SCREENS[concern].flatMap((s) => s.fields);
+  const fields = CONCERN_QUESTION_KEYS[concern]
+    .map((key) => allFields.find((f) => f.key === key))
+    .filter((f): f is FieldDef => f != null);
+  return [
+    ...UNIVERSAL_SCREENS,
+    {
+      title: CONCERN_PATH_LABELS[concern],
+      subtitle: "Three quick questions about your main concern.",
+      fields,
+    },
+  ];
 }
 
 export function resolveCheckinConcernPath(
