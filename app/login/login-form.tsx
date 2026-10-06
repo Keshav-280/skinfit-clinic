@@ -22,7 +22,7 @@ const EYE_BTN =
   "absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 text-[#5B66A1] transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-60";
 
 type Mode = "signin" | "register";
-type SignInMethod = "password" | "otp";
+type SignInMethod = "phone" | "password" | "otp";
 
 function postAuthDestination(
   next: string | null,
@@ -33,13 +33,13 @@ function postAuthDestination(
   return "/dashboard";
 }
 
-export function LoginForm() {
+export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>(() =>
     searchParams.get("mode") === "register" ? "register" : "signin"
   );
-  const [signInMethod, setSignInMethod] = useState<SignInMethod>("password");
+  const [signInMethod, setSignInMethod] = useState<SignInMethod>(phoneLoginEnabled ? "phone" : "password");
   // Splash plays once per browser session; the real page mounts immediately
   // underneath it (logo shares a layoutId so it "hands off" smoothly), and
   // everything else fades/slides in once the splash finishes.
@@ -53,6 +53,7 @@ export function LoginForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registerWithEmail, setRegisterWithEmail] = useState(!phoneLoginEnabled);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpHint, setOtpHint] = useState<string | null>(null);
@@ -94,11 +95,12 @@ export function LoginForm() {
       setConfirmPassword("");
       setShowPassword(false);
       setShowConfirmPassword(false);
+      setRegisterWithEmail(!phoneLoginEnabled);
       setOtp("");
       setOtpSent(false);
       setOtpHint(null);
       setResendSeconds(0);
-      setSignInMethod("password");
+      setSignInMethod(phoneLoginEnabled ? "phone" : "password");
       const qs = new URLSearchParams();
       if (next === "register") qs.set("mode", "register");
       const n = searchParams.get("next");
@@ -106,7 +108,7 @@ export function LoginForm() {
       const q = qs.toString();
       router.replace(q ? `/login?${q}` : "/login", { scroll: false });
     },
-    [router, searchParams]
+    [router, searchParams, phoneLoginEnabled]
   );
 
   async function onSubmitSignIn(e: React.FormEvent) {
@@ -346,6 +348,179 @@ export function LoginForm() {
     }
   }
 
+  async function sendPhoneCode() {
+    resetErrors();
+    setOtpHint(null);
+    if (!phone.trim()) {
+      setError("Enter your mobile number first.");
+      return;
+    }
+    setSendOtpLoading(true);
+    try {
+      const res = await fetch("/api/auth/phone/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneCountryCode: phoneCountryCode.trim() || "+91",
+          phone: phone.trim(),
+          mode: mode === "register" ? "register" : "login",
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        retryAfterSeconds?: number;
+        cooldownSeconds?: number;
+      };
+      if (!res.ok) {
+        setError(
+          typeof data.message === "string" ? data.message : "Could not send the code."
+        );
+        if (typeof data.retryAfterSeconds === "number") {
+          setResendSeconds(data.retryAfterSeconds);
+        }
+        return;
+      }
+      setOtpSent(true);
+      setOtp("");
+      setOtpHint(
+        typeof data.message === "string" ? data.message : "Code sent."
+      );
+      setResendSeconds(
+        typeof data.cooldownSeconds === "number" ? data.cooldownSeconds : 60
+      );
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setSendOtpLoading(false);
+    }
+  }
+
+  async function onSubmitPhone(e: React.FormEvent) {
+    e.preventDefault();
+    resetErrors();
+    if (mode === "register" && !name.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
+    if (!otpSent) {
+      setError("Send a code to your mobile number first.");
+      return;
+    }
+    if (otp.trim().length < 6) {
+      setError("Enter the 6-digit code we sent you.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/phone/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneCountryCode: phoneCountryCode.trim() || "+91",
+          phone: phone.trim(),
+          otp: otp.trim(),
+          mode: mode === "register" ? "register" : "login",
+          name: name.trim(),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        user?: { onboardingComplete?: boolean };
+      };
+      if (!res.ok) {
+        setError(
+          typeof data.message === "string"
+            ? data.message
+            : "Could not verify that code. Please try again."
+        );
+        return;
+      }
+      router.push(
+        postAuthDestination(searchParams.get("next"), data.user?.onboardingComplete)
+      );
+      router.refresh();
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function phoneFields(idPrefix: string) {
+    return (
+      <div>
+        <label htmlFor={`${idPrefix}-phone`} className={LABEL}>
+          Mobile number
+        </label>
+        <div className="flex gap-2">
+          <input
+            id={`${idPrefix}-phone-cc`}
+            name="phoneCountryCode"
+            type="text"
+            autoComplete="tel-country-code"
+            value={phoneCountryCode}
+            onChange={(e) => {
+              setPhoneCountryCode(e.target.value);
+              resetSignInOtpState();
+            }}
+            disabled={loading}
+            className="w-[4.5rem] shrink-0 rounded-lg border border-transparent bg-[#F0EAE2] px-2 py-3.5 text-center text-[#1E1B31] outline-none transition focus:border-[#1E1B31]/30 focus:ring-2 focus:ring-[#1E1B31]/15"
+            placeholder="+91"
+            aria-label="Country code"
+          />
+          <input
+            id={`${idPrefix}-phone`}
+            name="phone"
+            type="tel"
+            autoComplete="tel-national"
+            inputMode="numeric"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              resetSignInOtpState();
+            }}
+            disabled={loading || sendOtpLoading}
+            className={`min-w-0 flex-1 ${INPUT}`}
+            placeholder="10-digit mobile"
+          />
+          <button
+            type="button"
+            onClick={sendPhoneCode}
+            disabled={loading || sendOtpLoading || resendSeconds > 0}
+            className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {sendOtpLoading
+              ? "Sending…"
+              : resendSeconds > 0
+                ? `${resendSeconds}s`
+                : otpSent
+                  ? "Resend"
+                  : "Send code"}
+          </button>
+        </div>
+        {otpHint ? (
+          <p className="mt-1.5 text-xs text-emerald-600">{otpHint}</p>
+        ) : null}
+        <label htmlFor={`${idPrefix}-otp`} className={`${LABEL} mt-4`}>
+          6-digit code
+        </label>
+        <input
+          id={`${idPrefix}-otp`}
+          name="otp"
+          type="text"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          value={otp}
+          onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          disabled={loading}
+          className={INPUT}
+          placeholder="Code we sent you"
+        />
+      </div>
+    );
+  }
+
   const isSignIn = mode === "signin";
 
   return (
@@ -446,6 +621,37 @@ export function LoginForm() {
               variant="light"
               label="OR LOG IN WITH"
             />
+            {phoneLoginEnabled && signInMethod === "phone" ? (
+              <form onSubmit={onSubmitPhone} className="space-y-5">
+                {error ? (
+                  <div role="alert" className={ERROR}>
+                    {error}
+                  </div>
+                ) : null}
+
+                {phoneFields("signin")}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetErrors();
+                    resetSignInOtpState();
+                    setSignInMethod("password");
+                  }}
+                  className="text-sm font-semibold text-[#1E1B31] hover:underline"
+                >
+                  Use email instead
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex w-full items-center justify-center rounded-full bg-[#1E1B31] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Signing in…" : "Sign In"}
+                </button>
+              </form>
+            ) : (
             <form
               onSubmit={
                 signInMethod === "otp" ? onSubmitSignInOtp : onSubmitSignIn
@@ -601,6 +807,20 @@ export function LoginForm() {
                 </button>
               ) : null}
 
+              {phoneLoginEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetErrors();
+                    resetSignInOtpState();
+                    setSignInMethod("phone");
+                  }}
+                  className="block text-sm font-semibold text-[#1E1B31] hover:underline"
+                >
+                  Sign in with mobile number instead
+                </button>
+              ) : null}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -613,9 +833,11 @@ export function LoginForm() {
                     : "Sign In"}
               </button>
             </form>
+            )}
           </>
         ) : (
           <>
+            {registerWithEmail || !phoneLoginEnabled ? (
             <form onSubmit={onSubmitRegister} className="space-y-5">
               {error ? (
                 <div role="alert" className={ERROR}>
@@ -804,6 +1026,23 @@ export function LoginForm() {
                 </div>
               </div>
 
+              {phoneLoginEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetErrors();
+                    setOtp("");
+                    setOtpSent(false);
+                    setOtpHint(null);
+                    setResendSeconds(0);
+                    setRegisterWithEmail(false);
+                  }}
+                  className="block text-sm font-semibold text-[#1E1B31] hover:underline"
+                >
+                  Register with mobile number instead
+                </button>
+              ) : null}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -812,6 +1051,54 @@ export function LoginForm() {
                 {loading ? "Creating account…" : "Register"}
               </button>
             </form>
+            ) : (
+            <form onSubmit={onSubmitPhone} className="space-y-5">
+              {error ? (
+                <div role="alert" className={ERROR}>
+                  {error}
+                </div>
+              ) : null}
+
+              <div>
+                <label htmlFor="name" className={LABEL}>
+                  Your name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={loading}
+                  className={INPUT}
+                  placeholder="Your name"
+                />
+              </div>
+
+              {phoneFields("reg")}
+
+              <button
+                type="button"
+                onClick={() => {
+                  resetErrors();
+                  resetSignInOtpState();
+                  setRegisterWithEmail(true);
+                }}
+                className="block text-sm font-semibold text-[#1E1B31] hover:underline"
+              >
+                Register with email instead
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center rounded-lg bg-[#1E1B31] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/30 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Creating account…" : "Register"}
+              </button>
+            </form>
+            )}
 
             <OAuthLoginDivider variant="light" label="Or Register with" />
             <SocialLoginButtons disabled={loading} variant="light" />

@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { isPlaceholderEmail } from "@/src/lib/auth/placeholderEmail";
 
 /**
  * Transactional email via SMTP (Nodemailer).
@@ -53,6 +54,7 @@ export async function sendSmtpMessage(opts: {
   attachments?: MailAttachmentInput[];
 }): Promise<void> {
   if (!isSmtpConfigured()) return;
+  if (isPlaceholderEmail(opts.to)) return;
 
   const port = Number.parseInt(process.env.SMTP_PORT || "587", 10) || 587;
   const secure =

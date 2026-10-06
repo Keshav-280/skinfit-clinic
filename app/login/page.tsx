@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { isSmsAvailable } from "@/src/lib/sms/sendSms";
 import { LoginForm } from "./login-form";
 
 function LoginFallback() {
@@ -12,10 +13,12 @@ function LoginFallback() {
   );
 }
 
+export const dynamic = "force-dynamic";
+
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginFallback />}>
-      <LoginForm />
+      <LoginForm phoneLoginEnabled={isSmsAvailable()} />
     </Suspense>
   );
 }
