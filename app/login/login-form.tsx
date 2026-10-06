@@ -13,9 +13,9 @@ import { DEMO_LOGIN_EMAIL } from "@/src/lib/auth/demo-login";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
-const LABEL = "mb-2 block text-sm font-semibold text-[#1E1B31]";
+const LABEL = "mb-1 block text-[13px] font-semibold text-[#1E1B31] sm:mb-2 sm:text-sm";
 const INPUT =
-  "w-full rounded-lg border border-transparent bg-[#F0EAE2] px-4 py-3.5 text-[15px] text-[#1E1B31] outline-none transition placeholder:text-[#5B66A1] focus:border-[#1E1B31]/30 focus:ring-2 focus:ring-[#1E1B31]/15";
+  "w-full rounded-lg border border-transparent bg-[#F0EAE2] px-3.5 py-2.5 text-sm text-[#1E1B31] outline-none sm:px-4 sm:py-3.5 sm:text-[15px] transition placeholder:text-[#5B66A1] focus:border-[#1E1B31]/30 focus:ring-2 focus:ring-[#1E1B31]/15";
 const ERROR =
   "rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800";
 const EYE_BTN =
@@ -464,7 +464,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
               resetSignInOtpState();
             }}
             disabled={loading}
-            className="w-[4.5rem] shrink-0 rounded-lg border border-transparent bg-[#F0EAE2] px-2 py-3.5 text-center text-[#1E1B31] outline-none transition focus:border-[#1E1B31]/30 focus:ring-2 focus:ring-[#1E1B31]/15"
+            className="w-[4rem] shrink-0 rounded-lg border border-transparent bg-[#F0EAE2] px-2 py-2.5 text-sm text-center sm:w-[4.5rem] sm:py-3.5 sm:text-base text-[#1E1B31] outline-none transition focus:border-[#1E1B31]/30 focus:ring-2 focus:ring-[#1E1B31]/15"
             placeholder="+91"
             aria-label="Country code"
           />
@@ -487,7 +487,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
             type="button"
             onClick={sendPhoneCode}
             disabled={loading || sendOtpLoading || resendSeconds > 0}
-            className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-2.5 text-[13px] font-semibold sm:py-3 sm:text-sm text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sendOtpLoading
               ? "Sending…"
@@ -501,7 +501,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
         {otpHint ? (
           <p className="mt-1.5 text-xs text-emerald-600">{otpHint}</p>
         ) : null}
-        <label htmlFor={`${idPrefix}-otp`} className={`${LABEL} mt-4`}>
+        <label htmlFor={`${idPrefix}-otp`} className={`${LABEL} mt-2.5 sm:mt-4`}>
           6-digit code
         </label>
         <input
@@ -530,7 +530,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
       ) : null}
 
       {/* Visual panel - photo. Mobile: hero on top with curved base. Desktop: right half. */}
-      <div className="relative order-1 h-[24vh] min-h-[170px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
+      <div className="relative order-1 h-[17vh] min-h-[118px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, scale: 1.04 }}
           animate={introShowing ? {} : { opacity: 1, scale: 1 }}
@@ -550,7 +550,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
         </motion.div>
 
         {/* Brand + tagline overlay */}
-        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center px-6 pt-5 text-center lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:items-start lg:p-12 lg:text-left">
+        <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center px-6 pt-3 text-center lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:items-start lg:p-12 lg:text-left">
           <motion.div layoutId="app-logo" transition={{ duration: 0.6, ease: easeOut }}>
             <Image
               src="/branding/skinfit-wellness-logo.svg"
@@ -558,21 +558,21 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
               width={560}
               height={135}
               priority
-              className="h-9 w-auto max-w-[12rem] brightness-0 invert lg:h-11 lg:max-w-[15rem]"
+              className="h-7 w-auto max-w-[10rem] brightness-0 invert lg:h-11 lg:max-w-[15rem]"
             />
           </motion.div>
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={introShowing ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15, ease: easeOut }}
-            className="font-tenor mt-3 max-w-xs text-sm font-medium text-white/85 lg:mt-4 lg:max-w-md lg:text-xl lg:leading-relaxed"
+            className="font-tenor mt-1.5 max-w-xs text-xs font-medium text-white/85 lg:mt-4 lg:max-w-md lg:text-xl lg:leading-relaxed"
           >
             Because your skin deserves the best care.
           </motion.p>
         </div>
 
         {/* Concave white base - mobile only, echoes the reference curve */}
-        <div className="pointer-events-none absolute -bottom-2 left-1/2 z-20 h-8 w-[160%] -translate-x-1/2 rounded-[100%] bg-white lg:hidden" />
+        <div className="pointer-events-none absolute -bottom-2 left-1/2 z-20 h-6 w-[160%] -translate-x-1/2 rounded-[100%] bg-white lg:hidden" />
       </div>
 
       {/* Form panel - left on desktop, below the hero on mobile */}
@@ -580,18 +580,18 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
         initial={{ opacity: 0, y: 16 }}
         animate={introShowing ? {} : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1, ease: easeOut }}
-        className="order-2 flex flex-1 items-center justify-center bg-[#FAF8F5] px-6 py-5 text-[#1E1B31] lg:min-h-screen lg:py-12"
+        className="order-2 flex flex-1 items-center justify-center bg-[#FAF8F5] px-6 py-3 text-[#1E1B31] lg:min-h-screen lg:py-12"
       >
         <div className="w-full max-w-md">
         {isSignIn ? (
-          <div className="mb-4 lg:mb-8">
-            <h1 className="font-headline text-2xl font-bold tracking-tight text-[#1E1B31] lg:text-3xl">
+          <div className="mb-2 lg:mb-8">
+            <h1 className="font-headline text-xl font-bold tracking-tight text-[#1E1B31] lg:text-3xl">
               Welcome back!{" "}
               <span aria-hidden className="inline-block">
                 👋
               </span>
             </h1>
-            <p className="mt-2 text-[15px] text-[#5B66A1]">
+            <p className="mt-0.5 text-[13px] text-[#5B66A1] lg:mt-2 lg:text-[15px]">
               Glad to see you, Again!
             </p>
           </div>
@@ -622,7 +622,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
               label="OR LOG IN WITH"
             />
             {phoneLoginEnabled && signInMethod === "phone" ? (
-              <form onSubmit={onSubmitPhone} className="space-y-5">
+              <form onSubmit={onSubmitPhone} className="space-y-3 sm:space-y-5">
                 {error ? (
                   <div role="alert" className={ERROR}>
                     {error}
@@ -646,7 +646,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex w-full items-center justify-center rounded-full bg-[#1E1B31] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex w-full items-center justify-center rounded-full bg-[#1E1B31] px-5 py-3 text-[15px] font-semibold sm:py-3.5 sm:text-base text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Signing in…" : "Sign In"}
                 </button>
@@ -656,7 +656,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
               onSubmit={
                 signInMethod === "otp" ? onSubmitSignInOtp : onSubmitSignIn
               }
-              className="space-y-5"
+              className="space-y-3 sm:space-y-5"
             >
               {error ? (
                 <div role="alert" className={ERROR}>
@@ -690,7 +690,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
                       disabled={
                         loading || sendOtpLoading || resendSeconds > 0
                       }
-                      className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-2.5 text-[13px] font-semibold sm:py-3 sm:text-sm text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {sendOtpLoading
                         ? "Sending…"
@@ -824,7 +824,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center rounded-full bg-[#1E1B31] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center rounded-full bg-[#1E1B31] px-5 py-3 text-[15px] font-semibold sm:py-3.5 sm:text-base text-white shadow-sm transition hover:bg-[#242A5F] focus:outline-none focus:ring-2 focus:ring-[#1E1B31]/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading
                   ? "Signing in…"
@@ -887,7 +887,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
                     type="button"
                     onClick={sendSignupOtp}
                     disabled={loading || sendOtpLoading || resendSeconds > 0}
-                    className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-3 text-sm font-semibold text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="shrink-0 rounded-lg bg-[#F0EAE2] px-3 py-2.5 text-[13px] font-semibold sm:py-3 sm:text-sm text-[#1E1B31] transition hover:bg-[#eef0f2] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {sendOtpLoading
                       ? "Sending…"
@@ -1052,7 +1052,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
               </button>
             </form>
             ) : (
-            <form onSubmit={onSubmitPhone} className="space-y-5">
+            <form onSubmit={onSubmitPhone} className="space-y-3 sm:space-y-5">
               {error ? (
                 <div role="alert" className={ERROR}>
                   {error}
@@ -1105,7 +1105,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
           </>
         )}
 
-        <p className="mt-8 text-center text-sm text-[#5B66A1]">
+        <p className="mt-3 text-center text-[13px] text-[#5B66A1] sm:mt-8 sm:text-sm">
           {isSignIn ? (
             <>
               Don&apos;t have an account?{" "}
@@ -1131,7 +1131,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
           )}
         </p>
 
-        <p className="mt-4 text-center text-xs text-[#5B66A1]">
+        <p className="mt-1.5 text-center text-xs text-[#5B66A1] sm:mt-4">
           Clinic staff?{" "}
           <Link
             href="/doctor/login"

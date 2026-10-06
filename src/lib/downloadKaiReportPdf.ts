@@ -118,7 +118,15 @@ export async function downloadKaiReportPdf(
       foreignObjectRendering: false,
       logging: false,
       backgroundColor: "#EEF3EC",
-      onclone: (_doc, cloned) => {
+      onclone: (clonedDoc, cloned) => {
+        // The clone replays CSS entrance animations from frame 0 (opacity 0),
+        // so sections would be captured invisible. Freeze them in their end state.
+        const freeze = clonedDoc.createElement("style");
+        freeze.textContent =
+          "*,*::before,*::after{animation:none!important;transition:none!important}" +
+          ".report-enter{opacity:1!important;transform:none!important}";
+        clonedDoc.head.appendChild(freeze);
+
         cloned.querySelectorAll("[data-pdf-screen-only]").forEach((el) => {
           (el as HTMLElement).style.display = "none";
         });

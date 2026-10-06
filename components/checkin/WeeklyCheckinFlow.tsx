@@ -12,6 +12,7 @@ import { ConditionalField } from "@/components/checkin/fields/ConditionalField";
 import { NumberField } from "@/components/checkin/fields/NumberField";
 import {
   CONCERN_PATH_LABELS,
+  NUTRITION_OPTIONS,
   screensForConcern,
   showCyclePhaseField,
   type CheckinConcernPath,
@@ -64,8 +65,11 @@ function summaryLines(answers: CheckinAnswers): Array<{ label: string; value: st
     { label: "Stress", value: answers.stress?.replace(/_/g, " ") ?? "-" },
     { label: "Water", value: answers.water ?? "-" },
     {
-      label: "Exercise",
-      value: answers.exercise_hours ?? "-",
+      label: "How you ate",
+      value:
+        answers.nutrition
+          .map((k) => NUTRITION_OPTIONS.find((o) => o.key === k)?.label ?? k)
+          .join(", ") || "-",
     },
   ];
 }
