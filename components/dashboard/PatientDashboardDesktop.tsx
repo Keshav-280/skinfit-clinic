@@ -1035,46 +1035,66 @@ export function PatientDashboardDesktop({
         */}
 
         {/* 8. Clinic Locations Footer */}
-        <footer className="flex flex-col gap-3 rounded-2xl border border-[#E4E6F0] bg-white px-5 py-4">
-          <h3 className="text-sm font-semibold text-[#1E1B31]">Find more about us</h3>
-          <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
-          <a
-            href="https://maps.app.goo.gl/d8AmXbAYpyf1QYhs6"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
-          >
-            <MapPin className="h-4 w-4 shrink-0 text-[#A05E6D]" />
-            <span><strong className="text-[#1E1B31]">Flagship Clinic</strong> — Koramangala, Bangalore</span>
-          </a>
-          <a
-            href="https://maps.app.goo.gl/DdcHZnJ2JEGiXhdJ7"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
-          >
-            <MapPin className="h-4 w-4 shrink-0 text-[#A05E6D]" />
-            <span><strong className="text-[#1E1B31]">CBD Centre</strong> — Ashok Nagar, Bangalore</span>
-          </a>
-          <span className="hidden sm:block text-[#E4E6F0]">|</span>
-          <a
-            href="https://www.instagram.com/skinfitwellness.in/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
-          >
-            <Instagram className="h-4 w-4 shrink-0 text-[#A05E6D]" />
-            <span>Instagram</span>
-          </a>
-          <a
-            href="https://www.facebook.com/p/SkinFit-Wellness-100085051173773/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2.5 text-sm text-[#6B7280] transition hover:text-[#1E1B31]"
-          >
-            <Facebook className="h-4 w-4 shrink-0 text-[#A05E6D]" />
-            <span>Facebook</span>
-          </a>
+        <footer className="rounded-2xl bg-[#1E1B31] px-5 py-6 text-white sm:px-7">
+          <h3 className="font-headline text-xl font-semibold leading-tight tracking-tight">
+            Find more about <span className="text-[#AEB9E8]">us</span>
+          </h3>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {[
+              {
+                href: "https://maps.app.goo.gl/d8AmXbAYpyf1QYhs6",
+                name: "Flagship Clinic",
+                place: "Koramangala, Bangalore",
+              },
+              {
+                href: "https://maps.app.goo.gl/DdcHZnJ2JEGiXhdJ7",
+                name: "CBD Centre",
+                place: "Ashok Nagar, Bangalore",
+              },
+            ].map((c) => (
+              <a
+                key={c.name}
+                href={c.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-3"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#DF9DA4] transition group-hover:bg-white/20">
+                  <MapPin className="h-[18px] w-[18px]" aria-hidden />
+                </span>
+                <span className="min-w-0 pt-0.5">
+                  <span className="block text-[15px] font-bold leading-tight">{c.name}</span>
+                  <span className="mt-0.5 block text-sm text-white/65">{c.place}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+
+          <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
+              Follow us
+            </span>
+            <div className="flex items-center gap-2.5">
+              <a
+                href="https://www.instagram.com/skinfitwellness.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="SkinFit Wellness on Instagram"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+              >
+                <Instagram className="h-[18px] w-[18px]" aria-hidden />
+              </a>
+              <a
+                href="https://www.facebook.com/p/SkinFit-Wellness-100085051173773/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="SkinFit Wellness on Facebook"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+              >
+                <Facebook className="h-[18px] w-[18px]" aria-hidden />
+              </a>
+            </div>
           </div>
         </footer>
       </div>
