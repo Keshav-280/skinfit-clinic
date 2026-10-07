@@ -10,11 +10,9 @@ import {
   UserRound,
 } from "lucide-react";
 import { FamilyWalletCard } from "@/components/dashboard/FamilyWalletCard";
-import { PatientProgressTracker } from "@/components/dashboard/PatientProgressTracker";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
-import { getPatientProgressSnapshot } from "@/src/lib/patientProgressMilestones";
 
 function prettyValue(value: string | number | null | undefined, fallback = "Not added") {
   if (value == null) return fallback;
@@ -124,11 +122,8 @@ export default async function ProfilePage() {
   const user = await getSessionUserProfile();
   if (!user) redirect("/login");
 
-  const progress = await getPatientProgressSnapshot(user.id);
-
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-1 pb-10 sm:px-0">
-      {!progress.allComplete ? <PatientProgressTracker {...progress} /> : null}
       <ProfileForm
         initial={user}
         embedded
