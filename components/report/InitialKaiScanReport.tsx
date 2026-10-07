@@ -21,6 +21,11 @@ import { NextStepCTA } from "./NextStepCTA";
 import { ReportShareFooter } from "./ReportShareFooter";
 import { REPORT_CARD, REPORT_PILL, watchTitle } from "./reportCopy";
 import type { ReportFocusAction } from "@/src/lib/report/reportFocusActions";
+import {
+  downloadKaiReportPdf,
+  pdfParamsFromRows,
+  type KaiReportPdfData,
+} from "@/src/lib/report/kaiReportPdf";
 
 export type InitialKaiScanReportProps = {
   scanId: number;
@@ -135,6 +140,26 @@ export function InitialKaiScanReport({
     ? `${doctorName} can review this baseline with you.`
     : "A clinic Medixora pass measures what the phone can’t - hydration, bacteria, sensitivity.";
 
+  const pdfData: KaiReportPdfData = {
+    kind: "initial",
+    title: watchTitle(parameters),
+    headline,
+    grade,
+    metaLeft: "Baseline scan",
+    metaRight: scanDateLabel,
+    badge: { label: "Starting line", type: "flat" },
+    subtitle,
+    position: { current: position },
+    scanImages: scanImages.map((s) => ({ url: s.url, label: s.label })),
+    parameters: pdfParamsFromRows(parameters),
+    actions,
+    actionsHeading: "Start with these",
+    nextStep: { heading: ctaHeading, body: ctaBody },
+    primary,
+    secondary,
+    takeaway: synthesis || baselineBody,
+  };
+
   return (
     <ReportShell reportRef={reportRef}>
       <FaceMapSection
@@ -223,9 +248,14 @@ export function InitialKaiScanReport({
         </div>
 
         <ReportShareFooter
-          scanId={scanId}
           shareText={`SkinFit kAI baseline: ${grade}/10. ${headline}`}
-          reportRef={reportRef}
+          onDownloadPdf={() =>
+            downloadKaiReportPdf(
+              pdfData,
+              `skinfit-kai-report-${scanId}.pdf`,
+              doctorName
+            )
+          }
         />
       </FaceMapSection>
     </ReportShell>

@@ -24,6 +24,11 @@ import { NextStepCTA } from "./NextStepCTA";
 import { ReportShareFooter } from "./ReportShareFooter";
 import { REPORT_CARD, REPORT_PILL, coverHeadline, shortHeadline } from "./reportCopy";
 import type { ReportFocusAction } from "@/src/lib/report/reportFocusActions";
+import {
+  downloadKaiReportPdf,
+  pdfParamsFromRows,
+  type KaiReportPdfData,
+} from "@/src/lib/report/kaiReportPdf";
 
 export type UpdateKaiScanReportProps = {
   scanId: number;
@@ -122,6 +127,33 @@ export function UpdateKaiScanReport({
   function selectConcern(id: ConcernChipId) {
     setConcern(id);
   }
+
+  const pdfData: KaiReportPdfData = {
+    kind: "update",
+    title: shortHeadline(headline),
+    headline,
+    grade,
+    metaLeft,
+    metaRight,
+    badge: movementBadge,
+    subtitle,
+    position,
+    scanImages: scanImages.map((s) => ({ url: s.url, label: s.label })),
+    parameters: pdfParamsFromRows(parameters),
+    actions,
+    actionsHeading: "Focus next week",
+    nextStep,
+    primary: { label: "Book your visit", href: "/dashboard?book=1" },
+    secondary: {
+      label: `Message ${doctorName}`,
+      href: "/dashboard/chat?assistant=doctor",
+    },
+    thenNow,
+    movementGroups,
+    attribution: attributionCards,
+    weekRecap,
+    weekHighlight,
+  };
 
   return (
     <ReportShell reportRef={reportRef}>
@@ -233,9 +265,14 @@ export function UpdateKaiScanReport({
         />
 
         <ReportShareFooter
-          scanId={scanId}
           shareText={`SkinFit kAI: ${shareLine}`}
-          reportRef={reportRef}
+          onDownloadPdf={() =>
+            downloadKaiReportPdf(
+              pdfData,
+              `skinfit-kai-report-${scanId}.pdf`,
+              doctorName
+            )
+          }
         />
       </FaceMapSection>
     </ReportShell>

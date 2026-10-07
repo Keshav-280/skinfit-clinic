@@ -1,23 +1,16 @@
 "use client";
 
-import {
-  useCallback,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useState } from "react";
 import { Download, Loader2, Share2 } from "lucide-react";
-import { downloadKaiReportPdf } from "@/src/lib/downloadKaiReportPdf";
 
 type ReportShareFooterProps = {
-  scanId: number;
   shareText: string;
-  reportRef: RefObject<HTMLElement | null>;
+  onDownloadPdf: () => Promise<void>;
 };
 
 export function ReportShareFooter({
-  scanId,
   shareText,
-  reportRef,
+  onDownloadPdf,
 }: ReportShareFooterProps) {
   const [shareError, setShareError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -42,15 +35,10 @@ export function ReportShareFooter({
   }, [shareText]);
 
   const handleDownloadPdf = useCallback(async () => {
-    const el = reportRef.current;
-    if (!el) {
-      setPdfError("Report isn’t ready to export yet.");
-      return;
-    }
     setPdfError(null);
     setPdfLoading(true);
     try {
-      await downloadKaiReportPdf(el, `skinfit-kai-report-${scanId}.pdf`);
+      await onDownloadPdf();
     } catch (e) {
       console.error("[kai report pdf]", e);
       setPdfError(
@@ -59,7 +47,7 @@ export function ReportShareFooter({
     } finally {
       setPdfLoading(false);
     }
-  }, [reportRef, scanId]);
+  }, [onDownloadPdf]);
 
   return (
     <footer data-pdf-screen-only className="flex flex-col gap-2 px-1 py-2">
@@ -94,7 +82,7 @@ export function ReportShareFooter({
         <p className="text-center text-[11px] text-kai-low">{pdfError}</p>
       ) : null}
       <p className="pt-0.5 text-center text-[10px] tracking-[0.04em] text-[#8B93A4]">
-        Share has no face photos · PDF includes captures
+        Share has no face photos · PDF includes your scan photos
       </p>
     </footer>
   );
