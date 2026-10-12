@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, Gift, Loader2, Search, X } from "lucide-react";
-import { doctorCardClass } from "@/components/doctor/DoctorUiPrimitives";
+import { CLINIC } from "@/components/doctor/clinicUi";
 import { canRedeemOnBill, pointsForSpend, REWARD_RULES } from "@/src/lib/rewards/rules";
 
 type Hit = { id: string; name: string; email: string; phone: string | null; balance: number };
@@ -26,13 +26,17 @@ type Bill = {
 type HistoryRow = { id: string; points: number; source: string; note: string | null; createdAt: string };
 type PatientPayload = {
   patient: { id: string; name: string; email: string; phone: string | null };
-  summary: { balance: number; referralCode: string; history: HistoryRow[] };
+  summary: {
+    balance: number;
+    referralCode: string;
+    reviewClaim: "none" | "pending" | "approved" | "rejected";
+    history: HistoryRow[];
+  };
   bills: Bill[];
 };
 
-const INPUT =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#1E1B31]/40 focus:ring-2 focus:ring-[#1E1B31]/10";
-const LABEL = "mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500";
+const INPUT = CLINIC.input;
+const LABEL = "mb-1.5 block text-xs font-bold uppercase tracking-wide text-[#5B66A1]";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 const when = (iso: string) =>
@@ -48,7 +52,13 @@ async function postJson(url: string, body: unknown) {
   return { ok: res.ok, json };
 }
 
-export function DoctorRewardsClient() {
+export function DoctorRewardsClient({
+  initialPatientId,
+  embedded = false,
+}: {
+  initialPatientId?: string;
+  embedded?: boolean;
+}) {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [claimBusy, setClaimBusy] = useState<string | null>(null);
 
@@ -65,6 +75,7 @@ export function DoctorRewardsClient() {
   const [usePoints, setUsePoints] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [reviewBusy, setReviewBusy] = useState(false);
   const [adjPoints, setAdjPoints] = useState("");
   const [adjReason, setAdjReason] = useState("");
   const [adjBusy, setAdjBusy] = useState(false);
@@ -119,6 +130,10 @@ export function DoctorRewardsClient() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (initialPatientId) void loadPatient(initialPatientId);
+  }, [initialPatientId, loadPatient]);
 
   function pick(h: Hit) {
     setQuery("");
@@ -175,6 +190,25 @@ export function DoctorRewardsClient() {
     await loadPatient(selected.patient.id);
   }
 
+  async function markReview() {
+    if (!selected) return;
+    setReviewBusy(true);
+    setError(null);
+    setNotice(null);
+    const { ok, json } = await postJson(
+      `/api/doctor/rewards/patients/${selected.patient.id}/google-review`,
+      {}
+    );
+    setReviewBusy(false);
+    if (!ok) {
+      setError(json.message ?? "Could not save.");
+    } else {
+      setNotice(`Google review confirmed: ${REWARD_RULES.googleReviewPoints} points added.`);
+    }
+    await loadPatient(selected.patient.id);
+    await loadClaims();
+  }
+
   async function voidBill(id: string) {
     if (!selected) return;
     if (!window.confirm("Void this bill? The points it earned will be removed and any points used will be returned.")) return;
@@ -209,43 +243,48 @@ export function DoctorRewardsClient() {
 
   return (
     <div className="space-y-6">
+      {!embedded ? (
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem]">
+        <h1 className="text-2xl font-bold tracking-tight text-[#1E1B31] sm:text-[1.65rem]">
           Patient rewards
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-[#5B66A1]">
           1 point = ₹1. Patients earn 0.5% of what they pay, and can use points on bills of{" "}
           {inr(REWARD_RULES.minBillToRedeem)} or more.
         </p>
       </div>
 
+      ) : null}
+
       {error ? (
-        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p role="alert" className="rounded-xl bg-[#F8EDEE] px-4 py-3 text-sm text-[#1E1B31]">
           {error}
         </p>
       ) : null}
       {notice ? (
-        <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <p role="status" className="rounded-xl bg-[#E8ECFC] px-4 py-3 text-sm text-[#1E1B31]">
           {notice}
         </p>
       ) : null}
 
-      <div className={`${doctorCardClass} p-4 sm:p-5`}>
-        <h2 className="text-sm font-bold text-slate-900">
+      {!embedded ? (
+        <>
+      <div className={`${CLINIC.card} p-4 sm:p-5`}>
+        <h2 className="text-sm font-bold text-[#1E1B31]">
           Google reviews waiting for approval{claims.length ? ` (${claims.length})` : ""}
         </h2>
-        <p className="mt-0.5 text-xs text-slate-500">
+        <p className="mt-0.5 text-xs text-[#5B66A1]">
           Check the review on Google, then approve to give {REWARD_RULES.googleReviewPoints} points.
         </p>
         {claims.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Nothing waiting.</p>
+          <p className="mt-3 text-sm text-[#5B66A1]">Nothing waiting.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-slate-100">
+          <ul className="mt-3 divide-y divide-[#E4E6F0]">
             {claims.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{c.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm font-semibold text-[#1E1B31]">{c.name}</p>
+                  <p className="text-xs text-[#5B66A1]">
                     {[c.phone, c.email].filter(Boolean).join("  |  ")} &middot; claimed {when(c.claimedAt)}
                   </p>
                 </div>
@@ -262,7 +301,7 @@ export function DoctorRewardsClient() {
                     type="button"
                     disabled={claimBusy === c.id}
                     onClick={() => void decide(c.id, "reject")}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#E4E6F0] px-3 py-2 text-xs font-semibold text-[#1E1B31]/80 disabled:opacity-50"
                   >
                     <X className="h-3.5 w-3.5" /> Reject
                   </button>
@@ -273,12 +312,12 @@ export function DoctorRewardsClient() {
         )}
       </div>
 
-      <div className={`${doctorCardClass} p-4 sm:p-5`}>
+      <div className={`${CLINIC.card} p-4 sm:p-5`}>
         <label className={LABEL} htmlFor="rewards-search">
           Find a patient
         </label>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5B66A1]" />
           <input
             id="rewards-search"
             value={query}
@@ -288,22 +327,22 @@ export function DoctorRewardsClient() {
           />
         </div>
         {searching ? (
-          <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+          <p className="mt-2 flex items-center gap-2 text-xs text-[#5B66A1]">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
           </p>
         ) : null}
         {hits.length > 0 ? (
-          <ul className="mt-2 divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/50">
+          <ul className="mt-2 divide-y divide-[#E4E6F0] rounded-xl border border-[#E4E6F0] bg-[#FAF8F5]">
             {hits.map((h) => (
               <li key={h.id}>
                 <button
                   type="button"
                   onClick={() => pick(h)}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition hover:bg-white"
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition hover:bg-[#FAF8F5]"
                 >
                   <span className="min-w-0">
-                    <span className="font-semibold text-slate-800">{h.name}</span>
-                    <span className="block truncate text-xs text-slate-500">
+                    <span className="font-semibold text-[#1E1B31]">{h.name}</span>
+                    <span className="block truncate text-xs text-[#5B66A1]">
                       {[h.phone, h.email].filter(Boolean).join("  |  ")}
                     </span>
                   </span>
@@ -315,6 +354,9 @@ export function DoctorRewardsClient() {
         ) : null}
       </div>
 
+        </>
+      ) : null}
+
       {loading ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-[#1E1B31]" />
@@ -324,7 +366,7 @@ export function DoctorRewardsClient() {
       {selected && !loading ? (
         <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
-            <div className={`${doctorCardClass} overflow-hidden`}>
+            <div className={`${CLINIC.card} overflow-hidden`}>
               <div className="bg-[#1E1B31] p-5 text-white">
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/70">
                   <Gift className="h-4 w-4" /> {selected.patient.name}
@@ -340,7 +382,7 @@ export function DoctorRewardsClient() {
               </div>
 
               <form onSubmit={saveBill} className="space-y-4 p-5">
-                <h3 className="text-sm font-bold text-slate-900">Record a visit</h3>
+                <h3 className="text-sm font-bold text-[#1E1B31]">Record a visit</h3>
                 <div>
                   <label className={LABEL} htmlFor="r-services">
                     Service / treatment
@@ -387,19 +429,19 @@ export function DoctorRewardsClient() {
                           )
                         }
                         placeholder="0"
-                        className={`${INPUT} disabled:bg-slate-50`}
+                        className={`${INPUT} disabled:bg-[#FAF8F5]`}
                       />
                       <button
                         type="button"
                         disabled={!redeemAllowed || maxUsable <= 0}
                         onClick={() => setUsePoints(String(maxUsable))}
-                        className="shrink-0 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-700 disabled:opacity-40"
+                        className="shrink-0 rounded-xl border border-[#E4E6F0] px-3 text-xs font-semibold text-[#1E1B31]/80 disabled:opacity-40"
                       >
                         Use max
                       </button>
                     </div>
                     {billValid && !redeemAllowed ? (
-                      <p className="mt-1 text-[11px] text-slate-500">
+                      <p className="mt-1 text-[11px] text-[#5B66A1]">
                         Points need a bill of {inr(REWARD_RULES.minBillToRedeem)} or more.
                       </p>
                     ) : null}
@@ -407,7 +449,7 @@ export function DoctorRewardsClient() {
                 </div>
 
                 {billValid ? (
-                  <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                  <div className="rounded-xl bg-[#FAF8F5] px-4 py-3 text-sm text-[#1E1B31]/80">
                     Patient pays <strong>{inr(paying)}</strong>
                     {redeemNum > 0 ? ` (after ${inr(redeemNum)} in points)` : ""}. They will earn{" "}
                     <strong>{willEarn} points</strong>.
@@ -425,20 +467,44 @@ export function DoctorRewardsClient() {
               </form>
             </div>
 
-            <div className={`${doctorCardClass} p-5`}>
-              <h3 className="text-sm font-bold text-slate-900">Recent bills</h3>
+            <div className={`${CLINIC.card} flex flex-wrap items-center justify-between gap-3 p-5`}>
+              <div>
+                <h3 className="text-sm font-bold text-[#1E1B31]">Google review</h3>
+                <p className="mt-0.5 text-xs text-[#5B66A1]">
+                  {selected.summary.reviewClaim === "approved"
+                    ? `Confirmed. ${REWARD_RULES.googleReviewPoints} points given.`
+                    : selected.summary.reviewClaim === "pending"
+                      ? "The patient says they posted a review. Check it on Google, then confirm."
+                      : `Not confirmed yet. Confirming gives ${REWARD_RULES.googleReviewPoints} points.`}
+                </p>
+              </div>
+              {selected.summary.reviewClaim !== "approved" ? (
+                <button
+                  type="button"
+                  disabled={reviewBusy}
+                  onClick={() => void markReview()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#1E1B31] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  <Check className="h-4 w-4" />
+                  {reviewBusy ? "Saving…" : "Mark review as done"}
+                </button>
+              ) : null}
+            </div>
+
+            <div className={`${CLINIC.card} p-5`}>
+              <h3 className="text-sm font-bold text-[#1E1B31]">Recent bills</h3>
               {selected.bills.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-500">No bills recorded yet.</p>
+                <p className="mt-2 text-sm text-[#5B66A1]">No bills recorded yet.</p>
               ) : (
-                <ul className="mt-2 divide-y divide-slate-100">
+                <ul className="mt-2 divide-y divide-[#E4E6F0]">
                   {selected.bills.map((b) => (
                     <li key={b.id} className="flex items-start justify-between gap-3 py-3">
                       <div className={`min-w-0 ${b.voided ? "opacity-50" : ""}`}>
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-sm font-semibold text-[#1E1B31]">
                           {b.services}
                           {b.voided ? " (voided)" : ""}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-[#5B66A1]">
                           {when(b.createdAt)} &middot; bill {inr(b.billAmount)}
                           {b.pointsRedeemed ? ` · ${b.pointsRedeemed} pts used` : ""} &middot; earned{" "}
                           {b.pointsEarned} pts
@@ -448,7 +514,7 @@ export function DoctorRewardsClient() {
                         <button
                           type="button"
                           onClick={() => void voidBill(b.id)}
-                          className="shrink-0 text-xs font-semibold text-red-600 hover:underline"
+                          className="shrink-0 text-xs font-semibold text-[#A05E6D] hover:underline"
                         >
                           Void
                         </button>
@@ -461,9 +527,9 @@ export function DoctorRewardsClient() {
           </div>
 
           <div className="space-y-5">
-            <form onSubmit={adjust} className={`${doctorCardClass} space-y-3 p-5`}>
-              <h3 className="text-sm font-bold text-slate-900">Adjust points</h3>
-              <p className="text-xs text-slate-500">
+            <form onSubmit={adjust} className={`${CLINIC.card} space-y-3 p-5`}>
+              <h3 className="text-sm font-bold text-[#1E1B31]">Adjust points</h3>
+              <p className="text-xs text-[#5B66A1]">
                 For corrections only. Use a minus sign to remove points. Every change is logged with your name.
               </p>
               <input
@@ -482,27 +548,27 @@ export function DoctorRewardsClient() {
               <button
                 type="submit"
                 disabled={adjBusy || !adjPoints || !adjReason.trim()}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-50"
+                className="rounded-xl border border-[#E4E6F0] px-4 py-2 text-sm font-semibold text-[#1E1B31] disabled:opacity-50"
               >
                 {adjBusy ? "Saving…" : "Apply"}
               </button>
             </form>
 
-            <div className={`${doctorCardClass} p-5`}>
-              <h3 className="text-sm font-bold text-slate-900">Points history</h3>
+            <div className={`${CLINIC.card} p-5`}>
+              <h3 className="text-sm font-bold text-[#1E1B31]">Points history</h3>
               {selected.summary.history.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-500">No points yet.</p>
+                <p className="mt-2 text-sm text-[#5B66A1]">No points yet.</p>
               ) : (
-                <ul className="mt-2 divide-y divide-slate-100">
+                <ul className="mt-2 divide-y divide-[#E4E6F0]">
                   {selected.summary.history.map((h) => (
                     <li key={h.id} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">
+                        <p className="truncate text-sm font-semibold text-[#1E1B31]">
                           {h.note ?? h.source.replace(/_/g, " ")}
                         </p>
-                        <p className="text-xs text-slate-500">{when(h.createdAt)}</p>
+                        <p className="text-xs text-[#5B66A1]">{when(h.createdAt)}</p>
                       </div>
-                      <span className={`text-sm font-bold ${h.points > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      <span className={`text-sm font-bold ${h.points > 0 ? "text-[#242A5F]" : "text-[#A05E6D]"}`}>
                         {h.points > 0 ? "+" : ""}
                         {h.points}
                       </span>

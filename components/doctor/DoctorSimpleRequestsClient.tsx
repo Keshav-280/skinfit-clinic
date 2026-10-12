@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { dispatchGlobalLiveRefresh, GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
+import { CLINIC } from "@/components/doctor/clinicUi";
 
 type RequestItem = {
   id: string;
@@ -124,34 +125,28 @@ export function DoctorSimpleRequestsClient() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-headline text-2xl font-bold text-[#1E1B31]">
-          Appointment requests
-        </h1>
-        <p className="mt-1 text-sm text-[#1E1B31]/60">
+        <h1 className={CLINIC.h1}>Appointment requests</h1>
+        <p className={`mt-1 ${CLINIC.muted}`}>
           Requests from my.skinfitwellness.in. Confirm to book, or decline with a
           reason the patient will see.
         </p>
       </header>
 
       {error ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-          {error}
-        </p>
+        <p className={CLINIC.noteError}>{error}</p>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-[#1E1B31]/55">Loading…</p>
+        <p className={CLINIC.muted}>Loading…</p>
       ) : pending.length === 0 && rest.length === 0 ? (
-        <p className="rounded-2xl bg-[#E8E7DE] px-4 py-8 text-center text-sm text-[#1E1B31]/60">
+        <p className={`${CLINIC.card} px-4 py-10 text-center ${CLINIC.muted}`}>
           No appointment requests yet.
         </p>
       ) : (
         <>
           {pending.length > 0 ? (
             <section className="space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]/50">
-                Needs a decision ({pending.length})
-              </h2>
+              <h2 className={CLINIC.label}>Needs a decision ({pending.length})</h2>
               {pending.map((item) => (
                 <RequestCard
                   key={item.id}
@@ -174,16 +169,14 @@ export function DoctorSimpleRequestsClient() {
               ))}
             </section>
           ) : (
-            <p className="rounded-2xl bg-[#E8E7DE] px-4 py-6 text-center text-sm text-[#1E1B31]/60">
+            <p className={`${CLINIC.card} px-4 py-8 text-center ${CLINIC.muted}`}>
               No pending requests.
             </p>
           )}
 
           {rest.length > 0 ? (
             <section className="space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-[#1E1B31]/50">
-                Recent
-              </h2>
+              <h2 className={CLINIC.label}>Recent</h2>
               {rest.map((item) => (
                 <RequestCard key={item.id} item={item} readOnly />
               ))}
@@ -225,113 +218,129 @@ function RequestCard({
     /* keep ymd */
   }
 
+  let dayNum = "";
+  let monthLabel = "";
+  try {
+    const d = parseISO(`${item.preferredDateYmd}T12:00:00`);
+    dayNum = format(d, "d");
+    monthLabel = format(d, "MMM");
+  } catch {
+    dayNum = "";
+  }
+
+  const chipClass =
+    item.status === "pending"
+      ? CLINIC.chipBlush
+      : item.status === "confirmed"
+        ? CLINIC.chip
+        : CLINIC.chipSand;
+
   return (
-    <article className="rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(72,64,48,0.07)]">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <Link
-            href={`/clinic/patients/${item.patientId}`}
-            className="text-base font-bold text-[#1E1B31] hover:underline"
-          >
-            {item.patientName}
-          </Link>
-          {item.patientEmail ? (
-            <p className="text-xs text-[#1E1B31]/50">{item.patientEmail}</p>
+    <article className={`${CLINIC.card} p-4 sm:p-5`}>
+      <div className="flex gap-4">
+        <div
+          className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl bg-[#F0EAE2]"
+          aria-hidden
+        >
+          <span className="font-headline text-2xl font-semibold leading-none text-[#1E1B31]">
+            {dayNum || "-"}
+          </span>
+          <span className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-[#5B66A1]">
+            {monthLabel}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <Link
+                href={`/clinic/patients/${item.patientId}`}
+                className="text-base font-semibold text-[#1E1B31] hover:underline"
+              >
+                {item.patientName}
+              </Link>
+              {item.patientEmail ? (
+                <p className="truncate text-xs text-[#5B66A1]">{item.patientEmail}</p>
+              ) : null}
+            </div>
+            <span className={chipClass}>{statusLabel(item.status)}</span>
+          </div>
+
+          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm text-[#1E1B31] sm:grid-cols-2">
+            <div>
+              <dt className={CLINIC.label}>Preferred date</dt>
+              <dd className="mt-0.5">{dateLabel}</dd>
+            </div>
+            <div>
+              <dt className={CLINIC.label}>Time</dt>
+              <dd className="mt-0.5">{item.timePreferences}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className={CLINIC.label}>Reason</dt>
+              <dd className="mt-0.5">{item.issue}</dd>
+            </div>
+            {item.cancelledReason ? (
+              <div className="sm:col-span-2">
+                <dt className={CLINIC.label}>Decline reason</dt>
+                <dd className="mt-0.5">{item.cancelledReason}</dd>
+              </div>
+            ) : null}
+          </dl>
+
+          {!readOnly && item.status === "pending" ? (
+            <div className="mt-4 space-y-2">
+              {rejecting ? (
+                <>
+                  <textarea
+                    value={reason}
+                    onChange={(e) => onReason?.(e.target.value)}
+                    rows={3}
+                    placeholder="Reason the patient will see"
+                    className={CLINIC.input}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={onReject}
+                      className={CLINIC.btnBlush}
+                    >
+                      {busy ? "Declining…" : "Decline request"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={onCancelReject}
+                      className={CLINIC.btnGhost}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={onConfirm}
+                    className={CLINIC.btnPrimary}
+                  >
+                    {busy ? "Confirming…" : "Confirm"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={onStartReject}
+                    className={CLINIC.btnGhost}
+                  >
+                    Decline
+                  </button>
+                </div>
+              )}
+            </div>
           ) : null}
         </div>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
-            item.status === "pending"
-              ? "bg-amber-100 text-amber-900"
-              : item.status === "confirmed"
-                ? "bg-emerald-100 text-emerald-900"
-                : "bg-zinc-100 text-zinc-600"
-          }`}
-        >
-          {statusLabel(item.status)}
-        </span>
       </div>
-      <dl className="mt-3 grid gap-1.5 text-sm text-[#1E1B31]">
-        <div>
-          <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#1E1B31]/45">
-            Preferred date
-          </dt>
-          <dd>{dateLabel}</dd>
-        </div>
-        <div>
-          <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#1E1B31]/45">
-            Time
-          </dt>
-          <dd>{item.timePreferences}</dd>
-        </div>
-        <div>
-          <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#1E1B31]/45">
-            Reason
-          </dt>
-          <dd>{item.issue}</dd>
-        </div>
-        {item.cancelledReason ? (
-          <div>
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-[#1E1B31]/45">
-              Decline reason
-            </dt>
-            <dd>{item.cancelledReason}</dd>
-          </div>
-        ) : null}
-      </dl>
-
-      {!readOnly && item.status === "pending" ? (
-        <div className="mt-4 space-y-2">
-          {rejecting ? (
-            <>
-              <textarea
-                value={reason}
-                onChange={(e) => onReason?.(e.target.value)}
-                rows={3}
-                placeholder="Reason the patient will see"
-                className="w-full rounded-xl border border-[#1E1B31]/15 bg-[#FAF8F5] px-3 py-2 text-sm outline-none focus:border-[#1E1B31]/40"
-              />
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={onReject}
-                  className="rounded-lg bg-rose-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {busy ? "Declining…" : "Decline request"}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={onCancelReject}
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-[#1E1B31]/70 hover:bg-[#1E1B31]/8"
-                >
-                  Cancel
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={onConfirm}
-                className="rounded-lg bg-[#1E1B31] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {busy ? "Confirming…" : "Confirm"}
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={onStartReject}
-                className="rounded-lg border border-[#1E1B31]/15 px-3 py-2 text-sm font-semibold text-[#1E1B31] hover:bg-[#FAF8F5] disabled:opacity-50"
-              >
-                Decline
-              </button>
-            </div>
-          )}
-        </div>
-      ) : null}
     </article>
   );
 }

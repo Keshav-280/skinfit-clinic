@@ -190,7 +190,7 @@ export function DoctorPatientTreatmentsPanel({
       </label>
 
       {error ? (
-        <p className="mt-2 text-xs font-medium text-rose-700">{error}</p>
+        <p className="mt-2 text-xs font-medium text-[#A05E6D]">{error}</p>
       ) : null}
 
       <button
@@ -206,7 +206,7 @@ export function DoctorPatientTreatmentsPanel({
 
   const list =
     items.length === 0 ? (
-      <p className="mt-4 text-[12px] text-[#1E1B31]/50">
+      <p className="mt-4 text-[12px] text-[#5B66A1]">
         No treatments recorded for this patient yet.
       </p>
     ) : (
@@ -218,7 +218,7 @@ export function DoctorPatientTreatmentsPanel({
           >
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#1E1B31]">{item.title}</p>
-              <p className="mt-0.5 text-[11px] text-[#1E1B31]/50">
+              <p className="mt-0.5 text-[11px] text-[#5B66A1]">
                 {format(parseISO(`${item.treatedOnYmd}T12:00:00`), "d MMM yyyy")}
                 {item.notes ? ` · ${item.notes}` : ""}
               </p>
@@ -236,7 +236,7 @@ export function DoctorPatientTreatmentsPanel({
             <button
               type="button"
               onClick={() => void remove(item.id)}
-              className="rounded-md p-1.5 text-[#1E1B31]/45 hover:bg-white hover:text-rose-600"
+              className="rounded-md p-1.5 text-[#5B66A1] hover:bg-white hover:text-[#A05E6D]"
               title="Remove treatment"
               aria-label="Remove treatment"
             >
@@ -249,11 +249,11 @@ export function DoctorPatientTreatmentsPanel({
 
   if (variant === "simple") {
     return (
-      <section className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(72,64,48,0.07)]">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-[#1E1B31]/50">
+      <section className="rounded-2xl border border-[#E4E6F0] bg-white p-5">
+        <h2 className="font-headline text-lg font-semibold text-[#1E1B31]">
           Treatments given
         </h2>
-        <p className="mt-1 text-[12px] text-[#1E1B31]/50">
+        <p className="mt-1 text-[12px] text-[#5B66A1]">
           Record what this patient received in clinic and which scores it may
           move.
         </p>
@@ -271,7 +271,7 @@ export function DoctorPatientTreatmentsPanel({
         </span>
         <span className="text-sm font-semibold">Treatments given</span>
       </h2>
-      <p className="mb-3 text-[11px] leading-snug text-[#1E1B31]/55">
+      <p className="mb-3 text-[11px] leading-snug text-[#5B66A1]">
         Log an in-clinic treatment and tag every kAI parameter it is meant to
         affect. You can pick more than one.
       </p>

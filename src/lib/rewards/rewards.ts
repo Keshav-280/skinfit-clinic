@@ -600,3 +600,57 @@ export async function decideReviewClaim(
     return { ok: true as const };
   });
 }
+
+/** Staff confirm a patient's Google review directly (even if the patient never tapped "I've posted it"). */
+export async function markGoogleReviewDone(
+  patientId: string,
+  staffId: string
+): Promise<{ ok: true; balance: number } | { ok: false; message: string }> {
+  await ensureRewardsSchema();
+  const exists = await db.execute(
+    sql`SELECT 1 FROM users WHERE id = ${patientId} AND role = 'patient' LIMIT 1`
+  );
+  if (exists.rows.length === 0) return { ok: false, message: "Patient not found." };
+  await ensureRewardAccount(patientId);
+
+  try {
+    return await db.transaction(async (rawTx) => {
+      const tx = rawTx as unknown as SqlExecutor;
+      const active = await tx.execute(
+        sql`SELECT id, status FROM google_review_claims
+            WHERE user_id = ${patientId} AND status IN ('pending', 'approved') LIMIT 1 FOR UPDATE`
+      );
+      const row = active.rows[0];
+      let claimId: string;
+      if (row) {
+        if (row.status === "approved") {
+          return { ok: false as const, message: "Review points were already given to this patient." };
+        }
+        claimId = String(row.id);
+        await tx.execute(
+          sql`UPDATE google_review_claims SET status = 'approved', decided_by = ${staffId}, decided_at = now() WHERE id = ${claimId}`
+        );
+      } else {
+        const ins = await tx.execute(
+          sql`INSERT INTO google_review_claims (user_id, status, decided_by, decided_at)
+              VALUES (${patientId}, 'approved', ${staffId}, now()) RETURNING id`
+        );
+        claimId = String(ins.rows[0]!.id);
+      }
+      const r = await applyPointsInTx(tx, {
+        userId: patientId,
+        points: REWARD_RULES.googleReviewPoints,
+        source: "google_review",
+        referenceId: claimId,
+        performedBy: staffId,
+        note: "Google review confirmed by clinic",
+      });
+      return { ok: true as const, balance: r.balance };
+    });
+  } catch (e) {
+    if (pgErrorCode(e) === "23505") {
+      return { ok: false, message: "Review points were already given to this patient." };
+    }
+    throw e;
+  }
+}

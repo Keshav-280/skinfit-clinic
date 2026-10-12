@@ -7,10 +7,12 @@ import { LogOut } from "lucide-react";
 export function DoctorLogoutButton({
   collapsed = false,
   compact = false,
+  tone = "light",
   loginHref = "/doctor/login",
 }: {
   collapsed?: boolean;
   compact?: boolean;
+  tone?: "light" | "dark";
   loginHref?: string;
 }) {
   const router = useRouter();
@@ -34,7 +36,11 @@ export function DoctorLogoutButton({
       disabled={busy}
       title={collapsed || compact ? "Log out" : undefined}
       aria-label={collapsed || compact ? "Log out" : undefined}
-      className={`flex items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50 ${
+      className={`flex items-center rounded-lg disabled:opacity-50 ${
+        tone === "dark"
+          ? "text-[#AEB9E8] hover:bg-[#2B2F63] hover:text-white"
+          : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+      } ${
         compact
           ? "h-9 w-9 shrink-0 justify-center p-0"
           : collapsed

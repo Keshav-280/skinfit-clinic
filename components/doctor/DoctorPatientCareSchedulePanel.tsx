@@ -141,7 +141,7 @@ export function DoctorPatientCareSchedulePanel({
 
   const list =
     items.length === 0 ? (
-      <p className="mt-4 text-[12px] text-[#1E1B31]/50">
+      <p className="mt-4 text-[12px] text-[#5B66A1]">
         Nothing on the patient’s calendar yet.
       </p>
     ) : (
@@ -168,7 +168,7 @@ export function DoctorPatientCareSchedulePanel({
                     {item.title}
                   </p>
                 </div>
-                <p className="mt-0.5 text-[11px] text-[#1E1B31]/50">
+                <p className="mt-0.5 text-[11px] text-[#5B66A1]">
                   {format(
                     parseISO(`${item.eventDateYmd}T12:00:00`),
                     "d MMM yyyy"
@@ -179,7 +179,7 @@ export function DoctorPatientCareSchedulePanel({
               <button
                 type="button"
                 onClick={() => void remove(item.id)}
-                className="rounded-md p-1.5 text-[#1E1B31]/45 hover:bg-white hover:text-rose-600"
+                className="rounded-md p-1.5 text-[#5B66A1] hover:bg-white hover:text-[#A05E6D]"
                 title="Remove from calendar"
                 aria-label="Remove from calendar"
               >
@@ -193,16 +193,16 @@ export function DoctorPatientCareSchedulePanel({
 
   if (variant === "simple") {
     return (
-      <section className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(72,64,48,0.07)]">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-[#1E1B31]/50">
+      <section className="rounded-2xl border border-[#E4E6F0] bg-white p-5">
+        <h2 className="font-headline text-lg font-semibold text-[#1E1B31]">
           Pre & post treatment
         </h2>
-        <p className="mt-1 text-[12px] text-[#1E1B31]/50">
+        <p className="mt-1 text-[12px] text-[#5B66A1]">
           Add a reminder and it appears on this patient’s calendar.
         </p>
         <div className="mt-3">{forms}</div>
         {error ? (
-          <p className="mt-2 text-xs font-medium text-rose-700">{error}</p>
+          <p className="mt-2 text-xs font-medium text-[#A05E6D]">{error}</p>
         ) : null}
         {list}
       </section>
@@ -217,12 +217,12 @@ export function DoctorPatientCareSchedulePanel({
         </span>
         <span className="text-sm font-semibold">Pre & post treatment</span>
       </h2>
-      <p className="mb-3 text-[11px] leading-snug text-[#1E1B31]/55">
+      <p className="mb-3 text-[11px] leading-snug text-[#5B66A1]">
         These go onto the patient’s calendar under Your schedule.
       </p>
       {forms}
       {error ? (
-        <p className="mt-2 text-xs font-medium text-rose-700">{error}</p>
+        <p className="mt-2 text-xs font-medium text-[#A05E6D]">{error}</p>
       ) : null}
       {list}
     </div>

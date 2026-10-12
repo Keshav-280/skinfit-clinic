@@ -77,11 +77,11 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
   }
 
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(72,64,48,0.07)]">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-[#1E1B31]/50">
+    <section className="rounded-2xl border border-[#E4E6F0] bg-white p-5">
+      <h2 className="font-headline text-lg font-semibold text-[#1E1B31]">
         Clinic reports
       </h2>
-      <p className="mt-1 text-[12px] text-[#1E1B31]/50">
+      <p className="mt-1 text-[12px] text-[#5B66A1]">
         Upload a Medixora or InBody report. It appears in this patient’s scan
         history. Medixora PDFs are converted to the SkinFit report format.
       </p>
@@ -111,7 +111,7 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
               <span className="font-semibold text-[#1E1B31]">
                 {clinicDeviceReportLabel(kind)}
               </span>
-              <span className="mt-0.5 text-[11px] text-[#1E1B31]/50">
+              <span className="mt-0.5 text-[11px] text-[#5B66A1]">
                 {busyKind === kind ? "Uploading…" : "PDF or photo"}
               </span>
             </button>
@@ -120,14 +120,14 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
       </div>
 
       {error ? (
-        <p className="mt-3 text-xs font-medium text-rose-700">{error}</p>
+        <p className="mt-3 text-xs font-medium text-[#A05E6D]">{error}</p>
       ) : null}
       {notice ? (
         <p className="mt-3 text-xs font-medium text-[#1E1B31]/70">{notice}</p>
       ) : null}
 
       {items.length === 0 ? (
-        <p className="mt-4 text-[12px] text-[#1E1B31]/45">
+        <p className="mt-4 text-[12px] text-[#5B66A1]">
           No clinic reports uploaded yet.
         </p>
       ) : (
@@ -141,7 +141,7 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
                 <p className="truncate text-sm font-semibold text-[#1E1B31]">
                   {item.title}
                 </p>
-                <p className="text-[11px] text-[#1E1B31]/50">
+                <p className="text-[11px] text-[#5B66A1]">
                   {clinicDeviceReportLabel(item.reportKind)} ·{" "}
                   {format(parseISO(item.createdAt), "d MMM yyyy")}
                 </p>

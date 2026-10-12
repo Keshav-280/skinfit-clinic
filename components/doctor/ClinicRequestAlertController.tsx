@@ -33,9 +33,11 @@ function notificationPermission(): NotificationPermission | "unsupported" {
 export function ClinicRequestAlertController({
   inboxHref,
   compact = false,
+  tone = "light",
 }: {
   inboxHref: string;
   compact?: boolean;
+  tone?: "light" | "dark";
 }) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
@@ -215,9 +217,13 @@ export function ClinicRequestAlertController({
         className={
           compact
             ? `inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
-                enabled
-                  ? "bg-[#1E1B31] text-white"
-                  : "text-[#1E1B31]/70 hover:bg-[#1E1B31]/8"
+                tone === "dark"
+                  ? enabled
+                    ? "bg-[#AEB9E8] text-[#1E1B31]"
+                    : "text-[#AEB9E8] hover:bg-[#2B2F63]"
+                  : enabled
+                    ? "bg-[#1E1B31] text-white"
+                    : "text-[#1E1B31]/70 hover:bg-[#1E1B31]/8"
               }`
             : `${doctorHeaderBellBtnClass} ${
                 enabled

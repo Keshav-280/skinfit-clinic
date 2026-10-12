@@ -7,10 +7,7 @@ import { ClinicPortalMain } from "@/components/doctor/ClinicPortalMain";
 import { DoctorSimpleNav } from "@/components/doctor/DoctorSimpleNav";
 import { ClinicRequestAlertController } from "@/components/doctor/ClinicRequestAlertController";
 import { DoctorLogoutButton } from "@/components/doctor/DoctorLogoutButton";
-import {
-  doctorGlassHeaderClass,
-  doctorPortalShellClass,
-} from "@/src/lib/doctorPortalTheme";
+import { doctorPortalShellClass } from "@/src/lib/doctorPortalTheme";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import { sanitizeClinicPortalNext } from "@/src/lib/auth/clinic-portal-next";
 
@@ -40,7 +37,7 @@ export default async function ClinicPortalLayout({
   return (
     <div data-clinic-portal className={doctorPortalShellClass}>
       <header
-        className={`sticky top-0 z-40 flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-6 ${doctorGlassHeaderClass}`}
+        className="sticky top-0 z-40 flex w-full flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#2B2F63] bg-[#1E1B31] px-3 py-2.5 sm:px-6"
       >
         <Link
           href="/clinic/requests"
@@ -53,7 +50,7 @@ export default async function ClinicPortalLayout({
             width={560}
             height={135}
             priority
-            className="h-6 w-auto max-w-[6rem] object-contain object-left sm:h-8 sm:max-w-[11rem]"
+            className="h-6 w-auto max-w-[6rem] object-contain object-left brightness-0 invert sm:h-8 sm:max-w-[11rem]"
           />
         </Link>
         <DoctorSimpleNav />
@@ -61,8 +58,9 @@ export default async function ClinicPortalLayout({
           <ClinicRequestAlertController
             inboxHref="/clinic/requests"
             compact
+            tone="dark"
           />
-          <DoctorLogoutButton compact loginHref="/clinic/login" />
+          <DoctorLogoutButton compact tone="dark" loginHref="/clinic/login" />
         </div>
       </header>
       <ClinicPortalMain>{children}</ClinicPortalMain>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Users } from "lucide-react";
+import { CalendarClock, Gift, Users } from "lucide-react";
 import {
   CLINIC_REQUEST_INBOX_EVENT,
   type ClinicRequestInboxDetail,
@@ -11,18 +11,18 @@ import {
 import { GLOBAL_LIVE_REFRESH_EVENT } from "@/src/lib/globalRefreshEvents";
 
 function workspaceTabClass(active: boolean) {
-  return `rounded-lg px-3.5 py-1.5 text-sm font-bold transition ${
+  return `rounded-md px-3.5 py-1.5 text-sm font-semibold transition ${
     active
-      ? "bg-white text-[#1E1B31] shadow-sm"
-      : "text-[#1E1B31]/60 hover:text-[#1E1B31]"
+      ? "bg-[#AEB9E8] text-[#1E1B31]"
+      : "text-[#AEB9E8] hover:text-white"
   }`;
 }
 
 function subNavClass(active: boolean) {
   return `relative inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
     active
-      ? "bg-[#1E1B31] text-white"
-      : "text-[#1E1B31]/70 hover:bg-[#1E1B31]/8 hover:text-[#1E1B31]"
+      ? "bg-white text-[#1E1B31]"
+      : "text-[#AEB9E8] hover:bg-[#2B2F63] hover:text-white"
   }`;
 }
 
@@ -69,11 +69,13 @@ export function DoctorSimpleNav() {
     pathname === "/clinic/requests" || pathname.startsWith("/clinic/requests/");
   const patientsActive =
     pathname === "/clinic/patients" || pathname.startsWith("/clinic/patients/");
+  const rewardsActive =
+    pathname === "/clinic/rewards" || pathname.startsWith("/clinic/rewards/");
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
       <nav
-        className="inline-flex rounded-xl bg-[#1E1B31]/8 p-0.5"
+        className="inline-flex rounded-lg bg-[#2B2F63] p-0.5"
         aria-label="Workspace"
       >
         <Link
@@ -105,6 +107,10 @@ export function DoctorSimpleNav() {
           <Link href="/clinic/patients" className={subNavClass(patientsActive)}>
             <Users className="h-4 w-4" aria-hidden />
             Patients
+          </Link>
+          <Link href="/clinic/rewards" className={subNavClass(rewardsActive)}>
+            <Gift className="h-4 w-4" aria-hidden />
+            Rewards
           </Link>
         </nav>
       ) : null}
