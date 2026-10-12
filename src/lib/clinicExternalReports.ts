@@ -706,7 +706,7 @@ export async function publishDeviceReportForPatient(params: {
   kind: ClinicDeviceReportKind;
   file: File;
 }): Promise<
-  | { ok: true; report: PatientDeviceReportRow }
+  | { ok: true; report: PatientDeviceReportRow; converted: boolean }
   | { ok: false; error: string; status: number }
 > {
   const mime = normalizeUploadMime(params.file);
@@ -728,17 +728,45 @@ export async function publishDeviceReportForPatient(params: {
         : mime === "image/webp"
           ? "webp"
           : "jpg";
-  const title = sanitizeClinicReportFileName(params.file.name, ext);
+  let title = sanitizeClinicReportFileName(params.file.name, ext);
   const pdfBuffer = Buffer.from(await params.file.arrayBuffer());
   if (!pdfBuffer.length) {
     return { ok: false, error: "EMPTY_FILE", status: 400 };
+  }
+
+  // Medixora PDFs are converted to the SkinFit-branded report so patients never see the
+  // raw machine report. If conversion fails we fall back to the original file.
+  let storedBuffer = pdfBuffer;
+  let converted = false;
+  if (params.kind === "medixora" && mime === "application/pdf") {
+    try {
+      const [{ buildSdetectReportFromPdf }, { buildKaiReportContent }, kai, names] =
+        await Promise.all([
+          import("@/src/lib/sdetectReport/buildReport"),
+          import("@/src/lib/sdetectReport/aiReport"),
+          import("@/src/lib/sdetectReport/generateKaiReportPdf"),
+          import("@/src/lib/sdetectReport/outputFilename"),
+        ]);
+      const eventLabel = "SkinFit Wellness";
+      const report = await buildSdetectReportFromPdf(pdfBuffer);
+      const content = await buildKaiReportContent(report, { eventLabel });
+      const out = await kai.generateKaiReportPdf(report, content, { eventLabel });
+      storedBuffer = Buffer.from(out);
+      title = names.sanitizeOutputFilename(
+        "",
+        names.outputBasenameFromPatientName(params.patientName)
+      );
+      converted = true;
+    } catch (err) {
+      console.error("[clinicExternalReports] Medixora conversion failed, sharing original", err);
+    }
   }
 
   const storage = getStorage();
   const uploaded = await storage.upload(
     "reports",
     title.replace(/[^a-zA-Z0-9._-]/g, "_") || `report.${ext}`,
-    pdfBuffer,
+    storedBuffer,
     mime
   );
 
@@ -783,5 +811,6 @@ export async function publishDeviceReportForPatient(params: {
       createdAt: (row.sentAt ?? row.createdAt).toISOString(),
       downloadUrl: deviceReportDownloadUrl(row.id, params.patientId, "staff"),
     },
+    converted,
   };
 }

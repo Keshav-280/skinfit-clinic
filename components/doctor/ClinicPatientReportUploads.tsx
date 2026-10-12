@@ -14,6 +14,7 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
   const [items, setItems] = useState<PatientDeviceReportRow[]>([]);
   const [busyKind, setBusyKind] = useState<ClinicDeviceReportKind | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const medixoraRef = useRef<HTMLInputElement>(null);
   const inbodyRef = useRef<HTMLInputElement>(null);
 
@@ -35,6 +36,7 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
 
   async function upload(kind: ClinicDeviceReportKind, file: File) {
     setError(null);
+    setNotice(null);
     setBusyKind(kind);
     try {
       const body = new FormData();
@@ -44,7 +46,11 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
         `/api/doctor/patients/${patientId}/clinic-reports`,
         { method: "POST", credentials: "include", body }
       );
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        converted?: boolean;
+      };
       if (!res.ok || !data.ok) {
         if (data.error === "FILE_TYPE") {
           setError("Use a PDF or image (JPG, PNG).");
@@ -54,6 +60,13 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
           setError("Could not upload report.");
         }
         return;
+      }
+      if (kind === "medixora" && file.type !== "image/jpeg" && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+        setNotice(
+          data.converted
+            ? "Converted to the SkinFit report format and shared with the patient."
+            : "Could not convert this report, so the original Medixora file was shared. Check that it is the full Medixora PDF."
+        );
       }
       await load();
     } catch {
@@ -70,7 +83,7 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
       </h2>
       <p className="mt-1 text-[12px] text-[#1E1B31]/50">
         Upload a Medixora or InBody report. It appears in this patient’s scan
-        history.
+        history. Medixora PDFs are converted to the SkinFit report format.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -108,6 +121,9 @@ export function ClinicPatientReportUploads({ patientId }: { patientId: string })
 
       {error ? (
         <p className="mt-3 text-xs font-medium text-rose-700">{error}</p>
+      ) : null}
+      {notice ? (
+        <p className="mt-3 text-xs font-medium text-[#1E1B31]/70">{notice}</p>
       ) : null}
 
       {items.length === 0 ? (

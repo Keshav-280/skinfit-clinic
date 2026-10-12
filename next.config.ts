@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingIncludes: {
     "/api/skinfit-report-generator": PDFJS_TRACE,
+    "/api/doctor/patients/**": PDFJS_TRACE,
   },
   serverExternalPackages: [
     "@mediapipe/tasks-vision",
