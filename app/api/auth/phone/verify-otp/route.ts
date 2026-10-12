@@ -8,6 +8,7 @@ import {
 } from "@/src/lib/auth/phoneOtp";
 import { placeholderEmailForPhone } from "@/src/lib/auth/placeholderEmail";
 import { establishPatientSessionCookie } from "@/src/lib/auth/oauth/establish-session";
+import { applyReferralCode, findReferrerByCode } from "@/src/lib/rewards/rewards";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ async function handle(req: Request) {
     otp?: unknown;
     mode?: unknown;
     name?: unknown;
+    referralCode?: unknown;
   };
   try {
     body = await req.json();
@@ -38,6 +40,16 @@ async function handle(req: Request) {
   if (isRegister && !name) {
     return NextResponse.json(
       { error: "NAME_REQUIRED", message: "Please enter your name." },
+      { status: 400 }
+    );
+  }
+
+  // Check the referral code before the OTP is consumed so a typo doesn't burn the code.
+  const referralCode =
+    isRegister && typeof body.referralCode === "string" ? body.referralCode.trim() : "";
+  if (referralCode && !(await findReferrerByCode(referralCode))) {
+    return NextResponse.json(
+      { error: "CODE_NOT_FOUND", message: "That referral code wasn't found." },
       { status: 400 }
     );
   }
@@ -124,6 +136,14 @@ async function handle(req: Request) {
       );
     }
     user = matches[0]!;
+  }
+
+  if (isRegister && referralCode) {
+    try {
+      await applyReferralCode(user.id, referralCode);
+    } catch (e) {
+      console.error("apply referral at signup", e);
+    }
   }
 
   const session = await establishPatientSessionCookie(user, {

@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, FileStack, UserRound, Users } from "lucide-react";
+import { CreditCard, FileStack, Gift, UserRound, Users } from "lucide-react";
 import { DoctorNavLink } from "@/components/doctor/DoctorNavLink";
 
 /** Sidebar nav - client-only so Lucide icons are not passed from a Server Component. */
@@ -17,6 +17,12 @@ export function DoctorPortalNav({ collapsed = false }: { collapsed?: boolean }) 
         href="/doctor/clinic-wallet"
         label="Clinic wallet"
         icon={CreditCard}
+        collapsed={collapsed}
+      />
+      <DoctorNavLink
+        href="/doctor/rewards"
+        label="Rewards"
+        icon={Gift}
         collapsed={collapsed}
       />
       <DoctorNavLink

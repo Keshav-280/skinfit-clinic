@@ -22,6 +22,7 @@ import { WeekRecap } from "./WeekRecap";
 import { ActionItem } from "./ActionItem";
 import { NextStepCTA } from "./NextStepCTA";
 import { ReportShareFooter } from "./ReportShareFooter";
+import { GoogleReviewPrompt } from "./GoogleReviewPrompt";
 import { REPORT_CARD, REPORT_PILL, coverHeadline, shortHeadline } from "./reportCopy";
 import type { ReportFocusAction } from "@/src/lib/report/reportFocusActions";
 import {
@@ -156,6 +157,7 @@ export function UpdateKaiScanReport({
   };
 
   return (
+    <>
     <ReportShell reportRef={reportRef}>
       <FaceMapSection
         scanImages={scanImages}
@@ -276,5 +278,7 @@ export function UpdateKaiScanReport({
         />
       </FaceMapSection>
     </ReportShell>
+    <GoogleReviewPrompt />
+    </>
   );
 }

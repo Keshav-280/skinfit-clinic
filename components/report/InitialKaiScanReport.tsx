@@ -19,6 +19,7 @@ import { TakeawayCard } from "./TakeawayCard";
 import { ActionItem } from "./ActionItem";
 import { NextStepCTA } from "./NextStepCTA";
 import { ReportShareFooter } from "./ReportShareFooter";
+import { GoogleReviewPrompt } from "./GoogleReviewPrompt";
 import { REPORT_CARD, REPORT_PILL, watchTitle } from "./reportCopy";
 import type { ReportFocusAction } from "@/src/lib/report/reportFocusActions";
 import {
@@ -161,6 +162,7 @@ export function InitialKaiScanReport({
   };
 
   return (
+    <>
     <ReportShell reportRef={reportRef}>
       <FaceMapSection
         scanImages={scanImages}
@@ -259,5 +261,7 @@ export function InitialKaiScanReport({
         />
       </FaceMapSection>
     </ReportShell>
+    <GoogleReviewPrompt />
+    </>
   );
 }

@@ -12,6 +12,7 @@ import {
   normalizeCountryCode,
   validateNationalPhone,
 } from "@/src/lib/auth/phone";
+import { applyReferralCode, findReferrerByCode } from "@/src/lib/rewards/rewards";
 import {
   isSignupEmailOtpRequired,
   normalizeSignupEmail,
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     phone?: string;
     phoneCountryCode?: string;
     otp?: string;
+    referralCode?: string;
   };
   try {
     body = await req.json();
@@ -84,6 +86,15 @@ export async function POST(req: Request) {
         error: "PASSWORD_TOO_SHORT",
         message: `Password must be at least ${MIN_PASSWORD} characters.`,
       },
+      { status: 400 }
+    );
+  }
+
+  const referralCode =
+    typeof body.referralCode === "string" ? body.referralCode.trim() : "";
+  if (referralCode && !(await findReferrerByCode(referralCode))) {
+    return NextResponse.json(
+      { error: "CODE_NOT_FOUND", message: "That referral code wasn't found." },
       { status: 400 }
     );
   }
@@ -163,6 +174,14 @@ export async function POST(req: Request) {
       { error: "CREATE_FAILED", message: "Could not create account." },
       { status: 500 }
     );
+  }
+
+  if (referralCode) {
+    try {
+      await applyReferralCode(inserted.id, referralCode);
+    } catch (e) {
+      console.error("apply referral at signup", e);
+    }
   }
 
   const { linkPendingClinicReportsForUser } = await import(

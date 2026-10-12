@@ -46,6 +46,9 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
   const [introShowing, setIntroShowing] = useState(true);
 
   const [name, setName] = useState("");
+  const [referralCode, setReferralCode] = useState(() =>
+    (searchParams.get("ref") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12)
+  );
   const [email, setEmail] = useState("");
   const [phoneCountryCode, setPhoneCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
@@ -323,6 +326,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
           phone: phone.trim(),
           password,
           otp: otp.trim(),
+          referralCode: referralCode.trim() || undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -421,6 +425,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
           otp: otp.trim(),
           mode: mode === "register" ? "register" : "login",
           name: name.trim(),
+          referralCode: mode === "register" ? referralCode.trim() : undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -1026,6 +1031,26 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
                 </div>
               </div>
 
+              <div>
+                <label htmlFor="reg-ref" className={LABEL}>
+                  Referral code <span className="font-normal text-[#8B93A4]">(optional)</span>
+                </label>
+                <input
+                  id="reg-ref"
+                  name="referralCode"
+                  type="text"
+                  autoCapitalize="characters"
+                  maxLength={12}
+                  value={referralCode}
+                  onChange={(e) =>
+                    setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+                  }
+                  disabled={loading}
+                  className={INPUT}
+                  placeholder="Got a friend's code?"
+                />
+              </div>
+
               {phoneLoginEnabled ? (
                 <button
                   type="button"
@@ -1077,6 +1102,27 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
               </div>
 
               {phoneFields("reg")}
+
+              <div>
+                <label htmlFor="reg-ref" className={LABEL}>
+                  Referral code <span className="font-normal text-[#8B93A4]">(optional)</span>
+                </label>
+                <input
+                  id="reg-ref"
+                  name="referralCode"
+                  type="text"
+                  autoCapitalize="characters"
+                  maxLength={12}
+                  value={referralCode}
+                  onChange={(e) =>
+                    setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+                  }
+                  disabled={loading}
+                  className={INPUT}
+                  placeholder="Got a friend's code?"
+                />
+              </div>
+
 
               <button
                 type="button"

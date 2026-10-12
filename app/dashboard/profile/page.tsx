@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { FamilyWalletCard } from "@/components/dashboard/FamilyWalletCard";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
+import { RewardsCard } from "@/components/dashboard/RewardsCard";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
 
@@ -124,6 +125,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-1 pb-10 sm:px-0">
+      <RewardsCard />
       <ProfileForm
         initial={user}
         embedded

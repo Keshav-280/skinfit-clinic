@@ -38,6 +38,7 @@ import {
   Facebook,
   Instagram,
   MapPin,
+  Phone,
   NotebookPen,
   X,
 } from "lucide-react";
@@ -1070,6 +1071,19 @@ export function PatientDashboardDesktop({
               </a>
             ))}
           </div>
+
+          <a
+            href="tel:+919035407057"
+            className="group mt-5 flex items-start gap-3"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#DF9DA4] transition group-hover:bg-white/20">
+              <Phone className="h-[18px] w-[18px]" aria-hidden />
+            </span>
+            <span className="min-w-0 pt-0.5">
+              <span className="block text-[15px] font-bold leading-tight">Call the clinic</span>
+              <span className="mt-0.5 block text-sm text-white/65">+91 90354 07057</span>
+            </span>
+          </a>
 
           <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
