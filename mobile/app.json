@@ -2,7 +2,8 @@
   "expo": {
     "name": "SkinFit Wellness",
     "slug": "mobile",
-    "version": "1.0.1",
+    "owner": "skinfit-wellness",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "skinfit",
@@ -39,7 +40,7 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "versionCode": 2
+      "versionCode": 6
     },
     "web": {
       "bundler": "metro",
@@ -114,7 +115,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "1da8bd8e-7568-4c2b-8bc8-716554500736"
+        "projectId": "99fe1fd2-a908-4500-8000-807e0d6ac3ae"
       }
     }
   }

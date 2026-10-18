@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { FamilyWalletCard } from "@/components/dashboard/FamilyWalletCard";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection";
 import { RewardsCard } from "@/components/dashboard/RewardsCard";
 import { LogoutButton } from "@/app/dashboard/logout-button";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
@@ -137,6 +138,7 @@ export default async function ProfilePage() {
           </>
         }
       />
+      <DeleteAccountSection />
       <div className="border-t border-[#E5E7EB] pt-6">
         <LogoutButton />
       </div>
