@@ -13,6 +13,15 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     lang: "en-IN",
     categories: ["health", "medical", "lifestyle"],
+    // Lets PWABuilder / Play tooling use the existing Play listing's package name.
+    related_applications: [
+      {
+        platform: "play",
+        url: "https://play.google.com/store/apps/details?id=app.skinfit.clinic",
+        id: "app.skinfit.clinic",
+      },
+    ],
+    prefer_related_applications: false,
     background_color: "#FAF8F5",
     theme_color: "#1E1B31",
     icons: [
