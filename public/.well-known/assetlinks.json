@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.skinfit.clinic",
+      "sha256_cert_fingerprints": [
+        "BA:5C:8B:55:A2:5F:7E:E0:7F:8F:C6:34:23:63:F0:B6:65:96:0F:27:82:70:F3:51:61:79:60:FD:6E:EA:3D:97",
+        "BF:EF:6C:A1:66:81:82:F6:E8:79:F1:30:45:39:51:6D:17:4F:D6:6E:38:67:80:16:95:9F:01:96:D0:13:EA:7C"
+      ]
+    }
+  }
+]
