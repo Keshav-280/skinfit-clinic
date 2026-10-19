@@ -415,15 +415,15 @@ export default function AboutPage() {
                 <ul className="space-y-3 text-sm text-slate-400">
                   <li className="flex items-start gap-2">
                     <Phone className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
-                    <span>+91 98765 43210</span>
+                    <span>+91 90354 07057</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Mail className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
-                    <span>hello@skinfit.clinic</span>
+                    <span>info@skinfitwellness.in</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 shrink-0 text-[#DF9DA4]" />
-                    <span>123 Medical Plaza, Bangalore, Karnataka 560001</span>
+                    <span>3rd Floor, 534/A, 7th Cross Road, Alcove Service Apartment, Koramangala, Bengaluru, Karnataka 560034</span>
                   </li>
                 </ul>
               </div>

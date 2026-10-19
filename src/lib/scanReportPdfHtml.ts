@@ -601,9 +601,9 @@ export function buildScanReportPdfHtml(p: ScanReportPdfPayload): string {
     ? buildTrackerSectionsHtml(tracker, p.scoresUnlocked ?? false)
     : buildLegacyMetricsHtml(p, overall, overallGrade, lastScanLabel);
   const pdfScale = estimatePdfScale(p);
-  const clinicPhone = "+91 98765 43210";
-  const clinicEmail = "hello@skinfit.clinic";
-  const clinicAddress = "123 Medical Plaza, Bangalore, Karnataka 560001";
+  const clinicPhone = "+91 90354 07057";
+  const clinicEmail = "info@skinfitwellness.in";
+  const clinicAddress = "3rd Floor, 534/A, 7th Cross Road, Alcove Service Apartment, Koramangala, Bengaluru, Karnataka 560034";
   const clinicWebsite = "https://my.skinfitwellness.in";
   const clinicInstagram = "@skinfitwellness";
   const clinicLinkedIn = "linkedin.com/company/skinfit-wellness";

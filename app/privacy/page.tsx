@@ -92,6 +92,7 @@ export default function PrivacyPage() {
         <LegalBulletList
           items={[
             "Data is retained while your account is active and as needed for care continuity, security, and legal obligations.",
+            "You can delete your account yourself at any time from your profile, or at my.skinfitwellness.in/delete-account. Deletion removes your profile, scans, photos, reports, check-ins, rewards and chat from our systems. Records a clinic must keep by law, such as billing records for visits you attended, may be retained by the clinic.",
             "HTTPS/TLS in transit, hashed passwords, secure device storage for tokens, and role-based access for clinic staff.",
           ]}
         />
