@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { SourceCapture } from "@/components/SourceCapture";
 import {
   Barlow_Condensed,
   Birthstone,
@@ -66,6 +67,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${notoSerif.variable} ${tenor.variable} ${barlow.variable} ${birthstone.variable} ${inter.className} antialiased bg-[#FAF8F5] text-[#1E1B31]`}
       >
+        <SourceCapture />
         {children}
       </body>
     </html>

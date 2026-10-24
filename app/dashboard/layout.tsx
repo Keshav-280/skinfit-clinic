@@ -11,7 +11,9 @@ import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
 import { db } from "@/src/db";
 import { scans } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
+import { SOURCE_COOKIE_NAME, recordSignupSourceIfMissing } from "@/src/lib/attribution/signupSource";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
 import { runAppointmentReminders } from "@/src/lib/runAppointmentReminders";
 import { runRoutineReminders } from "@/src/lib/runRoutineReminders";
@@ -30,11 +32,13 @@ export default async function DashboardLayout({
       .limit(1);
     hasScans = Boolean(firstScan);
   }
+  const sourceCookie = userId ? (await cookies()).get(SOURCE_COOKIE_NAME)?.value : undefined;
   if (userId) {
     // Don’t block HTML: run after response (uses platform waitUntil on Vercel).
     after(async () => {
       try {
         await Promise.all([
+          recordSignupSourceIfMissing(userId, sourceCookie),
           markPastAppointmentsCompleted(),
           runAppointmentReminders(),
           runRoutineReminders(),

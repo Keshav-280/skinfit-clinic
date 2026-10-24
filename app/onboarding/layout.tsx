@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { OnboardingLayoutShell } from "@/components/onboarding/OnboardingLayoutShell";
 import { OnboardingResumeGate } from "@/components/onboarding/OnboardingResumeGate";
+import { cookies } from "next/headers";
 import { getSessionUserProfile } from "@/src/lib/auth/get-session";
+import { SOURCE_COOKIE_NAME, recordSignupSourceIfMissing } from "@/src/lib/attribution/signupSource";
 import { getOnboardingResumeSnapshot } from "@/src/lib/onboardingResume";
 
 export default async function OnboardingLayout({
@@ -14,6 +16,10 @@ export default async function OnboardingLayout({
   if (!profile) {
     redirect("/login?next=/onboarding/kai-intro");
   }
+  void recordSignupSourceIfMissing(
+    profile.id,
+    (await cookies()).get(SOURCE_COOKIE_NAME)?.value
+  );
   const resume = await getOnboardingResumeSnapshot(profile.id);
   // Only hard-redirect once everything (baseline + every questionnaire answer)
   // is done. Submitted-with-skips must stay reachable so patients can return

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Gift, Users } from "lucide-react";
+import { CalendarClock, Gift, Users, BarChart3 } from "lucide-react";
 import {
   CLINIC_REQUEST_INBOX_EVENT,
   type ClinicRequestInboxDetail,
@@ -71,6 +71,8 @@ export function DoctorSimpleNav() {
     pathname === "/clinic/patients" || pathname.startsWith("/clinic/patients/");
   const rewardsActive =
     pathname === "/clinic/rewards" || pathname.startsWith("/clinic/rewards/");
+  const scoreboardActive =
+    pathname === "/clinic/scoreboard" || pathname.startsWith("/clinic/scoreboard/");
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -111,6 +113,10 @@ export function DoctorSimpleNav() {
           <Link href="/clinic/rewards" className={subNavClass(rewardsActive)}>
             <Gift className="h-4 w-4" aria-hidden />
             Rewards
+          </Link>
+          <Link href="/clinic/scoreboard" className={subNavClass(scoreboardActive)}>
+            <BarChart3 className="h-4 w-4" aria-hidden />
+            Scoreboard
           </Link>
         </nav>
       ) : null}
