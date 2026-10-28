@@ -535,7 +535,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
       ) : null}
 
       {/* Visual panel - photo. Mobile: hero on top with curved base. Desktop: right half. */}
-      <div className="relative order-1 h-[17vh] min-h-[118px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
+      <div className="relative order-1 h-[21vh] min-h-[132px] w-full overflow-hidden lg:h-auto lg:min-h-screen lg:w-1/2">
         <motion.div
           initial={{ opacity: 0, scale: 1.04 }}
           animate={introShowing ? {} : { opacity: 1, scale: 1 }}
@@ -585,7 +585,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
         initial={{ opacity: 0, y: 16 }}
         animate={introShowing ? {} : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1, ease: easeOut }}
-        className="order-2 flex flex-1 items-center justify-center bg-[#FAF8F5] px-6 py-3 text-[#1E1B31] lg:min-h-screen lg:py-12"
+        className="order-2 flex flex-1 items-start justify-center bg-[#FAF8F5] px-6 pb-6 pt-4 text-[#1E1B31] lg:min-h-screen lg:items-center lg:py-12"
       >
         <div className="w-full max-w-md">
         {isSignIn ? (

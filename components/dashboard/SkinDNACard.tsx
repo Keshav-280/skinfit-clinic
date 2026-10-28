@@ -847,12 +847,6 @@ export function SkinDNACard({
       value: `${streakCurrent} day${streakCurrent === 1 ? "" : "s"}`,
     });
   }
-  if (typeof scanCount === "number" && scanCount > 0) {
-    identityFacts.push({
-      label: "Scans",
-      value: String(scanCount),
-    });
-  }
   const recency = lastScanRecency(lastScanAt);
 
   let strongest: { name: string; gradeLabel: string } | null = null;
