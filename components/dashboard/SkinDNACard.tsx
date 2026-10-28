@@ -658,22 +658,6 @@ function paramHoverLine(key: SkinDNAParamKey, score: number): string {
   }
 }
 
-function SnapStrip({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain touch-pan-x pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
 function IdentityFactChip({
   fact,
   recency,
@@ -753,6 +737,14 @@ function InteractiveParamTile({
       <span className="text-[9px] font-semibold uppercase tracking-wide text-[#6B7280]">
         {tile.label}
       </span>
+      {tile.href && hasScan ? (
+        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#5B66A1]">
+          Details
+          <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <polyline points="9 6 15 12 9 18" />
+          </svg>
+        </span>
+      ) : null}
       <AnimatePresence>
         {isActive && hasScan ? (
           <motion.div
@@ -1065,31 +1057,17 @@ export function SkinDNACard({
         </Link>
       ) : null}
 
-      {/* 4. Parameter tiles — swipe on phone, full row on desktop */}
-      <div
-        className="mt-2 pb-2"
-        onMouseLeave={() => setActiveParam(null)}
-      >
-        <SnapStrip className="px-4 lg:hidden">
-          {paramTiles.map((tile) => (
-            <div
-              key={tile.key}
-              className="w-[44%] shrink-0 snap-start sm:w-[32%]"
-            >
-              <InteractiveParamTile
-                tile={tile}
-                hasScan={hasScan}
-                isActive={activeParam === tile.key}
-                isDimmed={activeParam !== null && activeParam !== tile.key}
-                onActivate={() => setActiveParam(tile.key)}
-                onDeactivate={() =>
-                  setActiveParam((cur) => (cur === tile.key ? null : cur))
-                }
-              />
-            </div>
-          ))}
-        </SnapStrip>
-        <div className="hidden grid-cols-6 gap-2 px-5 lg:grid">
+      {/* 4. Parameter tiles: the hero. All six visible, each opens its own page */}
+      <div className="mt-3 pb-3" onMouseLeave={() => setActiveParam(null)}>
+        <div className="mx-4 mb-2 flex items-baseline justify-between gap-2 sm:mx-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#1E1B31]">
+            Your 6 skin areas
+          </p>
+          {hasScan ? (
+            <p className="text-[11px] font-medium text-[#5B66A1]">Tap any area to learn more</p>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-3 gap-2 px-4 sm:px-5 lg:grid-cols-6">
           {paramTiles.map((tile) => (
             <InteractiveParamTile
               key={tile.key}
