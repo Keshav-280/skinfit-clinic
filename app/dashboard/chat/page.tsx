@@ -74,11 +74,12 @@ export default function ChatPage() {
     DEFAULT_PATIENT_CHAT_ASSISTANT
   );
   const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [aiRemaining, setAiRemaining] = useState<number | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const AI_GREETING =
-    "Hi! I'm SkinFit AI Assistant. How can I help you today?";
+    "Hi! I'm kAI, your skin companion. Ask me about your report, your routine or your treatments. I'm not a doctor, so for anything that worries you I'll point you to the clinic.";
   const [contactPreviews, setContactPreviews] = useState<
     Record<string, { snippet: string; time: string }>
   >({});
@@ -108,22 +109,23 @@ export default function ChatPage() {
     }
   }, []);
 
+  const openKai = useCallback(() => {
+    setActiveAssistant("ai");
+    setActiveDoctorId(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("assistant", "ai");
+      url.searchParams.delete("doctorId");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }
+  }, []);
+
   const contacts = useMemo((): SidebarContact[] => {
-    const doctorRows: SidebarContact[] = registeredDoctors.map((d) => ({
-      key: `doctor:${d.id}`,
-      kind: "doctor",
-      name: d.name,
-      icon: User,
-      doctorId: d.id,
-    }));
     return [
-      ...(AI_CHATBOT_ENABLED
-        ? [{ key: "ai", kind: "ai" as const, name: "SkinFit AI Assistant", icon: Bot }]
-        : []),
-      ...doctorRows,
+      { key: "ai", kind: "ai" as const, name: "kAI", icon: Bot },
       { key: "support", kind: "support", name: "Clinic Support", icon: User },
     ];
-  }, [registeredDoctors]);
+  }, []);
 
   const isContactActive = useCallback(
     (contact: SidebarContact) => {
@@ -637,7 +639,6 @@ export default function ChatPage() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const a = params.get("assistant");
-    const doctorId = params.get("doctorId");
     if (a === "support" || (a === "ai" && AI_CHATBOT_ENABLED)) {
       setActiveAssistant(a);
       setActiveDoctorId(null);
@@ -649,8 +650,9 @@ export default function ChatPage() {
       return;
     }
     if (a === "doctor") {
-      setActiveAssistant("doctor");
-      if (doctorId) setActiveDoctorId(doctorId);
+      // Doctor chat is retired: old links land on Clinic Support.
+      setActiveAssistant("support");
+      setActiveDoctorId(null);
     }
   }, []);
 
@@ -1029,11 +1031,20 @@ export default function ChatPage() {
           success?: boolean;
           threadId?: string;
           error?: string;
+          message?: string;
+          remaining?: number | null;
         };
 
         if (!storeRes.ok || !storeData.success || !storeData.threadId) {
-          throw new Error(storeData.error || `Failed to store message (${storeRes.status})`);
+          throw new Error(
+            storeData.message ||
+              storeData.error ||
+              `Failed to store message (${storeRes.status})`
+          );
         }
+        setAiRemaining(
+          typeof storeData.remaining === "number" ? storeData.remaining : null
+        );
 
         // 2) Call AI using current conversation history.
         const reply = await fetchAssistantReply({
@@ -1056,6 +1067,12 @@ export default function ChatPage() {
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to send message.");
+        try {
+          const { messages: resynced } = await fetchPlainMessages("ai");
+          setMessages(resynced);
+        } catch {
+          /* keep what is on screen */
+        }
       } finally {
         setIsLoading(false);
       }
@@ -1129,84 +1146,6 @@ export default function ChatPage() {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="flex min-h-[calc(100vh-120px)] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"
     >
-      {/* Sidebar */}
-      <div
-        className={`flex w-full min-w-0 flex-col overflow-hidden md:w-[min(100%,320px)] md:shrink-0 ${CARD_SHADOW}`}
-      >
-        <div className="border-b border-[#E4E6F0] p-4">
-          <h1 className="mb-3 text-center text-xl font-extrabold text-[#1E1B31] md:hidden">
-            Chat
-          </h1>
-          <div className="flex items-center gap-2 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-4 py-2.5">
-            <Search className="h-4 w-4 shrink-0 text-[#1E1B31]/50" />
-            <input
-              type="text"
-              placeholder="Search messages or doctors..."
-              className="w-full bg-transparent text-sm text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="max-h-[240px] flex-1 overflow-y-auto md:max-h-none">
-          {registeredDoctors.length === 0 ? (
-            <p className="border-b border-[#E4E6F0] px-4 py-3 text-center text-xs text-[#6B7280]">
-              No clinic doctors registered yet.
-            </p>
-          ) : null}
-          {contacts.map((contact) => {
-            const Icon = contact.icon;
-            const unreadN =
-              contact.kind === "support"
-                ? sidebarUnread.support
-                : contact.kind === "doctor"
-                  ? sidebarUnread.doctor
-                  : 0;
-            const preview = contactPreviews[contact.key];
-            return (
-              <div
-                key={contact.key}
-                className={`flex cursor-pointer items-center gap-3 border-b border-[#E4E6F0] px-4 py-4 transition-colors hover:bg-[#FAF8F5] ${
-                  isContactActive(contact) ? "bg-[#FAF8F5]" : ""
-                }`}
-                onClick={() => {
-                  if (contact.kind === "doctor" && contact.doctorId) {
-                    setActiveAssistant("doctor");
-                    setActiveDoctorId(contact.doctorId);
-                  } else {
-                    setActiveAssistant(contact.kind);
-                    setActiveDoctorId(null);
-                  }
-                }}
-              >
-                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F0EAE2]/80">
-                  <Icon className="h-5 w-5 text-[#1E1B31]" />
-                  {unreadN > 0 ? (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-0.5 text-[9px] font-bold leading-none text-white">
-                      {unreadN > 9 ? "9+" : unreadN}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#1E1B31]">
-                    {contact.name}
-                  </p>
-                  {(preview?.snippet ?? "").trim() ? (
-                    <p className="truncate text-xs text-[#6B7280]">
-                      {preview?.snippet}
-                    </p>
-                  ) : null}
-                </div>
-                {(preview?.time ?? "").trim() ? (
-                  <span className="shrink-0 text-xs text-[#6B7280]">
-                    {preview?.time}
-                  </span>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Chat */}
       <div
         className={`relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden ${CARD_SHADOW}`}
@@ -1224,10 +1163,40 @@ export default function ChatPage() {
             </div>
             <div>
               <p className="font-bold text-[#1E1B31]">{activeContact.name}</p>
-              <p className="text-xs text-emerald-600">Online</p>
+              <p className="text-xs text-[#6B7280]">
+                {activeAssistant === "ai"
+                  ? aiRemaining !== null && aiRemaining <= 20
+                    ? `Your skin companion · ${aiRemaining} free message${aiRemaining === 1 ? "" : "s"} left`
+                    : "Your skin companion"
+                  : "Our clinic team"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {activeAssistant === "ai" ? (
+              <button
+                type="button"
+                className="relative inline-flex h-9 items-center gap-1.5 rounded-full border border-[#E4E6F0] bg-white px-3.5 text-sm font-semibold text-[#1E1B31] transition-colors hover:bg-[#F0EAE2] whitespace-nowrap"
+                onClick={openClinicSupport}
+              >
+                <User className="h-4 w-4 shrink-0" aria-hidden />
+                Clinic support
+                {sidebarUnread.support > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-0.5 text-[9px] font-bold leading-none text-white">
+                    {sidebarUnread.support > 9 ? "9+" : sidebarUnread.support}
+                  </span>
+                ) : null}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#1E1B31] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#5B66A1] whitespace-nowrap"
+                onClick={openKai}
+              >
+                <Bot className="h-4 w-4 shrink-0" aria-hidden />
+                Back to kAI
+              </button>
+            )}
             {activeAssistant === "support" || activeAssistant === "doctor" ? (
               <button
                 type="button"

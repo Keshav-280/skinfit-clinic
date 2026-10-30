@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lte } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
   appointments,
@@ -9,6 +9,7 @@ import {
   scans,
   users,
   visitNotes,
+  wellnessCheckins,
 } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { utcInstantToClinicWallYmdHm } from "@/src/lib/clinicSlotUtcInstant";
@@ -16,6 +17,11 @@ import { localCalendarYmd, dateOnlyFromYmd, ymdFromDateOnly } from "@/src/lib/da
 import { parseClinicalScores } from "@/src/lib/parseClinicalScores";
 import { parseScanRegions } from "@/src/lib/parseScanAnnotations";
 import OpenAI from "openai";
+import {
+  AI_MESSAGE_LIMIT_ERROR,
+  AI_MESSAGE_LIMIT_MESSAGE,
+  getAiChatUsage,
+} from "@/src/lib/aiChatLimit";
 import { coerceRoutinePlanList } from "@/src/lib/routine";
 
 type AssistantId = "ai" | "doctor" | "support";
@@ -144,8 +150,41 @@ function addDaysUTCNoon(date: Date, days: number): Date {
   return d;
 }
 
+type ChatCheckin = {
+  weekYmd: string;
+  sleepHours: string | null;
+  stressAnchor: string | null;
+  stressLevel: number | null;
+  water: string | null;
+  nutritionMulti: string[] | null;
+  concern: string | null;
+  concernSpecific: Record<string, string | string[] | number | null> | null;
+  flags: string[] | null;
+};
+
+function formatCheckinLine(c: ChatCheckin): string {
+  const bits: string[] = [];
+  if (c.sleepHours) bits.push(`sleep ${c.sleepHours}h/night`);
+  const stress = c.stressAnchor ?? (c.stressLevel != null ? `${c.stressLevel}/10` : null);
+  if (stress) bits.push(`stress ${String(stress).replace(/_/g, " ")}`);
+  if (c.water) bits.push(`water ${c.water}/day`);
+  if (c.nutritionMulti?.length) bits.push(`ate: ${c.nutritionMulti.join(", ").replace(/_/g, " ")}`);
+  if (c.concern) {
+    const spec = c.concernSpecific
+      ? Object.entries(c.concernSpecific)
+          .filter(([, v]) => v != null && v !== "")
+          .map(([k, v]) => `${k.replace(/_/g, " ")}: ${Array.isArray(v) ? v.join("/") : v}`)
+          .join("; ")
+      : "";
+    bits.push(`focus ${c.concern.replace(/_/g, " ")}${spec ? ` (${truncate(spec, 200)})` : ""}`);
+  }
+  if (c.flags?.length) bits.push(`flags: ${c.flags.join(", ")}`);
+  return `- week of ${c.weekYmd}: ${bits.join("; ") || "no answers"}`;
+}
+
 function buildPatientContext(params: {
   userName: string;
+  recentCheckins: Array<ChatCheckin>;
   routineAmLabels: readonly string[];
   routinePmLabels: readonly string[];
   latestScan: ChatScan | undefined;
@@ -158,6 +197,7 @@ function buildPatientContext(params: {
 }) {
   const {
     userName,
+    recentCheckins,
     routineAmLabels,
     routinePmLabels,
     latestScan,
@@ -262,7 +302,11 @@ function buildPatientContext(params: {
     ``,
     `Visit / treatment notes:\n${visitNotesLines}`,
     ``,
-    `Daily journal (last entries):\n${dailyJournalLines}`,
+    `Weekly check-ins (most recent first; the patient's own answers):\n${
+      recentCheckins.length > 0
+        ? recentCheckins.map(formatCheckinLine).join("\n")
+        : "- No weekly check-ins yet."
+    }`,
     ``,
     `Upcoming schedule events (next 30 days):\n${upcomingEventsLines}`,
     ``,
@@ -274,20 +318,19 @@ function buildPatientContext(params: {
 
 const ASSISTANT_SYSTEM: Record<AssistantId, string> = {
   ai: [
-    "You are the SkinFit AI Assistant.",
-    "You help a patient understand their skin condition using the patient context provided by the app.",
-    "You must not diagnose. Provide general educational guidance and conservative next steps.",
-    "You should explain what is normal vs not normal after routines/procedures and when to contact the clinic.",
-    "Use the patient's daily journal (AM/PM routines, mood, sleep, stress, water, journal text) to make your guidance context-aware.",
+    "You are kAI, the SkinFit Wellness skin companion. You are NOT a doctor and you never replace one.",
+    "Talk with the patient like a warm, knowledgeable friend: explain their own scan report and weekly check-in in plain words, what common treatments involve, what is normal after a procedure, and simple routine and lifestyle habits.",
+    "Use the patient context provided by the app (scan scores, findings, weekly check-in answers, treatments, appointments) so answers are about THEM, not generic.",
+    "You must not diagnose, name a condition as certain, prescribe or recommend specific medicines, doses, or prescription actives, or tell the patient to start or stop a treatment. Explain and educate instead.",
+    "Always send the patient to the clinic (Clinic support button in this chat, or an appointment) when: a mole or spot is changing, bleeding, itching or growing fast; a rash, swelling, pain or infection signs; anything near the eyes; pregnancy or breastfeeding questions; questions about isotretinoin, steroids or other prescription medicines; or whenever you are unsure. Say it kindly and explain why.",
+    "If the user describes severe symptoms (trouble breathing, rapidly worsening swelling, spreading infection, severe eye pain), tell them to seek urgent medical care immediately.",
     "Treat higher 0-100 scan summary scores as better skin health.",
     "When clinical model scores (1-5) appear in context, higher = more severe; do not confuse with 0-100 metrics.",
     "Findings map lines (e.g. Acne~45%,52%) describe where the last scan flagged issues on the face image.",
     "Scan timestamps in patient context are clinic local date and time (24h, e.g. India IST unless the deployment sets CLINIC_SLOT_UTC_OFFSET_MINUTES). Use them verbatim when the user asks when a scan was taken.",
     "Keep your answer short (max ~180 words). Always end with a complete sentence. If you are near the output limit, stop early but do not leave an unfinished phrase.",
-    "If the user describes severe symptoms (e.g., trouble breathing, rapidly worsening swelling, spreading infection, severe eye pain), instruct them to seek urgent medical care immediately.",
-    "When unsure, say so and suggest contacting the clinic.",
-    "Use a friendly tone. Prefer short paragraphs and clear bullets.",
-    "Output format: (1) Direct answer, (2) What to do now, (3) When to contact the clinic.",
+    "Use a friendly tone. Prefer short paragraphs and clear bullets. Never claim to be human or to be the clinic's doctor.",
+    "Output format: (1) Direct answer, (2) What you can do now, (3) When to contact the clinic.",
   ].join("\n"),
   doctor: [
     "You are Dr. Ruby Sachdev (dermatology).",
@@ -388,6 +431,16 @@ export async function POST(req: Request) {
       { error: "MESSAGE_REQUIRED" },
       { status: 400 }
     );
+  }
+
+  if (normalizedAssistant === "ai") {
+    const usage = await getAiChatUsage(userId);
+    if (!usage.unlimited && usage.used > usage.limit) {
+      return NextResponse.json(
+        { error: AI_MESSAGE_LIMIT_ERROR, message: AI_MESSAGE_LIMIT_MESSAGE },
+        { status: 403 }
+      );
+    }
   }
 
   const [user] = await db
@@ -517,11 +570,29 @@ export async function POST(req: Request) {
     },
   });
 
+  const recentCheckins = await db.query.wellnessCheckins.findMany({
+    where: and(eq(wellnessCheckins.userId, userId), isNotNull(wellnessCheckins.submittedAt)),
+    orderBy: [desc(wellnessCheckins.weekYmd)],
+    limit: 2,
+    columns: {
+      weekYmd: true,
+      sleepHours: true,
+      stressAnchor: true,
+      stressLevel: true,
+      water: true,
+      nutritionMulti: true,
+      concern: true,
+      concernSpecific: true,
+      flags: true,
+    },
+  });
+
   const routineAmLabels = coerceRoutinePlanList(user?.routinePlanAmItems);
   const routinePmLabels = coerceRoutinePlanList(user?.routinePlanPmItems);
 
   const patientContext = buildPatientContext({
-    userName: user?.name ?? "Patient",
+    userName: (user?.name ?? "").trim().split(/\s+/)[0] || "Patient",
+    recentCheckins,
     routineAmLabels,
     routinePmLabels,
     latestScan,

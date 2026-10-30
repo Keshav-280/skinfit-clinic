@@ -146,8 +146,8 @@ export function UpdateKaiScanReport({
     nextStep,
     primary: { label: "Book your visit", href: "/dashboard?book=1" },
     secondary: {
-      label: `Message ${doctorName}`,
-      href: "/dashboard/chat?assistant=doctor",
+      label: "Contact clinic support",
+      href: "/dashboard/chat?assistant=support",
     },
     thenNow,
     movementGroups,
@@ -261,8 +261,8 @@ export function UpdateKaiScanReport({
             href: "/dashboard?book=1",
           }}
           secondaryAction={{
-            label: `Message ${doctorName}`,
-            href: "/dashboard/chat?assistant=doctor",
+            label: "Contact clinic support",
+            href: "/dashboard/chat?assistant=support",
           }}
         />
 

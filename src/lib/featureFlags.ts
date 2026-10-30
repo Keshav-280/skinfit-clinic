@@ -1,5 +1,5 @@
-/** Set true to show SkinFit AI Assistant in patient chat (web). */
-export const AI_CHATBOT_ENABLED = false;
+/** kAI, the AI skin companion, is the patient chat. Doctor chat is retired; Clinic Support stays as a button. */
+export const AI_CHATBOT_ENABLED = true;
 
 export type PatientChatAssistantId = "ai" | "doctor" | "support";
 

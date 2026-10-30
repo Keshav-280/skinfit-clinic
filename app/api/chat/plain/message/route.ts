@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/src/db";
+import {
+  AI_MESSAGE_LIMIT_ERROR,
+  AI_MESSAGE_LIMIT_MESSAGE,
+  getAiChatUsage,
+} from "@/src/lib/aiChatLimit";
 import { chatMessages, chatThreads } from "@/src/db/schema";
 import { getSessionUserIdFromRequest } from "@/src/lib/auth/get-session";
 import { notifyDoctorUsers } from "@/src/lib/expoPush";
@@ -70,6 +75,18 @@ export async function POST(req: Request) {
         { status: 403 }
       );
     }
+  }
+
+  let aiRemaining: number | null = null;
+  if (assistantId === "ai") {
+    const usage = await getAiChatUsage(userId);
+    if (!usage.unlimited && usage.used >= usage.limit) {
+      return NextResponse.json(
+        { error: AI_MESSAGE_LIMIT_ERROR, message: AI_MESSAGE_LIMIT_MESSAGE },
+        { status: 403 }
+      );
+    }
+    aiRemaining = usage.remaining === null ? null : Math.max(0, usage.remaining - 1);
   }
 
   const isUrgent = Boolean(b.isUrgent);
@@ -189,5 +206,9 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ success: true, threadId });
+  return NextResponse.json({
+    success: true,
+    threadId,
+    ...(assistantId === "ai" ? { remaining: aiRemaining } : {}),
+  });
 }

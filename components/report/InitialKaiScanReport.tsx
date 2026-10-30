@@ -115,8 +115,8 @@ export function InitialKaiScanReport({
 
   const primary = isExistingPatient
     ? {
-        label: `Message ${doctorName}`,
-        href: "/dashboard/chat?assistant=doctor",
+        label: "Contact clinic support",
+        href: "/dashboard/chat?assistant=support",
       }
     : {
         label: "Book a Medixora scan",
@@ -129,8 +129,8 @@ export function InitialKaiScanReport({
         href: "/dashboard?book=1",
       }
     : {
-        label: `Message ${doctorName}`,
-        href: "/dashboard/chat?assistant=doctor",
+        label: "Contact clinic support",
+        href: "/dashboard/chat?assistant=support",
       };
 
   const ctaHeading = isExistingPatient
