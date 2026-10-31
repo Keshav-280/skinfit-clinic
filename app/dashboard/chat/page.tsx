@@ -13,6 +13,7 @@ import {
   Mic,
   X,
   Square,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -54,6 +55,14 @@ const CARD_SHADOW =
   "rounded-[22px] border border-[#E4E6F0] bg-white shadow-[0_8px_24px_rgba(30,27,49,0.08)]";
 
 const MAX_RECORD_SECONDS = 120;
+
+/** Safe, report-based openings shown under kAI's greeting. No prompts that invite a diagnosis. */
+const KAI_STARTERS = [
+  "Explain my latest report",
+  "What should I focus on first?",
+  "What helps with my main concern?",
+  "When should I see a doctor?",
+];
 
 function formatMmSs(totalSec: number) {
   const m = Math.floor(totalSec / 60);
@@ -993,8 +1002,8 @@ export default function ChatPage() {
     if (mr && mr.state !== "inactive") mr.stop();
   }, []);
 
-  async function sendMessage() {
-    const text = inputValue.trim();
+  async function sendMessage(override?: string) {
+    const text = (override ?? inputValue).trim();
     if (isLoading) return;
 
     setError(null);
@@ -1150,29 +1159,30 @@ export default function ChatPage() {
       <div
         className={`relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden ${CARD_SHADOW}`}
       >
-        <div className="flex items-center justify-between border-b border-[#E4E6F0] px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F0EAE2]/80">
-                {(() => {
-                  const Icon = activeContact.icon;
-                  return <Icon className="h-5 w-5 text-[#1E1B31]" />;
-                })()}
-              </div>
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+        <div className="flex items-center justify-between gap-2 border-b border-[#E4E6F0] px-4 py-3.5 sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F0EAE2]/80">
+              {(() => {
+                const Icon = activeContact.icon;
+                return <Icon className="h-5 w-5 text-[#1E1B31]" />;
+              })()}
             </div>
-            <div>
-              <p className="font-bold text-[#1E1B31]">{activeContact.name}</p>
-              <p className="text-xs text-[#6B7280]">
-                {activeAssistant === "ai"
-                  ? aiRemaining !== null && aiRemaining <= 20
-                    ? `Your skin companion · ${aiRemaining} free message${aiRemaining === 1 ? "" : "s"} left`
-                    : "Your skin companion"
-                  : "Our clinic team"}
+            <div className="min-w-0">
+              <p className="truncate font-bold text-[#1E1B31]">{activeContact.name}</p>
+              <p className="truncate text-xs text-[#6B7280]">
+                <span className="hidden sm:inline">
+                  {activeAssistant === "ai" ? "Your skin companion" : "Our clinic team"}
+                </span>
+                {activeAssistant === "ai" && aiRemaining !== null && aiRemaining <= 20 ? (
+                  <span className="text-[#B0566A]">
+                    <span className="hidden sm:inline">{" \u00b7 "}</span>
+                    {aiRemaining} free message{aiRemaining === 1 ? "" : "s"} left
+                  </span>
+                ) : null}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {activeAssistant === "ai" ? (
               <button
                 type="button"
@@ -1212,7 +1222,8 @@ export default function ChatPage() {
             {activeAssistant === "ai" ? (
               <button
                 type="button"
-                className="flex h-9 items-center justify-center rounded-full bg-[#1E1B31] px-5 text-sm font-medium text-white shadow-md transition-colors hover:bg-[#5B66A1] whitespace-nowrap"
+                aria-label="New chat"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1E1B31] text-sm font-medium text-white shadow-md transition-colors hover:bg-[#5B66A1] whitespace-nowrap sm:w-auto sm:px-5"
                 onClick={async () => {
                   setError(null);
                   setIsLoading(true);
@@ -1229,7 +1240,8 @@ export default function ChatPage() {
                   }
                 }}
               >
-                New chat
+                <Plus className="h-4 w-4 sm:hidden" aria-hidden />
+                <span className="hidden sm:inline">New chat</span>
               </button>
             ) : null}
           </div>
@@ -1318,7 +1330,7 @@ export default function ChatPage() {
                         </ReactMarkdown>
                       </div>
                     </div>
-                    {ts ? (
+                    {ts && activeAssistant !== "ai" ? (
                       <time
                         className="px-1 text-[11px] tabular-nums text-zinc-400"
                         {...(msg.createdAt &&
@@ -1336,6 +1348,21 @@ export default function ChatPage() {
                 </div>
               );
             })}
+
+            {activeAssistant === "ai" && !isLoading && messages.length <= 1 ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {KAI_STARTERS.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => void sendMessage(q)}
+                    className="rounded-full border border-[#E4E6F0] bg-white px-3.5 py-2 text-left text-sm font-medium text-[#1E1B31] shadow-sm transition-colors hover:bg-[#F0EAE2]"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             {isLoading && activeAssistant === "ai" ? (
               <div className="flex justify-start">
@@ -1420,37 +1447,33 @@ export default function ChatPage() {
                   void addAttachmentFiles(picked);
                 }}
               />
+              {activeAssistant !== "ai" ? (
               <button
                 type="button"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#1E1B31]/50 transition-colors hover:bg-white/60 hover:text-[#1E1B31] disabled:cursor-not-allowed disabled:opacity-40"
-                title={
-                  activeAssistant === "ai"
-                    ? "Attachments are disabled for AI chat"
-                    : "Attach images or audio files"
-                }
-                disabled={activeAssistant === "ai" || isLoading || isRecording}
+                title="Attach images or audio files"
+                disabled={isLoading || isRecording}
                 onClick={() => attachmentInputRef.current?.click()}
               >
                 <Paperclip className="h-5 w-5" />
               </button>
+              ) : null}
+              {activeAssistant !== "ai" ? (
               <button
                 type="button"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#1E1B31]/50 transition-colors hover:bg-white/60 hover:text-[#1E1B31] disabled:cursor-not-allowed disabled:opacity-40"
-                title={
-                  activeAssistant === "ai"
-                    ? "Voice notes are disabled for AI chat"
-                    : "Record voice note"
-                }
-                disabled={activeAssistant === "ai" || isLoading || isRecording}
+                title="Record voice note"
+                disabled={isLoading || isRecording}
                 onClick={() => void startRecording()}
               >
                 <Mic className="h-5 w-5" />
               </button>
+              ) : null}
               <input
                 type="text"
                 placeholder={
                   activeAssistant === "ai"
-                    ? "Type a message for AI..."
+                    ? "Ask kAI about your skin..."
                     : "Type a message (attach with paperclip or mic)..."
                 }
                 className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"

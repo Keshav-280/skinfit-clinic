@@ -666,18 +666,18 @@ function IdentityFactChip({
   recency: { colorClass: string } | null;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-2.5 py-2">
+    <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F6F3EE] px-3 py-2.5">
       {fact.icon ? (
         <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           {fact.icon}
         </span>
       ) : null}
-      <div className="min-w-0 leading-none">
-        <p className="text-[8px] font-semibold uppercase tracking-wide text-[#6B7280]">
+      <div className="min-w-0 leading-tight">
+        <p className="text-[11px] font-medium text-[#6B7280]">
           {fact.label}
         </p>
         <p
-          className={`mt-0.5 truncate text-[12px] font-bold ${
+          className={`mt-0.5 truncate text-[13px] font-semibold ${
             fact.label === "Last scan" && recency
               ? recency.colorClass
               : "text-[#1E1B31]"
@@ -696,6 +696,7 @@ function InteractiveParamTile({
   hasScan,
   isActive,
   isDimmed,
+  isFocus = false,
   onActivate,
   onDeactivate,
 }: {
@@ -703,6 +704,7 @@ function InteractiveParamTile({
   hasScan: boolean;
   isActive: boolean;
   isDimmed: boolean;
+  isFocus?: boolean;
   onActivate: () => void;
   onDeactivate: () => void;
 }) {
@@ -718,14 +720,16 @@ function InteractiveParamTile({
         scale: isActive ? 1.06 : 1,
       }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-0 flex w-full flex-col items-center gap-1 rounded-xl border border-[#E4E6F0] bg-[#FAF8F5] px-1.5 py-2 text-center"
+      className={`relative z-0 flex w-full flex-col items-center gap-1 rounded-xl px-1.5 py-2.5 text-center ${
+        isFocus ? "bg-[#F8EDEE] ring-1 ring-[#DF9DA4]" : "bg-[#F6F3EE]"
+      }`}
       style={isActive ? { zIndex: 10 } : undefined}
     >
       <CircleRing
         pct={hasScan ? tile.raw : 0}
         size={44}
         strokeWidth={4}
-        color={hasScan ? tile.color : "#C8C4BC"}
+        color={hasScan ? (isFocus ? "#B0566A" : tile.color) : "#C8C4BC"}
       >
         <span
           className="text-sm font-extrabold leading-none tabular-nums"
@@ -734,13 +738,13 @@ function InteractiveParamTile({
           {hasScan ? tile.score : "-"}
         </span>
       </CircleRing>
-      <span className="text-[9px] font-semibold uppercase tracking-wide text-[#6B7280]">
+      <span className="text-[12px] font-semibold text-[#1E1B31]">
         {tile.label}
       </span>
       {tile.href && hasScan ? (
-        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#5B66A1]">
-          Details
-          <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${isFocus ? "text-[#B0566A]" : "text-[#5B66A1]"}`}>
+          {isFocus ? "Focus" : null}
+          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <polyline points="9 6 15 12 9 18" />
           </svg>
         </span>
@@ -766,7 +770,7 @@ function InteractiveParamTile({
 
   if (tile.href && hasScan) {
     return (
-      <Link href={tile.href} className="block h-full w-full min-w-0">
+      <Link href={tile.href} aria-label={`${tile.fullLabel}: details`} className="block h-full w-full min-w-0">
         {inner}
       </Link>
     );
@@ -843,6 +847,7 @@ export function SkinDNACard({
 
   let strongest: { name: string; gradeLabel: string } | null = null;
   let needsFocus: { name: string; gradeLabel: string } | null = null;
+  let needsFocusKey: SkinDNAParamKey | null = null;
 
   if (hasScan) {
     const ranked = PARAM_TILES.map((t) => ({
@@ -857,6 +862,7 @@ export function SkinDNACard({
       gradeLabel: `${scoreOutOfTen(best.raw)}/10`,
     };
     if (best.key !== worst.key) {
+      needsFocusKey = worst.key;
       needsFocus = {
         name: worst.fullLabel,
         gradeLabel: `${scoreOutOfTen(worst.raw)}/10`,
@@ -912,8 +918,8 @@ export function SkinDNACard({
       <div className="relative px-4 pb-3 pt-4 sm:px-5">
         <div className="relative flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-[#6B7280]">
-              Your Skin DNA
+            <p className="truncate text-xs font-semibold text-[#6B7280]">
+              Your skin DNA
             </p>
             <AnimatePresence mode="wait">
               <motion.p
@@ -957,14 +963,14 @@ export function SkinDNACard({
       ) : null}
 
       {hasScan ? (
-        <div className="mx-4 rounded-2xl border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-3 sm:mx-5 sm:px-5">
+        <div className="mx-4 rounded-2xl bg-[#F6F3EE] px-3 py-3 sm:mx-5 sm:px-5">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1.5 sm:items-center sm:gap-4">
           {strongest ? (
             <div className="flex min-w-0 flex-col items-start gap-1">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#242A5F]/10 text-[#242A5F]">
                 <Leaf className="h-3.5 w-3.5" aria-hidden />
               </span>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-[#242A5F]">
+              <p className="text-[11px] font-semibold text-[#242A5F]">
                 Strongest
               </p>
               <p className="text-[12px] font-bold leading-tight text-[#1E1B31] sm:text-[13px]">
@@ -1000,7 +1006,7 @@ export function SkinDNACard({
                 {scoreOutOfTen(kaiSkinScore)}
                 <span className="text-xs font-bold opacity-60">/10</span>
               </motion.span>
-              <span className="mt-1 text-[8px] font-bold uppercase tracking-wide text-[#6B7280]">
+              <span className="mt-1 text-[10px] font-semibold text-[#6B7280]">
                 Overall
               </span>
             </div>
@@ -1012,7 +1018,7 @@ export function SkinDNACard({
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#DF9DA4]/25 text-[#A05E6D]">
                 <Target className="h-3.5 w-3.5" aria-hidden />
               </span>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-[#A05E6D]">
+              <p className="text-[11px] font-semibold text-[#A05E6D]">
                 Needs focus
               </p>
               <p className="text-[12px] font-bold leading-tight text-[#1E1B31] sm:text-[13px]">
@@ -1060,7 +1066,7 @@ export function SkinDNACard({
       {/* 4. Parameter tiles: the hero. All six visible, each opens its own page */}
       <div className="mt-3 pb-3" onMouseLeave={() => setActiveParam(null)}>
         <div className="mx-4 mb-2 flex items-baseline justify-between gap-2 sm:mx-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#1E1B31]">
+          <p className="text-[13px] font-semibold text-[#1E1B31]">
             Your 6 skin areas
           </p>
           {hasScan ? (
@@ -1075,6 +1081,7 @@ export function SkinDNACard({
               hasScan={hasScan}
               isActive={activeParam === tile.key}
               isDimmed={activeParam !== null && activeParam !== tile.key}
+              isFocus={tile.key === needsFocusKey}
               onActivate={() => setActiveParam(tile.key)}
               onDeactivate={() =>
                 setActiveParam((cur) => (cur === tile.key ? null : cur))
