@@ -13,7 +13,7 @@ const links = [
   { href: "/dashboard/scan", label: "Diagnose", Icon: Camera },
   { href: "/dashboard", label: "Build", Icon: Home },
   { href: "/dashboard/schedules", label: "Maintain", Icon: Heart },
-  { href: "/dashboard/chat?assistant=support", label: "Chat", Icon: MessageCircle },
+  { href: "/dashboard/chat", label: "Chat", Icon: MessageCircle },
 ] as const;
 
 function isActive(href: string, pathname: string | null): boolean {

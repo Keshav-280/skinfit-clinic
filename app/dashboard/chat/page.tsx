@@ -14,6 +14,7 @@ import {
   X,
   Square,
   Plus,
+  Headset,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -56,13 +57,22 @@ const CARD_SHADOW =
 
 const MAX_RECORD_SECONDS = 120;
 
-/** Safe, report-based openings shown under kAI's greeting. No prompts that invite a diagnosis. */
-const KAI_STARTERS = [
-  "Explain my latest report",
-  "What should I focus on first?",
-  "What helps with my main concern?",
-  "When should I see a doctor?",
-];
+/** kAI's face, cropped from the avatar, on a soft lavender-to-blush disc. */
+function KaiFace({ size, online = false }: { size: number; online?: boolean }) {
+  return (
+    <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
+      <span
+        className="block h-full w-full overflow-hidden rounded-full bg-gradient-to-br from-[#DDE2F8] via-[#CBD3F4] to-[#F6DCCB] shadow-[0_6px_20px_rgba(91,102,161,0.25)]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/kai-face.png" alt="kAI" className="h-full w-full object-cover" />
+      </span>
+      {online ? (
+        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+      ) : null}
+    </span>
+  );
+}
 
 function formatMmSs(totalSec: number) {
   const m = Math.floor(totalSec / 60);
@@ -103,6 +113,9 @@ export default function ChatPage() {
   const [doctorChatDisabledMessage, setDoctorChatDisabledMessage] = useState(
     DOCTOR_CHAT_REQUIRES_CLINIC_VISIT_MESSAGE
   );
+
+  // kAI's opening screen: only the seeded greeting so far, shown as a hero instead of a bubble.
+  const kaiEmpty = activeAssistant === "ai" && messages.length <= 1 && !isLoading && !error;
 
   const doctorChatBlocked =
     activeAssistant === "doctor" && !doctorChatEnabled;
@@ -1153,20 +1166,24 @@ export default function ChatPage() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex min-h-[calc(100vh-120px)] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"
+      className="flex h-[calc(100dvh-11.5rem)] min-h-[440px] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"
     >
       {/* Chat */}
       <div
-        className={`relative flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden ${CARD_SHADOW}`}
+        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${CARD_SHADOW}`}
       >
         <div className="flex items-center justify-between gap-2 border-b border-[#E4E6F0] px-4 py-3.5 sm:px-6 sm:py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F0EAE2]/80">
-              {(() => {
-                const Icon = activeContact.icon;
-                return <Icon className="h-5 w-5 text-[#1E1B31]" />;
-              })()}
-            </div>
+            {activeAssistant === "ai" ? (
+              <KaiFace size={44} online />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F0EAE2]/80">
+                {(() => {
+                  const Icon = activeContact.icon;
+                  return <Icon className="h-5 w-5 text-[#1E1B31]" />;
+                })()}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="truncate font-bold text-[#1E1B31]">{activeContact.name}</p>
               <p className="truncate text-xs text-[#6B7280]">
@@ -1186,11 +1203,12 @@ export default function ChatPage() {
             {activeAssistant === "ai" ? (
               <button
                 type="button"
-                className="relative inline-flex h-9 items-center gap-1.5 rounded-full border border-[#E4E6F0] bg-white px-3.5 text-sm font-semibold text-[#1E1B31] transition-colors hover:bg-[#F0EAE2] whitespace-nowrap"
+                aria-label="Clinic support"
+                title="Clinic support"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E6F0] bg-white text-[#1E1B31] shadow-sm transition-colors hover:bg-[#F0EAE2]"
                 onClick={openClinicSupport}
               >
-                <User className="h-4 w-4 shrink-0" aria-hidden />
-                Clinic support
+                <Headset className="h-[18px] w-[18px] shrink-0" aria-hidden />
                 {sidebarUnread.support > 0 ? (
                   <span className="absolute -right-1 -top-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-0.5 text-[9px] font-bold leading-none text-white">
                     {sidebarUnread.support > 9 ? "9+" : sidebarUnread.support}
@@ -1223,7 +1241,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 aria-label="New chat"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1E1B31] text-sm font-medium text-white shadow-md transition-colors hover:bg-[#5B66A1] whitespace-nowrap sm:w-auto sm:px-5"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E6F0] bg-white text-[#1E1B31] shadow-sm transition-colors hover:bg-[#F0EAE2]"
                 onClick={async () => {
                   setError(null);
                   setIsLoading(true);
@@ -1240,8 +1258,7 @@ export default function ChatPage() {
                   }
                 }}
               >
-                <Plus className="h-4 w-4 sm:hidden" aria-hidden />
-                <span className="hidden sm:inline">New chat</span>
+                <Plus className="h-5 w-5" aria-hidden />
               </button>
             ) : null}
           </div>
@@ -1251,8 +1268,25 @@ export default function ChatPage() {
           ref={messagesScrollRef}
           className="flex flex-1 flex-col overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6"
         >
+          {kaiEmpty ? (
+            <div className="m-auto flex max-w-sm flex-col items-center px-2 text-center">
+              <span className="relative mb-5 inline-flex">
+                <span className="absolute inset-[-18px] rounded-full bg-[radial-gradient(circle,rgba(246,205,180,0.55),rgba(246,205,180,0)_70%)]" aria-hidden />
+                <KaiFace size={132} />
+              </span>
+              <h2 className="font-serif text-[28px] font-bold leading-tight text-[#1E1B31]">
+                Hi there, I&apos;m kAI
+              </h2>
+              <p className="mt-2 text-[15px] leading-snug text-[#5B6478]">
+                Ask me about your report, your routine or your treatments.
+              </p>
+              <p className="mt-4 text-[12.5px] leading-snug text-[#8B93A4]">
+                I&apos;m not a doctor. For anything that worries you, I&apos;ll point you to the clinic.
+              </p>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-4">
-            {messages.map((msg) => {
+            {(kaiEmpty ? [] : messages).map((msg) => {
               const ts =
                 formatMessageTimestamp(msg.createdAt) ||
                 (msg.sender === "patient" ? "Just now" : "");
@@ -1348,21 +1382,6 @@ export default function ChatPage() {
                 </div>
               );
             })}
-
-            {activeAssistant === "ai" && !isLoading && messages.length <= 1 ? (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {KAI_STARTERS.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => void sendMessage(q)}
-                    className="rounded-full border border-[#E4E6F0] bg-white px-3.5 py-2 text-left text-sm font-medium text-[#1E1B31] shadow-sm transition-colors hover:bg-[#F0EAE2]"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            ) : null}
 
             {isLoading && activeAssistant === "ai" ? (
               <div className="flex justify-start">
