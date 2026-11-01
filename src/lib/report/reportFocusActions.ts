@@ -1,6 +1,6 @@
 import type { LlmWellnessCheckinInput } from "@/src/lib/ragLlmAnalysis";
 import type { KaiReportParamRow } from "@/src/lib/kaiReportMapping";
-import { computeScore10Movement } from "@/src/lib/report/gradeComputation";
+import { computeScoreMovement } from "@/src/lib/report/gradeComputation";
 import type { MultiWeekInsight } from "@/src/lib/multiWeekPatternAnalysis";
 
 export type ReportFocusAction = {
@@ -156,7 +156,7 @@ function templateForParam(
 ): ReportFocusAction {
   const base = baseTemplateForParam(row, prev, w);
   if (!multiWeekInsight?.text) return base;
-  // base.detail always opens with "X is N/10 (trend)." — the insight already
+  // base.detail always opens with "X is N/100 (trend)." — the insight already
   // states the score/trend with more evidence, so drop that clause instead
   // of saying the same number twice in one card.
   const withoutScoreLine = base.detail.replace(/^[^.]+\.\s*/, "");
@@ -172,15 +172,15 @@ function baseTemplateForParam(
   w: LlmWellnessCheckinInput | null | undefined
 ): ReportFocusAction {
   const bits = checkinBits(w);
-  const score = `${row.score10}/10`;
+  const score = `${row.score100}/100`;
   const moved = prev
-    ? computeScore10Movement(row.score10, prev.score10)
+    ? computeScoreMovement(row.score100, prev.score100)
     : "holding";
   const trend =
     moved === "improved"
-      ? `up from ${prev!.score10}/10`
+      ? `up from ${prev!.score100}/100`
       : moved === "declined"
-        ? `down from ${prev!.score10}/10`
+        ? `down from ${prev!.score100}/100`
         : "holding vs last scan";
   const key = row.key;
 
@@ -279,7 +279,7 @@ export function defaultFocusActions(opts: {
       .map((i) => [i.param as string, i])
   );
   const ranked = [...opts.rows].sort((a, b) => {
-    if (a.score10 !== b.score10) return a.score10 - b.score10;
+    if (a.score100 !== b.score100) return a.score100 - b.score100;
     return b.severity - a.severity;
   });
   const out: ReportFocusAction[] = [];

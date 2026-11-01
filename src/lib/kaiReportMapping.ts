@@ -1,7 +1,7 @@
 import {
-  score10Tone,
-  scoreOutOfTen,
-  severityToScoreOutOfTen,
+  score100Tone,
+  scoreOutOfHundred,
+  severityToScoreOutOfHundred,
 } from "@/src/lib/clarityGrade";
 import {
   RAG_KAI_PARAM_KEYS,
@@ -54,7 +54,7 @@ export function clarityToSubGrade(clarity: number): KaiSubGrade {
 export function subGradeTone(grade: string): KaiGradeTone {
   const n = Number.parseFloat(grade);
   if (Number.isFinite(n) && /^\d+(\.\d+)?$/.test(grade.trim())) {
-    return score10Tone(n);
+    return score100Tone(n);
   }
   const g = grade.toUpperCase();
   if (g.startsWith("A")) return "good";
@@ -154,8 +154,8 @@ export const REPORT_PARAMETER_META: Array<{
 
 /** Template finding until LLM findings land. */
 export function templateFinding(name: string, severity: number): string {
-  const score10 = severityToScoreOutOfTen(severity);
-  const label = `${score10}/10`;
+  const score100 = severityToScoreOutOfHundred(severity);
+  const label = `${score100}/100`;
   if (severity <= 1.2) {
     return `${name} looks clear on this capture - mapped as a clean baseline (${label}).`;
   }
@@ -226,9 +226,9 @@ export type KaiReportParamRow = {
   severity: number;
   /** Patient-facing 0-100 clarity from the analysis model. */
   clarity: number;
-  /** Patient-facing 0-10 score, stored as a string for display. */
+  /** Patient-facing 0-100 score, stored as a string for display. */
   grade: string;
-  score10: number;
+  score100: number;
   gradeColor: KaiGradeTone;
   finding: string;
   concernChipId:
@@ -262,7 +262,7 @@ function concernChipForKey(
   }
 }
 
-const RAG_TO_REPORT_KEY: Record<RagKaiParamKey, ReportParameterKey | null> = {
+export const RAG_TO_REPORT_KEY: Record<RagKaiParamKey, ReportParameterKey | null> = {
   active_acne: "active_acne",
   acne_scar: "acne_scars",
   pigmentation: "pigmentation",
@@ -276,16 +276,16 @@ const RAG_TO_REPORT_KEY: Record<RagKaiParamKey, ReportParameterKey | null> = {
 /** Factual score line - never invents analysis copy. */
 export function scoreFinding(
   name: string,
-  score10: number,
-  prevScore10?: number
+  score100: number,
+  prevScore100?: number
 ): string {
-  if (prevScore10 == null) {
-    return `${name} scored ${score10}/10 on this scan.`;
+  if (prevScore100 == null) {
+    return `${name} scored ${score100}/100 on this scan.`;
   }
-  if (score10 === prevScore10) {
-    return `${name} held at ${score10}/10.`;
+  if (score100 === prevScore100) {
+    return `${name} held at ${score100}/100.`;
   }
-  return `${name} moved from ${prevScore10}/10 to ${score10}/10.`;
+  return `${name} moved from ${prevScore100}/100 to ${score100}/100.`;
 }
 
 /**
@@ -303,7 +303,7 @@ export function buildKaiReportParamRowsFromRag(
     if (!reportKey) continue;
     const meta = REPORT_PARAMETER_META.find((m) => m.key === reportKey);
     if (!meta) continue;
-    const score10 = scoreOutOfTen(clarity);
+    const score100 = scoreOutOfHundred(clarity);
     const name = RAG_KAI_PARAM_LABELS[ragKey];
     rows.push({
       key: reportKey,
@@ -311,10 +311,10 @@ export function buildKaiReportParamRowsFromRag(
       shortName: meta.shortName,
       severity: clarityToSeverity(clarity),
       clarity,
-      grade: String(score10),
-      score10,
-      gradeColor: score10Tone(score10),
-      finding: scoreFinding(name, score10),
+      grade: String(score100),
+      score100,
+      gradeColor: score100Tone(score100),
+      finding: scoreFinding(name, score100),
       concernChipId: concernChipForKey(reportKey),
     });
   }
@@ -352,8 +352,8 @@ export function buildKaiReportParamRows(input: {
       }
     }
     if (severity == null || !Number.isFinite(severity)) continue;
-    const score10 = severityToScoreOutOfTen(severity);
-    const grade = String(score10);
+    const score100 = severityToScoreOutOfHundred(severity);
+    const grade = String(score100);
     const clarity = Math.round(100 - ((severity - 1) / 4) * 100);
     rows.push({
       key: meta.key,
@@ -362,9 +362,9 @@ export function buildKaiReportParamRows(input: {
       severity,
       clarity,
       grade,
-      score10,
-      gradeColor: score10Tone(score10),
-      finding: scoreFinding(meta.name, score10),
+      score100,
+      gradeColor: score100Tone(score100),
+      finding: scoreFinding(meta.name, score100),
       concernChipId: concernChipForKey(meta.key),
     });
   }

@@ -20,7 +20,9 @@ import {
 import {
   kaiScoreFromScanRow,
   ragParamValuesFromScanRow,
+  ragParamValuesWithReview,
 } from "@/src/lib/resolveScanDisplayScores";
+import { computeScoreChange, type ScorePoint } from "@/src/lib/scoreChange";
 import type {
   KaiOnboardingClinical,
   PatientTrackerParamRow,
@@ -34,7 +36,13 @@ function average(xs: number[]) {
 
 export type PatientTrackerScoreBundle = Pick<
   PatientTrackerReport,
-  "scanContext" | "scores" | "paramRows" | "skinPills" | "onboardingClinical" | "cta"
+  | "scanContext"
+  | "scores"
+  | "paramRows"
+  | "skinPills"
+  | "onboardingClinical"
+  | "cta"
+  | "scoreReview"
 >;
 
 export async function computePatientTrackerScoreBundle(input: {
@@ -157,6 +165,44 @@ export async function computePatientTrackerScoreBundle(input: {
     }
   }
 
+  // Score history oldest → newest, so each area can be compared with more than the last scan.
+  const valuesByScanId = new Map<number, ReturnType<typeof ragParamValuesFromScanRow>>();
+  for (const s of scansUpToCurrent) {
+    valuesByScanId.set(
+      s.id,
+      s.id === scanId
+        ? currentVals
+        : ragParamValuesFromScanRow({
+            scores: s.scores,
+            overallScore: s.overallScore,
+            acne: s.acne,
+            wrinkles: s.wrinkles,
+            pigmentation: s.pigmentation,
+            hydration: s.hydration,
+            texture: s.texture,
+          })
+    );
+  }
+  const seriesFor = (key: (typeof RAG_KAI_PARAM_KEYS)[number]): ScorePoint[] => {
+    const pts: ScorePoint[] = [];
+    for (const s of scansUpToCurrent) {
+      const v = valuesByScanId.get(s.id)?.[key];
+      if (typeof v === "number" && Number.isFinite(v)) pts.push({ at: s.createdAt, value: v });
+    }
+    return pts;
+  };
+  const estimatedNow = new Set<string>(
+    ragParamValuesWithReview({
+      scores: scanRow.scores,
+      overallScore: scanRow.overallScore,
+      acne: scanRow.acne,
+      wrinkles: scanRow.wrinkles,
+      pigmentation: scanRow.pigmentation,
+      hydration: scanRow.hydration,
+      texture: scanRow.texture,
+    }).estimatedKeys
+  );
+
   const paramRows: PatientTrackerParamRow[] = RAG_KAI_PARAM_KEYS.map((key) => {
     const cur = currentVals[key];
     const prev = prevVals[key];
@@ -182,8 +228,11 @@ export async function computePatientTrackerScoreBundle(input: {
       prevWeekAverage,
       weekAvgDelta,
       weeklyDeltaMeaningful: prevWeekAverage != null,
+      change: hasModelValue ? computeScoreChange(seriesFor(key)) : null,
+      estimated: estimatedNow.has(key),
     };
   });
+  const retakeKeys = RAG_KAI_PARAM_KEYS.filter((k) => estimatedNow.has(k));
 
   const anchor =
     (input.dateParam ? parseYmdToDateOnly(input.dateParam) : null) ??
@@ -231,7 +280,26 @@ export async function computePatientTrackerScoreBundle(input: {
     : null;
   const lastScanDelta =
     prevKai == null ? null : Math.round(currentKai - prevKai);
-  const kaiDelta = lastScanDelta ?? 0;
+  const kaiSeries: ScorePoint[] = scansUpToCurrent.map((s) => ({
+    at: s.createdAt,
+    value:
+      s.id === scanId
+        ? currentKai
+        : kaiScoreFromScanRow({
+            scores: s.scores,
+            overallScore: s.overallScore,
+            acne: s.acne,
+            wrinkles: s.wrinkles,
+            pigmentation: s.pigmentation,
+            hydration: s.hydration,
+            texture: s.texture,
+          }),
+  }));
+  const kaiChange = computeScoreChange(kaiSeries);
+  // Headline delta: the nearest comparison that clears the noise threshold (last scan, else two
+  // scans back, else first scan); falls back to the plain last-scan delta when steady.
+  const kaiDelta =
+    kaiChange && kaiChange.direction !== "steady" ? kaiChange.delta : (lastScanDelta ?? 0);
 
   const isFirstOnboardingScan =
     firstScan?.id === scanId ||
@@ -338,7 +406,15 @@ export async function computePatientTrackerScoreBundle(input: {
         previousWeekAverageKai:
           previousWeekAverageKai == null ? null : Math.round(previousWeekAverageKai),
         consistencyScore: Math.round(routineCompletion7d * 100),
+        kaiChange,
       },
+      scoreReview:
+        retakeKeys.length > 0
+          ? {
+              retakeKeys,
+              retakeLabels: retakeKeys.map((k) => RAG_KAI_PARAM_LABELS[k]),
+            }
+          : null,
       skinPills: [
         u?.skinType ?? "Your skin type",
         u?.primaryGoal ?? "Your goal",
@@ -362,6 +438,7 @@ export function mergeTrackerReportWithScoreBundle(
     scanContext: bundle.scanContext,
     scores: bundle.scores,
     paramRows: bundle.paramRows,
+    scoreReview: bundle.scoreReview ?? null,
     skinPills: bundle.skinPills,
     onboardingClinical: bundle.onboardingClinical,
     cta: bundle.cta,
@@ -377,6 +454,12 @@ export function trackerScoreFieldsChanged(
   if (before.scores.consistencyScore !== after.scores.consistencyScore) return true;
   if (before.scanContext.kind !== after.scanContext.kind) return true;
   if (JSON.stringify(before.paramRows) !== JSON.stringify(after.paramRows)) {
+    return true;
+  }
+  if (JSON.stringify(before.scores.kaiChange) !== JSON.stringify(after.scores.kaiChange)) {
+    return true;
+  }
+  if (JSON.stringify(before.scoreReview ?? null) !== JSON.stringify(after.scoreReview ?? null)) {
     return true;
   }
   return false;

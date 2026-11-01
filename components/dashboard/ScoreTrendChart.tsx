@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export type ScoreTrendPoint = {
   label: string;
-  score10: number;
+  score100: number;
 };
 
 export function ScoreTrendChart({
@@ -34,8 +34,12 @@ export function ScoreTrendChart({
   const padB = 28;
   const innerW = w - padL - padR;
   const innerH = h - padT - padB;
-  const minY = 0;
-  const maxY = 10;
+  // Zoom to the data so a few points of change are visible (a fixed 0-100 axis flattens them).
+  const lo = Math.min(...points.map((p) => p.score100));
+  const hi = Math.max(...points.map((p) => p.score100));
+  const minY = Math.max(0, Math.floor((lo - 6) / 5) * 5);
+  const maxY = Math.min(100, Math.max(minY + 20, Math.ceil((hi + 6) / 5) * 5));
+  const midY = Math.round((minY + maxY) / 2);
   const n = Math.max(points.length, 2);
 
   const xy = points.map((p, i) => {
@@ -43,7 +47,7 @@ export function ScoreTrendChart({
       points.length === 1
         ? padL + innerW / 2
         : padL + (i / (n - 1)) * innerW;
-    const y = padT + innerH - ((p.score10 - minY) / (maxY - minY)) * innerH;
+    const y = padT + innerH - ((p.score100 - minY) / (maxY - minY)) * innerH;
     return { x, y, ...p };
   });
 
@@ -57,8 +61,8 @@ export function ScoreTrendChart({
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <p className="text-2xl font-extrabold tabular-nums text-[#1E1B31]">
-          {shown.score10}
-          <span className="text-sm font-bold text-[#6B7280]">/10</span>
+          {shown.score100}
+          <span className="text-sm font-bold text-[#6B7280]">/100</span>
         </p>
         <p className="text-xs font-semibold text-[#6B7280]">{shown.label}</p>
       </div>
@@ -68,7 +72,7 @@ export function ScoreTrendChart({
         role="img"
         aria-label="Score history"
       >
-        {[0, 5, 10].map((tick) => {
+        {[minY, midY, maxY].map((tick) => {
           const y = padT + innerH - ((tick - minY) / (maxY - minY)) * innerH;
           return (
             <g key={tick}>

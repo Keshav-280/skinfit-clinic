@@ -1,4 +1,10 @@
-import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { scoreOutOfHundred } from "@/src/lib/clarityGrade";
+import {
+  computeScoreChange,
+  describeScoreChange,
+  MIN_DETECTABLE_CHANGE,
+  type ScoreChange,
+} from "@/src/lib/scoreChange";
 import { resolveScanDisplayScores } from "@/src/lib/resolveScanDisplayScores";
 import {
   isSkinConcernSlug,
@@ -138,44 +144,50 @@ export function defaultConcernRecommendations(slug: ScorePageSlug): string[] {
 export function buildScoreAnalysis(input: {
   title: string;
   slug: ScorePageSlug;
-  current10: number | null;
-  previous10: number | null;
+  current100: number | null;
+  previous100: number | null;
   scanCount: number;
   lastScanLabel: string | null;
   extraLines: string[];
+  /** Change over the nearest comparison that clears the noise threshold (see scoreChange.ts). */
+  change?: ScoreChange | null;
 }): string[] {
   const lines: string[] = [];
-  const { title, current10, previous10, scanCount, lastScanLabel, extraLines } =
+  const { title, current100, previous100, scanCount, lastScanLabel, extraLines, change } =
     input;
 
-  if (current10 == null) {
+  if (current100 == null) {
     lines.push(`No ${title.toLowerCase()} score yet. Take a scan to set a baseline.`);
     return lines;
   }
 
-  if (previous10 == null || scanCount < 2) {
+  if (previous100 == null || scanCount < 2) {
     lines.push(
-      `Baseline ${title.toLowerCase()} is ${current10}/10${
+      `Baseline ${title.toLowerCase()} is ${current100}/100${
         lastScanLabel ? ` from ${lastScanLabel}` : ""
       }. A second scan will show whether this is moving.`
     );
   } else {
-    const delta = current10 - previous10;
-    if (delta > 0) {
+    // Move smaller than the detectable change is noise, not progress or decline.
+    const resolved: ScoreChange | null =
+      change ??
+      computeScoreChange([
+        { at: new Date(0), value: previous100 },
+        { at: new Date(1), value: current100 },
+      ]);
+    const caption = describeScoreChange(resolved);
+    if (resolved && resolved.direction === "up") {
       lines.push(
-        `${title} improved from ${previous10}/10 to ${current10}/10${
-          lastScanLabel ? ` since ${lastScanLabel}` : ""
-        }.`
+        `${title} improved to ${current100}/100. ${caption ?? ""}`.trim() + "."
       );
-    } else if (delta < 0) {
+    } else if (resolved && resolved.direction === "down") {
       lines.push(
-        `${title} moved from ${previous10}/10 to ${current10}/10${
-          lastScanLabel ? ` since ${lastScanLabel}` : ""
-        } - this is the metric to watch.`
+        `${title} moved to ${current100}/100. ${caption ?? ""}`.trim() +
+          " - this is the metric to watch."
       );
     } else {
       lines.push(
-        `${title} held at ${current10}/10 across your last two scans${
+        `${title} held steady at ${current100}/100 across your recent scans${
           lastScanLabel ? ` (latest ${lastScanLabel})` : ""
         }.`
       );
@@ -191,17 +203,19 @@ export function buildScoreAnalysis(input: {
 }
 
 export function trendDeltaLabel(
-  current10: number | null,
-  previous10: number | null
+  current100: number | null,
+  previous100: number | null,
+  change?: ScoreChange | null
 ): string | null {
-  if (current10 == null || previous10 == null) return null;
-  const d = current10 - previous10;
-  if (d > 0) return `+${d} vs last scan`;
-  if (d < 0) return `${d} vs last scan`;
-  return "No change vs last scan";
+  if (change) return describeScoreChange(change);
+  if (current100 == null || previous100 == null) return null;
+  const d = current100 - previous100;
+  if (d >= MIN_DETECTABLE_CHANGE) return `+${d} vs last scan`;
+  if (d <= -MIN_DETECTABLE_CHANGE) return `${d} vs last scan`;
+  return "Steady since your last scan";
 }
 
-export function toTen(raw: number | null): number | null {
+export function toHundred(raw: number | null): number | null {
   if (raw == null) return null;
-  return scoreOutOfTen(raw);
+  return scoreOutOfHundred(raw);
 }

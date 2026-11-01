@@ -3,7 +3,7 @@
 import { Lock } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { scoreOutOfHundred } from "@/src/lib/clarityGrade";
 import { SKINFIT_THEME } from "@/src/lib/skinfitTheme";
 
 /** Rings: kAI (inner) · consistency (middle) · progress (outer). */
@@ -287,8 +287,8 @@ export function NavyMetricsCard({
     }
     return (
       <span className={`text-2xl font-extrabold leading-none tabular-nums ${centerTextCls}`}>
-        {scoreOutOfTen(kaiSkinScore)}
-        <span className="text-sm font-bold opacity-60">/10</span>
+        {scoreOutOfHundred(kaiSkinScore)}
+        <span className="text-sm font-bold opacity-60">/100</span>
       </span>
     );
   })();
@@ -325,7 +325,7 @@ export function NavyMetricsCard({
   const rings = light ? LIGHT_RINGS : NAVY_RINGS;
   const kaiLegendValue = !hasScan
     ? "-"
-    : `${scoreOutOfTen(kaiSkinScore)}/10`;
+    : `${scoreOutOfHundred(kaiSkinScore)}/100`;
 
   const legend = light ? (
     <div className="flex w-full flex-col gap-2.5 sm:gap-3">

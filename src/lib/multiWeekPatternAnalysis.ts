@@ -17,7 +17,8 @@ import {
   kaiScoreFromScanRow,
   ragParamValuesFromScanRow,
 } from "@/src/lib/resolveScanDisplayScores";
-import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { scoreOutOfHundred } from "@/src/lib/clarityGrade";
+import { MIN_DETECTABLE_CHANGE } from "@/src/lib/scoreChange";
 
 type ScanPoint = {
   id: number;
@@ -119,12 +120,12 @@ function baselineInsight(scanPoints: ScanPoint[]): MultiWeekInsight | null {
   if (!best || best.delta < MEANINGFUL_DELTA) return null;
 
   const label = RAG_KAI_PARAM_LABELS[best.key];
-  const fromScore = scoreOutOfTen(first.params[best.key] ?? 0);
-  const toScore = scoreOutOfTen(latest.params[best.key] ?? 0);
+  const fromScore = scoreOutOfHundred(first.params[best.key] ?? 0);
+  const toScore = scoreOutOfHundred(latest.params[best.key] ?? 0);
   return {
     kind: "baseline",
     param: best.key,
-    text: `${label} is your biggest gain since your first scan on ${fmtDate(first.createdAt)} — up from ${fromScore}/10 to ${toScore}/10, the largest move of any parameter you're tracking.`,
+    text: `${label} is your biggest gain since your first scan on ${fmtDate(first.createdAt)} — up from ${fromScore}/100 to ${toScore}/100, the largest move of any parameter you're tracking.`,
   };
 }
 
@@ -149,23 +150,18 @@ function trendInsights(scanPoints: ScanPoint[]): MultiWeekInsight[] {
       series.slice(mid).reduce((a, b) => a + b, 0) / (series.length - mid);
     const shift = secondHalfAvg - firstHalfAvg;
 
-    // Ground "plateaued"/"declined" in the same /10 numbers the rest of the
-    // report shows (e.g. the single-scan Improved/Declined badge) - a raw
-    // 0-100 check alone can call something "flat" while its rounded /10
-    // score visibly moved, which reads as the report contradicting itself.
-    const series10 = series.map((v) => scoreOutOfTen(v));
-    const lastTwo10 = series10.slice(-2);
-    const lastTwoUnchanged10 = lastTwo10.length === 2 && lastTwo10[0] === lastTwo10[1];
-    const lastTwoDeclined10 = lastTwo10.length === 2 && lastTwo10[1]! < lastTwo10[0]!;
-
+    // "Plateaued" / "declined" use the same minimum detectable change as the Improved / Declined
+    // badges, so a one-point wobble is never called a decline and the report cannot contradict
+    // itself.
     const lastTwo = series.slice(-2);
+    const lastTwoDeclined =
+      lastTwo.length === 2 && lastTwo[1]! - lastTwo[0]! <= -MIN_DETECTABLE_CHANGE;
     const isPlateaued =
       lastTwo.length === 2 &&
-      Math.abs(lastTwo[1]! - lastTwo[0]!) < 2 &&
-      Math.abs(shift) < 3 &&
-      lastTwoUnchanged10;
+      Math.abs(lastTwo[1]! - lastTwo[0]!) < MIN_DETECTABLE_CHANGE &&
+      Math.abs(shift) < 3;
 
-    if (shift <= -MEANINGFUL_DELTA && lastTwoDeclined10) {
+    if (shift <= -MEANINGFUL_DELTA && lastTwoDeclined) {
       decliners.push({ key, series });
     } else if (isPlateaued) {
       plateaued.push({ key, series });
@@ -182,7 +178,7 @@ function trendInsights(scanPoints: ScanPoint[]): MultiWeekInsight[] {
       {
         kind: "trend",
         param: key,
-        text: `${RAG_KAI_PARAM_LABELS[key]} has been trending down over your last ${series.length} scans (${series.map((v) => scoreOutOfTen(v)).join(" → ")} out of 10) — worth a closer look before your next visit.`,
+        text: `${RAG_KAI_PARAM_LABELS[key]} has been trending down over your last ${series.length} scans (${series.map((v) => scoreOutOfHundred(v)).join(" → ")} out of 100) — worth a closer look before your next visit.`,
       },
     ];
   }

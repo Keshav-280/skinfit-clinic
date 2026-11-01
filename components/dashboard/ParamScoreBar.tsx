@@ -1,6 +1,6 @@
 "use client";
 
-import { patientChartDisplayValue, scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { patientChartDisplayValue, scoreOutOfHundred } from "@/src/lib/clarityGrade";
 
 function valueForBar(n: number | null) {
   if (typeof n !== "number") return 0;
@@ -28,7 +28,7 @@ export function ParamScoreBar({ value, className = "" }: Props) {
         />
       </div>
       <span className="min-w-[28px] text-right text-[11px] font-semibold tabular-nums text-[#1E1B31]">
-        {typeof value === "number" ? `${scoreOutOfTen(value)}/10` : "-"}
+        {typeof value === "number" ? `${scoreOutOfHundred(value)}/100` : "-"}
       </span>
     </div>
   );

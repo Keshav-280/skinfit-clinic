@@ -19,14 +19,14 @@ export function shortHeadline(headline: string, max = 56): string {
   return `${cleaned.slice(0, max - 1).trimEnd()}…`;
 }
 
-/** Overlay line next to the grade ring - drop a leading "8/10 -" so it is not shown twice. */
+/** Overlay line next to the grade ring - drop a leading "63/100 -" (or an old "6/10 -") so it is not shown twice. */
 export function coverHeadline(headline: string, grade: string): string {
   const raw = shortHeadline(headline, 72);
   const g = grade.trim();
   if (!g) return raw;
   return raw
-    .replace(new RegExp(`^${g}\\s*/\\s*10\\s*[-:]\\s*`, "i"), "")
-    .replace(/^\d+\s*\/\s*10\s*[-:]\s*/, "")
+    .replace(new RegExp(`^${g}\\s*/\\s*100?\\s*[-:]\\s*`, "i"), "")
+    .replace(/^\d+\s*\/\s*100?\s*[-:]\s*/, "")
     .trim() || raw;
 }
 
@@ -68,8 +68,8 @@ export const GRADE_RING_COLOR: Record<string, string> = {
 export function gradeRingColor(grade: string): string {
   const n = Number.parseFloat(grade);
   if (Number.isFinite(n) && /^\d+(\.\d+)?$/.test(grade.trim())) {
-    if (n >= 8) return "#4E9B72";
-    if (n >= 5) return "#C4A056";
+    if (n >= 70) return "#4E9B72";
+    if (n >= 45) return "#C4A056";
     return "#C4694F";
   }
   const letter = grade.trim().charAt(0).toUpperCase();

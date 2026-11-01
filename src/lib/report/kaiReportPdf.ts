@@ -9,7 +9,7 @@ import type { MovementGroups, MovementRow } from "@/src/lib/report/buildMovement
 export type KaiPdfParam = {
   name: string;
   grade: string;
-  score10: number;
+  score100: number;
   tone: KaiGradeTone;
   finding?: string;
 };
@@ -49,7 +49,7 @@ export function pdfParamsFromRows(rows: KaiReportParamRow[]): KaiPdfParam[] {
   return rows.map((r) => ({
     name: r.name,
     grade: r.grade,
-    score10: r.score10,
+    score100: r.score100,
     tone: r.gradeColor,
     finding: r.finding,
   }));
@@ -313,7 +313,7 @@ function badgeColors(type: "improving" | "flat" | "declining"): { fill: RGB; tex
 
 function gradeColor(grade: string): RGB {
   const n = Number.parseFloat(grade);
-  if (Number.isFinite(n)) return n >= 8 ? C.good : n >= 5 ? C.mid : C.low;
+  if (Number.isFinite(n)) return n >= 70 ? C.good : n >= 45 ? C.mid : C.low;
   return C.white;
 }
 
@@ -366,7 +366,7 @@ function drawHeader(d: Doc, data: KaiReportPdfData, logo: Img | null) {
   pdf.text(safe(data.grade), bx + 21, 44, { align: "center" });
   d.font("normal", 8);
   d.color(C.soft);
-  pdf.text("out of 10", bx + 21, 52, { align: "center" });
+  pdf.text("out of 100", bx + 21, 52, { align: "center" });
 
   d.y = bandH + 8;
 }
@@ -380,7 +380,7 @@ function drawPositionBar(d: Doc, data: KaiReportPdfData) {
   const barY = d.y + 8;
   d.fill(C.sand);
   rr(pdf, M, barY, CW, 2.6, 1.3, 1.3, "F");
-  const px = (v: number) => M + CW * (Math.max(0, Math.min(10, v)) / 10);
+  const px = (v: number) => M + CW * (Math.max(0, Math.min(100, v)) / 100);
   if (typeof data.position.previous === "number") {
     d.stroke(C.navy);
     pdf.setLineWidth(0.5);
@@ -392,8 +392,8 @@ function drawPositionBar(d: Doc, data: KaiReportPdfData) {
   d.font("normal", 7.5);
   d.color(C.muted);
   pdf.text("0", M, barY + 8);
-  pdf.text("5", M + CW / 2, barY + 8, { align: "center" });
-  pdf.text("10", M + CW, barY + 8, { align: "right" });
+  pdf.text("50", M + CW / 2, barY + 8, { align: "center" });
+  pdf.text("100", M + CW, barY + 8, { align: "right" });
   d.font("bold", 8);
   d.color(C.ink);
   pdf.text("Now", px(data.position.current), barY - 3, { align: "center" });
@@ -405,7 +405,7 @@ function drawPositionBar(d: Doc, data: KaiReportPdfData) {
 }
 
 function drawWatchChips(d: Doc, params: KaiPdfParam[]) {
-  const worst = [...params].sort((a, b) => a.score10 - b.score10).slice(0, 2);
+  const worst = [...params].sort((a, b) => a.score100 - b.score100).slice(0, 2);
   if (!worst.length) return;
   d.ensure(10);
   let x = M;
@@ -414,7 +414,7 @@ function drawWatchChips(d: Doc, params: KaiPdfParam[]) {
   d.pdf.text("KEEP AN EYE ON", x, d.y + 4.2);
   x += d.pdf.getTextWidth("KEEP AN EYE ON") + 4;
   for (const p of worst) {
-    const w = drawPill(d, `${p.name}  ${p.grade}/10`, x, d.y, TONE_TINT[p.tone], TONE[p.tone]);
+    const w = drawPill(d, `${p.name}  ${p.grade}/100`, x, d.y, TONE_TINT[p.tone], TONE[p.tone]);
     x += w + 3;
   }
   d.y += 12;
@@ -532,10 +532,10 @@ function drawScores(d: Doc, params: KaiPdfParam[], withFindings: boolean) {
     d.pdf.text(safe(p.name), M, d.y + 5);
     d.fill(C.sand);
     rr(d.pdf, barX, d.y + 2.7, barW, 2.6, 1.3, 1.3, "F");
-    const fillW = Math.max(2, (barW * Math.max(0, Math.min(10, p.score10))) / 10);
+    const fillW = Math.max(2, (barW * Math.max(0, Math.min(100, p.score100))) / 100);
     d.fill(TONE[p.tone]);
     rr(d.pdf, barX, d.y + 2.7, fillW, 2.6, 1.3, 1.3, "F");
-    drawPill(d, `${p.grade}/10`, W - M - 17, d.y + 1.5, TONE_TINT[p.tone], TONE[p.tone], 8.5);
+    drawPill(d, `${p.grade}/100`, W - M - 20, d.y + 1.5, TONE_TINT[p.tone], TONE[p.tone], 8.5);
     let yy = d.y + 9;
     if (findingLines.length) {
       d.font("normal", 8.5);

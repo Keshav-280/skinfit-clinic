@@ -103,7 +103,7 @@ export default function ReportPreviewPage() {
       {design === "poster" && mode === "initial" ? (
         <InitialKaiScanReport
           scanId={0}
-          grade="6"
+          grade="62"
           headline="Your baseline is set. Acne and pigmentation are the two markers we'll watch most closely."
           scanDateLabel="28 Aug 2026"
           position={62}
@@ -129,13 +129,13 @@ export default function ReportPreviewPage() {
       {design === "poster" && mode === "update" ? (
         <UpdateKaiScanReport
           scanId={0}
-          grade="7"
+          grade="66"
           headline="Acne eased. Pigment is holding."
           metaLeft="Week 3 · 3-week streak"
           metaRight="28 Aug 2026"
           movementBadge={{ label: "Improving", type: "improving" }}
-          subtitle="Up from 6/10 last week"
-          position={{ current: 68, previous: 62 }}
+          subtitle="Up from 58/100 last week"
+          position={{ current: 66, previous: 62 }}
           thenNow={{
             previous: { url: PREVIEW_FACE, date: "7 Aug" },
             current: { url: PREVIEW_FACE, date: "28 Aug" },
@@ -153,8 +153,8 @@ export default function ReportPreviewPage() {
             p.key === "active_acne"
               ? {
                   ...p,
-                  grade: "6",
-                  score10: 6,
+                  grade: "58",
+                  score100: 58,
                   severity: 2.7,
                   finding: "Fewer active lesions than three weeks ago.",
                 }
@@ -165,10 +165,10 @@ export default function ReportPreviewPage() {
               {
                 key: "active_acne",
                 name: "Active acne",
-                grade: "6",
+                grade: "58",
                 gradeColor: "mid",
                 finding: "Fewer papules on the chin and right cheek.",
-                movement: { tag: "↑ 5→6", type: "up" },
+                movement: { tag: "↑ 53→58", type: "up" },
               },
             ],
             declined: [],
@@ -176,7 +176,7 @@ export default function ReportPreviewPage() {
               {
                 key: "pigmentation",
                 name: "Pigmentation",
-                grade: "6",
+                grade: "58",
                 gradeColor: "mid",
                 finding: "Malar pigment is steady - keep the UV habit.",
                 movement: { tag: "Steady", type: "hold" },
@@ -184,7 +184,7 @@ export default function ReportPreviewPage() {
               {
                 key: "under_eye",
                 name: "Under-eye",
-                grade: "7",
+                grade: "66",
                 gradeColor: "mid",
                 finding: "Shadow unchanged. Sleep was the weak week.",
                 movement: { tag: "Steady", type: "hold" },
@@ -194,7 +194,7 @@ export default function ReportPreviewPage() {
               {
                 key: "acne_scars",
                 name: "Acne scarring",
-                grade: "8",
+                grade: "72",
                 gradeColor: "good",
                 finding: "Texture reports on a longer cycle.",
                 movement: { tag: "Track", type: "track" },
@@ -225,7 +225,7 @@ export default function ReportPreviewPage() {
             body: "No new actives. Dr. Ruby can look at pigment if it still holds after week 4.",
           }}
           doctorName="Dr. Ruby"
-          shareLine="Week 3 · 7/10 · acne improved"
+          shareLine="Week 3 · 66/100 · acne improved"
         />
       ) : null}
     </div>

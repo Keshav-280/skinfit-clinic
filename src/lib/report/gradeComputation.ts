@@ -1,23 +1,24 @@
 /**
  * kAI report grade + movement helpers (Update Report).
- * Position 0-100 drives the Position Bar; patients see 0-10.
+ * Position and the patient-facing score are both 0-100.
  */
 
-import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { scoreOutOfHundred } from "@/src/lib/clarityGrade";
+import { MIN_DETECTABLE_CHANGE } from "@/src/lib/scoreChange";
 
 export type MovementKind = "improved" | "holding" | "declined";
 
 export type HeroMovementType = "improving" | "flat" | "declining";
 
-/** Map overall kAI score (0-100) to 0-10 display + Position Bar position. */
+/** Map overall kAI score (0-100) to the patient-facing score + Position Bar position. */
 export function scoreToGrade(score: number): {
   letter: string;
   position: number;
-  score10: number;
+  score100: number;
 } {
   const position = Math.max(0, Math.min(100, Math.round(score)));
-  const score10 = scoreOutOfTen(score);
-  return { letter: String(score10), position, score10 };
+  const score100 = scoreOutOfHundred(score);
+  return { letter: String(score100), position, score100 };
 }
 
 /** Map severity (1-5, higher = worse) to sub-grade. */
@@ -44,13 +45,18 @@ export function computeMovement(
   return "holding";
 }
 
-/** Compare patient-facing 0-10 scores so 9→9 is Holding, never Improved. */
-export function computeScore10Movement(
+/**
+ * Compare patient-facing 0-100 scores. A move smaller than the detectable change is Holding,
+ * so noise never reads as progress.
+ */
+export function computeScoreMovement(
   current: number,
-  previous: number
+  previous: number,
+  minChange: number = MIN_DETECTABLE_CHANGE
 ): MovementKind {
-  if (current > previous) return "improved";
-  if (current < previous) return "declined";
+  const delta = current - previous;
+  if (delta >= minChange) return "improved";
+  if (delta <= -minChange) return "declined";
   return "holding";
 }
 
@@ -71,8 +77,8 @@ export function subtitleFromGrades(
   previous: string,
   kind: MovementKind
 ): string {
-  const cur = /\/10$/.test(current) ? current : `${current}/10`;
-  const prev = /\/10$/.test(previous) ? previous : `${previous}/10`;
+  const cur = /\/100$/.test(current) ? current : `${current}/100`;
+  const prev = /\/100$/.test(previous) ? previous : `${previous}/100`;
   if (kind === "improved") {
     return `Up from ${prev} last week`;
   }

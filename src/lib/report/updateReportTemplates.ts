@@ -162,12 +162,12 @@ export function defaultUpdateActions(opts: {
 }
 
 export function defaultUpdateHeadline(
-  score10: string,
+  score100: string,
   rows: KaiReportParamRow[],
   movement: "improved" | "holding" | "declined"
 ): string {
   const top = pickTopConcernName(rows).toLowerCase();
-  const label = /\/10$/.test(score10) ? score10 : `${score10}/10`;
+  const label = /\/100$/.test(score100) ? score100 : `${score100}/100`;
   if (movement === "improved") {
     return `${label} - ${top} easing, rest holding`;
   }
@@ -196,11 +196,11 @@ export function defaultNextStep(opts: {
 
 export function formatShareLine(
   weekNumber: number,
-  score10: string,
+  score100: string,
   movement: "improved" | "holding" | "declined",
   topConcern: string
 ): string {
-  const label = /\/10$/.test(score10) ? score10 : `${score10}/10`;
+  const label = /\/100$/.test(score100) ? score100 : `${score100}/100`;
   const mv =
     movement === "improved"
       ? `${topConcern} improving`

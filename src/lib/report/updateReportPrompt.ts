@@ -37,30 +37,22 @@ Occlusion: if beard is true, exclude jaw, chin and perioral from acne, texture a
 
 ## 4. Scoring
 
-Patients see a 0-10 scale (10 is best). Do not use letter grades (A-E, B+, C−). Each score maps from internal position 0-100 (never shown).
+Patients see a 0-100 scale (higher is better). Do not use letter grades (A-E, B+, C−). The score and the position are the same number.
 
-The JSON already contains the model's score_10 and position for each parameter in current_scan.grades and previous_scan.grades. Copy those values exactly. Do not invent, rescale, or replace scores. Do not add parameters that are not in current_scan.grades.
+The JSON already contains the model's score_100 and position for each parameter in current_scan.grades and previous_scan.grades. Copy those values exactly. Do not invent, rescale, or replace scores. Do not add parameters that are not in current_scan.grades.
 
-Anchors: 9-10 = no clinically relevant finding; 7-8 = mild; 5-6 = moderate; 0-4 = marked.
+Anchors: scores are capped at 79. 65-79 = mild or no clear finding; 45-64 = moderate; below 45 = marked.
 
 Visible parameters: active_acne, acne_scars, pigmentation, wrinkles, under_eye, sagging_volume.
 
-## 5. Movement - minimum detectable interval
+## 5. Movement
 
-A parameter may only be improved/declined if enough time has passed:
-- active_acne: 1 week
-- under_eye, pigmentation: 4 weeks
-- acne_scars: 8 weeks
-- wrinkles, sagging_volume: 12 weeks
+Movement is decided in code and arrives in focus_parameters[].movement (improved, declined, holding or baseline), with change_points (signed change in score points) and compared_with (last_scan, two_scans_ago or first_scan). Copy it. Do not recompute it and do not override it.
 
-Otherwise movement is tracking with next_reports_on.
-
-Movement states:
-- improved - position gained ≥ 4, interval OK, capture comparable
-- holding - moved < 4, interval OK, capture comparable
-- declined - position lost ≥ 4, interval OK, capture comparable
-- tracking - interval not satisfied
-- not_assessable - occluded/degraded/unusable
+- improved / declined - the score moved by at least 2 points against the scan named in compared_with. Report it as measured, whatever the usual timescale for that marker. If compared_with is not last_scan, say what it is measured against (for example "up 5 since two scans ago").
+- holding - the score moved by less than 2 points. Never call a holding score improved or declined.
+- tracking - use only when movement is holding and the marker has not had its usual time yet: active_acne 1 week, under_eye and pigmentation 4 weeks, acne_scars 8 weeks, wrinkles and sagging_volume 12 weeks. Set next_reports_on.
+- not_assessable - occluded/degraded/unusable. If capture is degraded, suppress all movement claims on the affected parameters and set them to tracking with reason capture_variance.
 
 Frame stability as the plan working. Lead with whatever did move. Never manufacture movement. Never claim causation - correlation only.
 
@@ -86,7 +78,7 @@ headline under 12 words. summary 3-4 sentences. each finding one sentence.
 Patients tap these three steps. Generic diet/stress filler is a failure.
 
 Write exactly 3 actions. Each action is bound to ONE skin parameter from current_scan.grades (or focus_parameters if provided). Analyse that parameter on its own:
-- Use that parameter's score_10 and movement (or "holding" / "tracking").
+- Use that parameter's score_100 and movement (or "holding" / "tracking").
 - Pair it with a concrete fact from weekly_checkin (sleep, stress, water, nutrition, exercise, routine, actives, or concern_specific). If a field is missing, say so and give one doable substitute - never invent a check-in fact.
 - Do not reuse the same check-in fact across two actions. If you used sleep for wrinkles, do not use sleep for under-eye.
 - Title and detail MUST be different. Title is a 6-10 word verb phrase. Detail is 1-2 sentences that name the score and the check-in fact, then say what to do this week.
@@ -110,22 +102,22 @@ Return valid JSON only. No preamble, no markdown fences.
     "occlusions": []
   },
   "overall": {
-    "score_10": 7,
-    "position": 71,
-    "previous_score_10": 6,
-    "previous_position": 68,
+    "score_100": 62,
+    "position": 62,
+    "previous_score_100": 58,
+    "previous_position": 58,
     "movement": "improved",
-    "headline": "7/10 - acne easing, everything else holding"
+    "headline": "62/100 - acne easing, everything else holding"
   },
   "summary": "Three to four sentences.",
   "parameters": [
     {
       "key": "active_acne",
       "label": "Active acne",
-      "score_10": 7,
-      "position": 72,
-      "previous_score_10": 6,
-      "previous_position": 64,
+      "score_100": 66,
+      "position": 66,
+      "previous_score_100": 59,
+      "previous_position": 59,
       "movement": "improved",
       "confidence": "high",
       "finding": "One specific sentence.",
@@ -146,17 +138,17 @@ Return valid JSON only. No preamble, no markdown fences.
     {
       "parameter": "active_acne",
       "title": "Calm new lesions with one night step",
-      "detail": "Active acne is 5/10, down from 6. You logged eating outside this week - keep a cream cleanser and skip a second active until the next scan."
+      "detail": "Active acne is 48/100, down from 55. You logged eating outside this week - keep a cream cleanser and skip a second active until the next scan."
     },
     {
       "parameter": "pigmentation",
       "title": "Lock pigment in with midday SPF",
-      "detail": "Pigmentation is 6/10 and holding. Routine lists sunscreen but not a reapply - put a stick in your bag and use it at 1pm on outdoor days."
+      "detail": "Pigmentation is 61/100 and holding. Routine lists sunscreen but not a reapply - put a stick in your bag and use it at 1pm on outdoor days."
     },
     {
       "parameter": "wrinkles",
       "title": "Give lines a 7-hour sleep window",
-      "detail": "Wrinkles sit at 7/10. Stress was logged as strained - a fixed 11pm lights-out is the weekly lever, not a new cream."
+      "detail": "Wrinkles sit at 70/100. Stress was logged as strained - a fixed 11pm lights-out is the weekly lever, not a new cream."
     }
   ],
   "next_step": {
@@ -166,11 +158,11 @@ Return valid JSON only. No preamble, no markdown fences.
   },
   "escalate": false,
   "escalation_reason": null,
-  "share_card": { "score_10": 7, "line": "Week 6 · Acne improving" }
+  "share_card": { "score_100": 62, "line": "Week 6 · Acne improving" }
 }
 
 Status values: published | recapture_required | checkin_required
 
 ## 10. Before you return
 
-Verify: capture gate ran; no movement inside minimum interval; scores are not uniform without evidence; no letter grades; no causation; missing data framed as invitation; occlusions stated; exactly one clinic next step; three actions each name a different parameter AND a different check-in fact; no title equals its detail; report would reassure a patient reading alone.`;
+Verify: capture gate ran; movement copied from focus_parameters, not recomputed; scores are not uniform without evidence; no letter grades; no causation; missing data framed as invitation; occlusions stated; exactly one clinic next step; three actions each name a different parameter AND a different check-in fact; no title equals its detail; report would reassure a patient reading alone.`;

@@ -1,3 +1,5 @@
+import type { ScoreChange } from "@/src/lib/scoreChange";
+
 export type PatientTrackerCause = {
   text: string;
   impact: "high" | "medium" | "low";
@@ -32,6 +34,13 @@ export type PatientTrackerParamRow = {
   /** Rounded (display value − prevWeekAverage) when a previous-week average exists. */
   weekAvgDelta: number | null;
   weeklyDeltaMeaningful: boolean;
+  /**
+   * What changed, compared against the last scan and, when that is within noise, two scans
+   * back and the first scan. Null on a first scan.
+   */
+  change?: ScoreChange | null;
+  /** True when the number shown is an estimate because the model's read looked unreliable. */
+  estimated?: boolean;
 };
 
 export type KaiOnboardingClinical = {
@@ -83,7 +92,11 @@ export type PatientTrackerReport = {
     currentWeekAverageKai: number | null;
     previousWeekAverageKai: number | null;
     consistencyScore: number;
+    /** Overall kAI change over the nearest horizon that clears the noise threshold. */
+    kaiChange?: ScoreChange | null;
   };
+  /** Areas the patient should retake because the model's read looked unreliable. */
+  scoreReview?: { retakeKeys: string[]; retakeLabels: string[] } | null;
   skinPills: string[];
   paramRows: PatientTrackerParamRow[];
   causes: PatientTrackerCause[];

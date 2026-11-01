@@ -4,10 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Download, Minus } from "lucide-react";
-import { classifySkinParamMetric, scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { classifySkinParamMetric, scoreOutOfHundred } from "@/src/lib/clarityGrade";
 import { patientScanImageDisplayUrl } from "@/src/lib/patientScanImagePath";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { trackerParamRowDisplayDelta } from "@/src/lib/trackerDisplayDelta";
+import { ScoreReviewNotice } from "@/components/dashboard/ScoreReviewNotice";
+import { formatSignedDelta } from "@/src/lib/scoreChange";
+import {
+  trackerParamRowChangeCaption,
+  trackerParamRowDisplayDelta,
+} from "@/src/lib/trackerDisplayDelta";
 import type { ReportMetrics, ReportRegion } from "./scanReportTypes";
 import type { ScanSpatialOutputs } from "@/src/lib/spatialOutputs";
 import {
@@ -160,8 +165,8 @@ function insightLine(
       : row?.delta ?? null;
 
   if (score != null && delta != null && Math.abs(delta) >= 1) {
-    const dir = delta > 0 ? "up" : "down";
-    return `${scoreOutOfTen(score)}/10 this scan - ${dir === "up" ? "+" : ""}${delta} vs last. Keep focusing here.`;
+    const caption = row && tracker ? trackerParamRowChangeCaption(tracker, row) : null;
+    return `${scoreOutOfHundred(score)}/100 this scan - ${caption ?? `${delta > 0 ? "up" : "down"} ${Math.abs(delta)}`}. Keep focusing here.`;
   }
   if (score != null) {
     const sublabel = classifySkinParamMetric(score).sublabel;
@@ -254,7 +259,7 @@ export function ScanViewer({
           id: meta.id,
           label: meta.label,
           score: raw,
-          scoreLabel: `${scoreOutOfTen(raw)}/10`,
+          scoreLabel: `${scoreOutOfHundred(raw)}/100`,
         },
       ];
     });
@@ -306,7 +311,7 @@ export function ScanViewer({
   }
 
   function handleWhatsAppShare() {
-    const scoreBit = `kAI score ${scoreOutOfTen(overall)}/10`;
+    const scoreBit = `kAI score ${scoreOutOfHundred(overall)}/100`;
     const text = `My SkinFit Wellness scan - ${scoreBit}. Track your skin with AI at SkinFit.`;
     const url =
       typeof scanId === "number" && scanId > 0 && typeof window !== "undefined"
@@ -439,8 +444,8 @@ export function ScanViewer({
             kAI
           </p>
           <p className="text-lg font-extrabold tabular-nums leading-none text-white">
-            {scoreOutOfTen(overall)}
-            <span className="text-[10px] font-bold opacity-70">/10</span>
+            {scoreOutOfHundred(overall)}
+            <span className="text-[10px] font-bold opacity-70">/100</span>
           </p>
           {weeklyDelta != null && Math.abs(weeklyDelta) >= 1 ? (
             <span className="mt-1 inline-flex items-center text-white/90">
@@ -451,6 +456,9 @@ export function ScanViewer({
               ) : (
                 <Minus className="h-3.5 w-3.5" aria-label="Steady" />
               )}
+              <span className="ml-0.5 text-[11px] font-bold tabular-nums">
+                {formatSignedDelta(weeklyDelta)}
+              </span>
             </span>
           ) : null}
         </div>
@@ -480,6 +488,9 @@ export function ScanViewer({
       </div>
 
       <div className="space-y-4 px-0 pb-6 pt-4">
+        {tracker?.scoreReview ? (
+          <ScoreReviewNotice labels={tracker.scoreReview.retakeLabels} className="mx-4" />
+        ) : null}
         <ConcernChips
           items={chips}
           activeId={activeConcern}

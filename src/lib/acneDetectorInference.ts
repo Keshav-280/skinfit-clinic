@@ -8,6 +8,7 @@
  * (higher = worse).
  */
 
+import { continuousAcneSeverity } from "@/src/lib/acneContinuousSeverity";
 import {
   canonicalizeScanInferencePayload,
   severityToClarity,
@@ -137,7 +138,14 @@ export function applyAcneDetectorToScanPayload(
   payload: ScanInferencePayload,
   result: AcneDetectorResult
 ): ScanInferencePayload {
-  const severity = Math.max(1, Math.min(5, result.grade.score));
+  // The detector's own score is an average of bucketed levels, so it only lands on a few values.
+  // Re-derive it from the raw count / area / worst type so small changes show up.
+  const continuous = continuousAcneSeverity({
+    lesionCount: result.grade.f1?.active_lesion_count,
+    areaPercent: result.grade.f3?.area_percent,
+    worstTypeLevel: result.grade.f2?.numeric,
+  });
+  const severity = Math.max(1, Math.min(5, continuous ?? result.grade.score));
   const clarity = severityToClarity(severity);
 
   const acneExtras = {
@@ -145,6 +153,7 @@ export function applyAcneDetectorToScanPayload(
     head: "yolo_tiled_detection + doctor_grading",
     final_grade: result.grade.final_grade,
     grade_score_1_5: severity,
+    detector_bucketed_score_1_5: result.grade.score,
     active_lesion_count: result.grade.f1?.active_lesion_count,
     worst_type: result.grade.f2?.worst_type,
     area_percent: result.grade.f3?.area_percent,

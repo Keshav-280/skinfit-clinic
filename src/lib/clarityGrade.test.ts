@@ -30,6 +30,30 @@ describe("patientDisplayClarity", () => {
     expect(patientDisplayClarity(60)).toBeGreaterThan(55);
   });
 
+  it("keeps responding to small real changes at the top end", () => {
+    // Previously raw 80 → 76 and raw 100 → 79, so +5 raw moved the number by about 1.
+    for (const raw of [55, 65, 75, 85]) {
+      expect(patientDisplayClarity(raw + 5) - patientDisplayClarity(raw)).toBeGreaterThanOrEqual(2);
+    }
+    expect(patientDisplayClarity(90) - patientDisplayClarity(80)).toBeGreaterThanOrEqual(4);
+  });
+
+  it("is strictly increasing across the whole range", () => {
+    let prev = patientDisplayClarity(0);
+    for (let r = 1; r <= 100; r++) {
+      const cur = patientDisplayClarity(r);
+      expect(cur).toBeGreaterThanOrEqual(prev);
+      prev = cur;
+    }
+    expect(patientDisplayClarity(100)).toBe(79);
+  });
+
+  it("is unchanged at and below the knee", () => {
+    expect(patientDisplayClarity(30)).toBe(27);
+    expect(patientDisplayClarity(40)).toBe(42);
+    expect(patientDisplayClarity(50)).toBe(55);
+  });
+
   it("floors very low raw scores at 20 (no grade E)", () => {
     expect(patientDisplayClarity(0)).toBe(PATIENT_DISPLAY_SCORE_FLOOR);
     expect(patientDisplayClarity(5)).toBe(PATIENT_DISPLAY_SCORE_FLOOR);

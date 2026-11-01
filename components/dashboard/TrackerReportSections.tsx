@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { ONBOARDING_BASELINE_FOCUS_ACTIONS } from "@/src/lib/onboardingBaselineFocusActions";
 import type { PatientTrackerReport } from "@/src/lib/patientTrackerReport.types";
-import { scoreOutOfTen } from "@/src/lib/clarityGrade";
+import { scoreOutOfHundred } from "@/src/lib/clarityGrade";
 import {
   lockedWeeklyTrendAria,
   weeklyTrendDirection,
@@ -228,7 +228,7 @@ export function TrackerReportSections({
   );
   const paramsSummary = summarizeParamsCard(report, visibleParamRows, true);
 
-  const scoreLabel = `${scoreOutOfTen(report.scores.kaiScore)}/10`;
+  const scoreLabel = `${scoreOutOfHundred(report.scores.kaiScore)}/100`;
 
   function handleWhatsAppShare() {
     const link =

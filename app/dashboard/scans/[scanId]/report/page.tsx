@@ -33,7 +33,12 @@ import {
   scoreToGrade,
   subtitleFromGrades,
 } from "../../../../../src/lib/report/gradeComputation";
-import { buildMovementGroups, overallMovementFromScores } from "../../../../../src/lib/report/buildMovementGroups";
+import {
+  buildMovementGroups,
+  focusParamMovement,
+  overallMovementFromHistory,
+} from "../../../../../src/lib/report/buildMovementGroups";
+import { loadReportScoreHistory } from "../../../../../src/lib/report/reportScoreHistory";
 import { loadWellnessAndWeatherForScan } from "../../../../../src/lib/wellnessWeatherContext";
 import {
   generateInitialReportContent,
@@ -318,7 +323,7 @@ export default async function KaiScanReportPage({
         grades: Object.fromEntries(
           paramRows.map((p) => [
             p.key,
-            { score_10: p.score10, position: Math.round(p.clarity), severity: p.severity },
+            { score_100: p.score100, position: Math.round(p.clarity), severity: p.severity },
           ])
         ),
         overall: gradeInfo,
@@ -338,7 +343,7 @@ export default async function KaiScanReportPage({
       focus_parameters: paramRows.map((p) => ({
         key: p.key,
         name: p.name,
-        score_10: p.score10,
+        score_100: p.score100,
       })),
     });
       llm = generated.report;
@@ -370,7 +375,7 @@ export default async function KaiScanReportPage({
     });
 
     const markerCount = Math.max(parameters.length, 1);
-    const grade = String(gradeInfo.score10);
+    const grade = String(gradeInfo.score100);
     const position = gradeInfo.position;
 
     return (
@@ -407,7 +412,7 @@ export default async function KaiScanReportPage({
   }
 
   // ── Update Report ───────────────────────────────────────────────
-  const [allScans, recentEvent, multiWeekInsights] = await Promise.all([
+  const [allScans, recentEvent, multiWeekInsights, scoreHistory] = await Promise.all([
     db.query.scans.findMany({
       where: eq(scans.userId, userId),
       orderBy: [asc(scans.createdAt), asc(scans.id)],
@@ -419,6 +424,7 @@ export default async function KaiScanReportPage({
       columns: { title: true, eventDate: true, eventKind: true },
     }),
     computeMultiWeekInsights(userId),
+    loadReportScoreHistory(userId, { id: row.id, createdAt: row.createdAt }),
   ]);
   const firstScanAt = allScans[0]?.createdAt ?? row.createdAt;
   const { weekNumber, streak } = weekMeta(allScans, row.id);
@@ -434,10 +440,8 @@ export default async function KaiScanReportPage({
 
   const gradeInfo = scoreToGrade(metrics.overall_score);
   const prevGradeInfo = scoreToGrade(prevMetrics.overall_score);
-  const overallMv = overallMovementFromScores(
-    metrics.overall_score,
-    prevMetrics.overall_score
-  );
+  // Overall movement: last scan, else two scans back, else first scan, so slow progress shows.
+  const overallMv = overallMovementFromHistory(scoreHistory.overall);
 
   const treatmentish =
     recentEvent &&
@@ -473,7 +477,7 @@ export default async function KaiScanReportPage({
           paramRows.map((p) => [
             p.key,
             {
-              score_10: p.score10,
+              score_100: p.score100,
               position: Math.round(p.clarity),
               severity: p.severity,
             },
@@ -488,7 +492,7 @@ export default async function KaiScanReportPage({
           prevParamRows.map((p) => [
             p.key,
             {
-              score_10: p.score10,
+              score_100: p.score100,
               position: Math.round(p.clarity),
               severity: p.severity,
             },
@@ -503,15 +507,9 @@ export default async function KaiScanReportPage({
       return {
         key: p.key,
         name: p.name,
-        score_10: p.score10,
-        previous_score_10: prev?.score10 ?? null,
-        movement: prev
-          ? prev.score10 < p.score10
-            ? "improved"
-            : prev.score10 > p.score10
-              ? "declined"
-              : "holding"
-          : "baseline",
+        score_100: p.score100,
+        previous_score_100: prev?.score100 ?? null,
+        ...focusParamMovement(scoreHistory.byReportKey[p.key]),
       };
     }),
     environment: cityWeather
@@ -555,22 +553,24 @@ export default async function KaiScanReportPage({
     previous: prevParamRows,
     firstScanAt,
     currentScanAt: row.createdAt,
+    previousScanAt: previous.createdAt,
+    history: scoreHistory.byReportKey,
   });
 
-  const score10 = String(gradeInfo.score10);
+  const score100 = String(gradeInfo.score100);
   const position = {
     current: gradeInfo.position,
     previous: prevGradeInfo.position,
   };
-  const prevScore10 = String(prevGradeInfo.score10);
+  const prevScore100 = String(prevGradeInfo.score100);
   const mvKind = overallMv;
 
   const topConcern = pickTopConcernName(paramRows);
   const headline =
     llm?.overall?.headline?.trim() ||
-    defaultUpdateHeadline(score10, paramRows, mvKind);
+    defaultUpdateHeadline(score100, paramRows, mvKind);
   const badge = movementToHeroBadge(mvKind);
-  const subtitle = subtitleFromGrades(score10, prevScore10, mvKind);
+  const subtitle = subtitleFromGrades(score100, prevScore100, mvKind);
 
   const attributionCards = buildAttributionCards({
     cityWeather,
@@ -636,12 +636,12 @@ export default async function KaiScanReportPage({
 
   const shareLine =
     llm?.share_card?.line?.trim() ||
-    formatShareLine(weekNumber, score10, mvKind, topConcern);
+    formatShareLine(weekNumber, score100, mvKind, topConcern);
 
   return (
     <UpdateKaiScanReport
       scanId={row.id}
-      grade={score10}
+      grade={score100}
       headline={headline}
       metaLeft={`Week ${weekNumber} · ${streak}-week streak`}
       metaRight={format(row.createdAt, "dd MMM yyyy")}

@@ -238,6 +238,12 @@ export function DoctorScanScoreEditor({
                     AI baseline: {aiScore}
                   </p>
                 ) : null}
+                {(report.scoreEdit.estimatedKeys as string[] | undefined)?.includes(key) ? (
+                  <p className="text-[10px] font-semibold text-amber-800">
+                    Model read looked unreliable. The patient sees an estimate and has been asked
+                    to retake the front photo.
+                  </p>
+                ) : null}
               </dt>
               <dd className="flex shrink-0 items-center gap-2">
                 <input

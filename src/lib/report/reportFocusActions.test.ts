@@ -10,16 +10,16 @@ import type { KaiReportParamRow } from "@/src/lib/kaiReportMapping";
 function row(
   key: KaiReportParamRow["key"],
   name: string,
-  score10: number
+  score100: number
 ): KaiReportParamRow {
   return {
     key,
     name,
     shortName: name,
-    severity: 5 - score10 / 2,
-    clarity: score10 * 10,
-    grade: String(score10),
-    score10,
+    severity: 1 + ((100 - score100) / 100) * 4,
+    clarity: score100,
+    grade: String(score100),
+    score100,
     gradeColor: "mid",
     finding: "",
     concernChipId: null,

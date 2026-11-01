@@ -39,8 +39,8 @@ export function PositionBar({
         }`}
       >
         <span>0</span>
-        <span>5</span>
-        <span>10</span>
+        <span>50</span>
+        <span>100</span>
       </div>
       <div
         className={`relative h-[4px] overflow-hidden rounded-full ${

@@ -23,13 +23,14 @@ import {
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import { isOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
 import { ScoreTrendChart } from "@/components/dashboard/ScoreTrendChart";
+import { computeScoreChange } from "@/src/lib/scoreChange";
 import {
   buildScoreAnalysis,
   concernRawScore,
   defaultConcernRecommendations,
   isScorePageSlug,
   scorePageTitle,
-  toTen,
+  toHundred,
   trendDeltaLabel,
   type ScorePageSlug,
 } from "@/src/lib/scoreConcernPage";
@@ -39,8 +40,8 @@ type PageProps = {
 };
 
 function scorePillClass(score: number): string {
-  if (score >= 7) return "border-[#242A5F]/20 bg-[#242A5F]/10 text-[#242A5F]";
-  if (score >= 4) return "border-[#DF9DA4]/50 bg-[#F8EDEE] text-[#1E1B31]";
+  if (score >= 70) return "border-[#242A5F]/20 bg-[#242A5F]/10 text-[#242A5F]";
+  if (score >= 45) return "border-[#DF9DA4]/50 bg-[#F8EDEE] text-[#1E1B31]";
   return "border-[#4A2630]/20 bg-[#F8EDEE] text-[#4A2630]";
 }
 
@@ -92,24 +93,34 @@ export default async function ScoreConcernPage({ params }: PageProps) {
   const previousRaw = previousScan
     ? concernRawScore(slug, previousScan)
     : null;
-  const current10 = toTen(currentRaw);
-  const previous10 = toTen(previousRaw);
+  const current100 = toHundred(currentRaw);
+  const previous100 = toHundred(previousRaw);
   const gradeInfo =
     currentRaw != null ? classifySkinParamMetric(currentRaw) : null;
-  const deltaLabel = trendDeltaLabel(current10, previous10);
 
   const chartPoints = [...history]
     .reverse()
     .map((scan) => {
       const raw = concernRawScore(slug, scan);
-      const score10 = toTen(raw);
-      if (score10 == null) return null;
+      const score100 = toHundred(raw);
+      if (score100 == null) return null;
       return {
         label: format(scan.createdAt, "d MMM"),
-        score10,
+        score100,
       };
     })
-    .filter((p): p is { label: string; score10: number } => p != null);
+    .filter((p): p is { label: string; score100: number } => p != null);
+
+  // Compare with the last scan, then two scans back, then the first, so slow progress shows.
+  const concernChange = computeScoreChange(
+    [...history]
+      .reverse()
+      .flatMap((scan) => {
+        const v = toHundred(concernRawScore(slug, scan));
+        return v == null ? [] : [{ at: scan.createdAt, value: v }];
+      })
+  );
+  const deltaLabel = trendDeltaLabel(current100, previous100, concernChange);
 
   const tracker = latestScan
     ? await loadScanTrackerReport(
@@ -138,13 +149,14 @@ export default async function ScoreConcernPage({ params }: PageProps) {
   const analysisLines = buildScoreAnalysis({
     title: displayName,
     slug,
-    current10,
-    previous10,
+    current100,
+    previous100,
     scanCount: history.length,
     lastScanLabel: latestScan
       ? format(latestScan.createdAt, "d MMM")
       : null,
     extraLines,
+    change: concernChange,
   });
 
   const recommendations = (() => {
@@ -186,12 +198,12 @@ export default async function ScoreConcernPage({ params }: PageProps) {
         <h1 className="font-headline text-2xl font-bold tracking-tight text-[#1E1B31] md:text-[28px]">
           {displayName}
         </h1>
-        {current10 != null && gradeInfo ? (
+        {current100 != null && gradeInfo ? (
           <div className="flex flex-col items-end gap-1">
             <span
-              className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-bold ${scorePillClass(current10)}`}
+              className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-bold ${scorePillClass(current100)}`}
             >
-              {current10}/10
+              {current100}/100
               <span className="ml-1.5 font-semibold opacity-80">
                 · {gradeInfo.sublabel}
               </span>

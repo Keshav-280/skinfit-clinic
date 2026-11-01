@@ -250,7 +250,7 @@ export function InitialKaiScanReport({
         </div>
 
         <ReportShareFooter
-          shareText={`SkinFit kAI baseline: ${grade}/10. ${headline}`}
+          shareText={`SkinFit kAI baseline: ${grade}/100. ${headline}`}
           onDownloadPdf={() =>
             downloadKaiReportPdf(
               pdfData,

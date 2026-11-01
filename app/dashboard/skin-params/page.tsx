@@ -14,7 +14,7 @@ import {
   patientClarityToGrade,
   patientChartDisplayValue,
   PATIENT_DISPLAY_SCORE_MAX,
-  scoreOutOfTen,
+  scoreOutOfHundred,
   type ClarityGrade,
 } from "@/src/lib/clarityGrade";
 import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
@@ -135,7 +135,7 @@ function MiniLineChart({
   const maxV = PATIENT_DISPLAY_SCORE_MAX;
   const range = maxV - minV;
 
-  const pointLabel = (raw: number) => `${scoreOutOfTen(raw)}/10`;
+  const pointLabel = (raw: number) => `${scoreOutOfHundred(raw)}/100`;
 
   const points = displayValues.map((v, i) => {
     const x = padX + (i / (displayValues.length - 1)) * innerW;
@@ -212,7 +212,7 @@ function TrendIndicator({
 }: {
   history: { value: number }[];
 }) {
-  const label = (v: number) => `${scoreOutOfTen(v)}/10`;
+  const label = (v: number) => `${scoreOutOfHundred(v)}/100`;
   if (history.length === 0) {
     return <span className="text-[11px] font-medium text-[#6B7280]"> - </span>;
   }
@@ -269,7 +269,7 @@ function ParamCard({ param }: { param: SkinParam }) {
       <ProgressRing
         value={displayScore}
         color={color}
-        displayLabel={`${scoreOutOfTen(param.value)}/10`}
+        displayLabel={`${scoreOutOfHundred(param.value)}/100`}
       />
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${bg} ${text}`}>

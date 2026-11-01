@@ -90,7 +90,7 @@ export function ReportGradeRing({
             glass ? "text-white/70" : "text-[#8B93A4]"
           }`}
         >
-          /10
+          /100
         </span>
       </div>
     </div>

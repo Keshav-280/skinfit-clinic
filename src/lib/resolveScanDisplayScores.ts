@@ -7,6 +7,10 @@ import {
   RAG_KAI_PARAM_KEYS,
 } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
+import {
+  applyScoreReviewEstimates,
+  readScoreReview,
+} from "@/src/lib/scoreOutliers";
 
 /** Model feature keys doctors may override via the portal (severity 1-5). */
 export const DOCTOR_EDITABLE_MFS_KEYS = [
@@ -124,11 +128,18 @@ export type ResolvedScanDisplayScores = {
    * Tracker builder uses visible values.
    */
   resolvedRagParamValues: Partial<Record<RagKaiParamKey, number>>;
+  /**
+   * Areas shown as an estimate (average of the other areas) because the model's read looked
+   * unreliable. The patient is asked to retake the front photo; doctors still see the raw read.
+   */
+  estimatedKeys: RagKaiParamKey[];
 };
 
 export function resolveScanDisplayScores(input: {
   scoresJson: unknown;
   baseMetricsColumns: ScanBaseMetricsColumns;
+  /** Default true. False returns the model's own values with no outlier estimates applied. */
+  applyReview?: boolean;
 }): ResolvedScanDisplayScores {
   const { effectiveScoresJson, doctorOverrides } = resolveEffectiveScoresJson(
     input.scoresJson
@@ -137,15 +148,19 @@ export function resolveScanDisplayScores(input: {
   const clinical_scores = parseClinicalScores(effectiveScoresJson);
 
   // Compute resolved RAG parameter values (0-100 clarity scale).
-  const resolvedRagParamValues = ragParamValuesFromScanRow({
-    overallScore: input.baseMetricsColumns.overallScore,
-    acne: input.baseMetricsColumns.acne,
-    wrinkles: input.baseMetricsColumns.wrinkles,
-    pigmentation: input.baseMetricsColumns.pigmentation,
-    hydration: input.baseMetricsColumns.hydration ?? 0,
-    texture: input.baseMetricsColumns.texture ?? 0,
-    scores: input.scoresJson,
-  });
+  const { values: resolvedRagParamValues, estimatedKeys } = ragParamValuesWithReview(
+    {
+      overallScore: input.baseMetricsColumns.overallScore,
+      acne: input.baseMetricsColumns.acne,
+      wrinkles: input.baseMetricsColumns.wrinkles,
+      pigmentation: input.baseMetricsColumns.pigmentation,
+      hydration: input.baseMetricsColumns.hydration ?? 0,
+      texture: input.baseMetricsColumns.texture ?? 0,
+      scores: input.scoresJson,
+    },
+    {},
+    input.applyReview !== false
+  );
 
   const computedKai =
     computeRagKaiScore(resolvedRagParamValues as Partial<
@@ -197,6 +212,7 @@ export function resolveScanDisplayScores(input: {
     },
     effectiveScoresJson,
     resolvedRagParamValues,
+    estimatedKeys,
   };
 }
 
@@ -221,6 +237,8 @@ export type DoctorScoreEditMeta = {
     parameterScores: Record<string, number>;
   };
   doctorOverrides: DoctorOverrides | null;
+  /** Areas the patient currently sees as an estimate instead of the model's read. */
+  estimatedKeys: RagKaiParamKey[];
 };
 
 export function buildDoctorScoreEditMeta(
@@ -231,6 +249,7 @@ export function buildDoctorScoreEditMeta(
 
   const aiResolved = resolveScanDisplayScores({
     scoresJson: stripDoctorOverrides(scoresJson),
+    applyReview: false,
     baseMetricsColumns: baseMetricsColumns ?? {
       overallScore: 0,
       acne: 0,
@@ -325,6 +344,7 @@ export function buildDoctorScoreEditMeta(
     aiBase,
     currentDisplay,
     doctorOverrides,
+    estimatedKeys: currentResolved.estimatedKeys,
   };
 }
 
@@ -333,13 +353,47 @@ export type ScanRowForScoreResolution = ScanBaseMetricsColumns & {
   scores: unknown;
 };
 
-/** RAG 0-100 param values (acne detector, doctor overrides, clinical_scores). */
-export function ragParamValuesFromScanRow(
+/** Model feature keys doctors can override → the RAG key they feed. */
+const MFS_KEY_TO_RAG_KEY: Record<string, RagKaiParamKey> = {
+  active_acne: "active_acne",
+  wrinkle_severity: "wrinkles",
+  pigmentation_model: "pigmentation",
+  acne_scars: "acne_scar",
+  sagging_volume: "sagging_volume",
+  under_eye: "under_eye",
+};
+
+/** Areas a doctor has set by hand; an outlier estimate must never overwrite these. */
+function doctorOverriddenKeys(scoresJson: unknown): RagKaiParamKey[] {
+  const overrides = getDoctorOverrides(scoresJson);
+  if (!overrides) return [];
+  const keys = new Set<RagKaiParamKey>();
+  for (const [k, v] of Object.entries(overrides.parameterScores ?? {})) {
+    if (typeof v === "number" && (RAG_KAI_ALL_PARAM_KEYS as string[]).includes(k)) {
+      keys.add(k as RagKaiParamKey);
+    }
+  }
+  for (const [k, v] of Object.entries(overrides.modelFeatureScores ?? {})) {
+    const ragKey = MFS_KEY_TO_RAG_KEY[k];
+    if (ragKey && typeof v === "number") keys.add(ragKey);
+  }
+  return [...keys];
+}
+
+/**
+ * RAG 0-100 param values plus the areas shown as an estimate. `applyReview=false` returns
+ * the model's own read untouched.
+ */
+export function ragParamValuesWithReview(
   row: ScanRowForScoreResolution,
-  dbByKey: Record<string, number | null | undefined> = {}
-): ResolvedScanDisplayScores["resolvedRagParamValues"] {
+  dbByKey: Record<string, number | null | undefined> = {},
+  applyReview = true
+): {
+  values: ResolvedScanDisplayScores["resolvedRagParamValues"];
+  estimatedKeys: RagKaiParamKey[];
+} {
   const { effectiveScoresJson } = resolveEffectiveScoresJson(row.scores);
-  return mergeRagParamValuesFromScan({
+  const raw = mergeRagParamValuesFromScan({
     dbByKey,
     scoresJson: effectiveScoresJson,
     pigmentationColumn: row.pigmentation,
@@ -348,6 +402,20 @@ export function ragParamValuesFromScanRow(
     hydrationColumn: row.hydration ?? 0,
     textureColumn: row.texture ?? 0,
   });
+  if (!applyReview) return { values: raw, estimatedKeys: [] };
+  return applyScoreReviewEstimates(
+    raw,
+    readScoreReview(row.scores),
+    doctorOverriddenKeys(row.scores)
+  );
+}
+
+/** RAG 0-100 param values (acne detector, doctor overrides, clinical_scores, outlier estimates). */
+export function ragParamValuesFromScanRow(
+  row: ScanRowForScoreResolution,
+  dbByKey: Record<string, number | null | undefined> = {}
+): ResolvedScanDisplayScores["resolvedRagParamValues"] {
+  return ragParamValuesWithReview(row, dbByKey).values;
 }
 
 /** `kaiParams` storage keys differ from RAG keys for some parameters. */

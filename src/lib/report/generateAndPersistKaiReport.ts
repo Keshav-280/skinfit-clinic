@@ -1,4 +1,6 @@
 import { and, asc, desc, eq, lt } from "drizzle-orm";
+import { focusParamMovement } from "@/src/lib/report/buildMovementGroups";
+import { loadReportScoreHistory } from "@/src/lib/report/reportScoreHistory";
 import { format, startOfDay } from "date-fns";
 import { db } from "@/src/db/client";
 import { scans, scheduleEvents, users } from "@/src/db/schema";
@@ -148,7 +150,7 @@ export async function generateAndPersistKaiReport(
         grades: Object.fromEntries(
           paramRows.map((p) => [
             p.key,
-            { score_10: p.score10, position: Math.round(p.clarity), severity: p.severity },
+            { score_100: p.score100, position: Math.round(p.clarity), severity: p.severity },
           ])
         ),
         overall: gradeInfo,
@@ -158,14 +160,14 @@ export async function generateAndPersistKaiReport(
       focus_parameters: paramRows.map((p) => ({
         key: p.key,
         name: p.name,
-        score_10: p.score10,
+        score_100: p.score100,
       })),
     });
     report = generated.report;
     aiUnavailable = generated.aiUnavailable;
   } else {
     kind = "update";
-    const [allScans, recentEvent] = await Promise.all([
+    const [allScans, recentEvent, scoreHistory] = await Promise.all([
       db.query.scans.findMany({
         where: eq(scans.userId, userId),
         orderBy: [asc(scans.createdAt), asc(scans.id)],
@@ -176,6 +178,7 @@ export async function generateAndPersistKaiReport(
         orderBy: [desc(scheduleEvents.eventDate)],
         columns: { title: true, eventDate: true, eventKind: true },
       }),
+      loadReportScoreHistory(userId, { id: row.id, createdAt: row.createdAt }),
     ]);
     const weekNumber = Math.max(
       1,
@@ -204,7 +207,7 @@ export async function generateAndPersistKaiReport(
           paramRows.map((p) => [
             p.key,
             {
-              score_10: p.score10,
+              score_100: p.score100,
               position: Math.round(p.clarity),
               severity: p.severity,
             },
@@ -219,7 +222,7 @@ export async function generateAndPersistKaiReport(
           prevParamRows.map((p) => [
             p.key,
             {
-              score_10: p.score10,
+              score_100: p.score100,
               position: Math.round(p.clarity),
               severity: p.severity,
             },
@@ -234,15 +237,9 @@ export async function generateAndPersistKaiReport(
         return {
           key: p.key,
           name: p.name,
-          score_10: p.score10,
-          previous_score_10: prev?.score10 ?? null,
-          movement: prev
-            ? prev.score10 < p.score10
-              ? "improved"
-              : prev.score10 > p.score10
-                ? "declined"
-                : "holding"
-            : "baseline",
+          score_100: p.score100,
+          previous_score_100: prev?.score100 ?? null,
+          ...focusParamMovement(scoreHistory.byReportKey[p.key]),
         };
       }),
       environment: environment ?? {},

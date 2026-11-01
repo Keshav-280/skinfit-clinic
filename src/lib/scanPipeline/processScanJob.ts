@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { scanJobs, scans, skinScans, users, mobileCaptureSessions } from "@/src/db/schema";
 import type { NodePgAppDatabase } from "@/src/db/database-types";
 
@@ -42,6 +42,12 @@ import {
 } from "@/src/lib/maskImageCrop";
 import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
+import { ragParamValuesWithReview } from "@/src/lib/resolveScanDisplayScores";
+import {
+  buildScoreReview,
+  detectScoreOutliers,
+  readScoreReview,
+} from "@/src/lib/scoreOutliers";
 import { generateAndPersistKaiReport } from "@/src/lib/report/generateAndPersistKaiReport";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
@@ -432,6 +438,67 @@ export async function processScanJob(
 
   const scanDoctorId = await getAssignedDoctorIdForPatient(user.id);
 
+  // Flag a single area that is far below the rest AND looks unreliable (sudden drop, or an
+  // extreme gap on a first scan). Flagged areas are shown as an estimate until a retake confirms.
+  let scoreReview: ReturnType<typeof buildScoreReview> = null;
+  try {
+    const [prevScan] = await database
+      .select({
+        scores: scans.scores,
+        overallScore: scans.overallScore,
+        acne: scans.acne,
+        wrinkles: scans.wrinkles,
+        pigmentation: scans.pigmentation,
+        hydration: scans.hydration,
+        texture: scans.texture,
+      })
+      .from(scans)
+      .where(eq(scans.userId, user.id))
+      .orderBy(desc(scans.createdAt), desc(scans.id))
+      .limit(1);
+    const rawValues = (r: {
+      scores: unknown;
+      overallScore: number;
+      acne: number;
+      wrinkles: number;
+      pigmentation: number;
+      hydration: number | null;
+      texture: number | null;
+    }) =>
+      ragParamValuesWithReview(
+        { ...r, hydration: r.hydration ?? 0, texture: r.texture ?? 0 },
+        {},
+        false
+      ).values;
+    const current = rawValues({
+      scores: { modelFeatureScores, kaiParams: merged.params },
+      overallScore: metrics.overall_score,
+      acne: metrics.acne,
+      wrinkles: metrics.wrinkles,
+      pigmentation: metrics.pigmentation,
+      hydration: metrics.hydration,
+      texture: metrics.texture,
+    });
+    const flagged = detectScoreOutliers({
+      current,
+      previous: prevScan ? rawValues(prevScan) : null,
+      previousFlaggedKeys: readScoreReview(prevScan?.scores)?.flagged.map((f) => f.key) ?? [],
+    });
+    scoreReview = buildScoreReview(flagged);
+    if (scoreReview) {
+      logger.info("score_outlier_flagged", {
+        jobId,
+        userId: payload.userId,
+        flagged: scoreReview.flagged,
+      });
+    }
+  } catch (err) {
+    logger.warn("score_outlier_check_skipped", {
+      jobId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   const [inserted] = await database
     .insert(scans)
     .values({
@@ -452,6 +519,7 @@ export async function processScanJob(
         modelFeatureScores,
         overallKaiScore: merged.overallKaiScore,
         kaiParams: merged.params,
+        ...(scoreReview ? { scoreReview } : {}),
         ...(overlayUrl ? { overlayUrl } : {}),
         ...(wrinkleMaskUrl ? { wrinkleMaskUrl } : {}),
         ...(acneMaskUrl ? { acneMaskUrl } : {}),
@@ -533,7 +601,7 @@ export async function processScanJob(
     originalImageUrl: payload.primaryImageUrl,
     annotatedImageUrl: overlayUrl ?? payload.primaryImageUrl,
     skinScore: metrics.overall_score,
-    analysisResults,
+    analysisResults: scoreReview ? { ...analysisResults, scoreReview } : analysisResults,
   });
 
   await database

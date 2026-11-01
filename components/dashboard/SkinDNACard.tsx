@@ -18,10 +18,12 @@ import {
 import { differenceInCalendarDays, formatDistanceToNow, parseISO } from "date-fns";
 import {
   classifySkinParamMetric,
-  scoreOutOfTen,
+  scoreOutOfHundred,
 } from "@/src/lib/clarityGrade";
 import { RAG_KAI_PARAM_LABELS, type RagKaiParamKey } from "@/src/lib/ragEightParams";
 import { resolveScanDisplayScores } from "@/src/lib/resolveScanDisplayScores";
+import { ScoreReviewNotice } from "@/components/dashboard/ScoreReviewNotice";
+import { MIN_DETECTABLE_CHANGE } from "@/src/lib/scoreChange";
 import { scoreDetailHref } from "@/src/lib/skinConcernSlug";
 
 /** The six patient-facing kAI parameters shown on the DNA card. */
@@ -128,6 +130,23 @@ export function skinDnaParamsFromAnalysis(
     under_eye: clampParamScore(rag.under_eye ?? m.hydration),
     sagging_volume: clampParamScore(rag.sagging_volume ?? 0),
   };
+}
+
+/** Skin areas shown as an estimate on the latest scan (model read looked unreliable). */
+export function skinDnaEstimatedLabels(analysis: unknown): string[] {
+  if (!analysis || typeof analysis !== "object") return [];
+  const a = analysis as Record<string, unknown>;
+  return resolveScanDisplayScores({
+    scoresJson: a,
+    baseMetricsColumns: {
+      overallScore: readNum(a, "overallScore") ?? 0,
+      acne: readNum(a, "acne") ?? 0,
+      wrinkles: readNum(a, "wrinkles") ?? 0,
+      pigmentation: readNum(a, "pigmentation") ?? 0,
+      hydration: readNum(a, "hydration") ?? 0,
+      texture: readNum(a, "texture") ?? 0,
+    },
+  }).estimatedKeys.map((k) => RAG_KAI_PARAM_LABELS[k]);
 }
 
 /** Fitzpatrick type → friendly tone label (e.g. "Medium tone"). */
@@ -426,7 +445,7 @@ export function AvatarIcon({ gender }: { gender: "male" | "female" }) {
   );
 }
 
-/** Visible “vs last scan” copy on the 0-10 scale used everywhere else on this card. */
+/** Visible change copy on the 0-100 scale used everywhere else on this card. */
 function lastScanImprovementCopy(
   weeklyDeltaScore: number,
   weeklyDeltaMeaningful: boolean,
@@ -442,26 +461,21 @@ function lastScanImprovementCopy(
       detail: "A second scan will show how your scores moved.",
     };
   }
-  const onTen = Math.round(weeklyDeltaScore / 10);
-  if (onTen > 0) {
+  // Real points on the 0-100 scale. (This used to divide by 10, so a +4 read as "Holding".)
+  const delta = Math.round(weeklyDeltaScore);
+  if (delta >= MIN_DETECTABLE_CHANGE) {
     return {
-      value: `+${onTen}`,
-      detail: `Improved +${onTen} from last scan`,
+      value: `+${delta}`,
+      detail: `Up ${delta} points since your earlier scans`,
     };
   }
-  if (onTen < 0) {
+  if (delta <= -MIN_DETECTABLE_CHANGE) {
     return {
-      value: `${onTen}`,
-      detail: `${onTen} from last scan`,
+      value: `${delta}`,
+      detail: `Down ${Math.abs(delta)} points since your earlier scans`,
     };
   }
-  if (weeklyDeltaScore > 0) {
-    return { value: "Holding", detail: "Slight improvement from last scan" };
-  }
-  if (weeklyDeltaScore < 0) {
-    return { value: "Holding", detail: "Slightly down from last scan" };
-  }
-  return { value: "No change", detail: "No change from last scan" };
+  return { value: "Holding", detail: "No clear change yet, within the normal scan margin" };
 }
 
 /** Cycles through a list of strings every `intervalMs`, fading between them. */
@@ -800,6 +814,8 @@ export function SkinDNACard({
     hasScan && analysisResults
       ? skinDnaParamsFromAnalysis(analysisResults)
       : null;
+  const estimatedLabels =
+    hasScan && analysisResults ? skinDnaEstimatedLabels(analysisResults) : [];
   const params: Record<SkinDNAParamKey, number> = {
     active_acne: paramsProp?.active_acne ?? fromAnalysis?.active_acne ?? 0,
     acne_scar: paramsProp?.acne_scar ?? fromAnalysis?.acne_scar ?? 0,
@@ -859,13 +875,13 @@ export function SkinDNACard({
     const worst = ranked[ranked.length - 1]!;
     strongest = {
       name: best.fullLabel,
-      gradeLabel: `${scoreOutOfTen(best.raw)}/10`,
+      gradeLabel: `${scoreOutOfHundred(best.raw)}/100`,
     };
     if (best.key !== worst.key) {
       needsFocusKey = worst.key;
       needsFocus = {
         name: worst.fullLabel,
-        gradeLabel: `${scoreOutOfTen(worst.raw)}/10`,
+        gradeLabel: `${scoreOutOfHundred(worst.raw)}/100`,
       };
     }
   }
@@ -880,7 +896,7 @@ export function SkinDNACard({
       slugKey: t.slugKey,
       Icon: t.Icon,
       raw,
-      score: scoreOutOfTen(raw),
+      score: scoreOutOfHundred(raw),
       sublabel: toTitleCase(metric.sublabel),
       color: dnaRingColor(raw),
       href: scoreDetailHref(t.slugKey),
@@ -895,7 +911,7 @@ export function SkinDNACard({
     lastScanAt,
     skinType,
     primaryConcern,
-    overallTen: scoreOutOfTen(kaiSkinScore),
+    overallTen: scoreOutOfHundred(kaiSkinScore),
     improvementDetail: improvement.detail,
   });
   const headlineMessage = useRotatingMessage(insightMessages, 5000);
@@ -1003,8 +1019,8 @@ export function SkinDNACard({
                 transition={{ delay: 0.9, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className="text-2xl font-extrabold leading-none text-[#1E1B31]"
               >
-                {scoreOutOfTen(kaiSkinScore)}
-                <span className="text-xs font-bold opacity-60">/10</span>
+                {scoreOutOfHundred(kaiSkinScore)}
+                <span className="text-xs font-bold opacity-60">/100</span>
               </motion.span>
               <span className="mt-1 text-[10px] font-semibold text-[#6B7280]">
                 Overall
@@ -1089,6 +1105,7 @@ export function SkinDNACard({
             />
           ))}
         </div>
+        <ScoreReviewNotice labels={estimatedLabels} className="mx-4 mt-2.5 sm:mx-5" />
       </div>
     </motion.div>
   );

@@ -2,6 +2,7 @@ import "server-only";
 
 import { isSameWeek, subDays } from "date-fns";
 import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
+import { computeScoreChange, MIN_DETECTABLE_CHANGE } from "@/src/lib/scoreChange";
 
 export type HomeWeeklyDeltaScanRow = {
   overallScore: number;
@@ -56,16 +57,29 @@ export function computeHomeWeeklyDeltaScore(
   const currentAvg = average(currentWeekKais);
   const previousAvg = average(previousWeekKais);
 
+  // When the usual comparison is within noise, look further back (two scans ago, first scan) so
+  // steady progress still shows. `scans` is newest first, the change engine wants oldest first.
+  const deeper = (): number | null => {
+    const change = computeScoreChange(
+      [...kaiByScan].reverse().map((s) => ({ at: s.createdAt, value: s.kai }))
+    );
+    return change && change.direction !== "steady" ? change.delta : null;
+  };
+
   if (currentAvg != null && previousAvg != null) {
+    const weekDelta = Math.round(currentAvg - previousAvg);
     return {
-      weeklyDeltaScore: Math.round(currentAvg - previousAvg),
+      weeklyDeltaScore:
+        Math.abs(weekDelta) >= MIN_DETECTABLE_CHANGE ? weekDelta : (deeper() ?? weekDelta),
       weeklyDeltaMeaningful: true,
     };
   }
 
   if (kaiByScan.length >= 2) {
+    const lastDelta = Math.round(kaiByScan[0]!.kai - kaiByScan[1]!.kai);
     return {
-      weeklyDeltaScore: Math.round(kaiByScan[0]!.kai - kaiByScan[1]!.kai),
+      weeklyDeltaScore:
+        Math.abs(lastDelta) >= MIN_DETECTABLE_CHANGE ? lastDelta : (deeper() ?? lastDelta),
       weeklyDeltaMeaningful: true,
     };
   }

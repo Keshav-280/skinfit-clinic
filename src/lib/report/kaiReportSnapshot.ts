@@ -9,11 +9,19 @@ import type {
 
 export type KaiReportKind = "initial" | "update";
 
+/**
+ * Patient scores moved from 0-10 to 0-100. Snapshots written before that carry "6/10" wording,
+ * so they are treated as stale and regenerate once on the next view.
+ */
+export const KAI_REPORT_SCORE_SCALE = 100;
+
 export type KaiReportSnapshot = {
   kind: KaiReportKind;
   generatedAt: string;
   aiUnavailable: boolean;
   report: GeneratedInitialReport | GeneratedUpdateReport;
+  /** Score scale the narrative was written for; absent on pre-0-100 snapshots. */
+  scoreScale?: number;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,6 +34,7 @@ export function readKaiReportSnapshot(scores: unknown): KaiReportSnapshot | null
   if (!isRecord(raw)) return null;
   if (raw.kind !== "initial" && raw.kind !== "update") return null;
   if (!isRecord(raw.report)) return null;
+  if (raw.scoreScale !== KAI_REPORT_SCORE_SCALE) return null;
   return {
     kind: raw.kind,
     generatedAt:
@@ -46,7 +55,10 @@ export async function writeKaiReportSnapshot(
     columns: { scores: true },
   });
   const current = isRecord(row?.scores) ? { ...row.scores } : {};
-  current.kaiReportSnapshot = snapshot;
+  (current as Record<string, unknown>).kaiReportSnapshot = {
+    ...snapshot,
+    scoreScale: KAI_REPORT_SCORE_SCALE,
+  };
   await database
     .update(scans)
     .set({ scores: current })

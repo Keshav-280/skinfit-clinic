@@ -36,8 +36,37 @@ export const PATIENT_DISPLAY_SCORE_CAP = 79;
 export const PATIENT_DISPLAY_SCORE_FLOOR = 20;
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
+/**
+ * Above this raw clarity the curve is a straight line up to the cap. The saturating curve alone
+ * flattens out here (raw 80 → 76, raw 100 → 79), which is where most patients sit, so a real
+ * improvement barely moved the number.
+ */
+const PATIENT_DISPLAY_KNEE_RAW = 50;
 
-/** Formats a 0-100 patient-facing score as a whole number on a 0-10 scale. */
+/**
+ * Patient-facing score as a whole number on the 0-100 scale. Patient UI shows this directly so a
+ * small real change is visible (the old 0-10 view needed a 10-point move to change by one).
+ */
+export function scoreOutOfHundred(score0to100: number): number {
+  if (!Number.isFinite(score0to100)) return 0;
+  return Math.max(0, Math.min(100, Math.round(score0to100)));
+}
+
+/** Colour band for a 0-100 patient-facing score. */
+export function score100Tone(score100: number): "good" | "mid" | "low" {
+  const n = scoreOutOfHundred(score100);
+  if (n >= 70) return "good";
+  if (n >= 45) return "mid";
+  return "low";
+}
+
+/** Severity 1-5 (higher = worse) → 0-100 (higher = better), no rounding to tens. */
+export function severityToScoreOutOfHundred(severity: number): number {
+  const s = Math.max(1, Math.min(5, severity));
+  return scoreOutOfHundred(((5 - s) / 4) * 100);
+}
+
+/** @deprecated Patient UI uses {@link scoreOutOfHundred}; kept for server-side summaries. */
 export function scoreOutOfTen(score0to100: number): number {
   if (!Number.isFinite(score0to100)) return 0;
   return Math.max(0, Math.min(10, Math.round(score0to100 / 10)));
@@ -79,16 +108,29 @@ export function patientUnlockedDisplayScore(resolvedScore: number): number {
   return clampPatientFacingDisplayScore(resolvedScore);
 }
 
+function saturatingDisplay(raw: number): number {
+  const x = Math.min(100, Math.max(0, raw)) / 100;
+  return (
+    PATIENT_DISPLAY_SCORE_MAX *
+    (1 - Math.exp(-PATIENT_DISPLAY_LAMBDA * Math.pow(x, PATIENT_DISPLAY_GAMMA)))
+  );
+}
+
 /**
- * Smooth saturation curve for patient-facing clarity (0-~80).
- * f(x) = CAP · (1 − exp(−λ · (x/100)^γ))
+ * Raw clarity → patient-facing clarity (20-79).
+ * Up to the knee: f(x) = MAX · (1 − exp(−λ · (x/100)^γ)), unchanged.
+ * Above the knee: a straight line from f(knee) to the cap, so every raw point keeps counting.
  */
 export function patientDisplayClarity(rawScore: number): number {
-  const x = Math.min(100, Math.max(0, rawScore)) / 100;
-  const saturated =
-    PATIENT_DISPLAY_SCORE_MAX *
-    (1 - Math.exp(-PATIENT_DISPLAY_LAMBDA * Math.pow(x, PATIENT_DISPLAY_GAMMA)));
-  return clampPatientFacingDisplayScore(saturated);
+  const raw = Math.min(100, Math.max(0, rawScore));
+  if (raw <= PATIENT_DISPLAY_KNEE_RAW) {
+    return clampPatientFacingDisplayScore(saturatingDisplay(raw));
+  }
+  const kneeDisplay = saturatingDisplay(PATIENT_DISPLAY_KNEE_RAW);
+  const t = (raw - PATIENT_DISPLAY_KNEE_RAW) / (100 - PATIENT_DISPLAY_KNEE_RAW);
+  return clampPatientFacingDisplayScore(
+    kneeDisplay + t * (PATIENT_DISPLAY_SCORE_CAP - kneeDisplay)
+  );
 }
 
 /** Map display clarity to letter grade (>=80 A … >=20 D). Internal only - use patientGradeFromDisplayScore for UI. */
