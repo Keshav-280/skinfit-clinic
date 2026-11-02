@@ -26,6 +26,8 @@ import { coerceRoutinePlanList } from "@/src/lib/routine";
 import { scanDisplayResolvedFromRow } from "@/src/lib/resolveScanDisplayScores";
 import { formatKaiReferences, retrieveKaiReferences } from "@/src/lib/kaiKnowledge";
 import { KAI_SYSTEM_PROMPT } from "@/src/lib/kaiPersona";
+import { KAI_BOOKING_TOOLS, runKaiBookingTool } from "@/src/lib/chatBooking";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 type AssistantId = "ai" | "doctor" | "support";
 
@@ -698,13 +700,42 @@ export async function POST(req: Request) {
 
   openaiMessages.push({ role: "user", content: message.trim() });
 
-  const completion = await openai.chat.completions.create({
+  // kAI can look up real appointment slots and send an appointment request for the patient.
+  // Only the kAI assistant gets these tools, and a request only goes out after a clear "yes"
+  // (checked on the server, see chatBooking.ts).
+  const useBookingTools = normalizedAssistant === "ai";
+  // Ask a little warmer for kAI; clinic-facing assistants stay conservative.
+  const temperature = normalizedAssistant === "ai" ? 0.6 : 0.4;
+
+  let completion = await openai.chat.completions.create({
     model,
-    messages: openaiMessages,
+    messages: openaiMessages as ChatCompletionMessageParam[],
     max_tokens: 900,
-    // kAI is a companion, so a little warmer than the clinic-facing assistants.
-    temperature: normalizedAssistant === "ai" ? 0.6 : 0.4,
+    temperature,
+    ...(useBookingTools ? { tools: KAI_BOOKING_TOOLS } : {}),
   });
+
+  for (let round = 0; useBookingTools && round < 3; round += 1) {
+    const toolCalls = completion.choices[0]?.message?.tool_calls;
+    if (!toolCalls || toolCalls.length === 0) break;
+    const thread = openaiMessages as ChatCompletionMessageParam[];
+    thread.push(completion.choices[0]!.message as ChatCompletionMessageParam);
+    for (const call of toolCalls) {
+      if (call.type !== "function") continue;
+      const result = await runKaiBookingTool(call.function.name, call.function.arguments, {
+        userId,
+        latestUserMessage: message.trim(),
+      });
+      thread.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+    }
+    completion = await openai.chat.completions.create({
+      model,
+      messages: thread,
+      max_tokens: 900,
+      temperature,
+      tools: KAI_BOOKING_TOOLS,
+    });
+  }
 
   const replyRaw = completion.choices[0]?.message?.content?.trim() || "";
   const reply = finalizeReplyText(replyRaw);

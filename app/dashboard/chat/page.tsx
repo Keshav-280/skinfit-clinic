@@ -112,7 +112,12 @@ export default function ChatPage() {
   );
 
   // kAI's opening screen: only the seeded greeting so far, shown as a hero instead of a bubble.
-  const kaiEmpty = activeAssistant === "ai" && messages.length <= 1 && !isLoading && !error;
+  // The opening greeting is stored as a first message, but the hero already says it, so it never
+  // shows as a bubble.
+  const visibleMessages = messages.filter(
+    (m, i) => !(i === 0 && activeAssistant === "ai" && m.sender !== "patient" && m.text.trim() === AI_GREETING)
+  );
+  const kaiEmpty = activeAssistant === "ai" && visibleMessages.length === 0 && !isLoading && !error;
 
   // On phones the on-screen keyboard covers the bottom of the page. Track the visible area so
   // the chat shrinks to fit above the keyboard (message box rises with it) instead of the page
@@ -121,24 +126,32 @@ export default function ChatPage() {
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
+    const bottomBars = () => Array.from(document.querySelectorAll<HTMLElement>("nav.fixed.bottom-0"));
     const update = () => {
       const covered = window.innerHeight - vv.height - vv.offsetTop;
       if (covered > 120) {
         const navBottom = document.querySelector("nav")?.getBoundingClientRect().bottom ?? 0;
         const top = Math.max(vv.offsetTop, 0) + Math.max(navBottom, 0);
         setKeyboardFrame({ top, height: Math.max(vv.height - Math.max(navBottom, 0), 200) });
+        bottomBars().forEach((n) => (n.style.display = "none"));
       } else {
         setKeyboardFrame(null);
+        bottomBars().forEach((n) => (n.style.display = ""));
       }
     };
+    // The phone's bottom tab bar floats above the keyboard; hide it while typing so the message
+    // box sits directly on the keyboard.
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
+      bottomBars().forEach((n) => (n.style.display = ""));
     };
   }, []);
+
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   const doctorChatBlocked =
     activeAssistant === "doctor" && !doctorChatEnabled;
@@ -1062,6 +1075,7 @@ export default function ChatPage() {
       // Optimistic UI: show the patient's message immediately (no waiting for DB/LLM).
       setMessages(nextMessages);
       setInputValue("");
+      if (composerRef.current) composerRef.current.style.height = "auto";
       setIsLoading(true);
       try {
         // 1) Store patient message in DB (so it survives refresh/logout).
@@ -1246,18 +1260,19 @@ export default function ChatPage() {
             ) : (
               <button
                 type="button"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#1E1B31] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#5B66A1] whitespace-nowrap"
+                aria-label="Back to kAI"
+                title="Back to kAI"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#1E1B31] text-white shadow-sm transition-colors hover:bg-[#5B66A1]"
                 onClick={openKai}
               >
-                <Bot className="h-4 w-4 shrink-0" aria-hidden />
-                Back to kAI
+                <Bot className="h-5 w-5 shrink-0" aria-hidden />
               </button>
             )}
             {activeAssistant === "support" || activeAssistant === "doctor" ? (
               <button
                 type="button"
                 title="Hide past messages on your screen only"
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#E4E6F0] bg-[#FAF8F5] px-3 text-sm font-medium text-[#1E1B31] transition-colors hover:bg-[#F0EAE2]"
+                aria-label="Clear my view" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-[#E4E6F0] bg-white px-3 text-sm font-medium text-[#1E1B31] shadow-sm transition-colors hover:bg-[#F0EAE2] sm:px-4"
                 disabled={isLoading}
                 onClick={() => void clearClinicChatView()}
               >
@@ -1314,7 +1329,7 @@ export default function ChatPage() {
             </div>
           ) : null}
           <div className="flex flex-col gap-4">
-            {(kaiEmpty ? [] : messages).map((msg) => {
+            {visibleMessages.map((msg) => {
               const ts =
                 formatMessageTimestamp(msg.createdAt) ||
                 (msg.sender === "patient" ? "Just now" : "");
@@ -1362,7 +1377,7 @@ export default function ChatPage() {
                           />
                         ) : null
                       )}
-                      <div className="text-sm leading-relaxed [&_a]:break-words">
+                      <div className={`text-sm leading-relaxed [&_a]:break-words ${msg.sender === "patient" ? "whitespace-pre-wrap" : ""}`}>
                         <ReactMarkdown
                           skipHtml={true}
                           components={{
@@ -1516,22 +1531,32 @@ export default function ChatPage() {
                 <Mic className="h-5 w-5" />
               </button>
               ) : null}
-              <input
-                type="text"
+              <textarea
+                ref={composerRef}
+                rows={1}
                 placeholder={
                   activeAssistant === "ai"
                     ? "Ask kAI about your skin..."
                     : "Type a message (attach with paperclip or mic)..."
                 }
-                className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-[16px] text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
+                className="max-h-32 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-snug text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
                 value={inputValue}
                 disabled={isRecording}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  // grow with the text, up to the max height
+                  e.currentTarget.style.height = "auto";
+                  e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void sendMessage();
-                  }
+                  if (e.key !== "Enter" || e.shiftKey) return;
+                  // On phones Enter is a new line (the arrow button sends); on a computer Enter sends
+                  // and Shift+Enter is a new line.
+                  const touch =
+                    typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+                  if (touch) return;
+                  e.preventDefault();
+                  void sendMessage();
                 }}
               />
               <button
