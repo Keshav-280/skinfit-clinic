@@ -10,7 +10,7 @@ const SHOW_DELAY_MS = 3000;
 const STEPS = [
   {
     step: "01",
-    label: "Diagnose",
+    label: "Scan",
     description:
       "Take three photos — front, left, right. Your AI skin score and report are ready in moments.",
     Icon: Camera,
@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     step: "02",
-    label: "Build",
+    label: "Score",
     description:
       "See your scores, track what's improving, and catch what isn't — week on week.",
     Icon: TrendingUp,
@@ -26,7 +26,7 @@ const STEPS = [
   },
   {
     step: "03",
-    label: "Maintain",
+    label: "Update",
     description:
       "Answer seven quick questions on sleep, diet and recovery. It sharpens your score and your plan.",
     Icon: Heart,

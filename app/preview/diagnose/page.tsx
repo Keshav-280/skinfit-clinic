@@ -146,9 +146,9 @@ export default function DiagnosePreviewPage() {
         <div className="mx-auto flex max-w-md items-end justify-between px-2 pt-2 pb-2">
           {(
             [
-              { label: "Diagnose", Icon: Camera, active: true },
-              { label: "Build", Icon: Home, active: false },
-              { label: "Maintain", Icon: Heart, active: false },
+              { label: "Scan", Icon: Camera, active: true },
+              { label: "Score", Icon: Home, active: false },
+              { label: "Update", Icon: Heart, active: false },
               { label: "Chat", Icon: MessageCircle, active: false },
               { label: "Profile", Icon: User, active: false },
             ] as const

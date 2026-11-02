@@ -39,9 +39,9 @@ const DOCK_ITEMS: Array<{
   label: string;
   match: string[];
 }> = [
-  { key: "scan", href: "/scan" as Href, icon: "camera-outline", activeIcon: "camera", label: "Diagnose", match: ["/scan"] },
-  { key: "home", href: "/(drawer)" as Href, icon: "home-outline", activeIcon: "home", label: "Build", match: ["/", "/index"] },
-  { key: "schedules", href: "/schedules" as Href, icon: "heart-outline", activeIcon: "heart", label: "Maintain", match: ["/schedules"] },
+  { key: "scan", href: "/scan" as Href, icon: "camera-outline", activeIcon: "camera", label: "Scan", match: ["/scan"] },
+  { key: "home", href: "/(drawer)" as Href, icon: "home-outline", activeIcon: "home", label: "Score", match: ["/", "/index"] },
+  { key: "schedules", href: "/schedules" as Href, icon: "heart-outline", activeIcon: "heart", label: "Update", match: ["/schedules"] },
   { key: "chat", href: "/chat" as Href, icon: "chatbubbles-outline", activeIcon: "chatbubbles", label: "Chat", match: ["/chat"] },
   { key: "profile", href: "/profile" as Href, icon: "person-outline", activeIcon: "person", label: "Profile", match: ["/profile"] },
 ];
@@ -180,13 +180,13 @@ export default function DrawerLayout() {
       >
         <Drawer.Screen
           name="index"
-          options={{ title: "Build", drawerLabel: "Build", headerShown: false }}
+          options={{ title: "Score", drawerLabel: "Score", headerShown: false }}
         />
         <Drawer.Screen
           name="scan"
           options={{
-            title: "Diagnose",
-            drawerLabel: "Diagnose",
+            title: "Scan",
+            drawerLabel: "Scan",
             headerShown: false,
             lazy: false,
           }}
@@ -194,8 +194,8 @@ export default function DrawerLayout() {
         <Drawer.Screen
           name="schedules"
           options={{
-            title: "Maintain",
-            drawerLabel: "Maintain",
+            title: "Update",
+            drawerLabel: "Update",
             headerShown: false,
           }}
         />
