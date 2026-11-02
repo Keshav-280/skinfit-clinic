@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/src/db", () => ({ db: {} }));
 vi.mock("@/src/db/schema", () => ({}));
+vi.mock("@/src/lib/chatLive", () => ({ notifyChatThreadUpdated: vi.fn() }));
 vi.mock("@/src/lib/appointmentRequests", () => ({
   createAppointmentRequest: vi.fn(async () => {
     throw new Error("must not be called without a clear yes");
@@ -42,27 +43,28 @@ describe("isClearConfirmation", () => {
 
 describe("request_appointment guard", () => {
   it("does not send a request unless the patient's latest message is a clear yes", async () => {
-    const res = await runKaiBookingTool(
-      "request_appointment",
-      JSON.stringify({ slot_id: "abc", reason: "acne" }),
-      { userId: "u1", latestUserMessage: "the Tuesday one looks good, what is the doctor's name?" }
-    );
-    expect(res.error).toBe("NOT_CONFIRMED");
+    const unsure = { userId: "u1", latestUserMessage: "the Tuesday one looks good, what time does it end?" };
+    expect((await runKaiBookingTool("request_clinic_visit", JSON.stringify({ slot_id: "abc", issue: "acne" }), unsure)).error).toBe("NOT_CONFIRMED");
+    // same guard for the fallback message to the clinic team
+    const fallback = JSON.stringify({ preferred_day: "Saturday", preferred_time: "morning", issue: "acne" });
+    expect((await runKaiBookingTool("send_visit_request_to_clinic_team", fallback, unsure)).error).toBe("NOT_CONFIRMED");
   });
 
   it("rejects malformed tool arguments without throwing", async () => {
     expect(
-      (await runKaiBookingTool("request_appointment", "{not json", { userId: "u1", latestUserMessage: "yes" })).error
+      (await runKaiBookingTool("request_clinic_visit", "{not json", { userId: "u1", latestUserMessage: "yes" })).error
     ).toBe("BAD_ARGUMENTS");
     expect((await runKaiBookingTool("nope", "{}", { userId: "u1", latestUserMessage: "yes" })).error).toBe(
       "UNKNOWN_TOOL"
     );
   });
 
-  it("exposes exactly the two booking tools", () => {
+  it("exposes the three visit tools, none of which name a doctor", () => {
     expect(KAI_BOOKING_TOOLS.map((t) => t.function.name)).toEqual([
-      "get_open_appointment_slots",
-      "request_appointment",
+      "get_open_visit_times",
+      "request_clinic_visit",
+      "send_visit_request_to_clinic_team",
     ]);
+    expect(JSON.stringify(KAI_BOOKING_TOOLS).toLowerCase()).not.toContain("doctor_id");
   });
 });

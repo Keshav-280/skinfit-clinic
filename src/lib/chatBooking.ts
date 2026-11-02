@@ -1,8 +1,16 @@
 import "server-only";
 
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/src/db";
-import { appointmentRequests, appointments, doctorSlots, users } from "@/src/db/schema";
+import {
+  appointmentRequests,
+  appointments,
+  chatMessages,
+  chatThreads,
+  doctorSlots,
+  users,
+} from "@/src/db/schema";
+import { notifyChatThreadUpdated } from "@/src/lib/chatLive";
 import { createAppointmentRequest } from "@/src/lib/appointmentRequests";
 import { slotDateAndHmToUtcInstant } from "@/src/lib/clinicSlotUtcInstant";
 import { dateOnlyFromYmd, localCalendarYmd, ymdFromDateOnly } from "@/src/lib/date-only";
@@ -141,6 +149,7 @@ export async function listOpenSlotsForPatient(
 
   const now = Date.now();
   const out: OfferedSlot[] = [];
+  const seenTimes = new Set<string>();
   for (const r of rows) {
     const start = slotDateAndHmToUtcInstant(r.slotDate, r.slotTimeHm);
     if (!start || start.getTime() <= now) continue;
@@ -149,7 +158,11 @@ export async function listOpenSlotsForPatient(
     if (opts.partOfDay === "morning" && hour >= 12) continue;
     if (opts.partOfDay === "afternoon" && (hour < 12 || hour >= 17)) continue;
     if (opts.partOfDay === "evening" && hour < 17) continue;
-    out.push(toOffered(r, nameById.get(r.doctorId) ?? "the clinic doctor"));
+    // A clinic visit, not a doctor: if several doctors are free at the same time, offer it once.
+    const timeKey = `${ymdFromDateOnly(r.slotDate)}|${r.slotTimeHm}`;
+    if (seenTimes.has(timeKey)) continue;
+    seenTimes.add(timeKey);
+    out.push(toOffered(r, nameById.get(r.doctorId) ?? "the clinic"));
     if (out.length >= MAX_SLOTS_OFFERED) break;
   }
   console.info(`[kai] slot lookup: ${out.length} open after removing past, booked and held slots`);
@@ -175,9 +188,9 @@ export const KAI_BOOKING_TOOLS = [
   {
     type: "function" as const,
     function: {
-      name: "get_open_appointment_slots",
+      name: "get_open_visit_times",
       description:
-        "Look up the clinic's real open appointment slots for this patient. Call this when the patient wants to book, schedule or see a doctor. Never offer a time that this tool did not return.",
+        "Look up the clinic's real open visit times. Call this when the patient wants to book a clinic visit, after you know what it is for. Never offer a time that this tool did not return.",
       parameters: {
         type: "object",
         properties: {
@@ -191,22 +204,85 @@ export const KAI_BOOKING_TOOLS = [
   {
     type: "function" as const,
     function: {
-      name: "request_appointment",
+      name: "request_clinic_visit",
       description:
-        "Send an appointment request for ONE slot returned by get_open_appointment_slots. Only call this after you have told the patient the exact day, time and doctor and they have clearly said yes in their latest message. The clinic confirms the request afterwards; it is not a confirmed booking.",
+        "Send a clinic visit request for ONE time returned by get_open_visit_times. Only call this after you have told the patient the exact day and time and they have clearly said yes in their latest message. The clinic confirms the request afterwards; it is not a confirmed booking.",
       parameters: {
         type: "object",
         properties: {
           slot_id: { type: "string", description: "slot_id exactly as returned by the lookup." },
-          reason: { type: "string", description: "The patient's reason in a few words, in their own terms." },
+          issue: { type: "string", description: "What the visit is for, a few words, e.g. 'Acne on cheeks'." },
+          why: { type: "string", description: "Short extra detail, e.g. 'Been 2 weeks'. Optional." },
+          phone: { type: "string", description: "Patient's mobile number, only if the tool asked for it and they gave it." },
+          phone_country_code: { type: "string", description: "e.g. +91. Optional." },
         },
-        required: ["slot_id", "reason"],
+        required: ["slot_id", "issue"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "send_visit_request_to_clinic_team",
+      description:
+        "Fallback for when there are no open times (or none suit the patient): pass the patient's preferred day and time to the clinic team in Clinic Support so staff can call back and fix a time. Only call after the patient clearly said yes in their latest message to you sending it.",
+      parameters: {
+        type: "object",
+        properties: {
+          preferred_day: { type: "string", description: "In the patient's words, e.g. 'this Saturday' or '8 Nov'." },
+          preferred_time: { type: "string", description: "In the patient's words, e.g. 'after 5 pm' or 'morning'." },
+          issue: { type: "string", description: "What the visit is for, a few words." },
+          why: { type: "string", description: "Short extra detail. Optional." },
+          phone: { type: "string", description: "Patient's mobile number, only if they gave it. Optional." },
+        },
+        required: ["preferred_day", "preferred_time", "issue"],
       },
     },
   },
 ];
 
 type ToolResult = Record<string, unknown>;
+
+const clip = (v: unknown, max: number): string =>
+  typeof v === "string" ? v.trim().slice(0, max) : "";
+
+/** Posts the visit request into the patient's Clinic Support thread, where staff already look. */
+async function postVisitRequestToClinicSupport(userId: string, text: string): Promise<void> {
+  const [thread] = await db
+    .select({ id: chatThreads.id })
+    .from(chatThreads)
+    .where(and(eq(chatThreads.userId, userId), eq(chatThreads.assistantId, "support")))
+    .orderBy(desc(chatThreads.createdAt))
+    .limit(1);
+  const threadId =
+    thread?.id ??
+    (await db.insert(chatThreads).values({ userId, assistantId: "support" }).returning({ id: chatThreads.id }))[0]?.id;
+  if (!threadId) throw new Error("THREAD_CREATE_FAILED");
+  await db.insert(chatMessages).values({ threadId, sender: "patient", text, isUrgent: false });
+  await notifyChatThreadUpdated(threadId);
+}
+
+/** Phone number as the Schedules form handles it: use the one on file, or take one given in chat. */
+async function resolvePhone(userId: string, given: { phone?: unknown; phoneCountryCode?: unknown }) {
+  const [patient] = await db
+    .select({ phone: users.phone, phoneCountryCode: users.phoneCountryCode })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return ensurePatientPhoneForBooking({
+    userId,
+    existingPhone: patient?.phone,
+    existingCountryCode: patient?.phoneCountryCode,
+    bodyPhone: given.phone,
+    bodyPhoneCountryCode: given.phoneCountryCode,
+  });
+}
+
+const NOT_CONFIRMED = {
+  error: "NOT_CONFIRMED",
+  instruction:
+    "The patient has not clearly said yes yet. Repeat what you will send (day and time, or their preferred day and time) and ask: shall I send this?",
+};
 
 /** Runs one tool call for the signed-in patient. Never throws; errors come back as data. */
 export async function runKaiBookingTool(
@@ -222,7 +298,7 @@ export async function runKaiBookingTool(
   }
 
   try {
-    if (name === "get_open_appointment_slots") {
+    if (name === "get_open_visit_times") {
       const ymd = /^\d{4}-\d{2}-\d{2}$/;
       const slots = await listOpenSlotsForPatient(ctx.userId, {
         fromYmd: typeof args.from_date === "string" && ymd.test(args.from_date) ? args.from_date : undefined,
@@ -232,60 +308,55 @@ export async function runKaiBookingTool(
             ? args.part_of_day
             : undefined,
       });
+      // The patient books a clinic visit, so no doctor is named.
       return slots.length > 0
-        ? { slots }
-        : { slots: [], note: "No open slots in this window. Suggest Clinic Support (headset icon) or a different day." };
+        ? { times: slots.map((s) => ({ slot_id: s.slot_id, day: s.day, date: s.date, time: s.time })) }
+        : {
+            times: [],
+            instruction:
+              "No open times in this window. Offer to pass their preferred day and time to the clinic team (ask for both, then ask if you should send it), using send_visit_request_to_clinic_team.",
+          };
     }
 
-    if (name === "request_appointment") {
-      if (!isClearConfirmation(ctx.latestUserMessage)) {
-        return {
-          error: "NOT_CONFIRMED",
-          instruction:
-            "The patient has not clearly said yes yet. Tell them the day, time and doctor and ask: shall I send this request?",
-        };
-      }
-      const slotId = typeof args.slot_id === "string" ? args.slot_id : "";
+    if (name === "request_clinic_visit") {
+      if (!isClearConfirmation(ctx.latestUserMessage)) return NOT_CONFIRMED;
+      const slotId = clip(args.slot_id, 80);
       const slot = slotId ? await findOfferableSlot(ctx.userId, slotId) : null;
       if (!slot) {
-        return { error: "UNKNOWN_SLOT", instruction: "Look up the open slots again and offer one of those." };
+        return { error: "UNKNOWN_SLOT", instruction: "Look up the open times again and offer one of those." };
+      }
+      const issue = clip(args.issue, 200);
+      if (!issue) {
+        return { error: "ISSUE_REQUIRED", instruction: "Ask what the visit is for (a few words, e.g. Acne on cheeks)." };
       }
 
-      const [patient] = await db
-        .select({ phone: users.phone, phoneCountryCode: users.phoneCountryCode })
-        .from(users)
-        .where(eq(users.id, ctx.userId))
-        .limit(1);
-      const phone = await ensurePatientPhoneForBooking({
-        userId: ctx.userId,
-        existingPhone: patient?.phone,
-        existingCountryCode: patient?.phoneCountryCode,
+      const phone = await resolvePhone(ctx.userId, {
+        phone: args.phone,
+        phoneCountryCode: args.phone_country_code,
       });
       if (!phone.ok) {
         return {
-          error: "PHONE_REQUIRED",
+          error: phone.error,
           instruction:
-            "Ask the patient to add their phone number in Profile first, then try again. Do not ask them to type it here.",
+            phone.error === "INVALID_PHONE"
+              ? "That number does not look valid. Ask for a 10-digit mobile number again."
+              : "Ask for their 10-digit mobile number so the clinic can reach them, then try again with it.",
         };
       }
 
-      const reason =
-        typeof args.reason === "string" && args.reason.trim()
-          ? args.reason.trim().slice(0, 300)
-          : "Appointment requested through kAI chat";
       const result = await createAppointmentRequest({
         patientId: ctx.userId,
         doctorId: slot.doctor_id,
         doctorSlotId: slot.slot_id,
-        issue: reason,
-        why: "Requested through kAI chat",
+        issue,
+        why: clip(args.why, 300) || "Requested through kAI chat",
       });
       if (!result.ok) {
         const taken = result.error === "SLOT_ALREADY_BOOKED" || result.error === "SLOT_REQUEST_PENDING";
         return {
           error: result.error,
           instruction: taken
-            ? "That slot was just taken. Look up the open slots again and offer another."
+            ? "That time was just taken. Look up the open times again and offer another."
             : "Something went wrong. Apologise briefly and point them to Clinic Support (headset icon).",
         };
       }
@@ -294,9 +365,38 @@ export async function runKaiBookingTool(
         status: "REQUEST_SENT_AWAITING_CLINIC_CONFIRMATION",
         day: slot.day,
         time: slot.time,
-        doctor: slot.doctor,
         instruction:
-          "Say the request is sent and the clinic will confirm shortly (they will also get a message in Clinic Support). Do NOT say it is booked or confirmed.",
+          "Say the visit request is sent for that day and time and the clinic will confirm shortly (they will also see a message in Clinic Support). Do NOT say it is booked or confirmed.",
+      };
+    }
+
+    if (name === "send_visit_request_to_clinic_team") {
+      if (!isClearConfirmation(ctx.latestUserMessage)) return NOT_CONFIRMED;
+      const day = clip(args.preferred_day, 80);
+      const time = clip(args.preferred_time, 80);
+      const issue = clip(args.issue, 200);
+      if (!day || !time || !issue) {
+        return {
+          error: "DETAILS_MISSING",
+          instruction: "Ask for whatever is missing: preferred day, preferred time of day, and what the visit is for.",
+        };
+      }
+      const why = clip(args.why, 300);
+      const phone = await resolvePhone(ctx.userId, { phone: args.phone });
+      const text = [
+        "Clinic visit request from kAI chat (no open times were available).",
+        `Preferred day: ${day}`,
+        `Preferred time: ${time}`,
+        `Reason: ${issue}${why ? ` (${why})` : ""}`,
+        phone.ok ? `Phone: ${phone.phoneCountryCode} ${phone.phone}` : "Phone: not on file",
+        "Please call or message to confirm a time.",
+      ].join("\n");
+      await postVisitRequestToClinicSupport(ctx.userId, text);
+      return {
+        ok: true,
+        status: "PASSED_TO_CLINIC_TEAM",
+        instruction:
+          "Say you have passed their preferred day and time to the clinic team, who will get back to them to confirm. Do NOT say a time is booked.",
       };
     }
   } catch (err) {

@@ -123,36 +123,44 @@ export default function ChatPage() {
   // the chat shrinks to fit above the keyboard (message box rises with it) instead of the page
   // zooming or scrolling the header out of view.
   const [keyboardFrame, setKeyboardFrame] = useState<{ top: number; height: number } | null>(null);
+  // "Typing" starts the moment the message box is tapped (before the keyboard has finished
+  // sliding up), so the layout switches immediately instead of waiting to measure the keyboard.
+  const [typing, setTyping] = useState(false);
   useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!vv) return;
-    const bottomBars = () => Array.from(document.querySelectorAll<HTMLElement>("nav.fixed.bottom-0"));
+    if (!typing) {
+      setKeyboardFrame(null);
+      return;
+    }
+    const vv = window.visualViewport;
+    const bottomBars = Array.from(document.querySelectorAll<HTMLElement>("nav.fixed.bottom-0"));
+    bottomBars.forEach((n) => (n.style.display = "none"));
+    const html = document.documentElement;
+    const previousOverflow = html.style.overflow;
+    html.style.overflow = "hidden"; // the browser must not scroll the page behind the chat
+
+    // Cover exactly the visible area: from its top edge down to the top of the keyboard.
     const update = () => {
-      // iPhones scroll the page up when the keyboard opens instead of shrinking it, so compare the
-      // visible height with the full window height and ignore the scroll offset.
-      const keyboardUp = window.innerHeight - vv.height > 120;
-      if (keyboardUp) {
-        // Cover exactly the visible area: top edge to the top of the keyboard.
-        setKeyboardFrame({ top: vv.offsetTop, height: vv.height });
-        bottomBars().forEach((n) => (n.style.display = "none"));
-      } else {
-        setKeyboardFrame(null);
-        bottomBars().forEach((n) => (n.style.display = ""));
-      }
+      setKeyboardFrame({
+        top: vv?.offsetTop ?? 0,
+        height: vv?.height ?? window.innerHeight,
+      });
     };
     update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    document.addEventListener("focusin", update);
-    document.addEventListener("focusout", update);
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    // the keyboard animates in; keep measuring while it does
+    const timer = window.setInterval(update, 100);
+    const stop = window.setTimeout(() => window.clearInterval(timer), 1200);
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-      document.removeEventListener("focusin", update);
-      document.removeEventListener("focusout", update);
-      bottomBars().forEach((n) => (n.style.display = ""));
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.clearInterval(timer);
+      window.clearTimeout(stop);
+      html.style.overflow = previousOverflow;
+      bottomBars.forEach((n) => (n.style.display = ""));
+      setKeyboardFrame(null);
     };
-  }, []);
+  }, [typing]);
 
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -1537,6 +1545,8 @@ export default function ChatPage() {
               <textarea
                 ref={composerRef}
                 rows={1}
+                onFocus={() => setTyping(true)}
+                onBlur={() => setTyping(false)}
                 placeholder={
                   activeAssistant === "ai"
                     ? "Ask kAI about your skin..."
@@ -1566,6 +1576,8 @@ export default function ChatPage() {
                 type="button"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1E1B31] text-white shadow-md transition-colors hover:bg-[#5B66A1] disabled:opacity-40"
                 title="Send"
+                onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
                 disabled={
                   isLoading ||
                   isRecording ||
