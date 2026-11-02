@@ -1572,7 +1572,7 @@ export function FaceScanFlow({
             <div
               className={
                 isDiagnoseHero
-                  ? "relative z-10 flex h-full min-h-0 flex-col space-y-4 px-1 pb-2 pt-2 sm:px-2"
+                  ? "relative z-10 flex h-full min-h-0 flex-col space-y-4 px-1 pb-2 pt-0 sm:px-2"
                   : "contents"
               }
             >
@@ -1580,13 +1580,11 @@ export function FaceScanFlow({
               className={`grid gap-4 ${
                 isOnboardingScan
                   ? "md:grid-cols-[1.05fr_0.95fr]"
-                  : isDiagnoseHero
-                    ? "flex-1"
-                    : ""
+                  : ""
               }`}
             >
               {!isMobileDevice && isDiagnoseHero ? (
-                <div className="flex h-full min-h-0 flex-col justify-end pt-8 sm:pt-10">
+                <div className="flex h-full min-h-0 flex-col justify-end">
                   <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31] shadow-sm">
                     Recommended
                   </span>
@@ -1658,7 +1656,7 @@ export function FaceScanFlow({
                   </div>
                 </button>
               ) : isDiagnoseHero ? (
-                <div className="flex h-full min-h-0 flex-col justify-end pt-8 sm:pt-10">
+                <div className="flex h-full min-h-0 flex-col justify-end">
                   <span className="relative inline-flex w-fit items-center rounded-full bg-white/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#1E1B31] shadow-sm">
                     Recommended
                   </span>

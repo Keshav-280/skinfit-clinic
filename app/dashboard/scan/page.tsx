@@ -42,7 +42,7 @@ export default function ScanPage() {
         className={
           flowExpanded
             ? "relative z-10 flex min-h-0 w-full min-w-0 flex-1 flex-col"
-            : "relative z-10 mx-auto flex min-h-[calc(100dvh-8.5rem)] w-full max-w-lg flex-col gap-5 px-4 pb-8 pt-3 sm:max-w-xl md:max-w-2xl md:px-6"
+            : "relative z-10 mx-auto flex min-h-[calc(100dvh-8.5rem)] w-full max-w-lg flex-col gap-5 px-4 pb-8 pt-4 sm:max-w-xl md:max-w-2xl md:px-6"
         }
       >
         <div className={flowExpanded ? "hidden" : "contents"}>

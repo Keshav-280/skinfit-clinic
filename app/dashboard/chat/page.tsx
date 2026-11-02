@@ -52,9 +52,6 @@ type SidebarContact = {
   doctorId?: string;
 };
 
-const CARD_SHADOW =
-  "rounded-[22px] border border-[#E4E6F0] bg-white shadow-[0_8px_24px_rgba(30,27,49,0.08)]";
-
 const MAX_RECORD_SECONDS = 120;
 
 /** kAI's face, cropped from the avatar, on a soft lavender-to-blush disc. */
@@ -1166,13 +1163,13 @@ export default function ChatPage() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex h-[calc(100dvh-11.5rem)] min-h-[440px] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"
+      className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[420px] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"
     >
       {/* Chat */}
       <div
-        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${CARD_SHADOW}`}
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="flex items-center justify-between gap-2 border-b border-[#E4E6F0] px-4 py-3.5 sm:px-6 sm:py-4">
+        <div className="flex items-center justify-between gap-2 px-1 pb-3 sm:px-2">
           <div className="flex min-w-0 items-center gap-3">
             {activeAssistant === "ai" ? (
               <KaiFace size={44} online />
@@ -1266,7 +1263,7 @@ export default function ChatPage() {
 
         <div
           ref={messagesScrollRef}
-          className="flex flex-1 flex-col overflow-y-auto bg-[#FAF8F5] p-4 sm:p-6"
+          className="flex flex-1 flex-col overflow-y-auto px-1 py-2 sm:px-2"
         >
           {kaiEmpty ? (
             <div className="m-auto flex max-w-sm flex-col items-center px-2 text-center">
@@ -1408,7 +1405,7 @@ export default function ChatPage() {
             onSupportPress={openClinicSupport}
           />
         ) : (
-        <div className="border-t border-[#E4E6F0] bg-white p-4">
+        <div className="px-1 pt-2">
           {composerError ? (
             <p role="alert" className="mb-2 text-xs font-medium text-rose-700">
               {composerError}
@@ -1451,7 +1448,7 @@ export default function ChatPage() {
             </div>
           ) : null}
 
-            <div className="flex items-center gap-2 rounded-full border border-[#E4E6F0] bg-[#FAF8F5] px-3 py-2">
+            <div className="flex items-center gap-2 rounded-full border border-[#E4E6F0] bg-white px-3 py-2 shadow-sm">
               <input
                 ref={attachmentInputRef}
                 type="file"

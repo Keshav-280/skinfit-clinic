@@ -172,11 +172,6 @@ export function WeeklyCheckinEntryCard({
                 })}
               </div>
             ) : null}
-            {insight?.trim() ? (
-              <p className="mb-4 rounded-xl bg-[#F8EDEE]/80 px-3 py-2.5 text-[13px] leading-snug text-[#1E1B31]">
-                {insight.trim()}
-              </p>
-            ) : null}
             <Link
               href="/dashboard/maintain/checkin?edit=1"
               className="inline-flex w-full items-center justify-center gap-1 rounded-xl border border-[#E4E6F0] bg-white py-3 text-[13.5px] font-bold text-[#1E1B31] transition hover:bg-[#FAF8F5]"
