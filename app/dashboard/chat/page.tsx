@@ -114,6 +114,32 @@ export default function ChatPage() {
   // kAI's opening screen: only the seeded greeting so far, shown as a hero instead of a bubble.
   const kaiEmpty = activeAssistant === "ai" && messages.length <= 1 && !isLoading && !error;
 
+  // On phones the on-screen keyboard covers the bottom of the page. Track the visible area so
+  // the chat shrinks to fit above the keyboard (message box rises with it) instead of the page
+  // zooming or scrolling the header out of view.
+  const [keyboardFrame, setKeyboardFrame] = useState<{ top: number; height: number } | null>(null);
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const update = () => {
+      const covered = window.innerHeight - vv.height - vv.offsetTop;
+      if (covered > 120) {
+        const navBottom = document.querySelector("nav")?.getBoundingClientRect().bottom ?? 0;
+        const top = Math.max(vv.offsetTop, 0) + Math.max(navBottom, 0);
+        setKeyboardFrame({ top, height: Math.max(vv.height - Math.max(navBottom, 0), 200) });
+      } else {
+        setKeyboardFrame(null);
+      }
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
   const doctorChatBlocked =
     activeAssistant === "doctor" && !doctorChatEnabled;
 
@@ -1163,6 +1189,11 @@ export default function ChatPage() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
+      style={
+        keyboardFrame
+          ? { position: "fixed", left: 0, right: 0, top: keyboardFrame.top, height: keyboardFrame.height, minHeight: 0, zIndex: 40, padding: "0 1rem 0.5rem", background: "#FAF8F5" }
+          : undefined
+      }
       className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[420px] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"
     >
       {/* Chat */}
@@ -1492,7 +1523,7 @@ export default function ChatPage() {
                     ? "Ask kAI about your skin..."
                     : "Type a message (attach with paperclip or mic)..."
                 }
-                className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
+                className="max-h-24 min-w-0 flex-1 bg-transparent px-1 py-2 text-[16px] text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
                 value={inputValue}
                 disabled={isRecording}
                 onChange={(e) => setInputValue(e.target.value)}

@@ -23,6 +23,9 @@ import {
   getAiChatUsage,
 } from "@/src/lib/aiChatLimit";
 import { coerceRoutinePlanList } from "@/src/lib/routine";
+import { scanDisplayResolvedFromRow } from "@/src/lib/resolveScanDisplayScores";
+import { formatKaiReferences, retrieveKaiReferences } from "@/src/lib/kaiKnowledge";
+import { KAI_SYSTEM_PROMPT } from "@/src/lib/kaiPersona";
 
 type AssistantId = "ai" | "doctor" | "support";
 
@@ -41,6 +44,39 @@ type ChatScan = {
   annotations: unknown;
   scores: unknown;
 };
+
+/**
+ * The scores exactly as the patient sees them in the app (adjusted display scale, doctor edits
+ * and retake estimates applied). The raw database columns are on a different scale (acne can be
+ * 100 where the app shows 79) and two of them are named misleadingly (hydration = under-eye,
+ * texture = acne scars), so they must never be quoted.
+ */
+function shownScoresText(s: ChatScan): string {
+  const r = scanDisplayResolvedFromRow({
+    overallScore: s.overallScore,
+    acne: s.acne,
+    wrinkles: s.wrinkles,
+    pigmentation: s.pigmentation,
+    hydration: s.hydration,
+    texture: s.texture,
+    scores: s.scores,
+  });
+  const v = r.resolvedRagParamValues;
+  const part = (label: string, n: number | undefined) =>
+    typeof n === "number" ? `${label} ${Math.round(n)}` : null;
+  const est = new Set(r.estimatedKeys);
+  return [
+    part("overall", r.metrics.overall_score),
+    part("acne", v.active_acne),
+    part("acne scars", v.acne_scar),
+    part("pigmentation", v.pigmentation),
+    part("wrinkles", v.wrinkles),
+    part(est.has("under_eye") ? "under-eye (estimate, retake suggested)" : "under-eye", v.under_eye),
+    part("sagging & volume", v.sagging_volume),
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
 
 type ChatVisitNote = {
   id: string;
@@ -219,7 +255,7 @@ function buildPatientContext(params: {
     : "";
 
   const latestScanLine = latestScan
-    ? `Latest scan (${formatScanCreatedForContext(latestScan.createdAt)} clinic local, id ${latestScan.id}${latestScan.scanName ? ` "${truncate(latestScan.scanName, 40)}"` : ""}): summary scores 0-100 (higher = better) - overall ${latestScan.overallScore}, acne ${latestScan.acne}, pigmentation ${latestScan.pigmentation}, wrinkles ${latestScan.wrinkles}, hydration ${latestScan.hydration}, texture ${latestScan.texture}. AI summary: ${truncate(latestScan.aiSummary ?? "N/A", 220)}${latestExtra ? ` ${latestExtra}` : ""}`
+    ? `Latest scan (${formatScanCreatedForContext(latestScan.createdAt)} clinic local, id ${latestScan.id}${latestScan.scanName ? ` "${truncate(latestScan.scanName, 40)}"` : ""}): skin scores 0-100 as shown to the patient in the app (higher = better) - ${shownScoresText(latestScan)}. AI summary: ${truncate(latestScan.aiSummary ?? "N/A", 220)}${latestExtra ? ` ${latestExtra}` : ""}`
     : `No scans found yet.`;
 
   const recentScansLines =
@@ -230,7 +266,7 @@ function buildPatientContext(params: {
             const clin = formatClinicalScoresLine(s.scores, 120);
             const ann = formatAnnotationsLine(s.annotations, 100);
             const tail = [clin, ann].filter(Boolean).join(" ");
-            return `- ${when} (id ${s.id}): overall ${s.overallScore}/100 (acne ${s.acne}, pigmentation ${s.pigmentation}, wrinkles ${s.wrinkles}, hydration ${s.hydration}, texture ${s.texture})${tail ? ` | ${tail}` : ""}`;
+            return `- ${when} (id ${s.id}): ${shownScoresText(s)}${tail ? ` | ${tail}` : ""}`;
           })
           .join("\n")
       : `- No recent scans.`;
@@ -317,21 +353,7 @@ function buildPatientContext(params: {
 }
 
 const ASSISTANT_SYSTEM: Record<AssistantId, string> = {
-  ai: [
-    "You are kAI, the SkinFit Wellness skin companion. You are NOT a doctor and you never replace one.",
-    "Talk with the patient like a warm, knowledgeable friend: explain their own scan report and weekly check-in in plain words, what common treatments involve, what is normal after a procedure, and simple routine and lifestyle habits.",
-    "Use the patient context provided by the app (scan scores, findings, weekly check-in answers, treatments, appointments) so answers are about THEM, not generic.",
-    "You must not diagnose, name a condition as certain, prescribe or recommend specific medicines, doses, or prescription actives, or tell the patient to start or stop a treatment. Explain and educate instead.",
-    "Always send the patient to the clinic (Clinic support button in this chat, or an appointment) when: a mole or spot is changing, bleeding, itching or growing fast; a rash, swelling, pain or infection signs; anything near the eyes; pregnancy or breastfeeding questions; questions about isotretinoin, steroids or other prescription medicines; or whenever you are unsure. Say it kindly and explain why.",
-    "If the user describes severe symptoms (trouble breathing, rapidly worsening swelling, spreading infection, severe eye pain), tell them to seek urgent medical care immediately.",
-    "Treat higher 0-100 scan summary scores as better skin health.",
-    "When clinical model scores (1-5) appear in context, higher = more severe; do not confuse with 0-100 metrics.",
-    "Findings map lines (e.g. Acne~45%,52%) describe where the last scan flagged issues on the face image.",
-    "Scan timestamps in patient context are clinic local date and time (24h, e.g. India IST unless the deployment sets CLINIC_SLOT_UTC_OFFSET_MINUTES). Use them verbatim when the user asks when a scan was taken.",
-    "Keep your answer short (max ~180 words). Always end with a complete sentence. If you are near the output limit, stop early but do not leave an unfinished phrase.",
-    "Use a friendly tone. Prefer short paragraphs and clear bullets. Never claim to be human or to be the clinic's doctor.",
-    "Output format: (1) Direct answer, (2) What you can do now, (3) When to contact the clinic.",
-  ].join("\n"),
+  ai: KAI_SYSTEM_PROMPT,
   doctor: [
     "You are Dr. Ruby Sachdev (dermatology).",
     "You provide cautious, non-definitive medical guidance based only on the patient context provided.",
@@ -622,11 +644,36 @@ export async function POST(req: Request) {
       : { apiKey: openaiKey }
   );
 
+  // Reference material for kAI: licensed open-access articles + the clinic's own guidance.
+  // A lookup problem must never stop the patient getting an answer.
+  let referenceBlock = "";
+  if (normalizedAssistant === "ai") {
+    try {
+      const previousUserTurn = Array.isArray(history)
+        ? [...history].reverse().find((h) => h?.role === "user" && typeof h.content === "string")
+        : undefined;
+      const refs = retrieveKaiReferences({
+        message: message.trim(),
+        recentUserText:
+          previousUserTurn && previousUserTurn.content.trim() !== message.trim()
+            ? previousUserTurn.content
+            : undefined,
+        boostTerms: user?.primaryConcern ? [user.primaryConcern] : undefined,
+      });
+      referenceBlock = formatKaiReferences(refs);
+      console.info(`[kai] reference passages used: ${refs.length}`);
+    } catch (err) {
+      console.warn("[kai] reference lookup skipped", err instanceof Error ? err.message : err);
+    }
+  }
+
   const openaiMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> =
     [
       {
         role: "system",
-        content: `${systemPrompt}\n\nPatient context:\n${patientContext}`,
+        content: `${systemPrompt}\n\nPatient context:\n${patientContext}${
+          referenceBlock ? `\n\n${referenceBlock}` : ""
+        }`,
       },
     ];
 
@@ -655,7 +702,8 @@ export async function POST(req: Request) {
     model,
     messages: openaiMessages,
     max_tokens: 900,
-    temperature: 0.4,
+    // kAI is a companion, so a little warmer than the clinic-facing assistants.
+    temperature: normalizedAssistant === "ai" ? 0.6 : 0.4,
   });
 
   const replyRaw = completion.choices[0]?.message?.content?.trim() || "";

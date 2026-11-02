@@ -11,6 +11,11 @@ const PDFJS_TRACE = [
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingIncludes: {
+    // kAI reads these at runtime (src/lib/kaiKnowledge.ts); make sure they ship in the image.
+    "/api/ai/chat": [
+      "./src/data/rag/open_sources_chunks.json",
+      "./src/data/rag/clinic_chunks.json",
+    ],
     "/api/skinfit-report-generator": PDFJS_TRACE,
     "/api/doctor/patients/**": PDFJS_TRACE,
   },
