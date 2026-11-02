@@ -128,25 +128,28 @@ export default function ChatPage() {
     if (!vv) return;
     const bottomBars = () => Array.from(document.querySelectorAll<HTMLElement>("nav.fixed.bottom-0"));
     const update = () => {
-      const covered = window.innerHeight - vv.height - vv.offsetTop;
-      if (covered > 120) {
-        const navBottom = document.querySelector("nav")?.getBoundingClientRect().bottom ?? 0;
-        const top = Math.max(vv.offsetTop, 0) + Math.max(navBottom, 0);
-        setKeyboardFrame({ top, height: Math.max(vv.height - Math.max(navBottom, 0), 200) });
+      // iPhones scroll the page up when the keyboard opens instead of shrinking it, so compare the
+      // visible height with the full window height and ignore the scroll offset.
+      const keyboardUp = window.innerHeight - vv.height > 120;
+      if (keyboardUp) {
+        // Cover exactly the visible area: top edge to the top of the keyboard.
+        setKeyboardFrame({ top: vv.offsetTop, height: vv.height });
         bottomBars().forEach((n) => (n.style.display = "none"));
       } else {
         setKeyboardFrame(null);
         bottomBars().forEach((n) => (n.style.display = ""));
       }
     };
-    // The phone's bottom tab bar floats above the keyboard; hide it while typing so the message
-    // box sits directly on the keyboard.
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
       bottomBars().forEach((n) => (n.style.display = ""));
     };
   }, []);
@@ -1205,7 +1208,7 @@ export default function ChatPage() {
       transition={{ duration: 0.4, ease: "easeOut" }}
       style={
         keyboardFrame
-          ? { position: "fixed", left: 0, right: 0, top: keyboardFrame.top, height: keyboardFrame.height, minHeight: 0, zIndex: 40, padding: "0 1rem 0.5rem", background: "#FAF8F5" }
+          ? { position: "fixed", left: 0, right: 0, top: keyboardFrame.top, height: keyboardFrame.height, minHeight: 0, zIndex: 90, padding: "calc(env(safe-area-inset-top) + 0.5rem) 1rem 0.5rem", background: "#FAF8F5" }
           : undefined
       }
       className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[420px] flex-col gap-4 md:h-[calc(100vh-100px)] md:flex-row md:gap-6"

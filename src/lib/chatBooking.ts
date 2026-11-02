@@ -15,7 +15,7 @@ import { ensurePatientPhoneForBooking } from "@/src/lib/ensurePatientPhoneForBoo
 import { formatSlotTimeRange } from "@/src/lib/slotTimeHm";
 
 /** How far ahead kAI looks for open slots, and how many it offers at once. */
-const LOOKAHEAD_DAYS = 14;
+const LOOKAHEAD_DAYS = 30;
 const MAX_SLOTS_OFFERED = 6;
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -46,8 +46,8 @@ export type OfferedSlot = {
 };
 
 /**
- * Open slots the patient could ask for: in the future, with the patient's own doctor if they
- * have one (otherwise the clinic's doctors), not already booked and not already requested by
+ * Open slots the patient could ask for: in the future, with any clinic doctor (the patient's
+ * own doctor first), not already booked and not already requested by
  * someone else. Same visibility rules as the Schedules page.
  */
 async function doctorsForPatient(userId: string) {
@@ -55,8 +55,11 @@ async function doctorsForPatient(userId: string) {
     getAssignedDoctorIdForPatient(userId),
     listRegisteredClinicDoctors(),
   ]);
-  const own = registered.filter((d) => !assignedId || d.id === assignedId);
-  return own.length > 0 ? own : registered;
+  // Same as the Schedules page: any clinic doctor can be booked. The patient's own doctor
+  // comes first so their slots are offered first.
+  return [...registered].sort(
+    (a, b) => Number(b.id === assignedId) - Number(a.id === assignedId)
+  );
 }
 
 /** Re-checks one slot from scratch: right doctor for this patient, in the future, still free. */
@@ -115,6 +118,9 @@ export async function listOpenSlotsForPatient(
     orderBy: [asc(doctorSlots.slotDate), asc(doctorSlots.slotTimeHm)],
     columns: { id: true, doctorId: true, slotDate: true, slotTimeHm: true, slotEndTimeHm: true },
   });
+  console.info(
+    `[kai] slot lookup: ${ids.length} doctor(s), ${rows.length} slot(s) between ${fromYmd} and ${ymdFromDateOnly(toDate < limitDate ? toDate : limitDate)}`
+  );
   if (rows.length === 0) return [];
 
   const [booked, pending] = await Promise.all([
@@ -146,6 +152,7 @@ export async function listOpenSlotsForPatient(
     out.push(toOffered(r, nameById.get(r.doctorId) ?? "the clinic doctor"));
     if (out.length >= MAX_SLOTS_OFFERED) break;
   }
+  console.info(`[kai] slot lookup: ${out.length} open after removing past, booked and held slots`);
   return out;
 }
 
