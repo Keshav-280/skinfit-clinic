@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Settings } from "lucide-react";
-import { DashboardPageSection } from "@/components/dashboard/DashboardPageSection";
+import { Bell, Gift, ShieldCheck, UserRound } from "lucide-react";
 import type { SessionUserProfile } from "@/src/lib/auth/get-session";
 import {
   APPOINTMENT_REMINDER_HOURS_DEFAULT,
@@ -22,18 +21,40 @@ import {
 type Props = {
   initial: SessionUserProfile;
   embedded?: boolean;
-  /** Left: snapshot/visits + daily reminders + password. Right: contact details + visit reminders. */
+  /**
+   * "profile-page" shows one group at a time behind tabs: Account (details + password), Reminders,
+   * Wallet (rewards, family card) and Privacy. Wallet and Privacy sit OUTSIDE the form so their own
+   * buttons can never submit it.
+   */
   layout?: "stacked" | "profile-page";
-  leftSlot?: ReactNode;
+  walletSlot?: ReactNode;
+  privacySlot?: ReactNode;
 };
+
+type ProfileTab = "account" | "reminders" | "wallet" | "privacy";
+
+const PROFILE_TABS: { id: ProfileTab; label: string; Icon: typeof UserRound }[] = [
+  { id: "account", label: "Account", Icon: UserRound },
+  { id: "reminders", label: "Reminders", Icon: Bell },
+  { id: "wallet", label: "Wallet", Icon: Gift },
+  { id: "privacy", label: "Privacy", Icon: ShieldCheck },
+];
 
 export function ProfileForm({
   initial,
   embedded = false,
   layout = "stacked",
-  leftSlot = null,
+  walletSlot = null,
+  privacySlot = null,
 }: Props) {
   const router = useRouter();
+  const [tab, setTab] = useState<ProfileTab>("account");
+  // allow deep links such as /dashboard/profile#wallet
+  useEffect(() => {
+    const h = window.location.hash.replace("#", "");
+    const match = PROFILE_TABS.find((t) => t.id === h);
+    if (match) setTab(match.id);
+  }, []);
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
   const [phoneCountryCode, setPhoneCountryCode] = useState(
@@ -630,31 +651,59 @@ export function ProfileForm({
   );
 
   if (layout === "profile-page") {
+    const editingTab = tab === "account" || tab === "reminders";
     return (
-      <form onSubmit={onSubmit} className="space-y-6">
-        {alerts}
-        <div className="grid min-w-0 gap-6 lg:grid-cols-2 lg:items-start">
-          <div className="min-w-0 space-y-6">
-            {leftSlot}
-            {dailyRemindersSection}
+      <div className="space-y-4">
+        <div
+          role="tablist"
+          aria-label="Profile sections"
+          className="grid grid-cols-4 gap-1.5 rounded-2xl bg-[#F0EAE2]/70 p-1.5"
+        >
+          {PROFILE_TABS.map(({ id, label, Icon }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setTab(id);
+                  window.history.replaceState(null, "", `#${id}`);
+                }}
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[12px] font-semibold transition-colors sm:flex-row sm:justify-center sm:gap-2 sm:text-sm ${
+                  active
+                    ? "bg-[#1E1B31] text-white shadow-sm"
+                    : "text-[#1E1B31] hover:bg-white/70"
+                }`}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <form onSubmit={onSubmit} hidden={!editingTab} className="space-y-5">
+          {alerts}
+          <div hidden={tab !== "account"} className="space-y-5">
+            {detailsSection}
             {passwordSection}
           </div>
-          <div className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:self-start">
-            <DashboardPageSection
-              kicker="Account"
-              title="Settings"
-              description="Contact details and visit reminders."
-              icon={Settings}
-            >
-              <div className="space-y-6">
-                {detailsSection}
-                {visitRemindersSection}
-                {submitButton}
-              </div>
-            </DashboardPageSection>
+          <div hidden={tab !== "reminders"} className="space-y-5">
+            {visitRemindersSection}
+            {dailyRemindersSection}
           </div>
+          {submitButton}
+        </form>
+
+        <div hidden={tab !== "wallet"} className="space-y-5">
+          {walletSlot}
         </div>
-      </form>
+        <div hidden={tab !== "privacy"} className="space-y-5">
+          {privacySlot}
+        </div>
+      </div>
     );
   }
 

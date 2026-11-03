@@ -1547,11 +1547,7 @@ export default function ChatPage() {
                 rows={1}
                 onFocus={() => setTyping(true)}
                 onBlur={() => setTyping(false)}
-                placeholder={
-                  activeAssistant === "ai"
-                    ? "Ask kAI about your skin..."
-                    : "Type a message (attach with paperclip or mic)..."
-                }
+                placeholder="Type a message"
                 className="max-h-32 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-snug text-[#1E1B31] placeholder:text-[#1E1B31]/40 focus:outline-none"
                 value={inputValue}
                 disabled={isRecording}

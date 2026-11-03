@@ -1,14 +1,4 @@
 import { redirect } from "next/navigation";
-import {
-  Bell,
-  Clock3,
-  Goal,
-  MapPin,
-  Phone,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
-} from "lucide-react";
 import { FamilyWalletCard } from "@/components/dashboard/FamilyWalletCard";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
 import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection";
@@ -29,94 +19,68 @@ function prettyValue(value: string | number | null | undefined, fallback = "Not 
 }
 
 function formatPhone(countryCode: string | null | undefined, phone: string | null) {
-  if (!phone?.trim()) return "Not added";
+  if (!phone?.trim()) return null;
   return `${countryCode?.trim() || "+91"} ${phone.trim()}`;
 }
 
-function formatReminderHours(hours: number) {
-  if (hours <= 0) return "Off";
-  return `${hours}h before visit`;
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return `${parts[0]![0] ?? ""}${parts.length > 1 ? (parts[parts.length - 1]![0] ?? "") : ""}`.toUpperCase();
 }
 
-function ProfileSnapshot({
+/** Who you are at a glance: name, how to reach you, and a few skin facts as chips. */
+function ProfileHeader({
   user,
 }: {
   user: NonNullable<Awaited<ReturnType<typeof getSessionUserProfile>>>;
 }) {
-  const items = [
-    {
-      label: "Personal",
-      value: [
-        user.age != null ? `${user.age} yrs` : null,
-        prettyValue(user.gender, ""),
-      ]
-        .filter(Boolean)
-        .join(" · ") || "Not added",
-      icon: UserRound,
-    },
-    {
-      label: "Skin type",
-      value: prettyValue(user.skinType),
-      icon: Sparkles,
-    },
-    {
-      label: "Primary goal",
-      value: prettyValue(user.primaryGoal),
-      icon: Goal,
-    },
-    {
-      label: "Phone",
-      value: formatPhone(user.phoneCountryCode, user.phone),
-      icon: Phone,
-    },
-    {
-      label: "Routine reminders",
-      value: user.routineRemindersEnabled
-        ? `${user.routineAmReminderHm} AM · ${user.routinePmReminderHm} PM`
-        : "Off",
-      icon: Clock3,
-    },
-    {
-      label: "Visit reminder",
-      value: formatReminderHours(user.appointmentReminderHoursBefore),
-      icon: Bell,
-    },
-    {
-      label: "Timezone",
-      value: user.timezone || "Asia/Kolkata",
-      icon: MapPin,
-    },
-    {
-      label: "Profile status",
-      value: user.onboardingComplete ? "Onboarding complete" : "Onboarding pending",
-      icon: ShieldCheck,
-    },
-  ];
+  const phone = formatPhone(user.phoneCountryCode, user.phone);
+  const chips = [
+    user.age != null ? `${user.age} yrs` : null,
+    user.gender?.trim() ? prettyValue(user.gender) : null,
+    user.skinType?.trim() ? `${prettyValue(user.skinType)} skin` : null,
+    user.primaryGoal?.trim() ? `Goal: ${prettyValue(user.primaryGoal)}` : null,
+  ].filter(Boolean) as string[];
 
   return (
-    <section className="rounded-[22px] border border-white/70 bg-white/40 p-4 shadow-[0_8px_30px_rgba(30, 27, 49,0.06)] backdrop-blur-sm sm:p-5">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {items.map(({ label, value, icon: Icon }) => (
-          <div
-            key={label}
-            className="rounded-[18px] border border-white/70 bg-white/45 px-3.5 py-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] bg-[#1E1B31] text-white shadow-sm">
-                <Icon className="h-4 w-4" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#64748B]">
-                  {label}
-                </p>
-                <p className="truncate text-sm font-bold text-[#1F2A44]">
-                  {value}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
+    <section className="rounded-[22px] border border-[#E4E6F0] bg-white p-5 shadow-[0_8px_24px_rgba(30,27,49,0.06)]">
+      <div className="flex items-center gap-4">
+        <span
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#1E1B31] font-serif text-xl font-semibold text-white"
+          aria-hidden
+        >
+          {initialsOf(user.name)}
+        </span>
+        <div className="min-w-0">
+          <h1 className="truncate font-serif text-2xl font-semibold text-[#1E1B31]">
+            {user.name?.trim() || "Your profile"}
+          </h1>
+          <p className="truncate text-sm text-[#6B7280]">{user.email}</p>
+          {phone ? <p className="truncate text-sm text-[#6B7280]">{phone}</p> : null}
+        </div>
       </div>
+      {chips.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {chips.map((c) => (
+            <span
+              key={c}
+              className="rounded-full bg-[#F0EAE2] px-3 py-1 text-xs font-semibold text-[#1E1B31]"
+            >
+              {c}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {!user.onboardingComplete ? (
+        <a
+          href="/onboarding/questionnaire?entry=resume"
+          className="mt-4 flex items-center justify-between rounded-xl bg-[#F8EDEE] px-4 py-3 text-sm font-semibold text-[#1E1B31]"
+        >
+          Finish your skin questionnaire
+          <span aria-hidden>&rsaquo;</span>
+        </a>
+      ) : null}
     </section>
   );
 }
@@ -126,22 +90,26 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-1 pb-10 sm:px-0">
-      <RewardsCard />
+    <div className="mx-auto max-w-3xl space-y-5 px-1 pb-10 sm:px-0">
+      <ProfileHeader user={user} />
       <ProfileForm
         initial={user}
         embedded
         layout="profile-page"
-        leftSlot={
+        walletSlot={
           <>
+            <RewardsCard />
             <FamilyWalletCard />
-            <ProfileSnapshot user={user} />
+          </>
+        }
+        privacySlot={
+          <>
+            <KaiAboutCard />
+            <DeleteAccountSection />
           </>
         }
       />
-      <KaiAboutCard />
-      <DeleteAccountSection />
-      <div className="border-t border-[#E5E7EB] pt-6">
+      <div className="border-t border-[#E5E7EB] pt-5">
         <LogoutButton />
       </div>
     </div>
