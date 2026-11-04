@@ -8,6 +8,10 @@ import {
   parseScanDetectionRegions,
   parseScanDetectionRegionsByPose,
 } from "@/src/lib/scanDetectionRegions";
+import {
+  parseScanSpotAnnotatedByPose,
+  parseScanSpotAnnotatedUrl,
+} from "@/src/lib/parseClinicalScores";
 import { OpsScanInspector } from "@/components/ops/OpsScanInspector";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +35,17 @@ export default async function OpsScanDetail({
     imageUrl: string;
     poseId?: string;
   }>;
+  // Same source the patient report uses: pre-rendered annotated photos per pose.
+  const baked =
+    parseScanSpotAnnotatedByPose(row.scores) ??
+    (parseScanSpotAnnotatedUrl(row.scores)
+      ? { centre: parseScanSpotAnnotatedUrl(row.scores) as string }
+      : undefined);
   const photos = gallery.map((g) => ({
     label: g.label,
     imageUrl: g.imageUrl,
+    patientUrl: (g.poseId && baked?.[g.poseId]) || g.imageUrl,
+    hasBaked: Boolean(g.poseId && baked?.[g.poseId]),
     regions: (g.poseId && byPose[g.poseId]) || (g.poseId === "centre" ? centre : []),
     isCentre: g.poseId === "centre",
   }));

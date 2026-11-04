@@ -12,6 +12,8 @@ import type {
 type Photo = {
   label: string;
   imageUrl: string;
+  patientUrl: string;
+  hasBaked: boolean;
   regions: DetectionRegion[];
   isCentre: boolean;
 };
@@ -41,6 +43,7 @@ export function OpsScanInspector({
 }) {
   const [concern, setConcern] = useState<ConcernChipId>("all");
   const [showOverlay, setShowOverlay] = useState(true);
+  const [mode, setMode] = useState<"patient" | "raw">("patient");
   const model = (scores.modelFeatureScores ?? {}) as Record<string, unknown>;
   const nRegions = photos.reduce((n, p) => n + p.regions.length, 0);
 
@@ -61,6 +64,18 @@ export function OpsScanInspector({
             {f.label}
           </button>
         ))}
+        <div className="flex rounded-full border border-[#E4E6F0] bg-white p-0.5 text-sm font-semibold">
+          {(["patient", "raw"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`rounded-full px-3 py-1 ${mode === m ? "bg-[#2B2F63] text-white" : ""}`}
+            >
+              {m === "patient" ? "What patient sees" : "Raw detector data"}
+            </button>
+          ))}
+        </div>
         <label className="ml-auto flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -71,6 +86,9 @@ export function OpsScanInspector({
         </label>
       </div>
       <p className="text-xs text-[#6B7280]">
+        {mode === "patient"
+          ? "Exactly as the patient report shows it: the pre-rendered annotated photo for each pose, plus landmark zones on the front photo. No wrinkle lines are shown to patients."
+          : "Raw stored detector output, which can differ from what patients see."}{" "}
         Circles are detector findings ({nRegions} across all photos). Dashed ellipses are landmark zones drawn
         from the score, so they are not proof of a detection. Wrinkle lines come from the wrinkle mask.
       </p>
@@ -80,18 +98,18 @@ export function OpsScanInspector({
           <figure key={p.label} className="space-y-1">
             <div className="relative overflow-hidden rounded-xl border border-[#E4E6F0] bg-black">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.imageUrl} alt={p.label} className="block w-full" />
+              <img src={mode === "patient" ? p.patientUrl : p.imageUrl} alt={p.label} className="block w-full" />
               {showOverlay ? (
                 <ScanDetectionOverlay
-                  regions={p.regions}
-                  wrinkleLines={p.isCentre ? wrinkleLines : []}
+                  regions={mode === "patient" && p.hasBaked ? [] : p.regions}
+                  wrinkleLines={mode === "raw" && p.isCentre ? wrinkleLines : []}
                   proxyRegions={p.isCentre ? proxyRegions : []}
                   activeConcern={concern}
                 />
               ) : null}
             </div>
             <figcaption className="text-xs text-[#6B7280]">
-              {p.label} · {p.regions.length} circles
+              {p.label} · {mode === "patient" ? (p.hasBaked ? "annotated photo" : "plain photo") : `${p.regions.length} circles`}
               {p.isCentre
                 ? ` · ${wrinkleLines.length} wrinkle lines · ${proxyRegions.length} zones`
                 : ""}
