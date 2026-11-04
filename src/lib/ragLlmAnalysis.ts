@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { KAI_REPORT_GUARDRAILS } from "@/src/lib/kaiPersona";
+import { isCleanCopy, numbersAreGrounded } from "@/src/lib/reportCopyGuard";
 import {
   RAG_KAI_PARAM_LABELS,
   type RagKaiParamKey,
@@ -267,6 +269,9 @@ WELLNESS & ENVIRONMENT INTEGRATION:
 - Connect supplements + active ingredients to skin parameters: if they're using Retinol, mention its effect on wrinkles/texture. If taking Vitamin C supplements, connect to pigmentation.
 - Make the environmental insights feel like a smart friend who checked the weather for them, not a textbook. Keep it conversational and specific to THEIR city.
 CAUSES MUST BE BALANCED: include BOTH what went well (wins) and what dragged (risks), not just one side. If a parameter held steady, explain why in plain words. If everything was positive, one gentle watch-out for next week is enough.
+HOUSE VOICE AND SAFETY (same rules as the kAI chat, they apply to this report too):
+${KAI_REPORT_GUARDRAILS}
+BASELINE RULE: if SCAN CONTEXT says this is the first baseline scan, there is no trend. Describe the starting picture only (what looks strongest, what to focus on first). Never say anything moved, improved or dropped. Never quote textbook text; explain in your own plain words, and use evidence only when it is about everyday skin care, never rare conditions.
 EMPATHY PARAGRAPH: at most 2 short sentences. Encouraging, specific to the data, forward looking. No clinical lecture.`;
 
   const user = `PATIENT CONTEXT
@@ -361,7 +366,23 @@ Return ONLY JSON with this exact shape:
   "insight": {"title": "string", "body": "string (<= 40 words), grounded in evidence or correlation"}
 }`;
 
-  return await callJson<LlmTrackerAnalysis>(system, user);
+  const out = await callJson<LlmTrackerAnalysis>(system, user);
+  if (!out) return null;
+  // Validate: drop any field that is cut off, jargon-heavy, or carries a number not in the data.
+  // Dropped fields fall back to curated copy in the caller, never to raw textbook text.
+  const ok = (t: unknown, max = 320) =>
+    typeof t === "string" && isCleanCopy(t, max) && numbersAreGrounded(t, user);
+  const cleaned = { ...out } as Partial<LlmTrackerAnalysis>;
+  if (!ok(out.insight?.body, 280)) delete cleaned.insight;
+  if (!ok(out.article?.why, 200) || !out.article?.title) delete cleaned.article;
+  if (!ok(out.hookLine)) delete cleaned.hookLine;
+  if (!ok(out.empathyParagraph, 360)) delete cleaned.empathyParagraph;
+  if (Array.isArray(out.causes)) {
+    const good = out.causes.filter((c) => ok(c, 360));
+    if (good.length > 0) cleaned.causes = good;
+    else delete cleaned.causes;
+  }
+  return cleaned as LlmTrackerAnalysis;
 }
 
 /** -------- Daily focus batch (7 days at a time) -------- */

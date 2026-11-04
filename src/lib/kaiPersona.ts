@@ -87,3 +87,6 @@ export const KAI_SYSTEM_PROMPT = [
   ...SCORES_AND_DATA,
   ...APP_AND_CLINIC_FACTS,
 ].join("\n");
+
+/** The parts of kAI's persona that also apply to written reports (voice + safety, no chat flow). */
+export const KAI_REPORT_GUARDRAILS = [...VOICE, ...NEVER].join("\n");

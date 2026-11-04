@@ -13,6 +13,7 @@ import type {
   PatientTrackerReport,
 } from "./patientTrackerReport.types";
 import { humanizeReportLine } from "./trackerReportNarrative";
+import { curatedInsight, isCleanCopy } from "./reportCopyGuard";
 
 type CauseTone = "win" | "drag" | "watch" | "neutral";
 
@@ -339,10 +340,14 @@ export function presentTrackerReportNarrative(
       ? report.hookSentence
       : sanitizeTrackerNarrativeForLockedPatient(report.hookSentence)
   );
+  // Older saved reports may hold a raw textbook excerpt here; never show those.
+  const safeInsightSource = isCleanCopy(report.insightText, 360)
+    ? report.insightText
+    : `kAI insight. ${curatedInsight(null).insight}`;
   const insightText = guard(
     scoresUnlocked
-      ? report.insightText
-      : sanitizeTrackerNarrativeForLockedPatient(report.insightText)
+      ? safeInsightSource
+      : sanitizeTrackerNarrativeForLockedPatient(safeInsightSource)
   );
   const predictionText = guard(
     scoresUnlocked

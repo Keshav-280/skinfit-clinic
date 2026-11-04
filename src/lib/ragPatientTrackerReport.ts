@@ -44,6 +44,7 @@ import {
   buildPredictionText,
   scanContextNoteForLlm,
 } from "@/src/lib/trackerReportNarrative";
+import { curatedInsight, filterConsumerEvidence } from "@/src/lib/reportCopyGuard";
 import { buildTrackerResources } from "@/src/lib/trackerResourceLinks";
 import { loadWellnessAndWeatherForScan } from "@/src/lib/wellnessWeatherContext";
 
@@ -305,14 +306,16 @@ export async function buildRagPatientTrackerNarrative(input: {
     behavior,
   });
 
-  const evidence = await productionTextbookRetrieve({
+  const rawEvidence = await productionTextbookRetrieve({
     query: retrievalQuery,
     boostTerms: [
       identityAtScan.primaryConcern ?? "",
       weak ? RAG_KAI_PARAM_LABELS[weak.key] : "",
     ],
-    topK: 8,
+    topK: 12,
   });
+  // Consumer-level, relevant chunks only: no rare-disease chapters, no weak matches.
+  const evidence = filterConsumerEvidence(rawEvidence).slice(0, 8);
 
   const [visits, chatMsgs, wellnessCtx, multiWeekInsights] = await Promise.all([
     loadVisitNotesUpTo(userId, scanRow.createdAt),
@@ -327,7 +330,7 @@ export async function buildRagPatientTrackerNarrative(input: {
   const scanContextNote = scanContextNoteForLlm(scanContextKind);
 
   let llmOut = null;
-  const llmOn = isLlmEnabled() && scanContextKind !== "onboarding_first_scan";
+  const llmOn = isLlmEnabled();
   if (llmOn) {
     llmOut = await analyzeTrackerReport({
       scanContextKind,
@@ -394,21 +397,12 @@ export async function buildRagPatientTrackerNarrative(input: {
     );
   }
 
-  const article =
-    llmOut?.article ??
-    (evidence[0]
-      ? {
-          title: `Clinical note: ${evidence[0].chunk.tags[0] ?? "Dermatology guidance"}`,
-          source: `${evidence[0].chunk.source}${
-            evidence[0].chunk.pageHint ? ` p.${evidence[0].chunk.pageHint}` : ""
-          }`,
-          why: evidence[0].chunk.text.slice(0, 140).trim(),
-        }
-      : {
-          title: "Barrier-first skincare basics",
-          source: "kAI indexed textbook",
-          why: "Supports stability while your trend forms.",
-        });
+  const curated = curatedInsight(weak ? (weak.key as RagKaiParamKey) : null);
+  const article = llmOut?.article ?? {
+    title: curated.article,
+    source: "kAI guide",
+    why: "Everyday guidance chosen for your focus area.",
+  };
 
   const video = llmOut?.video ?? {
     title: "Weekly skin check-in routine (5-angle method)",
@@ -416,17 +410,10 @@ export async function buildRagPatientTrackerNarrative(input: {
     why: "Stable capture keeps trend lines trustworthy.",
   };
 
-  const insight =
-    llmOut?.insight ??
-    (evidence[1]
-      ? {
-          title: "kAI insight from textbook evidence",
-          body: evidence[1].chunk.text.slice(0, 200).trim(),
-        }
-      : {
-          title: "kAI insight",
-          body: "Consistency in AM/PM execution is the fastest lever for clearer weekly trends.",
-        });
+  const insight = llmOut?.insight ?? {
+    title: "kAI insight",
+    body: curated.insight,
+  };
 
   const actions =
     llmOut?.actions && llmOut.actions.length === 3
