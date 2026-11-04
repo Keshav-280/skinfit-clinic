@@ -891,6 +891,23 @@ def detect_ml(bgr, skin_mask=None, max_radius_px=65, pts=None):
     all_dets = yolo_dets + roboflow_dets + dc_dets
     h, w = bgr.shape[:2]
 
+    # Per-kind confidence floors. The models are run at a very low raw threshold (0.15) so they
+    # return many candidates; without a floor here, weak scar/mole guesses (shadows, stubble, hair
+    # edges, turned-cheek highlights) were drawn as findings. Scar and mole models are the noisiest,
+    # so they need the highest bar. Dark circles use their own darkness score and are left alone.
+    KIND_MIN_SCORE = {
+        "acne": 0.25,
+        "acne_scar": 0.45,
+        "scar": 0.45,
+        "mole": 0.40,
+        "dark_spot": 0.35,
+    }
+    all_dets = [
+        d for d in all_dets
+        if d.get("kind") == "dark_circle"
+        or d.get("score", 0) >= KIND_MIN_SCORE.get(d.get("kind", ""), 0.35)
+    ]
+
     # Filter to skin-only regions if mask available
     # Skip filtering for dark_circle/acne_scar — they sit near eyes where
     # the face-parsing model marks non-skin
