@@ -263,6 +263,19 @@ export async function runSpotDetector(
 
 export type SpotAnnotationPose = "centre" | "left" | "right";
 
+/**
+ * Trust gate (cross-pose). The three photos are independent looks at the same skin, so real marks
+ * show up in more than one of them. A pose with far more marks than the other poses is almost
+ * always the detector reading shadows, hair edges or drifted landmarks. Such a pose shows the plain
+ * photo: no annotation is much better for trust than a wrong one. A scan where ALL poses are busy
+ * is kept (that is genuine acne).
+ */
+export function poseLooksTrustworthy(count: number, otherCounts: number[]): boolean {
+  if (count < 6) return true;
+  const maxOther = otherCounts.length ? Math.max(...otherCounts) : 0;
+  return count <= maxOther * 2 + 2;
+}
+
 export async function annotateScanPoses(input: {
   files: Partial<Record<SpotAnnotationPose, File>>;
   apiKey?: string;
@@ -276,6 +289,7 @@ export async function annotateScanPoses(input: {
   const annotatedByPose: Record<string, string> = {};
   const regionsByPose: Record<string, DetectionRegion[]> = {};
   let centreSpots: SpotCoordinate[] = [];
+  const results: Partial<Record<SpotAnnotationPose, SpotDetectorResult>> = {};
 
   await Promise.all(
     (["centre", "left", "right"] as const).map(async (pose) => {
@@ -286,18 +300,31 @@ export async function annotateScanPoses(input: {
           apiKey: input.apiKey,
           timeoutMs: input.timeoutMs,
         });
-        if (result.annotated_image) {
-          annotatedByPose[pose] = result.annotated_image;
-        }
-        const regions = spotsToDetectionRegions(result.spots ?? []);
-        if (regions.length > 0) regionsByPose[pose] = regions;
-        if (pose === "centre") centreSpots = result.spots ?? [];
+        results[pose] = result;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.warn("[spot-v18] skipped", { pose, error: message });
       }
     })
   );
+
+  const counts = Object.fromEntries(
+    (Object.keys(results) as SpotAnnotationPose[]).map((k) => [k, results[k]?.spots?.length ?? 0])
+  ) as Record<string, number>;
+  for (const pose of Object.keys(results) as SpotAnnotationPose[]) {
+    const result = results[pose]!;
+    const others = Object.entries(counts)
+      .filter(([k]) => k !== pose)
+      .map(([, v]) => v);
+    if (!poseLooksTrustworthy(counts[pose], others)) {
+      console.warn("[spot-v18] annotation suppressed (untrusted)", { pose, counts });
+      continue;
+    }
+    if (result.annotated_image) annotatedByPose[pose] = result.annotated_image;
+    const regions = spotsToDetectionRegions(result.spots ?? []);
+    if (regions.length > 0) regionsByPose[pose] = regions;
+    if (pose === "centre") centreSpots = result.spots ?? [];
+  }
 
   return {
     annotatedByPose,

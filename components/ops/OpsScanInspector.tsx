@@ -14,6 +14,8 @@ type Photo = {
   imageUrl: string;
   patientUrl: string;
   hasBaked: boolean;
+  poseId: string;
+  hidden: boolean;
   regions: DetectionRegion[];
   isCentre: boolean;
 };
@@ -29,12 +31,14 @@ const FILTERS: { id: ConcernChipId; label: string }[] = [
 ];
 
 export function OpsScanInspector({
+  scanId,
   photos,
   wrinkleLines,
   proxyRegions,
   scores,
   stored,
 }: {
+  scanId: number;
   photos: Photo[];
   wrinkleLines: WrinkleLine[];
   proxyRegions: ProxyRegion[];
@@ -43,6 +47,25 @@ export function OpsScanInspector({
 }) {
   const [concern, setConcern] = useState<ConcernChipId>("all");
   const [showOverlay, setShowOverlay] = useState(true);
+  const [hiddenPoses, setHiddenPoses] = useState<Record<string, boolean>>(
+    Object.fromEntries(photos.map((p) => [p.poseId, p.hidden]))
+  );
+  const [busy, setBusy] = useState<string | null>(null);
+  async function toggleHidden(poseId: string) {
+    const next = !hiddenPoses[poseId];
+    setBusy(poseId);
+    try {
+      const res = await fetch(`/api/clinic/ops/scans/${scanId}/annotations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pose: poseId, hidden: next }),
+      });
+      if (res.ok) setHiddenPoses((h) => ({ ...h, [poseId]: next }));
+      else alert("Could not update. Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
   const [mode, setMode] = useState<"patient" | "raw">("patient");
   const model = (scores.modelFeatureScores ?? {}) as Record<string, unknown>;
   const nRegions = photos.reduce((n, p) => n + p.regions.length, 0);
@@ -108,6 +131,22 @@ export function OpsScanInspector({
                 />
               ) : null}
             </div>
+            {p.hasBaked && p.poseId ? (
+              <button
+                type="button"
+                disabled={busy === p.poseId}
+                onClick={() => toggleHidden(p.poseId)}
+                className={`w-full rounded-lg px-2 py-1.5 text-xs font-semibold ${
+                  hiddenPoses[p.poseId]
+                    ? "bg-[#1E1B31] text-white"
+                    : "border border-[#DF9DA4] bg-[#F8EDEE] text-[#1E1B31]"
+                }`}
+              >
+                {hiddenPoses[p.poseId]
+                  ? "Hidden from patient. Tap to show again"
+                  : "Annotations look wrong? Hide from patient"}
+              </button>
+            ) : null}
             <figcaption className="text-xs text-[#6B7280]">
               {p.label} · {mode === "patient" ? (p.hasBaked ? "annotated photo" : "plain photo") : `${p.regions.length} circles`}
               {p.isCentre

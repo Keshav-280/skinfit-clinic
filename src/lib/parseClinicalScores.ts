@@ -74,19 +74,36 @@ export function parseScanAcneMaskDataUri(scores: unknown): string | undefined {
   return parseStoredImageRef(scores, "acneMaskUrl", "acneMaskDataUri");
 }
 
-export function parseScanSpotAnnotatedUrl(scores: unknown): string | undefined {
+/** Poses where staff chose to hide annotations from the patient (`scores.annotationSuppressed`). */
+export function parseSuppressedAnnotationPoses(scores: unknown): string[] {
+  if (!scores || typeof scores !== "object") return [];
+  const raw = (scores as Record<string, unknown>).annotationSuppressed;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is string => typeof x === "string");
+}
+
+export function parseScanSpotAnnotatedUrl(
+  scores: unknown,
+  opts?: { includeSuppressed?: boolean }
+): string | undefined {
+  if (!opts?.includeSuppressed && parseSuppressedAnnotationPoses(scores).includes("centre")) {
+    return undefined;
+  }
   return parseStoredImageRef(scores, "spotAnnotatedUrl", "spotAnnotatedUrl");
 }
 
 export function parseScanSpotAnnotatedByPose(
-  scores: unknown
+  scores: unknown,
+  opts?: { includeSuppressed?: boolean }
 ): Record<string, string> | undefined {
+  const hidden = opts?.includeSuppressed ? [] : parseSuppressedAnnotationPoses(scores);
   if (!scores || typeof scores !== "object") return undefined;
   const raw = (scores as Record<string, unknown>).spotAnnotatedByPose;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const out: Record<string, string> = {};
   for (const [pose, val] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof val !== "string" || !val.trim()) continue;
+    if (hidden.includes(pose)) continue;
     out[pose] = publicFileDisplayUrl(val.trim()) ?? val.trim();
   }
   return Object.keys(out).length > 0 ? out : undefined;

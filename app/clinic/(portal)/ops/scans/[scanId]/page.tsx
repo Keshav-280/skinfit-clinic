@@ -11,6 +11,7 @@ import {
 import {
   parseScanSpotAnnotatedByPose,
   parseScanSpotAnnotatedUrl,
+  parseSuppressedAnnotationPoses,
 } from "@/src/lib/parseClinicalScores";
 import { OpsScanInspector } from "@/components/ops/OpsScanInspector";
 
@@ -37,15 +38,18 @@ export default async function OpsScanDetail({
   }>;
   // Same source the patient report uses: pre-rendered annotated photos per pose.
   const baked =
-    parseScanSpotAnnotatedByPose(row.scores) ??
-    (parseScanSpotAnnotatedUrl(row.scores)
-      ? { centre: parseScanSpotAnnotatedUrl(row.scores) as string }
+    parseScanSpotAnnotatedByPose(row.scores, { includeSuppressed: true }) ??
+    (parseScanSpotAnnotatedUrl(row.scores, { includeSuppressed: true })
+      ? { centre: parseScanSpotAnnotatedUrl(row.scores, { includeSuppressed: true }) as string }
       : undefined);
+  const suppressed = parseSuppressedAnnotationPoses(row.scores);
   const photos = gallery.map((g) => ({
     label: g.label,
     imageUrl: g.imageUrl,
     patientUrl: (g.poseId && baked?.[g.poseId]) || g.imageUrl,
     hasBaked: Boolean(g.poseId && baked?.[g.poseId]),
+    poseId: g.poseId ?? "",
+    hidden: Boolean(g.poseId && suppressed.includes(g.poseId)),
     regions: (g.poseId && byPose[g.poseId]) || (g.poseId === "centre" ? centre : []),
     isCentre: g.poseId === "centre",
   }));
@@ -60,6 +64,7 @@ export default async function OpsScanDetail({
       </h1>
       <p className="text-sm text-[#6B7280]">{payload.scanDateIso}</p>
       <OpsScanInspector
+        scanId={id}
         photos={photos}
         wrinkleLines={payload.wrinkleLines}
         proxyRegions={payload.proxyRegions}
