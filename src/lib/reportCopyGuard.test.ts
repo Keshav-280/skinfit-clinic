@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { displayCapForScores } from "@/src/lib/clarityGrade";
 import {
   filterConsumerEvidence,
   isCleanCopy,
@@ -6,6 +7,26 @@ import {
 } from "@/src/lib/reportCopyGuard";
 
 const payload = { current_scan: { grades: [{ key: "pigmentation", score_100: 61 }] } };
+
+describe("early-scan display cap", () => {
+  it("before a clinic visit: 80 for scans 1-3, then +2 per scan, never above 85", () => {
+    const caps = [1, 2, 3, 4, 5, 6, 7, 8, 20].map((n) => displayCapForScores({ scanOrdinal: n }));
+    expect(caps).toEqual([80, 80, 80, 82, 84, 85, 85, 85, 85]);
+  });
+
+  it("after a clinic visit the ramp continues to 90", () => {
+    const caps = [3, 4, 5, 6, 7, 8, 20].map((n) =>
+      displayCapForScores({ scanOrdinal: n, displayUnlocked: true })
+    );
+    expect(caps).toEqual([80, 82, 84, 86, 88, 90, 90]);
+  });
+
+  it("scans without a stamp use the locked ceiling", () => {
+    expect(displayCapForScores({})).toBe(85);
+    expect(displayCapForScores(null)).toBe(85);
+    expect(displayCapForScores({ displayUnlocked: true })).toBe(90);
+  });
+});
 
 describe("validateGeneratedReport", () => {
   it("accepts a clean report", () => {

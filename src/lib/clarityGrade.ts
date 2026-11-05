@@ -34,6 +34,43 @@ export const PATIENT_DISPLAY_SCORE_MAX = 80;
 export const PATIENT_DISPLAY_SCORE_CAP = 90;
 /** Floor on patient-facing numeric scores. */
 export const PATIENT_DISPLAY_SCORE_FLOOR = 0;
+/**
+ * The first few scans are held lower so early numbers feel earned and later improvement shows.
+ * Scans 1..EARLY_SCAN_COUNT show at most EARLY_SCAN_DISPLAY_CAP. After that the ceiling rises by
+ * CAP_RISE_PER_SCAN with each scan until it reaches the full cap, so scores climb gradually
+ * (80, 80, 80, 82, 84, 86, 88, 90) and never jump.
+ */
+export const EARLY_SCAN_COUNT = 3;
+export const EARLY_SCAN_DISPLAY_CAP = 80;
+export const CAP_RISE_PER_SCAN = 2;
+
+/** Until the patient has had treatment at the clinic, scores stop here; 86-90 unlock after a visit. */
+export const LOCKED_DISPLAY_CAP = 85;
+
+/**
+ * Highest display score this scan may show. Two limits apply, the lower one wins:
+ *  - the early-scan ramp from `scores.scanOrdinal` (80 for scans 1-3, then +2 per scan);
+ *  - 85 unless `scores.displayUnlocked` is true (set when clinic staff mark a visit).
+ * A scan with neither field gets the locked ceiling of 85.
+ */
+export function displayCapForScores(scoresJson: unknown): number {
+  const root =
+    scoresJson && typeof scoresJson === "object"
+      ? (scoresJson as Record<string, unknown>)
+      : {};
+  const unlocked = root.displayUnlocked === true;
+  const ceiling = unlocked ? PATIENT_DISPLAY_SCORE_CAP : LOCKED_DISPLAY_CAP;
+  const ord = root.scanOrdinal;
+  if (typeof ord === "number" && Number.isFinite(ord) && ord >= 1) {
+    if (ord <= EARLY_SCAN_COUNT) return Math.min(ceiling, EARLY_SCAN_DISPLAY_CAP);
+    return Math.min(
+      ceiling,
+      EARLY_SCAN_DISPLAY_CAP + (ord - EARLY_SCAN_COUNT) * CAP_RISE_PER_SCAN
+    );
+  }
+  return ceiling;
+}
+
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
 /**

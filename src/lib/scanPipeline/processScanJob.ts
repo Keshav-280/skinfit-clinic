@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { stampScanOrdinal } from "@/src/lib/scanOrdinal";
 import { desc, eq } from "drizzle-orm";
 import { scanJobs, scans, skinScans, users, mobileCaptureSessions } from "@/src/db/schema";
 import type { NodePgAppDatabase } from "@/src/db/database-types";
@@ -562,6 +563,7 @@ export async function processScanJob(
         >
       )
     );
+    await stampScanOrdinal(database, inserted.id);
     const [snapshotOk, kaiOk] = await Promise.all([
       persistScanTrackerSnapshot(user.id, inserted.id, database).catch((err) => {
         logger.warn("tracker_snapshot_skipped", {

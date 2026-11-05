@@ -4,6 +4,7 @@ import {
 } from "@/src/lib/ragEightParams";
 import {
   clampPatientFacingDisplayScore,
+  displayCapForScores,
   patientDisplayClarity,
 } from "@/src/lib/clarityGrade";
 import { DOCTOR_PATIENT_DISPLAY_SCALE } from "@/src/lib/resolveScanDisplayScores";
@@ -224,7 +225,10 @@ export function mergeRagParamValuesFromScan(input: {
       continue;
     }
     if (out[key] != null) {
-      out[key] = clampPatientDisplay(patientDisplayClarity(out[key]!));
+      out[key] = Math.min(
+        displayCapForScores(input.scoresJson),
+        clampPatientDisplay(patientDisplayClarity(out[key]!))
+      );
     }
   }
 

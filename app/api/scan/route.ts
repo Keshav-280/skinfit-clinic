@@ -1,3 +1,4 @@
+import { stampScanOrdinal } from "@/src/lib/scanOrdinal";
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { eq } from "drizzle-orm";
@@ -739,6 +740,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (inserted?.id != null) {
+      await stampScanOrdinal(db, inserted.id);
       const paramRows = inferenceParamsToRows(
         v2params as Record<
           string,

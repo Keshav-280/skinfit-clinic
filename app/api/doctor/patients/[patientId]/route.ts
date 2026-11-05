@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { users } from "@/src/db/schema";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
@@ -89,7 +89,16 @@ export async function PATCH(
       .set({ clinicVisitedAt: body.clinicVisited ? new Date() : null })
       .where(and(eq(users.id, patientId), eq(users.role, "patient")));
 
-    if (body.clinicVisited) {
+    // Scores above 85 unlock after a clinic visit: flag every scan of this patient so the
+    // display ceiling follows the visit (and goes back if the visit is unmarked).
+    await db.execute(
+      sql`update scans
+          set scores = coalesce(scores, '{}'::jsonb)
+                       || jsonb_build_object('displayUnlocked', ${body.clinicVisited}::boolean)
+          where user_id = ${patientId}`
+    );
+
+    {
       // Clinic visit unlock state affects patient-facing resolvers/UI.
       // Invalidate cached patient home + scan-derived payloads so `scoresUnlocked`
       // reflects the latest `users.clinicVisitedAt`.
