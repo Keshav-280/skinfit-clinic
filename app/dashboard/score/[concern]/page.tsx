@@ -23,7 +23,8 @@ import {
 import { loadScanTrackerReport } from "@/src/lib/scanTrackerSnapshot";
 import { isOnboardingBaselineFocusActions } from "@/src/lib/onboardingBaselineFocusActions";
 import { ScoreTrendChart } from "@/components/dashboard/ScoreTrendChart";
-import { computeScoreChange } from "@/src/lib/scoreChange";
+import { computeScoreChange, describeScoreChange } from "@/src/lib/scoreChange";
+import { getConcernInsight } from "@/src/lib/concernInsight";
 import {
   buildScoreAnalysis,
   concernRawScore,
@@ -146,6 +147,23 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     return fromCauses;
   })();
 
+  // Personalised note + one weekly action (concern pages only; AI off or invalid text = null).
+  const personal =
+    !isOverall && latestScan
+      ? await getConcernInsight({
+          userId,
+          scanId: latestScan.id,
+          scanDate: latestScan.createdAt,
+          scanScores: latestScan.scores,
+          slug,
+          concernLabel: displayName,
+          scoresUnlocked,
+          score100: current100,
+          changeNote: describeScoreChange(concernChange),
+          scanCount: history.length,
+        })
+      : null;
+
   const analysisLines = buildScoreAnalysis({
     title: displayName,
     slug,
@@ -155,11 +173,12 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     lastScanLabel: latestScan
       ? format(latestScan.createdAt, "d MMM")
       : null,
-    extraLines,
+    extraLines: personal ? [personal.insight] : extraLines,
     change: concernChange,
+    omitGenericContext: Boolean(personal),
   });
 
-  const recommendations = (() => {
+  const baseRecommendations = (() => {
     const fallback = defaultConcernRecommendations(slug);
     if (!narrative) return fallback;
     if (isOnboardingBaselineFocusActions(narrative.focusActions)) {
@@ -179,6 +198,13 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     if (matched.length > 0) return matched;
     return fallback;
   })();
+
+  const recommendations = personal
+    ? [
+        personal.action,
+        ...baseRecommendations.filter((r) => r !== personal.action).slice(0, 2),
+      ]
+    : baseRecommendations;
 
   const reportHref = latestScan
     ? `/dashboard/scans/${latestScan.id}/report`

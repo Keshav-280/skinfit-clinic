@@ -151,6 +151,8 @@ export function buildScoreAnalysis(input: {
   extraLines: string[];
   /** Change over the nearest comparison that clears the noise threshold (see scoreChange.ts). */
   change?: ScoreChange | null;
+  /** True when a personalised note replaces the generic closing line. */
+  omitGenericContext?: boolean;
 }): string[] {
   const lines: string[] = [];
   const { title, current100, previous100, scanCount, lastScanLabel, extraLines, change } =
@@ -198,7 +200,7 @@ export function buildScoreAnalysis(input: {
     if (extra.trim()) lines.push(extra.trim());
   }
 
-  lines.push(CONCERN_CONTEXT[input.slug]);
+  if (!input.omitGenericContext) lines.push(CONCERN_CONTEXT[input.slug]);
   return lines;
 }
 

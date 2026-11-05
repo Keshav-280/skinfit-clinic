@@ -668,6 +668,85 @@ export function isLlmEnabled() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
+/** -------- Per-concern insight + weekly action (Score tab, one concern at a time) -------- */
+
+export type LlmConcernInsight = { insight: string; action: string };
+
+/** Medicines, doses and prescription actives are never suggested in report text. */
+const MEDICAL_ADVICE_TERMS =
+  /\b(mg|dose|dosage|tablet|capsule|antibiotic|isotretinoin|accutane|steroid|prescri\w+|hydroquinone|tretinoin|retin-a|minoxidil|finasteride)\b/i;
+
+export async function analyzeConcernInsight(input: {
+  concernLabel: string;
+  scoresUnlocked: boolean;
+  score100: number | null;
+  /** Plain description of the change since earlier scans, or null. */
+  changeNote: string | null;
+  scanCount: number;
+  patient: {
+    name: string;
+    skinType: string | null;
+    primaryConcern: string | null;
+    age: number | null;
+  };
+  wellness?: LlmWellnessCheckinInput | null;
+  cityWeather?: LlmCityWeatherInput | null;
+  background: string[];
+}): Promise<LlmConcernInsight | null> {
+  if (!getClient()) return null;
+  const band =
+    input.score100 == null
+      ? "not scored"
+      : input.scoresUnlocked
+        ? String(patientUnlockedDisplayScore(input.score100))
+        : lockedQualitativeBand(input.score100);
+
+  const system = `You are kAI, the AI skin companion inside My SkinFit (SkinFit Wellness clinic, Bangalore).
+You write a short note for ONE skin concern on the patient's Score screen. Output ONLY a JSON object.
+${KAI_REPORT_GUARDRAILS}
+SCALE: higher scores mean clearer, healthier skin. Scores never reach 100.
+DATA RULES: every number you write must appear verbatim in the data below. ${
+    input.scoresUnlocked
+      ? ""
+      : "The exact score is locked: write no score numbers and no letter grades, only the qualitative word given. "
+  }Never claim measured sun exposure. Never invent findings that are not in the data.
+STYLE: warm, plain, specific to THIS person. No dashes as punctuation. No emojis. Never shame.
+If there is only one scan, there is no trend: describe the starting picture and what to focus on, and never say anything moved.`;
+
+  const user = `CONCERN: ${input.concernLabel}
+Patient: ${input.patient.name}${input.patient.age != null ? `, age ${input.patient.age}` : ""}; skin type ${input.patient.skinType ?? "unknown"}; main concern ${input.patient.primaryConcern ?? "unknown"}
+Current ${input.concernLabel} reading: ${band}
+Change: ${input.changeNote ?? "no earlier scan to compare"}
+Scans so far: ${input.scanCount}
+
+THIS WEEK'S CHECK-IN
+${formatWellnessBlock(input.wellness)}
+
+WEATHER
+${formatCityWeatherBlock(input.cityWeather)}
+
+BACKGROUND (everyday skin-care knowledge, use only if it fits, never quote it)
+${input.background.length ? input.background.map((b) => `- ${b}`).join("\n") : "- none"}
+
+TASK
+Return JSON: {"insight": "...", "action": "..."}
+- insight: 1 to 2 short sentences about ${input.concernLabel} for this person, tied to the data above (their reading, change, or this week's habits). 45 words at most.
+- action: exactly one concrete step for THIS week, with a how-often or when. 25 words at most. Everyday habits only: no medicines, doses or prescription products. Start with a verb.`;
+
+  const out = await callJson<LlmConcernInsight>(system, user, {
+    temperature: 0.4,
+  });
+  if (!out) return null;
+  const insight = typeof out.insight === "string" ? out.insight.trim() : "";
+  const action = typeof out.action === "string" ? out.action.trim() : "";
+  const ok =
+    isCleanCopy(insight, 320) &&
+    isCleanCopy(action, 200) &&
+    !MEDICAL_ADVICE_TERMS.test(`${insight} ${action}`) &&
+    numbersAreGrounded(`${insight} ${action}`, user);
+  return ok ? { insight, action } : null;
+}
+
 export async function generatePersonalisedAction(input: {
   scanCount: number;
   primaryConcern: string | null;
