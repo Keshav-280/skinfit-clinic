@@ -1,7 +1,6 @@
-import "server-only";
-
 import { eq } from "drizzle-orm";
-import { db } from "@/src/db";
+// Worker-safe client: also used by the ml-worker report path.
+import { db } from "@/src/db/client";
 import { users } from "@/src/db/schema";
 
 export {

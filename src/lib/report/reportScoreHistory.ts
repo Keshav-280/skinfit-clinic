@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { startOfDay } from "date-fns";
-import { db } from "@/src/db";
+// Worker-safe client: this runs inside the ml-worker, where "@/src/db" (server-only) would crash.
+import { db } from "@/src/db/client";
 import { scans } from "@/src/db/schema";
 import { RAG_TO_REPORT_KEY } from "@/src/lib/kaiReportMapping";
 import { RAG_KAI_PARAM_KEYS } from "@/src/lib/ragEightParams";
