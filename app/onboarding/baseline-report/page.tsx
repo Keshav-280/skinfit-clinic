@@ -2,12 +2,30 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Sparkles } from "lucide-react";
 
 export default function OnboardingBaselineReportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const scanId = searchParams.get("scanId") ?? "";
+
+  // Ask about the questionnaire only if they have not already filled it.
+  const [questionnaireDone, setQuestionnaireDone] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/onboarding/resume", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { questionnaireFullyComplete?: boolean } | null) => {
+        if (alive) setQuestionnaireDone(d?.questionnaireFullyComplete === true);
+      })
+      .catch(() => {
+        if (alive) setQuestionnaireDone(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center px-2 py-4 md:py-8">
@@ -25,8 +43,10 @@ export default function OnboardingBaselineReportPage() {
           </h1>
           <p className="text-sm leading-relaxed text-[#6B7280]">
             Your kAI baseline scan is saved. You can open the full report from Treatment
-            History anytime. Answer a few questions when you&apos;re ready - or explore the
-            dashboard first.
+            History anytime.
+            {questionnaireDone === false
+              ? " Would you like to answer a few quick questions now? They help kAI tailor your advice."
+              : ""}
           </p>
         </div>
 
@@ -36,22 +56,28 @@ export default function OnboardingBaselineReportPage() {
         </p>
 
         <div className="flex flex-col gap-3 pt-1">
-          <button
-            type="button"
-            onClick={() => router.push("/onboarding/questionnaire?entry=resume")}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] px-5 py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#5B66A1]"
-          >
-            Continue to answer questions
-          </button>
+          {questionnaireDone === false ? (
+            <button
+              type="button"
+              onClick={() => router.push("/onboarding/questionnaire?entry=resume")}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] px-5 py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#5B66A1]"
+            >
+              Yes, answer the questions
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
               router.push("/dashboard");
               router.refresh();
             }}
-            className="w-full rounded-xl border border-white/60 bg-white/50 px-5 py-3.5 text-sm font-semibold text-[#1E1B31] backdrop-blur-sm transition-colors hover:bg-white/80"
+            className={
+              questionnaireDone === false
+                ? "w-full rounded-xl border border-white/60 bg-white/50 px-5 py-3.5 text-sm font-semibold text-[#1E1B31] backdrop-blur-sm transition-colors hover:bg-white/80"
+                : "w-full rounded-xl bg-[#1E1B31] px-5 py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#5B66A1]"
+            }
           >
-            Go to dashboard
+            {questionnaireDone === false ? "Maybe later, go to dashboard" : "Go to dashboard"}
           </button>
           {scanId ? (
             <Link

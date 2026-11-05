@@ -114,17 +114,22 @@ export function OnboardingResumeGate({
         return;
       }
 
+      // Scan first, questionnaire second. Once a baseline scan exists, send the patient to the
+      // baseline page, which ASKS whether they want to fill the questionnaire now. Never push them
+      // straight into it.
+      const afterScanUrl =
+        baselineId != null
+          ? `/onboarding/baseline-report?scanId=${baselineId}`
+          : "/onboarding/baseline-report";
+
       if (baselineSubmitted && onCaptureFlow) {
-        if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
-          router.replace(continueUrl);
-        }
+        // Scan still processing (no id yet): stay on the capture/progress screen.
+        if (baselineId != null) router.replace(afterScanUrl);
         return;
       }
 
       if (baselineSubmitted && !hasQ && (isWelcome || isKai)) {
-        if (!onboardingTargetMatches(pathname, searchParams, continueUrl)) {
-          router.replace(continueUrl);
-        }
+        router.replace(afterScanUrl);
         return;
       }
 
