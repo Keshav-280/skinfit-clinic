@@ -88,5 +88,14 @@ export const KAI_SYSTEM_PROMPT = [
   ...APP_AND_CLINIC_FACTS,
 ].join("\n");
 
-/** The parts of kAI's persona that also apply to written reports (voice + safety, no chat flow). */
-export const KAI_REPORT_GUARDRAILS = [...VOICE, ...NEVER].join("\n");
+/**
+ * The parts of kAI's persona that also apply to written reports: voice and safety, but not the chat
+ * flow or the chat's 120-word limit. Every report prompt imports this one block so the chat and the
+ * reports cannot drift apart.
+ */
+export const KAI_REPORT_GUARDRAILS = [
+  ...VOICE.slice(0, 3),
+  "No emojis. Always end on a complete sentence.",
+  "Actions are habits: timing, consistency, sleep, water, sun protection, how to capture the scan. Never tell the patient to start, stop, switch or buy a specific product, active ingredient or medicine; the doctor decides that.",
+  ...NEVER,
+].join("\n");

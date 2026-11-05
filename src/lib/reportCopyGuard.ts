@@ -79,6 +79,64 @@ const CURATED: Partial<Record<RagKaiParamKey, { insight: string; article: string
   },
 };
 
+/** Medicines, doses, prescription products and actives are never suggested in report text. */
+export const MEDICAL_ADVICE_TERMS =
+  /\b(mg|dose|dosage|tablet|capsule|antibiotic|isotretinoin|accutane|steroid|prescri\w+|hydroquinone|tretinoin|retin-a|retinoid\w*|minoxidil|finasteride)\b/i;
+
+/** Keys whose values are labels or codes, not patient-facing prose. */
+const NON_PROSE_KEYS = new Set([
+  "status", "key", "type", "parameter", "label", "movement", "confidence",
+  "state", "factor", "compared_with", "scan_id", "next_reports_on",
+]);
+/** Keys that must read as finished sentences. */
+const SENTENCE_KEYS = new Set(["summary", "finding", "detail", "text", "reason", "highlight"]);
+
+function collectProse(
+  node: unknown,
+  key: string,
+  out: Array<{ key: string; text: string }>
+) {
+  if (typeof node === "string") {
+    if (!NON_PROSE_KEYS.has(key)) out.push({ key, text: node });
+  } else if (Array.isArray(node)) {
+    for (const item of node) collectProse(item, key, out);
+  } else if (node && typeof node === "object") {
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      collectProse(v, k, out);
+    }
+  }
+}
+
+/**
+ * Checks an AI-written report (initial or update) against the rules in its prompt that are easy to
+ * break and costly when broken. Returns the problems found; empty means safe to publish.
+ * `payload` is the data the model was given: score figures must come from it.
+ */
+export function validateGeneratedReport(report: unknown, payload: unknown): string[] {
+  const prose: Array<{ key: string; text: string }> = [];
+  collectProse(report, "", prose);
+  const data = JSON.stringify(payload ?? "");
+  const issues: string[] = [];
+  for (const { key, text } of prose) {
+    const t = text.trim();
+    if (!t) continue;
+    if (MEDICAL_ADVICE_TERMS.test(t)) issues.push(`medical advice term in ${key}`);
+    if (NON_CONSUMER_TERMS.test(t)) issues.push(`clinical jargon in ${key}`);
+    if (/\bgrade\s+[A-E][+-]?\b/i.test(t)) issues.push(`letter grade in ${key}`);
+    if (t.includes("!")) issues.push(`exclamation mark in ${key}`);
+    if (SENTENCE_KEYS.has(key) && t.length > 30 && !/[.!?]["')\]]?$/.test(t)) {
+      issues.push(`unfinished sentence in ${key}`);
+    }
+    for (const m of t.matchAll(/(\d{1,3})\s*\/\s*100/g)) {
+      const n = Number(m[1]);
+      if (n > 90 || !new RegExp(`(?<!\\d)${n}(?!\\d)`).test(data)) {
+        issues.push(`score ${n}/100 not in the data (${key})`);
+      }
+    }
+  }
+  return issues;
+}
+
 const GENERIC = {
   insight:
     "Skin changes slowly, so a steady morning and evening routine is the best lever you have. Weekly check-ins show what is working.",

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { INITIAL_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/initialReportPrompt";
 import { UPDATE_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/updateReportPrompt";
+import { validateGeneratedReport } from "@/src/lib/reportCopyGuard";
 
 const TIMEOUT_MS = 20000;
 
@@ -120,10 +121,28 @@ export type GeneratedInitialReport = {
   status?: string;
 };
 
+/**
+ * Generate, validate, and retry once. A report that still breaks the safety rules is never
+ * published: the caller gets "unavailable" and shows its built-in fallback instead.
+ */
+async function chatJsonValidated(system: string, payload: unknown) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, source } = await chatJson(system, payload);
+    if (!data) return { data: null, source };
+    const issues = validateGeneratedReport(data, payload);
+    if (issues.length === 0) return { data, source };
+    console.warn("[report] AI output rejected", {
+      attempt,
+      issues: issues.slice(0, 5),
+    });
+  }
+  return { data: null, source: "fallback" as const };
+}
+
 export async function generateUpdateReportContent(
   payload: unknown
 ): Promise<{ report: GeneratedUpdateReport | null; aiUnavailable: boolean }> {
-  const { data, source } = await chatJson(UPDATE_REPORT_SYSTEM_PROMPT, payload);
+  const { data, source } = await chatJsonValidated(UPDATE_REPORT_SYSTEM_PROMPT, payload);
   if (!data) return { report: null, aiUnavailable: true };
   return {
     report: data as GeneratedUpdateReport,
@@ -134,7 +153,7 @@ export async function generateUpdateReportContent(
 export async function generateInitialReportContent(
   payload: unknown
 ): Promise<{ report: GeneratedInitialReport | null; aiUnavailable: boolean }> {
-  const { data, source } = await chatJson(INITIAL_REPORT_SYSTEM_PROMPT, payload);
+  const { data, source } = await chatJsonValidated(INITIAL_REPORT_SYSTEM_PROMPT, payload);
   if (!data) return { report: null, aiUnavailable: true };
   return {
     report: data as GeneratedInitialReport,

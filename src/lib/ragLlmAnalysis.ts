@@ -1,6 +1,10 @@
 import OpenAI from "openai";
 import { KAI_REPORT_GUARDRAILS } from "@/src/lib/kaiPersona";
-import { isCleanCopy, numbersAreGrounded } from "@/src/lib/reportCopyGuard";
+import {
+  isCleanCopy,
+  MEDICAL_ADVICE_TERMS,
+  numbersAreGrounded,
+} from "@/src/lib/reportCopyGuard";
 import {
   RAG_KAI_PARAM_LABELS,
   type RagKaiParamKey,
@@ -671,10 +675,6 @@ export function isLlmEnabled() {
 /** -------- Per-concern insight + weekly action (Score tab, one concern at a time) -------- */
 
 export type LlmConcernInsight = { insight: string; action: string };
-
-/** Medicines, doses and prescription actives are never suggested in report text. */
-const MEDICAL_ADVICE_TERMS =
-  /\b(mg|dose|dosage|tablet|capsule|antibiotic|isotretinoin|accutane|steroid|prescri\w+|hydroquinone|tretinoin|retin-a|minoxidil|finasteride)\b/i;
 
 export async function analyzeConcernInsight(input: {
   concernLabel: string;
