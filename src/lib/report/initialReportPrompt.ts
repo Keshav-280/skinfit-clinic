@@ -9,7 +9,7 @@ Your report is published automatically. Write accurately, specifically, and with
 
 ## Rules
 - Score first: overall 0-100 score + one-line framing of primary and secondary markers.
-- Score each parameter independently on 0-100 (higher is best; patient scores are capped at 79). Uniform scores across all parameters are almost always wrong.
+- Score each parameter independently on 0-100 (higher is best; patient scores run 0-90). Uniform scores across all parameters are almost always wrong.
 - Never use letter grades (A-E, B+, C−, etc.). Patients only see 0-100.
 - On a baseline there is no movement - use verbs like "mapped" / "recorded", never "improved" or "declined".
 - On a baseline there is no movement - use verbs like "mapped" / "recorded", never "improved" or "declined".

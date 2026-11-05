@@ -16,12 +16,11 @@ import {
 } from "@/src/lib/clarityGrade";
 
 describe("patientDisplayClarity", () => {
-  it("saturates high raw scores below 80 (no grade A band)", () => {
-    expect(patientDisplayClarity(100)).toBeLessThan(80);
-    expect(patientDisplayClarity(100)).toBeLessThanOrEqual(79);
-    expect(patientClarityToGrade(100)).toBe("B");
-    expect(patientClarityToGrade(97)).toBe("B");
-    expect(patientDisplayClarity(97)).toBeGreaterThanOrEqual(78);
+  it("lets a very good scan reach the top of the 0-90 range", () => {
+    expect(patientDisplayClarity(100)).toBe(90);
+    expect(patientClarityToGrade(100)).toBe("A");
+    expect(patientDisplayClarity(97)).toBeGreaterThanOrEqual(87);
+    expect(patientDisplayClarity(97)).toBeLessThan(90);
   });
 
   it("preserves sensitivity in mid range", () => {
@@ -45,7 +44,7 @@ describe("patientDisplayClarity", () => {
       expect(cur).toBeGreaterThanOrEqual(prev);
       prev = cur;
     }
-    expect(patientDisplayClarity(100)).toBe(79);
+    expect(patientDisplayClarity(100)).toBe(90);
   });
 
   it("is unchanged at and below the knee", () => {
@@ -54,32 +53,29 @@ describe("patientDisplayClarity", () => {
     expect(patientDisplayClarity(50)).toBe(55);
   });
 
-  it("floors very low raw scores at 20 (no grade E)", () => {
-    expect(patientDisplayClarity(0)).toBe(PATIENT_DISPLAY_SCORE_FLOOR);
-    expect(patientDisplayClarity(5)).toBe(PATIENT_DISPLAY_SCORE_FLOOR);
-    expect(patientClarityToGrade(0)).toBe("D");
-    expect(patientClarityToGrade(15)).toBe("D");
+  it("lets a clearly bad scan reach 0 (grade E)", () => {
+    expect(PATIENT_DISPLAY_SCORE_FLOOR).toBe(0);
+    expect(patientDisplayClarity(0)).toBe(0);
+    expect(patientClarityToGrade(0)).toBe("E");
+    expect(patientClarityToGrade(15)).toBe("E");
   });
 });
 
 describe("patientUnlockedDisplayScore", () => {
-  it("floors unlocked display below 20", () => {
-    expect(patientUnlockedDisplayScore(0)).toBe(20);
-    expect(patientUnlockedDisplayScore(12)).toBe(20);
+  it("clamps unlocked display to 0-90", () => {
+    expect(patientUnlockedDisplayScore(0)).toBe(0);
+    expect(patientUnlockedDisplayScore(12)).toBe(12);
     expect(patientUnlockedDisplayScore(72)).toBe(72);
+    expect(patientUnlockedDisplayScore(100)).toBe(90);
   });
 });
 
 describe("patientGradeFromDisplayScore", () => {
-  it("never returns A or E for patients", () => {
-    expect(patientGradeFromDisplayScore(85)).toBe("B");
-    expect(patientGradeFromDisplayScore(19)).toBe("D");
-    expect(patientGradeFromDisplayScore(0)).toBe("D");
-    for (let s = 0; s <= 100; s++) {
-      const g = patientGradeFromDisplayScore(s);
-      expect(g).not.toBe("A");
-      expect(g).not.toBe("E");
-    }
+  it("uses the full A-E range", () => {
+    expect(patientGradeFromDisplayScore(85)).toBe("A");
+    expect(patientGradeFromDisplayScore(70)).toBe("B");
+    expect(patientGradeFromDisplayScore(19)).toBe("E");
+    expect(patientGradeFromDisplayScore(0)).toBe("E");
   });
 });
 
@@ -99,14 +95,11 @@ describe("clarityToGrade", () => {
 });
 
 describe("patientClarityToGrade", () => {
-  it("maps inflated raw scores to B, not A", () => {
-    expect(patientClarityToGrade(96)).toBe("B");
-    expect(patientClarityToGrade(97)).toBe("B");
-    expect(patientClarityToGrade(100)).toBe("B");
-    for (let r = 0; r <= 100; r++) {
-      expect(patientClarityToGrade(r)).not.toBe("A");
-      expect(patientClarityToGrade(r)).not.toBe("E");
-    }
+  it("maps raw scores across the full A-E range", () => {
+    expect(patientClarityToGrade(100)).toBe("A");
+    expect(patientClarityToGrade(70)).toBe("B");
+    expect(patientClarityToGrade(40)).toBe("C");
+    expect(patientClarityToGrade(0)).toBe("E");
   });
 });
 
@@ -123,10 +116,9 @@ describe("gradeColor", () => {
 describe("classifySkinParamMetric", () => {
   it("derives sublabel from calibrated grade", () => {
     const high = classifySkinParamMetric(96);
-    expect(high.grade).toBe("B");
-    expect(high.displayScore).toBeLessThanOrEqual(80);
-    expect(classifySkinParamMetric(15).grade).toBe("D");
-    expect(classifySkinParamMetric(15).displayScore).toBeGreaterThanOrEqual(20);
+    expect(high.grade).toBe("A");
+    expect(high.displayScore).toBeLessThanOrEqual(90);
+    expect(classifySkinParamMetric(15).grade).toBe("E");
     expect(classifySkinParamMetric(85).sublabel).toBe(gradeSublabel("B"));
   });
 });
@@ -143,8 +135,8 @@ describe("patientScoreView", () => {
     const unlocked = patientScoreView(72, true);
     expect(unlocked.locked).toBe(false);
     expect(unlocked.label).toBe(String(patientUnlockedDisplayScore(72)));
-    const high = patientScoreView(79, true);
-    expect(Number(high.label)).toBeLessThanOrEqual(79);
+    const high = patientScoreView(100, true);
+    expect(Number(high.label)).toBeLessThanOrEqual(90);
     expect(high.label).not.toBe("100");
   });
 });
@@ -161,7 +153,7 @@ describe("patientKaiScoreView", () => {
     const unlocked = patientKaiScoreView(72, true);
     expect(unlocked.showLock).toBe(false);
     expect(unlocked.kaiPrimary).toBe(String(patientUnlockedDisplayScore(72)));
-    const high = patientKaiScoreView(79, true);
-    expect(Number(high.kaiPrimary)).toBeLessThanOrEqual(79);
+    const high = patientKaiScoreView(100, true);
+    expect(Number(high.kaiPrimary)).toBeLessThanOrEqual(90);
   });
 });

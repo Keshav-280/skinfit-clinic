@@ -36,7 +36,7 @@ export type DoctorOverrides = {
    */
   modelFeatureScores?: Record<string, number | null | undefined> | null;
   /**
-   * Doctor-entered patient-facing parameter scores (capped display scale, ≤79).
+   * Doctor-entered patient-facing parameter scores (display scale, 0-90).
    * When {@link patientDisplayScale} is 2, values are stored as shown to patients.
    */
   parameterScores?: Record<string, number | null | undefined> | null;

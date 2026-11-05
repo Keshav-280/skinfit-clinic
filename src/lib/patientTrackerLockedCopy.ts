@@ -248,7 +248,7 @@ export function stripUvExposureClaims(text: string): string {
 }
 
 /**
- * Patient-facing scores are always within [floor, cap] (currently 20-79).
+ * Patient-facing scores are always within [floor, cap] (currently 0-90).
  * Rewrite hallucinated out-of-range claims like "100", "95/100", "perfect score"
  * into safe qualitative language instead of fabricated exact numbers.
  */

@@ -249,7 +249,7 @@ export function DoctorScanScoreEditor({
                 <input
                   type="number"
                   min={0}
-                  max={100}
+                  max={PATIENT_DISPLAY_SCORE_CAP}
                   step={1}
                   value={score}
                   onChange={(e) =>

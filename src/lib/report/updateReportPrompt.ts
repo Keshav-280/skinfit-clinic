@@ -41,7 +41,7 @@ Patients see a 0-100 scale (higher is better). Do not use letter grades (A-E, B+
 
 The JSON already contains the model's score_100 and position for each parameter in current_scan.grades and previous_scan.grades. Copy those values exactly. Do not invent, rescale, or replace scores. Do not add parameters that are not in current_scan.grades.
 
-Anchors: scores are capped at 79. 65-79 = mild or no clear finding; 45-64 = moderate; below 45 = marked.
+Anchors: scores run 0-90. 70-90 = mild or no clear finding; 45-69 = moderate; below 45 = marked.
 
 Visible parameters: active_acne, acne_scars, pigmentation, wrinkles, under_eye, sagging_volume.
 

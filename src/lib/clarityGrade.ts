@@ -1,8 +1,8 @@
 /**
  * Patient-facing clarity grades (raw 0-100 model score → calibrated display → A-E).
  * Storage/DB keeps raw resolved scores (doctor parity); patient UI always shows
- * calibrated display scores (floor 20, cap ≤79) when unlocked, letter grades when locked.
- * Grade E is never shown to patients - floored to D (score ≥ 20).
+ * calibrated display scores (0-90) when unlocked, letter grades when locked.
+ * The full range is used: a clearly bad scan can show 0, a very good one up to 90.
  */
 
 export type ClarityGrade = "A" | "B" | "C" | "D" | "E";
@@ -30,10 +30,10 @@ export const CLARITY_GRADE_BANDS: ReadonlyArray<{
 
 /** Upper bound of patient display clarity (gamma saturation asymptote). */
 export const PATIENT_DISPLAY_SCORE_MAX = 80;
-/** Hard cap on patient-facing numeric scores - strictly below 80 so grade A is never shown. */
-export const PATIENT_DISPLAY_SCORE_CAP = 79;
-/** Floor on patient-facing numeric scores - grade E is never shown (minimum D = 20). */
-export const PATIENT_DISPLAY_SCORE_FLOOR = 20;
+/** Hard cap on patient-facing numeric scores. 90 leaves headroom: nobody's skin is shown as perfect. */
+export const PATIENT_DISPLAY_SCORE_CAP = 90;
+/** Floor on patient-facing numeric scores. */
+export const PATIENT_DISPLAY_SCORE_FLOOR = 0;
 const PATIENT_DISPLAY_GAMMA = 2.0;
 const PATIENT_DISPLAY_LAMBDA = 4.6;
 /**
@@ -94,7 +94,7 @@ function clampClarity(score: number): number {
   return Math.min(100, Math.max(0, Math.round(score)));
 }
 
-/** Final patient-facing display score - always in [20, 79]. */
+/** Final patient-facing display score - always in [0, 90]. */
 export function clampPatientFacingDisplayScore(score: number): number {
   if (!Number.isFinite(score)) return PATIENT_DISPLAY_SCORE_FLOOR;
   return Math.max(
@@ -117,7 +117,7 @@ function saturatingDisplay(raw: number): number {
 }
 
 /**
- * Raw clarity → patient-facing clarity (20-79).
+ * Raw clarity → patient-facing clarity (0-90).
  * Up to the knee: f(x) = MAX · (1 − exp(−λ · (x/100)^γ)), unchanged.
  * Above the knee: a straight line from f(knee) to the cap, so every raw point keeps counting.
  */
@@ -133,7 +133,7 @@ export function patientDisplayClarity(rawScore: number): number {
   );
 }
 
-/** Map display clarity to letter grade (>=80 A … >=20 D). Internal only - use patientGradeFromDisplayScore for UI. */
+/** Map display clarity to letter grade (>=80 A … >=20 D, below 20 E). */
 export function clarityToGrade(displayScore: number): ClarityGrade {
   const s = clampClarity(displayScore);
   if (s >= 80) return "A";
@@ -143,15 +143,12 @@ export function clarityToGrade(displayScore: number): ClarityGrade {
   return "E";
 }
 
-/** Patient letter grade from a display score (never A or E). */
+/** Patient letter grade from a display score (full A-E range). */
 export function patientGradeFromDisplayScore(displayScore: number): ClarityGrade {
-  const grade = clarityToGrade(clampPatientFacingDisplayScore(displayScore));
-  if (grade === "A") return "B";
-  if (grade === "E") return "D";
-  return grade;
+  return clarityToGrade(clampPatientFacingDisplayScore(displayScore));
 }
 
-/** Raw model clarity → calibrated display → letter grade (patient UI; never A or E). */
+/** Raw model clarity → calibrated display → letter grade (patient UI). */
 export function patientClarityToGrade(rawScore: number): ClarityGrade {
   return patientGradeFromDisplayScore(patientDisplayClarity(rawScore));
 }
@@ -314,7 +311,7 @@ const GRADE_CHART_Y: Record<ClarityGrade, number> = {
   B: 60,
   C: 40,
   D: 20,
-  E: 20,
+  E: 0,
 };
 
 export function patientChartDisplayValue(
