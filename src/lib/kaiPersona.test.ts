@@ -19,6 +19,12 @@ describe("kAI persona prompt", () => {
     expect(KAI_SYSTEM_PROMPT).toContain("never ask two questions");
   });
 
+  it("answers small talk and general questions naturally", () => {
+    expect(KAI_SYSTEM_PROMPT).toContain("how are you");
+    expect(KAI_SYSTEM_PROMPT).toContain("capable general assistant");
+    expect(KAI_SYSTEM_PROMPT).not.toContain("say kindly that you are here for their skin and SkinFit care");
+  });
+
   it("keeps the safety rules", () => {
     expect(KAI_SYSTEM_PROMPT).toContain("must not diagnose");
     expect(KAI_SYSTEM_PROMPT).toContain("isotretinoin");

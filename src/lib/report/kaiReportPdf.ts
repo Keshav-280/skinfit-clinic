@@ -464,9 +464,9 @@ function drawImageRow(
 function drawMovement(d: Doc, groups: MovementGroups) {
   const counts = [
     { label: "IMPROVED", n: groups.improved.length, tone: "good" as KaiGradeTone },
-    { label: "DECLINED", n: groups.declined.length, tone: "low" as KaiGradeTone },
+    { label: "DIPPED", n: groups.declined.length, tone: "low" as KaiGradeTone },
     {
-      label: "HOLDING",
+      label: "STEADY",
       n: groups.holding.length + groups.tracking.length,
       tone: "mid" as KaiGradeTone,
     },
@@ -514,9 +514,9 @@ function drawMovement(d: Doc, groups: MovementGroups) {
     }
     d.y += 3;
   };
-  block("DECLINED", groups.declined);
+  block("DIPPED", groups.declined);
   block("IMPROVED", groups.improved);
-  block("HOLDING", groups.holding);
+  block("STEADY", groups.holding);
   block("STILL BUILDING A BASELINE", groups.tracking);
 }
 

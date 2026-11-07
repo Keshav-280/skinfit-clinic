@@ -60,18 +60,18 @@ export function MovementSection({ groups }: MovementSectionProps) {
   // reads as a confusing dead stat, so only show it once it has something.
   const counts = [
     { label: "Improved", n: groups.improved.length, tone: "text-[#2F6B4A] bg-[#4E9B72]/12" },
-    { label: "Declined", n: groups.declined.length, tone: "text-[#8B3A3A] bg-[#8B3A3A]/12" },
-    { label: "Holding", n: groups.holding.length, tone: "text-[#1E1B31] bg-[#F8EDEE]" },
+    { label: "Dipped", n: groups.declined.length, tone: "text-[#8B3A3A] bg-[#8B3A3A]/12" },
+    { label: "Steady", n: groups.holding.length, tone: "text-[#1E1B31] bg-[#F8EDEE]" },
     ...(groups.tracking.length > 0
-      ? [{ label: "Tracking", n: groups.tracking.length, tone: "text-[#A87C22] bg-[#D4A03F]/15" }]
+      ? [{ label: "Too early to tell", n: groups.tracking.length, tone: "text-[#A87C22] bg-[#D4A03F]/15" }]
       : []),
   ];
 
   const blocks: Array<{ label: string; rows: MovementRow[] }> = [
-    { label: "Declined", rows: groups.declined },
+    { label: "Dipped", rows: groups.declined },
     { label: "Improved", rows: groups.improved },
-    { label: "Holding", rows: groups.holding },
-    { label: "Tracking", rows: groups.tracking },
+    { label: "Steady", rows: groups.holding },
+    { label: "Too early to tell", rows: groups.tracking },
   ];
 
   return (

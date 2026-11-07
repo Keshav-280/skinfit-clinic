@@ -72,23 +72,32 @@ export function movementToHeroBadge(
   return { label: "→ Holding", type: "flat" };
 }
 
+/** "last week" only when the previous scan really was about a week ago; otherwise the actual gap. */
+export function previousScanWhen(daysSince?: number | null): string {
+  if (daysSince == null || !Number.isFinite(daysSince)) return "last scan";
+  if (daysSince <= 10) return "last week";
+  return `${Math.round(daysSince)} days ago`;
+}
+
 export function subtitleFromGrades(
   current: string,
   previous: string,
-  kind: MovementKind
+  kind: MovementKind,
+  daysSince?: number | null
 ): string {
   const cur = /\/100$/.test(current) ? current : `${current}/100`;
   const prev = /\/100$/.test(previous) ? previous : `${previous}/100`;
+  const when = previousScanWhen(daysSince);
   if (kind === "improved") {
-    return `Up from ${prev} last week`;
+    return `Up from ${prev} ${when}`;
   }
   if (kind === "declined") {
-    return `Down from ${prev} last week`;
+    return `Down from ${prev} ${when}`;
   }
   if (current === previous) {
     return `Holding at ${cur}`;
   }
-  return `From ${prev} last week`;
+  return `From ${prev} ${when}`;
 }
 
 /** Minimum days since first scan before movement can be claimed. */

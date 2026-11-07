@@ -94,7 +94,7 @@ export function PositionBar({
             <b className={light ? "font-medium text-kai-ink" : "font-medium text-white/85"}>
               ○
             </b>{" "}
-            Last week
+            Last scan
           </span>
         </div>
       ) : null}
