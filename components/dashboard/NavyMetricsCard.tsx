@@ -26,7 +26,7 @@ const LIGHT_BADGES = {
   progress: { bg: SKINFIT_THEME.rosePale, color: SKINFIT_THEME.roseMid },
 } as const;
 
-const UNLOCK_HINT = "Complete your 2nd week scan to unlock";
+const UNLOCK_HINT = "Take another scan to unlock";
 
 /**
  * Apple-style ring track: a dimmed version of the ring's own active color,
@@ -199,6 +199,8 @@ type NavyMetricsCardProps = {
   scoresUnlocked?: boolean;
   /** Number of scans the patient has taken - Progress unlocks from the 2nd scan. */
   scanCount?: number;
+  /** Scans listed in Scan History. Two or more unlocks both rings. */
+  scanHistoryCount?: number;
   className?: string;
   /** Light-on-white theme (rings + a label/value legend) instead of the filled navy card. */
   light?: boolean;
@@ -211,6 +213,7 @@ export function NavyMetricsCard({
   consistencyScore,
   latestScanAt,
   scanCount = 0,
+  scanHistoryCount = 0,
   scoresUnlocked: _scoresUnlocked = false,
   light = false,
   className = "",
@@ -223,8 +226,10 @@ export function NavyMetricsCard({
 
   // Progress needs a 2nd scan for a real week-over-week delta.
   // Consistency fills from weeks on the app, scans, and questionnaires.
-  const progressLocked = scanCount < 2;
-  const consistencyLocked = !hasScan && consistencyScore <= 0;
+  // Scan History is the source of truth: with 2 or more scans there, both rings are unlocked.
+  const progressLocked = Math.max(scanCount, scanHistoryCount) < 2;
+  const consistencyLocked =
+    scanHistoryCount < 2 && !hasScan && consistencyScore <= 0;
 
   const { outerR, middleR, innerR } = ringGeometry();
   const cx = RING_SIZE / 2;

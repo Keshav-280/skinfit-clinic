@@ -968,7 +968,10 @@ export function PatientDashboardDesktop({
             weeklyDeltaMeaningful={Boolean(data.weeklyDeltaMeaningful)}
             streakCurrent={data.streakCurrent}
             lastScanAt={latestScan?.createdAt ?? null}
-            scanCount={data.skinScanHistory.length}
+            scanCount={Math.max(
+              data.skinScanHistory.length,
+              (data as { scanHistoryCount?: number }).scanHistoryCount ?? 0
+            )}
             href={reportHref}
             hasScan={Boolean(latestScan)}
           />

@@ -13,6 +13,7 @@ type RingsHome = {
   lifestyleAlignmentScore: number;
   scoresUnlocked?: boolean;
   scanCount?: number;
+  scanHistoryCount?: number;
   latestScanCreatedAt?: string | null;
   skinScanHistory: Array<{ createdAt: string; analysisResults?: unknown }>;
 };
@@ -73,6 +74,7 @@ export function DiagnoseActivityRings() {
         consistencyScore={data.lifestyleAlignmentScore}
         scoresUnlocked={webPatientScoresUnlocked(data.scoresUnlocked)}
         scanCount={Math.max(data.skinScanHistory.length, data.scanCount ?? 0)}
+        scanHistoryCount={data.scanHistoryCount ?? 0}
       />
     </div>
   );
