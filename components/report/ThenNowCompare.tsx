@@ -11,6 +11,8 @@ import { REPORT_CARD, REPORT_PILL } from "./reportCopy";
 
 type ThenNowCompareProps = {
   previousImage: { url: string; date: string };
+  /** The patient's first scan. When present, a toggle lets them compare with it instead. */
+  firstImage?: { url: string; date: string };
   currentImage: { url: string; date: string };
   caption?: string;
 };
@@ -20,11 +22,14 @@ function clampPct(n: number): number {
 }
 
 export function ThenNowCompare({
-  previousImage,
+  previousImage: lastImage,
+  firstImage,
   currentImage,
-  caption = "Slide to compare. Both captures passed quality checks.",
+  caption = "Slide to compare your photos.",
 }: ThenNowCompareProps) {
   const [position, setPosition] = useState(50);
+  const [mode, setMode] = useState<"last" | "first">("last");
+  const previousImage = mode === "first" && firstImage ? firstImage : lastImage;
   const frameRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
@@ -75,7 +80,34 @@ export function ThenNowCompare({
     <section className={`${REPORT_CARD} px-3.5 py-4`}>
       <div className="mb-3 flex items-center justify-between">
         <span className={REPORT_PILL}>Then / now</span>
-        <span className="text-[11px] font-medium text-[#8B93A4]">Slide</span>
+        {firstImage ? (
+          <div
+            role="group"
+            aria-label="Choose which earlier scan to compare with"
+            className="inline-flex rounded-full bg-[#F0EAE2] p-0.5 text-[11px] font-semibold"
+          >
+            {(
+              [
+                ["last", "Last scan"],
+                ["first", "First scan"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={mode === id}
+                onClick={() => setMode(id)}
+                className={`rounded-full px-2.5 py-1 transition-colors ${
+                  mode === id ? "bg-[#1E1B31] text-white" : "text-[#1E1B31]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="text-[11px] font-medium text-[#8B93A4]">Slide</span>
+        )}
       </div>
       <div
         ref={frameRef}
@@ -95,7 +127,7 @@ export function ThenNowCompare({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={previousImage.url}
-          alt={`Previous scan ${previousImage.date}`}
+          alt={`${mode === "first" ? "First" : "Previous"} scan ${previousImage.date}`}
           draggable={false}
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         />

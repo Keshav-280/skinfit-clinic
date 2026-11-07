@@ -45,6 +45,8 @@ export type UpdateKaiScanReportProps = {
   position: { current: number; previous: number };
   thenNow: {
     previous: { url: string; date: string };
+    /** The patient's first scan, offered as a toggle in the slider. */
+    first?: { url: string; date: string };
     current: { url: string; date: string };
     caption?: string;
   };
@@ -216,6 +218,7 @@ export function UpdateKaiScanReport({
         <div className="report-enter report-enter-d2">
           <ThenNowCompare
             previousImage={thenNow.previous}
+            firstImage={thenNow.first}
             currentImage={thenNow.current}
             caption={thenNow.caption}
           />
