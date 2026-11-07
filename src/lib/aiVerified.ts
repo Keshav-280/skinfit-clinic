@@ -53,6 +53,7 @@ Fail the candidate if ANY of these is true:
 8. It is cold, mechanical, templated, shaming, alarming, or uses jargon, or it reads as if it were not written about THIS patient. It should sound like a warm, caring clinic coordinator speaking plainly to one person.
 9. It gives advice that is unsafe or off-limits for a non-doctor: it must send the patient to the clinic for anything medical or worrying.
 10. It contains emojis, exclamation marks, or says anything about internal SkinFit business.
+11. It repeats what the patient can already see on the same screen (any score, number, point change, date, or check-in figure), or says the same thing in two places. Text should ADD meaning (why, what it means, what to do), never restate the screen.
 
 Reply with ONLY JSON: {"pass": true|false, "issues": ["each specific problem, quoting the words"]}. If it passes, issues must be [].`;
 
@@ -66,7 +67,8 @@ export async function aiReview(input: {
   const client = verifiedClient();
   if (!client) return { pass: false, issues: ["checker unavailable"] };
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await client.chat.completions.create(
+      {
       model: reviewerModel(),
       temperature: 0,
       response_format: { type: "json_object" },
@@ -80,7 +82,9 @@ export async function aiReview(input: {
           content: `KIND OF TEXT: ${input.kind}\n\nDATA THE WRITER WAS GIVEN:\n${JSON.stringify(input.data)}\n\nCANDIDATE:\n${JSON.stringify(input.candidate)}`,
         },
       ],
-    });
+      },
+      { timeout: 120_000 }
+    );
     const raw = completion.choices[0]?.message?.content ?? "";
     const parsed = JSON.parse(raw) as { pass?: unknown; issues?: unknown };
     const issues = Array.isArray(parsed.issues)

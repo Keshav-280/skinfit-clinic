@@ -32,8 +32,8 @@ describe("validateGeneratedReport", () => {
   it("accepts a clean report", () => {
     const report = {
       status: "published",
-      summary: "Your pigmentation is 61/100 on this baseline. We will track it each week.",
-      actions: [{ parameter: "pigmentation", title: "Protect tone with morning SPF", detail: "Pigmentation is 61/100. Apply sunscreen each morning this week." }],
+      summary: "Your pigmentation looks settled on this first read. We will keep an eye on it each week.",
+      actions: [{ parameter: "pigmentation", title: "Protect tone with morning SPF", detail: "Your tone looks even, so protect it. Apply sunscreen each morning this week." }],
     };
     expect(validateGeneratedReport(report, payload)).toEqual([]);
   });
@@ -48,6 +48,18 @@ describe("validateGeneratedReport", () => {
     expect(issues).toContain("letter grade");
     expect(issues).toContain("exclamation");
     expect(issues).toContain("unfinished sentence");
+  });
+
+  it("rejects any digit in report sentences (the screen already shows the numbers)", () => {
+    const issues = validateGeneratedReport(
+      { summary: "Your skin slept well, about six to eight hours, and scored 82 this time." },
+      payload
+    ).join(" | ");
+    expect(issues).toContain("numbers in summary");
+  });
+
+  it("allows digits only in the share card line", () => {
+    expect(validateGeneratedReport({ share_card: { score_100: 62, line: "Week 6 - acne improving" } }, payload)).toEqual([]);
   });
 
   it("ignores label fields such as status and movement", () => {

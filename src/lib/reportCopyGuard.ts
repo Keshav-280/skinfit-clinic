@@ -94,15 +94,17 @@ const SENTENCE_KEYS = new Set(["summary", "finding", "detail", "text", "reason",
 function collectProse(
   node: unknown,
   key: string,
-  out: Array<{ key: string; text: string }>
+  out: Array<{ key: string; text: string; digitsOk?: boolean }>,
+  digitsOk = false
 ) {
   if (typeof node === "string") {
-    if (!NON_PROSE_KEYS.has(key)) out.push({ key, text: node });
+    if (!NON_PROSE_KEYS.has(key)) out.push({ key, text: node, digitsOk });
   } else if (Array.isArray(node)) {
-    for (const item of node) collectProse(item, key, out);
+    for (const item of node) collectProse(item, key, out, digitsOk);
   } else if (node && typeof node === "object") {
     for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-      collectProse(v, k, out);
+      // The share card line is meant to be posted elsewhere, where a week number helps.
+      collectProse(v, k, out, digitsOk || k === "share_card");
     }
   }
 }
@@ -113,13 +115,15 @@ function collectProse(
  * `payload` is the data the model was given: score figures must come from it.
  */
 export function validateGeneratedReport(report: unknown, payload: unknown): string[] {
-  const prose: Array<{ key: string; text: string }> = [];
+  const prose: Array<{ key: string; text: string; digitsOk?: boolean }> = [];
   collectProse(report, "", prose);
   const data = JSON.stringify(payload ?? "");
   const issues: string[] = [];
-  for (const { key, text } of prose) {
+  for (const { key, text, digitsOk } of prose) {
     const t = text.trim();
     if (!t) continue;
+    // The screen already shows every number; sentences must add meaning, not repeat figures.
+    if (!digitsOk && /\d/.test(t)) issues.push(`numbers in ${key} (the screen already shows them; write it in words)`);
     if (MEDICAL_ADVICE_TERMS.test(t)) issues.push(`medical advice term in ${key}`);
     if (NON_CONSUMER_TERMS.test(t)) issues.push(`clinical jargon in ${key}`);
     if (/\bgrade\s+[A-E][+-]?\b/i.test(t)) issues.push(`letter grade in ${key}`);

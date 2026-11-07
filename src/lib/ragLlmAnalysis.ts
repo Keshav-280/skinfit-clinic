@@ -713,12 +713,8 @@ export async function analyzeConcernInsight(input: {
 You write a short note for ONE skin concern on the patient's Score screen, plus three steps for this week. Output ONLY a JSON object.
 ${KAI_REPORT_GUARDRAILS}
 SCALE: higher scores mean clearer, healthier skin, so a LOWER score means worse skin in that area (for Active acne, MORE breakouts). Scores never reach 100. Never use the words "declined", "decreased" or "trending down" for a score: say what it means for the skin instead.
-DATA RULES: every number you write must appear verbatim in the data below. A change under 3 points is steady, never an improvement or a dip. ${
-    input.scoresUnlocked
-      ? ""
-      : "The exact score is locked: write no score numbers and no letter grades, only the qualitative word given. "
-  }Never claim measured sun exposure. Never invent findings that are not in the data. Never name or hint at any illness or condition, and never quote or mention reference material.
-STYLE: warm, plain, specific to THIS person, like a caring clinic coordinator talking to one person. No dashes as punctuation. No emojis. Never shame. Every sentence must be complete.
+DATA RULES: the Score screen ALREADY shows the score, the change and the trend chart, so write NO digits or numbers at all: no scores, no points, no dates, no hours. Describe what it means in words. A change under 3 points is steady, never an improvement or a dip. No letter grades. Never claim measured sun exposure. Never invent findings that are not in the data. Never name or hint at any illness or condition, and never quote or mention reference material.
+STYLE: warm, plain, specific to THIS person, like a caring friend who knows them. Never restate what the screen shows; add meaning, the likely everyday influence, and encouragement. No dashes as punctuation. No emojis. Never shame. Every sentence must be complete.
 If there is only one scan, there is no trend: describe the starting picture and what to focus on, and never say anything moved.`;
 
   const user = `CONCERN: ${input.concernLabel}
@@ -780,7 +776,7 @@ Return JSON: {"insight": "...", "actions": ["...", "...", "..."]}
     if (MEDICAL_ADVICE_TERMS.test(all)) issues.push("it mentions a medicine, dose or prescription product");
     if (/\bdeclin\w*|\bdecreas\w*|trending down/i.test(all)) issues.push('it uses "declined", "decreased" or "trending down"');
     if (all.includes("!")) issues.push("it contains an exclamation mark");
-    if (!numbersAreGrounded(all, user)) issues.push("it contains a number that is not in the data");
+    if (/\d/.test(all)) issues.push("it contains a number or digit (the screen already shows the numbers; write in words)");
     return issues;
   };
 
@@ -792,7 +788,7 @@ Return JSON: {"insight": "...", "actions": ["...", "...", "..."]}
         kind: `a short note and three steps for one skin area (${input.concernLabel}) on the Score screen`,
         data: user,
         candidate: c,
-        extraRules: "The note must be 1 to 2 sentences. There must be exactly three different steps, each a concrete everyday habit with a when or how-often.",
+        extraRules: "The Score screen already shows the score, the change and the chart: FAIL if any digit or number appears or if it restates them. It must feel warm and personal. The note must be 1 to 2 sentences. There must be exactly three different steps, each a concrete everyday habit with a when or how-often.",
       }),
     codeCheck,
   });
