@@ -319,11 +319,6 @@
         },
         {
           "type": "present",
-          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
-          "pattern": "history_patterns"
-        },
-        {
-          "type": "present",
           "file": "src/lib/report/generateAndPersistKaiReport.ts",
           "pattern": "history_patterns"
         }
@@ -685,6 +680,158 @@
             "components/report"
           ],
           "exclude": []
+        }
+      ]
+    },
+    {
+      "id": "NEVER-WAIT-FOR-AI",
+      "title": "No page and no scan ever waits for the AI: saved content is shown at once (even if slightly out of date) and fresh content is built in the background. A scan is marked ready without waiting for its report",
+      "source": "7 Nov: 'the app became too slow even to load one previous report'",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "await generateUpdateReportContent|await generateInitialReportContent",
+          "paths": [
+            "app/dashboard",
+            "app/onboarding",
+            "app/m"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "scheduleReportGeneration"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/kaiReportSnapshot.ts",
+          "pattern": "allowStale"
+        },
+        {
+          "type": "absent",
+          "pattern": "await generateAndPersistKaiReport",
+          "paths": [
+            "src/lib/scanPipeline",
+            "app"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "present",
+          "file": "src/lib/scanPipeline/processScanJob.ts",
+          "pattern": "scheduleReportGeneration"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/concernInsight.ts",
+          "pattern": "waitMs = 0"
+        },
+        {
+          "type": "file-exists",
+          "file": "src/lib/report/reportGenerationQueue.ts"
+        },
+        {
+          "type": "manual",
+          "how": "Time a cold open of an old report and of a Score concern page on the deployed server: both must render in about a second without any AI wait."
+        }
+      ]
+    },
+    {
+      "id": "REPORT-DEPTH-AND-TIMEOUTS",
+      "title": "Reports are genuinely informative (summary 5-7 sentences, findings 2-3 sentences, 3-5 factors) and the AI time limits fit the full-size model so reports are not left without AI text",
+      "source": "7 Nov: 'the report is giving very less info ... weak if we claim insights'; screenshot showed 'AI summary unavailable'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/report/generateReportContent.ts",
+          "pattern": "const TIMEOUT_MS = 150_000"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/aiVerified.ts",
+          "pattern": "timeout: 120_000"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "summary 5-7 sentences"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "summary: 5-7 sentences"
+        },
+        {
+          "type": "present",
+          "file": "components/report/ReportAutoRefresh.tsx",
+          "pattern": "router.refresh"
+        },
+        {
+          "type": "absent",
+          "pattern": "AI summary unavailable",
+          "paths": [
+            "components"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "manual",
+          "how": "After deploy, read the server log for lines starting '[verified:' - the update and first-scan reports must pass within 1-2 attempts. If every attempt is rejected, read the rejection reasons and tune the prompt or the checker rules."
+        }
+      ]
+    },
+    {
+      "id": "WARM-NO-REPEAT",
+      "title": "AI report text is warm and human and never repeats numbers or data already visible elsewhere on the screen (no digits in sentences)",
+      "source": "7 Nov: 'the AI section should have warmth and should not repeat the numbers or data already visible somewhere else in the report'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "Warmth and no repetition"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "Warmth and no repetition"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/aiVerified.ts",
+          "pattern": "It repeats what the patient can already see"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/generateReportContent.ts",
+          "pattern": "contains a digit or a number"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "numbers in \\$\\{key\\}"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragLlmAnalysis.ts",
+          "pattern": "write NO digits or numbers at all"
+        },
+        {
+          "type": "absent",
+          "pattern": "[0-9]+/100",
+          "paths": [
+            "src/lib/report/initialReportPrompt.ts",
+            "src/lib/report/updateReportPrompt.ts"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "test",
+          "file": "src/lib/reportCopyGuard.test.ts"
+        },
+        {
+          "type": "manual",
+          "how": "Read three real AI reports after deploy (first scan, a dip, a steady one): warm, human, no numbers, nothing the screen already shows. The weekly tracker text (src/lib/ragPatientTrackerReport.ts) still quotes scores; confirm with the founder whether it should follow the same rule."
         }
       ]
     }
