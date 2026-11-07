@@ -179,7 +179,7 @@ export default function StressTrackerPage() {
       {/* Tips card */}
       <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
         <p className="text-sm font-medium text-green-800">
-          💡 Try 5 minutes of deep breathing to lower stress levels
+          Try 5 minutes of deep breathing to lower stress levels
         </p>
       </div>
     </div>

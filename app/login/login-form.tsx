@@ -591,10 +591,7 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
         {isSignIn ? (
           <div className="mb-2 lg:mb-8">
             <h1 className="font-headline text-xl font-bold tracking-tight text-[#1E1B31] lg:text-3xl">
-              Welcome back!{" "}
-              <span aria-hidden className="inline-block">
-                👋
-              </span>
+              Welcome back
             </h1>
             <p className="mt-0.5 text-[13px] text-[#5B66A1] lg:mt-2 lg:text-[15px]">
               Glad to see you, Again!

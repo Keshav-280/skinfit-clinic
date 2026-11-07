@@ -288,9 +288,6 @@ export default function SchedulesPageClient({
             </p>
 
             <div className="mt-2 flex items-center gap-2">
-              <span className="text-lg leading-none" aria-hidden>
-                🔥
-              </span>
               <p className="text-sm font-semibold text-white/90 sm:text-[15px]">
                 {weeklyCheckinStreak > 0
                   ? `${weeklyCheckinStreak} week${weeklyCheckinStreak === 1 ? "" : "s"} streak`
