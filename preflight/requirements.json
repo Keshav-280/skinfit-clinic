@@ -611,6 +611,82 @@
           "how": "Open the patient app and confirm the four tab names and the 'Type a message' hint still exist; confirm booking falls back to Clinic Support when there are no slots."
         }
       ]
+    },
+    {
+      "id": "REPORT-LAST-SCAN-ONLY",
+      "title": "Report content (numbers, movement labels, AI wording) compares the latest scan with the LAST scan only, never further back",
+      "source": "7 Nov: 'numbers compared to last scan only, keep everything like previous'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/scoreChange.ts",
+          "pattern": "lastOnly"
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "compareToLast: true"
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "overallMovementFromHistory\\(scoreHistory\\.overall, true\\)"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/generateAndPersistKaiReport.ts",
+          "pattern": "focusParamMovement\\(scoreHistory\\.byReportKey\\[p\\.key\\], true\\)"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/kaiReportSnapshot.ts",
+          "pattern": "last_scan_only"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "always last_scan in this report"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/scoreChange.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "THENNOW-TOGGLE",
+      "title": "The before/after slider has a small toggle: Last scan vs latest, or First scan vs latest (default Last scan). No unfounded 'passed quality checks' caption",
+      "source": "7 Nov: 'for the slider show first and latest ... or a toggle between last vs latest and first vs latest'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "components/report/ThenNowCompare.tsx",
+          "pattern": "First scan"
+        },
+        {
+          "type": "present",
+          "file": "components/report/ThenNowCompare.tsx",
+          "pattern": "Last scan"
+        },
+        {
+          "type": "present",
+          "file": "components/report/UpdateKaiScanReport.tsx",
+          "pattern": "firstImage=\\{thenNow\\.first\\}"
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "first: \\{"
+        },
+        {
+          "type": "absent",
+          "pattern": "passed quality checks",
+          "paths": [
+            "components/report"
+          ],
+          "exclude": []
+        }
+      ]
     }
   ]
 }
