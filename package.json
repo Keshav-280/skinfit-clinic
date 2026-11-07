@@ -33,7 +33,9 @@
     "verify:dual-pose": "tsx src/scripts/verify-dual-pose-pipeline.ts",
     "mediapipe:sync-wasm": "mkdir -p public/mediapipe-wasm && cp -R node_modules/@mediapipe/tasks-vision/wasm/. public/mediapipe-wasm/",
     "capture:setup-models": "bash scripts/setup-capture-models.sh",
-    "annotator:scrape-faces": "python3 src/scripts/scrape_annotator_face_images.py"
+    "annotator:scrape-faces": "python3 src/scripts/scrape_annotator_face_images.py",
+    "preflight": "node preflight/run.mjs",
+    "preflight:quick": "node preflight/run.mjs --quick"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",

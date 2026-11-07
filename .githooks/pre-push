@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Blocks a push if the preflight finds a failure (types, tests, a registered requirement,
+# a worker-crash import, a hidden hazard). Enable once per clone:
+#   git config core.hooksPath .githooks
+# Bypassing it (git push --no-verify) should be a deliberate decision by the founder.
+cd "$(git rev-parse --show-toplevel)" || exit 1
+echo "Running preflight before push..."
+if ! node preflight/run.mjs --hook; then
+  echo ""
+  echo "PUSH BLOCKED by preflight. Fix the failures above (or ask Claude to run /preflight)."
+  exit 1
+fi
+echo ""
+echo "Reminder: the automated checks passed. Items marked MANUAL still need the /preflight review."
+exit 0

@@ -1,0 +1,10 @@
+{
+  "_about": "Test files that were already failing before the preflight system existed. They are tolerated so they do not block every push, but each one is a debt: fix them and delete the entry.",
+  "files": [
+    "src/lib/annotatorAnnotations.test.ts",
+    "src/lib/annotatorCollaboration.test.ts",
+    "src/lib/faceGuideCrop.test.ts",
+    "src/lib/ragEightParams.test.ts",
+    "src/lib/report/reportFocusActions.test.ts"
+  ]
+}

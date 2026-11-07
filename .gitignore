@@ -90,3 +90,7 @@ mobile/build_log.txt
 services/spot-detector-v15/api/face_landmarker.task
 
 
+
+# preflight scratch
+preflight/.test-results.json
+.vitest/

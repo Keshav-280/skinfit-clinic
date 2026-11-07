@@ -1,0 +1,616 @@
+{
+  "_about": "Living registry of everything the founder has asked for. Each entry has checks the preflight runner proves automatically. 'manual' checks are studied by the /preflight review. ADD AN ENTRY WHENEVER A NEW REQUIREMENT IS GIVEN. Check types: present {file, pattern}, absent {pattern, paths, exclude}, min-count {pattern, files, min}, file-exists {file}, test {file}, manual {how}. severity: block (default) | warn.",
+  "requirements": [
+    {
+      "id": "SCORE-RANGE",
+      "title": "Patient scores use the full range 0 to 90 (was 20 to 79); full A-E grades",
+      "source": "6 Nov: 'if skin is really good up to 90, really bad even 0'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/clarityGrade.ts",
+          "pattern": "PATIENT_DISPLAY_SCORE_CAP = 90"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/clarityGrade.ts",
+          "pattern": "PATIENT_DISPLAY_SCORE_FLOOR = 0"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/clarityGrade.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "SCORE-EARLY-CAP",
+      "title": "Scans 1-3 show at most 80; then rises 2 per scan; 85 ceiling until a clinic visit, 90 after",
+      "source": "6-7 Nov: 'first few scans should not cross 80', 'post scan 3 gradual', 'keep cap till 85, above 85 unlocks after clinic treatment'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/clarityGrade.ts",
+          "pattern": "EARLY_SCAN_DISPLAY_CAP = 80"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/clarityGrade.ts",
+          "pattern": "CAP_RISE_PER_SCAN = 2"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/clarityGrade.ts",
+          "pattern": "LOCKED_DISPLAY_CAP = 85"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragScanParamBridge.ts",
+          "pattern": "displayCapForScores"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/reportCopyGuard.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "SCORE-STAMP",
+      "title": "Every new scan is stamped with its scan number and clinic-visit flag before any report is built; the staff visit toggle updates all of a patient's scans",
+      "source": "7 Nov: implementation of the early-scan cap",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/scanPipeline/processScanJob.ts",
+          "pattern": "stampScanOrdinal\\("
+        },
+        {
+          "type": "present",
+          "file": "app/api/scan/route.ts",
+          "pattern": "stampScanOrdinal\\("
+        },
+        {
+          "type": "present",
+          "file": "app/api/mobile-capture/submit/route.ts",
+          "pattern": "stampScanOrdinal\\("
+        },
+        {
+          "type": "present",
+          "file": "app/api/doctor/patients/[patientId]/route.ts",
+          "pattern": "displayUnlocked"
+        }
+      ]
+    },
+    {
+      "id": "SCORE-SINGLE-SOURCE",
+      "title": "One source for every score: the real scans row. The Score tab must not read the frozen skin_scans copy",
+      "source": "7 Nov: 'use one source for every screen' (Score tab 85 vs report 82)",
+      "checks": [
+        {
+          "type": "present",
+          "file": "app/api/patient/home/route.ts",
+          "pattern": "scanForCopy"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/scoreSingleSource.test.ts"
+        },
+        {
+          "type": "manual",
+          "how": "Search for any other reader of skin_scans.analysisResults that feeds a patient-facing score; every one must be replaced by the matching scans row."
+        }
+      ]
+    },
+    {
+      "id": "SCORE-NO-DOUBLE-CALIBRATION",
+      "title": "Weekly/monthly insights and cron reports must not apply the display curve a second time to already-calibrated scores (they would disagree with the Score tab)",
+      "source": "7 Nov: 'same scores differ between screens'; found by the first deep review",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "patientDisplayClarity\\(",
+          "paths": [
+            "src/lib/ragKaiTestService.ts",
+            "src/lib/cronKaiJobs.ts"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "absent",
+          "pattern": "return patientDisplayClarity\\(n\\)",
+          "paths": [
+            "src/lib/scanReportPdfHtml.ts"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "manual",
+          "how": "src/lib/dummyScanSummary.ts calls patientDisplayClarity() on metrics: confirm those are raw model values at scan time, not resolver output."
+        }
+      ]
+    },
+    {
+      "id": "CHANGE-3",
+      "title": "A real change is 3 points or more; 1-2 points is steady. Same rule in engine, report prompt, chat prompt",
+      "source": "7 Nov: 'i feel 2 points is not a change'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/scoreChange.ts",
+          "pattern": "MIN_DETECTABLE_CHANGE = 3"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "at least 3 points"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "from 3 points"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/scoreChange.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "ANNOT-LIMITS",
+      "title": "Annotation confidence floors stay at the models' own 0.15; at most 10 circles per image; cross-photo gate hides a photo far busier than the others; staff can hide a wrong annotation",
+      "source": "4-6 Nov: fake annotations, moles must stay, 'make sure on 1 image the annotations are not abnormally high'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "services/spot-detector-v15/api/spot_v18.py",
+          "pattern": "MAX_TOTAL_SPOTS = 10"
+        },
+        {
+          "type": "absent",
+          "pattern": "KIND_MIN_SCORE",
+          "paths": [
+            "services/spot-detector-v15"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "present",
+          "file": "src/lib/spotDetectorInference.ts",
+          "pattern": "poseLooksTrustworthy"
+        },
+        {
+          "type": "file-exists",
+          "file": "app/api/clinic/ops/scans/[scanId]/annotations/route.ts"
+        },
+        {
+          "type": "file-exists",
+          "file": "components/ops/OpsScanInspector.tsx"
+        },
+        {
+          "type": "manual",
+          "how": "After deploy, take a scan: moles must be marked and no photo may show more than 10 circles."
+        }
+      ]
+    },
+    {
+      "id": "NO-RAW-TEXT",
+      "title": "No patient-facing text is ever copied from a reference or library source",
+      "source": "4-7 Nov: 'kAI insight from textbook evidence ... de Barsy syndrome' on a patient card",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "chunk\\.text\\.slice\\(",
+          "paths": [
+            "src",
+            "app",
+            "components"
+          ],
+          "exclude": [
+            "\\.test\\.",
+            "ragPgvector",
+            "src/scripts/"
+          ]
+        },
+        {
+          "type": "absent",
+          "pattern": "insight from textbook evidence",
+          "paths": [
+            "src",
+            "app",
+            "components"
+          ],
+          "exclude": [
+            "\\.test\\.",
+            "reportCopyGuard"
+          ]
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragPatientTrackerReport.ts",
+          "pattern": "filterConsumerEvidence"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragKaiTestService.ts",
+          "pattern": "filterConsumerEvidence"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/concernInsight.ts",
+          "pattern": "filterConsumerEvidence"
+        }
+      ]
+    },
+    {
+      "id": "AI-THREE-LAYER",
+      "title": "All narrative text: AI writes, a second AI checks, code checks; any failure rewrites everything; after the limit nothing is shown (no canned fallback)",
+      "source": "7 Nov: 'every text from AI ... 2 AI layers and a code layer ... if any rule is violated it goes back and does everything again'",
+      "checks": [
+        {
+          "type": "file-exists",
+          "file": "src/lib/aiVerified.ts"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/aiVerified.ts",
+          "pattern": "export async function runVerified"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/aiVerified.ts",
+          "pattern": "checker unavailable"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/generateReportContent.ts",
+          "pattern": "runVerified"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragLlmAnalysis.ts",
+          "pattern": "runVerified"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragLlmAnalysis.ts",
+          "pattern": "export async function analyzeConcernInsight"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/aiVerified.test.ts"
+        },
+        {
+          "type": "manual",
+          "how": "Remaining AI-text surfaces that still use code-written fallbacks (weekly tracker hook/causes, daily nudges, default headlines, chat). Confirm each is either covered by runVerified or listed to the founder as not yet covered."
+        }
+      ]
+    },
+    {
+      "id": "SCORE-PAGE-AI-ONLY",
+      "title": "Score screen cards contain only AI-written, verified text; hidden when none",
+      "source": "7 Nov: 'I don't want any text to come from code'",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "defaultConcernRecommendations|buildScoreAnalysis",
+          "paths": [
+            "app/dashboard/score"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/score/[concern]/page.tsx",
+          "pattern": "getConcernInsight"
+        }
+      ]
+    },
+    {
+      "id": "ATTRIBUTION-AI-ONLY",
+      "title": "'Likely factors' cards come only from the AI; the AI is given weather, check-in, treatments and history patterns as data",
+      "source": "7 Nov",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "Complete your weekly check-ins",
+          "paths": [
+            "src/lib/report"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "history_patterns"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/generateAndPersistKaiReport.ts",
+          "pattern": "history_patterns"
+        }
+      ]
+    },
+    {
+      "id": "SHARED-GUARDRAILS",
+      "title": "Every AI prompt carries the same kAI voice and safety rules (once per prompt, never duplicated)",
+      "source": "5 Nov: shared voice/safety block; reviewer: 'if pasted inline as well as appended, replace both copies'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "KAI_REPORT_GUARDRAILS"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "KAI_REPORT_GUARDRAILS"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragLlmAnalysis.ts",
+          "pattern": "KAI_REPORT_GUARDRAILS"
+        },
+        {
+          "type": "max-count",
+          "pattern": "\\$\\{KAI_REPORT_GUARDRAILS\\}",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "max": 1
+        },
+        {
+          "type": "max-count",
+          "pattern": "\\$\\{KAI_REPORT_GUARDRAILS\\}",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "WORDING-DROPS",
+      "title": "A drop is never called 'declined' / 'trending down' to a patient; say what it means for the skin; chips are Dipped / Steady / Too early to tell",
+      "source": "6-7 Nov reviewer feedback ('declined reads as acne getting better')",
+      "checks": [
+        {
+          "type": "present",
+          "file": "components/report/MovementSection.tsx",
+          "pattern": "Dipped"
+        },
+        {
+          "type": "present",
+          "file": "components/report/MovementSection.tsx",
+          "pattern": "Too early to tell"
+        },
+        {
+          "type": "absent",
+          "pattern": "label: \"Declined\"|\"DECLINED\"",
+          "paths": [
+            "components/report",
+            "src/lib/report/kaiReportPdf.ts"
+          ],
+          "exclude": [
+            "\\.test\\."
+          ]
+        },
+        {
+          "type": "absent",
+          "pattern": "[Tt]rending down",
+          "paths": [
+            "components",
+            "app/dashboard",
+            "src/lib/multiWeekPatternAnalysis.ts",
+            "src/lib/patientDashboardTheme.ts"
+          ],
+          "exclude": [
+            "\\.test\\."
+          ]
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "Never use the words \"declined\""
+        },
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "ambiguous word \\(declined\\)"
+        }
+      ]
+    },
+    {
+      "id": "COMPARE-LABEL",
+      "title": "'last week' only when the previous scan was within about a week; otherwise the real gap; legend says 'Last scan'",
+      "source": "6 Nov feedback (compared to 'Last week' when previous scan was 26 days earlier)",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/report/gradeComputation.ts",
+          "pattern": "previousScanWhen"
+        },
+        {
+          "type": "present",
+          "file": "components/report/PositionBar.tsx",
+          "pattern": "Last scan"
+        },
+        {
+          "type": "absent",
+          "pattern": "Last week",
+          "paths": [
+            "components/report"
+          ],
+          "exclude": []
+        }
+      ]
+    },
+    {
+      "id": "REPORT-COMPLETE-SENTENCES",
+      "title": "No AI sentence ends mid-way; no rare illness named; code rejects such drafts",
+      "source": "5-7 Nov",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "unfinished sentence"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "NON_CONSUMER_TERMS"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/reportCopyGuard.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "CHAT-GENERAL",
+      "title": "kAI chat answers small talk and general questions naturally (not only skin) while keeping every safety rule",
+      "source": "7 Nov: 'How are you doing' got a generic skin answer",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "capable general assistant"
+        },
+        {
+          "type": "absent",
+          "pattern": "say kindly that you are here for their skin",
+          "paths": [
+            "src/lib"
+          ],
+          "exclude": [
+            "\\.test\\."
+          ]
+        },
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "must not diagnose"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/kaiPersona.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "ONBOARD-SCAN-FIRST",
+      "title": "Onboarding: scan first; after the scan ASK about the questionnaire; never force it",
+      "source": "6 Nov",
+      "checks": [
+        {
+          "type": "present",
+          "file": "components/onboarding/OnboardingResumeGate.tsx",
+          "pattern": "afterScanUrl"
+        },
+        {
+          "type": "present",
+          "file": "app/onboarding/baseline-report/page.tsx",
+          "pattern": "Maybe later"
+        },
+        {
+          "type": "present",
+          "file": "components/onboarding/OnboardingResumeGate.tsx",
+          "pattern": "router\\.replace\\(afterScanUrl\\)"
+        }
+      ]
+    },
+    {
+      "id": "RINGS-UNLOCK",
+      "title": "Progress and Consistency rings unlock when Scan History has 2 or more scans",
+      "source": "7 Nov: ring said 'Unlock after 2nd scan' with 4 scans",
+      "checks": [
+        {
+          "type": "present",
+          "file": "components/dashboard/NavyMetricsCard.tsx",
+          "pattern": "scanHistoryCount"
+        },
+        {
+          "type": "present",
+          "file": "app/api/patient/home/route.ts",
+          "pattern": "scanHistoryCount"
+        },
+        {
+          "type": "manual",
+          "how": "Confirm the phone app (mobile/) has the same unlock rule, or tell the founder it does not."
+        }
+      ]
+    },
+    {
+      "id": "NO-EMOJI-UI",
+      "title": "No emojis in patient-facing UI (founder preference: looks cheap)",
+      "source": "memory: feedback-no-emojis",
+      "checks": [
+        {
+          "type": "no-emoji",
+          "paths": [
+            "app/login",
+            "app/dashboard",
+            "app/onboarding",
+            "components/dashboard",
+            "components/onboarding",
+            "components/report",
+            "components/login"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WORKER-SAFE",
+      "title": "Nothing the ml-worker loads may import web-only (server-only) modules, or the worker crashes at start-up and scans go offline",
+      "source": "5 Nov outage",
+      "checks": [
+        {
+          "type": "worker-graph-safe"
+        }
+      ]
+    },
+    {
+      "id": "REPORT-MODEL",
+      "title": "Accuracy over cost: writer and checker default to a full-size model, overridable by env",
+      "source": "7 Nov: 'I care less about cost but more about accuracy'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/aiVerified.ts",
+          "pattern": "OPENAI_REPORT_MODEL"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/aiVerified.ts",
+          "pattern": "OPENAI_REVIEW_MODEL"
+        }
+      ]
+    },
+    {
+      "id": "NO-SECRETS-IN-CODE",
+      "title": "No API key written in source (move to server environment and rotate)",
+      "source": "6 Nov: Roboflow key found in spot_v18.py",
+      "severity": "warn",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "environ\\.get\\(\"ROBOFLOW_API_KEY\", \"[A-Za-z0-9]{12,}\"",
+          "paths": [
+            "services"
+          ],
+          "exclude": []
+        }
+      ]
+    },
+    {
+      "id": "BOOKING-AND-CHAT-BASICS",
+      "title": "Earlier agreed behaviours: kAI books clinic visits, falls back to Clinic Support when no slots; tabs named Scan / Score / Update / Chat; message box hint is 'Type a message'",
+      "source": "late Oct - 3 Nov",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "Clinic Support"
+        },
+        {
+          "type": "manual",
+          "how": "Open the patient app and confirm the four tab names and the 'Type a message' hint still exist; confirm booking falls back to Clinic Support when there are no slots."
+        }
+      ]
+    }
+  ]
+}
