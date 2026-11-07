@@ -125,9 +125,19 @@ function baselineInsight(scanPoints: ScanPoint[]): MultiWeekInsight | null {
   return {
     kind: "baseline",
     param: best.key,
-    text: `${label} is your biggest gain since your first scan on ${fmtDate(first.createdAt)} — up from ${fromScore}/100 to ${toScore}/100, the largest move of any parameter you're tracking.`,
+    text: `${label} is your biggest gain since your first scan on ${fmtDate(first.createdAt)} — up from ${fromScore}/100 to ${toScore}/100, the biggest change of any skin area.`,
   };
 }
+
+/** What a lower score means for the skin in each area (scores are clarity: higher is better). */
+const DROP_MEANING: Record<string, string> = {
+  active_acne: "more breakouts than before",
+  acne_scar: "marks that are more visible",
+  pigmentation: "a less even skin tone",
+  wrinkles: "lines that are more visible",
+  under_eye: "darker or more tired-looking under-eyes",
+  sagging_volume: "skin that looks less firm",
+};
 
 /** 2. Trend: is a parameter accelerating, plateauing, or reversing across recent scans? */
 function trendInsights(scanPoints: ScanPoint[]): MultiWeekInsight[] {
@@ -178,7 +188,7 @@ function trendInsights(scanPoints: ScanPoint[]): MultiWeekInsight[] {
       {
         kind: "trend",
         param: key,
-        text: `${RAG_KAI_PARAM_LABELS[key]} has been trending down over your last ${series.length} scans (${series.map((v) => scoreOutOfHundred(v)).join(" → ")} out of 100) — worth a closer look before your next visit.`,
+        text: `${RAG_KAI_PARAM_LABELS[key]} has slipped over your last ${series.length} scans (${series.map((v) => scoreOutOfHundred(v)).join(", ")} out of 100). That means ${DROP_MEANING[key] ?? "this area needs a little more care"}. Worth mentioning at your next visit.`,
       },
     ];
   }

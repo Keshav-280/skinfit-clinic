@@ -1,17 +1,17 @@
 /**
  * Decides what change to show for a score, comparing against more than just the last scan.
  *
- * Slow progress hides if only consecutive scans are compared: two small steps of +1 each never
- * clear the noise on their own, but the +2 across both does. So the comparison walks back
+ * Slow progress hides if only consecutive scans are compared: small steps of +1 or +2 never
+ * clear the noise on their own, but the +3 across them does. So the comparison walks back
  * (last scan, two scans ago, first scan) and reports the nearest one that clears the threshold.
  * If none does, the score is genuinely steady and we say so; we never invent movement.
  */
 
 /**
- * Smallest change (patient-facing 0-100 points) treated as real. A placeholder until the
- * test-retest noise floor is measured per parameter.
+ * Smallest change (patient-facing 0-100 points) treated as real. 1 or 2 points is normal scan-to-scan
+ * variation and is never called progress or a dip. Revisit once the test-retest noise floor is measured.
  */
-export const MIN_DETECTABLE_CHANGE = 2;
+export const MIN_DETECTABLE_CHANGE = 3;
 
 export type ChangeHorizon = "last" | "two_back" | "first";
 

@@ -7,6 +7,7 @@ import {
   invalidateUserInsightsCache,
   invalidateUserScanDerivedCaches,
 } from "../../../src/lib/infra";
+import { stampScanOrdinal } from "../../../src/lib/scanOrdinal";
 import { runRoboflowSkinAnalysis } from "../../../src/lib/roboflowSkinAnalysis";
 
 /**
@@ -64,6 +65,8 @@ export async function POST(req: Request) {
         annotations,
       })
       .returning();
+
+    await stampScanOrdinal(db, newScan.id);
 
     await Promise.all([
       invalidateUserHomeCache(user.id),

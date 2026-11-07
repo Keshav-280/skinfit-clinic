@@ -80,8 +80,8 @@ export function weeklyTrendDirection(delta: number | null): WeeklyTrendDirection
 
 export function lockedWeeklyTrendAria(delta: number | null): string {
   const dir = weeklyTrendDirection(delta);
-  if (dir === "up") return "Trending up";
-  if (dir === "down") return "Trending down";
+  if (dir === "up") return "Improving";
+  if (dir === "down") return "Needs attention";
   if (dir === "flat") return "No change";
   return "Not available";
 }

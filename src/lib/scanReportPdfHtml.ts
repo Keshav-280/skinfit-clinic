@@ -1,6 +1,10 @@
 import { formatDistanceToNow } from "date-fns";
 
-import { patientClarityToGrade, patientDisplayClarity } from "./clarityGrade";
+import {
+  clampPatientFacingDisplayScore,
+  patientClarityToGrade,
+  patientDisplayClarity,
+} from "./clarityGrade";
 
 import {
   legacyMaskTitleCropPercents,
@@ -150,9 +154,10 @@ function deltaClass(n: number) {
   return "tr-delta-flat";
 }
 
+// Tracker values are already patient-facing scores; only clamp (the curve was applied by the resolver).
 function valueForBar(n: number | null) {
   if (typeof n !== "number") return 0;
-  return patientDisplayClarity(n);
+  return clampPatientFacingDisplayScore(n);
 }
 
 function kindBadge(kind: "article" | "video" | "insight") {

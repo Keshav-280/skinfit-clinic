@@ -8,7 +8,7 @@ import {
   weeklyReports,
 } from "@/src/db/schema";
 import { ymdFromDateOnly } from "@/src/lib/date-only";
-import { patientDisplayClarity } from "@/src/lib/clarityGrade";
+import { clampPatientFacingDisplayScore } from "@/src/lib/clarityGrade";
 import { kaiScoreFromScanRow } from "@/src/lib/resolveScanDisplayScores";
 import { buildMonthlyRagCronPayload } from "@/src/lib/ragCronMonthlyPayload";
 import { generateRagKaiOutput } from "@/src/lib/ragKaiTestService";
@@ -19,6 +19,10 @@ import {
   WEEKLY_INSIGHT_DAYS_AFTER_FIRST_SCAN,
 } from "@/src/lib/patientInsightSchedule";
 
+
+// Values here are already patient-facing scores (the resolver applied the display curve and
+// the score ceiling). Re-applying patientDisplayClarity would calibrate them twice and make
+// these insights disagree with the Score tab, so only clamp.
 function monthlyCronRagEnabled() {
   const v = process.env.KAI_MONTHLY_CRON_RAG?.trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
@@ -87,7 +91,7 @@ export async function runWeeklyKaiJob(): Promise<{ patientsProcessed: number }> 
     const prevKai = prev != null ? kaiScoreFromScanRow(prev) : null;
     const delta =
       prevKai != null
-        ? patientDisplayClarity(latestKai) - patientDisplayClarity(prevKai)
+        ? clampPatientFacingDisplayScore(latestKai) - clampPatientFacingDisplayScore(prevKai)
         : 0;
 
     await db.insert(weeklyReports).values({

@@ -232,12 +232,60 @@ async function buildPatientHomePayload(
 
   const weeklyInsightSchedule = computePatientInsightSchedule(firstScanAt);
 
-  const skinScanHistory = skinScanRows.map((r) => ({
-    id: r.id,
-    skinScore: r.skinScore,
-    createdAt: r.createdAt.toISOString(),
-    analysisResults: r.analysisResults,
-  }));
+  // One source for every score: the real `scans` row. The older `skin_scans` copy is frozen at
+  // scan time (before the scan number / clinic-visit flag, doctor edits and outlier estimates
+  // land), so using it made the Score tab show different numbers from the report. Each copy is
+  // matched to its scan (created within minutes of it) and replaced by that scan's own data.
+  const scanForCopy = (at: Date) => {
+    let best: (typeof recentScansForMetrics)[number] | null = null;
+    let bestGap = Infinity;
+    for (const sc of recentScansForMetrics) {
+      const gap = Math.abs(sc.createdAt.getTime() - at.getTime());
+      if (gap < bestGap) {
+        best = sc;
+        bestGap = gap;
+      }
+    }
+    return best && bestGap <= 10 * 60 * 1000 ? best : null;
+  };
+
+  const skinScanHistory = skinScanRows.map((r) => {
+    const sc = scanForCopy(r.createdAt);
+    if (!sc) {
+      return {
+        id: r.id,
+        skinScore: r.skinScore,
+        createdAt: r.createdAt.toISOString(),
+        analysisResults: r.analysisResults,
+      };
+    }
+    const base =
+      sc.scores && typeof sc.scores === "object" && !Array.isArray(sc.scores)
+        ? (sc.scores as Record<string, unknown>)
+        : {};
+    return {
+      id: r.id,
+      skinScore: kaiScoreFromScanRow({
+        overallScore: sc.overallScore,
+        acne: sc.acne,
+        wrinkles: sc.wrinkles,
+        pigmentation: sc.pigmentation,
+        hydration: sc.hydration ?? 0,
+        texture: sc.texture ?? 0,
+        scores: sc.scores,
+      }),
+      createdAt: r.createdAt.toISOString(),
+      analysisResults: {
+        ...base,
+        overallScore: sc.overallScore,
+        acne: sc.acne,
+        wrinkles: sc.wrinkles,
+        pigmentation: sc.pigmentation,
+        hydration: sc.hydration ?? 0,
+        texture: sc.texture ?? 0,
+      },
+    };
+  });
 
   const todayLogOut = todayLog
     ? {
@@ -345,6 +393,8 @@ async function buildPatientHomePayload(
     latestScanReportId: latestScan?.id ?? null,
     latestScanCreatedAt: latestScan?.createdAt.toISOString() ?? null,
     scanCount: totalScans,
+    /** Number of scans in Scan History (real scan records). Drives the ring unlocks. */
+    scanHistoryCount: Number(scanTotals[0]?.n ?? 0),
     kaiSkinScore: clampPct(kaiSkinScore),
     weeklyDeltaScore: Math.round(weeklyDeltaScore),
     weeklyDeltaMeaningful,

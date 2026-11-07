@@ -18,6 +18,7 @@ import {
 } from "@/src/lib/ragEightParams";
 import { mergeRagParamValuesFromScan } from "@/src/lib/ragScanParamBridge";
 import { productionTextbookRetrieve } from "@/src/lib/ragRetrieve";
+import { curatedInsight, filterConsumerEvidence } from "@/src/lib/reportCopyGuard";
 import type { MonthlyReportDetail } from "@/src/lib/ragMonthlyReportPdf";
 import type { TextbookChunk } from "@/src/lib/ragTextbookIndex";
 import {
@@ -38,7 +39,7 @@ import {
 } from "@/src/lib/ragSkinIdentityDerive";
 import { buildTrackerResources } from "@/src/lib/trackerResourceLinks";
 import {
-  patientDisplayClarity,
+  clampPatientFacingDisplayScore,
   patientClarityToGrade,
 } from "@/src/lib/clarityGrade";
 import { fetchCityWeather } from "@/src/lib/cityWeather";
@@ -48,6 +49,10 @@ import {
 } from "@/src/lib/wellnessWeatherContext";
 import { format, startOfWeek } from "date-fns";
 
+
+// Values here are already patient-facing scores (the resolver applied the display curve and
+// the score ceiling). Re-applying patientDisplayClarity would calibrate them twice and make
+// these insights disagree with the Score tab, so only clamp.
 type ParamRow = {
   key: RagKaiParamKey;
   value: number | null;
@@ -81,7 +86,7 @@ export type WeeklyReportContract = {
     actions: Array<{ rank: 1 | 2 | 3; title: string; detail: string }>;
   };
   section5: { shareLine: string };
-  evidence: Array<{ id: string; source: string; text: string; score: number }>;
+  evidence: Array<{ id: string; source: string; score: number }>;
   llm: { used: boolean; fellBack: boolean };
 };
 
@@ -211,8 +216,8 @@ function buildParamsForScan(
   return RAG_KAI_PARAM_KEYS.map((key) => {
     const v0 = current.paramValues[key];
     const v1 = prior?.paramValues[key];
-    const displayVal = typeof v0 === "number" ? patientDisplayClarity(v0) : null;
-    const priorDisplayVal = typeof v1 === "number" ? patientDisplayClarity(v1) : null;
+    const displayVal = typeof v0 === "number" ? clampPatientFacingDisplayScore(v0) : null;
+    const priorDisplayVal = typeof v1 === "number" ? clampPatientFacingDisplayScore(v1) : null;
     return {
       key,
       value: displayVal,
@@ -453,10 +458,11 @@ async function buildMonthlyForCalendarMonth(
   const latestParams = buildParamsForScan(latestScan, priorToLatest);
   const monthBehavior = summarizeBehavior(logsInMonth, windowDays);
 
-  const monthlyEvidence = await productionTextbookRetrieve({
+  const monthlyEvidenceRaw = await productionTextbookRetrieve({
     query: `${skinIdentity.primaryConcern ?? ""} long-term management Indian skin monthly`,
-    topK: 4,
+    topK: 8,
   });
+  const monthlyEvidence = filterConsumerEvidence(monthlyEvidenceRaw).slice(0, 4);
 
   const scoreTrend =
     monthScans.length > 0
@@ -473,8 +479,8 @@ async function buildMonthlyForCalendarMonth(
   const paramMeansPartial = meanParamScoresAcrossScans(scansForMonthAvg);
   const kaiMonthAvgFromParams = computeRagKaiScore(paramMeansPartial);
   const displayKaiMonthAvgFromParams =
-    kaiMonthAvgFromParams != null ? patientDisplayClarity(kaiMonthAvgFromParams) : null;
-  const displayScoreTrend = scoreTrend.map(patientDisplayClarity);
+    kaiMonthAvgFromParams != null ? clampPatientFacingDisplayScore(kaiMonthAvgFromParams) : null;
+  const displayScoreTrend = scoreTrend.map(clampPatientFacingDisplayScore);
 
   const firstCalScan = monthScans[0] ?? null;
   const monthParamMoves = RAG_KAI_PARAM_KEYS.flatMap((key) => {
@@ -482,8 +488,8 @@ async function buildMonthlyForCalendarMonth(
     const fromRaw = firstCalScan.paramValues[key];
     const toRaw = latestScan.paramValues[key];
     if (typeof fromRaw !== "number" || typeof toRaw !== "number") return [];
-    const from = patientDisplayClarity(fromRaw);
-    const to = patientDisplayClarity(toRaw);
+    const from = clampPatientFacingDisplayScore(fromRaw);
+    const to = clampPatientFacingDisplayScore(toRaw);
     return [{ key, from, to, delta: Math.round(to - from) }];
   });
 
@@ -606,7 +612,7 @@ async function buildMonthlyForCalendarMonth(
   const parametersDetail: MonthlyReportDetail["parameters"] =
     RAG_KAI_PARAM_KEYS.map((key) => {
       const rawLatest = latestScan.paramValues[key];
-      const latest = typeof rawLatest === "number" ? patientDisplayClarity(rawLatest) : null;
+      const latest = typeof rawLatest === "number" ? clampPatientFacingDisplayScore(rawLatest) : null;
       const row = latestParams.find((p) => p.key === key);
       const vsPrior = row?.delta ?? null;
       let vsMonthStart: number | null = null;
@@ -617,14 +623,14 @@ async function buildMonthlyForCalendarMonth(
         typeof latestScan.paramValues[key] === "number"
       ) {
         vsMonthStart = Math.round(
-          patientDisplayClarity(latestScan.paramValues[key] as number) -
-            patientDisplayClarity(firstCalScan.paramValues[key] as number)
+          clampPatientFacingDisplayScore(latestScan.paramValues[key] as number) -
+            clampPatientFacingDisplayScore(firstCalScan.paramValues[key] as number)
         );
       }
       const rawMonthMean = paramMeansPartial[key];
       const monthMean =
         typeof rawMonthMean === "number"
-          ? patientDisplayClarity(rawMonthMean)
+          ? clampPatientFacingDisplayScore(rawMonthMean)
           : null;
       return {
         key,
@@ -642,7 +648,7 @@ async function buildMonthlyForCalendarMonth(
     return {
       index: scansWithParams.findIndex((x) => x.id === s.id) + 1,
       date: ymd(s.createdAt),
-      kaiScore: patientDisplayClarity(rawScore),
+      kaiScore: clampPatientFacingDisplayScore(rawScore),
     };
   });
 
@@ -979,8 +985,8 @@ export async function generateRagKaiOutput(input: {
     const kaiPrev = prior
       ? computeRagKaiScore(prior.paramValues) ?? prior.overallScore
       : kaiNow;
-    const displayKaiNow = patientDisplayClarity(kaiNow);
-    const displayKaiPrev = patientDisplayClarity(kaiPrev);
+    const displayKaiNow = clampPatientFacingDisplayScore(kaiNow);
+    const displayKaiPrev = clampPatientFacingDisplayScore(kaiPrev);
     const displayWeeklyDelta = Math.round(displayKaiNow - displayKaiPrev);
 
     const cutoff7 = new Date(current.createdAt);
@@ -1022,14 +1028,16 @@ export async function generateRagKaiOutput(input: {
       behavior,
     });
 
-    const evidence = await productionTextbookRetrieve({
+    const rawEvidence = await productionTextbookRetrieve({
       query: retrievalQuery,
       boostTerms: [
         identityAtScan.primaryConcern ?? "",
         weak ? RAG_KAI_PARAM_LABELS[weak.key] : "",
       ],
-      topK: 5,
+      topK: 8,
     });
+    // Everyday skin-care text only: no rare-disease chapters, no weak matches.
+    const evidence = filterConsumerEvidence(rawEvidence).slice(0, 5);
 
     const [visits, chatMsgs, wellnessCtx] = await Promise.all([
       loadVisitNotesUpTo(user.id, current.createdAt),
@@ -1093,37 +1101,21 @@ export async function generateRagKaiOutput(input: {
       );
     }
 
-    const section3Article =
-      llmOut?.article ??
-      (evidence[0]
-        ? {
-            title: `Clinical note: ${evidence[0].chunk.tags[0] ?? "Dermatology guidance"}`,
-            source: `${evidence[0].chunk.source}${
-              evidence[0].chunk.pageHint ? ` p.${evidence[0].chunk.pageHint}` : ""
-            }`,
-            why: evidence[0].chunk.text.slice(0, 140).trim(),
-          }
-        : {
-            title: "Barrier-first skincare basics",
-            source: "kAI fallback library",
-            why: "Supports stability while trends are still forming.",
-          });
+    const curatedCopy = curatedInsight(weak ? weak.key : null);
+    const section3Article = llmOut?.article ?? {
+      title: curatedCopy.article,
+      source: "kAI guide",
+      why: "Everyday guidance chosen for your focus area.",
+    };
     const section3Video = llmOut?.video ?? {
       title: "Weekly skin check-in routine (5-angle method)",
       url: "",
       why: "Keep capture quality stable so trend lines are trustworthy.",
     };
-    const section3Insight =
-      llmOut?.insight ??
-      (evidence[1]
-        ? {
-            title: "kAI insight from textbook evidence",
-            body: evidence[1].chunk.text.slice(0, 200).trim(),
-          }
-        : {
-            title: "kAI insight",
-            body: "Consistency in AM/PM execution is the fastest lever for better weekly trend quality.",
-          });
+    const section3Insight = llmOut?.insight ?? {
+      title: "kAI insight",
+      body: curatedCopy.insight,
+    };
     const section3Resources = buildTrackerResources({
       article: section3Article,
       video: section3Video,
@@ -1207,7 +1199,6 @@ export async function generateRagKaiOutput(input: {
         source: `${e.chunk.source}${
           e.chunk.pageHint ? ` p.${e.chunk.pageHint}` : ""
         }`,
-        text: e.chunk.text.slice(0, 240).trim(),
         score: +e.score.toFixed(2),
       })),
       llm: { used: Boolean(llmOut), fellBack: llmEnabled && !llmOut },
@@ -1315,10 +1306,11 @@ export async function generateRagKaiOutput(input: {
 
   if (llmEnabled) {
     // Batch into chunks of 7 days
-    const sharedEvidence = await productionTextbookRetrieve({
+    const sharedEvidenceRaw = await productionTextbookRetrieve({
       query: `${skinIdentity.primaryConcern ?? ""} ${skinIdentity.skinType ?? ""} daily skincare routine adherence`,
-      topK: 3,
+      topK: 6,
     });
+    const sharedEvidence = filterConsumerEvidence(sharedEvidenceRaw).slice(0, 3);
     for (let i = 0; i < preDays.length; i += 7) {
       const slice = preDays.slice(i, i + 7);
       if (slice.length === 0) continue;
